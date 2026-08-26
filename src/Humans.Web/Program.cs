@@ -560,15 +560,15 @@ CurrentUserEnricher.StaticAccessor = app.Services.GetRequiredService<IHttpContex
 
     if (result.ResourceNotFound)
     {
-        Log.Error("LOCALIZATION BROKEN: Resource key '{Key}' not found. SearchedLocation: {Location}",
+        app.Logger.LogError("LOCALIZATION BROKEN: Resource key '{Key}' not found. SearchedLocation: {Location}",
             testKey, result.SearchedLocation);
-        Log.Error("Resource type: {TypeName}, Assembly: {Assembly}",
+        app.Logger.LogError("Resource type: {TypeName}, Assembly: {Assembly}",
             resourceType.FullName, resourceType.Assembly.GetName().Name);
 
         // List embedded resources for debugging
         var assembly = resourceType.Assembly;
         var resourceNames = assembly.GetManifestResourceNames();
-        Log.Error("Embedded resources in {Assembly}: {Resources}",
+        app.Logger.LogError("Embedded resources in {Assembly}: {Resources}",
             assembly.GetName().Name, string.Join(", ", resourceNames));
 
         // Check satellite assemblies
@@ -578,18 +578,18 @@ CurrentUserEnricher.StaticAccessor = app.Services.GetRequiredService<IHttpContex
             {
                 var satAssembly = assembly.GetSatelliteAssembly(new System.Globalization.CultureInfo(culture));
                 var satResources = satAssembly.GetManifestResourceNames();
-                Log.Information("Satellite assembly [{Culture}] resources: {Resources}",
+                app.Logger.LogInformation("Satellite assembly [{Culture}] resources: {Resources}",
                     culture, string.Join(", ", satResources));
             }
             catch (Exception ex)
             {
-                Log.Warning("No satellite assembly for culture '{Culture}': {Error}", culture, ex.Message);
+                app.Logger.LogWarning("No satellite assembly for culture '{Culture}': {Error}", culture, ex.Message);
             }
         }
     }
     else
     {
-        Log.Information("Localization OK: '{Key}' => '{Value}'", testKey, result.Value);
+        app.Logger.LogInformation("Localization OK: '{Key}' => '{Value}'", testKey, result.Value);
     }
 }
 
@@ -605,7 +605,7 @@ foreach (var resourceType in SectionDiscoveryExtensions.SectionResourceTypes())
     var embedded = resourceType.Assembly.GetManifestResourceNames();
     if (!embedded.Contains(expected, StringComparer.Ordinal))
     {
-        Log.Error(
+        app.Logger.LogError(
             "LOCALIZATION BROKEN: {Assembly} embeds no '{Expected}'. Its .resx files must sit " +
             "in the same folder as {TypeName}, whose namespace decides the manifest name. Found: {Embedded}",
             resourceType.Assembly.GetName().Name, expected, resourceType.FullName,
@@ -613,7 +613,7 @@ foreach (var resourceType in SectionDiscoveryExtensions.SectionResourceTypes())
     }
     else
     {
-        Log.Information("Localization OK: {Expected} embedded in {Assembly}",
+        app.Logger.LogInformation("Localization OK: {Expected} embedded in {Assembly}",
             expected, resourceType.Assembly.GetName().Name);
     }
 }
@@ -635,7 +635,7 @@ foreach (var resourceType in SectionDiscoveryExtensions.SectionResourceTypes())
         var policy = await policyProvider.GetPolicyAsync(value);
         if (policy is null)
         {
-            Log.Error(
+            app.Logger.LogError(
                 "AUTHORIZATION BROKEN: PolicyNames.{Name} has no registered policy. Its " +
                 "owning section may be missing, or its Policies contribution failed to register.",
                 name);

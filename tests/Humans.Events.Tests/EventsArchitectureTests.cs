@@ -67,9 +67,11 @@ public class EventsArchitectureTests
 
         foreach (var controller in controllers)
         {
-            controller.GetCustomAttribute<AuthorizeAttribute>()?.Policy
-                .Should().Be(PolicyNames.EventsAdminOrAdmin,
-                    because: $"{controller.Name} is an Events administration surface");
+            var authorize = controller.GetCustomAttribute<AuthorizeAttribute>();
+            authorize.Should().NotBeNull(
+                because: $"{controller.Name} is an Events administration surface");
+            authorize!.Policy.Should().Be(PolicyNames.EventsAdminOrAdmin,
+                because: $"{controller.Name} is an Events administration surface");
         }
     }
 
