@@ -2,12 +2,14 @@
 
   <!--
     City Planning's cross-section surface, a leaf project rather than a Contracts/ folder
-    because two consumers would otherwise cycle:
+    because Containers would otherwise cycle: Humans.Containers needs
+    ICityPlanningServiceRead, while Humans.CityPlanning references Humans.Containers for
+    IContainerService and its view models. That pair is mutual; the leaf is what breaks it.
 
-      - Humans.Camps' CampService clears a deleted camp's polygons through
-        ICityPlanningService.DeleteCampPolygonsForSeasonsAsync;
-      - Humans.Containers needs ICityPlanningServiceRead, while Humans.CityPlanning
-        references Humans.Containers for IContainerService and its view models.
+    Humans.Camps also consumes this leaf — CampService clears a deleted camp's polygons
+    through ICityPlanningService.DeleteCampPolygonsForSeasonsAsync — but it is not a reason
+    the leaf has to exist: Camps already references Humans.CityPlanning outright, and City
+    Planning references only Humans.Camps.Contracts back, so that pair is acyclic either way.
 
     See memory/architecture/section-project-cycle-fix.md. References Humans.Base only —
     the bottom of the graph.
