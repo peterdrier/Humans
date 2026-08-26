@@ -65,9 +65,6 @@
   <data name="CityPlanning_ClearMeasurementsButton" xml:space="preserve">
     <value>Borrar todas las mediciones</value>
   </data>
-  <data name="CityPlanning_CampLimits" xml:space="preserve">
-    <value>Límites del camp</value>
-  </data>
   <data name="CityPlanning_BarrioZones" xml:space="preserve">
     <value>Zonas de barrio</value>
   </data>
@@ -340,5 +337,23 @@
   </data>
   <data name="CityPlanning_Help_ColorsBody" xml:space="preserve">
     <value>Cada barrio está coloreado según su zona de sonido preferida (editable desde la página de tu barrio).</value>
+  </data>
+  <data name="CityPlanning_Help_PlacingImageAlt" xml:space="preserve">
+    <value>Captura: dibujando el contorno de un barrio en el mapa</value>
+  </data>
+  <data name="CityPlanning_Help_AdjustingImageAlt" xml:space="preserve">
+    <value>Captura: arrastrando un vértice para cambiar la forma de un barrio</value>
+  </data>
+  <data name="CityPlanning_Help_SavingImageAlt" xml:space="preserve">
+    <value>Captura: el historial de versiones de un barrio</value>
+  </data>
+  <data name="CityPlanning_Help_ZonesImageAlt" xml:space="preserve">
+    <value>Captura: un barrio dibujado fuera de las zonas de acampada discontinuas</value>
+  </data>
+  <data name="CityPlanning_Help_OverlapsImageAlt" xml:space="preserve">
+    <value>Captura: dos barrios superpuestos en el mapa</value>
+  </data>
+  <data name="CityPlanning_Help_ColorsImageAlt" xml:space="preserve">
+    <value>Captura: barrios coloreados según su zona de sonido</value>
   </data>
 </root>

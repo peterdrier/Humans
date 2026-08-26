@@ -43,7 +43,6 @@
   <data name="CityPlanning_HistoryButton" xml:space="preserve"><value>History</value></data>
   <data name="CityPlanning_MeasureButton" xml:space="preserve"><value>Measure</value></data>
   <data name="CityPlanning_ClearMeasurementsButton" xml:space="preserve"><value>Clear all measurements</value></data>
-  <data name="CityPlanning_CampLimits" xml:space="preserve"><value>Camp limits</value></data>
   <data name="CityPlanning_BarrioZones" xml:space="preserve"><value>Barrio zones</value></data>
   <data name="CityPlanning_Layers" xml:space="preserve"><value>Layers</value></data>
   <data name="CityPlanning_AdminLink" xml:space="preserve"><value>Admin</value></data>
@@ -135,4 +134,10 @@
   <data name="CityPlanning_Help_OverlapsDiscordChannel" xml:space="preserve"><value>Discord #city-planning</value></data>
   <data name="CityPlanning_Help_ColorsTitle" xml:space="preserve"><value>Colours &amp; sound zones</value></data>
   <data name="CityPlanning_Help_ColorsBody" xml:space="preserve"><value>Each barrio is coloured by its preferred sound zone (editable from your barrio page).</value></data>
+  <data name="CityPlanning_Help_PlacingImageAlt" xml:space="preserve"><value>Screenshot: drawing a barrio outline on the map</value></data>
+  <data name="CityPlanning_Help_AdjustingImageAlt" xml:space="preserve"><value>Screenshot: dragging a corner point to reshape a barrio</value></data>
+  <data name="CityPlanning_Help_SavingImageAlt" xml:space="preserve"><value>Screenshot: the version history of a barrio</value></data>
+  <data name="CityPlanning_Help_ZonesImageAlt" xml:space="preserve"><value>Screenshot: a barrio drawn outside the dashed camping zones</value></data>
+  <data name="CityPlanning_Help_OverlapsImageAlt" xml:space="preserve"><value>Screenshot: two barrios overlapping on the map</value></data>
+  <data name="CityPlanning_Help_ColorsImageAlt" xml:space="preserve"><value>Screenshot: barrios coloured by sound zone</value></data>
 </root>

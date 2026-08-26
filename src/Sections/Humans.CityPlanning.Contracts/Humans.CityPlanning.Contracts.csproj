@@ -1,19 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    City Planning's cross-section surface, carved into its own leaf project because a
-    consumer is in Base: Humans.Application's CampService clears a deleted camp's polygons
-    through ICityPlanningService.DeleteCampPolygonsForSeasonsAsync (the Restrict FK that
-    used to make the database refuse the delete was dropped by
-    nobodies-collective/Humans#992). A Contracts/ *folder* inside Humans.CityPlanning would
-    make Humans.Application reference a section and cycle (design §15.5b,
-    memory/architecture/section-project-cycle-fix.md).
+    City Planning's cross-section surface, a leaf project rather than a Contracts/ folder
+    because Containers would otherwise cycle: Humans.Containers needs
+    ICityPlanningServiceRead, while Humans.CityPlanning references Humans.Containers for
+    IContainerService and its view models. That pair is mutual; the leaf is what breaks it.
 
-    The leaf is also what keeps the Containers <-> CityPlanning pair acyclic:
-    Humans.Containers references this project, Humans.CityPlanning references
-    Humans.Containers for IContainerService and the container view models.
+    Humans.Camps also consumes this leaf — CampService clears a deleted camp's polygons
+    through ICityPlanningService.DeleteCampPolygonsForSeasonsAsync — but it is not a reason
+    the leaf has to exist: Camps already references Humans.CityPlanning outright, and City
+    Planning references only Humans.Camps.Contracts back, so that pair is acyclic either way.
 
-    References Humans.Interfaces only — the bottom of the graph.
+    See memory/architecture/section-project-cycle-fix.md. References Humans.Base only —
+    the bottom of the graph.
   -->
 
   <ItemGroup>

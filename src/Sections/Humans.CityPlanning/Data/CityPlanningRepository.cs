@@ -7,8 +7,8 @@ namespace Humans.CityPlanning.Data;
 /// <summary>
 /// EF-backed implementation of <see cref="ICityPlanningRepository"/>. The only
 /// non-test file that touches <c>DbContext.CampPolygons</c>,
-/// <c>DbContext.CampPolygonHistories</c>, or <c>DbContext.CityPlanningSettings</c>
-/// after the City Planning migration lands. Uses
+/// <c>DbContext.CampPolygonHistories</c>, or <c>DbContext.CityPlanningSettings</c>.
+/// Uses
 /// <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>CityPlanningDbContext</c> remains Scoped.
 /// </summary>
@@ -189,7 +189,7 @@ internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbCon
         return settings;
     }
 
-    public async Task<CityPlanningSettings> MutateSettingsAsync(
+    public async Task MutateSettingsAsync(
         int year,
         Action<CityPlanningSettings> mutate,
         Instant now,
@@ -213,8 +213,5 @@ internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbCon
         mutate(settings);
         settings.UpdatedAt = now;
         await ctx.SaveChangesAsync(ct);
-
-        ctx.Entry(settings).State = EntityState.Detached;
-        return settings;
     }
 }

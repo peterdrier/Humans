@@ -1,6 +1,9 @@
 @* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
    here ships broken markup with a green build and no runtime error — see design §1/§2.
-   Guarded by CityPlanningPageRenderTests (step 12). *@
+   CityPlanningPageRenderTests exercises this set, but it lives in Humans.Integration.Tests,
+   which build.yml filters out by design — a local check, not a CI gate. The gate is
+   tests/e2e/tests/city-planning.spec.ts, which loads every map screen against QA; it runs
+   on push to main, so it catches a missing line after the merge, not on the PR. *@
 @using Humans.Base.Extensions
 @using Humans.CityPlanning
 @using Humans.CityPlanning.Contracts

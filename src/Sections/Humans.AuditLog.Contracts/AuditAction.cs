@@ -224,4 +224,17 @@ public enum AuditAction
     // One per transfer booked into Holded from /Finance/Sepa (nobodies-collective/Humans#1141).
     // Same entity type as the generation entry; the IBAN in the description is always masked.
     SepaPayoutTransferBooked,
+
+    // City Planning settings writes. These decide who may move barrios and containers on the
+    // site map and what the published ground truth is, and every one of them is an organiser
+    // acting on the members' behalf. The settings row records when a phase changed but not
+    // who changed it, so the actor lives here.
+    CityPlanningPlacementOpened,
+    CityPlanningPlacementClosed,
+    CityPlanningContainerPlacementOpened,
+    CityPlanningContainerPlacementClosed,
+    CityPlanningLimitZoneUpdated,
+    CityPlanningLimitZoneDeleted,
+    CityPlanningOfficialZonesUpdated,
+    CityPlanningOfficialZonesDeleted,
 }
