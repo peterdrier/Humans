@@ -329,6 +329,17 @@ has no back-navigation (it has two, lines 57 and 63), and a claim that the
 - **Strike 5 (comment fix + debt — findings #13, #20, #21, #22):** both
   `CityPlanningPageRenderTests` guard claims now say the test never runs in CI;
   new `Docs/debt.yml` records the three behaviour bugs. Commit `bfda6315`.
+- **Phase 4 step 6, runtime verification (deferred to after Phase 7):** the run's
+  one user-visible change — the six help-modal `alt` attributes — verified on the
+  PR preview at `https://1525.n.burn.camp`, serving the branch head. Signed in via
+  `/dev/login/city-planning`, then switched language through the app's own
+  `POST /Language/SetLanguage`: `/CityPlanning/BarrioMap` renders all six alt
+  strings from the resx in English, Spanish and German. Verification only, no code
+  change. **The route matters:** `Program.cs` registers an initial culture provider
+  that returns the signed-in user's stored `PreferredLanguage`, so it outranks both
+  `Accept-Language` and a hand-set `.AspNetCore.Culture` cookie — a first attempt
+  through either rendered English for *every* culture, including pre-existing keys
+  that are certainly translated. That looked like a defect and was not one.
 
 ## Skipped
 
@@ -344,10 +355,6 @@ has no back-navigation (it has two, lines 57 and 63), and a claim that the
   instruction.
 - **Finding #24** (upstream issues) — repository not configured for this
   session.
-- **Phase 4 step 6, runtime verification** — not attempted: no PR preview
-  exists until Phase 7 pushes, and the user-visible change in this run (the six
-  alt attributes) is covered by the resx parity tests and a render of the
-  modal's own markup.
 - **Phase 8 (inline round)** — skipped by instruction; unattended run.
 - **Sweep item `memory: process/section-doctor-no-sdk`** (queued by the Cantina
   run, 2026-08-22) — **not applied.** Two reasons, either sufficient. Its
@@ -428,6 +435,7 @@ skill does not say so. See finding #27.
 ## Sweep queue
 
 - `memory: code/img-alt-is-a-user-facing-string` — an `<img alt>` on a member-facing view is a user-facing string and needs a resx key in all six cultures; `localization-admin-exempt` covers `/Admin/*`, `/TeamAdmin/*` and `/Shifts/Dashboard` only, and does not reach a member-facing modal that happens to be opened from an admin page.
+- `memory: process/verify-culture-via-setlanguage` — to check a non-English culture on a preview deploy, drive `POST /Language/SetLanguage` with the page's `__RequestVerificationToken` (it is `[HttpPost] [ValidateAntiForgeryToken]`, and `curl -L` on it yields 405 after the 302 — the cookie is still set). `Accept-Language` and a hand-set `.AspNetCore.Culture` cookie do **not** work while signed in: `Program.cs` adds an initial culture provider returning the user's stored `PreferredLanguage`, which outranks both, so every culture renders English and a correct change looks broken.
 
 ## Cost
 
