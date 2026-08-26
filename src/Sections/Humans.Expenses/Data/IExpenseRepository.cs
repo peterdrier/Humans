@@ -50,6 +50,14 @@ internal interface IExpenseRepository : IRepository
     Task SetLineAttachmentAsync(
         Guid lineId, Guid? attachmentId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Rewrites the payee IBAN snapshot on an already-submitted report. Which statuses may be
+    /// refreshed is the service's call, as with the header edit above; this only writes.
+    /// Returns false when the report does not exist.
+    /// </summary>
+    Task<bool> UpdatePayeeIbanAsync(
+        Guid reportId, string payeeIban, NodaTime.Instant updatedAt, CancellationToken ct = default);
+
     Task<bool> SubmitAsync(
         Guid reportId,
         string payeeName, string payeeIban,

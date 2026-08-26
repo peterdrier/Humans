@@ -74,11 +74,13 @@ internal interface IExpenseReportService : IExpenseReportServiceRead, IApplicati
     Task<ExpenseMutationResult> WithdrawWithResultAsync(
         Guid reportId, Guid submitterUserId, CancellationToken ct = default);
 
-    /// <summary>Sets <paramref name="submitterUserId"/>'s profile IBAN. When
-    /// <paramref name="actorUserId"/> is someone else, the audit entry names both and carries the
-    /// raw IBAN (memory/code/audit-pii-subject-allowed.md).</summary>
+    /// <summary>Sets the profile IBAN of whoever <paramref name="reportId"/> belongs to, and — while
+    /// that report sits between submit and approval — rewrites its payee IBAN snapshot too, so the
+    /// correction reaches the payment that has not gone out yet. Removing the IBAN is refused on
+    /// those statuses. When <paramref name="actorUserId"/> is someone else, the audit entries name
+    /// both and carry the raw IBAN (memory/code/audit-pii-subject-allowed.md).</summary>
     Task<ExpenseIbanSaveResult> SaveSubmitterIbanWithResultAsync(
-        Guid submitterUserId, Guid actorUserId, string? iban, CancellationToken ct = default);
+        Guid reportId, Guid actorUserId, string? iban, CancellationToken ct = default);
 
     /// <summary>A non-null <paramref name="maxAmount"/> caps what this report pays out; null leaves it uncapped.</summary>
     Task<ExpenseMutationResult> CoordinatorEndorseWithResultAsync(

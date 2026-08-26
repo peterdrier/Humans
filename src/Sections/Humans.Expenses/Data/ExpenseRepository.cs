@@ -199,6 +199,19 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task<bool> UpdatePayeeIbanAsync(
+        Guid reportId, string payeeIban, Instant updatedAt, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var r = await ctx.ExpenseReports
+            .FirstOrDefaultAsync(x => x.Id == reportId, ct);
+        if (r is null) return false;
+        r.PayeeIban = payeeIban;
+        r.UpdatedAt = updatedAt;
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
     public async Task<bool> SubmitAsync(
         Guid reportId, string payeeName, string payeeIban,
         Instant submittedAt, CancellationToken ct = default)

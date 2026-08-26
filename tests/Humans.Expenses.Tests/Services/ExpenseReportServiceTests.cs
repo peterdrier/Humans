@@ -404,7 +404,9 @@ public sealed class ExpenseReportServiceTests
             AuditAction.ExpenseAttachmentUploaded,
             "ExpenseReport", id,
             Arg.Any<string>(),
-            submitter);
+            submitter,
+            submitter,
+            AuditEntityTypes.User);
     }
 
     [HumansFact]
@@ -591,7 +593,9 @@ public sealed class ExpenseReportServiceTests
             AuditAction.ExpenseAttachmentRemoved,
             "ExpenseReport", id,
             Arg.Any<string>(),
-            submitter);
+            submitter,
+            submitter,
+            AuditEntityTypes.User);
     }
 
     [HumansFact]
@@ -1065,12 +1069,16 @@ public sealed class ExpenseReportServiceTests
     [HumansFact]
     public async Task SaveSubmitterIbanWithResultAsync_ReturnsSuccess_WhenIbanSaved()
     {
+        var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Draft);
         _userService
             .SetProfileIbanAsync(submitter, "ES9121000418450200051332", Arg.Any<CancellationToken>())
             .Returns(true);
 
-        var result = await _sut.SaveSubmitterIbanWithResultAsync(submitter, submitter, "ES91 2100 0418 4502 0005 1332", Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.SaveSubmitterIbanWithResultAsync(reportId, submitter, "ES91 2100 0418 4502 0005 1332", Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         result.Message.Should().Be("IBAN saved.");
@@ -1087,9 +1095,13 @@ public sealed class ExpenseReportServiceTests
     [HumansFact]
     public async Task SaveSubmitterIbanWithResultAsync_ReturnsValidationFailure_WhenIbanInvalid()
     {
+        var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Draft);
 
-        var result = await _sut.SaveSubmitterIbanWithResultAsync(submitter, submitter, "not-an-iban", Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.SaveSubmitterIbanWithResultAsync(reportId, submitter, "not-an-iban", Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.IsValidationError.Should().BeTrue();
@@ -1267,14 +1279,18 @@ public sealed class ExpenseReportServiceTests
     {
         // memory/code/audit-pii-subject-allowed.md: the entry's subject is the member, so the
         // account number belongs in it — tracing a wrongly-typed IBAN needs the value typed.
+        var (_, category) = SetupActiveYear();
         var member = Guid.NewGuid();
         var admin = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, member, category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Draft);
         SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
         _userService
             .SetProfileIbanAsync(member, "ES9121000418450200051332", Arg.Any<CancellationToken>())
             .Returns(true);
 
-        var result = await _sut.SaveSubmitterIbanWithResultAsync(member, admin, "ES91 2100 0418 4502 0005 1332", Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.SaveSubmitterIbanWithResultAsync(reportId, admin, "ES91 2100 0418 4502 0005 1332", Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         // The entry's entity type is Profile and its actor is the admin, so relatedEntityId is the
@@ -1287,6 +1303,126 @@ public sealed class ExpenseReportServiceTests
             admin,
             member,
             AuditEntityTypes.User);
+    }
+
+    [HumansFact]
+    public async Task AttachFileToLineAsync_OnBehalf_RelatesTheAuditToTheMember_NotTheAdmin()
+    {
+        var (_, category) = SetupActiveYear();
+        var member = Guid.NewGuid();
+        var admin = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(member, admin, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineId = await _sut.AddLineAsync(id, admin, true, "Item", 10m, ct: Xunit.TestContext.Current.CancellationToken);
+
+        await using var stream = new MemoryStream([1, 2, 3]);
+        await _sut.AttachFileToLineAsync(
+            id, admin, true, lineId, "receipt.pdf", "application/pdf", stream, Xunit.TestContext.Current.CancellationToken);
+
+        // Entity is the report and the actor is the admin, so without the related id the upload
+        // never reaches the member's own GDPR slice.
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.ExpenseAttachmentUploaded,
+            "ExpenseReport", id,
+            Arg.Any<string>(),
+            admin,
+            member,
+            AuditEntityTypes.User);
+    }
+
+    [HumansFact]
+    public async Task SaveSubmitterIbanWithResultAsync_RefreshesThePayeeSnapshot_OnASubmittedReport()
+    {
+        var (_, category) = SetupActiveYear();
+        var member = Guid.NewGuid();
+        var admin = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, member, category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted, payeeIban: "ES1000750000010000000000");
+        SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
+        _userService
+            .SetProfileIbanAsync(member, "ES9121000418450200051332", Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await _sut.SaveSubmitterIbanWithResultAsync(
+            reportId, admin, "ES91 2100 0418 4502 0005 1332", Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        loaded!.PayeeIban.Should().Be("ES9121000418450200051332");
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.ExpensePayeeIbanUpdated,
+            "ExpenseReport", reportId,
+            "Payee IBAN updated for Dani Member to ES9121000418450200051332.",
+            admin,
+            member,
+            AuditEntityTypes.User);
+    }
+
+    [HumansFact]
+    public async Task SaveSubmitterIbanWithResultAsync_LeavesThePayeeSnapshotAlone_OnADraft()
+    {
+        var (_, category) = SetupActiveYear();
+        var member = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, member, category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Draft);
+        _userService
+            .SetProfileIbanAsync(member, "ES9121000418450200051332", Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await _sut.SaveSubmitterIbanWithResultAsync(
+            reportId, member, "ES91 2100 0418 4502 0005 1332", Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        // Submit takes the snapshot; a draft has none to correct.
+        (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!.PayeeIban.Should().BeEmpty();
+        await AuditLog.DidNotReceive().LogAsync(
+            AuditAction.ExpensePayeeIbanUpdated,
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+            Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task SaveSubmitterIbanWithResultAsync_LeavesThePayeeSnapshotAlone_OnAnApprovedReport()
+    {
+        var (_, category) = SetupActiveYear();
+        var member = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, member, category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Approved, payeeIban: "ES1000750000010000000000");
+        _userService
+            .SetProfileIbanAsync(member, "ES9121000418450200051332", Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await _sut.SaveSubmitterIbanWithResultAsync(
+            reportId, member, "ES91 2100 0418 4502 0005 1332", Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        // Already booked into Holded — the snapshot is history, not a live payment detail.
+        (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!
+            .PayeeIban.Should().Be("ES1000750000010000000000");
+    }
+
+    [HumansFact]
+    public async Task SaveSubmitterIbanWithResultAsync_RefusesTheRemoval_OnASubmittedReport()
+    {
+        var (_, category) = SetupActiveYear();
+        var member = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, member, category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted, payeeIban: "ES1000750000010000000000");
+
+        var result = await _sut.SaveSubmitterIbanWithResultAsync(
+            reportId, member, null, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.IsValidationError.Should().BeTrue();
+        result.Message.Should().Contain("needs an IBAN");
+        // Neither half of the change lands — profile and snapshot stay in agreement.
+        await _userService.DidNotReceive().SetProfileIbanAsync(
+            Arg.Any<Guid>(), null, Arg.Any<CancellationToken>());
+        (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!
+            .PayeeIban.Should().Be("ES1000750000010000000000");
     }
 
     [HumansFact]
@@ -2153,7 +2289,7 @@ public sealed class ExpenseReportServiceTests
 
     private async Task SeedReportWithStatus(
         Guid reportId, Guid submitter, Guid categoryId, Guid yearId,
-        ExpenseReportStatus status)
+        ExpenseReportStatus status, string payeeIban = "")
     {
         var now = Instant.FromUtc(2026, 5, 1, 0, 0);
         var report = new ExpenseReport
@@ -2163,6 +2299,7 @@ public sealed class ExpenseReportServiceTests
             BudgetCategoryId = categoryId,
             BudgetYearId = yearId,
             Status = status,
+            PayeeIban = payeeIban,
             CreatedAt = now,
             UpdatedAt = now
         };

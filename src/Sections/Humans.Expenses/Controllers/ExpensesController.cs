@@ -607,7 +607,7 @@ internal sealed class ExpensesController(
         if (!await CanSetReportIbanAsync(report, user.Id)) return Forbid();
 
         var result = await service.SaveSubmitterIbanWithResultAsync(
-            report.SubmitterUserId, user.Id, model.Iban);
+            id, user.Id, model.Iban);
         if (result.Succeeded)
         {
             SetSuccess(result.Message);

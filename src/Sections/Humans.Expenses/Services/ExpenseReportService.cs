@@ -581,7 +581,9 @@ internal sealed class ExpenseReportService(
             AuditAction.ExpenseAttachmentUploaded,
             AuditEntityTypes.Report, reportId,
             $"Attachment uploaded to line {lineId}.",
-            actorUserId);
+            actorUserId,
+            relatedEntityId: report.SubmitterUserId,
+            relatedEntityType: AuditEntityTypes.User);
 
         return attachmentId;
     }
@@ -628,7 +630,9 @@ internal sealed class ExpenseReportService(
             AuditAction.ExpenseAttachmentRemoved,
             AuditEntityTypes.Report, reportId,
             $"Attachment removed from line {lineId}.",
-            actorUserId);
+            actorUserId,
+            relatedEntityId: report.SubmitterUserId,
+            relatedEntityType: AuditEntityTypes.User);
     }
 
     internal async Task<bool> SubmitAsync(
@@ -719,19 +723,37 @@ internal sealed class ExpenseReportService(
         }, "Error withdrawing expense report {ReportId}", "Withdrawal failed", reportId);
 
     public async Task<ExpenseIbanSaveResult> SaveSubmitterIbanWithResultAsync(
-        Guid submitterUserId, Guid actorUserId, string? iban, CancellationToken ct = default)
+        Guid reportId, Guid actorUserId, string? iban, CancellationToken ct = default)
     {
+        var report = await repo.GetByIdAsync(reportId, ct);
+        if (report is null)
+            return IbanFailure("Report not found.", isValidationError: false);
+        var submitterUserId = report.SubmitterUserId;
+
         var ibanValue = string.IsNullOrWhiteSpace(iban) ? null : iban.Trim();
 
         if (ibanValue is not null && !IbanValidator.IsValid(ibanValue))
             return IbanFailure("Invalid IBAN format.", isValidationError: true);
 
         var normalized = ibanValue is null ? null : IbanValidator.Normalize(ibanValue);
+
+        // A report past Draft carries a payee IBAN snapshot, and this page is how it gets corrected
+        // before approval. Clearing would leave the snapshot and the profile disagreeing about who
+        // gets paid, so on those statuses the removal is refused rather than half-applied.
+        var snapshotIsLive = SnapshotFollowsProfile(report.Status);
+        if (normalized is null && snapshotIsLive)
+            return IbanFailure(
+                "This report is awaiting payment and needs an IBAN. Replace it instead of removing it.",
+                isValidationError: true);
+
         try
         {
             var saved = await userService.SetProfileIbanAsync(submitterUserId, normalized, ct);
             if (!saved)
                 return IbanFailure("Failed to save IBAN.", isValidationError: false);
+
+            if (snapshotIsLive)
+                await RefreshPayeeIbanSnapshotAsync(report, actorUserId, normalized!, ct);
 
             var isClearing = normalized is null;
             // The entry is about the member, but its entity type is Profile and its actor may be
@@ -765,6 +787,39 @@ internal sealed class ExpenseReportService(
 
     private static ExpenseIbanSaveResult IbanFailure(string message, bool isValidationError) =>
         new(Succeeded: false, IsValidationError: isValidationError, Message: message);
+
+    /// <summary>
+    /// Whether setting the IBAN through this report's own page rewrites its payee snapshot. Only
+    /// between submit and approval: a draft has no snapshot yet (submit takes it), and an approved
+    /// or terminal report is already booked, so its snapshot is history.
+    /// </summary>
+    private static bool SnapshotFollowsProfile(ExpenseReportStatus status) =>
+        status is ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed;
+
+    private async Task RefreshPayeeIbanSnapshotAsync(
+        ExpenseReportDto report, Guid actorUserId, string normalizedIban, CancellationToken ct)
+    {
+        if (string.Equals(report.PayeeIban, normalizedIban, StringComparison.Ordinal)) return;
+
+        var updated = await repo.UpdatePayeeIbanAsync(
+            report.Id, normalizedIban, clock.GetCurrentInstant(), ct);
+        if (!updated) return;
+
+        // On the report entity so it lands in that report's on-page history, where the admin
+        // correcting it is looking. Unmasked when somebody set it for another member — same ruling
+        // as the profile entry above (memory/code/audit-pii-subject-allowed.md).
+        var description = actorUserId == report.SubmitterUserId
+            ? "Payee IBAN updated"
+            : $"Payee IBAN updated for {await DescribeMemberAsync(report.SubmitterUserId, ct)} to {normalizedIban}";
+
+        await auditLogService.LogAsync(
+            AuditAction.ExpensePayeeIbanUpdated,
+            AuditEntityTypes.Report, report.Id,
+            $"{description}.",
+            actorUserId,
+            relatedEntityId: report.SubmitterUserId,
+            relatedEntityType: AuditEntityTypes.User);
+    }
 
     /// <summary>
     /// Audit description for an IBAN change. A member changing their own stays the bare
@@ -1385,6 +1440,7 @@ internal sealed class ExpenseReportService(
         {
             AuditAction.ExpenseCreatedOnBehalf,
             AuditAction.ExpenseEditedOnBehalf,
+            AuditAction.ExpensePayeeIbanUpdated,
             AuditAction.ExpenseSubmit,
             AuditAction.ExpenseEndorse,
             AuditAction.ExpenseCoordinatorReject,
