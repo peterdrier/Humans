@@ -81,7 +81,9 @@ The layout those shapes imply, written fresh:
   `MessageCategory`; `Actionable` ignores it.
 - `Actionable` can be resolved, never dismissed — on the single and the bulk path alike.
 - A human who is not a recipient of a notification cannot read, resolve, dismiss, mark-read
-  or click through it, and cannot learn from the response whether it exists.
+  or click through it. Not-a-recipient and no-such-notification stay distinguishable in the
+  response, deliberately: the id is an unguessable Guid, so there is nothing to enumerate, and
+  collapsing the two would cost the section its only signal for a stale link.
 - A human cannot see another human's pile, badge count, or unread total.
 - Every source has a deliberate `MessageCategory`, not one arrived at by falling through a
   default arm.
@@ -141,4 +143,4 @@ Specified-but-unbuilt; reserved, not ranked, not built here:
 
 | Run | Date | Reforge (surface / loc / cogP95 / cogMax) | PR |
 |-----|------|-------------------------------------------|----|
-| 1 | 2026-08-26 | 274 / 2421 / pending / pending | pending |
+| 1 | 2026-08-26 | 274 / 2381 / 7 / 25 | pending |

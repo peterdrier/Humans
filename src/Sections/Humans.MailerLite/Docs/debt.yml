@@ -1,4 +1,8 @@
 # Section debt ledger for Humans.MailerLite. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-inbox: []
+inbox:
+  - added: 2026-08-26
+    what: "Decide whether Services/MailerLite/MailerLiteDateConverter.cs stays. It is still registered on MailerLiteClient's JSON options (MailerLiteClient.cs:354) and still has its own test, but nothing in the section deserializes an Instant? any more after the 2026-08-25 deletion of MailerLiteGroup.CreatedAt, so the converter no longer converts anything. Either it is dead surface plus a test of dead surface, or it is deliberately kept against the vendor adding a date field back — that is Peter's call, not a run's. Found by /section-doctor on MailerLite 2026-08-25 (finding 24), swept 2026-08-26."
+    review: light
+
