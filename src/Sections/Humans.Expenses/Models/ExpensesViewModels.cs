@@ -46,6 +46,10 @@ internal sealed class ExpenseNewViewModel
 
     [StringLength(500)]
     public string? Note { get; set; }
+
+    /// <summary>The member the report will belong to. Defaults to the viewer; only a finance admin
+    /// can post anything else, and the picker that changes it renders only for them.</summary>
+    public Guid? SubmitterUserId { get; set; }
 }
 
 internal sealed class ExpenseEditViewModel
@@ -76,12 +80,13 @@ internal sealed class ExpenseDetailViewModel
 
     public bool IsSubmitter { get; init; }
 
-    /// <summary>The viewer's own profile IBAN state. Only meaningful while they are still setting it up
-    /// on their own draft — a viewer's IBAN says nothing about someone else's report.</summary>
+    /// <summary>The *report submitter's* current profile IBAN state — who this report will pay, not
+    /// who is looking at it. Loaded only for a viewer who may act on it (<see cref="CanEditIban"/>).</summary>
     public bool HasIban { get; init; }
     public string? MaskedIban { get; init; }
-    /// <summary>The Set/Change IBAN actions reject everyone but the submitter, so only they get the button.</summary>
-    public bool CanEditIban => IsSubmitter;
+    /// <summary>Mirrors what the Iban action accepts: the submitter at any status, or a finance admin
+    /// filing on their behalf. Anyone else offered the button would get a guaranteed 403.</summary>
+    public bool CanEditIban => IsSubmitter || CanEdit;
 
     /// <summary>Payee identity is snapshotted at submit, and the legal name shows unmasked — so it goes
     /// no wider than the submitter and the finance admins who approve the payment.</summary>
@@ -233,6 +238,19 @@ internal sealed class ExpenseIbanViewModel
     public Guid ReportId { get; set; }
     public string? MaskedIban { get; set; }
     public bool HasIban { get; set; }
+
+    /// <summary>The member whose IBAN this is, when that is not the viewer — an admin setting it on
+    /// their behalf must see whose account they are typing. Null when it is the viewer's own.</summary>
+    public string? MemberName { get; set; }
+
+    /// <summary>The status of the report this page was opened from — it decides whether removal
+    /// is still on offer.</summary>
+    public ExpenseReportStatus ReportStatus { get; set; }
+
+    /// <summary>False once the report is submitted and awaiting payment: such a report still needs
+    /// an IBAN, so the service refuses to clear one and the form must stop offering it.</summary>
+    public bool CanRemoveIban =>
+        ReportStatus is not (ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed);
 
     [StringLength(34)]
     public string? Iban { get; set; }

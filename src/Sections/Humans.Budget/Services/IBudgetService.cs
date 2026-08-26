@@ -19,7 +19,6 @@ internal interface IBudgetService : IBudgetServiceRead, IApplicationService
 {
     // Budget Years
     Task<IReadOnlyList<BudgetYearSummarySnapshot>> GetAllYearsAsync(bool includeArchived = false);
-    Task<BudgetYearDetail?> GetYearByIdAsync(Guid id);
     Task<CoordinatorBudgetViewData> GetCoordinatorBudgetViewDataAsync(Guid userId, bool isFinanceAdmin);
     Task<BudgetYearDetail> CreateYearAsync(string year, string name, Guid actorUserId);
     Task UpdateYearStatusAsync(Guid yearId, BudgetYearStatus status, Guid actorUserId);

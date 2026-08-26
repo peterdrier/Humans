@@ -75,6 +75,12 @@
   <data name="Expenses_EndorseConfirm" xml:space="preserve"><value>Valider cette note de frais ?</value></data>
   <data name="Expenses_FileFirst" xml:space="preserve"><value>Déposez votre première note</value></data>
   <data name="Expenses_FinanceAdminDecision" xml:space="preserve"><value>Décision de l'administrateur financier</value></data>
+  <data name="Expenses_ForMember" xml:space="preserve"><value>Pour le membre</value></data>
+  <data name="Expenses_ForMemberHelp" xml:space="preserve"><value>Laissez-vous vous-même pour déposer votre propre note de frais. Si vous choisissez quelqu'un d'autre, la note lui appartient : elle est payée sur son IBAN et apparaît sur sa page de frais.</value></data>
+  <data name="Expenses_IbanEnterForMember" xml:space="preserve"><value>Saisissez l'IBAN complet de {0} sans espaces. Laissez vide pour le supprimer.</value></data>
+  <data name="Expenses_IbanEnterForMemberNoRemove" xml:space="preserve"><value>Saisissez l'IBAN complet de {0} sans espaces.</value></data>
+  <data name="Expenses_IbanOnBehalf" xml:space="preserve"><value>Vous définissez l'IBAN de paiement de {0}. Cela modifie son profil, pas le vôtre, et cette note de frais sera payée sur le compte que vous saisissez ici.</value></data>
+  <data name="Expenses_IbanStoredForMember" xml:space="preserve"><value>L'IBAN est stocké de manière sécurisée et n'est accessible qu'à FinanceAdmin dans le contexte des notes de frais de {0}.</value></data>
   <data name="Expenses_IouHeader" xml:space="preserve"><value>Ce que le collectif vous doit</value></data>
   <data name="Expenses_IouOwed" xml:space="preserve"><value>Dû à vous (solde Holded)</value></data>
   <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Article</value></data>

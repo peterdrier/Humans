@@ -23,8 +23,8 @@ public sealed class Section : ISection
     {
         services.AddSectionDbContext<NotificationsDbContext>(sentinelTable: "notifications");
 
-        // §15 repository pattern (issue #550). Singleton + IDbContextFactory so the
-        // services can inject it directly.
+        // Singleton over IDbContextFactory, so services can inject it directly
+        // while NotificationsDbContext stays Scoped.
         services.AddSingleton<INotificationRepository, NotificationRepository>();
 
         // DI cycle break: NotificationEmitter is a distinct type from

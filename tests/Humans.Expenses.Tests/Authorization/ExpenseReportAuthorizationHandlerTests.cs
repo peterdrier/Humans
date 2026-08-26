@@ -240,13 +240,50 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         result.Should().BeTrue();
     }
 
-    // ─── FinanceAdmin cannot edit ─────────────────────────────────────────────
+    // ─── FinanceAdmin edits on a member's behalf ──────────────────────────────
+
+    [HumansTheory]
+    [Xunit.InlineData(ExpenseReportStatus.Draft)]
+    [Xunit.InlineData(ExpenseReportStatus.Submitted)]
+    [Xunit.InlineData(ExpenseReportStatus.CoordinatorEndorsed)]
+    public async Task FinanceAdmin_CanEdit_ReportStillOpenToCorrection(ExpenseReportStatus status)
+    {
+        var report = MakeReport(SubmitterId, status);
+        var result = await EvaluateAsync(CreateUserWithRole(RoleNames.FinanceAdmin), report, ExpenseReportOperation.Edit);
+        result.Should().BeTrue();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(ExpenseReportStatus.Approved)]
+    [Xunit.InlineData(ExpenseReportStatus.Withdrawn)]
+    public async Task FinanceAdmin_CannotEdit_ClosedReport(ExpenseReportStatus status)
+    {
+        var report = MakeReport(SubmitterId, status);
+        var result = await EvaluateAsync(CreateUserWithRole(RoleNames.FinanceAdmin), report, ExpenseReportOperation.Edit);
+        result.Should().BeFalse();
+    }
 
     [HumansFact]
-    public async Task FinanceAdmin_CannotEdit_AnyReport()
+    public async Task FinanceAdmin_CanSubmit_DraftOnBehalf()
+    {
+        var report = MakeReport(SubmitterId, ExpenseReportStatus.Draft);
+        var result = await EvaluateAsync(CreateUserWithRole(RoleNames.FinanceAdmin), report, ExpenseReportOperation.Submit);
+        result.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task FinanceAdmin_CannotSubmit_AlreadySubmittedReport()
     {
         var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted);
-        var result = await EvaluateAsync(CreateUserWithRole(RoleNames.FinanceAdmin), report, ExpenseReportOperation.Edit);
+        var result = await EvaluateAsync(CreateUserWithRole(RoleNames.FinanceAdmin), report, ExpenseReportOperation.Submit);
+        result.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task RandomUser_CannotEdit_SomeoneElsesReport()
+    {
+        var report = MakeReport(SubmitterId, ExpenseReportStatus.Draft);
+        var result = await EvaluateAsync(CreateUser(RandomUserId), report, ExpenseReportOperation.Edit);
         result.Should().BeFalse();
     }
 
@@ -279,12 +316,13 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     }
 
     [HumansFact]
-    public async Task Admin_CannotEdit_SomeoneElsesReport()
+    public async Task Admin_CanEdit_SomeoneElsesDraft()
     {
+        // Admin carries the finance-admin capabilities, so it files and fixes on behalf too.
         var report = MakeReport(SubmitterId, ExpenseReportStatus.Draft);
         var adminId = Guid.NewGuid();
         var result = await EvaluateAsync(CreateUserWithRoleAndId(RoleNames.Admin, adminId), report, ExpenseReportOperation.Edit);
-        result.Should().BeFalse();
+        result.Should().BeTrue();
     }
 
     // ─── Random user × all denied ────────────────────────────────────────────

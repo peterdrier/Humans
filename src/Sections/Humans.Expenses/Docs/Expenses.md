@@ -37,7 +37,7 @@ Members submit expense reports for reimbursement. Finance Admin reviews and appr
 | Status | ExpenseReportStatus | see enum below |
 | Note | string? | optional submitter-written **Subject**; becomes the Holded document `Description` |
 | PayeeName | string | snapshotted at submit |
-| PayeeIban | string | snapshotted at submit; MUST be masked in all log/audit output |
+| PayeeIban | string | snapshotted at submit, refreshable from `/Expenses/{id}/Iban` until approval; MUST be masked in all log/audit output |
 | Total | decimal | sum of line amounts — the receipts total, not what is paid |
 | MaxAmount | decimal? | payout cap authorized by a decider; null = uncapped |
 | SubmittedAt | Instant? | |
@@ -95,16 +95,16 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 | Route | Method | Auth | Action |
 |-------|--------|------|--------|
 | `/Expenses` | GET | Authenticated | Submitter dashboard — shows member's reports, plus their Holded creditor-account statement (`AccountLedger`) once bound to a 40000000–41999999 account. The statement is the cached daybook lines for that account verbatim, both sides; it is not mixed with locally-held report rows. Unbound members get an explanatory note instead. |
-| `/Expenses/New` | GET/POST | Authenticated | Create draft |
+| `/Expenses/New` | GET/POST | Authenticated; the **For member** picker only for FinanceAdminOrAdmin | Create draft. Default submitter is self; a finance admin may file for another member, who owns the report from that moment |
 | `/Expenses/{id}` | GET | Authenticated (resource-based: owner + Finance) | Detail |
-| `/Expenses/{id}/Edit` | GET/POST | Authenticated (owner, Draft only) | Edit draft |
-| `/Expenses/{id}/Lines/New` | GET | Authenticated (owner, Draft only) | Focused add-line page (receipt default; `?type=Invoice` for the invoice flow). One submit creates line + attachment together |
-| `/Expenses/{id}/Lines/{lineId}` | GET | Authenticated (owner) | Focused line page — edit description/amount, view/replace/remove the file, remove the line |
-| `/Expenses/{id}/Lines/{lineId}/Proofs` | GET | Authenticated (owner) | Invoice line's proofs page — coverage vs invoice amount, list, add/remove proof rows |
-| `/Expenses/{id}/Lines/*` | POST | Authenticated (owner) | Line mutations |
-| `/Expenses/{id}/Submit` | POST | Authenticated (owner) | Submit |
-| `/Expenses/{id}/Withdraw` | POST | Authenticated (owner, submitted states) | Withdraw |
-| `/Expenses/{id}/Iban` | GET/POST | Authenticated (resource-based: self, FinanceAdmin with report context) | View/set IBAN |
+| `/Expenses/{id}/Edit` | GET/POST | Authenticated (resource-based `Edit`: owner in Draft, FinanceAdmin in Draft/Submitted/CoordinatorEndorsed) | Edit header |
+| `/Expenses/{id}/Lines/New` | GET | Authenticated (resource-based `Edit`) | Focused add-line page (receipt default; `?type=Invoice` for the invoice flow). One submit creates line + attachment together |
+| `/Expenses/{id}/Lines/{lineId}` | GET | Authenticated (resource-based `Edit`, or the owner read-only) | Focused line page — edit description/amount, view/replace/remove the file, remove the line |
+| `/Expenses/{id}/Lines/{lineId}/Proofs` | GET | Authenticated (resource-based `Edit`, or the owner read-only) | Invoice line's proofs page — coverage vs invoice amount, list, add/remove proof rows |
+| `/Expenses/{id}/Lines/*` | POST | Authenticated (resource-based `Edit`) | Line mutations |
+| `/Expenses/{id}/Submit` | POST | Authenticated (resource-based `Submit`: owner or FinanceAdmin, Draft only) | Submit |
+| `/Expenses/{id}/Withdraw` | POST | Authenticated (owner, submitted states) | Withdraw — submitter only, never on behalf |
+| `/Expenses/{id}/Iban` | GET/POST | Authenticated (the report's submitter at any status, or whoever the `Edit` grant covers) | View/set the **submitter's** profile IBAN, and refresh this report's `PayeeIban` while it is pre-approval |
 | `/Expenses/Attachment/{id}` | GET | Authenticated (resource-based) | Download attachment |
 | `/Expenses/Attachment/{id}/View` | GET | Authenticated (resource-based) | Same file inline (images + PDFs render in the tab; other types fall back to download) |
 | `/Expenses/{id}/Endorse` | POST | Authenticated (coordinator, resource-based) | Endorse |
@@ -121,7 +121,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 |-------|--------------|
 | Authenticated member | Submit, edit, withdraw own reports. View own reports. Set own IBAN. |
 | Budget Coordinator | All member capabilities. Additionally: endorse or coordinator-reject reports in categories they coordinate. |
-| FinanceAdmin, Admin | All coordinator capabilities. Additionally: the unscoped review queue, approve, finance-reject, category override, view Holded sync status, bind a submitter to a Holded creditor account (400000xx) on the expense detail view. |
+| FinanceAdmin, Admin | All coordinator capabilities. Additionally: the unscoped review queue, approve, finance-reject, category override, view Holded sync status, bind a submitter to a Holded creditor account (400000xx) on the expense detail view. **On a member's behalf:** file a report, edit its header/lines/attachments while it is Draft, Submitted or CoordinatorEndorsed, submit it from Draft, and set the member's profile IBAN. Never withdraw — that stays the submitter's. |
 | Admin | All FinanceAdmin capabilities. Additionally: reveal raw IBAN on admin user page (audit-logged). |
 
 ## Invariants
@@ -136,9 +136,12 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 - `/Expenses/Review` is one queue for three audiences, scoped by the viewer: a finance admin sees every non-draft, non-withdrawn report; anyone else sees their own plus those booked to a budget category they coordinate. Drafts and withdrawals never appear — they belong to `/Expenses`.
 - Payable is `min(Total, MaxAmount)` (`ExpenseReportDto.Payable`). Owed/paid math, the review queue, and the detail view all read the payable; `Total` renders only as the receipts total.
 - A capped report pushes to Holded with one extra negative line ("Authorized maximum €X — adjustment", amount `MaxAmount − Total`, same account as the receipt lines) so the purchase document totals the payable. No adjustment line when the report is uncapped or the cap is at or above `Total`.
-- `Profile.Iban` must be non-null at submit time. `PayeeIban` is snapshotted at that moment; later IBAN changes do not affect in-flight reports.
-- The `/Expenses/{id}` **Payee** card renders the report's own `PayeeName` (unmasked legal name) and masked `PayeeIban` — the submit-time snapshot, i.e. who Holded actually pays. It is scoped to the submitter and finance admins (`ExpenseDetailViewModel.CanSeePayee`); a coordinator endorsing a report does not see it, because the legal name is unmasked and burner names are the norm elsewhere. The card never shows the *viewer's* own IBAN on someone else's report, and the Set/Change IBAN buttons render only for the submitter (the `Iban` action Forbids everyone else).
-- `PayeeIban` (snapshotted) and `Profile.Iban` (current) MUST pass through `IbanFormatter.Mask` before appearing in any log, audit entry, or error message (enforced by convention; memory atom `memory/code/iban-mask-in-logs.md`).
+- `Profile.Iban` must be non-null at submit time. `PayeeIban` is snapshotted at that moment. A later profile-level IBAN change (`/Profile`) never touches an in-flight report. A change made through **the report's own** `/Expenses/{id}/Iban` page does: while the report is `Submitted` or `CoordinatorEndorsed` it rewrites that report's `PayeeIban` too, because the point of the page is fixing the payment before it goes out. `Draft` has no snapshot to fix (submit takes it), and `Approved` / `Withdrawn` are never touched — approval has already queued the Holded push. Clearing the IBAN is **refused** on `Submitted` / `CoordinatorEndorsed`: a report awaiting payment needs one, and half-applying would leave profile and snapshot disagreeing about who gets paid. The form stops offering the removal on those statuses too (`ExpenseIbanViewModel.CanRemoveIban`), so the page never invites what the service will reject.
+- The `/Expenses/{id}` **Payee** card renders the report's own `PayeeName` (unmasked legal name) and masked `PayeeIban` — the submit-time snapshot, i.e. who Holded actually pays. It is scoped to the submitter and finance admins (`ExpenseDetailViewModel.CanSeePayee`); a coordinator endorsing a report does not see it, because the legal name is unmasked and burner names are the norm elsewhere. The card never shows the *viewer's* own IBAN on someone else's report: what it renders is always the *report submitter's* state, and the Set/Change IBAN buttons render for the submitter and for whoever the `Edit` grant covers (the `Iban` action Forbids everyone else).
+- **A report belongs to its `SubmitterUserId`; whoever is changing it is only the actor.** Everything payee-shaped reads the submitter's profile, never the acting user's — `SubmitAsync` snapshots the submitter's IBAN and legal name, and the `Iban` page writes the submitter's profile. The actor appears only where it means the actor: `ExpenseAttachment.UploadedByUserId` and the audit entries.
+- **A finance admin's edit does not send the report back a step.** The on-behalf edit window covers Draft, Submitted and CoordinatorEndorsed; correcting an endorsed report leaves the endorsement standing. `Approved` and `Withdrawn` are closed to everyone — approval has already queued the Holded push. `ExpenseReportAuthorizationHandler` decides this and `ExpenseReportService.RequireEditableReportAsync` re-checks it; the repository does not re-decide status (that is why `ExpenseRepository.UpdateDraftAsync` has no Draft filter of its own).
+- **A header edit never moves a report between budget years.** A `Draft` resolves its category through the *active* year and is stamped with it — it is not booked anywhere yet. Once `Submitted` or `CoordinatorEndorsed`, the report is booked: the edit form offers only the categories of **the report's own** `BudgetYearId` (`BuildCategoryOptionsAsync` reads `GetYearByIdAsync` instead of `GetActiveYearAsync`), `UpdateDraftAsync` rejects a posted category belonging to any other year, and `BudgetYearId` is left as it was. Without this, editing a report from a previous year silently reclassified its accounting into the current one. The `ExpenseCategoryOverride` at approval is a separate, pre-existing path and still resolves through the active year.
+- `PayeeIban` (snapshotted) and `Profile.Iban` (current) MUST pass through `IbanFormatter.Mask` before appearing in any log, audit entry, or error message (enforced by convention; memory atom `memory/code/iban-mask-in-logs.md`). **One exception:** an `IbanSet` audit entry written by somebody other than its subject carries the IBAN unmasked, because tracing a wrongly-entered account back to who typed it needs the value typed (`memory/code/audit-pii-subject-allowed.md`). A member setting their own stays masked.
 - The coordinator endorsement step is required only if the report's category has at least one budget coordinator (`CategoryRequiresCoordinatorEndorsementAsync`). Finance Admin may approve directly from Submitted if no coordinator is assigned.
 - Resource-based authorization (`IbanAccessRequirement` / `IbanAccessHandler`) gates raw IBAN access: self, FinanceAdmin with non-Draft/non-Withdrawn report context, or Admin on admin page.
 - `HoldedExpenseOutboxJob` drains the `holded_expense_outbox_events` in order. A transient error increments `RetryCount` and sets `NextRetryAt` to `now + 2^(RetryCount+1)` minutes, so the event is held back rather than re-hitting Holded every minute; the tenth failure, and any permanent error, sets `FailedPermanently`. A written-off event is never silently dropped — it shows on `/Expenses/Review` as a banner and on `/Expenses/{id}` as the Holded sync card, where a finance admin re-queues it.
@@ -151,6 +154,9 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 - Regular members **cannot** see other users' expense reports or attachments.
 - Regular members **cannot** approve, reject, or endorse (unless they are a coordinator for the relevant category).
 - Coordinators **cannot** approve — that requires FinanceAdmin/Admin.
+- Coordinators **cannot** edit, submit, or file a report for anyone else — endorsement is as far as the role goes. Neither can a plain member on another member's report.
+- FinanceAdmin/Admin **cannot** edit an `Approved` or `Withdrawn` report, nor submit one that is past Draft, nor withdraw anyone's report.
+- A finance admin filing for a member **cannot** make the report their own — `SubmitterUserId` is the picked member, so the payout, the dashboard row and the GDPR export all follow the member.
 - Submitters **cannot** set `MaxAmount` — there is no submitter-facing input and no service path that accepts one outside Endorse/Approve.
 - FinanceAdmin **cannot** reveal a raw IBAN on the admin user page — that action is Admin-only.
 - No role **can** transition a report backwards in the state machine (e.g., un-approve, un-submit).
@@ -158,7 +164,12 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 
 ## Triggers
 
-- On **submit**: `Profile.Iban` and the profile legal name (`FirstName` + `LastName`) are snapshotted into `PayeeIban` / `PayeeName`. Audit entry `ExpenseSubmit` written.
+- On **create for another member**: audit entry `ExpenseCreatedOnBehalf` written, naming the actor and the member. A self-created draft stays unaudited — the report is its own record.
+- On **any edit to another member's report**: audit entry `ExpenseEditedOnBehalf` written per change — header update, line add (proof rows included), line update, line remove — with a description saying what changed. Self-edits stay unaudited, exactly as before.
+- Every on-behalf entry carries `relatedEntityId` = the member with `relatedEntityType` `"User"`. That is what puts the entry in the *member's* GDPR export: the entity is the report (or their Profile) and the actor is the admin, so without it the row never reaches the person it is about.
+- On **submit**: the *submitter's* `Profile.Iban` and profile legal name (`FirstName` + `LastName`) are snapshotted into `PayeeIban` / `PayeeName`. Audit entry `ExpenseSubmit` written, naming the member when the actor is not the submitter.
+- On **IBAN set/remove for another member**: `IbanSet` / `IbanRemove` written against the member as subject with the admin as actor, naming the member and carrying the IBAN unmasked. A member setting their own gets the bare masked-convention entry it always did.
+- On **payee snapshot refresh**: `ExpensePayeeIbanUpdated` written against the **report** (so it shows in that report's on-page history), actor = whoever set it, related entity = the submitter. Same masking rule as `IbanSet`: unmasked when the actor is not the submitter, bare when it is.
 - On **endorse**: any max amount the coordinator supplied is stored on the report and named in the `ExpenseEndorse` audit entry.
 - On **approve**: `HoldedExpenseOutboxEvent` (CreateIncomingDoc) queued. Audit entry `ExpenseApprove` written, naming any max amount the finance admin supplied (which overrides the coordinator's).
 - On **category override**: `HoldedExpenseOutboxEvent` (UpdateIncomingDocTag) queued. Audit entry `ExpenseCategoryOverride` written.

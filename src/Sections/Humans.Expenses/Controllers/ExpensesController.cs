@@ -98,7 +98,7 @@ internal sealed class ExpensesController(
     {
         try
         {
-            var (errorResult, _) = await RequireCurrentUserAsync();
+            var (errorResult, user) = await RequireCurrentUserAsync();
             if (errorResult is not null) return errorResult;
 
             var categories = await BuildCategoryOptionsAsync();
@@ -108,7 +108,11 @@ internal sealed class ExpensesController(
                 return RedirectToAction(nameof(Index));
             }
 
-            return View(new ExpenseNewViewModel { Categories = categories });
+            return View(new ExpenseNewViewModel
+            {
+                Categories = categories,
+                SubmitterUserId = user.Id,
+            });
         }
         catch (Exception ex)
         {
@@ -125,6 +129,13 @@ internal sealed class ExpensesController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
+        // Blank means "me" — the picker only renders for finance admins, and clearing its search
+        // box clears the hidden id.
+        var submitterUserId = model.SubmitterUserId is { } picked && picked != Guid.Empty
+            ? picked
+            : user.Id;
+        if (submitterUserId != user.Id && !await IsFinanceAdminAsync()) return Forbid();
+
         try
         {
             if (!ModelState.IsValid)
@@ -133,13 +144,14 @@ internal sealed class ExpensesController(
                 return View(model);
             }
 
-            var id = await service.CreateDraftAsync(user.Id, model.BudgetCategoryId, model.Note);
+            var id = await service.CreateDraftAsync(
+                submitterUserId, user.Id, model.BudgetCategoryId, model.Note);
             SetSuccess("Draft created.");
             return RedirectToAction(nameof(Edit), new { id });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error creating draft expense report for user {UserId}", user.Id);
+            logger.LogError(ex, "Error creating draft expense report for user {UserId}", submitterUserId);
             SetError("Failed to create draft.");
             model.Categories = await BuildCategoryOptionsAsync();
             return View(model);
@@ -169,10 +181,12 @@ internal sealed class ExpensesController(
             var canWithdraw = report.Status is ExpenseReportStatus.Submitted
                 or ExpenseReportStatus.CoordinatorEndorsed
                 or ExpenseReportStatus.Approved;
-            // The viewer's own profile IBAN drives only their own draft's Set/Change flow. Loading it for
-            // someone else's report would answer "has the *submitter* got payment details" with the
-            // viewer's answer — see PayeeName/PayeeIban below for the submitter's own.
-            var iban = isSubmitter ? await GetIbanViewAsync(user.Id) : (HasIban: false, MaskedIban: null);
+            var canEdit = await AllowsAsync(report, ExpenseReportOperation.Edit);
+            // Always the *report's* IBAN state, never the viewer's — an admin setting it up for a
+            // member needs the member's answer, and the two used to be conflated here.
+            var iban = isSubmitter || canEdit
+                ? await GetIbanViewAsync(report.SubmitterUserId)
+                : (HasIban: false, MaskedIban: null);
 
             // Finance admins reviewing a report can bind the submitter to a Holded creditor account
             // before approval, so the push reuses the right 400000xx instead of minting a duplicate.
@@ -190,8 +204,8 @@ internal sealed class ExpensesController(
             {
                 Report = report,
                 CategoryDisplayName = categoryName,
-                CanEdit = isSubmitter && report.Status == ExpenseReportStatus.Draft,
-                CanSubmit = isSubmitter && report.Status == ExpenseReportStatus.Draft,
+                CanEdit = canEdit,
+                CanSubmit = await AllowsAsync(report, ExpenseReportOperation.Submit),
                 CanWithdraw = isSubmitter && canWithdraw,
                 IsSubmitter = isSubmitter,
                 HasIban = iban.HasIban,
@@ -230,10 +244,11 @@ internal sealed class ExpensesController(
 
             var report = await expenseReadService.GetAsync(id);
             if (report is null) return NotFound();
-            if (report.SubmitterUserId != user.Id) return Forbid();
-
-            if (report.Status != ExpenseReportStatus.Draft)
+            if (!await AllowsAsync(report, ExpenseReportOperation.Edit))
             {
+                // Someone who may read the report but not change it is told why; everyone else is
+                // refused outright, which is what the ownership check used to do on its own.
+                if (!await AllowsAsync(report, ExpenseReportOperation.View)) return Forbid();
                 SetError("This report can no longer be edited.");
                 return RedirectToAction(nameof(Detail), new { id });
             }
@@ -263,7 +278,7 @@ internal sealed class ExpensesController(
 
         var report = await expenseReadService.GetAsync(id);
         if (report is null) return NotFound();
-        if (report.SubmitterUserId != user.Id) return Forbid();
+        if (!await AllowsAsync(report, ExpenseReportOperation.Edit)) return Forbid();
 
         if (!ModelState.IsValid)
         {
@@ -271,7 +286,8 @@ internal sealed class ExpensesController(
             return View(model);
         }
 
-        var result = await service.UpdateDraftWithResultAsync(id, user.Id, model.BudgetCategoryId, model.Note);
+        var result = await service.UpdateDraftWithResultAsync(
+            id, user.Id, await IsFinanceAdminAsync(), model.BudgetCategoryId, model.Note);
         if (result.Succeeded)
         {
             SetSuccess("Report updated.");
@@ -291,9 +307,9 @@ internal sealed class ExpensesController(
 
         var report = await expenseReadService.GetAsync(id);
         if (report is null) return NotFound();
-        if (report.SubmitterUserId != user.Id) return Forbid();
-        if (report.Status != ExpenseReportStatus.Draft)
+        if (!await AllowsAsync(report, ExpenseReportOperation.Edit))
         {
+            if (!await AllowsAsync(report, ExpenseReportOperation.View)) return Forbid();
             SetError("This report can no longer be edited.");
             return RedirectToAction(nameof(Detail), new { id });
         }
@@ -317,7 +333,7 @@ internal sealed class ExpensesController(
 
         var report = await expenseReadService.GetAsync(id);
         if (report is null) return NotFound();
-        if (report.SubmitterUserId != user.Id) return Forbid();
+        if (!await AllowsAsync(report, ExpenseReportOperation.Edit)) return Forbid();
 
         // Where the submitter came from — and returns to on a validation error.
         IActionResult BackToForm() => input.ParentLineId is { } parent
@@ -336,7 +352,8 @@ internal sealed class ExpensesController(
             : new ExpenseFileUpload(file.FileName, file.ContentType, stream);
 
         var result = await service.AddLineWithResultAsync(
-            id, user.Id, input.Description, input.Amount, input.LineType, input.ParentLineId, upload);
+            id, user.Id, await IsFinanceAdminAsync(),
+            input.Description, input.Amount, input.LineType, input.ParentLineId, upload);
 
         if (!result.Succeeded)
         {
@@ -366,7 +383,8 @@ internal sealed class ExpensesController(
 
         var report = await expenseReadService.GetAsync(id);
         if (report is null) return NotFound();
-        if (report.SubmitterUserId != user.Id) return Forbid();
+        var (allowed, canEditLines) = await ResolveLinePageAccessAsync(report, user.Id);
+        if (!allowed) return Forbid();
 
         var line = report.Lines.FirstOrDefault(l => l.Id == lineId);
         if (line is null) return NotFound();
@@ -375,7 +393,7 @@ internal sealed class ExpensesController(
         {
             Report = report,
             Line = line,
-            CanEditLines = report.Status == ExpenseReportStatus.Draft,
+            CanEditLines = canEditLines,
         });
     }
 
@@ -387,7 +405,8 @@ internal sealed class ExpensesController(
 
         var report = await expenseReadService.GetAsync(id);
         if (report is null) return NotFound();
-        if (report.SubmitterUserId != user.Id) return Forbid();
+        var (allowed, canEditLines) = await ResolveLinePageAccessAsync(report, user.Id);
+        if (!allowed) return Forbid();
 
         var invoiceLine = report.Lines.FirstOrDefault(
             l => l.Id == lineId && l.LineType == ExpenseLineType.Invoice);
@@ -401,7 +420,7 @@ internal sealed class ExpensesController(
                 .Where(l => l.ParentLineId == lineId)
                 .OrderBy(l => l.SortOrder)
                 .ToList(),
-            CanEditLines = report.Status == ExpenseReportStatus.Draft,
+            CanEditLines = canEditLines,
         });
     }
 
@@ -420,7 +439,7 @@ internal sealed class ExpensesController(
 
         var report = await expenseReadService.GetAsync(id);
         if (report is null) return NotFound();
-        if (report.SubmitterUserId != user.Id) return Forbid();
+        if (!await AllowsAsync(report, ExpenseReportOperation.Edit)) return Forbid();
 
         if (!ModelState.IsValid)
         {
@@ -428,7 +447,8 @@ internal sealed class ExpensesController(
             return RedirectToAction(nameof(LineEdit), new { id, lineId = input.LineId });
         }
 
-        var result = await service.UpdateLineWithResultAsync(id, user.Id, input.LineId, input.Description, input.Amount);
+        var result = await service.UpdateLineWithResultAsync(
+            id, user.Id, await IsFinanceAdminAsync(), input.LineId, input.Description, input.Amount);
         SetMutationResultWithDetails(result, "Line updated.", "Failed to update line");
 
         return RedirectToAction(nameof(LineEdit), new { id, lineId = input.LineId });
@@ -443,12 +463,13 @@ internal sealed class ExpensesController(
 
         var report = await expenseReadService.GetAsync(id);
         if (report is null) return NotFound();
-        if (report.SubmitterUserId != user.Id) return Forbid();
+        if (!await AllowsAsync(report, ExpenseReportOperation.Edit)) return Forbid();
 
         // A removed proof row returns the submitter to its invoice's proofs page.
         var parentLineId = report.Lines.FirstOrDefault(l => l.Id == lineId)?.ParentLineId;
 
-        var result = await service.RemoveLineWithResultAsync(id, user.Id, lineId);
+        var result = await service.RemoveLineWithResultAsync(
+            id, user.Id, await IsFinanceAdminAsync(), lineId);
         SetMutationResultWithDetails(result, "Line removed.", "Failed to remove line");
 
         return parentLineId is { } parent
@@ -466,7 +487,7 @@ internal sealed class ExpensesController(
 
         var report = await expenseReadService.GetAsync(id);
         if (report is null) return NotFound();
-        if (report.SubmitterUserId != user.Id) return Forbid();
+        if (!await AllowsAsync(report, ExpenseReportOperation.Edit)) return Forbid();
 
         if (file is null || file.Length == 0)
         {
@@ -476,7 +497,7 @@ internal sealed class ExpensesController(
 
         await using var stream = file.OpenReadStream();
         var result = await service.AttachFileToLineWithResultAsync(
-            id, user.Id, lineId, file.FileName, file.ContentType, stream);
+            id, user.Id, await IsFinanceAdminAsync(), lineId, file.FileName, file.ContentType, stream);
 
         SetMutationResult(result, "Attachment uploaded.", "Failed to upload attachment.");
 
@@ -492,11 +513,11 @@ internal sealed class ExpensesController(
 
         var report = await expenseReadService.GetAsync(id);
         if (report is null) return NotFound();
-        if (report.SubmitterUserId != user.Id) return Forbid();
+        if (!await AllowsAsync(report, ExpenseReportOperation.Edit)) return Forbid();
 
         try
         {
-            await service.RemoveAttachmentFromLineAsync(id, user.Id, lineId);
+            await service.RemoveAttachmentFromLineAsync(id, user.Id, await IsFinanceAdminAsync(), lineId);
             SetSuccess("Attachment removed.");
         }
         catch (Exception ex)
@@ -516,9 +537,9 @@ internal sealed class ExpensesController(
 
         var report = await expenseReadService.GetAsync(id);
         if (report is null) return NotFound();
-        if (report.SubmitterUserId != user.Id) return Forbid();
+        if (!await AllowsAsync(report, ExpenseReportOperation.Submit)) return Forbid();
 
-        var result = await service.SubmitWithResultAsync(id, user.Id);
+        var result = await service.SubmitWithResultAsync(id, user.Id, await IsFinanceAdminAsync());
         SetMutationResult(result, "Report submitted.", "Could not submit the report.");
 
         return RedirectToAction(nameof(Detail), new { id });
@@ -550,14 +571,20 @@ internal sealed class ExpensesController(
 
             var report = await expenseReadService.GetAsync(id);
             if (report is null) return NotFound();
-            if (report.SubmitterUserId != user.Id) return Forbid();
+            if (!await CanSetReportIbanAsync(report, user.Id)) return Forbid();
 
-            var iban = await GetIbanViewAsync(user.Id);
+            // The IBAN on this page is always the report submitter's — the page sets who gets paid
+            // for this report, and that is never the viewer when an admin opens it.
+            var iban = await GetIbanViewAsync(report.SubmitterUserId);
             var model = new ExpenseIbanViewModel
             {
                 ReportId = id,
                 HasIban = iban.HasIban,
-                MaskedIban = iban.MaskedIban
+                MaskedIban = iban.MaskedIban,
+                ReportStatus = report.Status,
+                MemberName = report.SubmitterUserId == user.Id
+                    ? null
+                    : (await _userService.GetUserInfoAsync(report.SubmitterUserId))?.BurnerName,
             };
             return View(model);
         }
@@ -578,9 +605,10 @@ internal sealed class ExpensesController(
 
         var report = await expenseReadService.GetAsync(id);
         if (report is null) return NotFound();
-        if (report.SubmitterUserId != user.Id) return Forbid();
+        if (!await CanSetReportIbanAsync(report, user.Id)) return Forbid();
 
-        var result = await service.SaveSubmitterIbanWithResultAsync(user.Id, model.Iban);
+        var result = await service.SaveSubmitterIbanWithResultAsync(
+            id, user.Id, model.Iban);
         if (result.Succeeded)
         {
             SetSuccess(result.Message);
@@ -592,10 +620,14 @@ internal sealed class ExpensesController(
         else
             SetError(result.Message);
 
-        var iban = await GetIbanViewAsync(user.Id);
+        var iban = await GetIbanViewAsync(report.SubmitterUserId);
         model.ReportId = id;
         model.HasIban = iban.HasIban;
         model.MaskedIban = iban.MaskedIban;
+        model.ReportStatus = report.Status;
+        model.MemberName = report.SubmitterUserId == user.Id
+            ? null
+            : (await _userService.GetUserInfoAsync(report.SubmitterUserId))?.BurnerName;
         return View(model);
     }
 
@@ -854,6 +886,31 @@ internal sealed class ExpensesController(
         (await authService.AuthorizeAsync(User, report,
             new ExpenseReportOperationRequirement(operation))).Succeeded;
 
+    /// <summary>
+    /// The actor's finance-admin authority, handed to the service so its own ownership and status
+    /// checks know an admin is acting for a member (see <c>IExpenseReportService</c> remarks).
+    /// </summary>
+    private async Task<bool> IsFinanceAdminAsync() =>
+        (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
+
+    /// <summary>
+    /// The line pages stay open to the submitter after submission as a read-only view of their own
+    /// receipts, so access is wider than the Edit grant that decides whether the controls render.
+    /// </summary>
+    private async Task<(bool Allowed, bool CanEditLines)> ResolveLinePageAccessAsync(
+        ExpenseReportDto report, Guid userId)
+    {
+        var canEditLines = await AllowsAsync(report, ExpenseReportOperation.Edit);
+        return (canEditLines || report.SubmitterUserId == userId, canEditLines);
+    }
+
+    /// <summary>
+    /// Who may set the payment IBAN this report will pay to: its submitter at any status (their own
+    /// profile, unchanged), or anyone the Edit grant covers — a finance admin filing on their behalf.
+    /// </summary>
+    private async Task<bool> CanSetReportIbanAsync(ExpenseReportDto report, Guid userId) =>
+        report.SubmitterUserId == userId || await AllowsAsync(report, ExpenseReportOperation.Edit);
+
     private async Task<IReadOnlyDictionary<Guid, string>> ResolveSubmitterNamesAsync(
         IReadOnlyCollection<ExpenseReportDto> reports)
     {
@@ -885,17 +942,30 @@ internal sealed class ExpensesController(
     private async Task PopulateEditModelAsync(ExpenseEditViewModel model, ExpenseReportDto report)
     {
         model.Report = report;
-        model.Categories = await BuildCategoryOptionsAsync();
+        model.Categories = await BuildCategoryOptionsAsync(report);
         model.CanEditHeader = true;
-        model.CanEditLines = report.Status == ExpenseReportStatus.Draft;
+        // Only the Edit grant reaches this page, and it already encodes who may change lines in
+        // which status — for the submitter that is still their own Draft and nothing else.
+        model.CanEditLines = await AllowsAsync(report, ExpenseReportOperation.Edit);
     }
 
-    private async Task<IReadOnlyList<BudgetCategoryOption>> BuildCategoryOptionsAsync()
+    /// <param name="report">
+    /// When given and already submitted, the options come from the budget year that report is
+    /// booked to rather than the active one — offering this year's categories on last year's
+    /// report is how a header edit silently reclassifies its accounting year. Null (a new draft,
+    /// the approval override) keeps the active year.
+    /// </param>
+    private async Task<IReadOnlyList<BudgetCategoryOption>> BuildCategoryOptionsAsync(
+        ExpenseReportDto? report = null)
     {
-        var activeYear = await budgetService.GetActiveYearAsync();
-        if (activeYear is null) return [];
+        var isPendingApproval = report?.Status
+            is ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed;
+        var year = isPendingApproval
+            ? await budgetService.GetYearByIdAsync(report!.BudgetYearId)
+            : await budgetService.GetActiveYearAsync();
+        if (year is null) return [];
 
-        return activeYear.Groups
+        return year.Groups
             .OrderBy(g => g.SortOrder)
             .SelectMany(g => g.Categories
                 .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)

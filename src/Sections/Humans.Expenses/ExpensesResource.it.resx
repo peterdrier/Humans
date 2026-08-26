@@ -75,6 +75,12 @@
   <data name="Expenses_EndorseConfirm" xml:space="preserve"><value>Avallare questa nota spese?</value></data>
   <data name="Expenses_FileFirst" xml:space="preserve"><value>Presenta la tua prima nota</value></data>
   <data name="Expenses_FinanceAdminDecision" xml:space="preserve"><value>Decisione dell'amministratore finanziario</value></data>
+  <data name="Expenses_ForMember" xml:space="preserve"><value>Per il membro</value></data>
+  <data name="Expenses_ForMemberHelp" xml:space="preserve"><value>Lascia te stesso per presentare la tua nota spese. Se scegli un'altra persona, la nota spese sarà sua: verrà pagata sul suo IBAN e comparirà nella sua pagina delle spese.</value></data>
+  <data name="Expenses_IbanEnterForMember" xml:space="preserve"><value>Inserisci l'IBAN completo di {0} senza spazi. Lascia vuoto per rimuoverlo.</value></data>
+  <data name="Expenses_IbanEnterForMemberNoRemove" xml:space="preserve"><value>Inserisci l'IBAN completo di {0} senza spazi.</value></data>
+  <data name="Expenses_IbanOnBehalf" xml:space="preserve"><value>Stai impostando l'IBAN di pagamento di {0}. Questo modifica il suo profilo, non il tuo, e questa nota spese verrà pagata sul conto che inserisci qui.</value></data>
+  <data name="Expenses_IbanStoredForMember" xml:space="preserve"><value>L'IBAN è archiviato in modo sicuro ed è accessibile solo a FinanceAdmin nel contesto delle note spese di {0}.</value></data>
   <data name="Expenses_IouHeader" xml:space="preserve"><value>Quanto il collettivo ti deve</value></data>
   <data name="Expenses_IouOwed" xml:space="preserve"><value>Dovuto a te (saldo Holded)</value></data>
   <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Voce</value></data>

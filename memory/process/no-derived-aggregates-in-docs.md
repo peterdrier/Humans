@@ -40,4 +40,17 @@ carry *judgment* ("the Users/Onboarding conflation is the headline structural pr
 arithmetic. Qualitative characterizations are fine and welcome; it is specifically the numbers
 that must not be duplicated.
 
-Related: [[reuse-first-change-discipline]], [[rules-maintenance]].
+**Review scope — pre-existing counts are not findings.** This rule binds the *author* of new
+prose: don't write derived numbers. In code review it applies only to counts the PR under
+review **added or modified**. A derived count that already existed on main is documented debt,
+not an error in the PR — flagging it there is wrong, and each PR is not a dumping ground for
+discovering the next pre-existing violation. Peter, 2026-08-26: a third of Codex's findings
+were pre-existing counts; that class of finding is invalid unless the PR introduced the count.
+
+**And not ledger entries either.** A pre-existing derived count is never recorded in a debt
+ledger, run file, issue, or any other log. Its existence in its first form *is* the complete
+debt record; writing "doc X has a hand-maintained count" anywhere else creates exactly the
+shadow copy this rule forbids. Nothing shall refer to it as a problem other than the count
+itself, where it sits. It gets fixed only when a change touches that prose anyway.
+
+Related: [[reuse-first-change-discipline]], [[rules-maintenance]], [[review-finding-triage]].

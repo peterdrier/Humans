@@ -75,6 +75,12 @@
   <data name="Expenses_EndorseConfirm" xml:space="preserve"><value>Vols avalar aquest informe de despeses?</value></data>
   <data name="Expenses_FileFirst" xml:space="preserve"><value>Presenta el teu primer informe</value></data>
   <data name="Expenses_FinanceAdminDecision" xml:space="preserve"><value>Decisió de l'administrador financer</value></data>
+  <data name="Expenses_ForMember" xml:space="preserve"><value>Per al membre</value></data>
+  <data name="Expenses_ForMemberHelp" xml:space="preserve"><value>Deixa't a tu mateix per presentar el teu propi informe. Si tries una altra persona, l'informe serà seu: se li pagarà al seu IBAN i apareixerà a la seva pàgina de despeses.</value></data>
+  <data name="Expenses_IbanEnterForMember" xml:space="preserve"><value>Introdueix l'IBAN complet de {0} sense espais. Deixa-ho buit per eliminar-lo.</value></data>
+  <data name="Expenses_IbanEnterForMemberNoRemove" xml:space="preserve"><value>Introdueix l'IBAN complet de {0} sense espais.</value></data>
+  <data name="Expenses_IbanOnBehalf" xml:space="preserve"><value>Estàs establint l'IBAN de pagament de {0}. Això canvia el seu perfil, no el teu, i aquest informe es pagarà al compte que hi introdueixis.</value></data>
+  <data name="Expenses_IbanStoredForMember" xml:space="preserve"><value>L'IBAN s'emmagatzema de manera segura i només hi pot accedir FinanceAdmin en el context dels informes de despeses de {0}.</value></data>
   <data name="Expenses_IouHeader" xml:space="preserve"><value>El que el col·lectiu et deu</value></data>
   <data name="Expenses_IouOwed" xml:space="preserve"><value>Deute amb tu (saldo de Holded)</value></data>
   <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Article</value></data>

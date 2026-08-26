@@ -11,36 +11,20 @@ internal sealed class Notification
 {
     public Guid Id { get; init; }
 
-    /// <summary>
-    /// Short title displayed in the notification row.
-    /// </summary>
     public string Title { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Optional body text with additional context.
-    /// </summary>
     public string? Body { get; set; }
 
-    /// <summary>
-    /// Optional URL for the action button (e.g. link to team page, review queue).
-    /// </summary>
     public string? ActionUrl { get; set; }
 
     /// <summary>
     /// Optional button label text (e.g. "Review →", "Approve →", "Find cover →").
-    /// Falls back to "View →" in UI if null.
+    /// Falls back to the localized default in the UI if null.
     /// </summary>
     public string? ActionLabel { get; set; }
 
-    /// <summary>
-    /// Priority level affecting visual presentation.
-    /// </summary>
     public NotificationPriority Priority { get; set; }
 
-    /// <summary>
-    /// Source system that generated this notification.
-    /// Maps to MessageCategory for preference checks.
-    /// </summary>
     public NotificationSource Source { get; set; }
 
     /// <summary>
@@ -52,9 +36,6 @@ internal sealed class Notification
     /// </summary>
     public string? SourceKey { get; set; }
 
-    /// <summary>
-    /// Classification: Informational (dismissable) or Actionable (requires action).
-    /// </summary>
     public NotificationClass Class { get; set; }
 
     /// <summary>
@@ -63,23 +44,16 @@ internal sealed class Notification
     /// </summary>
     public string? TargetGroupName { get; set; }
 
-    /// <summary>
-    /// When the notification was created.
-    /// </summary>
     public Instant CreatedAt { get; init; }
 
-    /// <summary>
-    /// When the notification was resolved (handled/dismissed). Null = unresolved.
-    /// </summary>
+    /// <summary>Null = unresolved.</summary>
     public Instant? ResolvedAt { get; set; }
 
     /// <summary>
-    /// Who resolved this notification. Null = unresolved.
+    /// Bare cross-section User id — no FK constraint, no navigation property.
+    /// Display names are stitched in memory via <c>IUserServiceRead</c>.
     /// </summary>
     public Guid? ResolvedByUserId { get; set; }
 
-    /// <summary>
-    /// Recipients who can see this notification.
-    /// </summary>
     public ICollection<NotificationRecipient> Recipients { get; init; } = new List<NotificationRecipient>();
 }

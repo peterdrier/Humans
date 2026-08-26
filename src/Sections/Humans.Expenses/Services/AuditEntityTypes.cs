@@ -28,4 +28,11 @@ internal static class AuditEntityTypes
     /// remedy Onboarding already applied for the same rows.
     /// </summary>
     public const string Profile = "Profile";
+
+    /// <summary>
+    /// The <c>relatedEntityType</c> on entries about a member, so the audit filters that key on
+    /// "User" pick them up for that member's GDPR export — an entry whose subject is only reachable
+    /// through its actor never reaches the person it is about.
+    /// </summary>
+    public const string User = "User";
 }

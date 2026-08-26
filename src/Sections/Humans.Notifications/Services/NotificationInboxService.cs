@@ -60,6 +60,7 @@ internal sealed class NotificationInboxService(
             Informational = informational,
             Resolved = resolved,
             UnreadCount = unreadCount,
+            EffectiveTab = effectiveTab == NotificationInboxTab.Unread ? "unread" : "all",
         };
     }
 
@@ -193,9 +194,9 @@ internal sealed class NotificationInboxService(
             });
 
     /// <summary>
-    /// Sources removed in PR-642 (replaced by live work-queue meters). No new rows
-    /// are emitted, but legacy Actionable rows have no resolution path and linger in
-    /// "Needs your attention" forever — so they are purged outright.
+    /// Sources replaced by live work-queue meters. No new rows are emitted, but legacy
+    /// Actionable rows have no resolution path and would linger in "Needs your attention"
+    /// forever — so they are purged outright.
     /// </summary>
     private static readonly NotificationSource[] RetiredSources =
         [NotificationSource.ApplicationSubmitted, NotificationSource.ConsentReviewNeeded];

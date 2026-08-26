@@ -237,4 +237,15 @@ public enum AuditAction
     CityPlanningLimitZoneDeleted,
     CityPlanningOfficialZonesUpdated,
     CityPlanningOfficialZonesDeleted,
+
+    // A finance admin filed an expense report for another member. Self-created drafts are not
+    // audited — only the on-behalf case, which names the actor and the member.
+    ExpenseCreatedOnBehalf,
+    // A finance admin changed somebody else's report — header, or a line added/edited/removed.
+    // One action for all of them; the description says what changed. Self-edits are not audited.
+    ExpenseEditedOnBehalf,
+    // The payee IBAN snapshot on a submitted (not yet approved) report was refreshed from the
+    // report's own IBAN page. Entity is the report so it shows in that report's history; the
+    // IBAN is unmasked when somebody set it for another member (memory/code/audit-pii-subject-allowed.md).
+    ExpensePayeeIbanUpdated,
 }

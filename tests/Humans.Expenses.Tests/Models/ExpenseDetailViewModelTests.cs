@@ -34,13 +34,14 @@ public class ExpenseDetailViewModelTests
         };
 
     private static ExpenseDetailViewModel Vm(
-        ExpenseReportDto report, bool isSubmitter, bool isFinanceAdmin) =>
+        ExpenseReportDto report, bool isSubmitter, bool isFinanceAdmin, bool canEdit = false) =>
         new()
         {
             Report = report,
             CategoryDisplayName = "Ops / Fuel",
             IsSubmitter = isSubmitter,
             CanBindCreditor = isFinanceAdmin,
+            CanEdit = canEdit,
         };
 
     [HumansFact]
@@ -85,10 +86,12 @@ public class ExpenseDetailViewModelTests
     }
 
     [HumansFact]
-    public void Only_the_submitter_gets_the_iban_edit_action()
+    public void The_iban_edit_action_follows_the_submitter_and_the_edit_grant()
     {
-        // The Iban action Forbids non-submitters, so offering them the button is a guaranteed 403.
+        // The Iban action Forbids anyone who is neither, so offering them the button is a
+        // guaranteed 403. A finance admin gets there through the Edit grant, not the role.
         Vm(Report(), isSubmitter: true, isFinanceAdmin: false).CanEditIban.Should().BeTrue();
+        Vm(Report(), isSubmitter: false, isFinanceAdmin: true, canEdit: true).CanEditIban.Should().BeTrue();
         Vm(Report(), isSubmitter: false, isFinanceAdmin: true).CanEditIban.Should().BeFalse();
     }
 

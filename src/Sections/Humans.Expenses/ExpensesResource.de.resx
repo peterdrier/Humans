@@ -75,6 +75,12 @@
   <data name="Expenses_EndorseConfirm" xml:space="preserve"><value>Diese Spesenabrechnung befürworten?</value></data>
   <data name="Expenses_FileFirst" xml:space="preserve"><value>Reiche deine erste Abrechnung ein</value></data>
   <data name="Expenses_FinanceAdminDecision" xml:space="preserve"><value>Entscheidung der Finanzverwaltung</value></data>
+  <data name="Expenses_ForMember" xml:space="preserve"><value>Für Mitglied</value></data>
+  <data name="Expenses_ForMemberHelp" xml:space="preserve"><value>Lass dich selbst stehen, um deine eigene Abrechnung einzureichen. Wählst du jemand anderen, gehört die Abrechnung dieser Person — sie wird auf deren IBAN ausgezahlt und erscheint auf deren Auslagenseite.</value></data>
+  <data name="Expenses_IbanEnterForMember" xml:space="preserve"><value>Gib die vollständige IBAN von {0} ohne Leerzeichen ein. Leer lassen, um sie zu entfernen.</value></data>
+  <data name="Expenses_IbanEnterForMemberNoRemove" xml:space="preserve"><value>Gib die vollständige IBAN von {0} ohne Leerzeichen ein.</value></data>
+  <data name="Expenses_IbanOnBehalf" xml:space="preserve"><value>Du legst die Zahlungs-IBAN von {0} fest. Das ändert deren Profil, nicht deines, und diese Abrechnung wird auf das hier eingegebene Konto ausgezahlt.</value></data>
+  <data name="Expenses_IbanStoredForMember" xml:space="preserve"><value>Die IBAN wird sicher gespeichert und ist nur für FinanceAdmin im Zusammenhang mit den Abrechnungen von {0} zugänglich.</value></data>
   <data name="Expenses_IouHeader" xml:space="preserve"><value>Was das Kollektiv dir schuldet</value></data>
   <data name="Expenses_IouOwed" xml:space="preserve"><value>Dir geschuldet (Holded-Saldo)</value></data>
   <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Position</value></data>

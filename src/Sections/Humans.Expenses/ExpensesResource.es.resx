@@ -75,6 +75,12 @@
   <data name="Expenses_EndorseConfirm" xml:space="preserve"><value>¿Avalar este informe de gastos?</value></data>
   <data name="Expenses_FileFirst" xml:space="preserve"><value>Presenta tu primer informe</value></data>
   <data name="Expenses_FinanceAdminDecision" xml:space="preserve"><value>Decisión del administrador financiero</value></data>
+  <data name="Expenses_ForMember" xml:space="preserve"><value>Para el miembro</value></data>
+  <data name="Expenses_ForMemberHelp" xml:space="preserve"><value>Déjalo contigo mismo para presentar tu propio informe. Si eliges a otra persona, el informe será suyo: se le pagará a su IBAN y aparecerá en su página de gastos.</value></data>
+  <data name="Expenses_IbanEnterForMember" xml:space="preserve"><value>Introduce el IBAN completo de {0} sin espacios. Déjalo vacío para eliminarlo.</value></data>
+  <data name="Expenses_IbanEnterForMemberNoRemove" xml:space="preserve"><value>Introduce el IBAN completo de {0} sin espacios.</value></data>
+  <data name="Expenses_IbanOnBehalf" xml:space="preserve"><value>Estás estableciendo el IBAN de pago de {0}. Esto cambia su perfil, no el tuyo, y este informe se pagará a la cuenta que introduzcas aquí.</value></data>
+  <data name="Expenses_IbanStoredForMember" xml:space="preserve"><value>El IBAN se almacena de forma segura y solo es accesible para FinanceAdmin en el contexto de los informes de gastos de {0}.</value></data>
   <data name="Expenses_IouHeader" xml:space="preserve"><value>Lo que el colectivo te debe</value></data>
   <data name="Expenses_IouOwed" xml:space="preserve"><value>Te debe (saldo en Holded)</value></data>
   <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Concepto</value></data>

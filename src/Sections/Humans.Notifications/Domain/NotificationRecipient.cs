@@ -8,23 +8,17 @@ namespace Humans.Notifications.Domain;
 /// </summary>
 internal sealed class NotificationRecipient
 {
-    /// <summary>
-    /// FK to the notification. Part of composite PK.
-    /// </summary>
     public Guid NotificationId { get; init; }
 
     /// <summary>
-    /// FK to the recipient user. Part of composite PK.
+    /// Bare cross-section User id — no FK constraint, no navigation property.
+    /// Init-only because it is half of the composite PK, which is why the
+    /// account-merge fold re-FKs by remove-then-add rather than by update.
     /// </summary>
     public Guid UserId { get; init; }
 
-    /// <summary>
-    /// When the recipient read this notification. Null = unread.
-    /// </summary>
+    /// <summary>Null = unread.</summary>
     public Instant? ReadAt { get; set; }
 
-    /// <summary>
-    /// Navigation to the notification.
-    /// </summary>
     public Notification Notification { get; init; } = null!;
 }

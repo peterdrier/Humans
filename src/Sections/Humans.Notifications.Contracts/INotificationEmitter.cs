@@ -3,7 +3,7 @@ namespace Humans.Notifications.Contracts;
 /// <summary>
 /// Narrow outbound interface for emitting notifications to an explicit
 /// list of recipient user IDs. Implemented by a dedicated
-/// <c>NotificationEmitter</c> type (not <c>NotificationService</c>) so
+/// <c>NotificationEmitter</c> type, not by <c>NotificationService</c>, so
 /// that <c>TeamService</c> and <c>RoleAssignmentService</c> can depend on
 /// this interface without closing a DI cycle back through
 /// <see cref="INotificationService"/>, which injects

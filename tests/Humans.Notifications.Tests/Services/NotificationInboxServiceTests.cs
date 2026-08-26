@@ -98,6 +98,42 @@ public class NotificationInboxServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task ResolveAsync_LeavesReadAtAlone_ButStillClearsTheUnreadCount()
+    {
+        // Resolving deliberately does not touch the recipient's ReadAt. It doesn't
+        // have to: every unread query also filters ResolvedAt == null, so a resolved
+        // notification drops out of the badge whether or not it was ever read.
+        var notification = await CreateNotification(NotificationClass.Actionable);
+
+        await _service.ResolveAsync(notification.Id, _userId, Xunit.TestContext.Current.CancellationToken);
+
+        var recipient = await _dbContext.NotificationRecipients.AsNoTracking()
+            .SingleAsync(r => r.NotificationId == notification.Id && r.UserId == _userId,
+                Xunit.TestContext.Current.CancellationToken);
+        recipient.ReadAt.Should().BeNull();
+
+        var counts = await _service.GetUnreadBadgeCountsAsync(_userId, Xunit.TestContext.Current.CancellationToken);
+        counts.Actionable.Should().Be(0);
+        counts.Informational.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task GetInboxAsync_ResolvedFilter_ReportsTheAllTab_NotTheOneAskedFor()
+    {
+        // Resolved rows are never unread, so the resolved filter forces the tab to
+        // "all". The service reports the tab it actually queried so the view's tab
+        // pill cannot disagree with the rows underneath it.
+        await CreateNotification(resolvedAt: _clock.GetCurrentInstant(), resolvedByUserId: _userId);
+
+        var result = await _service.GetInboxAsync(
+            _userId, search: null, filter: "resolved", tab: "unread",
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.EffectiveTab.Should().Be("all");
+        result.Resolved.Should().ContainSingle();
+    }
+
+    [HumansFact]
     public async Task ResolveAsync_ReturnsNotFoundForMissingNotification()
     {
         var result = await _service.ResolveAsync(Guid.NewGuid(), _userId, Xunit.TestContext.Current.CancellationToken);

@@ -56,7 +56,7 @@ Repository: `INotificationRepository`.
 |-----------|-----|------|-------|------------|
 | `NotificationBadge:{userId}` | 2 min | | | yes (on read/dismiss) |
 
-Cross-section calls via `IUserService`. Implements `IUserDataContributor`.
+Cross-section calls via `IUserServiceRead`. Implements `IUserDataContributor`.
 
 ### NotificationMeterProvider (Scoped)
 
@@ -68,7 +68,7 @@ No repository. Pure read-aggregation over owning services.
 | `NavBadge:CampLeadJoinRequests:{userId}` | 2 min | yes | yes | (per `ICampLeadJoinRequestsBadgeCacheInvalidator`) |
 
 Cross-section calls via `IUserServiceRead`, `IGoogleSyncServiceRead`,
-`ITeamServiceRead`, `ITicketSyncService`, `IApplicationServiceRead`,
+`ITeamServiceRead`, `ITicketSync`, `IApplicationServiceRead`,
 `ICampServiceRead`. **No direct DB access** — every counter fans out
 through an owning-service interface call.
 

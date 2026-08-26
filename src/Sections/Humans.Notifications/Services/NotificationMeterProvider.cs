@@ -16,19 +16,17 @@ namespace Humans.Notifications.Services;
 
 /// <summary>
 /// Provides live counter meters for admin/coordinator work queues. Counts
-/// are computed by calling into each owning section service
-/// (<see cref="IUserService"/>,
-/// <see cref="IGoogleSyncServiceRead"/>, <see cref="ITeamService"/>,
-/// <see cref="ITicketSync"/>, <see cref="IApplicationServiceRead"/>)
+/// are computed by calling into each owning section's read interface
+/// (<see cref="IUserServiceRead"/>, <see cref="IGoogleSyncServiceRead"/>,
+/// <see cref="ITeamServiceRead"/>, <see cref="ITicketSync"/>,
+/// <see cref="IApplicationServiceRead"/>, <see cref="ICampServiceRead"/>)
 /// and cached for ~2 minutes. No direct DB access.
 /// </summary>
 /// <remarks>
-/// Per design-rules §2c the Notifications section owns
-/// <c>notifications</c>/<c>notification_recipients</c> only — every other
-/// table is reached through its owning section's public service interface.
-/// The meter counts cache (<see cref="CacheKeys.NotificationMeters"/>) is a
-/// short-TTL request-acceleration cache appropriate for <see cref="IMemoryCache"/>
-/// per §15i. Writes elsewhere invalidate it via
+/// Notifications owns <c>notifications</c>/<c>notification_recipients</c> only —
+/// every other table is reached through its owning section's public service
+/// interface. The meter counts cache (<see cref="CacheKeys.NotificationMeters"/>)
+/// is a short-TTL request-acceleration cache; writes elsewhere invalidate it via
 /// <see cref="INotificationMeterCacheInvalidator"/>.
 /// </remarks>
 internal sealed class NotificationMeterProvider(
@@ -106,12 +104,14 @@ internal sealed class NotificationMeterProvider(
             });
         }
 
-        if ((isBoard || isVolunteerCoordinator) && counts.OnboardingPending > 0)
+        // Board / VolunteerCoordinator see the same review queue the Consent Coordinator
+        // sees, under a label that matches how they think of it.
+        if ((isBoard || isVolunteerCoordinator) && counts.ConsentReviewsPending > 0)
         {
             meters.Add(new NotificationMeter
             {
                 Title = "Onboarding profiles pending",
-                Count = counts.OnboardingPending,
+                Count = counts.ConsentReviewsPending,
                 ActionUrl = "/OnboardingReview",
                 Priority = 6,
             });
@@ -141,9 +141,8 @@ internal sealed class NotificationMeterProvider(
             });
         }
 
-        // Pending camp membership requests — per-lead (nobodies-collective#488)
-        // Shown as a single counter ("N people want to join your camp") instead of
-        // emitting a stored notification per request.
+        // Pending camp membership requests, per lead: one counter rather than a stored
+        // notification per request.
         {
             var userIdClaim = user.FindFirstValue(ClaimTypes.NameIdentifier);
             if (Guid.TryParse(userIdClaim, out var leadUserId))
@@ -241,10 +240,6 @@ internal sealed class NotificationMeterProvider(
 
         var failedSyncEvents = await googleSyncService.GetFailedSyncEventCountAsync(cancellationToken);
 
-        // Board / VolunteerCoordinator see the same review queue under a
-        // different label — same predicate as consentReviewsPending.
-        var onboardingPending = consentReviewsPending;
-
         var teamJoinRequestsPending = (await teamService.GetTeamsAsync(cancellationToken)).Values
             .Sum(t => t.PendingRequestCount);
 
@@ -255,7 +250,6 @@ internal sealed class NotificationMeterProvider(
             ConsentReviewsPending = consentReviewsPending,
             PendingDeletions = pendingDeletions,
             FailedSyncEvents = failedSyncEvents,
-            OnboardingPending = onboardingPending,
             TeamJoinRequestsPending = teamJoinRequestsPending,
             TicketSyncError = ticketSyncError,
         };
@@ -266,7 +260,6 @@ internal sealed class NotificationMeterProvider(
         public int ConsentReviewsPending { get; init; }
         public int PendingDeletions { get; init; }
         public int FailedSyncEvents { get; init; }
-        public int OnboardingPending { get; init; }
         public int TeamJoinRequestsPending { get; init; }
         public bool TicketSyncError { get; init; }
     }

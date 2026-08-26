@@ -24,6 +24,13 @@ public interface IBudgetServiceRead : IApplicationService
     Task<BudgetYearDetail?> GetActiveYearAsync();
 
     /// <summary>
+    /// One budget year by id, same projection as <see cref="GetActiveYearAsync"/>. Expenses
+    /// reads this to offer the categories of the year a pending report is already booked to,
+    /// which is not always the active one.
+    /// </summary>
+    Task<BudgetYearDetail?> GetYearByIdAsync(Guid id);
+
+    /// <summary>
     /// One budget category with its group, year and line items. Expenses reads this to
     /// resolve the category an expense report is booked against.
     /// </summary>

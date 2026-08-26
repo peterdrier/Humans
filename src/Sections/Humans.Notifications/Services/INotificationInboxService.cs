@@ -119,6 +119,13 @@ internal sealed record NotificationInboxResult
     public List<NotificationRowDto> Informational { get; init; } = [];
     public List<NotificationRowDto> Resolved { get; init; } = [];
     public int UnreadCount { get; init; }
+
+    /// <summary>
+    /// The tab actually queried ("all" or "unread"), which is not always the tab
+    /// asked for — the resolved filter forces "all". The view highlights this, so
+    /// the pill can never disagree with the rows underneath it.
+    /// </summary>
+    public string EffectiveTab { get; init; } = "unread";
 }
 
 /// <summary>

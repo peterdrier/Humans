@@ -14,7 +14,18 @@
 <div class="row">
     <div class="col-md-6">
         <h1 class="mb-1">Payment IBAN</h1>
-        <p class="text-muted mb-4">Your IBAN is used to process reimbursement transfers via SEPA. It is never shown to other humans.</p>
+        @* An admin setting this for somebody else is editing that member's profile, not their own —
+           say whose account it is before they type an account number into it. *@
+        @if (Model.MemberName is { } member)
+        {
+            <div class="alert alert-warning mb-4">
+                @Localizer["Expenses_IbanOnBehalf", member]
+            </div>
+        }
+        else
+        {
+            <p class="text-muted mb-4">Your IBAN is used to process reimbursement transfers via SEPA. It is never shown to other humans.</p>
+        }
 
 
         <div class="card">
@@ -33,14 +44,33 @@
 
                     <div class="mb-3">
                         <label asp-for="Iban" class="form-label">
-                            @(Model.HasIban ? "New IBAN (or leave empty to remove)" : "IBAN")
+                            @(Model.HasIban && Model.CanRemoveIban
+                                ? "New IBAN (or leave empty to remove)"
+                                : Model.HasIban ? "New IBAN" : "IBAN")
                         </label>
                         <input asp-for="Iban" class="form-control font-monospace"
                                placeholder="e.g. ES7921000813610123456789"
                                maxlength="34"
                                autocomplete="off"
                                autofocus />
-                        <div class="form-text">Enter your full IBAN without spaces. Leave empty to remove.</div>
+                        @* A report awaiting payment still needs its IBAN, so the service refuses to
+                           clear one — don't offer the removal on those. *@
+                        <div class="form-text">
+                            @if (Model.MemberName is { } forMember)
+                            {
+                                @Localizer[Model.CanRemoveIban
+                                    ? "Expenses_IbanEnterForMember"
+                                    : "Expenses_IbanEnterForMemberNoRemove", forMember]
+                            }
+                            else if (Model.CanRemoveIban)
+                            {
+                                <text>Enter your full IBAN without spaces. Leave empty to remove.</text>
+                            }
+                            else
+                            {
+                                <text>Enter your full IBAN without spaces.</text>
+                            }
+                        </div>
                         <span asp-validation-for="Iban" class="text-danger small"></span>
                     </div>
 
@@ -54,7 +84,14 @@
 
         <div class="mt-3 text-muted small">
             <i class="fa-solid fa-lock me-1"></i>
-            Your IBAN is stored securely and only accessible to FinanceAdmin in the context of your expense reports.
+            @if (Model.MemberName is { } storedFor)
+            {
+                @Localizer["Expenses_IbanStoredForMember", storedFor]
+            }
+            else
+            {
+                <text>Your IBAN is stored securely and only accessible to FinanceAdmin in the context of your expense reports.</text>
+            }
         </div>
     </div>
 </div>

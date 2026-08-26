@@ -75,6 +75,12 @@
   <data name="Expenses_EndorseConfirm" xml:space="preserve"><value>Endorse this expense report?</value></data>
   <data name="Expenses_FileFirst" xml:space="preserve"><value>File your first report</value></data>
   <data name="Expenses_FinanceAdminDecision" xml:space="preserve"><value>Finance Admin Decision</value></data>
+  <data name="Expenses_ForMember" xml:space="preserve"><value>For member</value></data>
+  <data name="Expenses_ForMemberHelp" xml:space="preserve"><value>Leave this as yourself to file your own report. Choose someone else and the report belongs to them — it is paid to their IBAN and appears on their expenses page.</value></data>
+  <data name="Expenses_IbanEnterForMember" xml:space="preserve"><value>Enter {0}'s full IBAN without spaces. Leave empty to remove.</value></data>
+  <data name="Expenses_IbanEnterForMemberNoRemove" xml:space="preserve"><value>Enter {0}'s full IBAN without spaces.</value></data>
+  <data name="Expenses_IbanOnBehalf" xml:space="preserve"><value>You are setting the payment IBAN of {0}. This changes their profile, not yours, and this report will be paid to the account you enter here.</value></data>
+  <data name="Expenses_IbanStoredForMember" xml:space="preserve"><value>The IBAN is stored securely and only accessible to FinanceAdmin in the context of {0}'s expense reports.</value></data>
   <data name="Expenses_IouHeader" xml:space="preserve"><value>What the collective owes you</value></data>
   <data name="Expenses_IouOwed" xml:space="preserve"><value>Owed to you (Holded balance)</value></data>
   <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Item</value></data>
