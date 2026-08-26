@@ -33,7 +33,7 @@ public sealed class Section : ISection
         // RoleAssignmentService depend on INotificationEmitter rather than
         // INotificationService, so their edge into Notifications terminates
         // there instead of coming back out through IRoleAssignmentService.
-        // NotificationsArchitectureTests pins that.
+        // ValidateOnBuild at host startup is what enforces this; no test does.
         services.AddScoped<INotificationEmitter, NotificationEmitter>();
         services.AddScoped<NotificationService>();
         services.AddScoped<INotificationService>(sp => sp.GetRequiredService<NotificationService>());

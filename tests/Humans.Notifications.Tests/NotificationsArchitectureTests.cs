@@ -25,27 +25,15 @@ public class NotificationsArchitectureTests
     // The DbContext-constructor-parameter check is covered by the generic
     // ApplicationServicesTakeNoDbContextRule for every Application service.
 
-    [HumansFact]
-    public void NotificationEmitter_TakesNothingThatReachesBackOut()
-    {
-        // This is the edge that keeps the DI graph acyclic. RoleAssignmentService
-        // (Auth) and TeamService (Teams) inject INotificationEmitter rather than
-        // INotificationService, and NotificationEmitter injects only this
-        // section's repository plus preferences, clock, cache and logger — so
-        // their edge into Notifications terminates here. Give the emitter a
-        // dependency that leads back to Auth or Teams and the graph closes,
-        // which ValidateOnBuild only reports at startup.
-        //
-        // The other half of the invariant — that RoleAssignmentService and
-        // TeamService keep depending on INotificationEmitter and never on
-        // INotificationService — lives in those sections and is not pinned by a
-        // test today.
-        var ctor = typeof(NotificationEmitter).GetConstructors().Single();
-        var paramTypeNames = ctor.GetParameters().Select(p => p.ParameterType.Name).ToList();
-
-        paramTypeNames.Should().NotContain("IRoleAssignmentService");
-        paramTypeNames.Should().NotContain("ITeamService");
-    }
+    // The DI-cycle invariant — RoleAssignmentService (Auth) and TeamService
+    // (Teams) inject INotificationEmitter rather than INotificationService, and
+    // NotificationEmitter injects nothing that leads back to either — is
+    // enforced by ValidateOnBuild / ValidateScopes at host startup
+    // (Humans.Web/Program.cs), not by a test here. A test for it would assert
+    // the absence of constructor parameters, which
+    // memory/architecture/no-tests-for-absences.md rejects: the list of things
+    // a type lacks is unbounded and such a test can only fail on the deliberate
+    // edit that would update it in the same commit.
 
     // ── NotificationInboxService ─────────────────────────────────────────────
 
