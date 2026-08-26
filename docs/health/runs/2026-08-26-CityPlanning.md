@@ -390,6 +390,23 @@ has no back-navigation (it has one at line 57 and another at line 63), and a cla
   Worth stating because a later reader comparing targets will see a first run
   that *raised* the section's score, which is the opposite of the usual shape.
 
+  **Runtime check of the audit change, and its limit.** On the preview at
+  `https://1525.n.burn.camp` serving `bd0c66ca`: signed in via
+  `/dev/login/city-planning`, opened barrio placement through the real
+  `POST …/Admin/OpenPlacement` (302, and the page came back offering
+  `ClosePlacement`), then closed it again to leave the environment as found.
+  So the new `MutateSettingsAndAuditAsync` path runs end to end against a real
+  database without breaking the business operation.
+
+  It does **not** prove the audit row landed, and it cannot: audit persistence
+  is best-effort and swallows its own failures by design, so a successful
+  toggle is consistent with the entry silently not being written. The only read
+  surface is `/AuditLog`, gated on `BoardOrAdmin`, and no seeded dev persona
+  holds it — `coordinator` gets `AccessDenied`, which at least confirms that
+  deny path. The write itself is covered by the five unit tests asserting
+  `LogAsync` with the right action and actor; the row landing in a deployed
+  database is unverified here and would need a persona with audit access.
+
   New debt recorded: `CityPlanningTeamSlug`'s
   configuration default is `"City Planning"` (spaces, capitals) while
   `DevPersonaSeeder` hard-codes `"city-planning"` — normalization makes case
