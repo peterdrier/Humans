@@ -7,6 +7,6 @@ When `/pr-fix <N>` runs, always switch to the PR's head branch — use the exist
 
 **Why:** Peter: "you should just always switch to the branch from the pr.. NEVER CODE IN MAIN.. and if you're on some other branch, leave it for the pr branch." Switching is always the right move here.
 
-**How to apply:** first action after resolving the PR is `git worktree list` → cd to the matching worktree (or create one). In a cloud run it is `git fetch origin <head-branch> && git checkout <head-branch>` in the repo root — no worktree to list, nothing to cd into. Only ask if the checkout has uncommitted changes that would conflict, or there's no clear way to reach the PR head.
+**How to apply:** first action after resolving the PR is `git worktree list` → cd to the matching worktree (or create one). In a cloud run it is a plain checkout of the head branch in the repo root — no worktree to list, nothing to cd into. Fetch it from the remote that actually carries it: `origin` for a same-repo PR, the contributor's fork for a cross-repository one — [[cross-repo-pr-push-target]] resolves which and adds the remote, and never hardcode `origin`. Only ask if the checkout has uncommitted changes that would conflict, or there's no clear way to reach the PR head.
 
 Related: [[always-use-worktree]].
