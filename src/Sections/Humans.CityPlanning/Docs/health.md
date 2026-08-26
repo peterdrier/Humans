@@ -127,7 +127,7 @@ touching these callers are shaped by them.
 - **No `jsonb`.** GeoJSON columns are `text`: the app never queries inside the structure, it
   round-trips whole FeatureCollections to the browser.
 - **No generic `MapFeature` / toggleable-layer entity.** Proposed in
-  nobodies-collective/Humans#521, declined in favour of three purpose-built screens.
+  nobodies-collective/Humans#521, declined in favour of purpose-built screens.
 - **No test that the section lacks a decorator or a history-update method.** Absence
   assertions are forbidden (`memory/architecture/no-tests-for-absences.md`); the shape is
   documented here instead.
@@ -159,4 +159,4 @@ touching these callers are shaped by them.
 
 | Date | Run | Reforge score | Notes |
 |---|---|---|---|
-| 2026-08-26 | [2026-08-26-CityPlanning](../../../../docs/health/runs/2026-08-26-CityPlanning.md) | 210 → 210 (loc 1947 → 1942, cogP95 4, cogMax 6) | First doctor run; this target derived from scratch. Structure was sound — the value was in what the section claimed about itself (a documented ordering guarantee the query does not make, a non-existent EF relationship, both authorization rows naming the wrong guard) and in three untested paths, including the cross-section delete Camps calls. Three behaviour bugs found and recorded in `Docs/debt.yml` rather than fixed. PR: peterdrier/Humans#1525 |
+| 2026-08-26 | [2026-08-26-CityPlanning](../../../../docs/health/runs/2026-08-26-CityPlanning.md) | 210 → 210 (loc 1947 → 1942, cogP95 4, cogMax 6) | First doctor run; this target derived from scratch. Structure was sound — the value was in what the section claimed about itself (a documented ordering guarantee the query does not make, a non-existent EF relationship, both authorization rows naming the wrong guard) and in untested paths, including the cross-section delete Camps calls. Behaviour bugs found and recorded in `Docs/debt.yml` rather than fixed. PR: peterdrier/Humans#1525 |

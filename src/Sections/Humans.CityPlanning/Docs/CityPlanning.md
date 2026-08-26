@@ -8,7 +8,7 @@
 
 # City Planning — Section Invariants
 
-Interactive map surface with three screens: read-only overview, barrio polygon editing, and container placement. Owns placement phase control and append-only polygon history.
+Interactive map surface: a read-only overview, barrio polygon editing, and container placement. Owns placement phase control and append-only polygon history.
 
 ## Concepts
 
@@ -72,13 +72,13 @@ Append-only per design-rules §12. The repository exposes no `UpdateAsync` / `Re
 | AreaSqm | double | Area at time of snapshot |
 | ModifiedByUserId | Guid | FK → User — **FK only**, no nav read by this section |
 | ModifiedAt | Instant | When this version was saved |
-| Note | string (512) | "Saved", "Restored from {timestamp}", or "Imported {timestamp}" (bulk import) |
+| Note | string (512) | Open-ended — the polygon `PUT` persists whatever the caller sends. Examples: `"Saved"` (the fallback when the caller sends none), `"Restored from {timestamp} UTC"` (composed server-side by a restore), `"Imported {timestamp}"` (what the bulk import sends) |
 
 `CampSeasonId`, `LastModifiedByUserId` and `ModifiedByUserId` are bare `Guid` columns: neither configuration declares a relationship of any kind, so `CampSeason` and `User` are absent from this section's EF model entirely. New code resolves them through `ICampServiceRead` / `IUserServiceRead`, never a nav.
 
 ## Routing
 
-Three distinct pages served by `CityPlanningController` (`[Route("CityPlanning")]`):
+The pages served by `CityPlanningController` (`[Route("CityPlanning")]`):
 
 | Route | Purpose | Access |
 |-------|---------|--------|

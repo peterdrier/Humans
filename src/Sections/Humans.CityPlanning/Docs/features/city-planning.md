@@ -14,7 +14,7 @@
 
 ## Business Context
 
-City Planning organizes the physical layout of the event site across three distinct phases and three screens:
+City Planning organizes the physical layout of the event site across these phases and screens:
 
 1. **Main map** (`/CityPlanning`) — read-only overview available to all authenticated users. Shows official zones, barrio polygons, and optionally containers and the limit zone (both togglable).
 2. **Barrio placement map** (`/CityPlanning/BarrioMap`) — collaborative real-time tool for barrio leads and map admins to draw and adjust camp polygons. Only meaningful while the barrio placement phase is open.
@@ -82,7 +82,7 @@ CampPolygonHistory
 ├── AreaSqm: double
 ├── ModifiedByUserId: Guid (FK → User)
 ├── ModifiedAt: Instant
-└── Note: string ("Saved" by default; "Restored from {ISO timestamp}" for restores; "Imported {timestamp}" for bulk import)
+└── Note: string — open-ended, persisted as the caller sends it. Examples: "Saved" (the fallback when none is sent); "Restored from {ISO timestamp} UTC" (composed server-side by a restore); "Imported {timestamp}" (what the bulk import sends)
 ```
 
 ### CityPlanningSettings (singleton per year)

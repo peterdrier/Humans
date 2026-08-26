@@ -21,22 +21,23 @@
 City Planning is a **first-time doctor target**: it had no `Docs/health.md`, so
 this run derived the target shape from scratch (reforge 210 / loc 1947 /
 cogP95 4 / cogMax 6). Structurally it is in good order and the score reflects
-breadth, not mess: ten question-shapes, one page controller, one API
-controller, one service, one repository over the section's tables, and the
+breadth, not mess: the question-shapes in the target table, a page controller,
+an API controller, a service, a repository over the section's tables, and the
 narrowest cross-section contract in the repo.
 
 The structure needed almost nothing. **The value was in what the section
-*claimed* about itself**, and in three untested paths that each carry a real
-invariant.
+*claimed* about itself**, and in the untested paths listed below, each carrying
+a real invariant.
 
 The claims cluster was large and consistent. `ICityPlanningRepository`
 promised an ordering guarantee its query does not make (#1). The section doc
 described a `HasOne<CampSeason>()` relationship that does not exist, omitted
-the three container CRUD posts and the entire bulk-import path, and had the
+the container CRUD posts and the entire bulk-import path, and had the
 SignalR method signatures wrong in both directions (#6, #8, #9).
 `authorization.md` named the wrong guard on **both** of its runtime-guard rows
-(#7). The Contracts csproj named two projects that are not in the solution
-(#15). And two comments pointed at `CityPlanningPageRenderTests` as the guard
+(#7). The Contracts csproj named projects that are not in the solution
+(#15). And the comments in `_ViewImports.cshtml` and `CityPlanningArchitectureTests`
+pointed at `CityPlanningPageRenderTests` as the guard
 for the page routes and the `_ViewImports` set — a test that lives in
 `Humans.Integration.Tests` and therefore never runs on a PR (#13).
 
@@ -45,18 +46,18 @@ calls across the section boundary when it deletes a camp —
 `DeletePolygonsForCampSeasonsAsync` — had **zero** coverage (#5). The single
 settings field keyed differently from every other (`RegistrationInfo`, keyed
 to the highest open season rather than `PublicYear`) had nothing holding the
-read and the write to the same key (#11). Two of the three upload guards were
-unreached (#12).
+read and the write to the same key (#11). The `MissingFile` and `FileTooLarge`
+upload guards were unreached (#12).
 
-Three behaviour bugs surfaced that a doctor run must not fix, and went to
+Behaviour bugs surfaced that a doctor run must not fix, and went to
 `Docs/debt.yml` instead (#20–#22). The sharpest is #22: the city-planning
 team's slug is lower-cased and then compared `Ordinal`, so a team whose stored
 slug carries any uppercase silently loses its map-admin exemption entirely.
 
-Three subagent findings were **refuted** against the code and declined:
+Subagent findings that were **refuted** against the code and declined:
 a live resx key reported as dead (`CityPlanning_PlacementPhaseInfo`, used by
 `Humans.Camps/Views/Camp/Details.cshtml:223`), a claim that `ContainerMap.cshtml`
-has no back-navigation (it has two, lines 57 and 63), and a claim that the
+has no back-navigation (it has one at line 57 and another at line 63), and a claim that the
 `camp_leads` table was dropped (still referenced by `Humans.Camps`).
 
 ## Ranked findings
@@ -66,12 +67,12 @@ has no back-navigation (it has two, lines 57 and 63), and a claim that the
    controller under `memory/architecture/display-sort-in-controllers.md` and
    the query orders nothing. A caller trusting the comment ships a
    randomly-ordered history list. — **doc fix on production code** — *struck*
-2. **Three dead front-end assets.** `wwwroot/img/city-planning/barrio-add-button.png`
+2. **Dead front-end assets.** `wwwroot/img/city-planning/barrio-add-button.png`
    and `barrio-edit-buttton.png` (note the typo) referenced by nothing, and
    `container-map/measure.js` a pure re-export of `shared/measure.js`. —
    **delete** — *struck*
 3. **Dead resx key in all six cultures.** `CityPlanning_CampLimits` defined
-   six times, read nowhere. — **delete** — *struck*
+   in each, read nowhere. — **delete** — *struck*
 4. **Unused project reference.** `tests/Humans.CityPlanning.Tests` referenced
    `Humans.Shifts.Contracts`; nothing in the project uses it. — **delete** —
    *struck*
@@ -89,30 +90,30 @@ has no back-navigation (it has two, lines 57 and 63), and a claim that the
 7. **`authorization.md` named the wrong guard on both runtime-guard rows.**
    The map-admin gate is `RoleChecks` **or** team membership, not the single
    check documented; and `AuthorizeAsync(ContainerOperationRequirement.Place)`
-   guards the three *container* endpoints, not polygon edit/restore. Both rows
+   guards the *container* endpoints, not polygon edit/restore. Both rows
    pointed a reader at the wrong deny path. — **doc fix** — *struck*
 8. **The bulk-import path was undocumented.** `barrio-map/admin-import.js`
    matches surveyor GeoJSON features to camps by lower-cased name or slug and
    issues one ordinary `PUT` per match — so an import is N saves and gets N
    history rows for free, and there is deliberately no server-side import
    endpoint. Nothing said so anywhere. — **doc fix** — *struck*
-9. **SignalR signatures wrong in two docs.** Both the section doc and the
+9. **SignalR signatures wrong in both docs that state them.** The section doc and the
    feature spec had the hub's methods wrong in both directions; the truth is
    outbound `CursorMoved(connectionId, displayName, lat, lng)` / `CursorLeft`
    and inbound `UpdateCursor(lat, lng)`. — **doc fix** — *struck*
-10. **Six hardcoded English `alt=` strings.** `_PlacementHelpModal.cshtml` is
+10. **Hardcoded English `alt=` strings.** `_PlacementHelpModal.cshtml` is
     member-facing (barrio map), so the admin exemption in
     `memory/code/localization-admin-exempt.md` does not reach it. Every
-    visible string in the modal was localized; the six image descriptions
+    visible string in the modal was localized; the image descriptions
     were not. — **localize across six cultures** — *struck*
 11. **The `RegistrationInfo` year key was untested.** It is the one settings
     field keyed to the highest open season rather than `PublicYear`. Nothing
     held the read and the write to the same key, so a divergence would show
     up only as an empty blurb on the Register page. — **add tests** — *struck*
-12. **Two of three upload guards unreached.** Only `InvalidGeoJson` was
-    tested; `MissingFile` and `FileTooLarge` had no coverage on either upload
+12. **Upload guards unreached.** Only `InvalidGeoJson` was tested;
+    `MissingFile` and `FileTooLarge` had no coverage on either upload
     endpoint. — **add tests** — *struck*
-13. **Two comments cite a guard that never runs in CI.**
+13. **Comments citing a guard that never runs in CI.**
     `Views/_ViewImports.cshtml` and `CityPlanningArchitectureTests` both named
     `CityPlanningPageRenderTests` as the thing that catches a missing
     `_ViewImports` line or a changed page route. It lives in
@@ -123,9 +124,9 @@ has no back-navigation (it has two, lines 57 and 63), and a claim that the
 14. **Test-file duplication and over-wide substitutes.**
     `CityPlanningRepositoryTests` built its own context and clock instead of
     using `CityPlanningTestBase`; `UpdatePlacementDatesAsync_SetsBothDates`
-    existed twice; two suites substituted whole service interfaces where the
+    existed twice; suites substituted whole service interfaces where the
     read-only ones suffice. — **cut** — *struck*
-15. **The Contracts csproj named two projects that do not exist.** Its comment
+15. **The Contracts csproj named projects that do not exist.** Its comment
     justified the project's existence in terms of `Humans.Application` and
     `Humans.Interfaces`. The real reason is `Humans.Camps` and
     `Humans.Containers`. — **comment fix** — *struck*
@@ -138,7 +139,7 @@ has no back-navigation (it has two, lines 57 and 63), and a claim that the
     `freshness:triggers` — the file that decides map-admin — and claimed
     Glossary.md defines "limit zone", which it does not (it has `## Barrio`
     and `## Sound zone`). — **doc fix** — *struck*
-18. **Eight-plus service methods take a `userId` that goes nowhere.** Every
+18. **The settings writes take a `userId` that goes nowhere.** Every
     settings write — phase open/close, zone upload, zone delete, placement
     dates — accepts a `userId` parameter and drops it. `CityPlanningSettings`
     records *when* a phase changed but not *who* changed it. The repo-wide
@@ -157,9 +158,9 @@ has no back-navigation (it has two, lines 57 and 63), and a claim that the
     year's list after every operation. The private helpers already thread the
     right year; only the callers pass the wrong one. Behaviour fix. —
     **`Docs/debt.yml`**
-21. **`MutateSettingsAsync` returns a value no production caller reads.** All
-    ten callers in `CityPlanningService` discard it; only two repository tests
-    use it. — **`Docs/debt.yml`**
+21. **`MutateSettingsAsync` returns a value no production caller reads.** Every
+    caller in `CityPlanningService` discards it; the only readers are
+    repository tests. — **`Docs/debt.yml`**
 22. **The `Ordinal` slug comparison strips the map-admin exemption.**
     `IsCityPlanningTeamMemberAsync` lower-cases the configured
     `CityPlanningTeamSlug` and compares it to `Team.Slug` / `Team.CustomSlug`
@@ -285,14 +286,14 @@ has no back-navigation (it has two, lines 57 and 63), and a claim that the
 | Spine + Shape + Behavior & bugs (3a–3c, 3e) | main | opus-5 | #1,#5,#8,#11,#12,#18,#19,#20,#21,#22 | $11.69 (`assess` bucket, shared) | Phase 3 marked once — the shared bucket for every main-thread reading lens. Derived `Docs/health.md` from scratch: the section had no prior target |
 | Freshness | dispatched sub-agent | sonnet | #6,#7,#9,#17 | $4.87 | `CityPlanning.md`, `authorization.md`, `features/city-planning.md` and `docs/guide/CityPlanning.md` read against the code |
 | Tests | dispatched sub-agent | sonnet | #14 | $2.29 | **Stryker skipped — not installed and out of scope by instruction (finding #23).** Mutation half not run; the invariant matrix was walked by hand instead |
-| Prose & surface | dispatched sub-agent | haiku | #2,#3,#10 | $0.55 | Six `.cshtml` + the six-language resx set. **Two of its verdicts were wrong** and were refuted against the code before acting — see the assessment summary and finding #26 |
+| Prose & surface | dispatched sub-agent | haiku | #2,#3,#10 | $0.55 | The section's `.cshtml` views + the six-language resx set. **Its verdicts of absence were wrong** and were refuted against the code before acting — see the assessment summary and finding #26 |
 | Comments & history | dispatched sub-agent | sonnet | #15,#16 | $4.42 | Full comment walk with an explicit KEEP list. One verdict (the `camp_leads` table "dropped") was wrong and was refuted; those comments were kept |
 | Conformance | main | opus-5 | none | in `assess` | Both `section-conformance.yml` rules pass, verified on the main thread rather than dispatched: layer folders only at the top level, `Docs/CityPlanning.md` present, migrations under `Data/Migrations/`, resource class + six `.resx` at the project root, and every key this run added carries the `CityPlanning_` prefix |
 | Inbox | main | opus-5 | none | in `assess` | **Partial — upstream issues unreachable (scope: `peterdrier/Humans`), finding #24.** Reach proved per repo: fork reads OK, `nobodies-collective/Humans` denied. No open CityPlanning issues on the fork; no CityPlanning rows in `docs/architecture/debt-ledger.yml`; no `Docs/debt.yml` existed before this run |
 
 ## Worked
 
-- **Strike 1 (delete — findings #2, #3, #4, #14):** two unreferenced PNGs and
+- **Strike 1 (delete — findings #2, #3, #4, #14):** the unreferenced PNGs and
   the `container-map/measure.js` re-export shim deleted (`container-map/main.js`
   now imports `'../shared/measure.js'`); `CityPlanning_CampLimits` removed from
   all six cultures; the `Humans.Shifts.Contracts` reference dropped from the
@@ -306,7 +307,7 @@ has no back-navigation (it has two, lines 57 and 63), and a claim that the
   import and the wrong SignalR signatures fixed in `CityPlanning.md` and
   `features/city-planning.md`; both runtime-guard rows corrected in
   `authorization.md`; the Contracts csproj comment renamed to the projects that
-  exist; history citations cut from six production files; `docs/guide/CityPlanning.md`
+  exist; history citations cut from the production files carrying them; `docs/guide/CityPlanning.md`
   triggers and Glossary claim corrected. Commit `0294aa9b`.
 - **Strike 3 (add tests — findings #5, #11, #12):** new tests over the
   season-scoped delete (removal of polygon *and* history, other seasons
@@ -314,14 +315,14 @@ has no back-navigation (it has two, lines 57 and 63), and a claim that the
   key (write target, `PublicYear` fallback, trim-and-null, and that the read
   keys the same year the write used), and the `MissingFile` / `FileTooLarge`
   upload guards on both endpoints. 45 → 57 passing. Commit `25da30db`.
-- **Strike 4 (localize — finding #10):** six new `CityPlanning_Help_*ImageAlt`
+- **Strike 4 (localize — finding #10):** new `CityPlanning_Help_*ImageAlt`
   keys in all six cultures, wired into `_PlacementHelpModal.cshtml`. The
   existing card titles were rejected as a reuse candidate: they are
   instructions ("Overlaps? Talk it out!"), not descriptions of the screenshot,
   so they read wrong to a screen reader. resx parity tests green. Commit `2cb4bd95`.
-- **Sweep:** 21 sweepable items across the nine merged run files on
-  `origin/main`; 19 were already present in their targets and were skipped
-  (idempotence). Two applied: the stale 2026-08-21 MailerLite entry removed
+- **Sweep:** the sweepable items across the merged run files on `origin/main`.
+  Most were already present in their targets and were skipped (idempotence).
+  Applied: the stale 2026-08-21 MailerLite entry removed
   from `docs/architecture/debt-ledger.yml` (verified false —
   `MailerLiteGdprContributor.cs` exists and `MailerLiteClient.DeleteSubscriberAsync`
   is at line 143), and the `MailerLiteDateConverter` question recorded in
@@ -330,9 +331,9 @@ has no back-navigation (it has two, lines 57 and 63), and a claim that the
   One item declined; see `## Skipped`. Own commit.
 - **Strike 5 (comment fix + debt — findings #13, #20, #21, #22):** both
   `CityPlanningPageRenderTests` guard claims now say the test never runs in CI;
-  new `Docs/debt.yml` records the three behaviour bugs. Commit `bfda6315`.
+  new `Docs/debt.yml` records the behaviour bugs (#20, #21, #22). Commit `bfda6315`.
 - **Phase 4 step 6, runtime verification (deferred to after Phase 7):** the run's
-  one user-visible change — the six help-modal `alt` attributes — verified on the
+  one user-visible change — the help-modal `alt` attributes — verified on the
   PR preview at `https://1525.n.burn.camp`, serving the branch head. Signed in via
   `/dev/login/city-planning`, then switched language through the app's own
   `POST /Language/SetLanguage`: `/CityPlanning/BarrioMap` renders all six alt
@@ -344,7 +345,7 @@ has no back-navigation (it has two, lines 57 and 63), and a claim that the
   that are certainly translated. That looked like a defect and was not one.
 - **Resumed after Peter's answers (same PR, same day).** Peter answered the
   Needs-Peter list in session and scoped the five-commit cap to Codex review
-  rounds counted from functional completion, so the three approved behaviour
+  rounds counted from functional completion, so the approved behaviour
   changes landed in peterdrier/Humans#1525 rather than a follow-up:
   - **#22 → normalize.** `IsCityPlanningTeamMemberAsync` now lower-cases both
     sides — the configured slug and each `Team.Slug` / `Team.CustomSlug` — and a
@@ -352,10 +353,10 @@ has no back-navigation (it has two, lines 57 and 63), and a claim that the
     `CustomSlug` into `""`, which would otherwise match every team that has
     none). Three tests: stored-slug uppercase, configured-slug uppercase, blank.
   - **#21 → narrow it.** `ICityPlanningRepository.MutateSettingsAsync` returns
-    `Task`; the repository no longer detaches and returns the entity, and the two
-    repository tests read the row back through `GetOrCreateSettingsAsync` —
+    `Task`; the repository no longer detaches and returns the entity, and its
+    tests read the row back through `GetOrCreateSettingsAsync` —
     which is what the narrowed contract's doc now tells callers to do.
-  - **#18 → add audit.** All eight `userId`-taking settings writes route through
+  - **#18 → add audit.** Every `userId`-taking settings write routes through
     one private `MutateSettingsAndAuditAsync` helper that saves first, then logs
     through the `IAuditLogService` crosscut. Eight new `AuditAction` values
     appended (`CityPlanning*`; the enum is string-stored, so no migration).
@@ -371,7 +372,7 @@ has no back-navigation (it has two, lines 57 and 63), and a claim that the
     `/CityPlanning/BarrioMap` for a volunteer, and both container screens in
     positive and deny form. The spec reads the season year off the landing
     page's own container-map link rather than hard-coding it, so it follows the
-    rollover. The two comments from #13 now name the e2e suite as the
+    rollover. Both comments from #13 now name the e2e suite as the
     post-merge guard instead of claiming nothing catches a missing line.
   - **#19 → in-season history is reasonable**, archived at the rollover into the
     next season; neither half is built. Recorded as the section's one seam.
@@ -397,7 +398,7 @@ has no back-navigation (it has two, lines 57 and 63), and a claim that the
   not a defect; recorded as a seam in `health.md`, and Peter's answer is now on
   that seam. Still not built, deliberately.
 - **Findings #20, #21, #22** — behaviour fixes, out of a doctor run's lane, so
-  all three were recorded in the section's new `Docs/debt.yml` first. Peter then
+  each was recorded in the section's new `Docs/debt.yml` first. Peter then
   approved #21 and #22 in session and both were **built** in this PR and struck
   from the ledger; #20 stays, carrying his winter deferral.
 - **Finding #23** (mutation score) — Stryker not installed; out of scope by
