@@ -1079,7 +1079,9 @@ public sealed class ExpenseReportServiceTests
             AuditEntityTypes.Profile,
             submitter,
             "IBAN set",
-            submitter);
+            submitter,
+            submitter,
+            AuditEntityTypes.User);
     }
 
     [HumansFact]
@@ -1108,11 +1110,15 @@ public sealed class ExpenseReportServiceTests
 
         var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
         loaded!.SubmitterUserId.Should().Be(member, "the report belongs to the member, not the admin who filed it");
+        // relatedEntityId is what carries the entry into the *member's* GDPR export — the entity is
+        // the report and the actor is the admin, so without it the row never reaches its subject.
         await AuditLog.Received(1).LogAsync(
             AuditAction.ExpenseCreatedOnBehalf,
             AuditEntityTypes.Report, id,
             Arg.Is<string>(d => d.Contains("Dani Member")),
-            admin);
+            admin,
+            member,
+            AuditEntityTypes.User);
     }
 
     [HumansFact]
@@ -1132,6 +1138,76 @@ public sealed class ExpenseReportServiceTests
         var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
         loaded!.Note.Should().Be("corrected");
         loaded.Status.Should().Be(ExpenseReportStatus.CoordinatorEndorsed);
+    }
+
+    [HumansFact]
+    public async Task EveryOnBehalfEdit_WritesAnAuditEntry_NamingTheMember()
+    {
+        // An admin changing somebody else's report is an action taken on their behalf, so each
+        // header and line change owes them a trail — not just the create and the submit.
+        var (_, category) = SetupActiveYear();
+        var member = Guid.NewGuid();
+        var admin = Guid.NewGuid();
+        SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
+        var id = await _sut.CreateDraftAsync(member, member, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        await _sut.UpdateDraftAsync(id, admin, true, category.Id, "corrected", Xunit.TestContext.Current.CancellationToken);
+        var lineId = await _sut.AddLineAsync(id, admin, true, "Supplies", 25m, ct: Xunit.TestContext.Current.CancellationToken);
+        await _sut.UpdateLineAsync(id, admin, true, lineId, "Supplies (corrected)", 30m, Xunit.TestContext.Current.CancellationToken);
+        await _sut.RemoveLineAsync(id, admin, true, lineId, Xunit.TestContext.Current.CancellationToken);
+
+        await AuditLog.Received(4).LogAsync(
+            AuditAction.ExpenseEditedOnBehalf,
+            AuditEntityTypes.Report, id,
+            Arg.Is<string>(d => d.Contains("Dani Member")),
+            admin,
+            member,
+            AuditEntityTypes.User);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("Updated header")]
+    [Xunit.InlineData("Added line")]
+    [Xunit.InlineData("Updated line")]
+    [Xunit.InlineData("Removed line")]
+    public async Task OnBehalfEditAudit_SaysWhatChanged(string expectedOpener)
+    {
+        var (_, category) = SetupActiveYear();
+        var member = Guid.NewGuid();
+        var admin = Guid.NewGuid();
+        SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
+        var id = await _sut.CreateDraftAsync(member, member, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        await _sut.UpdateDraftAsync(id, admin, true, category.Id, "corrected", Xunit.TestContext.Current.CancellationToken);
+        var lineId = await _sut.AddLineAsync(id, admin, true, "Supplies", 25m, ct: Xunit.TestContext.Current.CancellationToken);
+        await _sut.UpdateLineAsync(id, admin, true, lineId, "Supplies (corrected)", 30m, Xunit.TestContext.Current.CancellationToken);
+        await _sut.RemoveLineAsync(id, admin, true, lineId, Xunit.TestContext.Current.CancellationToken);
+
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.ExpenseEditedOnBehalf,
+            AuditEntityTypes.Report, id,
+            Arg.Is<string>(d => d.StartsWith(expectedOpener)),
+            admin,
+            member,
+            AuditEntityTypes.User);
+    }
+
+    [HumansFact]
+    public async Task EditingYourOwnReport_WritesNoOnBehalfAudit()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        await _sut.UpdateDraftAsync(id, submitter, false, category.Id, "my note", Xunit.TestContext.Current.CancellationToken);
+        var lineId = await _sut.AddLineAsync(id, submitter, false, "Supplies", 25m, ct: Xunit.TestContext.Current.CancellationToken);
+        await _sut.UpdateLineAsync(id, submitter, false, lineId, "Supplies", 30m, Xunit.TestContext.Current.CancellationToken);
+        await _sut.RemoveLineAsync(id, submitter, false, lineId, Xunit.TestContext.Current.CancellationToken);
+
+        await AuditLog.DidNotReceive().LogAsync(
+            AuditAction.ExpenseEditedOnBehalf,
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -1201,12 +1277,16 @@ public sealed class ExpenseReportServiceTests
         var result = await _sut.SaveSubmitterIbanWithResultAsync(member, admin, "ES91 2100 0418 4502 0005 1332", Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
+        // The entry's entity type is Profile and its actor is the admin, so relatedEntityId is the
+        // only thing tying the row carrying Dani's raw IBAN to Dani's own GDPR export.
         await AuditLog.Received(1).LogAsync(
             AuditAction.IbanSet,
             AuditEntityTypes.Profile,
             member,
             "IBAN set for Dani Member to ES9121000418450200051332",
-            admin);
+            admin,
+            member,
+            AuditEntityTypes.User);
     }
 
     [HumansFact]

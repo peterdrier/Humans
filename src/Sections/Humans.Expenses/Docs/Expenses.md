@@ -164,6 +164,8 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 ## Triggers
 
 - On **create for another member**: audit entry `ExpenseCreatedOnBehalf` written, naming the actor and the member. A self-created draft stays unaudited — the report is its own record.
+- On **any edit to another member's report**: audit entry `ExpenseEditedOnBehalf` written per change — header update, line add (proof rows included), line update, line remove — with a description saying what changed. Self-edits stay unaudited, exactly as before.
+- Every on-behalf entry carries `relatedEntityId` = the member with `relatedEntityType` `"User"`. That is what puts the entry in the *member's* GDPR export: the entity is the report (or their Profile) and the actor is the admin, so without it the row never reaches the person it is about.
 - On **submit**: the *submitter's* `Profile.Iban` and profile legal name (`FirstName` + `LastName`) are snapshotted into `PayeeIban` / `PayeeName`. Audit entry `ExpenseSubmit` written, naming the member when the actor is not the submitter.
 - On **IBAN set/remove for another member**: `IbanSet` / `IbanRemove` written against the member as subject with the admin as actor, naming the member and carrying the IBAN unmasked. A member setting their own gets the bare masked-convention entry it always did.
 - On **endorse**: any max amount the coordinator supplied is stored on the report and named in the `ExpenseEndorse` audit entry.

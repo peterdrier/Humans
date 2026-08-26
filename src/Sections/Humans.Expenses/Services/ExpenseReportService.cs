@@ -245,7 +245,9 @@ internal sealed class ExpenseReportService(
                 AuditAction.ExpenseCreatedOnBehalf,
                 AuditEntityTypes.Report, report.Id,
                 $"Created expense report on behalf of {await DescribeMemberAsync(submitterUserId, ct)}.",
-                actorUserId);
+                actorUserId,
+                relatedEntityId: submitterUserId,
+                relatedEntityType: AuditEntityTypes.User);
         }
 
         return report.Id;
@@ -255,12 +257,32 @@ internal sealed class ExpenseReportService(
     private async Task<string> DescribeMemberAsync(Guid userId, CancellationToken ct) =>
         (await userService.GetUserInfoAsync(userId, ct))?.BurnerName ?? userId.ToString();
 
+    /// <summary>
+    /// Records an edit an admin made to somebody else's report. A member editing their own leaves
+    /// no entry — the report is its own record — but an action taken on a member's behalf owes them
+    /// a trail naming both, so every header and line change writes one when the actor is not the
+    /// submitter. <paramref name="whatChanged"/> is the sentence opener, e.g. "Added line 'Fuel'".
+    /// </summary>
+    private async Task AuditOnBehalfEditAsync(
+        ExpenseReportDto report, Guid actorUserId, string whatChanged, CancellationToken ct)
+    {
+        if (actorUserId == report.SubmitterUserId) return;
+
+        await auditLogService.LogAsync(
+            AuditAction.ExpenseEditedOnBehalf,
+            AuditEntityTypes.Report, report.Id,
+            $"{whatChanged} on behalf of {await DescribeMemberAsync(report.SubmitterUserId, ct)}.",
+            actorUserId,
+            relatedEntityId: report.SubmitterUserId,
+            relatedEntityType: AuditEntityTypes.User);
+    }
+
     internal async Task UpdateDraftAsync(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
         Guid budgetCategoryId, string? note,
         CancellationToken ct = default)
     {
-        await RequireEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
+        var report = await RequireEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
 
         var year = await budgetService.GetActiveYearAsync()
             ?? throw new InvalidOperationException("No active budget year.");
@@ -277,7 +299,14 @@ internal sealed class ExpenseReportService(
             UpdatedAt = clock.GetCurrentInstant()
         };
         await repo.UpdateDraftAsync(updated, ct);
+
+        await AuditOnBehalfEditAsync(report, actorUserId,
+            $"Updated header (category {category.Name}, subject {DescribeNote(note)})", ct);
     }
+
+    /// <summary>The note as it reads in an audit description; it is optional and often blank.</summary>
+    private static string DescribeNote(string? note) =>
+        string.IsNullOrWhiteSpace(note) ? "cleared" : $"\"{note}\"";
 
     public Task<ExpenseMutationResult> UpdateDraftWithResultAsync(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
@@ -320,6 +349,10 @@ internal sealed class ExpenseReportService(
         };
         var ok = await repo.AddLineAsync(reportId, line, ct);
         if (!ok) throw new InvalidOperationException("Failed to add line.");
+
+        await AuditOnBehalfEditAsync(report, actorUserId,
+            $"Added {(parentLineId is null ? "line" : "proof row")} \"{description}\" €{amount}", ct);
+
         return line.Id;
     }
 
@@ -434,6 +467,9 @@ internal sealed class ExpenseReportService(
         };
         var ok = await repo.UpdateLineAsync(reportId, line, ct);
         if (!ok) throw new InvalidOperationException("Failed to update line.");
+
+        await AuditOnBehalfEditAsync(report, actorUserId,
+            $"Updated line \"{existing.Description}\" €{existing.Amount} to \"{description}\" €{amount}", ct);
     }
 
     public Task<ExpenseMutationResult> UpdateLineWithResultAsync(
@@ -450,13 +486,20 @@ internal sealed class ExpenseReportService(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId,
         CancellationToken ct = default)
     {
-        await RequireEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
+        var report = await RequireEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
+        // Read the line before it is gone — the audit entry names what was removed, not an id.
+        var removed = report.Lines.FirstOrDefault(l => l.Id == lineId);
 
         // One atomic save removes the line, any proof rows under it, and their attachment rows;
         // the files are deleted only after that commit (best-effort — an orphan file is a warning,
         // an orphan row is a bug).
         var removedAttachments = await repo.RemoveLineAsync(reportId, lineId, ct)
             ?? throw new InvalidOperationException("Failed to remove line.");
+
+        await AuditOnBehalfEditAsync(report, actorUserId,
+            removed is null
+                ? $"Removed line {lineId}"
+                : $"Removed line \"{removed.Description}\" €{removed.Amount}", ct);
 
         foreach (var attachment in removedAttachments)
         {
@@ -691,12 +734,17 @@ internal sealed class ExpenseReportService(
                 return IbanFailure("Failed to save IBAN.", isValidationError: false);
 
             var isClearing = normalized is null;
+            // The entry is about the member, but its entity type is Profile and its actor may be
+            // somebody else — without the related id, the member's own GDPR export would miss the
+            // row carrying their raw IBAN. Set unconditionally; for a self-set it is a no-op.
             await auditLogService.LogAsync(
                 isClearing ? AuditAction.IbanRemove : AuditAction.IbanSet,
                 AuditEntityTypes.Profile,
                 submitterUserId,
                 await DescribeIbanChangeAsync(submitterUserId, actorUserId, normalized, ct),
-                actorUserId);
+                actorUserId,
+                relatedEntityId: submitterUserId,
+                relatedEntityType: AuditEntityTypes.User);
 
             logger.LogInformation(
                 "IBAN {Action} for user {UserId}",
@@ -1336,6 +1384,7 @@ internal sealed class ExpenseReportService(
         var expenseActions = new List<AuditAction>
         {
             AuditAction.ExpenseCreatedOnBehalf,
+            AuditAction.ExpenseEditedOnBehalf,
             AuditAction.ExpenseSubmit,
             AuditAction.ExpenseEndorse,
             AuditAction.ExpenseCoordinatorReject,

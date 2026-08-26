@@ -227,4 +227,7 @@ public enum AuditAction
     // A finance admin filed an expense report for another member. Self-created drafts are not
     // audited — only the on-behalf case, which names the actor and the member.
     ExpenseCreatedOnBehalf,
+    // A finance admin changed somebody else's report — header, or a line added/edited/removed.
+    // One action for all of them; the description says what changed. Self-edits are not audited.
+    ExpenseEditedOnBehalf,
 }
