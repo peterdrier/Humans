@@ -472,8 +472,8 @@ has no back-navigation (it has one at line 57 and another at line 63), and a cla
   rows keep the old string and the entity's history would silently split. The
   mechanism is real — `EntityType` is a plain string filtered by exact equality —
   but `nameof(...)` is the house convention across the crosscut's callers
-  (`nameof(User)` at roughly 35 sites, plus ShiftSignup, Team, CampSeason, Camp
-  and others), so pinning CityPlanning alone would make it the one caller not
+  (`User`, `ShiftSignup`, `GoogleResource`, `Team`, `CampSeason`, `Camp` and
+  more), so pinning CityPlanning alone would make it the one caller not
   following it while leaving every other audited entity exposed. Fixing it right
   is repo-wide and belongs to the Audit crosscut, which is Peter's call and
   outside a CityPlanning run's lane; recorded in the central `debt-ledger.yml`
