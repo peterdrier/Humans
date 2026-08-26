@@ -386,7 +386,7 @@ has no back-navigation (it has one at line 57 and another at line 63), and a cla
     **#25 the selector already prefers new sections**, **#26 the wrong-verdict
     system is working as intended**, **#27 the first-run wording is fine.**
 
-  Section tests 57 → 66. Re-measured after the rounds: reforge 218, locProd 1956,
+  Section tests 57 → 67. Re-measured after the rounds: reforge 218, locProd 1964,
   cogP95 4, cogMax 6. The score rose from 210 — the whole of it is
   `crossSectionFullService` for injecting `IAuditLogService`. That interface has
   no read-only half; it is the one contract every writer to the Audit crosscut
@@ -449,6 +449,22 @@ has no back-navigation (it has one at line 57 and another at line 63), and a cla
   code. The two unaudited settings writes — `UpdatePlacementDatesAsync` and
   `UpdateRegistrationInfoAsync`, neither of which takes a `userId` — keep the
   request token, since they have no audit entry to protect.
+
+  A later round cleared two classes out of `CityPlanning.md` rather than the two
+  lines they were reported on. One was a bare `six languages` — the enumerated
+  `all six supported cultures (en, es, de, it, fr, ca)` follows `AGENTS.md`'s own
+  wording for a named set, but a naked count with no list beside it is the second
+  bullet of `no-derived-aggregates-in-docs` and does drift. The other was
+  proposal-and-pivot narrative under **Per-map screens**, which
+  `current-state-docs-no-history` forbids in a living invariant doc; the declined
+  alternative keeps its qualified issue reference in `health.md`'s *Deliberately
+  not done*, where a declined alternative belongs, and the invariant doc now
+  states only the design. The review named that sentence as newly added — it was
+  not, it predates this run — but the rule holds either way, and the same class
+  sat unflagged in four more bullets (a removed display-name read, an upload
+  pipeline described by what moved, two `GetSettingsByYearAsync` removal notes, a
+  replaced `.Include`, and a return type given as "instead of the previous"
+  tuple). All are now written as what is.
 
 ## Skipped
 
