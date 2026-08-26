@@ -55,8 +55,10 @@ pile does not care which of the two a line came from.
 
 The layout those shapes imply, written fresh:
 
-- **One contracts leaf** carrying exactly shapes 1, 2 and 6 plus the three enums their
-  signatures name. Everything else stays inside the section.
+- **One contracts leaf** carrying exactly shapes 1, 2, 6 and 7 plus the enums their signatures
+  name. Shape 7 belongs here for the same reason as the rest — the account merge in Users has
+  to evict both folded accounts' badges after it commits, and that is a cross-section call.
+  Everything else stays inside the section.
 - **One dispatch path.** Building a notification and its recipient rows, applying the
   preference filter and evicting the affected badge caches is one piece of logic, whether the
   recipients arrived as a list or as a role name. The role case adds one step in front —
@@ -94,15 +96,15 @@ The layout those shapes imply, written fresh:
   default arm.
 - An emit with no surviving recipients writes nothing and logs why.
 - Every mutation made on a human's behalf evicts the badge cache of every user it affected.
-  The nightly purge is the one gap: `PurgeExpiredAsync` deletes through three repository
-  methods that return counts and nothing else, so a recipient whose unresolved informational
+  The nightly purge is the one gap: `PurgeExpiredAsync` deletes through repository methods
+  that return counts and nothing else, so a recipient whose unresolved informational
   row was just deleted can carry a stale unread badge for the two-minute TTL. Either the purge
   reports who it touched, or the exception gets stated on purpose.
 - The nightly purge deletes resolved rows past 7 days, unresolved informational rows past
   30 days, and unresolved rows of retired sources — and never an unresolved actionable row of
   a live source.
 - Every string a human reads on `/Notifications` comes from the section's resx set, in all six
-  cultures — the page is not admin-side, so the `/Admin/*` exemption does not reach it. Eight
+  cultures — the page is not admin-side, so the `/Admin/*` exemption does not reach it. The
   meter titles are English literals in `NotificationMeterProvider` today; that is the gap this
   target names, not a second rule.
 

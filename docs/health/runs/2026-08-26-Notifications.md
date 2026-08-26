@@ -8,7 +8,7 @@
 
 ## Selection
 
-Computed live by `select-section.py`. Pool 43, blocked 2 (CityPlanning `#1525`, Store `#1520`), 10 feature-active sections set aside. Notifications is the lower-middle **median of the 22 remaining never-doctored sections** by reforge surface score (274, `loc=2421`).
+Computed live by `select-section.py`. Sections carrying an open PR were blocked (CityPlanning `#1525`, Store `#1520`) and the feature-active ones set aside. Of what remained — the sections never doctored before — Notifications is the lower-middle **median by reforge surface score** (274, `loc=2421`).
 
 `UPCOMING:` (informational, recomputed every run) — Expenses, Gdpr, AuditLog, Campaigns.
 
@@ -18,13 +18,13 @@ Notifications is a correct section with an unreliable narrator. Almost every beh
 
 The one story worth reading closely was the DI cycle (finding 3). Six files describe `NotificationRecipientResolver` as the thing standing between `NotificationService` and a startup-time cycle. Grepping the graph rather than trusting the comments shows the cycle does not exist today: `RoleAssignmentService` injects the narrow `INotificationEmitter`, which is implemented by a separate type that has no resolver edge at all. Three of the six comments were simply false and are now corrected; the resolver itself is a one-method pass-through that is very likely deletable, but proving that needs a gate this repo does not have (finding 15), so it stands.
 
-Two user-visible gaps were held rather than struck, both because striking them would be a decision rather than a repair: three POST routes that no view or script reaches (finding 1), and eight English meter titles rendered on `/Notifications`, a page the admin-localization exemption does not cover (finding 2).
+Two user-visible gaps were held rather than struck, both because striking them would be a decision rather than a repair: the POST routes that no view or script reaches (finding 1), and the English meter titles rendered on `/Notifications`, a page the admin-localization exemption does not cover (finding 2).
 
 ## Ranked findings
 
 **1 — Three POST routes have no caller.** `POST /Notifications/Resolve/{id}`, `POST /Notifications/Dismiss/{id}` and `POST /Notifications/MarkRead/{id}` are reachable from nothing. The inbox view and the bell popup between them invoke only `Index`, `Popup`, `MarkAllRead`, `BulkResolve`, `BulkDismiss` and `ClickThrough`; `src/Humans.Web/wwwroot/js/site.js` fetches only `/Notifications/Popup`. Checked every `asp-action`, `Url.Action` and `fetch(` in the section's four views and in the Shell's site-wide script. A human today resolves a single actionable notification by clicking through it, or by selecting it and using the bulk control. Deleting three endpoints, their service methods and the repository methods under them is a real cut, but the alternative reading — that the single-item buttons were dropped from the view by accident and the endpoints are what survived — is equally consistent with what is on disk, and the two readings have opposite fixes. Held. The one resx key tied to this fork (`Notification_Dismiss`) was held back from finding 8's deletion for the same reason.
 
-**2 — Eight meter titles are hardcoded English on a non-exempt page.** `NotificationMeterProvider` builds every meter title as a C# literal: "Consent reviews pending", "Applications pending your vote", "Pending account deletions", "Failed Google sync events", "Onboarding profiles pending", "Team join requests pending", "Ticket sync error", and a pluralised "N humans want to join your camp". These render on `/Notifications` and in the bell popup, which `memory/code/localization-admin-exempt.md` does **not** exempt — the exemption covers `/Admin/*`, `/TeamAdmin/*` and `/Shifts/Dashboard` only. Fixing it is eight new keys across six cultures plus a plural form the resx set has no existing pattern for, and it puts an `IStringLocalizer` into a provider that currently has no view-layer dependency. Held: the size and the plural question both want a decision.
+**2 — The meter titles are hardcoded English on a non-exempt page.** `NotificationMeterProvider` builds every meter title as a C# literal: "Consent reviews pending", "Applications pending your vote", "Pending account deletions", "Failed Google sync events", "Onboarding profiles pending", "Team join requests pending", "Ticket sync error", and a pluralised "N humans want to join your camp". These render on `/Notifications` and in the bell popup, which `memory/code/localization-admin-exempt.md` does **not** exempt — the exemption covers `/Admin/*`, `/TeamAdmin/*` and `/Shifts/Dashboard` only. Fixing it is a new key per title across all six cultures, plus a plural form the resx set has no existing pattern for, and it puts an `IStringLocalizer` into a provider that currently has no view-layer dependency. Held: the size and the plural question both want a decision.
 
 **3 — The DI-cycle story was told six ways, three of them false.** `INotificationEmitter.cs`, `INotificationService.cs`, `NotificationRecipientResolver.cs`, `INotificationRecipientResolver.cs`, `Section.cs` and `NotificationsArchitectureTests.cs` each explained the emitter/service split as a cycle break. Three of them described a cycle through `IRoleAssignmentService` that the current graph does not contain, and one asserted that a direct `NotificationService → IRoleAssignmentService` edge "would still close a cycle through the resolver" — which presumes the resolver survives the very deletion being discussed. Struck: the comments now say what is verifiable — which type injects which interface, and why the narrow one exists — and the architecture test's comment was narrowed to the claim its assertion actually makes.
 
@@ -38,7 +38,7 @@ Two user-visible gaps were held rather than struck, both because striking them w
 
 **8 — Four resx keys are named nowhere.** `Notification_Tag_Urgent`, `Notification_Tag_Action`, `Notification_Tag_Info` and `Notification_Pref_InboxEnabled` appear in no view, controller or service. Struck across all six cultures — 24 entries — by targeted exact-string replacement per `memory/process/resx-value-edits.md`, leaving each file's formatting, comments and trailing newline untouched (verified: the diffs are pure deletions). `Notification_Dismiss` was **not** deleted despite its only consumer being finding 1's unreachable route; it goes when that fork is decided.
 
-**9 — Three docs named four interfaces the code does not use.** `ITicketSyncService` (now `ITicketSync`), `IApplicationDecisionService.GetUnvotedApplicationCountAsync` (now on `IApplicationServiceRead`), `IUserService` on the inbox service (`IUserServiceRead`), and an `ITeamServiceRead` on the recipient resolver that it has never injected. Also: Issues was said to inject `INotificationService` (it injects `INotificationEmitter`), and `AccountMergeService` was filed under a "Profiles section" that does not exist — it lives in `Humans.Users`. Struck, swept by literal string across the whole repo: `Docs/Notifications.md`, `Docs/data-access.md`, `docs/architecture/service-data-access-map.md`. Hits under `docs/plans/**` were left — those are dated plan documents describing what was true when they were written.
+**9 — Docs named interfaces the code does not use.** `ITicketSyncService` (now `ITicketSync`), `IApplicationDecisionService.GetUnvotedApplicationCountAsync` (now on `IApplicationServiceRead`), `IUserService` on the inbox service (`IUserServiceRead`), and an `ITeamServiceRead` on the recipient resolver that it has never injected. Also: Issues was said to inject `INotificationService` (it injects `INotificationEmitter`), and `AccountMergeService` was filed under a "Profiles section" that does not exist — it lives in `Humans.Users`. Struck, swept by literal string across the whole repo: `Docs/Notifications.md`, `Docs/data-access.md`, `docs/architecture/service-data-access-map.md`. Hits under `docs/plans/**` were left — those are dated plan documents describing what was true when they were written.
 
 **10 — `notification-inbox.md` put the Camp sources in the wrong category.** All four `Camp*` rows listed Category `System`; `NotificationSourceMapping` maps all four to `TeamUpdates`. A recipient reading the doc would expect their System preference to suppress a camp notification, and it does not. Struck. Every other row in that 34-row table was checked against the mapping and is correct.
 
@@ -91,17 +91,18 @@ Also wasted: three of fourteen scripted literal replacements missed on the first
 ## Needs Peter
 
 - [ ] 1 — Delete the three uncalled POST routes, or restore the single-item buttons that would call them?
-- [ ] 2 — Localize the eight meter titles (8 keys × 6 cultures + a plural form), or exempt `/Notifications` meters?
+- [ ] 2 — Localize the meter titles (a key per title across all six cultures, plus a plural form), or exempt `/Notifications` meters?
 - [ ] 15 — Delete the recipient resolver? Only a manual app start can prove it safe today.
 - [ ] 17 — Edit the scheduled prompt to drop its Stryker instruction, which the skill now forbids.
 - [ ] 18 — Drop `_ => MessageCategory.System` so a missing mapping is a compile error?
 - [ ] 19 — Should all four single-item routes refuse a non-recipient the same way, and which way?
 - [ ] 20 — Widen the three purge delete methods to return affected user ids and evict, or state the purge as a deliberate exception to the badge-cache invariant?
+- [ ] 16 — Phase 3: before writing up anything that reads as a CI or coverage gap, check `memory/` for an atom that already settles it. This run filed `Humans.Integration.Tests` as debt against a standing prohibition it had not read.
 - [ ] Phase 4 — after a scripted literal replacement reports a miss, re-read the region before retrying; a second guess at the string is how a strike plan silently half-applies.
 
 ## Sweep queue
 
-- `lesson: 2026-08-26 — the solution-wide gate's 318 Docker failures in Humans.Integration.Tests are by design, not a finding. memory/process/integration-tests-are-not-ci-tests.md forbids ledgering that project or proposing a job for it; check the atom before writing up anything that looks like a CI or coverage gap (finding 16).`
+(none)
 
 ## File coverage
 
