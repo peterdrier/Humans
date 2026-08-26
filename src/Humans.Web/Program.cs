@@ -44,6 +44,10 @@ using Humans.Web.Localization;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Bootstrap static logger for pre-Build callers (section discovery logs during service
+// registration). UseSerilog swaps Log.Logger to the host's full pipeline at Build.
+Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateLogger();
+
 builder.Services.AddSingleton<InMemoryLogSink>();
 builder.Host.UseSerilog((_, services, logConfig) =>
 {
@@ -64,7 +68,7 @@ builder.Host.UseSerilog((_, services, logConfig) =>
             Path.Combine(logDir, "humans-.log"),
             rollingInterval: RollingInterval.Day);
     }
-}, preserveStaticLogger: true);
+});
 
 // Fail fast on DI cycles/captive deps; factory lambdas still need smoke coverage.
 builder.Host.UseDefaultServiceProvider(options =>

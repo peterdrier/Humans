@@ -35,11 +35,14 @@ public static class EnumBadgeMap
         [EmailOutboxStatus.Failed] = "bg-danger",
     };
 
-    // Static class, no DI (issue #1065): Log.ForContext reaches the app's already-configured
-    // Serilog pipeline instead of inventing a static-logger seam. Test-settable only.
-    private static ILogger Logger = Log.ForContext(typeof(EnumBadgeMap));
+    // Static class, no DI (issue #1065): resolved per call so warnings reach the app's
+    // fully-configured Serilog pipeline once the host has built it, instead of capturing
+    // whatever Log.Logger held at static-init time. Test-settable only.
+    private static ILogger? LoggerOverride;
 
-    internal static void SetLoggerForTests(ILogger value) => Logger = value;
+    private static ILogger Logger => LoggerOverride ?? Log.ForContext(typeof(EnumBadgeMap));
+
+    internal static void SetLoggerForTests(ILogger value) => LoggerOverride = value;
 
     /// <summary>
     /// Adds a moved section's badge rows. Called from <c>ISection.Register</c>, so every write
