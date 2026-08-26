@@ -189,7 +189,7 @@ internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbCon
         return settings;
     }
 
-    public async Task<CityPlanningSettings> MutateSettingsAsync(
+    public async Task MutateSettingsAsync(
         int year,
         Action<CityPlanningSettings> mutate,
         Instant now,
@@ -213,8 +213,5 @@ internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbCon
         mutate(settings);
         settings.UpdatedAt = now;
         await ctx.SaveChangesAsync(ct);
-
-        ctx.Entry(settings).State = EntityState.Detached;
-        return settings;
     }
 }

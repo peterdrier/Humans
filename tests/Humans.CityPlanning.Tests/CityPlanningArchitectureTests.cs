@@ -22,7 +22,8 @@ public class CityPlanningArchitectureTests
         // both fetch /api/city-planning/...). Change the prefix and the maps silently stop
         // loading. The page controller's own prefix is exercised by CityPlanningPageRenderTests,
         // which requests /CityPlanning URLs — but that lives in Humans.Integration.Tests and
-        // build.yml filters it out, so this is the only route assertion CI runs.
+        // build.yml filters it out, so this is the only route assertion the PR build runs.
+        // tests/e2e/tests/city-planning.spec.ts covers the page routes against QA after merge.
         typeof(Section).Assembly.GetType("Humans.CityPlanning.Controllers.CityPlanningApiController")!
             .GetCustomAttributes(typeof(RouteAttribute), inherit: false)
             .Cast<RouteAttribute>()

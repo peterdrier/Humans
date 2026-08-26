@@ -98,18 +98,22 @@ Stated so a violation is recognisable:
    must additionally be a `Feature` with `Polygon` geometry and `center_lng` / `center_lat` /
    `rotation_degrees` properties.
 10. Uploaded zone files are rejected above 10 MB and when unparseable.
+11. Every settings write that takes a `userId` — both placement phases, the zone uploads and
+    the zone deletes — appends an audit entry naming that actor, after the save. The settings
+    row records *when* a value changed; the audit log is the only record of *who*. A rejected
+    upload never reaches the row and writes no entry.
+12. The city-planning team slug is normalized on both sides before comparing, so the configured
+    value and the stored slug match regardless of case. A blank configured slug matches nothing.
 
 ## 5. Seams
 
 Specified but not built. Not ranked, not to be built by a doctor run — noted because items
 touching these callers are shaped by them.
 
-- **An audit trail for phase toggles and zone uploads.** Every settings write takes a
-  `userId` and drops it; `CityPlanningSettings` records *when* a phase changed but not *who*
-  changed it. The repo-wide rule is that admin actions on members' behalf leave audit
-  entries. Either the parameters carry an audit write, or they should not be parameters.
-- **Container placement history.** Barrio polygons keep every version; container placements
-  keep none. Nothing states that asymmetry as a decision.
+- **Container placement history, kept in season.** Barrio polygons keep every version;
+  container placements keep none. Peter's call (2026-08-26): keeping placement history
+  within a season is reasonable, and the history is expected to be archived at the rollover
+  into the next season. Neither half is built.
 
 ## 6. Deliberately not done
 

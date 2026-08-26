@@ -237,8 +237,9 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
     {
         var now = Clock.GetCurrentInstant();
 
-        var result = await _repo.MutateSettingsAsync(2028, s => s.IsPlacementOpen = true, now, Xunit.TestContext.Current.CancellationToken);
+        await _repo.MutateSettingsAsync(2028, s => s.IsPlacementOpen = true, now, Xunit.TestContext.Current.CancellationToken);
 
+        var result = await _repo.GetOrCreateSettingsAsync(2028, now, Xunit.TestContext.Current.CancellationToken);
         result.IsPlacementOpen.Should().BeTrue();
         result.UpdatedAt.Should().Be(now);
     }
@@ -257,7 +258,7 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
         Clock.Advance(Duration.FromSeconds(10));
         var now = Clock.GetCurrentInstant();
 
-        var result = await _repo.MutateSettingsAsync(
+        await _repo.MutateSettingsAsync(
             2026,
             s =>
             {
@@ -266,6 +267,7 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
             },
             now, Xunit.TestContext.Current.CancellationToken);
 
+        var result = await _repo.GetOrCreateSettingsAsync(2026, now, Xunit.TestContext.Current.CancellationToken);
         result.IsPlacementOpen.Should().BeTrue();
         result.OpenedAt.Should().Be(now);
         result.UpdatedAt.Should().Be(now);

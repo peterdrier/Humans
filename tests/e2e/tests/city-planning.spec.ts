@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import {
   loginAsVolunteer,
   loginAsCampAdmin,
@@ -8,6 +8,20 @@ import {
   postWithCsrf,
 } from '../helpers/auth';
 
+// The container screens are keyed by season year, and QA's year moves. Read it off the
+// landing page's own container-map link rather than hard-coding it, so the spec follows
+// the season instead of being edited every rollover.
+async function containerMapYear(page: Page): Promise<string> {
+  await page.goto('/CityPlanning');
+  const href = await page
+    .locator('a[href*="/CityPlanning/ContainerMap/"]')
+    .first()
+    .getAttribute('href');
+  const year = href?.match(/\/ContainerMap\/(\d+)/)?.[1];
+  expect(year, 'a map admin should see the container-map link on /CityPlanning').toBeTruthy();
+  return year!;
+}
+
 test.describe('City Planning (38-city-planning)', () => {
   test.describe('view access', () => {
     test('volunteer can view /CityPlanning', async ({ page }) => {
@@ -16,6 +30,51 @@ test.describe('City Planning (38-city-planning)', () => {
 
       expect(page.url()).toContain('/CityPlanning');
       await expect(page.locator('#map-page, #map').first()).toBeVisible();
+    });
+
+    // #map alone would also match /CityPlanning's own map, and the re-executed error
+    // view would match neither — data-user-camp-season-id is rendered only by BarrioMap.
+    test('volunteer can view /CityPlanning/BarrioMap', async ({ page }) => {
+      await loginAsVolunteer(page);
+      await page.goto('/CityPlanning/BarrioMap');
+
+      expect(page.url()).toContain('/CityPlanning/BarrioMap');
+      await expect(page.locator('#map[data-user-camp-season-id]')).toBeVisible();
+    });
+  });
+
+  test.describe('container screens — positive', () => {
+    test('city-planning team member can view the container map', async ({ page }) => {
+      await loginAsCityPlanning(page);
+      const year = await containerMapYear(page);
+      await page.goto(`/CityPlanning/ContainerMap/${year}`);
+
+      expect(page.url()).toContain(`/CityPlanning/ContainerMap/${year}`);
+      await expect(page.locator('#container-sidebar')).toBeVisible();
+    });
+
+    test('city-planning team member can view the org container list', async ({ page }) => {
+      await loginAsCityPlanning(page);
+      const year = await containerMapYear(page);
+      await page.goto(`/CityPlanning/BarrioMap/Admin/Containers/${year}`);
+
+      expect(page.url()).toContain(`/CityPlanning/BarrioMap/Admin/Containers/${year}`);
+      await expect(page.locator('a[href*="/CityPlanning/ContainerMap/"]').first()).toBeVisible();
+    });
+  });
+
+  test.describe('container screens — boundary', () => {
+    // Both guards run before the year is used, so any year exercises the deny path.
+    const anyYear = new Date().getUTCFullYear();
+
+    test('volunteer cannot access the container map', async ({ page }) => {
+      await loginAsVolunteer(page);
+      await expectBlocked(page, `/CityPlanning/ContainerMap/${anyYear}`);
+    });
+
+    test('volunteer cannot access the org container list', async ({ page }) => {
+      await loginAsVolunteer(page);
+      await expectBlocked(page, `/CityPlanning/BarrioMap/Admin/Containers/${anyYear}`);
     });
   });
 

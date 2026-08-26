@@ -109,9 +109,10 @@ internal interface ICityPlanningRepository : IRepository
     /// <summary>
     /// Loads the settings row for the given year (creating on demand), applies
     /// <paramref name="mutate"/>, sets <c>UpdatedAt</c> to <paramref name="now"/>,
-    /// and persists. Returns the updated row (detached).
+    /// and persists. Read the result back through
+    /// <see cref="GetOrCreateSettingsAsync"/> when a caller needs it.
     /// </summary>
-    Task<CityPlanningSettings> MutateSettingsAsync(
+    Task MutateSettingsAsync(
         int year,
         Action<CityPlanningSettings> mutate,
         Instant now,

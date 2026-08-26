@@ -221,4 +221,16 @@ public enum AuditAction
     // One per credit transfer in a generated SEPA payout file (nobodies-collective/Humans#1134).
     // Written by Finance; the IBAN in the description is always masked.
     SepaPayoutTransfer,
+    // City Planning settings writes. These decide who may move barrios and containers on the
+    // site map and what the published ground truth is, and every one of them is an organiser
+    // acting on the members' behalf. The settings row records when a phase changed but not
+    // who changed it, so the actor lives here.
+    CityPlanningPlacementOpened,
+    CityPlanningPlacementClosed,
+    CityPlanningContainerPlacementOpened,
+    CityPlanningContainerPlacementClosed,
+    CityPlanningLimitZoneUpdated,
+    CityPlanningLimitZoneDeleted,
+    CityPlanningOfficialZonesUpdated,
+    CityPlanningOfficialZonesDeleted,
 }

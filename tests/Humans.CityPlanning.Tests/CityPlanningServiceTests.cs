@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.CityPlanning.Contracts;
+using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Teams.Contracts;
 using Humans.CityPlanning.Services;
@@ -21,6 +22,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     private readonly ICampServiceRead _campService;
     private readonly ITeamServiceRead _teamService;
     private readonly IUserServiceRead _userService;
+    private readonly IAuditLogService _auditLog;
     private readonly CityPlanningService _sut;
     private readonly CityPlanningOptions _options = new() { CityPlanningTeamSlug = "city-planning" };
 
@@ -30,10 +32,11 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         _campService = Substitute.For<ICampServiceRead>();
         _teamService = Substitute.For<ITeamServiceRead>();
         _userService = Substitute.For<IUserServiceRead>();
+        _auditLog = Substitute.For<IAuditLogService>();
         var repo = new CityPlanningRepository(CityPlanningDbFactory);
         _sut = new CityPlanningService(
             repo, Clock, Options.Create(_options),
-            _campService, _teamService, _userService);
+            _campService, _teamService, _userService, _auditLog);
     }
 
     // --- Helpers ---
@@ -287,7 +290,134 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         result.Should().BeTrue();
     }
 
-    private void SetupCityPlanningTeam(Guid teamId, Guid? memberUserId)
+    // --- Audit: the settings row records when a phase or zone changed, never who. These
+    // writes are organisers acting on the members' behalf, so the actor lives in the audit log.
+
+    [HumansFact]
+    public async Task OpenPlacementAsync_WritesAuditEntry_NamingTheActor()
+    {
+        var settings = await SeedMapSettingsAsync();
+        var userId = NewUserId();
+
+        await _sut.OpenPlacementAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CityPlanningPlacementOpened,
+            nameof(CityPlanningSettings),
+            settings.Id,
+            Arg.Any<string>(),
+            userId,
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task ClosePlacementAsync_WritesAuditEntry()
+    {
+        await SeedMapSettingsAsync(placementOpen: true);
+        var userId = NewUserId();
+
+        await _sut.ClosePlacementAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CityPlanningPlacementClosed,
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), userId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task ContainerPlacementToggles_WriteTheirOwnAuditActions()
+    {
+        await SeedMapSettingsAsync();
+        var userId = NewUserId();
+
+        await _sut.OpenContainerPlacementAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await _sut.CloseContainerPlacementAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CityPlanningContainerPlacementOpened,
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), userId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CityPlanningContainerPlacementClosed,
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), userId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task ZoneUploadAndDelete_WriteTheirOwnAuditActions()
+    {
+        await SeedMapSettingsAsync();
+        var userId = NewUserId();
+        var file = CreateUpload("""{"type":"FeatureCollection","features":[]}""");
+
+        await _sut.UpdateOfficialZonesFromUploadAsync(file, userId, Xunit.TestContext.Current.CancellationToken);
+        await _sut.DeleteLimitZoneAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CityPlanningOfficialZonesUpdated,
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), userId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CityPlanningLimitZoneDeleted,
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), userId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    // A rejected upload never reaches the settings row, so it must not leave an audit entry.
+    [HumansFact]
+    public async Task UpdateLimitZoneFromUploadAsync_RejectedFile_WritesNoAuditEntry()
+    {
+        await SeedMapSettingsAsync();
+
+        var result = await _sut.UpdateLimitZoneFromUploadAsync(
+            CreateUpload("{not-json"), NewUserId(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        await _auditLog.DidNotReceive().LogAsync(
+            AuditAction.CityPlanningLimitZoneUpdated,
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    // The slug is normalized on both sides. Before that it was lower-cased on the configured
+    // side only and compared Ordinal, so a stored slug carrying any uppercase never matched
+    // and every city-planning team member silently lost their map-admin exemption.
+    [HumansFact]
+    public async Task IsCityPlanningTeamMemberAsync_StoredSlugHasUppercase_StillMatches()
+    {
+        var userId = NewUserId();
+        SetupCityPlanningTeam(Guid.NewGuid(), memberUserId: userId, slug: "City-Planning");
+
+        var result = await _sut.IsCityPlanningTeamMemberAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        result.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task IsCityPlanningTeamMemberAsync_ConfiguredSlugHasUppercase_StillMatches()
+    {
+        var userId = NewUserId();
+        _options.CityPlanningTeamSlug = "City-Planning";
+        SetupCityPlanningTeam(Guid.NewGuid(), memberUserId: userId);
+
+        var result = await _sut.IsCityPlanningTeamMemberAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        result.Should().BeTrue();
+    }
+
+    // Normalizing both sides turns null into the empty string, so a blank configured slug
+    // would otherwise match any team whose CustomSlug is null.
+    [HumansFact]
+    public async Task IsCityPlanningTeamMemberAsync_BlankConfiguredSlug_MatchesNothing()
+    {
+        var userId = NewUserId();
+        _options.CityPlanningTeamSlug = "   ";
+        SetupCityPlanningTeam(Guid.NewGuid(), memberUserId: userId);
+
+        var result = await _sut.IsCityPlanningTeamMemberAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        result.Should().BeFalse();
+    }
+
+    private void SetupCityPlanningTeam(Guid teamId, Guid? memberUserId, string slug = "city-planning")
     {
         var members = memberUserId.HasValue
             ? new List<TeamMemberInfo>
@@ -297,7 +427,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
             }
             : new List<TeamMemberInfo>();
         var teamInfo = new TeamInfo(
-            teamId, "City Planning", null, "city-planning",
+            teamId, "City Planning", null, slug,
             IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
             RequiresApproval: false, IsPublicPage: false, IsHidden: false,
             IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,

@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.CityPlanning.Contracts;
+using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Teams.Contracts;
 using Humans.CityPlanning.Services;
@@ -29,7 +30,8 @@ public sealed class ContainerPlacementPhaseTests : CityPlanningTestBase
             repo, Clock, Options.Create(options),
             _campService,
             Substitute.For<ITeamServiceRead>(),
-            Substitute.For<IUserServiceRead>());
+            Substitute.For<IUserServiceRead>(),
+            Substitute.For<IAuditLogService>());
     }
 
     [HumansFact]

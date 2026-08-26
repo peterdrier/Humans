@@ -207,7 +207,7 @@ has no back-navigation (it has two, lines 57 and 63), and a claim that the
 | `src/Sections/Humans.CityPlanning/Data/Migrations/CityPlanningDbContextModelSnapshot.cs` | reviewed |
 | `src/Sections/Humans.CityPlanning/Docs/CityPlanning.md` | changed |
 | `src/Sections/Humans.CityPlanning/Docs/authorization.md` | changed |
-| `src/Sections/Humans.CityPlanning/Docs/data-access.md` | reviewed |
+| `src/Sections/Humans.CityPlanning/Docs/data-access.md` | changed |
 | `src/Sections/Humans.CityPlanning/Docs/features/city-planning.md` | changed |
 | `src/Sections/Humans.CityPlanning/Domain/CampPolygon.cs` | reviewed |
 | `src/Sections/Humans.CityPlanning/Domain/CampPolygonHistory.cs` | changed |
@@ -222,7 +222,7 @@ has no back-navigation (it has two, lines 57 and 63), and a claim that the
 | `src/Sections/Humans.CityPlanning/SectionNav.cs` | reviewed |
 | `src/Sections/Humans.CityPlanning/Services/CityPlanningDtos.cs` | reviewed |
 | `src/Sections/Humans.CityPlanning/Services/CityPlanningHub.cs` | changed |
-| `src/Sections/Humans.CityPlanning/Services/CityPlanningService.cs` | reviewed |
+| `src/Sections/Humans.CityPlanning/Services/CityPlanningService.cs` | changed |
 | `src/Sections/Humans.CityPlanning/Views/CityPlanning/Admin.cshtml` | reviewed |
 | `src/Sections/Humans.CityPlanning/Views/CityPlanning/BarrioMap.cshtml` | reviewed |
 | `src/Sections/Humans.CityPlanning/Views/CityPlanning/ContainerMap.cshtml` | reviewed |
@@ -275,6 +275,8 @@ has no back-navigation (it has two, lines 57 and 63), and a claim that the
 | `docs/health/runs/2026-08-26-CityPlanning.md` | changed (new; this file) |
 | `docs/architecture/debt-ledger.yml` | changed (sweep commit only) |
 | `src/Sections/Humans.MailerLite/Docs/debt.yml` | changed (sweep commit only) |
+| `src/Sections/Humans.AuditLog.Contracts/AuditAction.cs` | changed (post-answer; eight appended values) |
+| `tests/e2e/tests/city-planning.spec.ts` | changed (post-answer) |
 
 ## Threads
 
@@ -340,17 +342,64 @@ has no back-navigation (it has two, lines 57 and 63), and a claim that the
   `Accept-Language` and a hand-set `.AspNetCore.Culture` cookie — a first attempt
   through either rendered English for *every* culture, including pre-existing keys
   that are certainly translated. That looked like a defect and was not one.
+- **Resumed after Peter's answers (same PR, same day).** Peter answered the
+  Needs-Peter list in session and scoped the five-commit cap to Codex review
+  rounds counted from functional completion, so the three approved behaviour
+  changes landed in peterdrier/Humans#1525 rather than a follow-up:
+  - **#22 → normalize.** `IsCityPlanningTeamMemberAsync` now lower-cases both
+    sides — the configured slug and each `Team.Slug` / `Team.CustomSlug` — and a
+    blank configured slug matches nothing (normalizing turns a null
+    `CustomSlug` into `""`, which would otherwise match every team that has
+    none). Three tests: stored-slug uppercase, configured-slug uppercase, blank.
+  - **#21 → narrow it.** `ICityPlanningRepository.MutateSettingsAsync` returns
+    `Task`; the repository no longer detaches and returns the entity, and the two
+    repository tests read the row back through `GetOrCreateSettingsAsync` —
+    which is what the narrowed contract's doc now tells callers to do.
+  - **#18 → add audit.** All eight `userId`-taking settings writes route through
+    one private `MutateSettingsAndAuditAsync` helper that saves first, then logs
+    through the `IAuditLogService` crosscut. Eight new `AuditAction` values
+    appended (`CityPlanning*`; the enum is string-stored, so no migration).
+    `UpdatePlacementDatesAsync` and `UpdateRegistrationInfoAsync` take no
+    `userId` and stay unaudited. Five tests, including that a rejected upload
+    writes no entry.
+  - **#13 → non-issue.** `tests/e2e/tests/city-planning.spec.ts` already covers
+    `/CityPlanning` and `/CityPlanning/BarrioMap/Admin` in both directions, the
+    admin POSTs, and the export endpoint, against QA on push to main. Peter
+    ruled the gap a non-issue; moving `CityPlanningPageRenderTests` into the
+    section project was the wrong answer — the integration project never runs in
+    CI **by design**. Three genuinely uncovered routes got e2e tests instead:
+    `/CityPlanning/BarrioMap` for a volunteer, and both container screens in
+    positive and deny form. The spec reads the season year off the landing
+    page's own container-map link rather than hard-coding it, so it follows the
+    rollover. The two comments from #13 now name the e2e suite as the
+    post-merge guard instead of claiming nothing catches a missing line.
+  - **#19 → in-season history is reasonable**, archived at the rollover into the
+    next season; neither half is built. Recorded as the section's one seam.
+  - **#20 → deferred:** the year-specific work is being taken together in the
+    winter months. The `debt.yml` entry carries the deferral.
+  - **#23 no** (no Stryker), **#24 not possible** (upstream scope),
+    **#25 the selector already prefers new sections**, **#26 the wrong-verdict
+    system is working as intended**, **#27 the first-run wording is fine.**
+
+  Section tests 57 → 65. New debt recorded: `CityPlanningTeamSlug`'s
+  configuration default is `"City Planning"` (spaces, capitals) while
+  `DevPersonaSeeder` hard-codes `"city-planning"` — normalization makes case
+  irrelevant but cannot bridge a space to a hyphen, so an unconfigured instance
+  still gives the team no exemption.
 
 ## Skipped
 
 - **Sections passed over as blocked:** Store — open doctor PR
   peterdrier/Humans#1520.
-- **Finding #18** (settings writes drop their `userId`) — adding audit writes
-  or removing public parameters are both behaviour changes; Needs Peter.
+- **Finding #18** (settings writes drop their `userId`) — held as Needs Peter
+  through the doctor phases, then **built** on his answer; see `## Worked`.
 - **Finding #19** (container placement keeps no history) — a design question,
-  not a defect; recorded as a seam in `health.md` and Needs Peter.
-- **Findings #20, #21, #22** — behaviour fixes, out of a doctor run's lane.
-  Recorded in the section's new `Docs/debt.yml`.
+  not a defect; recorded as a seam in `health.md`, and Peter's answer is now on
+  that seam. Still not built, deliberately.
+- **Findings #20, #21, #22** — behaviour fixes, out of a doctor run's lane, so
+  all three were recorded in the section's new `Docs/debt.yml` first. Peter then
+  approved #21 and #22 in session and both were **built** in this PR and struck
+  from the ledger; #20 stays, carrying his winter deferral.
 - **Finding #23** (mutation score) — Stryker not installed; out of scope by
   instruction.
 - **Finding #24** (upstream issues) — repository not configured for this
@@ -423,14 +472,19 @@ skill does not say so. See finding #27.
 
 ## Needs Peter
 
-- [ ] #13 — nothing CI runs guards the page routes or the `_ViewImports` set: move `CityPlanningPageRenderTests` into the section's own project, or accept the gap?
-- [ ] #18 — the settings writes take a `userId` and drop it: add the audit entries, or drop the parameters?
-- [ ] #19 — container placement keeps no history while polygons keep every version: a decision to write down, or an omission to fix?
-- [ ] #23 — Stryker is not installed here: provision it, or leave the mutation half permanently skipped in this environment?
-- [ ] #24 — `nobodies-collective/Humans` is out of session scope: widen it, or accept the Inbox thread running fork-only?
-- [ ] #25 — Phase 2: tie-break the selector toward a section with no `Docs/health.md`?
-- [ ] #26 — Phase 3 dispatch: raise the Prose & surface thread's model floor, or require a proving call site per absence verdict?
-- [ ] #27 — Phase 6: state that a first run answers the target-diff question with "no prior target"?
+All answered in session on 2026-08-26; the resolutions are in `## Worked`.
+
+- [x] #13 — non-issue: the e2e suite already guards the page routes post-merge. Three uncovered routes got e2e tests; the two comments now name it.
+- [x] #18 — add the audit entries. Done, with eight new `CityPlanning*` `AuditAction` values.
+- [x] #19 — in-season history is reasonable, archived at season rollover. Written down as the section's seam; not built.
+- [x] #20 — deferred: year-specific work goes together in the winter months.
+- [x] #21 — narrow it. `MutateSettingsAsync` returns `Task`.
+- [x] #22 — normalize both sides. Blank configured slug matches nothing.
+- [x] #23 — no Stryker. The mutation half stays skipped in this environment.
+- [x] #24 — widening upstream scope is not possible. The Inbox thread runs fork-only.
+- [x] #25 — the selector already prefers a section with no `Docs/health.md`. No change.
+- [x] #26 — the wrong-verdict system is working as intended: subagent findings are hypotheses and refuting them is the job. No change.
+- [x] #27 — the first-run target-diff wording is fine as written. No change.
 
 ## Sweep queue
 
