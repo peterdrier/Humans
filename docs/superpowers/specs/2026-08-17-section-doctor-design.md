@@ -246,7 +246,7 @@ The plan is advisory — run-day findings can extend a section's stay.
   front to back, baseline build first (reforge needs it). Parallel subagent lanes where useful
   (models explicit + tagged): code/arch lane (audit-surface posture with per-method caller
   counts, smells, reforge, reuse-review checklist, flow-trace simplification pass), tests lane
-  (good/bad/ugly triage; **section-scoped Stryker kicked off in background**; the **invariant
+  (good/bad/ugly triage; section-scoped Stryker only under `--mutation`; the **invariant
   coverage matrix** — every invariant/negative rule/trigger in the section doc mapped to a
   pinning test), InspectCode lane (`jb inspectcode` scoped to the section), docs lane (section
   `Docs/*.md` + `docs/guide/<Section>.md` vs code; trigger-glob verification), surface lane
