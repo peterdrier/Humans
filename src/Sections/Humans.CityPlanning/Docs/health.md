@@ -148,6 +148,6 @@ touching these callers are shaped by them.
 
 ## History
 
-| Run | Date | Reforge (surface / loc / cogP95 / cogMax) | PR |
+| Date | Run | Reforge score | Notes |
 |---|---|---|---|
-| 1 | 2026-08-26 | 210 / 1947 / 4 / 6 | pending |
+| 2026-08-26 | [2026-08-26-CityPlanning](../../../../docs/health/runs/2026-08-26-CityPlanning.md) | 210 → 210 (loc 1947 → 1942, cogP95 4, cogMax 6) | First doctor run; this target derived from scratch. Structure was sound — the value was in what the section claimed about itself (a documented ordering guarantee the query does not make, a non-existent EF relationship, both authorization rows naming the wrong guard) and in three untested paths, including the cross-section delete Camps calls. Three behaviour bugs found and recorded in `Docs/debt.yml` rather than fixed. PR: pending |
