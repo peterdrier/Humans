@@ -23,9 +23,8 @@ namespace Humans.Expenses;
 /// The Holded HTTP client is <em>not</em> registered here. <c>IHoldedClient</c> belongs to the
 /// Holded section, which registers it; Expenses consumes it through
 /// <c>Humans.Holded.Contracts</c> (memory/architecture/vendor-connectors-own-sections.md).
-/// <c>HoldedExpenseOutboxJob</c> moved into <c>Contracts/</c> at G5 lane 5b-5
-/// (nobodies-collective/Humans#866) and drives <c>IExpenseReportBackgroundProcessor</c>; its
-/// registration and schedule are contributed via <c>SectionJobs.cs</c> (#1074's jobs seam).
+/// <c>HoldedExpenseOutboxJob</c> (<c>Jobs/</c>) drives <c>IExpenseReportBackgroundProcessor</c>;
+/// its registration and schedule are contributed via <c>SectionJobs.cs</c>.
 /// </remarks>
 public sealed class Section : ISection
 {

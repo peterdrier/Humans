@@ -52,8 +52,8 @@ public sealed record ExpenseAttachmentDownload(
 /// <summary>
 /// Round-trip timeline for a single report: the submitter-facing payment half, derived from the
 /// cached Holded creditor ledger, plus the finance-admin-facing push half, derived from the report's
-/// outbox event. The push half answers "did this one reach Holded?" — the question that used to be
-/// answerable only from server logs (nobodies-collective/Humans#1045).
+/// outbox event. The push half answers "did this one reach Holded?"
+/// (nobodies-collective/Humans#1045).
 /// </summary>
 public sealed record ExpenseHoldedTimeline
 {
@@ -89,8 +89,7 @@ public sealed record ExpenseHoldedTimeline
     public bool CanRetry => SyncState is ExpenseHoldedSyncState.Retrying or ExpenseHoldedSyncState.Failed;
 }
 
-/// <summary>Where a report's Holded push currently stands. Replaces the old blank-or-not rendering
-/// of <c>HoldedDocId is null</c>, which collapsed all of these into "nothing".</summary>
+/// <summary>Where a report's Holded push currently stands.</summary>
 public enum ExpenseHoldedSyncState
 {
     /// <summary>No push has been queued — the report is not approved yet.</summary>

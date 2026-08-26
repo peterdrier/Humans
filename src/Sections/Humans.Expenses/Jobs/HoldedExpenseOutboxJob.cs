@@ -11,10 +11,8 @@ namespace Humans.Expenses.Jobs;
 /// the state they read.
 /// </summary>
 /// <remarks>
-/// Moved out of <c>Humans.Infrastructure/Jobs</c> at G5 lane 5b-5
-/// (nobodies-collective/Humans#866), so shim and body are both Expenses'. It sits under
-/// <c>Jobs/</c> because Shell names the concrete type at registration and HUM0034
-/// makes every other public type in a section an error.
+/// It sits under <c>Jobs/</c> because Shell names the concrete type at registration and
+/// HUM0034 makes every other public type in a section an error.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class HoldedExpenseOutboxJob(

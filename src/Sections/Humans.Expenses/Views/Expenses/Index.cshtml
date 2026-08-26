@@ -7,8 +7,8 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="mb-0">@Localizer["Expenses_MyReportsTitle"]</h1>
     <div class="d-flex gap-2">
-        @* The separate coordinator queue is gone; Review is one queue scoped to the viewer. The
-           badge still counts only what awaits this coordinator's endorsement. *@
+        @* Review is one queue scoped to the viewer; this badge counts only what awaits this
+           coordinator's endorsement. *@
         @if (Model.IsCoordinator)
         {
             <a asp-action="Review" class="btn btn-outline-secondary">

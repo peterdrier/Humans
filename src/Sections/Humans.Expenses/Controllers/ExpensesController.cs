@@ -183,18 +183,15 @@ internal sealed class ExpensesController(
                 or ExpenseReportStatus.Approved;
             var canEdit = await AllowsAsync(report, ExpenseReportOperation.Edit);
             // Always the *report's* IBAN state, never the viewer's — an admin setting it up for a
-            // member needs the member's answer, and the two used to be conflated here.
+            // member needs the member's answer.
             var iban = isSubmitter || canEdit
                 ? await GetIbanViewAsync(report.SubmitterUserId)
                 : (HasIban: false, MaskedIban: null);
 
-            // Finance admins reviewing a report can bind the submitter to a Holded creditor account
-            // before approval, so the push reuses the right 400000xx instead of minting a duplicate.
             var isFinanceAdmin = (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
             var decisions = await ResolveDecisionsAsync(report);
             // The submitter reads the payment half of the timeline; the finance admin reads the push
-            // half — and is the only one who can act on a failed push, so withholding it from them
-            // was backwards (nobodies-collective/Humans#1045).
+            // half and is the only one who can act on a failed push.
             var timeline = isSubmitter || isFinanceAdmin
                 ? await expenseReadService.GetHoldedTimelineAsync(report)
                 : null;
@@ -247,7 +244,7 @@ internal sealed class ExpensesController(
             if (!await AllowsAsync(report, ExpenseReportOperation.Edit))
             {
                 // Someone who may read the report but not change it is told why; everyone else is
-                // refused outright, which is what the ownership check used to do on its own.
+                // refused outright.
                 if (!await AllowsAsync(report, ExpenseReportOperation.View)) return Forbid();
                 SetError("This report can no longer be edited.");
                 return RedirectToAction(nameof(Detail), new { id });
@@ -319,7 +316,6 @@ internal sealed class ExpensesController(
             ReportId = id,
             IsInvoice = type == ExpenseLineType.Invoice,
         };
-        // No type chosen yet → the invoice-or-receipt chooser comes first.
         return type is null ? View("NewLineChoice", model) : View(model);
     }
 
@@ -726,9 +722,8 @@ internal sealed class ExpensesController(
     }
 
     /// <summary>
-    /// The one review queue, scoped to the viewer (peterdrier/Humans#1447). It replaced a separate
-    /// coordinator queue that differed from this page only in which rows it listed — a difference
-    /// that stopped being structural once every decision moved onto <see cref="Detail"/>.
+    /// The one review queue, scoped to the viewer (peterdrier/Humans#1447). It lists and links;
+    /// every decision is taken from <see cref="Detail"/>.
     /// </summary>
     [HttpGet("Review")]
     public async Task<IActionResult> Review()
@@ -862,11 +857,9 @@ internal sealed class ExpensesController(
     }
 
     /// <summary>
-    /// Which decisions the detail page offers the current user. Every decision on a report is
-    /// taken from that page now — approving from a queue row meant approving without ever opening
-    /// the receipts (peterdrier/Humans#1447). The authorization handler owns the actor matrix;
-    /// the status guard here mirrors the repository's, so a button that would be refused on
-    /// arrival is not drawn.
+    /// Which decisions the detail page offers the current user. The authorization handler owns the
+    /// actor matrix; the status guard here mirrors the repository's, so a button that would be
+    /// refused on arrival is not drawn.
     /// </summary>
     private async Task<(bool Approve, bool FinanceReject, bool Endorse, bool CoordinatorReject)>
         ResolveDecisionsAsync(ExpenseReportDto report)
@@ -881,7 +874,6 @@ internal sealed class ExpensesController(
             CoordinatorReject: await AllowsAsync(report, ExpenseReportOperation.CoordinatorReject));
     }
 
-    /// <summary>Whether the current user may take <paramref name="operation"/> on the report.</summary>
     private async Task<bool> AllowsAsync(ExpenseReportDto report, ExpenseReportOperation operation) =>
         (await authService.AuthorizeAsync(User, report,
             new ExpenseReportOperationRequirement(operation))).Succeeded;
@@ -905,8 +897,8 @@ internal sealed class ExpensesController(
     }
 
     /// <summary>
-    /// Who may set the payment IBAN this report will pay to: its submitter at any status (their own
-    /// profile, unchanged), or anyone the Edit grant covers — a finance admin filing on their behalf.
+    /// The submitter keeps this at any status — it is their own profile — on top of whoever the
+    /// Edit grant covers.
     /// </summary>
     private async Task<bool> CanSetReportIbanAsync(ExpenseReportDto report, Guid userId) =>
         report.SubmitterUserId == userId || await AllowsAsync(report, ExpenseReportOperation.Edit);

@@ -363,8 +363,7 @@
         }
 
         @* Finance admins are the only people who can act on a failed push, so they are the ones who
-           get told about it. Before this the state was rendered only as the presence or absence of
-           the payment card above, and only for the submitter (nobodies-collective/Humans#1045). *@
+           get told about it (nobodies-collective/Humans#1045). *@
         @if (Model.CanBindCreditor && Model.HoldedTimeline is { } sync)
         {
             <div class="card mb-3">

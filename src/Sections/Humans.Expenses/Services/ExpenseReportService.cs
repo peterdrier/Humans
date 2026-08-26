@@ -1269,8 +1269,7 @@ internal sealed class ExpenseReportService(
         // retryable doc-create + attachment steps. The supplier-account number is backfilled in step 4.
         await repo.SetHoldedContactLinkAsync(report.Id, holdedContactId, null, now, ct);
 
-        // Books items[].account directly at doc creation (Peter, 2026-08-10: the account IS the
-        // category — tags were a v1 workaround from before double-entry was understood). Null when
+        // Books items[].account directly at doc creation — the account IS the category. Null when
         // the category has no active mapping; the doc still creates, just unbooked.
         var holdedAccountId = await holdedFinance.GetHoldedAccountIdForCategoryAsync(report.BudgetCategoryId, ct);
 
