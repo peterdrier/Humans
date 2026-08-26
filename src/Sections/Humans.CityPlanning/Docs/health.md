@@ -99,9 +99,11 @@ Stated so a violation is recognisable:
    `rotation_degrees` properties.
 10. Uploaded zone files are rejected above 10 MB and when unparseable.
 11. Every settings write that takes a `userId` — both placement phases, the zone uploads and
-    the zone deletes — appends an audit entry naming that actor, after the save. The settings
-    row records *when* a value changed; the audit log is the only record of *who*. A rejected
-    upload never reaches the row and writes no entry.
+    the zone deletes — appends an audit entry naming that actor, after the save, and a request
+    aborted mid-write does not drop it: the row id is resolved before the save so no cancellable
+    await sits between the save and the token-less `LogAsync`. The settings row records *when* a
+    value changed; the audit log is the only record of *who*. A rejected upload never reaches the
+    row and writes no entry.
 12. The city-planning team slug is normalized on both sides before comparing, so the configured
     value and the stored slug match regardless of case. A blank configured slug matches nothing.
 
@@ -159,4 +161,4 @@ touching these callers are shaped by them.
 
 | Date | Run | Reforge score | Notes |
 |---|---|---|---|
-| 2026-08-26 | [2026-08-26-CityPlanning](../../../../docs/health/runs/2026-08-26-CityPlanning.md) | 210 → 218 (loc 1947 → 1950, cogP95 4, cogMax 6) | First doctor run; this target derived from scratch. The score rose only after Peter approved the audit change: the whole +8 is `crossSectionFullService` for injecting `IAuditLogService`, which has no read-only half — it is the one interface every writer to the crosscut takes, so the cost is not narrowable and is the price of the audit trail. Structure was sound — the value was in what the section claimed about itself (a documented ordering guarantee the query does not make, a non-existent EF relationship, both authorization rows naming the wrong guard) and in untested paths, including the cross-section delete Camps calls. Behaviour bugs found and recorded in `Docs/debt.yml` rather than fixed. PR: peterdrier/Humans#1525 |
+| 2026-08-26 | [2026-08-26-CityPlanning](../../../../docs/health/runs/2026-08-26-CityPlanning.md) | 210 → 218 (loc 1947 → 1953, cogP95 4, cogMax 6) | First doctor run; this target derived from scratch. The score rose only after Peter approved the audit change: the whole +8 is `crossSectionFullService` for injecting `IAuditLogService`, which has no read-only half — it is the one interface every writer to the crosscut takes, so the cost is not narrowable and is the price of the audit trail. Structure was sound — the value was in what the section claimed about itself (a documented ordering guarantee the query does not make, a non-existent EF relationship, both authorization rows naming the wrong guard) and in untested paths, including the cross-section delete Camps calls. Behaviour bugs found and recorded in `Docs/debt.yml` rather than fixed. PR: peterdrier/Humans#1525 |

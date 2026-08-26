@@ -380,6 +380,46 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
+    // IAuditLogService takes no cancellation token by design. Before the fix the settings row
+    // was re-read after the save to get its id, so a request aborted during the write committed
+    // the change and never reached LogAsync — the actor record lost exactly when someone hit
+    // stop mid-click. The id is now resolved before the write.
+    [HumansFact]
+    public async Task OpenPlacementAsync_RequestCancelledDuringTheSave_StillWritesAuditEntry()
+    {
+        SetupCampSettings();
+        var settingsId = Guid.NewGuid();
+        var userId = NewUserId();
+        using var cts = new CancellationTokenSource();
+
+        var repo = Substitute.For<ICityPlanningRepository>();
+        repo.GetOrCreateSettingsAsync(Arg.Any<int>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                ci.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return new CityPlanningSettings { Id = settingsId, Year = 2026 };
+            });
+        repo.MutateSettingsAsync(
+                Arg.Any<int>(), Arg.Any<Action<CityPlanningSettings>>(),
+                Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(_ => cts.CancelAsync());
+
+        var sut = new CityPlanningService(
+            repo, Clock, Options.Create(_options),
+            _campService, _teamService, _userService, _auditLog);
+
+        await sut.OpenPlacementAsync(userId, cts.Token);
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CityPlanningPlacementOpened,
+            nameof(CityPlanningSettings),
+            settingsId,
+            Arg.Any<string>(),
+            userId,
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
+    }
+
     // The slug is normalized on both sides. Before that it was lower-cased on the configured
     // side only and compared Ordinal, so a stored slug carrying any uppercase never matched
     // and every city-planning team member silently lost their map-admin exemption.

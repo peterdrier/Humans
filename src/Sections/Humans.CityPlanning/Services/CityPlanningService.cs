@@ -35,8 +35,11 @@ internal sealed class CityPlanningService(
     /// <summary>
     /// Applies a settings change for the public year and records who made it. Every caller is
     /// an organiser acting on the members' behalf, and <c>CityPlanningSettings</c> stores only
-    /// when a value changed — the actor exists nowhere but the audit log. The row is re-read
-    /// after the save because the audit entry needs its id and the mutate call returns nothing.
+    /// when a value changed — the actor exists nowhere but the audit log. The row id is resolved
+    /// <em>before</em> the write: <c>LogAsync</c> deliberately takes no cancellation token, so a
+    /// cancellable await between the save and the audit call would let an aborted request commit
+    /// the change and skip its actor record. Both repository calls create the row on demand, and
+    /// nothing deletes it, so the id read here is the id the mutation writes.
     /// </summary>
     private async Task MutateSettingsAndAuditAsync(
         Action<CityPlanningSettings, Instant> mutate,
@@ -48,10 +51,11 @@ internal sealed class CityPlanningService(
         var campSettings = await campService.GetSettingsAsync(cancellationToken);
         var now = clock.GetCurrentInstant();
 
+        var settings = await repo.GetOrCreateSettingsAsync(campSettings.PublicYear, now, cancellationToken);
+
         await repo.MutateSettingsAsync(
             campSettings.PublicYear, s => mutate(s, now), now, cancellationToken);
 
-        var settings = await repo.GetOrCreateSettingsAsync(campSettings.PublicYear, now, cancellationToken);
         await auditLog.LogAsync(
             action, nameof(CityPlanningSettings), settings.Id, description, userId);
     }
