@@ -52,10 +52,10 @@ One polygon per CampSeason representing the camp's placed barrio area.
 | Property | Type | Notes |
 |----------|------|-------|
 | Id | Guid | PK |
-| CampSeasonId | Guid | FK → CampSeason (unique — one polygon per season) — **FK only**, no nav read by this section |
+| CampSeasonId | Guid | Bare reference id for the CampSeason (unique — one polygon per season). **No FK constraint and no navigation** — see the note under this table. |
 | GeoJson | text | GeoJSON Feature with Polygon geometry |
 | AreaSqm | double | Computed area in square meters |
-| LastModifiedByUserId | Guid | FK → User — **FK only**, no nav read by this section |
+| LastModifiedByUserId | Guid | Bare reference id for the User. **No FK constraint and no navigation.** |
 | LastModifiedAt | Instant | Last modification |
 
 ### CampPolygonHistory
@@ -67,10 +67,10 @@ Append-only per design-rules §12. The repository exposes no `UpdateAsync` / `Re
 | Property | Type | Notes |
 |----------|------|-------|
 | Id | Guid | PK |
-| CampSeasonId | Guid | FK → CampSeason — **FK only**, no nav read by this section |
+| CampSeasonId | Guid | Bare reference id for the CampSeason. **No FK constraint and no navigation.** |
 | GeoJson | text | GeoJSON snapshot |
 | AreaSqm | double | Area at time of snapshot |
-| ModifiedByUserId | Guid | FK → User — **FK only**, no nav read by this section |
+| ModifiedByUserId | Guid | Bare reference id for the User. **No FK constraint and no navigation.** |
 | ModifiedAt | Instant | When this version was saved |
 | Note | string (512) | Open-ended — the polygon `PUT` persists whatever the caller sends. Examples: `"Saved"` (the fallback when the caller sends none), `"Restored from {timestamp} UTC"` (composed server-side by a restore), `"Imported {timestamp}"` (what the bulk import sends) |
 

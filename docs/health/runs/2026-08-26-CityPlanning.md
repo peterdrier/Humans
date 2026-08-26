@@ -351,24 +351,24 @@ has no back-navigation (it has one at line 57 and another at line 63), and a cla
     sides — the configured slug and each `Team.Slug` / `Team.CustomSlug` — and a
     blank configured slug matches nothing (normalizing turns a null
     `CustomSlug` into `""`, which would otherwise match every team that has
-    none). Three tests: stored-slug uppercase, configured-slug uppercase, blank.
+    none). Tests cover stored-slug uppercase, configured-slug uppercase, and blank.
   - **#21 → narrow it.** `ICityPlanningRepository.MutateSettingsAsync` returns
     `Task`; the repository no longer detaches and returns the entity, and its
     tests read the row back through `GetOrCreateSettingsAsync` —
     which is what the narrowed contract's doc now tells callers to do.
   - **#18 → add audit.** Every `userId`-taking settings write routes through
     one private `MutateSettingsAndAuditAsync` helper that saves first, then logs
-    through the `IAuditLogService` crosscut. Eight new `AuditAction` values
-    appended (`CityPlanning*`; the enum is string-stored, so no migration).
-    `UpdatePlacementDatesAsync` and `UpdateRegistrationInfoAsync` take no
-    `userId` and stay unaudited. Five tests, including that a rejected upload
-    writes no entry.
+    through the `IAuditLogService` crosscut. A `CityPlanning*` `AuditAction`
+    value per audited write was appended (the enum is string-stored, so no
+    migration). `UpdatePlacementDatesAsync` and `UpdateRegistrationInfoAsync`
+    take no `userId` and stay unaudited. Tests cover each audited write plus
+    the case where a rejected upload writes no entry.
   - **#13 → non-issue.** `tests/e2e/tests/city-planning.spec.ts` already covers
     `/CityPlanning` and `/CityPlanning/BarrioMap/Admin` in both directions, the
     admin POSTs, and the export endpoint, against QA on push to main. Peter
     ruled the gap a non-issue; moving `CityPlanningPageRenderTests` into the
     section project was the wrong answer — the integration project never runs in
-    CI **by design**. Three genuinely uncovered routes got e2e tests instead:
+    CI **by design**. The genuinely uncovered routes got e2e tests instead:
     `/CityPlanning/BarrioMap` for a volunteer, and both container screens in
     positive and deny form. The spec reads the season year off the landing
     page's own container-map link rather than hard-coding it, so it follows the
@@ -403,7 +403,7 @@ has no back-navigation (it has one at line 57 and another at line 63), and a cla
   toggle is consistent with the entry silently not being written. The only read
   surface is `/AuditLog`, gated on `BoardOrAdmin`, and no seeded dev persona
   holds it — `coordinator` gets `AccessDenied`, which at least confirms that
-  deny path. The write itself is covered by the five unit tests asserting
+  deny path. The write itself is covered by the unit tests asserting
   `LogAsync` with the right action and actor; the row landing in a deployed
   database is unverified here and would need a persona with audit access.
 
