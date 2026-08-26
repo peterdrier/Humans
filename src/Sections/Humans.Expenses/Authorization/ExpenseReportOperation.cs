@@ -14,7 +14,6 @@ internal enum ExpenseReportOperation
     CoordinatorReject,
     Approve,
     FinanceReject,
-    CategoryOverride,
     /// <summary>Re-queue a stuck Holded push. Finance-admin only, and only after approval.</summary>
     RequeueHoldedPush
 }

@@ -32,7 +32,6 @@ internal sealed class ExpenseReportAuthorizationHandler(IBudgetServiceRead budge
             && (op is ExpenseReportOperation.View
                     or ExpenseReportOperation.Approve
                     or ExpenseReportOperation.FinanceReject
-                    or ExpenseReportOperation.CategoryOverride
                 // Filing and fixing a report for a member who cannot do it themselves. Editing a
                 // report already Submitted or CoordinatorEndorsed does not send it back a step —
                 // the endorsement stands. Approved and Withdrawn are closed to everyone.
