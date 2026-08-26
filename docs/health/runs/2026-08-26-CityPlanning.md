@@ -382,7 +382,15 @@ has no back-navigation (it has one at line 57 and another at line 63), and a cla
     **#25 the selector already prefers new sections**, **#26 the wrong-verdict
     system is working as intended**, **#27 the first-run wording is fine.**
 
-  Section tests 57 → 65. New debt recorded: `CityPlanningTeamSlug`'s
+  Section tests 57 → 65. Re-measured after the round: reforge 218, locProd 1950,
+  cogP95 4, cogMax 6. The score rose from 210 — the whole of it is
+  `crossSectionFullService` for injecting `IAuditLogService`. That interface has
+  no read-only half; it is the one contract every writer to the Audit crosscut
+  takes, so the cost is not narrowable and is simply what the audit trail costs.
+  Worth stating because a later reader comparing targets will see a first run
+  that *raised* the section's score, which is the opposite of the usual shape.
+
+  New debt recorded: `CityPlanningTeamSlug`'s
   configuration default is `"City Planning"` (spaces, capitals) while
   `DevPersonaSeeder` hard-codes `"city-planning"` — normalization makes case
   irrelevant but cannot bridge a space to a hyphen, so an unconfigured instance
