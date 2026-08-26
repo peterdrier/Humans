@@ -50,8 +50,10 @@ record. Sanity-check it against whether the PR has been reviewed at all:
       --jq '[.[] | select(.user.type=="Bot" or (.user.login|test("codex|claude|gemini";"i")))] | length'
 
 Non-zero there while the trailers say fewer rounds than that has plausibly drawn means the
-trailers are behind: count the round commits yourself from the first bot review onward and
-use that. The same question settles the cases no rule here lists — a commit that both
+trailers are behind: count the round commits yourself and use that. A red check earlier on
+the PR says the same thing — CI answers are rounds too, and a PR can have spent several
+before any bot reviewed it, so start from the first review *or* failure, whichever came
+first. The same question settles the cases no rule here lists — a commit that both
 finishes the deliverable and answers a finding, a round you had to push twice, a finding
 answered by reverting. Ask what the commit was churning on, not what it touched, and act on
 the answer instead of looking for a rule that names it.
