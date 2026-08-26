@@ -284,24 +284,45 @@ internal sealed class ExpenseReportService(
     {
         var report = await RequireEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
 
-        var year = await budgetService.GetActiveYearAsync()
-            ?? throw new InvalidOperationException("No active budget year.");
-        var category = year.Groups.SelectMany(g => g.Categories)
-            .FirstOrDefault(c => c.Id == budgetCategoryId)
-            ?? throw new InvalidOperationException("Category not in active year.");
+        // A draft is not booked to anything yet, so its header resolves through the active year
+        // as it always has. A report past submit already belongs to a budget year; re-resolving
+        // it through the active year would silently move last year's accounting into this year's
+        // books, so it keeps its own year and only that year's categories are accepted.
+        string categoryName;
+        Guid budgetYearId;
+        if (IsPendingApproval(report.Status))
+        {
+            var snapshot = await budgetService.GetCategoryByIdAsync(budgetCategoryId)
+                ?? throw new ExpenseValidationException("Category not found.");
+            if (snapshot.BudgetGroup?.BudgetYearId != report.BudgetYearId)
+                throw new ExpenseValidationException(
+                    "That category belongs to a different budget year than this report.");
+            categoryName = snapshot.Name;
+            budgetYearId = report.BudgetYearId;
+        }
+        else
+        {
+            var year = await budgetService.GetActiveYearAsync()
+                ?? throw new InvalidOperationException("No active budget year.");
+            var category = year.Groups.SelectMany(g => g.Categories)
+                .FirstOrDefault(c => c.Id == budgetCategoryId)
+                ?? throw new InvalidOperationException("Category not in active year.");
+            categoryName = category.Name;
+            budgetYearId = year.Id;
+        }
 
         var updated = new ExpenseReport
         {
             Id = reportId,
-            BudgetCategoryId = category.Id,
-            BudgetYearId = year.Id,
+            BudgetCategoryId = budgetCategoryId,
+            BudgetYearId = budgetYearId,
             Note = note,
             UpdatedAt = clock.GetCurrentInstant()
         };
         await repo.UpdateDraftAsync(updated, ct);
 
         await AuditOnBehalfEditAsync(report, actorUserId,
-            $"Updated header (category {category.Name}, subject {DescribeNote(note)})", ct);
+            $"Updated header (category {categoryName}, subject {DescribeNote(note)})", ct);
     }
 
     /// <summary>The note as it reads in an audit description; it is optional and often blank.</summary>
@@ -742,7 +763,9 @@ internal sealed class ExpenseReportService(
         // A report past Draft carries a payee IBAN snapshot, and this page is how it gets corrected
         // before approval. Clearing would leave the snapshot and the profile disagreeing about who
         // gets paid, so on those statuses the removal is refused rather than half-applied.
-        var snapshotIsLive = SnapshotFollowsProfile(report.Status);
+        // A draft has no snapshot yet (submit takes it); an approved or terminal report is already
+        // booked, so its snapshot is history. Only the pending window follows the profile.
+        var snapshotIsLive = IsPendingApproval(report.Status);
         if (normalized is null && snapshotIsLive)
             return IbanFailure(
                 "This report is awaiting payment and needs an IBAN. Replace it instead of removing it.",
@@ -791,11 +814,11 @@ internal sealed class ExpenseReportService(
         new(Succeeded: false, IsValidationError: isValidationError, Message: message);
 
     /// <summary>
-    /// Whether setting the IBAN through this report's own page rewrites its payee snapshot. Only
-    /// between submit and approval: a draft has no snapshot yet (submit takes it), and an approved
-    /// or terminal report is already booked, so its snapshot is history.
+    /// Submitted but not yet approved — the window where a report is real enough to have a payee
+    /// snapshot and a booked budget year, but not yet final. Both the IBAN refresh and the header
+    /// edit's year handling turn on it.
     /// </summary>
-    private static bool SnapshotFollowsProfile(ExpenseReportStatus status) =>
+    private static bool IsPendingApproval(ExpenseReportStatus status) =>
         status is ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed;
 
     private async Task RefreshPayeeIbanSnapshotAsync(

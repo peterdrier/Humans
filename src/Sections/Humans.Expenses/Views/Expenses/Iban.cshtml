@@ -44,21 +44,31 @@
 
                     <div class="mb-3">
                         <label asp-for="Iban" class="form-label">
-                            @(Model.HasIban ? "New IBAN (or leave empty to remove)" : "IBAN")
+                            @(Model.HasIban && Model.CanRemoveIban
+                                ? "New IBAN (or leave empty to remove)"
+                                : Model.HasIban ? "New IBAN" : "IBAN")
                         </label>
                         <input asp-for="Iban" class="form-control font-monospace"
                                placeholder="e.g. ES7921000813610123456789"
                                maxlength="34"
                                autocomplete="off"
                                autofocus />
+                        @* A report awaiting payment still needs its IBAN, so the service refuses to
+                           clear one — don't offer the removal on those. *@
                         <div class="form-text">
                             @if (Model.MemberName is { } forMember)
                             {
-                                @Localizer["Expenses_IbanEnterForMember", forMember]
+                                @Localizer[Model.CanRemoveIban
+                                    ? "Expenses_IbanEnterForMember"
+                                    : "Expenses_IbanEnterForMemberNoRemove", forMember]
+                            }
+                            else if (Model.CanRemoveIban)
+                            {
+                                <text>Enter your full IBAN without spaces. Leave empty to remove.</text>
                             }
                             else
                             {
-                                <text>Enter your full IBAN without spaces. Leave empty to remove.</text>
+                                <text>Enter your full IBAN without spaces.</text>
                             }
                         </div>
                         <span asp-validation-for="Iban" class="text-danger small"></span>

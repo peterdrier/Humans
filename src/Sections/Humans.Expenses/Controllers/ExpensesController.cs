@@ -581,6 +581,7 @@ internal sealed class ExpensesController(
                 ReportId = id,
                 HasIban = iban.HasIban,
                 MaskedIban = iban.MaskedIban,
+                ReportStatus = report.Status,
                 MemberName = report.SubmitterUserId == user.Id
                     ? null
                     : (await _userService.GetUserInfoAsync(report.SubmitterUserId))?.BurnerName,
@@ -623,6 +624,7 @@ internal sealed class ExpensesController(
         model.ReportId = id;
         model.HasIban = iban.HasIban;
         model.MaskedIban = iban.MaskedIban;
+        model.ReportStatus = report.Status;
         model.MemberName = report.SubmitterUserId == user.Id
             ? null
             : (await _userService.GetUserInfoAsync(report.SubmitterUserId))?.BurnerName;
@@ -940,19 +942,30 @@ internal sealed class ExpensesController(
     private async Task PopulateEditModelAsync(ExpenseEditViewModel model, ExpenseReportDto report)
     {
         model.Report = report;
-        model.Categories = await BuildCategoryOptionsAsync();
+        model.Categories = await BuildCategoryOptionsAsync(report);
         model.CanEditHeader = true;
         // Only the Edit grant reaches this page, and it already encodes who may change lines in
         // which status — for the submitter that is still their own Draft and nothing else.
         model.CanEditLines = await AllowsAsync(report, ExpenseReportOperation.Edit);
     }
 
-    private async Task<IReadOnlyList<BudgetCategoryOption>> BuildCategoryOptionsAsync()
+    /// <param name="report">
+    /// When given and already submitted, the options come from the budget year that report is
+    /// booked to rather than the active one — offering this year's categories on last year's
+    /// report is how a header edit silently reclassifies its accounting year. Null (a new draft,
+    /// the approval override) keeps the active year.
+    /// </param>
+    private async Task<IReadOnlyList<BudgetCategoryOption>> BuildCategoryOptionsAsync(
+        ExpenseReportDto? report = null)
     {
-        var activeYear = await budgetService.GetActiveYearAsync();
-        if (activeYear is null) return [];
+        var isPendingApproval = report?.Status
+            is ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed;
+        var year = isPendingApproval
+            ? await budgetService.GetYearByIdAsync(report!.BudgetYearId)
+            : await budgetService.GetActiveYearAsync();
+        if (year is null) return [];
 
-        return activeYear.Groups
+        return year.Groups
             .OrderBy(g => g.SortOrder)
             .SelectMany(g => g.Categories
                 .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)

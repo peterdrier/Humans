@@ -1140,11 +1140,11 @@ public sealed class ExpenseReportServiceTests
     {
         // A finance admin's edit window covers the statuses a report can still be corrected in,
         // and correcting one does not send it back a step — the endorsement stands.
-        var (_, category) = SetupActiveYear();
+        var (year, category) = SetupActiveYear();
         var member = Guid.NewGuid();
         var admin = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, member, category.Id, Guid.NewGuid(),
+        await SeedReportWithStatus(reportId, member, category.Id, year.Id,
             ExpenseReportStatus.CoordinatorEndorsed);
 
         await _sut.UpdateDraftAsync(reportId, admin, true, category.Id, "corrected", Xunit.TestContext.Current.CancellationToken);
@@ -1152,6 +1152,67 @@ public sealed class ExpenseReportServiceTests
         var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
         loaded!.Note.Should().Be("corrected");
         loaded.Status.Should().Be(ExpenseReportStatus.CoordinatorEndorsed);
+    }
+
+    [HumansFact]
+    public async Task UpdateDraftAsync_OnAPendingReport_KeepsItsOwnBudgetYear()
+    {
+        // The report belongs to a year that is no longer the active one. Re-resolving its header
+        // through the active year would silently move last year's accounting into this year.
+        var (_, _) = SetupActiveYear();
+        var member = Guid.NewGuid();
+        var admin = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        var oldYearId = Guid.NewGuid();
+        var oldCategoryId = Guid.NewGuid();
+        _budgetService.GetCategoryByIdAsync(oldCategoryId)
+            .Returns(MakeCategorySnapshot(oldCategoryId, null, "Last Year Category", null, oldYearId));
+        await SeedReportWithStatus(reportId, member, oldCategoryId, oldYearId,
+            ExpenseReportStatus.Submitted);
+
+        await _sut.UpdateDraftAsync(reportId, admin, true, oldCategoryId, "corrected", Xunit.TestContext.Current.CancellationToken);
+
+        var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Note.Should().Be("corrected");
+        loaded.BudgetYearId.Should().Be(oldYearId);
+        loaded.BudgetCategoryId.Should().Be(oldCategoryId);
+    }
+
+    [HumansFact]
+    public async Task UpdateDraftAsync_OnAPendingReport_RejectsACategoryFromAnotherYear()
+    {
+        var (_, activeCategory) = SetupActiveYear();
+        var member = Guid.NewGuid();
+        var admin = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        var oldYearId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, member, Guid.NewGuid(), oldYearId,
+            ExpenseReportStatus.Submitted);
+
+        // activeCategory belongs to the active year, not to this report's year.
+        var act = async () => await _sut.UpdateDraftAsync(
+            reportId, admin, true, activeCategory.Id, "reclassified", Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*different budget year*");
+        var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        loaded!.BudgetYearId.Should().Be(oldYearId);
+    }
+
+    [HumansFact]
+    public async Task UpdateDraftAsync_OnADraft_StillStampsTheActiveYear()
+    {
+        // Pre-existing behaviour, deliberately unchanged: a draft is not booked anywhere yet.
+        var (year, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Draft);
+
+        await _sut.UpdateDraftAsync(reportId, submitter, false, category.Id, "note", Xunit.TestContext.Current.CancellationToken);
+
+        var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        loaded!.BudgetYearId.Should().Be(year.Id);
     }
 
     [HumansFact]
@@ -2230,26 +2291,36 @@ public sealed class ExpenseReportServiceTests
                     ])
             ]);
 
-        var category = MakeCategorySnapshot(categoryId, teamId, "Test Category", groupId);
+        var category = MakeCategorySnapshot(categoryId, teamId, "Test Category", groupId, yearId);
 
         _budgetService.GetActiveYearAsync().Returns(yearDetail);
+        _budgetService.GetYearByIdAsync(yearId).Returns(yearDetail);
         _budgetService.GetCategoryByIdAsync(categoryId).Returns(category);
 
         return (yearDetail, category);
     }
 
+    /// <summary>
+    /// A non-null <paramref name="budgetYearId"/> fills in the group/year chain, which is how the
+    /// service checks that a pending report's new category belongs to that report's own year.
+    /// </summary>
     private static BudgetCategorySnapshot MakeCategorySnapshot(
-        Guid id, Guid? teamId, string name = "Cat", Guid? groupId = null) =>
-        new(
+        Guid id, Guid? teamId, string name = "Cat", Guid? groupId = null, Guid? budgetYearId = null)
+    {
+        var group = groupId ?? Guid.NewGuid();
+        return new(
             id,
-            groupId ?? Guid.NewGuid(),
+            group,
             name,
             0m,
             ExpenditureType.CapEx,
             teamId,
             0,
-            null,
+            budgetYearId is { } yearId
+                ? new BudgetCategoryGroupSnapshot(group, yearId, "Test Group", false, false, null)
+                : null,
             []);
+    }
 
     private void SetupUserAndProfile(Guid userId, string displayName, string iban)
     {

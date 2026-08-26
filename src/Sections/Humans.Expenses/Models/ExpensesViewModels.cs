@@ -243,6 +243,15 @@ internal sealed class ExpenseIbanViewModel
     /// their behalf must see whose account they are typing. Null when it is the viewer's own.</summary>
     public string? MemberName { get; set; }
 
+    /// <summary>The status of the report this page was opened from — it decides whether removal
+    /// is still on offer.</summary>
+    public ExpenseReportStatus ReportStatus { get; set; }
+
+    /// <summary>False once the report is submitted and awaiting payment: such a report still needs
+    /// an IBAN, so the service refuses to clear one and the form must stop offering it.</summary>
+    public bool CanRemoveIban =>
+        ReportStatus is not (ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed);
+
     [StringLength(34)]
     public string? Iban { get; set; }
 }
