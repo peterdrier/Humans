@@ -52,7 +52,7 @@ Two user-visible gaps were held rather than struck, both because striking them w
 
 **15 — The recipient resolver is probably deletable and there is no way to prove it offline.** `NotificationRecipientResolver` is a single method that forwards to `IRoleAssignmentService.GetActiveUserIdsInRoleAsync`. Its documented reason for existing — breaking a DI cycle — is not true of the current graph (finding 3). The gate that would catch a reintroduced cycle is `ValidateOnBuild = true` in `src/Humans.Web/Program.cs:72-73`, which only fires when the app actually starts; no test in the solution builds the full container. So a run can delete the resolver, watch every test pass, and ship a container that throws at startup. Held: this is a deletion whose only safety net is a manual `dotnet run`.
 
-**16 — `tests/Humans.Integration.Tests` runs nowhere, and cannot run here either.** `.github/workflows/build.yml:112` passes `--filter "FullyQualifiedName!~Humans.Integration.Tests"`, so that project is excluded from every CI run; the comment above it says why — the assembly needs Docker/Testcontainers, which is noisy on `ubuntu-latest`. This run's own full `dotnet test Humans.slnx` confirmed the shape from the other side: all 318 of its tests fail in under a second with `DockerUnavailableException` at `unix:///var/run/docker.sock`, because this session's container has no Docker either. So the project is green nowhere and red everywhere it is actually invoked, which makes "excluded from CI" understate it — it is unrunnable in both environments the repo has. Repo-wide, not this section's. Queued.
+**16 — The solution-wide gate invokes a project that is out of scope by design, and its expected red reads like a regression.** `tests/Humans.Integration.Tests` holds the tests that cannot run under CI; `.github/workflows/build.yml:112`'s `--filter "FullyQualifiedName!~Humans.Integration.Tests"` is the design, not a gap — `memory/process/integration-tests-are-not-ci-tests.md` settles this and forbids ledgering it or proposing a job for it. But `dotnet test Humans.slnx -v quiet`, the gate `AGENTS.md` requires before a PR, carries no such filter: all 318 of that project's tests fail in under a second with `DockerUnavailableException` at `unix:///var/run/docker.sock`, because an agent container has no Docker either. Nothing here is a defect and nothing is queued. What is worth carrying is that a run reading the raw gate output can mistake the by-design red for its own breakage — this one nearly filed it as debt. Restated after Codex flagged the original framing on this PR; verified against the atom before acting.
 
 **17 — The scheduling prompt and the skill disagree about Stryker.** The prompt instructed this run to "record it skipped-with-reason in the run file"; the skill at HEAD (`3dcdae3c`, "upstream issues and Stryker become opt-in flags") says a run without `--mutation` must never "attempt, probe for, mention, or record-as-skipped" Stryker. Followed the skill, so no run artifact mentions it — but the scheduled prompt still carries the older instruction and will re-issue this conflict every night until it is edited. Raised for Peter.
 
@@ -60,17 +60,19 @@ Two user-visible gaps were held rather than struck, both because striking them w
 
 **18 — The default arm still hides the next missing case.** Finding 5 filled in four accidental fall-throughs, but `_ => MessageCategory.System` remains, so the *next* source added without a mapping repeats the same silent default. Removing the arm would make a missing case a compile error (CS8509) instead — the analyzer-shaped fix Peter's rules prefer over a test — at the cost of turning an unmapped runtime value into a throw. That trade is a decision, not a repair. Raised for Peter.
 
+**20 — The nightly purge is the one mutation that leaves badge caches stale.** Every user-facing transition in `NotificationInboxService` ends in `InvalidateBadgeCaches` — nine call sites, lines 101-181. `PurgeExpiredAsync` (line 207) does not: it calls `DeleteResolvedOlderThanAsync`, `DeleteUnresolvedInformationalOlderThanAsync` and `DeleteUnresolvedBySourcesAsync`, all of which return a count and nothing else, so the service cannot know whose caches to evict without widening three repository signatures. The blast radius is small — a deleted unresolved informational row leaves its recipients an inflated unread badge for at most the two-minute TTL, on a job that runs at night. Fixing it means the three delete methods return affected user ids; not fixing it means the invariant says "every mutation except the purge" on purpose. That is a decision, not a repair. Raised for Peter. Found by Codex on this PR, verified against `NotificationInboxService.PurgeExpiredAsync` and the three repository methods before acting.
+
 ## Worked
 
 - Findings 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 — struck across four commits.
 - Target shape written fresh as `src/Sections/Humans.Notifications/Docs/health.md`, before any scan.
-- Gates: `dotnet format whitespace Humans.slnx --verify-no-changes` clean; full `dotnet test Humans.slnx -v quiet` green in every project **except** `Humans.Integration.Tests`, which fails 318/318 on Docker unavailability in this container and is the project CI excludes for the same reason (finding 16) — not a regression from this branch. `Humans.Notifications.Tests`: 65 passed.
+- Gates: `dotnet format whitespace Humans.slnx --verify-no-changes` clean; full `dotnet test Humans.slnx -v quiet` green in every project the gate can reach. `Humans.Integration.Tests` fails 318/318 on Docker unavailability, which is out of scope by design and is why CI filters it out (finding 16) — not a regression from this branch. `Humans.Notifications.Tests`: 65 passed.
 - Sweep applied (its own commit): every queued item from merged run files was already present in its target except two from the MailerLite run — a stale `debt-ledger.yml` entry claiming MailerLite has no GDPR contributor (verified closed: `Section.cs:80` registers one, and `IMailerLiteService.DeleteSubscriberAsync` exists) and the open `MailerLiteDateConverter` question, recorded in that section's `debt.yml`.
 
 ## Skipped
 
-- Findings 1, 2, 15, 18, 19 — each is a decision rather than a repair; see the descriptions above and `## Needs Peter`.
-- Finding 16 — repo-wide, not this section's; queued.
+- Findings 1, 2, 15, 18, 19, 20 — each is a decision rather than a repair; see the descriptions above and `## Needs Peter`.
+- Finding 16 — out of scope by design; nothing to fix, a lesson queued so the next run does not re-file it.
 - Finding 17 — an instruction conflict, not a code defect.
 - Sections passed over as blocked: CityPlanning (open PR `#1525`), Store (open PR `#1520`).
 
@@ -94,11 +96,12 @@ Also wasted: three of fourteen scripted literal replacements missed on the first
 - [ ] 17 — Edit the scheduled prompt to drop its Stryker instruction, which the skill now forbids.
 - [ ] 18 — Drop `_ => MessageCategory.System` so a missing mapping is a compile error?
 - [ ] 19 — Should all four single-item routes refuse a non-recipient the same way, and which way?
+- [ ] 20 — Widen the three purge delete methods to return affected user ids and evict, or state the purge as a deliberate exception to the badge-cache invariant?
 - [ ] Phase 4 — after a scripted literal replacement reports a miss, re-read the region before retrying; a second guess at the string is how a strike plan silently half-applies.
 
 ## Sweep queue
 
-- debt: `tests/Humans.Integration.Tests` runs in no environment the repo has. `.github/workflows/build.yml:112` excludes it from CI via `--filter "FullyQualifiedName!~Humans.Integration.Tests"` because it needs Docker/Testcontainers, and in an agent session container all 318 tests fail in under a second with `DockerUnavailableException` at `unix:///var/run/docker.sock`. A test project that is skipped in CI and red locally is not a safety net; decide whether it is retired (delete it) or gated (a `services: postgres` job, or a Testcontainers-capable runner). Found by /section-doctor on Notifications 2026-08-26 (finding 16).
+- `lesson: 2026-08-26 — the solution-wide gate's 318 Docker failures in Humans.Integration.Tests are by design, not a finding. memory/process/integration-tests-are-not-ci-tests.md forbids ledgering that project or proposing a job for it; check the atom before writing up anything that looks like a CI or coverage gap (finding 16).`
 
 ## File coverage
 

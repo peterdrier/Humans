@@ -93,12 +93,18 @@ The layout those shapes imply, written fresh:
 - Every source has a deliberate `MessageCategory`, not one arrived at by falling through a
   default arm.
 - An emit with no surviving recipients writes nothing and logs why.
-- Every mutation evicts the badge cache of every user it affected.
+- Every mutation made on a human's behalf evicts the badge cache of every user it affected.
+  The nightly purge is the one gap: `PurgeExpiredAsync` deletes through three repository
+  methods that return counts and nothing else, so a recipient whose unresolved informational
+  row was just deleted can carry a stale unread badge for the two-minute TTL. Either the purge
+  reports who it touched, or the exception gets stated on purpose.
 - The nightly purge deletes resolved rows past 7 days, unresolved informational rows past
   30 days, and unresolved rows of retired sources — and never an unresolved actionable row of
   a live source.
 - Every string a human reads on `/Notifications` comes from the section's resx set, in all six
-  cultures.
+  cultures — the page is not admin-side, so the `/Admin/*` exemption does not reach it. Eight
+  meter titles are English literals in `NotificationMeterProvider` today; that is the gap this
+  target names, not a second rule.
 
 ## 5. Seams
 
