@@ -1,9 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Notifications' cross-section surface, carved into its own leaf project because a dozen
-    other sections dispatch into it — Auth, Campaigns, Camps, Consent, Email.Contracts,
-    Feedback, GoogleIntegration, Governance, Issues, Onboarding, Shifts, Teams and Users.
+    Notifications' cross-section surface, carved into its own leaf project because sections
+    from all over the app reach into it — Auth, Campaigns, Camps, Consent, Feedback,
+    GoogleIntegration (the section and its contracts leaf both), Governance, Issues,
+    Onboarding, Shifts, Teams and Users, plus the Shell for the bell.
     A Contracts/ *folder* inside Humans.Notifications would make each of them reference the
     whole section (design §15.5b, memory/architecture/section-project-cycle-fix.md).
 
@@ -14,8 +15,8 @@
     AddOrUpdate<T>(id, …) rewrites the stored type string at every startup, so the job id is
     the stable key.)
 
-    It holds exactly what lives outside the section: the four dispatch/auto-resolve/retention
-    interfaces, and the three enums those signatures name — NotificationSource,
+    It holds exactly what lives outside the section: the dispatch, auto-resolve and retention
+    interfaces, and the enums those signatures name — NotificationSource,
     NotificationClass and NotificationPriority cannot follow the entities into the section's
     internal Domain/ because every emit call site outside the section names them
     (design §15 step 5, Budget's rule). The inbox read models, the meter surface, the
