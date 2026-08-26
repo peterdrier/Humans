@@ -11,10 +11,11 @@ using Humans.Users.Contracts;
 namespace Humans.Notifications.Services;
 
 /// <summary>
-/// Persists a notification to a pre-resolved list of recipient user IDs. Has no
-/// dependency on <see cref="INotificationRecipientResolver"/>, so
-/// <see cref="ITeamService"/> and <see cref="IRoleAssignmentService"/> can inject
-/// this without closing a DI cycle through <see cref="INotificationService"/>.
+/// Persists a notification to a pre-resolved list of recipient user IDs. Injects
+/// neither <see cref="ITeamService"/> nor <see cref="IRoleAssignmentService"/>, so
+/// those two can inject this without closing a DI cycle through
+/// <see cref="INotificationService"/>, which injects
+/// <see cref="IRoleAssignmentService"/> itself.
 /// <see cref="NotificationService"/> delegates here so dispatch logic lives in one place.
 /// </summary>
 internal sealed class NotificationEmitter(

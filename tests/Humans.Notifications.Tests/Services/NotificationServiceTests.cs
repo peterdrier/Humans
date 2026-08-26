@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using Humans.Base.Caching;
 using Humans.Notifications.Data;
 using Humans.Notifications.Services;
@@ -25,7 +26,7 @@ public class NotificationServiceTests : IDisposable
     private readonly NotificationRepository _repo;
     private readonly NotificationService _service;
     private readonly ICommunicationPreferenceService _preferenceService = Substitute.For<ICommunicationPreferenceService>();
-    private readonly INotificationRecipientResolver _recipientResolver = Substitute.For<INotificationRecipientResolver>();
+    private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
 
     public NotificationServiceTests()
     {
@@ -48,7 +49,7 @@ public class NotificationServiceTests : IDisposable
             _repo, _preferenceService, _clock, _cache,
             NullLogger<NotificationEmitter>.Instance);
         _service = new NotificationService(
-            emitter, _repo, _recipientResolver, _preferenceService,
+            emitter, _repo, _roleAssignmentService, _preferenceService,
             _clock, _cache, NullLogger<NotificationService>.Instance);
     }
 
@@ -179,7 +180,7 @@ public class NotificationServiceTests : IDisposable
         var user1 = Guid.NewGuid();
         var user2 = Guid.NewGuid();
 
-        _recipientResolver.GetActiveUserIdsForRoleAsync("Board", Arg.Any<CancellationToken>())
+        _roleAssignmentService.GetActiveUserIdsInRoleAsync("Board", Arg.Any<CancellationToken>())
             .Returns([user1, user2]);
 
         await _service.SendToRoleAsync(

@@ -22,7 +22,7 @@ namespace Humans.Governance.Services;
 /// <para>
 /// The query adapter depends on the team and role services, but nothing
 /// injects the adapter except <see cref="IMembershipCalculator"/> — so no
-/// cycle. Same pattern as <see cref="INotificationRecipientResolver"/>.
+/// cycle.
 /// </para>
 /// </remarks>
 internal interface IMembershipQuery : IApplicationService

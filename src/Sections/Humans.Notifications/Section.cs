@@ -28,13 +28,13 @@ public sealed class Section : ISection
         services.AddSingleton<INotificationRepository, NotificationRepository>();
 
         // DI cycle break: NotificationEmitter is a distinct type from
-        // NotificationService. TeamService and RoleAssignmentService depend on
-        // INotificationEmitter (= NotificationEmitter, no resolver dependency),
-        // which does NOT inject INotificationRecipientResolver. The resolver
-        // (which depends on ITeamService + IRoleAssignmentService) is only
-        // pulled in by NotificationService, so no edge closes the cycle.
+        // NotificationService, and injects only this section's repository plus
+        // preferences, clock, cache and logger. TeamService and
+        // RoleAssignmentService depend on INotificationEmitter rather than
+        // INotificationService, so their edge into Notifications terminates
+        // there instead of coming back out through IRoleAssignmentService.
+        // NotificationsArchitectureTests pins that.
         services.AddScoped<INotificationEmitter, NotificationEmitter>();
-        services.AddScoped<INotificationRecipientResolver, NotificationRecipientResolver>();
         services.AddScoped<NotificationService>();
         services.AddScoped<INotificationService>(sp => sp.GetRequiredService<NotificationService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<NotificationService>());

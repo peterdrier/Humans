@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using Humans.Base.Caching;
 using Humans.Notifications.Data;
 using Humans.Notifications.Domain;
@@ -17,7 +18,7 @@ namespace Humans.Notifications.Services;
 internal sealed class NotificationService(
     INotificationEmitter emitter,
     INotificationRepository repo,
-    INotificationRecipientResolver recipientResolver,
+    IRoleAssignmentService roleAssignmentService,
     ICommunicationPreferenceService preferenceService,
     IClock clock,
     IMemoryCache cache,
@@ -52,7 +53,7 @@ internal sealed class NotificationService(
     {
         var now = clock.GetCurrentInstant();
 
-        var roleUserIds = await recipientResolver.GetActiveUserIdsForRoleAsync(roleName, cancellationToken);
+        var roleUserIds = await roleAssignmentService.GetActiveUserIdsInRoleAsync(roleName, cancellationToken);
         if (roleUserIds.Count == 0)
         {
             logger.LogWarning("SendToRoleAsync: no active users found for role '{RoleName}'", roleName);

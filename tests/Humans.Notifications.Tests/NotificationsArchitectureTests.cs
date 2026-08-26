@@ -26,18 +26,25 @@ public class NotificationsArchitectureTests
     // ApplicationServicesTakeNoDbContextRule for every Application service.
 
     [HumansFact]
-    public void NotificationService_TakesRecipientResolver()
+    public void NotificationEmitter_TakesNothingThatReachesBackOut()
     {
-        // The NotificationService reaches teams and role holders via a thin
-        // recipient-resolver adapter rather than directly injecting
-        // ITeamService/IRoleAssignmentService — those services inject
-        // INotificationService in the other direction, so a direct dependency
-        // here closes a circular DI graph that trips ValidateOnBuild at
-        // startup. The resolver exists solely to break that cycle.
-        var ctor = typeof(NotificationService).GetConstructors().Single();
+        // This is the edge that keeps the DI graph acyclic. RoleAssignmentService
+        // (Auth) and TeamService (Teams) inject INotificationEmitter rather than
+        // INotificationService, and NotificationEmitter injects only this
+        // section's repository plus preferences, clock, cache and logger — so
+        // their edge into Notifications terminates here. Give the emitter a
+        // dependency that leads back to Auth or Teams and the graph closes,
+        // which ValidateOnBuild only reports at startup.
+        //
+        // The other half of the invariant — that RoleAssignmentService and
+        // TeamService keep depending on INotificationEmitter and never on
+        // INotificationService — lives in those sections and is not pinned by a
+        // test today.
+        var ctor = typeof(NotificationEmitter).GetConstructors().Single();
         var paramTypeNames = ctor.GetParameters().Select(p => p.ParameterType.Name).ToList();
 
-        paramTypeNames.Should().Contain("INotificationRecipientResolver");
+        paramTypeNames.Should().NotContain("IRoleAssignmentService");
+        paramTypeNames.Should().NotContain("ITeamService");
     }
 
     // ── NotificationInboxService ─────────────────────────────────────────────

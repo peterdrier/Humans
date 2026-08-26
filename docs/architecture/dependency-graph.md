@@ -159,7 +159,6 @@ graph LR
     EmailOutbox[EmailOutboxService]:::email
     NotifEmitter[NotificationEmitter]:::notifications
     NotifInbox[NotificationInboxService]:::notifications
-    NotifResolver[NotificationRecipientResolver]:::notifications
     NotifMeter[NotificationMeterProvider]:::notifications
     OutboxEmail[OutboxEmailService]:::notifications
 
@@ -435,7 +434,7 @@ graph LR
     Notif --> CommPref
     NotifEmitter --> CommPref
     NotifInbox --> User
-    NotifResolver --> Role
+    Notif --> Role
     NotifMeter --> User
     NotifMeter --> GSyncSvc
     NotifMeter --> Team
