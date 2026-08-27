@@ -1,0 +1,7 @@
+# Section debt ledger for Humans.Calendar. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+inbox:
+  - added: 2026-08-27
+    what: "ICalFeedService.cs:11-12 justifies its sequential provider fan-out as \"contributors share the scoped section DbContexts which are not thread-safe (same as GdprExportService)\". That reason is obsolete (design-rules.md §8a); Gdpr's own copy was corrected on peterdrier/Humans#1540. Sequential stays — the reason changes (finding 22, /section-doctor on Gdpr 2026-08-27)."
+    review: panel

@@ -5,3 +5,9 @@ inbox:
   - added: 2026-08-24
     what: "Admin_SortBy in Views/UsersAdmin/AdminList.cshtml:78 has no shared resource and renders raw. The call is correctly through SharedLocalizer, but adding a new Admin_* resource key conflicts with memory/code/localization-admin-exempt.md, which forbids new localization keys for admin pages. Peter must decide whether this existing admin localizer call should gain a resource or become an unlocalized literal."
     review: panel
+  - added: 2026-08-27
+    what: "Same false rationale for the erasure fan-out in two places: AccountDeletionService.cs:200-201 and Docs/Users.md:212, citing GdprExportService/thread-safety. Obsolete per design-rules.md §8a; sequential stays, the reason changes (finding 22, /section-doctor on Gdpr 2026-08-27)."
+    review: panel
+  - added: 2026-08-27
+    what: "ProfileController.DownloadData has no catch, so a GDPR export contributor failure is an unhandled 500 there, where the same failure on /Guest/DownloadData sets an error toast and redirects (finding 16, /section-doctor on Gdpr 2026-08-27)."
+    review: panel

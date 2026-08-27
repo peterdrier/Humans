@@ -370,3 +370,15 @@ inbox:
   - added: 2026-08-21
     what: "TicketTailor re-sync can resurrect erased ticket PII. GDPR erasure (nobodies-collective/Humans#853) tombstones BuyerName/BuyerEmail/AttendeeName/AttendeeEmail and nulls MatchedUserId in our copy of the vendor's data (Humans.Tickets/Data/TicketRepository.EraseUserPiiAsync), but the vendor still holds the real record. The next TicketTailor sync re-reads it and can write the real name and email straight back over the tombstone, silently undoing the erasure with no signal that it happened. Fixing it properly means either a per-order erased flag the sync respects (needs a column) or deleting the vendor-side record; both are larger than #853 and the first is a schema change."
     review: panel
+  - added: 2026-08-27
+    what: ".claude/skills/section-align/SKILL.md:51 claims Humans.Gdpr has no Controllers/; it has had one since nobodies-collective/Humans#1091, and the line drives a shell path filter (finding 14, /section-doctor on Gdpr 2026-08-27)."
+    review: panel
+  - added: 2026-08-27
+    what: "docs/architecture/design-rules.md:308 names only /Profile/Me/DownloadData as the GDPR export download; /Guest/DownloadData is the other, and §8a's rule gates both (finding 15, /section-doctor on Gdpr 2026-08-27)."
+    review: panel
+  - added: 2026-08-27
+    what: "docs/architecture/service-data-access-map.md:312 states EF DbContext/IDbContextFactory usage is \"not thread-safe within a single async flow\" as the reason the Calendar/Gdpr/EarlyEntry contributor fan-outs are sequential. Independent factory-created contexts are safe concurrently; §8a of design-rules.md says so (finding 22, /section-doctor on Gdpr 2026-08-27)."
+    review: panel
+  - added: 2026-08-27
+    what: "docs/architecture/design-rules.md:340 says contributors \"read through their own IDbContextFactory<TContext>\" and names AgentService as an example; AgentRepository takes a scoped AgentDbContext by injection. The conclusion (sequential is no longer a correctness requirement) is right; the stated mechanism is not — the accurate invariant is that no two contributors share a context instance (finding 25, /section-doctor on Gdpr 2026-08-27)."
+    review: panel
