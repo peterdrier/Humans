@@ -112,4 +112,4 @@ Settled decisions that look wrong until you know why. Do not re-litigate these.
 
 | Date | Outcome | reforge | PR |
 |---|---|---|---|
-| 2026-08-27 | first doctor run — thank-you copy restored on the invited path, reminder window honoured, anonymous 500 closed, stale prose swept | 314 (loc=5726 cogP95=8 cogMax=27) | peterdrier/Humans#pending |
+| 2026-08-27 | first doctor run — thank-you copy restored on the invited path, reminder window honoured, anonymous 500 closed, stale prose swept | 314 (loc=5726 cogP95=8 cogMax=27) | peterdrier/Humans#1538 |
