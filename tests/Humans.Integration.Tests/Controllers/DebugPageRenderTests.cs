@@ -53,6 +53,7 @@ public class DebugPageRenderTests(HumansTestDatabase database) : IntegrationTest
         ("/Debug/CacheStats", "Cache Statistics"),
         ("/Debug/ClientStats", "Client Statistics"),
         ("/Debug/Timings", "Operation Timings"),
+        ("/Debug/Sections", "Sections"),
         ("/Debug/FormatGallery", "Date format gallery"),
         ("/Debug/Translations", "Translations gallery"),
     ];

@@ -69,4 +69,16 @@ internal static class IssueSectionRouting
         Tickets, Camps, Teams, Shifts, Onboarding, Profiles,
         Budget, Governance, Legal, CityPlanning, Scanner
     ];
+
+    private static readonly HashSet<string> KnownSet =
+        new(AllKnownSections, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The canonical spelling of a routed section, or null when the value routes to no queue.
+    /// Case-insensitive on the way in because the value arrives from a form post; canonical on
+    /// the way out because <see cref="RolesFor"/> and the stored column are ordinal
+    /// (nobodies-collective/Humans#1509).
+    /// </summary>
+    public static string? Resolve(string? section) =>
+        section is not null && KnownSet.TryGetValue(section, out var canonical) ? canonical : null;
 }

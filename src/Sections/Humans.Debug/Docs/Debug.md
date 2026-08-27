@@ -37,6 +37,7 @@ All pages live under `/Debug` on `DebugController`. Pages sit at `/Debug/<Page>`
 | `/Debug/Maintenance` | GET | Admin | Maintenance operations |
 | `/Debug/Maintenance/ClearHangfireLocks` | POST | Admin | Clear stale Hangfire locks |
 | `/Debug/Timings` | GET | Admin | Operation timing table: per-operation call count, last/avg/min/max ms, total ms, last-called timestamp; ordered by total cost descending |
+| `/Debug/Sections` | GET | Admin | The DI-published section catalog: every discovered section with its tables, contracts, resx set, seams, dependencies, and which of guide page / agent doc key / issue queue it has |
 
 ## Actors & Roles
 
@@ -65,6 +66,8 @@ The telemetry trackers are fed passively by `ClientStatsMiddleware` (page views;
 ## Cross-Section Dependencies
 
 Debug consumes in-memory telemetry trackers (`IClientStatsTracker`, `IHttpStatusTracker`, query/cache statistics), the configuration registry, and `IAdminDatabaseDiagnosticsService` for migration status and Hangfire lock cleanup.
+
+It also consumes `ISectionCatalog` (`Humans.Base.Interfaces`, published by Shell at startup — nobodies-collective/Humans#1509) to render `/Debug/Sections`. That page names no section: everything on it, the Guide / Agent / Issues columns included, arrives through the catalog, so Debug still reaches into nobody.
 
 ## Architecture
 

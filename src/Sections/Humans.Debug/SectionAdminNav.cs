@@ -18,6 +18,7 @@ internal sealed class SectionAdminNav : ISectionAdminNav
             new("Cache stats",   "Debug", "CacheStats",    null, null, "fa-solid fa-bolt",                 PolicyNames.AdminOnly, Weight: 30),
             new("Client stats",  "Debug", "ClientStats",   null, null, "fa-solid fa-display",              PolicyNames.AdminOnly, Weight: 40),
             new("Timings",       "Debug", "Timings",       null, null, "fa-solid fa-stopwatch",            PolicyNames.AdminOnly, Weight: 50),
+            new("Sections",      "Debug", "Sections",      null, null, "fa-solid fa-layer-group",          PolicyNames.AdminOnly, Weight: 60),
             new("Configuration", "Debug", "Configuration", null, null, "fa-solid fa-gear",                 PolicyNames.AdminOnly, Weight: 70),
             new("Maintenance",   "Debug", "Maintenance",   null, null, "fa-solid fa-screwdriver-wrench",   PolicyNames.AdminOnly, Weight: 80),
             new("Hangfire",      null,    null,            null, "/hangfire",     "fa-solid fa-clock-rotate-left", PolicyNames.AdminOnly, Weight: 90),

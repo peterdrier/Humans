@@ -1,6 +1,7 @@
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
+using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
@@ -36,6 +37,13 @@ public sealed class IssuesServiceTests
     private readonly FakeClock Clock = new(Instant.FromUtc(2026, 4, 29, 12, 0));
     private readonly IMemoryCache Cache = new MemoryCache(new MemoryCacheOptions());
     private readonly IAuditLogService AuditLog = Substitute.For<IAuditLogService>();
+
+    /// <summary>
+    /// The published section list (nobodies-collective/Humans#1509). A substitute: the service
+    /// reads it only to say, in the log line, whether an unrouted value at least names a real
+    /// section — the routing decision itself is <c>IssueSectionRouting</c>'s.
+    /// </summary>
+    private readonly ISectionCatalog SectionCatalog = Substitute.For<ISectionCatalog>();
 
     /// <summary>
     /// Stand-in for the harness's <c>UsersDbContext</c>: these tests only ever staged
@@ -103,7 +111,7 @@ public sealed class IssuesServiceTests
             _repository, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
             _issuesBadge, Cache,
-            Clock, env, NullLogger<IssuesApplicationService>.Instance);
+            Clock, env, SectionCatalog, NullLogger<IssuesApplicationService>.Instance);
     }
 
     private static DbContextOptions<TContext> NewSectionDbOptions<TContext>()
@@ -768,6 +776,86 @@ public sealed class IssuesServiceTests
         result.NotFound.Should().BeFalse();
     }
 
+    // ==========================================================================
+    // Section validation (nobodies-collective/Humans#1509)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task SubmitIssueAsync_routes_an_unknown_section_to_the_Admin_queue()
+    {
+        var userId = Guid.NewGuid();
+        SeedUser(userId, "U").Email = "u@u.com";
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var issue = await _service.SubmitIssueAsync(
+            userId, IssueCategory.Bug, "Title", "Desc",
+            section: "NotARoutedQueue",
+            pageUrl: null, userAgent: null, additionalContext: null,
+            screenshot: null, ct: Xunit.TestContext.Current.CancellationToken);
+
+        // Degrades rather than failing: the routing table may change without a migration.
+        issue.Section.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task SubmitIssueAsync_canonicalizes_a_known_section_whatever_its_casing()
+    {
+        var userId = Guid.NewGuid();
+        SeedUser(userId, "U").Email = "u@u.com";
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var issue = await _service.SubmitIssueAsync(
+            userId, IssueCategory.Bug, "Title", "Desc",
+            section: "  tIcKeTs  ",
+            pageUrl: null, userAgent: null, additionalContext: null,
+            screenshot: null, ct: Xunit.TestContext.Current.CancellationToken);
+
+        issue.Section.Should().Be(IssueSectionRouting.Tickets);
+    }
+
+    [HumansFact]
+    public async Task SubmitIssueAsync_rejects_a_section_longer_than_the_column()
+    {
+        var userId = Guid.NewGuid();
+        SeedUser(userId, "U").Email = "u@u.com";
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var act = async () => await _service.SubmitIssueAsync(
+            userId, IssueCategory.Bug, "Title", "Desc",
+            section: new string('x', 65),
+            pageUrl: null, userAgent: null, additionalContext: null,
+            screenshot: null, ct: Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*64 characters*");
+    }
+
+    [HumansFact]
+    public async Task UpdateSectionAsync_routes_an_unknown_section_to_the_Admin_queue()
+    {
+        var (_, issueId) = await SeedIssueAsync(IssueStatus.Open, section: IssueSectionRouting.Tickets);
+
+        await _service.UpdateSectionAsync(issueId, "NotARoutedQueue", Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
+        stored.Section.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task UpdateSectionWithResultAsync_fails_on_a_section_longer_than_the_column()
+    {
+        var (_, issueId) = await SeedIssueAsync(IssueStatus.Open, section: IssueSectionRouting.Tickets);
+
+        var result = await _service.UpdateSectionWithResultAsync(
+            issueId, new string('x', 65), Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("64 characters");
+
+        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
+        stored.Section.Should().Be(IssueSectionRouting.Tickets);
+    }
+
     [HumansFact]
     public async Task UpdateSectionWithResultAsync_returns_failure_message_for_terminal_issue()
     {
@@ -839,7 +927,7 @@ public sealed class IssuesServiceTests
             repo, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, Substitute.For<INotificationAutoResolve>(), AuditLog, _navBadge,
             _issuesBadge, Cache,
-            Clock, env, NullLogger<IssuesApplicationService>.Instance);
+            Clock, env, SectionCatalog, NullLogger<IssuesApplicationService>.Instance);
 
         await svc.GetIssueListAsync(new IssueListFilter(), Guid.NewGuid(), [], viewerIsAdmin: true, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -867,7 +955,7 @@ public sealed class IssuesServiceTests
             repo, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, Substitute.For<INotificationAutoResolve>(), AuditLog, _navBadge,
             _issuesBadge, Cache,
-            Clock, env, NullLogger<IssuesApplicationService>.Instance);
+            Clock, env, SectionCatalog, NullLogger<IssuesApplicationService>.Instance);
 
         var viewerId = Guid.NewGuid();
         await svc.GetIssueListAsync(
@@ -899,7 +987,7 @@ public sealed class IssuesServiceTests
             repo, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, Substitute.For<INotificationAutoResolve>(), AuditLog, _navBadge,
             _issuesBadge, Cache,
-            Clock, env, NullLogger<IssuesApplicationService>.Instance);
+            Clock, env, SectionCatalog, NullLogger<IssuesApplicationService>.Instance);
 
         var viewerId = Guid.NewGuid();
         await svc.GetIssueListAsync(
@@ -982,7 +1070,7 @@ public sealed class IssuesServiceTests
             repo, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, Substitute.For<INotificationAutoResolve>(), AuditLog, _navBadge,
             _issuesBadge, Cache,
-            Clock, env, NullLogger<IssuesApplicationService>.Instance);
+            Clock, env, SectionCatalog, NullLogger<IssuesApplicationService>.Instance);
 
         await svc.GetActionableCountForViewerAsync(
             Guid.NewGuid(), [], viewerIsAdmin: true, ct: Xunit.TestContext.Current.CancellationToken);
@@ -1009,7 +1097,7 @@ public sealed class IssuesServiceTests
             repo, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, Substitute.For<INotificationAutoResolve>(), AuditLog, _navBadge,
             _issuesBadge, Cache,
-            Clock, env, NullLogger<IssuesApplicationService>.Instance);
+            Clock, env, SectionCatalog, NullLogger<IssuesApplicationService>.Instance);
 
         var viewerId = Guid.NewGuid();
         await svc.GetActionableCountForViewerAsync(
