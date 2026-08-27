@@ -129,9 +129,9 @@ public class GdprExportServiceTests
     [HumansFact]
     public async Task ExportForUserAsync_EmptyCollectionSliceSurvivesAsEmptyList()
     {
-        // Empty collections MUST round-trip to "[]" in the JSON — the legacy
-        // ExportDataAsync always emitted collection keys even when the user
-        // had no records, and downstream consumers depend on that.
+        // Empty collections MUST round-trip to "[]" in the JSON: a collection key
+        // is always present even when the user has no records, and downstream
+        // consumers depend on that.
         var emptyConsents = Array.Empty<object>();
         var service = CreateService(
             new FakeContributor("Profile", new { Name = "Jane" }),
