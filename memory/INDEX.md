@@ -95,7 +95,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 - [`icons-fa6-only`](code/icons-fa6-only.md) — `fa-solid fa-*`; never `bi bi-*` (Bootstrap Icons not loaded → invisible)
 - [`isgoogle-user-controlled`](code/isgoogle-user-controlled.md) — `UserEmail.IsGoogle` is a user-set preference; never auto-set it during merges/syncs, only via the sanctioned add-row invariant helper
 - [`img-alt-is-a-user-facing-string`](code/img-alt-is-a-user-facing-string.md) — an `<img alt>` on a member-facing view is a user-facing string and needs a resx key in all six cultures; `localization-admin-exempt` covers `/Admin/*`, `/TeamAdmin/*` and `/Shifts/Dashboard` only, and does not reach a member-facing modal opened from an admin page
-- [`json-serialization`](code/json-serialization.md) — System.Text.Json: private setters need `[JsonInclude]`; new classes need `[JsonConstructor]`; polymorphic types need `[JsonPolymorphic]` + `[JsonDerivedType]`
+- [`json-serialization`](code/json-serialization.md) — System.Text.Json: private setters need `[JsonInclude]`; new classes need a private parameterless `[JsonConstructor]`; new records need `[method: JsonConstructor]` on the primary constructor (never a parameterless one); polymorphic types need `[JsonPolymorphic]` + `[JsonDerivedType]`
 - [`localization-admin-exempt`](code/localization-admin-exempt.md) — admin pages don't need localization; no new `@Localizer[...]` keys for `/Admin/*`
 - [`log-file-debugging`](code/log-file-debugging.md) — Grep the log before speculating; write diagnostic logs with entity IDs and actual values
 - [`lsp-integration`](code/lsp-integration.md) — re-Read each `.cs` after editing; LSP diagnostics fire on Read, not Edit

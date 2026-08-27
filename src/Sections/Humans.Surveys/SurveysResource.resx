@@ -58,6 +58,8 @@
   <data name="Survey_Closed_Title" xml:space="preserve"><value>Survey unavailable</value></data>
   <data name="Survey_Closed_Heading" xml:space="preserve"><value>This survey is closed</value></data>
   <data name="Survey_Closed_Body" xml:space="preserve"><value>Thanks for your interest — this survey is no longer accepting responses.</value></data>
+  <data name="Survey_NothingToAnswer_Heading" xml:space="preserve"><value>There is nothing to answer</value></data>
+  <data name="Survey_NothingToAnswer_Body" xml:space="preserve"><value>This survey has no questions for you to answer, so nothing has been submitted. If you were expecting questions here, please let us know.</value></data>
   <data name="Survey_InvalidLink_Heading" xml:space="preserve"><value>This link is no longer valid</value></data>
   <data name="Survey_InvalidLink_Body" xml:space="preserve"><value>The survey link you used is invalid or has expired. If you think this is a mistake, please request a new link.</value></data>
   <data name="Survey_ThankYou_Heading" xml:space="preserve"><value>Thank you</value></data>

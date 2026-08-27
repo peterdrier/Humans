@@ -63,6 +63,8 @@
   <data name="Survey_Closed_Title" xml:space="preserve"><value>Sondaggio non disponibile</value></data>
   <data name="Survey_Closed_Heading" xml:space="preserve"><value>Questo sondaggio è chiuso</value></data>
   <data name="Survey_Closed_Body" xml:space="preserve"><value>Grazie per il tuo interesse — questo sondaggio non accetta più risposte.</value></data>
+  <data name="Survey_NothingToAnswer_Heading" xml:space="preserve"><value>Non c'è nulla a cui rispondere</value></data>
+  <data name="Survey_NothingToAnswer_Body" xml:space="preserve"><value>Questo sondaggio non ha domande per te, quindi non è stato inviato nulla. Se ti aspettavi delle domande, faccelo sapere.</value></data>
   <data name="Survey_InvalidLink_Heading" xml:space="preserve"><value>Questo link non è più valido</value></data>
   <data name="Survey_InvalidLink_Body" xml:space="preserve"><value>Il link del sondaggio non è valido o è scaduto. Se pensi che sia un errore, richiedi un nuovo link.</value></data>
   <data name="Survey_ThankYou_Heading" xml:space="preserve"><value>Grazie</value></data>

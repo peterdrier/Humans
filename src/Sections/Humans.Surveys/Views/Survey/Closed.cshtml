@@ -3,9 +3,14 @@
 @{
     ViewData["Title"] = Localizer["Survey_Closed_Title"].Value;
 
-    var isClosed = string.Equals(Model.Reason, "closed", StringComparison.Ordinal);
-    var heading = isClosed ? Localizer["Survey_Closed_Heading"] : Localizer["Survey_InvalidLink_Heading"];
-    var body = isClosed ? Localizer["Survey_Closed_Body"] : Localizer["Survey_InvalidLink_Body"];
+    var (headingKey, bodyKey) = Model.Reason switch
+    {
+        "closed" => ("Survey_Closed_Heading", "Survey_Closed_Body"),
+        "empty" => ("Survey_NothingToAnswer_Heading", "Survey_NothingToAnswer_Body"),
+        _ => ("Survey_InvalidLink_Heading", "Survey_InvalidLink_Body"),
+    };
+    var heading = Localizer[headingKey];
+    var body = Localizer[bodyKey];
 }
 
 <div class="row justify-content-center">

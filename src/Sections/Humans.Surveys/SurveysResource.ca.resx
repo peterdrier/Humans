@@ -63,6 +63,8 @@
   <data name="Survey_Closed_Title" xml:space="preserve"><value>Enquesta no disponible</value></data>
   <data name="Survey_Closed_Heading" xml:space="preserve"><value>Aquesta enquesta està tancada</value></data>
   <data name="Survey_Closed_Body" xml:space="preserve"><value>Gràcies pel teu interès — aquesta enquesta ja no accepta respostes.</value></data>
+  <data name="Survey_NothingToAnswer_Heading" xml:space="preserve"><value>No hi ha res a respondre</value></data>
+  <data name="Survey_NothingToAnswer_Body" xml:space="preserve"><value>Aquesta enquesta no té preguntes per a tu, així que no s'ha enviat res. Si esperaves veure-hi preguntes, digues-nos-ho.</value></data>
   <data name="Survey_InvalidLink_Heading" xml:space="preserve"><value>Aquest enllaç ja no és vàlid</value></data>
   <data name="Survey_InvalidLink_Body" xml:space="preserve"><value>L'enllaç de l'enquesta no és vàlid o ha caducat. Si creus que és un error, demana un enllaç nou.</value></data>
   <data name="Survey_ThankYou_Heading" xml:space="preserve"><value>Gràcies</value></data>

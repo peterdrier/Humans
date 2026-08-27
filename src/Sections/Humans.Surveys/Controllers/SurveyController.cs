@@ -406,8 +406,10 @@ internal sealed class SurveyController(
             var next = SurveyWizardFlow.NextVisiblePage(editable.Questions, state.CurrentPage, answerStates);
             if (next is null)
             {
-                route.SaveCompleted(HttpContext.Session, state);
-                return RedirectToAction(route.ThankYouAction, route.PageRouteValues);
+                // Not thank-you: the respondent has submitted nothing, and telling them otherwise
+                // hides the real problem — a survey whose questions are all hidden (or that has none
+                // at all) should be visible as such rather than reported to them as completed.
+                return View("Closed", new SurveyClosedViewModel { Reason = "empty" });
             }
 
             state.CurrentPage = next.Value;

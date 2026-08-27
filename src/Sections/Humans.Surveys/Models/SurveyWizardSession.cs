@@ -1,10 +1,12 @@
 using Humans.Surveys.Contracts;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Humans.Surveys.Services;
 
 namespace Humans.Surveys.Models;
 
 /// <summary>What the thank-you page needs once the wizard state is gone: which survey, in which language.</summary>
+[method: JsonConstructor]
 internal sealed record SurveyCompletion(Guid SurveyId, string Culture);
 
 /// <summary>

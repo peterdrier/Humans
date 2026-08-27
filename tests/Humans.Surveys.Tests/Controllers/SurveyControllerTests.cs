@@ -128,6 +128,26 @@ public sealed class SurveyControllerTests
         await surveys.DidNotReceive().GetForEditAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task A_page_with_nothing_visible_says_so_instead_of_claiming_the_survey_is_done()
+    {
+        var surveyId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        // No questions at all — the same state branching produces when it hides every one of them.
+        surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(Detail(surveyId, thankYou: "Thanks — see you at the gate."));
+        var sut = CreateController(surveys, out var session);
+        SurveyWizardSession.Save(session, Token, new SurveyWizardState { SurveyId = surveyId });
+
+        var result = await sut.Page(Token, Xunit.TestContext.Current.CancellationToken);
+
+        var view = result.Should().BeOfType<ViewResult>().Subject;
+        view.ViewName.Should().Be("Closed");
+        view.Model.Should().BeOfType<SurveyClosedViewModel>().Subject.Reason.Should().Be("empty");
+        SurveyWizardSession.LoadCompleted(session, Token)
+            .Should().BeNull("nothing was submitted, so nothing may mark the respondent as done");
+    }
+
     private static SurveyController CreateController(ISurveyService surveys, out ISession session)
     {
         var localizer = Substitute.For<IStringLocalizer<SurveysResource>>();

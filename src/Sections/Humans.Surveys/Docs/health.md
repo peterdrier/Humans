@@ -101,6 +101,11 @@ Settled decisions that look wrong until you know why. Do not re-litigate these.
   real time would correlate with the unlinked response's `SubmittedAt`.
 - **`SurveyWizardState.Answers` is keyed by `QuestionId.ToString()`.** Guid object keys do not
   round-trip through the session's JSON.
+- **`Invitation.Completed` is a submit guard living inside a *resolve* method.** Submitting flips
+  it, and `ResolveAnswerContextAsync` then returns null for that invitation — so every consumer
+  downstream of a spent token inherits a gate written for one caller. All three behaviour defects
+  found on 2026-08-27 were this one shape wearing different hats. Do not re-derive it; if a run
+  wants to move the guard out of the resolver, that is a deliberate refactor, not a doctor strike.
 - **A double-submit on an already-completed invitation lands on thank-you, not a 500** — the
   wizard path treats "already completed" as a normal submitted outcome. The standalone submit
   entry point still throws, and that asymmetry is intentional.
@@ -110,6 +115,9 @@ Settled decisions that look wrong until you know why. Do not re-litigate these.
 
 ## History
 
+Scores move with the reforge version, so a row without its version is not comparable to the row
+above it. Record the version alongside the number.
+
 | Date | Outcome | reforge | PR |
 |---|---|---|---|
-| 2026-08-27 | first doctor run — thank-you copy restored on the invited path, reminder window honoured, anonymous 500 closed, stale prose swept | 314 (loc=5726 cogP95=8 cogMax=27) | peterdrier/Humans#1538 |
+| 2026-08-27 | first doctor run — thank-you copy restored on the invited path, reminder window honoured, anonymous 500 closed, an all-hidden page no longer reports itself as completed, stale prose swept | 314 @ 0.29.0 (loc=5726 cogP95=8 cogMax=27) | peterdrier/Humans#1538 |
