@@ -16,4 +16,9 @@
 | Handler | Requirement | Resource | Path |
 |---|---|---|---|
 | `ExpenseReportAuthorizationHandler` | `ExpenseReportOperationRequirement` (`View`, `Edit`, `Submit`, `Withdraw` — granted but unused, no call site; the controller's own owner check is the live gate, `Endorse`, `CoordinatorReject`, `Approve`, `FinanceReject`, `RequeueHoldedPush`). `Edit` grants the submitter their own Draft, and a finance admin any report in Draft / Submitted / CoordinatorEndorsed; `Submit` grants either of them a Draft | `ExpenseReportDto` | `Authorization/ExpenseReportAuthorizationHandler.cs` (registered in `Section.cs`) |
-| `IbanAccessHandler` | `IbanAccessRequirement` | (intrinsic — `TargetUserId` / `ReportId` / `IsAdminPageContext` fields on requirement) | `Authorization/IbanAccessHandler.cs` — registered in DI but no production call site today (only `IbanAccessHandlerTests`); `UsersAdminController.RevealIban` (`Humans.Users`) uses `[Authorize(Policy = AdminOnly)]` instead |
+
+Raw-IBAN access has no resource handler. `IbanAccessHandler` / `IbanAccessRequirement` were deleted
+once it was clear nothing constructed the requirement: they duplicated `[Authorize(Policy = AdminOnly)]`
+on `/Users/Admin/{id}/RevealIban` — the only page that reveals a raw account number, and one that
+already audits every reveal — and their finance grant (any non-Draft, non-Withdrawn report) did not
+match `/Expenses/{id}/Iban`, which renders masked and gates *setting* the value on submitter-or-`Edit`.

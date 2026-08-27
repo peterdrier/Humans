@@ -45,7 +45,6 @@ public sealed class Section : ISection
         // Resource-based handlers move into the section; the policies they satisfy stay in
         // Shell's AuthorizationPolicyExtensions (design §8's asymmetry, §15 step 6).
         services.AddScoped<IAuthorizationHandler, ExpenseReportAuthorizationHandler>();
-        services.AddScoped<IAuthorizationHandler, IbanAccessHandler>();
 
         // The section owns its badge colours rather than Base holding a literal row per section
         // enum: Base cannot name ExpenseReportStatus, and referencing the section's contracts

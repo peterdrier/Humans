@@ -53,7 +53,9 @@ What the shapes imply, written fresh:
 - **One authorization handler** that owns the actor × operation × status matrix, and one
   operation per thing a person can do. Nothing hand-rolls an ownership check beside it.
 - **One service** holding the state machine, with one method per transition. A transition
-  method validates, calls exactly one repository write, and writes exactly one audit entry.
+  method validates, calls exactly one repository write, and writes an audit entry per auditable
+  action it took — normally one, and two where approval also overrides the category, which is its
+  own thing to have done and its own thing to be able to see afterwards.
 - **One repository** owning the section's tables, each write atomic, returning DTOs only.
 - **The outbox drain is its own concern** inside the service — queue semantics in one place,
   the Holded conversation in another, and a scheduler shim that holds neither.
