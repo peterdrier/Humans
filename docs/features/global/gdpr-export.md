@@ -221,8 +221,9 @@ category without accounting for its deletion:
 30-day grace period — on request it revokes team memberships and governance
 roles immediately — but once the grace period expires the daily
 `ProcessAccountDeletionsJob` runs the fan-out rather than a hand-wired cascade.
-Contributors run sequentially (scoped section DbContexts are not thread-safe,
-same as the export), the contributor declaring `Account` runs last so sections
+Contributors run sequentially — the same simplicity choice as the export, and
+for the same reason (see "Why sequential fan-out" above); the contributor
+declaring `Account` runs last so sections
 that still need the human's addresses can resolve them, and a contributor that
 throws aborts the run with the deletion markers still set. Erasure also reaches
 the external processors that hold the human: it suspends their `@nobodies.team`

@@ -181,8 +181,8 @@ public class GdprExportServiceTests
         await service.ExportForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         log.MaxConcurrent.Should().Be(1,
-            "the fan-out is sequential — a Task.WhenAll would overlap contributors, and each " +
-            "holds its own section's DbContext for the duration of its call");
+            "the fan-out is sequential — a Task.WhenAll would overlap contributors, and one at " +
+            "a time is what keeps failure attribution and log order plain");
         log.Order.Should().Equal("A", "B", "C");
     }
 
