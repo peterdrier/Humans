@@ -19,7 +19,7 @@ internal sealed class SurveyInvitationConfiguration : IEntityTypeConfiguration<S
         // Reminder sweep predicate index.
         b.HasIndex(i => new { i.SurveyId, i.Completed, i.SentAt });
 
-        // Completed is a plain bool — NO completion-time column and NO UpdatedAt (timing side-channel, plan
-        // Deviation #10). UserId is a bare Guid column — no nav, no cross-section EF FK constraint.
+        // Completed is a plain bool — NO completion-time column and NO UpdatedAt (timing side-channel).
+        // UserId is a bare Guid column — no nav, no cross-section EF FK constraint.
     }
 }

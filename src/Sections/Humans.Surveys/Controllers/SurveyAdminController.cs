@@ -14,8 +14,9 @@ using Humans.Users.Contracts;
 namespace Humans.Surveys.Controllers;
 
 /// <summary>
-/// Board/Admin survey authoring: index, builder (create/edit), open/close. Controllers parse → call
-/// the service → format; sorting and VM↔DTO mapping live here (hard rule). Send lives in Phase 3.
+/// Board/Admin survey authoring: index, builder (create/edit), open/close, preview, send, results
+/// and CSV/JSON export. Controllers parse → call the service → format; sorting and VM↔DTO mapping
+/// live here (hard rule).
 /// </summary>
 [Authorize(Policy = PolicyNames.BoardOrAdmin)]
 [Route("Survey/Admin")]

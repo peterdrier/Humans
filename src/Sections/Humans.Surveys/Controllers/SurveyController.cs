@@ -309,7 +309,11 @@ internal sealed class SurveyController(
     {
         if (IsReservedSlug(slug)) return NotFound();
 
-        // The wizard session is already cleared; re-resolve the survey for the closing copy.
+        if (SurveyWizardSession.LoadCompletedBySlug(HttpContext.Session, slug) is { } done)
+        {
+            return View("ThankYou", BuildThankYou(await surveyService.GetForEditAsync(done.SurveyId, ct), done.Culture));
+        }
+
         var ctx = await surveyService.ResolvePublicContextAsync(slug, ct);
         return View("ThankYou", BuildThankYou(ctx?.Definition));
     }
@@ -317,7 +321,15 @@ internal sealed class SurveyController(
     [HttpGet("Answer/ThankYou")]
     public async Task<IActionResult> ThankYou(string t, CancellationToken ct)
     {
-        // The wizard session is already cleared; re-resolve the survey (token still valid) for the copy.
+        // Submit flips Invitation.Completed, and a completed invitation no longer resolves — so the
+        // token cannot re-derive the survey here. The completion marker written at submit carries the
+        // survey and the language the respondent actually answered in; re-resolving the token is only
+        // the fallback for a thank-you link opened without one (bookmark, new session).
+        if (SurveyWizardSession.LoadCompleted(HttpContext.Session, t) is { } done)
+        {
+            return View("ThankYou", BuildThankYou(await surveyService.GetForEditAsync(done.SurveyId, ct), done.Culture));
+        }
+
         var ctx = await surveyService.ResolveAnswerContextAsync(t, ct);
         return View("ThankYou", BuildThankYou(ctx?.Definition));
     }
@@ -349,6 +361,14 @@ internal sealed class SurveyController(
         {
             if (IsPublic) SurveyWizardSession.ClearBySlug(session, Key);
             else SurveyWizardSession.Clear(session, Key);
+        }
+
+        /// <summary>Leaves the thank-you page what it needs, for after <see cref="Clear"/> has run.</summary>
+        public void SaveCompleted(ISession session, SurveyWizardState state)
+        {
+            var completion = new SurveyCompletion(state.SurveyId, state.Culture);
+            if (IsPublic) SurveyWizardSession.SaveCompletedBySlug(session, Key, completion);
+            else SurveyWizardSession.SaveCompleted(session, Key, completion);
         }
     }
 
@@ -384,7 +404,12 @@ internal sealed class SurveyController(
         if (visible.Count == 0)
         {
             var next = SurveyWizardFlow.NextVisiblePage(editable.Questions, state.CurrentPage, answerStates);
-            if (next is null) return RedirectToAction(route.ThankYouAction, route.PageRouteValues);
+            if (next is null)
+            {
+                route.SaveCompleted(HttpContext.Session, state);
+                return RedirectToAction(route.ThankYouAction, route.PageRouteValues);
+            }
+
             state.CurrentPage = next.Value;
             route.Save(HttpContext.Session, state);
             visible = SurveyWizardFlow.VisibleQuestionsOnPage(editable.Questions, state.CurrentPage, answerStates);
@@ -442,6 +467,7 @@ internal sealed class SurveyController(
                 return await RenderPage(state, route, ct);
 
             case SurveyWizardOutcome.Submitted:
+                route.SaveCompleted(HttpContext.Session, state);
                 route.Clear(HttpContext.Session);
                 return RedirectToAction(route.ThankYouAction, route.PageRouteValues);
 
@@ -470,8 +496,13 @@ internal sealed class SurveyController(
             CurrentPage = 0,
         };
 
-    /// <summary>Resolves the thank-you copy (survey's own text, else the localized fallback).</summary>
-    private SurveyThankYouViewModel BuildThankYou(SurveyDetail? definition)
+    /// <summary>
+    /// Resolves the thank-you copy (survey's own text, else the localized fallback).
+    /// <paramref name="answeredCulture"/> is the language the respondent chose at the intro and answered
+    /// in, which is not necessarily their site UI culture; without it the closing copy would come back
+    /// in a different language from the questions they just read.
+    /// </summary>
+    private SurveyThankYouViewModel BuildThankYou(SurveyDetail? definition, string? answeredCulture = null)
     {
         if (definition is null)
         {
@@ -479,7 +510,7 @@ internal sealed class SurveyController(
         }
 
         var editable = definition.Editable;
-        var culture = ResolveCulture(editable.DefaultCulture);
+        var culture = answeredCulture ?? ResolveCulture(editable.DefaultCulture);
         var thankYou = editable.ThankYou.Resolve(culture, editable.DefaultCulture);
 
         return new SurveyThankYouViewModel

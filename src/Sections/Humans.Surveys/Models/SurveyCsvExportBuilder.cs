@@ -26,7 +26,6 @@ internal static class SurveyCsvExportBuilder
 
         return HumansCsv.WriteBytes(csv =>
         {
-            // Header: fixed identity columns + one disambiguated column per question.
             var header = new List<object?> { "response_id", "anonymity", "input_method", "submitted_at", "user_id", "user_name" };
             header.AddRange(export.Questions.Select(q => (object?)QuestionHeader(q, export.Questions)));
             csv.WriteRow(header.ToArray());

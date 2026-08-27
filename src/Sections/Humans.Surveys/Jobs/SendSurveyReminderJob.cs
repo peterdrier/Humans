@@ -10,8 +10,7 @@ namespace Humans.Surveys.Jobs;
 /// <remarks>
 /// Delegates entirely to <see cref="ISurveyReminderSender.SendDueRemindersAsync"/> — the job never
 /// touches a section DbContext or any repository directly
-/// (design-rules §2c: jobs call services). Moved out of <c>Humans.Infrastructure/Jobs</c> at G5
-/// lane 5b-5 (nobodies-collective/Humans#866); it sits under <c>Jobs/</c> because Shell
+/// (design-rules §2c: jobs call services). It sits under <c>Jobs/</c> because Shell
 /// names the concrete type at registration and HUM0034 makes every other public type in a
 /// section an error.
 /// </remarks>

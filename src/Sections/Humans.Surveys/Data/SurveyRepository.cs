@@ -6,7 +6,7 @@ using NodaTime;
 
 namespace Humans.Surveys.Data;
 
-/// <summary>EF-backed <see cref="ISurveyRepository"/>. Declared <c>partial</c>; later phases add their reads/writes.</summary>
+/// <summary>EF-backed <see cref="ISurveyRepository"/>.</summary>
 internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContext> factory) : ISurveyRepository
 {
     public async Task<Survey?> GetByIdAsync(Guid id, CancellationToken ct = default)

@@ -20,8 +20,6 @@ namespace Humans.Surveys.Services;
 internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
 {
     // ── Authoring ──────────────────────────────────────────────────────────
-    /// <summary>All surveys for the admin index (newest first), with invited/response counts.</summary>
-
     /// <summary>Loads a survey's full editable graph for the builder, or null if not found.</summary>
     Task<SurveyDetail?> GetForEditAsync(Guid surveyId, CancellationToken ct = default);
 
@@ -149,22 +147,6 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
         Guid surveyId,
         SurveyResultsScope scope,
         CancellationToken ct = default);
-
-    /// <summary>
-    /// The admin results read model: participation funnel, per-question aggregates over submitted
-    /// responses, and the Identified-only respondent drill-down. Null if the survey does not exist.
-    /// CompletionTracked/Anonymous responses feed the aggregates but never the drill-down (no identity
-    /// exposure). Prompts/labels are resolved in the survey's default culture.
-    /// </summary>
-
-    /// <summary>
-    /// The raw per-response export model backing the admin CSV/JSON downloads (and reused by the
-    /// analysis API): the question schema plus one row per submitted response, ordered by
-    /// <c>SubmittedAt</c>. Null if the survey does not exist. Identity (<c>UserId</c>/<c>UserName</c>)
-    /// is populated ONLY for <see cref="ResponseAnonymity.Identified"/> rows; CompletionTracked and
-    /// Anonymous rows still appear (so totals reconcile) but carry no identity. Prompts/labels are
-    /// resolved in the survey's default culture.
-    /// </summary>
 }
 
 internal sealed record SurveyScopedResults(
@@ -180,8 +162,6 @@ internal enum SurveyResultsScope
 }
 
 // ── Authoring DTOs (co-located) ─────────────────────────────────────────────
-
-/// <summary>Admin-index row: title resolved in the survey's default culture, plus participation counts.</summary>
 
 /// <summary>A survey loaded for editing: identity + status + the editable graph.</summary>
 internal sealed record SurveyDetail(Guid Id, SurveyStatus Status, SurveyEditInput Editable);
@@ -305,7 +285,7 @@ internal sealed record SurveyDraftAnswer(
 /// the response ONLY for <see cref="ResponseAnonymity.Identified"/>; CompletionTracked still flips the
 /// invitation's <c>Completed</c> flag (via <c>InvitationId</c>) but stores no link on the response;
 /// Anonymous leaves the invitation untouched. <c>DraftResponseId</c> is set only when resuming an
-/// Identified draft. <see cref="InputMethod"/> lets the public-slug path (Task 4.4) reuse submit.
+/// Identified draft. <see cref="InputMethod"/> lets the public-slug path reuse submit.
 /// </summary>
 internal sealed record SurveySubmission(
     Guid SurveyId,

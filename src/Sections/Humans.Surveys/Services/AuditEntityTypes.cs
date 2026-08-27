@@ -10,8 +10,7 @@ namespace Humans.Surveys.Services;
 /// contract with every row already in the database — not a view of the current CLR type names.
 /// </para>
 /// <para>
-/// Surveys arrived at G5 writing <c>nameof(Survey)</c> and <c>nameof(SurveyService)</c>. Neither
-/// type was renamed by this move, so nothing is orphaned — but leaving them derived from
+/// Leaving them derived from
 /// <c>nameof</c> means the next rename over this section silently changes what the code writes
 /// <em>and</em> what it queries, in lockstep, with no build error and no failing test: the audit
 /// panel just reads back empty. Pinning them as literals is what makes that rename schema-inert,

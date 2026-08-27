@@ -19,8 +19,7 @@ namespace Humans.Surveys.Services;
 /// <summary>
 /// Application-layer <see cref="ISurveyService"/>. Plain Scoped service (no caching decorator, per
 /// spec §12). Cross-domain display data is stitched from <c>I…ServiceRead</c> interfaces — the
-/// repository never resolves user/team navs. Authoring lives here; send/submit/results/export/GDPR
-/// are added in their phases (constructor grows with them).
+/// repository never resolves user/team navs.
 /// </summary>
 internal sealed class SurveyService(
     ISurveyRepository repo,
@@ -495,7 +494,6 @@ internal sealed class SurveyService(
         var due = await repo.GetInvitationsDueForReminderAsync(cutoff, ct);
         if (due.Count == 0) return 0;
 
-        // Resolve emails + display info for the whole due set in one cross-section call each.
         var userIds = due.Select(i => i.UserId).Distinct().ToList();
         var emails = await userEmailService.GetNotificationTargetEmailsAsync(userIds, ct);
         var users = await userService.GetUserInfosAsync(userIds, ct);
@@ -637,7 +635,7 @@ internal sealed class SurveyService(
             Answers = [],
         };
 
-        // No audit log for individual response activity (privacy — Deviation #10).
+        // No audit log for individual response activity (privacy).
         await repo.AddResponseAsync(response, ct);
         return response.Id;
     }
@@ -1369,7 +1367,6 @@ internal sealed class SurveyService(
             .ToList();
     }
 
-    /// <summary>Maps an answer's selected option values to their resolved labels (falls back to the raw value when unknown).</summary>
     private static IReadOnlyList<string> ResolveSelectedLabels(
         SurveyAnswer answer, IReadOnlyDictionary<Guid, Dictionary<string, string>> optionLabels)
     {
@@ -1613,7 +1610,7 @@ internal sealed class SurveyService(
 
             default:
                 // Unknown audience type resolves to nobody, silently — the send would look like
-                // it worked while inviting no one. See issue #1065.
+                // it worked while inviting no one.
                 logger.SwitchDefaultWarn(type);
                 return new HashSet<Guid>();
         }

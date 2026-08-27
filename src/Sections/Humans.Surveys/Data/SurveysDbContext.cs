@@ -6,16 +6,15 @@ using Microsoft.EntityFrameworkCore;
 namespace Humans.Surveys.Data;
 
 /// <summary>
-/// Per-section database context for the Surveys section
-/// (nobodies-collective/Humans#858): maps only <c>surveys</c>,
+/// Per-section database context for the Surveys section: maps only <c>surveys</c>,
 /// <c>survey_questions</c>, <c>survey_question_options</c>,
 /// <c>survey_invitations</c>, <c>survey_responses</c> and <c>survey_answers</c>,
 /// with its own <c>__EFMigrationsHistory_Surveys</c> table and migrations under
-/// <c>Migrations/Surveys/</c>. Same database, same connection — the split is a
+/// <c>Data/Migrations/</c>. Same database, same connection — the split is a
 /// code-side partition of the EF model.
 /// </summary>
 /// <remarks>
-/// Internal-sealed like every section context (issue #750): repositories
+/// Internal-sealed like every section context: repositories
 /// are the only consumers. Configurations are applied explicitly (not by
 /// assembly scanning) so this model can never accrete another section's tables.
 /// </remarks>
