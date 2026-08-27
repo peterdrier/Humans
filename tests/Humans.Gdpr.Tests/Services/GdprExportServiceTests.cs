@@ -169,6 +169,61 @@ public class GdprExportServiceTests
             "empty collection slices must serialize as '[]' in the downloaded JSON");
     }
 
+    [HumansFact]
+    public async Task ExportForUserAsync_CallsContributorsOneAtATime()
+    {
+        var log = new ContributorCallLog();
+        var service = CreateService(
+            new ProbeContributor("A", log),
+            new ProbeContributor("B", log),
+            new ProbeContributor("C", log));
+
+        await service.ExportForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        log.MaxConcurrent.Should().Be(1,
+            "the fan-out is sequential — a Task.WhenAll would overlap contributors, and each " +
+            "holds its own section's DbContext for the duration of its call");
+        log.Order.Should().Equal("A", "B", "C");
+    }
+
+    private sealed class ContributorCallLog
+    {
+        private int _inFlight;
+
+        public int MaxConcurrent { get; private set; }
+        public List<string> Order { get; } = [];
+
+        public void Enter(string name)
+        {
+            Order.Add(name);
+            _inFlight++;
+            if (_inFlight > MaxConcurrent) MaxConcurrent = _inFlight;
+        }
+
+        public void Exit() => _inFlight--;
+    }
+
+    /// <summary>
+    /// Yields mid-call, so an orchestrator that awaited its contributors concurrently
+    /// would leave two of these in flight at once and push MaxConcurrent above 1.
+    /// </summary>
+    private sealed class ProbeContributor(string name, ContributorCallLog log) : IUserDataContributor
+    {
+        public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+        {
+            log.Enter(name);
+            await Task.Yield();
+            await Task.Yield();
+            log.Exit();
+            return [new UserDataSlice(name, new object())];
+        }
+
+        public IReadOnlyDictionary<string, string?> ErasureDeclaration =>
+            new Dictionary<string, string?>(StringComparer.Ordinal) { [name] = null };
+
+        public Task EraseForUserAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
+    }
+
     private sealed class FakeContributor : IUserDataContributor
     {
         private readonly UserDataSlice[] _slices;
