@@ -135,4 +135,4 @@ Settled decisions that read as accidents. Do not re-litigate these.
 
 | Run | Date | Reforge (surface) | loc | cogP95 / cogMax | PR |
 |---|---|---|---|---|---|
-| 1 | 2026-08-26 | 285 | 4071 | 9 / 20 | pending |
+| 1 | 2026-08-26 | 285 | 4071 | 9 / 20 | peterdrier/Humans#1537 |
