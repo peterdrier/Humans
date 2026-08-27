@@ -13,7 +13,7 @@
   <!--
     No FrameworkReference: nothing here names an ASP.NET type. The section's one
     controller, GuestDataController, is untested — the orchestrator test constructs
-    GdprExportService over fake contributors and a FakeClock and nothing else. Adding a
+    GdprService over fake contributors and a FakeClock and nothing else. Adding a
     controller test means adding the FrameworkReference back.
 
     No EF Core package either: Gdpr owns no tables, which is why tests/Directory.Build.props

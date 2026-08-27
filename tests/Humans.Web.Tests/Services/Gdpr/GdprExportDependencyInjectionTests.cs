@@ -173,7 +173,7 @@ public class GdprExportDependencyInjectionTests
     }
 
     [HumansFact]
-    public void GdprExportServiceIsRegistered()
+    public void GdprServiceIsRegistered()
     {
         var services = new ServiceCollection();
         Extensions.InfrastructureServiceCollectionExtensions
@@ -182,8 +182,8 @@ public class GdprExportDependencyInjectionTests
                 BuildMinimalConfiguration(),
                 new StubHostEnvironment());
 
-        services.Should().ContainSingle(d => d.ServiceType == typeof(IGdprExportService),
-            "the GDPR export orchestrator must be registered exactly once");
+        services.Should().ContainSingle(d => d.ServiceType == typeof(IGdprService),
+            "the GDPR subject-rights orchestrator must be registered exactly once");
     }
 
     [HumansFact]

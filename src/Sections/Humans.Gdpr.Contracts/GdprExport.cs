@@ -1,7 +1,7 @@
 namespace Humans.Gdpr.Contracts;
 
 /// <summary>
-/// Envelope returned by <see cref="IGdprExportService"/> — a timestamped bag of
+/// Envelope returned by <see cref="IGdprService"/> — a timestamped bag of
 /// section slices keyed by <see cref="UserDataSlice.SectionName"/>. This is the
 /// shape serialized to the JSON file the user downloads.
 /// </summary>

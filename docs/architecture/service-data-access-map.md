@@ -307,7 +307,7 @@ Every table is owned by exactly one repository; there are no HUM0025
     `EventService` respectively, each reading their own owned tables through
     their own repositories — `ShiftsDbContext` for Shifts,
     `EventGuideDbContext` for Events. The sequential (non-parallel) fan-out
-    pattern mirrors `GdprExportService` and `EarlyEntryService`: each
+    pattern mirrors `GdprService` and `EarlyEntryService`: each
     contributor uses its own DbContext instance, but EF
     `DbContext`/`IDbContextFactory` usage is not thread-safe within a single
     async flow, so contributors still run one at a time.

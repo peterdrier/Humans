@@ -32,8 +32,7 @@ public class AccountDeletionServiceTests
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
-    private readonly IUserDataContributor _identityContributor = Substitute.For<IUserDataContributor>();
-    private readonly IUserDataContributor _sectionContributor = Substitute.For<IUserDataContributor>();
+    private readonly IGdprService _gdprService = Substitute.For<IGdprService>();
     private readonly ITicketServiceRead _ticketQueryService = Substitute.For<ITicketServiceRead>();
     private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator =
@@ -54,22 +53,14 @@ public class AccountDeletionServiceTests
             .Returns(new UserProfileAnonymizeResult(false, null, null));
         _ticketQueryService.GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new UserTicketHoldings(0, []));
-        // No merge history unless a test gives one — the fan-out walks the chain.
+        // No merge history unless a test gives one — Users walks the chain and passes it in.
         _userServiceRead.GetMergedSourceIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid>());
 
-        // The contributor owning the Account section must erase last — the fan-out
-        // orders off the declaration, so the fakes declare the two shapes.
-        _identityContributor.ErasureDeclaration.Returns(
-            new Dictionary<string, string?>(StringComparer.Ordinal)
-            {
-                [GdprExportSections.Account] = "tombstone"
-            });
-        _sectionContributor.ErasureDeclaration.Returns(
-            new Dictionary<string, string?>(StringComparer.Ordinal)
-            {
-                [GdprExportSections.Issues] = null
-            });
+        // Gdpr owns the erasure loop now and echoes back the ids it erased so the
+        // orchestrator can invalidate their per-id caches.
+        _gdprService.EraseForUsersAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci => ci.Arg<IReadOnlyList<Guid>>());
 
         _service = new AccountDeletionService(
             _userService,
@@ -77,7 +68,7 @@ public class AccountDeletionServiceTests
             _userEmailService,
             _teamService,
             _roleAssignmentService,
-            [_identityContributor, _sectionContributor],
+            _gdprService,
             _ticketQueryService,
             _userInfoInvalidator,
             _roleAssignmentClaimsInvalidator,
@@ -276,8 +267,8 @@ public class AccountDeletionServiceTests
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
         _teamService.DidNotReceive().InvalidateActiveTeamsCache();
-        await _identityContributor.DidNotReceiveWithAnyArgs()
-            .EraseForUserAsync(Guid.Empty, Arg.Any<CancellationToken>());
+        await _gdprService.DidNotReceiveWithAnyArgs()
+            .EraseForUsersAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -292,9 +283,11 @@ public class AccountDeletionServiceTests
         await _service.PurgeAsync(userId, ct: Xunit.TestContext.Current.CancellationToken);
 
         // Sections that do not implement IUserMerge leave their rows on the archived id;
-        // erasing only the survivor would never reach them.
-        await _sectionContributor.Received(1).EraseForUserAsync(mergedIn, Arg.Any<CancellationToken>());
-        await _sectionContributor.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
+        // erasing only the survivor would never reach them, so the whole chain is handed
+        // to Gdpr's erasure fan-out.
+        await _gdprService.Received(1).EraseForUsersAsync(
+            Arg.Is<IReadOnlyList<Guid>>(ids => ids.Contains(mergedIn) && ids.Contains(userId)),
+            Arg.Any<CancellationToken>());
         // The archived id's cache entry too, or its tombstone name stays searchable.
         await _userInfoInvalidator.Received(1).InvalidateAsync(
             mergedIn, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
@@ -315,9 +308,11 @@ public class AccountDeletionServiceTests
 
         await _service.PurgeAsync(survivor, ct: Xunit.TestContext.Current.CancellationToken);
 
-        await _sectionContributor.Received(1).EraseForUserAsync(oldest, Arg.Any<CancellationToken>());
-        await _sectionContributor.Received(1).EraseForUserAsync(middle, Arg.Any<CancellationToken>());
-        await _sectionContributor.Received(1).EraseForUserAsync(survivor, Arg.Any<CancellationToken>());
+        // The whole chain is passed to Gdpr, archived ids first and the survivor last.
+        await _gdprService.Received(1).EraseForUsersAsync(
+            Arg.Is<IReadOnlyList<Guid>>(ids =>
+                ids.Contains(oldest) && ids.Contains(middle) && ids[ids.Count - 1] == survivor),
+            Arg.Any<CancellationToken>());
     }
 
     // Termination is the assertion here, so it is stated rather than left to the default
@@ -336,8 +331,9 @@ public class AccountDeletionServiceTests
         var result = await _service.PurgeAsync(userId, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
-        await _sectionContributor.Received(1).EraseForUserAsync(other, Arg.Any<CancellationToken>());
-        await _sectionContributor.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
+        await _gdprService.Received(1).EraseForUsersAsync(
+            Arg.Is<IReadOnlyList<Guid>>(ids => ids.Contains(other) && ids.Contains(userId)),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -350,8 +346,8 @@ public class AccountDeletionServiceTests
 
         result.Success.Should().BeTrue();
         // An admin purge must not erase less than the scheduled job does.
-        await _sectionContributor.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
-        await _identityContributor.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
+        await _gdprService.Received(1).EraseForUsersAsync(
+            Arg.Is<IReadOnlyList<Guid>>(ids => ids.Contains(userId)), Arg.Any<CancellationToken>());
         _teamService.Received(1).InvalidateActiveTeamsCache();
         // Parity with AnonymizeExpiredAccountAsync: per-user caches that key
         // off identity must also drop on admin purge. The UserInfo entry first —
@@ -413,8 +409,8 @@ public class AccountDeletionServiceTests
         result.OriginalDisplayName.Should().Be("Expired Human");
         result.PreferredLanguage.Should().Be("es");
 
-        await _sectionContributor.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
-        await _identityContributor.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
+        await _gdprService.Received(1).EraseForUsersAsync(
+            Arg.Is<IReadOnlyList<Guid>>(ids => ids.Contains(userId)), Arg.Any<CancellationToken>());
 
         _teamService.Received(1).RemoveMemberFromAllTeamsCache(userId);
         _roleAssignmentClaimsInvalidator.Received(1).Invalidate(userId);
@@ -422,38 +418,22 @@ public class AccountDeletionServiceTests
     }
 
     [HumansFact]
-    public async Task AnonymizeExpiredAccountAsync_ErasesTheAccountIdentityLast()
+    public async Task AnonymizeExpiredAccountAsync_ErasureFailureAbortsBeforeCacheInvalidation()
     {
-        // Sections that must reach an external processor (the Workspace suspend)
-        // need the human's addresses, which the Account contributor is about to drop.
+        // A failing erasure must abort the run: the Account contributor (inside Gdpr) never
+        // clears DeletionScheduledFor, so tomorrow's job retries the whole fan-out. The
+        // post-erasure cross-section cache invalidations must not run either. Contributor
+        // ordering and per-section semantics are Gdpr's concern (GdprServiceTests).
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
-
-        var order = new List<string>();
-        _sectionContributor.EraseForUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(_ => { order.Add("section"); return Task.CompletedTask; });
-        _identityContributor.EraseForUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(_ => { order.Add("identity"); return Task.CompletedTask; });
-
-        await _service.AnonymizeExpiredAccountAsync(userId, Xunit.TestContext.Current.CancellationToken);
-
-        order.Should().Equal("section", "identity");
-    }
-
-    [HumansFact]
-    public async Task AnonymizeExpiredAccountAsync_ContributorFailurePreservesDeletionFields()
-    {
-        // A throwing contributor must abort the run: the Account contributor never
-        // clears DeletionScheduledFor, so tomorrow's job retries the whole fan-out.
-        var userId = Guid.NewGuid();
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
-        _sectionContributor.EraseForUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns<Task>(_ => throw new InvalidOperationException("boom"));
+        _gdprService.EraseForUsersAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns<IReadOnlyList<Guid>>(_ => throw new InvalidOperationException("boom"));
 
         var act = () => _service.AnonymizeExpiredAccountAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
-        await _identityContributor.DidNotReceive().EraseForUserAsync(userId, Arg.Any<CancellationToken>());
+        _teamService.DidNotReceive().RemoveMemberFromAllTeamsCache(userId);
+        _shiftAuthorizationInvalidator.DidNotReceive().Invalidate(userId);
     }
 
     // ==========================================================================

@@ -22,7 +22,7 @@ An **Orchestrator** exists because an action genuinely crosses multiple sections
 
 **Capability marker, sibling of role markers.** `IInvalidator` (the cache-invalidator family, HUM0028 ratchet) and `IFanout` (terminology only, no analyzer) co-exist alongside `IOrchestrator` / `IApplicationService` on a per-type basis. See [[crosscut-purity]] for the sibling rule on keeping crosscuts pure.
 
-**Roster (SP1 settle).** `IGdprExportService`, `IEarlyEntryService`, `IOnboardingService`, `IHumanLifecycleService`, `IAccountDeletionService` carry `IOrchestrator` and no longer carry `IApplicationService`. `AgentService` is **not** an orchestrator — it owns `agent_*` and injects `IAgentRepository`, so it remains a Section. The design-rules §15i "orchestrator" label on it is wrong.
+**Roster (SP1 settle).** `IGdprService`, `IEarlyEntryService`, `IOnboardingService`, `IHumanLifecycleService`, `IAccountDeletionService` carry `IOrchestrator` and no longer carry `IApplicationService`. `AgentService` is **not** an orchestrator — it owns `agent_*` and injects `IAgentRepository`, so it remains a Section. The design-rules §15i "orchestrator" label on it is wrong.
 
 `ISearchService` joined the roster in nobodies-collective#987 — the G0 audit (#980) found it still carrying `IApplicationService` despite matching this definition verbatim and being classified "Orchestrator" in the frozen inventory alongside Gdpr; neither analyzer catches an orchestrator-shaped `IApplicationService` (see the Enforcement gap note below), so this went undetected until a hand audit found it.
 

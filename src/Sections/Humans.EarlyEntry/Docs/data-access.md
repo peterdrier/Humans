@@ -17,7 +17,7 @@ Current providers: Camps (`CampService` — camp-lead grants), Shifts
 (`TeamService` — role-gated team EE grants). Each provider reads via its
 own section's DbContext, so no shared context instance forces sequential
 access; fan-out is nonetheless kept sequential for consistency with the
-other contributor orchestrators (`GdprExportService`, `ICalFeedService`).
+other contributor orchestrators (`GdprService`, `ICalFeedService`).
 No direct DB access, no cache.
 
 ### CachingEarlyEntryService (Singleton, `Humans.EarlyEntry.Services`)

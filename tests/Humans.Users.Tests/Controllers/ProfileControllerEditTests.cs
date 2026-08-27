@@ -109,7 +109,7 @@ public class ProfileControllerEditTests
             Substitute.For<IShiftManagementServiceRead>(),
             _shiftMgmt,
             _shiftView,
-            Substitute.For<IGdprExportService>(),
+            Substitute.For<IGdprService>(),
             _configuration,
             new ConfigurationRegistry(),
             NullLogger<ProfileController>.Instance,

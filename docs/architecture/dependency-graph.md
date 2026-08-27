@@ -568,7 +568,7 @@ Not drawn above — their collaborators are all section-internal (or fan-out con
 interfaces / infra connectors, which this graph doesn't chart):
 
 `AgentService`, `AgentAdminStatusService`, `AgentSettingsService`, `AgentAnthropicBalanceProvider`,
-`GdprExportService` (fans `IUserDataContributor`), `GoogleWorkspaceUserService`,
+`GdprService` (fans `IUserDataContributor`), `GoogleWorkspaceUserService`,
 `SyncSettingsService`, `GuideContentService`, `MailerLiteService`, `StripeService`,
 `TicketVendorService`, `EmailPreviewService` (only dep is Email's own `IEmailBodyComposer`),
 `UserNameSyncService` (only deps are Users' own `IUserRepository` and `IUserService`).

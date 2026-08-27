@@ -13,13 +13,13 @@ namespace Humans.Gdpr.Controllers;
 /// Article 15 data export for profileless accounts (authenticated users without a
 /// Profile). It lives here rather than beside the rest of the Guest dashboard — whose
 /// frame is in Humans.Onboarding and whose comms and erasure actions are in
-/// Humans.Users — because it calls Gdpr's own <see cref="IGdprExportService"/> and
+/// Humans.Users — because it calls Gdpr's own <see cref="IGdprService"/> and
 /// nothing else.
 /// </summary>
 [Authorize]
 internal sealed class GuestDataController(
     IUserServiceRead userService,
-    IGdprExportService gdprExportService,
+    IGdprService gdprExportService,
     IClock clock,
     ILogger<GuestDataController> logger) : HumansControllerBase(userService)
 {

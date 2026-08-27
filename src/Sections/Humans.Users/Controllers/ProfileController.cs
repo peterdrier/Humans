@@ -58,7 +58,7 @@ internal sealed class ProfileController(
     IShiftManagementServiceRead shiftMgmt,
     IShiftVolunteerProfiles shiftProfiles,
     IShiftView shiftView,
-    IGdprExportService gdprExportService,
+    IGdprService gdprExportService,
     IConfiguration configuration,
     ConfigurationRegistry configRegistry,
     ILogger<ProfileController> logger,

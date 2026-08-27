@@ -48,7 +48,7 @@ location, not an ownership claim.
 - The section owns no tables and injects no repository. It is an orchestrator by the hard rules'
   own definition, and the territory it orchestrates is its own (Peter, 2026-08-14).
 - The fan-out is **sequential**, not `Task.WhenAll`: providers share the scoped section
-  `DbContext`s, which are not thread-safe (the same reason `GdprExportService` is sequential).
+  `DbContext`s, which are not thread-safe (the same reason `GdprService` is sequential).
 - `GetRosterAsync` is **never cached** — the admin roster must see live data.
   `GetForUserAsync` is cached per user, negative results included, so the no-EE majority does
   not re-fan-out on every render.
