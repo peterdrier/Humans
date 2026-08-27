@@ -17,8 +17,8 @@ Whether the member has actually been paid is read back out of the accounting led
 shown to them, and it is the treasurer's bank, not this system, that moves the money.
 
 Everything a person does on someone else's behalf leaves a trail naming both of them, and the
-member's bank account number is masked everywhere except the places that need it whole:
-the accounting system's own API call, and the audit row that records who typed it.
+member's bank account number is masked everywhere it is written out, except the places that need
+it whole: the accounting system's own API call, and the audit row that records who typed it.
 
 ## 2. The shapes
 
@@ -70,8 +70,11 @@ questions for Peter — see run 1.
 Stated so a violation is recognisable. The authoritative list is `Expenses.md`; these are the
 ones a change is most likely to break silently.
 
-- A claim belongs to its `SubmitterUserId`. Everything payee-shaped reads the *submitter's*
-  profile; the actor appears only in audit rows and `UploadedByUserId`.
+- A claim belongs to its `SubmitterUserId`; the actor appears only in audit rows and
+  `UploadedByUserId`, never as the payee. The payee is a *snapshot* — submit copies the submitter's
+  profile IBAN and legal name into `PayeeIban` / `PayeeName`, and the Holded push pays from those,
+  not from the live profile. `/Expenses/{id}/Iban` refreshes the snapshot, and only while the report
+  is pre-approval.
 - `Approved` is terminal. No payment state is ever stamped on a claim.
 - `Payable = min(Total, MaxAmount)` is the only figure payment math may use; `Total` is the
   receipts total and renders as nothing else.
@@ -79,8 +82,11 @@ ones a change is most likely to break silently.
   decision's audit entry.
 - Proof rows never reach `Total` and never reach Holded — not as document lines, not as files.
 - A header edit never moves a claim between budget years.
-- Raw IBAN appears only in a Holded request body and in an audit row whose subject is not the
-  actor. Everywhere else it is `IbanFormatter.Mask`ed.
+- Masking is a rule about *output*, not storage. Every log, audit entry and error message carrying
+  an IBAN goes through `IbanFormatter.Mask`, with one exception: an audit row whose subject is not
+  the actor keeps it whole, so a wrongly-typed account traces to who typed it. `PayeeIban` and
+  `Profile.Iban` are stored raw — Holded is paid from the raw value and fiscal retention requires
+  it — and revealing a stored IBAN to an admin is Users' own admin page, not this section's.
 - The drain does nothing when no Holded key is configured, and a written-off push is visible
   on both `/Expenses/Review` and the claim, never silently dropped.
 - Attachment pushes are stamped, so a re-drain resumes rather than duplicating files.
