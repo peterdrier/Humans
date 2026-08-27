@@ -133,7 +133,7 @@ This keeps the orchestrator focused on plan-execution decisions; the heavy readi
 | Existing-section | `section <Name>`, main clean | new `align/<section>` | none |
 | Mid-build | `section <Name>`, on feature branch | continue | none |
 
-Always use a worktree under `.worktrees/section-align-<target>/` (`feedback_always_use_worktree`).
+Locally, always use a worktree under `.worktrees/section-align-<target>/`; in a cloud run work in the repo root on the branch instead (`memory/process/always-use-worktree.md`).
 
 ---
 

@@ -12,8 +12,7 @@ public interface IGdprExportService : IOrchestrator
     /// <summary>
     /// Builds a complete GDPR export document for <paramref name="userId"/> by
     /// calling every registered contributor and merging their slices by section
-    /// name. The resulting <see cref="GdprExport"/> serializes to the same JSON
-    /// shape the legacy <c>ProfileService.ExportDataAsync</c> produced.
+    /// name.
     /// </summary>
     Task<GdprExport> ExportForUserAsync(Guid userId, CancellationToken ct = default);
 }

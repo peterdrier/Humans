@@ -14,22 +14,19 @@ namespace Humans.Gdpr;
 /// One registration: the export orchestrator. Gdpr owns no tables, so there is no
 /// <c>AddSectionDbContext</c> call and no repository — the service is a pure fan-out over
 /// every registered <see cref="IUserDataContributor"/>, each of which is registered by the
-/// section that owns the data. The line moved here out of Shell's
-/// <c>GdprSectionExtensions.AddGdprSection</c>, which is deleted.
+/// section that owns the data.
 /// <para>
-/// The contributor <em>forwarding factories</em> deliberately did not move: each
+/// The contributor <em>forwarding factories</em> deliberately do not live here: each
 /// <c>services.AddScoped&lt;IUserDataContributor&gt;(sp =&gt; sp.GetRequiredService&lt;X&gt;())</c>
-/// line belongs to the section that owns <c>X</c> and is registered beside it, in that
-/// section's own <c>Section.Register</c> or Shell extension. Gdpr registering them would be
-/// the parking-lot mistake step 4 warns about, and would need it to name thirteen sections'
-/// internal service types.
+/// line belongs beside the service that owns <c>X</c>, in that section's own
+/// <c>Section.Register</c>. Registering them here would make Gdpr name every other
+/// section's internal service types.
 /// </para>
 /// </remarks>
 public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
-        // GDPR export orchestrator — pure fan-out over every IUserDataContributor.
         services.AddScoped<IGdprExportService, GdprExportService>();
     }
 }

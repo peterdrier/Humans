@@ -200,7 +200,7 @@ If a change needs more than 2 lines of comment to explain, the change is too cle
 
 ## Workflow
 
-- Worktree: `.worktrees/trim-tests-<area>` off `origin/main`
+- Workspace: branch off `origin/main` in a worktree at `.worktrees/trim-tests-<area>` locally, or in the repo root in a cloud run (`memory/process/always-use-worktree.md`)
 - One commit per phase
 - One PR per service (or per small section)
 - Use harness primitives — `ServiceTestHarness`, `ServiceLocatorBuilder`, the harness stub properties (`AuditLog`/`Notifier`/`ShiftAuthInvalidator`/`AdminAuthorization`). Don't add raw `Substitute.For<>` for those four interfaces.

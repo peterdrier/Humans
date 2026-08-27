@@ -10,10 +10,10 @@ namespace Humans.Gdpr.Contracts;
 /// single-object sections whose underlying entity doesn't exist for this user
 /// (for example, a profileless account has no <c>Profile</c>). Collection
 /// sections MUST return an empty list (not <c>null</c>) when the user has no
-/// records — the legacy <c>ExportDataAsync</c> JSON shape always emitted
-/// collection top-level keys as <c>[]</c>, and downstream consumers
-/// (comparison tools, imports, support procedures) rely on that stability.
-/// The orchestrator drops only <c>null</c> slices from the final document.
+/// records: a collection key is always present in the JSON, as <c>[]</c> when
+/// empty, and downstream consumers (comparison tools, imports, support
+/// procedures) rely on that. The orchestrator drops only <c>null</c> slices
+/// from the final document.
 /// </para>
 /// </summary>
 /// <param name="SectionName">

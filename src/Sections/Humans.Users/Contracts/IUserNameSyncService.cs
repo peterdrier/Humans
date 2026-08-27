@@ -23,6 +23,7 @@ public interface IUserNameSyncService : IApplicationService
 public sealed record UnsyncedNameRow(
     Guid UserId,
     string Email,
+    UserState State,
     string ProfileBurnerName,
     string ProfileLegalName,
     bool BurnerNameMissing,

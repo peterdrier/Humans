@@ -96,16 +96,19 @@ change.
 
 ### Why sequential fan-out (not `Task.WhenAll`)
 
-Every contributor in Humans uses the scoped `HumansDbContext` from the current
-request. `DbContext` is not thread-safe — two concurrent awaits on the same
-instance throw `InvalidOperationException`. A naive `Task.WhenAll` would
-interleave contributor awaits on the shared context and corrupt state.
+This was once a correctness requirement — every contributor read through one
+scoped `HumansDbContext`, which is not thread-safe. That context is gone. Each
+section owns its own `DbContext` type, so no two contributors touch the same
+instance; how a given repository obtains its context varies — some take one by
+injection, some open one per call through `IDbContextFactory<T>` — and neither
+recreates the sharing. The hazard went with the shared context, and
+`design-rules.md` §8a records the reason as obsolete.
 
-At ~500-user scale a sequential fan-out completes well under a second, so
-parallelism would be a pure correctness hazard for no meaningful speedup. If a
-future refactor gives each contributor its own context (via
-`IDbContextFactory`), the loop in `GdprExportService.ExportForUserAsync` can
-become parallel in place without changing the contract.
+Sequential is now a simplicity choice, and it stays: one contributor at a time
+keeps failure attribution and log order plain, and at ~500-user scale an export
+completes well under a second, so parallelism would buy nothing measurable. The
+loop in `GdprExportService.ExportForUserAsync` could be made parallel in place
+without changing the contract — there is just no reason to.
 
 ## Section registry
 
@@ -221,8 +224,9 @@ category without accounting for its deletion:
 30-day grace period — on request it revokes team memberships and governance
 roles immediately — but once the grace period expires the daily
 `ProcessAccountDeletionsJob` runs the fan-out rather than a hand-wired cascade.
-Contributors run sequentially (scoped section DbContexts are not thread-safe,
-same as the export), the contributor declaring `Account` runs last so sections
+Contributors run sequentially — the same simplicity choice as the export, and
+for the same reason (see "Why sequential fan-out" above); the contributor
+declaring `Account` runs last so sections
 that still need the human's addresses can resolve them, and a contributor that
 throws aborts the run with the deletion markers still set. Erasure also reaches
 the external processors that hold the human: it suspends their `@nobodies.team`

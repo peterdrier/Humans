@@ -46,6 +46,7 @@
         @{
             var backfillTable = TableModel.For(Model.UnsyncedRows)
                 .Column("Email", r => r.Email)
+                .Column("Status", r => r.State.ToString())
                 .Column("Burner name", r => r.ProfileBurnerName)
                 .Column("Legal name", r => r.ProfileLegalName)
                 .Column("Missing", r => (r.BurnerNameMissing, r.LegalNameMissing) switch

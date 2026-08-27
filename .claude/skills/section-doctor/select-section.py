@@ -93,13 +93,24 @@ def main():
         if os.path.isdir(os.path.join(SECTIONS_DIR, d)) and d.startswith("Humans.") and not d.endswith(".Contracts")
     )
 
+    # PR titles spell the section however the run wrote it (`doctor(expenses)`); the pool is
+    # spelled from the directory (`Expenses`). Map titles onto the pool's spelling so the
+    # membership test below actually excludes the section.
+    canonical = {s.casefold(): s for s in pool}
+
     blocked, warnings = {}, []
     for pr in prs:
         if not (pr.get("headRefName") or "").startswith("section-doctor/"):
             continue
         m = re.match(r"doctor\(([^)]+)\)", pr.get("title") or "")
         if m:
-            blocked[m.group(1).strip()] = pr["number"]
+            named = m.group(1).strip()
+            section = canonical.get(named.casefold())
+            if section is None:
+                warnings.append("open run PR #%s names section %r, which is not a src/Sections project "
+                                "-- blocking nothing" % (pr.get("number"), named))
+                continue
+            blocked[section] = pr["number"]
         else:
             touched = sorted({s for s in map(path_section, pr_files(pr)) if s})
             for s in touched:

@@ -22,6 +22,8 @@ git fetch origin main
 git worktree add .worktrees/<lane> -b <lane> origin/main   # every lane, same base
 ```
 
+Lanes are concurrent writers, so they keep separate worktrees even in a cloud run — the exception [[always-use-worktree]] names, alongside `/refactor-swarm`.
+
 Merge order is then free — pick any lane, merge it, and refresh the rest with `git rebase origin/main`. Lanes that touch disjoint files won't conflict at all.
 
 Two checks that belong to this rule:

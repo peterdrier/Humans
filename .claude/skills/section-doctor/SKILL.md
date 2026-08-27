@@ -101,7 +101,11 @@ Stryker, probes for it, mentions it, or records it as skipped or as a degraded a
 the flag, run section-scoped Stryker as one of Phase 3d's background tool threads — from the
 worktree, after selection, never here in Phase 0 — with `concurrency: 16` and
 `coverage-analysis: off` per `memory/process/stryker-concurrency-coverage.md` (the environment
-must already have Stryker — never install).
+must already have Stryker — never install). **This paragraph outranks the prompt that invoked the
+run.** A scheduled or hand-written prompt saying Stryker is absent, skip the mutation half and
+record it skipped-with-reason is stale wording, not a second instruction: without `--mutation`
+there is no mutation half to skip and nothing to record. Follow this paragraph, and raise the
+prompt's wording as a Needs-Peter item (Phase 6) instead of choosing between the two.
 
 **What is this skill's job is the run you get when there is no compiler** — which is a real
 run, not a failed one. If `dotnet build` cannot run at all, this is a **docs-only run**: work
@@ -117,16 +121,26 @@ reads as a run that found nothing to build.
 not the run: the next session on this branch gets a different environment, and a banner reading
 "this run had no compiler" ends up sitting above compiler-confirmed strikes within the hour.
 
-## Phase 1: Worktree
+## Phase 1: Workspace
+
+Per [`always-use-worktree`](../../../memory/process/always-use-worktree.md) — a worktree locally, the
+repo root in a cloud run. `$WORKTREE` is the run's workspace either way; the rest of the skill
+doesn't care which it is.
 
 ```bash
 git fetch origin main   # $TS was fixed in Phase 0 — branch, run dir and run file share it
-git worktree add $REPO_ROOT/.worktrees/section-doctor-$TS -b section-doctor/$TS origin/main
-WORKTREE=$REPO_ROOT/.worktrees/section-doctor-$TS  # cd here; all commands run inside
+if [ "$CLAUDE_CODE_REMOTE" = "true" ]; then  # ephemeral single-session container — no worktree
+  git checkout -b section-doctor/$TS origin/main
+  WORKTREE=$REPO_ROOT
+else
+  git worktree add $REPO_ROOT/.worktrees/section-doctor-$TS -b section-doctor/$TS origin/main
+  WORKTREE=$REPO_ROOT/.worktrees/section-doctor-$TS  # EnterWorktree here; all commands run inside
+fi
 ```
 
-Scope is frozen at the branch point — never reconcile against `origin/main` mid-run. Scope every
-Glob/Grep to `$WORKTREE`.
+Scope is frozen at the branch point — never reconcile against `origin/main` mid-run. Locally, scope
+every Glob/Grep to `$WORKTREE`; in a cloud run `$WORKTREE` *is* the repo root and there is nothing
+to scope away.
 
 **Scope history checks to a named branch or ref, never `git log --all`** — on a run with a blocked
 branch set, `--all` surfaces commit subjects from that set and is not blindfold-safe.
@@ -206,7 +220,8 @@ output) when reforge is unusable. Act on its verdicts — never re-derive the ma
 
 - **`ALL BLOCKED`** (exit 3): report the open PRs and stop. This is the one path that removes the
   worktree immediately (Phase 9) — nothing has been written yet, so it is clean and
-  `git worktree remove` succeeds without `--force`.
+  `git worktree remove` succeeds without `--force`. In a cloud run there is no worktree to
+  remove: just stop.
 - **`JUDGMENT REQUIRED`** (exit 2): every eligible section is previously-doctored. Only now
   dispatch a focused **sonnet** selector subagent, giving it the script's table: read each
   section's `Docs/health.md` for its last-assessed date, rank by days since that date combined
@@ -326,8 +341,9 @@ the wall-clock / token / fragility balance:
   detectors. No subagent context to duplicate, no idle-lane failure mode, and they run while the
   main thread reads. Reforge's run is `surface-score --format compact --group <Section>`,
   scoped to the section being doctored, on every run, not only the selector's solution-wide call.
-  Its score and `loc=`/`cogP95=`/`cogMax=` fields are the run's one durable number, and land in
-  the section's `Docs/health.md` (Phase 5).
+  Its score and `loc=`/`cogP95=`/`cogMax=` fields are this run's own measurement: they steer the
+  ranked list, and they do not go into a doc row (Phase 5). The PR's surface report is the
+  published number, because it is recomputed against the head that actually shipped.
 - **Dispatched threads are the default** (nobodies-collective/Humans#1465). A thread reads a lot
   and returns a little, and reading it on the main thread permanently raises the price of every
   later turn in the run: cache reads on a run that carries Phase 3 to the end are the largest
@@ -524,6 +540,20 @@ executed after it. Budget checks are real
    read-model the honest form names what is carried, what this code reads, and what the output
    record exposes.
 
+   **A delete sweeps its own symbols by literal name, before the strike commits.** Reading the
+   diff does not discharge the rule above. For every member, type, route or table the strike
+   removed, grep the exact name and clear or enumerate every hit:
+
+   ```bash
+   git grep -n -- '<DeletedName>' -- '*.md' '*.cs'
+   ```
+
+   Then **re-read the header of every file the strike cut from**. A file's class-level doc comment
+   describes what the file holds, so cutting from the body changes the truth of the comment above
+   it — the Store run deleted three members from `IStoreRepository` and shipped that file's own
+   comment still claiming the section was sole writer of a table it no longer touched. The
+   falsehood a delete creates sits nearest the delete.
+
    **When the doc and the code disagree and the code looks wrong, change neither** — the pair goes
    to Needs-Peter together. Editing the doc to match a suspected defect cements it.
 6. **UI-affecting strikes get runtime verification**: render the changed page in the running app
@@ -581,7 +611,11 @@ detour to avoid it.
 worktree/PR, three bookkeeping writes:
 
 - The section's `Docs/health.md` history row (per-section; the blocked set guarantees at most
-  one open run per section, so it cannot collide).
+  one open run per section, so it cannot collide). **The row is run, date, headline and PR link —
+  never a score.** A score written here is stale by construction: every commit after it, every
+  answered Needs-Peter item and every review round moves the number it claims, and Phase 7 rightly
+  forbids the correcting commit that would chase it. peterdrier/Humans#1520's row was written
+  `231 → 230`; that run finished at `178`. The PR the row links to carries the score against the head that shipped.
 - **This run's own file** — `docs/health/runs/<yyyy-mm-dd>-<Section>.md` (UTC date from the run
   timestamp; if the path already exists at the branch point, suffix `-<HHMMZ>`). Sections:
   run header (invocation, anchor commit, budget, `PR: pending`), assessment summary, the ranked
@@ -635,8 +669,9 @@ worktree/PR, three bookkeeping writes:
   count of the branch or of the file itself: the commit that writes such a figure is a commit the
   figure must count, so it is stale on write and no care fixes that. Link the PR instead —
   GitHub's additions/deletions and the PR Surface Report are recomputed on every push and cannot
-  be wrong. The section's reforge score is the one durable number a run keeps, and its home is
-  `health.md`, not a description of the diff.
+  be wrong. The section's reforge score is the same case: the run measures it to steer itself, and
+  the PR's surface report publishes it against the final head — writing it into `health.md` only
+  freezes a mid-flight figure.
 
 - **The sweep** — its own commit, and the only place a run touches shared files: for every
   `## Sweep queue` item in merged run files under `docs/health/runs/` on `origin/main`, apply
@@ -759,13 +794,16 @@ branch for the class of claim it is an example of — the type, the method, the 
 Fixing only the reported line leaves the siblings and looks resolved.
 
 Phase 9 writes nothing. Phase 7's backfill commit is the run's last write, and everything a later
-session needs is already derivable: the branch is `section-doctor/$TS`, its worktree is
-`$REPO_ROOT/.worktrees/section-doctor-$TS`, and the PR number is in the run file. `$RUNDIR` is
+session needs is already derivable: the branch is `section-doctor/$TS`, its workspace is
+`$REPO_ROOT/.worktrees/section-doctor-$TS` locally (`$REPO_ROOT` in a cloud run), and the PR
+number is in the run file. `$RUNDIR` is
 scratch; leave it for the OS to reclaim. **Leave the worktree clean** — an uncommitted edit here
 never reaches the PR and makes the retained worktree dirty for whoever picks the review up.
 
 **Teardown happens when the PR reaches terminal state** — by `/merged`, or by hand with
-`git worktree remove $WORKTREE` from `$REPO_ROOT` (never a recursive delete).
+`git worktree remove $WORKTREE` from `$REPO_ROOT` (never a recursive delete). A cloud run has
+nothing to tear down — `$WORKTREE` is the repo root and the container is reclaimed on its own, so
+never run `git worktree remove` there.
 
 Phase 2's **`ALL BLOCKED`** exit is the one case that tears down immediately: no PR, no branch
 content, nothing to come back for.
@@ -802,8 +840,9 @@ undercounts. Then tick the item — `- [ ]` becomes `- [x]`:
   branch). Tick the item in **both** places: the PR body *and* the branch's run file — an
   unticked run file would resurface as a merged-queue item after the PR lands and get re-asked
   or applied twice. Push.
-- **Merged items** — group by run file: one fresh worktree + branch off `origin/main` **per run
-  file**, applying all of that file's answers and ticking each entry, push, one PR per run file
+- **Merged items** — group by run file: one fresh branch off `origin/main` **per run file** (its
+  own worktree locally; sequentially in the repo root in a cloud run), applying all of that
+  file's answers and ticking each entry, push, one PR per run file
   (an answer pushed to a branch with no PR is stranded), tear the worktree down. One writer per
   run file — several same-file answers in separate PRs would conflict with each other; grouped,
   these PRs cannot conflict with each other or with concurrent doctor runs.

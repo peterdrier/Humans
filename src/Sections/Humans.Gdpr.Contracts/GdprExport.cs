@@ -10,8 +10,8 @@ namespace Humans.Gdpr.Contracts;
 /// Uses <c>Humans.Base.Extensions.NodaTimeFormattingExtensions.ToIso8601</c>.
 /// </param>
 /// <param name="Sections">
-/// Ordered dictionary of section name → section data. Keys are stable JSON
-/// property names; values match the legacy profile-export shape section-for-section.
+/// Section name → section data, in the order the contributors were called. Keys
+/// are the stable JSON property names from <see cref="GdprExportSections"/>.
 /// </param>
 public sealed record GdprExport(
     string ExportedAt,

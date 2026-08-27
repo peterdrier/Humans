@@ -30,15 +30,22 @@ See `docs/superpowers/specs/2026-04-25-freshness-sweep-design.md` for full desig
 4. `git log upstream/main --grep='(upstream@' --extended-regexp --format=%H -n 1` → `git log -1 <hash> --format=%B` → extract `(upstream@<sha>)` token. Grep on the anchor token (not "freshness sweep") to avoid false positives from revert commits.
 5. No prior sweep: warn, previous-anchor = `none`, behave as `--full`.
 
-## Phase 2: Create worktree
+## Phase 2: Create the workspace
+
+Per [`always-use-worktree`](../../../memory/process/always-use-worktree.md) — a worktree locally, the repo root in a cloud run. `$WORKTREE` is the sweep's workspace either way; the rest of the skill doesn't care which it is.
 
 **Fetch `origin/main` first, and branch off its fresh HEAD** — not a stale local ref. The worktree base is the code the mechanical regens read; if you cut from a *stale local* `main` that already lags `origin/main`, the regens read stale source and the merge-base the PR diffs against is wrong. This bit sweep #819: the branch was cut at `35ce66de8` while `origin/main` was already at `cdd850bde`, and the surface report flagged a removed `ITicketingBudgetRepository` as "new". The fix is to capture the **current** `origin/main` as the base, at the start. This is a *start-of-run freshness capture*, nothing more — once captured the base is **frozen** (see *Scope is frozen here* below); fetching fresh now is the point, re-fetching or reconciling later is not.
 
 ```bash
 git fetch origin main
 TS=$(date -u +%Y-%m-%dT%H%M%SZ)
-git worktree add $REPO_ROOT/.worktrees/freshness-sweep-$TS -b freshness-sweep/$TS origin/main
-WORKTREE=$REPO_ROOT/.worktrees/freshness-sweep-$TS  # cd here; all commands run inside
+if [ "$CLAUDE_CODE_REMOTE" = "true" ]; then  # ephemeral single-session container — no worktree
+  git checkout -b freshness-sweep/$TS origin/main
+  WORKTREE=$REPO_ROOT
+else
+  git worktree add $REPO_ROOT/.worktrees/freshness-sweep-$TS -b freshness-sweep/$TS origin/main
+  WORKTREE=$REPO_ROOT/.worktrees/freshness-sweep-$TS  # EnterWorktree here; all commands run inside
+fi
 ```
 
 **Scope is frozen here.** The diff anchor (`upstream/main` HEAD) and the worktree base (`origin/main` HEAD) are captured once, now, at the start of the run, and are **immutable for the rest of the sweep**. Do NOT re-fetch, re-resolve, or reconcile against `origin/main` / `upstream/main` if they move while the sweep runs — a parallel session merging a PR mid-run is expected and irrelevant. The PR diffs against `merge-base` (the frozen base), so a later fast-forward of `origin/main` cannot affect this sweep's diff; chasing it only wastes time and is a distraction. Anything that lands after the frozen anchors is the *next* sweep's input, full stop. (If `git merge-base --is-ancestor upstream/main origin/main` is false at start — they've crossed, usually right after a prod promotion — note it once in the report and proceed; still never reconcile mid-run.)
@@ -319,7 +326,7 @@ If there are genuinely zero judgment calls (everything was a concrete fix alread
 
 ## Phase 8: Tear down worktree
 
-Only after Phase 7.5 is resolved. `cd $REPO_ROOT && git worktree remove $WORKTREE` (add `--force` if Phase 7 errored). Never `rm -rf`. Branch stays on origin until PR closes.
+Only after Phase 7.5 is resolved. `cd $REPO_ROOT && git worktree remove $WORKTREE` (add `--force` if Phase 7 errored). Never `rm -rf`. Branch stays on origin until PR closes. Nothing to tear down in a cloud run — there is no worktree, and the container is reclaimed anyway.
 
 ## Failure modes
 

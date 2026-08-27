@@ -1,0 +1,7 @@
+# Section debt ledger for Humans.Gdpr. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+inbox:
+  - added: 2026-08-27
+    what: "GuestDataController has no test, anywhere. Deliberately not written this run: apart from its catch-and-redirect on contributor failure — whose disposition sits with Users, since ProfileController has no catch for the same failure — the action is logic-free, and a test now would pin behaviour that decision may change. Write it once the two routes agree on failure handling. Found by /section-doctor on Gdpr 2026-08-27."
+    review: light

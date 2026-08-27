@@ -7,7 +7,11 @@ namespace Humans.Gdpr.Services;
 
 /// <summary>
 /// Fans out GDPR Article 15 export across <see cref="IUserDataContributor"/>s into one keyed document.
-/// Sequential, not Task.WhenAll: contributors share scoped section DbContexts which are not thread-safe.
+/// Sequential, not Task.WhenAll — a simplicity choice, not a correctness one. The single shared
+/// scoped DbContext that once made overlapping contributors unsafe is gone; each section has its
+/// own context type now, so no two contributors touch the same instance, and design-rules.md §8a
+/// records the old reason as obsolete. One contributor at a time keeps failure attribution and
+/// log order plain, and overlapping them would buy nothing at this scale.
 /// </summary>
 internal sealed class GdprExportService(
     IEnumerable<IUserDataContributor> contributors,

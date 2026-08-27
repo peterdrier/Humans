@@ -2,7 +2,7 @@
 
 Autonomous agent that executes a single sprint batch: implements each issue sequentially, runs review gates, fixes failures, and creates one PR for the batch.
 
-This agent runs inside a worktree. It is launched by the `/execute-sprint` skill orchestrator.
+This agent runs inside the workspace `memory/process/always-use-worktree.md` selects — a worktree locally, the repo root in a cloud run. It is launched by the `/execute-sprint` skill orchestrator.
 
 ## Input
 

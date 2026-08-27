@@ -3,24 +3,22 @@
   <!--
     Gdpr's cross-section surface, carved into its own leaf project for the strongest form
     of the consumer-in-Base test there is: Base does not merely *call* this section, it
-    *implements* its contract (design §15.5b, Email's IImmediateOutboxProcessor rule).
-    IUserDataContributor is the Article 15 fan-out seam that every service owning
-    user-scoped tables must implement — ten of them are still in Humans.Application
-    (UserService, TeamService, AccountMergeService, RoleAssignmentService, CampService,
-    ShiftSignupService, TicketQueryService, AuditLogService and friends) and thirteen are
-    already-moved G5 sections. A Contracts/ *folder* inside Humans.Gdpr would therefore
-    make Base reference a section and cycle (memory/architecture/section-project-cycle-fix.md).
+    *implements* its contract. IUserDataContributor is the Article 15 fan-out seam that
+    every service owning user-scoped tables must implement, so a Contracts/ *folder*
+    inside Humans.Gdpr would make Base reference a section and cycle
+    (memory/architecture/section-project-cycle-fix.md).
 
-    All five types are here because all five are named from outside:
+    Everything here is named from outside:
       - IUserDataContributor + UserDataSlice + GdprExportSections — the contributor half,
-        named by 23 implementers across Base and the sections.
-      - IGdprExportService + GdprExport — the orchestrator half, named by Shell's
-        ProfileController (the /Profile export download) and GuestController.
-    Nothing else exists: the section is the 70-line fan-out itself, which is internal.
+        named by every service that implements it.
+      - IGdprExportService + GdprExport — the orchestrator half, named by Users'
+        ProfileController (the /Profile export download) and by this section's own
+        GuestDataController.
+    Nothing else is public: the fan-out service itself is internal.
 
-    References Humans.Interfaces only — the bottom of the graph. IFanout and IOrchestrator
-    live there (in the Humans.Base.Interfaces namespace, which is why the two
-    interface files carry a using for it).
+    References only the Interfaces slice of Base — the bottom of the graph. IFanout and
+    IOrchestrator live there (in the Humans.Base.Interfaces namespace, which is why the
+    interface files here carry a using for it).
   -->
 
   <ItemGroup>
