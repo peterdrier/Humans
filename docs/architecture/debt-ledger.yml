@@ -367,3 +367,21 @@ inbox:
   - added: 2026-08-21
     what: "TicketTailor re-sync can resurrect erased ticket PII. GDPR erasure (nobodies-collective/Humans#853) tombstones BuyerName/BuyerEmail/AttendeeName/AttendeeEmail and nulls MatchedUserId in our copy of the vendor's data (Humans.Tickets/Data/TicketRepository.EraseUserPiiAsync), but the vendor still holds the real record. The next TicketTailor sync re-reads it and can write the real name and email straight back over the tombstone, silently undoing the erasure with no signal that it happened. Fixing it properly means either a per-order erased flag the sync respects (needs a column) or deleting the vendor-side record; both are larger than #853 and the first is a schema change."
     review: panel
+  - added: 2026-08-18
+    what: "Nothing sweeps route strings out of docs when a route is deleted: POST /Finance/Creditors/Resync was removed from the controller in nobodies-collective/Humans#1267 and survived in both docs/features/global/background-jobs.md and Finance.md. A repo-wide check that every /Route referenced under docs/ resolves to a live action would have caught it. Found by /section-doctor on Finance 2026-08-18."
+    review: panel
+  - added: 2026-08-23
+    what: "Four pre-existing violations of docs/architecture/code-review-rules.md §'Razor Boolean Attributes', all the banned bool-valued form rather than the sanctioned ? \"x\" : null string form: Humans.Shifts/Views/VolunteerTracking/_ExportCard.cshtml line 50 (disabled=\"@subPeriodHidden\") and lines 34 and 44 (selected=\"@(expr == expr)\"), and Humans.MailerLite/Views/MailerLite/Admin/Debug.cshtml line 67 (selected=\"@(a.Key == Model.SelectedKey)\"). Two sections, so it sits centrally rather than in either one. Found by sweeping the repo for the pattern after review blocked the same shape in Onboarding (/section-doctor on Onboarding 2026-08-23)."
+    review: light
+  - added: 2026-08-23
+    what: "Eight Nav_* keys in Base's SharedResource are named nowhere in src/ or tests/: Nav_Home, Nav_BoardVoting, Nav_Review, Nav_Voting, Nav_Board, Nav_Scanner, Nav_Agent, Nav_OnboardingReview. They are dead because the admin sidebar takes raw strings — and memory/code/localization-admin-exempt.md is about not adding new admin keys, not about keeping dead ones, so these are deletable. Base's set, so it has no section ledger. Found by /section-doctor on Onboarding 2026-08-23."
+    review: light
+  - added: 2026-08-23
+    what: "HumansControllerBase.SetError resolves ILoggerFactory from HttpContext.RequestServices while SetSuccess and SetInfo resolve nothing, so a controller unit test passes for two of the three and throws ArgumentNullException on the third. Two Onboarding test files now carry the same six-line RequestServices/ActionDescriptor scaffolding to work around it; injecting the logger would delete both copies. Base's, so it has no section ledger. Found by /section-doctor on Onboarding 2026-08-23."
+    review: panel
+  - added: 2026-08-23
+    what: "/Profile/Edit is stale in three places outside Users — a comment in Humans.Consent/Controllers/ConsentController.cs, a doc comment in Humans.Consent.Tests/Controllers/ConsentControllerTests.cs, and step 2 of .claude/skills/test-site/SKILL.md. The live route is /Profile/Me/Edit. Spans two sections and a skill, so it sits centrally. Found by /section-doctor on Onboarding 2026-08-23."
+    review: light
+  - added: 2026-08-23
+    what: "The two Humans.Onboarding.Docs data-access blocks for HumanLifecycleService and NonCompliantMemberSuspension describe Users-owned services and belong in src/Sections/Humans.Users/Docs/data-access.md, which does not carry them. Left in place with a pointer rather than moved, because the run that found them could not write another section's file under the concurrency contract. Found by /section-doctor on Onboarding 2026-08-23."
+    review: light

@@ -1,0 +1,7 @@
+# Section debt ledger for Humans.Budget. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+inbox:
+  - added: 2026-08-18
+    what: "Views/BudgetAdmin/NoActiveYear.cshtml carries none of the three /Finance/* links that YearDetail.cshtml does, so with no active budget year the Holded provisioning, unmatched-document and creditor-accounts pages have no navigation path at all. Found by /section-doctor on Finance 2026-08-18; the view is Budget's."
+    review: light
