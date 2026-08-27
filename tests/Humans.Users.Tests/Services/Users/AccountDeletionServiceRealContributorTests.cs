@@ -63,12 +63,12 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
 
         // Gdpr's real erasure loop is internal to Humans.Gdpr and this section-test may not
         // see it. Stand in for it with a forwarding substitute that runs the real
-        // UserService Account contributor once per id — the point of these tests is what
+        // UserService Account contributor for the id — the point of these tests is what
         // that contributor leaves on the row, not the (trivial) loop that drives it.
         var gdprService = Substitute.For<IGdprService>();
-        gdprService.EraseForUsersAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(ci => EraseViaRealContributorAsync(
-                ci.Arg<IReadOnlyList<Guid>>(), ci.Arg<CancellationToken>()));
+        gdprService.EraseForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ci => ((IUserDataContributor)_userService)
+                .EraseForUserAsync(ci.Arg<Guid>(), ci.Arg<CancellationToken>()));
 
         _service = new AccountDeletionService(
             _userService,
@@ -87,14 +87,6 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
             Substitute.For<IEmailMessageFactory>(),
             Clock,
             NullLogger<AccountDeletionService>.Instance);
-    }
-
-    private async Task<IReadOnlyList<Guid>> EraseViaRealContributorAsync(
-        IReadOnlyList<Guid> ids, CancellationToken ct)
-    {
-        foreach (var id in ids)
-            await ((IUserDataContributor)_userService).EraseForUserAsync(id, ct);
-        return ids;
     }
 
     [HumansFact]

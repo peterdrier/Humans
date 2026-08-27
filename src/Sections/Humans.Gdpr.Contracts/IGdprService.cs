@@ -19,20 +19,18 @@ public interface IGdprService : IOrchestrator
 
     /// <summary>
     /// Article 17 counterpart of <see cref="ExportForUserAsync"/>: runs every
-    /// contributor's <see cref="IUserDataContributor.EraseForUserAsync"/> for each
-    /// supplied id, in turn. <paramref name="userIds"/> is the whole merge chain —
-    /// the survivor plus every account previously merged into it — which the caller
-    /// resolves and passes in, so this orchestrator keeps no dependency on the Users
-    /// merge primitive. The contributor that owns the <c>Account</c> identity runs
-    /// last within each id, so sections that still need the human's addresses to
-    /// reach an external processor can resolve them before the identity collapses.
-    /// Sequential and fail-loud: a contributor that throws aborts the run (the caller
-    /// leaves its deletion markers set so the whole cascade retries), matching the
-    /// export fan-out.
+    /// contributor's <see cref="IUserDataContributor.EraseForUserAsync"/> for a single
+    /// account id, in turn, with the contributor that owns the <c>Account</c> identity
+    /// last — so sections that still need the human's addresses to reach an external
+    /// processor can resolve them before the identity collapses. Ordering is derived
+    /// from the declarations, not a pinned type list. Takes only an id, so this
+    /// orchestrator keeps no dependency on the Users merge primitive or its caches.
+    /// Sequential and fail-loud: a contributor that throws aborts the run.
+    /// <para>
+    /// The caller loops this over the whole merge chain (archived ids first, survivor
+    /// last) and invalidates each id's caches as it completes, so a failure partway
+    /// through the chain still leaves the already-erased ids' caches dropped.
+    /// </para>
     /// </summary>
-    /// <returns>
-    /// The ids it erased (the same set passed in), so the caller can invalidate the
-    /// per-id caches without re-deriving the chain.
-    /// </returns>
-    Task<IReadOnlyList<Guid>> EraseForUsersAsync(IReadOnlyList<Guid> userIds, CancellationToken ct = default);
+    Task EraseForUserAsync(Guid userId, CancellationToken ct = default);
 }

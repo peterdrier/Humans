@@ -73,41 +73,29 @@ internal sealed class GdprService(
             Sections: sections);
     }
 
-    public async Task<IReadOnlyList<Guid>> EraseForUsersAsync(
-        IReadOnlyList<Guid> userIds, CancellationToken ct = default)
+    public async Task EraseForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        // The contributor that owns the Account identity runs last within each pass, so
-        // the sections that need the human's addresses to reach an external processor (the
-        // Workspace suspend) can still resolve them. Ordering is derived from the
-        // declarations, not from a pinned type list.
+        // The contributor that owns the Account identity runs last, so the sections that
+        // need the human's addresses to reach an external processor (the Workspace suspend)
+        // can still resolve them. Ordering is derived from the declarations, not from a
+        // pinned type list.
         var ordered = contributors
-            .OrderBy(c => c.ErasureDeclaration.ContainsKey(GdprExportSections.Account) ? 1 : 0)
-            .ToList();
+            .OrderBy(c => c.ErasureDeclaration.ContainsKey(GdprExportSections.Account) ? 1 : 0);
 
-        // Merged-source ids come first and the survivor last — the caller builds the list
-        // that way. Merge moves rows for the sections that implement IUserMerge; the ones
-        // that do not leave their rows keyed to the archived source id, where erasing the
-        // survivor alone would never reach them. To the human there was only ever one
-        // account, so all of it is their data.
-        foreach (var subjectId in userIds)
+        foreach (var contributor in ordered)
         {
-            foreach (var contributor in ordered)
+            try
             {
-                try
-                {
-                    await contributor.EraseForUserAsync(subjectId, ct);
-                }
-                catch (Exception ex)
-                {
-                    // Never swallow: leaving a section's data behind silently is the bug this exists to kill.
-                    logger.LogError(ex,
-                        "GDPR erasure contributor {Contributor} failed for user {UserId}",
-                        contributor.GetType().Name, subjectId);
-                    throw;
-                }
+                await contributor.EraseForUserAsync(userId, ct);
+            }
+            catch (Exception ex)
+            {
+                // Never swallow: leaving a section's data behind silently is the bug this exists to kill.
+                logger.LogError(ex,
+                    "GDPR erasure contributor {Contributor} failed for user {UserId}",
+                    contributor.GetType().Name, userId);
+                throw;
             }
         }
-
-        return userIds;
     }
 }

@@ -50,7 +50,7 @@ pure orchestrator that owns no database tables and has no `DbContext`
 dependency. It injects `IEnumerable<IUserDataContributor>` and fans out one
 call per contributor, merging the returned slices into a single document keyed
 by section name. The same service also owns the Article 17 erasure fan-out
-(`EraseForUsersAsync`) over the same contributor roster — see
+(`EraseForUserAsync`) over the same contributor roster — see
 [`src/Sections/Humans.Gdpr/Docs/Gdpr.md`](../../../src/Sections/Humans.Gdpr/Docs/Gdpr.md).
 
 Every section service that owns user-scoped tables implements

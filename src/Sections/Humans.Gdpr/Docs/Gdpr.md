@@ -30,14 +30,14 @@
   also carries `ErasureDeclaration` (a static `GdprExportSections` →
   retention-reason table; `null` = erased in full) and `EraseForUserAsync`, so a
   section cannot export a category without accounting for its deletion. Both
-  loops live here: `IGdprService.EraseForUsersAsync` runs the erasure fan-out
-  beside the export one. The **deletion lifecycle** stays under Users —
-  `IAccountDeletionService` / `AccountDeletionService`, driven by
-  `ProcessAccountDeletionsJob`, owns the 30-day grace period, ticket hold, audit
-  entries and confirmation email. Users resolves the merge chain and passes the
-  id list to Gdpr; Gdpr erases every section for each id and returns them; Users
-  invalidates the archived ids' caches. The loop moved to Gdpr, its Users-only
-  dependencies (the merge primitive, cache invalidation) did not.
+  loops live here: `IGdprService.EraseForUserAsync` runs the erasure fan-out
+  (every contributor for one id) beside the export one. The **deletion
+  lifecycle** stays under Users — `IAccountDeletionService` /
+  `AccountDeletionService`, driven by `ProcessAccountDeletionsJob`, owns the
+  30-day grace period, ticket hold, audit entries and confirmation email. Users
+  resolves the merge chain and calls `EraseForUserAsync` per id, invalidating
+  each archived id's cache as its erasure completes. The loop moved to Gdpr, its
+  Users-only dependencies (the merge primitive, cache invalidation) did not.
 
 ## Routing
 
@@ -53,7 +53,7 @@ returns `File()` or a redirect.
 Both resolve `IGdprService` from the contracts leaf and serialize the export
 result to a file download. `/Profile/Me/DownloadData` stays on Users: moving it
 would change a URL. Erasure has no route of its own — `AccountDeletionService`
-calls `EraseForUsersAsync` from the deletion paths.
+calls `EraseForUserAsync` per merge-chain id from the deletion paths.
 
 ## Actors & Roles
 
@@ -67,15 +67,17 @@ calls `EraseForUsersAsync` from the deletion paths.
 - **The export is complete or it fails.** A contributor that throws is logged
   and the exception is re-thrown: omitting a category silently is worse than
   failing the download. Erasure holds the same rule — a contributor that throws
-  aborts `EraseForUsersAsync`, so the caller leaves its deletion markers set and
+  aborts `EraseForUserAsync`, so the caller leaves its deletion markers set and
   the whole cascade retries the next day rather than leaving data behind.
-- **Erasure runs the identity collapse last, and takes its ids from the caller.**
-  Within each id the contributor that owns `GdprExportSections.Account` erases
-  last, so sections that still need the human's addresses to reach an external
-  processor (the Workspace suspend) can resolve them; ordering is derived from
-  the declarations, not a pinned type list. `EraseForUsersAsync` takes the whole
-  merge chain (archived ids first, survivor last) from Users and returns it, so
-  Gdpr keeps no dependency on the Users merge primitive or its caches.
+- **Erasure runs the identity collapse last, and takes only an id.**
+  The contributor that owns `GdprExportSections.Account` erases last, so sections
+  that still need the human's addresses to reach an external processor (the
+  Workspace suspend) can resolve them; ordering is derived from the declarations,
+  not a pinned type list. `EraseForUserAsync` takes a single id — Users loops it
+  over the merge chain (archived ids first, survivor last) and invalidates each
+  id as it completes — so Gdpr keeps no dependency on the Users merge primitive
+  or its caches, and a mid-chain failure still leaves the already-erased ids'
+  caches dropped.
 - **Section names are unique across contributors.** A duplicate is a
   programming error and throws `InvalidOperationException` naming the section —
   it is not last-writer-wins.
@@ -115,7 +117,7 @@ calls `EraseForUsersAsync` from the deletion paths.
 - `ExportForUserAsync` writes no data and raises no notification. It logs one
   informational line per export (`user … exported their data (N sections)`) and
   one error line per contributor failure.
-- `EraseForUsersAsync` writes through the contributors (each erases its own
+- `EraseForUserAsync` writes through the contributors (each erases its own
   section) and raises no notification itself — the audit entry and confirmation
   email belong to the Users deletion lifecycle. It logs one error line per
   contributor failure before re-throwing.
@@ -141,7 +143,7 @@ none of that cycles.
 
 **Owning services:** `GdprService` (`Humans.Gdpr.Services`, `internal
 sealed`) behind the public `IGdprService` on the leaf, exposing both
-`ExportForUserAsync` and `EraseForUsersAsync`.
+`ExportForUserAsync` and `EraseForUserAsync`.
 **Owned tables:** none.
 - `src/Sections/Humans.Gdpr` — one internal service, one `Section.cs`, this
   doc. No `Data/`, no migrations, no `Humans.Infrastructure` reference and no

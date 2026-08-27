@@ -187,26 +187,25 @@ public class GdprServiceTests
     }
 
     // ==========================================================================
-    // EraseForUsersAsync (Article 17 fan-out)
+    // EraseForUserAsync (Article 17 fan-out)
     // ==========================================================================
 
     [HumansFact]
-    public async Task EraseForUsersAsync_RunsEveryContributorForEveryId()
+    public async Task EraseForUserAsync_RunsEveryContributor()
     {
         var a = new RecordingContributor("Issues");
         var b = new RecordingContributor("Consents");
         var service = CreateService(a, b);
-        var id1 = Guid.NewGuid();
-        var id2 = Guid.NewGuid();
+        var id = Guid.NewGuid();
 
-        await service.EraseForUsersAsync([id1, id2], Xunit.TestContext.Current.CancellationToken);
+        await service.EraseForUserAsync(id, Xunit.TestContext.Current.CancellationToken);
 
-        a.ErasedIds.Should().Equal(id1, id2);
-        b.ErasedIds.Should().Equal(id1, id2);
+        a.ErasedIds.Should().Equal(id);
+        b.ErasedIds.Should().Equal(id);
     }
 
     [HumansFact]
-    public async Task EraseForUsersAsync_ErasesAccountIdentityLast()
+    public async Task EraseForUserAsync_ErasesAccountIdentityLast()
     {
         // Sections that must reach an external processor (the Workspace suspend) need the
         // human's addresses, which the Account contributor is about to drop. Registration
@@ -216,24 +215,13 @@ public class GdprServiceTests
         var section = new RecordingContributor(GdprExportSections.Issues, order);
         var service = CreateService(account, section);
 
-        await service.EraseForUsersAsync([Guid.NewGuid()], Xunit.TestContext.Current.CancellationToken);
+        await service.EraseForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         order.Should().Equal(GdprExportSections.Issues, GdprExportSections.Account);
     }
 
     [HumansFact]
-    public async Task EraseForUsersAsync_ReturnsTheIdsItErased()
-    {
-        var service = CreateService(new RecordingContributor("Issues"));
-        var ids = new[] { Guid.NewGuid(), Guid.NewGuid() };
-
-        var erased = await service.EraseForUsersAsync(ids, Xunit.TestContext.Current.CancellationToken);
-
-        erased.Should().Equal(ids);
-    }
-
-    [HumansFact]
-    public async Task EraseForUsersAsync_PropagatesContributorFailureAndStopsBeforeAccount()
+    public async Task EraseForUserAsync_PropagatesContributorFailureAndStopsBeforeAccount()
     {
         // A throwing contributor aborts the run — the Account identity collapse never
         // happens, so the caller's deletion markers stay set and tomorrow's job retries.
@@ -241,8 +229,8 @@ public class GdprServiceTests
         var account = new RecordingContributor(GdprExportSections.Account);
         var service = CreateService(boom, account);
 
-        var act = async () => await service.EraseForUsersAsync(
-            [Guid.NewGuid()], Xunit.TestContext.Current.CancellationToken);
+        var act = async () => await service.EraseForUserAsync(
+            Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
         account.ErasedIds.Should().BeEmpty();

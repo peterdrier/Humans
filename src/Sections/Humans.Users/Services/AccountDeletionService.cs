@@ -197,26 +197,31 @@ internal sealed class AccountDeletionService(
 
     /// <summary>
     /// Erases every section's personal data for the account and for every account
-    /// previously merged into it. Resolves the merge chain here and hands the id list to
-    /// <see cref="IGdprService.EraseForUsersAsync"/> — the loop over contributors lives in
-    /// Gdpr now, beside the export fan-out — then drops the cache entry of every archived
-    /// id it erased.
+    /// previously merged into it. Resolves the merge chain here and calls
+    /// <see cref="IGdprService.EraseForUserAsync"/> per id — the loop over contributors
+    /// lives in Gdpr now, beside the export fan-out — invalidating each archived id's
+    /// cache entry as its erasure completes.
     /// </summary>
     /// <remarks>
     /// Merged-source ids are erased first, and only then the survivor. Merge moves rows for
     /// the sections that implement <see cref="IUserMerge"/>; the ones that do not leave their
     /// rows keyed to the archived source id, where erasing the survivor alone would never
     /// reach them. To the human there was only ever one account, so all of it is their data.
+    /// <para>
+    /// Invalidation is interleaved with erasure, not batched after it: a contributor that
+    /// throws partway through the chain still leaves every id erased before it with its
+    /// cache dropped — an admin <see cref="PurgeAsync"/> has no daily retry to fix it later.
+    /// </para>
     /// </remarks>
     private async Task EraseEverySectionAsync(Guid userId, CancellationToken ct)
     {
-        var erased = await gdprService.EraseForUsersAsync(await MergeChainAsync(userId, ct), ct);
-
-        // An archived id's own cache entry, dropped here: contributors write through the
-        // inner UserService, and the callers only invalidate the survivor. A stale entry
-        // would keep the merge tombstone's name searchable after it was erased.
-        foreach (var subjectId in erased)
+        foreach (var subjectId in await MergeChainAsync(userId, ct))
         {
+            await gdprService.EraseForUserAsync(subjectId, ct);
+
+            // An archived id's own cache entry, dropped here: contributors write through the
+            // inner UserService, and the callers only invalidate the survivor. A stale entry
+            // would keep the merge tombstone's name searchable after it was erased.
             if (subjectId != userId)
                 await userInfoInvalidator.InvalidateAsync(subjectId, ct);
         }
