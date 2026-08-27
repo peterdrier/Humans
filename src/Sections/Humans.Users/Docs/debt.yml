@@ -6,5 +6,5 @@ inbox:
     what: "Admin_SortBy in Views/UsersAdmin/AdminList.cshtml:78 has no shared resource and renders raw. The call is correctly through SharedLocalizer, but adding a new Admin_* resource key conflicts with memory/code/localization-admin-exempt.md, which forbids new localization keys for admin pages. Peter must decide whether this existing admin localizer call should gain a resource or become an unlocalized literal."
     review: panel
   - added: 2026-08-23
-    what: "Three misbound resource keys in Controllers/ProfileController.cs — Profile_EmailDeleted, Profile_EmailVisibilityUpdated and Profile_NotificationTargetUpdated are bound to UsersResource but the keys live in SharedResource, so each renders as its own key name to the user in all six languages. Found by running Onboarding's new binding sweep repo-wide (/section-doctor on Onboarding 2026-08-23)."
+    what: "Misbound resource keys in Controllers/ProfileController.cs — Profile_EmailDeleted, Profile_EmailVisibilityUpdated and Profile_NotificationTargetUpdated are bound to UsersResource but the keys live in SharedResource, so each renders as its own key name to the user in all six languages. Found by running Onboarding's new binding sweep repo-wide (/section-doctor on Onboarding 2026-08-23)."
     review: light

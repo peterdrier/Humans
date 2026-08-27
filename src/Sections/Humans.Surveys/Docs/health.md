@@ -103,8 +103,8 @@ Settled decisions that look wrong until you know why. Do not re-litigate these.
   round-trip through the session's JSON.
 - **`Invitation.Completed` is a submit guard living inside a *resolve* method.** Submitting flips
   it, and `ResolveAnswerContextAsync` then returns null for that invitation — so every consumer
-  downstream of a spent token inherits a gate written for one caller. All three behaviour defects
-  found on 2026-08-27 were this one shape wearing different hats. Do not re-derive it; if a run
+  downstream of a spent token inherits a gate written for one caller. Every behaviour defect found
+  on 2026-08-27 was this one shape wearing different hats. Do not re-derive it; if a run
   wants to move the guard out of the resolver, that is a deliberate refactor, not a doctor strike.
 - **A double-submit on an already-completed invitation lands on thank-you, not a 500** — the
   wizard path treats "already completed" as a normal submitted outcome. The standalone submit
