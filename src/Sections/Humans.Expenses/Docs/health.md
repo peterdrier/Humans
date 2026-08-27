@@ -17,7 +17,7 @@ Whether the member has actually been paid is read back out of the accounting led
 shown to them, and it is the treasurer's bank, not this system, that moves the money.
 
 Everything a person does on someone else's behalf leaves a trail naming both of them, and the
-member's bank account number is masked everywhere except the two places that need it whole:
+member's bank account number is masked everywhere except the places that need it whole:
 the accounting system's own API call, and the audit row that records who typed it.
 
 ## 2. The shapes
@@ -38,7 +38,7 @@ Every question the section answers, and how it answers it.
 | Push approved claims into accounting | nobody — the clock | `HoldedExpenseOutboxJob` → outbox drain |
 | Everything this member's claims hold | GDPR export | `IUserDataContributor` |
 
-Two structural facts follow from the table. **Every decision is taken from the claim's own
+Structural facts follow from the table. **Every decision is taken from the claim's own
 page**, never from a queue row — the queue lists and links, it does not decide. And **the
 outbox is the only writer that is not a person**, which is why it is the only path with
 retries, a backoff and a write-off.
@@ -54,15 +54,16 @@ What the shapes imply, written fresh:
   operation per thing a person can do. Nothing hand-rolls an ownership check beside it.
 - **One service** holding the state machine, with one method per transition. A transition
   method validates, calls exactly one repository write, and writes exactly one audit entry.
-- **One repository** owning the four tables, each write atomic, returning DTOs only.
+- **One repository** owning the section's tables, each write atomic, returning DTOs only.
 - **The outbox drain is its own concern** inside the service — queue semantics in one place,
   the Holded conversation in another, and a scheduler shim that holds neither.
 - **DTOs are the only thing that crosses out.** The section's public surface is what another
   section actually consumes, and nothing wider.
 
 Where today's layout departs from that: mutations exist twice (an `internal XxxAsync` that
-throws and a `public XxxWithResultAsync` that catches), and the controller repeats a four-line
-load-and-authorize preamble in twelve actions. Both are open questions for Peter — see run 1.
+throws and a `public XxxWithResultAsync` that catches), and the controller repeats a
+load-and-authorize preamble in nearly every action that takes a report id. Both are open
+questions for Peter — see run 1.
 
 ## 4. Invariants
 
@@ -88,8 +89,8 @@ ones a change is most likely to break silently.
 
 - **Travel lines (Mileage / PerDiem) cannot be created.** The forms and endpoints are gone;
   the service methods, enum members, `PerDiemKind` and `TravelReimbursementConfig` remain so
-  existing lines still render, total and submit. Turning it back on is restoring two
-  controller actions and two forms. Retained deliberately — not dead code to reap.
+  existing lines still render, total and submit. Turning it back on is restoring the
+  controller actions and their forms. Retained deliberately — not dead code to reap.
 - **Deleting a Draft.** `ExpenseRepository.WithdrawAsync` refuses Draft and its comment names
   a "Delete-while-Draft when that ships". Nothing ships it; a draft is abandoned, not removed.
 - **Recategorise after push.** `UpdateIncomingDocTag` outbox events drain to a log line —
@@ -100,8 +101,8 @@ ones a change is most likely to break silently.
 
 - **No caching decorator.** Claim data is mutable and per-user, at ~500 users.
 - **No pagination anywhere.** `GetAllAsync` loads every claim and sums client-side, by design.
-- **No enforcement of proof coverage against the invoice amount.** VAT and fees mean the two
-  legitimately differ; the detail page shows both and stops there.
+- **No enforcement of proof coverage against the invoice amount.** VAT and fees mean the
+  figures legitimately differ; the detail page shows both and stops there.
 - **No SEPA generation, no paid flag.** Payment left this section on purpose
   (nobodies-collective/Humans#1134); `/Finance/Creditors` operates on balances.
 - **No re-reading of audit for the report history page.** The section emits
