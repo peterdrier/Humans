@@ -11,9 +11,8 @@ namespace Humans.Issues;
 /// <remarks>
 /// This is also the check on Issues' own routing table: an entry naming a section that no
 /// longer exists shows up as an unmatched annotation instead of quietly routing to nobody.
-/// Two do today — <c>Profiles</c> merged into Users and <c>Legal</c> was renamed Consent — and
-/// they stay until the stored rows carrying those strings are migrated, which is not this
-/// change.
+/// <c>Profiles</c> (merged into Users) and <c>Legal</c> (renamed Consent) do today, and stay
+/// until the stored rows carrying those strings are migrated, which is not this change.
 /// </remarks>
 internal sealed class SectionAnnotations : ISectionAnnotations
 {

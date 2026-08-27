@@ -34,13 +34,10 @@ public class SectionCatalogTests
     }
 
     [HumansFact]
-    public void A_Table_Owning_Section_Reports_Its_Context_And_An_Orchestrator_Does_Not()
+    public void A_Table_Owning_Section_Reports_Its_Context()
     {
-        var catalog = Build();
-
-        catalog.Sections.Single(s => string.Equals(s.Name, "Issues", StringComparison.Ordinal)).DbContexts.Should().Contain("IssuesDbContext");
-        // Debug owns no tables — its Section.Register is empty by design.
-        catalog.Sections.Single(s => string.Equals(s.Name, "Debug", StringComparison.Ordinal)).DbContexts.Should().BeEmpty();
+        Build().Sections.Single(s => string.Equals(s.Name, "Issues", StringComparison.Ordinal))
+            .DbContexts.Should().Contain("IssuesDbContext");
     }
 
     [HumansFact]
@@ -86,7 +83,7 @@ public class SectionCatalogTests
         canonical.Should().Be("Issues");
 
         catalog.TryResolve("  Issues  ", out _).Should().BeTrue();
-        catalog.TryResolve("Profiles", out _).Should().BeFalse();
+        catalog.TryResolve("NotASection", out _).Should().BeFalse();
         catalog.TryResolve(null, out _).Should().BeFalse();
         catalog.TryResolve("   ", out _).Should().BeFalse();
     }

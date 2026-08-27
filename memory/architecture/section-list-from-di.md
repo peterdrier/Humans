@@ -5,7 +5,7 @@ description: Before writing a list of section names as consts, an array or a Has
 
 **Don't hand-maintain a list of section names.** `ISectionCatalog` is a singleton in `Humans.Base.Interfaces`, built by `SectionCatalogBuilder` from the same dependency-graph walk that registers the sections, so it cannot drift from what the app runs. Inject it. It carries, per section, everything derived from the assembly: `IsActive`, `DependsOn`, `Seams`, `DbContexts`, `ServiceInterfaces`, `Repositories`, `HasContracts`, `HasResources`. `TryResolve` canonicalizes casing, which is what you want before building a path, a cache key or a stored column value.
 
-**Why:** three copies of the section list existed before nobodies-collective/Humans#1509 — `IssueSectionRouting.AllKnownSections`, `AgentSectionKeys.Canonical`, `GuideFiles.Sections` — and two had already fallen behind renames without anything noticing: `Profiles` merged into Users at #866, `Legal` became Consent at the 2026-08-03 freeze. Every consumer degrades quietly (an issue lands in the Admin queue, the agent falls back to the community FAQ), so drift is invisible for years.
+**Why:** separate copies of the section list existed before nobodies-collective/Humans#1509 — `IssueSectionRouting.AllKnownSections`, `AgentSectionKeys.Canonical`, `GuideFiles.Sections` — and some had already fallen behind renames without anything noticing: `Profiles` merged into Users at #866, `Legal` became Consent at the 2026-08-03 freeze. Every consumer degrades quietly (an issue lands in the Admin queue, the agent falls back to the community FAQ), so drift is invisible for years.
 
 **How to apply:**
 
