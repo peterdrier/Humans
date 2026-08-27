@@ -20,22 +20,22 @@ section's.
 
 | Question shape | Asked by | Answered by |
 |---|---|---|
-| "Give me everything held about this person, as one document" | the two download routes | `IGdprExportService.ExportForUserAsync` |
+| "Give me everything held about this person, as one document" | both download routes | `IGdprExportService.ExportForUserAsync` |
 | "Here is my portion for this person" | the orchestrator, of every data-owning section | `IUserDataContributor.ContributeForUserAsync` |
 | "What do you keep when this person is forgotten, and why?" | the erasure-coverage gate, and Users' deletion job | `IUserDataContributor.ErasureDeclaration` |
 | "Forget this person's portion" | Users' deletion job | `IUserDataContributor.EraseForUserAsync` |
 | "What is this portion called in the document?" | every contributor, and the docs | `GdprExportSections` constants |
 | "Let me download my own copy" (profileless account) | a person on the Guest dashboard | `GET /Guest/DownloadData` |
 
-Two vocabulary records carry the answers between them: `UserDataSlice` (one portion,
-name plus payload) and `GdprExport` (the timestamped bag of portions).
+The vocabulary carrying answers between them is `UserDataSlice` (one portion, name plus
+payload) and `GdprExport` (the timestamped bag of portions).
 
-Everything the section does is one of those six. There is no seventh, and no shape is
+Everything the section does is one of the shapes above. There is no other, and no shape is
 served by more than one member.
 
 ## 3. Structure
 
-The shapes imply four things and no more:
+The shapes imply these and no more:
 
 - **A contracts leaf, as its own project.** It holds the fan-out seam
   (`IUserDataContributor`), the vocabulary (`UserDataSlice`, `GdprExportSections`), and
