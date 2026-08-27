@@ -43,9 +43,9 @@ internal static class SectionCatalogBuilder
 
         if (unmatched.Count > 0)
         {
-            // Warning, not a throw: a stale name in a hand-maintained list degrades (the issue
-            // lands in the Admin queue, the agent falls back to the community FAQ) rather than
-            // breaking, and failing startup on it would make a rename un-shippable. The page
+            // Warning, not a throw: nothing here fails at runtime — the worst case is an agent
+            // doc fetch that dead-ends, and a routing table keyed by string keeps routing under
+            // a stale name — so failing startup on it would make a rename un-shippable. The page
             // and this line are how it stops being invisible.
             Serilog.Log.Warning(
                 "Section catalog: {Count} contributed annotation(s) name no discovered section — {Unmatched}. "

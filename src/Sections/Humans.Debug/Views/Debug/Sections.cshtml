@@ -29,8 +29,10 @@
         <p class="mb-2">
             <i class="fa-solid fa-triangle-exclamation me-1"></i>
             <strong>@Model.UnmatchedAnnotations.Count contributed fact(s) name no known section.</strong>
-            A hand-maintained list has drifted off a rename or a merge. Each degrades quietly at
-            runtime — an issue lands in the Admin queue, the agent falls back to the community FAQ.
+            A rename, a merge, or a deliberate non-section entry. Nothing fails at runtime, and what
+            each costs depends on its facet: an agent doc key naming no section dead-ends its fetch
+            and the assistant falls back to the community FAQ, while a guide page or an issue queue
+            keeps working under a name that no longer matches anything.
         </p>
         <ul class="mb-0 small">
             @foreach (var orphan in Model.UnmatchedAnnotations)
