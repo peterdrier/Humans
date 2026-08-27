@@ -11,9 +11,10 @@ namespace Humans.Gdpr.Controllers;
 
 /// <summary>
 /// Article 15 data export for profileless accounts (authenticated users without a
-/// Profile). Moved from Shell's GuestController (nobodies-collective/Humans#1091) —
-/// the dashboard frame itself lives in Humans.Onboarding and comms/erasure actions
-/// live in Humans.Users; this one calls Gdpr's own <see cref="IGdprExportService"/>.
+/// Profile). It lives here rather than beside the rest of the Guest dashboard — whose
+/// frame is in Humans.Onboarding and whose comms and erasure actions are in
+/// Humans.Users — because it calls Gdpr's own <see cref="IGdprExportService"/> and
+/// nothing else.
 /// </summary>
 [Authorize]
 internal sealed class GuestDataController(
@@ -33,9 +34,9 @@ internal sealed class GuestDataController(
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public async Task<IActionResult> DownloadData(CancellationToken ct)
     {
-        var user = await GetCurrentUserInfoAsync();
-        if (user is null)
-            return Challenge();
+        var (noCurrentUser, user) = await ResolveCurrentUserOrChallengeAsync(ct);
+        if (noCurrentUser is not null)
+            return noCurrentUser;
 
         try
         {
