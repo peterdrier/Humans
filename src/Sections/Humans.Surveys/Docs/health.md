@@ -15,7 +15,7 @@ ask to be forgotten; the answers stay, the person does not.
 
 ## 2. The shapes
 
-Seven question-shapes cover every route, contract method and job in the section.
+These question-shapes cover every route, contract method and job in the section.
 
 | Shape | The question it answers | Where it is asked |
 |---|---|---|
@@ -28,7 +28,7 @@ Seven question-shapes cover every route, contract method and job in the section.
 | **Forget** | "What of mine is here, and can it leave?" | GDPR export contribution, Article 17 erasure |
 
 The section's weight sits almost entirely in **Answer** and **Read** — one wizard serving two
-entry paths, and one response set projected four ways.
+entry paths, and one response set projected into results, CSV, JSON and the analysis API.
 
 ## 3. Structure
 
@@ -37,17 +37,17 @@ Written fresh, not as today's layout with fixes.
 - **One service.** Authoring, sending, answering, results and GDPR are one lane over one
   aggregate; splitting them would put the anonymity contract in two places. The service is the
   only repository caller and returns DTOs.
-- **One repository, six tables.** `survey_*` is touched nowhere else, and `ISurveyRepository` is
-  internal so that cannot be arranged by accident.
-- **Two controllers, by audience, not by verb** — `SurveyAdmin` (Board) and `Survey`
-  (respondent). Preview is authoring's rehearsal, so it lives on the admin controller and renders
-  the respondent views rather than copies of them.
+- **One repository over all of `survey_*`.** Those tables are touched nowhere else, and
+  `ISurveyRepository` is internal so that cannot be arranged by accident.
+- **Controllers split by audience, not by verb** — `SurveyAdmin` (Board) and `Survey`
+  (respondent), and no others. Preview is authoring's rehearsal, so it lives on the admin
+  controller and renders the respondent views rather than copies of them.
 - **One page flow.** Both entry paths differ only in how the session is keyed and where the
   redirects land; that difference is one small route record, and everything else is shared.
 - **Pure helpers hold the rules that can be decided without the database**: branch visibility,
   page ordering, answerability, grid normalisation. They are what tests reach for first.
-- **Two public surfaces and no more** — `ISurveyAnalysisRead` for the machine API,
-  `ISurveyReminderSender` for the job. Everything else is internal to the section.
+- **The public surface is `ISurveyAnalysisRead` for the machine API and `ISurveyReminderSender`
+  for the job, and nothing else.** Everything else is internal to the section.
 - **Contracts carry data, not behaviour.** The enums and read models are public because they
   cross the boundary; the editing shape does not cross it and stays internal.
 
