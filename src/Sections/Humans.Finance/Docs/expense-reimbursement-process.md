@@ -27,8 +27,10 @@ Happy path. When something needs fixing it gets more complicated.
 
 1. **A member enters an expense report** (`/Expenses`).
 2. **The department coordinator approves it**, setting a max if the report goes over what's
-   allocated. Only when the category has a budget coordinator — with none assigned, the report
-   goes straight to step 3 (`CategoryRequiresCoordinatorEndorsementAsync` in Expenses).
+   allocated — the coordinator knows their department better than the treasurer does. Only when
+   the category has a budget coordinator; with none assigned the report goes straight to step 3.
+   This step is the expected route, not an enforced gate: the treasurer can approve straight from
+   Submitted when there is a rush, and the approval's audit entry records that they did.
 3. **The treasurer (finance admin) also approves it.**
 4. **The report is uploaded to Holded** for the accountant, and because math. The member gets a
    Holded contact with a creditor account (e.g. `40000004`).

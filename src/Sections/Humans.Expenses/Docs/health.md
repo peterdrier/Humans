@@ -123,6 +123,14 @@ Settled decisions that read as accidents. Do not re-litigate these.
   approval because the Holded push is queued in that same transaction.
 - **`IbanSet` audit rows written by somebody else carry the IBAN unmasked** — the one
   exception to the masking rule, so a wrongly-typed account traces to who typed it.
+- **A rejection leaves `MaxAmount` standing.** The cap is the last figure a decider authorized,
+  and it survives back into Draft on purpose: it stands until a coordinator or finance admin
+  changes it on their next decision form. Peter confirmed this 2026-08-27 — run 1's finding 1.
+- **Coordinator endorsement is a route, not a gate.** The coordinator knows their department, so
+  they are meant to vouch first; but the finance admin is the one who pays and may approve
+  straight from `Submitted` when it is urgent. The audit entry, not a refusal, is the control.
+  `CategoryRequiresCoordinatorEndorsementAsync` is the seam for showing *whose* queue a report
+  is in — not for blocking. Peter confirmed this 2026-08-27 — run 1's finding 2.
 - **`ExpenseSepaSent` / `ExpenseSepaReopened` / `ExpensePaid` remain in the GDPR export's
   action list** although nothing writes them. The audit log is immutable; only the writers
   went away.
