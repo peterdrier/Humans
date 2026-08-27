@@ -32,21 +32,22 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
 
 | Shape | Surface | Callers |
 |---|---|---|
-| Append an action | `IAuditLogService.LogAsync` (human + job overloads) | ~130 sites, most in Base |
+| Append an action | `IAuditLogService.LogAsync` (human + job overloads) | most sections, after a privileged action |
 | Read rows as data | `IAuditLogService.GetFilteredEntriesAsync` | Issues (interleave with comments) |
 | Distinct entity ids for (type, actions) | `IAuditLogService.GetEntityIdsForEntityTypeActionsAsync` | Shifts orphan-signup reconcile |
 | Render a page/history | `IAuditViewerService` (`GetPageAsync`, `GetFilteredAsync`, `GetForUserAsync`) | `/AuditLog`, admin tile, `<vc:audit-log>`, Agent tool |
 | Render on a host page | `<vc:audit-log>` component, layouts `line` / `table` / `activity` | Web, Users, Teams, Store, Tickets, admin dashboard |
-| Legacy Google-column read | `ILegacyGoogleSyncAuditReader` | GoogleIntegration migration screen — scaffolding, deleted with the six columns |
+| Legacy Google-column read | `ILegacyGoogleSyncAuditReader` | GoogleIntegration migration screen — scaffolding, deleted with those columns |
 | GDPR export slice | `IUserDataContributor` | Gdpr orchestrator |
 
 ## 3. Structure
 
 - **Contracts, two homes on purpose.** Leaf project `Humans.AuditLog.Contracts` = the write path
   (`IAuditLogService`, `AuditLogEntrySnapshot`, `AuditAction`, `ILegacyGoogleSyncAuditReader`) —
-  a project because ~130 consumers live in Base and Base cannot reference a section. The section
+  a standalone leaf so the many sections that only *write* can depend on the contract alone,
+  without a `ProjectReference` to the whole AuditLog section (its EF, its views). The section
   project's `Contracts/` folder = the read+render types (`IAuditViewerService`, `AuditEvent`,
-  `AuditEventPage`), whose consumers can all `ProjectReference` the section directly.
+  `AuditEventPage`), whose consumers already `ProjectReference` the section to render its component.
 - **Write:** `AuditLogService` (internal, implements `IAuditLogService` + `IAuditLogReader` +
   `IUserDataContributor` + `ILegacyGoogleSyncAuditReader`) → `IAuditLogRepository` (the only file
   that touches `DbContext.AuditLogEntries`) → `AuditLogDbContext` via `IDbContextFactory`.
@@ -54,8 +55,9 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
   raw reads with `IEntityNameContributor` name resolution, producing `AuditEvent`. Verb tables
   live once in `AuditEventTextualizer`, shared by `RenderPlainText` (agent) and `RenderStructured`
   (HTML).
-- **UI:** one controller (`AuditLogController.Index`), one `<vc:audit-log>` component with three
-  layout views, one internal `AdminActivityCard` chrome component.
+- **UI:** one controller (`AuditLogController.Index`), one `<vc:audit-log>` component with a
+  layout view per render shape (`line` / `table` / `activity`), one internal `AdminActivityCard`
+  chrome component.
 - **No caching decorator, no resource set** (admin-only English), on purpose.
 
 ## 4. Invariants
@@ -74,26 +76,26 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
 
 ## 5. Seams (specified-but-unbuilt)
 
-- **Drop the six Google-sync columns** (`ResourceId`, `Success`, `ErrorMessage`, `Role`,
+- **Drop the Google-sync columns** (`ResourceId`, `Success`, `ErrorMessage`, `Role`,
   `SyncSource`, `UserEmail`) and `ILegacyGoogleSyncAuditReader` with them, once the
   GoogleIntegration history-migration screen has run in prod (`no-drops-until-prod-verified`).
   A schema change — Peter's, not a doctor strike.
 
 ## 6. Deliberately not done
 
-- **No caching decorator** — writes scatter across ~130 sites, reads are admin-only and
+- **No caching decorator** — writes scatter across most sections, reads are admin-only and
   index-filtered; a section cache buys nothing (§15 Option A).
 - **No resource set** — the two pages are admin-only English; `SectionTypesTakeNoStringLocalizer`
   pins it so adding copy forces carving a resource set first.
 - **Predicate-pushed reads, not load-into-RAM** — `audit_log` is the one unbounded, ever-growing
-  table with ~130 writers; the section keeps `Where`-at-the-DB query methods as a sanctioned
+  table, written from most sections; the section keeps `Where`-at-the-DB query methods as a sanctioned
   exception to `no-linq-at-db-layer`.
 - **No FK/nav on the id columns** — `ActorUserId`/`EntityId`/`RelatedEntityId` are bare
   cross-section Guids; names come from the contributor fan-out, not a join.
 
 ## Load-bearing weirdness
 
-- **`AuditLogEntry` still carries six nullable Google-sync columns** with no writer. They exist
+- **`AuditLogEntry` still carries the nullable Google-sync columns** (seam 5) with no writer. They exist
   only so historical rows stay readable until the column-drop PR; the entity keeps them, the
   snapshot/event shapes do not. Do not "clean them up" — the drop is sequenced behind a prod
   verification (seam 5).
