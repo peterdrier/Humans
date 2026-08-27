@@ -18,7 +18,7 @@
 
     References only the Interfaces slice of Base — the bottom of the graph. IFanout and
     IOrchestrator live there (in the Humans.Base.Interfaces namespace, which is why the
-    two interface files carry a using for it).
+    interface files here carry a using for it).
   -->
 
   <ItemGroup>

@@ -3,8 +3,5 @@
 version: 1
 inbox:
   - added: 2026-08-27
-    what: "The export document's serialization lives twice: GuestDataController (Humans.Gdpr) and ProfileController (Humans.Users) each carry a byte-identical private ExportJsonOptions and BuildExportPayload. Key stability across re-downloads is an invariant this section owns, enforced by two copies nothing keeps in step. Every fix adds public surface (a shared serializer on the contracts leaf, or a method on IGdprExportService), so it is Peter's call. Found by /section-doctor on Gdpr 2026-08-27."
-    review: panel
-  - added: 2026-08-27
     what: "GuestDataController has no test, anywhere. Deliberately not written this run: apart from its catch-and-redirect on contributor failure — whose disposition sits with Users, since ProfileController has no catch for the same failure — the action is logic-free, and a test now would pin behaviour that decision may change. Write it once the two routes agree on failure handling. Found by /section-doctor on Gdpr 2026-08-27."
     review: light
