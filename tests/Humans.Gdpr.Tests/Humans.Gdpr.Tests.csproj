@@ -3,7 +3,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sections\Humans.Gdpr\Humans.Gdpr.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Humans.Base\Humans.Base.csproj" />
   </ItemGroup>
 
@@ -12,11 +11,10 @@
   </ItemGroup>
 
   <!--
-    No FrameworkReference: nothing here names an ASP.NET type. The section has no
-    controller at all — the export download action stays on Shell's ProfileController —
-    so the orchestrator test constructs GdprExportService over fake contributors and a
-    FakeClock and nothing else (G5-SECTION-TEMPLATE.md step 8, Cantina's shape rather
-    than Scanner's).
+    No FrameworkReference: nothing here names an ASP.NET type. The section's one
+    controller, GuestDataController, is untested — the orchestrator test constructs
+    GdprExportService over fake contributors and a FakeClock and nothing else. Adding a
+    controller test means adding the FrameworkReference back.
 
     No EF Core package either: Gdpr owns no tables, which is why tests/Directory.Build.props
     excludes this project from the shared TestDbContextFactory compile item — see the
