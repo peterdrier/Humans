@@ -3,6 +3,12 @@
 Derived shape for the section-doctor cycle. What AuditLog should be, written to make a
 violation recognisable. Not a changelog — the run files under `docs/health/runs/` carry history.
 
+## History
+
+| Run | Date | Headline | PR |
+|---|---|---|---|
+| 1 | 2026-08-27 | Delete dead `GetRecentAsync` read chain; true up section doc | pending |
+
 ## 1. What the section does
 
 A crosscut that records what the system and its admins did — who did what, when, to which
