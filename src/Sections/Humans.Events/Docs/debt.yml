@@ -8,3 +8,12 @@ inbox:
   - added: 2026-08-24
     what: "EventService (Services/Service.cs) is 870 lines against the section's maxClassLoc of 740 and holds the section's two highest-complexity methods — ValidateBulkRows (CC 35) and BulkImportAsync (CC 33) — plus a 114-line BuildBulkUploadTemplateAsync. The bulk-import trio is one cohesive concern (parse, validate all-or-nothing, write the template back out) and splits cleanly out of the service without touching the other five question-shapes. Found by /section-doctor on Events 2026-08-24."
     review: panel
+  - added: 2026-08-24
+    what: "EventsModerationController has no test file, and no test pins the [Authorize] policy on any of the six Events controllers \u2014 the section's negative access rules are unpinned end to end. Found by /section-doctor on Events 2026-08-24."
+    review: panel
+  - added: 2026-08-24
+    what: "CachingEventService uses thirteen 3-line // ==== ASCII banners where the rest of the codebase uses the single-line // \u2500\u2500 Label \u2500\u2500 form; and five doc comments in the section state facts that are wrong (IShiftManagementService, event_settings on UsersDbContext, three broken <see cref> targets). The verdict list with exact replacements is finding #10 of docs/health/runs/2026-08-24-Events.md. Found by /section-doctor on Events 2026-08-24."
+    review: light
+  - added: 2026-08-25
+    what: "src/Sections/Humans.Events/Data/Repository.cs:275-276 interpolates the raw search term into EF.Functions.ILike(e.Title, $\"%{q}%\") with no escaping and no escape character, so a user searching 100% or ABC_1 gets pattern-matching instead of substring search. Same bug Codex caught in Issues search; the repo's fix shape is EscapeLikePattern plus the three-arg ILike(x, pattern, \"\\\\\") \u2014 see ShiftRepository.Management.cs:206 and UserRepository.UserEmails.cs:262. Found by /section-doctor on Issues 2026-08-25 while fixing the Issues copy."
+    review: light
