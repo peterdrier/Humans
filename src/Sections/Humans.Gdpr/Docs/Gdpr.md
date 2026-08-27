@@ -70,12 +70,14 @@ would change a URL.
   return an empty list, which survives into the JSON as `[]` — downstream
   comparison tools and support procedures depend on that stability.
 - **The fan-out is sequential, never `Task.WhenAll`.** A deliberate simplicity
-  choice, not a correctness requirement any more: the original reason was a
-  shared scoped `HumansDbContext`, which no longer exists — repositories open
-  their own context per call through `IDbContextFactory<T>`. `design-rules.md`
-  §8a records the same. One contributor at a time keeps failure attribution and
-  log order plain, and at this scale an export completes well under a second, so
-  there is nothing to win by changing it.
+  choice, not a correctness requirement any more: the original reason was that
+  every contributor read through one shared scoped `HumansDbContext`, which no
+  longer exists. Each section now has its own `DbContext` type, so no two
+  contributors touch the same instance — however each obtains it, by injection
+  or through `IDbContextFactory<T>`. `design-rules.md` §8a records the same
+  conclusion. One contributor at a time keeps failure attribution and log order
+  plain, and at this scale an export completes well under a second, so there is
+  nothing to win by changing it.
 - **No cross-section database reads.** A contributor reads only its own
   section's tables; data from another section arrives through that section's
   own contributor, never through an `Include` chain.

@@ -97,9 +97,12 @@ change.
 ### Why sequential fan-out (not `Task.WhenAll`)
 
 This was once a correctness requirement — every contributor read through one
-scoped `HumansDbContext`, which is not thread-safe. That context is gone;
-repositories open their own per call through `IDbContextFactory<T>`, so the
-hazard went with it and `design-rules.md` §8a records the reason as obsolete.
+scoped `HumansDbContext`, which is not thread-safe. That context is gone. Each
+section owns its own `DbContext` type, so no two contributors touch the same
+instance; how a given repository obtains its context varies — some take one by
+injection, some open one per call through `IDbContextFactory<T>` — and neither
+recreates the sharing. The hazard went with the shared context, and
+`design-rules.md` §8a records the reason as obsolete.
 
 Sequential is now a simplicity choice, and it stays: one contributor at a time
 keeps failure attribution and log order plain, and at ~500-user scale an export
