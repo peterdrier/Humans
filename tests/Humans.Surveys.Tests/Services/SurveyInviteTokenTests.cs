@@ -36,6 +36,18 @@ public class SurveyInviteTokenTests
     }
 
     [HumansFact]
+    public void Resolve_returns_null_for_a_missing_token()
+    {
+        // /Survey/Answer and /Survey/Answer/ThankYou are [AllowAnonymous]; a request with no ?t=
+        // must read as an invalid link, not a 500.
+        var provider = CreateProvider();
+
+        provider.Resolve(null!).Should().BeNull();
+        provider.Resolve("").Should().BeNull();
+        provider.Resolve("   ").Should().BeNull();
+    }
+
+    [HumansFact]
     public void Preview_token_round_trips_survey_id_and_culture_and_is_distinct_from_invite_tokens()
     {
         var dataProtection = DataProtectionProvider.Create("survey-preview-tests");

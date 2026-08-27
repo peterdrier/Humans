@@ -498,8 +498,11 @@ internal sealed class SurveyService(
         var emails = await userEmailService.GetNotificationTargetEmailsAsync(userIds, ct);
         var users = await userService.GetUserInfosAsync(userIds, ct);
 
-        // Title + default culture loaded once per distinct survey (few open surveys at this scale).
-        var titles = new Dictionary<Guid, (string Title, string DefaultCulture)>();
+        // Loaded once per distinct survey (few open surveys at this scale). The answer window is
+        // re-checked here rather than in the query: Open alone is not answerable, and reminding
+        // someone about a survey past its ClosesAt sends them to the Closed page — and spends their
+        // one ReminderSentAt stamp doing it.
+        var surveys = new Dictionary<Guid, (string Title, string DefaultCulture, bool Answerable)>();
 
         var reminded = 0;
         foreach (var inv in due)
@@ -512,13 +515,18 @@ internal sealed class SurveyService(
                 continue;
             }
 
-            if (!titles.TryGetValue(inv.SurveyId, out var meta))
+            if (!surveys.TryGetValue(inv.SurveyId, out var meta))
             {
                 var survey = await repo.GetByIdAsync(inv.SurveyId, ct);
                 if (survey is null) continue;
-                meta = (survey.Title.Resolve(survey.DefaultCulture, survey.DefaultCulture), survey.DefaultCulture);
-                titles[inv.SurveyId] = meta;
+                meta = (
+                    survey.Title.Resolve(survey.DefaultCulture, survey.DefaultCulture),
+                    survey.DefaultCulture,
+                    SurveyWizardFlow.IsAnswerable(survey.Status, survey.OpensAt, survey.ClosesAt, now));
+                surveys[inv.SurveyId] = meta;
             }
+
+            if (!meta.Answerable) continue;
 
             var culture = users.TryGetValue(inv.UserId, out var user) ? user.PreferredLanguage : meta.DefaultCulture;
             var name = user?.BurnerName ?? string.Empty;

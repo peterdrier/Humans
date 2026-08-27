@@ -1133,6 +1133,68 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task SendDueRemindersAsync_skips_an_Open_survey_that_is_past_its_ClosesAt()
+    {
+        var now = _clock.GetCurrentInstant();
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
+        survey.ClosesAt = now - Duration.FromDays(1);
+        var userId = Guid.NewGuid();
+        var inv = new SurveyInvitation
+        {
+            Id = Guid.NewGuid(),
+            SurveyId = survey.Id,
+            UserId = userId,
+            SentAt = now - Duration.FromDays(8),
+            LatestEmailStatus = EmailOutboxStatus.Sent,
+        };
+        _repo.GetInvitationsDueForReminderAsync(Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(new List<SurveyInvitation> { inv });
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _userEmailService.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [userId] = "u@example.org" });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [userId] = UserInfoWithName(userId, "Sparkle") }));
+
+        var count = await CreateService().SendDueRemindersAsync(TestContext.Current.CancellationToken);
+
+        // The link would land on the Closed page, and the one-shot ReminderSentAt would be spent.
+        count.Should().Be(0);
+        await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().SetReminderSentAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SendDueRemindersAsync_skips_an_Open_survey_that_has_not_reached_its_OpensAt()
+    {
+        var now = _clock.GetCurrentInstant();
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
+        survey.OpensAt = now + Duration.FromDays(1);
+        var userId = Guid.NewGuid();
+        var inv = new SurveyInvitation
+        {
+            Id = Guid.NewGuid(),
+            SurveyId = survey.Id,
+            UserId = userId,
+            SentAt = now - Duration.FromDays(8),
+            LatestEmailStatus = EmailOutboxStatus.Sent,
+        };
+        _repo.GetInvitationsDueForReminderAsync(Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(new List<SurveyInvitation> { inv });
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _userEmailService.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [userId] = "u@example.org" });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [userId] = UserInfoWithName(userId, "Sparkle") }));
+
+        var count = await CreateService().SendDueRemindersAsync(TestContext.Current.CancellationToken);
+
+        count.Should().Be(0);
+        await _repo.DidNotReceive().SetReminderSentAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task SendDueRemindersAsync_returns_zero_and_sends_nothing_when_none_due()
     {
         _repo.GetInvitationsDueForReminderAsync(Arg.Any<Instant>(), Arg.Any<CancellationToken>())

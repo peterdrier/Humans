@@ -21,6 +21,9 @@ internal sealed class SurveyInviteTokenProvider(IDataProtectionProvider dataProt
 
     public Guid? Resolve(string token)
     {
+        // A missing ?t= reaches here as null/empty — invalid, not a 500 on an anonymous route.
+        if (string.IsNullOrWhiteSpace(token)) return null;
+
         try
         {
             var payload = _protector.Unprotect(token);
