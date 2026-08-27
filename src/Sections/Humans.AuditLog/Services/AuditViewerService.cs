@@ -12,12 +12,6 @@ internal sealed class AuditViewerService(
     IAuditLogReader auditLog,
     IEnumerable<IEntityNameContributor> nameContributors) : IAuditViewerService
 {
-    public async Task<IReadOnlyList<AuditEvent>> GetRecentAsync(int count, CancellationToken ct = default)
-    {
-        var entries = await auditLog.GetRecentAsync(count, ct);
-        return await ResolveAsync(entries, ct);
-    }
-
     public async Task<IReadOnlyList<AuditEvent>> GetForUserAsync(Guid userId, int count, CancellationToken ct = default)
     {
         var entries = await auditLog.GetByUserAsync(userId, count, ct);

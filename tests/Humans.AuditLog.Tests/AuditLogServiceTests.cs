@@ -98,50 +98,6 @@ public class AuditLogServiceTests : IDisposable
         _dbContext.AuditLogEntries.AsNoTracking().Count().Should().Be(1);
     }
 
-    // ===== GetRecentAsync =====
-
-    [HumansFact]
-    public async Task GetRecentAsync_ReturnsTopN_OrderedByOccurredAtDesc()
-    {
-        var now = _clock.GetCurrentInstant();
-        SeedAuditLogEntry(AuditAction.VolunteerApproved, "User", Guid.NewGuid(), now - Duration.FromHours(4));
-        SeedAuditLogEntry(AuditAction.MemberSuspended, "User", Guid.NewGuid(), now - Duration.FromHours(3));
-        var third = SeedAuditLogEntry(AuditAction.RoleAssigned, "User", Guid.NewGuid(), now - Duration.FromHours(2));
-        var fourth = SeedAuditLogEntry(AuditAction.RoleEnded, "User", Guid.NewGuid(), now - Duration.FromHours(1));
-        var fifth = SeedAuditLogEntry(AuditAction.VolunteerApproved, "User", Guid.NewGuid(), now);
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var result = await _service.GetRecentAsync(3, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().HaveCount(3);
-        result[0].Id.Should().Be(fifth.Id);
-        result[1].Id.Should().Be(fourth.Id);
-        result[2].Id.Should().Be(third.Id);
-    }
-
-    [HumansFact]
-    public async Task GetRecentAsync_RespectsCountParameter()
-    {
-        var now = _clock.GetCurrentInstant();
-        SeedAuditLogEntry(AuditAction.VolunteerApproved, "User", Guid.NewGuid(), now - Duration.FromHours(2));
-        SeedAuditLogEntry(AuditAction.MemberSuspended, "User", Guid.NewGuid(), now - Duration.FromHours(1));
-        var mostRecent = SeedAuditLogEntry(AuditAction.RoleAssigned, "User", Guid.NewGuid(), now);
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var result = await _service.GetRecentAsync(1, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().HaveCount(1);
-        result[0].Id.Should().Be(mostRecent.Id);
-    }
-
-    [HumansFact]
-    public async Task GetRecentAsync_ReturnsEmptyWhenNoEntries()
-    {
-        var result = await _service.GetRecentAsync(10, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeEmpty();
-    }
-
     // ===== GetFilteredAsync =====
 
     [HumansFact]

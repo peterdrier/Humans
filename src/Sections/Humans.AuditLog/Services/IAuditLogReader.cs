@@ -11,11 +11,6 @@ namespace Humans.AuditLog.Services;
 internal interface IAuditLogReader : IApplicationService
 {
     /// <summary>
-    /// Gets the most recent audit log entries.
-    /// </summary>
-    Task<IReadOnlyList<AuditLogEntrySnapshot>> GetRecentAsync(int count, CancellationToken ct = default);
-
-    /// <summary>
     /// Gets filtered audit log entries with pagination.
     /// </summary>
     Task<(IReadOnlyList<AuditLogEntrySnapshot> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(

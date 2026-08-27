@@ -91,13 +91,6 @@ internal sealed class AuditLogService(
 
     // ─── Reads ───
 
-    /// <inheritdoc />
-    public async Task<IReadOnlyList<AuditLogEntrySnapshot>> GetRecentAsync(int count, CancellationToken ct = default)
-    {
-        var entries = await repo.GetRecentAsync(count, ct);
-        return entries.Select(ToSnapshot).ToList();
-    }
-
     private static AuditLogEntrySnapshot ToSnapshot(AuditLogEntry entry) =>
         new(
             entry.Id,

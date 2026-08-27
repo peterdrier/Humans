@@ -52,25 +52,6 @@ public class AuditLogRepositoryTests
     }
 
     [HumansFact]
-    public async Task GetRecentAsync_ReturnsEntriesOrderedByOccurredAtDesc()
-    {
-        var now = Instant.FromUtc(2026, 5, 12, 10, 0);
-
-        await _sut.AddAsync(MakeEntry(AuditAction.VolunteerApproved, "User", Guid.NewGuid(),
-            occurredAt: now - Duration.FromHours(2)), Xunit.TestContext.Current.CancellationToken);
-        await _sut.AddAsync(MakeEntry(AuditAction.MemberSuspended, "User", Guid.NewGuid(),
-            occurredAt: now - Duration.FromHours(1)), Xunit.TestContext.Current.CancellationToken);
-        var newest = MakeEntry(AuditAction.RoleAssigned, "User", Guid.NewGuid(), occurredAt: now);
-        await _sut.AddAsync(newest, Xunit.TestContext.Current.CancellationToken);
-
-        var result = await _sut.GetRecentAsync(count: 2, ct: Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().HaveCount(2);
-        result[0].Id.Should().Be(newest.Id,
-            because: "GetRecentAsync returns the most recent entries first");
-    }
-
-    [HumansFact]
     public async Task GetLegacyGoogleSyncEntriesAsync_ReturnsOnlyResourceRows_Oldest_First()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;

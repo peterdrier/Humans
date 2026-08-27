@@ -574,7 +574,6 @@ public class AgentToolDispatcherTests
         /// <summary>Captures the limit value passed to <see cref="GetForUserAsync"/> for clamp-behaviour assertions.</summary>
         public int? LastLimit { get; private set; }
 
-        public Task<IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>> GetRecentAsync(int count, CancellationToken ct = default) => Task.FromResult(Events);
         public Task<IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>> GetForUserAsync(Guid userId, int count, CancellationToken ct = default)
         {
             LastLimit = count;
