@@ -7,7 +7,7 @@ violation recognisable. Not a changelog — the run files under `docs/health/run
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-08-27 | Delete dead `GetRecentAsync` read chain; true up section doc | pending |
+| 1 | 2026-08-27 | Delete dead `GetRecentAsync` read chain; true up section doc | [#1545](https://github.com/peterdrier/Humans/pull/1545) |
 
 ## 1. What the section does
 
