@@ -607,6 +607,11 @@ detour to avoid it.
 
 ## Phase 5: Bookkeeping
 
+**Re-read Phases 5–7 from this file before writing anything below.** By Phase 5 the run is hours
+past the skill load and may have been auto-compacted; a compaction summary keeps the goals and
+sheds the verbatim mechanics, which is exactly how runs have half-done this bookkeeping. The
+re-read costs a few thousand tokens and re-anchors either way.
+
 **A run's shared-file writes are confined to the sweep commit below.** In the same
 worktree/PR, three bookkeeping writes:
 
@@ -646,19 +651,14 @@ worktree/PR, three bookkeeping writes:
   - **`## File coverage`** — a disposition for every path in the 3a inventory: `reviewed`,
     `changed` or `generated`. Not a summary; the list.
   - **`## Threads`** — one row per thread: how it ran (main / subagent / self-run after a missed
-    deadline), its model, its findings count, and its cost from the Phase 7 report. For each that
-    did not run, why — a silent skip is a failed run, not a quiet one. The model and cost columns
-    are what make "did the cheaper thread lose findings?" answerable across runs
-    (nobodies-collective/Humans#1465); a run that leaves them blank has decided that question for
-    every run after it.
-
-    **A dispatched thread has its own cost; the main-run threads share one.** Phase 3 marks the
-    phase log once, so every main-thread call in it lands in the one `assess` row — spine, Shape
-    and Behavior & bugs together. Write that one figure in each main row and mark it `shared`.
-    Never split it per lens: the split would be invented, and an invented number is worse here
-    than a coarse one. (Phase 4 is the opposite case — it marks per strike item, so its rows are
-    already per-item and need no such caveat.) The Shape/Behavior question is settled by whole-run
-    totals compared across runs (Phase 7), not by attributing turns to lenses that interleave.
+    deadline), its model, and its findings count. For each that
+    did not run, why — a silent skip is a failed run, not a quiet one. The model column plus the
+    PR's cost comment (Phase 7) are what make "did the cheaper thread lose findings?" answerable
+    across runs (nobodies-collective/Humans#1465); a run that leaves the model blank has decided
+    that question for every run after it. **There is no cost column**: per-row dollars are
+    measured after this file is committed and live in one place only — the cost comment, whose
+    subagent rows carry the same thread names. Don't write "see `## Cost`" or any other
+    cost pointer that names a section this file does not have.
 
   `no-derived-aggregates-in-docs` applies to the run file and `health.md` too: never count a
   list the same file carries ("15 contract methods" above the table of them, "52 paths" above
@@ -736,7 +736,7 @@ Body: the opening header paragraph (run/section, run-file link, target-shape lin
 next-up forecast**, read from the `UPCOMING:` line in `$RUNDIR/selection.txt` — "Target shape:
 `Docs/health.md` (new). Likely future sections: A, B, C, D." — never buried lower in the body;
 omitted when the selector was skipped (`--section`) or returned `JUDGMENT REQUIRED`. Then
-assessment summary, worked/skipped bullets, a **`## Cost`** table (below), and a
+assessment summary, worked/skipped bullets, and a
 **`## Needs Peter`** block — terse, numbered, answerable in a word or two, **citing findings by
 number rather than re-describing them** (Phase 5). **The PR body is the authoritative queue while
 the PR is open** (resume reads it from there); the run file's copy carries it forward after merge.
@@ -751,7 +751,10 @@ python .claude/skills/section-doctor/cost-report.py section-doctor/$TS "$RUNDIR/
 It finds this run's own session transcript under `~/.claude/projects` (the model never sees its
 own usage in-band, but the harness logs every API call's tokens there), buckets the main thread
 by the phase log, adds one row per subagent transcript (named by the `thread:` marker its
-prompt opens with), and prints a markdown table with per-row model and API-equivalent $.
+prompt opens with), and prints a markdown table with per-row model and API-equivalent $ — plus
+footer lines reporting the peak main-thread context and any compactions detected (a compaction
+mid-run is exactly when Phase 5's re-read rule earns its keep; if one is reported, say so in the
+run file's retro).
 
 **Rows are named by what the run was doing, not by phase number** — each row takes the label from
 its `mark` line, and the phase id is a trailing column. Phase 4's per-item marks give one row per
@@ -759,13 +762,17 @@ strike, so the largest bucket reads as a breakdown rather than a lump. Whatever 
 are, they are what the reader gets; a run that marks lazily reports lazily.
 
 The table is a **Phase 1 → PR-creation cutoff, not a run total** — the PR
-create/backfill calls and any Phase 8 work land after measurement (the footer says so). Paste
-it as `## Cost` into the PR body and the run file, and fill Phase 5's `## Threads` model/cost
-columns from the same report (both land with the backfill commit). The table stands on its own —
+create/backfill calls and any Phase 8 work land after measurement (the footer says so). **Post it
+as a PR comment immediately after `gh pr create`** (`gh pr comment <PR#> --body-file` — never
+inline shell-quoted; the GitHub MCP comment tool in a cloud run without `gh`). The comment is the
+table's only home: one append-only write adjacent to the create call, costing no push, no CI run
+and no review round. Never paste it into the PR body or the run file — the dual-paste rule this
+replaces was fumbled by three consecutive runs, each differently, because it asked a maybe-compacted
+session to remember two edits hours after reading them. The table stands on its own —
 never compare it against another run's cost or pull in a prior run's figures; cross-run reading is
 Peter's, done over the PRs. The script never fails the run — on any discovery problem it prints
-`Cost: unmeasured (...)`; use that line as the table. Cloud-environment transcript layout is
-unverified — if the first routine run reports unmeasured, note it in Needs-Peter.
+`Cost: unmeasured (...)`; post that line as the comment all the same (a failed measurement leaves
+a visible record, never silence) and note it in Needs-Peter.
 
 Then backfill the real PR number over every `pending` reference (run file header, health history
 row), commit, push again.
