@@ -40,6 +40,12 @@ internal sealed class AgentController(
             return;
         }
 
+        if (body.Message.Length > AgentAskRequest.MaxMessageLength)
+        {
+            Response.StatusCode = StatusCodes.Status400BadRequest;
+            return;
+        }
+
         if (!settings.Current.Enabled)
         {
             Response.StatusCode = StatusCodes.Status503ServiceUnavailable;

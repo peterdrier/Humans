@@ -1,8 +1,8 @@
 @model AgentConversationDetailViewModel
-@{ ViewData["Title"] = "Conversation Detail"; var conv = Model.Conversation; }
+@{ ViewData["Title"] = Localizer["Agent_ConversationTitle"].Value; var conv = Model.Conversation; }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Conversation</h2>
+    <h2 class="mb-0">@ViewData["Title"]</h2>
     <div class="d-flex gap-2">
         @if (Model.IsAdminView)
         {
@@ -10,31 +10,31 @@
                 Show what would be sent to Anthropic
             </a>
         }
-        <a asp-action="Conversations" class="btn btn-outline-secondary btn-sm">Back to list</a>
+        <a asp-action="Conversations" class="btn btn-outline-secondary btn-sm">@Localizer["Agent_ConversationBackToHistory"]</a>
     </div>
 </div>
 
 <dl class="row mb-4">
-    <dt class="col-sm-3">ID</dt>
+    <dt class="col-sm-3">@Localizer["Agent_DetailId"]</dt>
     <dd class="col-sm-9"><code>@conv.Id</code></dd>
     @if (Model.IsAdminView)
     {
         <dt class="col-sm-3">Human</dt>
         <dd class="col-sm-9"><vc:human user-id="@conv.UserId" link="Admin" /></dd>
     }
-    <dt class="col-sm-3">Started</dt>
+    <dt class="col-sm-3">@Localizer["Agent_HistoryStarted"]</dt>
     <dd class="col-sm-9">@conv.StartedAt.ToInvariantTimestamp() UTC</dd>
-    <dt class="col-sm-3">Last message</dt>
+    <dt class="col-sm-3">@Localizer["Agent_HistoryLastMessage"]</dt>
     <dd class="col-sm-9">@conv.LastMessageAt.ToInvariantTimestamp() UTC</dd>
-    <dt class="col-sm-3">Locale</dt>
+    <dt class="col-sm-3">@Localizer["Agent_DetailLocale"]</dt>
     <dd class="col-sm-9">@conv.Locale</dd>
-    <dt class="col-sm-3">Message count</dt>
+    <dt class="col-sm-3">@Localizer["Agent_HistoryMessages"]</dt>
     <dd class="col-sm-9">@conv.MessageCount</dd>
 </dl>
 
 @if (conv.Messages.Any())
 {
-    <h4>Messages</h4>
+    <h4>@Localizer["Agent_HistoryMessages"]</h4>
     @foreach (var msg in conv.Messages.OrderBy(m => m.CreatedAt))
     {
         <div class="card mb-2 @(msg.Role == AgentRole.User ? "border-primary" : "border-secondary")">
@@ -53,7 +53,7 @@
                 }
                 @if (!string.IsNullOrEmpty(msg.RefusalReason))
                 {
-                    <div class="alert alert-warning mt-2 mb-0 py-1">Refusal: @msg.RefusalReason</div>
+                    <div class="alert alert-warning mt-2 mb-0 py-1">@string.Format(Localizer["Agent_DetailRefusal"].Value, msg.RefusalReason)</div>
                 }
                 @if (Model.IsAdminView && msg.HandedOffToFeedbackId.HasValue)
                 {
@@ -91,5 +91,5 @@
 }
 else
 {
-    <p class="text-muted">No messages loaded.</p>
+    <p class="text-muted">@Localizer["Agent_ConversationEmpty"]</p>
 }

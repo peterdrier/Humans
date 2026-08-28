@@ -85,6 +85,15 @@
   <data name="Agent_ContextCardSummary" xml:space="preserve">
     <value>Dein Kontext (wie der Assistent dich jetzt sieht)</value>
   </data>
+  <data name="Agent_DetailId" xml:space="preserve">
+    <value>ID</value>
+  </data>
+  <data name="Agent_DetailLocale" xml:space="preserve">
+    <value>Sprache</value>
+  </data>
+  <data name="Agent_DetailRefusal" xml:space="preserve">
+    <value>Ablehnung: {0}</value>
+  </data>
   <data name="Agent_HistoryEmpty" xml:space="preserve">
     <value>Noch keine Gespräche.</value>
   </data>

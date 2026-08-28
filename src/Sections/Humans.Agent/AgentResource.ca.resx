@@ -85,6 +85,15 @@
   <data name="Agent_ContextCardSummary" xml:space="preserve">
     <value>El teu context (tal com l'assistent et veu ara)</value>
   </data>
+  <data name="Agent_DetailId" xml:space="preserve">
+    <value>ID</value>
+  </data>
+  <data name="Agent_DetailLocale" xml:space="preserve">
+    <value>Idioma</value>
+  </data>
+  <data name="Agent_DetailRefusal" xml:space="preserve">
+    <value>Rebuig: {0}</value>
+  </data>
   <data name="Agent_HistoryEmpty" xml:space="preserve">
     <value>Encara no hi ha converses.</value>
   </data>
