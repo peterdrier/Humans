@@ -1724,7 +1724,7 @@ internal sealed class GoogleWorkspaceSyncService(
     private async Task<GoogleResource?> FindActiveGroupByUrlAsync(string expectedUrl, CancellationToken ct)
     {
         // The repository doesn't expose URL-based lookup, so scan active groups.
-        // At ~3000-user scale the set is small (dozens of groups at most).
+        // The set is small (dozens of groups at most).
         var all = await GetActiveGroupResourcesAsync(ct);
         return all.FirstOrDefault(r => r.Url is not null &&
             string.Equals(r.Url, expectedUrl, StringComparison.OrdinalIgnoreCase));

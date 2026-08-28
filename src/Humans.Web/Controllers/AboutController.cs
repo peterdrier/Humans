@@ -53,7 +53,7 @@ public class AboutController(
         {
             var now = clock.GetCurrentInstant();
 
-            // Load all active role assignments with user data — ~3000 users, fits in memory
+            // Load all active role assignments with user data — small user base, fits in memory
             var (assignments, _) = await roleAssignmentService.GetFilteredAsync(
                 roleFilter: null, activeOnly: true, page: 1, pageSize: 500, now);
 

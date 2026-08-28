@@ -63,7 +63,7 @@ The feature is deliberately scoped to matching **confined to each entity's own p
 **Acceptance Criteria:**
 - `/Search?q=<query>` returns type-grouped sections: Humans, Teams, Camps, Shifts, and (when `Features:Events` is enabled) Events.
 - Each section is independently ranked by score within itself; no cross-type ranking.
-- All matches are returned per section — there is no result cap (the dataset is small enough at ~3000-user scale that capping only hid people users were looking for).
+- All matches are returned per section — there is no result cap (the dataset is small enough that capping only hid people users were looking for).
 - Each result clearly shows its type via section header + icon, and links to the canonical detail page (for Events, the link is `/Events/Browse?q=<title>` — there is no per-event detail page).
 - Per-type filter chips (All | Humans | Teams | Camps | Shifts | Events) hide the other sections. The Events chip is hidden when `Features:Events` is off.
 - A query with no matches renders "No results for <query>." (not 500).
@@ -179,5 +179,5 @@ A type-filter chip row at the top (All | Humans | Teams | Camps | Shifts | Event
 
 - **Cross-modal / relational pull-ins** (person → their teams; team → its rotas; camp → its leads). Earlier draft included these; dropped after spec review.
 - **Cross-modal "as-you-type" autocomplete** from the navbar input. Separate issue.
-- **Full-text Postgres `tsvector` indexing** / search-as-you-type latency optimization. Revisit if `ILike` becomes slow at the project's ~3000-user scale.
+- **Full-text Postgres `tsvector` indexing** / search-as-you-type latency optimization. Revisit if `ILike` becomes slow.
 - **External / public search.** Search is gated behind `[Authorize]`.

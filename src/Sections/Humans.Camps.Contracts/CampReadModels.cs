@@ -26,7 +26,7 @@ public sealed record CampSettingsInfo(
 /// loads only the seasons referenced by <c>CampSettings.PublicYear</c> +
 /// <c>OpenSeasons</c> + the current real-world year — typically 1–3 seasons
 /// per camp, not full history. Worst-case ~50 KB/camp × 100 camps ≈ 5 MB —
-/// comfortably under the ~50 MB §15 budget for a 3000-user-scale projection.
+/// comfortably under the ~50 MB §15 budget at our small scale.
 /// </para>
 /// <para>
 /// <b>EeGrantedCount cross-table invariant.</b>

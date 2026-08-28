@@ -104,7 +104,7 @@ through and owns nothing but sorting and file naming.
   cheaper than the per-day loop, and it was rejected on purpose: it needs a new repository and a
   new cross-section interface method, and Cantina is not allowed to reach a repository. The
   round-trip count is the accepted price of the boundary. Do not "optimize" this without
-  Peter — the cost is round-trips, not data volume, at ~3000 humans.
+  Peter — the cost is round-trips, not data volume, at our small scale.
 - **No `Contracts` project or promoted interface.** Nothing outside the section names a Cantina
   type. `ICantinaRosterService` stays `internal` in `Services/`; the decision follows the
   consumer list, never the name.

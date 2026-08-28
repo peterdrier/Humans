@@ -133,7 +133,7 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
 
         await using var ctx = await factory.CreateDbContextAsync(ct);
         // Load-mutate-save rather than ExecuteUpdateAsync so unit tests using
-        // the EF InMemory provider still see the update. At ~3000-user scale the
+        // the EF InMemory provider still see the update. At our small scale the
         // batch is at most OutboxBatchSize rows.
         var messages = await ctx.EmailOutboxMessages
             .Where(m => messageIds.Contains(m.Id))

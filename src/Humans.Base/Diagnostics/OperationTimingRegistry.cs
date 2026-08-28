@@ -4,7 +4,7 @@ namespace Humans.Base.Diagnostics;
 
 /// <summary>
 /// In-process registry of operation timing aggregates and swallowed-exception counts.
-/// Thread-safe via per-entry locks; designed for a single-server deployment at ~3000 users.
+/// Thread-safe via per-entry locks; designed for a small single-server deployment.
 /// </summary>
 public sealed class OperationTimingRegistry
 {

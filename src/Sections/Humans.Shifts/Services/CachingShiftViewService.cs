@@ -61,7 +61,7 @@ internal sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory,
     /// Batches all cache-misses into a single <see cref="IShiftRowView.GetUsersAsync"/>
     /// call on the inner — the inner is responsible for bulk-loading every
     /// contributing table in one round-trip per table. This is the hot path
-    /// for /Admin first-hit (set-membership across ~3000 users); a per-id
+    /// for /Admin first-hit (set-membership across the full user base); a per-id
     /// fan-out here is what made the page slow before issue #720.
     /// </summary>
     public async ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>> GetUsersAsync(

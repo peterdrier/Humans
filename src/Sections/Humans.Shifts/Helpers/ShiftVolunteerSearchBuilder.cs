@@ -88,7 +88,7 @@ internal sealed class ShiftVolunteerSearchBuilder(
         // Request the full match set (the service short-circuits at `limit`, so a small limit
         // returns an arbitrary subset in non-deterministic cache order) and rank by relevance so
         // the closest name match leads. Uncapped — people must be findable (Codex P2, PR #638);
-        // cache is ~3000 users so the full sort is cheap.
+        // cache is small so the full sort is cheap.
         var users = (await userService.SearchUsersAsync(query, PersonSearchFields.Name, limit: int.MaxValue))
             .OrderByRelevance()
             .ToList();

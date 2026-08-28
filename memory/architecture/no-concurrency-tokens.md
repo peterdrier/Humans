@@ -1,9 +1,9 @@
 ---
-name: No concurrency tokens — single server, ~3000 users
+name: No concurrency tokens — single server, small user base
 description: HARD RULE. Don't add `IsConcurrencyToken()`, `[ConcurrencyCheck]`, or row versioning to any entity. At single-server scale, conflicts don't happen and optimistic concurrency only causes bugs. Never add without explicit user permission.
 ---
 
-**Do NOT** add `IsConcurrencyToken()`, `[ConcurrencyCheck]`, or row versioning to any entity. At single-server scale with ~3000 users, concurrency conflicts don't happen and optimistic concurrency only causes bugs.
+**Do NOT** add `IsConcurrencyToken()`, `[ConcurrencyCheck]`, or row versioning to any entity. At single-server scale with a small user base, concurrency conflicts don't happen and optimistic concurrency only causes bugs.
 
 **Why:** The audit log is the architectural defense for the rare admin-clobbers-admin case (see [`audit-log-as-concurrency-safety-net`](audit-log-as-concurrency-safety-net.md)). Adding optimistic concurrency creates `DbUpdateConcurrencyException` paths that have to be handled in every service touching the entity, for a problem that doesn't manifest at this scale. Net result: more code, more bugs, no benefit.
 

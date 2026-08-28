@@ -11,7 +11,7 @@ namespace Humans.Teams.Contracts;
 /// every Teams-section read entirely from memory.
 /// </summary>
 /// <remarks>
-/// <para>Cache size estimate (T-01, 3000-user scale):</para>
+/// <para>Cache size estimate (T-01):</para>
 /// <list type="bullet">
 /// <item><description>~50 teams × ~30 fields ≈ ~3 KB per record, plus ~10 members × ~250 B ≈ ~2.5 KB.</description></item>
 /// <item><description><c>RoleDefinitions</c> adds ~5 defs × ~200 B + their assignments (~5 × ~80 B) ≈ ~1.4 KB per team.</description></item>

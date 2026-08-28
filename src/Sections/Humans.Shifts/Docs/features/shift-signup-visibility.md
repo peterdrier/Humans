@@ -54,7 +54,7 @@ Coordinators and admins managing shifts cannot currently see who has signed up f
 - Confirmed avatars render at full opacity
 - Pending avatars render at 50% opacity with a dashed border
 - Only Confirmed and Pending signups are shown
-- Avatars wrap naturally when many signups are present (no truncation or "+N more" needed at ~3000-user scale)
+- Avatars wrap naturally when many signups are present (no truncation or "+N more" needed at our scale)
 - Column renders for all authenticated viewers on `/Shifts` (temporary public policy — see Authorization)
 
 ## Data Model

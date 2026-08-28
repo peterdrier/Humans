@@ -290,7 +290,7 @@ No repository.
 | _(none — pure read orchestration over service interfaces)_ | — |
 
 Detection-only: loads the cached `UserInfo` read-model via
-`IUserService.GetAllUserInfosAsync` (~3000 users, in-memory normalize for
+`IUserService.GetAllUserInfosAsync` (full user base in memory, normalize for
 gmail/googlemail equivalence), then counts active teams / role assignments
 per involved user. Resolution is delegated to
 `AccountMergeService.MergeAsync`. **No DB access.** Cross-section calls via

@@ -40,7 +40,7 @@ public interface IExpenseReportServiceRead
     Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(
         Guid viewerUserId, bool isFinanceAdmin, CancellationToken ct = default);
 
-    /// <summary>All expense reports, all statuses — dashboard/aggregate reads sum client-side (~3000-user scale).</summary>
+    /// <summary>All expense reports, all statuses — dashboard/aggregate reads sum client-side (small dataset).</summary>
     Task<IReadOnlyList<ExpenseReportDto>> GetAllAsync(CancellationToken ct = default);
 }
 

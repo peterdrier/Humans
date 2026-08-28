@@ -211,7 +211,7 @@ internal sealed class CachingUserService(
     /// Populates the inherited cache with a <see cref="UserInfo"/> for every
     /// existing user at startup. Bulk-loads each of the 8 contributing tables
     /// once and indexes by userId so per-user materialization is allocation-only.
-    /// Trivial at ~3000-user scale.
+    /// Trivial at our small scale.
     /// </summary>
     /// <remarks>
     /// Invoked by <see cref="TrackedCache{TKey,TValue}.EnsureWarmedAsync"/> via

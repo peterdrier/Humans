@@ -1,6 +1,6 @@
 ---
 name: Don't overuse LINQ at the DB layer — thick repos return materialized lists
-description: At ~3000-user scale, prefer hand-written repo methods that materialize at the boundary over IQueryable composed across services. LINQ-against-EF-mapped-properties scatters DB shape concerns and breaks badly when mappings change.
+description: At our small scale, prefer hand-written repo methods that materialize at the boundary over IQueryable composed across services. LINQ-against-EF-mapped-properties scatters DB shape concerns and breaks badly when mappings change.
 ---
 
 Don't reach for LINQ-on-EF-entities (`db.Users.Where(u => u.Email.Contains(...))`, `db.Users.Select(u => u.Email)`) when designing service methods. Prefer **hand-written repository methods that materialize at the boundary** — the repo runs the query and returns a `List`/`IReadOnlyList` of plain DTOs (or domain objects with all needed data Include'd).
@@ -9,7 +9,7 @@ Don't reach for LINQ-on-EF-entities (`db.Users.Where(u => u.Email.Contains(...))
 
 The cost wasn't the rewrite — it was that LINQ-on-property-accessors made DB shape concerns invisible at every call site. When the column mapping changed, the failure mode was scattered runtime exceptions in disparate services. A thicker-repo pattern would have isolated the shape concern to the repository layer; the column-mapping change would have meant fixing one repo method instead of N services.
 
-At 3000-user scale this is doubly correct because (a) materializing the dataset is cheap, and (b) "service owns its data" + thick-repo aligns with the project's design rules.
+At our small scale this is doubly correct because (a) materializing the dataset is cheap, and (b) "service owns its data" + thick-repo aligns with the project's design rules.
 
 **How to apply:**
 

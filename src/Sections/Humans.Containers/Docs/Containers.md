@@ -95,7 +95,7 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 - **The gallery is one uniform list.** `ContainerDto.Images` is the legacy image (if any, as `Guid.Empty`) followed by `container_images` rows in `SortOrder`. Callers add, remove and render one list; nothing outside `Service.ToDto` and `Service.UpdateAsync` knows the legacy columns exist. Retiring them is an admin migration screen plus a column-drop PR, not a data migration.
 - Resource-based authorization per design-rules §11: `ContainerAuthorizationHandler` + `ContainerOperationRequirement` gate container writes (lead branch derives lead status via LINQ over `ICampServiceRead.GetCampsForYearAsync`, matching the resource's `CampId` and a `Season.IsLead(userId)` for the settings year).
 - Deleting a container deletes all its `ContainerPlacement` rows in the same transaction.
-- Documented limitation: when a container is deleted, placement-image files on disk for years other than the deleted-row scan window may be orphaned. At ~3000-user scale this is acceptable; a periodic disk sweep can reclaim space.
+- Documented limitation: when a container is deleted, placement-image files on disk for years other than the deleted-row scan window may be orphaned. At our small scale this is acceptable; a periodic disk sweep can reclaim space.
 
 ## Negative Access Rules
 

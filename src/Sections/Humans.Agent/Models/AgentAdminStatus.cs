@@ -9,7 +9,7 @@ namespace Humans.Agent.Models;
 /// windowed aggregates in-memory. One row per <c>agent_messages</c> entry
 /// inside the 30-day status window. Repository emits these so the
 /// Application layer can aggregate without re-querying for each window
-/// (24h / 7d / 30d) — at ~3000 users and 90-day retention the row count
+/// (24h / 7d / 30d) — with a small user base and 90-day retention the row count
 /// is small enough to fit comfortably in RAM.
 /// </summary>
 internal sealed record AgentStatusMessageRow(

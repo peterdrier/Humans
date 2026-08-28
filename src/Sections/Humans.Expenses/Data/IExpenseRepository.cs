@@ -19,7 +19,7 @@ internal interface IExpenseRepository : IRepository
     Task<IReadOnlyList<ExpenseReportDto>> GetForReviewQueueAsync(CancellationToken ct = default);
     /// <summary>
     /// Returns every expense report regardless of status. Dashboard/aggregate reads only
-    /// (~3000-user scale — no pagination, sum client-side).
+    /// (small dataset — no pagination, sum client-side).
     /// </summary>
     Task<IReadOnlyList<ExpenseReportDto>> GetAllAsync(CancellationToken ct = default);
     /// <summary>

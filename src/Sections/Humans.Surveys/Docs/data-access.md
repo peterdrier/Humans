@@ -15,7 +15,7 @@ aggregation, and full GDPR Article 15 export of identified responses.
 `SurveyRepository` is registered as a **Singleton** (uses `IDbContextFactory`
 pattern). `SurveyService` is **Scoped** with no caching decorator (per the spec:
 response data is write-heavy and append-only; no hot read path merits a
-`TrackedCache` at ~3000-user scale). There is no `ISurveyServiceRead`: it shipped
+`TrackedCache` at our small scale). There is no `ISurveyServiceRead`: it shipped
 empty in v1 and was deleted at G5. Two consumers live outside the section
 today: the reminder job in Base, which sees the single-member
 `Humans.Surveys.Contracts.ISurveyReminderSender`, and Backdoor's machine

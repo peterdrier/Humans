@@ -19,7 +19,7 @@ namespace Humans.Users.Contracts;
 /// sections (Teams, RoleAssignments, Shifts) and to give
 /// <c>ProcessAccountDeletionsJob</c> a single entry point instead of reaching
 /// into User/Profile cascade code. Synchronous orchestration (not event-bus):
-/// at ~3000-user scale, explicit call order is simpler than a pub/sub hop.
+/// at our small scale, explicit call order is simpler than a pub/sub hop.
 /// </remarks>
 public interface IAccountDeletionService : IOrchestrator
 {

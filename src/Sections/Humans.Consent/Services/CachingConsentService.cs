@@ -23,7 +23,7 @@ namespace Humans.Consent.Services;
 /// then evicts the affected user(s) <b>before</b> returning.
 /// </para>
 /// <para>
-/// Cache is lazy — no startup warmup. At 3000-user scale a 3000-id eager
+/// Cache is lazy — no startup warmup. An eager full-user-base
 /// repo round-trip is cheap, but the lazy path is plenty for the
 /// consent-banner workload (the banner only fires for users who have
 /// outstanding required consents; the cache fills on first banner
@@ -264,7 +264,7 @@ internal sealed class CachingConsentService(
         // changes: if a repo impl ever retains and mutates the returned
         // set (e.g., adds an internal cache layer), our cached entry would
         // alias to it. Always-copy makes the cached snapshot independent of
-        // the repo's lifetime semantics. Cost is trivial at 3000-user scale.
+        // the repo's lifetime semantics. Cost is trivial at our small scale.
         var frozen = new HashSet<Guid>(versions);
         return new UserConsentInfo(userId, frozen);
     }

@@ -181,7 +181,7 @@ Reads:
 | `Profile.BurnerName` | Row label on the drill-down matrix and in both CSVs | `"(unknown)"` is a defensive default; every on-site human has a profile row |
 | `BurnSettingsInfo.GateOpeningDate`, `BurnSettingsInfo.TimeZoneId` | Compute calendar dates for each day in the week + default week | Existing, via `IBurnSettingsService` |
 
-At ~3000-user scale, the service issues 7 sequential per-day cohort queries (`GetOnSiteUserIdsForDayAsync`, one per day) plus a single batched `IUserServiceRead.GetUserInfosAsync` for the week's unique cohort (dietary + names from the cached `UserInfo`). For the arrival-day rule it additionally scans per-day cohorts from build start up to the window's end (capped at strike end) to find each human's first confirmed shift.
+At our small scale, the service issues 7 sequential per-day cohort queries (`GetOnSiteUserIdsForDayAsync`, one per day) plus a single batched `IUserServiceRead.GetUserInfosAsync` for the week's unique cohort (dietary + names from the cached `UserInfo`). For the arrival-day rule it additionally scans per-day cohorts from build start up to the window's end (capped at strike end) to find each human's first confirmed shift.
 
 Explicitly **excluded** at the DTO boundary regardless of viewer role:
 

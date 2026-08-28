@@ -107,7 +107,7 @@ recreates the sharing. The hazard went with the shared context, and
 `design-rules.md` §8a records the reason as obsolete.
 
 Sequential is now a simplicity choice, and it stays: one contributor at a time
-keeps failure attribution and log order plain, and at ~3000-user scale an export
+keeps failure attribution and log order plain, and at our small scale an export
 completes well under a second, so parallelism would buy nothing measurable. The
 loop in `GdprService.ExportForUserAsync` could be made parallel in place
 without changing the contract — there is just no reason to.
