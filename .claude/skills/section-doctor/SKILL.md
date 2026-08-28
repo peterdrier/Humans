@@ -349,7 +349,11 @@ the wall-clock / token / fragility balance:
   later turn in the run: cache reads on a run that carries Phase 3 to the end are the largest
   line in its bill. **Small context dominates model choice**:
   moving a thread off main saves ~87%, swapping its model ~40%. Each dispatched thread gets an
-  explicit tagged model (table below) and a deadline.
+  explicit tagged model (table below) and a deadline. The tiering runs on capability-per-dollar,
+  not tier names: the judgment-reading threads get **opus at low effort** — on current models the
+  top tier at low effort matches or beats the mid tier at high effort on this kind of reading,
+  and low effort's fewer, more consolidated turns also mean fewer cache-read passes — while the
+  mechanical scans stay **haiku**.
 - **Only the spine and the two judgment threads stay on main** — 3a–3c, Shape, Behavior & bugs,
   and 3e. They are the reading this run exists to do, and a wrong call there costs a real finding.
   Whether they *must* stay is an open measurement, not a settled rule: the figure
@@ -364,6 +368,11 @@ It returns a **structured findings list plus a disposition for every file it cla
 prose, and **never edits anything** — striking is Phase 4's job on main. Prompt line one is
 `thread: <Name>` so the cost report can name the row.
 
+**`opus low` rows dispatch as the `doctor-reader` agent type** (`.claude/agents/doctor-reader.md`)
+— an agent definition is the only place effort can be pinned; a bare Agent call's `model`
+parameter cannot set it. Haiku rows use the plain model tag (default effort). Where the
+environment lacks the agent type, fall back to the plain model tag and note it in `## Threads`.
+
 **A dispatched thread that misses its deadline does not block the strike loop:** work its
 checklist on the main thread and label it self-run in the run file. That is the degrade path —
 files are never silently dropped, because the coverage block still demands a disposition for
@@ -373,13 +382,13 @@ each one.
 |---|---|---|
 | **Shape** | `/simplify`'s method against the target: shape mismatches, duplicated pipelines, pass-throughs, over-general options, dead and over-exposed surface, per-method external-caller counts | main |
 | **Behavior & bugs** | Does it do what it claims? Walk each flow against the target's invariants. Where the section consumes authored content (markdown, resx, templates, seed data), run the **real shipped content through the real pipeline** — a defect whose trigger is the shape of an input file is invisible to every code-reading thread | main |
-| **Freshness** | The section's docs vs code: claims that no longer hold, `freshness:triggers` globs that still resolve, and triggers that watch *everything the doc asserts about* — including another section's file where the doc names it. A fixed claim gets swept everywhere it appears | subagent (sonnet) |
+| **Freshness** | The section's docs vs code: claims that no longer hold, `freshness:triggers` globs that still resolve, and triggers that watch *everything the doc asserts about* — including another section's file where the doc names it. A fixed claim gets swept everywhere it appears | subagent (opus low) |
 | **Conformance** | `docs/architecture/section-conformance.yml` — the per-section rules nothing enforces yet. Detectors are mechanical; the judgment is what to do about a hit | background + subagent (haiku) |
-| **Tests** | The invariant coverage matrix — every invariant, negative access rule and trigger in the target mapped to a pinning test; redundant and asserting-the-mock tests | subagent (sonnet) |
+| **Tests** | The invariant coverage matrix — every invariant, negative access rule and trigger in the target mapped to a pinning test; redundant and asserting-the-mock tests | subagent (opus low) |
 | **Prose & surface** | InspectCode Tier 1/2; docs that are 500 words where 50 would do; dead resources, missing translations, resource keys not prefixed with the section name (`resource-key-prefix`, cleanup — report the count, don't backfill unless the run is *for* that); nav quality — dead ends, missing backlinks, discoverability from `AdminNavTree` | background + subagent (haiku) |
-| **History** | Prose narrating a prior state: a deleted/renamed project or type, a migration/lane number, "used to live in X", "the first section to Y", a dated run post-mortem, rationale for a decision no longer contested. **Cut test: keep only if it changes what a reader does** — a live constraint, a non-obvious invariant, a landmine that bites if reverted. A load-bearing "why" moves to the issue, linked, not narrated in the file | subagent (sonnet) |
-| **Comments** | Every comment in the section's inventory, rewritten or deleted. Cut what restates the next line, decision history, hedging, reassurance addressed to the next agent. **Cut test: a comment survives only if it carries something the code cannot say** | subagent (sonnet) |
-| **Inbox** | Section-tagged `debt-ledger.yml` items, open GitHub issues, in-app issues. Work or rank them — and **review** the open issues for validity / consistency / freshness / spec quality (below); off-section finds go to the run's sweep queue as `debt:`, never written to the ledger directly | subagent (sonnet) |
+| **History** | Prose narrating a prior state: a deleted/renamed project or type, a migration/lane number, "used to live in X", "the first section to Y", a dated run post-mortem, rationale for a decision no longer contested. **Cut test: keep only if it changes what a reader does** — a live constraint, a non-obvious invariant, a landmine that bites if reverted. A load-bearing "why" moves to the issue, linked, not narrated in the file | subagent (opus low) |
+| **Comments** | Every comment in the section's inventory, rewritten or deleted. Cut what restates the next line, decision history, hedging, reassurance addressed to the next agent. **Cut test: a comment survives only if it carries something the code cannot say** | subagent (opus low) |
+| **Inbox** | Section-tagged `debt-ledger.yml` items, open GitHub issues, in-app issues. Work or rank them — and **review** the open issues for validity / consistency / freshness / spec quality (below); off-section finds go to the run's sweep queue as `debt:`, never written to the ledger directly | subagent (opus low) |
 
 **Every thread that does not run says so in the run file, with why.** A silent skip leaves a whole
 dimension unmeasured with nothing flagging it. A thread earns removal from this table only when
@@ -524,7 +533,9 @@ executed after it. Budget checks are real
    never report it as covered by CI. Never propose a CI job for that project, and never count its
    tests as a coverage gap — the rule above settles it.
 4. Non-mechanical changes (deletions beyond plainly-dead code, structural moves) → second-opinion
-   reviewer subagent, opus-tier, score-blind, default-reject: "name the concept that improved in
+   reviewer subagent — the `doctor-reviewer` agent type (`.claude/agents/doctor-reviewer.md`,
+   fable; fall back to a plain opus subagent with its prompt where the type or model is
+   unavailable) — score-blind, default-reject: "name the concept that improved in
    one sentence." Reject → rework once; second reject → revert, record.
 5. **Doc fixes sweep the claim — by literal string, repo-wide**: when a strike removes or
    renames a route, type, method or path, or fixes a claim naming one, grep the whole repo for
