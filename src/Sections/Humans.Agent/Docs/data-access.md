@@ -26,8 +26,9 @@ run startup warmup, no DB access — fan out over the readers /
 the rate-limit / retention / settings caches — no DB access of their own.
 
 The preload readers and the corpus builder cache their file-content reads in `IMemoryCache`
-(no DB, `HoldForever` — cleared only by process restart or an
-admin-triggered reload): `AgentSectionDocReader` (`agent:section:{key}`),
+(no DB, `HoldForever`; the admin reload clears only `CommunityFaqReader`
+and re-sets the corpus entries — the section/feature reader caches clear
+only on process restart): `AgentSectionDocReader` (`agent:section:{key}`),
 `AgentFeatureSpecReader` (`agent:feature:index`, `agent:feature:{stem}`),
 `CommunityFaqReader` (`agent:community-kb:index`,
 `agent:community-kb:doc:{stem}`), `AgentPreloadCorpusBuilder`

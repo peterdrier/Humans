@@ -40,7 +40,9 @@ internal sealed class AgentController(
             return;
         }
 
-        if (body.Message.Length > AgentAskRequest.MaxMessageLength)
+        // Pattern match also rejects a null Message: STJ binds {"message":null} despite the
+        // non-nullable declaration, and a null body binds when the raw payload is `null`.
+        if (body?.Message is not { Length: <= AgentAskRequest.MaxMessageLength })
         {
             Response.StatusCode = StatusCodes.Status400BadRequest;
             return;

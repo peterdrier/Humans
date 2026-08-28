@@ -30,6 +30,21 @@ public class AgentControllerTests
     }
 
     [HumansFact]
+    public async Task Ask_rejects_a_null_message_with_400()
+    {
+        // STJ binds {"message":null} despite the non-nullable declaration.
+        var agent = Substitute.For<IAgentService>();
+        var controller = MakeController(agent, enabled: true);
+
+        await controller.Ask(
+            new AgentAskRequest { Message = null! },
+            Xunit.TestContext.Current.CancellationToken);
+
+        controller.Response.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+        agent.DidNotReceiveWithAnyArgs().AskAsync(default!, default);
+    }
+
+    [HumansFact]
     public async Task Ask_accepts_a_message_at_exactly_the_cap()
     {
         // Enabled=false stops the turn at 503 right after the length guard,

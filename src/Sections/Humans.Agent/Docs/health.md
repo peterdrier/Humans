@@ -89,7 +89,9 @@ The numbered invariants in `Agent.md` are the contract; the load-bearing ones re
   cache reads; section bodies route through tools so both tiers fit the caps.
 - **The section fetches its own repo's docs from GitHub at runtime** (not from disk): the
   deployed app has no source tree, and the KB lives in a separate repo. Caches are
-  `NeverRemove`, refreshed only by admin reload or restart.
+  `NeverRemove`; the admin reload refreshes the community KB and rebuilds the assembled
+  corpus, while the section-guide and feature-spec reader caches refresh only on restart
+  (the rebuilt corpus re-reads section taglines through those still-warm caches).
 - **Localized fallback strings live in C#, not resx** (`SilentTurnFallbackText`,
   `RouteToIssueFallbackText`): they are both streamed and persisted, and the service layer has
   no resx access. The route_to_issue one is deliberately persisted-only, in lockstep with the
