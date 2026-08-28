@@ -12,20 +12,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!--
-      Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
-      Declaring them keeps the files moved out of Humans.Web byte-identical to their originals.
-    -->
+    <!-- Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not. -->
     <Using Include="Microsoft.AspNetCore.Http" />
     <Using Include="Microsoft.AspNetCore.Routing" />
     <Using Include="Microsoft.Extensions.Logging" />
-    <!--
-      The section's own layers, global because the move renamed every one of them at once:
-      the entities left Humans.Domain.Entities, the enums and read models left
-      Humans.Base.Enums / Humans.Base.Interfaces.Camps, and the view models left
-      Humans.Web.Models. Declaring them here is what keeps the ~40 moved files' using blocks
-      byte-identical to their originals.
-    -->
     <Using Include="Humans.Camps.Contracts" />
     <Using Include="Humans.Camps.Domain" />
     <Using Include="Humans.Camps.Services" />

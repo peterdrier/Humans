@@ -3,7 +3,7 @@ using Humans.Base.Attributes;
 namespace Humans.Camps.Contracts;
 
 /// <summary>
-/// T-06: one-way cross-section signal for the <c>CampInfo</c> read-model cache
+/// One-way cross-section signal for the <c>CampInfo</c> read-model cache
 /// (design-rules §15e). Implemented by the singleton <c>CachingCampService</c>;
 /// callers signal "this camp's data changed, drop or rebuild the cached entry."
 /// </summary>

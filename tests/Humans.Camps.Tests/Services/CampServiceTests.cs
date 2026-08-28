@@ -36,9 +36,9 @@ public sealed class CampServiceTests : CampsTestHarness
 
         _earlyEntryInvalidator = Substitute.For<IEarlyEntryInvalidator>();
 
-        // Substituted since City Planning became its own assembly (G5, #866): the section's
-        // own tests own "the rows actually go"; what Camps must prove is that DeleteCampAsync
-        // asks for the deletion, with the right season ids.
+        // City Planning is its own assembly: its tests own "the rows actually go"; what
+        // Camps must prove is that DeleteCampAsync asks for the deletion, with the right
+        // season ids.
         _cityPlanningService = Substitute.For<ICityPlanningService>();
 
         _service = new CampService(
@@ -368,7 +368,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetCampsForYearAsync_RoleAndLegacyLead_CanBeFilteredOnceFromCampInfo()
+    public async Task GetCampsForYearAsync_LeadRoleHolders_CanBeFilteredOnceFromCampInfo()
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCamp(); // creator is a role-backed Camp Lead.

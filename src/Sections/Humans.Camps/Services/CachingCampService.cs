@@ -40,8 +40,7 @@ internal sealed class CachingCampService(
 
     public async Task<CampInfo?> GetCampByIdAsync(Guid campId, CancellationToken cancellationToken = default)
     {
-        // The dict is keyed by camp id, so this is a straight lookup. Cold camps (a year
-        // warmup never covered) fall back to the inner service.
+        // Cold camps (a year warmup never covered) fall back to the inner service.
         await EnsureWarmedAsync(cancellationToken);
         return TryGet(campId, out var cached)
             ? cached
@@ -483,6 +482,10 @@ internal sealed class CachingCampService(
         return Task.CompletedTask;
     }
 
+    // Per-camp precision is aspirational: today every invalidation — per-camp
+    // included — drops the whole projection (RefreshAll). campId feeds the debug
+    // log and keeps call sites naming the camp that changed, so a narrower rebuild
+    // can land here without touching them (nobodies-collective/Humans#805).
     private Task InvalidateCampAsync(
         Guid campId,
         [CallerMemberName] string memberName = "",
@@ -587,7 +590,6 @@ internal sealed class CachingCampService(
 
     private async Task InvalidateBySeasonAsync(Guid seasonId, CancellationToken ct)
     {
-        // Try the snapshot first to avoid a DB round-trip.
         foreach (var camp in Values)
         {
             if (camp.Seasons.Any(s => s.Id == seasonId))
