@@ -104,4 +104,4 @@ beyond display formatting. That is today's layout minus the exceptions listed in
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| [2026-08-28-Camps](../../../../docs/health/runs/2026-08-28-Camps.md) | 2026-08-28 | Migration sediment cleared; cross-camp scoping and Rejoin authority queued | pending |
+| [2026-08-28-Camps](../../../../docs/health/runs/2026-08-28-Camps.md) | 2026-08-28 | Migration sediment cleared; cross-camp scoping and Rejoin authority queued | [peterdrier/Humans#1561](https://github.com/peterdrier/Humans/pull/1561) |
