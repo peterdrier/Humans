@@ -95,9 +95,8 @@ internal sealed class ExpenseReportService(
             // at outbox-drain time), so it contributes to the creditor balance from Approved onward.
             // Approved is the report's terminal state — paid/unpaid is read from the account ledger, never the report.
             memberRegisteredTotal = memberReports
-                .Where(r => r.HoldedDocIds.Count > 0
-                         && r.Status is ExpenseReportStatus.Approved)
-                .Sum(r => r.Payable);
+                .Where(r => r.Status is ExpenseReportStatus.Approved)
+                .Sum(RegisteredAmount);
 
             owed = status?.OwedToMember ?? 0m;
             totalPaid = status?.TotalPaid ?? 0m;
@@ -127,6 +126,18 @@ internal sealed class ExpenseReportService(
                 : null,
         };
     }
+
+    /// <summary>
+    /// What of this report is actually booked in Holded right now. A legacy report-level doc always
+    /// carried the whole payable; per-line docs count only the lines whose doc exists, so a push that
+    /// failed partway (retrying) doesn't overstate the member's registered total against the ledger.
+    /// </summary>
+    private static decimal RegisteredAmount(ExpenseReportDto report) =>
+        report.HoldedDocId is not null
+            ? report.Payable
+            : PayableAllocation.Allocate(report)
+                .Where(a => a.Line.HoldedDocId is not null)
+                .Sum(a => a.Booked);
 
     private ExpenseHoldedSyncState ResolveSyncState(HoldedExpenseOutboxEvent? outboxEvent)
     {
@@ -1410,10 +1421,17 @@ internal sealed class ExpenseReportService(
                 await holdedClient.ApprovePurchaseDocumentAsync(holdedDocId, ct);
         }
 
-        var summary = pushedDocIds.Count == 1
-            ? $"Pushed to Holded as purchase document {pushedDocIds[0]}."
-            : $"Pushed to Holded as purchase documents {string.Join(", ", pushedDocIds)}.";
-        return notes.Count == 0 ? summary : $"{summary} {string.Join(" ", notes)}";
+        var summary = pushedDocIds.Count switch
+        {
+            0 => "No purchase documents pushed to Holded.",
+            1 => $"Pushed to Holded as purchase document {pushedDocIds[0]}.",
+            _ => $"Pushed to Holded as purchase documents {string.Join(", ", pushedDocIds)}.",
+        };
+        var full = notes.Count == 0 ? summary : $"{summary} {string.Join(" ", notes)}";
+        // AuditLogEntry.Description caps at 4,000 chars (job-name prefix included) and a failed
+        // insert is swallowed, so an oversized summary loses the audit entry entirely.
+        const int maxSummaryLength = 3500;
+        return full.Length <= maxSummaryLength ? full : full[..(maxSummaryLength - 1)] + "…";
     }
 
     /// <summary>

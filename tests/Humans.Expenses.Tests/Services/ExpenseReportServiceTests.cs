@@ -2027,6 +2027,41 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
+    public async Task GetHoldedTimelineAsync_RegisteredTotal_CountsOnlyLinesWhoseDocExists()
+    {
+        // A per-line push that failed partway: line A's doc was created, line B's wasn't yet.
+        // Only A's 40 € is booked in Holded, so the registered total must not claim B's 60 € too.
+        var userId = Guid.NewGuid();
+        var (_, category) = SetupActiveYear();
+        SetupUserAndProfile(userId, "Alice Tester", "ES9121000418450200051332");
+
+        var reportId = await _sut.CreateDraftAsync(userId, userId, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineAId = await _sut.AddLineAsync(reportId, userId, false, "A", 40m, ct: Xunit.TestContext.Current.CancellationToken);
+        var lineBId = await _sut.AddLineAsync(reportId, userId, false, "B", 60m, ct: Xunit.TestContext.Current.CancellationToken);
+        foreach (var lineId in new[] { lineAId, lineBId })
+        {
+            await using var stream = new MemoryStream([7, 8, 9]);
+            await _sut.AttachFileToLineAsync(
+                reportId, userId, false, lineId, "receipt.pdf", "application/pdf", stream, Xunit.TestContext.Current.CancellationToken);
+        }
+        (await _sut.SubmitAsync(reportId, userId, false, Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
+        (await _sut.ApproveAsync(reportId, Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
+
+        await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow, Xunit.TestContext.Current.CancellationToken);
+        await _expenseRepo.SetLineHoldedDocIdAsync(lineAId, "doc-a", FakeNow, Xunit.TestContext.Current.CancellationToken);
+
+        _holdedFinance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
+            .Returns(new HoldedCreditorStatus(40000007, Balance: -40m, OwedToMember: 40m,
+                LastPaymentDate: null, TotalPaid: 0m));
+
+        var report = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        var timeline = await _sut.GetHoldedTimelineAsync(report!, Xunit.TestContext.Current.CancellationToken);
+
+        timeline!.MemberRegisteredTotal.Should().Be(40m);
+        timeline.OtherAmount.Should().Be(0m);
+    }
+
+    [HumansFact]
     public async Task GetHoldedTimelineAsync_CarriesPaidTotalAndDate()
     {
         var userId = Guid.NewGuid();
