@@ -305,6 +305,9 @@ internal sealed class SurveyService(
         || !old.HelpText.Equals(updated.HelpText)
         || old.RatingMin != updated.RatingMin
         || old.RatingMax != updated.RatingMax
+        || !old.RatingMinLabel.Equals(updated.RatingMinLabel)
+        || !old.RatingMaxLabel.Equals(updated.RatingMaxLabel)
+        || old.GridSelectionMode != updated.GridSelectionMode
         || !OptionsEqual(old.Options, updated.Options);
 
     private static bool OptionsEqual(ICollection<SurveyQuestionOption> old, ICollection<SurveyQuestionOption> updated) =>
