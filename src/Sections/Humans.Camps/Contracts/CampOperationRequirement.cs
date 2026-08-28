@@ -6,7 +6,7 @@ namespace Humans.Camps.Contracts;
 /// Resource-based authorization requirement for camp operations.
 /// Used with IAuthorizationService.AuthorizeAsync(User, resource, requirement)
 /// where the resource is a <see cref="Humans.Camps.Contracts.CampInfo"/>,
-/// a legacy <see cref="Humans.Domain.Entities.Camp"/> entity, or a camp ID (<see cref="System.Guid"/>).
+/// the section's internal <c>Camp</c> entity, or a camp ID (<see cref="System.Guid"/>).
 /// </summary>
 public sealed class CampOperationRequirement : IAuthorizationRequirement
 {

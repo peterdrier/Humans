@@ -378,7 +378,7 @@ internal sealed class CampController(
                 model.Name,
                 model.ContactEmail,
                 model.ContactPhone,
-                null, // WebOrSocialUrl legacy � new registrations/edits use Links
+                null, // WebOrSocialUrl legacy — new registrations/edits use Links
                 campLinks,
                 model.IsSwissCamp,
                 model.TimesAtNowhere,
