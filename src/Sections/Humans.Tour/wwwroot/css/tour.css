@@ -7,8 +7,10 @@
     --tour-bg-alt: #f2ebe0;
     --tour-text: #2c2418;
     --tour-text-muted: #6b5e50;
-    --tour-accent: #c2703e;
-    --tour-accent-hover: #a85d32;
+    /* Darkened from nobodies.team's #c2703e for WCAG AA: ≥4.5:1 as white-on-accent
+       (buttons, header CTA) and as accent text on --tour-bg/--tour-bg-alt. */
+    --tour-accent: #96522c;
+    --tour-accent-hover: #7d4425;
     --tour-green: #7a8b6a;
     --tour-yellow: #c9922a;
     --tour-border: #e4ddd4;
