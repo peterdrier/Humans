@@ -358,12 +358,15 @@ internal sealed class IssuesService(
         Guid issueId,
         Guid? senderUserId,
         string content,
-        bool senderIsReporter,
         bool resolveOnPost = false,
         CancellationToken ct = default)
     {
         var issue = await repo.FindForMutationAsync(issueId, ct)
             ?? throw new InvalidOperationException($"Issue {issueId} not found");
+
+        // Derived here, not caller-supplied: reporter status drives auto-reopen and
+        // notification routing, and every door must get identical behavior.
+        var senderIsReporter = senderUserId is not null && senderUserId == issue.ReporterUserId;
 
         var now = clock.GetCurrentInstant();
         var comment = new IssueComment

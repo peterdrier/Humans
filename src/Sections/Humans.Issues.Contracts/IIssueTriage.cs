@@ -46,10 +46,14 @@ public interface IIssueTriage : IApplicationService
         Guid? actorUserId = null,
         CancellationToken ct = default);
 
-    /// <summary>Posts a comment. Throws <see cref="InvalidOperationException"/> when the issue is gone.</summary>
+    /// <summary>
+    /// Posts a comment. Reporter status is derived from <paramref name="senderUserId"/> —
+    /// a reporter's comment on a terminal issue auto-reopens it, whichever door it came
+    /// through. Throws <see cref="InvalidOperationException"/> when the issue is gone.
+    /// </summary>
     Task<IssueCommentInfo> PostCommentAsync(
         Guid issueId, Guid? senderUserId, string content,
-        bool senderIsReporter, bool resolveOnPost = false, CancellationToken ct = default);
+        bool resolveOnPost = false, CancellationToken ct = default);
 
     Task UpdateStatusAsync(
         Guid issueId, IssueStatus newStatus, Guid? actorUserId, CancellationToken ct = default);

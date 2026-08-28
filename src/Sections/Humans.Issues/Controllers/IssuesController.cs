@@ -274,7 +274,6 @@ internal sealed class IssuesController(
                 id,
                 user.Id,
                 model.Content,
-                senderIsReporter: isReporter,
                 resolveOnPost: model.ResolveOnPost && canHandle);
 
             SetSuccess(localizer["Issue_Comment_Posted"].Value);

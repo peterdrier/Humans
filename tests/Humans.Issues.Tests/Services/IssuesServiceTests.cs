@@ -231,8 +231,7 @@ public sealed class IssuesServiceTests
                 "GitHub link: 123", auditAt, null, null, null)]));
 
         await _service.PostCommentAsync(
-            issueId, commenterId, "A comment", senderIsReporter: false,
-            ct: Xunit.TestContext.Current.CancellationToken);
+            issueId, commenterId, "A comment",            ct: Xunit.TestContext.Current.CancellationToken);
 
         var thread = await _service.GetThreadAsync(issueId, Xunit.TestContext.Current.CancellationToken);
 
@@ -369,7 +368,7 @@ public sealed class IssuesServiceTests
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Resolved);
 
-        await _service.PostCommentAsync(issueId, reporterId, "Still broken", senderIsReporter: true, ct: Xunit.TestContext.Current.CancellationToken);
+        await _service.PostCommentAsync(issueId, reporterId, "Still broken", ct: Xunit.TestContext.Current.CancellationToken);
 
         var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
         stored.Status.Should().Be(IssueStatus.Open);
@@ -380,7 +379,7 @@ public sealed class IssuesServiceTests
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.WontFix, withResolvedFields: true);
 
-        await _service.PostCommentAsync(issueId, reporterId, "Reopen please", senderIsReporter: true, ct: Xunit.TestContext.Current.CancellationToken);
+        await _service.PostCommentAsync(issueId, reporterId, "Reopen please", ct: Xunit.TestContext.Current.CancellationToken);
 
         var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
         stored.ResolvedAt.Should().BeNull();
@@ -392,7 +391,7 @@ public sealed class IssuesServiceTests
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open);
 
-        await _service.PostCommentAsync(issueId, reporterId, "Update", senderIsReporter: true, ct: Xunit.TestContext.Current.CancellationToken);
+        await _service.PostCommentAsync(issueId, reporterId, "Update", ct: Xunit.TestContext.Current.CancellationToken);
 
         var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
         stored.Status.Should().Be(IssueStatus.Open);
@@ -408,7 +407,7 @@ public sealed class IssuesServiceTests
         var issueId = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Report Title");
         var adminId = Guid.NewGuid();
 
-        await _service.PostCommentAsync(issueId, adminId, "Looking at it", senderIsReporter: false, ct: Xunit.TestContext.Current.CancellationToken);
+        await _service.PostCommentAsync(issueId, adminId, "Looking at it", ct: Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.Received(1).IssueComment(
             "reporter@test.com",
@@ -437,7 +436,7 @@ public sealed class IssuesServiceTests
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open);
 
-        await _service.PostCommentAsync(issueId, reporterId, "More info", senderIsReporter: true, ct: Xunit.TestContext.Current.CancellationToken);
+        await _service.PostCommentAsync(issueId, reporterId, "More info", ct: Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.DidNotReceive().IssueComment(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -454,8 +453,7 @@ public sealed class IssuesServiceTests
             issueId,
             actorId,
             "Fixed this",
-            senderIsReporter: false,
-            resolveOnPost: true, ct: Xunit.TestContext.Current.CancellationToken);
+                       resolveOnPost: true, ct: Xunit.TestContext.Current.CancellationToken);
 
         var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
         stored.Status.Should().Be(IssueStatus.Resolved);
