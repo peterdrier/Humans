@@ -77,7 +77,9 @@ ones a change is most likely to break silently.
   profile IBAN and legal name into `PayeeIban` / `PayeeName`, and the Holded push pays from those,
   not from the live profile. `/Expenses/{id}/Iban` refreshes the snapshot, and only while the report
   is pre-approval.
-- `Approved` is terminal. No payment state is ever stamped on a claim.
+- `Approved` closes the claim to edits and to further decisions; the one move out of it is
+  `Withdrawn`, the terminal alternate reachable from `Submitted` / `CoordinatorEndorsed` /
+  `Approved`. No payment state is ever stamped on a claim.
 - `Payable = min(Total, MaxAmount)` is the only figure payment math may use; `Total` is the
   receipts total and renders as nothing else.
 - Only a decider sets `MaxAmount`, on their own decision form, and it is recorded in that
