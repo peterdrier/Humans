@@ -103,7 +103,10 @@ def thread_name(path):
     Phase 4 strike executors (`thread: strike <what>`) alike (SKILL.md §3d, §4)."""
     with open(path, encoding="utf-8", errors="ignore") as f:
         for line in list(f)[:3]:  # the prompt is the first record; don't match a later mention
-            m = re.search(r'thread:\s*([A-Za-z][\w &:-]*)', line)
+            # capture to the end of the marker's logical line: stop at a real newline,
+            # a JSON escape (\n inside a jsonl-encoded prompt), or a closing quote —
+            # punctuation like / . ' + in a strike name is part of the name
+            m = re.search(r'thread:\s*([A-Za-z][^"\\\n]*)', line)
             if m:
                 return m.group(1).strip()
     return None
