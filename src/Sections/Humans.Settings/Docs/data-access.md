@@ -23,9 +23,8 @@ Repository: `ISettingsRepository`. Registered twice against one instance: as
 `SaveEventSettingsAsync` is deliberately **not** on `ISettingsService`. Nothing
 outside Settings writes the event values, so the write lives on
 `ISettingsWriteService`, which only `SettingsAdminController` and
-`EventSettingsCarryService` inject. The key/value `SetValueAsync` does stay on
-the cross-section interface, because Email's send-pause flag and Monitor's
-last-run stamp have always been written from outside.
+`EventSettingsCarryService` inject. Why the key/value `SetValueAsync` does stay
+on the cross-section interface: see `ISettingsService`.
 
 | Table | R/W |
 |-------|-----|
@@ -107,8 +106,4 @@ inactive rows.
 The build window is `[BuildStartOffset, 0)` and the four sub-period boundaries
 partition it, so the form's rule is
 `BuildStartOffset ≤ FirstCrew < SetupWeek < PreEvent < FinishingWeekend < 0`.
-Build start therefore defaults to `-25`, the first-crew day; the older `-14`
-default sat *after* `SetupWeekStartOffset = -16`, which left the two rules with
-no satisfiable value and blocked every save.
-
----
+Build start therefore defaults to `-25`, the first-crew day.
