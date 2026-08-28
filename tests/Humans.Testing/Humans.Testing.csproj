@@ -12,6 +12,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- IntegrationTestGate stays internal; the integration suite's fixture and the
+         gate's own smoke tests are the only consumers outside this assembly. -->
+    <InternalsVisibleTo Include="Humans.Integration.Tests" />
+    <InternalsVisibleTo Include="Humans.Testing.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- BurnSettingsInfo / ShiftUserSummary / UrgentShiftInfo fixtures. -->
     <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <!-- ProfileInfo / UserInfo fixtures (nobodies-collective/Humans#1051). -->
