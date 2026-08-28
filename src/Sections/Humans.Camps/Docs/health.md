@@ -99,3 +99,9 @@ beyond display formatting. That is today's layout minus the exceptions listed in
   route otherwise.
 - **`ICampInfoInvalidator` is Grandfathered (HUM0028)** — tracked debt
   nobodies-collective/Humans#805; not a pattern to copy.
+
+## History
+
+| Run | Date | Headline | PR |
+|---|---|---|---|
+| [2026-08-28-Camps](../../../../docs/health/runs/2026-08-28-Camps.md) | 2026-08-28 | Migration sediment cleared; cross-camp scoping and Rejoin authority queued | pending |
