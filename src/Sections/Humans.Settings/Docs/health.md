@@ -112,4 +112,4 @@ The shapes imply exactly today's layout:
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-08-28 | First doctor pass — section is young (#1104) and close to target; drift is at the edges: a Contracts csproj comment naming consumers two moves stale, a dead GoogleIntegration reference, cloned clock-rule comments claiming callers that are not there yet | pending |
+| 1 | 2026-08-28 | First doctor pass — section is young (nobodies-collective/Humans#1104) and close to target; drift is at the edges: a Contracts csproj comment naming consumers two moves stale, a dead GoogleIntegration reference, cloned clock-rule comments claiming callers that are not there yet | peterdrier/Humans#1560 |
