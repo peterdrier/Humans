@@ -1,0 +1,7 @@
+# Section debt ledger for Humans.Agent. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+inbox:
+  - added: 2026-08-28
+    what: "Test gaps from the invariant matrix (finding 14, /section-doctor on Agent 2026-08-28): (a) enabled gate — no test sets Enabled=false and asserts the widget hides / POST /Agent/Ask 503s, the Board's kill switch is unpinned; (b) DailyTokenCap is set in every fixture but never exceeded — the third cap of invariant 3 has no reject test; (c) anonymous → 401 unpinned anywhere; (d) nothing asserts the tool catalog AgentPromptAssembler advertises equals AgentToolNames.All; (e) AgentFeatureSpecReader has no path-traversal negative test (CommunityFaqReader does); (f) an abuse-flagged message is never driven through AskAsync to a RefusalReason row."
+    review: light

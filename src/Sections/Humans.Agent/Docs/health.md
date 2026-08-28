@@ -104,4 +104,4 @@ The 14 numbered invariants in `Agent.md` are the contract; the load-bearing ones
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| section-doctor | 2026-08-28 | First doctoring: target shape written | pending |
+| section-doctor | 2026-08-28 | First doctoring: doc drift + narration purge, duplicate view record collapsed | pending |
