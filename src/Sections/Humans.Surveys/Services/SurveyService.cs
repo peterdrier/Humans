@@ -240,6 +240,8 @@ internal sealed class SurveyService(
             Questions = questions,
         };
 
+        // Diffed against the no-tracking snapshot so the audit trail names what changed.
+        var changeSummary = DescribeSurveyChanges(existing, survey);
         try
         {
             await repo.UpdateAsync(survey, ct);
@@ -249,8 +251,68 @@ internal sealed class SurveyService(
             await DeleteFilesBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
             throw;
         }
-        await auditLog.LogAsync(AuditAction.SurveyUpdated, AuditEntityTypes.Survey, surveyId, "Updated survey", actorUserId);
+        await auditLog.LogAsync(AuditAction.SurveyUpdated, AuditEntityTypes.Survey, surveyId, changeSummary, actorUserId);
     }
+
+    /// <summary>
+    /// Short field list for the SurveyUpdated audit entry — names only, no before/after values,
+    /// except the governance-relevant audience type and slug transitions. Question edits are
+    /// collapsed to counts; deep content (grid rows, images, branching) is not diffed, so an
+    /// update touching only those falls back to the bare "Updated survey".
+    /// </summary>
+    private static string DescribeSurveyChanges(Survey existing, Survey updated)
+    {
+        var changes = new List<string>();
+        if (!existing.Title.Equals(updated.Title)) changes.Add("title");
+        if (!existing.Intro.Equals(updated.Intro)) changes.Add("intro");
+        if (!existing.ThankYou.Equals(updated.ThankYou)) changes.Add("thank-you text");
+        if (!existing.InvitationEmailSubject.Equals(updated.InvitationEmailSubject)) changes.Add("invitation subject");
+        if (!existing.InvitationEmailMessage.Equals(updated.InvitationEmailMessage)) changes.Add("invitation message");
+        if (!string.Equals(existing.DefaultCulture, updated.DefaultCulture, StringComparison.OrdinalIgnoreCase))
+            changes.Add($"default culture ({existing.DefaultCulture} → {updated.DefaultCulture})");
+        if (existing.AllowAnonymous != updated.AllowAnonymous)
+            changes.Add(updated.AllowAnonymous ? "anonymous responses enabled" : "anonymous responses disabled");
+        if (existing.OpensAt != updated.OpensAt) changes.Add("opens-at");
+        if (existing.ClosesAt != updated.ClosesAt) changes.Add("closes-at");
+        if (existing.AudienceType != updated.AudienceType)
+            changes.Add($"audience ({existing.AudienceType?.ToString() ?? "none"} → {updated.AudienceType?.ToString() ?? "none"})");
+        else if (existing.AudienceTeamId != updated.AudienceTeamId || existing.AudienceLoggedInSince != updated.AudienceLoggedInSince)
+            changes.Add("audience");
+        if (!string.Equals(existing.PublicSlug, updated.PublicSlug, StringComparison.Ordinal))
+            changes.Add(existing.PublicSlug is null ? "public slug set"
+                : updated.PublicSlug is null ? "public slug removed"
+                : "public slug changed");
+
+        var oldQuestions = existing.Questions.ToDictionary(q => q.Id);
+        var newQuestions = updated.Questions.ToDictionary(q => q.Id);
+        var added = newQuestions.Keys.Count(id => !oldQuestions.ContainsKey(id));
+        var removed = oldQuestions.Keys.Count(id => !newQuestions.ContainsKey(id));
+        var edited = newQuestions.Values.Count(q =>
+            oldQuestions.TryGetValue(q.Id, out var old) && QuestionChanged(old, q));
+        if (added > 0) changes.Add($"{added} question(s) added");
+        if (removed > 0) changes.Add($"{removed} question(s) removed");
+        if (edited > 0) changes.Add($"{edited} question(s) edited");
+
+        return changes.Count == 0 ? "Updated survey" : $"Updated survey: {string.Join(", ", changes)}";
+    }
+
+    private static bool QuestionChanged(SurveyQuestion old, SurveyQuestion updated) =>
+        old.Type != updated.Type
+        || old.PageNumber != updated.PageNumber
+        || old.Order != updated.Order
+        || old.IsRequired != updated.IsRequired
+        || !old.Prompt.Equals(updated.Prompt)
+        || !old.HelpText.Equals(updated.HelpText)
+        || old.RatingMin != updated.RatingMin
+        || old.RatingMax != updated.RatingMax
+        || !OptionsEqual(old.Options, updated.Options);
+
+    private static bool OptionsEqual(ICollection<SurveyQuestionOption> old, ICollection<SurveyQuestionOption> updated) =>
+        old.Count == updated.Count
+        && old.OrderBy(o => o.Order).Zip(updated.OrderBy(o => o.Order))
+            .All(pair => pair.First.Order == pair.Second.Order
+                && string.Equals(pair.First.Value, pair.Second.Value, StringComparison.Ordinal)
+                && pair.First.Label.Equals(pair.Second.Label));
 
     public async Task<int> PreFillTranslationsAsync(
         Guid surveyId, IReadOnlyList<string> targetCultures, Guid actorUserId, CancellationToken ct = default)

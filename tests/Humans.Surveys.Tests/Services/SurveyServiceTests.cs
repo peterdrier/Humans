@@ -422,6 +422,58 @@ public class SurveyServiceTests
             "en", false, null, null,
             audience, teamId, loggedInSince, null, []);
 
+    /// <summary>Entity matching <see cref="Input"/> field-for-field, so an unchanged update diffs empty.</summary>
+    private static Survey ExistingSurveyMatchingInput(Guid id) => new()
+    {
+        Id = id,
+        Title = L("Title"),
+        Intro = L("Intro"),
+        ThankYou = L("Thanks"),
+        InvitationEmailSubject = LocalizedText.Empty,
+        InvitationEmailMessage = LocalizedText.Empty,
+        DefaultCulture = "en",
+        AllowAnonymous = false,
+        Status = SurveyStatus.Draft,
+        Questions = [],
+    };
+
+    [HumansFact]
+    public async Task UpdateAsync_audit_names_the_changed_fields()
+    {
+        var id = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        _repo.GetByIdAsync(id, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<Survey?>(ExistingSurveyMatchingInput(id)));
+        var input = new SurveyEditInput(
+            L("Title"), L("Intro"), L("Thanks"),
+            LocalizedText.Empty, LocalizedText.Empty,
+            "en", true, null, null, null, null, null, "town-hall",
+            [Q("How was it?", SurveyQuestionType.ShortText, page: 1, order: 1)]);
+
+        await CreateService().UpdateAsync(id, input, actor);
+
+        await _audit.Received(1).LogAsync(
+            AuditAction.SurveyUpdated, "Survey", id,
+            Arg.Is<string>(d =>
+                d.Contains("anonymous responses enabled") &&
+                d.Contains("public slug set") &&
+                d.Contains("1 question(s) added")),
+            actor);
+    }
+
+    [HumansFact]
+    public async Task UpdateAsync_audit_stays_bare_when_nothing_changed()
+    {
+        var id = Guid.NewGuid();
+        _repo.GetByIdAsync(id, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<Survey?>(ExistingSurveyMatchingInput(id)));
+
+        await CreateService().UpdateAsync(id, Input(), Guid.NewGuid());
+
+        await _audit.Received(1).LogAsync(
+            AuditAction.SurveyUpdated, "Survey", id, "Updated survey", Arg.Any<Guid>());
+    }
+
     [HumansTheory]
     [InlineData("admin")]
     [InlineData("Admin")]
