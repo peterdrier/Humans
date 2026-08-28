@@ -92,6 +92,49 @@ public sealed class RepositoryTests : IDisposable
     };
 
     [HumansFact]
+    public async Task UpsertEventSettingsAsync_InsertsANewRowStampingBothTimestamps()
+    {
+        var id = Guid.NewGuid();
+        var now = NodaTime.Instant.FromUtc(2026, 1, 2, 3, 4);
+
+        await _repository.UpsertEventSettingsAsync(
+            MakeEvent(id, EventSettingsStatus.Active), now, Xunit.TestContext.Current.CancellationToken);
+
+        var row = await _seedContext.EventSettings.AsNoTracking()
+            .SingleAsync(e => e.Id == id, Xunit.TestContext.Current.CancellationToken);
+        row.CreatedAt.Should().Be(now);
+        row.UpdatedAt.Should().Be(now);
+    }
+
+    [HumansFact]
+    public async Task UpsertEventSettingsAsync_UpdatesInPlaceKeepingCreatedAt()
+    {
+        var id = Guid.NewGuid();
+        var created = NodaTime.Instant.FromUtc(2026, 1, 1, 0, 0);
+        var seed = MakeEvent(id, EventSettingsStatus.Active);
+        seed.CreatedAt = created;
+        seed.UpdatedAt = created;
+        _seedContext.EventSettings.Add(seed);
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var incoming = MakeEvent(id, EventSettingsStatus.Inactive);
+        incoming.EventName = "Nowhere 2026 (renamed)";
+        var later = NodaTime.Instant.FromUtc(2026, 2, 2, 0, 0);
+
+        await _repository.UpsertEventSettingsAsync(
+            incoming, later, Xunit.TestContext.Current.CancellationToken);
+
+        var rows = await _seedContext.EventSettings.AsNoTracking()
+            .Where(e => e.Id == id)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        rows.Should().ContainSingle();
+        rows[0].EventName.Should().Be("Nowhere 2026 (renamed)");
+        rows[0].Status.Should().Be(EventSettingsStatus.Inactive);
+        rows[0].CreatedAt.Should().Be(created);
+        rows[0].UpdatedAt.Should().Be(later);
+    }
+
+    [HumansFact]
     public async Task AnyOtherActiveEventSettingsAsync_IgnoresTheRowBeingSaved()
     {
         var id = Guid.NewGuid();

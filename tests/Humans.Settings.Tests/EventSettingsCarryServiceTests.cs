@@ -208,5 +208,8 @@ public sealed class EventSettingsCarryServiceTests
         await _settings.Received(1).SaveEventSettingsAsync(
             Arg.Is<EventSettingsInfo>(s => s.Status == EventSettingsStatus.Inactive),
             Arg.Any<CancellationToken>());
+        await _settings.DidNotReceive().SaveEventSettingsAsync(
+            Arg.Is<EventSettingsInfo>(s => s.Status == EventSettingsStatus.Active),
+            Arg.Any<CancellationToken>());
     }
 }

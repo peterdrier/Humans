@@ -80,6 +80,18 @@ public sealed class EventSettingsViewModelTests
         Status: EventSettingsStatus.Active);
 
     [HumansFact]
+    public void Parse_DerivesYearFromTheGateOpeningDate()
+    {
+        var form = EventSettingsFormMapper.ToViewModel(CarriedRow());
+        form.GateOpeningDate = "2027-07-08";
+
+        var parsed = EventSettingsFormMapper.Parse(form);
+
+        parsed.Success.Should().BeTrue();
+        parsed.Settings!.Year.Should().Be(2027);
+    }
+
+    [HumansFact]
     public void ACarriedRow_SavesAnUnrelatedEditWithoutTouchingTheOffsets()
     {
         var carried = CarriedRow();
