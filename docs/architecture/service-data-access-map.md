@@ -78,7 +78,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > — and are resolved from their DI wiring in
 > each section's own `Section.cs` (`ISection.Register`). `src/Humans.Web/Extensions/Sections/` retains only `AdminSectionExtensions` and `AuthSectionExtensions`, neither of which registers a decorator.
 >
-> At ~500-user single-server scale this map is diagnostic, not gating —
+> At ~3000-user single-server scale this map is diagnostic, not gating —
 > **cross-section table reads are flagged as design-rule violations per
 > [`design-rules.md` §"Services own their data"](design-rules.md)**, but
 > serve as a backlog rather than a blocker.

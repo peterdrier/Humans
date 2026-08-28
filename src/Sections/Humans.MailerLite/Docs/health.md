@@ -94,7 +94,7 @@ Reserve the places; don't build them.
 - **No unique index on `mailerlite_sync_states.Key`.** A striped app-level lock covers it at one
   server, and the read path tolerates a duplicate rather than 500ing.
 - **No history rows.** The sync-state table is current state; the audit log is the history.
-- **No webhook / incremental import.** Plan-and-apply over a full pull is what 500 people costs.
+- **No webhook / incremental import.** Plan-and-apply over a full pull is what 3000 people costs.
 
 ## Load-bearing weirdness
 

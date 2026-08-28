@@ -14,7 +14,7 @@ internal sealed class DuplicateAccountService(
 {
     public async Task<IReadOnlyList<DuplicateAccountGroup>> DetectDuplicatesAsync(CancellationToken ct = default)
     {
-        // Load all into memory — ~500 users; avoids complex SQL for gmail/googlemail equivalence.
+        // Load all into memory — ~3000 users; avoids complex SQL for gmail/googlemail equivalence.
         var allInfos = await userService.GetAllUserInfosAsync(ct);
         var users = allInfos
             // Exclude tombstones (merge-archived, GDPR-anonymized, or legacy .local

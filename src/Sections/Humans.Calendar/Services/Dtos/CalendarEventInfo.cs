@@ -33,7 +33,7 @@ namespace Humans.Calendar.Services.Dtos;
 /// traffic without a second cache.
 /// </para>
 /// <para>
-/// Memory budget: ~500-user nonprofit with low calendar write volume; at any
+/// Memory budget: ~3000-user nonprofit with low calendar write volume; at any
 /// realistic event count (hundreds, not thousands) this projection fits in
 /// well under the §15 50 MB-per-projection budget.
 /// </para>

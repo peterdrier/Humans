@@ -168,7 +168,7 @@ internal sealed class VolunteerTrackingExportService(
                       .First());
     }
 
-    // Intentionally sequential — at ~500 humans (CLAUDE.md scale guidance), the round-trip
+    // Intentionally sequential — at ~3000 humans (CLAUDE.md scale guidance), the round-trip
     // cost is negligible and sequential code is easier to debug than parallel awaits.
     private async Task<Dictionary<Guid, string>> LoadPlayaNamesAsync(IReadOnlyList<Guid> userIds, CancellationToken ct)
     {

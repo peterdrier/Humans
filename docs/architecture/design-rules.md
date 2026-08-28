@@ -91,7 +91,7 @@ Every domain has a narrow, entity-shaped **repository interface** and an EF-back
 1. **Entities in, entities out.** Return types are `Profile`, `IReadOnlyList<Profile>`, `IReadOnlyDictionary<Guid, Profile>`, or scalar / id values. Never `IQueryable<T>`, never EF types, never DTOs.
 2. **No cross-domain method signatures.** A repository for the Profile domain never takes a `Team`, returns a `User`, or accepts a filter that requires joining another domain's table. If a caller needs a compound shape, a composer at the service layer stitches it from multiple repositories.
 3. **Bulk-by-ids is first class.** Every repository exposes a `GetByIdsAsync(IReadOnlyCollection<Guid>)` returning a dictionary. This is what makes in-memory joins (§6) cheap.
-4. **`GetAllAsync` exists for store warmup.** At ~500 users it is trivial. Larger datasets would replace it with a streaming shape; at our scale it is strictly cheaper than lazy loading.
+4. **`GetAllAsync` exists for store warmup.** At ~3000 users it is trivial. Larger datasets would replace it with a streaming shape; at our scale it is strictly cheaper than lazy loading.
 5. **No logging of domain events, no audit, no `IClock`, no caching.** Just persistence. Side effects belong to the service.
 
 ### 3b. Canonical Repository Shape
@@ -127,7 +127,7 @@ Every cached domain has a **store** — a dedicated class that owns an in-memory
 1. **One store per domain.** `IApplicationStore` holds the Governance world. `ITeamStore` holds the Team world. Stores do not share state.
 2. **Canonical storage is a dictionary keyed by primary id** (`Dictionary<Guid, Application>`). Secondary indexes are allowed when a specific lookup pattern justifies them; the store keeps them consistent because only the store writes.
 3. **Single writer.** Only the owning service writes to the store, and only as part of a successful DB write. The store interface exposes `Upsert(entity)` and `Remove(id)`; the owning service calls these immediately after its repository write returns successfully.
-4. **Startup warmup.** Each store loads its full domain on startup via `GetAllAsync()`. At ~500 users this is trivial memory and query cost; it eliminates cache-miss reasoning entirely.
+4. **Startup warmup.** Each store loads its full domain on startup via `GetAllAsync()`. At ~3000 users this is trivial memory and query cost; it eliminates cache-miss reasoning entirely.
 5. **Stores were Infrastructure.** The interface lived in `Humans.Application/Interfaces/Stores/` and the implementation in `Humans.Infrastructure/Stores/` — both projects were deleted at G5 (nobodies-collective/Humans#866). Under §15 a section's cache lives in its own `Data/`.
 
 ### 4b. Why a Store, Not Inline `IMemoryCache.GetOrCreateAsync`
@@ -194,7 +194,7 @@ Three store reads, no SQL joins, cache ownership intact, each service cachable i
 
 ### 6d. What You Give Up
 
-- **Server-side filter or sort on joined columns** (e.g., "teams ordered by coordinator's city"). At 500 users you filter and sort in memory — cheap.
+- **Server-side filter or sort on joined columns** (e.g., "teams ordered by coordinator's city"). At 3000 users you filter and sort in memory — cheap.
 - **Some EF LINQ elegance.** You write more `Dictionary<Guid, T>` lookups and fewer `Include / ThenInclude` chains.
 
 ### 6e. What You Gain

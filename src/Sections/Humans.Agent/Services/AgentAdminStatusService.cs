@@ -8,7 +8,7 @@ using Humans.Agent.Services.Anthropic;
 
 namespace Humans.Agent.Services;
 
-/// <summary>Read-only assembler for /Agent/Admin/Status. One 30-day projection, all sub-windows computed in memory (~500 users; fits in RAM).</summary>
+/// <summary>Read-only assembler for /Agent/Admin/Status. One 30-day projection, all sub-windows computed in memory (~3000 users; fits in RAM).</summary>
 internal sealed class AgentAdminStatusService(
     IAgentRepository repo,
     IAgentSettingsService settings,

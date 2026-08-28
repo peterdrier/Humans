@@ -5,7 +5,7 @@ description: Basic profile info (name, photo, city, teams) visible to other auth
 
 A user's basic profile info (display name, photo, city, teams) being visible to other authenticated users in the system is **not a privacy concern**. This includes suspended users and unapproved users.
 
-**Why:** This is a membership system for a small nonprofit (~500 users). Members are expected to see each other — that's the point. Suspended users are typically in temporary states (missing consent re-signs, etc.) or under admin review; hiding their basic identity from other members creates confusing UX without meaningful privacy benefit. Suspension reasons, admin notes, and internal flags are the sensitive bits — not names and faces.
+**Why:** This is a membership system for a small nonprofit (~3000 users). Members are expected to see each other — that's the point. Suspended users are typically in temporary states (missing consent re-signs, etc.) or under admin review; hiding their basic identity from other members creates confusing UX without meaningful privacy benefit. Suspension reasons, admin notes, and internal flags are the sensitive bits — not names and faces.
 
 **How to apply:** When reviewing auth/visibility code, don't flag "suspended user is visible via popover/search" as a security issue. Don't suggest gating the popover, profile card, team roster, or search on `IsSuspended` or `IsApproved`. The controls that matter:
 

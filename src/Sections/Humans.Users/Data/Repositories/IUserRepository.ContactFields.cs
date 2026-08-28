@@ -19,7 +19,7 @@ internal partial interface IUserRepository
     /// Returns every contact field row, read-only, with no ordering. Used by
     /// person-search (<c>IProfileService.SearchProfilesAsync</c>) so the
     /// matcher can scan public + non-public ContactField values without
-    /// per-profile round-trips. Trivial at ~500-user scale; the row count
+    /// per-profile round-trips. Trivial at ~3000-user scale; the row count
     /// across all profiles is far smaller than the user count.
     /// </summary>
     Task<IReadOnlyList<ContactField>> GetAllContactFieldsAsync(CancellationToken ct = default);

@@ -286,7 +286,7 @@ public sealed class SearchServiceTests
     [HumansFact]
     public async Task SearchAsync_PassesAnUnboundedCap_ToEverySection()
     {
-        // No per-type cap at ~500-user scale: capping made people miss matches.
+        // No per-type cap at ~3000-user scale: capping made people miss matches.
         await Build().SearchAsync("Kitchen", ct: TestContext.Current.CancellationToken);
 
         await _users.Received(1).SearchUsersAsync(

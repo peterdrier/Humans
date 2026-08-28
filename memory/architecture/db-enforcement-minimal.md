@@ -5,7 +5,7 @@ description: Don't argue from "DB constraints enforce X." At Humans the only doc
 
 Don't pitch designs by saying "DB-enforced uniqueness eliminates the race window" or "the unique index gives us free safety." That framing inverts the project's actual model.
 
-**Why:** At Humans, the database is a storage layer, not a contract layer. Unique indexes happen incidentally via EF configuration, but they aren't load-bearing in the design — the service is the source of truth. The only doctrinal DB enforcement is the triggers that prevent UPDATE/DELETE on `audit_log` and `consent_records`. At single-server, ~500-user scale, race windows that DB constraints "fix" don't actually occur in practice, and reaching for them as justification suggests a fix for a non-problem.
+**Why:** At Humans, the database is a storage layer, not a contract layer. Unique indexes happen incidentally via EF configuration, but they aren't load-bearing in the design — the service is the source of truth. The only doctrinal DB enforcement is the triggers that prevent UPDATE/DELETE on `audit_log` and `consent_records`. At single-server, ~3000-user scale, race windows that DB constraints "fix" don't actually occur in practice, and reaching for them as justification suggests a fix for a non-problem.
 
 **How to apply:**
 

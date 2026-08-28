@@ -151,7 +151,7 @@ internal sealed class ExpenseReportService(
         if (isFinanceAdmin) return queue;
 
         // One queue, three audiences (peterdrier/Humans#1447). Filtering the whole queue in
-        // memory beats a per-audience query at ~500 users, and keeps the ordering the repo
+        // memory beats a per-audience query at ~3000 users, and keeps the ordering the repo
         // already chose. Drafts and withdrawals are excluded upstream for everyone.
         var categoryIds = await GetCoordinatorCategoryIdsAsync(viewerUserId, ct);
         return queue

@@ -16,7 +16,7 @@ internal sealed class ProfileApiController(
     IContactFieldService contactFieldService,
     IUserEmailService userEmailService) : ApiControllerBase(userService)
 {
-    // No result cap: at ~500-user scale a name match returns a handful of rows, and a hard cap
+    // No result cap: at ~3000-user scale a name match returns a handful of rows, and a hard cap
     // returned an *arbitrary* N in cache-iteration order (so the person being searched for could be
     // missing entirely), then alphabetized them. We request the full match set, rank by relevance,
     // and the scrollable dropdown shows the best matches first. Mirrors SearchService's Unlimited.

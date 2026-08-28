@@ -266,7 +266,7 @@ mechanical:
       global rollup, preserve the intro/methodology block and the
       "Per-Section Maps" pointer section.
 
-      Note: at scale ~500 users with single-server deployment, this map is
+      Note: at scale ~3000 users with single-server deployment, this map is
       diagnostic — call out cross-section table reads (a service reading a
       table owned by another section's repository) as a design rule
       violation per docs/architecture/design-rules.md §"Services own their data".

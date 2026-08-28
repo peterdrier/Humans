@@ -79,7 +79,7 @@ internal partial interface IUserRepository
     /// <summary>
     /// Returns every user email, read-only. Used by the duplicate-account
     /// scan to detect overlapping addresses across users. Trivial to load in
-    /// full at ~500-user scale.
+    /// full at ~3000-user scale.
     /// </summary>
     Task<IReadOnlyList<UserEmail>> GetAllUserEmailsAsync(CancellationToken ct = default);
 

@@ -22,7 +22,7 @@ internal sealed class SearchService(
 {
     private readonly bool _eventsFeatureEnabled = configuration.GetValue<bool>("Features:Events");
 
-    // No per-type cap: at ~500-user scale a name match returns a handful of rows,
+    // No per-type cap: at ~3000-user scale a name match returns a handful of rows,
     // and capping made people miss matches (issue: too-hard-to-find-people). Each
     // section's SearchAsync still takes a max, so pass an effectively-unbounded one.
     private const int Unlimited = int.MaxValue;

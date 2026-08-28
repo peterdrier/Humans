@@ -1343,7 +1343,7 @@ internal sealed class ShiftSignupService(
     {
         await adminAuthorization.RequireCurrentUserIsAdminAsync(ct);
         var deleted = await repo.DeleteAllForUsersAsync(userIds, ct);
-        // Repo doesn't return affected shift ids; cheap at ~500-user scale to drop all and lazy-rebuild.
+        // Repo doesn't return affected shift ids; cheap at ~3000-user scale to drop all and lazy-rebuild.
         if (deleted > 0)
             viewInvalidator.InvalidateAll();
         else
@@ -1425,7 +1425,7 @@ internal sealed class ShiftSignupService(
 
         viewInvalidator.InvalidateUser(sourceUserId);
         viewInvalidator.InvalidateUser(targetUserId);
-        // Affected shifts unknown; cheap to drop all at ~500-user scale.
+        // Affected shifts unknown; cheap to drop all at ~3000-user scale.
         if (movedCount > 0)
             viewInvalidator.InvalidateAll();
 

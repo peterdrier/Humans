@@ -16,7 +16,7 @@ Track distinct authenticated users by trailing window (5m / 1h / 24h) and surfac
 
 ## Business Context
 
-The project owner asked "how many people are using the application" — a basic vital sign for a small nonprofit membership site (~500 users, single-server deployment) that currently has rich operational metrics (consents, suspensions, sync ops) but no signal for human usage.
+The project owner asked "how many people are using the application" — a basic vital sign for a small nonprofit membership site (~3000 users, single-server deployment) that currently has rich operational metrics (consents, suspensions, sync ops) but no signal for human usage.
 
 ASP.NET Core MVC has no Blazor-circuit equivalent. `User.LastLoginAt` is only stamped on sign-in events (Google OAuth callback, magic link) and so misses **cookie reauth** — a user who signed in last week and still has a valid auth cookie never re-stamps it. That makes `LastLoginAt` a sign-in marker, not an activity marker, and unfit for "active users right now".
 

@@ -109,7 +109,7 @@ ones a change is most likely to break silently.
 
 ## 6. Deliberately not done
 
-- **No caching decorator.** Claim data is mutable and per-user, at ~500 users.
+- **No caching decorator.** Claim data is mutable and per-user, at ~3000 users.
 - **No pagination anywhere.** `GetAllAsync` loads every claim and sums client-side, by design.
 - **No enforcement of proof coverage against the invoice amount.** VAT and fees mean the
   figures legitimately differ; the detail page shows both and stops there.

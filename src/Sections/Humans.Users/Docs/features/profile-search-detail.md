@@ -67,7 +67,7 @@ For each result row, the controller calls `GetSharedDetailAsync(userId, viewerUs
    The obsolete `ContactFieldType.Email` is skipped (`UserEmail` is the canonical email source).
 3. `null` — no second line is rendered.
 
-Legal name (`Profile.FirstName + Profile.LastName`) is deliberately **not** part of the priority order, even for self or board viewers. The branch was previously included but produced essentially no value at ~500 users (only the tiny board cohort benefits) while costing a per-search `GetByUserIdsAsync` round-trip. Board members can still see legal name via the profile card on click-through. See `memory/architecture/no-business-logic-in-controllers.md` and the [PR #538 review thread](https://github.com/peterdrier/Humans/pull/538) for context.
+Legal name (`Profile.FirstName + Profile.LastName`) is deliberately **not** part of the priority order, even for self or board viewers. The branch was previously included but produced essentially no value at ~3000 users (only the tiny board cohort benefits) while costing a per-search `GetByUserIdsAsync` round-trip. Board members can still see legal name via the profile card on click-through. See `memory/architecture/no-business-logic-in-controllers.md` and the [PR #538 review thread](https://github.com/peterdrier/Humans/pull/538) for context.
 
 ## Privacy Gating
 
@@ -95,7 +95,7 @@ The view defends against broken URLs with `img.onerror = () => img.remove();` �
 
 - **Search index + ProfileId resolution**: served from the `CachingUserService` `ConcurrentDictionary<Guid, UserInfo>` warmed at startup by the decorator's own `IHostedService.StartAsync` (inherited from `TrackedCache`, see design-rules §15d). No DB hit for the matcher itself; `ProfileId` lives on `UserInfo.Profile.Id`.
 - **Single-person lookup endpoint**: served from the same dict via `IUserService.GetUserInfoAsync(userId)`.
-- **Per-result email / contact-field reads**: not cached. These remain DB-bound, one round-trip per result row per visibility category. Acceptable at the project's ~500-user scale per `CLAUDE.md` ("prefer in-memory caching over query optimization"). Batching these is a separate, follow-up optimization if the picker latency ever becomes user-visible.
+- **Per-result email / contact-field reads**: not cached. These remain DB-bound, one round-trip per result row per visibility category. Acceptable at the project's ~3000-user scale per `CLAUDE.md` ("prefer in-memory caching over query optimization"). Batching these is a separate, follow-up optimization if the picker latency ever becomes user-visible.
 
 ## XSS Posture
 

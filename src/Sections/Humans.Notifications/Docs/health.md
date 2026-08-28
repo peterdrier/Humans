@@ -125,7 +125,7 @@ Specified-but-unbuilt; reserved, not ranked, not built here:
 - **No caching decorator on the dispatch or inbox service.** Both cache one thing internally
   and evict it in-band on every write; a decorator would sit between the service and its own
   invalidation.
-- **No real-time push.** ~500 humans and a 2-minute badge cache do not buy a socket.
+- **No real-time push.** ~3000 humans and a 2-minute badge cache do not buy a socket.
 - **No stored meter.** A count that is too slow to compute is the owning section's problem to
   fix with a narrow count method, not this section's to denormalise.
 - **No `GroupKey` on a notification.** Whether recipients share one row or get one each is

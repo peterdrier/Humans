@@ -421,7 +421,7 @@ public interface IUserEmailService
     /// <summary>
     /// Returns UserEmail rows whose UserId points to a non-existent or tombstoned
     /// User (User row absent OR <c>MergedToUserId</c> set). Used by the EmailProblems
-    /// admin scan. At ~500 users, full-table scan is trivial.
+    /// admin scan. At ~3000 users, full-table scan is trivial.
     /// </summary>
     Task<IReadOnlyList<UserEmailOrphan>> GetOrphanUserEmailsAsync(CancellationToken ct = default);
 

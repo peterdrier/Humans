@@ -16,7 +16,7 @@ Humans is the membership management system for Nobodies Collective, a Spanish no
 
 ## What makes Humans special?
 
-About 500 real people trust this system with their personal data, and a volunteer Board relies on it to run a legal Spanish asociación. Here's what we never compromise on.
+About 3000 real people trust this system with their personal data, and a volunteer Board relies on it to run a legal Spanish asociación. Here's what we never compromise on.
 
 ### 1. Sections own their data, end to end
 
@@ -32,7 +32,7 @@ Automated actions leave audit trails. An automation that acts invisibly is a bug
 
 ### 4. Small scale, simple systems
 
-~500 users, one server. Load the dataset into RAM instead of optimizing queries. No distributed coordination, no concurrency tokens or row versioning ([`no-concurrency-tokens`](memory/architecture/no-concurrency-tokens.md)), no pagination for its own sake. Complexity has to buy something at *this* scale, not an imagined one.
+~3000 users, one server. Load the dataset into RAM instead of optimizing queries. No distributed coordination, no concurrency tokens or row versioning ([`no-concurrency-tokens`](memory/architecture/no-concurrency-tokens.md)), no pagination for its own sake. Complexity has to buy something at *this* scale, not an imagined one.
 
 ## Peter's rules
 

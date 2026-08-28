@@ -32,7 +32,7 @@ The from-scratch design filters **markdown blocks before rendering**: cache the 
 on `##` headings, drop the blocks this viewer cannot see, then render what remains. One
 representation of a role, no attributes, no regex over HTML, and no way for content shape to
 defeat the filter. The reason it is not built that way is that the cache holds *rendered* HTML
-per file, so filtering has to happen after rendering. At 28 small files and ~500 users, rendering
+per file, so filtering has to happen after rendering. At 28 small files and ~3000 users, rendering
 per request is affordable and that constraint is not real.
 
 That is the one substantial move available here, and it is a genuine rewrite of the pipeline —

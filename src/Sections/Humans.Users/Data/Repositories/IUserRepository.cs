@@ -31,7 +31,7 @@ internal partial interface IUserRepository : IRepository
 
     /// <summary>
     /// Loads every user, read-only (AsNoTracking). Used by admin list views
-    /// that must include profileless users. Trivial at ~500-user scale.
+    /// that must include profileless users. Trivial at ~3000-user scale.
     /// </summary>
     Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default);
 

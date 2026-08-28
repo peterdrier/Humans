@@ -452,7 +452,7 @@ internal sealed class TeamService(
         if (earlyEntryEnabled is { } eeFlag && eeFlag != team.EarlyEntryEnabled)
         {
             team.EarlyEntryEnabled = eeFlag;
-            earlyEntryInvalidator.InvalidateAll(); // flag flip changes who contributes; cheap at ~500 users
+            earlyEntryInvalidator.InvalidateAll(); // flag flip changes who contributes; cheap at ~3000 users
         }
         if (team.IsSystemTeam || parentTeamId.HasValue)
         {

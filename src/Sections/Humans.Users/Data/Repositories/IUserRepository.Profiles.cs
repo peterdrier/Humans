@@ -31,7 +31,7 @@ internal partial interface IUserRepository
     /// <summary>
     /// Loads every profile with aggregate-local <c>VolunteerHistory</c> and
     /// <c>Languages</c> collections. Used by the startup warmup hosted service
-    /// to populate the profile cache. Trivial at ~500-user scale.
+    /// to populate the profile cache. Trivial at ~3000-user scale.
     /// Read-only (AsNoTracking).
     /// </summary>
     Task<IReadOnlyList<Profile>> GetAllProfilesAsync(CancellationToken ct = default);
