@@ -68,11 +68,11 @@ Size guide: XS (<30 min), S (30 min–2 hr), M (2–6 hr), L (6–16 hr), XL (16
 
 Add a **Key files** line in the body listing likely files to change.
 
-Omit labels you're unsure about — a missing label is better than a wrong one.
+Omit labels you're unsure about — a missing label is better than a wrong one. Exception: the section must always be stated — if no `section:{name}` label fits, put `**Section:** TBD` in the body (`memory/process/issues-need-section.md`).
 
 ## Step 3: Checkpoint
 
-Present the exact title, body, and labels. Ask the user to submit, revise, or cancel. Use AskUserQuestion. Do NOT submit without explicit approval.
+Present the exact title, body, and labels inline as plain text and wait for the user's reply (submit / revise / cancel). Do NOT use AskUserQuestion for this — Peter's working rules forbid it for ready-to-submit confirmations. Do NOT submit without explicit approval.
 
 ## Step 4: Submit
 
