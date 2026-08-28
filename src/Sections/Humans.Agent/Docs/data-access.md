@@ -14,8 +14,7 @@ The preload/warmup surface: `AgentPreloadCorpusBuilder` assembles the
 tool-corpus preload from `AgentSectionDocReader`, `AgentFeatureSpecReader`,
 `CommunityFaqReader`, and calls into `IAgentPreloadAugmentor`
 (`Humans.Agent.Services.Preload.AgentPreloadAugmentor`,
-`src/Sections/Humans.Agent/Services/Preload/`, moved in at
-nobodies-collective/Humans#1091) — it renders the access matrix / glossaries /
+`src/Sections/Humans.Agent/Services/Preload/`) — it renders the access matrix / glossaries /
 route map / FAQ preload pages from `Humans.Base`'s `AccessMatrixDefinitions` /
 `SectionHelpContent` (every section's help content, visible from any section
 since both live in the shared base layer). Pure static-content formatting — no DI
@@ -26,7 +25,7 @@ run startup warmup, no DB access — fan out over the readers /
 `AgentRetentionRunStore`, `AgentSettingsStore` are in-memory stores backing
 the rate-limit / retention / settings caches — no DB access of their own.
 
-The four preload readers cache their file-content reads in `IMemoryCache`
+The three preload readers and the corpus builder cache their file-content reads in `IMemoryCache`
 (no DB, `HoldForever` — cleared only by process restart or an
 admin-triggered reload): `AgentSectionDocReader` (`agent:section:{key}`),
 `AgentFeatureSpecReader` (`agent:feature:index`, `agent:feature:{stem}`),
@@ -52,8 +51,7 @@ Cross-section calls via `IAgentSettingsService`, `IAgentRateLimitStore`,
 `IAgentPreloadCorpusBuilder`, `IAgentPromptAssembler`,
 `IAgentToolDispatcher`, `IAnthropicClient`. Implements
 `IUserDataContributor`, `IAgentTranscriptRead` (Backdoor's machine-API
-transcript surface, nobodies-collective/Humans#1128). Uses
-`AnthropicOptions`. No `IMemoryCache`.
+transcript surface). Uses `AnthropicOptions`. No `IMemoryCache`.
 
 ### AgentAdminStatusService (Scoped, `Humans.Agent.Services`)
 
@@ -96,6 +94,14 @@ Outbound API client over `AnthropicOptions`. No DB access, no cache.
 No repository. Reads the Anthropic credit balance over `AnthropicOptions`
 (`GetBalanceAsync` → `AgentBalanceStatus`) for the admin status screen via
 `AgentAdminStatusService`. No DB access, no cache.
+
+### AgentDocsHealthCheck / AnthropicHealthCheck (`Health/`)
+
+No repository, no DB access. `AgentDocsHealthCheck` probes GitHub doc
+canaries directly through `IGuideContentSource` (deliberately bypassing the
+readers' caches); `AnthropicHealthCheck` is a DNS-reachability probe for
+`api.anthropic.com`. Both skip (Healthy) when the agent is disabled;
+registered by `SectionHealthChecks`.
 
 ---
 
