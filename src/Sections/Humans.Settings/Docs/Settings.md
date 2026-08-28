@@ -24,7 +24,7 @@ of the app-wide event values (nobodies-collective/Humans#1104).
   Deleting is a status change, never a row removal — other sections store the id.
   No screen sets `Deleted` today.
 - The **carry** (`/Settings/Admin/Carry`) copies the Shifts-owned event rows
-  into `settings_event`, keeping ids. Transitional; retires with the #1104
+  into `settings_event`, keeping ids. Transitional; retires with the nobodies-collective/Humans#1104
   cutover.
 
 ## Data Model
@@ -87,7 +87,7 @@ Both screens are `PolicyNames.AdminOnly` (pinned in
   (`SettingsAdminControllerTests`). Retires with the carry.
 - **Nothing reads `settings_event` yet.** Every section still reads the event
   values off the Shifts-owned row via `IBurnSettingsService`; `/Shifts/Settings`
-  is the live editor until the #1104 cutover. Both screens say so.
+  is the live editor until the nobodies-collective/Humans#1104 cutover. Both screens say so.
 - **Writes to `settings_event` stay inside the section.**
   `SaveEventSettingsAsync` lives on the internal `ISettingsWriteService`, not on
   the `ISettingsService` contract.

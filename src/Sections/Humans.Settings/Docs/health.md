@@ -25,7 +25,7 @@ active/retired flag honest until the switch-over.
 | Question shape | Asked by | Answered by |
 |---|---|---|
 | "What is stored under this key?" / "Store this under this key" | Email's outbox pause, Monitor's last-run stamp | `ISettingsService.GetValueAsync` / `SetValueAsync` |
-| "What is the current event cycle?" / "This cycle, by id?" | nobody yet (readers arrive at the #1104 cutover); the section's own screens | `ISettingsService.GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` |
+| "What is the current event cycle?" / "This cycle, by id?" | nobody yet (readers arrive at the nobodies-collective/Humans#1104 cutover); the section's own screens | `ISettingsService.GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` |
 | "Save this event cycle's values" | only the section's own two screens | `ISettingsWriteService.SaveEventSettingsAsync` |
 | "Which Shifts rows are here yet, and do the statuses agree?" / "Bring them across" | the carry screen | `IEventSettingsCarryService.GetSnapshotAsync` / `CarryAsync` |
 | "Resolve a day offset against the calendar" | Shifts-side helpers, after cutover | `IEventSettingsInfo`'s members + `EventSettingsInfo.GetEarlyEntryCapacityForDay` |
@@ -65,7 +65,7 @@ The shapes imply exactly today's layout:
 
 ## 5. Seams
 
-- **The #1104 cutover.** `settings_event` has no readers yet; every section still reads
+- **The nobodies-collective/Humans#1104 cutover.** `settings_event` has no readers yet; every section still reads
   the Shifts row via `IBurnSettingsService`. Pointing readers at
   `GetActiveEventSettingsAsync`/`IEventSettingsInfo` is the next PR-sized step, and
   dropping the duplicated Shifts columns the one after. The carry service, its screen,
