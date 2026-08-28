@@ -99,10 +99,11 @@ def usage_entries(path):
 
 
 def thread_name(path):
-    """The `thread: <Name>` marker a dispatched Phase 3d prompt opens with (SKILL.md §3d)."""
+    """The `thread: <Name>` marker a dispatched prompt opens with — Phase 3d threads and
+    Phase 4 strike executors (`thread: strike <what>`) alike (SKILL.md §3d, §4)."""
     with open(path, encoding="utf-8", errors="ignore") as f:
         for line in list(f)[:3]:  # the prompt is the first record; don't match a later mention
-            m = re.search(r'thread:\s*([A-Za-z][A-Za-z &]*)', line)
+            m = re.search(r'thread:\s*([A-Za-z][\w &:-]*)', line)
             if m:
                 return m.group(1).strip()
     return None

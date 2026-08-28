@@ -496,9 +496,11 @@ run file is not the verdict; write the verdict.
 `mkdir -p "$RUNDIR/assessment"` (Phase 0 created only `$RUNDIR`), then write the assessment's
 outputs there — the ranked list (finding numbers,
 one-line descriptions, source thread, intended play) as `ranked-list.md`, each thread's findings
-list beside it (one file per thread), and the independence verdict. Once the list is on disk a
-compaction can no longer lose findings, and everything Phases 4–6 need is re-readable for a few
-K tokens.
+list beside it (one file per thread), the independence verdict, the 3a inventory with each
+path's disposition so far, and the thread-status table (how each thread ran, its model, its
+findings count) — everything Phase 5's `## File coverage` and `## Threads` blocks will need.
+Once all of it is on disk a compaction can no longer lose findings or coverage state, and
+everything Phases 4–6 need is re-readable for a few K tokens.
 
 The 3e→4 boundary is the run's context shed. Phases 4–6 are where most of a run's turns happen,
 and they need the checkpoint files, 3c's target and the strike's own files — not the hundreds of
@@ -530,7 +532,9 @@ subagent does not inherit the run's cwd, and on a local machine a relative path 
 another session's checkout — and the rules of this phase it will touch (the doc-sweep and
 delete-sweep rules, the resx/XML rule, the build-output rule). It edits and validates under
 `$WORKTREE` only, runs **no git commands**, and returns a diff summary; the main thread reviews
-the diff and commits. Judgment strikes — `collapse`, `rearch`, any deletion whose safety depends on
+the diff and commits. Its prompt opens `thread: strike <what>` — the same `<what>` as the item's
+phase-log mark — so the cost report names its row per 3d's convention instead of falling back to
+an opaque agent filename. Judgment strikes — `collapse`, `rearch`, any deletion whose safety depends on
 cross-file context — and every reviewer gate (step 4) stay on the main thread. The split is per
 strike *class*, never blanket: cross-file context on main is what catches the miscounts a
 narrowly-briefed executor cannot see.
