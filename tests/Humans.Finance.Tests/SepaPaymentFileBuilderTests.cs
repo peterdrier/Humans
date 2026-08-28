@@ -121,17 +121,17 @@ public class SepaPaymentFileBuilderTests
     // ─── Remittance information (nobodies-collective/Humans#1141) ───────────────
 
     [HumansFact]
-    public void Build_RemittanceCarriesEachTransfersOwnCreditorAccountNumber()
+    public void Build_RemittanceCarriesEachTransfersOwnAccountAndCreditorName()
     {
-        // The account number is what lets the treasurer tie a bank line to a creditor account, so it
-        // is per transfer — a shared constant would make every line in the batch read identically.
+        // "<account> - NCA - <name>": the account ties a bank line to a creditor account and the name
+        // says who was paid — both per transfer, so no two lines in a batch read identically.
         var doc = Parse(SepaPaymentFileBuilder.Build(Request(Ana(account: 40000004), Bo())));
 
         var remittances = doc.Descendants(Ns + "Ustrd").Select(u => u.Value).ToList();
 
         remittances.Should().Equal(
-            "40000004 Nobodies expense reimbursement",
-            "40000007 Nobodies expense reimbursement");
+            "40000004 - NCA - Ana Ruiz",
+            "40000007 - NCA - Bo Jansen");
     }
 
     // ─── Character handling ─────────────────────────────────────────────────────

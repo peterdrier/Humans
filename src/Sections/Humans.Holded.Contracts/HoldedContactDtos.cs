@@ -11,8 +11,11 @@ public sealed record HoldedContactInput
     /// have no `custom_id` field (it is read-only on GET). Kept on the DTO for now since nothing
     /// reads it back for lookup; no functional loss.</summary>
     public string? CustomId { get; init; }
-    /// <summary>Holded contact type — <c>creditor</c>/<c>supplier</c> get a 400000xx account,
-    /// <c>client</c>/<c>debtor</c> a 430000xx one. Store's factura counterparties are clients.</summary>
+    /// <summary>Holded contact type, which decides the account series Holded mints on create:
+    /// <c>creditor</c> (acreedor) a 41000000+ account, <c>supplier</c> (proveedor) a 40000000+ one,
+    /// <c>client</c>/<c>debtor</c> a 43000000+ one. Expense-report members are created as creditors
+    /// so their reimbursement accounts sit in the 410 series, apart from the 400 proveedores paid by
+    /// ordinary invoice; Store's factura counterparties are clients.</summary>
     public string Type { get; init; } = "creditor";
     public string? Iban { get; init; }
     /// <summary>Tax identification number — v2 `code`. NIF/CIF for Spanish counterparties; a

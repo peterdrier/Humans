@@ -42,6 +42,11 @@ longer needs a redeploy.
 1. `FinanceController.Creditors` renders each row's payability. Payable = **exactly one binding**,
    **positive balance from the member's side**, **an IBAN on the Holded contact**. Anything else
    shows the reason (`unbound`, `collision`, `nothing owed`, `no IBAN in Holded`) in place of a box.
+   An **"Only show accounts we owe money to"** checkbox, **ticked by default**, hides every row whose
+   balance is not positive so the screen opens on just the accounts a payout would touch. It is a
+   client-side row filter over the already-rendered table — every row is present in the markup, and
+   the selection still posts from `#sepaForm` where only payable rows carry a checkbox — so the
+   filter changes what is shown, never what a Generate would include.
 2. The checkboxes, amount boxes and the per-transfer cap field belong to a standalone `#sepaForm`
    via the HTML5 `form` attribute — each row already carries an Unbind form and forms cannot nest.
    The cap field is prefilled from `Sepa:MaxPayoutPerTransfer` but is editable per batch.
@@ -128,8 +133,9 @@ one `PmtInf`, one `CdtTrfTxInf` per recipient.
 - `PmtInf`: `PmtInfId`, `PmtMtd` `TRF`, `NbOfTxs`, `CtrlSum`, `SvcLvl/Cd` `SEPA`, `ReqdExctnDt`
   (generation date, Europe/Madrid), `Dbtr/Nm`, `DbtrAcct` IBAN, `DbtrAgt` (BIC when configured).
 - `CdtTrfTxInf`: `EndToEndId`, `InstdAmt Ccy="EUR"`, `Cdtr/Nm`, `CdtrAcct` IBAN, one
-  `RmtInf/Ustrd` — `"<400000xx> Nobodies expense reimbursement"`, prefixed with **this transfer's**
-  creditor account number so a bank line ties back to an account without opening the file.
+  `RmtInf/Ustrd` — `"<account> - NCA - <creditor name>"`, carrying **this transfer's own** creditor
+  account number and the payee's name (`NCA` is the fixed org tag between them) so a bank line ties
+  back to an account and a person without opening the file.
 
 Counts and control sums are computed off the transaction elements immediately before serialization,
 so the header can never describe a different set than the one being sent.
