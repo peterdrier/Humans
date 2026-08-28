@@ -102,7 +102,7 @@ internal sealed class AgentController(
         var view = await agent.GetMyConversationAsync(currentUser.Id, id, cancellationToken);
         if (view is null) return NotFound();
 
-        return View(new AgentMyConversationViewModel(view.Conversation, view.CurrentUserContextTail));
+        return View(view);
     }
 
     [HttpGet("Conversations/{id:guid}")]
