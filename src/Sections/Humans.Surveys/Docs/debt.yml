@@ -1,0 +1,7 @@
+# Section debt ledger for Humans.Surveys. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+inbox:
+  - added: 2026-08-28
+    what: "SurveyService is 1831 LOC (reforge largeClass, 65 pts). Deliberate per the section's target shape (one aggregate, one anonymity contract), but recorded so the score is not mistaken for unexamined debt (/section-doctor on Surveys 2026-08-27)."
+    review: light
