@@ -31,7 +31,9 @@ public sealed record CampSettingsInfo(
 /// <para>
 /// <b>EeGrantedCount cross-table invariant.</b>
 /// <see cref="CampSeasonInfo.EeGrantedCount"/> is computed from
-/// <c>camp_members.HasEarlyEntry</c> WHERE <c>Status = Active</c>. The
+/// <c>camp_members.HasEarlyEntry</c> with <b>no status filter</b> — a Removed
+/// member keeps a consumed grant (holder already entered the event), so
+/// remove-and-regrant cannot mint an extra early entry. The
 /// methods that flip those fields —
 /// <see cref="ICampService.SetEarlyEntryAsync"/>,
 /// <see cref="ICampService.RemoveCampMemberAsync"/>,
@@ -67,8 +69,6 @@ public sealed record CampInfo(
     /// The latest season by year. Derived from <see cref="Seasons"/>; not a constructor parameter.
     /// </summary>
     public CampSeasonInfo? Active => Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
-
-    public CampSeasonInfo? CurrentSeason => Active;
 
     public CampSeasonInfo? GetSeasonForYear(int year, bool fallbackToLatestSeason = false)
     {

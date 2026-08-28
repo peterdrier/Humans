@@ -1371,8 +1371,8 @@ public sealed class CampServiceTests : CampsTestHarness
         var request = await _service.RequestCampMembershipAsync(camp.Id, memberUserId, Xunit.TestContext.Current.CancellationToken);
 
         var pendingCamp = (await _service.GetCampsForYearAsync(2026, Xunit.TestContext.Current.CancellationToken)).Single(c => c.Id == camp.Id);
-        pendingCamp.CurrentSeason.Should().NotBeNull();
-        var pendingSeason = pendingCamp.CurrentSeason!;
+        pendingCamp.Active.Should().NotBeNull();
+        var pendingSeason = pendingCamp.Active!;
 
         pendingSeason.PendingMembers.Should()
             .ContainSingle(m => m.UserId == memberUserId && m.Id == request.CampMemberId);
@@ -1381,8 +1381,8 @@ public sealed class CampServiceTests : CampsTestHarness
         await _service.ApproveCampMemberAsync(camp.Id, request.CampMemberId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         var activeCamp = (await _service.GetCampsForYearAsync(2026, Xunit.TestContext.Current.CancellationToken)).Single(c => c.Id == camp.Id);
-        activeCamp.CurrentSeason.Should().NotBeNull();
-        var activeSeason = activeCamp.CurrentSeason!;
+        activeCamp.Active.Should().NotBeNull();
+        var activeSeason = activeCamp.Active!;
 
         activeSeason.ActiveMembers.Should().Contain(m => m.UserId == memberUserId && m.Id == request.CampMemberId);
         activeSeason.ActiveMembers.Should().ContainSingle(m => m.UserId == leadUserId);
@@ -1462,8 +1462,8 @@ public sealed class CampServiceTests : CampsTestHarness
         await _service.ApproveCampMemberAsync(camp.Id, req.CampMemberId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         var projectedCamp = (await _service.GetCampsForYearAsync(2026, Xunit.TestContext.Current.CancellationToken)).Single(c => c.Id == camp.Id);
-        projectedCamp.CurrentSeason.Should().NotBeNull();
-        var members = projectedCamp.CurrentSeason!.ActiveMembers;
+        projectedCamp.Active.Should().NotBeNull();
+        var members = projectedCamp.Active!.ActiveMembers;
 
         // Two real Active members: the creator-lead (real row) + the approved member.
         members.Should().HaveCount(2);
