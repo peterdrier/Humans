@@ -1,3 +1,4 @@
+using System.Globalization;
 using Humans.Base.Csv;
 using Humans.Base.Extensions;
 using Humans.Camps.Contracts;
@@ -63,7 +64,7 @@ internal sealed class EventsExportController(
                     time,
                     e.DurationMinutes,
                     e.IsRecurring ? "Yes" : "No",
-                    e.PriorityRank,
+                    e.PriorityRank?.ToString(CultureInfo.InvariantCulture) ?? "",
                     e.Status.ToString(),
                     ToLocalDateTime(e.SubmittedAt, tz).ToInvariantTimestamp(),
                     e.Host ?? "",
@@ -121,7 +122,7 @@ internal sealed class EventsExportController(
         if (maxSlots.HasValue && maxSlots.Value > 0)
         {
             allOccurrences = allOccurrences
-                .OrderBy(o => o.PriorityRank == 0 ? int.MaxValue : o.PriorityRank)
+                .OrderBy(o => o.PriorityRank ?? int.MaxValue)
                 .ThenBy(o => o.StartAt)
                 .Take(maxSlots.Value)
                 .ToList();
@@ -181,6 +182,6 @@ internal sealed class EventsExportController(
         public string? LocationNote { get; set; }
         public DateTime StartAt { get; set; }
         public int DurationMinutes { get; set; }
-        public int PriorityRank { get; set; }
+        public int? PriorityRank { get; set; }
     }
 }

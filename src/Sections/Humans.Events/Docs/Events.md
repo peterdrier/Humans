@@ -42,7 +42,7 @@ Event programming: submission, moderation, browsing, export, and preference mana
 | RecurrenceDays | string? | comma-separated day offsets, e.g. "0,1,2" |
 | LocationNote | string? | max 120 |
 | Host | string? | max 40; optional display name for the person running the event |
-| PriorityRank | int | 0 = unprioritised; lower = higher priority in print guide |
+| PriorityRank | int? | null = unranked; lower = higher priority in print guide |
 | Status | EventStatus | enum (see below) |
 | AdminNotes | string? | moderator-only notes |
 | SubmittedAt | Instant | set on first Submit(); updated on resubmit |

@@ -183,7 +183,7 @@ internal sealed class EventsModerationController(
             Host = guideEvent.Host,
             IsRecurring = guideEvent.IsRecurring,
             RecurrenceDays = guideEvent.RecurrenceDays,
-            PriorityRank = guideEvent.PriorityRank == 0 ? 1 : guideEvent.PriorityRank
+            PriorityRank = guideEvent.PriorityRank
         };
 
         if (guideEvent.CampId.HasValue)

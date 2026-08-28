@@ -131,7 +131,7 @@ else
                                         <dd class="col-sm-9">Day offsets: @evt.RecurrenceDays</dd>
                                     }
 
-                                    @if (evt.PriorityRank > 0)
+                                    @if (evt.PriorityRank is not null)
                                     {
                                         <dt class="col-sm-3">Priority Rank</dt>
                                         <dd class="col-sm-9">@evt.PriorityRank</dd>

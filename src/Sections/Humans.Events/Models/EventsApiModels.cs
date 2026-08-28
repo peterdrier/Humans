@@ -13,7 +13,7 @@ internal sealed record GuideEventApiDto(
     GuideEventVenueApiDto? Venue,
     string? LocationNote,
     string? Host,
-    int PriorityRank);
+    int? PriorityRank);
 
 internal sealed record GuideEventCategoryApiDto(
     Guid Id,

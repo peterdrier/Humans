@@ -481,6 +481,37 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
+    public async Task BulkImportAsync_UnrankedRow_IsAcceptedAndStaysUnranked()
+    {
+        var campId = Guid.NewGuid();
+        _repo.Categories.Add(new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true });
+
+        var result = await _service.BulkImportAsync(
+            campId, Guid.NewGuid(), [Row(priority: null)],
+            new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc, TestContext.Current.CancellationToken);
+
+        result.HasErrors.Should().BeFalse();
+        _repo.Events.Should().ContainSingle().Which.PriorityRank.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task BulkTemplate_UnrankedEvent_RoundTripsAsUnranked()
+    {
+        var campId = Guid.NewGuid();
+        var category = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };
+        _repo.Categories.Add(category);
+        var existing = ExistingEvent(campId, category.Id, EventStatus.Approved);
+        existing.Category = category;
+        existing.PriorityRank = null;
+        _repo.Events.Add(existing);
+
+        var bytes = await _service.BuildBulkUploadTemplateAsync(campId, "Fire Barrio", TestContext.Current.CancellationToken);
+        var rows = BulkEventCsvParser.Parse(HumansCsv.Utf8WithBom.GetString(bytes).TrimStart('\uFEFF'));
+
+        rows.Should().ContainSingle().Which.PriorityRank.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task BulkImportAsync_UnchangedExistingRow_IsNoOp()
     {
         var campId = Guid.NewGuid();
@@ -659,7 +690,7 @@ public sealed class EventServiceTests
         Guid? id = null, string title = "My Event", string description = "Desc",
         string category = "Workshop", string date = "2026-07-08", string startTime = "09:30",
         int duration = 60, string? location = null, string? host = null,
-        bool isRecurring = false, string? recurrenceDays = null, int priority = 1, int rowNumber = 2)
+        bool isRecurring = false, string? recurrenceDays = null, int? priority = 1, int rowNumber = 2)
         => new(rowNumber, id, title, description, category, date, startTime, duration, location, host, isRecurring, recurrenceDays, priority);
 
     private Event ExistingEvent(Guid campId, Guid categoryId, EventStatus status)

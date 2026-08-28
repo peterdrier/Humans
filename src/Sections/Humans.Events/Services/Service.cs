@@ -459,7 +459,7 @@ internal sealed class EventService(
                 Host = e.Host ?? string.Empty,
                 IsRecurring = e.IsRecurring ? "true" : "false",
                 RecurrenceDays = recDays,
-                PriorityRank = e.PriorityRank.ToString(CultureInfo.InvariantCulture),
+                PriorityRank = e.PriorityRank?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
             });
         }
 
@@ -535,7 +535,7 @@ internal sealed class EventService(
             else if (row.DurationMinutes % 15 != 0)
                 rowErrors.Add("DurationMinutes must be a multiple of 15.");
 
-            if (row.PriorityRank < 1 || row.PriorityRank > 100)
+            if (row.PriorityRank is { } rank && (rank < 1 || rank > 100))
                 rowErrors.Add("PriorityRank must be between 1 and 100.");
 
             if (row.Id.HasValue)

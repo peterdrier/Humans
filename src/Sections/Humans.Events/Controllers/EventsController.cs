@@ -174,7 +174,6 @@ internal sealed class EventsController(
             DurationMinutes = durationMinutes,
             IsRecurring = model.IsRecurring,
             RecurrenceDays = model.IsRecurring ? model.RecurrenceDays : null,
-            PriorityRank = 0
         };
         guideEvent.Submit(clock);
 

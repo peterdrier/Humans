@@ -95,7 +95,7 @@ internal sealed record EventInfo(
     int DurationMinutes,
     bool IsRecurring,
     string? RecurrenceDays,
-    int PriorityRank,
+    int? PriorityRank,
     EventStatus Status,
     Instant SubmittedAt,
     Instant LastUpdatedAt,

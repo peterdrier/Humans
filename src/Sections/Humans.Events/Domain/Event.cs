@@ -81,9 +81,9 @@ internal sealed class Event
     public string? RecurrenceDays { get; set; }
 
     /// <summary>
-    /// Submitter-assigned priority for print guide selection (1 = highest).
+    /// Submitter-assigned priority for print guide selection (1 = highest; null = unranked).
     /// </summary>
-    public int PriorityRank { get; set; }
+    public int? PriorityRank { get; set; }
 
     /// <summary>
     /// Current moderation status.
@@ -225,7 +225,7 @@ internal sealed class Event
     public void ApplyBarrioEdit(
         Guid categoryId, string title, string description,
         Instant startAt, int durationMinutes, string? locationNote, string? host,
-        bool isRecurring, string? recurrenceDays, int priorityRank)
+        bool isRecurring, string? recurrenceDays, int? priorityRank)
     {
         CategoryId = categoryId;
         Title = title;

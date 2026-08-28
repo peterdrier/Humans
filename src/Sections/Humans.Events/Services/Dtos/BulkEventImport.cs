@@ -17,7 +17,7 @@ internal sealed record BulkCsvRow(
     string? Host,
     bool IsRecurring,
     string? RecurrenceDays,
-    int PriorityRank);
+    int? PriorityRank);
 
 /// <summary>Per-row validation failure surfaced back to the uploader.</summary>
 internal sealed record BulkImportRowError(int RowNumber, string Title, IReadOnlyList<string> Errors);

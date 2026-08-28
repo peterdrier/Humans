@@ -308,7 +308,7 @@ internal sealed class EventsApiController(IEventService guide, ICampServiceRead 
     private static GuideEventApiDto BuildEventDto(
         Guid id, string title, string description, Guid categoryId, string categoryName, string categorySlug,
         bool categoryIsSensitive, Guid? campId, Guid? guideSharedVenueId, string? venueName, string? locationNote,
-        string? host, int durationMinutes, bool isRecurring, int priorityRank,
+        string? host, int durationMinutes, bool isRecurring, int? priorityRank,
         Instant startAt, int dayOffset, string? campName, string? submitterName)
     {
         return new GuideEventApiDto(

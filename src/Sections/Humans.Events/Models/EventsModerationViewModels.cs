@@ -32,7 +32,7 @@ internal sealed class ModerationEventRowViewModel
     public string? LocationNote { get; set; }
     public bool IsRecurring { get; set; }
     public string? RecurrenceDays { get; set; }
-    public int PriorityRank { get; set; }
+    public int? PriorityRank { get; set; }
     public DateTime SubmittedAt { get; set; }
     public EventStatus Status { get; set; }
     public List<ModerationHistoryItemViewModel> History { get; set; } = [];
@@ -149,10 +149,10 @@ internal sealed class AdminEventFormViewModel
     [Display(Name = "Recurrence Days")]
     public string? RecurrenceDays { get; set; }
 
-    // Camp events only.
+    // Camp events only; blank = unranked.
     [Range(1, 100)]
     [Display(Name = "Priority Rank")]
-    public int PriorityRank { get; set; } = 1;
+    public int? PriorityRank { get; set; }
 
     [MaxLength(500)]
     [Display(Name = "Edit note (optional)")]

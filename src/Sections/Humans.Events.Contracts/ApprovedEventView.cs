@@ -41,7 +41,7 @@ public sealed record ApprovedEventView(
     int DurationMinutes,
     bool IsRecurring,
     string? RecurrenceDays,
-    int PriorityRank,
+    int? PriorityRank,
     Instant SubmittedAt,
     Instant LastUpdatedAt)
 {

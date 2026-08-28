@@ -62,8 +62,12 @@ internal static class BulkEventCsvParser
 
             if (!int.TryParse(record.DurationMinutes, CultureInfo.InvariantCulture, out var duration))
                 errors.Add($"Row {fileRow}: DurationMinutes is not an integer.");
-            if (!int.TryParse(record.PriorityRank, CultureInfo.InvariantCulture, out var priority))
-                errors.Add($"Row {fileRow}: PriorityRank is not an integer.");
+            int? priority = null;
+            if (!string.IsNullOrWhiteSpace(record.PriorityRank))
+            {
+                if (int.TryParse(record.PriorityRank, CultureInfo.InvariantCulture, out var parsedPriority)) priority = parsedPriority;
+                else errors.Add($"Row {fileRow}: PriorityRank is not an integer.");
+            }
 
             var isRecurring = string.Equals(record.IsRecurring, "true", StringComparison.OrdinalIgnoreCase);
 

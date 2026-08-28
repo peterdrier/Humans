@@ -24,6 +24,27 @@ public sealed class BulkEventCsvParserTests
     }
 
     [HumansFact]
+    public void Parse_BlankPriorityRank_IsUnranked()
+    {
+        var csv = $"{Header}\n,Camp,,Title,Desc,Workshop,2026-07-08,09:30,60,,,false,,\n";
+
+        var rows = BulkEventCsvParser.Parse(csv);
+
+        rows.Should().ContainSingle();
+        rows[0].PriorityRank.Should().BeNull();
+    }
+
+    [HumansFact]
+    public void Parse_NonNumericPriorityRank_IsAnError()
+    {
+        var csv = $"{Header}\n,Camp,,Title,Desc,Workshop,2026-07-08,09:30,60,,,false,,high\n";
+
+        var act = () => BulkEventCsvParser.Parse(csv);
+
+        act.Should().Throw<FormatException>().WithMessage("*PriorityRank is not an integer*");
+    }
+
+    [HumansFact]
     public void Parse_ColumnsInAnyOrder_MatchedByHeaderName()
     {
         var csv = "Title,Category,Date,StartTime,DurationMinutes,IsRecurring,PriorityRank,Description\n" +

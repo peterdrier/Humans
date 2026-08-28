@@ -29,7 +29,7 @@ internal sealed class CampEventRowViewModel
     public DateTime StartAt { get; set; }
     public int DurationMinutes { get; set; }
     public EventStatus Status { get; set; }
-    public int PriorityRank { get; set; }
+    public int? PriorityRank { get; set; }
     public bool CanEdit { get; set; }
     public bool CanWithdraw { get; set; }
 
@@ -94,7 +94,7 @@ internal sealed class CampEventFormViewModel
     [Required]
     [Range(1, 100)]
     [Display(Name = "Priority Rank")]
-    public int PriorityRank { get; set; } = 1;
+    public int? PriorityRank { get; set; }
 
     // Dropdown data
     public List<CategoryOptionViewModel> Categories { get; set; } = [];

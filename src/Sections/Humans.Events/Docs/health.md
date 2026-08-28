@@ -85,9 +85,9 @@ these are the ones this shape rests on.)
   inner `EventService` proves a DI mistake. Mirrors Teams and Camps.
 - **`CachingEventService` is its own `IHostedService`.** Warm-up must run on the same Singleton
   that serves reads.
-- **`PriorityRank` means two different things.** Camp events carry 1–100 (print-guide ordering);
-  individual events are always 0 and the print guide sorts 0 last. The moderation form's
-  `== 0 ? 1` and the bulk validator's `1..100` both descend from this.
+- **`PriorityRank` is camp-events-only.** Camp events carry 1–100 (print-guide ordering) or
+  null = unranked (sorted last); individual events are always null. The bulk validator's `1..100`
+  applies only when a value is present; blank round-trips as blank.
 - **Recurrence is stored as day offsets from gate opening, displayed as weekday names.** Bulk
   import compares by day-name set, not the raw string, so a lossless round-trip is not read as an
   edit.
