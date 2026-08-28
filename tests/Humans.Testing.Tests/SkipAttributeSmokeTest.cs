@@ -46,6 +46,21 @@ public class SkipAttributeSmokeTest
         Assert.Fail("BrokenFact did not skip this test — the skip mechanism is broken.");
     }
 
+    // ── IntegrationTestGate path matching ─────────────────────────────────────
+
+    [HumansFact]
+    public void IntegrationTestGate_applies_to_integration_tests_sources()
+    {
+        Assert.True(IntegrationTestGate.AppliesTo("/repo/tests/Humans.Integration.Tests/Foo.cs"));
+    }
+
+    [HumansFact]
+    public void IntegrationTestGate_ignores_other_test_projects()
+    {
+        Assert.False(IntegrationTestGate.AppliesTo("/repo/tests/Humans.Testing.Tests/Foo.cs"));
+        Assert.False(IntegrationTestGate.AppliesTo(null));
+    }
+
     // ── DebuggerOnlyFact construction ─────────────────────────────────────────
 
     [HumansFact]
