@@ -15,8 +15,9 @@
     Shifts rows into this section's own table, keeping each row's id so
     <code>Rota.EventSettingsId</code> still resolves. Nothing reads this table
     yet, so running it changes nothing users can see; it is the step that has to
-    happen before anything can be pointed at it. Idempotent: rows already here
-    are left untouched, so it is safe to re-run.
+    happen before anything can be pointed at it. Safe to re-run: rows already
+    here keep their edited values; only a stale Active/Inactive status is
+    reconciled.
 </p>
 
 <div class="row g-3 mb-4">

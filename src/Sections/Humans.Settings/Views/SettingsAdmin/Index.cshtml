@@ -14,7 +14,7 @@
     Nothing reads this table: every section still reads the app-wide event values from the
     Shifts-owned row, so <a asp-controller="Shifts" asp-action="Settings">/Shifts/Settings</a>
     is where a change takes effect today. Editing here stages the value for
-    the cutover that repoints the readers (issue #1104, PR B). Until then, a change made here
+    the cutover that repoints the readers (issue nobodies-collective/Humans#1104). Until then, a change made here
     alone does nothing, and a change made there alone will not be reflected here.
 </div>
 
@@ -58,7 +58,7 @@
                         <div class="col-md-4 mb-3">
                             <label asp-for="BuildStartOffset" class="form-label">Build Start Offset</label>
                             <input asp-for="BuildStartOffset" type="number" class="form-control" />
-                            <small class="form-text text-muted">Negative number (e.g., -14)</small>
+                            <small class="form-text text-muted">Negative number (e.g., -25)</small>
                         </div>
                         <div class="col-md-4 mb-3">
                             <label asp-for="EventEndOffset" class="form-label">Event End Offset</label>
@@ -123,7 +123,7 @@
                     <div class="form-check">
                         <input asp-for="IsActive" type="checkbox" class="form-check-input" />
                         <label asp-for="IsActive" class="form-check-label">Active</label>
-                        <div class="form-text">At most one event row is active — it is the one every section reads.</div>
+                        <div class="form-text">At most one event row is active — the one readers get once the cutover repoints them.</div>
                     </div>
                 </div>
             </div>
