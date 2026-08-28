@@ -238,7 +238,7 @@ Every table is owned by exactly one repository; there are no HUM0025
    | Key | Consuming section | Routed via |
    |-----|-------------------|------------|
    | `IsEmailSendingPaused` | Email | `EmailOutboxService` → `ISettingsService` |
-   | `DriveActivityMonitor:LastRunAt` | Google Integration | `DriveActivityMonitorService` → `ISettingsService` |
+   | `DriveActivityMonitor:LastRunAt` | Monitor | `DriveActivityMonitorService` → `ISettingsService` |
 
    New keys should be added to `SettingKeys` and accessed through
    `ISettingsService`. Both of those keys move to their own sections' settings

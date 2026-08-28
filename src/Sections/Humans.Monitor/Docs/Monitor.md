@@ -37,7 +37,7 @@ horizontal.** It is a leaf consumer: it sits above both and nothing sits above i
   API and comparing actors; each one is written to the audit log as
   `AuditAction.AnomalousPermissionDetected`.
 - **Time-window dedup** — each scan processes only events since the last successful run,
-  persisted through `ISettingsService` under the `DriveActivityMonitorJob` key. First run,
+  persisted through `ISettingsService` under the `DriveActivityMonitor:LastRunAt` key. First run,
   or a missing marker, falls back to 24 hours.
 - **Google sync log** — GoogleIntegration's `google_sync_log` rows, shown for one resource or one
   human. Monitor does not read them: `SyncAudit.cshtml` emits `<vc:google-sync-log>` with the
