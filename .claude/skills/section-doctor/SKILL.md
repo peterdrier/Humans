@@ -524,10 +524,12 @@ executed after it. Budget checks are real
 **Mechanical strike classes execute in subagents; judgment stays on main.** A strike whose whole
 scope is named by its checkpoint entry — dead-code deletion, doc-drift fixes, comment strikes,
 mechanical renames — dispatches to a per-strike **sonnet** executor subagent, given only the
-strike's checkpoint text, its target file paths, and the rules of this phase it will touch (the
-doc-sweep and delete-sweep rules, the resx/XML rule, the build-output rule). It edits, builds,
-runs the targeted tests, and returns a diff summary; the main thread reviews the diff and
-commits. Judgment strikes — `collapse`, `rearch`, any deletion whose safety depends on
+strike's checkpoint text, its target file paths — **absolute, rooted at `$WORKTREE`**; a
+subagent does not inherit the run's cwd, and on a local machine a relative path can land in
+another session's checkout — and the rules of this phase it will touch (the doc-sweep and
+delete-sweep rules, the resx/XML rule, the build-output rule). It edits and validates under
+`$WORKTREE` only, runs **no git commands**, and returns a diff summary; the main thread reviews
+the diff and commits. Judgment strikes — `collapse`, `rearch`, any deletion whose safety depends on
 cross-file context — and every reviewer gate (step 4) stay on the main thread. The split is per
 strike *class*, never blanket: cross-file context on main is what catches the miscounts a
 narrowly-briefed executor cannot see.

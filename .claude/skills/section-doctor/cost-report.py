@@ -57,9 +57,12 @@ def read_phase_log(path):
     The label says what the run was doing; it is the row name. Older logs carry no
     label, so the id stands in for one. A line without a parseable leading timestamp
     cannot be bucketed: it is skipped and counted, and the footer reports the count —
-    its phase's spend folds into the preceding row."""
+    its phase's spend folds into the preceding row. A skipped line BEFORE the first
+    valid mark is worse: run_start then derives from a later mark, so the spend before
+    it is excluded from the total, not folded — flagged separately."""
     out = []
     skipped = 0
+    skipped_before_first = False
     for line in open(path, encoding="utf-8"):
         parts = line.split(None, 2)
         if len(parts) < 2:
@@ -68,9 +71,11 @@ def read_phase_log(path):
             t = ts(parts[0])
         except ValueError:
             skipped += 1
+            if not out:
+                skipped_before_first = True
             continue
         out.append((t, parts[1], parts[2].strip() if len(parts) > 2 else parts[1]))
-    return sorted(out), skipped
+    return sorted(out), skipped, skipped_before_first
 
 
 def phase_at(t, phases):
@@ -123,7 +128,7 @@ def add(bucket, model, u):
 
 def main():
     branch, phase_log = sys.argv[1], sys.argv[2]
-    phases, skipped_marks = read_phase_log(phase_log)
+    phases, skipped_marks, skipped_before_first = read_phase_log(phase_log)
     if not phases:
         print("Cost: unmeasured (phase log has no timestamped marks)")
         return
@@ -204,6 +209,11 @@ def main():
             f"Warning: {skipped_marks} phase-log line(s) without a leading timestamp "
             "skipped — that spend is folded into the preceding row."
         )
+        if skipped_before_first:
+            print(
+                "A skipped line preceded the first timestamped mark: usage before "
+                "that mark is excluded entirely, so the total underreports the run."
+            )
 
     # Context telemetry: where the run's context peaked, and whether it was
     # compacted mid-run. Compaction is detected from the usage data itself — a
