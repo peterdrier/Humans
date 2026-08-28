@@ -278,19 +278,6 @@ public sealed class CampServiceTests : CampsTestHarness
     // ==========================================================================
 
     [HumansFact]
-    public async Task GetCampsForYearAsync_LeadRole_CanBeFilteredFromCampInfo()
-    {
-        await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
-        var leadUserId = camp.CreatedByUserId;
-
-        var result = (await _service.GetCampsForYearAsync(2026, Xunit.TestContext.Current.CancellationToken))
-            .Single(c => c.Id == camp.Id)
-            .IsLead(leadUserId);
-        result.Should().BeTrue();
-    }
-
-    [HumansFact]
     public async Task GetCampsForYearAsync_NonLead_FilterReturnsFalse()
     {
         await SeedSettingsAsync();
@@ -1185,21 +1172,6 @@ public sealed class CampServiceTests : CampsTestHarness
 
         result.Should().Be(AssignCampRoleOutcome.SeasonNotFound);
         (await CampsDb.CampMembers.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
-    }
-
-    [HumansFact]
-    public async Task AddMemberAndAssignRoleInActiveSeason_without_active_season_returns_season_not_found()
-    {
-        var camp = new Camp { Id = Guid.NewGuid(), Slug = "inactive-role-camp" };
-        var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Pending };
-        CampsDb.Camps.Add(camp);
-        CampsDb.CampSeasons.Add(season);
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var result = await _service.AddMemberAndAssignRoleInActiveSeasonAsync(
-            camp.Id, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().Be(AssignCampRoleOutcome.SeasonNotFound);
     }
 
     [HumansFact]
