@@ -279,6 +279,8 @@ public class BackdoorIssuesControllerTests
     public async Task PostComment_attributes_the_comment_to_the_key_owner()
     {
         var issueId = Guid.NewGuid();
+        _issues.GetIssueByIdAsync(issueId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IssueDetail?>(MakeDetail(issueId, reporterId: Guid.NewGuid())));
         _issues.PostCommentAsync(issueId, KeyOwnerId, "From the triage agent", false, false, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new IssueCommentInfo(
                 Guid.NewGuid(), "From the triage agent", Instant.FromUtc(2026, 4, 29, 12, 0))));
@@ -293,6 +295,41 @@ public class BackdoorIssuesControllerTests
             senderIsReporter: false,
             resolveOnPost: false,
             ct: Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task PostComment_from_the_reporter_passes_senderIsReporter_true()
+    {
+        var issueId = Guid.NewGuid();
+        _issues.GetIssueByIdAsync(issueId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IssueDetail?>(MakeDetail(issueId, reporterId: KeyOwnerId)));
+        _issues.PostCommentAsync(issueId, KeyOwnerId, "Still broken", true, false, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new IssueCommentInfo(
+                Guid.NewGuid(), "Still broken", Instant.FromUtc(2026, 4, 29, 12, 0))));
+
+        var result = await _sut.PostComment(issueId, new PostIssueCommentModel { Content = "Still broken" });
+
+        result.Should().BeOfType<OkObjectResult>();
+        await _issues.Received(1).PostCommentAsync(
+            issueId,
+            senderUserId: KeyOwnerId,
+            content: "Still broken",
+            senderIsReporter: true,
+            resolveOnPost: false,
+            ct: Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task PostComment_returns_NotFound_when_issue_missing()
+    {
+        var issueId = Guid.NewGuid();
+        _issues.GetIssueByIdAsync(issueId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IssueDetail?>(null));
+
+        var result = await _sut.PostComment(issueId, new PostIssueCommentModel { Content = "Hello?" });
+
+        result.Should().BeOfType<NotFoundResult>();
+        await _issues.DidNotReceiveWithAnyArgs().PostCommentAsync(default, default, default!, default, default, default);
     }
 
     [HumansFact]

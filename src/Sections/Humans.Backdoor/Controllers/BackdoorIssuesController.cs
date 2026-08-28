@@ -123,13 +123,18 @@ internal sealed class BackdoorIssuesController(
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
+        var issue = await issues.GetIssueByIdAsync(id);
+        if (issue is null) return NotFound();
+
         try
         {
+            // Derived like the browser door: a reporter's comment must auto-reopen
+            // a closed issue regardless of which door it came through.
             var comment = await issues.PostCommentAsync(
                 issueId: id,
                 senderUserId: ActorUserId,
                 content: model.Content,
-                senderIsReporter: false);
+                senderIsReporter: issue.ReporterUserId == ActorUserId);
 
             logger.LogInformation("Comment {CommentId} posted on issue {IssueId} via API", comment.Id, id);
             return Ok(new
