@@ -53,8 +53,8 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
 
     /// <summary>
     /// Deletes conversations past the configured retention window and records the run.
-    /// Called by <c>AgentConversationRetentionJob</c>, which stays in Base (design §15.6b);
-    /// the window, the purge and the last-run record all belong here.
+    /// Called by <c>AgentConversationRetentionJob</c>; the window, the purge and the
+    /// last-run record all belong here.
     /// </summary>
     public async Task<int> PurgeExpiredConversationsAsync(CancellationToken cancellationToken)
     {
@@ -140,7 +140,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
 
         // From here on, a thrown exception (or client disconnect) would otherwise leave the
         // user message above with no matching assistant reply (nobodies-collective/Humans#963:
-        // 4 of 11 conversations in #952's log evidence never reached the AppendMessageAsync
+        // 4 of 11 conversations in nobodies-collective/Humans#952's log evidence never reached the AppendMessageAsync
         // below because something threw between the two writes). `await foreach` forbids
         // `yield` inside its implicit try/finally, so drive the inner enumerator manually —
         // that lets MoveNextAsync be wrapped in try/catch while still streaming tokens live.
@@ -178,7 +178,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
                     if (turnFailure is OperationCanceledException && cancellationToken.IsCancellationRequested)
                     {
                         // Expected (client disconnect), not a bug — Warning, not Error. The
-                        // finally still persists the trace: #952's log evidence showed
+                        // finally still persists the trace: nobodies-collective/Humans#952's log evidence showed
                         // conversations with no assistant message at all, and a disconnect is
                         // one plausible cause.
                         _logger.LogWarning(
@@ -216,7 +216,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
             // throws into the catch, because AgentController awaits WriteSse OUTSIDE this
             // method — a browser that disconnects while a token is being written tears the turn
             // down by disposing the iterator at a `yield return`, which resumes here rather
-            // than at MoveNextAsync. Without that the disconnect case #963 set out to fix still
+            // than at MoveNextAsync. Without that the disconnect case nobodies-collective/Humans#963 set out to fix still
             // leaves a user message with no assistant reply.
             if (!assistantPersisted)
             {
@@ -480,11 +480,9 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
     /// <summary>How many prior user/assistant turns to replay (bounded for context budget).</summary>
     private const int HistoryReplayLimit = 20;
 
-    /// <summary>Per-iteration output cap sent to the provider. 1024 (the prior value) was tight
-    /// for a turn that also emits tool-call JSON, truncating mid-JSON often enough to matter
-    /// (nobodies-collective/Humans#963). Raised alongside the max_tokens loop-continuation fix
-    /// above — the two are complementary, not alternatives: the higher cap avoids most
-    /// truncation outright, and the loop fix handles what it doesn't.</summary>
+    /// <summary>Per-iteration output cap sent to the provider. 4096 because a turn also emits
+    /// tool-call JSON, and a tighter cap truncated mid-JSON often enough to matter
+    /// (nobodies-collective/Humans#963).</summary>
     private const int MaxOutputTokensPerIteration = 4096;
 
     /// <summary>Shown when a turn ends with no assistant prose (exhausted/truncated tool loop).

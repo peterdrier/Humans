@@ -17,10 +17,9 @@ internal sealed class AgentRateLimitStore : IAgentRateLimitStore
 
     public void Record(Guid userId, LocalDate day, int hour, int messagesDelta, int tokensDelta)
     {
-        // Evict buckets older than yesterday. Bounded process lifetime is no longer
-        // a guarantee at this scale of activity, so the dictionaries can't be
-        // allowed to grow unboundedly across never-returning users. Yesterday is
-        // retained for late-arriving turns spanning a midnight rollover.
+        // Evict buckets older than yesterday so the dictionaries don't grow unboundedly
+        // across never-returning users. Yesterday is retained for late-arriving turns
+        // spanning a midnight rollover.
         var staleBefore = day.PlusDays(-1);
         foreach (var key in _daily.Keys)
             if (key.Day < staleBefore) _daily.TryRemove(key, out _);

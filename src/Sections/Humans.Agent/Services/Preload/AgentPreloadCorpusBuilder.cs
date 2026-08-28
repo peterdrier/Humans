@@ -15,7 +15,7 @@ namespace Humans.Agent.Services.Preload;
 /// <c>null</c> with a <c>is not null</c> guard around its four blocks — which meant a missing
 /// Shell registration produced a corpus quietly stripped of the access matrix, the glossaries,
 /// the route map and the FAQ, with no startup failure and no log line. Required makes DI fail
-/// loudly instead (caught in review of the section's G5 move, peterdrier/Humans#1259).
+/// loudly instead (peterdrier/Humans#1259).
 /// </remarks>
 internal sealed class AgentPreloadCorpusBuilder(
     AgentSectionDocReader sections,
@@ -26,7 +26,7 @@ internal sealed class AgentPreloadCorpusBuilder(
     private static readonly IReadOnlyList<string> Tier1Sections =
         ["Onboarding", "Teams", "Consent", "Governance", "Shifts", "Tickets", "Users", "Auth"];
 
-    // Keep in step with AgentSectionDocReader.Whitelist — a section the reader can serve but
+    // Keep in step with AgentSectionKeys.All — a section the reader can serve but
     // that never appears in this index is one the agent has no reason to ask for.
     private static readonly IReadOnlyList<string> Tier2Sections =
         ["Onboarding", "Teams", "Consent", "Governance", "Shifts", "Tickets", "Users", "Auth",

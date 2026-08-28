@@ -117,8 +117,7 @@
             });
         }
 
-        // "Talk with AI Agent" — open the panel; widget.js handles the
-        // consent gate UI in-place if the user has not yet consented.
+        // "Talk with AI Agent" — open the panel; widget.js owns everything inside it.
         var agentItem = document.getElementById('helpWidgetAgentItem');
         var agentPanel = document.getElementById('agentPanel');
         if (agentItem && agentPanel) {

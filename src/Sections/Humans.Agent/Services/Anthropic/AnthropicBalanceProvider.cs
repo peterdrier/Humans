@@ -18,7 +18,7 @@ internal sealed class AnthropicBalanceProvider(IOptions<AnthropicOptions> option
             return new AgentBalanceStatus(BalanceUsd: null, UnavailableReason: "Admin API key not configured");
         }
 
-        // Anthropic has no balance endpoint as of May 2026 (only spend reports). See #709.
+        // Anthropic has no balance endpoint as of May 2026 (only spend reports). See nobodies-collective/Humans#709.
         await Task.CompletedTask.ConfigureAwait(false);
         return new AgentBalanceStatus(
             BalanceUsd: null,

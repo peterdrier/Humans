@@ -31,10 +31,9 @@ internal sealed class AgentDocsHealthCheck(
 
     // The canary for docs/sections. This probe fetches the folder path literally and
     // has no src/Sections/Humans.{key}/Docs fallback, unlike AgentSectionDocReader, so
-    // it must name a doc that does not move. Any section's invariants doc eventually
-    // does: it was "Shifts" until #866 took that one into the section project, then
-    // "Camps" until #1288 took that one, both inside a single PR. _Index.md is the map
-    // between docs/sections and the moved sections' own Docs folders, so it stays in
+    // it must name a doc that does not move — and any section's invariants doc
+    // eventually moves into its own project. _Index.md is the map between
+    // docs/sections and the sections' own Docs folders, so it stays in
     // docs/sections for as long as the folder itself is worth probing.
     private const string ProbeSectionDoc = "_Index";
 

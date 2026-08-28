@@ -22,7 +22,7 @@ internal interface IAgentService : IApplicationService, IUserDataContributor, IA
 
     /// <summary>
     /// User-facing detail bundle for <c>/Agent/Conversation/{id}</c> (issue
-    /// #632). Returns the conversation (messages eagerly loaded) plus the
+    /// nobodies-collective/Humans#632). Returns the conversation (messages eagerly loaded) plus the
     /// user-context tail as it would be built right now, so the viewer can
     /// render a "what the agent sees about you currently" panel. Returns
     /// null if the conversation does not exist or is not owned by

@@ -53,10 +53,9 @@ public sealed record AgentMessageSnapshot(
 {
     /// <summary>
     /// Handoff = legacy server-side FeedbackReport link, or a successful <c>route_to_issue</c>
-    /// recorded in <see cref="FetchedDocs"/> at save time (the propose-only flow never sets
-    /// <see cref="HandedOffToFeedbackId"/> — nobodies-collective/Humans#931). Computed here
-    /// rather than by the caller so the tool-name vocabulary stays inside the section; mirrors
-    /// the <c>handoffsOnly</c> filter in <c>AgentRepository</c>.
+    /// recorded in <see cref="FetchedDocs"/> at save time. Computed here so the tool-name
+    /// vocabulary stays inside the section; mirrors the <c>handoffsOnly</c> filter in
+    /// <c>AgentRepository</c>.
     /// </summary>
     public bool IsHandoff =>
         HandedOffToFeedbackId is not null

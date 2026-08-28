@@ -1,5 +1,5 @@
 @model string[]
-@* Tool-call list under assistant message. Entries stored as "<toolName>:<jsonArgs>". *@
+@* Tool-call list under assistant message. Entries are FetchedDocs slugs: "<toolName>:<argument>" for doc tools, bare "<toolName>" otherwise. *@
 <ul class="agent-tool-calls-list small mb-0 mt-1">
     @foreach (var entry in Model)
     {

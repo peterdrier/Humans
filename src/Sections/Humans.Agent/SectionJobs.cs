@@ -8,7 +8,6 @@ internal sealed class SectionJobs : ISectionJobs
 {
     public IEnumerable<RecurringJobDescriptor> Jobs(IServiceProvider services)
     {
-        // Purge old agent conversations.
         yield return new RecurringJobDescriptor(
             "agent-conversation-retention", typeof(AgentConversationRetentionJob), "15 3 * * *");
     }

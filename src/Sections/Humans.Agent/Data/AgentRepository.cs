@@ -8,7 +8,6 @@ namespace Humans.Agent.Data;
 
 internal sealed class AgentRepository(AgentDbContext db, IClock clock) : IAgentRepository
 {
-    // ---- Settings ----------------------------------------------------------
 
     public Task<AgentSettings?> GetSettingsAsync(CancellationToken cancellationToken) =>
         db.AgentSettings.AsNoTracking().FirstOrDefaultAsync(s => s.Id == 1, cancellationToken);
@@ -22,8 +21,6 @@ internal sealed class AgentRepository(AgentDbContext db, IClock clock) : IAgentR
         await db.SaveChangesAsync(cancellationToken);
         return row;
     }
-
-    // ---- Conversations + messages -----------------------------------------
 
     public Task<AgentConversation?> GetConversationByIdAsync(Guid id, CancellationToken cancellationToken) =>
         db.AgentConversations
@@ -163,8 +160,6 @@ internal sealed class AgentRepository(AgentDbContext db, IClock clock) : IAgentR
         await db.SaveChangesAsync(cancellationToken);
         return owned.Count;
     }
-
-    // ---- Admin status -----------------------------------------------------
 
     public async Task<IReadOnlyList<AgentStatusMessageRow>> ListMessagesSinceAsync(
         Instant since, CancellationToken cancellationToken) =>

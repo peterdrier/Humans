@@ -34,17 +34,15 @@ public static class AgentSectionKeys
     private static readonly Dictionary<string, string> Aliases =
         new(StringComparer.OrdinalIgnoreCase)
         {
-            // Users and Profiles merged into one project (and one doc) at
-            // nobodies-collective/Humans#866 G5. The canonical key follows the project name
-            // because the reader probes src/Sections/Humans.{key}/Docs — there is no
-            // Humans.Profiles project — but users and the model still say "profile".
+            // The canonical key follows the project name because the reader probes
+            // src/Sections/Humans.{key}/Docs — there is no Humans.Profiles project —
+            // but users and the model still say "profile".
             ["Profiles"] = "Users",
             ["Profile"] = "Users",
             ["OnboardingReview"] = "Onboarding",
-            // Renamed to Consent by the 2026-08-03 inventory freeze. Kept as an alias because
-            // the model still meets the old name in its own context: docs/guide/ has not been
-            // renamed (GuideFiles.Sections still lists "LegalAndConsent"), and stored
-            // conversations emit it.
+            // Kept as an alias because the model still meets the old name in its own
+            // context: docs/guide/ has not been renamed (GuideFiles.Sections still lists
+            // "LegalAndConsent"), and stored conversations emit it.
             ["LegalAndConsent"] = "Consent",
             // /Admin is a nav holder, not a section; its help glossary is governance/ops terms.
             ["Admin"] = "Governance",

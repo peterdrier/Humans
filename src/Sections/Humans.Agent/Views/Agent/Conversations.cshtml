@@ -38,7 +38,7 @@ else
         @<text><span class="text-nowrap">@item.Conversation.StartedAt.ToInvariantTimestamp()</span></text>;
     Func<AgentConversationRow, IHtmlContent> lastMessageCell =
         @<text><span class="text-nowrap">@item.Conversation.LastMessageAt.ToInvariantTimestamp()</span></text>;
-    // Non-admin viewers go to the user-facing transcript (issue #632) which
+    // Non-admin viewers go to the user-facing transcript (issue nobodies-collective/Humans#632) which
     // reuses the live-chat bubble style and surfaces the live user-context tail.
     // Admins keep the existing token/tool-call diagnostic view.
     Func<AgentConversationRow, IHtmlContent> viewCell = Model.IsAdminView

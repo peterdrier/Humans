@@ -65,9 +65,6 @@ internal sealed class AgentUserSnapshotProvider(
         if (activeEvent is null)
             return [];
 
-        // T-09 (issue #720): read signups from the cached ShiftUserView
-        // rather than IShiftSignupService.GetByUserAsync. The view already
-        // filters Signups to the active event (see ShiftViewService).
         var userView = await shiftView.GetUserAsync(userId, cancellationToken);
         var signups = userView.Signups;
         if (signups.Count == 0)
@@ -83,7 +80,6 @@ internal sealed class AgentUserSnapshotProvider(
 
         var entries = new List<UpcomingShiftEntry>();
 
-        // Singletons (SignupBlockId == null) → one entry per signup.
         foreach (var signup in upcoming.Where(s => s.SignupBlockId is null))
         {
             var date = signup.Date;
@@ -96,7 +92,6 @@ internal sealed class AgentUserSnapshotProvider(
                 Status: signup.Status));
         }
 
-        // Block signups (SignupBlockId != null) → group by block id.
         foreach (var group in upcoming
             .Where(s => s.SignupBlockId is not null)
             .GroupBy(s => s.SignupBlockId!.Value))
@@ -106,10 +101,9 @@ internal sealed class AgentUserSnapshotProvider(
                 .OrderBy(d => d)
                 .ToList();
             var label = RotaLabel(group.First());
-            // Use the earliest signup's status as the block status — block
-            // signups are created in one transaction so they share a status,
-            // but defensively pick the earliest so a partially-bailed range
-            // still surfaces something meaningful.
+            // Block signups are created in one transaction so they share a status;
+            // pick the earliest so a partially-bailed range still surfaces
+            // something meaningful.
             var status = group.OrderBy(s => s.Date).First().Status;
             entries.Add(new UpcomingShiftEntry(
                 Key: group.Key,
@@ -125,7 +119,7 @@ internal sealed class AgentUserSnapshotProvider(
         return entries;
     }
 
-    /// <summary>Rota display name, with the unnamed-rota fallback the entity walk used to carry.</summary>
+    /// <summary>Rota display name, with an unnamed-rota fallback.</summary>
     private static string RotaLabel(ShiftSignupSummary signup) =>
         string.IsNullOrWhiteSpace(signup.RotaName) ? "(unnamed rota)" : signup.RotaName;
 }

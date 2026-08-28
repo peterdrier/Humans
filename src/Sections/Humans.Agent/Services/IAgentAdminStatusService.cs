@@ -4,9 +4,9 @@ using Humans.Base.Interfaces;
 namespace Humans.Agent.Services;
 
 /// <summary>
-/// Read-only aggregator for the admin status view (issue #709). Computes
+/// Read-only aggregator for the admin status view (issue nobodies-collective/Humans#709). Computes
 /// usage / spend / refusal / top-doc / top-user windows from the per-message
-/// projection emitted by <see cref="Repositories.IAgentRepository"/> and
+/// projection emitted by <see cref="Data.IAgentRepository"/> and
 /// folds in store snapshots (rate-limit remaining capacity, retention job
 /// last-run). No mutations.
 /// </summary>

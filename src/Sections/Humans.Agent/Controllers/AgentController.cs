@@ -47,8 +47,8 @@ internal sealed class AgentController(
         }
 
         // Resource-based, with the requirement passed directly rather than through a named
-        // policy: the requirement and its handler are internal to the section now, and this is
-        // the only caller (design §15 step 6; the Store/Expenses/Containers shape).
+        // policy: the requirement and its handler are internal to the section, and this is
+        // the only caller (the Store/Expenses/Containers shape).
         var rate = await auth.AuthorizeAsync(User, user.Id, [new AgentRateLimitRequirement()]);
         if (!rate.Succeeded)
         {
@@ -97,7 +97,7 @@ internal sealed class AgentController(
         if (missing is not null) return missing;
 
         // Ownership mismatch returns 404 (not 403) per Agent.md invariant 7
-        // and the issue #632 spec — the existence of someone else's
+        // and the issue nobodies-collective/Humans#632 spec — the existence of someone else's
         // conversation must not be inferable from the response code.
         var view = await agent.GetMyConversationAsync(currentUser.Id, id, cancellationToken);
         if (view is null) return NotFound();

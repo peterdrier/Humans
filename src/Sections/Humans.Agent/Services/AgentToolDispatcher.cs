@@ -124,9 +124,8 @@ internal sealed class AgentToolDispatcher(
         var events = await auditViewer.GetForUserAsync(userId, limit, ct);
 
         // Render each event as a single line, substituting the viewer's GUID
-        // with "You" and skipping events whose action has no verb mapping
-        // (defensive — avoids dumping unstructured Description blobs into
-        // agent context).
+        // with "You" and skipping events whose action has no verb mapping —
+        // avoids dumping unstructured Description blobs into agent context.
         var lines = events
             .Select(e => e.RenderPlainText(viewerUserId: userId))
             .Where(line => !string.IsNullOrWhiteSpace(line))
@@ -147,7 +146,7 @@ internal sealed class AgentToolDispatcher(
         if (activeEvent is null)
             return new AnthropicToolResult(callId, "No active event configured.", IsError: true);
 
-        // T-09 (issue #720): read signups from the cached ShiftUserView
+        // T-09 (issue nobodies-collective/Humans#720): read signups from the cached ShiftUserView
         // rather than IShiftSignupService.GetByUserAsync. The view already
         // filters Signups to the active event (see ShiftViewService).
         var userView = await shiftView.GetUserAsync(userId, ct);
@@ -165,7 +164,6 @@ internal sealed class AgentToolDispatcher(
             return new AnthropicToolResult(callId,
                 RenderShiftDetails(blockMatches, activeEvent), IsError: false);
 
-        // Fall back to singleton id.
         var singleton = signups.FirstOrDefault(s => s.Id == shiftKey);
         if (singleton is not null)
             return new AnthropicToolResult(callId,
@@ -177,7 +175,6 @@ internal sealed class AgentToolDispatcher(
     /// <summary>Renders the get_shift_details blob. All signups passed in must belong to the caller.</summary>
     private static string RenderShiftDetails(IReadOnlyList<ShiftSignupSummary> signups, BurnSettingsInfo ev)
     {
-        // Order chronologically so first/last reflect actual span.
         var ordered = signups.OrderBy(s => s.Date).ToList();
         var first = ordered[0];
         var last = ordered[^1];
@@ -203,7 +200,6 @@ internal sealed class AgentToolDispatcher(
             ? string.Create(CultureInfo.InvariantCulture, $"Status: {status} ({dayCount} days)")
             : string.Create(CultureInfo.InvariantCulture, $"Status: {status}"));
 
-        // Hours window.
         if (first.IsAllDay)
         {
             sb.AppendLine(string.Create(CultureInfo.InvariantCulture,
@@ -215,7 +211,6 @@ internal sealed class AgentToolDispatcher(
                 $"Hours: starts {DateFormattingExtensions.TimeOfDayPattern.Format(first.WindowStart)}, lasts {first.DurationHours:0.##} hours"));
         }
 
-        // Shift description (per-shift duties).
         if (!string.IsNullOrWhiteSpace(first.ShiftDescription))
             sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"Description: {first.ShiftDescription.Trim()}"));
 

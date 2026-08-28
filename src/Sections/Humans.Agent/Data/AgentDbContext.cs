@@ -9,11 +9,11 @@ namespace Humans.Agent.Data;
 /// (nobodies-collective/Humans#858): maps only <c>agent_conversations</c>,
 /// <c>agent_messages</c> and <c>agent_settings</c>, with its own
 /// <c>__EFMigrationsHistory_Agent</c> table and migrations under
-/// <c>Migrations/Agent/</c>. Same database, same connection — the split
+/// <c>Data/Migrations/</c>. Same database, same connection — the split
 /// is a code-side partition of the EF model.
 /// </summary>
 /// <remarks>
-/// Internal-sealed like every section context (issue #750): repositories
+/// Internal-sealed like every section context (issue nobodies-collective/Humans#750): repositories
 /// are the only consumers. Configurations are applied explicitly (not by
 /// assembly scanning) so this model can never accrete another section's tables.
 /// </remarks>

@@ -71,7 +71,7 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
 
 | Actor | Capability |
 |---|---|
-| Authenticated human | Send messages, read own history at `/Agent/Conversations`, drill into a single transcript at `/Agent/Conversation/{id}` (issue #632 — own conversations only; cross-user → 404) |
+| Authenticated human | Send messages, read own history at `/Agent/Conversations`, drill into a single transcript at `/Agent/Conversation/{id}` (issue nobodies-collective/Humans#632 — own conversations only; cross-user → 404) |
 | Admin | View operational status at `/Agent/Admin/Status` (usage / spend / refusals / top docs / top users / retention job / Anthropic balance), configure settings, view all conversations at `/Agent/Conversations` (Human column + filters, Older/Newer paging), drill into the diagnostic view at `/Agent/Conversations/{id}` (token counts, tool-call args, prompt preview), disable globally |
 | Anyone else (anonymous) | Widget not rendered; endpoints return 401 |
 
@@ -105,7 +105,7 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
 
 ## Tooling API — `/api/backdoor/agent`
 
-Read-only HTTP surface for QA/prod chat-history review by dev tooling and a dev-side Claude (issue #631). The controller lives in `Humans.Backdoor` and reads this section through `Humans.Agent.Contracts.IAgentTranscriptRead`; the section keeps the data and the contract, not the endpoint. One `X-Api-Key` gate for the whole machine surface, resolved to the human it was issued to.
+Read-only HTTP surface for QA/prod chat-history review by dev tooling and a dev-side Claude (issue nobodies-collective/Humans#631). The controller lives in `Humans.Backdoor` and reads this section through `Humans.Agent.Contracts.IAgentTranscriptRead`; the section keeps the data and the contract, not the endpoint. One `X-Api-Key` gate for the whole machine surface, resolved to the human it was issued to.
 
 | Endpoint | Purpose |
 |----------|---------|

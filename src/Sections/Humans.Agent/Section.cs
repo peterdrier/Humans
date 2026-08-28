@@ -20,14 +20,13 @@ namespace Humans.Agent;
 
 /// <summary>
 /// Agent's DI entry point, at the project root by convention. Discovered by Shell — nothing
-/// names it, so it needs no section prefix. Replaces Shell's <c>AddAgentSection</c> verbatim
-/// (design §6): same lifetimes, same order, same options bindings.
+/// names it, so it needs no section prefix.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <c>AgentConversationRetentionJob</c> moved into <c>Contracts/</c> at G5 lane 5b-5
-/// (nobodies-collective/Humans#866) and drives <see cref="IAgentConversationRetention"/>; its
-/// registration and schedule are contributed via <c>SectionJobs.cs</c> (#1074's jobs seam).
+/// <c>AgentConversationRetentionJob</c> (<c>Jobs/</c>) drives
+/// <see cref="IAgentConversationRetention"/>; its registration and schedule are contributed
+/// via <c>SectionJobs.cs</c>.
 /// </para>
 /// <para>
 /// The two warm-up hosted services <em>are</em> registered here. Nothing outside the section
@@ -38,9 +37,8 @@ namespace Humans.Agent;
 /// <para>
 /// <c>GitHubCommunityKbContentSource</c> stays in <c>Humans.Infrastructure</c>: it is a
 /// GitHub content connector implementing a Base interface. The <em>Anthropic</em> connector
-/// did not get to stay — <c>IAnthropicClient</c> streams the section's own
-/// <c>AgentTurnToken</c>, so leaving it in Base would have meant promoting that type
-/// downward, which is the one thing §15.5b forbids.
+/// must live here — <c>IAnthropicClient</c> streams the section's own
+/// <c>AgentTurnToken</c>, and keeping it in Base would mean promoting that type downward.
 /// </para>
 /// </remarks>
 public sealed class Section : ISection
@@ -67,8 +65,7 @@ public sealed class Section : ISection
 
         // Singletons: stateless readers that own a per-stem MemoryCache slot via the shared
         // IMemoryCache. IGuideContentSource is registered as a singleton by
-        // InfrastructureServiceCollectionExtensions — it stayed in Base at Guide's G5 move
-        // because these three readers are its main consumers — so capturing it here is safe.
+        // InfrastructureServiceCollectionExtensions, so capturing it here is safe.
         services.AddSingleton<AgentSectionDocReader>();
         services.AddSingleton<AgentFeatureSpecReader>();
         services.AddSingleton<GitHubCommunityKbContentSource>();
@@ -92,9 +89,6 @@ public sealed class Section : ISection
         services.AddHostedService<AgentSettingsStoreWarmupHostedService>();
         services.AddHostedService<AgentPreloadWarmupHostedService>();
 
-        // Resource-based rate limiting: the handler moves with the section, the requirement
-        // with it (design §15 step 6). There is no named policy — AgentController passes the
-        // requirement directly, the shape Store/Expenses/Containers already use.
         services.AddScoped<IAuthorizationHandler, AgentRateLimitHandler>();
 
         services.AddScoped<AgentConversationRetentionJob>();

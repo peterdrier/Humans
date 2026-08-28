@@ -40,7 +40,7 @@ public class AgentServiceTests
             tokens.Add(t);
         }
 
-        // FIX 4 — use != null (not is not null pattern) to avoid expression tree issues
+        // != null (not "is not null"): the predicate is an expression tree.
         tokens.Should().ContainSingle(t => t.Finalizer != null);
         tokens.Last().Finalizer!.StopReason.Should().Be("rate_limited");
     }

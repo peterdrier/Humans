@@ -58,7 +58,7 @@ else
                     }
                     else if (isUser)
                     {
-                        @* SanitizedMarkdown for autolink + HTML-strip; swap to #630's linkifier when it lands. *@
+                        @* SanitizedMarkdown for autolink + HTML-strip. *@
                         <div class="agent-user-content">@Html.SanitizedMarkdown(msg.Content)</div>
                     }
                     else if (isRefusal)
@@ -84,7 +84,7 @@ else
 
                     @if (isAssistant && msg.FetchedDocs is { Length: > 0 })
                     {
-                        @* #632: collapsed when >1 call, expanded for 1. `open` is boolean — emit conditionally. *@
+                        @* nobodies-collective/Humans#632: collapsed when >1 call, expanded for 1. `open` is boolean — emit conditionally. *@
                         var toolSummary = string.Format(System.Globalization.CultureInfo.CurrentCulture,
                             Localizer["Agent_ConversationToolCallsSummary"].Value,
                             msg.FetchedDocs.Length);

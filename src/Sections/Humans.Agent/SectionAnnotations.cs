@@ -13,7 +13,7 @@ namespace Humans.Agent;
 /// Only the canonical keys, not the aliases: an alias is a spelling the model uses, not a
 /// section that has a doc. A canonical key naming no section is real drift and surfaces as an
 /// unmatched annotation. The path comes from <see cref="AgentSectionDocReader"/> rather than a
-/// literal: since #866 a section keeps its invariants doc inside its own project, and
+/// literal: a section keeps its invariants doc inside its own project, and
 /// <c>docs/sections</c> — which the reader still probes first — holds only the templates. Operator-only sections are absent on purpose — see
 /// <see cref="AgentSectionKeys"/>; the catalog is the oracle for what a section *is*, never for
 /// which subset the agent should serve.

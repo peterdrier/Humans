@@ -5,7 +5,7 @@ namespace Humans.Agent.Models;
 
 /// <summary>
 /// Backs the user-facing transcript view at <c>/Agent/Conversation/{id}</c>
-/// (issue #632). The conversation is the calling user's own (ownership is
+/// (issue nobodies-collective/Humans#632). The conversation is the calling user's own (ownership is
 /// enforced server-side; a mismatch returns 404 — see Agent.md invariant 7).
 /// <see cref="CurrentUserContextTail"/> is regenerated from the live snapshot
 /// for the "what the agent sees about you currently" card; it may differ

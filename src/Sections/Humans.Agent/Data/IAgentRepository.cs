@@ -13,8 +13,8 @@ namespace Humans.Agent.Data;
 /// </summary>
 internal interface IAgentRepository : IRepository
 {
-    // ---- Settings (singleton row, Id = 1) ------------------------------------
 
+    /// <summary>Reads the settings singleton row (Id = 1).</summary>
     Task<AgentSettings?> GetSettingsAsync(CancellationToken cancellationToken);
 
     /// <summary>
@@ -23,8 +23,6 @@ internal interface IAgentRepository : IRepository
     /// the warmup hosted service guarantees a seeded row.
     /// </summary>
     Task<AgentSettings> UpdateSettingsAsync(Action<AgentSettings> mutator, Instant updatedAt, CancellationToken cancellationToken);
-
-    // ---- Conversations + messages -------------------------------------------
 
     Task<AgentConversation?> GetConversationByIdAsync(Guid id, CancellationToken cancellationToken);
 
@@ -58,8 +56,6 @@ internal interface IAgentRepository : IRepository
 
     /// <summary>GDPR Art. 17: removes every conversation (and its messages) belonging to the user.</summary>
     Task<int> DeleteConversationsForUserAsync(Guid userId, CancellationToken cancellationToken);
-
-    // ---- Admin status (read-only, in-memory aggregated by callers) ----------
 
     /// <summary>
     /// Flat per-message projection over <c>agent_messages</c> created at or
