@@ -1,0 +1,176 @@
+@model ISectionCatalog
+@{
+    ViewData["Title"] = "Sections";
+
+    string? Facet(SectionInfo s, string facet) =>
+        s.Annotations.FirstOrDefault(a => string.Equals(a.Facet, facet, StringComparison.Ordinal))?.Detail;
+
+    bool Has(SectionInfo s, string facet) =>
+        s.Annotations.Any(a => string.Equals(a.Facet, facet, StringComparison.Ordinal));
+
+    var active = Model.Sections.Count(s => s.IsActive);
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="title">Sections</h1>
+        <p class="sub">
+            @active active of @Model.Sections.Count discovered — composed from DI at startup, nothing here is hand-maintained
+        </p>
+    </div>
+    <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-arrow-left me-1"></i>Admin
+    </a>
+</div>
+
+@if (Model.UnmatchedAnnotations.Count > 0)
+{
+    <div class="alert alert-warning">
+        <p class="mb-2">
+            <i class="fa-solid fa-triangle-exclamation me-1"></i>
+            <strong>@Model.UnmatchedAnnotations.Count contributed fact(s) name no known section.</strong>
+            A rename, a merge, or a deliberate non-section entry. Nothing fails at runtime, and what
+            each costs depends on its facet: an agent doc key naming no section dead-ends its fetch
+            and the assistant falls back to the community FAQ, while a guide page or an issue queue
+            keeps working under a name that no longer matches anything.
+        </p>
+        <ul class="mb-0 small">
+            @foreach (var orphan in Model.UnmatchedAnnotations)
+            {
+                <li><code>@orphan.Section</code> — @orphan.Facet@(orphan.Detail is null ? "" : $" ({orphan.Detail})")</li>
+            }
+        </ul>
+    </div>
+}
+
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Section</th>
+                <th class="text-center" title="Owns its own DbContext and tables">Tables</th>
+                <th class="text-center" title="Ships a .Contracts leaf">Contracts</th>
+                <th class="text-center" title="Carries its own .resx set">Resx</th>
+                <th class="text-center" title="Has a volunteer-facing guide page">Guide</th>
+                <th class="text-center" title="The agent can fetch a grounding doc for it">Agent</th>
+                <th class="text-center" title="Reported issues route to a queue for it">Issues</th>
+                <th>Seams</th>
+                <th>Depends on</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var entry in Model.Sections)
+        {
+            <tr class="@(entry.IsActive ? null : "table-secondary")">
+                <td>
+                    <strong>@entry.Name</strong>
+                    @if (!entry.IsActive)
+                    {
+                        <span class="badge bg-secondary ms-1">inactive</span>
+                    }
+                    <div class="small text-muted">
+                        @if (entry.ServiceInterfaces.Count > 0)
+                        {
+                            <span title="@string.Join(", ", entry.ServiceInterfaces)">
+                                @entry.ServiceInterfaces.Count service interface@(entry.ServiceInterfaces.Count == 1 ? "" : "s")
+                            </span>
+                        }
+                        @if (entry.Repositories.Count > 0)
+                        {
+                            <span title="@string.Join(", ", entry.Repositories)">
+                                · @entry.Repositories.Count repositor@(entry.Repositories.Count == 1 ? "y" : "ies")
+                            </span>
+                        }
+                    </div>
+                </td>
+                <td class="text-center">
+                    @if (entry.DbContexts.Count > 0)
+                    {
+                        <i class="fa-solid fa-check text-success" title="@string.Join(", ", entry.DbContexts)"></i>
+                    }
+                    else
+                    {
+                        <span class="text-muted" title="Orchestrator or crosscut — owns no tables">—</span>
+                    }
+                </td>
+                <td class="text-center">
+                    @if (entry.HasContracts)
+                    {
+                        <i class="fa-solid fa-check text-success"></i>
+                    }
+                    else
+                    {
+                        <span class="text-muted">—</span>
+                    }
+                </td>
+                <td class="text-center">
+                    @if (entry.HasResources)
+                    {
+                        <i class="fa-solid fa-check text-success"></i>
+                    }
+                    else
+                    {
+                        <span class="text-muted">—</span>
+                    }
+                </td>
+                <td class="text-center">
+                    @if (Has(entry, "Guide page"))
+                    {
+                        <a href="@Facet(entry, "Guide page")" title="@Facet(entry, "Guide page")">
+                            <i class="fa-solid fa-book"></i>
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="text-muted">—</span>
+                    }
+                </td>
+                <td class="text-center">
+                    @if (Has(entry, "Agent doc key"))
+                    {
+                        <i class="fa-solid fa-robot text-success" title="@Facet(entry, "Agent doc key")"></i>
+                    }
+                    else
+                    {
+                        <span class="text-muted" title="The agent answers from the community FAQ for this section">—</span>
+                    }
+                </td>
+                <td class="text-center">
+                    @if (Has(entry, "Issue queue"))
+                    {
+                        <i class="fa-solid fa-bug text-success" title="Routes to: @Facet(entry, "Issue queue")"></i>
+                    }
+                    else
+                    {
+                        <span class="text-muted" title="Reported issues land in the Admin queue">—</span>
+                    }
+                </td>
+                <td class="small">
+                    @if (entry.Seams.Count == 0)
+                    {
+                        <span class="text-muted">—</span>
+                    }
+                    else
+                    {
+                        @foreach (var seam in entry.Seams)
+                        {
+                            <span class="badge bg-light text-dark border me-1">@seam.Replace("ISection", "", StringComparison.Ordinal)</span>
+                        }
+                    }
+                </td>
+                <td class="small text-muted">
+                    @(entry.DependsOn.Count == 0 ? "—" : string.Join(", ", entry.DependsOn))
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+<p class="small text-muted">
+    Everything on this page is derived at startup from the assemblies themselves — seams from the
+    <code>ISectionContribution</code> types a section declares, dependencies from its real assembly
+    references, tables from its <code>DbContext</code>. The Guide / Agent / Issues columns are facts
+    those three sections publish about the others through <code>ISectionAnnotations</code>; each still
+    owns its own list, and this page is where a list that has drifted shows up.
+</p>

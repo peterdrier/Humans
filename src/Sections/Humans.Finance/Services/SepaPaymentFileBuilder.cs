@@ -49,9 +49,10 @@ internal static class SepaPaymentFileBuilder
     /// <summary>SEPA caps a party name at 70, well below the schema's own 140.</summary>
     public const int MaxNameLength = 70;
 
-    /// <summary>Sabadell shows this to the recipient; one occurrence, one line, prefixed per transfer
-    /// with the creditor account number it pays.</summary>
-    private const string RemittanceInformation = "Nobodies expense reimbursement";
+    /// <summary>Organisation tag in the remittance line, between the account number and the creditor
+    /// name — "&lt;account&gt; - NCA - &lt;name&gt;" — so a bank line reads back as the account, the org,
+    /// and who was paid without opening the file. Sabadell shows this line to the recipient.</summary>
+    private const string RemittanceOrgTag = "NCA";
 
     public static string Build(SepaPaymentFileRequest request)
     {
@@ -70,7 +71,7 @@ internal static class SepaPaymentFileBuilder
                 new XElement(ns + "RmtInf",
                     new XElement(ns + "Ustrd",
                         SepaText.Normalize(
-                            $"{t.SupplierAccountNum.ToString(CultureInfo.InvariantCulture)} {RemittanceInformation}",
+                            $"{t.SupplierAccountNum.ToString(CultureInfo.InvariantCulture)} - {RemittanceOrgTag} - {t.CreditorName}",
                             MaxRemittanceLength)))))
             .ToList();
 

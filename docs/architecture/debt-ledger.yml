@@ -268,7 +268,7 @@ themes:
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
   - added: 2026-08-27
-    what: "The GDPR export document's JSON serialization lives twice, byte-identically: GuestDataController (Humans.Gdpr) and ProfileController (Humans.Users) each carry a private ExportJsonOptions and a private BuildExportPayload. Key stability across re-downloads is an invariant Gdpr owns, enforced by copies nothing keeps in step. The fix spans both sections and adds public surface either way — a shared serializer on Humans.Gdpr.Contracts, or a method on IGdprExportService — so it is Peter's call. Found by /section-doctor on Gdpr 2026-08-27 (finding 2 of docs/health/runs/2026-08-27-Gdpr.md); routed here rather than to Gdpr's section ledger on a review finding on peterdrier/Humans#1540, because no single section owns the fix."
+    what: "The GDPR export document's JSON serialization lives twice, byte-identically: GuestDataController (Humans.Gdpr) and ProfileController (Humans.Users) each carry a private ExportJsonOptions and a private BuildExportPayload. Key stability across re-downloads is an invariant Gdpr owns, enforced by copies nothing keeps in step. The fix spans both sections and adds public surface either way — a shared serializer on Humans.Gdpr.Contracts, or a method on IGdprService — so it is Peter's call. Found by /section-doctor on Gdpr 2026-08-27 (finding 2 of docs/health/runs/2026-08-27-Gdpr.md); routed here rather than to Gdpr's section ledger on a review finding on peterdrier/Humans#1540, because no single section owns the fix."
     review: panel
   - added: 2026-08-26
     what: "AuditLogEntry.EntityType is a plain string filtered by exact equality (IAuditLogRepository.GetEntityIdsForEntityTypeActionsAsync, AuditViewerService's entityType filter), and nearly every caller supplies it as nameof(<EntityType>) — User, ShiftSignup, GoogleResource, Team, CampSeason, Camp and more, with User by far the most widely audited. Renaming any audited entity therefore changes the discriminator for new rows while historical rows keep the old string, and the entity's audit history silently splits with nothing failing. Decide whether persisted entity-type names should be pinned to constants (and an analyzer added) or the rename risk accepted; the fix is repo-wide across the Audit crosscut's callers, not one section's. Found by /section-doctor on CityPlanning 2026-08-26, from a review finding on peterdrier/Humans#1525 that proposed pinning CityPlanning alone — declined there because a single-section constant would make it the only caller not following the house convention without reducing the exposure."
@@ -388,3 +388,15 @@ inbox:
   - added: 2026-08-23
     what: "The Humans.Onboarding.Docs data-access blocks for HumanLifecycleService and NonCompliantMemberSuspension describe Users-owned services and belong in src/Sections/Humans.Users/Docs/data-access.md, which does not carry them. Left in place with a pointer rather than moved, because the run that found them could not write another section's file under the concurrency contract. Found by /section-doctor on Onboarding 2026-08-23."
     review: light
+  - added: 2026-08-27
+    what: ".claude/skills/section-align/SKILL.md:51 claims Humans.Gdpr has no Controllers/; it has had one since nobodies-collective/Humans#1091, and the line drives a shell path filter (finding 14, /section-doctor on Gdpr 2026-08-27)."
+    review: panel
+  - added: 2026-08-27
+    what: "docs/architecture/design-rules.md:308 names only /Profile/Me/DownloadData as the GDPR export download; /Guest/DownloadData is the other, and §8a's rule gates both (finding 15, /section-doctor on Gdpr 2026-08-27)."
+    review: panel
+  - added: 2026-08-27
+    what: "docs/architecture/service-data-access-map.md:312 states EF DbContext/IDbContextFactory usage is \"not thread-safe within a single async flow\" as the reason the Calendar/Gdpr/EarlyEntry contributor fan-outs are sequential. Independent factory-created contexts are safe concurrently; §8a of design-rules.md says so (finding 22, /section-doctor on Gdpr 2026-08-27)."
+    review: panel
+  - added: 2026-08-27
+    what: "docs/architecture/design-rules.md:340 says contributors \"read through their own IDbContextFactory<TContext>\" and names AgentService as an example; AgentRepository takes a scoped AgentDbContext by injection. The conclusion (sequential is no longer a correctness requirement) is right; the stated mechanism is not — the accurate invariant is that no two contributors share a context instance (finding 25, /section-doctor on Gdpr 2026-08-27)."
+    review: panel

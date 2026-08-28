@@ -8,7 +8,7 @@ namespace Humans.Gdpr.Contracts;
 ///
 /// <para>
 /// Every service that owns user-scoped tables MUST implement this interface so
-/// the orchestrator (<see cref="IGdprExportService"/>) can fan out and assemble
+/// the orchestrator (<see cref="IGdprService"/>) can fan out and assemble
 /// a complete per-user document without any cross-section database reads.
 /// A contributor reads only from its owning section's tables — cross-section
 /// data flows through other contributors, not through <c>Include</c> chains.

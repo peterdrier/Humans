@@ -103,7 +103,7 @@ public class ProfileControllerDietaryMedicalReplayTests
             Substitute.For<IShiftManagementServiceRead>(),
             _shiftMgmt,
             Substitute.For<IShiftView>(),
-            Substitute.For<IGdprExportService>(),
+            Substitute.For<IGdprService>(),
             configuration,
             new ConfigurationRegistry(),
             NullLogger<ProfileController>.Instance,

@@ -38,13 +38,10 @@ namespace Humans.AuditLog.Contracts;
 /// </remarks>
 public interface IAuditViewerService : IApplicationService
 {
-    /// <summary>Most recent audit events, resolved.</summary>
-    Task<IReadOnlyList<AuditEvent>> GetRecentAsync(int count, CancellationToken ct = default);
-
     /// <summary>
-    /// Audit events involving <paramref name="userId"/> as either the actor
-    /// or the subject. Mirrors the merge-tombstone-following semantics of
-    /// <c>IAuditLogReader.GetByUserAsync</c>.
+    /// Audit events where <paramref name="userId"/> is the subject (an entry on
+    /// their User row) or a related entity — not merely the actor. Mirrors the
+    /// merge-tombstone-following semantics of <c>IAuditLogReader.GetByUserAsync</c>.
     /// </summary>
     Task<IReadOnlyList<AuditEvent>> GetForUserAsync(Guid userId, int count, CancellationToken ct = default);
 

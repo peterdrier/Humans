@@ -7,15 +7,15 @@ using NodaTime.Testing;
 
 namespace Humans.Gdpr.Tests.Services;
 
-public class GdprExportServiceTests
+public class GdprServiceTests
 {
     private static readonly Instant FixedNow = Instant.FromUtc(2026, 4, 15, 10, 30);
 
-    private static GdprExportService CreateService(params IUserDataContributor[] contributors) =>
+    private static GdprService CreateService(params IUserDataContributor[] contributors) =>
         new(
             contributors,
             new FakeClock(FixedNow),
-            NullLogger<GdprExportService>.Instance);
+            NullLogger<GdprService>.Instance);
 
     [HumansFact]
     public async Task ExportForUserAsync_StampsExportedAtFromClock()
@@ -184,6 +184,76 @@ public class GdprExportServiceTests
             "the fan-out is sequential — a Task.WhenAll would overlap contributors, and one at " +
             "a time is what keeps failure attribution and log order plain");
         log.Order.Should().Equal("A", "B", "C");
+    }
+
+    // ==========================================================================
+    // EraseForUserAsync (Article 17 fan-out)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task EraseForUserAsync_RunsEveryContributor()
+    {
+        var a = new RecordingContributor("Issues");
+        var b = new RecordingContributor("Consents");
+        var service = CreateService(a, b);
+        var id = Guid.NewGuid();
+
+        await service.EraseForUserAsync(id, Xunit.TestContext.Current.CancellationToken);
+
+        a.ErasedIds.Should().Equal(id);
+        b.ErasedIds.Should().Equal(id);
+    }
+
+    [HumansFact]
+    public async Task EraseForUserAsync_ErasesAccountIdentityLast()
+    {
+        // Sections that must reach an external processor (the Workspace suspend) need the
+        // human's addresses, which the Account contributor is about to drop. Registration
+        // order is Account-first here on purpose: ordering is derived from the declaration.
+        var order = new List<string>();
+        var account = new RecordingContributor(GdprExportSections.Account, order);
+        var section = new RecordingContributor(GdprExportSections.Issues, order);
+        var service = CreateService(account, section);
+
+        await service.EraseForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        order.Should().Equal(GdprExportSections.Issues, GdprExportSections.Account);
+    }
+
+    [HumansFact]
+    public async Task EraseForUserAsync_PropagatesContributorFailureAndStopsBeforeAccount()
+    {
+        // A throwing contributor aborts the run — the Account identity collapse never
+        // happens, so the caller's deletion markers stay set and tomorrow's job retries.
+        var boom = new RecordingContributor("Issues") { Throw = new InvalidOperationException("boom") };
+        var account = new RecordingContributor(GdprExportSections.Account);
+        var service = CreateService(boom, account);
+
+        var act = async () => await service.EraseForUserAsync(
+            Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
+        account.ErasedIds.Should().BeEmpty();
+    }
+
+    private sealed class RecordingContributor(string section, List<string>? order = null) : IUserDataContributor
+    {
+        public Exception? Throw { get; init; }
+        public List<Guid> ErasedIds { get; } = [];
+
+        public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<UserDataSlice>>([]);
+
+        public IReadOnlyDictionary<string, string?> ErasureDeclaration =>
+            new Dictionary<string, string?>(StringComparer.Ordinal) { [section] = null };
+
+        public Task EraseForUserAsync(Guid userId, CancellationToken ct)
+        {
+            order?.Add(section);
+            ErasedIds.Add(userId);
+            if (Throw is not null) throw Throw;
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class ContributorCallLog

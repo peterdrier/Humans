@@ -66,7 +66,7 @@ sections in each section's own `Section.cs`):
 - **`ShiftSignupService`** (Shifts) — the user's Confirmed **and** Pending shift signups (pending get a "(pending)" summary suffix); Cancelled/Bailed/NoShow history is excluded.
 - **`EventService`** (Events) — approved event-guide entries the user has favourited (moderation un-approval drops an event from the feed without touching the favourite row). No hosting/ownership path.
 
-Sequential fan-out, matching `GdprExportService` and `EarlyEntryService`.
+Sequential fan-out, matching `GdprService` and `EarlyEntryService`.
 `ShiftSignupService` reads via `ShiftsDbContext` and `EventService` via
 `EventGuideDbContext`, each from its own `IDbContextFactory`; independent
 factory-created contexts *can* safely run concurrently (EF's restriction is

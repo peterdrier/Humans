@@ -11,7 +11,7 @@ namespace Humans.Gdpr;
 /// nothing names it, so it needs no section prefix.
 /// </summary>
 /// <remarks>
-/// One registration: the export orchestrator. Gdpr owns no tables, so there is no
+/// One registration: the subject-rights orchestrator (export + erasure). Gdpr owns no tables, so there is no
 /// <c>AddSectionDbContext</c> call and no repository — the service is a pure fan-out over
 /// every registered <see cref="IUserDataContributor"/>, each of which is registered by the
 /// section that owns the data.
@@ -27,6 +27,6 @@ public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
-        services.AddScoped<IGdprExportService, GdprExportService>();
+        services.AddScoped<IGdprService, GdprService>();
     }
 }

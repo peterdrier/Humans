@@ -46,7 +46,14 @@ public static class SectionDiscoveryExtensions
             string.Join(", ", sections.Select(s => s.Name)),
             inactive.Count == 0 ? "(none)" : string.Join(", ", inactive));
 
-        RegisterContributions(services);
+        var contributions = RegisterContributions(services);
+
+        // The section list, published for anything that would otherwise hand-maintain its own
+        // copy (nobodies-collective/Humans#1509). Built from AllSections, not the active set:
+        // a deactivated section is exactly what you want the diagnostics page to show.
+        services.AddSingleton(SectionCatalogBuilder.Build(
+            AllSections.Value,
+            [.. contributions.OfType<ISectionAnnotations>()]));
 
         return services;
     }
@@ -60,7 +67,7 @@ public static class SectionDiscoveryExtensions
     /// Derived from the marker, never a list of seams: a new seam interface deriving from
     /// <see cref="ISectionContribution"/> is discovered with no edit here.
     /// </remarks>
-    private static void RegisterContributions(IServiceCollection services)
+    private static IReadOnlyList<ISectionContribution> RegisterContributions(IServiceCollection services)
     {
         var contributions = DiscoverImplementations<ISectionContribution>();
 
@@ -76,6 +83,8 @@ public static class SectionDiscoveryExtensions
             "Discovered {Count} section contribution(s): {Contributions}",
             contributions.Count,
             string.Join(", ", contributions.Select(c => c.GetType().FullName)));
+
+        return contributions;
     }
 
     /// <summary>
@@ -163,6 +172,13 @@ public static class SectionDiscoveryExtensions
 
     private static readonly Lazy<HashSet<Assembly>> InactiveAssemblySet =
         new(() => [.. AllSections.Value.Select(s => s.Assembly).Except(ActiveAssemblies.Value)]);
+
+    /// <summary>
+    /// Every shipped section, active or not — what <see cref="ISectionCatalog"/> is built from.
+    /// Internal so the catalog tests compose the real set rather than a hand-rolled stand-in.
+    /// </summary>
+    internal static IReadOnlyList<(string Name, Assembly Assembly, ISection Section)> ShippedSections() =>
+        AllSections.Value;
 
     /// <summary>The section assemblies this deployment runs. Composition reads this, never the shipped set.</summary>
     internal static IReadOnlyList<Assembly> ActiveSectionAssemblies() => ActiveAssemblies.Value;

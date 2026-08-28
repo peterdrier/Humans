@@ -1844,7 +1844,7 @@ Git Bash.)
         substitutes is any existing test that calls the *real*
         `InfrastructureServiceCollectionExtensions.AddHumansInfrastructure` and asserts the
         section's own registration came out of it — Gdpr's
-        `GdprExportDependencyInjectionTests.GdprExportServiceIsRegistered` does exactly that,
+        `GdprExportDependencyInjectionTests.GdprServiceIsRegistered` does exactly that,
         and it can only pass if `Section.Register` ran, which needs the assembly in Shell's
         dependency graph. Check that such a test exists *before* concluding a page-less
         section is untestable at step 12; if none does, the `grep '<Section>'

@@ -39,11 +39,6 @@ internal interface IAuditLogRepository : IRepository
     // ==========================================================================
 
     /// <summary>
-    /// Returns the most recent audit entries, ordered newest first.
-    /// </summary>
-    Task<IReadOnlyList<AuditLogEntry>> GetRecentAsync(int count, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns filtered audit entries with pagination, plus total counts.
     /// </summary>
     Task<(IReadOnlyList<AuditLogEntry> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(

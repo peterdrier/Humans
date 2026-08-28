@@ -2,7 +2,7 @@
   src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Sections/Humans.Users/Views/Profile/Privacy.cshtml
   src/Sections/Humans.Users/Views/Profile/CommunicationPreferences.cshtml
-  src/Sections/Humans.Gdpr/Services/GdprExportService.cs
+  src/Sections/Humans.Gdpr/Services/GdprService.cs
   src/Sections/Humans.Users/Services/AccountDeletionService.cs
   src/Sections/Humans.Users/Services/ContactFieldService.cs
   src/Sections/Humans.Users/Services/CommunicationPreferenceService.cs

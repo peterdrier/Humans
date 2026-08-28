@@ -93,7 +93,7 @@ public class ProfileControllerEmailGridTests
             Substitute.For<IShiftManagementServiceRead>(),
             Substitute.For<IShiftVolunteerProfiles>(),
             Substitute.For<IShiftView>(),
-            Substitute.For<IGdprExportService>(),
+            Substitute.For<IGdprService>(),
             Substitute.For<IConfiguration>(),
             new ConfigurationRegistry(),
             NullLogger<ProfileController>.Instance,

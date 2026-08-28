@@ -24,9 +24,11 @@ internal sealed class AgentSectionDocReader(
     /// Where a section at G5 keeps its invariants doc (nobodies-collective/Humans#866
     /// design §7a): inside its own project rather than in <c>docs/sections</c>. Probed as
     /// a fallback so the tool keeps working across the migration without a per-section
-    /// path map — the same convention for all ~35, whichever side of the move they are on.
+    /// path map — the same convention for whichever side of the move they are on.
+    /// Internal because <c>SectionAnnotations</c> reports the same folder on
+    /// /Debug/Sections; a second copy of the path would be a second thing to get wrong.
     /// </summary>
-    private static string SectionProjectFolder(string key) => $"src/Sections/Humans.{key}/Docs";
+    internal static string SectionProjectFolder(string key) => $"src/Sections/Humans.{key}/Docs";
 
     // No expiration + NeverRemove: GitHub-backed content that only changes at release.
     // Loaded once (startup warm-up or first call) and held for the process lifetime.

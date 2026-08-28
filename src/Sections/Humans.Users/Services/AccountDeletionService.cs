@@ -25,7 +25,7 @@ internal sealed class AccountDeletionService(
     IUserEmailService userEmailService,
     ITeamService teamService,
     IRoleAssignmentService roleAssignmentService,
-    IEnumerable<IUserDataContributor> erasureContributors,
+    IGdprService gdprService,
     ITicketServiceRead ticketQueryService,
     IUserInfoInvalidator userInfoInvalidator,
     IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
@@ -193,51 +193,31 @@ internal sealed class AccountDeletionService(
         return summary;
     }
 
-    // --- GDPR Article 17 fan-out ---
+    // --- GDPR Article 17 fan-out (delegated to Gdpr) ---
 
     /// <summary>
-    /// Runs every <see cref="IUserDataContributor"/>'s erasure, for the account and for
-    /// every account previously merged into it. Sequential, not Task.WhenAll: contributors
-    /// share scoped section DbContexts which are not thread-safe (same reason as the export
-    /// fan-out).
+    /// Erases every section's personal data for the account and for every account
+    /// previously merged into it. Resolves the merge chain here and calls
+    /// <see cref="IGdprService.EraseForUserAsync"/> per id — the loop over contributors
+    /// lives in Gdpr now, beside the export fan-out — invalidating each archived id's
+    /// cache entry as its erasure completes.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// The contributor that owns the <c>Account</c> identity runs last within each pass, so
-    /// the sections that need the human's addresses to reach an external processor (the
-    /// Workspace suspend) can still resolve them. Ordering is derived from the declarations,
-    /// not from a pinned type list.
-    /// </para>
-    /// <para>
     /// Merged-source ids are erased first, and only then the survivor. Merge moves rows for
     /// the sections that implement <see cref="IUserMerge"/>; the ones that do not leave their
     /// rows keyed to the archived source id, where erasing the survivor alone would never
     /// reach them. To the human there was only ever one account, so all of it is their data.
+    /// <para>
+    /// Invalidation is interleaved with erasure, not batched after it: a contributor that
+    /// throws partway through the chain still leaves every id erased before it with its
+    /// cache dropped — an admin <see cref="PurgeAsync"/> has no daily retry to fix it later.
     /// </para>
     /// </remarks>
     private async Task EraseEverySectionAsync(Guid userId, CancellationToken ct)
     {
-        var ordered = erasureContributors
-            .OrderBy(c => c.ErasureDeclaration.ContainsKey(GdprExportSections.Account) ? 1 : 0)
-            .ToList();
-
         foreach (var subjectId in await MergeChainAsync(userId, ct))
         {
-            foreach (var contributor in ordered)
-            {
-                try
-                {
-                    await contributor.EraseForUserAsync(subjectId, ct);
-                }
-                catch (Exception ex)
-                {
-                    // Never swallow: leaving a section's data behind silently is the bug this exists to kill.
-                    logger.LogError(ex,
-                        "GDPR erasure contributor {Contributor} failed for user {UserId}",
-                        contributor.GetType().Name, subjectId);
-                    throw;
-                }
-            }
+            await gdprService.EraseForUserAsync(subjectId, ct);
 
             // An archived id's own cache entry, dropped here: contributors write through the
             // inner UserService, and the callers only invalidate the survivor. A stale entry

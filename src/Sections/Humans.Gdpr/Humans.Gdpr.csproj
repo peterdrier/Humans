@@ -3,7 +3,7 @@
   <!--
     Still Microsoft.NET.Sdk, not Sdk.Razor: Gdpr has one controller and no views, because
     its only action returns File() or a redirect. /Guest/DownloadData lives here because
-    it calls this section's own IGdprExportService and nothing else; /Profile/Me/DownloadData
+    it calls this section's own IGdprService and nothing else; /Profile/Me/DownloadData
     stays on Users' ProfileController, since moving it would change a URL.
   -->
 

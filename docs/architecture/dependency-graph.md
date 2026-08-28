@@ -157,6 +157,7 @@ graph LR
     AdminDash[AdminDashboardService]:::dashboard
 
     EmailOutbox[EmailOutboxService]:::email
+    EmailOutboxProc[EmailOutboxProcessor]:::email
     NotifEmitter[NotificationEmitter]:::notifications
     NotifInbox[NotificationInboxService]:::notifications
     NotifMeter[NotificationMeterProvider]:::notifications
@@ -505,6 +506,8 @@ graph LR
 
     %% Email (admin outbox — pause flag lives in Settings)
     EmailOutbox --> SettingsSvc
+    EmailOutboxProc --> Campaign
+    EmailOutboxProc --> Metrics
 
     %% Settings' carry screen reads the Shifts rows it copies from (#1104).
     %% Temporary: retires with the carry screen.
@@ -568,7 +571,7 @@ Not drawn above — their collaborators are all section-internal (or fan-out con
 interfaces / infra connectors, which this graph doesn't chart):
 
 `AgentService`, `AgentAdminStatusService`, `AgentSettingsService`, `AgentAnthropicBalanceProvider`,
-`GdprExportService` (fans `IUserDataContributor`), `GoogleWorkspaceUserService`,
+`GdprService` (fans `IUserDataContributor`), `GoogleWorkspaceUserService`,
 `SyncSettingsService`, `GuideContentService`, `MailerLiteService`, `StripeService`,
 `TicketVendorService`, `EmailPreviewService` (only dep is Email's own `IEmailBodyComposer`),
 `UserNameSyncService` (only deps are Users' own `IUserRepository` and `IUserService`).

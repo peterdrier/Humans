@@ -119,6 +119,14 @@ else
         }
     </form>
 
+    @* Default-on filter: hide every row we don't owe money to (balance not positive from the
+       member's side), so the screen opens on just the accounts a payout would touch. Client-side
+       only — the rows are all rendered; unticking reveals the zero/negative and unbound rows. *@
+    <div class="form-check mb-2">
+        <input class="form-check-input" type="checkbox" id="owedOnly" checked>
+        <label class="form-check-label" for="owedOnly">Only show accounts we owe money to</label>
+    </div>
+
     <div class="card">
         <table class="table table-hover mb-0 align-middle">
             <thead>
@@ -145,7 +153,7 @@ else
             <tbody>
             @foreach (var r in Model.Accounts)
             {
-                <tr>
+                <tr class="creditor-row" data-owed="@(r.Balance is > 0m ? "1" : "0")">
                     @* Only a single-bound account with a positive balance and a Holded IBAN can be
                        paid; everything else says why instead of offering a box. The service
                        re-derives the same rules — this column is display, not the gate. *@
@@ -251,5 +259,20 @@ else
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Generating…';
         });
+
+        // Hide the rows we owe nothing to while the box is ticked (its default). Balance is stamped
+        // on each row server-side, so this is display only — the selection posts from #sepaForm and
+        // only payable rows carry a checkbox regardless of what is shown.
+        (function () {
+            var owedOnly = document.getElementById('owedOnly');
+            if (!owedOnly) return;
+            function apply() {
+                document.querySelectorAll('tr.creditor-row').forEach(function (row) {
+                    row.style.display = (owedOnly.checked && row.dataset.owed !== '1') ? 'none' : '';
+                });
+            }
+            owedOnly.addEventListener('change', apply);
+            apply();
+        })();
     </script>
 }

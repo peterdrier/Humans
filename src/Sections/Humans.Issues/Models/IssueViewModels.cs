@@ -28,7 +28,10 @@ internal sealed class SubmitIssueViewModel
     /// Technical section name (matches <see cref="IssueSectionRouting"/> values).
     /// If null when the form is posted, the controller infers it from
     /// <see cref="PageUrl"/> via <c>IssueSectionInference.FromPath</c>.
+    /// An unrouted value degrades to the Admin queue; the cap matches the column and is the
+    /// input-layer half of the service's guard (nobodies-collective/Humans#1509).
     /// </summary>
+    [StringLength(64)]
     public string? Section { get; set; }
 
     [StringLength(2000)]
@@ -187,6 +190,8 @@ internal sealed class UpdateIssueAssigneeModel
 
 internal sealed class UpdateIssueSectionModel
 {
+    /// <summary>Capped at the column width; the service is the invariant (nobodies-collective/Humans#1509).</summary>
+    [StringLength(64)]
     public string? Section { get; set; }
 }
 

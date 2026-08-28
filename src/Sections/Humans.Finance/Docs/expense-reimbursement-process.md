@@ -31,7 +31,12 @@ Happy path. When something needs fixing it gets more complicated.
    goes straight to step 3 (`CategoryRequiresCoordinatorEndorsementAsync` in Expenses).
 3. **The treasurer (finance admin) also approves it.**
 4. **The report is uploaded to Holded** for the accountant, and because math. The member gets a
-   Holded contact with a creditor account (e.g. `40000004`).
+   Holded contact with a creditor account. A member without a contact yet is created as an
+   *acreedor* (contact type `creditor`), which Holded mints in the **410 series** (e.g. `41000004`)
+   — deliberately apart from the **400-series** *proveedores*, the ordinary vendors paid by direct
+   invoice. Members onboarded before this carry a 400-series account and keep it; the binding, not
+   the range, is what ties an account to a member either way (`/Finance/Creditors` reads the whole
+   `40000000`–`41999999` block).
 5. **Holded tells Humans** that the member with that account is now owed, say, €132.45. Visible
    at the top of `/Expenses` and on `/Finance/Creditors`.
 6. **On pay day the treasurer selects who gets paid** on `/Finance/Creditors` and generates a

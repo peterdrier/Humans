@@ -45,11 +45,13 @@ shape.
 
 ## Architecture
 
-The export is assembled by `IGdprExportService` (declared on `Humans.Gdpr.Contracts`, implemented by the internal `GdprExportService` in `Humans.Gdpr`), a
+The export is assembled by `IGdprService` (declared on `Humans.Gdpr.Contracts`, implemented by the internal `GdprService` in `Humans.Gdpr`), a
 pure orchestrator that owns no database tables and has no `DbContext`
 dependency. It injects `IEnumerable<IUserDataContributor>` and fans out one
 call per contributor, merging the returned slices into a single document keyed
-by section name.
+by section name. The same service also owns the Article 17 erasure fan-out
+(`EraseForUserAsync`) over the same contributor roster — see
+[`src/Sections/Humans.Gdpr/Docs/Gdpr.md`](../../../src/Sections/Humans.Gdpr/Docs/Gdpr.md).
 
 Every section service that owns user-scoped tables implements
 `IUserDataContributor`. When a new user-scoped section is added, its owning
@@ -65,7 +67,7 @@ change.
              │
              ▼  ExportForUserAsync(userId)
 ┌─────────────────────────────────────────────────┐
-│             IGdprExportService                  │
+│             IGdprService                        │
 │          (Humans.Gdpr section project)          │
 │                                                 │
 │   foreach contributor in IEnumerable<IUDC>      │
@@ -107,7 +109,7 @@ recreates the sharing. The hazard went with the shared context, and
 Sequential is now a simplicity choice, and it stays: one contributor at a time
 keeps failure attribution and log order plain, and at ~500-user scale an export
 completes well under a second, so parallelism would buy nothing measurable. The
-loop in `GdprExportService.ExportForUserAsync` could be made parallel in place
+loop in `GdprService.ExportForUserAsync` could be made parallel in place
 without changing the contract — there is just no reason to.
 
 ## Section registry

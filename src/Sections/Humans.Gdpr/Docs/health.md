@@ -20,7 +20,7 @@ section's.
 
 | Question shape | Asked by | Answered by |
 |---|---|---|
-| "Give me everything held about this person, as one document" | both download routes | `IGdprExportService.ExportForUserAsync` |
+| "Give me everything held about this person, as one document" | both download routes | `IGdprService.ExportForUserAsync` |
 | "Here is my portion for this person" | the orchestrator, of every data-owning section | `IUserDataContributor.ContributeForUserAsync` |
 | "What do you keep when this person is forgotten, and why?" | the erasure-coverage gate, and Users' deletion job | `IUserDataContributor.ErasureDeclaration` |
 | "Forget this person's portion" | Users' deletion job | `IUserDataContributor.EraseForUserAsync` |
@@ -39,7 +39,7 @@ The shapes imply these and no more:
 
 - **A contracts leaf, as its own project.** It holds the fan-out seam
   (`IUserDataContributor`), the vocabulary (`UserDataSlice`, `GdprExportSections`), and
-  the orchestrator's own contract (`IGdprExportService`, `GdprExport`). A project rather
+  the orchestrator's own contract (`IGdprService`, `GdprExport`). A project rather
   than a folder because `Humans.Base` does not merely call this section — it *implements*
   the contract, and a folder inside the section would cycle.
 - **One internal orchestrator** — the fan-out loop, behind that contract.

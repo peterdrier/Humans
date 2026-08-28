@@ -33,17 +33,6 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
     // Reads
     // ==========================================================================
 
-    public async Task<IReadOnlyList<AuditLogEntry>> GetRecentAsync(int count, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.AuditLogEntries
-            .AsNoTracking()
-            // arch:db-sort-ok top-N audit selector
-            .OrderByDescending(e => e.OccurredAt)
-            .Take(count)
-            .ToListAsync(ct);
-    }
-
     public async Task<(IReadOnlyList<AuditLogEntry> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(
         AuditAction? actionFilter, int page, int pageSize, CancellationToken ct = default)
     {

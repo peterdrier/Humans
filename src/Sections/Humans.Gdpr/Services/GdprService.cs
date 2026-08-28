@@ -6,17 +6,18 @@ using NodaTime;
 namespace Humans.Gdpr.Services;
 
 /// <summary>
-/// Fans out GDPR Article 15 export across <see cref="IUserDataContributor"/>s into one keyed document.
-/// Sequential, not Task.WhenAll — a simplicity choice, not a correctness one. The single shared
-/// scoped DbContext that once made overlapping contributors unsafe is gone; each section has its
-/// own context type now, so no two contributors touch the same instance, and design-rules.md §8a
-/// records the old reason as obsolete. One contributor at a time keeps failure attribution and
-/// log order plain, and overlapping them would buy nothing at this scale.
+/// Fans both halves of GDPR subject rights out across <see cref="IUserDataContributor"/>s:
+/// Article 15 export into one keyed document, and Article 17 erasure in turn. Sequential,
+/// not Task.WhenAll — a simplicity choice, not a correctness one. The single shared scoped
+/// DbContext that once made overlapping contributors unsafe is gone; each section has its
+/// own context type now, so no two contributors touch the same instance, and design-rules.md
+/// §8a records the old reason as obsolete. One contributor at a time keeps failure attribution
+/// and log order plain, and overlapping them would buy nothing at this scale.
 /// </summary>
-internal sealed class GdprExportService(
+internal sealed class GdprService(
     IEnumerable<IUserDataContributor> contributors,
     IClock clock,
-    ILogger<GdprExportService> logger) : IGdprExportService
+    ILogger<GdprService> logger) : IGdprService
 {
     public async Task<GdprExport> ExportForUserAsync(Guid userId, CancellationToken ct = default)
     {
@@ -70,5 +71,31 @@ internal sealed class GdprExportService(
         return new GdprExport(
             ExportedAt: clock.GetCurrentInstant().ToIso8601(),
             Sections: sections);
+    }
+
+    public async Task EraseForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        // The contributor that owns the Account identity runs last, so the sections that
+        // need the human's addresses to reach an external processor (the Workspace suspend)
+        // can still resolve them. Ordering is derived from the declarations, not from a
+        // pinned type list.
+        var ordered = contributors
+            .OrderBy(c => c.ErasureDeclaration.ContainsKey(GdprExportSections.Account) ? 1 : 0);
+
+        foreach (var contributor in ordered)
+        {
+            try
+            {
+                await contributor.EraseForUserAsync(userId, ct);
+            }
+            catch (Exception ex)
+            {
+                // Never swallow: leaving a section's data behind silently is the bug this exists to kill.
+                logger.LogError(ex,
+                    "GDPR erasure contributor {Contributor} failed for user {UserId}",
+                    contributor.GetType().Name, userId);
+                throw;
+            }
+        }
     }
 }

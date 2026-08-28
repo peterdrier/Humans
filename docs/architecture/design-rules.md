@@ -305,7 +305,7 @@ See [`docs/architecture/dependency-graph.md`](dependency-graph.md) for the full 
 
 ### 8a. User-Scoped Sections Must Contribute to the GDPR Export
 
-Every section whose owned tables hold per-user rows MUST implement `IUserDataContributor` (`Humans.Gdpr.Contracts`) so the GDPR Article 15 data export (`IGdprExportService`) can assemble a complete document without any cross-section database reads. The orchestrator injects `IEnumerable<IUserDataContributor>`, fans out one call per contributor, and merges the returned slices into the JSON document the user downloads from `/Profile/Me/DownloadData`.
+Every section whose owned tables hold per-user rows MUST implement `IUserDataContributor` (`Humans.Gdpr.Contracts`) so the GDPR Article 15 data export (`IGdprService`) can assemble a complete document without any cross-section database reads. The orchestrator injects `IEnumerable<IUserDataContributor>`, fans out one call per contributor, and merges the returned slices into the JSON document the user downloads from `/Profile/Me/DownloadData`.
 
 Adding a new user-scoped section to §8 above requires four coupled steps — all four, in any order, before the PR can land:
 
@@ -327,7 +327,7 @@ The architecture test suite in `tests/Humans.Web.Tests/Services/Gdpr/GdprExportD
 - `EveryIUserDataContributorInInfrastructureIsExpected` — every `IUserDataContributor` found via reflection is in the expected list (catches new contributors that forget the list). It sweeps the Shell assembly, `Humans.Users`, **and every section assembly**, discovered through `SectionDiscoveryExtensions.SectionAssemblies()` — the same discovery the runtime uses, so a section that moves or renames cannot silently drop out of the scan.
 - `EveryExpectedContributorIsRegisteredInInfrastructure` — every listed type has a DI registration.
 - `EveryIUserDataContributorFactoryForwardsToAnExpectedConcreteType` — each forwarding factory resolves to a distinct expected concrete type, so a duplicated or mis-wired factory can't silently drop a section.
-- `GdprExportServiceIsRegistered` — the orchestrator itself is registered.
+- `GdprServiceIsRegistered` — the orchestrator itself is registered.
 
 **Uncaught case (convention, not test):** if a new user-scoped section is added to §8 but its owning service never implements `IUserDataContributor` at all, reflection finds nothing to enumerate and the suite passes vacuously. The four-step list above is the prose-level guardrail — reviewers should reject any §8 edit that adds a user-scoped row without touching `ExpectedContributorTypes` in the same PR.
 
@@ -343,7 +343,7 @@ Four fanouts exist today:
 
 | Orchestrator | Contributor interface | Sections that opt in | Merged result |
 |--------------|----------------------|----------------------|---------------|
-| `IGdprExportService` | `IUserDataContributor` (`Humans.Gdpr.Contracts`) | every user-scoped §8 section (see §8a) | GDPR Article 15 export document |
+| `IGdprService` | `IUserDataContributor` (`Humans.Gdpr.Contracts`) | every user-scoped §8 section (see §8a) | GDPR Article 15 export document + Article 17 erasure |
 | `IICalFeedService` (`ICalFeedService`) | `ICalendarFeedContributor` (`Humans.Calendar.Contracts`) | `EventService` (Event Guide), `ShiftSignupService` (Shifts) | a user's personal iCal `VCALENDAR` of `CalendarFeedItem` rows |
 | `IEarlyEntryService` (`EarlyEntryService`) | `IEarlyEntryProvider` (`Humans.EarlyEntry.Contracts`) | Camps, Shifts, Teams | a user's assembled early-entry grants |
 | any holder of bare Guids | `IEntityNameContributor` (`Humans.Base.Interfaces`) | `CachingTeamService` (Teams), `CachingUserService` (Users) | `Guid → EntityName(type, display name, slug?)` for the ids on one page |
@@ -372,8 +372,13 @@ services.AddScoped<ICalendarFeedContributor>(sp => sp.GetRequiredService<EventSe
 | `ISectionHealthChecks` | Health checks | builder-time, against `IHealthChecksBuilder` |
 | `ISectionEndpoints` | Endpoint mapping (SignalR hubs, etc.) | endpoint-mapping time, against `IEndpointRouteBuilder` — necessarily later than `ISection.Register`, which has neither an `IHostEnvironment` nor a route builder to hand a section |
 | `ISectionPolicies` | Authorization policy registration | `Configure<AuthorizationOptions>` (additive — policy *names* stay shared vocabulary in `PolicyNames`; only registration moves) |
+| `ISectionAnnotations` | Per-section facts for the published catalog (guide page, agent doc key, issue queue) | `SectionCatalogBuilder` → `ISectionCatalog`, rendered at `/Debug/Sections` |
 
 Composition follows the same discipline as §8b's fanouts — iterate every contributor, merge. The descriptor seams (`ISectionNav`, `ISectionAdminNav`, `ISectionAdminTiles`, `ISectionChrome`, `ISectionMemberDashboard`, `ISectionThingsToDo`) each carry a `Weight` and order by it; `ISectionJobs`, `ISectionHealthChecks`, `ISectionEndpoints` and `ISectionPolicies` have no ordering concept — a job roll-call, a health-check registration, an endpoint map and a policy set are unordered sets, not lists. `Weight` orders every list a seam contributes, nested ones included — `SectionNavViewComponent` sorts top-level `ISectionNav` items and each item's dropdown `Children` by `Weight`. Each composition sorts by weight alone and the sort is stable, so equal weights keep discovery order; no composer adds a tie-break of its own. One addition for the ordered seams: several of today's orderings (member nav, admin sidebar) encode traffic-based editorial judgement accumulated over time, so composing them must reproduce the existing order exactly, never re-sort by the composer's own judgement.
+
+**The section list itself is published from DI** (nobodies-collective/Humans#1509). `SectionDiscoveryExtensions` already derives the real set of sections from the dependency graph; `SectionCatalogBuilder` turns that into an `ISectionCatalog` singleton in `Humans.Base.Interfaces`, so any service can ask what sections exist and what each one has — its DbContexts, service interfaces, repositories, seams and dependencies, all derived from the assembly, none of it declared. Before hand-maintaining a list of section names, inject the catalog.
+
+A consumer with a *deliberate subset* of sections still owns that subset — `AgentSectionKeys` excludes operator-only sections on purpose, `IssueSectionRouting` lists the sections that have a queue — and uses the catalog to check its own list is honest rather than to replace it. That is what `ISectionAnnotations` is for: the section owning the list contributes one `SectionAnnotation` per entry, the catalog matches each against the discovered sections, and anything that matches nothing lands in `ISectionCatalog.UnmatchedAnnotations`, is logged at startup and is shown at `/Debug/Sections`. A list that has drifted off a rename becomes visible instead of drifting on in silence. It is a warning, never a startup failure: a stale entry breaks nothing at runtime — a routing table keyed by string keeps routing under the old name, and an agent key naming no section dead-ends into the community FAQ — so failing startup on drift would make a section rename un-shippable for no gain.
 
 **Which instance a section forwards** to a contributor interface follows where that contributor's read is actually served from, not a fixed lifetime. Forward the caching decorator only when the fanout read comes off the section's cached projection — `Humans.Camps`' `Section.cs` registers `AddSingleton<IEarlyEntryProvider>(sp => sp.GetRequiredService<CachingCampService>())` because `CachingCampService.GetEarlyEntriesAsync` projects entirely from the cached `CampSettingsInfo` + `CampInfo` snapshot. Otherwise forward the inner scoped service: `Humans.Teams` and `Humans.Shifts` both register scoped providers, because `team_early_entry_grants` and the volunteer-tracking rows are read from the repository per call and are not in `TeamInfo`. The orchestrator is keyed-scoped so it resolves either lifetime; registering a decorator that does not itself serve the read buys no caching and only adds a hop.
 

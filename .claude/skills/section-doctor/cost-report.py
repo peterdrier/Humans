@@ -7,7 +7,8 @@ Finds this run's own session transcript under ~/.claude/projects (the file that
 mentions the run branch and was modified after the run started), sums per-API-call
 token usage bucketed by the phase boundaries in the phase log, adds one row per
 subagent transcript (named by its `thread:` marker where it has one), and prints a
-markdown table with per-row model and API-equivalent cost.
+markdown table with per-row model and API-equivalent cost, followed by footer lines
+reporting the peak main-thread context and any mid-run compactions detected.
 
 Rows are named by what the run was DOING, not by phase number: each phase-log line
 is `<iso-ts> <phase-id> <label>` and the label becomes the row. Phase 4 writes one
@@ -24,11 +25,14 @@ import re
 import sys
 from datetime import datetime
 
-# $/MTok: fresh input, output, cache write, cache read (API list rates)
+# $/MTok: fresh input, output, cache write, cache read (API list rates).
+# Order matters: rate() takes the first substring match, so "sonnet-5" ($2/$10)
+# must precede the plain "sonnet" (4.6, $3/$15) fallback.
 RATES = {
     "fable": (10, 50, 12.50, 1.00),
     "mythos": (10, 50, 12.50, 1.00),
     "opus": (5, 25, 6.25, 0.50),
+    "sonnet-5": (2, 10, 2.50, 0.20),
     "sonnet": (3, 15, 3.75, 0.30),
     "haiku": (1, 5, 1.25, 0.10),
 }
@@ -94,6 +98,7 @@ def add(bucket, model, u):
     for key in RATES:
         if key in (model or ""):
             bucket.setdefault("models", set()).add(key)
+            break  # first match only, mirroring rate()
     fresh = u.get("input_tokens", 0)
     out = u.get("output_tokens", 0)
     cw = u.get("cache_creation_input_tokens", 0)
@@ -132,6 +137,7 @@ def main():
         b["first"] = min(b["first"], t)
         return b
 
+    contexts = []  # (label, context tokens) per main-thread call, time-ordered
     for t, model, u in usage_entries(own):
         # entries before the phase log belong to whatever the session did earlier
         # (interactive invocation) — not to this run
@@ -139,6 +145,8 @@ def main():
             continue
         pid, label = phase_at(ts(t), phases)
         add(row(f"main:{pid}:{label}", pid, label, ts(t)), model, u)
+        contexts.append((label, sum(u.get(k, 0) for k in (
+            "input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"))))
 
     for p in glob.glob(own[: -len(".jsonl")] + "/subagents/*.jsonl"):
         if os.path.getmtime(p) < run_start:
@@ -177,6 +185,25 @@ def main():
         "API-equivalent $, list rates; run under subscription quota. "
         "Measured Phase 1 to PR creation; PR create/backfill and Phase 8 excluded."
     )
+
+    # Context telemetry: where the run's context peaked, and whether it was
+    # compacted mid-run. Compaction is detected from the usage data itself — a
+    # sustained drop of >50% and >100k tokens between consecutive main-thread
+    # calls (a one-call dip, e.g. a small utility request, does not count).
+    if contexts:
+        peak_label, peak_ctx = max(contexts, key=lambda c: c[1])
+        print()
+        print(f"Peak main-thread context: {peak_ctx:,} tokens ({peak_label}).")
+        compactions = []
+        for i in range(1, len(contexts)):
+            prev, cur = contexts[i - 1][1], contexts[i][1]
+            sustained = i + 1 >= len(contexts) or contexts[i + 1][1] < prev
+            if cur < prev * 0.5 and prev - cur > 100_000 and sustained:
+                compactions.append(contexts[i][0])
+        if compactions:
+            print(f"Compactions detected: {len(compactions)} ({', '.join(compactions)}).")
+        else:
+            print("Compactions detected: none.")
 
 
 if __name__ == "__main__":

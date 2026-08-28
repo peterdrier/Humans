@@ -5,6 +5,7 @@ using NodaTime;
 using Humans.Base.Caching;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
+using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
@@ -36,6 +37,7 @@ internal sealed class IssuesService(
     IMemoryCache cache,
     IClock clock,
     IHostEnvironment env,
+    ISectionCatalog sectionCatalog,
     ILogger<IssuesService> logger) : IIssuesService, IUserDataContributor
 {
     private static readonly TimeSpan BadgeCacheDuration = TimeSpan.FromMinutes(2);
@@ -47,6 +49,9 @@ internal sealed class IssuesService(
 
     private const long MaxScreenshotBytes = 10 * 1024 * 1024; // 10MB
 
+    /// <summary>The <c>issues.section</c> column width. Nothing legitimate reaches it.</summary>
+    private const int MaxSectionLength = 64;
+
     /// <summary>
     /// Issues are kept for 6 months after they enter a terminal state. After
     /// that the row + comments + screenshot directory are removed by
@@ -54,6 +59,51 @@ internal sealed class IssuesService(
     /// <see cref="Duration"/>.
     /// </summary>
     private static readonly Duration RetentionPeriod = Duration.FromDays(180);
+
+    // ─── Section ───
+
+    /// <summary>
+    /// The value that may be stored in <c>Issue.Section</c> (nobodies-collective/Humans#1509).
+    /// Both write paths go through this: the reporter's Area dropdown and a handler re-routing.
+    /// </summary>
+    /// <remarks>
+    /// Checked against <see cref="IssueSectionRouting.AllKnownSections"/>, not against
+    /// <see cref="ISectionCatalog"/> directly, because the routing table is the set of queues
+    /// that exist — the catalog is the set of sections that exist, and two routing entries
+    /// (<c>Profiles</c>, <c>Legal</c>) deliberately outlive the sections they were named for
+    /// while stored rows still carry them. The catalog checks the routing table instead, through
+    /// <c>SectionAnnotations</c>: a stale entry surfaces on /Debug/Sections.
+    ///
+    /// An unknown value degrades to null (the Admin queue) rather than failing, which is the
+    /// behaviour the routing table was built for — it may change without a migration. Over-length
+    /// is the one hard failure: no dropdown and no handler produces it, so it means a tampered
+    /// post or a bug, and silently truncating either would hide it.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The value exceeds the column width.</exception>
+    private string? NormalizeSection(string? section)
+    {
+        if (string.IsNullOrWhiteSpace(section)) return null;
+
+        var trimmed = section.Trim();
+
+        if (trimmed.Length > MaxSectionLength)
+        {
+            throw new InvalidOperationException(
+                $"Section must be {MaxSectionLength} characters or fewer.");
+        }
+
+        var known = IssueSectionRouting.Resolve(trimmed);
+        if (known is null)
+        {
+            logger.LogWarning(
+                "Issue section {Section} is not a routed queue — routing to the Admin queue. "
+                + "Names a discovered section: {IsRealSection}",
+                trimmed,
+                sectionCatalog.TryResolve(trimmed, out _));
+        }
+
+        return known;
+    }
 
     // ─── Submission ───
 
@@ -71,6 +121,8 @@ internal sealed class IssuesService(
         IReadOnlyList<string>? reporterRoles = null,
         CancellationToken ct = default)
     {
+        section = NormalizeSection(section);
+
         var now = clock.GetCurrentInstant();
         var issueId = Guid.NewGuid();
         var storedAdditionalContext = BuildAdditionalContext(additionalContext, reporterRoles);
@@ -521,6 +573,8 @@ internal sealed class IssuesService(
         Guid issueId, string? newSection, Guid? actorUserId,
         CancellationToken ct = default)
     {
+        newSection = NormalizeSection(newSection);
+
         var issue = await repo.FindForMutationAsync(issueId, ct)
             ?? throw new InvalidOperationException($"Issue {issueId} not found");
 

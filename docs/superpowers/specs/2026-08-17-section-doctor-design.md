@@ -264,7 +264,7 @@ The plan is advisory — run-day findings can extend a section's stay.
   real `date` reads, never estimates. Doc fixes sweep the claim across `docs/guide/` and sibling
   docs; UI-affecting strikes get runtime verification in the running app. Non-mechanical changes
   (deletions beyond dead code, structural moves) get a second-opinion reviewer subagent
-  (opus-tier, score-blind, default-reject — refactor-swarm posture).
+  (fable-tier, score-blind, default-reject — refactor-swarm posture).
 - **5 Bookkeeping** — exactly two writes, both conflict-free: the `health.md` history row and
   this run's own `docs/health/runs/<date>-<Section>.md` (all in the worktree, same PR). No
   shared file is touched; daily runs never write `maintenance-log.md`.
