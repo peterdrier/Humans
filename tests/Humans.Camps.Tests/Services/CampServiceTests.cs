@@ -878,6 +878,53 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
+    public async Task RejectCampMemberAsync_CrossCampMemberId_Throws()
+    {
+        await SeedSettingsAsync();
+        var campA = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(campA.Id);
+        var campB = await _service.CreateCampAsync(
+            Guid.NewGuid(), "Other Camp", "other@camp.com", "+34600000001",
+            null, null, false, 1, MakeSeasonData(), null, 2026, Xunit.TestContext.Current.CancellationToken);
+        await ApproveLatestSeasonAsync(campB.Id);
+
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var requestInCampB = await _service.RequestCampMembershipAsync(campB.Id, userId, Xunit.TestContext.Current.CancellationToken);
+
+        // A lead of camp A tries to reject a member belonging to camp B.
+        var act = () => _service.RejectCampMemberAsync(campA.Id, requestInCampB.CampMemberId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
+
+        var memberB = await CampsDb.CampMembers.AsNoTracking().FirstAsync(m => m.Id == requestInCampB.CampMemberId, Xunit.TestContext.Current.CancellationToken);
+        memberB.Status.Should().Be(CampMemberStatus.Pending);
+    }
+
+    [HumansFact]
+    public async Task RemoveCampMemberAsync_CrossCampMemberId_Throws()
+    {
+        await SeedSettingsAsync();
+        var campA = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(campA.Id);
+        var campB = await _service.CreateCampAsync(
+            Guid.NewGuid(), "Other Camp", "other@camp.com", "+34600000001",
+            null, null, false, 1, MakeSeasonData(), null, 2026, Xunit.TestContext.Current.CancellationToken);
+        await ApproveLatestSeasonAsync(campB.Id);
+
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var requestInCampB = await _service.RequestCampMembershipAsync(campB.Id, userId, Xunit.TestContext.Current.CancellationToken);
+        await _service.ApproveCampMemberAsync(campB.Id, requestInCampB.CampMemberId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        // A lead of camp A tries to remove an active member belonging to camp B.
+        var act = () => _service.RemoveCampMemberAsync(campA.Id, requestInCampB.CampMemberId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
+
+        var memberB = await CampsDb.CampMembers.AsNoTracking().FirstAsync(m => m.Id == requestInCampB.CampMemberId, Xunit.TestContext.Current.CancellationToken);
+        memberB.Status.Should().Be(CampMemberStatus.Active);
+    }
+
+    [HumansFact]
     public async Task RejectCampMemberAsync_PendingRequest_SetsRemovedAndNotifies()
     {
         await SeedSettingsAsync();
