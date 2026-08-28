@@ -538,6 +538,9 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         return member;
     }
 
+    // Test-local mirror of CampService's CampInfo projection. It backs the warm-up
+    // legs of these tests, so keep it in sync with production — in particular the
+    // Status == Active filter on EeGrantedCount.
     private static CampInfo ProjectCampInfo(Camp camp) => new(
         camp.Id,
         camp.Slug,

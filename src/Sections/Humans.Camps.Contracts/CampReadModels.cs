@@ -31,9 +31,10 @@ public sealed record CampSettingsInfo(
 /// <para>
 /// <b>EeGrantedCount cross-table invariant.</b>
 /// <see cref="CampSeasonInfo.EeGrantedCount"/> is computed from
-/// <c>camp_members.HasEarlyEntry</c> with <b>no status filter</b> — a Removed
-/// member keeps a consumed grant (holder already entered the event), so
-/// remove-and-regrant cannot mint an extra early entry. The
+/// <c>camp_members.HasEarlyEntry</c> WHERE <c>Status = Active</c> (the display
+/// count). The slot-cap check uses the repository's unfiltered count instead,
+/// which also counts consumed grants retained on Removed rows — the two numbers
+/// differ by design. The
 /// methods that flip those fields —
 /// <see cref="ICampService.SetEarlyEntryAsync"/>,
 /// <see cref="ICampService.RemoveCampMemberAsync"/>,
