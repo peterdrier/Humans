@@ -108,9 +108,6 @@
   <data name="Camp_Edit_AddLink" xml:space="preserve">
     <value>Afegeix enllaç</value>
   </data>
-  <data name="Camp_Edit_RemoveLink" xml:space="preserve">
-    <value>Elimina</value>
-  </data>
   <data name="Camp_Edit_WebsiteNudge" xml:space="preserve">
     <value>Recomanem molt afegir un web per al teu barri perquè els visitants et puguin conèixer millor.</value>
   </data>
