@@ -99,6 +99,11 @@
                         </thead>
                         <tbody>
                             @{
+                                // Per-line cap allocation — the same greedy-in-order split the Holded push
+                                // books, so what the reviewer authorizes here is exactly what pushes later.
+                                var cappedAllocations = r.Payable < r.Total
+                                    ? PayableAllocation.Allocate(r).ToDictionary(a => a.Line.Id)
+                                    : null;
                                 var proofsByParent = r.Lines.Where(l => l.ParentLineId is not null)
                                     .GroupBy(l => l.ParentLineId!.Value)
                                     .ToDictionary(g => g.Key, g => g.OrderBy(l => l.SortOrder).ToList());
@@ -149,7 +154,21 @@
                                         }
                                         @line.Description
                                     </td>
-                                    <td class="text-end">@line.Amount.ToEuro()</td>
+                                    <td class="text-end">
+                                        @line.Amount.ToEuro()
+                                        @if (cappedAllocations is not null
+                                             && cappedAllocations.TryGetValue(line.Id, out var alloc))
+                                        {
+                                            @if (alloc.Trimmed)
+                                            {
+                                                <div><span class="badge bg-warning text-dark">@Localizer["Expenses_LineBooksOf", alloc.Booked.ToEuro(), line.Amount.ToEuro()]</span></div>
+                                            }
+                                            else if (alloc.Skipped)
+                                            {
+                                                <div><span class="badge bg-secondary">@Localizer["Expenses_LineNotBooked"]</span></div>
+                                            }
+                                        }
+                                    </td>
                                     <td>@{ await AttachmentCell(line); }</td>
                                 </tr>
                                 @if (line.LineType == ExpenseLineType.Invoice)
@@ -393,20 +412,20 @@
                                    Holded" there invites a duplicate. *@
                                 <span class="small text-muted ms-1">
                                     Given up after @sync.RetryCount attempt@(sync.RetryCount == 1 ? "" : "s").
-                                    @if (string.IsNullOrEmpty(Model.Report.HoldedDocId))
+                                    @if (Model.Report.HoldedDocIds.Count == 0)
                                     {
                                         @:This report is not in Holded.
                                     }
                                     else
                                     {
-                                        @:Document @Model.Report.HoldedDocId exists in Holded but the push did not finish — its receipts may be missing. Re-queue rather than creating a second payable.
+                                        @:@(Model.Report.HoldedDocIds.Count == 1 ? "Document" : "Documents") @string.Join(", ", Model.Report.HoldedDocIds) exist@(Model.Report.HoldedDocIds.Count == 1 ? "s" : "") in Holded but the push did not finish — receipts or further documents may be missing. Re-queue rather than creating a second payable.
                                     }
                                 </span>
                                 break;
                             case ExpenseHoldedSyncState.Pushed:
                                 <span class="badge text-bg-success">Pushed</span>
                                 <span class="small text-muted ms-1">
-                                    @(sync.SettledAt is { } at ? at.ToDateTime() : "")@(string.IsNullOrEmpty(Model.Report.HoldedDocId) ? "" : $" — document {Model.Report.HoldedDocId}")
+                                    @(sync.SettledAt is { } at ? at.ToDateTime() : "")@(Model.Report.HoldedDocIds.Count == 0 ? "" : $" — {(Model.Report.HoldedDocIds.Count == 1 ? "document" : "documents")} {string.Join(", ", Model.Report.HoldedDocIds)}")
                                 </span>
                                 break;
                             case ExpenseHoldedSyncState.NotConfigured:
@@ -457,7 +476,7 @@
                             Change below if needed.
                         </p>
                     }
-                    else if (Model.HasCreditorContact && string.IsNullOrEmpty(Model.Report.HoldedDocId))
+                    else if (Model.HasCreditorContact && Model.Report.HoldedDocIds.Count == 0)
                     {
                         <p class="small mb-2 text-muted">
                             <i class="fa-solid fa-circle-info me-1"></i>This member has a Holded contact; its 400000xx

@@ -418,15 +418,16 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task SetHoldedDocIdAsync(
-        Guid reportId, string holdedDocId, Instant updatedAt,
+    public async Task SetLineHoldedDocIdAsync(
+        Guid lineId, string holdedDocId, Instant updatedAt,
         CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var r = await ctx.ExpenseReports.FirstOrDefaultAsync(x => x.Id == reportId, ct);
-        if (r is null) return;
-        r.HoldedDocId = holdedDocId;
-        r.UpdatedAt = updatedAt;
+        var line = await ctx.ExpenseLines.FirstOrDefaultAsync(x => x.Id == lineId, ct);
+        if (line is null) return;
+        line.HoldedDocId = holdedDocId;
+        var r = await ctx.ExpenseReports.FirstOrDefaultAsync(x => x.Id == line.ExpenseReportId, ct);
+        if (r is not null) r.UpdatedAt = updatedAt;
         await ctx.SaveChangesAsync(ct);
     }
 

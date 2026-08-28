@@ -84,6 +84,8 @@
   <data name="Expenses_IouHeader" xml:space="preserve"><value>What the collective owes you</value></data>
   <data name="Expenses_IouOwed" xml:space="preserve"><value>Owed to you (Holded balance)</value></data>
   <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Item</value></data>
+  <data name="Expenses_LineBooksOf" xml:space="preserve"><value>Books {0} of {1} — authorized maximum</value></data>
+  <data name="Expenses_LineNotBooked" xml:space="preserve"><value>Not booked — authorized maximum reached</value></data>
   <data name="Expenses_MaxAmount" xml:space="preserve"><value>Max amount</value></data>
   <data name="Expenses_MyReportsTitle" xml:space="preserve"><value>My Expense Reports</value></data>
   <data name="Expenses_NewReport" xml:space="preserve"><value>New Report</value></data>

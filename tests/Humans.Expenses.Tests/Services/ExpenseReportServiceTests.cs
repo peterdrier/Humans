@@ -1985,7 +1985,8 @@ public sealed class ExpenseReportServiceTests
         SetupUserAndProfile(userId, "Alice Tester", "ES9121000418450200051332");
         var reportId = await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
         await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow, Xunit.TestContext.Current.CancellationToken);
-        await _expenseRepo.SetHoldedDocIdAsync(reportId, "doc-1", FakeNow, Xunit.TestContext.Current.CancellationToken);
+        var seededLineId = (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!.Lines[0].Id;
+        await _expenseRepo.SetLineHoldedDocIdAsync(seededLineId, "doc-1", FakeNow, Xunit.TestContext.Current.CancellationToken);
 
         _holdedFinance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
             .Returns(new HoldedCreditorStatus(40000007, Balance: -200m, OwedToMember: 200m,
@@ -2010,7 +2011,8 @@ public sealed class ExpenseReportServiceTests
         SetupUserAndProfile(userId, "Alice Tester", "ES9121000418450200051332");
         var reportId = await SeedApprovedReportWithAttachmentAsync(userId, category.Id, maxAmount: 30m);
         await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow, Xunit.TestContext.Current.CancellationToken);
-        await _expenseRepo.SetHoldedDocIdAsync(reportId, "doc-1", FakeNow, Xunit.TestContext.Current.CancellationToken);
+        var seededLineId = (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!.Lines[0].Id;
+        await _expenseRepo.SetLineHoldedDocIdAsync(seededLineId, "doc-1", FakeNow, Xunit.TestContext.Current.CancellationToken);
 
         _holdedFinance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
             .Returns(new HoldedCreditorStatus(40000007, Balance: -30m, OwedToMember: 30m,
@@ -2032,7 +2034,8 @@ public sealed class ExpenseReportServiceTests
         SetupUserAndProfile(userId, "Alice Tester", "ES9121000418450200051332");
         var reportId = await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
         await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow, Xunit.TestContext.Current.CancellationToken);
-        await _expenseRepo.SetHoldedDocIdAsync(reportId, "doc-1", FakeNow, Xunit.TestContext.Current.CancellationToken);
+        var seededLineId = (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!.Lines[0].Id;
+        await _expenseRepo.SetLineHoldedDocIdAsync(seededLineId, "doc-1", FakeNow, Xunit.TestContext.Current.CancellationToken);
 
         _holdedFinance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
             .Returns(new HoldedCreditorStatus(40000007, Balance: -50m, OwedToMember: 50m,

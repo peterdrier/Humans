@@ -32,8 +32,17 @@ Happy path. When something needs fixing it gets more complicated.
    This step is the expected route, not an enforced gate: the treasurer can approve straight from
    Submitted when there is a rush, and the approval's audit entry records that they did.
 3. **The treasurer (finance admin) also approves it.**
-4. **The report is uploaded to Holded** for the accountant, and because math. The member gets a
-   Holded contact with a creditor account. A member without a contact yet is created as an
+4. **The report is uploaded to Holded** for the accountant, and because math. **One purchase
+   document per receipt**: each invoice/receipt on the report becomes its own Holded purchase doc
+   carrying that one attachment, so what the accountant registers matches the underlying legal
+   documents one-to-one. The report's subject/note stays in Humans — each doc's description is its
+   receipt's description plus a reference back to the report. When the approvers capped the payout
+   below the receipts total, the receipts book in order until the cap runs out: the receipt the cap
+   lands inside books at face value with a negative "authorized maximum" adjustment on the same
+   account, and any receipt entirely past the cap is **not booked at all** — nothing is reimbursed
+   for it, so Holded holds no record of it (the report's own audit trail and detail view say so).
+   The member gets a Holded contact with a creditor account. A member without a contact yet is
+   created as an
    *acreedor* (contact type `creditor`), which Holded mints in the **410 series** (e.g. `41000004`)
    — deliberately apart from the **400-series** *proveedores*, the ordinary vendors paid by direct
    invoice. Members onboarded before this carry a 400-series account and keep it; the binding, not

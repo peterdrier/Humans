@@ -24,6 +24,8 @@ internal sealed class ExpenseReport
     public string? LastRejectionReason { get; set; }
     public Guid? LastRejectedByUserId { get; set; }
     public Instant? LastRejectedAt { get; set; }
+    /// <summary>Legacy single-doc pushes only (pre per-line docs). New pushes create one doc per
+    /// bookable line and write <see cref="ExpenseLine.HoldedDocId"/>; this is never set again.</summary>
     public string? HoldedDocId { get; set; }
     /// <summary>Holded contact id for this submitter (set on first push). Links to creditor balance + payments.</summary>
     public string? HoldedContactId { get; set; }

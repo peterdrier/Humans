@@ -117,16 +117,16 @@ internal interface IExpenseRepository : IRepository
     Task MarkAttachmentPushedAsync(
         Guid attachmentId, NodaTime.Instant pushedAt, CancellationToken ct = default);
     /// <summary>
-    /// Persists the freshly-issued Holded document id on the report. Caller
-    /// invokes this immediately after <c>IHoldedClient.CreatePurchaseDocumentAsync</c>
-    /// returns — that way a transient failure during attachment upload (which runs
-    /// after) does not cause the outbox event to retry the create call and produce
-    /// a duplicate Holded document. Marking the outbox event processed is a
-    /// separate <see cref="MarkOutboxProcessedAsync"/> call that runs only after
-    /// the full create + upload chain succeeds.
+    /// Persists the freshly-issued Holded document id on the line. Caller invokes
+    /// this immediately after <c>IHoldedClient.CreatePurchaseDocumentAsync</c>
+    /// returns for that line — that way a transient failure later in the push
+    /// (attachment upload, the next line's doc) does not cause the outbox event to
+    /// retry the create call and produce a duplicate Holded document. Marking the
+    /// outbox event processed is a separate <see cref="MarkOutboxProcessedAsync"/>
+    /// call that runs only after every line's create + upload + approve succeeds.
     /// </summary>
-    Task SetHoldedDocIdAsync(
-        Guid reportId, string holdedDocId, NodaTime.Instant updatedAt,
+    Task SetLineHoldedDocIdAsync(
+        Guid lineId, string holdedDocId, NodaTime.Instant updatedAt,
         CancellationToken ct = default);
     /// <summary>
     /// Persists the Holded contact id and (optionally) the resolved 400000xx supplier-account

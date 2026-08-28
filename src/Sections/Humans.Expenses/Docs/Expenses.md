@@ -35,7 +35,7 @@ Members submit expense reports for reimbursement. Finance Admin reviews and appr
 | BudgetCategoryId | Guid | FK → Budget.BudgetCategory (cross-domain, scalar only) |
 | BudgetYearId | Guid | FK → Budget.BudgetYear (cross-domain, scalar only) |
 | Status | ExpenseReportStatus | see enum below |
-| Note | string? | optional submitter-written **Subject**; becomes the Holded document `Description` |
+| Note | string? | optional submitter-written **Subject**; stays in Humans — the Holded docs' `Description` is each line's description plus a report reference |
 | PayeeName | string | snapshotted at submit |
 | PayeeIban | string | snapshotted at submit, refreshable from `/Expenses/{id}/Iban` until approval; MUST be masked in all log/audit output |
 | Total | decimal | sum of line amounts — the receipts total, not what is paid |
@@ -45,7 +45,7 @@ Members submit expense reports for reimbursement. Finance Admin reviews and appr
 | CoordinatorEndorsedAt | Instant? | |
 | ApprovedByUserId | Guid? | scalar FK |
 | ApprovedAt | Instant? | |
-| HoldedDocId | string? | Holded purchase document id |
+| HoldedDocId | string? | **Legacy** single-doc pushes only (pre per-line docs); never set by new pushes — read via `ExpenseReportDto.HoldedDocIds`, which folds it with the per-line ids |
 | HoldedContactId | string? | Holded contact id for this submitter; set on first push; links to creditor cache |
 | HoldedSupplierAccountNum | int? | 40000000–41999999 supplier-account number (supplierRecord.num), cached at push time |
 | LastRejectionReason / LastRejectedByUserId / LastRejectedAt | — | last rejection details |
@@ -67,6 +67,7 @@ Members submit expense reports for reimbursement. Finance Admin reviews and appr
 | AttachmentId | Guid? | FK → expense_attachments |
 | ParentLineId | Guid? | self-FK → expense_lines; non-null marks a proof row backing that Invoice line |
 | SortOrder | int | |
+| HoldedDocId | string? | the Holded purchase doc this line booked to (one doc per bookable line); null until pushed, on proof rows, and on lines the cap zeroed out |
 
 ### ExpenseAttachment
 
@@ -136,7 +137,8 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 - **Every decision is taken from `/Expenses/{id}`**, never from a queue row, so a report cannot be approved, rejected or endorsed without its lines and receipts on screen. `/Expenses/Review` lists and links; it carries no decision controls.
 - `/Expenses/Review` is one queue for three audiences, scoped by the viewer: a finance admin sees every non-draft, non-withdrawn report; anyone else sees their own plus those booked to a budget category they coordinate. Drafts and withdrawals never appear — they belong to `/Expenses`.
 - Payable is `min(Total, MaxAmount)` (`ExpenseReportDto.Payable`). Owed/paid math, the review queue, and the detail view all read the payable; `Total` renders only as the receipts total.
-- A capped report pushes to Holded with one extra negative line ("Authorized maximum €X — adjustment", amount `MaxAmount − Total`, same account as the receipt lines) so the purchase document totals the payable. No adjustment line when the report is uncapped or the cap is at or above `Total`.
+- **The push books one Holded purchase document per bookable line**, in `SortOrder`, each carrying that line's description (plus a report reference in the doc description), amount, category account, and its one attachment. Proof rows get neither doc lines nor uploads. Reports pushed before per-line docs keep their single report-level `HoldedDocId`; a re-queue of one resumes onto that doc (remaining uploads + approve) and never mints per-line docs beside it.
+- **The authorized cap allocates greedily in `SortOrder`** (`PayableAllocation` — the push, the detail view, and the audit message all read the same allocation): each line books in full until the payable runs out. The line the cap lands inside books its receipt at face value plus a negative "Authorized maximum €X — adjustment" line on the same account, so that doc totals what the cap lets it book while still matching its attached receipt. A line entirely past the cap gets **no doc and no upload** — Holded holds no record of it — and the skip is named in the `ExpenseHoldedPushed` audit entry and badged on the detail view's lines table (trimmed lines show "books X of Y" there too, from endorsement onward). Where the reduction lands is presentation only: the whole report books to one category account. No adjustment or skip when the report is uncapped or the cap is at or above `Total`.
 - `Profile.Iban` must be non-null at submit time. `PayeeIban` is snapshotted at that moment. A later profile-level IBAN change (`/Profile`) never touches an in-flight report. A change made through **the report's own** `/Expenses/{id}/Iban` page does: while the report is `Submitted` or `CoordinatorEndorsed` it rewrites that report's `PayeeIban` too, because the point of the page is fixing the payment before it goes out. `Draft` has no snapshot to fix (submit takes it), and `Approved` / `Withdrawn` are never touched — approval has already queued the Holded push. Clearing the IBAN is **refused** on `Submitted` / `CoordinatorEndorsed`: a report awaiting payment needs one, and half-applying would leave profile and snapshot disagreeing about who gets paid. The form stops offering the removal on those statuses too (`ExpenseIbanViewModel.CanRemoveIban`), so the page never invites what the service will reject.
 - The `/Expenses/{id}` **Payee** card renders the report's own `PayeeName` (unmasked legal name) and masked `PayeeIban` — the submit-time snapshot, i.e. who Holded actually pays. It is scoped to the submitter and finance admins (`ExpenseDetailViewModel.CanSeePayee`); a coordinator endorsing a report does not see it, because the legal name is unmasked and burner names are the norm elsewhere. The card never shows the *viewer's* own IBAN on someone else's report: what it renders is always the *report submitter's* state, and the Set/Change IBAN buttons render for the submitter and for whoever the `Edit` grant covers (the `Iban` action Forbids everyone else).
 - **A report belongs to its `SubmitterUserId`; whoever is changing it is only the actor.** Everything payee-shaped reads the submitter's profile, never the acting user's — `SubmitAsync` snapshots the submitter's IBAN and legal name, and the `Iban` page writes the submitter's profile. The actor appears only where it means the actor: `ExpenseAttachment.UploadedByUserId` and the audit entries.

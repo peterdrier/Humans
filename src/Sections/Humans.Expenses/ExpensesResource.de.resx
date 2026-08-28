@@ -84,6 +84,8 @@
   <data name="Expenses_IouHeader" xml:space="preserve"><value>Was das Kollektiv dir schuldet</value></data>
   <data name="Expenses_IouOwed" xml:space="preserve"><value>Dir geschuldet (Holded-Saldo)</value></data>
   <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Position</value></data>
+  <data name="Expenses_LineBooksOf" xml:space="preserve"><value>Verbucht {0} von {1} — genehmigtes Maximum</value></data>
+  <data name="Expenses_LineNotBooked" xml:space="preserve"><value>Nicht verbucht — genehmigtes Maximum erreicht</value></data>
   <data name="Expenses_MaxAmount" xml:space="preserve"><value>Höchstbetrag</value></data>
   <data name="Expenses_MyReportsTitle" xml:space="preserve"><value>Meine Spesenabrechnungen</value></data>
   <data name="Expenses_NewReport" xml:space="preserve"><value>Neue Abrechnung</value></data>

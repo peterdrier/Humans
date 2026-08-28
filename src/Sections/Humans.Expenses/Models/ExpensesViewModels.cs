@@ -28,7 +28,7 @@ internal sealed class ExpensesIndexViewModel
     /// <summary>Unbound although a report already reached Holded — auto-bind failed and only a manual
     /// bind clears it (nobodies-collective/Humans#972). Unbound with no pushed report is just "not yet".</summary>
     public bool CreditorBindingFailed =>
-        BoundAccountNum is null && Reports.Any(r => r.HoldedDocId is not null);
+        BoundAccountNum is null && Reports.Any(r => r.HoldedDocIds.Count > 0);
 
     /// <summary>True when this user is a coordinator for any budget-year team, regardless of queue depth.</summary>
     public bool IsCoordinator { get; init; }

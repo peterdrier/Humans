@@ -13,4 +13,8 @@ public sealed record ExpenseLineDto
     /// excluded from the report total and from the Holded push — reviewed, never booked.</summary>
     public Guid? ParentLineId { get; init; }
     public required int SortOrder { get; init; }
+    /// <summary>The Holded purchase document this line booked to (one doc per bookable line).
+    /// Null until pushed, on proof rows, and on lines the authorized cap zeroed out. Reports
+    /// pushed before per-line docs carry their single doc id on the report instead.</summary>
+    public string? HoldedDocId { get; init; }
 }

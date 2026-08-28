@@ -91,11 +91,11 @@ internal sealed class ExpenseReportService(
                 report.HoldedSupplierAccountNum, ct);
 
             var memberReports = await repo.GetForSubmitterAsync(report.SubmitterUserId, ct);
-            // A report with a HoldedDocId is booked as a payable in Holded (the purchase doc is created
+            // A report with Holded docs is booked as payables in Holded (the purchase docs are created
             // at outbox-drain time), so it contributes to the creditor balance from Approved onward.
             // Approved is the report's terminal state — paid/unpaid is read from the account ledger, never the report.
             memberRegisteredTotal = memberReports
-                .Where(r => r.HoldedDocId is not null
+                .Where(r => r.HoldedDocIds.Count > 0
                          && r.Status is ExpenseReportStatus.Approved)
                 .Sum(r => r.Payable);
 
@@ -109,7 +109,7 @@ internal sealed class ExpenseReportService(
 
         return new ExpenseHoldedTimeline
         {
-            RegisteredInHolded = report.HoldedDocId is not null,
+            RegisteredInHolded = report.HoldedDocIds.Count > 0,
             OwedToMember = owed,
             MemberRegisteredTotal = memberRegisteredTotal,
             OtherAmount = Math.Max(0m, owed - memberRegisteredTotal),
@@ -1273,90 +1273,20 @@ internal sealed class ExpenseReportService(
         // the category has no active mapping; the doc still creates, just unbooked.
         var holdedAccountId = await holdedFinance.GetHoldedAccountIdForCategoryAsync(report.BudgetCategoryId, ct);
 
-        // Proof rows back an invoice line for review only — they are not booked and their
-        // files are not uploaded. What Holded gets is the invoice itself.
-        var bookableLines = report.Lines
-            .Where(l => l.ParentLineId is null)
-            .OrderBy(l => l.SortOrder)
-            .ToList();
-
-        var docLines = bookableLines
-            .Select(l => new HoldedPurchaseDocumentLineInput
-            {
-                Description = l.Description,
-                Amount = l.Amount,
-                AccountId = holdedAccountId,
-            })
-            .ToList();
-
-        // The receipts are booked in full and a negative line brings the doc down to the authorized
-        // cap, so the payable matches what was approved without rewriting the receipt lines.
-        if (report.Payable < report.Total)
+        // 2–4. One purchase doc per bookable line, each carrying its one receipt. A report pushed
+        // before per-line docs carries a report-level doc id instead: that push resumes onto its
+        // single doc rather than minting per-line duplicates next to it.
+        string pushedSummary;
+        if (!string.IsNullOrEmpty(report.HoldedDocId))
         {
-            docLines.Add(new HoldedPurchaseDocumentLineInput
-            {
-                Description =
-                    $"Authorized maximum €{report.Payable.ToString("0.00", CultureInfo.InvariantCulture)} — adjustment",
-                Amount = report.Payable - report.Total,
-                AccountId = holdedAccountId,
-            });
-        }
-
-        var input = new HoldedPurchaseDocumentInput
-        {
-            ContactId = holdedContactId,
-            ContactName = submitterName,
-            Date = report.SubmittedAt ?? report.CreatedAt,
-            Description = report.Note ?? "",
-            Lines = docLines,
-        };
-
-        // 2. Create the purchase doc (idempotent on HoldedDocId).
-        string holdedDocId;
-        if (string.IsNullOrEmpty(report.HoldedDocId))
-        {
-            holdedDocId = await holdedClient.CreatePurchaseDocumentAsync(input, ct);
-            await repo.SetHoldedDocIdAsync(report.Id, holdedDocId, now, ct);
+            await ResumeLegacySingleDocPushAsync(report, report.HoldedDocId, now, ct);
+            pushedSummary = $"Pushed to Holded as purchase document {report.HoldedDocId}.";
         }
         else
         {
-            holdedDocId = report.HoldedDocId;
+            pushedSummary = await PushPerLineDocsAsync(
+                report, submitterName, holdedContactId, holdedAccountId, now, ct);
         }
-
-        // 3. Upload attachments. Each upload is recorded so a re-run — after a failure partway
-        // through this loop, or after a finance admin requeues the event — resumes instead of
-        // adding a second copy of every earlier file to the same doc.
-        foreach (var line in bookableLines)
-        {
-            if (line.AttachmentId is null || line.Attachment is null) continue;
-            if (line.Attachment.HoldedUploadedAt is not null) continue;
-
-            var bytes = await fileStorage.TryReadAsync(
-                AttachmentKey(line.Attachment.Id, line.Attachment.Extension), ct);
-            if (bytes is null)
-                throw new InvalidOperationException(
-                    $"Attachment file for {line.Attachment.Id}{line.Attachment.Extension} could not be read from storage.");
-            using var stream = new MemoryStream(bytes, writable: false);
-            await holdedClient.UploadAttachmentAsync(
-                holdedDocId,
-                new HoldedAttachmentInput
-                {
-                    FileName = line.Attachment.OriginalFileName,
-                    ContentType = line.Attachment.ContentType,
-                    Content = stream,
-                },
-                ct);
-            await repo.MarkAttachmentPushedAsync(line.Attachment.Id, now, ct);
-        }
-
-        // 4. Approve the doc — POST /purchases only creates a draft, and nothing else approves it,
-        // so an unapproved doc never books to the ledger. Checked first via GetPurchaseDocumentAsync's
-        // ApprovedAt, mirroring how Store decides whether a sales document still needs approving
-        // (Humans.Store/Services/Service.cs, IsDraft check before ApproveSalesDocumentAsync) — so a
-        // re-drain that reaches an already-approved doc does not throw the event into permanent failure.
-        var currentDoc = await holdedClient.GetPurchaseDocumentAsync(holdedDocId, ct);
-        if (currentDoc.ApprovedAt is null)
-            await holdedClient.ApprovePurchaseDocumentAsync(holdedDocId, ct);
 
         // 5. Resolve supplierRecord.num (now that a payable exists) and persist the contact link.
         // Best-effort: the doc is already created, so a failure here must NOT fail the outbox event
@@ -1394,9 +1324,149 @@ internal sealed class ExpenseReportService(
         await auditLogService.LogAsync(
             AuditAction.ExpenseHoldedPushed,
             AuditEntityTypes.Report, report.Id,
-            $"Pushed to Holded as purchase document {holdedDocId}.",
+            pushedSummary,
             OutboxJobName);
     }
+
+    /// <summary>
+    /// One purchase doc per bookable line, in <c>SortOrder</c>: create (idempotent on the line's
+    /// <c>HoldedDocId</c>), upload its one receipt (idempotent on <c>HoldedUploadedAt</c>), approve
+    /// (idempotent on the doc's <c>ApprovedAt</c> — POST /purchases only creates a draft, and an
+    /// unapproved doc never books to the ledger). A line the cap trims books its receipt at face
+    /// value plus a negative adjustment line on the same account; a line the cap zeroed out gets no
+    /// doc and no upload — the skip is named in the returned audit summary, since Holded then holds
+    /// no record of that receipt at all.
+    /// </summary>
+    private async Task<string> PushPerLineDocsAsync(
+        ExpenseReportDto report,
+        string submitterName,
+        string holdedContactId,
+        string? holdedAccountId,
+        Instant now,
+        CancellationToken ct)
+    {
+        var allocations = PayableAllocation.Allocate(report);
+
+        var pushedDocIds = new List<string>();
+        var notes = new List<string>();
+        foreach (var allocation in allocations)
+        {
+            var line = allocation.Line;
+            if (allocation.Booked <= 0m)
+            {
+                if (allocation.Skipped)
+                    notes.Add(
+                        $"'{line.Description}' ({Euro(line.Amount)}) not booked — authorized maximum reached.");
+                continue;
+            }
+
+            var holdedDocId = line.HoldedDocId;
+            if (string.IsNullOrEmpty(holdedDocId))
+            {
+                var docLines = new List<HoldedPurchaseDocumentLineInput>
+                {
+                    new()
+                    {
+                        Description = line.Description,
+                        Amount = line.Amount,
+                        AccountId = holdedAccountId,
+                    },
+                };
+                // The receipt books at face value so the doc matches its attachment; the negative
+                // line brings the doc down to what the cap lets this line book.
+                if (allocation.Trimmed)
+                {
+                    docLines.Add(new HoldedPurchaseDocumentLineInput
+                    {
+                        Description = $"Authorized maximum {Euro(report.Payable)} — adjustment",
+                        Amount = allocation.Booked - line.Amount,
+                        AccountId = holdedAccountId,
+                    });
+                }
+
+                holdedDocId = await holdedClient.CreatePurchaseDocumentAsync(
+                    new HoldedPurchaseDocumentInput
+                    {
+                        ContactId = holdedContactId,
+                        ContactName = submitterName,
+                        Date = report.SubmittedAt ?? report.CreatedAt,
+                        // The report's Note stays in Humans — the doc's breadcrumb back to its
+                        // report is what the accountant needs, not member↔reviewer context.
+                        Description = $"{line.Description} — expense report {report.Id}",
+                        Lines = docLines,
+                    }, ct);
+                await repo.SetLineHoldedDocIdAsync(line.Id, holdedDocId, now, ct);
+            }
+            pushedDocIds.Add(holdedDocId);
+
+            if (allocation.Trimmed)
+                notes.Add(
+                    $"'{line.Description}' booked {Euro(allocation.Booked)} of {Euro(line.Amount)} (authorized maximum).");
+
+            await UploadLineAttachmentAsync(line, holdedDocId, now, ct);
+
+            var currentDoc = await holdedClient.GetPurchaseDocumentAsync(holdedDocId, ct);
+            if (currentDoc.ApprovedAt is null)
+                await holdedClient.ApprovePurchaseDocumentAsync(holdedDocId, ct);
+        }
+
+        var summary = pushedDocIds.Count == 1
+            ? $"Pushed to Holded as purchase document {pushedDocIds[0]}."
+            : $"Pushed to Holded as purchase documents {string.Join(", ", pushedDocIds)}.";
+        return notes.Count == 0 ? summary : $"{summary} {string.Join(" ", notes)}";
+    }
+
+    /// <summary>
+    /// Finishes a push that started before per-line docs: the report-level doc already exists in
+    /// Holded (possibly with some receipts on it), so upload what is still missing and approve —
+    /// never create a second payable next to it.
+    /// </summary>
+    private async Task ResumeLegacySingleDocPushAsync(
+        ExpenseReportDto report, string holdedDocId, Instant now, CancellationToken ct)
+    {
+        foreach (var line in report.Lines
+                     .Where(l => l.ParentLineId is null)
+                     .OrderBy(l => l.SortOrder))
+        {
+            await UploadLineAttachmentAsync(line, holdedDocId, now, ct);
+        }
+
+        var currentDoc = await holdedClient.GetPurchaseDocumentAsync(holdedDocId, ct);
+        if (currentDoc.ApprovedAt is null)
+            await holdedClient.ApprovePurchaseDocumentAsync(holdedDocId, ct);
+    }
+
+    /// <summary>
+    /// Uploads the line's receipt to the given doc. Each upload is recorded so a re-run — after a
+    /// failure partway through the push, or after a finance admin requeues the event — resumes
+    /// instead of adding a second copy of every earlier file.
+    /// </summary>
+    private async Task UploadLineAttachmentAsync(
+        ExpenseLineDto line, string holdedDocId, Instant now, CancellationToken ct)
+    {
+        if (line.AttachmentId is null || line.Attachment is null) return;
+        if (line.Attachment.HoldedUploadedAt is not null) return;
+
+        var bytes = await fileStorage.TryReadAsync(
+            AttachmentKey(line.Attachment.Id, line.Attachment.Extension), ct);
+        if (bytes is null)
+            throw new InvalidOperationException(
+                $"Attachment file for {line.Attachment.Id}{line.Attachment.Extension} could not be read from storage.");
+        using var stream = new MemoryStream(bytes, writable: false);
+        await holdedClient.UploadAttachmentAsync(
+            holdedDocId,
+            new HoldedAttachmentInput
+            {
+                FileName = line.Attachment.OriginalFileName,
+                ContentType = line.Attachment.ContentType,
+                Content = stream,
+            },
+            ct);
+        await repo.MarkAttachmentPushedAsync(line.Attachment.Id, now, ct);
+    }
+
+    private static string Euro(decimal amount) =>
+        $"€{amount.ToString("0.00", CultureInfo.InvariantCulture)}";
 
     /// <summary>
     /// The service-side half of the edit gate (the resource-based handler is the first half). For

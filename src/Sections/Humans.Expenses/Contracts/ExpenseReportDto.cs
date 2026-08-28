@@ -25,7 +25,17 @@ public sealed record ExpenseReportDto
     public string? LastRejectionReason { get; init; }
     public Guid? LastRejectedByUserId { get; init; }
     public Instant? LastRejectedAt { get; init; }
+    /// <summary>Legacy single-doc pushes only (pre per-line docs); new pushes set
+    /// <see cref="ExpenseLineDto.HoldedDocId"/> per line. Read via <see cref="HoldedDocIds"/>.</summary>
     public string? HoldedDocId { get; init; }
+    /// <summary>Every Holded purchase document this report booked to: the legacy report-level doc
+    /// when present, else the per-line docs in line order. Empty means not (yet) in Holded.</summary>
+    public IReadOnlyList<string> HoldedDocIds => HoldedDocId is not null
+        ? [HoldedDocId]
+        : Lines.Where(l => l.HoldedDocId is not null)
+            .OrderBy(l => l.SortOrder)
+            .Select(l => l.HoldedDocId!)
+            .ToList();
     public string? HoldedContactId { get; init; }
     public int? HoldedSupplierAccountNum { get; init; }
     public required Instant CreatedAt { get; init; }

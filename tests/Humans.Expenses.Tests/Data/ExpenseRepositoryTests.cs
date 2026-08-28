@@ -431,20 +431,25 @@ public class ExpenseRepositoryTests
     }
 
     [HumansFact]
-    public async Task SetHoldedDocIdAsync_PersistsHoldedDocIdAndUpdatedAt()
+    public async Task SetLineHoldedDocIdAsync_PersistsLineDocIdAndReportUpdatedAt()
     {
         // Persistence is intentionally separate from outbox-event marking — the
-        // service writes HoldedDocId immediately after the Holded create call and
-        // marks the outbox event processed only after the full upload chain succeeds
-        // (idempotency: a retry after a failed upload reuses the persisted doc id).
+        // service writes the line's HoldedDocId immediately after the Holded create call and
+        // marks the outbox event processed only after every line's create + upload + approve
+        // succeeds (idempotency: a retry after a failed upload reuses the persisted doc id).
         var report = MakeReport(status: ExpenseReportStatus.Approved);
         await Seed(report);
+        var lineId = Guid.NewGuid();
+        await _sut.AddLineAsync(report.Id,
+            new ExpenseLine { Id = lineId, Description = "x", Amount = 10m }, Xunit.TestContext.Current.CancellationToken);
         var updatedAt = Instant.FromUtc(2026, 5, 5, 1, 0);
 
-        await _sut.SetHoldedDocIdAsync(report.Id, "doc-123", updatedAt, Xunit.TestContext.Current.CancellationToken);
+        await _sut.SetLineHoldedDocIdAsync(lineId, "doc-123", updatedAt, Xunit.TestContext.Current.CancellationToken);
 
         var loaded = await _sut.GetByIdAsync(report.Id, Xunit.TestContext.Current.CancellationToken);
-        loaded!.HoldedDocId.Should().Be("doc-123");
+        loaded!.Lines.Single(l => l.Id == lineId).HoldedDocId.Should().Be("doc-123");
+        loaded.HoldedDocId.Should().BeNull();
+        loaded.HoldedDocIds.Should().Equal("doc-123");
         loaded.UpdatedAt.Should().Be(updatedAt);
     }
 

@@ -39,6 +39,7 @@ internal static class ExpenseReportMapper
             LineType = l.LineType,
             AttachmentId = l.AttachmentId,
             ParentLineId = l.ParentLineId,
+            HoldedDocId = l.HoldedDocId,
             Attachment = l.Attachment is null
                 ? null
                 : new ExpenseAttachmentDto

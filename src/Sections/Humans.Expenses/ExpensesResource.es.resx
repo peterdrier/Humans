@@ -84,6 +84,8 @@
   <data name="Expenses_IouHeader" xml:space="preserve"><value>Lo que el colectivo te debe</value></data>
   <data name="Expenses_IouOwed" xml:space="preserve"><value>Te debe (saldo en Holded)</value></data>
   <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Concepto</value></data>
+  <data name="Expenses_LineBooksOf" xml:space="preserve"><value>Contabiliza {0} de {1} — máximo autorizado</value></data>
+  <data name="Expenses_LineNotBooked" xml:space="preserve"><value>No contabilizado — máximo autorizado alcanzado</value></data>
   <data name="Expenses_MaxAmount" xml:space="preserve"><value>Importe máximo</value></data>
   <data name="Expenses_MyReportsTitle" xml:space="preserve"><value>Mis informes de gastos</value></data>
   <data name="Expenses_NewReport" xml:space="preserve"><value>Nuevo informe</value></data>
