@@ -52,7 +52,8 @@ beyond display formatting. That is today's layout minus the exceptions listed in
   page must fail for an id belonging to another camp.
 - Member identity: at most one non-Removed row per (season, user); Removed rows keep
   a consumed EE grant (`HasEarlyEntry` survives removal iff the holder entered the
-  event), and the granted count deliberately has **no status filter**.
+  event). Two EE counts by design: the slot-cap check counts **unfiltered** (consumed
+  grants keep consuming); the displayed `EeGrantedCount` counts Active members only.
 - EE grants never exceed the season's `EeSlotCount`; granting is lead/admin only,
   gated on the global EE start date.
 - Membership and EE data never render on anonymous/public views.
@@ -85,7 +86,8 @@ beyond display formatting. That is today's layout minus the exceptions listed in
 
 - **Dual routes `/Camps` ↔ `/Barrios`** — sanctioned aliases, both stay.
 - **Consumed-EE retention on Removed rows** — remove-then-regrant must not mint an
-  extra early entry; the unfiltered count is the fix, not a bug.
+  extra early entry; the unfiltered slot-cap count is the fix, not a bug, and it
+  legitimately disagrees with the Active-only display count.
 - **`GetImageForMutationAsync` detaches the entity** — the service mutates and saves
   through a different context; detach avoids duplicate tracking.
 - **`DeleteAllForMemberAsync` loads-then-removes** — InMemory-provider test coverage;
