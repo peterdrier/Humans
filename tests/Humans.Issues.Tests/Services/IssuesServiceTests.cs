@@ -231,7 +231,7 @@ public sealed class IssuesServiceTests
                 "GitHub link: 123", auditAt, null, null, null)]));
 
         await _service.PostCommentAsync(
-            issueId, commenterId, "A comment",            ct: Xunit.TestContext.Current.CancellationToken);
+            issueId, commenterId, "A comment", ct: Xunit.TestContext.Current.CancellationToken);
 
         var thread = await _service.GetThreadAsync(issueId, Xunit.TestContext.Current.CancellationToken);
 
