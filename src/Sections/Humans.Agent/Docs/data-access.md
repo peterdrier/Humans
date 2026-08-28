@@ -25,7 +25,7 @@ run startup warmup, no DB access — fan out over the readers /
 `AgentRetentionRunStore`, `AgentSettingsStore` are in-memory stores backing
 the rate-limit / retention / settings caches — no DB access of their own.
 
-The three preload readers and the corpus builder cache their file-content reads in `IMemoryCache`
+The preload readers and the corpus builder cache their file-content reads in `IMemoryCache`
 (no DB, `HoldForever` — cleared only by process restart or an
 admin-triggered reload): `AgentSectionDocReader` (`agent:section:{key}`),
 `AgentFeatureSpecReader` (`agent:feature:index`, `agent:feature:{stem}`),

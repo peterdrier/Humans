@@ -20,7 +20,7 @@ members' transcripts ride along in their GDPR export and are erased with their a
 | Admin transcript review | `/Agent/Conversations` (admin mode), `/Agent/Conversations/{id}`, `/Agent/Admin/Conversations/{id}/Prompt` | Same list route, admin flag widens it |
 | Admin operations | `/Agent/Admin/Status`, `/Agent/Admin/Settings`, `POST …/ReloadKnowledgeBase` | One status report, one settings form, one cache reload |
 | Machine transcript read | `IAgentTranscriptRead` (endpoint lives in Backdoor) | Same data, key-authed, read-only |
-| Grounding lookups (model-facing) | 6 tools: 3 doc fetches (section / feature spec / community FAQ), 2 live-state reads (audit history, shift details), 1 handoff (`route_to_issue`) | Whitelist is closed; misses name the valid keys |
+| Grounding lookups (model-facing) | Doc fetches (section / feature spec / community FAQ), live-state reads (audit history, shift details), a handoff (`route_to_issue`) | Whitelist is closed (`AgentToolNames.All`); misses name the valid keys |
 | Retention | `agent-conversation-retention` job, daily | Hard delete + last-run record |
 | GDPR | `IUserDataContributor` export + erase | Full transcript both ways |
 
@@ -30,16 +30,16 @@ The layout those shapes imply — and the section already has, near enough:
 
 - One controller per audience (member, admin), one machine contract consumed elsewhere.
 - `AgentService` as the single orchestrator of the turn loop; provider access behind
-  `IAnthropicClient`; doc access behind three cached readers; live-state access behind
+  `IAnthropicClient`; doc access behind the cached readers; live-state access behind
   `IAgentUserSnapshotProvider` and the tool dispatcher; prompt text in one assembler.
-- Three singleton in-memory stores (settings mirror, rate-limit counters, retention last-run)
-  with warmup hosted services; one repository over the section's three tables.
+- Singleton in-memory stores (settings mirror, rate-limit counters, retention last-run)
+  with warmup hosted services; one repository over the section's own tables.
 - Preload corpus = index-only routing layer; bodies always fetched by tool. One builder, one
   augmentor for Base-owned help content.
 
 ## Invariants
 
-The 14 numbered invariants in `Agent.md` are the contract; the load-bearing ones restated:
+The numbered invariants in `Agent.md` are the contract; the load-bearing ones restated:
 
 - Every refused turn persists a message with `RefusalReason`; every failed/disconnected turn
   persists an error trace and is billed for what it consumed — no silent zero-cost failures.
