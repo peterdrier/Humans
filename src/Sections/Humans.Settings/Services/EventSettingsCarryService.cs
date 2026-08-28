@@ -120,9 +120,7 @@ internal sealed class EventSettingsCarryService(
         return true;
     }
 
-    // The Shifts DTO carries three knobs this section does not own
-    // (IsShiftBrowsingOpen, and the cap/lead-time that never left Shifts);
-    // they stay behind.
+    // IsShiftBrowsingOpen is a Shifts knob this section does not own; it stays behind.
     private static EventSettingsInfo ToInfo(BurnSettingsInfo src, EventSettingsStatus status) => new(
         Id: src.Id,
         EventName: src.EventName,

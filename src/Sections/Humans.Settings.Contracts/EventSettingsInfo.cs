@@ -55,10 +55,8 @@ public sealed record EventSettingsInfo(
         return applicableKey == int.MinValue ? 0 : EarlyEntryCapacity[applicableKey];
     }
 
-    // Forwarders to the sealed bodies on IEventSettingsInfo — the clock rule's
-    // single home. C# only surfaces interface members through an interface-typed
-    // receiver, so without these every DTO-holding call site would need a cast.
-    // These carry no logic and cannot drift from the interface.
+    // C# surfaces sealed interface members only through an interface-typed
+    // receiver; these forward so DTO-typed call sites need no cast.
 
     /// <inheritdoc cref="IEventSettingsInfo.IsEarlyEntryClosed" />
     public bool IsEarlyEntryClosed(Instant now) =>

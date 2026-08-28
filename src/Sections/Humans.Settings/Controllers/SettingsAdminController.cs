@@ -67,7 +67,7 @@ internal sealed class SettingsAdminController(
         {
             // The service's own invariants — activating while another cycle is Active, or an id
             // no Shifts event row carries. Both are conflicts an operator can act on, so they
-            // belong on the form they came from, not in a 500. The message is written for them.
+            // belong on the form they came from, not in a 500.
             ModelState.AddModelError(string.Empty, ex.Message);
             return View(model);
         }

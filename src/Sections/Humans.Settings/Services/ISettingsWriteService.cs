@@ -10,9 +10,8 @@ namespace Humans.Settings.Services;
 /// </summary>
 /// <remarks>
 /// Both consumers live here: <c>SettingsAdminController</c> and
-/// <c>EventSettingsCarryService</c>. The key/value <c>SetValueAsync</c> stays on
-/// the contract instead, because Email's send-pause flag and Monitor's last-run
-/// stamp have always been written from outside.
+/// <c>EventSettingsCarryService</c>. Why the key/value <c>SetValueAsync</c> stays
+/// on the contract instead: see <see cref="ISettingsService"/>.
 /// </remarks>
 internal interface ISettingsWriteService : ISettingsService
 {

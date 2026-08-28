@@ -10,9 +10,9 @@ namespace Humans.Settings.Tests;
 
 /// <summary>
 /// The carry is re-runnable, and a rerun has to reconcile Active/Inactive: the
-/// Shifts cycle can change between the first carry and PR B's reader cutover, and
-/// an existence-only check would leave the old cycle Active forever
-/// (nobodies-collective/Humans#1104 review).
+/// Shifts cycle can change between the first carry and the reader cutover
+/// (nobodies-collective/Humans#1104), and an existence-only check would leave
+/// the old cycle Active forever.
 /// </summary>
 public sealed class EventSettingsCarryServiceTests
 {
@@ -109,8 +109,8 @@ public sealed class EventSettingsCarryServiceTests
     [HumansFact]
     public async Task CarryAsync_ReconcilesStatusWhenTheActiveShiftsCycleChanged()
     {
-        // Both rows are already carried, so the old existence check saw nothing to
-        // do and left the retired cycle Active.
+        // Both rows are already carried, so only the status reconcile can fix
+        // the retired cycle.
         var oldId = Guid.NewGuid();
         var newId = Guid.NewGuid();
         ShiftsHas(newId, Burn(oldId, "Nowhere 2025", 2025), Burn(newId));

@@ -15,9 +15,8 @@ using TestContext = Xunit.TestContext;
 namespace Humans.Settings.Tests;
 
 /// <summary>
-/// The screen's two review findings (nobodies-collective/Humans#1104): it never
-/// offers a blank form that would mint an event id Shifts does not have, and a
-/// save it deactivates stays reachable by id instead of vanishing.
+/// The screen never offers a blank form that would mint an event id Shifts does
+/// not have, and a save that deactivates a row leaves it reachable by id.
 /// </summary>
 public sealed class SettingsAdminControllerTests
 {

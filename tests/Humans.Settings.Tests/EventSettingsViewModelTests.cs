@@ -9,10 +9,7 @@ namespace Humans.Settings.Tests;
 /// <summary>
 /// The build window is <c>[BuildStartOffset, 0)</c> and the four sub-periods
 /// partition it, so <c>BuildStartOffset ≤ FirstCrew &lt; SetupWeek &lt; PreEvent
-/// &lt; FinishingWeekend &lt; 0</c>. The shipped defaults have to satisfy that —
-/// the old <c>BuildStartOffset = -14</c> sat after <c>SetupWeekStartOffset = -16</c>,
-/// which left the two rules with no solution at all
-/// (nobodies-collective/Humans#1104 review).
+/// &lt; FinishingWeekend &lt; 0</c>. The shipped defaults have to satisfy that.
 /// </summary>
 public sealed class EventSettingsViewModelTests
 {

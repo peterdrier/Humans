@@ -25,8 +25,7 @@ internal sealed class EventSettingsViewModel : IValidatableObject
     public string GateOpeningDate { get; set; } = string.Empty;
 
     // The build window is [BuildStartOffset, 0) and the four sub-periods below
-    // partition it, so build starts on the first-crew day: -25, not the stale -14
-    // that sat after SetupWeekStartOffset and made the two rules unsatisfiable.
+    // partition it, so build starts on the first-crew day.
     public int BuildStartOffset { get; set; } = -25;
     public int EventEndOffset { get; set; } = 6;
     public int StrikeEndOffset { get; set; } = 9;

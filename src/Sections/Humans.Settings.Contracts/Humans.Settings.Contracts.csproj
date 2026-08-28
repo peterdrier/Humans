@@ -1,12 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Settings' cross-section surface, carved into its own leaf project because
-    its consumers are still in Base: EmailOutboxService and DriveActivityMonitorService
-    live in Humans.Application, so a Contracts/ *folder* inside Humans.Settings
-    would make Base reference a section and cycle (design §15.5b,
-    memory/architecture/section-project-cycle-fix.md). References Humans.Interfaces
-    only — the bottom of the graph — so Humans.Application can reference it freely.
+    Settings' cross-section surface as its own leaf project: consuming sections
+    (Humans.Email's outbox pause flag, Humans.Monitor's last-run stamp) reference
+    the leaf without referencing the section (design §15.5b). References
+    Humans.Base only — the bottom of the graph.
   -->
 
   <ItemGroup>

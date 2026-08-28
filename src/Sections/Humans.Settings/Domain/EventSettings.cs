@@ -82,9 +82,7 @@ internal sealed class EventSettings : IEventSettingsInfo
     /// </summary>
     public EventSettingsStatus Status { get; set; } = EventSettingsStatus.Active;
 
-    /// <summary>When this record was created.</summary>
     public Instant CreatedAt { get; set; }
 
-    /// <summary>When this record was last updated.</summary>
     public Instant UpdatedAt { get; set; }
 }

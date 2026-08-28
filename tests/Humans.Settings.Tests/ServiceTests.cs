@@ -13,9 +13,7 @@ namespace Humans.Settings.Tests;
 /// <summary>
 /// The section boundary: <see cref="Service"/> maps the internal
 /// <see cref="EventSettings"/> entity to <see cref="EventSettingsInfo"/> on the
-/// way out and back on the way in. Backfills the coverage that lived in Shifts'
-/// deleted <c>BurnSettingsServiceTests</c> before the app-wide values moved here
-/// (nobodies-collective/Humans#1104).
+/// way out and back on the way in.
 /// </summary>
 public sealed class ServiceTests
 {
@@ -206,7 +204,7 @@ public sealed class ServiceTests
             Arg.Any<CancellationToken>());
     }
 
-    // ── The at-most-one-Active invariant (nobodies-collective/Humans#1104 review).
+    // ── The at-most-one-Active invariant.
     //    No DB constraint backs it, so the service is where it holds.
 
     private static EventSettingsInfo MakeDto(Guid id, EventSettingsStatus status) => new(
