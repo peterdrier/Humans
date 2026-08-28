@@ -11,7 +11,7 @@ internal static class IntegrationTestGate
 {
     internal static readonly string? SkipReason =
         !string.Equals(Environment.GetEnvironmentVariable("HUMANS_INTEGRATION_TESTS"), "1", StringComparison.Ordinal)
-        && (IsTrue("CI") || IsTrue("CLAUDE_CODE_REMOTE"))
+        && (IsTrue("CI") || IsTrue("CLAUDE_CODE_REMOTE") || IsTrue("CODEX_CI"))
             ? "Humans.Integration.Tests is local-only by design; skipped in CI/cloud — not a failure, not a finding (memory/process/integration-tests-are-not-ci-tests.md)."
             : null;
 
