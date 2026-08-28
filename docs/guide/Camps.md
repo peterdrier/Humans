@@ -5,8 +5,10 @@
   src/Sections/Humans.Camps/Controllers/CampController.cs
   src/Sections/Humans.Camps/Controllers/CampAdminController.cs
   src/Sections/Humans.Camps/Controllers/CampApiController.cs
+  src/Sections/Humans.Camps/Controllers/CampComplianceController.cs
   src/Sections/Humans.Camps/Services/**
   src/Sections/Humans.Camps/Domain/Camp.cs
+  src/Sections/Humans.Camps/Domain/CampMember.cs
   src/Sections/Humans.Camps/Domain/CampSeason.cs
   src/Sections/Humans.Camps/Domain/CampImage.cs
   src/Sections/Humans.Camps/Domain/CampHistoricalName.cs
@@ -85,7 +87,7 @@ If you are a **Camp Lead**, you can manage your specific camp. You cannot edit c
 - **Opt into a new season** when Camp Admins open one. The new season carries your camp's identity forward from the previous one. If your camp has any previously approved season it auto-approves to Active; if it has never been approved it goes to Pending for Camp Admin review. Either way, review and update the season-specific fields before the event.
 - **Mark your season Full.** On an Active season, use **Mark Season Full** on the camp detail page to flag your camp as full. This is informational only — it shows a "Full" badge and a note to visitors, but people can still request to join, and camp management stays fully available. Reactivating a season that's been marked **Full** back to Active is a Camp Admin action.
 - **Withdraw a season** if plans change. You can also **rejoin a Withdrawn season** yourself (it goes back to Pending for re-approval).
-- **Approve, reject, or remove camp members.** Pending and active members for the current season are listed on the Edit page; approve a request to make someone an active member, reject to dismiss the request, or remove an existing active member. Approvals and rejections trigger an in-app notification to the requester. An **EE** badge next to the active-members heading shows how many Early Entry slots you've granted out of your camp's allocation for the year (e.g. `EE: 3/5`). Each active member row also shows a badge with how many shift signups they currently have for the event.
+- **Approve, reject, or remove camp members.** Pending and active members for the current season are listed on the Members page; approve a request to make someone an active member, reject to dismiss the request, or remove an existing active member. Approvals and rejections trigger an in-app notification to the requester. An **EE** badge next to the active-members heading shows how many Early Entry slots you've granted out of your camp's allocation for the year (e.g. `EE: 3/5`). Each active member row also shows a badge with how many shift signups they currently have for the event.
 
 ## As a Board member / Admin (Camp Admin)
 
