@@ -157,6 +157,7 @@ graph LR
     AdminDash[AdminDashboardService]:::dashboard
 
     EmailOutbox[EmailOutboxService]:::email
+    EmailOutboxProc[EmailOutboxProcessor]:::email
     NotifEmitter[NotificationEmitter]:::notifications
     NotifInbox[NotificationInboxService]:::notifications
     NotifMeter[NotificationMeterProvider]:::notifications
@@ -505,6 +506,8 @@ graph LR
 
     %% Email (admin outbox — pause flag lives in Settings)
     EmailOutbox --> SettingsSvc
+    EmailOutboxProc --> Campaign
+    EmailOutboxProc --> Metrics
 
     %% Settings' carry screen reads the Shifts rows it copies from (#1104).
     %% Temporary: retires with the carry screen.

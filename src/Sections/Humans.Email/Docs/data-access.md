@@ -25,6 +25,21 @@ pause flag).
 `IsEmailSendingPaused` key through `ISystemSettingsService`. Cross-section
 calls via `ISystemSettingsService`, plus `IClock`. No `IMemoryCache`.
 
+### EmailOutboxProcessor (Scoped)
+
+Repository: `IEmailOutboxRepository`.
+
+| Table | R/W |
+|-------|-----|
+| EmailOutboxMessages | R/W |
+
+Drains the outbox queue (design §15 step 6b): claims a processing batch,
+sends via the section-internal `IEmailTransport`, and records each outcome.
+Checks the pause flag through `IEmailOutboxService.IsEmailPausedAsync` before
+each run. Cross-section calls via `ICampaignService` (mirrors campaign-grant
+email status after send — `[CrossSectionWrite]`-marked) and `IHumansMetrics` /
+`IMeters`, plus `IClock`. No `IMemoryCache`.
+
 ### OutboxEmailService (Scoped)
 
 Repository: `IEmailOutboxRepository`.
