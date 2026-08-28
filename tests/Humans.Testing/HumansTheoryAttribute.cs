@@ -15,6 +15,8 @@ public sealed class HumansTheoryAttribute : TheoryAttribute
         : base(sourceFilePath, sourceLineNumber)
     {
         base.Timeout = DefaultTimeoutFor(sourceFilePath);
+        if (IntegrationTestGate.AppliesTo(sourceFilePath) && IntegrationTestGate.SkipReason is { } reason)
+            base.Skip = reason;
     }
 
     public new int Timeout

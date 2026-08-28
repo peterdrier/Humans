@@ -15,6 +15,8 @@ public class HumansFactAttribute : FactAttribute
         : base(sourceFilePath, sourceLineNumber)
     {
         base.Timeout = DefaultTimeout;
+        if (IntegrationTestGate.AppliesTo(sourceFilePath) && IntegrationTestGate.SkipReason is { } reason)
+            base.Skip = reason;
     }
 
     public new int Timeout

@@ -50,6 +50,9 @@ jobs:
       - name: Run localization sweep
         env:
           RUN_LOCALIZATION_SWEEP: '1'
+          # The integration suite self-skips under CI (IntegrationTestGate); this
+          # keeps its Postgres fixture alive for the sweep's carve-out.
+          HUMANS_INTEGRATION_TESTS: '1'
         run: |
           dotnet test tests/Humans.Integration.Tests/Humans.Integration.Tests.csproj \
             --configuration Release \

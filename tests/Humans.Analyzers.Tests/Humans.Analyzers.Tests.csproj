@@ -14,6 +14,7 @@
   -->
   <ItemGroup>
     <Compile Include="..\Humans.Testing\HumansFactAttribute.cs" Link="Humans.Testing\HumansFactAttribute.cs" />
+    <Compile Include="..\Humans.Testing\IntegrationTestGate.cs" Link="Humans.Testing\IntegrationTestGate.cs" />
     <Compile Include="..\Humans.Testing\HumansTheoryAttribute.cs" Link="Humans.Testing\HumansTheoryAttribute.cs" />
     <Compile Include="..\Humans.Testing\BrokenFactAttribute.cs" Link="Humans.Testing\BrokenFactAttribute.cs" />
     <Compile Include="..\Humans.Testing\DebuggerOnlyFactAttribute.cs" Link="Humans.Testing\DebuggerOnlyFactAttribute.cs" />

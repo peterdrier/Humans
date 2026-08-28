@@ -33,6 +33,11 @@ public sealed class HumansTestDatabase : IAsyncLifetime
 
     public async ValueTask InitializeAsync()
     {
+        // Local-only suite: in CI/cloud every fact is skip-marked by the gate, so
+        // starting the container would only fail the run for tests that never execute.
+        if (IntegrationTestGate.SkipReason is not null)
+            return;
+
         var ct = TestContext.Current.CancellationToken;
 
         // Tests run in parallel and each one holds an app host with its own connection
