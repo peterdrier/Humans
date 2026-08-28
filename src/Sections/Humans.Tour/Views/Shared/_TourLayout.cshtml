@@ -1,0 +1,38 @@
+@* Tour's own full-bleed layout — the landing page deliberately steps outside the
+   Shell's _Layout chrome (Bootstrap navbar, container) so it can read like a promo
+   site. The fixed header bar below is the way back into Humans; keep it on every
+   Tour page. Hardcoded English by design (spec 2026-08-12). *@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Humans — the open-source membership platform for burn organizations. Signup to teams, shifts, tickets, governance, and money, in one place." />
+    <meta property="og:title" content="@ViewData["Title"] - Humans" />
+    <meta property="og:description" content="Humans — the open-source membership platform for burn organizations." />
+    <meta property="og:type" content="website" />
+    <title>@ViewData["Title"] - Humans</title>
+    <link rel="icon" href="~/favicon.ico" sizes="any">
+    <link rel="icon" href="~/img/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="~/apple-touch-icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Permanent+Marker&display=swap">
+    <link rel="stylesheet" href="~/_content/Humans.Tour/css/tour.css" asp-append-version="true" />
+</head>
+<body class="tour-body">
+    <header class="tour-header">
+        <div class="tour-header-inner">
+            <a class="tour-header-brand" href="/">
+                <img src="~/img/logo.svg" alt="" aria-hidden="true" />
+                Humans
+            </a>
+            <a class="tour-header-cta" href="/">Open Humans &rarr;</a>
+        </div>
+    </header>
+    <main role="main">
+        @RenderBody()
+    </main>
+    <script src="~/_content/Humans.Tour/js/tour.js" asp-append-version="true" defer></script>
+</body>
+</html>

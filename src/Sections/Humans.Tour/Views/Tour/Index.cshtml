@@ -5,111 +5,252 @@
     ViewData["Title"] = "What is Humans";
 }
 
-<div class="text-center my-5">
-    <h1 class="display-4">What is Humans?</h1>
-    <p class="lead mt-3 mx-auto" style="max-width: 720px;">
-        Humans is the membership platform that runs Nobodies Collective, the Spanish nonprofit
-        behind the Nowhere burn. It manages the full lifecycle of a burn organization —
-        from a volunteer's first signup through teams, shifts, tickets, governance, and money —
-        in one place, instead of a drawer full of spreadsheets.
-    </p>
-    <p class="text-muted">Free and open source (AGPL-3.0) · built by burners, for burns</p>
-</div>
+<section class="tour-hero">
+    <div class="tour-hero-slideshow">
+        <div class="tour-hero-slide active" style="background-image: url('/_content/Humans.Tour/img/hero-10.webp')"></div>
+        <div class="tour-hero-slide" data-bg="/_content/Humans.Tour/img/hero-3.webp"></div>
+        <div class="tour-hero-slide" data-bg="/_content/Humans.Tour/img/hero-13.webp"></div>
+    </div>
+    <div class="tour-hero-overlay"></div>
+    <div class="tour-hero-vignette" aria-hidden="true"></div>
+    <div class="tour-hero-grain" aria-hidden="true"></div>
+    <div class="tour-hero-ghost" aria-hidden="true">HUMANS</div>
+    <canvas class="tour-hero-dust" id="tour-dust-canvas" aria-hidden="true"></canvas>
+    <div class="tour-hero-content">
+        <p class="tour-hero-tag">Free &amp; open source &middot; built by burners, for burns</p>
+        <span class="tour-hero-annotation" aria-hidden="true">goodbye, drawer full of spreadsheets</span>
+        <h1>What is Humans? Your whole burn, in one place.</h1>
+        <p class="tour-hero-lead">
+            Humans is the membership platform that runs Nobodies Collective, the Spanish nonprofit
+            behind the Elsewhere burn. It manages the full lifecycle of a burn organization —
+            from a volunteer's first signup through teams, shifts, tickets, governance, and money —
+            with GDPR built in and an audit trail the Board can actually read.
+        </p>
+        <div class="tour-hero-ctas">
+            <a class="tour-btn tour-btn--solid" href="#people">See what's inside &darr;</a>
+            <a class="tour-btn tour-btn--ghost" href="/About">The engineering story</a>
+        </div>
+    </div>
+    <div class="tour-hero-stats">
+        <div class="tour-hero-stats-inner">
+            <div class="tour-stat"><strong>500</strong><span>humans</span></div>
+            <div class="tour-stat"><strong>40+</strong><span>sections</span></div>
+            <div class="tour-stat"><strong>6</strong><span>languages</span></div>
+            <div class="tour-stat"><strong>0</strong><span>spreadsheets</span></div>
+        </div>
+    </div>
+</section>
 
-<div class="row g-4 my-4">
-    <div class="col-md-6 col-lg-4">
-        <div class="card h-100">
-            <div class="card-body">
-                <h5 class="card-title"><i class="fa-solid fa-user-check me-2"></i>People</h5>
-                <p class="card-text small">
+<section class="tour-section" id="people">
+    <div class="tour-container">
+        <div class="anim anim-fade-up">
+            <span class="tour-kicker">01 &mdash; the front door</span>
+            <h2>People</h2>
+            <p class="tour-section-lead">
+                Everything starts with a person signing themselves up. From there, the system
+                runs the paperwork so nobody else has to.
+            </p>
+        </div>
+        <div class="tour-cap anim anim-fade-up">
+            <div class="tour-cap-copy">
+                <p>
                     Self-service signup, member profiles, and consent tracking. GDPR is built in,
                     not bolted on: every member can export their data or ask to be forgotten, and
-                    the system handles both. Onboarding runs itself — a new volunteer completes a
-                    profile, signs the consents, and is provisioned automatically.
+                    the system handles both.
+                </p>
+                <p>
+                    Onboarding runs itself — a new volunteer completes a profile, signs the
+                    consents, and is provisioned automatically. No spreadsheet, no waiting on a
+                    volunteer with admin rights to notice.
                 </p>
             </div>
+            <ul class="tour-cap-list">
+                <li><strong>Self-service signup</strong><span>Profiles, consents, and automatic admission to the volunteer pool.</span></li>
+                <li><strong>GDPR as a feature</strong><span>One-click data export and a real right-to-deletion path.</span></li>
+                <li><strong>Automatic provisioning</strong><span>Accounts, teams, and Google Workspace access appear on their own.</span></li>
+            </ul>
         </div>
     </div>
-    <div class="col-md-6 col-lg-4">
-        <div class="card h-100">
-            <div class="card-body">
-                <h5 class="card-title"><i class="fa-solid fa-people-group me-2"></i>Organize</h5>
-                <p class="card-text small">
-                    Teams with their own pages and Google Workspace resources, volunteer shift
-                    scheduling with live coverage numbers, theme camps, city planning on a real map,
-                    and a what's-on event guide. Who does what, where, and when — visible to everyone.
-                </p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6 col-lg-4">
-        <div class="card h-100">
-            <div class="card-body">
-                <h5 class="card-title"><i class="fa-solid fa-coins me-2"></i>Money</h5>
-                <p class="card-text small">
-                    A members' store, expense reports with receipts and approval flow, per-team
-                    budgets, and a live mirror of the association's accounting ledger. The board
-                    sees where the money is without asking anyone to update a sheet.
-                </p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6 col-lg-4">
-        <div class="card h-100">
-            <div class="card-body">
-                <h5 class="card-title"><i class="fa-solid fa-gavel me-2"></i>Govern</h5>
-                <p class="card-text small">
-                    Board roles with start and end dates, membership-tier applications with board
-                    voting, and a full audit trail of every automated action. When someone asks
-                    "who approved that, and when" — the answer is one search away.
-                </p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6 col-lg-4">
-        <div class="card h-100">
-            <div class="card-body">
-                <h5 class="card-title"><i class="fa-solid fa-envelope-open-text me-2"></i>Communicate</h5>
-                <p class="card-text small">
-                    Transactional email with a visible outbox, campaign sends to synced audiences,
-                    in-app notifications, and the whole member-facing UI in six languages
-                    (English, Spanish, Catalan, German, French, Italian).
-                </p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6 col-lg-4">
-        <div class="card h-100">
-            <div class="card-body">
-                <h5 class="card-title"><i class="fa-solid fa-ticket me-2"></i>At the gate</h5>
-                <p class="card-text small">
-                    Ticketing with vendor imports and transfers, a gate check-in kiosk, barcode
-                    scanning from a phone browser, and early-entry lists. The gate crew works from
-                    live data, not a printout from last Tuesday.
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<hr />
-
-<section class="my-5 mx-auto" style="max-width: 720px;">
-    <h2><i class="fa-solid fa-fire me-2"></i>Humans for your burn</h2>
-    <p>
-        Humans is built as independent sections — People, Teams, Shifts, Tickets, Store,
-        Expenses, Governance, and more — each owning its own data and talking to the others
-        through narrow interfaces.
-    </p>
-    <p>
-        The sections live as separate projects in the codebase; that structure is the roadmap:
-        a deployment per burn, configured with the sections your
-        org actually uses. Run People + Shifts + Gate and skip the rest. Use Microsoft 365
-        instead of Google Workspace. Add your language. The modularity is real today; per-burn
-        configuration is where the project is headed.
-    </p>
-    <p class="mb-0">
-        Curious how it's built — and how well? <a href="/About">Read the engineering story</a>,
-        or write to <a href="mailto:humans@nobodies.team">humans@nobodies.team</a>.
-    </p>
 </section>
+
+<section class="tour-section tour-section--alt">
+    <div class="tour-container">
+        <div class="anim anim-fade-up">
+            <span class="tour-kicker">02 &mdash; who does what, where, and when</span>
+            <h2>Organize</h2>
+        </div>
+        <div class="tour-cap tour-cap--flip anim anim-fade-up">
+            <div class="tour-cap-copy">
+                <p>
+                    Teams with their own pages and Google Workspace resources, volunteer shift
+                    scheduling with live coverage numbers, theme camps, city planning on a real
+                    map, and a what's-on event guide.
+                </p>
+                <p>Visible to everyone — not locked in a coordinator's head.</p>
+            </div>
+            <ul class="tour-cap-list">
+                <li><strong>Teams</strong><span>Own pages, membership, and Workspace groups per team.</span></li>
+                <li><strong>Shifts</strong><span>Scheduling with live coverage numbers, not guesswork.</span></li>
+                <li><strong>Camps &amp; city planning</strong><span>Theme camps placed on a real map of the site.</span></li>
+                <li><strong>Event guide</strong><span>A what's-on guide for everything happening at the burn.</span></li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<section class="tour-break" style="background-image: url('/_content/Humans.Tour/img/whatis-3.jpg')">
+    <blockquote class="anim anim-fade-up">
+        Built by the people who build the city.
+        <span class="tour-annotation" aria-hidden="true">literally us, on our days off</span>
+    </blockquote>
+</section>
+
+<section class="tour-section">
+    <div class="tour-container">
+        <div class="anim anim-fade-up">
+            <span class="tour-kicker">03 &mdash; follow the money</span>
+            <h2>Money</h2>
+        </div>
+        <div class="tour-cap anim anim-fade-up">
+            <div class="tour-cap-copy">
+                <p>
+                    A members' store, expense reports with receipts and approval flow, per-team
+                    budgets, and a live mirror of the association's accounting ledger.
+                </p>
+                <p>The Board sees where the money is without asking anyone to update a sheet.</p>
+            </div>
+            <ul class="tour-cap-list">
+                <li><strong>Members' store</strong><span>Merch and tickets sold inside the platform.</span></li>
+                <li><strong>Expenses</strong><span>Receipts attached, approval flow, reimbursements tracked.</span></li>
+                <li><strong>Budgets &amp; ledger</strong><span>Per-team budgets against a live accounting mirror.</span></li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<section class="tour-section tour-section--alt">
+    <div class="tour-container">
+        <div class="anim anim-fade-up">
+            <span class="tour-kicker">04 &mdash; who approved that, and when</span>
+            <h2>Govern</h2>
+        </div>
+        <div class="tour-cap tour-cap--flip anim anim-fade-up">
+            <div class="tour-cap-copy">
+                <p>
+                    Board roles with start and end dates, membership-tier applications with board
+                    voting, and a full audit trail of every automated action.
+                </p>
+                <p>When someone asks "who approved that, and when" — the answer is one search away.</p>
+            </div>
+            <ul class="tour-cap-list">
+                <li><strong>Board roles</strong><span>Governance roles with real terms, not tribal memory.</span></li>
+                <li><strong>Applications &amp; votes</strong><span>Membership tiers applied for, voted on, recorded.</span></li>
+                <li><strong>Audit trail</strong><span>Every automated action leaves a record the Board can read.</span></li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<section class="tour-section">
+    <div class="tour-container">
+        <div class="anim anim-fade-up">
+            <span class="tour-kicker">05 &mdash; six languages, one outbox</span>
+            <h2>Communicate</h2>
+        </div>
+        <div class="tour-cap anim anim-fade-up">
+            <div class="tour-cap-copy">
+                <p>
+                    Transactional email with a visible outbox, campaign sends to synced audiences,
+                    and in-app notifications.
+                </p>
+                <p>
+                    The whole member-facing UI ships in six languages — English, Spanish, Catalan,
+                    German, French, and Italian — because a Spanish burn is not an English-only crowd.
+                </p>
+            </div>
+            <ul class="tour-cap-list">
+                <li><strong>Email outbox</strong><span>Every mail the system sends is visible and searchable.</span></li>
+                <li><strong>Campaigns</strong><span>Bulk sends to audiences that sync themselves.</span></li>
+                <li><strong>Six languages</strong><span>en &middot; es &middot; ca &middot; de &middot; fr &middot; it, enforced by tests.</span></li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<section class="tour-section tour-section--alt">
+    <div class="tour-container">
+        <div class="anim anim-fade-up">
+            <span class="tour-kicker">06 &mdash; live data, not last Tuesday's printout</span>
+            <h2>At the gate</h2>
+        </div>
+        <div class="tour-cap tour-cap--flip anim anim-fade-up">
+            <div class="tour-cap-copy">
+                <p>
+                    Ticketing with vendor imports and transfers, a gate check-in kiosk, barcode
+                    scanning from a phone browser, and early-entry lists.
+                </p>
+                <p>The gate crew works from live data, in the desert, on whatever phone is charged.</p>
+            </div>
+            <ul class="tour-cap-list">
+                <li><strong>Ticketing</strong><span>Vendor imports, transfers, and one source of truth.</span></li>
+                <li><strong>Gate kiosk &amp; scanning</strong><span>Check-in with barcode scanning from a phone browser.</span></li>
+                <li><strong>Early entry</strong><span>Build-week lists that match who is actually allowed in.</span></li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<section class="tour-break" style="background-image: url('/_content/Humans.Tour/img/whatis-2.jpg')">
+    <blockquote class="anim anim-fade-up">
+        About 500 real people trust this system — and a volunteer Board relies on it to run
+        a legal Spanish asociaci&oacute;n.
+    </blockquote>
+</section>
+
+<section class="tour-section tour-section--dark">
+    <div class="tour-container">
+        <div class="anim anim-fade-up">
+            <span class="tour-kicker">Humans for your burn</span>
+            <h2>Take the parts your burn needs.</h2>
+            <p class="tour-section-lead">
+                Humans is built as independent sections — People, Teams, Shifts, Tickets, Store,
+                Expenses, Governance, and more — each owning its own data and talking to the
+                others through narrow interfaces. That structure is the roadmap: a deployment per
+                burn, configured with the sections your org actually uses. Run People + Shifts +
+                Gate and skip the rest. Use Microsoft 365 instead of Google Workspace. Add your
+                language. The modularity is real today; per-burn configuration is where the
+                project is headed.
+            </p>
+        </div>
+        <div class="tour-eng-grid anim anim-fade-up">
+            <div><strong>Not vibe-coded</strong><span>Strict layering and section isolation, enforced by custom Roslyn analyzers at the line of code.</span></div>
+            <div><strong>Tested like it matters</strong><span>Per-section test suites, architecture tests, and mutation testing on the rules that count.</span></div>
+            <div><strong>Nothing invisible</strong><span>Automation that acts without leaving an audit entry is treated as a bug.</span></div>
+            <div><strong>Actually open</strong><span>AGPL-3.0, developed in the open, section by section.</span></div>
+        </div>
+        <p class="anim anim-fade-up" style="margin-top: 2rem;">
+            Curious how it's built — and how well? <a href="/About">Read the engineering story</a>.
+        </p>
+    </div>
+</section>
+
+<section class="tour-close">
+    <div class="tour-container anim anim-fade-up">
+        <span class="tour-hero-annotation" aria-hidden="true">yes, it runs a real burn</span>
+        <h2>Bring Humans to your burn.</h2>
+        <p class="tour-section-lead" style="margin: 0 auto;">
+            We built this for ourselves and we would love for it to run your burn too.
+            Write to us — we are volunteers, we get it.
+        </p>
+        <div class="tour-close-ctas">
+            <a class="tour-btn tour-btn--solid" href="mailto:humans@nobodies.team">humans@nobodies.team</a>
+            <a class="tour-btn tour-btn--outline" href="https://github.com/nobodies-collective/Humans" rel="noopener">Source on GitHub</a>
+        </div>
+    </div>
+</section>
+
+<footer class="tour-footer">
+    <div class="tour-container">
+        Humans &middot; free and open source (AGPL-3.0) &middot; built by burners, for burns
+    </div>
+</footer>

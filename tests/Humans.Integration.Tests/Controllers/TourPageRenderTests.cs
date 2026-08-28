@@ -8,8 +8,9 @@ namespace Humans.Integration.Tests.Controllers;
 /// <summary>
 /// Renders the Tour section's public page. Tour is the first section created directly in
 /// src/Sections (never lived in Shell), so this is the standing proof that a from-scratch
-/// section RCL routes, resolves the host layout, and renders — the failure modes are a 404
-/// (controller not discovered) or a 200 with literal markup (missing _ViewImports line).
+/// section RCL routes, resolves a layout (Tour ships its own _TourLayout), and renders —
+/// the failure modes are a 404 (controller not discovered) or a 200 with literal markup
+/// (missing _ViewImports line).
 /// </summary>
 public class TourPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
@@ -40,9 +41,10 @@ public class TourPageRenderTests(HumansTestDatabase database) : IntegrationTestB
             because: "the Welcome landing is where anonymous visitors arrive (no-orphan-pages rule)");
 
         var tourHtml = await (await Client.GetAsync("/Tour", ct)).Content.ReadAsStringAsync(ct);
-        tourHtml.Should().Contain("nav-link", because: "the shared layout's navbar must render on the page itself");
-        tourHtml.Should().Contain("href=\"/Tour\"",
-            because: "anonymous visitors get the top-nav Tour slot");
+        tourHtml.Should().Contain("tour-header",
+            because: "the landing page uses its own layout, whose fixed header bar is the chrome");
+        tourHtml.Should().Contain("href=\"/\"",
+            because: "the header bar must offer the way back into Humans (no-orphan-pages rule)");
     }
 
     [HumansFact(Timeout = 60000)]

@@ -1,0 +1,486 @@
+/* Tour landing page — visual language borrowed from nobodies.team (warm desert
+   palette, Inter + Permanent Marker, scroll fade-ups). Scoped to the Tour layout;
+   nothing here loads anywhere else in the app. */
+
+:root {
+    --tour-bg: #faf5ee;
+    --tour-bg-alt: #f2ebe0;
+    --tour-text: #2c2418;
+    --tour-text-muted: #6b5e50;
+    --tour-accent: #c2703e;
+    --tour-accent-hover: #a85d32;
+    --tour-green: #7a8b6a;
+    --tour-yellow: #c9922a;
+    --tour-border: #e4ddd4;
+    --tour-dark: #1d1811;
+    --tour-header-h: 3.5rem;
+    --tour-font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --tour-marker: 'Permanent Marker', cursive;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body.tour-body {
+    font-family: var(--tour-font);
+    color: var(--tour-text);
+    background: var(--tour-bg);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Prose links only — scoping to `p a` keeps this from out-specifying the
+   button and header classes (which set their own colors). */
+.tour-body p a { color: var(--tour-accent); }
+.tour-body p a:hover { color: var(--tour-accent-hover); }
+
+.tour-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+}
+
+/* ===== Fixed header bar — the way back into Humans ===== */
+.tour-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    height: var(--tour-header-h);
+    display: flex;
+    align-items: center;
+    background: rgba(29, 24, 17, 0.82);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tour-header-inner {
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.tour-header-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: 0.01em;
+}
+
+.tour-header-brand:hover { color: #fff; opacity: 0.85; }
+.tour-header-brand img { height: 1.6rem; width: auto; display: block; }
+
+.tour-header-cta {
+    display: inline-block;
+    background: var(--tour-accent);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 0.45rem 1.1rem;
+    border-radius: 999px;
+    white-space: nowrap;
+    transition: background 0.2s ease;
+}
+
+.tour-header-cta:hover { background: var(--tour-accent-hover); color: #fff; }
+
+/* ===== Hero ===== */
+.tour-hero {
+    position: relative;
+    min-height: 92vh;
+    display: flex;
+    align-items: center;
+    padding: calc(var(--tour-header-h) + 3rem) 0 4rem;
+    overflow: hidden;
+    filter: contrast(1.04) saturate(1.08);
+}
+
+.tour-hero-slideshow { position: absolute; inset: 0; z-index: 0; }
+
+.tour-hero-slide {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    opacity: 0;
+    transition: opacity 1.5s ease-in-out;
+    will-change: opacity;
+}
+
+.tour-hero-slide.active { opacity: 1; }
+
+.tour-hero-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: linear-gradient(to bottom,
+        rgba(44, 36, 24, 0.55) 0%,
+        rgba(44, 36, 24, 0.58) 50%,
+        rgba(44, 36, 24, 0.72) 100%);
+}
+
+/* Warm vignette — heat burn at the edges */
+.tour-hero-vignette {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse 110% 100% at 50% 50%, transparent 35%, rgba(60, 18, 5, 0.6) 100%),
+        radial-gradient(ellipse 55% 45% at 92% 10%, rgba(160, 60, 10, 0.28) 0%, transparent 65%);
+}
+
+/* Animated film grain */
+.tour-hero-grain {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    opacity: 0.07;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.88' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 180px 180px;
+    animation: tour-grain-shift 0.45s steps(1) infinite;
+}
+
+@keyframes tour-grain-shift {
+    0%   { background-position: 0 0; }
+    20%  { background-position: -32px 18px; }
+    40%  { background-position: 22px -12px; }
+    60%  { background-position: -14px 34px; }
+    80%  { background-position: 28px -6px; }
+    100% { background-position: 0 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tour-hero-grain { animation: none; }
+    html { scroll-behavior: auto; }
+}
+
+.tour-hero-ghost {
+    position: absolute;
+    bottom: -0.08em;
+    left: -0.04em;
+    font-size: clamp(7rem, 19vw, 16rem);
+    font-weight: 900;
+    color: rgba(255, 255, 255, 0.045);
+    letter-spacing: -0.04em;
+    line-height: 1;
+    pointer-events: none;
+    z-index: 2;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.tour-hero-dust {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    width: 100%;
+    height: 100%;
+}
+
+.tour-hero-content {
+    position: relative;
+    z-index: 4;
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    text-align: center;
+    color: #fff;
+}
+
+.tour-hero-tag {
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.85);
+    margin-bottom: 1.2rem;
+}
+
+.tour-hero-content h1 {
+    font-size: clamp(2.6rem, 6.5vw, 4.5rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin-bottom: 1.4rem;
+    text-shadow: 0 2px 24px rgba(0, 0, 0, 0.35);
+}
+
+.tour-hero-lead {
+    font-size: clamp(1.05rem, 2vw, 1.25rem);
+    line-height: 1.65;
+    color: rgba(255, 255, 255, 0.92);
+    max-width: 640px;
+    margin: 0 auto 2.2rem;
+}
+
+.tour-hero-annotation {
+    font-family: var(--tour-marker);
+    font-size: 1.15rem;
+    color: var(--tour-yellow);
+    transform: rotate(-2deg);
+    display: inline-block;
+    margin-bottom: 0.8rem;
+}
+
+.tour-hero-ctas {
+    display: flex;
+    gap: 0.9rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.tour-btn {
+    display: inline-block;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 0.75rem 1.7rem;
+    border-radius: 999px;
+    transition: all 0.2s ease;
+}
+
+.tour-btn--solid { background: var(--tour-accent); color: #fff; }
+.tour-btn--solid:hover { background: var(--tour-accent-hover); color: #fff; transform: translateY(-1px); }
+
+.tour-btn--ghost {
+    color: #fff;
+    border: 2px solid rgba(255, 255, 255, 0.7);
+}
+.tour-btn--ghost:hover { background: #fff; color: var(--tour-text); border-color: #fff; }
+
+/* Stat strip pinned at the hero's bottom */
+.tour-hero-stats {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 6;
+    background: rgba(29, 24, 17, 0.72);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tour-hero-stats-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-around;
+    gap: 1rem;
+    flex-wrap: wrap;
+    text-align: center;
+}
+
+.tour-stat { color: #fff; min-width: 7rem; }
+.tour-stat strong {
+    display: block;
+    font-size: 1.6rem;
+    font-weight: 800;
+    line-height: 1.2;
+    color: var(--tour-yellow);
+}
+.tour-stat span {
+    font-size: 0.78rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+/* ===== Capability sections ===== */
+.tour-section { padding: 5.5rem 0; }
+.tour-section--alt { background: var(--tour-bg-alt); }
+
+.tour-kicker {
+    font-family: var(--tour-marker);
+    font-size: 1.05rem;
+    color: var(--tour-accent);
+    display: block;
+    margin-bottom: 0.4rem;
+    transform: rotate(-1.2deg);
+}
+
+.tour-section h2 {
+    font-size: clamp(1.9rem, 4vw, 2.7rem);
+    font-weight: 800;
+    letter-spacing: -0.015em;
+    line-height: 1.15;
+    margin-bottom: 1rem;
+}
+
+.tour-section-lead {
+    font-size: 1.1rem;
+    color: var(--tour-text-muted);
+    max-width: 620px;
+    margin-bottom: 2.5rem;
+}
+
+/* Two-column capability block: copy left, feature list right (alternates) */
+.tour-cap {
+    display: grid;
+    grid-template-columns: 5fr 6fr;
+    gap: 3rem;
+    align-items: start;
+}
+
+.tour-cap--flip .tour-cap-copy { order: 2; }
+.tour-cap--flip .tour-cap-list { order: 1; }
+
+.tour-cap-copy p { margin-bottom: 1rem; font-size: 1.05rem; }
+.tour-cap-copy p:last-child { margin-bottom: 0; }
+
+.tour-cap-list { list-style: none; display: grid; gap: 0.9rem; }
+
+.tour-cap-list li {
+    background: #fff;
+    border: 1px solid var(--tour-border);
+    border-radius: 12px;
+    padding: 0.95rem 1.15rem;
+    box-shadow: 0 2px 10px rgba(44, 36, 24, 0.05);
+}
+
+.tour-section--alt .tour-cap-list li { background: var(--tour-bg); }
+
+.tour-cap-list strong { display: block; margin-bottom: 0.15rem; font-weight: 700; }
+.tour-cap-list span { font-size: 0.92rem; color: var(--tour-text-muted); }
+
+/* ===== Full-bleed photo interludes ===== */
+.tour-break {
+    position: relative;
+    min-height: 46vh;
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+@media (hover: none) { .tour-break { background-attachment: scroll; } }
+
+.tour-break::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(29, 24, 17, 0.5);
+}
+
+.tour-break blockquote {
+    position: relative;
+    color: #fff;
+    font-size: clamp(1.3rem, 3vw, 2rem);
+    font-weight: 700;
+    text-align: center;
+    max-width: 760px;
+    padding: 4rem 1.5rem;
+    line-height: 1.4;
+    text-shadow: 0 2px 16px rgba(0, 0, 0, 0.4);
+}
+
+.tour-break .tour-annotation {
+    display: block;
+    font-family: var(--tour-marker);
+    font-weight: 400;
+    font-size: 1.1rem;
+    color: var(--tour-yellow);
+    margin-top: 0.8rem;
+    transform: rotate(-1.5deg);
+}
+
+/* ===== Dark closing sections ===== */
+.tour-section--dark {
+    background: var(--tour-dark);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.tour-section--dark h2 { color: #fff; }
+.tour-section--dark .tour-section-lead { color: rgba(255, 255, 255, 0.7); }
+.tour-section--dark p a { color: var(--tour-yellow); }
+
+.tour-eng-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.tour-eng-grid > div {
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 12px;
+    padding: 1.1rem 1.2rem;
+}
+
+.tour-eng-grid strong { display: block; color: var(--tour-yellow); margin-bottom: 0.2rem; }
+.tour-eng-grid span { font-size: 0.92rem; color: rgba(255, 255, 255, 0.7); }
+
+/* ===== Closing CTA ===== */
+.tour-close { text-align: center; padding: 6rem 0; }
+
+.tour-close h2 { margin-bottom: 0.8rem; }
+
+.tour-close .tour-hero-annotation { color: var(--tour-accent); }
+
+.tour-close-ctas {
+    display: flex;
+    gap: 0.9rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 2rem;
+}
+
+.tour-btn--outline {
+    color: var(--tour-text);
+    border: 2px solid var(--tour-text);
+}
+.tour-btn--outline:hover { background: var(--tour-text); color: #fff; }
+
+.tour-footer {
+    border-top: 1px solid var(--tour-border);
+    padding: 1.6rem 0;
+    text-align: center;
+    font-size: 0.88rem;
+    color: var(--tour-text-muted);
+}
+
+/* ===== Scroll animations ===== */
+.anim {
+    opacity: 0;
+    transition: opacity 0.7s ease, transform 0.7s ease;
+    will-change: opacity, transform;
+}
+
+.anim-fade-up { transform: translateY(30px); }
+.anim.visible { opacity: 1; transform: translate(0, 0); }
+
+@media (prefers-reduced-motion: reduce) {
+    .anim { opacity: 1; transform: none; transition: none; }
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 820px) {
+    .tour-cap { grid-template-columns: 1fr; gap: 1.8rem; }
+    .tour-cap--flip .tour-cap-copy { order: 1; }
+    .tour-cap--flip .tour-cap-list { order: 2; }
+    .tour-section { padding: 3.8rem 0; }
+    .tour-hero { min-height: 100vh; }
+    .tour-hero-stats-inner { padding: 0.8rem 1rem; }
+    .tour-stat strong { font-size: 1.25rem; }
+}
