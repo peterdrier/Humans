@@ -11,11 +11,18 @@ internal static class IntegrationTestGate
 {
     internal static readonly string? SkipReason =
         !string.Equals(Environment.GetEnvironmentVariable("HUMANS_INTEGRATION_TESTS"), "1", StringComparison.Ordinal)
-        && (Environment.GetEnvironmentVariable("CI") is not null
-            || Environment.GetEnvironmentVariable("CLAUDE_CODE_REMOTE") is not null)
+        && (IsTrue("CI") || IsTrue("CLAUDE_CODE_REMOTE"))
             ? "Humans.Integration.Tests is local-only by design; skipped in CI/cloud — not a failure, not a finding (memory/process/integration-tests-are-not-ci-tests.md)."
             : null;
 
     internal static bool AppliesTo(string? sourceFilePath) =>
         sourceFilePath?.Contains("Humans.Integration.Tests", StringComparison.Ordinal) == true;
+
+    // An explicit CI=false / CLAUDE_CODE_REMOTE=false means "not that environment".
+    private static bool IsTrue(string variable)
+    {
+        var value = Environment.GetEnvironmentVariable(variable);
+        return string.Equals(value, "true", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "1", StringComparison.Ordinal);
+    }
 }
