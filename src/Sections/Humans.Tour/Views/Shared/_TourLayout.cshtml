@@ -19,6 +19,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Permanent+Marker&display=swap">
     <link rel="stylesheet" href="~/_content/Humans.Tour/css/tour.css" asp-append-version="true" />
+    @* Gates the scroll-animation hidden state: without JS this never runs and all
+       content stays visible (tour.css scopes the opacity:0 rules to .tour-js). *@
+    <script>document.documentElement.classList.add('tour-js');</script>
 </head>
 <body class="tour-body">
     <header class="tour-header">

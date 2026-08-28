@@ -460,18 +460,20 @@ body.tour-body {
     color: var(--tour-text-muted);
 }
 
-/* ===== Scroll animations ===== */
+/* ===== Scroll animations =====
+   The hidden state is gated on .tour-js (set by an inline script in _TourLayout's
+   head) so content stays visible when JavaScript is disabled or fails to load. */
 .anim {
-    opacity: 0;
     transition: opacity 0.7s ease, transform 0.7s ease;
     will-change: opacity, transform;
 }
 
-.anim-fade-up { transform: translateY(30px); }
+.tour-js .anim { opacity: 0; }
+.tour-js .anim-fade-up { transform: translateY(30px); }
 .anim.visible { opacity: 1; transform: translate(0, 0); }
 
 @media (prefers-reduced-motion: reduce) {
-    .anim { opacity: 1; transform: none; transition: none; }
+    .tour-js .anim { opacity: 1; transform: none; transition: none; }
 }
 
 /* ===== Responsive ===== */

@@ -6,6 +6,8 @@
 
     // Hero slideshow — lazy-loads each image just before it's shown.
     function initSlideshow() {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
         var slides = document.querySelectorAll('.tour-hero-slide');
         if (slides.length < 2) return;
 
