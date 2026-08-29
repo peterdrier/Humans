@@ -41,6 +41,7 @@ internal static class SurveyPageViewModelFactory
             NextPreviewPage = isPreview && step >= 0 && step < pages.Count - 1 ? pages[step + 1] : null,
             Page = state.CurrentPage,
             Title = editable.Title.Resolve(state.Culture, editable.DefaultCulture),
+            IsAsociadoVote = editable.IsAsociadoVote,
             StepNumber = step < 0 ? 1 : step + 1,
             TotalSteps = pages.Count,
             CanGoBack = step > 0,

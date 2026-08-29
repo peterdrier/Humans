@@ -26,6 +26,16 @@
                     </div>
                 }
 
+                @if (Model.IsAsociadoVote)
+                {
+                    <div class="alert alert-warning" role="alert">
+                        <h2 class="h6 alert-heading">
+                            <i class="fa-solid fa-scale-balanced me-1"></i>@Localizer["Survey_AsociadoVote_Heading"]
+                        </h2>
+                        <p class="mb-0">@Localizer["Survey_AsociadoVote_Body"]</p>
+                    </div>
+                }
+
                 @if (!string.IsNullOrWhiteSpace(Model.Intro))
                 {
                     <div class="mb-4 survey-intro">@Html.SanitizedMarkdown(Model.Intro)</div>

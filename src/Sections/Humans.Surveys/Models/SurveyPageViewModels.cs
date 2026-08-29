@@ -33,6 +33,7 @@ internal sealed class SurveyPageViewModel
     public int Page { get; init; }
 
     public string Title { get; init; } = string.Empty;
+    public bool IsAsociadoVote { get; init; }
 
     /// <summary>1-based position of this page among the visible pages.</summary>
     public int StepNumber { get; init; }

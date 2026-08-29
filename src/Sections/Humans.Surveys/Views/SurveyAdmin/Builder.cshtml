@@ -37,7 +37,10 @@
             {
                 <form asp-controller="SurveyAdmin" asp-action="Open" asp-route-id="@Model.Id" method="post" class="d-inline">
                     @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-success btn-sm">Open</button>
+                    <button type="submit" class="btn btn-success btn-sm"
+                            data-confirm="@(Model.IsAsociadoVote
+                                ? "Open this binding Asociado vote? Once opened, its questions, wording, settings, dates, audience and invitation copy cannot be edited; once closed, it cannot be reopened."
+                                : "Open this survey so it can receive responses?")">Open</button>
                 </form>
             }
             @if (Model.Status == SurveyStatus.Open)
@@ -55,6 +58,16 @@
 
 <div asp-validation-summary="All" class="alert alert-danger" role="alert" style="@(ViewData.ModelState.IsValid ? "display:none" : "")"></div>
 
+@if (Model.IsDefinitionLocked)
+{
+    <div class="alert alert-warning" role="alert">
+        <strong>This binding Asociado vote is locked.</strong>
+        Once it opened, its questions, wording, settings, dates, audience and invitation copy became
+        read-only. You may still preview it, close it, inspect participation, and—after close—mark ranked
+        options unavailable for recounting.
+    </div>
+}
+
 <form asp-controller="SurveyAdmin" asp-action="Save" method="post" enctype="multipart/form-data"
       id="survey-builder-form" class="pb-5">
     @Html.AntiForgeryToken()
@@ -63,6 +76,7 @@
         <input type="hidden" asp-for="Id" />
     }
     <input type="hidden" asp-for="Status" />
+    <fieldset class="border-0 p-0 m-0 w-100" disabled="@(Model.IsDefinitionLocked ? "disabled" : null)">
 
     @* One culture is edited at a time; the badge counts fields still missing vs the default language. *@
     <div class="d-flex flex-wrap align-items-center gap-1 mb-2" id="culture-tabs">
@@ -111,27 +125,33 @@
                 </div>
             </div>
 
-            <div class="form-check mt-3">
-                @if (!Model.IsNew && Model.Status != SurveyStatus.Draft)
-                {
-                    <input type="hidden" name="IsAsociadoVote" value="@(Model.IsAsociadoVote ? "true" : "false")" />
-                    <input type="checkbox" class="form-check-input" id="asociadoVote"
-                           checked="@(Model.IsAsociadoVote ? "checked" : null)" disabled />
-                }
-                else
-                {
-                    <input type="checkbox" class="form-check-input" id="asociadoVote" asp-for="IsAsociadoVote" />
-                }
-                <label class="form-check-label fw-semibold" for="asociadoVote">Asociado vote</label>
-                <div class="form-text">
-                    Identified responses only. While open, only participation statistics are visible;
-                    all answer-derived results are embargoed until close, and the vote cannot then be reopened.
+            <section class="border border-warning rounded p-3 mt-3" aria-labelledby="asociado-vote-heading">
+                <h2 class="h6" id="asociado-vote-heading">Asociado vote</h2>
+                <div class="alert alert-warning small" role="note">
+                    <i class="fa-solid fa-circle-info me-1"></i>
+                    Use this only for a binding association decision. Review every question, option, date,
+                    translation, audience setting and invitation carefully before opening. Opening is
+                    irreversible: the complete survey becomes read-only, and after it closes it cannot be reopened.
+                </div>
+                <div class="form-check">
                     @if (!Model.IsNew && Model.Status != SurveyStatus.Draft)
                     {
-                        <strong>This setting is locked because the survey has opened.</strong>
+                        <input type="hidden" name="IsAsociadoVote" value="@(Model.IsAsociadoVote ? "true" : "false")" />
+                        <input type="checkbox" class="form-check-input" id="asociadoVote"
+                               checked="@(Model.IsAsociadoVote ? "checked" : null)" disabled />
                     }
+                    else
+                    {
+                        <input type="checkbox" class="form-check-input" id="asociadoVote" asp-for="IsAsociadoVote" />
+                    }
+                    <label class="form-check-label fw-semibold" for="asociadoVote">This is a binding Asociado vote</label>
+                    <div class="form-text">
+                        Only active, approved Asociados may answer. Ballots are identified. While open, only
+                        participation statistics are visible; all answer-derived results are sealed until close.
+                        Once opened, the survey cannot be edited. Once closed, it cannot be reopened.
+                    </div>
                 </div>
-            </div>
+            </section>
 
             <div class="row g-3 mt-1">
                 <div class="col-md-3">
@@ -196,6 +216,9 @@
         <partial name="_SurveyQuestionCard" model="@(new SurveyQuestionCardModel("__QKEY__", new SurveyQuestionBuilderViewModel(), Model.HasSavedAnswers))" />
     </template>
 
+    </fieldset>
+    @if (!Model.IsDefinitionLocked)
+    {
     <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mt-3">
         <button type="button" class="btn btn-outline-secondary btn-sm" id="add-question">+ Add question</button>
         <div class="d-flex flex-column flex-sm-row flex-wrap gap-2">
@@ -209,6 +232,7 @@
             <button type="submit" class="btn btn-primary">Save survey</button>
         </div>
     </div>
+    }
 </form>
 
 @section Scripts {
@@ -558,7 +582,7 @@
             }
 
             // ── events ───────────────────────────────────────────────────────
-            document.getElementById('add-question').addEventListener('click', function () {
+            document.getElementById('add-question')?.addEventListener('click', function () {
                 addQuestion(null);
             });
 

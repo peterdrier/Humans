@@ -24,7 +24,11 @@ tracked by nobodies-collective/Humans#86.
 - Every question's answer-derived results are embargoed until an Asociado vote
   closes; ordinary surveys retain live results.
 - A closed Asociado vote cannot reopen.
-- Asociado-vote mode is locked once the survey opens.
+- The entire Asociado-vote definition and audience are locked once the survey
+  opens; post-close ranked-option availability remains the only mutable recount
+  input.
+- Eligibility is checked against current active, approved Asociado status at
+  entry, while answering, and again at final submission.
 
 ## Counting
 
@@ -70,8 +74,10 @@ No answer-derived data from any question type is available through results
 pages, exports, Backdoor endpoints, raw-response views, or respondent
 drill-down.
 
-The builder explains the Identified-only, embargo, and no-reopen consequences
-when Asociado vote is selected. RankedChoice requires that mode.
+The builder presents Asociado-vote mode as a separate binding-vote section and
+explains the Identified-only, eligibility, whole-definition lock, embargo, and
+no-reopen consequences before opening. Respondents see a binding-vote notice on
+the intro and question pages. RankedChoice requires that mode.
 
 ## Data model
 

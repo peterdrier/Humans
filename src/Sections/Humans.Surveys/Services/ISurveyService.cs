@@ -84,6 +84,9 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
     /// </summary>
     Task<SurveyAnswerContext?> ResolveAnswerContextAsync(string token, CancellationToken ct = default);
 
+    /// <summary>Whether the Human currently holds active, approved Asociado voting rights.</summary>
+    Task<bool> IsEligibleAsociadoAsync(Guid userId, CancellationToken ct = default);
+
     /// <summary>
     /// Creates (or, idempotently, returns the existing) Identified in-progress draft response for the
     /// Human. Identified is the only resumable tier. The participation id may name an emailed invitation
@@ -296,7 +299,8 @@ internal sealed record SurveyAnswerContext(
     Guid UserId,
     SurveyDetail Definition,
     IReadOnlyList<SurveyDraftAnswer> DraftAnswers,
-    bool HasResumableDraft);
+    bool HasResumableDraft,
+    bool IsEligible = true);
 
 /// <summary>
 /// A survey resolved from its public slug: the survey id plus the reused editable definition
@@ -395,6 +399,9 @@ internal enum SurveyWizardOutcome
 
     /// <summary>The survey is not Open or is outside its answer window.</summary>
     Closed,
+
+    /// <summary>The Human no longer holds active, approved Asociado voting rights.</summary>
+    Ineligible,
 
     /// <summary>Required visible questions are unanswered; the state stays on the posted page.</summary>
     ValidationFailed,

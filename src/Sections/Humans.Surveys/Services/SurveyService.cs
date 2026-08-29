@@ -244,6 +244,13 @@ internal sealed class SurveyService(
         var now = clock.GetCurrentInstant();
         var existing = await repo.GetByIdAsync(surveyId, ct)
             ?? throw new InvalidOperationException("Survey not found.");
+        if (existing.IsAsociadoVote == true
+            && existing.Status != SurveyStatus.Draft
+            && !allowRankedAvailabilityChanges)
+        {
+            throw new InvalidOperationException(
+                "An Asociado vote cannot be edited after it has opened.");
+        }
         if (existing.Status != SurveyStatus.Draft
             && (existing.IsAsociadoVote == true) != input.IsAsociadoVote)
         {
@@ -408,6 +415,11 @@ internal sealed class SurveyService(
     {
         var detail = await GetForEditAsync(surveyId, ct)
             ?? throw new InvalidOperationException("Survey not found.");
+        if (detail.Editable.IsAsociadoVote && detail.Status != SurveyStatus.Draft)
+        {
+            throw new InvalidOperationException(
+                "An Asociado vote cannot be edited after it has opened.");
+        }
         var e = detail.Editable;
         var source = e.DefaultCulture;
 
@@ -750,8 +762,12 @@ internal sealed class SurveyService(
 
         var definition = await GetForEditAsync(invitation.SurveyId, ct);
         if (definition is null) return null;
+        var isEligible = !definition.Editable.IsAsociadoVote
+            || await IsEligibleAsociadoAsync(invitation.UserId, ct);
 
-        var draft = await repo.GetDraftResponseAsync(invitation.SurveyId, invitation.UserId, ct);
+        var draft = isEligible
+            ? await repo.GetDraftResponseAsync(invitation.SurveyId, invitation.UserId, ct)
+            : null;
         var draftAnswers = draft is null
             ? (IReadOnlyList<SurveyDraftAnswer>)[]
             : draft.Answers
@@ -772,8 +788,12 @@ internal sealed class SurveyService(
             invitation.UserId,
             definition,
             draftAnswers,
-            HasResumableDraft: draft is not null);
+            HasResumableDraft: draft is not null,
+            IsEligible: isEligible);
     }
+
+    public async Task<bool> IsEligibleAsociadoAsync(Guid userId, CancellationToken ct = default)
+        => IsEligibleAsociado(await userService.GetUserInfoAsync(userId, ct));
 
     public async Task<Guid> StartIdentifiedDraftAsync(
         Guid surveyId,
@@ -783,6 +803,13 @@ internal sealed class SurveyService(
         string culture,
         CancellationToken ct = default)
     {
+        var survey = await repo.GetByIdAsync(surveyId, ct);
+        if (survey?.IsAsociadoVote == true && !await IsEligibleAsociadoAsync(userId, ct))
+        {
+            throw new InvalidOperationException(
+                "Only an active, approved Asociado may answer this vote.");
+        }
+
         // Idempotent: one in-progress Identified draft per Human, regardless of entry path.
         var existing = await repo.GetDraftResponseAsync(surveyId, userId, ct);
         if (existing is not null)
@@ -909,6 +936,19 @@ internal sealed class SurveyService(
         {
             throw new InvalidOperationException("Survey is not open for responses.");
         }
+        if (survey.IsAsociadoVote == true)
+        {
+            if (submission.Anonymity != ResponseAnonymity.Identified || submission.UserId is not { } userId)
+            {
+                throw new InvalidOperationException(
+                    "Asociado votes require an identified eligible Asociado.");
+            }
+            if (!await IsEligibleAsociadoAsync(userId, ct))
+            {
+                throw new InvalidOperationException(
+                    "Only an active, approved Asociado may answer this vote.");
+            }
+        }
 
         // Same authoritative posture for the duplicate gate: a completed invitation can't submit
         // again on the tracked tiers (Anonymous never flips Completed, so it is unaffected).
@@ -1033,6 +1073,11 @@ internal sealed class SurveyService(
         if (!SurveyWizardFlow.IsAnswerable(definition.Status, editable.OpensAt, editable.ClosesAt, clock.GetCurrentInstant()))
         {
             return new SurveyWizardAdvanceResult(SurveyWizardOutcome.Closed, []);
+        }
+        if (editable.IsAsociadoVote
+            && (state.UserId is not { } userId || !await IsEligibleAsociadoAsync(userId, ct)))
+        {
+            return new SurveyWizardAdvanceResult(SurveyWizardOutcome.Ineligible, []);
         }
 
         // Only accept answers for questions actually visible on the posted page (re-evaluated server-side).
@@ -1912,11 +1957,7 @@ internal sealed class SurveyService(
 
             case SurveyAudienceType.Asociados:
                 return (await userService.GetAllUserInfosAsync(ct))
-                    .Where(user => user.IsApproved
-                        && user.Profile?.MembershipTier == MembershipTier.Asociado
-                        && !user.IsGdprAnonymized
-                        && !user.IsDeletionPending
-                        && !user.IsMerged)
+                    .Where(IsEligibleAsociado)
                     .Select(user => user.Id)
                     .ToHashSet();
 
@@ -1975,6 +2016,17 @@ internal sealed class SurveyService(
             .Select(u => u.Id)
             .ToList();
     }
+
+    private static bool IsEligibleAsociado(UserInfo? user)
+        => user is
+        {
+            IsApproved: true,
+            Profile.MembershipTier: MembershipTier.Asociado,
+            IsGdprAnonymized: false,
+            IsDeletionPending: false,
+            IsMerged: false,
+            State: UserState.Active,
+        };
 
     private static void ValidateAudienceConfiguration(
         SurveyAudienceType? type, Guid? teamId, Instant? loggedInSince, bool requireAudience)

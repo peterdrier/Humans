@@ -24,6 +24,15 @@
                                  "Answers and activity are not saved. Conditional questions are shown so they can be inspected."))" />
                 }
 
+                @if (Model.IsAsociadoVote)
+                {
+                    <div class="alert alert-warning small" role="note">
+                        <i class="fa-solid fa-scale-balanced me-1"></i>
+                        <strong>@Localizer["Survey_AsociadoVote_Heading"]</strong>
+                        @Localizer["Survey_AsociadoVote_PageReminder"]
+                    </div>
+                }
+
                 @if (!ViewData.ModelState.IsValid)
                 {
                     <div class="alert alert-danger" role="alert">

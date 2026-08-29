@@ -824,6 +824,45 @@ public class SurveyServiceTests
             new User { Id = id, PreferredLanguage = "en", LastLoginAt = lastLogin, State = state },
             [], [], [], null, []);
 
+    private static UserInfo Asociado(Guid id, MembershipTier tier = MembershipTier.Asociado)
+    {
+        var profile = UserFixtures.Profile(
+            burnerName: "Voter",
+            firstName: "Eligible",
+            lastName: "Human",
+            isApproved: true,
+            membershipTier: tier);
+        return new UserInfo(
+            Id: id,
+            BurnerName: profile.BurnerName,
+            IsGdprAnonymized: false,
+            PreferredLanguage: "en",
+            FallbackPictureUrl: null,
+            CreatedAt: Instant.MinValue,
+            LastLoginAt: null,
+            LastConsentReminderSentAt: null,
+            DeletionRequestedAt: null,
+            DeletionScheduledFor: null,
+            DeletionEligibleAfter: null,
+            UnsubscribedFromCampaigns: false,
+            ICalToken: null,
+            SuppressScheduleChangeEmails: false,
+            MagicLinkSentAt: null,
+            ContactSource: null,
+            ExternalSourceId: null,
+            MergedToUserId: null,
+            MergedAt: null,
+            IdentityEmailColumn: null,
+            UserEmails: [],
+            EventParticipations: [],
+            ExternalLogins: [],
+            Profile: profile,
+            CommunicationPreferences: [])
+        {
+            State = UserState.Active,
+        };
+    }
+
     private static TeamInfo TeamWith(Guid teamId, params Guid[] memberUserIds) => new(
         teamId, "Team", null, "team",
         IsActive: true, IsSystemTeam: false, SystemTeamType.None, RequiresApproval: false,
@@ -1588,6 +1627,29 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task ResolveAnswerContextAsync_rejects_a_non_asociado_from_an_asociado_vote()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Asociados, null);
+        survey.IsAsociadoVote = true;
+        var userId = Guid.NewGuid();
+        var invitation = InvitationFor(survey.Id, userId);
+        _tokenProvider.Resolve("vote").Returns(invitation.Id);
+        _repo.GetInvitationByIdAsync(invitation.Id, Arg.Any<CancellationToken>()).Returns(invitation);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Asociado(userId, MembershipTier.Colaborador));
+
+        var ctx = await CreateService().ResolveAnswerContextAsync(
+            "vote", TestContext.Current.CancellationToken);
+
+        ctx.Should().NotBeNull();
+        ctx.IsEligible.Should().BeFalse();
+        ctx.HasResumableDraft.Should().BeFalse();
+        await _repo.DidNotReceive().GetDraftResponseAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ResolvePublicContextAsync_returns_null_for_unknown_slug()
     {
         _repo.GetIdByPublicSlugAsync("missing", Arg.Any<CancellationToken>()).Returns((Guid?)null);
@@ -1882,6 +1944,34 @@ public class SurveyServiceTests
             "en",
             Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SubmitResponseAsync_rechecks_asociado_eligibility_before_finalising()
+    {
+        var survey = SurveyForSubmit(out var questionId, out _);
+        survey.IsAsociadoVote = true;
+        var userId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Asociado(userId, MembershipTier.Colaborador));
+        var submission = new SurveySubmission(
+            survey.Id, Guid.NewGuid(), userId, Guid.NewGuid(),
+            ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink, "en",
+            [Ans(questionId, "yes")]);
+
+        var act = async () => await CreateService().SubmitResponseAsync(
+            submission, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*active, approved Asociado*");
+        await _repo.DidNotReceive().FinalizeIdentifiedResponseAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<IReadOnlyList<SurveyAnswer>>(),
+            Arg.Any<Instant>(),
+            Arg.Any<SurveyInputMethod>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -3320,7 +3410,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateAsync_cannot_change_asociado_vote_mode_after_opening()
+    public async Task UpdateAsync_cannot_edit_an_asociado_vote_after_opening()
     {
         var survey = SurveyWith(SurveyStatus.Open, null, null);
         survey.IsAsociadoVote = true;
@@ -3333,7 +3423,7 @@ public class SurveyServiceTests
             TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*cannot change after the survey has opened*");
+            .WithMessage("*cannot be edited after it has opened*");
         await _repo.DidNotReceive().UpdateAsync(
             Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
@@ -3396,7 +3486,7 @@ public class SurveyServiceTests
             TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*cannot change after the first saved answer*");
+            .WithMessage("*cannot be edited after it has opened*");
         await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 

@@ -61,6 +61,9 @@ internal sealed class SurveyIntroViewModel
     /// <summary>True when the invitee already has answers in progress (Identified resume).</summary>
     public bool HasResumableDraft { get; init; }
 
+    /// <summary>True when this is a binding, identified Asociado vote.</summary>
+    public bool IsAsociadoVote { get; init; }
+
     /// <summary>True for the protected, side-effect-free Board/Admin preview flow.</summary>
     public bool IsPreview { get; init; }
 
@@ -95,6 +98,7 @@ internal sealed class SurveySendViewModel
     public LocalDate? AudienceLoggedInSince { get; init; }
     public int NewRecipientCount { get; init; }
     public IReadOnlyList<SurveyInviteStatus> Invitations { get; init; } = [];
+    public bool IsAsociadoVote { get; init; }
 
     public bool CanSend => Status == SurveyStatus.Open && AudienceType is not null && NewRecipientCount > 0;
 }
@@ -171,6 +175,7 @@ internal sealed class SurveyBuilderViewModel
     public bool HasSavedAnswers { get; set; }
 
     public bool IsNew => Id is null;
+    public bool IsDefinitionLocked => !IsNew && IsAsociadoVote && Status != SurveyStatus.Draft;
 
     // datetime-local <input> values (empty when unset).
     public string OpensAtInput => FormatLocal(OpensAt);

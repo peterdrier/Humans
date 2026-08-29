@@ -92,6 +92,7 @@ internal sealed class SurveyAdminController(
             Culture = resolvedCulture,
             AllowAnonymous = editable.AllowAnonymous,
             ShowAnonymitySelector = editable.AllowAnonymous,
+            IsAsociadoVote = editable.IsAsociadoVote,
             IsPreview = true,
             PreviewSurveyId = detail.Id,
         };
@@ -322,6 +323,7 @@ internal sealed class SurveyAdminController(
             AudienceLoggedInSince = detail.Editable.AudienceLoggedInSince?.InZone(Zone).Date,
             NewRecipientCount = newRecipientCount,
             Invitations = statuses.OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase).ToList(),
+            IsAsociadoVote = detail.Editable.IsAsociadoVote,
         };
         return View(vm);
     }

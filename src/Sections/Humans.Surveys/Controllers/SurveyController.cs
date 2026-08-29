@@ -51,6 +51,11 @@ internal sealed class SurveyController(
 
         var editable = ctx.Definition.Editable;
 
+        if (!ctx.IsEligible)
+        {
+            return View("Closed", new SurveyClosedViewModel { Reason = "ineligible-asociado" });
+        }
+
         if (!IsAnswerable(ctx.Definition))
         {
             return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
@@ -96,6 +101,7 @@ internal sealed class SurveyController(
             AllowAnonymous = editable.AllowAnonymous,
             ShowAnonymitySelector = editable.AllowAnonymous,
             HasResumableDraft = ctx.HasResumableDraft,
+            IsAsociadoVote = editable.IsAsociadoVote,
         };
         return View("Intro", vm);
     }
@@ -111,6 +117,11 @@ internal sealed class SurveyController(
         }
 
         var editable = ctx.Definition.Editable;
+
+        if (!ctx.IsEligible)
+        {
+            return View("Closed", new SurveyClosedViewModel { Reason = "ineligible-asociado" });
+        }
 
         // Re-gate on the POST: the intro may have been loaded just before the window closed.
         if (!IsAnswerable(ctx.Definition))
@@ -398,6 +409,12 @@ internal sealed class SurveyController(
         {
             return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
         }
+        if (editable.IsAsociadoVote
+            && (state.UserId is not { } userId
+                || !await surveyService.IsEligibleAsociadoAsync(userId, ct)))
+        {
+            return View("Closed", new SurveyClosedViewModel { Reason = "ineligible-asociado" });
+        }
 
         var answerStates = SurveyWizardFlow.ToAnswerStates(state.Answers);
 
@@ -461,6 +478,10 @@ internal sealed class SurveyController(
 
             case SurveyWizardOutcome.Closed:
                 return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
+
+            case SurveyWizardOutcome.Ineligible:
+                route.Clear(HttpContext.Session);
+                return View("Closed", new SurveyClosedViewModel { Reason = "ineligible-asociado" });
 
             case SurveyWizardOutcome.ValidationFailed:
                 foreach (var id in result.MissingRequired)

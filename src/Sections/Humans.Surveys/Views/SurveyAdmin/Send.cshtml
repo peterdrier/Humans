@@ -91,13 +91,19 @@
         @if (Model.Status != SurveyStatus.Open)
         {
             <p class="text-muted">The survey must be <strong>Open</strong> before invitations can be sent.</p>
-            @if (Model.AudienceType is not null && Model.NewRecipientCount > 0)
+            @if (Model.Status == SurveyStatus.Closed && Model.IsAsociadoVote)
+            {
+                <p class="text-muted mb-0">A closed Asociado vote cannot be reopened.</p>
+            }
+            else if (Model.AudienceType is not null && Model.NewRecipientCount > 0)
             {
                 <form asp-controller="SurveyAdmin" asp-action="Open" asp-route-id="@Model.Id" method="post" class="d-inline">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="continueToSend" value="true" />
                     <button type="submit" class="btn btn-success"
-                            data-confirm="Open this survey so it can receive responses?">
+                            data-confirm="@(Model.IsAsociadoVote
+                                ? "Open this binding Asociado vote? Once opened, its definition and audience cannot be edited; once closed, it cannot be reopened."
+                                : "Open this survey so it can receive responses?")">
                         Open survey
                     </button>
                 </form>
