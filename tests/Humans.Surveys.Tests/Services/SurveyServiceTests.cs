@@ -1461,6 +1461,38 @@ public class SurveyServiceTests
         rows.Single(r => r.UserId == unknown).Name.Should().Be(unknown.ToString());
     }
 
+    [HumansFact]
+    public async Task GetOfficialLinkAsync_uses_the_current_humans_unspent_invitation()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        survey.PublicSlug = "public-fallback";
+        var userId = Guid.NewGuid();
+        var invitation = InvitationFor(survey.Id, userId);
+        invitation.SentAt = _clock.GetCurrentInstant();
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _repo.GetInvitationsAsync(survey.Id, Arg.Any<CancellationToken>())
+            .Returns([invitation]);
+        _tokenProvider.Create(invitation.Id).Returns("official-token");
+
+        var link = await CreateService().GetOfficialLinkAsync(
+            survey.Id, userId, TestContext.Current.CancellationToken);
+
+        link.Should().Be(new SurveyOfficialLink("official-token", null));
+    }
+
+    [HumansFact]
+    public async Task GetOfficialLinkAsync_falls_back_to_the_public_slug()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        survey.PublicSlug = "public-survey";
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var link = await CreateService().GetOfficialLinkAsync(
+            survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        link.Should().Be(new SurveyOfficialLink(null, "public-survey"));
+    }
+
     private static UserInfo UserInfoWithName(Guid id, string burnerName, string culture = "en") => new(
         id, burnerName, false, culture, null, Instant.MinValue, null, null, null, null, null,
         false, null, false, null, null, null, null, null, null,

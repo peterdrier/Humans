@@ -62,6 +62,29 @@ internal sealed class SurveyService(
             responses.GetValueOrDefault(s.Id))).ToList();
     }
 
+    public async Task<SurveyOfficialLink?> GetOfficialLinkAsync(
+        Guid surveyId,
+        Guid userId,
+        CancellationToken ct = default)
+    {
+        var survey = await repo.GetByIdAsync(surveyId, ct);
+        if (survey?.Status != SurveyStatus.Open) return null;
+
+        var invitation = (await repo.GetInvitationsAsync(surveyId, ct))
+            .FirstOrDefault(candidate =>
+                candidate.UserId == userId
+                && candidate.SentAt is not null
+                && !candidate.Completed);
+        if (invitation is not null)
+        {
+            return new SurveyOfficialLink(tokenProvider.Create(invitation.Id), null);
+        }
+
+        return string.IsNullOrWhiteSpace(survey.PublicSlug)
+            ? null
+            : new SurveyOfficialLink(null, survey.PublicSlug);
+    }
+
     /// <summary>
     /// The machine-readable question graph behind <c>/api/backdoor/surveys/{id}</c>. Built on
     /// <see cref="GetForEditAsync"/> so there is one read path, then flattened: localized text

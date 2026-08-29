@@ -39,6 +39,26 @@ internal sealed class SurveyAdminController(
         return View(new SurveyAdminIndexViewModel { Surveys = ordered });
     }
 
+    [HttpGet("Official/{id:guid}")]
+    public async Task<IActionResult> Official(Guid id, CancellationToken ct)
+    {
+        var userId = GetCurrentUserId();
+        if (userId is null) return Forbid();
+
+        var link = await surveyService.GetOfficialLinkAsync(id, userId.Value, ct);
+        if (link?.InvitationToken is { } token)
+        {
+            return RedirectToAction(nameof(SurveyController.Answer), "Survey", new { t = token });
+        }
+        if (link?.PublicSlug is { } slug)
+        {
+            return RedirectToAction(nameof(SurveyController.Public), "Survey", new { slug });
+        }
+
+        SetError("No active survey link is available for you.");
+        return RedirectToAction(nameof(Send), new { id });
+    }
+
     [HttpGet("Create")]
     public async Task<IActionResult> Create(CancellationToken ct)
     {

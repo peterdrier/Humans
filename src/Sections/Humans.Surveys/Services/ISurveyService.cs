@@ -61,6 +61,12 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
     /// <summary>Per-invite delivery/participation status for the admin Send page, with display names stitched in. Unsorted — caller sorts.</summary>
     Task<IReadOnlyList<SurveyInviteStatus>> GetInviteStatusesAsync(Guid surveyId, CancellationToken ct = default);
 
+    /// <summary>The current Human's official entry link for an Open survey: their unspent invitation, or the public slug fallback.</summary>
+    Task<SurveyOfficialLink?> GetOfficialLinkAsync(
+        Guid surveyId,
+        Guid userId,
+        CancellationToken ct = default);
+
     /// <summary>
     /// Job-driven sweep: sends the one-time 7-day reminder to every invitee of an Open survey who
     /// hasn't completed and hasn't already been reminded (<c>SentAt</c> ≥ 7 days ago). Stamps
@@ -156,6 +162,8 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
         CancellationToken ct = default);
 
 }
+
+internal sealed record SurveyOfficialLink(string? InvitationToken, string? PublicSlug);
 
 internal sealed record SurveyScopedResults(
     SurveyResultsView Results,

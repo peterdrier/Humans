@@ -52,7 +52,18 @@
                                 @(string.IsNullOrWhiteSpace(s.Title) ? "(untitled)" : s.Title)
                             </a>
                         </td>
-                        <td><span class="badge @StatusBadge(s.Status)">@s.Status</span></td>
+                        <td>
+                            @if (s.Status == SurveyStatus.Open)
+                            {
+                                <a asp-controller="SurveyAdmin" asp-action="Official" asp-route-id="@s.Id"
+                                   class="badge @StatusBadge(s.Status) text-decoration-none"
+                                   title="Open the official survey link">@s.Status</a>
+                            }
+                            else
+                            {
+                                <span class="badge @StatusBadge(s.Status)">@s.Status</span>
+                            }
+                        </td>
                         <td class="text-end">@s.InvitedCount</td>
                         <td class="text-end">@s.ResponseCount</td>
                         <td class="text-end">@(s.InvitedCount > 0 ? $"{rate}%" : "—")</td>
