@@ -70,7 +70,7 @@ C=Comments, P=Prose, B=Behavior(main), S=Shape(main).
 ## Worked
 
 Findings 1–12, 14–38, plus the done half of 39, committed by concern: section docs, code
-comments, Detail view, import counts, two test batches (section suite green; the PR's own
+comments, Detail view, import counts, test batches (section suite green; the PR's own
 diff stats carry the totals).
 
 ## Skipped

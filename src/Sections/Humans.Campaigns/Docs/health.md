@@ -17,13 +17,13 @@ GDPR export, and are hard-deleted on erasure.
 
 | Shape | Members | Notes |
 |---|---|---|
-| Campaign CRUD | Create, Edit, GetById, GetAll (admin list) | form-shaped; validation = three required strings |
+| Campaign CRUD | Create, Edit, GetById, GetAll (admin list) | form-shaped; validation is required-string checks only |
 | Lifecycle | Activate, Complete | one-way Draft → Active → Completed |
 | Code loading | ImportCodesAsync (CSV), GenerateAndImportDiscountCodesAsync (vendor) | both funnel into per-campaign `ImportOrder` sequence |
 | Wave send | PreviewWaveSendAsync, SendWaveAsync, GetSendWavePageAsync | team-scoped; grant + email per eligible member |
 | Delivery repair | ResendToGrantAsync, RetryAllFailedAsync | both re-enqueue through the same email factory |
 | Grant reads | GetActiveOrCompletedGrantsForUserAsync, GetAllGrantsForUserAsync, GetCodeTrackingAsync | the cross-section read surface (`ICampaignServiceRead`) |
-| Inbound writes | MarkGrantsRedeemedAsync (ticket sync), UpdateGrantEmailStatusAsync (outbox processor) | the two cross-section writes on `ICampaignService` |
+| Inbound writes | MarkGrantsRedeemedAsync (ticket sync), UpdateGrantEmailStatusAsync (outbox processor) | the cross-section writes on `ICampaignService` |
 | Platform roles | IUserDataContributor (export + erase), IUserMerge (grant re-FK) | GDPR and merge fold |
 
 Question-shapes: "manage a campaign" (CRUD + lifecycle + loading), "get codes to people"
@@ -79,7 +79,7 @@ backlog at assessment time.
   because the section assembly cannot name `User` since G5. Display names resolve through
   `IUserServiceRead`; don't reintroduce a relationship.
 - The controller injects the concrete `CampaignService`, not an interface — deliberate
-  (design §15 step 5): the in-section surface stays internal, only the five cross-assembly
+  (design §15 step 5): the in-section surface stays internal; only the cross-assembly
   members live on `ICampaignService`/`ICampaignServiceRead`.
 - Repository is Singleton over `IDbContextFactory` (context per call) — the section's §15b
   pattern; the architecture test pins it.
