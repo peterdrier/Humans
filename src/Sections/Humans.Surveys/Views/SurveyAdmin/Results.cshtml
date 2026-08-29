@@ -142,6 +142,35 @@ else
                                 </div>
                             </div>
                         </div>
+                        var originalCycleLabels = ranked.OriginalPreferenceCycle
+                            .Select(value => ranked.Candidates
+                                .FirstOrDefault(candidate => string.Equals(candidate.Value, value, StringComparison.Ordinal))
+                                ?.Label ?? value)
+                            .ToList();
+                        var currentCycleLabels = ranked.CurrentPreferenceCycle
+                            .Select(value => ranked.Candidates
+                                .FirstOrDefault(candidate => string.Equals(candidate.Value, value, StringComparison.Ordinal))
+                                ?.Label ?? value)
+                            .ToList();
+                        @if (currentCycleLabels.Count > 0 || originalCycleLabels.Count > 0)
+                        {
+                            var showingCurrentCycle = currentCycleLabels.Count > 0;
+                            var cycleLabels = showingCurrentCycle ? currentCycleLabels : originalCycleLabels;
+                            <div class="alert alert-info">
+                                <strong>Preference cycle detected in the @(showingCurrentCycle ? "available-options" : "all-options") count:</strong>
+                                @string.Join(" → ", cycleLabels).
+                                @if (showingCurrentCycle)
+                                {
+                                    <text>Like rock–paper–scissors, each option beats another but is beaten by a third. No option beats every other option head-to-head, so Ranked Pairs resolves the cycle by locking the strongest victories without creating a loop.</text>
+                                }
+                                else
+                                {
+                                    <text>Like rock–paper–scissors, each option beat another but was beaten by a third. Removing an unavailable option breaks this cycle. The remaining options are then compared directly, so the winner can change even when the previous winner is still available.</text>
+                                }
+                                <a href="https://nobodies.team/event-dates-2027-voting-method.html#preference-cycles-and-availability"
+                                   target="_blank" rel="noopener noreferrer">Why availability changes can look counter-intuitive</a>.
+                            </div>
+                        }
                         @if (!string.Equals(
                             ranked.OriginalOfficialResult.WinnerValue,
                             ranked.CurrentOfficialResult.WinnerValue,

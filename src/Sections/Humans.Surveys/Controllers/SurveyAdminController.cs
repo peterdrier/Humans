@@ -7,8 +7,6 @@ using Humans.Base.Authorization;
 using Humans.Base.Extensions;
 using Humans.Surveys.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using Humans.Users.Contracts;
@@ -26,8 +24,7 @@ internal sealed class SurveyAdminController(
     ISurveyService surveyService,
     ITeamServiceRead teamService,
     IUserServiceRead userService,
-    ILogger<SurveyAdminController> logger,
-    IWebHostEnvironment? environment = null) : HumansControllerBase(userService)
+    ILogger<SurveyAdminController> logger) : HumansControllerBase(userService)
 {
     private static readonly DateTimeZone Zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
@@ -39,22 +36,7 @@ internal sealed class SurveyAdminController(
             .OrderBy(s => s.Status)
             .ThenBy(s => s.Title, StringComparer.OrdinalIgnoreCase)
             .ToList();
-        ViewData["CanSeedRankedDemo"] = IsDevelopment();
         return View(new SurveyAdminIndexViewModel { Surveys = ordered });
-    }
-
-    [HttpPost("SeedRankedDemo")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SeedRankedDemo(CancellationToken ct)
-    {
-        if (!IsDevelopment()) return NotFound();
-        var actorId = GetCurrentUserId();
-        if (actorId is null) return Forbid();
-        var created = await surveyService.SeedRankedVotingDemoAsync(actorId.Value, ct);
-        SetSuccess(created == 0
-            ? "Ranked-voting demo surveys already exist."
-            : $"Created {created} ranked-voting demo surveys.");
-        return RedirectToAction(nameof(Index));
     }
 
     [HttpGet("Create")]
@@ -425,8 +407,5 @@ internal sealed class SurveyAdminController(
             .Select(t => new SurveyTeamOption(t.Id, t.Name))
             .ToList();
     }
-
-    private bool IsDevelopment() => environment is not null
-        && string.Equals(environment.EnvironmentName, Environments.Development, StringComparison.Ordinal);
 
 }

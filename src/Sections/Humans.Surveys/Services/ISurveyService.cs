@@ -155,7 +155,6 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
         Guid actorUserId,
         CancellationToken ct = default);
 
-    Task<int> SeedRankedVotingDemoAsync(Guid actorUserId, CancellationToken ct = default);
 }
 
 internal sealed record SurveyScopedResults(
@@ -171,6 +170,8 @@ internal sealed record RankedQuestionResult(
     RankedMethodResult CurrentOfficialResult,
     IReadOnlyList<RankedMethodResult> Methods,
     IReadOnlyList<PairwiseContest> Pairwise,
+    IReadOnlyList<string> OriginalPreferenceCycle,
+    IReadOnlyList<string> CurrentPreferenceCycle,
     IReadOnlyList<string> UnavailableValues);
 
 internal sealed record RankedCandidateResult(

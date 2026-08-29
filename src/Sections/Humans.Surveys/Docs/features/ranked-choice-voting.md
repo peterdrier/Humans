@@ -52,6 +52,12 @@ recount and compresses remaining ranks. The stored ballot is unchanged.
 Availability changes are reversible and audited. Closed results preserve both
 the all-options outcome and the current available-only outcome.
 
+When a head-to-head preference cycle is present, the results page names the
+cycle and explains that removing an unavailable option can break it and change
+the winner even when the previous winner remains available. The explanation
+links to the public voting-method note at
+`https://nobodies.team/event-dates-2027-voting-method.html#preference-cycles-and-availability`.
+
 ## Result embargo
 
 Ordinary surveys keep the existing default: anyone authorized to use Surveys

@@ -1253,7 +1253,11 @@ internal sealed class SurveyService(
             winner is null ? null : labels.GetValueOrDefault(winner, winner),
             tieBreak);
 
-        (RankedPairwiseMatrix Matrix, RankedMethodResult Official, IReadOnlyList<RankedMethodResult> Methods)
+        (
+            RankedPairwiseMatrix Matrix,
+            RankedMethodResult Official,
+            IReadOnlyList<RankedMethodResult> Methods,
+            IReadOnlyList<string> PreferenceCycle)
             Count(IReadOnlySet<string>? candidates)
         {
             var matrix = RankedChoiceCounter.BuildPairwise(authored, ballots, candidates);
@@ -1268,7 +1272,8 @@ internal sealed class SurveyService(
                     official,
                     Method("Condorcet check", condorcet.Winner, false),
                     Method("Borda Count", borda.Winner, borda.TieBreakUsed),
-                ]);
+                ],
+                condorcet.SmallestCycle);
         }
 
         var original = Count(null);
@@ -1288,6 +1293,8 @@ internal sealed class SurveyService(
             current.Official,
             current.Methods,
             current.Matrix.Contests,
+            original.PreferenceCycle,
+            current.PreferenceCycle,
             unavailable.ToList());
     }
 
@@ -1321,161 +1328,6 @@ internal sealed class SurveyService(
             actorUserId,
             allowRankedAvailabilityChanges: true,
             ct);
-    }
-
-    public async Task<int> SeedRankedVotingDemoAsync(Guid actorUserId, CancellationToken ct = default)
-    {
-        const string prefix = "[Demo] Ranked vote";
-        if ((await GetSummariesAsync(ct)).Any(summary => summary.Title.StartsWith(prefix, StringComparison.Ordinal)))
-            return 0;
-
-        var voters = (await userService.GetAllUserInfosAsync(ct))
-            .Where(user => user.IsApproved && !user.IsGdprAnonymized && !user.IsDeletionPending && !user.IsMerged)
-            .Take(8)
-            .ToList();
-        if (voters.Count == 0)
-            throw new InvalidOperationException("No active local users are available for demo ballots.");
-
-        static LocalizedText Text(string value) => new(
-            new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = value });
-        static QuestionInput RankingQuestion(Guid id) => new(
-            id, 1, 0, SurveyQuestionType.RankedChoice,
-            Text("Which weekend should we choose?"),
-            Text("Rank any dates you support. Unranked dates remain acceptable; Reject means unacceptable."),
-            true, null, null, LocalizedText.Empty, LocalizedText.Empty, null,
-            [
-                new OptionInput(Guid.NewGuid(), 0, "sep-12", Text("12–13 September")),
-                new OptionInput(Guid.NewGuid(), 1, "sep-19", Text("19–20 September")),
-                new OptionInput(Guid.NewGuid(), 2, "sep-26", Text("26–27 September")),
-                new OptionInput(Guid.NewGuid(), 3, "oct-03", Text("3–4 October")),
-            ],
-            RankedSettings: new RankedQuestionSettings(true, true, RankedVotingMethod.RankedPairs));
-
-        SurveyEditInput Demo(string title, Guid questionId) => new(
-            Text(title),
-            Text("Local fixture for reviewing ranked voting and the Asociado-vote result embargo."),
-            Text("Your vote has been recorded."),
-            LocalizedText.Empty,
-            LocalizedText.Empty,
-            "en",
-            false,
-            null,
-            null,
-            SurveyAudienceType.Asociados,
-            null,
-            null,
-            null,
-            [RankingQuestion(questionId)],
-            true);
-
-        var openEmptyId = await CreateAsync(Demo($"{prefix} — open, no responses", Guid.NewGuid()), actorUserId, ct);
-        await OpenAsync(openEmptyId, actorUserId, ct);
-
-        var openPartialQuestion = Guid.NewGuid();
-        var openPartialId = await CreateAsync(
-            Demo($"{prefix} — open, partial participation", openPartialQuestion), actorUserId, ct);
-        await OpenAsync(openPartialId, actorUserId, ct);
-        await SeedDemoResponsesAsync(
-            openPartialId,
-            openPartialQuestion,
-            voters,
-            [
-                new RankedAnswer([["sep-12"], ["sep-19"], ["sep-26"]], ["oct-03"]),
-                new RankedAnswer([["sep-19"], ["sep-26"], ["sep-12"]], []),
-            ],
-            includeStartedDraft: true,
-            ct);
-
-        var closedQuestion = Guid.NewGuid();
-        var closedId = await CreateAsync(
-            Demo($"{prefix} — closed, Condorcet cycle", closedQuestion), actorUserId, ct);
-        await OpenAsync(closedId, actorUserId, ct);
-        await SeedDemoResponsesAsync(
-            closedId,
-            closedQuestion,
-            voters,
-            [
-                new RankedAnswer([["sep-12"], ["sep-19"], ["sep-26"], ["oct-03"]], []),
-                new RankedAnswer([["sep-12"], ["sep-19"], ["sep-26"], ["oct-03"]], []),
-                new RankedAnswer([["sep-19"], ["sep-26"], ["sep-12"], ["oct-03"]], []),
-                new RankedAnswer([["sep-19"], ["sep-26"], ["sep-12"], ["oct-03"]], []),
-                new RankedAnswer([["sep-26"], ["sep-12"], ["sep-19"], ["oct-03"]], []),
-                new RankedAnswer([["sep-26"], ["sep-12"], ["sep-19"], ["oct-03"]], []),
-            ],
-            includeStartedDraft: false,
-            ct);
-        await CloseAsync(closedId, actorUserId, ct);
-        await SetRankedAvailabilityAsync(closedId, closedQuestion, ["sep-12"], actorUserId, ct);
-
-        return 3;
-    }
-
-    private async Task SeedDemoResponsesAsync(
-        Guid surveyId,
-        Guid questionId,
-        IReadOnlyList<UserInfo> voters,
-        IReadOnlyList<RankedAnswer> ballots,
-        bool includeStartedDraft,
-        CancellationToken ct)
-    {
-        var now = clock.GetCurrentInstant();
-        var count = Math.Min(ballots.Count, voters.Count);
-        for (var index = 0; index < count; index++)
-        {
-            var invitation = new SurveyInvitation
-            {
-                Id = Guid.NewGuid(),
-                SurveyId = surveyId,
-                UserId = voters[index].Id,
-                CreatedAt = now,
-                SentAt = now,
-                Started = true,
-            };
-            await repo.AddInvitationAndSaveAsync(invitation, ct);
-            var draft = new SurveyResponse
-            {
-                Id = Guid.NewGuid(),
-                SurveyId = surveyId,
-                InvitationId = invitation.Id,
-                UserId = voters[index].Id,
-                Anonymity = ResponseAnonymity.Identified,
-                InputMethod = SurveyInputMethod.UserSpecificLink,
-                Culture = "en",
-            };
-            await repo.AddResponseAsync(draft, ct);
-            await repo.FinalizeIdentifiedResponseAsync(
-                invitation.Id,
-                draft.Id,
-                MapAnswers(draft.Id, [new SurveyAnswerInput(questionId, [], null, null, null, ballots[index])]),
-                now,
-                SurveyInputMethod.UserSpecificLink,
-                "en",
-                ct);
-        }
-
-        if (includeStartedDraft && voters.Count > count)
-        {
-            var invitation = new SurveyInvitation
-            {
-                Id = Guid.NewGuid(),
-                SurveyId = surveyId,
-                UserId = voters[count].Id,
-                CreatedAt = now,
-                SentAt = now,
-                Started = true,
-            };
-            await repo.AddInvitationAndSaveAsync(invitation, ct);
-            await repo.AddResponseAsync(new SurveyResponse
-            {
-                Id = Guid.NewGuid(),
-                SurveyId = surveyId,
-                InvitationId = invitation.Id,
-                UserId = voters[count].Id,
-                Anonymity = ResponseAnonymity.Identified,
-                InputMethod = SurveyInputMethod.UserSpecificLink,
-                Culture = "en",
-            }, ct);
-        }
     }
 
     private static bool MatchesScope(ResponseAnonymity anonymity, SurveyResultsScope scope) => scope switch

@@ -3384,10 +3384,14 @@ public class SurveyServiceTests
         survey.IsAsociadoVote = true;
         var questionId = Guid.NewGuid();
         var question = RankedQuestion(questionId, survey.Id);
-        question.RankedUnavailableOptionValues = ["a"];
+        question.RankedUnavailableOptionValues = ["b"];
         survey.Questions = [question];
         var responses = new[]
         {
+            SubmittedResponse(
+                survey.Id, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
+                _clock.GetCurrentInstant(), Guid.NewGuid(),
+                RankedAnswerFor(questionId, [["a"], ["b"]], "c")),
             SubmittedResponse(
                 survey.Id, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
                 _clock.GetCurrentInstant(), Guid.NewGuid(),
@@ -3395,11 +3399,15 @@ public class SurveyServiceTests
             SubmittedResponse(
                 survey.Id, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
                 _clock.GetCurrentInstant(), Guid.NewGuid(),
-                RankedAnswerFor(questionId, [["a"], ["b"], ["c"]], "c")),
+                RankedAnswerFor(questionId, [["b"], ["c"], ["a"]])),
             SubmittedResponse(
                 survey.Id, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
                 _clock.GetCurrentInstant(), Guid.NewGuid(),
                 RankedAnswerFor(questionId, [["b"], ["c"], ["a"]])),
+            SubmittedResponse(
+                survey.Id, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
+                _clock.GetCurrentInstant(), Guid.NewGuid(),
+                RankedAnswerFor(questionId, [["c"], ["a"], ["b"]])),
         };
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
         _repo.GetResponsesForResultsAsync(survey.Id, Arg.Any<CancellationToken>())
@@ -3414,12 +3422,15 @@ public class SurveyServiceTests
 
         var ranked = scoped!.RankedQuestions![questionId];
         ranked.OriginalOfficialResult.WinnerValue.Should().Be("a");
-        ranked.CurrentOfficialResult.WinnerValue.Should().Be("b");
+        ranked.CurrentOfficialResult.WinnerValue.Should().Be("c");
+        ranked.OriginalPreferenceCycle.Should().HaveCount(4);
+        ranked.OriginalPreferenceCycle[0].Should().Be(ranked.OriginalPreferenceCycle[^1]);
+        ranked.CurrentPreferenceCycle.Should().BeEmpty();
         ranked.Methods.Select(method => method.Method).Should().Equal(
             "Ranked Pairs (official)", "Condorcet check", "Borda Count");
         ranked.Candidates.Single(candidate => string.Equals(candidate.Value, "c", StringComparison.Ordinal))
             .RejectionCount.Should().Be(1);
-        ranked.Candidates.Single(candidate => string.Equals(candidate.Value, "a", StringComparison.Ordinal))
+        ranked.Candidates.Single(candidate => string.Equals(candidate.Value, "b", StringComparison.Ordinal))
             .IsAvailable.Should().BeFalse();
     }
 }
