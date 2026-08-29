@@ -41,6 +41,11 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="Survey_TransparencyNote" xml:space="preserve"><value>Les teves respostes poden ser revisades i analitzades, fins i tot mitjançant eines automatitzades, per millorar el col·lectiu.</value></data>
+  <data name="Survey_AsociadoVote_Heading" xml:space="preserve"><value>Votació vinculant d'Asociados</value></data>
+  <data name="Survey_AsociadoVote_Body" xml:space="preserve"><value>Aquesta és una votació identificada i vinculant de l'associació. Humans comprova que actualment ets un Asociado actiu i aprovat abans de permetre't participar i de nou quan envies el vot. Els resultats romanen segellats fins que es tanca la votació. Envia únicament el teu propi vot meditat; un vot enviat no es pot substituir.</value></data>
+  <data name="Survey_AsociadoVote_PageReminder" xml:space="preserve"><value>El teu vot identificat forma part d'una decisió vinculant de l'associació. La teva elegibilitat es tornarà a comprovar quan l'enviïs.</value></data>
+  <data name="Survey_AsociadoIneligible_Heading" xml:space="preserve"><value>No tens dret a votar</value></data>
+  <data name="Survey_AsociadoIneligible_Body" xml:space="preserve"><value>Aquesta votació vinculant està restringida a les persones que actualment són Asociados actius i aprovats. Si creus que el teu registre de membre és incorrecte, posa't en contacte amb la Junta abans que es tanqui el període de votació.</value></data>
   <data name="Survey_TitleFallback" xml:space="preserve"><value>Enquesta</value></data>
   <data name="Survey_ResumeNotice" xml:space="preserve"><value>Tens respostes en curs — continua on ho vas deixar.</value></data>
   <data name="Survey_Language" xml:space="preserve"><value>Idioma</value></data>

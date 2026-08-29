@@ -41,6 +41,11 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="Survey_TransparencyNote" xml:space="preserve"><value>Tus respuestas pueden ser revisadas y analizadas, incluso mediante herramientas automatizadas, para mejorar el colectivo.</value></data>
+  <data name="Survey_AsociadoVote_Heading" xml:space="preserve"><value>Votación vinculante de Asociados</value></data>
+  <data name="Survey_AsociadoVote_Body" xml:space="preserve"><value>Esta es una votación identificada y vinculante de la asociación. Humans comprueba que actualmente eres un Asociado activo y aprobado antes de permitirte participar y de nuevo cuando envías tu voto. Los resultados permanecen sellados hasta que cierre la votación. Envía únicamente tu propio voto meditado; un voto enviado no puede sustituirse.</value></data>
+  <data name="Survey_AsociadoVote_PageReminder" xml:space="preserve"><value>Tu voto identificado forma parte de una decisión vinculante de la asociación. Tu elegibilidad volverá a comprobarse cuando lo envíes.</value></data>
+  <data name="Survey_AsociadoIneligible_Heading" xml:space="preserve"><value>No tienes derecho a votar</value></data>
+  <data name="Survey_AsociadoIneligible_Body" xml:space="preserve"><value>Esta votación vinculante está restringida a quienes actualmente son Asociados activos y aprobados. Si crees que tu registro de membresía es incorrecto, ponte en contacto con la Junta antes de que cierre el periodo de votación.</value></data>
   <data name="Survey_TitleFallback" xml:space="preserve"><value>Encuesta</value></data>
   <data name="Survey_ResumeNotice" xml:space="preserve"><value>Tienes respuestas en curso — continúa donde lo dejaste.</value></data>
   <data name="Survey_Language" xml:space="preserve"><value>Idioma</value></data>

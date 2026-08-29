@@ -41,6 +41,11 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="Survey_TransparencyNote" xml:space="preserve"><value>Deine Antworten können überprüft und analysiert werden, auch durch automatisierte Tools, um das Kollektiv zu verbessern.</value></data>
+  <data name="Survey_AsociadoVote_Heading" xml:space="preserve"><value>Verbindliche Asociado-Abstimmung</value></data>
+  <data name="Survey_AsociadoVote_Body" xml:space="preserve"><value>Dies ist eine identifizierte, verbindliche Abstimmung des Vereins. Humans prüft vor deiner Teilnahme und erneut beim Absenden, ob du derzeit ein aktiver, bestätigter Asociado bist. Die Ergebnisse bleiben bis zum Ende der Abstimmung unter Verschluss. Gib nur deinen eigenen, wohlüberlegten Stimmzettel ab; ein abgegebener Stimmzettel kann nicht ersetzt werden.</value></data>
+  <data name="Survey_AsociadoVote_PageReminder" xml:space="preserve"><value>Dein identifizierter Stimmzettel ist Teil einer verbindlichen Vereinsentscheidung. Deine Stimmberechtigung wird beim Absenden erneut geprüft.</value></data>
+  <data name="Survey_AsociadoIneligible_Heading" xml:space="preserve"><value>Du bist nicht stimmberechtigt</value></data>
+  <data name="Survey_AsociadoIneligible_Body" xml:space="preserve"><value>Diese verbindliche Abstimmung ist Personen vorbehalten, die derzeit aktive, bestätigte Asociados sind. Wenn du glaubst, dass dein Mitgliedsstatus falsch erfasst ist, wende dich bitte vor Ende des Abstimmungszeitraums an den Vorstand.</value></data>
   <data name="Survey_TitleFallback" xml:space="preserve"><value>Umfrage</value></data>
   <data name="Survey_ResumeNotice" xml:space="preserve"><value>Du hast Antworten in Bearbeitung — mach dort weiter, wo du aufgehört hast.</value></data>
   <data name="Survey_Language" xml:space="preserve"><value>Sprache</value></data>
