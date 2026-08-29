@@ -220,11 +220,11 @@ internal sealed class CampaignService(
     public Task<Guid?> GetCampaignIdForGrantAsync(Guid grantId, CancellationToken ct = default) =>
         repository.GetCampaignIdForGrantAsync(grantId, ct);
 
-    public async Task<CampaignUpdateResult> ImportCodesAsync(Guid campaignId, IEnumerable<string> codes, CancellationToken ct = default)
+    public async Task<CampaignImportResult> ImportCodesAsync(Guid campaignId, IEnumerable<string> codes, CancellationToken ct = default)
     {
         var campaign = await repository.FindForMutationWithCodesAsync(campaignId, ct);
         if (campaign is null)
-            return new CampaignUpdateResult(false, "NotFound");
+            return new CampaignImportResult(false, ErrorKey: "NotFound");
 
         var existingCodes = campaign.Codes
             .Select(c => c.Code)
@@ -266,7 +266,7 @@ internal sealed class CampaignService(
         logger.LogInformation(
             "Campaign {CampaignId}: imported {Imported} codes, skipped {Skipped} duplicates",
             campaignId, imported, skipped);
-        return new CampaignUpdateResult(true);
+        return new CampaignImportResult(true, imported, skipped);
     }
 
     private async Task ImportGeneratedCodesAsync(Guid campaignId, IReadOnlyList<string> codes,

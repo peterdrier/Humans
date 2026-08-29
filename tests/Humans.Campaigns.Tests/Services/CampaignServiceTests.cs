@@ -139,8 +139,10 @@ public sealed class CampaignServiceTests
     {
         var campaign = await SeedCampaignAsync();
 
-        await _service.ImportCodesAsync(campaign.Id, ["CODE1", "CODE2", "CODE1", "CODE3"], Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.ImportCodesAsync(campaign.Id, ["CODE1", "CODE2", "CODE1", "CODE3"], Xunit.TestContext.Current.CancellationToken);
 
+        result.Imported.Should().Be(3);
+        result.Skipped.Should().Be(1);
         var codes = await CampaignsDb.CampaignCodes
             .Where(c => c.CampaignId == campaign.Id)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
@@ -156,8 +158,10 @@ public sealed class CampaignServiceTests
         // First import
         await _service.ImportCodesAsync(campaign.Id, ["CODE1", "CODE2"], Xunit.TestContext.Current.CancellationToken);
         // Second import with overlap
-        await _service.ImportCodesAsync(campaign.Id, ["CODE2", "CODE3"], Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.ImportCodesAsync(campaign.Id, ["CODE2", "CODE3"], Xunit.TestContext.Current.CancellationToken);
 
+        result.Imported.Should().Be(1);
+        result.Skipped.Should().Be(1);
         var codes = await CampaignsDb.CampaignCodes
             .Where(c => c.CampaignId == campaign.Id)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);

@@ -153,7 +153,9 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
         var result = await campaignService.ImportCodesAsync(id, codes);
         if (!result.Success) return NotFound();
 
-        SetSuccess($"Imported {codes.Count} codes.");
+        SetSuccess(result.Skipped > 0
+            ? $"Imported {result.Imported} codes; skipped {result.Skipped} duplicates."
+            : $"Imported {result.Imported} codes.");
         return RedirectToAction(nameof(Detail), new { id });
     }
 
