@@ -18,10 +18,9 @@ Repository: `ICampaignRepository`.
 | CampaignGrants | R/W |
 
 Cross-section calls via `ITeamServiceRead`, `IUserEmailService`,
-`IUserServiceRead`, `INotificationEmitter`,
-`ICommunicationPreferenceService`, `IEmailService`, `IEmailMessageFactory`,
-`ITicketDiscountCodes` (Tickets Contracts leaf — grant-wave discount code
-generation), plus `IClock`. Implements `ICampaignService` (which extends
+`IUserServiceRead`, `INotificationEmitter`, `IEmailService`,
+`IEmailMessageFactory`, `ITicketDiscountCodes` (Tickets Contracts leaf —
+grant-wave discount code generation), plus `IClock`. Implements `ICampaignService` (which extends
 `ICampaignServiceRead`), `IUserDataContributor`, `IUserMerge`. No
 `IMemoryCache`.
 

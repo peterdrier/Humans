@@ -4,9 +4,11 @@
   src/Sections/Humans.Campaigns/Domain/**
   src/Sections/Humans.Campaigns/Data/Configurations/**
   src/Sections/Humans.Campaigns/Views/**
+  src/Sections/Humans.Campaigns.Contracts/**
   src/Sections/Humans.Users/Views/Unsubscribe/**
   src/Sections/Humans.Users/Controllers/UnsubscribeController.cs
   src/Sections/Humans.Users/Services/UnsubscribeService.cs
+  src/Sections/Humans.Users.Contracts/MessageCategory.cs
 -->
 <!-- freshness:flag-on-change
   Campaign lifecycle (Draft/Active/Completed), code import, wave send, grant assignment, unsubscribe flow, and My Codes profile section. Review when campaign views, services, or entities change.

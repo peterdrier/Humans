@@ -3,6 +3,7 @@
   src/Sections/Humans.Campaigns.Contracts/**
   src/Sections/Humans.Users/Services/UnsubscribeService.cs
   src/Sections/Humans.Users/Controllers/UnsubscribeController.cs
+  src/Sections/Humans.Email/Services/OutboxEmailService.cs
 -->
 <!-- freshness:flag-on-change
   Campaign workflow, wave-send eligibility, unsubscribe behavior, or self-service code lookup may have shifted; verify states/routes/auth still match.
@@ -28,7 +29,7 @@ Draft → Active → Completed
 
 Transitions:
 - **Activate**: moves from Draft → Active (requires at least one imported code)
-- **Complete**: moves from Active → Completed (manual or auto)
+- **Complete**: moves from Active → Completed (manual Admin action; there is no auto-complete path)
 
 ## Wave Send
 
@@ -50,7 +51,7 @@ Route: `/Campaigns/Admin` — Admin role, except the detail page and API code ge
 
 Pages:
 - Campaign list with status and code/grant counts
-- Campaign detail: stats (total codes, assigned, sent, failed), grant table
+- Campaign detail: stats (total codes, available, sent, failed, redeemed), grant table
 - Create / Edit campaign form (title, description, email subject, email body template, optional reply-to address)
 - Import codes (CSV upload) or generate codes via the ticket vendor API
 - Activate / Send Wave / Complete actions
@@ -80,8 +81,8 @@ Humans can view their campaign codes on their profile page. The profile page sho
 Campaign 1──n CampaignCode
 Campaign 1──n CampaignGrant
 CampaignCode 1──1 CampaignGrant (once assigned)
-CampaignGrant n──1 User
-CampaignGrant 1──n EmailOutboxMessage
+CampaignGrant n──1 User            (bare Guid FK — no nav, no DB constraint)
+CampaignGrant 1──n EmailOutboxMessage  (Email-side bare FK — no nav on CampaignGrant)
 ```
 
 ## Ticket Vendor Integration
