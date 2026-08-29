@@ -428,27 +428,42 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
-    public async Task SendWaveAsync_PassesTemplateBodyAndSubjectToEmailService()
+    public async Task SendWaveAsync_NotActive_Throws()
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(["CODE-1"],
-            emailSubject: "Hi {{Name}}, your code",
-            emailBodyTemplate: "<p>Hi {{Name}}, your code is {{Code}}</p>");
+        var campaign = await SeedCampaignAsync();
 
-        var user = SeedUser(displayName: "Charlie");
-        var team = SeedTeam("Gamma");
-        SeedTeamMember(team.Id, user.Id);
+        var act = () => _service.SendWaveAsync(campaign.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Active*");
+    }
+
+    [HumansFact]
+    public async Task SendWaveAsync_EnqueueFailure_FailsThatGrantOnly()
+    {
+        var campaign = await SeedActiveCampaignWithCodesAsync(["ISO-1", "ISO-2"]);
+
+        var user1 = SeedUser(displayName: "First");
+        var user2 = SeedUser(displayName: "Second");
+        var team = SeedTeam("Kappa");
+        SeedTeamMember(team.Id, user1.Id);
+        SeedTeamMember(team.Id, user2.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(
+                Task.FromException(new InvalidOperationException("enqueue down")),
+                Task.CompletedTask);
 
-        // CampaignService delegates rendering to IEmailService: it must pass through
-        // the raw template subject/body + code so OutboxEmailService can render it.
-        _emailMessages.Received(1).CampaignCode(
-            Arg.Is<CampaignCodeEmailRequest>(r =>
-                r.Subject == "Hi {{Name}}, your code"
-                && r.MarkdownBody == "<p>Hi {{Name}}, your code is {{Code}}</p>"
-                && r.Code == "CODE-1"
-                && r.RecipientName == "Charlie"));
+        var count = await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+
+        // Both grants exist — the enqueue failure flips only its own grant to
+        // Failed (where RetryAllFailedAsync picks it up) without aborting the wave.
+        count.Should().Be(2);
+        var grants = await CampaignsDb.CampaignGrants.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        grants.Should().HaveCount(2);
+        grants.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Failed).Should().Be(1);
+        grants.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Queued).Should().Be(1);
     }
 
     [HumansFact]
@@ -491,12 +506,14 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
-    public async Task SendWaveAsync_PassesRawCodeAndRecipientToEmailService()
+    public async Task SendWaveAsync_PassesRawTemplateAndRecipientToEmailService()
     {
-        // HTML-encoding of values happens inside OutboxEmailService (owner of the
-        // outbox table) — CampaignService must forward raw values to it so that
-        // encoding is applied consistently across all email templates.
+        // Rendering and HTML-encoding happen inside OutboxEmailService (owner of
+        // the outbox table) — CampaignService must forward the raw template
+        // subject/body and raw code/name values so encoding is applied
+        // consistently across all email templates.
         var campaign = await SeedActiveCampaignWithCodesAsync(["A<B>C"],
+            emailSubject: "Hi {{Name}}, your code",
             emailBodyTemplate: "<p>Code: {{Code}}, Name: {{Name}}</p>");
 
         var user = SeedUser(displayName: "O'Brien & Co");
@@ -508,7 +525,9 @@ public sealed class CampaignServiceTests
 
         _emailMessages.Received(1).CampaignCode(
             Arg.Is<CampaignCodeEmailRequest>(r =>
-                r.Code == "A<B>C"
+                r.Subject == "Hi {{Name}}, your code"
+                && r.MarkdownBody == "<p>Code: {{Code}}, Name: {{Name}}</p>"
+                && r.Code == "A<B>C"
                 && r.RecipientName == "O'Brien & Co"));
     }
 
@@ -576,6 +595,40 @@ public sealed class CampaignServiceTests
         ClearAllTrackers();
         var retriedGrant = await CampaignsDb.CampaignGrants.FindAsync(grants[0].Id, Xunit.TestContext.Current.CancellationToken);
         retriedGrant!.LatestEmailStatus.Should().Be(EmailOutboxStatus.Queued);
+    }
+
+    [HumansFact]
+    public async Task RetryAllFailedAsync_ReEnqueueFailure_LeavesThatGrantFailedOnly()
+    {
+        var campaign = await SeedActiveCampaignWithCodesAsync(["RE-1", "RE-2"]);
+
+        var user1 = SeedUser(displayName: "RetryUser1");
+        var user2 = SeedUser(displayName: "RetryUser2");
+        var team = SeedTeam("Lambda");
+        SeedTeamMember(team.Id, user1.Id);
+        SeedTeamMember(team.Id, user2.Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+
+        var grants = await CampaignsDb.CampaignGrants.ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        grants[0].LatestEmailStatus = EmailOutboxStatus.Failed;
+        grants[1].LatestEmailStatus = EmailOutboxStatus.Failed;
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(
+                Task.FromException(new InvalidOperationException("enqueue down")),
+                Task.CompletedTask);
+
+        await _service.RetryAllFailedAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
+
+        // One re-enqueue threw and flipped its grant back to Failed; the other
+        // grant's retry still went through.
+        ClearAllTrackers();
+        var refreshed = await CampaignsDb.CampaignGrants.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        refreshed.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Failed).Should().Be(1);
+        refreshed.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Queued).Should().Be(1);
     }
 
     // ==========================================================================
