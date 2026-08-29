@@ -9,8 +9,7 @@ namespace Humans.Campaigns.Data;
 /// <summary>
 /// EF-backed implementation of <see cref="ICampaignRepository"/>. The only
 /// non-test file that touches <c>DbContext.Campaigns</c>,
-/// <c>DbContext.CampaignCodes</c>, or <c>DbContext.CampaignGrants</c> after
-/// the Campaigns migration lands.
+/// <c>DbContext.CampaignCodes</c>, or <c>DbContext.CampaignGrants</c>.
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>CampaignsDbContext</c> remains Scoped.
 /// </summary>
@@ -22,9 +21,8 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
 
     public async Task<Campaign?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
-        // Grants' User navigation is cross-domain and tagged obsolete in the
-        // entity; we don't include it here. Consumers that need display names
-        // for recipients resolve via IUserService keyed off CampaignGrant.UserId.
+        // CampaignGrant carries a bare UserId — no nav to include. Consumers that
+        // need recipient display names resolve them via IUserServiceRead.
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.Campaigns
             .Include(c => c.Codes)
@@ -75,8 +73,8 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
     public async Task<IReadOnlyList<CampaignCodeTrackingGrantRow>> GetCodeTrackingGrantRowsAsync(
         CancellationToken ct = default)
     {
-        // Projected flat rows — no cross-domain .Include on CampaignGrant.User;
-        // recipient display names are resolved by the service via IUserService.
+        // Projected flat rows; recipient display names are resolved by the
+        // service via IUserServiceRead.
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.CampaignGrants
             .AsNoTracking()
@@ -378,10 +376,8 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
             else
             {
                 src.UserId = targetUserId;
-                // Track this campaign so a hypothetical second source row on the
-                // same campaign also drops (defensive — current schema has no
-                // unique index, but the service contract is one grant per user
-                // per campaign).
+                // Track this campaign so a second source row on the same campaign
+                // drops instead of violating the unique (CampaignId, UserId) index.
                 targetCampaignIdSet.Add(src.CampaignId);
             }
         }

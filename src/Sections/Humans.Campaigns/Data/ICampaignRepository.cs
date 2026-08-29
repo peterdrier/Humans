@@ -9,7 +9,7 @@ namespace Humans.Campaigns.Data;
 /// <summary>
 /// Repository for the Campaigns section's tables: <c>campaigns</c>,
 /// <c>campaign_codes</c>, and <c>campaign_grants</c>. The only non-test file
-/// that writes to these DbSets after the Campaigns migration lands.
+/// that writes to these DbSets.
 /// </summary>
 internal interface ICampaignRepository : IRepository
 {
@@ -36,7 +36,7 @@ internal interface ICampaignRepository : IRepository
     /// </summary>
     Task<Campaign?> FindForMutationWithCodesAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>All campaigns ordered by CreatedAt descending, with codes and grants.</summary>
+    /// <summary>All campaigns with codes and grants; unordered — the list view sorts.</summary>
     Task<List<Campaign>> GetAllAsync(CancellationToken ct = default);
 
     /// <summary>
@@ -94,7 +94,7 @@ internal interface ICampaignRepository : IRepository
 
     /// <summary>
     /// Returns active/completed campaign grants for a user, with campaign
-    /// and code included, ordered AssignedAt desc. Read-only.
+    /// and code included; unordered — callers sort. Read-only.
     /// </summary>
     Task<IReadOnlyList<CampaignGrant>> GetActiveOrCompletedGrantsForUserAsync(
         Guid userId, CancellationToken ct = default);
@@ -161,6 +161,9 @@ internal interface ICampaignRepository : IRepository
     // Account-merge fold
     // ==========================================================================
 
+    /// <summary>GDPR Art. 17: removes every grant held by the user.</summary>
+    Task<int> DeleteGrantsForUserAsync(Guid userId, CancellationToken ct = default);
+
     /// <summary>
     /// Re-FKs <c>campaign_grants.UserId</c> from
     /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
@@ -174,9 +177,6 @@ internal interface ICampaignRepository : IRepository
     /// Returns the count of grants attributed to
     /// <paramref name="targetUserId"/> after the move.
     /// </summary>
-    /// <summary>GDPR Art. 17: removes every grant held by the user.</summary>
-    Task<int> DeleteGrantsForUserAsync(Guid userId, CancellationToken ct = default);
-
     Task<int> ReassignGrantsToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,
@@ -212,7 +212,7 @@ internal sealed record CampaignCodeTrackingSummaryRow(
 
 /// <summary>
 /// One grant per row, used by <see cref="ICampaignRepository.GetCodeTrackingGrantRowsAsync"/>.
-/// The owning service stitches recipient display names via <c>IUserService</c>
+/// The owning service stitches recipient display names via <c>IUserServiceRead</c>
 /// so no cross-domain navigation is read at the repository layer.
 /// </summary>
 internal sealed record CampaignCodeTrackingGrantRow(
