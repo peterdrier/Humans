@@ -23,6 +23,9 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
     /// <summary>Loads a survey's full editable graph for the builder, or null if not found.</summary>
     Task<SurveyDetail?> GetForEditAsync(Guid surveyId, CancellationToken ct = default);
 
+    /// <summary>Whether any draft or submitted answer has frozen counting-affecting ranked settings.</summary>
+    Task<bool> HasSavedAnswersAsync(Guid surveyId, CancellationToken ct = default);
+
     /// <summary>Creates a Draft survey from the builder input; returns the new survey id.</summary>
     Task<Guid> CreateAsync(SurveyEditInput input, Guid actorUserId, CancellationToken ct = default);
 

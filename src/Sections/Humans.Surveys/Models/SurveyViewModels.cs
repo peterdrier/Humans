@@ -113,7 +113,10 @@ internal sealed record SurveyLocalizedFieldModel(
     bool Markdown = false);
 
 /// <summary>One question card in the builder. <paramref name="Key"/> is the non-sequential indexer key (or the <c>__QKEY__</c> placeholder in the JS template).</summary>
-internal sealed record SurveyQuestionCardModel(string Key, SurveyQuestionBuilderViewModel Question);
+internal sealed record SurveyQuestionCardModel(
+    string Key,
+    SurveyQuestionBuilderViewModel Question,
+    bool RankedDefinitionLocked = false);
 
 /// <summary>One option row in the builder. Keys are non-sequential indexers (or <c>__QKEY__</c>/<c>__OKEY__</c> placeholders in templates).</summary>
 internal sealed record SurveyOptionRowModel(string QuestionKey, string OptionKey, SurveyOptionBuilderViewModel Option);
@@ -165,6 +168,7 @@ internal sealed class SurveyBuilderViewModel
     // Render-only (not bound back).
     public IReadOnlyList<string> Cultures { get; } = CultureCatalog.SupportedCultureCodes;
     public IReadOnlyList<SurveyTeamOption> Teams { get; set; } = [];
+    public bool HasSavedAnswers { get; set; }
 
     public bool IsNew => Id is null;
 

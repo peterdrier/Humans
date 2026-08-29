@@ -3320,6 +3320,25 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task UpdateAsync_cannot_change_asociado_vote_mode_after_opening()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        survey.IsAsociadoVote = true;
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var act = async () => await CreateService().UpdateAsync(
+            survey.Id,
+            Input() with { IsAsociadoVote = false },
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*cannot change after the survey has opened*");
+        await _repo.DidNotReceive().UpdateAsync(
+            Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task Open_asociado_vote_exposes_participation_but_embargoes_answer_results_and_exports()
     {
         var survey = SurveyWith(SurveyStatus.Open, null, null);

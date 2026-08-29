@@ -112,11 +112,24 @@
             </div>
 
             <div class="form-check mt-3">
-                <input type="checkbox" class="form-check-input" id="asociadoVote" asp-for="IsAsociadoVote" />
+                @if (!Model.IsNew && Model.Status != SurveyStatus.Draft)
+                {
+                    <input type="hidden" name="IsAsociadoVote" value="@(Model.IsAsociadoVote ? "true" : "false")" />
+                    <input type="checkbox" class="form-check-input" id="asociadoVote"
+                           checked="@(Model.IsAsociadoVote ? "checked" : null)" disabled />
+                }
+                else
+                {
+                    <input type="checkbox" class="form-check-input" id="asociadoVote" asp-for="IsAsociadoVote" />
+                }
                 <label class="form-check-label fw-semibold" for="asociadoVote">Asociado vote</label>
                 <div class="form-text">
                     Identified responses only. While open, only participation statistics are visible;
                     all answer-derived results are embargoed until close, and the vote cannot then be reopened.
+                    @if (!Model.IsNew && Model.Status != SurveyStatus.Draft)
+                    {
+                        <strong>This setting is locked because the survey has opened.</strong>
+                    }
                 </div>
             </div>
 
@@ -175,12 +188,12 @@
     <div id="questions-container">
         @foreach (var (q, i) in Model.Questions.Select((q, i) => (q, i)))
         {
-            <partial name="_SurveyQuestionCard" model="@(new SurveyQuestionCardModel(i.ToString(), q))" />
+            <partial name="_SurveyQuestionCard" model="@(new SurveyQuestionCardModel(i.ToString(), q, Model.HasSavedAnswers))" />
         }
     </div>
 
     <template id="question-template">
-        <partial name="_SurveyQuestionCard" model="@(new SurveyQuestionCardModel("__QKEY__", new SurveyQuestionBuilderViewModel()))" />
+        <partial name="_SurveyQuestionCard" model="@(new SurveyQuestionCardModel("__QKEY__", new SurveyQuestionBuilderViewModel(), Model.HasSavedAnswers))" />
     </template>
 
     <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mt-3">

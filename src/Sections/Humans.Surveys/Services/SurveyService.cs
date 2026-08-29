@@ -160,6 +160,9 @@ internal sealed class SurveyService(
         return new SurveyDetail(s.Id, s.Status, input);
     }
 
+    public Task<bool> HasSavedAnswersAsync(Guid surveyId, CancellationToken ct = default)
+        => repo.HasSavedAnswersAsync(surveyId, ct);
+
     public async Task<Guid> CreateAsync(SurveyEditInput input, Guid actorUserId, CancellationToken ct = default)
     {
         ValidateAudienceConfiguration(
@@ -241,6 +244,12 @@ internal sealed class SurveyService(
         var now = clock.GetCurrentInstant();
         var existing = await repo.GetByIdAsync(surveyId, ct)
             ?? throw new InvalidOperationException("Survey not found.");
+        if (existing.Status != SurveyStatus.Draft
+            && (existing.IsAsociadoVote == true) != input.IsAsociadoVote)
+        {
+            throw new InvalidOperationException(
+                "Asociado vote mode cannot change after the survey has opened.");
+        }
         var prepared = await PrepareInformationImagesAsync(surveyId, input, existing, ct);
         List<SurveyQuestion> questions;
         try

@@ -24,6 +24,7 @@ tracked by nobodies-collective/Humans#86.
 - Every question's answer-derived results are embargoed until an Asociado vote
   closes; ordinary surveys retain live results.
 - A closed Asociado vote cannot reopen.
+- Asociado-vote mode is locked once the survey opens.
 
 ## Counting
 
@@ -91,7 +92,8 @@ Planned answer data:
 - a distinct rejected-option set.
 
 Counting-affecting authoring state freezes after the first saved answer,
-including a draft/autosave.
+including a draft/autosave. The builder visibly disables the ranked settings
+at that point instead of allowing an edit that the server will reject.
 
 ## Related
 

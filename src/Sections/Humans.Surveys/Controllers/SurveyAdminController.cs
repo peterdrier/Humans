@@ -73,6 +73,7 @@ internal sealed class SurveyAdminController(
         if (detail is null) return NotFound();
 
         var vm = SurveyBuilderViewModel.FromDetail(detail, await LoadTeamsAsync(ct), Zone);
+        vm.HasSavedAnswers = await surveyService.HasSavedAnswersAsync(id, ct);
         return View("Builder", vm);
     }
 
@@ -222,7 +223,7 @@ internal sealed class SurveyAdminController(
 
         if (!ModelState.IsValid)
         {
-            model.Teams = await LoadTeamsAsync(ct);
+            await PrepareBuilderForRenderAsync(model, ct);
             return View("Builder", model);
         }
 
@@ -244,7 +245,7 @@ internal sealed class SurveyAdminController(
         {
             logger.LogWarning("Survey save rejected for {SurveyId}: {Reason}", model.Id, ex.Message);
             ModelState.AddModelError(string.Empty, ex.Message);
-            model.Teams = await LoadTeamsAsync(ct);
+            await PrepareBuilderForRenderAsync(model, ct);
             return View("Builder", model);
         }
 
@@ -426,6 +427,15 @@ internal sealed class SurveyAdminController(
             .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
             .Select(t => new SurveyTeamOption(t.Id, t.Name))
             .ToList();
+    }
+
+    private async Task PrepareBuilderForRenderAsync(
+        SurveyBuilderViewModel model,
+        CancellationToken ct)
+    {
+        model.Teams = await LoadTeamsAsync(ct);
+        model.HasSavedAnswers = model.Id is { } id
+            && await surveyService.HasSavedAnswersAsync(id, ct);
     }
 
 }
