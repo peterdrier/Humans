@@ -69,4 +69,8 @@
   <data name="Survey_InvalidLink_Body" xml:space="preserve"><value>Il link del sondaggio non è valido o è scaduto. Se pensi che sia un errore, richiedi un nuovo link.</value></data>
   <data name="Survey_ThankYou_Heading" xml:space="preserve"><value>Grazie</value></data>
   <data name="Survey_ThankYouFallback" xml:space="preserve"><value>Grazie per la tua risposta.</value></data>
+  <data name="Survey_Ranked_Option" xml:space="preserve"><value>Opzione</value></data>
+  <data name="Survey_Ranked_Rank" xml:space="preserve"><value>Posizione</value></data>
+  <data name="Survey_Ranked_Reject" xml:space="preserve"><value>Rifiuta</value></data>
+  <data name="Survey_Ranked_Unranked" xml:space="preserve"><value>Non classificata</value></data>
 </root>

@@ -32,6 +32,8 @@ internal static class SurveyResultsBuilder
             SelectedResponseCount = scoped.SelectedResponseCount,
             Questions = view.Questions.Select(BuildQuestion).ToList(),
             Respondents = view.IdentifiedRespondents.Select(BuildRespondent).ToList(),
+            IsEmbargoed = scoped.IsEmbargoed,
+            RankedQuestions = scoped.RankedQuestions ?? new Dictionary<Guid, RankedQuestionResult>(),
         };
     }
 
@@ -74,6 +76,9 @@ internal sealed class SurveyResultsViewModel
     public IReadOnlyList<SurveyResultsQuestionViewModel> Questions { get; init; } = [];
     public IReadOnlyList<SurveyResultsRespondentViewModel> Respondents { get; init; } = [];
     public bool ShowIdentifiedRespondents => Scope != SurveyResultsScope.Anonymous;
+    public bool IsEmbargoed { get; init; }
+    public IReadOnlyDictionary<Guid, RankedQuestionResult> RankedQuestions { get; init; }
+        = new Dictionary<Guid, RankedQuestionResult>();
 }
 
 /// <summary>One question's display aggregate. Populated collection depends on <see cref="Type"/> (reused from the service DTO).</summary>

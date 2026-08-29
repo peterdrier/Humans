@@ -64,4 +64,8 @@
   <data name="Survey_InvalidLink_Body" xml:space="preserve"><value>The survey link you used is invalid or has expired. If you think this is a mistake, please request a new link.</value></data>
   <data name="Survey_ThankYou_Heading" xml:space="preserve"><value>Thank you</value></data>
   <data name="Survey_ThankYouFallback" xml:space="preserve"><value>Thank you for your response.</value></data>
+  <data name="Survey_Ranked_Option" xml:space="preserve"><value>Option</value></data>
+  <data name="Survey_Ranked_Rank" xml:space="preserve"><value>Rank</value></data>
+  <data name="Survey_Ranked_Reject" xml:space="preserve"><value>Reject</value></data>
+  <data name="Survey_Ranked_Unranked" xml:space="preserve"><value>Unranked</value></data>
 </root>

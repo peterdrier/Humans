@@ -12,8 +12,8 @@ tracked by nobodies-collective/Humans#86.
 
 ## V1 decisions
 
-- A survey containing RankedChoice questions contains no other question types.
-- Ranked ballots are Identified only.
+- RankedChoice is available only in a survey marked **Asociado vote**.
+- An Asociado vote is Identified-only and may contain mixed question types.
 - Equal ranks are enabled by default.
 - Reject is optional and means unacceptable, not vetoed.
 - Preference tiers are ranked > unranked > rejected.
@@ -21,8 +21,9 @@ tracked by nobodies-collective/Humans#86.
 - Condorcet check and Borda are post-close sensitivity analysis.
 - IRV, Baldwin, and Coombs are deferred.
 - Authored option order is the disclosed final exact tie-break.
-- Results are embargoed until the survey closes.
-- A closed RankedChoice survey cannot reopen.
+- Every question's answer-derived results are embargoed until an Asociado vote
+  closes; ordinary surveys retain live results.
+- A closed Asociado vote cannot reopen.
 
 ## Counting
 
@@ -53,14 +54,17 @@ the all-options outcome and the current available-only outcome.
 
 ## Result embargo
 
-While Open, Board/Admin may see participation only: eligible, started,
-completed, outstanding, response rate, and reminder status. No answer-derived
-data is available through results pages, exports, Backdoor endpoints,
-raw-response views, or respondent drill-down.
+Ordinary surveys keep the existing default: anyone authorized to use Surveys
+results may see them while Open.
 
-This is a survey-level lifecycle rule, which is why v1 prohibits mixing ranked
-and non-ranked questions. The builder explains the embargo and no-reopen rule
-when RankedChoice is selected.
+While an Asociado vote is Open, Board/Admin may see participation only:
+eligible, started, completed, outstanding, response rate, and reminder status.
+No answer-derived data from any question type is available through results
+pages, exports, Backdoor endpoints, raw-response views, or respondent
+drill-down.
+
+The builder explains the Identified-only, embargo, and no-reopen consequences
+when Asociado vote is selected. RankedChoice requires that mode.
 
 ## Data model
 
@@ -70,6 +74,10 @@ Planned question settings:
 - allow Reject;
 - official method;
 - unavailable option values.
+
+Planned survey setting:
+
+- whether the survey is an Asociado vote.
 
 Planned answer data:
 

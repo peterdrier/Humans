@@ -210,6 +210,66 @@
                 </div>
                 break;
             }
+
+            case SurveyQuestionType.RankedChoice:
+            {
+                var ranks = new Dictionary<string, int>(StringComparer.Ordinal);
+                if (q.RankedValue is not null)
+                {
+                    for (var rankIndex = 0; rankIndex < q.RankedValue.RankGroups.Count; rankIndex++)
+                    {
+                        foreach (var value in q.RankedValue.RankGroups[rankIndex])
+                        {
+                            ranks[value] = rankIndex + 1;
+                        }
+                    }
+                }
+                var rejected = q.RankedValue?.Rejected.ToHashSet(StringComparer.Ordinal)
+                    ?? new HashSet<string>(StringComparer.Ordinal);
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0 survey-ranked-choice"
+                           data-equal-ranks="@(q.RankedAllowEqualRanks ? "true" : "false")">
+                        <thead>
+                            <tr>
+                                <th scope="col">@Localizer["Survey_Ranked_Option"]</th>
+                                <th scope="col">@Localizer["Survey_Ranked_Rank"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (var optionIndex = 0; optionIndex < q.Options.Count; optionIndex++)
+                            {
+                                var option = q.Options[optionIndex];
+                                ranks.TryGetValue(option.Value, out var selectedRank);
+                                <tr>
+                                    <th scope="row">
+                                        @option.Label
+                                        <input type="hidden"
+                                               name="Answers[@answerIndex].RankedOptions[@optionIndex].OptionValue"
+                                               value="@option.Value" />
+                                    </th>
+                                    <td>
+                                        <select class="form-select form-select-sm ranked-selection"
+                                                name="Answers[@answerIndex].RankedOptions[@optionIndex].Selection">
+                                            <option value="">@Localizer["Survey_Ranked_Unranked"]</option>
+                                            @for (var rank = 1; rank <= q.Options.Count; rank++)
+                                            {
+                                                <option value="@rank" selected="@(selectedRank == rank ? "selected" : null)">@rank</option>
+                                            }
+                                            @if (q.RankedAllowReject)
+                                            {
+                                                <option value="reject" selected="@(rejected.Contains(option.Value) ? "selected" : null)">
+                                                    @Localizer["Survey_Ranked_Reject"]
+                                                </option>
+                                            }
+                                        </select>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                break;
+            }
         }
 
         @* Keep this after the visible answer control. Bootstrap floats legend and applies
@@ -224,3 +284,17 @@
         }
     </fieldset>
 }
+
+<script>
+document.addEventListener('change', function (event) {
+    const table = event.target.closest('.survey-ranked-choice');
+    if (!table || !event.target.classList.contains('ranked-selection')) return;
+    if (table.dataset.equalRanks === 'false' && /^\d+$/.test(event.target.value)) {
+        table.querySelectorAll('.ranked-selection').forEach(select => {
+            if (select !== event.target && select.value === event.target.value) {
+                select.value = '';
+            });
+        }
+    }
+});
+</script>

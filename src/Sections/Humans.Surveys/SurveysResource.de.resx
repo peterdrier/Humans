@@ -69,4 +69,8 @@
   <data name="Survey_InvalidLink_Body" xml:space="preserve"><value>Der Umfrage-Link ist ungültig oder abgelaufen. Wenn du denkst, dass das ein Fehler ist, fordere bitte einen neuen Link an.</value></data>
   <data name="Survey_ThankYou_Heading" xml:space="preserve"><value>Vielen Dank</value></data>
   <data name="Survey_ThankYouFallback" xml:space="preserve"><value>Vielen Dank für deine Antwort.</value></data>
+  <data name="Survey_Ranked_Option" xml:space="preserve"><value>Option</value></data>
+  <data name="Survey_Ranked_Rank" xml:space="preserve"><value>Rang</value></data>
+  <data name="Survey_Ranked_Reject" xml:space="preserve"><value>Ablehnen</value></data>
+  <data name="Survey_Ranked_Unranked" xml:space="preserve"><value>Nicht gereiht</value></data>
 </root>

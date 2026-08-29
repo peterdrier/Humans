@@ -152,6 +152,7 @@ internal sealed class SurveyBuilderViewModel
 
     public string DefaultCulture { get; set; } = CultureCatalog.DefaultCultureCode;
     public bool AllowAnonymous { get; set; }
+    public bool IsAsociadoVote { get; set; }
     public LocalDateTime? OpensAt { get; set; }
     public LocalDateTime? ClosesAt { get; set; }
     public SurveyAudienceType? AudienceType { get; set; }
@@ -193,7 +194,8 @@ internal sealed class SurveyBuilderViewModel
         AudienceType == SurveyAudienceType.Team ? AudienceTeamId : null,
         AudienceType == SurveyAudienceType.LoggedInSince ? ToStartOfDayInstant(AudienceLoggedInSince, zone) : null,
         string.IsNullOrWhiteSpace(PublicSlug) ? null : PublicSlug,
-        ToQuestionInputsInPageOrder());
+        ToQuestionInputsInPageOrder(),
+        IsAsociadoVote);
 
     private IReadOnlyList<QuestionInput> ToQuestionInputsInPageOrder()
     {
@@ -221,6 +223,7 @@ internal sealed class SurveyBuilderViewModel
             InvitationEmailMessage = ToDict(e.InvitationEmailMessage),
             DefaultCulture = e.DefaultCulture,
             AllowAnonymous = e.AllowAnonymous,
+            IsAsociadoVote = e.IsAsociadoVote,
             OpensAt = FromInstant(e.OpensAt, zone),
             ClosesAt = FromInstant(e.ClosesAt, zone),
             AudienceType = e.AudienceType,
@@ -258,6 +261,8 @@ internal sealed class SurveyQuestionBuilderViewModel
     public Dictionary<string, string> RatingMinLabel { get; set; } = new(StringComparer.Ordinal);
     public Dictionary<string, string> RatingMaxLabel { get; set; } = new(StringComparer.Ordinal);
     public GridSelectionMode? GridSelectionMode { get; set; }
+    public bool RankedAllowEqualRanks { get; set; } = true;
+    public bool RankedAllowReject { get; set; }
     public BranchCombine ShowIfCombine { get; set; } = BranchCombine.All;
     public List<SurveyBranchClauseBuilderViewModel> ShowIfClauses { get; set; } = [];
     public List<SurveyOptionBuilderViewModel> Options { get; set; } = [];
@@ -282,6 +287,12 @@ internal sealed class SurveyQuestionBuilderViewModel
         Type == SurveyQuestionType.Grid ? GridRows.Select(r => r.ToInput()).ToList() : null,
         Type == SurveyQuestionType.Information
             ? InformationImages.Select(image => image.ToInput()).ToList()
+            : null,
+        Type == SurveyQuestionType.RankedChoice
+            ? new RankedQuestionSettings(
+                RankedAllowEqualRanks,
+                RankedAllowReject,
+                RankedVotingMethod.RankedPairs)
             : null);
 
     public static SurveyQuestionBuilderViewModel FromInput(QuestionInput q) => new()
@@ -304,6 +315,8 @@ internal sealed class SurveyQuestionBuilderViewModel
         InformationImages = q.InformationImages?
             .Select(SurveyInformationImageBuilderViewModel.FromInput)
             .ToList() ?? [],
+        RankedAllowEqualRanks = q.RankedSettings?.AllowEqualRanks ?? true,
+        RankedAllowReject = q.RankedSettings?.AllowReject ?? false,
     };
 
     /// <summary>Clauses without a target question (never picked / target removed) are dropped; no clauses ⇒ always visible.</summary>

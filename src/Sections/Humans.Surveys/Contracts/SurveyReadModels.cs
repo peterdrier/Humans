@@ -74,7 +74,8 @@ public sealed record RespondentAnswer(
     IReadOnlyList<string> SelectedLabels,
     string? TextValue,
     int? RatingValue,
-    IReadOnlyList<ResolvedGridSelection>? GridSelections = null);
+    IReadOnlyList<ResolvedGridSelection>? GridSelections = null,
+    ResolvedRankedBallot? RankedBallot = null);
 
 /// <summary>One resolved Grid row selection for display/export.</summary>
 public sealed record ResolvedGridSelection(
@@ -82,6 +83,11 @@ public sealed record ResolvedGridSelection(
     string RowLabel,
     IReadOnlyList<string> ColumnValues,
     IReadOnlyList<string> ColumnLabels);
+
+/// <summary>A ranked ballot with candidate labels resolved for human-readable drill-down.</summary>
+public sealed record ResolvedRankedBallot(
+    IReadOnlyList<IReadOnlyList<string>> RankGroups,
+    IReadOnlyList<string> Rejected);
 
 // ── Export DTOs (co-located; raw per-response, shared by CSV/JSON download and the analysis API) ──
 
@@ -104,13 +110,26 @@ public sealed record SurveyExportQuestion(
     SurveyQuestionType Type,
     IReadOnlyList<SurveyExportOption> Options,
     GridSelectionMode? GridSelectionMode = null,
-    IReadOnlyList<SurveyExportGridRow>? GridRows = null);
+    IReadOnlyList<SurveyExportGridRow>? GridRows = null,
+    SurveyRankedSettings? RankedSettings = null,
+    IReadOnlyList<string>? RankedUnavailableOptionValues = null);
 
 /// <summary>One choice option in the export schema: the stable machine <see cref="Value"/> + its resolved <see cref="Label"/>.</summary>
 public sealed record SurveyExportOption(string Value, string Label);
 
 /// <summary>One Grid row in the export schema.</summary>
 public sealed record SurveyExportGridRow(string Value, string Label);
+
+/// <summary>Public, stable settings for a ranked-choice question.</summary>
+public sealed record SurveyRankedSettings(
+    bool AllowEqualRanks,
+    bool AllowReject,
+    string OfficialMethod);
+
+/// <summary>A raw ranked ballot using stable option values.</summary>
+public sealed record SurveyRankedBallot(
+    IReadOnlyList<IReadOnlyList<string>> RankGroups,
+    IReadOnlyList<string> Rejected);
 
 /// <summary>
 /// One exported response. <see cref="UserId"/>/<see cref="UserName"/> are populated only for
@@ -137,4 +156,5 @@ public sealed record SurveyExportAnswer(
     string? TextValue,
     int? RatingValue,
     IReadOnlyDictionary<string, IReadOnlyList<string>>? GridSelections = null,
-    IReadOnlyList<ResolvedGridSelection>? GridSelectionLabels = null);
+    IReadOnlyList<ResolvedGridSelection>? GridSelectionLabels = null,
+    SurveyRankedBallot? RankedBallot = null);

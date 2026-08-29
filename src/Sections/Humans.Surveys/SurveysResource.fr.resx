@@ -69,4 +69,8 @@
   <data name="Survey_InvalidLink_Body" xml:space="preserve"><value>Le lien de l'enquête est invalide ou a expiré. Si vous pensez qu'il s'agit d'une erreur, demandez un nouveau lien.</value></data>
   <data name="Survey_ThankYou_Heading" xml:space="preserve"><value>Merci</value></data>
   <data name="Survey_ThankYouFallback" xml:space="preserve"><value>Merci pour votre réponse.</value></data>
+  <data name="Survey_Ranked_Option" xml:space="preserve"><value>Option</value></data>
+  <data name="Survey_Ranked_Rank" xml:space="preserve"><value>Rang</value></data>
+  <data name="Survey_Ranked_Reject" xml:space="preserve"><value>Rejeter</value></data>
+  <data name="Survey_Ranked_Unranked" xml:space="preserve"><value>Non classé</value></data>
 </root>

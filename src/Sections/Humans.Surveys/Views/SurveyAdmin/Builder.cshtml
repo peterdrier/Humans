@@ -12,6 +12,7 @@
         SurveyAudienceType.TicketHolders => "Current ticket holders",
         SurveyAudienceType.ShiftParticipants => "Humans with shifts",
         SurveyAudienceType.LoggedInSince => "Humans logged in since a date",
+        SurveyAudienceType.Asociados => "All active Asociados",
         _ => audience.ToString(),
     };
 }
@@ -31,7 +32,8 @@
         <div class="d-flex align-items-center gap-2">
             <partial name="_SurveyPreviewMenu" model="@Model.Id!.Value" />
             <span class="badge @(Model.Status == SurveyStatus.Open ? "bg-success" : Model.Status == SurveyStatus.Closed ? "bg-secondary" : "bg-warning text-dark")">@Model.Status</span>
-            @if (Model.Status != SurveyStatus.Open)
+            @if (Model.Status != SurveyStatus.Open
+                && !(Model.Status == SurveyStatus.Closed && Model.IsAsociadoVote))
             {
                 <form asp-controller="SurveyAdmin" asp-action="Open" asp-route-id="@Model.Id" method="post" class="d-inline">
                     @Html.AntiForgeryToken()
@@ -106,6 +108,15 @@
                         <input type="checkbox" class="form-check-input" id="allowAnon" asp-for="AllowAnonymous" />
                         <label class="form-check-label small" for="allowAnon">Allow anonymous responses</label>
                     </div>
+                </div>
+            </div>
+
+            <div class="form-check mt-3">
+                <input type="checkbox" class="form-check-input" id="asociadoVote" asp-for="IsAsociadoVote" />
+                <label class="form-check-label fw-semibold" for="asociadoVote">Asociado vote</label>
+                <div class="form-text">
+                    Identified responses only. While open, only participation statistics are visible;
+                    all answer-derived results are embargoed until close, and the vote cannot then be reopened.
                 </div>
             </div>
 
@@ -259,6 +270,9 @@
             const audienceType = document.querySelector('select[name="AudienceType"]');
             const audienceTeamField = document.getElementById('audience-team-field');
             const loggedInSinceField = document.getElementById('logged-in-since-field');
+            const asociadoVote = document.getElementById('asociadoVote');
+            const allowAnon = document.getElementById('allowAnon');
+            const publicSlug = document.querySelector('input[name="PublicSlug"]');
 
             function applyAudienceVisibility() {
                 audienceTeamField.style.display = audienceType.value === 'Team' ? '' : 'none';
@@ -268,6 +282,21 @@
             audienceType.addEventListener('change', applyAudienceVisibility);
             applyAudienceVisibility();
 
+            function applyVoteMode() {
+                if (asociadoVote.checked) {
+                    allowAnon.checked = false;
+                    allowAnon.disabled = true;
+                    publicSlug.value = '';
+                    publicSlug.disabled = true;
+                } else {
+                    allowAnon.disabled = false;
+                    publicSlug.disabled = false;
+                }
+            }
+
+            asociadoVote.addEventListener('change', applyVoteMode);
+            applyVoteMode();
+
             // ── question cards ───────────────────────────────────────────────
             function applyTypeVisibility(card) {
                 const type = card.querySelector('.question-type')?.value;
@@ -276,7 +305,9 @@
                 const grid = card.querySelector('.grid-section');
                 const information = card.querySelector('.information-section');
                 const required = card.querySelector('.required-section');
-                const isChoice = type === 'SingleChoice' || type === 'MultiChoice';
+                const ranked = card.querySelector('.ranked-section');
+                const isRanked = type === 'RankedChoice';
+                const isChoice = type === 'SingleChoice' || type === 'MultiChoice' || isRanked;
                 const isGrid = type === 'Grid';
                 const isInformation = type === 'Information';
                 if (options) {
@@ -289,6 +320,7 @@
                 if (grid) grid.style.display = isGrid ? '' : 'none';
                 if (ratings) ratings.style.display = type === 'Rating' ? '' : 'none';
                 if (information) information.style.display = isInformation ? '' : 'none';
+                if (ranked) ranked.style.display = isRanked ? '' : 'none';
                 if (required) required.style.display = isInformation ? 'none' : '';
                 updateGridColumnLimit(card);
                 updateInformationImageLimit(card);

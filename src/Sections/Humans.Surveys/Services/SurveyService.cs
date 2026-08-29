@@ -107,9 +107,11 @@ internal sealed class SurveyService(
                             $"/{image.StoragePath!.TrimStart('/')}",
                             image.Label.Resolve(culture, culture),
                             image.AltText.Resolve(culture, culture)))],
-                    [.. q.Options
-                        .OrderBy(o => o.Order)
-                        .Select(o => new SurveyExportOption(o.Value, o.Label.Resolve(culture, culture)))]))]);
+                     [.. q.Options
+                         .OrderBy(o => o.Order)
+                         .Select(o => new SurveyExportOption(o.Value, o.Label.Resolve(culture, culture)))],
+                     ToRankedSettings(q.RankedSettings),
+                     q.RankedUnavailableOptionValues?.ToList()))]);
     }
 
     private static SurveyBranchCondition? ToBranchCondition(BranchCondition? condition) =>
@@ -129,7 +131,8 @@ internal sealed class SurveyService(
             s.Title, s.Intro, s.ThankYou, s.InvitationEmailSubject, s.InvitationEmailMessage,
             s.DefaultCulture, s.AllowAnonymous, s.OpensAt, s.ClosesAt,
             s.AudienceType, s.AudienceTeamId, s.AudienceLoggedInSince, s.PublicSlug,
-            ToQuestionInputs(s));
+            ToQuestionInputs(s),
+            s.IsAsociadoVote == true);
 
         return new SurveyDetail(s.Id, s.Status, input);
     }
@@ -150,6 +153,7 @@ internal sealed class SurveyService(
             questions = MapQuestions(surveyId, prepared.Input);
             ValidateQuestionConfiguration(questions);
             ValidateBranching(questions);
+            ValidateVoteConfiguration(input, questions);
         }
         catch
         {
@@ -167,6 +171,7 @@ internal sealed class SurveyService(
             InvitationEmailMessage = invitationEmailMessage,
             DefaultCulture = input.DefaultCulture,
             AllowAnonymous = input.AllowAnonymous,
+            IsAsociadoVote = input.IsAsociadoVote,
             Status = SurveyStatus.Draft,
             OpensAt = input.OpensAt,
             ClosesAt = input.ClosesAt,
@@ -195,7 +200,15 @@ internal sealed class SurveyService(
         return surveyId;
     }
 
-    public async Task UpdateAsync(Guid surveyId, SurveyEditInput input, Guid actorUserId, CancellationToken ct = default)
+    public Task UpdateAsync(Guid surveyId, SurveyEditInput input, Guid actorUserId, CancellationToken ct = default)
+        => UpdateCoreAsync(surveyId, input, actorUserId, allowRankedAvailabilityChanges: false, ct);
+
+    private async Task UpdateCoreAsync(
+        Guid surveyId,
+        SurveyEditInput input,
+        Guid actorUserId,
+        bool allowRankedAvailabilityChanges,
+        CancellationToken ct)
     {
         ValidateAudienceConfiguration(
             input.AudienceType, input.AudienceTeamId, input.AudienceLoggedInSince, requireAudience: false);
@@ -210,8 +223,25 @@ internal sealed class SurveyService(
         try
         {
             questions = MapQuestions(surveyId, prepared.Input);
+            if (!allowRankedAvailabilityChanges)
+            {
+                var existingById = existing.Questions.ToDictionary(question => question.Id);
+                foreach (var question in questions.Where(question => question.Type == SurveyQuestionType.RankedChoice))
+                {
+                    if (existingById.TryGetValue(question.Id, out var persisted))
+                    {
+                        question.RankedUnavailableOptionValues =
+                            persisted.RankedUnavailableOptionValues?.ToList();
+                    }
+                }
+            }
             ValidateQuestionConfiguration(questions);
             ValidateBranching(questions);
+            ValidateVoteConfiguration(input, questions);
+            if (await repo.HasSavedAnswersAsync(surveyId, ct))
+            {
+                ValidateRankedDefinitionFrozen(existing.Questions, questions);
+            }
         }
         catch
         {
@@ -229,6 +259,7 @@ internal sealed class SurveyService(
             InvitationEmailMessage = invitationEmailMessage,
             DefaultCulture = input.DefaultCulture,
             AllowAnonymous = input.AllowAnonymous,
+            IsAsociadoVote = input.IsAsociadoVote,
             OpensAt = input.OpensAt,
             ClosesAt = input.ClosesAt,
             AudienceType = input.AudienceType,
@@ -271,6 +302,8 @@ internal sealed class SurveyService(
             changes.Add($"default culture ({existing.DefaultCulture} → {updated.DefaultCulture})");
         if (existing.AllowAnonymous != updated.AllowAnonymous)
             changes.Add(updated.AllowAnonymous ? "anonymous responses enabled" : "anonymous responses disabled");
+        if ((existing.IsAsociadoVote == true) != (updated.IsAsociadoVote == true))
+            changes.Add(updated.IsAsociadoVote == true ? "Asociado vote enabled" : "Asociado vote disabled");
         if (existing.OpensAt != updated.OpensAt) changes.Add("opens-at");
         if (existing.ClosesAt != updated.ClosesAt) changes.Add("closes-at");
         if (existing.AudienceType != updated.AudienceType)
@@ -284,6 +317,25 @@ internal sealed class SurveyService(
 
         var oldQuestions = existing.Questions.ToDictionary(q => q.Id);
         var newQuestions = updated.Questions.ToDictionary(q => q.Id);
+        foreach (var question in newQuestions.Values.Where(q => q.Type == SurveyQuestionType.RankedChoice))
+        {
+            if (!oldQuestions.TryGetValue(question.Id, out var oldQuestion)) continue;
+            var oldUnavailable = (oldQuestion.RankedUnavailableOptionValues ?? [])
+                .ToHashSet(StringComparer.Ordinal);
+            var newUnavailable = (question.RankedUnavailableOptionValues ?? [])
+                .ToHashSet(StringComparer.Ordinal);
+            var addedUnavailable = newUnavailable.Except(oldUnavailable, StringComparer.Ordinal)
+                .OrderBy(value => value, StringComparer.Ordinal)
+                .ToList();
+            var restored = oldUnavailable.Except(newUnavailable, StringComparer.Ordinal)
+                .OrderBy(value => value, StringComparer.Ordinal)
+                .ToList();
+            if (addedUnavailable.Count > 0)
+                changes.Add($"ranked options unavailable ({string.Join(", ", addedUnavailable)})");
+            if (restored.Count > 0)
+                changes.Add($"ranked options restored ({string.Join(", ", restored)})");
+        }
+
         var added = newQuestions.Keys.Count(id => !oldQuestions.ContainsKey(id));
         var removed = oldQuestions.Keys.Count(id => !newQuestions.ContainsKey(id));
         var edited = newQuestions.Values.Count(q =>
@@ -307,6 +359,9 @@ internal sealed class SurveyService(
         || !old.RatingMinLabel.Equals(updated.RatingMinLabel)
         || !old.RatingMaxLabel.Equals(updated.RatingMaxLabel)
         || old.GridSelectionMode != updated.GridSelectionMode
+        || old.RankedSettings != updated.RankedSettings
+        || !(old.RankedUnavailableOptionValues ?? [])
+            .SequenceEqual(updated.RankedUnavailableOptionValues ?? [], StringComparer.Ordinal)
         || !OptionsEqual(old.Options, updated.Options);
 
     private static bool OptionsEqual(ICollection<SurveyQuestionOption> old, ICollection<SurveyQuestionOption> updated) =>
@@ -401,7 +456,8 @@ internal sealed class SurveyService(
                     Label = new LocalizedText(image.Label),
                     AltText = new LocalizedText(image.AltText),
                 }).ToList(),
-            }).ToList());
+            }).ToList(),
+            e.IsAsociadoVote);
 
         await UpdateAsync(surveyId, input, actorUserId, ct);
         logger.LogInformation(
@@ -420,6 +476,13 @@ internal sealed class SurveyService(
         var status = await repo.GetStatusAsync(surveyId, ct)
             ?? throw new InvalidOperationException("Survey not found.");
         if (status == SurveyStatus.Open) return;
+        if (status == SurveyStatus.Closed)
+        {
+            var survey = await repo.GetByIdAsync(surveyId, ct)
+                ?? throw new InvalidOperationException("Survey not found.");
+            if (survey.IsAsociadoVote == true)
+                throw new InvalidOperationException("A closed Asociado vote cannot be reopened.");
+        }
 
         await repo.SetStatusAsync(surveyId, SurveyStatus.Open, clock.GetCurrentInstant(), ct);
         await auditLog.LogAsync(AuditAction.SurveyOpened, AuditEntityTypes.Survey, surveyId, "Opened survey", actorUserId);
@@ -835,7 +898,8 @@ internal sealed class SurveyService(
                 answer.SelectedOptionValues,
                 answer.TextValue,
                 answer.RatingValue,
-                answer.GridSelections));
+                answer.GridSelections,
+                answer.RankedValue));
         var allVisible = SurveyWizardFlow.OrderedPages(questions)
             .SelectMany(page => SurveyWizardFlow.VisibleQuestionsOnPage(questions, page, answerStates))
             .ToList();
@@ -964,6 +1028,9 @@ internal sealed class SurveyService(
                     answer.GridSelections),
                 TextValue = string.IsNullOrWhiteSpace(answer.TextValue) ? null : answer.TextValue,
                 RatingValue = answer.RatingValue,
+                RankedValue = question.Type == SurveyQuestionType.RankedChoice
+                    ? NormalizeRankedAnswer(question, answer.RankedValue)
+                    : null,
             };
         }
 
@@ -1086,8 +1153,11 @@ internal sealed class SurveyService(
         return new SurveyWizardAdvanceResult(SurveyWizardOutcome.Submitted, []);
     }
 
-    public async Task<SurveyResultsView?> GetResultsAsync(Guid surveyId, CancellationToken ct = default) =>
-        (await GetScopedResultsAsync(surveyId, SurveyResultsScope.Combined, ct))?.Results;
+    public async Task<SurveyResultsView?> GetResultsAsync(Guid surveyId, CancellationToken ct = default)
+    {
+        var scoped = await GetScopedResultsAsync(surveyId, SurveyResultsScope.Combined, ct);
+        return scoped is { IsEmbargoed: false } ? scoped.Results : null;
+    }
 
     public async Task<SurveyScopedResults?> GetScopedResultsAsync(
         Guid surveyId,
@@ -1099,6 +1169,7 @@ internal sealed class SurveyService(
 
         var culture = survey.DefaultCulture;
         var responses = await repo.GetResponsesForResultsAsync(surveyId, ct);
+        var embargoed = survey.IsAsociadoVote == true && survey.Status != SurveyStatus.Closed;
         var selectedResponses = responses
             .Where(response => MatchesScope(response.Anonymity, scope))
             .ToList();
@@ -1112,11 +1183,13 @@ internal sealed class SurveyService(
                 .Count(invitation => invitation.SentAt.HasValue && invitation.Completed);
         var responseRate = invitedCount == 0 ? 0d : (double)completedInvitationCount / invitedCount;
 
-        var questions = survey.Questions
-            .Where(q => q.Type != SurveyQuestionType.Information)
-            .OrderBy(q => q.PageNumber).ThenBy(q => q.Order)
-            .Select(q => BuildQuestionAggregate(q, selectedResponses, culture))
-            .ToList();
+        var questions = embargoed
+            ? []
+            : survey.Questions
+                .Where(q => q.Type != SurveyQuestionType.Information)
+                .OrderBy(q => q.PageNumber).ThenBy(q => q.Order)
+                .Select(q => BuildQuestionAggregate(q, selectedResponses, culture))
+                .ToList();
 
         var funnel = new SurveyFunnel(
             LinkStarted: await repo.GetStartedInvitationCountAsync(surveyId, ct),
@@ -1124,7 +1197,16 @@ internal sealed class SurveyService(
             SlugStarted: survey.PublicStartedCount,
             SlugFinished: responses.Count(r => r.InputMethod == SurveyInputMethod.Slug));
 
-        var identified = await BuildIdentifiedRespondentsAsync(survey, responses, culture, ct);
+        var identified = embargoed
+            ? []
+            : await BuildIdentifiedRespondentsAsync(survey, responses, culture, ct);
+        var rankedQuestions = embargoed
+            ? new Dictionary<Guid, RankedQuestionResult>()
+            : survey.Questions
+                .Where(question => question.Type == SurveyQuestionType.RankedChoice)
+                .ToDictionary(
+                    question => question.Id,
+                    question => BuildRankedQuestionResult(question, selectedResponses, culture));
 
         return new SurveyScopedResults(
             new SurveyResultsView(
@@ -1137,8 +1219,263 @@ internal sealed class SurveyService(
                 funnel,
                 questions,
                 identified),
-            selectedResponses.Count,
-            scope);
+            embargoed ? 0 : selectedResponses.Count,
+            scope,
+            embargoed,
+            rankedQuestions);
+    }
+
+    private static RankedQuestionResult BuildRankedQuestionResult(
+        SurveyQuestion question,
+        IReadOnlyList<SurveyResponse> responses,
+        string culture)
+    {
+        var options = question.Options.OrderBy(option => option.Order).ToList();
+        var authored = options.Select(option => option.Value).ToList();
+        var unavailable = (question.RankedUnavailableOptionValues ?? [])
+            .Where(value => authored.Contains(value, StringComparer.Ordinal))
+            .ToHashSet(StringComparer.Ordinal);
+        var active = authored.Where(value => !unavailable.Contains(value)).ToHashSet(StringComparer.Ordinal);
+        var labels = options.ToDictionary(
+            option => option.Value,
+            option => option.Label.Resolve(culture, culture),
+            StringComparer.Ordinal);
+        var ballots = responses
+            .SelectMany(response => response.Answers)
+            .Where(answer => answer.QuestionId == question.Id && answer.RankedValue is not null)
+            .Select(answer => new RankedBallot(
+                answer.RankedValue!.RankGroups,
+                answer.RankedValue.Rejected.ToHashSet(StringComparer.Ordinal)))
+            .ToList();
+        RankedMethodResult Method(string name, string? winner, bool tieBreak) => new(
+            name,
+            winner,
+            winner is null ? null : labels.GetValueOrDefault(winner, winner),
+            tieBreak);
+
+        (RankedPairwiseMatrix Matrix, RankedMethodResult Official, IReadOnlyList<RankedMethodResult> Methods)
+            Count(IReadOnlySet<string>? candidates)
+        {
+            var matrix = RankedChoiceCounter.BuildPairwise(authored, ballots, candidates);
+            var rankedPairs = RankedChoiceCounter.CountRankedPairs(authored, matrix, candidates);
+            var condorcet = RankedChoiceCounter.CheckCondorcet(authored, matrix, candidates);
+            var borda = RankedChoiceCounter.CountBorda(authored, ballots, candidates);
+            var official = Method("Ranked Pairs (official)", rankedPairs.Winner, rankedPairs.TieBreakUsed);
+            return (
+                matrix,
+                official,
+                [
+                    official,
+                    Method("Condorcet check", condorcet.Winner, false),
+                    Method("Borda Count", borda.Winner, borda.TieBreakUsed),
+                ]);
+        }
+
+        var original = Count(null);
+        var current = Count(active);
+
+        return new RankedQuestionResult(
+            options.Select(option => new RankedCandidateResult(
+                option.Value,
+                labels[option.Value],
+                !unavailable.Contains(option.Value),
+                ballots.Count(ballot => ballot.Rejected.Contains(option.Value)),
+                ballots.Count == 0
+                    ? 0d
+                    : 100d * ballots.Count(ballot => ballot.Rejected.Contains(option.Value)) / ballots.Count))
+                .ToList(),
+            original.Official,
+            current.Official,
+            current.Methods,
+            current.Matrix.Contests,
+            unavailable.ToList());
+    }
+
+    public async Task SetRankedAvailabilityAsync(
+        Guid surveyId,
+        Guid questionId,
+        IReadOnlyList<string> unavailableValues,
+        Guid actorUserId,
+        CancellationToken ct = default)
+    {
+        var detail = await GetForEditAsync(surveyId, ct)
+            ?? throw new InvalidOperationException("Survey not found.");
+        if (detail.Status != SurveyStatus.Closed)
+            throw new InvalidOperationException("Candidate availability can only change after the vote closes.");
+        var question = detail.Editable.Questions.FirstOrDefault(candidate => candidate.Id == questionId);
+        if (question?.Type != SurveyQuestionType.RankedChoice)
+            throw new InvalidOperationException("Ranked-choice question not found.");
+        var known = question.Options.Select(option => option.Value).ToHashSet(StringComparer.Ordinal);
+        var normalized = unavailableValues
+            .Where(known.Contains)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        var updatedQuestions = detail.Editable.Questions
+            .Select(candidate => candidate.Id == questionId
+                ? candidate with { RankedUnavailableOptionValues = normalized }
+                : candidate)
+            .ToList();
+        await UpdateCoreAsync(
+            surveyId,
+            detail.Editable with { Questions = updatedQuestions },
+            actorUserId,
+            allowRankedAvailabilityChanges: true,
+            ct);
+    }
+
+    public async Task<int> SeedRankedVotingDemoAsync(Guid actorUserId, CancellationToken ct = default)
+    {
+        const string prefix = "[Demo] Ranked vote";
+        if ((await GetSummariesAsync(ct)).Any(summary => summary.Title.StartsWith(prefix, StringComparison.Ordinal)))
+            return 0;
+
+        var voters = (await userService.GetAllUserInfosAsync(ct))
+            .Where(user => user.IsApproved && !user.IsGdprAnonymized && !user.IsDeletionPending && !user.IsMerged)
+            .Take(8)
+            .ToList();
+        if (voters.Count == 0)
+            throw new InvalidOperationException("No active local users are available for demo ballots.");
+
+        static LocalizedText Text(string value) => new(
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = value });
+        static QuestionInput RankingQuestion(Guid id) => new(
+            id, 1, 0, SurveyQuestionType.RankedChoice,
+            Text("Which weekend should we choose?"),
+            Text("Rank any dates you support. Unranked dates remain acceptable; Reject means unacceptable."),
+            true, null, null, LocalizedText.Empty, LocalizedText.Empty, null,
+            [
+                new OptionInput(Guid.NewGuid(), 0, "sep-12", Text("12–13 September")),
+                new OptionInput(Guid.NewGuid(), 1, "sep-19", Text("19–20 September")),
+                new OptionInput(Guid.NewGuid(), 2, "sep-26", Text("26–27 September")),
+                new OptionInput(Guid.NewGuid(), 3, "oct-03", Text("3–4 October")),
+            ],
+            RankedSettings: new RankedQuestionSettings(true, true, RankedVotingMethod.RankedPairs));
+
+        SurveyEditInput Demo(string title, Guid questionId) => new(
+            Text(title),
+            Text("Local fixture for reviewing ranked voting and the Asociado-vote result embargo."),
+            Text("Your vote has been recorded."),
+            LocalizedText.Empty,
+            LocalizedText.Empty,
+            "en",
+            false,
+            null,
+            null,
+            SurveyAudienceType.Asociados,
+            null,
+            null,
+            null,
+            [RankingQuestion(questionId)],
+            true);
+
+        var openEmptyId = await CreateAsync(Demo($"{prefix} — open, no responses", Guid.NewGuid()), actorUserId, ct);
+        await OpenAsync(openEmptyId, actorUserId, ct);
+
+        var openPartialQuestion = Guid.NewGuid();
+        var openPartialId = await CreateAsync(
+            Demo($"{prefix} — open, partial participation", openPartialQuestion), actorUserId, ct);
+        await OpenAsync(openPartialId, actorUserId, ct);
+        await SeedDemoResponsesAsync(
+            openPartialId,
+            openPartialQuestion,
+            voters,
+            [
+                new RankedAnswer([["sep-12"], ["sep-19"], ["sep-26"]], ["oct-03"]),
+                new RankedAnswer([["sep-19"], ["sep-26"], ["sep-12"]], []),
+            ],
+            includeStartedDraft: true,
+            ct);
+
+        var closedQuestion = Guid.NewGuid();
+        var closedId = await CreateAsync(
+            Demo($"{prefix} — closed, Condorcet cycle", closedQuestion), actorUserId, ct);
+        await OpenAsync(closedId, actorUserId, ct);
+        await SeedDemoResponsesAsync(
+            closedId,
+            closedQuestion,
+            voters,
+            [
+                new RankedAnswer([["sep-12"], ["sep-19"], ["sep-26"], ["oct-03"]], []),
+                new RankedAnswer([["sep-12"], ["sep-19"], ["sep-26"], ["oct-03"]], []),
+                new RankedAnswer([["sep-19"], ["sep-26"], ["sep-12"], ["oct-03"]], []),
+                new RankedAnswer([["sep-19"], ["sep-26"], ["sep-12"], ["oct-03"]], []),
+                new RankedAnswer([["sep-26"], ["sep-12"], ["sep-19"], ["oct-03"]], []),
+                new RankedAnswer([["sep-26"], ["sep-12"], ["sep-19"], ["oct-03"]], []),
+            ],
+            includeStartedDraft: false,
+            ct);
+        await CloseAsync(closedId, actorUserId, ct);
+        await SetRankedAvailabilityAsync(closedId, closedQuestion, ["sep-12"], actorUserId, ct);
+
+        return 3;
+    }
+
+    private async Task SeedDemoResponsesAsync(
+        Guid surveyId,
+        Guid questionId,
+        IReadOnlyList<UserInfo> voters,
+        IReadOnlyList<RankedAnswer> ballots,
+        bool includeStartedDraft,
+        CancellationToken ct)
+    {
+        var now = clock.GetCurrentInstant();
+        var count = Math.Min(ballots.Count, voters.Count);
+        for (var index = 0; index < count; index++)
+        {
+            var invitation = new SurveyInvitation
+            {
+                Id = Guid.NewGuid(),
+                SurveyId = surveyId,
+                UserId = voters[index].Id,
+                CreatedAt = now,
+                SentAt = now,
+                Started = true,
+            };
+            await repo.AddInvitationAndSaveAsync(invitation, ct);
+            var draft = new SurveyResponse
+            {
+                Id = Guid.NewGuid(),
+                SurveyId = surveyId,
+                InvitationId = invitation.Id,
+                UserId = voters[index].Id,
+                Anonymity = ResponseAnonymity.Identified,
+                InputMethod = SurveyInputMethod.UserSpecificLink,
+                Culture = "en",
+            };
+            await repo.AddResponseAsync(draft, ct);
+            await repo.FinalizeIdentifiedResponseAsync(
+                invitation.Id,
+                draft.Id,
+                MapAnswers(draft.Id, [new SurveyAnswerInput(questionId, [], null, null, null, ballots[index])]),
+                now,
+                SurveyInputMethod.UserSpecificLink,
+                "en",
+                ct);
+        }
+
+        if (includeStartedDraft && voters.Count > count)
+        {
+            var invitation = new SurveyInvitation
+            {
+                Id = Guid.NewGuid(),
+                SurveyId = surveyId,
+                UserId = voters[count].Id,
+                CreatedAt = now,
+                SentAt = now,
+                Started = true,
+            };
+            await repo.AddInvitationAndSaveAsync(invitation, ct);
+            await repo.AddResponseAsync(new SurveyResponse
+            {
+                Id = Guid.NewGuid(),
+                SurveyId = surveyId,
+                InvitationId = invitation.Id,
+                UserId = voters[count].Id,
+                Anonymity = ResponseAnonymity.Identified,
+                InputMethod = SurveyInputMethod.UserSpecificLink,
+                Culture = "en",
+            }, ct);
+        }
     }
 
     private static bool MatchesScope(ResponseAnonymity anonymity, SurveyResultsScope scope) => scope switch
@@ -1152,6 +1489,7 @@ internal sealed class SurveyService(
     {
         var survey = await repo.GetByIdAsync(surveyId, ct);
         if (survey is null) return null;
+        if (survey.IsAsociadoVote == true && survey.Status != SurveyStatus.Closed) return null;
 
         var culture = survey.DefaultCulture;
         var responses = await repo.GetResponsesForResultsAsync(surveyId, ct);
@@ -1170,9 +1508,11 @@ internal sealed class SurveyService(
                     .Select(o => new SurveyExportOption(o.Value, o.Label.Resolve(culture, culture)))
                     .ToList(),
                 q.GridSelectionMode,
-                q.GridRows?.Select(row => new SurveyExportGridRow(
-                    row.Value,
-                    row.Label.Resolve(culture, culture))).ToList()))
+                 q.GridRows?.Select(row => new SurveyExportGridRow(
+                     row.Value,
+                     row.Label.Resolve(culture, culture))).ToList(),
+                 ToRankedSettings(q.RankedSettings),
+                 q.RankedUnavailableOptionValues?.ToList()))
             .ToList();
 
         var questionsById = survey.Questions.ToDictionary(q => q.Id);
@@ -1210,9 +1550,10 @@ internal sealed class SurveyService(
                         a.TextValue,
                         a.RatingValue,
                         CopyGridSelections(a),
-                        questionsById.TryGetValue(a.QuestionId, out var question)
-                            ? ResolveGridSelections(a, question, culture)
-                            : []))
+                         questionsById.TryGetValue(a.QuestionId, out var question)
+                             ? ResolveGridSelections(a, question, culture)
+                             : [],
+                         CopyRankedBallot(a)))
                     .ToList();
 
                 return new SurveyExportRow(
@@ -1272,11 +1613,13 @@ internal sealed class SurveyService(
                         Question = prompts.GetValueOrDefault(a.QuestionId, string.Empty),
                         SelectedLabels = ResolveSelectedLabels(a, optionLabels),
                         GridSelections = CopyGridSelections(a),
-                        GridSelectionLabels = questionsById.TryGetValue(a.QuestionId, out var question)
-                            ? ResolveGridSelections(a, question, culture)
-                            : [],
-                        a.TextValue,
-                        a.RatingValue,
+                         GridSelectionLabels = questionsById.TryGetValue(a.QuestionId, out var question)
+                             ? ResolveGridSelections(a, question, culture)
+                             : [],
+                         RankedBallot = CopyRankedBallot(a),
+                         RankedBallotLabels = ResolveRankedBallot(a, optionLabels),
+                         a.TextValue,
+                         a.RatingValue,
                     }).ToList(),
                 };
             })
@@ -1431,9 +1774,10 @@ internal sealed class SurveyService(
                         ResolveSelectedLabels(a, optionLabels),
                         a.TextValue,
                         a.RatingValue,
-                        questionsById.TryGetValue(a.QuestionId, out var question)
-                            ? ResolveGridSelections(a, question, culture)
-                            : []))
+                         questionsById.TryGetValue(a.QuestionId, out var question)
+                             ? ResolveGridSelections(a, question, culture)
+                             : [],
+                         ResolveRankedBallot(a, optionLabels)))
                     .ToList();
                 return new RespondentDetail(userId, name, r.SubmittedAt, answers);
             })
@@ -1481,6 +1825,37 @@ internal sealed class SurveyService(
             selection => (IReadOnlyList<string>)selection.Value.ToList(),
             StringComparer.Ordinal);
 
+    private static SurveyRankedSettings? ToRankedSettings(RankedQuestionSettings? settings)
+        => settings is null
+            ? null
+            : new SurveyRankedSettings(
+                settings.AllowEqualRanks,
+                settings.AllowReject,
+                settings.OfficialMethod.ToString());
+
+    private static SurveyRankedBallot? CopyRankedBallot(SurveyAnswer answer)
+        => answer.RankedValue is null
+            ? null
+            : new SurveyRankedBallot(
+                [.. answer.RankedValue.RankGroups.Select(group => (IReadOnlyList<string>)[.. group])],
+                [.. answer.RankedValue.Rejected]);
+
+    private static ResolvedRankedBallot? ResolveRankedBallot(
+        SurveyAnswer answer,
+        IReadOnlyDictionary<Guid, Dictionary<string, string>> optionLabels)
+    {
+        if (answer.RankedValue is null) return null;
+
+        var labels = optionLabels.GetValueOrDefault(answer.QuestionId);
+        string Resolve(string value) =>
+            labels is not null && labels.TryGetValue(value, out var label) ? label : value;
+
+        return new ResolvedRankedBallot(
+            [.. answer.RankedValue.RankGroups
+                .Select(group => (IReadOnlyList<string>)[.. group.Select(Resolve)])],
+            [.. answer.RankedValue.Rejected.Select(Resolve)]);
+    }
+
     private static IReadOnlyList<QuestionInput> ToQuestionInputs(Survey survey)
         => survey.Questions
             .OrderBy(question => question.PageNumber)
@@ -1518,7 +1893,9 @@ internal sealed class SurveyService(
                         image.StoragePath,
                         image.ContentType,
                         image.FileName))
-                    .ToList()))
+                    .ToList(),
+                question.RankedSettings,
+                question.RankedUnavailableOptionValues))
             .ToList();
 
     private static void ReplaceWizardAnswers(
@@ -1538,6 +1915,7 @@ internal sealed class SurveyService(
                     ?? new Dictionary<string, List<string>>(StringComparer.Ordinal),
                 TextValue = answer.TextValue,
                 RatingValue = answer.RatingValue,
+                RankedValue = answer.RankedValue,
             };
         }
     }
@@ -1550,7 +1928,7 @@ internal sealed class SurveyService(
     {
         var states = answers.ToDictionary(
             a => a.QuestionId,
-            a => new AnswerState(a.SelectedOptionValues, a.TextValue, a.RatingValue, a.GridSelections));
+            a => new AnswerState(a.SelectedOptionValues, a.TextValue, a.RatingValue, a.GridSelections, a.RankedValue));
 
         var effective = SurveyBranchingEvaluator.EffectiveAnswerStates(
             survey.Questions
@@ -1576,6 +1954,9 @@ internal sealed class SurveyService(
                         question.GridSelectionMode,
                         a.GridSelections)
                     : null;
+                var normalizedRanked = question.Type == SurveyQuestionType.RankedChoice
+                    ? NormalizeRankedAnswer(question, a.RankedValue)
+                    : null;
                 return a with
                 {
                     GridSelections = normalizedGridSelections?.Count > 0
@@ -1584,6 +1965,7 @@ internal sealed class SurveyService(
                                 kv => (IReadOnlyList<string>)kv.Value,
                                 StringComparer.Ordinal)
                         : null,
+                    RankedValue = normalizedRanked,
                 };
             })
             .ToList();
@@ -1608,6 +1990,7 @@ internal sealed class SurveyService(
                 StringComparer.Ordinal),
             TextValue = a.TextValue,
             RatingValue = a.RatingValue,
+            RankedValue = a.RankedValue,
         }).ToList();
 
     private static IReadOnlyList<SurveyDraftAnswer> MapDraftAnswers(SurveyResponse draft)
@@ -1620,7 +2003,8 @@ internal sealed class SurveyService(
                 answer.GridSelections?.ToDictionary(
                     pair => pair.Key,
                     pair => (IReadOnlyList<string>)pair.Value,
-                    StringComparer.Ordinal)))
+                    StringComparer.Ordinal),
+                answer.RankedValue))
             .ToList();
 
     /// <summary>
@@ -1641,6 +2025,16 @@ internal sealed class SurveyService(
 
             case SurveyAudienceType.AllActiveMembers:
                 return (await ActiveMemberIdsAsync(ct)).ToHashSet();
+
+            case SurveyAudienceType.Asociados:
+                return (await userService.GetAllUserInfosAsync(ct))
+                    .Where(user => user.IsApproved
+                        && user.Profile?.MembershipTier == MembershipTier.Asociado
+                        && !user.IsGdprAnonymized
+                        && !user.IsDeletionPending
+                        && !user.IsMerged)
+                    .Select(user => user.Id)
+                    .ToHashSet();
 
             case SurveyAudienceType.TicketHolders:
                 {
@@ -1936,6 +2330,12 @@ internal sealed class SurveyService(
                         image.Label,
                         image.AltText)).ToList()
                     : null,
+                RankedSettings = q.Type == SurveyQuestionType.RankedChoice
+                    ? q.RankedSettings ?? RankedQuestionSettings.Default
+                    : null,
+                RankedUnavailableOptionValues = q.Type == SurveyQuestionType.RankedChoice
+                    ? (q.RankedUnavailableOptionValues ?? []).Distinct(StringComparer.Ordinal).ToList()
+                    : null,
                 ShowIf = q.ShowIf,
                 Options = q.Options.Select(o => new SurveyQuestionOption
                 {
@@ -1955,6 +2355,12 @@ internal sealed class SurveyService(
             if (question.Type == SurveyQuestionType.Information)
             {
                 ValidateInformationQuestion(question);
+                continue;
+            }
+
+            if (question.Type == SurveyQuestionType.RankedChoice)
+            {
+                ValidateRankedQuestion(question);
                 continue;
             }
 
@@ -2019,6 +2425,21 @@ internal sealed class SurveyService(
             ValidateStableValues(question.Options.Select(option => option.Value), $"Grid question {question.Id} column");
         }
 
+        static void ValidateRankedQuestion(SurveyQuestion question)
+        {
+            if (question.Options.Count < 2)
+                throw new InvalidOperationException($"Ranked-choice question {question.Id} must have at least two options.");
+            ValidateStableValues(
+                question.Options.OrderBy(option => option.Order).Select(option => option.Value),
+                $"Ranked-choice question {question.Id} option");
+            if (question.RankedSettings is null
+                || !Enum.IsDefined(question.RankedSettings.OfficialMethod))
+            {
+                throw new InvalidOperationException(
+                    $"Ranked-choice question {question.Id} must have valid ranking settings.");
+            }
+        }
+
         static void ValidateStableValues(IEnumerable<string> values, string description)
         {
             var materialized = values.ToList();
@@ -2054,14 +2475,112 @@ internal sealed class SurveyService(
         var nonAnswerSources = questions
             .Where(question => question.ShowIf?.Clauses.Any(clause =>
                 types.GetValueOrDefault(clause.QuestionId) is
-                    SurveyQuestionType.Grid or SurveyQuestionType.Information) == true)
+                    SurveyQuestionType.Grid or SurveyQuestionType.Information or SurveyQuestionType.RankedChoice) == true)
             .Select(question => question.Id)
             .ToList();
         if (nonAnswerSources.Count > 0)
         {
             throw new InvalidOperationException(
-                $"Grid questions and Information items cannot be branching sources. Offending question ids: {string.Join(", ", nonAnswerSources)}.");
+                $"Grid, RankedChoice, and Information questions cannot be branching sources. Offending question ids: {string.Join(", ", nonAnswerSources)}.");
         }
+    }
+
+    private static void ValidateVoteConfiguration(
+        SurveyEditInput input,
+        IReadOnlyList<SurveyQuestion> questions)
+    {
+        var hasRanked = questions.Any(question => question.Type == SurveyQuestionType.RankedChoice);
+        if (hasRanked && !input.IsAsociadoVote)
+            throw new InvalidOperationException("Ranked-choice questions require Asociado vote mode.");
+        if (!input.IsAsociadoVote) return;
+        if (input.AllowAnonymous)
+            throw new InvalidOperationException("Asociado votes must use identified responses.");
+        if (!string.IsNullOrWhiteSpace(input.PublicSlug))
+            throw new InvalidOperationException("Asociado votes cannot have a public link.");
+    }
+
+    private static void ValidateRankedDefinitionFrozen(
+        IEnumerable<SurveyQuestion> existing,
+        IEnumerable<SurveyQuestion> updated)
+    {
+        var oldRanked = existing
+            .Where(question => question.Type == SurveyQuestionType.RankedChoice)
+            .OrderBy(question => question.PageNumber).ThenBy(question => question.Order)
+            .ToList();
+        var newRanked = updated
+            .Where(question => question.Type == SurveyQuestionType.RankedChoice)
+            .OrderBy(question => question.PageNumber).ThenBy(question => question.Order)
+            .ToList();
+        if (oldRanked.Count != newRanked.Count)
+            throw new InvalidOperationException("Ranked-choice questions cannot be added or removed after voting starts.");
+        for (var index = 0; index < oldRanked.Count; index++)
+        {
+            var before = oldRanked[index];
+            var after = newRanked[index];
+            var beforeValues = before.Options.OrderBy(option => option.Order).Select(option => option.Value);
+            var afterValues = after.Options.OrderBy(option => option.Order).Select(option => option.Value);
+            if (before.Id != after.Id
+                || !beforeValues.SequenceEqual(afterValues, StringComparer.Ordinal)
+                || before.RankedSettings != after.RankedSettings)
+            {
+                throw new InvalidOperationException(
+                    "Ranked-choice candidates, order, and settings cannot change after the first saved answer.");
+            }
+        }
+    }
+
+    private static RankedAnswer? NormalizeRankedAnswer(QuestionInput question, RankedAnswer? answer)
+    {
+        if (answer is null) return null;
+        var authored = question.Options.OrderBy(option => option.Order).Select(option => option.Value).ToList();
+        return NormalizeRankedAnswer(authored, question.RankedSettings, answer);
+    }
+
+    private static RankedAnswer? NormalizeRankedAnswer(SurveyQuestion question, RankedAnswer? answer)
+    {
+        if (answer is null) return null;
+        var authored = question.Options.OrderBy(option => option.Order).Select(option => option.Value).ToList();
+        return NormalizeRankedAnswer(authored, question.RankedSettings, answer);
+    }
+
+    private static RankedAnswer? NormalizeRankedAnswer(
+        IReadOnlyList<string> authored,
+        RankedQuestionSettings? settings,
+        RankedAnswer answer)
+    {
+        settings ??= RankedQuestionSettings.Default;
+        var known = authored.ToHashSet(StringComparer.Ordinal);
+        var suppliedKnownValues = answer.RankGroups
+            .SelectMany(group => group)
+            .Concat(answer.Rejected)
+            .Where(known.Contains)
+            .ToList();
+        if (suppliedKnownValues.Distinct(StringComparer.Ordinal).Count() != suppliedKnownValues.Count)
+            throw new InvalidOperationException("A ranked-choice option may appear only once in a ballot.");
+
+        var authoredPositions = authored
+            .Select((value, index) => (value, index))
+            .ToDictionary(pair => pair.value, pair => pair.index, StringComparer.Ordinal);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var groups = new List<IReadOnlyList<string>>();
+        foreach (var group in answer.RankGroups)
+        {
+            var valid = group
+                .Where(value => known.Contains(value) && seen.Add(value))
+                .OrderBy(value => authoredPositions[value])
+                .ToList();
+            if (!settings.AllowEqualRanks && valid.Count > 1)
+                throw new InvalidOperationException("This ranked-choice question does not allow equal ranks.");
+            if (valid.Count > 0) groups.Add(valid);
+        }
+
+        var rejected = answer.Rejected
+            .Where(value => known.Contains(value) && seen.Add(value))
+            .OrderBy(value => authoredPositions[value])
+            .ToList();
+        if (!settings.AllowReject && rejected.Count > 0)
+            throw new InvalidOperationException("This ranked-choice question does not allow rejection.");
+        return groups.Count == 0 && rejected.Count == 0 ? null : new RankedAnswer(groups, rejected);
     }
 
     private static Dictionary<string, List<string>> NormalizeGridSelections(

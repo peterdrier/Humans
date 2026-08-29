@@ -68,3 +68,10 @@
         </table>
     </div>
 </div>
+@if (ViewData["CanSeedRankedDemo"] as bool? == true)
+{
+    <form asp-action="SeedRankedDemo" method="post" class="mb-3">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-outline-secondary btn-sm">Create ranked-voting demo surveys</button>
+    </form>
+}

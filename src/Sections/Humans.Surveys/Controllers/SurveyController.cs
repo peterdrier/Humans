@@ -77,6 +77,7 @@ internal sealed class SurveyController(
                         StringComparer.Ordinal) ?? new(StringComparer.Ordinal),
                     TextValue = a.TextValue,
                     RatingValue = a.RatingValue,
+                    RankedValue = a.RankedValue,
                 };
             }
 
@@ -246,6 +247,7 @@ internal sealed class SurveyController(
                             pair => pair.Key,
                             pair => pair.Value.ToList(),
                             StringComparer.Ordinal),
+                    RankedValue = answer.RankedValue,
                 };
             }
         }
@@ -446,7 +448,8 @@ internal sealed class SurveyController(
                         group => (IReadOnlyList<string>)group
                             .SelectMany(row => row.SelectedColumnValues ?? [])
                             .ToList(),
-                        StringComparer.Ordinal)))
+                        StringComparer.Ordinal),
+                ToRankedAnswer(a.RankedOptions)))
             .ToList();
 
         var result = await surveyService.AdvanceWizardAsync(state, model.Page, model.Back, posted, ct);
@@ -478,6 +481,34 @@ internal sealed class SurveyController(
                 route.Save(HttpContext.Session, state);
                 return RedirectToAction(route.PageAction, route.PageRouteValues);
         }
+    }
+
+    private static RankedAnswer? ToRankedAnswer(IReadOnlyList<SurveyPostedRankedOption>? rows)
+    {
+        if (rows is null || rows.Count == 0) return null;
+        var ranked = rows
+            .Select(row => new
+            {
+                Row = row,
+                Rank = int.TryParse(
+                    row.Selection,
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out var rank) && rank > 0
+                        ? (int?)rank
+                        : null,
+            })
+            .Where(item => item.Rank is not null && !string.IsNullOrWhiteSpace(item.Row.OptionValue))
+            .GroupBy(item => item.Rank!.Value)
+            .OrderBy(group => group.Key)
+            .Select(group => (IReadOnlyList<string>)group.Select(item => item.Row.OptionValue).ToList())
+            .ToList();
+        var rejected = rows
+            .Where(row => string.Equals(row.Selection, "reject", StringComparison.Ordinal)
+                && !string.IsNullOrWhiteSpace(row.OptionValue))
+            .Select(row => row.OptionValue)
+            .ToList();
+        return ranked.Count == 0 && rejected.Count == 0 ? null : new RankedAnswer(ranked, rejected);
     }
 
     /// <summary>

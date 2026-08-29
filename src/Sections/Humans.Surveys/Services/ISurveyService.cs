@@ -147,12 +147,39 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
         Guid surveyId,
         SurveyResultsScope scope,
         CancellationToken ct = default);
+
+    Task SetRankedAvailabilityAsync(
+        Guid surveyId,
+        Guid questionId,
+        IReadOnlyList<string> unavailableValues,
+        Guid actorUserId,
+        CancellationToken ct = default);
+
+    Task<int> SeedRankedVotingDemoAsync(Guid actorUserId, CancellationToken ct = default);
 }
 
 internal sealed record SurveyScopedResults(
     SurveyResultsView Results,
     int SelectedResponseCount,
-    SurveyResultsScope Scope);
+    SurveyResultsScope Scope,
+    bool IsEmbargoed = false,
+    IReadOnlyDictionary<Guid, RankedQuestionResult>? RankedQuestions = null);
+
+internal sealed record RankedQuestionResult(
+    IReadOnlyList<RankedCandidateResult> Candidates,
+    RankedMethodResult OriginalOfficialResult,
+    RankedMethodResult CurrentOfficialResult,
+    IReadOnlyList<RankedMethodResult> Methods,
+    IReadOnlyList<PairwiseContest> Pairwise,
+    IReadOnlyList<string> UnavailableValues);
+
+internal sealed record RankedCandidateResult(
+    string Value,
+    string Label,
+    bool IsAvailable,
+    int RejectionCount,
+    double RejectionPercent);
+internal sealed record RankedMethodResult(string Method, string? WinnerValue, string? WinnerLabel, bool TieBreakUsed);
 
 internal enum SurveyResultsScope
 {
@@ -181,7 +208,8 @@ internal sealed record SurveyEditInput(
     Guid? AudienceTeamId,
     Instant? AudienceLoggedInSince,
     string? PublicSlug,
-    IReadOnlyList<QuestionInput> Questions);
+    IReadOnlyList<QuestionInput> Questions,
+    bool IsAsociadoVote = false);
 
 /// <summary>One question in the builder graph.</summary>
 internal sealed record QuestionInput(
@@ -200,7 +228,9 @@ internal sealed record QuestionInput(
     IReadOnlyList<OptionInput> Options,
     GridSelectionMode? GridSelectionMode = null,
     IReadOnlyList<GridRowInput>? GridRows = null,
-    IReadOnlyList<InformationImageInput>? InformationImages = null);
+    IReadOnlyList<InformationImageInput>? InformationImages = null,
+    RankedQuestionSettings? RankedSettings = null,
+    IReadOnlyList<string>? RankedUnavailableOptionValues = null);
 
 /// <summary>One choice option in the builder graph. <c>Value</c> is the stable machine key.</summary>
 internal sealed record OptionInput(
@@ -278,7 +308,8 @@ internal sealed record SurveyDraftAnswer(
     IReadOnlyList<string> SelectedOptionValues,
     string? TextValue,
     int? RatingValue,
-    IReadOnlyDictionary<string, IReadOnlyList<string>>? GridSelections = null);
+    IReadOnlyDictionary<string, IReadOnlyList<string>>? GridSelections = null,
+    RankedAnswer? RankedValue = null);
 
 /// <summary>
 /// A finalised wizard submission. Identity columns (<c>UserId</c>/<c>InvitationId</c>) are written on
@@ -303,7 +334,8 @@ internal sealed record SurveyAnswerInput(
     IReadOnlyList<string> SelectedOptionValues,
     string? TextValue,
     int? RatingValue,
-    IReadOnlyDictionary<string, IReadOnlyList<string>>? GridSelections = null);
+    IReadOnlyDictionary<string, IReadOnlyList<string>>? GridSelections = null,
+    RankedAnswer? RankedValue = null);
 
 /// <summary>
 /// Per-session state of the answering wizard. The Web layer JSON-serialises it into the HTTP session
@@ -338,6 +370,7 @@ internal sealed class SurveyWizardAnswer
 {
     public List<string> SelectedOptionValues { get; set; } = [];
     public Dictionary<string, List<string>> GridSelections { get; set; } = new(StringComparer.Ordinal);
+    public RankedAnswer? RankedValue { get; set; }
     public string? TextValue { get; set; }
     public int? RatingValue { get; set; }
 }

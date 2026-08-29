@@ -13,6 +13,7 @@ internal sealed class Survey
     public LocalizedText InvitationEmailMessage { get; set; } = LocalizedText.Empty;
     public string DefaultCulture { get; set; } = "en";
     public bool AllowAnonymous { get; set; }
+    public bool? IsAsociadoVote { get; set; }
     public SurveyStatus Status { get; set; } = SurveyStatus.Draft;
     public Instant? OpensAt { get; set; }
     public Instant? ClosesAt { get; set; }

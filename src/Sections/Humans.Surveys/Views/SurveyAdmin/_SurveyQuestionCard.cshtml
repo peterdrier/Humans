@@ -110,6 +110,25 @@
             <div class="form-text grid-column-help">Grid questions support at most five columns.</div>
         </div>
 
+        <div class="ranked-section border-top pt-2 mt-2">
+            <div class="alert alert-info small py-2">
+                Ranked choice uses Ranked Pairs (Tideman) as the official method.
+                If two outcomes remain tied, the option listed earlier wins.
+            </div>
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="ranked-equal-@key"
+                       name="@(prefix).RankedAllowEqualRanks" value="true"
+                       @(q.RankedAllowEqualRanks ? "checked" : null) />
+                <label class="form-check-label small" for="ranked-equal-@key">Allow equal ranks</label>
+            </div>
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="ranked-reject-@key"
+                       name="@(prefix).RankedAllowReject" value="true"
+                       @(q.RankedAllowReject ? "checked" : null) />
+                <label class="form-check-label small" for="ranked-reject-@key">Include a Reject option</label>
+            </div>
+        </div>
+
         <div class="grid-section border-top pt-2 mt-2">
             <div class="mb-2">
                 <label class="form-label small fw-semibold" for="grid-mode-@key">Selections per row</label>

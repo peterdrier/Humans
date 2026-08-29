@@ -69,4 +69,8 @@
   <data name="Survey_InvalidLink_Body" xml:space="preserve"><value>L'enllaç de l'enquesta no és vàlid o ha caducat. Si creus que és un error, demana un enllaç nou.</value></data>
   <data name="Survey_ThankYou_Heading" xml:space="preserve"><value>Gràcies</value></data>
   <data name="Survey_ThankYouFallback" xml:space="preserve"><value>Gràcies per la teva resposta.</value></data>
+  <data name="Survey_Ranked_Option" xml:space="preserve"><value>Opció</value></data>
+  <data name="Survey_Ranked_Rank" xml:space="preserve"><value>Posició</value></data>
+  <data name="Survey_Ranked_Reject" xml:space="preserve"><value>Rebutjar</value></data>
+  <data name="Survey_Ranked_Unranked" xml:space="preserve"><value>Sense classificar</value></data>
 </root>

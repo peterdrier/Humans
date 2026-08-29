@@ -93,6 +93,9 @@ internal static class SurveyPageViewModelFactory
                 ?? new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal),
             TextValue = prior?.TextValue,
             RatingValue = prior?.RatingValue,
+            RankedValue = prior?.RankedValue,
+            RankedAllowEqualRanks = question.RankedSettings?.AllowEqualRanks ?? true,
+            RankedAllowReject = question.RankedSettings?.AllowReject ?? false,
         };
     }
 }

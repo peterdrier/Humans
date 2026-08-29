@@ -31,7 +31,9 @@ public sealed record SurveyDefinitionQuestion(
     GridSelectionMode? GridSelectionMode,
     IReadOnlyList<SurveyExportGridRow> GridRows,
     IReadOnlyList<SurveyDefinitionImage> Images,
-    IReadOnlyList<SurveyExportOption> Options);
+    IReadOnlyList<SurveyExportOption> Options,
+    SurveyRankedSettings? RankedSettings = null,
+    IReadOnlyList<string>? RankedUnavailableOptionValues = null);
 
 /// <summary>An Information question's image: an app-relative URL plus its resolved captions.</summary>
 public sealed record SurveyDefinitionImage(Guid Id, string Url, string Label, string AltText);
