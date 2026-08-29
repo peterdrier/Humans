@@ -589,6 +589,44 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
+    public async Task RetryAllFailedAsync_ReEnqueueFailure_LeavesThatGrantFailedOnly()
+    {
+        var campaign = await SeedActiveCampaignWithCodesAsync(["RE-1", "RE-2"]);
+
+        var user1 = SeedUser(displayName: "RetryUser1");
+        var user2 = SeedUser(displayName: "RetryUser2");
+        var team = SeedTeam("Lambda");
+        SeedTeamMember(team.Id, user1.Id);
+        SeedTeamMember(team.Id, user2.Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+
+        var grants = await CampaignsDb.CampaignGrants.ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        grants[0].LatestEmailStatus = EmailOutboxStatus.Failed;
+        grants[1].LatestEmailStatus = EmailOutboxStatus.Failed;
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(
+                Task.FromException(new InvalidOperationException("enqueue down")),
+                Task.CompletedTask);
+
+        await _service.RetryAllFailedAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
+
+        // One re-enqueue threw and flipped its grant back to Failed; the other
+        // grant's retry still went through.
+        ClearAllTrackers();
+        var refreshed = await CampaignsDb.CampaignGrants.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        refreshed.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Failed).Should().Be(1);
+        refreshed.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Queued).Should().Be(1);
+    }
+
+    // ==========================================================================
+    // PreviewWaveSendAsync
+    // ==========================================================================
+
+    [HumansFact]
     public async Task PreviewWaveSendAsync_ReturnsCorrectCounts()
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(["P1", "P2", "P3", "P4", "P5"]);
