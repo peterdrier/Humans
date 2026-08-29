@@ -14,6 +14,8 @@ tracked by nobodies-collective/Humans#86.
 
 - RankedChoice is available only in a survey marked **Asociado vote**.
 - An Asociado vote is Identified-only and may contain mixed question types.
+- An Asociado vote always targets the current active Asociados audience; current
+  eligibility is still rechecked when each invitee answers and submits.
 - Equal ranks are enabled by default.
 - Reject is optional and means unacceptable, not vetoed.
 - Preference tiers are ranked > unranked > rejected.

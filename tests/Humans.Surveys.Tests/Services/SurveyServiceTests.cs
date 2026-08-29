@@ -3375,11 +3375,29 @@ public class SurveyServiceTests
         var ordinary = async () => await service.CreateAsync(
             Input(ranked), Guid.NewGuid(), TestContext.Current.CancellationToken);
         var anonymousVote = async () => await service.CreateAsync(
-            Input(ranked) with { IsAsociadoVote = true, AllowAnonymous = true },
+            Input(ranked) with
+            {
+                IsAsociadoVote = true,
+                AudienceType = SurveyAudienceType.Asociados,
+                AllowAnonymous = true,
+            },
             Guid.NewGuid(),
             TestContext.Current.CancellationToken);
         var publicVote = async () => await service.CreateAsync(
-            Input(ranked) with { IsAsociadoVote = true, PublicSlug = "vote" },
+            Input(ranked) with
+            {
+                IsAsociadoVote = true,
+                AudienceType = SurveyAudienceType.Asociados,
+                PublicSlug = "vote",
+            },
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
+        var wrongAudience = async () => await service.CreateAsync(
+            Input(ranked) with
+            {
+                IsAsociadoVote = true,
+                AudienceType = SurveyAudienceType.AllActiveMembers,
+            },
             Guid.NewGuid(),
             TestContext.Current.CancellationToken);
 
@@ -3389,6 +3407,8 @@ public class SurveyServiceTests
             .WithMessage("*identified*");
         await publicVote.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*public link*");
+        await wrongAudience.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Asociados audience*");
         await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
@@ -3481,7 +3501,11 @@ public class SurveyServiceTests
 
         var act = async () => await CreateService().UpdateAsync(
             survey.Id,
-            Input(changed) with { IsAsociadoVote = true },
+            Input(changed) with
+            {
+                IsAsociadoVote = true,
+                AudienceType = SurveyAudienceType.Asociados,
+            },
             Guid.NewGuid(),
             TestContext.Current.CancellationToken);
 
@@ -3493,7 +3517,7 @@ public class SurveyServiceTests
     [HumansFact]
     public async Task SetRankedAvailabilityAsync_is_post_close_only_and_audits_stable_values()
     {
-        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        var survey = SurveyWith(SurveyStatus.Closed, SurveyAudienceType.Asociados, null);
         survey.IsAsociadoVote = true;
         var questionId = Guid.NewGuid();
         var question = RankedQuestion(questionId, survey.Id);

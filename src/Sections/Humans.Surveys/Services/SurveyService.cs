@@ -2429,6 +2429,8 @@ internal sealed class SurveyService(
         if (hasRanked && !input.IsAsociadoVote)
             throw new InvalidOperationException("Ranked-choice questions require Asociado vote mode.");
         if (!input.IsAsociadoVote) return;
+        if (input.AudienceType != SurveyAudienceType.Asociados)
+            throw new InvalidOperationException("Asociado votes must target the Asociados audience.");
         if (input.AllowAnonymous)
             throw new InvalidOperationException("Asociado votes must use identified responses.");
         if (!string.IsNullOrWhiteSpace(input.PublicSlug))

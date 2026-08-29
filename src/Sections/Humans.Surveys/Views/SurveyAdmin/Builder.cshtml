@@ -321,16 +321,24 @@
 
             function applyVoteMode() {
                 if (asociadoVote.checked) {
+                    audienceType.value = 'Asociados';
                     allowAnon.checked = false;
                     allowAnon.disabled = true;
                     publicSlug.value = '';
                     publicSlug.disabled = true;
+                    applyAudienceVisibility();
                 } else {
                     allowAnon.disabled = false;
                     publicSlug.disabled = false;
                 }
             }
 
+            audienceType.addEventListener('change', function () {
+                if (asociadoVote.checked && audienceType.value !== 'Asociados') {
+                    audienceType.value = 'Asociados';
+                    applyAudienceVisibility();
+                }
+            });
             asociadoVote.addEventListener('change', applyVoteMode);
             applyVoteMode();
 
