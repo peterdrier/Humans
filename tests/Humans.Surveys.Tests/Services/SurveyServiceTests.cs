@@ -3367,13 +3367,31 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task CreateAsync_ranked_choice_requires_identified_asociado_vote_mode()
+    public async Task CreateAsync_allows_ranked_choice_in_an_ordinary_survey()
+    {
+        Survey? captured = null;
+        _repo.When(repository => repository.AddAsync(
+                Arg.Any<Survey>(),
+                Arg.Any<CancellationToken>()))
+            .Do(call => captured = call.Arg<Survey>());
+
+        await CreateService().CreateAsync(
+            Input(RankedInput()),
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
+
+        captured.Should().NotBeNull();
+        captured!.IsAsociadoVote.Should().BeFalse();
+        captured.Questions.Should().ContainSingle()
+            .Which.Type.Should().Be(SurveyQuestionType.RankedChoice);
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_asociado_vote_requires_identified_restricted_configuration()
     {
         var ranked = RankedInput();
         var service = CreateService();
 
-        var ordinary = async () => await service.CreateAsync(
-            Input(ranked), Guid.NewGuid(), TestContext.Current.CancellationToken);
         var anonymousVote = async () => await service.CreateAsync(
             Input(ranked) with
             {
@@ -3401,8 +3419,6 @@ public class SurveyServiceTests
             Guid.NewGuid(),
             TestContext.Current.CancellationToken);
 
-        await ordinary.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*require Asociado vote*");
         await anonymousVote.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*identified*");
         await publicVote.Should().ThrowAsync<InvalidOperationException>()

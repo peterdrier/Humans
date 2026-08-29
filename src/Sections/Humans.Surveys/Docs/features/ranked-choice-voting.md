@@ -12,7 +12,8 @@ tracked by nobodies-collective/Humans#86.
 
 ## V1 decisions
 
-- RankedChoice is available only in a survey marked **Asociado vote**.
+- RankedChoice is available in ordinary surveys as well as surveys marked
+  **Asociado vote**.
 - An Asociado vote is Identified-only and may contain mixed question types.
 - An Asociado vote always targets the current active Asociados audience; current
   eligibility is still rechecked when each invitee answers and submits.

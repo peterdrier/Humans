@@ -179,7 +179,7 @@ internal sealed class SurveyService(
             questions = MapQuestions(surveyId, prepared.Input);
             ValidateQuestionConfiguration(questions);
             ValidateBranching(questions);
-            ValidateVoteConfiguration(input, questions);
+            ValidateVoteConfiguration(input);
         }
         catch
         {
@@ -276,7 +276,7 @@ internal sealed class SurveyService(
             }
             ValidateQuestionConfiguration(questions);
             ValidateBranching(questions);
-            ValidateVoteConfiguration(input, questions);
+            ValidateVoteConfiguration(input);
             if (await repo.HasSavedAnswersAsync(surveyId, ct))
             {
                 ValidateRankedDefinitionFrozen(existing.Questions, questions);
@@ -2421,13 +2421,8 @@ internal sealed class SurveyService(
         }
     }
 
-    private static void ValidateVoteConfiguration(
-        SurveyEditInput input,
-        IReadOnlyList<SurveyQuestion> questions)
+    private static void ValidateVoteConfiguration(SurveyEditInput input)
     {
-        var hasRanked = questions.Any(question => question.Type == SurveyQuestionType.RankedChoice);
-        if (hasRanked && !input.IsAsociadoVote)
-            throw new InvalidOperationException("Ranked-choice questions require Asociado vote mode.");
         if (!input.IsAsociadoVote) return;
         if (input.AudienceType != SurveyAudienceType.Asociados)
             throw new InvalidOperationException("Asociado votes must target the Asociados audience.");
