@@ -6,6 +6,7 @@ using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Campaigns.Data;
 using Humans.Campaigns.Domain;
+using Humans.Gdpr.Contracts;
 using Humans.Base.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -149,7 +150,8 @@ public sealed class CampaignServiceTests
     {
         var campaign = await SeedCampaignAsync();
 
-        var (imported, skipped) = await _service.ImportCodesAsync(campaign.Id, ["CODE1", "CODE2", "CODE1", "CODE3"], Xunit.TestContext.Current.CancellationToken);
+        // "code1" duplicates "CODE1": dedupe is case-insensitive.
+        var (imported, skipped) = await _service.ImportCodesAsync(campaign.Id, ["CODE1", "CODE2", "code1", "CODE3"], Xunit.TestContext.Current.CancellationToken);
 
         imported.Should().Be(3);
         skipped.Should().Be(1);
@@ -176,6 +178,22 @@ public sealed class CampaignServiceTests
             .Where(c => c.CampaignId == campaign.Id)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         codes.Should().HaveCount(3);
+    }
+
+    [HumansFact]
+    public async Task ImportCodesAsync_AssignsSequentialImportOrder_ContinuingFromExistingMax()
+    {
+        var campaign = await SeedCampaignAsync();
+
+        await _service.ImportCodesAsync(campaign.Id, ["FIRST", "SECOND"], Xunit.TestContext.Current.CancellationToken);
+        await _service.ImportCodesAsync(campaign.Id, ["THIRD"], Xunit.TestContext.Current.CancellationToken);
+
+        var codes = await CampaignsDb.CampaignCodes
+            .Where(c => c.CampaignId == campaign.Id)
+            .OrderBy(c => c.ImportOrder)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        codes.Select(c => (c.Code, c.ImportOrder))
+            .Should().ContainInOrder(("FIRST", 1), ("SECOND", 2), ("THIRD", 3));
     }
 
     [HumansFact]
@@ -503,6 +521,9 @@ public sealed class CampaignServiceTests
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Not enough codes*");
+
+        // The throw happens before any grant is created — no partial wave.
+        (await CampaignsDb.CampaignGrants.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansFact]
@@ -670,8 +691,89 @@ public sealed class CampaignServiceTests
     }
 
     // ==========================================================================
+    // UpdateGrantEmailStatusAsync (email outbox processor write-back)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task UpdateGrantEmailStatusAsync_KnownGrant_UpdatesStatusAndTimestamp()
+    {
+        var grant = await SeedGrantForUserAsync(Guid.NewGuid());
+        var sentAt = Clock.GetCurrentInstant() + Duration.FromHours(1);
+
+        var updated = await _service.UpdateGrantEmailStatusAsync(
+            grant.Id, EmailOutboxStatus.Sent, sentAt, Xunit.TestContext.Current.CancellationToken);
+
+        updated.Should().BeTrue();
+        ClearAllTrackers();
+        var refreshed = await CampaignsDb.CampaignGrants.FindAsync(grant.Id, Xunit.TestContext.Current.CancellationToken);
+        refreshed!.LatestEmailStatus.Should().Be(EmailOutboxStatus.Sent);
+        refreshed.LatestEmailAt.Should().Be(sentAt);
+    }
+
+    [HumansFact]
+    public async Task UpdateGrantEmailStatusAsync_UnknownGrant_ReturnsFalse()
+    {
+        var updated = await _service.UpdateGrantEmailStatusAsync(
+            Guid.NewGuid(), EmailOutboxStatus.Sent, Clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
+
+        updated.Should().BeFalse();
+    }
+
+    // ==========================================================================
+    // GDPR export and erase
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task ContributeForUserAsync_ReturnsGrantSliceForThatUserOnly()
+    {
+        var userId = Guid.NewGuid();
+        await SeedGrantForUserAsync(userId);
+        await SeedGrantForUserAsync(Guid.NewGuid());
+
+        var slices = await _service.ContributeForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        var slice = slices.Should().ContainSingle().Which;
+        slice.SectionName.Should().Be(GdprExportSections.CampaignGrants);
+        ((System.Collections.IEnumerable)slice.Data!).Cast<object>().Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task EraseForUserAsync_DeletesOnlyThatUsersGrants()
+    {
+        var userId = Guid.NewGuid();
+        var otherId = Guid.NewGuid();
+        await SeedGrantForUserAsync(userId);
+        var kept = await SeedGrantForUserAsync(otherId);
+
+        await _service.EraseForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        ClearAllTrackers();
+        var remaining = await CampaignsDb.CampaignGrants.ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        remaining.Should().ContainSingle().Which.Id.Should().Be(kept.Id);
+    }
+
+    // ==========================================================================
     // Helpers
     // ==========================================================================
+
+    private async Task<CampaignGrant> SeedGrantForUserAsync(Guid userId)
+    {
+        var campaign = await SeedActiveCampaignWithCodesAsync([$"G-{Guid.NewGuid():N}"]);
+        var code = await CampaignsDb.CampaignCodes
+            .FirstAsync(c => c.CampaignId == campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        var grant = new CampaignGrant
+        {
+            Id = Guid.NewGuid(),
+            CampaignId = campaign.Id,
+            CampaignCodeId = code.Id,
+            UserId = userId,
+            AssignedAt = Clock.GetCurrentInstant()
+        };
+        CampaignsDb.CampaignGrants.Add(grant);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        ClearAllTrackers();
+        return grant;
+    }
 
     private async Task<Campaign> SeedCampaignAsync(
         CampaignStatus status = CampaignStatus.Draft,
