@@ -3,7 +3,7 @@
 - Invocation: unattended daily (scheduled), no args
 - Branch: `section-doctor/2026-08-29T191609Z`, anchored at `443fe3731f00` (fork main)
 - Budget: 2.5h strike window from 19:16Z; cloud run (repo root, no worktree)
-- PR: pending
+- PR: peterdrier/Humans#1564
 
 ## Assessment summary
 

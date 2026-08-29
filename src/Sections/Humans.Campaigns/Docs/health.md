@@ -95,4 +95,4 @@ backlog at assessment time.
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-08-29 | First doctoring: comment/doc drift cleared, contract claims aligned with code | pending |
+| 1 | 2026-08-29 | First doctoring: comment/doc drift cleared, contract claims aligned with code | peterdrier/Humans#1564 |
