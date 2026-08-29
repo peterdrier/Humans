@@ -1613,13 +1613,13 @@ internal sealed class SurveyService(
                         Question = prompts.GetValueOrDefault(a.QuestionId, string.Empty),
                         SelectedLabels = ResolveSelectedLabels(a, optionLabels),
                         GridSelections = CopyGridSelections(a),
-                         GridSelectionLabels = questionsById.TryGetValue(a.QuestionId, out var question)
+                        GridSelectionLabels = questionsById.TryGetValue(a.QuestionId, out var question)
                              ? ResolveGridSelections(a, question, culture)
                              : [],
-                         RankedBallot = CopyRankedBallot(a),
-                         RankedBallotLabels = ResolveRankedBallot(a, optionLabels),
-                         a.TextValue,
-                         a.RatingValue,
+                        RankedBallot = CopyRankedBallot(a),
+                        RankedBallotLabels = ResolveRankedBallot(a, optionLabels),
+                        a.TextValue,
+                        a.RatingValue,
                     }).ToList(),
                 };
             })
