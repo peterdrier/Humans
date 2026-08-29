@@ -84,7 +84,7 @@ diff stats carry the totals).
 ## Retro
 
 - **Selector/rubric**: fair pick. Campaigns' 176 overweights Contracts surface that turned out
-  justified (two consumers, narrow DTOs); the real sickness was prose drift, which no score sees.
+  justified (a small consumer set, narrow DTOs); the real sickness was prose drift, which no score sees.
 - **Wasted motion**: the Freshness subagent misattributed a sort to GetAllAsync (read the
   neighboring method's line), costing a main-thread re-verify; InspectCode is absent in the cloud
   image so Prose ran haiku-only. Remote naming cost a detour (finding 45).

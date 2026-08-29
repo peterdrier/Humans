@@ -6,7 +6,7 @@
     Humans.Email (outbox delivery-status writeback) consume it, and section-to-leaf edges
     keep the graph acyclic (design §15.5b, memory/architecture/section-project-cycle-fix.md).
 
-    It holds only the five members outsiders call — the three ICampaignServiceRead reads
+    It holds only the members outsiders call — the ICampaignServiceRead reads
     plus MarkGrantsRedeemedAsync and UpdateGrantEmailStatusAsync. Campaign/code CRUD, wave
     sending, resend/retry and the whole admin page surface have no consumer outside the
     section and stay internal to Humans.Campaigns.

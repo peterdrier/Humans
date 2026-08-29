@@ -33,9 +33,9 @@ writes), "platform obligations" (GDPR/merge).
 ## 3. Structure
 
 The layout those shapes imply is what exists: one controller (admin pages), one service
-holding all rules, one repository as sole table-toucher, a Contracts leaf carrying only the
-five members outsiders call, DTOs per page. No caching decorator (admin-only, cold paths).
-Nothing here wants splitting; the service is ~700 lines over eight coherent shapes.
+holding all rules, one repository as sole table-toucher, a Contracts leaf carrying only
+the members outsiders call, DTOs per page. No caching decorator (admin-only, cold paths).
+Nothing here wants splitting; the service maps one coherent shape per question above.
 
 ## 4. Invariants
 
