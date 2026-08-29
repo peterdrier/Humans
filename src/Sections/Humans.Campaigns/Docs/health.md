@@ -50,8 +50,8 @@ Nothing here wants splitting; the service is ~700 lines over eight coherent shap
 - CampaignCodes mail is always-on: no opt-out check, no unsubscribe link/header.
 - Template substitution (`{{Code}}`, `{{Name}}`) HTML-encodes values — done in Email's
   renderer, not here; this section forwards raw values.
-- Only Admin mutates; TicketAdmin may view detail and generate vendor codes; members see
-  only their own grants.
+- Mutations are Admin-only, with one exception: vendor-code generation is
+  TicketAdminOrAdmin. TicketAdmin may also view detail; members see only their own grants.
 - Redemption matching: case-insensitive, unredeemed grants on Active/Completed campaigns,
   newest campaign wins on multi-campaign code collision, N same-code redemptions consume N
   distinct grants.

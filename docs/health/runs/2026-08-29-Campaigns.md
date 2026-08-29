@@ -8,8 +8,8 @@
 ## Assessment summary
 
 First doctoring of Campaigns (never-doctored tier, reforge 176, median pick; Camps blocked
-by open doctor PR #1561). The section's code is in good shape — small, layered correctly,
-50 grandfather-free files — but its prose had drifted hard: docs and comments named services,
+by open doctor PR peterdrier/Humans#1561). The section's code is in good shape — small,
+layered correctly, nothing grandfathered — but its prose had drifted hard: docs and comments named services,
 navigations, indexes and test guards that no longer exist, and the test project missed the
 section's actual invariants (redemption matching, the merge fold, GDPR paths) while
 double-covering wave email pass-through. Two real behavior findings: the import flash message
@@ -37,9 +37,9 @@ C=Comments, P=Prose, B=Behavior(main), S=Shape(main).
 14. H1–H4 Contracts csproj comment block rewrite (wrong projects/counts/lanes) — **done**
 15. C14+C15+H13 "sixteen members"/"pre-G5" stale counts — **done**
 16. P1 Detail.cshtml duplicates EnumBadgeMap badge colors — **done** (EnumBadgeMap.For; Queued gains text-dark from the shared map)
-17. T11 MarkGrantsRedeemedAsync logic untested — **done** (6 repo tests)
-18. T16 ReassignGrantsToUserAsync untested in CI — **done** (3 repo tests)
-19. T12 grant-read status filtering untested — **done** (2 repo tests)
+17. T11 MarkGrantsRedeemedAsync logic untested — **done** (repo tests: case-insensitivity, Draft exclusion, already-redeemed, newest-wins, N-same-code, blank codes)
+18. T16 ReassignGrantsToUserAsync untested in CI — **done** (repo tests: clean move, target-wins, same-campaign dedup)
+19. T12 grant-read status filtering untested — **done** (repo tests for both per-user reads)
 20. T5+T6 per-grant failure isolation untested (wave+retry) — **done**
 21. T1 SendWave Active guard untested — **done**
 22. T18 enum stability test one-directional — **done** (BeEquivalentTo)
@@ -61,7 +61,7 @@ C=Comments, P=Prose, B=Behavior(main), S=Shape(main).
 38. F9+F10 freshness triggers don't watch asserted-about files — **done** (globs added)
 39. T3+T4+T7+T8+T13+T14+T15+T17+T2 remaining test gaps — **partial**: T3 (case-insensitive dedupe), T4 (ImportOrder sequence), T7 (no partial wave), T14 (outbox write-back), T15 (GDPR export/erase) done; T8 (wave skip paths — needs harness support for email-less users), T13 (GetCodeTrackingAsync — largest untested read, ~1h on its own), T17 (resend failure paths — entangled with finding 13's pending ruling), T2 (absence pin) skipped on budget/dependency.
 40. H12/H16/H17 keep-or-ask — **kept** (dated design records pin live decisions)
-41. Inbox: no Campaigns-tagged issues; open #1562/#1554 are skill-infra, out of section (keep); ledger's deferred `GetCodeTrackingSummaries` db-sort item stands — no recommendations
+41. Inbox: no Campaigns-tagged issues; open peterdrier/Humans#1562 / peterdrier/Humans#1554 are skill-infra, out of section (keep); ledger's deferred `GetCodeTrackingSummaries` db-sort item stands — no recommendations
 42. T9 skipped: asserts an absence (`no-tests-for-absences`)
 43. T19 optional arch test (concrete controller injection) — skipped, low value
 44. UI verification gate: findings 11/16 changed rendered markup; a cloud run has no browser against a live instance, so verification is build + razor-lint + render tests. **Needs Peter**: eyeball Detail on the PR preview deploy.
@@ -69,8 +69,9 @@ C=Comments, P=Prose, B=Behavior(main), S=Shape(main).
 
 ## Worked
 
-Findings 1–12, 14–38, plus the done half of 39. Six commits: section docs, code comments,
-Detail view, import counts, two test batches (32 → 50 section tests, all green).
+Findings 1–12, 14–38, plus the done half of 39, committed by concern: section docs, code
+comments, Detail view, import counts, two test batches (section suite green; the PR's own
+diff stats carry the totals).
 
 ## Skipped
 
