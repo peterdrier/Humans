@@ -1,6 +1,7 @@
 @* Shared numeric PIN pad — 4 masked dots + a 3×4 keypad. Used full-screen on the claim
    keypad (Pin.cshtml) and inside the supervisor-override panel (Index.cshtml). Wired by the
-   shared window.initGateKeypad (a cache-busted classic script), so no element ids are needed
+   shared window.initGateKeypad (a cache-busted classic script — no module import to go stale
+   on the kiosk), so no element ids are needed
    — the initializer finds the dots/pad within the [data-gate-keypad] container it's handed. *@
 <div class="gate-keypad" data-gate-keypad>
     <div class="gate-dots" data-gate-dots aria-hidden="true">

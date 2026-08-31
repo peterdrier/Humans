@@ -231,12 +231,10 @@ nobodies-collective/Humans#933.)
 
 ## Architecture
 
-**Project:** `src/Sections/Humans.Gate` — its own assembly since nobodies-collective/Humans#866
-(G5). Everything in it is `internal` except `Section`; there is no `GateResource` because the
-kiosk carries no resource keys (every string is inline English by design — a staff-facing,
-single-locale terminal). `IGateScanRetention` lives in the project's `Contracts/` folder; the
-`Humans.Gate.Contracts` leaf it once occupied was carved out for `GateRetentionJob` in Base,
-and was deleted after that job came home at G5 lane 5b-3.
+**Project:** `src/Sections/Humans.Gate`, its own assembly. Everything in it is `internal`
+except `Section`; there is no `GateResource` because the kiosk carries no resource keys
+(every string is inline English by design — a staff-facing, single-locale terminal).
+`IGateScanRetention` lives in the project's `Contracts/` folder.
 **Owning service:** `GateService` (`Humans.Gate.Services`) — also implements `IUserMerge`,
 `IUserDataContributor` and `IGateScanRetention`.
 **Owned tables:** `gate_scan_events`, `gate_settings`, `gate_staff_pins` via `IGateRepository`.
@@ -248,8 +246,8 @@ reference, so it needs no registration).
 person), mirroring the read-through Scanner section.
 **Layout:** the tablet-facing views (`Claim`, scan terminal `Index`, `Leaderboard`) use the
 **chromeless kiosk layout** `_GateLayout` — full-bleed, no admin nav/sidebar/breadcrumb, so the
-rugged tablet shows only the gate UI. It lives in the section's own `Views/Shared/` (Gate is the
-first section to take a layout with it). The admin settings page (`Admin`) and the vendor
+rugged tablet shows only the gate UI. It lives in the section's own `Views/Shared/`. The
+admin settings page (`Admin`) and the vendor
 check-in backfill page override back to Shell's `_AdminLayout` (desktop admin tasks). The shared
 `GateTerminal` system account (no roles/teams) sees only this kiosk; on the device, Edge Assigned
 Access removes browser chrome too.

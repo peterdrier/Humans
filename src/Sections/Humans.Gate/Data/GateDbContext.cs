@@ -5,8 +5,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Humans.Gate.Data;
 
 /// <summary>
-/// Per-section database context for the Gate section
-/// (nobodies-collective/Humans#858): maps only <c>gate_scan_events</c>,
+/// Per-section database context for the Gate section: maps only <c>gate_scan_events</c>,
 /// <c>gate_settings</c> and <c>gate_staff_pins</c>, with its own
 /// <c>__EFMigrationsHistory_Gate</c> table and migrations under
 /// <c>Data/Migrations/</c>. Same database, same connection — the split

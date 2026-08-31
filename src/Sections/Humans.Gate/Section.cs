@@ -16,14 +16,12 @@ namespace Humans.Gate;
 
 /// <summary>
 /// Gate's DI entry point, at the project root by convention. Discovered by Shell — nothing
-/// names it, so it needs no section prefix. Replaces Shell's <c>AddGateSection</c> verbatim
-/// (design §6): same lifetimes, same order.
+/// names it, so it needs no section prefix.
 /// </summary>
 /// <remarks>
 /// <para>
 /// <c>GateRetentionJob</c> and <c>GateVendorCheckInJob</c> live in this project's
-/// <c>Jobs/</c> folder (moved there from <c>Contracts/</c> by the HUM0034 carve-out,
-/// nobodies-collective/Humans#1353); their registration moved here at #1074's jobs seam.
+/// <c>Jobs/</c> folder.
 /// Only <c>GateRetentionJob</c> is a recurring job, contributed via <c>SectionJobs.cs</c>;
 /// <c>GateVendorCheckInJob</c> is enqueued fire-and-forget on admit and needs only DI
 /// registration. The retention job reaches the section through
@@ -50,7 +48,7 @@ public sealed class Section : ISection
         services.AddSingleton<IPasswordHasher<GateStaffPin>, PasswordHasher<GateStaffPin>>();
 
         // Kiosk-local state: the override-PIN brute-force throttle and the vendor mirror
-        // ledger. Singletons over the shared IMemoryCache, as they were in Shell.
+        // ledger. Singletons over the shared IMemoryCache.
         services.AddSingleton<GatePinThrottle>();
         services.AddSingleton<GateVendorMirrorLedger>();
 

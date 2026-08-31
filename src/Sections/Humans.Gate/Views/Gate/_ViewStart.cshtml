@@ -1,6 +1,5 @@
 @{
-    // Tablet-facing gate views (Claim, scan terminal, Leaderboard) use the chromeless
-    // kiosk layout so the rugged tablet shows only the gate UI. The admin settings page
-    // (Admin.cshtml) overrides this back to _AdminLayout — it's a desktop admin task.
+    // Chromeless kiosk layout by default (rationale in _GateLayout); the admin pages
+    // override back to _AdminLayout.
     Layout = "_GateLayout";
 }

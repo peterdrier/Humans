@@ -169,9 +169,9 @@ internal sealed class GateController(
     }
 
     // Name-only people search for the claim screen. The route-locked kiosk can't reach
-    // /api/profiles/search, so the claim picker points here instead. Matching is burner-name only — never by email or
-    // broad fields — but each result shows a *masked* email as a disambiguator (see below), and it
-    // stays inside the /Gate route-lock.
+    // /api/profiles/search, so the claim picker points here instead — this endpoint stays
+    // inside the /Gate route-lock. Matching is burner-name only — never by email or broad
+    // fields — but each result shows a *masked* email as a disambiguator (see below).
     [HttpGet("Search")]
     public async Task<IActionResult> Search(string? q, CancellationToken ct)
     {
@@ -179,11 +179,11 @@ internal sealed class GateController(
         if (query.Length < 2)
             return Json(Array.Empty<HumanLookupSearchResult>());
 
-        // Name-only search (never email — see the note above). To tell same-name staffers apart
-        // (many volunteers share a first name), each result carries a *masked* primary email as a
-        // disambiguator — enough to recognise your own address, not enough to broadcast it. The
-        // effective email is read per result (cached) and masked here at the presentation layer, so
-        // the search itself and its response shape stay email-free.
+        // Name-only search (never email — see the note above). To tell same-name staffers apart,
+        // each result carries a *masked* primary email as a disambiguator — enough to recognise
+        // your own address, not enough to broadcast it. The effective email is read per result
+        // (cached) and masked here at the presentation layer, so the search itself and its
+        // response shape stay email-free.
         var matches = (await UserService.SearchUsersAsync(query, PersonSearchFields.Name, 10, ct))
             .OrderByRelevance()
             .ToList();
@@ -289,7 +289,6 @@ internal sealed class GateController(
         return RedirectToAction(nameof(Admin));
     }
 
-    // Admin PIN reset: clear a user's PIN; they re-enrol on their next claim.
     [HttpPost("Admin/ResetPin")]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
@@ -331,7 +330,6 @@ internal sealed class GateController(
         await gate.SetOwnPinAsync(userId, pin ?? string.Empty, ct) switch
         {
             GatePinSetResult.Ok => StampAndScan(userId),
-            // InvalidPin (or any non-Ok) → re-show the keypad with the "pick a better PIN" hint.
             _ => View("Pin", GatePinViewModel.ForClaim(
                 userId, name, status, "Pick a less obvious PIN — not 1234, 0000, or repeats")),
         };
