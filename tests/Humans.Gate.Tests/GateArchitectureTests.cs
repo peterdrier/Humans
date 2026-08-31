@@ -1,7 +1,12 @@
+using System.Reflection;
 using AwesomeAssertions;
+using Humans.Base.Authorization;
 using Humans.Gdpr.Contracts;
 using Humans.Tickets.Contracts;
+using Humans.Gate.Controllers;
 using Humans.Gate.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;
@@ -49,6 +54,37 @@ public class GateArchitectureTests
         typeof(IUserMerge).IsAssignableFrom(typeof(GateService))
             .Should().BeTrue(
                 because: "GuestUserId / ScannedByUserId / OverrideByUserId are re-pointed on account merge");
+    }
+
+    [HumansFact]
+    public void WriteAndAdminActions_NeverRideOnTheClassLevelReadPolicy()
+    {
+        // The kiosk read surface is the class-level ScannerAccess policy…
+        typeof(GateController).GetCustomAttribute<AuthorizeAttribute>()!
+            .Policy.Should().Be(PolicyNames.ScannerAccess);
+
+        // …and every POST must carry its own stricter policy: GateAdmit for the
+        // terminal writes, TicketAdminOrAdmin for the admin pages. A new action
+        // that forgets its policy would silently ride on the read-only gate.
+        var posts = typeof(GateController)
+            .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
+            .Where(m => m.GetCustomAttribute<HttpPostAttribute>() is not null)
+            .ToList();
+
+        posts.Should().NotBeEmpty();
+        foreach (var post in posts)
+        {
+            var expected = post.Name is nameof(GateController.Admin)
+                    or nameof(GateController.SetStaffPin) or nameof(GateController.ResetStaffPin)
+                ? PolicyNames.TicketAdminOrAdmin
+                : PolicyNames.GateAdmit;
+            post.GetCustomAttribute<AuthorizeAttribute>()?.Policy.Should().Be(expected,
+                because: $"POST {post.Name} must not inherit only the class-level read policy");
+        }
+
+        // The one-off vendor backfill page is admin-only at the class level.
+        typeof(GateVendorBackfillAdminController).GetCustomAttribute<AuthorizeAttribute>()!
+            .Policy.Should().Be(PolicyNames.AdminOnly);
     }
 
     [HumansFact]

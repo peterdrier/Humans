@@ -447,6 +447,62 @@ public class GateServiceTests
     }
 
     [HumansFact]
+    public async Task Gdpr_EraseClearsGuestAndOverrideLinksAndPin_ButKeepsScannerAttribution()
+    {
+        var supervisor = Guid.NewGuid();
+        StubTicket(matchedUserId: GuestId);
+        await Record(idConfirmed: true, overrideBy: supervisor);
+        await _svc.SetOwnPinAsync(GuestId, "2580");
+
+        // Erase the guest: admission links and their PIN row go.
+        await _svc.EraseForUserAsync(GuestId, default);
+        var row = GateDb.GateScanEvents.AsNoTracking().Single();
+        row.GuestUserId.Should().BeNull();
+        GateDb.GateStaffPins.AsNoTracking().Should().BeEmpty();
+
+        // Erase the override authorizer: that link goes too.
+        await _svc.EraseForUserAsync(supervisor, default);
+        GateDb.GateScanEvents.AsNoTracking().Single().OverrideByUserId.Should().BeNull();
+
+        // Erase the scanner: ScannedByUserId stays — the Art. 17(3) operational record.
+        await _svc.EraseForUserAsync(AgentId, default);
+        GateDb.GateScanEvents.AsNoTracking().Single().ScannedByUserId.Should().Be(AgentId);
+    }
+
+    [HumansFact]
+    public async Task Merge_RepointsScannerAndOverride_AndCarriesThePinToAPinlessSurvivor()
+    {
+        StubTicket(matchedUserId: GuestId);
+        await Record(idConfirmed: true, overrideBy: AgentId);
+        await _svc.AdminSetPinAsync(AgentId, "2580", Guid.NewGuid()); // AdminEnrolled = true
+        var survivor = Guid.NewGuid();
+
+        await _svc.ReassignAsync(AgentId, survivor, actorUserId: Guid.NewGuid(), Clock.GetCurrentInstant(), default);
+
+        var row = GateDb.GateScanEvents.AsNoTracking().Single();
+        row.ScannedByUserId.Should().Be(survivor);
+        row.OverrideByUserId.Should().Be(survivor);
+        var pin = GateDb.GateStaffPins.AsNoTracking().Single();
+        pin.UserId.Should().Be(survivor);
+        pin.AdminEnrolled.Should().BeTrue(); // enrolment provenance travels with the PIN
+    }
+
+    [HumansFact]
+    public async Task Merge_SurvivorWithTheirOwnPin_KeepsIt()
+    {
+        var mergedAway = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        await _svc.SetOwnPinAsync(mergedAway, "2580");
+        await _svc.SetOwnPinAsync(survivor, "1357");
+
+        await _svc.ReassignAsync(mergedAway, survivor, actorUserId: Guid.NewGuid(), Clock.GetCurrentInstant(), default);
+
+        GateDb.GateStaffPins.AsNoTracking().Single().UserId.Should().Be(survivor);
+        (await _svc.VerifyPinAsync(survivor, "1357")).Should().BeTrue();
+        (await _svc.VerifyPinAsync(survivor, "2580")).Should().BeFalse();
+    }
+
+    [HumansFact]
     public async Task Retention_PurgesScansBeforeCutoff()
     {
         StubTicket(matchedUserId: GuestId);
