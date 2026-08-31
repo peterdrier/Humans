@@ -4,6 +4,7 @@ using AwesomeAssertions;
 using Humans.Consent.Contracts;
 using Humans.Consent.Services;
 using Humans.Base;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
@@ -155,32 +156,29 @@ public sealed class ConsentArchitectureTests
 
     /// <summary>
     /// Asserts that <see cref="IConsentService"/> and <see cref="IConsentServiceRead"/>
-    /// resolve to the same singleton instance from the production DI registration.
+    /// resolve to the same singleton instance from the production DI registration —
+    /// <c>Section.Register</c> itself, not a test-built mirror of it.
     /// </summary>
     [HumansFact]
     public void IConsentService_And_IConsentServiceRead_ResolveToSameSingleton()
     {
-        // Mirrors the Teams-section DI shape: the same CachingConsentService
-        // singleton is exposed under both interface keys.
         var services = new ServiceCollection();
-        services.AddSingleton(Substitute.For<IConsentRepository>());
-        services.AddSingleton(Substitute.For<ILegalDocumentSyncService>());
+        // The section registers against the host's baseline; the caching
+        // singletons only need logging and a clock to construct.
+        services.AddLogging();
         services.AddSingleton(Substitute.For<IClock>());
-        services.AddSingleton(Substitute.For<IServiceScopeFactory>());
-        services.AddSingleton(Substitute.For<ILogger<CachingConsentService>>());
 
-        services.AddSingleton<CachingConsentService>();
-        services.AddSingleton<IConsentService>(sp => sp.GetRequiredService<CachingConsentService>());
-        services.AddSingleton<IConsentServiceRead>(sp => sp.GetRequiredService<CachingConsentService>());
+        new Section().Register(services, new ConfigurationBuilder().Build());
 
         using var provider = services.BuildServiceProvider();
 
         var fromFull = provider.GetRequiredService<IConsentService>();
         var fromRead = provider.GetRequiredService<IConsentServiceRead>();
-        var concrete = provider.GetRequiredService<CachingConsentService>();
 
-        ReferenceEquals(fromFull, concrete).Should().BeTrue();
-        ReferenceEquals(fromRead, concrete).Should().BeTrue();
+        fromFull.Should().BeOfType<CachingConsentService>(
+            because: "the cache decorator is the section's public face");
+        ReferenceEquals(fromFull, fromRead).Should().BeTrue(
+            because: "both interfaces must expose the same singleton so the cache is shared");
     }
 
     [HumansFact]
