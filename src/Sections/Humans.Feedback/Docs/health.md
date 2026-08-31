@@ -85,3 +85,4 @@ None. The section is retired and closed; no specified-but-unbuilt work reserves 
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
+| 1 | 2026-08-31 | Doc truth for the retired section, ModelState guards, GDPR/audit test pins | peterdrier/Humans#pending |
