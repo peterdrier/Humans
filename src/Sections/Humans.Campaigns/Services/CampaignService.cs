@@ -318,9 +318,8 @@ internal sealed class CampaignService(
         if (!Enum.TryParse<TicketDiscountKind>(discountType, ignoreCase: true, out var parsedKind))
             return new CampaignGenerateCodesResult(false, "InvalidDiscountType");
 
-        // Through Tickets, not the vendor port: Tickets is the application's only door to
-        // ticketing, so a second consumer (a low-income concession) costs a leaf reference
-        // rather than a design conversation.
+        // Through Tickets' contract leaf, never the Base vendor port — Tickets is the
+        // only door to ticketing.
         var request = new TicketDiscountCodeRequest(count, parsedKind, discountValue, ExpiresAt: null);
         var codes = await ticketDiscountCodes.GenerateAsync(request, ct);
         await ImportGeneratedCodesAsync(campaignId, codes, ct);

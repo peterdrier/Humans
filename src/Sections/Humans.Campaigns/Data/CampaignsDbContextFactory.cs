@@ -6,10 +6,8 @@ namespace Humans.Campaigns.Data;
 
 /// <summary>
 /// Design-time factory used by <c>dotnet ef … --context CampaignsDbContext</c>.
-/// The migrations-history table comes
-/// from <see cref="SectionMigrationsHistory"/> — the same helper the runtime
-/// registration uses — so CI's from-scratch apply records baselines in the table
-/// the app reads.
+/// The migrations-history table comes from <see cref="SectionMigrationsHistory"/>
+/// — the same helper the runtime registration uses.
 /// </summary>
 internal sealed class CampaignsDbContextFactory : IDesignTimeDbContextFactory<CampaignsDbContext>
 {
