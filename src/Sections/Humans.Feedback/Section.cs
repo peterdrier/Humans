@@ -21,7 +21,7 @@ public sealed class Section : ISection
     {
         services.AddSectionDbContext<FeedbackDbContext>(sentinelTable: "feedback_reports");
 
-        // §15 repository pattern (issue #546): Singleton + IDbContextFactory (§15b) so the
+        // §15b (nobodies-collective/Humans#546): Singleton + IDbContextFactory so the
         // repository owns context lifetime.
         services.AddSingleton<IFeedbackRepository, FeedbackRepository>();
         services.AddScoped<FeedbackService>();

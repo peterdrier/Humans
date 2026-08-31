@@ -29,13 +29,10 @@ internal sealed class FeedbackController(
     private readonly IUserServiceRead _userService = userService;
 
     /// <summary>
-    /// Resolves active-approved humans into <see cref="AssigneeOption"/>
-    /// rows for the assignee dropdowns. Replaces the deleted
-    /// <c>IProfileService.GetFilteredHumansAsync(null, "Active")</c> path:
-    /// person-search consolidation moved that surface to
-    /// <c>IUserService.SearchUsersAsync</c>, which is for text search, not
-    /// population queries. Population goes through the UserInfo snapshot +
-    /// <c>IUserServiceRead.GetAllUserInfosAsync</c> primitive.
+    /// Resolves active humans into <see cref="AssigneeOption"/> rows for the
+    /// assignee dropdowns. Population query, not text search — it reads the
+    /// UserInfo snapshot via <c>GetAllUserInfosAsync</c>, never
+    /// <c>SearchUsersAsync</c>.
     /// </summary>
     private async Task<List<AssigneeOption>> GetActiveAssigneeOptionsAsync(CancellationToken ct = default)
     {
@@ -290,7 +287,7 @@ internal sealed class FeedbackController(
 
         viewModel.AssigneeOptions = await GetActiveAssigneeOptionsAsync();
 
-        // Include currently assigned human even if inactive, to prevent silent clearing
+        // Same for the assignee.
         if (viewModel.AssignedToUserId.HasValue &&
             viewModel.AssigneeOptions.All(a => a.Id != viewModel.AssignedToUserId.Value))
         {

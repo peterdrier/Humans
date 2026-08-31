@@ -17,18 +17,9 @@ Humans need a way to report bugs, request features, and ask questions directly f
 
 ## User Stories
 
-### US-27.1: Submit Feedback — **REMOVED (#977)**
+### US-27.1: Submit Feedback — **REMOVED (nobodies-collective/Humans#977)**
 
-Every creation path below was deleted: the floating widget item and its modal, `POST /Feedback`, `IFeedbackService.SubmitUserFeedbackAsync`/`SubmitFeedbackAsync`, `IFeedbackRepository.AddReportAsync`, and `FeedbackWidgetViewComponent`. Reporting now goes to `/Issues`. Criteria retained for the historical record only.
-
-**As** an authenticated human, **I want** to submit feedback from any page, **so that** I can report issues without leaving my current workflow.
-
-**Acceptance Criteria:**
-- Floating feedback button visible on all pages (authenticated users only)
-- Modal form with category (Bug/Feature Request/Question), description, and optional screenshot
-- Page URL and user agent captured automatically
-- Success/error feedback via TempData toast
-- Screenshot upload limited to JPEG/PNG/WebP, max 10MB
+There is no creation path of any kind; reporting goes to `/Issues`.
 
 ### US-27.2: Feedback Triage
 
@@ -74,18 +65,18 @@ Every creation path below was deleted: the floating widget item and its modal, `
 - Email sent via outbox pattern (not inline) when an admin posts a message
 - Localized in reporter's preferred language (all six supported cultures)
 - Includes the admin's reply content
-- ~~Includes a direct link to `/Feedback/{reportId}` so the reporter can reply~~ — **since #977** the email template renders no link (the `reportLink` argument is unused) and the in-app notification carries no action URL, because `/Feedback/{id}` is Admin-only. The reply text in the email is the reporter's only copy
+- The email template renders no link (the `reportLink` argument is unused) and the in-app notification carries no action URL, because `/Feedback/{id}` is Admin-only. The reply text in the email is the reporter's only copy
 - `LastAdminMessageAt` timestamp updated on the report
 
 ### US-27.5: Conversation History
 
 **As** a feedback reporter or admin, **I want** to have a conversation thread on a feedback report, **so that** we can discuss the issue back and forth without switching to email.
 
-**Since #977:** one-directional. `PostMessageAsync` lost its `isAdmin` flag — every message posted now is an admin reply. Reporters cannot post follow-ups; historical reporter messages are still displayed.
+**Since #977:** one-directional — every message posted now is an admin reply. Reporters cannot post follow-ups; historical reporter messages are still displayed.
 
 **Acceptance Criteria:**
 - `FeedbackMessage` entity tracks individual messages (content, sender, timestamp)
-- ~~Both reporters and admins can post messages via the detail view~~ — admins only
+- Only admins can post messages, via the detail view
 - Messages displayed chronologically in the detail panel
 - `LastReporterMessageAt` / `LastAdminMessageAt` timestamps maintained on the report
 - Reports needing admin reply are flagged (reporter message is newer than last admin message, or no admin message yet)
@@ -99,8 +90,6 @@ Entities: `FeedbackReport` and `FeedbackMessage` (owned by this section).
 Key fields: Id, UserId, Category (enum→string), Description, PageUrl, UserAgent, AdditionalContext (auto-populated with user roles at submission), Screenshot* (FileName/StoragePath/ContentType), Status (enum→string), Source (`FeedbackSource`: UserReport / AgentUnresolved, enum→string with an out-of-range EF sentinel), GitHubIssueNumber, AgentConversationId (bare Guid, no EF FK), AssignedToUserId, AssignedToTeamId (both bare Guids, no nav), LastReporterMessageAt, LastAdminMessageAt, CreatedAt, UpdatedAt, ResolvedAt, ResolvedByUserId.
 
 `Source` and `AgentConversationId` are vestigial **for new rows**: the agent's `route_to_feedback` auto-create flow is gone and no creation path remains, so nothing writes `AgentUnresolved` any more. Existing databases still hold historical rows with `Source = AgentUnresolved` and a populated `AgentConversationId`, and those stay queryable through the Feedback admin filter — do not assume `Source == UserReport` when reading.
-
-Removed fields (from previous version): `AdminNotes`, `AdminResponseSentAt`.
 
 **Table:** `feedback_messages`
 
@@ -127,7 +116,7 @@ As shipped since #977 — the policy sits on `FeedbackController` itself, so eve
 
 `POST /Feedback` is gone — the controller has no root-`POST` route at all.
 
-**FeedbackAdmin role:** originally followed the CampAdmin/TeamsAdmin pattern — a specialized role granting feedback triage without full Admin. Since #977 it grants **no** Feedback access. The role name is kept because the Staff page, `GuideRolePrivilegeMap`, the authorization pill-filter label map, and `AnyAdminRole` still reference it; `PolicyNames.FeedbackAdminOrAdmin`, `RoleGroups.FeedbackAdminOrAdmin`, and `RoleChecks.IsFeedbackAdmin` were deleted.
+**FeedbackAdmin role:** grants **no** Feedback access (#977). The role name is kept because the Staff page, `GuideRolePrivilegeMap`, the authorization pill-filter label map, and `AnyAdminRole` still reference it; `PolicyNames.FeedbackAdminOrAdmin`, `RoleGroups.FeedbackAdminOrAdmin`, and `RoleChecks.IsFeedbackAdmin` do not exist.
 
 ## URL Routes
 
@@ -147,7 +136,7 @@ As shipped since #977 — the policy sits on `FeedbackController` itself, so eve
 | `PATCH /api/backdoor/feedback/{id}/assignment` | BackdoorFeedbackController | UpdateAssignment |
 | `PATCH /api/backdoor/feedback/{id}/github-issue` | BackdoorFeedbackController | SetGitHubIssue |
 
-Removed routes: `POST /Feedback` (Submit, removed by #977); and from an earlier version, `PATCH /api/backdoor/feedback/{id}/notes`, `POST /api/backdoor/feedback/{id}/respond`, and all `/Admin/Feedback/*` routes.
+There is no root `POST /Feedback` route.
 
 ## Claude Code Triage Integration (#147)
 
@@ -162,9 +151,8 @@ The feedback API enables a Claude Code workflow for processing feedback during d
 
 Since #977:
 
-- **Admin:** "Feedback queue" item in the admin sidebar with a pill showing the actionable count, contributed via `SectionAdminNav.PillCounts.FeedbackQueue` and rendered by `AdminSidebarViewComponent` (which composes every section's `ISectionAdminNav`), plus the `/Admin` dashboard tile via `SectionAdminTiles` — both `AdminOnly`. There is no more central `NavBadgesViewComponent`; nav badges are now a per-section contribution, not a hard-coded Shell component
-- **All authenticated users:** nothing. The "My Feedback" profile-dropdown link was removed
-- **Floating button:** removed from the Help widget; the widget's remaining report action is "Create issue"
+- **Admin:** "Feedback queue" item in the admin sidebar with a pill showing the actionable count, contributed via `SectionAdminNav.PillCounts.FeedbackQueue` and rendered by `AdminSidebarViewComponent` (which composes every section's `ISectionAdminNav`), plus the `/Admin` dashboard tile via `SectionAdminTiles` — both `AdminOnly`
+- **Everyone else:** nothing — no dropdown link, no Help-widget entry; the widget's report action is "Create issue"
 
 ## Related Features
 

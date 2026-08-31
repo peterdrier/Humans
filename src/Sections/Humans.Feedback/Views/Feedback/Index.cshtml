@@ -188,7 +188,6 @@
 @section Scripts {
     <script>
         function loadDetail(reportId) {
-            // Highlight selected item
             document.querySelectorAll('.feedback-list-item').forEach(el => {
                 el.classList.remove('bg-body-tertiary', 'border-start', 'border-3', 'border-primary');
             });
@@ -197,7 +196,6 @@
                 selected.classList.add('bg-body-tertiary', 'border-start', 'border-3', 'border-primary');
             }
 
-            // Load detail via AJAX
             fetch(`/Feedback/${reportId}`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
@@ -211,23 +209,19 @@
             })
             .catch(err => console.error('Failed to load detail:', err));
 
-            // Update URL without reload
             history.replaceState(null, '', `/Feedback?selected=${reportId}`);
         }
 
-        // Auto-submit filter forms
         document.querySelectorAll('.feedback-filter-form select').forEach(sel => {
             sel.addEventListener('change', () => sel.form.submit());
         });
         document.querySelectorAll('.feedback-filter-checkbox').forEach(cb => {
             cb.addEventListener('change', () => cb.form.submit());
         });
-        // Click handler for report list items
         document.querySelectorAll('[data-report-id]').forEach(el => {
             el.addEventListener('click', () => loadDetail(el.dataset.reportId));
         });
 
-        // Auto-load selected report on page load
         @if (Model.SelectedReportId.HasValue)
         {
             <text>

@@ -13,11 +13,11 @@ namespace Humans.Feedback.Data;
 /// code-side partition of the EF model.
 /// </summary>
 /// <remarks>
-/// Internal-sealed like every section context (issue #750): repositories
-/// are the only consumers. Configurations are applied explicitly (not by
-/// assembly scanning) so this model can never accrete another section's tables.
-/// Reporters, assignees and the routed team are bare Guid references, so the
-/// Identity and Teams tables stay in <see cref="UsersDbContext"/> and are
+/// Internal-sealed like every section context (nobodies-collective/Humans#750):
+/// repositories are the only consumers. Configurations are applied explicitly
+/// (not by assembly scanning) so this model can never accrete another section's
+/// tables. Reporters, assignees and the routed team are bare Guid references, so
+/// the Identity and Teams tables stay in <c>UsersDbContext</c> and are
 /// deliberately absent here.
 /// </remarks>
 internal sealed class FeedbackDbContext(DbContextOptions<FeedbackDbContext> options)

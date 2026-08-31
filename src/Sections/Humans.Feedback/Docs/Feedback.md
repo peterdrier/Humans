@@ -77,7 +77,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 
 **Indexes:** `FeedbackReportId`, `CreatedAt`.
 
-`FeedbackMessage.SenderUserId` has no navigation property (removed, not just deprecated — nobodies-collective/Humans#996) — senders resolve via `IUserServiceRead.GetUserInfosAsync`.
+`FeedbackMessage.SenderUserId` has no navigation property (nobodies-collective/Humans#996) — senders resolve via `IUserServiceRead.GetUserInfosAsync`.
 
 ### FeedbackCategory
 
@@ -139,7 +139,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 
 ## Cross-Section Dependencies
 
-- **Users/Identity:** `IUserServiceRead.GetUserInfosAsync` — batched lookup of the canonical `UserInfo` read model, which already carries `BurnerName`-first display names, resolving reporter, assignee, resolver, and message senders in one call (nobodies-collective/Humans#979 replaced the separate `IUserServiceRead.GetUserInfosAsync` + `IProfileService.GetByUserIdsAsync` layering; see `memory/architecture/burnername-is-the-display-name.md`).
+- **Users/Identity:** `IUserServiceRead.GetUserInfosAsync` — batched lookup of the canonical `UserInfo` read model, which already carries `BurnerName`-first display names, resolving reporter, assignee, resolver, and message senders in one call (`memory/architecture/burnername-is-the-display-name.md`).
 - **Profiles:** `IUserEmailService.GetNotificationTargetEmailsAsync` — resolves the effective notification email for a report's reporter when an admin posts a reply. Also: `FeedbackService` implements `IUserMerge` and is called by `IAccountMergeService.AcceptAsync` to re-FK feedback rows during account merge fold.
 - **Teams:** `ITeamServiceRead.GetTeamsAsync` / `GetTeamAsync` — assigned-team display names.
 - **Email:** `IEmailService.SendAsync` with `IEmailMessageFactory.FeedbackResponse` — admin-reply emails (the production binding is `OutboxEmailService`, so the email is queued through the email outbox).
@@ -153,13 +153,13 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 
 **Owning services:** `FeedbackService`
 **Owned tables:** `feedback_reports`, `feedback_messages`
-**Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#549, 2026-04-22). Write-locked and admin-gated by nobodies-collective/Humans#977. Own project since G5 (nobodies-collective/Humans#866).
+**Status:** Retired — write-locked and admin-gated (nobodies-collective/Humans#977).
 
 - `FeedbackService` lives in `Humans.Feedback.Services` and depends only on Application-layer abstractions. It never imports `Microsoft.EntityFrameworkCore`. Implements `IFeedbackServiceRead`, `IFeedbackTriage`, `IUserDataContributor`, and `IUserMerge` — there is no longer an `IFeedbackService`: the triage surface is the concrete `internal sealed FeedbackService` the section's own controllers inject. Two interfaces leave the section on the `Contracts/` leaf: the two-method `IFeedbackServiceRead` (Shell's nav badge and dashboard tile, and the Agent user snapshot) and `IFeedbackTriage` (the Backdoor machine API, nobodies-collective/Humans#1128).
 - `IFeedbackRepository` (impl `src/Sections/Humans.Feedback/Data/FeedbackRepository.cs`) owns the SQL surface. Registered as Singleton and uses `IDbContextFactory<FeedbackDbContext>` to create per-call scoped contexts, so the repository can be a long-lived singleton while EF state stays per-request.
 - **Aggregate-local navs kept:** `FeedbackReport.Messages ↔ FeedbackMessage.FeedbackReport`. Both sides live in Feedback-owned tables, so `.Include(f => f.Messages)` is legal inside the repository.
 - **Decorator decision — no caching decorator.** Feedback reports are per-user and admin-triaged, not a hot bulk-read path (same rationale as Governance / User).
-- **Cross-domain navs removed, not just `[Obsolete]`-marked:** `FeedbackReport.User`, `.ResolvedByUser`, `.AssignedToUser`, `.AssignedToTeam`, `FeedbackMessage.SenderUser` no longer exist as nav properties (nobodies-collective/Humans#996) — EF configures the FK columns with no `HasOne(...)` relationship at all, no cross-section FK constraint. The repository does not `.Include()` them (there's nothing to include); the service stitches display data in memory from `IUserServiceRead.GetUserInfosAsync`, `IUserEmailService`, and `ITeamServiceRead` (design-rules §6b). Read methods return `FeedbackReportInfo` / `FeedbackMessageInfo` records with display names pre-resolved (BurnerName-first); controllers and views consume those record fields directly.
+- **No cross-domain navs:** every cross-section reference is a bare Guid FK column — no `HasOne(...)` relationship, no cross-section FK constraint, nothing to `.Include()` (nobodies-collective/Humans#996). The service stitches display data in memory from `IUserServiceRead.GetUserInfosAsync`, `IUserEmailService`, and `ITeamServiceRead` (design-rules §6b). Read methods return `FeedbackReportInfo` / `FeedbackMessageInfo` records with display names pre-resolved (BurnerName-first); controllers and views consume those record fields directly.
 - **Nav-badge cache invalidation** routes through `INavBadgeCacheInvalidator` instead of `IMemoryCache` directly.
 - **Architecture test** — `tests/Humans.Feedback.Tests/Architecture/FeedbackArchitectureTests.cs` pins: service takes `INavBadgeCacheInvalidator`, service takes the cross-section interfaces (`IUserServiceRead`, `IUserEmailService`, `ITeamServiceRead`), and `AuditEntityTypes` members are string literals. Everything else is delegated to the solution-wide analyzers/rules. (`FeedbackService` *does* take `IMemoryCache` for its inline badge-count cache — it is allowlisted in `ApplicationServicesTakeNoMemoryCacheRule`, so the no-`IMemoryCache` check is delegated to that rule rather than pinned here.)
 
