@@ -35,7 +35,7 @@
          Hangfire.Core and Hangfire.AspNetCore must move in lockstep: AspNetCore
          pulls Hangfire.NetCore, which constrains Hangfire.Core to an *exact*
          version. Bumping Core alone fails restore with NU1608. -->
-    <PackageVersion Include="Hangfire.Core" Version="1.8.24" />
+    <PackageVersion Include="Hangfire.Core" Version="1.8.25" />
     <PackageVersion Include="Hangfire.AspNetCore" Version="1.8.24" />
     <PackageVersion Include="Hangfire.PostgreSql" Version="1.21.1" />
     <!-- Email -->
