@@ -5,9 +5,8 @@ using Humans.Consent.Domain;
 namespace Humans.Consent.Data;
 
 /// <summary>
-/// Configuration for ConsentRecord entity.
-/// This table is append-only - no updates or deletes should be performed.
-/// A database trigger should be created to enforce this at the database level.
+/// <c>consent_records</c> is append-only; a DB trigger in the section
+/// baseline migration rejects UPDATE/DELETE.
 /// </summary>
 internal sealed class ConsentRecordConfiguration : IEntityTypeConfiguration<ConsentRecord>
 {
@@ -39,7 +38,6 @@ internal sealed class ConsentRecordConfiguration : IEntityTypeConfiguration<Cons
         // Consent history is append-only; the Users section anonymises in place
         // rather than deleting (IAccountDeletionService).
 
-        // Unique index prevents duplicate consents for the same user/version.
         builder.HasIndex(cr => new { cr.UserId, cr.DocumentVersionId })
             .IsUnique();
 

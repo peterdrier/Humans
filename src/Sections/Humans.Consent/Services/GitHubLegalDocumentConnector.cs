@@ -7,10 +7,8 @@ using Octokit;
 namespace Humans.Consent.Services;
 
 /// <summary>
-/// Octokit-backed implementation of <see cref="IGitHubLegalDocumentConnector"/>.
-/// Keeps the GitHub client surface out of <c>Humans.Application</c> so the
-/// Legal document services can live in the Application layer without an
-/// Octokit dependency.
+/// Octokit-backed implementation of <see cref="IGitHubLegalDocumentConnector"/>;
+/// the one place in the section that names an Octokit type.
 /// </summary>
 internal sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumentConnector
 {

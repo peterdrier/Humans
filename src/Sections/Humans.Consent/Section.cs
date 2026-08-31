@@ -16,10 +16,8 @@ namespace Humans.Consent;
 /// nothing names it, so it needs no section prefix.
 /// </summary>
 /// <remarks>
-/// <c>SyncLegalDocumentsJob</c> and <c>SendReConsentReminderJob</c> moved into this project's
-/// <c>Contracts/</c> folder (nobodies-collective/Humans#866): the former at G5 lane 5b-4, the
-/// latter at lane 5b-5. Their registration followed at #1074's jobs seam, whose schedule is
-/// contributed via <c>SectionJobs.cs</c>.
+/// <c>SyncLegalDocumentsJob</c> and <c>SendReConsentReminderJob</c> live in <c>Jobs/</c>;
+/// their schedules are contributed via <c>SectionJobs.cs</c>.
 /// </remarks>
 public sealed class Section : ISection
 {
@@ -27,7 +25,7 @@ public sealed class Section : ISection
     {
         services.AddSectionDbContext<LegalDbContext>(sentinelTable: "legal_documents");
 
-        // Legal documents — see #547a. GitHub I/O behind IGitHubLegalDocumentConnector keeps the
+        // Legal documents. GitHub I/O behind IGitHubLegalDocumentConnector keeps the
         // section's services free of Octokit.
         services.AddSingleton<ILegalDocumentRepository, LegalDocumentRepository>();
         services.AddScoped<IGitHubLegalDocumentConnector, GitHubLegalDocumentConnector>();
@@ -51,16 +49,16 @@ public sealed class Section : ISection
         services.AddSingleton<ICacheStats>(sp =>
             sp.GetRequiredService<CachingLegalDocumentSyncService>());
 
-        // TrackedCache StartAsync drives WarmAllAsync (warmOnStartup: true) — see #587.
+        // TrackedCache StartAsync drives WarmAllAsync (warmOnStartup: true).
         services.AddHostedService(sp => sp.GetRequiredService<CachingLegalDocumentSyncService>());
 
         services.AddScoped<ILegalDocumentService, LegalDocumentService>();
 
-        // The GitHub sync + re-consent fan-out the recurring job used to run itself, back
-        // inside the section where the entity and the repository live (design §15 step 6b).
+        // Runner holds the sync + fan-out body; the job keeps only the schedule/metric/failure
+        // boundary (design §15 step 6b).
         services.AddScoped<ILegalDocumentSyncRunner, LegalDocumentSyncRunner>();
 
-        // ConsentService — see #547. consent_records is append-only (design-rules §12).
+        // ConsentService. consent_records is append-only (design-rules §12).
         services.AddSingleton<IConsentRepository, ConsentRepository>();
 
         // Two-layer cache: keyed inner + Singleton decorator. Unkeyed concrete forwards via cast so IUserDataContributor resolves the inner cleanly for GDPR-export tests.
@@ -90,7 +88,7 @@ public sealed class Section : ISection
         services.AddScoped<SyncLegalDocumentsJob>();
         services.AddScoped<SendReConsentReminderJob>();
 
-        // Gauge-refresh loop split out of HumansMetricsService (nobodies-collective/Humans#1091).
+        // Consent's active-required-documents gauge.
         services.AddSingleton<ConsentMetricsService>();
         services.AddHostedService(sp => sp.GetRequiredService<ConsentMetricsService>());
     }
