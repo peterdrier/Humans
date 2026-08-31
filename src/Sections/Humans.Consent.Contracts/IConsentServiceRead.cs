@@ -8,9 +8,6 @@ namespace Humans.Consent.Contracts;
 /// </summary>
 public interface IConsentServiceRead
 {
-    /// <summary>
-    /// Gets the set of document version IDs that a user has explicitly consented to.
-    /// </summary>
     Task<IReadOnlySet<Guid>> GetConsentedVersionIdsAsync(
         Guid userId, CancellationToken ct = default);
 
@@ -37,9 +34,6 @@ public interface IConsentServiceRead
     /// </summary>
     Task<IReadOnlyList<string>> GetPendingDocumentNamesAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Gets the count of consent records for a user.
-    /// </summary>
     Task<int> GetConsentRecordCountAsync(
         Guid userId, CancellationToken ct = default);
 

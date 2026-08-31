@@ -8,29 +8,14 @@ namespace Humans.Consent.Domain;
 /// </summary>
 internal sealed class ConsentRecord
 {
-    /// <summary>
-    /// Unique identifier for the consent record.
-    /// </summary>
     public Guid Id { get; init; }
 
-    /// <summary>
-    /// Foreign key to the user who gave consent.
-    /// </summary>
     public Guid UserId { get; init; }
 
-    /// <summary>
-    /// Foreign key to the document version being consented to.
-    /// </summary>
     public Guid DocumentVersionId { get; init; }
 
-    /// <summary>
-    /// Navigation property to the document version.
-    /// </summary>
     public DocumentVersion DocumentVersion { get; set; } = null!;
 
-    /// <summary>
-    /// When consent was given.
-    /// </summary>
     public Instant ConsentedAt { get; init; }
 
     /// <summary>
@@ -38,9 +23,6 @@ internal sealed class ConsentRecord
     /// </summary>
     public string IpAddress { get; init; } = string.Empty;
 
-    /// <summary>
-    /// User-Agent string from the consent request.
-    /// </summary>
     public string UserAgent { get; init; } = string.Empty;
 
     /// <summary>

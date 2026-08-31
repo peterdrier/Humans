@@ -51,7 +51,6 @@ public class SendReConsentReminderJob(
     /// Sends re-consent reminders to members who haven't consented to required documents.
     /// Uses ConsentReminderDaysBeforeSuspension and ConsentReminderCooldownDays from EmailSettings.
     /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         var daysBeforeSuspension = _emailSettings.ConsentReminderDaysBeforeSuspension;

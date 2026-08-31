@@ -21,16 +21,13 @@ public class ConsentReviewFormViewModel
     public required Dictionary<string, string> Content { get; init; }
     public string? ChangesSummary { get; init; }
 
-    /// <summary>POST target action name.</summary>
     public required string SubmitAction { get; init; }
 
-    /// <summary>POST target controller name. Null = same controller as current view.</summary>
+    /// <summary>Null = same controller as current view.</summary>
     public string? SubmitController { get; init; }
 
-    /// <summary>Localised text for the submit button.</summary>
     public required string SubmitButtonText { get; init; }
 
-    /// <summary>Optional secondary link rendered alongside the submit button.</summary>
     public string? CancelHref { get; init; }
     public string? CancelText { get; init; }
 }
