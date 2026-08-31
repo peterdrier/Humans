@@ -95,12 +95,7 @@ internal sealed record GateScanCardViewModel(
 /// <summary>The scan page shell. <paramref name="CutoffConfigured"/> drives a loud
 /// warning banner: while the general-entry cutoff is unset, every scan fails safe to
 /// AMBER, so the terminal tells staff to have an admin set it before doors.</summary>
-internal sealed record GateIndexViewModel(
-    bool DataStale, string DataAsOf, bool CutoffConfigured,
-    IReadOnlyList<GateSupervisorOption> Supervisors);
-
-/// <summary>One enrolled supervisor offered as a tap-pick on the override panel (kiosk has no free-text search).</summary>
-internal sealed record GateSupervisorOption(Guid UserId, string DisplayName);
+internal sealed record GateIndexViewModel(string DataAsOf, bool CutoffConfigured);
 
 /// <summary>Gate settings admin form.</summary>
 internal sealed record GateSettingsViewModel(

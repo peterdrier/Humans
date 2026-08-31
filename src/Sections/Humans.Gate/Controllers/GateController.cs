@@ -56,7 +56,7 @@ internal sealed class GateController(
         // authenticated gate account (attribution is taken from the principal on Decision).
         var settings = await gate.GetSettingsAsync(ct);
         var asOf = InstantPattern.ExtendedIso.Format(clock.GetCurrentInstant());
-        return View(new GateIndexViewModel(DataStale: false, asOf, settings.CutoffConfigured, []));
+        return View(new GateIndexViewModel(asOf, settings.CutoffConfigured));
     }
 
     [HttpGet("Evaluate")]

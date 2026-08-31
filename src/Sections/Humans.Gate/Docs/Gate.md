@@ -207,7 +207,8 @@ nobodies-collective/Humans#933.)
   of a gate check-in, because the vendor mirror is best-effort and off by default.
   _Cross-section write approved by Peter (2026-07-02, camp-EE-revoke-after-check-in fix)._
 - **Auth** — `IRoleAssignmentService.HasActiveRoleAsync` (is this user a supervisor?) and
-  `GetActiveUserIdsInRoleAsync` (enumerate enrolled supervisors for the override tap-list).
+  `GetActiveUserIdsInRoleAsync` (enumerate enrolled supervisors — both now serve only the
+  unreachable per-PIN claim/override methods queued under nobodies-collective/Humans#933).
 
 ## Configuration
 

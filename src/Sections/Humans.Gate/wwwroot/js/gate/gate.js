@@ -323,7 +323,6 @@ export function initGate(refs) {
         body.set('idConfirmed', String(opts.idConfirmed === true));
         body.set('childWithAdult', String(opts.childWithAdult === true));
         body.set('overrideEarly', String(opts.overrideEarly === true));
-        if (opts.supervisorUserId) body.set('supervisorUserId', opts.supervisorUserId);
         if (opts.supervisorPin) body.set('supervisorPin', opts.supervisorPin);
         flashNeutral(result);
         try {
