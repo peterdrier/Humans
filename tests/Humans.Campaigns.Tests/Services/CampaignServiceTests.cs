@@ -22,10 +22,8 @@ namespace Humans.Campaigns.Tests.Services;
 /// <c>ServiceTestHarness</c>: that harness is built around an in-memory
 /// <c>UsersDbContext</c>, and inheriting it would grant a section test project
 /// <c>InternalsVisibleTo</c> on <c>UsersDbContext</c> — the boundary the G5 split exists
-/// to draw (nobodies-collective/Humans#866). Campaigns needed more of the harness than
-/// Budget did (users, teams and team members, all read back through DB-backed stubs), so
-/// the replacement is an in-memory people/team registry rather than three inlined members:
-/// the seeders keep their old signatures and the test bodies below are unchanged.
+/// to draw (nobodies-collective/Humans#866). An in-memory people/team registry backs
+/// the cross-section stubs instead.
 /// </summary>
 public sealed class CampaignServiceTests
 {
@@ -98,10 +96,6 @@ public sealed class CampaignServiceTests
             NullLogger<CampaignServiceImpl>.Instance);
     }
 
-    // ==========================================================================
-    // CreateAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task CreateAsync_CreatesCampaignInDraftStatus()
     {
@@ -139,10 +133,6 @@ public sealed class CampaignServiceTests
         result.ErrorKey.Should().Be("TitleRequired");
         (await CampaignsDb.Campaigns.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }
-
-    // ==========================================================================
-    // ImportCodesAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task ImportCodesAsync_CreatesCampaignCodeRows_SkipsDuplicates()
@@ -213,10 +203,6 @@ public sealed class CampaignServiceTests
         await _ticketDiscountCodes.DidNotReceive().GenerateAsync(
             Arg.Any<TicketDiscountCodeRequest>(), Arg.Any<CancellationToken>());
     }
-
-    // ==========================================================================
-    // ActivateAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task ActivateAsync_DraftWithCodes_TransitionsToActive()
@@ -361,10 +347,6 @@ public sealed class CampaignServiceTests
         campaignId.Should().Be(campaign.Id);
     }
 
-    // ==========================================================================
-    // CompleteAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task CompleteAsync_ActiveCampaign_TransitionsToCompleted()
     {
@@ -386,10 +368,6 @@ public sealed class CampaignServiceTests
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Active*");
     }
-
-    // ==========================================================================
-    // SendWaveAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task SendWaveAsync_AssignsCodeToTeamMember_CreatesGrantAndEnqueuesEmail()
@@ -414,37 +392,91 @@ public sealed class CampaignServiceTests
         grants[0].UserId.Should().Be(user.Id);
         grants[0].LatestEmailStatus.Should().Be(EmailOutboxStatus.Queued);
 
-        // CampaignService delegates to IEmailService — verify the request was passed through.
+        // CampaignService delegates to IEmailService — verify the request was passed
+        // through. Allocation orders by ImportOrder, so the first code goes out first.
         _emailMessages.Received(1).CampaignCode(
             Arg.Is<CampaignCodeEmailRequest>(r =>
                 r.CampaignGrantId == grants[0].Id
                 && r.UserId == user.Id
                 && r.RecipientEmail == user.Email
-                && (r.Code == "CODE-A" || r.Code == "CODE-B")));
+                && r.Code == "CODE-A"));
     }
 
     [HumansFact]
-    public async Task SendWaveAsync_PassesTemplateBodyAndSubjectToEmailService()
+    public async Task SendWaveAsync_SendsFactoryMessageBuiltFromRawTemplateValues()
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(["CODE-1"],
+        // HTML-encoding and rendering happen inside the Email section (owner of the
+        // outbox) — CampaignService must forward the raw subject/body/code/name to the
+        // factory and hand the factory's message to SendAsync unmodified.
+        var campaign = await SeedActiveCampaignWithCodesAsync(["A<B>C"],
             emailSubject: "Hi {{Name}}, your code",
             emailBodyTemplate: "<p>Hi {{Name}}, your code is {{Code}}</p>");
 
-        var user = SeedUser(displayName: "Charlie");
+        var user = SeedUser(displayName: "O'Brien & Co");
         var team = SeedTeam("Gamma");
         SeedTeamMember(team.Id, user.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
+        var factoryMessage = new EmailMessage(
+            user.Email!, "O'Brien & Co", "subject", "body", "CampaignCode");
+        _emailMessages.CampaignCode(Arg.Any<CampaignCodeEmailRequest>()).Returns(factoryMessage);
+
         await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
 
-        // CampaignService delegates rendering to IEmailService: it must pass through
-        // the raw template subject/body + code so OutboxEmailService can render it.
         _emailMessages.Received(1).CampaignCode(
             Arg.Is<CampaignCodeEmailRequest>(r =>
                 r.Subject == "Hi {{Name}}, your code"
                 && r.MarkdownBody == "<p>Hi {{Name}}, your code is {{Code}}</p>"
-                && r.Code == "CODE-1"
-                && r.RecipientName == "Charlie"));
+                && r.Code == "A<B>C"
+                && r.RecipientName == "O'Brien & Co"));
+        await _emailService.Received(1).SendAsync(factoryMessage, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SendWaveAsync_NotActive_Throws()
+    {
+        var campaign = await SeedCampaignAsync();
+        await _service.ImportCodesAsync(campaign.Id, ["CODE-1"], Xunit.TestContext.Current.CancellationToken);
+        var user = SeedUser(displayName: "Draft User");
+        var team = SeedTeam("DraftTeam");
+        SeedTeamMember(team.Id, user.Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var act = () => _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Active*");
+        (await CampaignsDb.CampaignGrants.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task SendWaveAsync_EnqueueThrowsForOneGrant_FlipsOnlyThatGrantToFailed()
+    {
+        var campaign = await SeedActiveCampaignWithCodesAsync(["ISO-1", "ISO-2"]);
+
+        var user1 = SeedUser(displayName: "First");
+        var user2 = SeedUser(displayName: "Second");
+        var team = SeedTeam("Isolation");
+        SeedTeamMember(team.Id, user1.Id);
+        SeedTeamMember(team.Id, user2.Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var sendCalls = 0;
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(_ => ++sendCalls == 1
+                ? Task.FromException(new InvalidOperationException("enqueue boom"))
+                : Task.CompletedTask);
+
+        var count = await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+
+        // The wave survives the throw: both grants exist, only the offending one is Failed.
+        count.Should().Be(2);
+        var grants = await CampaignsDb.CampaignGrants
+            .Where(g => g.CampaignId == campaign.Id)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        grants.Should().HaveCount(2);
+        grants.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Failed).Should().Be(1);
+        grants.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Queued).Should().Be(1);
     }
 
     [HumansFact]
@@ -486,31 +518,6 @@ public sealed class CampaignServiceTests
             .WithMessage("*Not enough codes*");
     }
 
-    [HumansFact]
-    public async Task SendWaveAsync_PassesRawCodeAndRecipientToEmailService()
-    {
-        // HTML-encoding of values happens inside OutboxEmailService (owner of the
-        // outbox table) — CampaignService must forward raw values to it so that
-        // encoding is applied consistently across all email templates.
-        var campaign = await SeedActiveCampaignWithCodesAsync(["A<B>C"],
-            emailBodyTemplate: "<p>Code: {{Code}}, Name: {{Name}}</p>");
-
-        var user = SeedUser(displayName: "O'Brien & Co");
-        var team = SeedTeam("Eta");
-        SeedTeamMember(team.Id, user.Id);
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
-
-        _emailMessages.Received(1).CampaignCode(
-            Arg.Is<CampaignCodeEmailRequest>(r =>
-                r.Code == "A<B>C"
-                && r.RecipientName == "O'Brien & Co"));
-    }
-
-    // ==========================================================================
-    // ResendToGrantAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task ResendToGrantAsync_EnqueuesNewEmailAndResetsGrantStatus()
@@ -538,10 +545,6 @@ public sealed class CampaignServiceTests
         var updatedGrant = await CampaignsDb.CampaignGrants.FindAsync(grant.Id, Xunit.TestContext.Current.CancellationToken);
         updatedGrant!.LatestEmailStatus.Should().Be(EmailOutboxStatus.Queued);
     }
-
-    // ==========================================================================
-    // RetryAllFailedAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task RetryAllFailedAsync_EnqueuesEmailsForFailedGrantsOnly()
@@ -573,10 +576,6 @@ public sealed class CampaignServiceTests
         var retriedGrant = await CampaignsDb.CampaignGrants.FindAsync(grants[0].Id, Xunit.TestContext.Current.CancellationToken);
         retriedGrant!.LatestEmailStatus.Should().Be(EmailOutboxStatus.Queued);
     }
-
-    // ==========================================================================
-    // PreviewWaveSendAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task PreviewWaveSendAsync_ReturnsCorrectCounts()
@@ -612,9 +611,92 @@ public sealed class CampaignServiceTests
         preview.CodesRemainingAfterSend.Should().Be(2); // 4 available - 2 eligible
     }
 
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
+    [HumansFact]
+    public async Task ContributeForUserAsync_ExportsGrantRows()
+    {
+        var campaign = await SeedActiveCampaignWithCodesAsync(["EXPORT-CODE"]);
+        var user = SeedUser(displayName: "Export User");
+        var code = await CampaignsDb.CampaignCodes.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        CampaignsDb.CampaignGrants.Add(new CampaignGrant
+        {
+            Id = Guid.NewGuid(),
+            CampaignId = campaign.Id,
+            CampaignCodeId = code.Id,
+            UserId = user.Id,
+            AssignedAt = Clock.GetCurrentInstant()
+        });
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var slices = await _service.ContributeForUserAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+
+        slices.Should().ContainSingle();
+        slices[0].SectionName.Should().Be(Humans.Gdpr.Contracts.GdprExportSections.CampaignGrants);
+        var rows = (System.Collections.IEnumerable)slices[0].Data!;
+        rows.Cast<object>().Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task EraseForUserAsync_DeletesOnlyThatUsersGrants()
+    {
+        var campaign = await SeedActiveCampaignWithCodesAsync(["ERASE-1", "ERASE-2"]);
+        var erased = SeedUser(displayName: "Erased");
+        var kept = SeedUser(displayName: "Kept");
+        var team = SeedTeam("Erasure");
+        SeedTeamMember(team.Id, erased.Id);
+        SeedTeamMember(team.Id, kept.Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+
+        await _service.EraseForUserAsync(erased.Id, Xunit.TestContext.Current.CancellationToken);
+
+        ClearAllTrackers();
+        var remaining = await CampaignsDb.CampaignGrants.ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        remaining.Should().ContainSingle();
+        remaining[0].UserId.Should().Be(kept.Id);
+    }
+
+    [HumansFact]
+    public async Task ReassignAsync_MovesGrantsToTarget_TargetWinsOnCollision()
+    {
+        // Campaign A: both source and target hold a grant -> target's survives.
+        // Campaign B: only source holds a grant -> it moves to target.
+        var campaignA = await SeedActiveCampaignWithCodesAsync(["A-SRC", "A-TGT"]);
+        var campaignB = await SeedActiveCampaignWithCodesAsync(["B-SRC"]);
+        var source = SeedUser(displayName: "Source");
+        var target = SeedUser(displayName: "Target");
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var codes = await CampaignsDb.CampaignCodes.ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        Guid GrantOn(string code, Guid userId)
+        {
+            var c = codes.Single(x => string.Equals(x.Code, code, StringComparison.Ordinal));
+            var id = Guid.NewGuid();
+            CampaignsDb.CampaignGrants.Add(new CampaignGrant
+            {
+                Id = id,
+                CampaignId = c.CampaignId,
+                CampaignCodeId = c.Id,
+                UserId = userId,
+                AssignedAt = Clock.GetCurrentInstant()
+            });
+            return id;
+        }
+        GrantOn("A-SRC", source.Id);
+        var targetGrantA = GrantOn("A-TGT", target.Id);
+        var sourceGrantB = GrantOn("B-SRC", source.Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        ClearAllTrackers();
+
+        await _service.ReassignAsync(
+            source.Id, target.Id, Guid.NewGuid(), Clock.GetCurrentInstant(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        ClearAllTrackers();
+        var grants = await CampaignsDb.CampaignGrants.ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        grants.Should().OnlyContain(g => g.UserId == target.Id);
+        grants.Select(g => g.Id).Should().BeEquivalentTo([targetGrantA, sourceGrantB]);
+        grants.Single(g => g.CampaignId == campaignA.Id).Id.Should().Be(targetGrantA);
+    }
 
     private async Task<Campaign> SeedCampaignAsync(
         CampaignStatus status = CampaignStatus.Draft,
@@ -651,13 +733,14 @@ public sealed class CampaignServiceTests
             emailBodyTemplate);
 
         var now = Clock.GetCurrentInstant();
-        foreach (var code in codes)
+        for (var i = 0; i < codes.Length; i++)
         {
             CampaignsDb.CampaignCodes.Add(new CampaignCode
             {
                 Id = Guid.NewGuid(),
                 CampaignId = campaign.Id,
-                Code = code,
+                Code = codes[i],
+                ImportOrder = i + 1,
                 ImportedAt = now
             });
         }
@@ -666,11 +749,8 @@ public sealed class CampaignServiceTests
         return campaign;
     }
 
-    // ----- People and teams -----------------------------------------------------
-    // The pre-G5 versions of these wrote User/Team/TeamMember rows into the harness's
-    // UsersDbContext and read them back through DB-backed ITeamService/IUserService
-    // stubs. A section test project cannot see those tables, so the registry holds the
-    // projections the service actually consumes: UserInfo and TeamInfo.
+    // A section test project cannot see the Users section's tables, so the registry
+    // holds the projections the service actually consumes: UserInfo and TeamInfo.
 
     private UserInfo SeedUser(Guid? id = null, string displayName = "Test User")
     {

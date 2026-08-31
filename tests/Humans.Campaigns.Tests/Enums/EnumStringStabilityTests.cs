@@ -14,7 +14,7 @@ namespace Humans.Campaigns.Tests.Enums;
 /// Persisted with <c>HasConversion&lt;string&gt;()</c> / <c>HasMaxLength(20)</c>: renaming a
 /// member leaves the OLD string in <c>campaigns.status</c>. A rename needs a migration that
 /// UPDATEs the stored values. A <c>[Fact]</c> rather than a theory: a public test method
-/// cannot take an internal enum type as a parameter (CS0051, Issues' fold).
+/// cannot take an internal enum type as a parameter (CS0051).
 /// </remarks>
 public class EnumStringStabilityTests
 {
@@ -26,12 +26,9 @@ public class EnumStringStabilityTests
 
     private static void AssertNames(Type enumType, string[] expectedNames)
     {
-        var actualNames = Enum.GetNames(enumType);
-        foreach (var expected in expectedNames)
-        {
-            actualNames.Should().Contain(expected,
-                $"enum {enumType.Name} member '{expected}' is stored as a string in the DB. " +
-                "If you renamed it, create a DB migration to UPDATE the old values.");
-        }
+        Enum.GetNames(enumType).Should().BeEquivalentTo(expectedNames,
+            $"enum {enumType.Name} members are stored as strings in the DB. " +
+            "If you renamed one, create a DB migration to UPDATE the old values; " +
+            "if you added or removed one, update this expected list.");
     }
 }
