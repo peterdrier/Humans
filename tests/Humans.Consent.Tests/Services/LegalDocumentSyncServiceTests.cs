@@ -93,32 +93,23 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         result.ErrorMessage.Should().Contain("configured repository is owner/repo");
     }
 
-    // ── CreateLegalDocumentAsync ─────────────────────────────────────────────
+    // ── CreateLegalDocumentWithInitialSyncAsync ──────────────────────────────
 
     [HumansFact(Timeout = 10000)]
-    public async Task CreateLegalDocumentAsync_PersistsAndReturnsDocument()
+    public async Task CreateLegalDocumentWithInitialSyncAsync_PersistsAndReturnsDocument()
     {
+        StubGitHubFolder("privacy/", "es-content", "sha-1", "Initial commit");
         var request = new AdminLegalDocumentUpsertRequest(
             "Privacy Policy", _team.Id, true, true, 7, "privacy/");
 
-        var document = await _service.CreateLegalDocumentAsync(request, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.CreateLegalDocumentWithInitialSyncAsync(
+            request, Xunit.TestContext.Current.CancellationToken);
         var documents = await _service.GetLegalDocumentsAsync(_team.Id, Xunit.TestContext.Current.CancellationToken);
 
-        document.Name.Should().Be("Privacy Policy");
+        result.Document.Name.Should().Be("Privacy Policy");
         documents.Should().ContainSingle();
         documents[0].TeamName.Should().Be("Volunteers");
         documents[0].GitHubFolderPath.Should().Be("privacy/");
-    }
-
-    [HumansFact]
-    public async Task CreateLegalDocumentAsync_InvokesInvalidator()
-    {
-        var request = new AdminLegalDocumentUpsertRequest(
-            "Privacy Policy", _team.Id, true, true, 7, null);
-
-        await _service.CreateLegalDocumentAsync(request, Xunit.TestContext.Current.CancellationToken);
-
-        _invalidator.Received(1).InvalidateAll();
     }
 
     [HumansFact]

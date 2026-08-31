@@ -24,10 +24,6 @@ internal interface IAdminLegalDocumentService : IApplicationService
 
     GitHubFolderPathNormalizationResult NormalizeGitHubFolderPath(string? input);
 
-    Task<LegalDocument> CreateLegalDocumentAsync(
-        AdminLegalDocumentUpsertRequest request,
-        CancellationToken cancellationToken = default);
-
     /// <summary>
     /// Creates a legal document and runs the initial content sync when a
     /// GitHub folder path was supplied.

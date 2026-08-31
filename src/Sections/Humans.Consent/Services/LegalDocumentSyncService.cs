@@ -151,7 +151,7 @@ internal sealed partial class LegalDocumentSyncService(
         return new GitHubFolderPathNormalizationResult(true, path.TrimEnd('/') + "/", null);
     }
 
-    public async Task<LegalDocument> CreateLegalDocumentAsync(
+    private async Task<LegalDocument> CreateLegalDocumentAsync(
         AdminLegalDocumentUpsertRequest request,
         CancellationToken cancellationToken = default)
     {
