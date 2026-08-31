@@ -16,7 +16,7 @@ can read the association's statutes.
 
 | Shape | Question it answers | Surface |
 |---|---|---|
-| Per-user signed-state | "Which versions has this user signed?" | `IConsentServiceRead`: `GetConsentedVersionIdsAsync`, `GetConsentMapForUsersAsync`, `GetRequiredConsentRowsForUserAsync`, `GetPendingDocumentNamesAsync`, `GetConsentRecordCountAsync` — projections of one fact table, per-user cached |
+| Per-user signed-state | "Which versions has this user signed?" | `IConsentServiceRead`: `GetConsentedVersionIdsAsync`, `GetConsentMapForUsersAsync`, `GetRequiredConsentRowsForUserAsync`, `GetPendingDocumentNamesAsync`, `GetConsentRecordCountAsync` — projections of one fact table; the first three per-user cached, the last two pass-through to the inner service |
 | Review & sign | "Show one document; record my agreement" | `GetConsentReviewDetailAsync` + `IConsentSubmission.SubmitConsentAsync`; `/Consent` GET, `/Consent/Review` GET, `/Consent/Submit` POST |
 | Required-document set | "What is required, per team, right now?" | `ILegalDocumentSyncServiceRead` + internal dashboard/version reads — all views over one cached active+required set |
 | Keep documents current | "Has the source changed? Pull it." | internal sync surface (`SyncAllDocumentsAsync`, `SyncDocumentAsync`), `ILegalDocumentSyncRunner` (job body), the sync + reminder Hangfire jobs at 04:00 |
@@ -47,9 +47,9 @@ The shapes imply exactly two aggregates and one content proxy, each with a singl
   `ILegalDocumentSyncRunner` / the reminder pass.
 - Contracts leaf carries only what outside callers use.
 
-Today's layout matches this. The deltas are edge trim, not rearchitecture: sync-check
-surface nobody calls, an admin-create method only its sibling calls, and doc comments still
-narrating the pre-G5 world (Humans.Application/Humans.Infrastructure, jobs "in Contracts/").
+Today's layout matches this. The remaining deltas await Peter's call and sit in the
+2026-08-31 run file's Needs-Peter list (fan-out scope, nav-property strip, email edge,
+contract fold-inward).
 
 ## Invariants
 
