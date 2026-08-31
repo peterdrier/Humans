@@ -66,8 +66,9 @@ record fields / project references.
   user-controlled input.
 - Campaign-code mail is always-on (`MessageCategory.CampaignCodes`): no preference gate, no
   unsubscribe link/header — confirmed intended (nobodies-collective/Humans#1032).
-- Only Admin mutates; TicketAdmin may view Detail and generate vendor codes; members see
-  only their own grants.
+- Admin holds every mutation except vendor code generation, whose POST is
+  `TicketAdminOrAdmin`; TicketAdmin may also view Detail; members see only their own
+  grants.
 - Grants are exported per-user (GDPR) and hard-deleted on erasure.
 
 ## Seams
