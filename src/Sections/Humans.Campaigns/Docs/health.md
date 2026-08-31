@@ -39,8 +39,8 @@ The shapes imply what is already there, and nothing more:
   tables (`campaigns`, `campaign_codes`, `campaign_grants`).
 - A contracts leaf with the two interfaces (`ICampaignService : ICampaignServiceRead`) and
   the cross-assembly DTOs; everything else `internal`.
-- Five views; view-local sorting/formatting; badge colours from the shared `EnumBadgeMap`
-  registry, not view-local switch tables.
+- Five pages plus a shared Create/Edit form-fields partial; view-local sorting/formatting;
+  badge colours from the shared `EnumBadgeMap` registry, not view-local switch tables.
 - No caching decorator (admin-only, cold), no background jobs of its own (ticket sync and
   outbox live elsewhere and call in through the contract).
 
@@ -61,7 +61,8 @@ record fields / project references.
 - A wave never partially orphans: per-grant persist + enqueue; an enqueue failure flips only
   that grant to Failed, and RetryAllFailed can always pick it up.
 - SendWave aborts up front when eligible members outnumber free codes.
-- Template substitution (`{{Code}}`, `{{Name}}`) HTML-encodes every value; names are
+- Template substitution (`{{Code}}`, `{{Name}}`) HTML-encodes both values in the body;
+  the subject substitutes unencoded (plain text, never rendered as HTML). Names are
   user-controlled input.
 - Campaign-code mail is always-on (`MessageCategory.CampaignCodes`): no preference gate, no
   unsubscribe link/header — confirmed intended (nobodies-collective/Humans#1032).
@@ -90,8 +91,8 @@ none
 - `ICampaignRepository` is Singleton over `IDbContextFactory` (§15b) — the factory injection
   is the point; an architecture test pins it.
 - The section's own controller injects the concrete `CampaignService`, not the interface:
-  the contract leaf carries only the five members other assemblies call, and the other
-  sixteen stay internal (design §15 step 5).
+  the contract leaf carries only the members other assemblies call; the rest stay
+  internal (design §15 step 5).
 - `EmailOutboxStatus` on the contract DTOs is Base vocabulary re-exported, not owned; the
   leaf references Base only.
 - `CampaignStatus` is stored as a string — renaming a member needs a data migration; a
@@ -100,3 +101,9 @@ none
   Base vendor port directly; the leaf edge keeps the Tickets↔Campaigns pair acyclic.
 - The one wave-send preview is a GET with `teamId` (no state), so the POST re-derives
   eligibility rather than trusting the preview.
+
+## History
+
+| Run | Date | Headline | PR |
+|---|---|---|---|
+| section-doctor | 2026-08-29 | First doctoring: false doc/comment claims fixed, badge + form dedup, cross-assembly test coverage added | peterdrier/Humans#pending |
