@@ -7,17 +7,9 @@ namespace Humans.Feedback.Data;
 
 /// <summary>
 /// Repository for the Feedback section's tables: <c>feedback_reports</c> and
-/// <c>feedback_messages</c>. The only non-test file that writes to these
-/// DbSets after the Feedback migration lands.
+/// <c>feedback_messages</c>. The only non-test file that writes to these DbSets.
 /// </summary>
 /// <remarks>
-/// Feedback's cross-section links are bare FK columns with no navigation
-/// properties (<c>UserId</c>, <c>ResolvedByUserId</c>, <c>AssignedToUserId</c>,
-/// <c>AssignedToTeamId</c>, <c>FeedbackMessage.SenderUserId</c>), so there is
-/// nothing to <c>.Include()</c>. Callers in the Application layer stitch
-/// display data from <c>IUserService</c>, <c>IUserEmailService</c>, and
-/// <c>ITeamService</c>.
-///
 /// Feedback is admin-review-only and low-traffic. The repository uses the
 /// Singleton + <c>IDbContextFactory</c> pattern so each method owns its own
 /// <c>FeedbackDbContext</c> lifetime.
@@ -75,9 +67,9 @@ internal interface IFeedbackRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all feedback reports authored by the given user, ordered by
-    /// CreatedAt descending, with aggregate-local messages included for GDPR
-    /// export. Read-only (AsNoTracking).
+    /// Returns all feedback reports authored by the given user, with
+    /// aggregate-local messages included for GDPR export (the service
+    /// orders them). Read-only (AsNoTracking).
     /// </summary>
     Task<IReadOnlyList<FeedbackReport>> GetForUserExportAsync(
         Guid userId, CancellationToken ct = default);
@@ -87,12 +79,13 @@ internal interface IFeedbackRepository : IRepository
     // ==========================================================================
 
     /// <summary>
-    /// Persists changes to a tracked report (obtained via <see cref="FindForMutationAsync"/>).
+    /// Persists a detached report (from <see cref="FindForMutationAsync"/>)
+    /// by attaching it as Modified.
     /// </summary>
     Task SaveTrackedReportAsync(FeedbackReport report, CancellationToken ct = default);
 
     /// <summary>
-    /// Stages a new message and commits it together with the tracked
+    /// Stages a new message and commits it together with the detached
     /// <paramref name="report"/> that the caller has mutated
     /// (last-message timestamps, <c>UpdatedAt</c>) in a single transaction.
     /// </summary>
@@ -100,21 +93,9 @@ internal interface IFeedbackRepository : IRepository
         FeedbackMessage message, FeedbackReport report, CancellationToken ct = default);
 
     // ==========================================================================
-    // Account-merge fold
+    // GDPR erasure and account-merge fold
     // ==========================================================================
 
-    /// <summary>
-    /// Bulk-moves feedback authorship from <paramref name="sourceUserId"/> to
-    /// <paramref name="targetUserId"/> across both Feedback-owned tables in a
-    /// single transaction:
-    /// <list type="bullet">
-    ///   <item><c>feedback_reports.UserId</c> (reporter) — re-FK + stamp <c>UpdatedAt</c>.</item>
-    ///   <item><c>feedback_messages.SenderUserId</c> (message author) — re-FK only (no <c>UpdatedAt</c> column).</item>
-    /// </list>
-    /// Plain re-FK — reports and messages are unique events, no dedup. Returns
-    /// the total count of report + message rows attributed to
-    /// <paramref name="targetUserId"/> after the move.
-    /// </summary>
     /// <summary>
     /// GDPR Art. 17: hard-deletes the reports the user filed (their messages
     /// cascade) and detaches the user from messages and triage fields on
@@ -124,6 +105,14 @@ internal interface IFeedbackRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<string>> EraseForUserAsync(Guid userId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Bulk-moves feedback authorship from <paramref name="sourceUserId"/> to
+    /// <paramref name="targetUserId"/> across both Feedback-owned tables in a
+    /// single transaction: <c>feedback_reports.UserId</c> (re-FK + stamp
+    /// <c>UpdatedAt</c>) and <c>feedback_messages.SenderUserId</c> (re-FK only —
+    /// no <c>UpdatedAt</c> column). Plain re-FK — reports and messages are
+    /// unique events, no dedup.
+    /// </summary>
     Task ReassignToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,
