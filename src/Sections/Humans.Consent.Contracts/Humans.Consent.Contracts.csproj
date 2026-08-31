@@ -6,8 +6,9 @@
     memory/architecture/section-project-cycle-fix.md). Consumers today: Onboarding, Users,
     Governance, Agent, Scanner, and Shell's onboarding widget.
 
-    ILegalDocumentSyncRunner and ILegalDocumentSyncServiceRead now have (nearly) all their
-    consumers in-section and could fold inward; shrinking contract surface needs Peter.
+    ILegalDocumentSyncRunner's consumers are now all in-section and it could fold inward;
+    ILegalDocumentSyncServiceRead cannot yet (Governance's MembershipCalculator injects it).
+    Shrinking contract surface needs Peter.
 
     ConsentReviewFormViewModel is here for the reason step 3b's "move the markup" case
     does not apply: the onboarding widget's Consents step is Onboarding's view over

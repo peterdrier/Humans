@@ -16,12 +16,12 @@ can read the association's statutes.
 
 | Shape | Question it answers | Surface |
 |---|---|---|
-| Per-user signed-state | "Which versions has this user signed?" | `IConsentServiceRead`: `GetConsentedVersionIdsAsync`, `GetConsentMapForUsersAsync`, `GetRequiredConsentRowsForUserAsync`, `GetPendingDocumentNamesAsync`, `GetConsentRecordCountAsync` — five projections of one fact table, per-user cached |
+| Per-user signed-state | "Which versions has this user signed?" | `IConsentServiceRead`: `GetConsentedVersionIdsAsync`, `GetConsentMapForUsersAsync`, `GetRequiredConsentRowsForUserAsync`, `GetPendingDocumentNamesAsync`, `GetConsentRecordCountAsync` — projections of one fact table, per-user cached |
 | Review & sign | "Show one document; record my agreement" | `GetConsentReviewDetailAsync` + `IConsentSubmission.SubmitConsentAsync`; `/Consent` GET, `/Consent/Review` GET, `/Consent/Submit` POST |
-| Required-document set | "What is required, per team, right now?" | `ILegalDocumentSyncServiceRead` (3 methods) + internal dashboard/version reads — all views over one cached active+required set |
-| Keep documents current | "Has the source changed? Pull it." | internal sync surface (`SyncAllDocumentsAsync`, `SyncDocumentAsync`), `ILegalDocumentSyncRunner` (job body), 2 Hangfire jobs at 04:00 |
-| Admin CRUD | "Create/edit/archive/sync a document" | `IAdminLegalDocumentService`, 8 routes under `/Legal/Admin/Documents` |
-| Public statutes | "Show the published statutes/terms" | `ILegalDocumentService` (2 methods), `/Legal/{slug?}`, GitHub-direct, no DB |
+| Required-document set | "What is required, per team, right now?" | `ILegalDocumentSyncServiceRead` + internal dashboard/version reads — all views over one cached active+required set |
+| Keep documents current | "Has the source changed? Pull it." | internal sync surface (`SyncAllDocumentsAsync`, `SyncDocumentAsync`), `ILegalDocumentSyncRunner` (job body), the sync + reminder Hangfire jobs at 04:00 |
+| Admin CRUD | "Create/edit/archive/sync a document" | `IAdminLegalDocumentService`, the routes under `/Legal/Admin/Documents` |
+| Public statutes | "Show the published statutes/terms" | `ILegalDocumentService`, `/Legal/{slug?}`, GitHub-direct, no DB |
 | Cache signals | "This data changed elsewhere" | `IConsentCacheInvalidator` (account merge), internal `ILegalDocumentCacheInvalidator` (writer self-invalidation) |
 
 Owned tables: `legal_documents`, `document_versions`, `consent_records` (append-only, DB
@@ -77,9 +77,9 @@ narrating the pre-G5 world (Humans.Application/Humans.Infrastructure, jobs "in C
 - **Consent Coordinator review queue** lives in Onboarding (`/OnboardingReview`), not here;
   this section only feeds it. Docs describe the joint flow — keep the boundary in mind when
   editing either.
-- `ILegalDocumentSyncRunner` and `ILegalDocumentSyncServiceRead` could fold inward now that
-  their consumers live in this section (noted in the Contracts csproj); shrinking contract
-  surface needs Peter.
+- `ILegalDocumentSyncRunner`'s consumers all live in this section, so it could fold inward
+  (noted in the Contracts csproj); `ILegalDocumentSyncServiceRead` cannot yet — Governance's
+  `MembershipCalculator` injects it. Shrinking contract surface needs Peter.
 
 ## Deliberately not done
 
