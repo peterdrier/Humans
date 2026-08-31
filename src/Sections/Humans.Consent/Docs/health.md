@@ -120,4 +120,4 @@ narrating the pre-G5 world (Humans.Application/Humans.Infrastructure, jobs "in C
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| section-doctor | 2026-08-31 | First pass: doc truth vs post-G5 code, dead sync surface, notification fan-out delta | pending |
+| section-doctor | 2026-08-31 | First pass: doc truth vs post-G5 code, dead sync surface, notification fan-out delta | peterdrier/Humans#1572 |
