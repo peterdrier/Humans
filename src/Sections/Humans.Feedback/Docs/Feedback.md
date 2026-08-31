@@ -1,5 +1,8 @@
 <!-- freshness:triggers
   src/Sections/Humans.Feedback/**
+  src/Sections/Humans.Backdoor/Controllers/BackdoorFeedbackController.cs
+  src/Humans.Base/Constants/RoleNames.cs
+  src/Humans.Base/Caching/CacheKeys.cs
 -->
 <!-- freshness:flag-on-change
   Feedback report lifecycle, screenshot validation, message thread invariants, and admin-vs-reporter authorization — review when Feedback service/entities/controllers change.
@@ -39,7 +42,7 @@ Historical in-app feedback reports (bugs, feature requests, questions) with scre
 | UserAgent | string? | Browser user agent string (max 1000) |
 | AdditionalContext | string? | Extra context captured at submission (e.g., reporter's roles) (max 2000) |
 | ScreenshotFileName | string? | Original filename (max 256) |
-| ScreenshotStoragePath | string? | Relative path under `wwwroot/uploads/feedback/` (max 512) |
+| ScreenshotStoragePath | string? | `IFileStorage` key of the screenshot blob (max 512); historical uploads landed under `uploads/feedback/` |
 | ScreenshotContentType | string? | MIME type (`image/jpeg`, `image/png`, `image/webp`) (max 64) |
 | Status | FeedbackStatus | Open, Acknowledged, Resolved, WontFix |
 | GitHubIssueNumber | int? | Linked GitHub issue |
@@ -138,9 +141,9 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 
 - **Users/Identity:** `IUserServiceRead.GetUserInfosAsync` — batched lookup of the canonical `UserInfo` read model, which already carries `BurnerName`-first display names, resolving reporter, assignee, resolver, and message senders in one call (nobodies-collective/Humans#979 replaced the separate `IUserServiceRead.GetUserInfosAsync` + `IProfileService.GetByUserIdsAsync` layering; see `memory/architecture/burnername-is-the-display-name.md`).
 - **Profiles:** `IUserEmailService.GetNotificationTargetEmailsAsync` — resolves the effective notification email for a report's reporter when an admin posts a reply. Also: `FeedbackService` implements `IUserMerge` and is called by `IAccountMergeService.AcceptAsync` to re-FK feedback rows during account merge fold.
-- **Teams:** `ITeamService.GetTeamNamesByIdsAsync` — assigned-team display names.
+- **Teams:** `ITeamServiceRead.GetTeamsAsync` / `GetTeamAsync` — assigned-team display names.
 - **Email:** `IEmailService.SendAsync` with `IEmailMessageFactory.FeedbackResponse` — admin-reply emails (the production binding is `OutboxEmailService`, so the email is queued through the email outbox).
-- **Notifications:** `INotificationService.SendAsync` — `NotificationSource.FeedbackResponse` in-app notification dispatched after an admin reply is persisted.
+- **Notifications:** `INotificationEmitter.SendAsync` — `NotificationSource.FeedbackResponse` in-app notification dispatched after an admin reply is persisted.
 - **Audit Log:** `IAuditLogService.LogAsync` — status, assignment and GitHub-link changes (`AuditAction.FeedbackStatusChanged`, `AuditAction.FeedbackAssignmentChanged`, `AuditAction.FeedbackGitHubLinked`).
 - **Caching:** the actionable badge count is cached inline in `FeedbackService.GetActionableCountAsync` (`CacheKeys.FeedbackBadgeCount`, 2-min TTL, Static) and invalidated via `INavBadgeCacheInvalidator` whenever the count could have changed.
 - **GDPR:** implements `IUserDataContributor` to export the reporter's feedback reports and message contents under `GdprExportSections.FeedbackReports`.
@@ -156,9 +159,9 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 - `IFeedbackRepository` (impl `src/Sections/Humans.Feedback/Data/FeedbackRepository.cs`) owns the SQL surface. Registered as Singleton and uses `IDbContextFactory<FeedbackDbContext>` to create per-call scoped contexts, so the repository can be a long-lived singleton while EF state stays per-request.
 - **Aggregate-local navs kept:** `FeedbackReport.Messages ↔ FeedbackMessage.FeedbackReport`. Both sides live in Feedback-owned tables, so `.Include(f => f.Messages)` is legal inside the repository.
 - **Decorator decision — no caching decorator.** Feedback reports are per-user and admin-triaged, not a hot bulk-read path (same rationale as Governance / User).
-- **Cross-domain navs removed, not just `[Obsolete]`-marked:** `FeedbackReport.User`, `.ResolvedByUser`, `.AssignedToUser`, `.AssignedToTeam`, `FeedbackMessage.SenderUser` no longer exist as nav properties (nobodies-collective/Humans#996) — EF configures the FK columns with no `HasOne(...)` relationship at all, no cross-section FK constraint. The repository does not `.Include()` them (there's nothing to include); the service stitches display data in memory from `IUserServiceRead.GetUserInfosAsync`, `IUserEmailService`, and `ITeamService` (design-rules §6b). Read methods return `FeedbackReportInfo` / `FeedbackMessageInfo` records with display names pre-resolved (BurnerName-first); controllers and views consume those record fields directly.
+- **Cross-domain navs removed, not just `[Obsolete]`-marked:** `FeedbackReport.User`, `.ResolvedByUser`, `.AssignedToUser`, `.AssignedToTeam`, `FeedbackMessage.SenderUser` no longer exist as nav properties (nobodies-collective/Humans#996) — EF configures the FK columns with no `HasOne(...)` relationship at all, no cross-section FK constraint. The repository does not `.Include()` them (there's nothing to include); the service stitches display data in memory from `IUserServiceRead.GetUserInfosAsync`, `IUserEmailService`, and `ITeamServiceRead` (design-rules §6b). Read methods return `FeedbackReportInfo` / `FeedbackMessageInfo` records with display names pre-resolved (BurnerName-first); controllers and views consume those record fields directly.
 - **Nav-badge cache invalidation** routes through `INavBadgeCacheInvalidator` instead of `IMemoryCache` directly.
-- **Architecture test** — `tests/Humans.Feedback.Tests/Architecture/FeedbackArchitectureTests.cs` pins: service namespace, no `DbContext` constructor param, takes `IFeedbackRepository` and `INavBadgeCacheInvalidator`, `IFeedbackRepository` interface in correct namespace, `FeedbackRepository` is sealed and implements the interface. (`FeedbackService` *does* take `IMemoryCache` for its inline badge-count cache — it is allowlisted in `ApplicationServicesTakeNoMemoryCacheRule`, so the no-`IMemoryCache` check is delegated to that rule rather than pinned here.)
+- **Architecture test** — `tests/Humans.Feedback.Tests/Architecture/FeedbackArchitectureTests.cs` pins: service takes `INavBadgeCacheInvalidator`, service takes the cross-section interfaces (`IUserServiceRead`, `IUserEmailService`, `ITeamServiceRead`), and `AuditEntityTypes` members are string literals. Everything else is delegated to the solution-wide analyzers/rules. (`FeedbackService` *does* take `IMemoryCache` for its inline badge-count cache — it is allowlisted in `ApplicationServicesTakeNoMemoryCacheRule`, so the no-`IMemoryCache` check is delegated to that rule rather than pinned here.)
 
 ### Touch-and-clean guidance
 

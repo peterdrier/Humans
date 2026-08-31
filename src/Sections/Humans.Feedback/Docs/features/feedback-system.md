@@ -1,6 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Feedback/**
   src/Humans.Web/ViewComponents/AdminSidebarViewComponent.cs
+  src/Sections/Humans.Backdoor/Controllers/BackdoorFeedbackController.cs
 -->
 <!-- freshness:flag-on-change
   Feedback entities, controller routes, API surface, or status transitions may have changed; verify the auth matrix and routes table. The section is retired — if any change reintroduces a creation path or a reporter-facing view, this spec is wrong.
@@ -71,7 +72,7 @@ Every creation path below was deleted: the floating widget item and its modal, `
 
 **Acceptance Criteria:**
 - Email sent via outbox pattern (not inline) when an admin posts a message
-- Localized in reporter's preferred language (en/es/de/fr/it)
+- Localized in reporter's preferred language (all six supported cultures)
 - Includes the admin's reply content
 - ~~Includes a direct link to `/Feedback/{reportId}` so the reporter can reply~~ — **since #977** the email template renders no link (the `reportLink` argument is unused) and the in-app notification carries no action URL, because `/Feedback/{id}` is Admin-only. The reply text in the email is the reporter's only copy
 - `LastAdminMessageAt` timestamp updated on the report
@@ -107,7 +108,7 @@ Key fields: Id, FeedbackReportId (FK), SenderUserId (nullable, bare cross-sectio
 
 Relationship: `FeedbackReport` has many `FeedbackMessage` (cascade delete). `SenderUserId` is nullable to support system/API messages.
 
-**Screenshot storage:** `wwwroot/uploads/feedback/{reportId}/{guid}.{ext}`
+**Screenshot storage:** `IFileStorage` keys of historical uploads (`uploads/feedback/{reportId}/{guid}.{ext}`); the only remaining consumer is GDPR erasure's `DeleteAsync`
 
 ## Authorization Matrix
 
@@ -126,7 +127,7 @@ As shipped since #977 — the policy sits on `FeedbackController` itself, so eve
 
 `POST /Feedback` is gone — the controller has no root-`POST` route at all.
 
-**FeedbackAdmin role:** originally followed the CampAdmin/TeamsAdmin pattern — a specialized role granting feedback triage without full Admin. Since #977 it grants **no** Feedback access. The role name is kept because the Staff page, `GuideRoleResolver`/`GuideRolePrivilegeMap`, the authorization pill-filter label map, and `AnyAdminRole` still reference it; `PolicyNames.FeedbackAdminOrAdmin`, `RoleGroups.FeedbackAdminOrAdmin`, and `RoleChecks.IsFeedbackAdmin` were deleted.
+**FeedbackAdmin role:** originally followed the CampAdmin/TeamsAdmin pattern — a specialized role granting feedback triage without full Admin. Since #977 it grants **no** Feedback access. The role name is kept because the Staff page, `GuideRolePrivilegeMap`, the authorization pill-filter label map, and `AnyAdminRole` still reference it; `PolicyNames.FeedbackAdminOrAdmin`, `RoleGroups.FeedbackAdminOrAdmin`, and `RoleChecks.IsFeedbackAdmin` were deleted.
 
 ## URL Routes
 
