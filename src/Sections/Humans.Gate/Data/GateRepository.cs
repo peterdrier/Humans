@@ -79,8 +79,8 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
             if (row.OverrideByUserId == userId) row.OverrideByUserId = null;
         }
 
-        var pins = await ctx.GateStaffPins.Where(p => p.UserId == userId).ToListAsync(ct);
-        ctx.GateStaffPins.RemoveRange(pins);
+        var pins = await ctx.Set<GateStaffPin>().Where(p => p.UserId == userId).ToListAsync(ct);
+        ctx.Set<GateStaffPin>().RemoveRange(pins);
 
         return await ctx.SaveChangesAsync(ct);
     }
