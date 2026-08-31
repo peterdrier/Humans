@@ -166,6 +166,12 @@ internal sealed class FeedbackController(
             var (userMissing, user) = await RequireCurrentUserAsync();
             if (userMissing is not null) return userMissing;
 
+            if (!ModelState.IsValid)
+            {
+                SetError("Invalid status.");
+                return RedirectToAction(nameof(Index), new { selected = id });
+            }
+
             await feedbackService.UpdateStatusAsync(id, model.Status, user.Id);
             SetSuccess("Status updated.");
         }
@@ -191,6 +197,12 @@ internal sealed class FeedbackController(
             var (userMissing, user) = await RequireCurrentUserAsync();
             if (userMissing is not null) return userMissing;
 
+            if (!ModelState.IsValid)
+            {
+                SetError("Invalid assignment.");
+                return RedirectToAction(nameof(Index), new { selected = id });
+            }
+
             await feedbackService.UpdateAssignmentAsync(id, model.AssignedToUserId, model.AssignedToTeamId, user.Id);
             SetSuccess("Assignment updated.");
         }
@@ -215,6 +227,12 @@ internal sealed class FeedbackController(
         {
             var (userMissing, user) = await RequireCurrentUserAsync();
             if (userMissing is not null) return userMissing;
+
+            if (!ModelState.IsValid)
+            {
+                SetError("Invalid issue number.");
+                return RedirectToAction(nameof(Index), new { selected = id });
+            }
 
             await feedbackService.SetGitHubIssueNumberAsync(id, model.IssueNumber, user.Id);
             SetSuccess("GitHub issue linked.");
