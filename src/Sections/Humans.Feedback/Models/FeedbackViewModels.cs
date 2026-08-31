@@ -1,6 +1,5 @@
 using Humans.Feedback.Contracts;
 using System.ComponentModel.DataAnnotations;
-using System.Text.Json.Serialization;
 using Humans.Teams.Contracts;
 using Humans.Feedback.Domain;
 using Humans.Base.Models;
@@ -56,7 +55,6 @@ internal sealed class FeedbackDetailViewModel
     public Guid ReporterUserId { get; set; }
     public int? GitHubIssueNumber { get; set; }
     public DateTime CreatedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
     public DateTime? ResolvedAt { get; set; }
     public string? ResolvedByName { get; set; }
     public Guid? AssignedToUserId { get; set; }
@@ -81,7 +79,6 @@ internal sealed class FeedbackMessageViewModel
 internal sealed class UpdateFeedbackStatusModel
 {
     [Required]
-    [JsonConverter(typeof(JsonStringEnumConverter))]
     public FeedbackStatus Status { get; set; }
 }
 

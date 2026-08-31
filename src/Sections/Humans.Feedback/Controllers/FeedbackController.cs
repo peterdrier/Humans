@@ -26,8 +26,6 @@ internal sealed class FeedbackController(
     IUserServiceRead userService,
     ILogger<FeedbackController> logger) : HumansControllerBase(userService)
 {
-    private readonly IUserServiceRead _userService = userService;
-
     /// <summary>
     /// Resolves active humans into <see cref="AssigneeOption"/> rows for the
     /// assignee dropdowns. Population query, not text search — it reads the
@@ -36,7 +34,7 @@ internal sealed class FeedbackController(
     /// </summary>
     private async Task<List<AssigneeOption>> GetActiveAssigneeOptionsAsync(CancellationToken ct = default)
     {
-        var options = (await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
+        var options = (await UserService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
             .Where(u => u.IsActive)
             .Select(u => new AssigneeOption { Id = u.Id, DisplayName = u.BurnerName })
             .OrderBy(o => o.DisplayName, StringComparer.OrdinalIgnoreCase)
@@ -266,7 +264,6 @@ internal sealed class FeedbackController(
             ReporterUserId = report.UserId,
             GitHubIssueNumber = report.GitHubIssueNumber,
             CreatedAt = report.CreatedAt.ToDateTimeUtc(),
-            UpdatedAt = report.UpdatedAt.ToDateTimeUtc(),
             ResolvedAt = report.ResolvedAt?.ToDateTimeUtc(),
             ResolvedByName = report.ResolvedByName,
             AssignedToUserId = report.AssignedToUserId,
