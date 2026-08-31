@@ -68,7 +68,7 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
             .AsNoTracking()
             .Where(c => c.Status == CampaignStatus.Active || c.Status == CampaignStatus.Completed)
             .OrderByDescending(c => c.CreatedAt)
-            .Select(c => new CampaignCodeTrackingSummaryRow(c.Id, c.Title, c.CreatedAt))
+            .Select(c => new CampaignCodeTrackingSummaryRow(c.Id, c.Title))
             .ToListAsync(ct);
     }
 
@@ -181,10 +181,8 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
             .Where(g => g.Id == grantId)
             .Select(g => new GrantWithSendContext(
                 g.Id,
-                g.CampaignId,
                 g.UserId,
                 g.Code.Code,
-                g.Campaign.Title,
                 g.Campaign.EmailSubject,
                 g.Campaign.EmailBodyTemplate,
                 g.Campaign.ReplyToAddress))
@@ -201,10 +199,8 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
                 && g.LatestEmailStatus == EmailOutboxStatus.Failed)
             .Select(g => new GrantWithSendContext(
                 g.Id,
-                g.CampaignId,
                 g.UserId,
                 g.Code.Code,
-                g.Campaign.Title,
                 g.Campaign.EmailSubject,
                 g.Campaign.EmailBodyTemplate,
                 g.Campaign.ReplyToAddress))

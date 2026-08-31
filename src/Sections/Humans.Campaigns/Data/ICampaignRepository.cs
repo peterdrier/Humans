@@ -40,7 +40,7 @@ internal interface ICampaignRepository : IRepository
     Task<List<Campaign>> GetAllAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the summary header (id/title/creation order) for every
+    /// Returns the summary header (id/title) for every
     /// Active or Completed campaign, ordered CreatedAt desc. Used together
     /// with <see cref="GetCodeTrackingGrantRowsAsync"/> to build the Tickets
     /// admin code-tracking dashboard (so campaigns with zero grants still
@@ -107,15 +107,15 @@ internal interface ICampaignRepository : IRepository
         Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns a single grant with its Campaign and Code (and campaign FK so
-    /// the service can build an email request). Read-only — service calls
-    /// <see cref="UpdateGrantStatusAsync"/> for status updates.
+    /// Returns a single grant with the campaign's email template fields and
+    /// the code string, for building a resend request. Read-only — service
+    /// calls <see cref="UpdateGrantStatusAsync"/> for status updates.
     /// </summary>
     Task<GrantWithSendContext?> GetGrantForResendAsync(Guid grantId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns failed grants for a campaign with their Campaign and Code.
-    /// Read-only — service calls <see cref="UpdateGrantStatusAsync"/>.
+    /// Returns failed grants for a campaign with the campaign's email template
+    /// fields and code strings. Read-only — service calls <see cref="UpdateGrantStatusAsync"/>.
     /// </summary>
     Task<IReadOnlyList<GrantWithSendContext>> GetFailedGrantsForRetryAsync(
         Guid campaignId, CancellationToken ct = default);
@@ -185,17 +185,14 @@ internal interface ICampaignRepository : IRepository
 }
 
 /// <summary>
-/// A grant plus the minimum surface (campaign, code, user id) the service
-/// needs to build a resend request without re-navigating cross-domain
-/// nav properties. The service fetches the recipient user/email via
+/// A grant plus the minimum surface the service needs to build a resend
+/// request. The service fetches the recipient user/email via
 /// <c>IUserEmailService</c> composition.
 /// </summary>
 internal sealed record GrantWithSendContext(
     Guid GrantId,
-    Guid CampaignId,
     Guid UserId,
     string CodeString,
-    string CampaignTitle,
     string CampaignEmailSubject,
     string CampaignEmailBodyTemplate,
     string? CampaignReplyToAddress);
@@ -207,8 +204,7 @@ internal sealed record GrantWithSendContext(
 /// </summary>
 internal sealed record CampaignCodeTrackingSummaryRow(
     Guid CampaignId,
-    string CampaignTitle,
-    Instant CampaignCreatedAt);
+    string CampaignTitle);
 
 /// <summary>
 /// One grant per row, used by <see cref="ICampaignRepository.GetCodeTrackingGrantRowsAsync"/>.
