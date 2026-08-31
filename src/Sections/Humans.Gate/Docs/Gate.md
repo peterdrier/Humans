@@ -1,5 +1,11 @@
 <!-- freshness:triggers
   src/Sections/Humans.Gate/**
+  src/Sections/Humans.Tickets.Contracts/**
+  src/Sections/Humans.EarlyEntry/**
+  src/Sections/Humans.Shifts.Contracts/**
+  src/Sections/Humans.Users.Contracts/**
+  src/Sections/Humans.Auth.Contracts/**
+  tests/Humans.Integration.Tests/Controllers/GatePageRenderTests.cs
 -->
 <!-- freshness:flag-on-change
   Admission verdict precedence, server-authoritative dedupe, the attendance-gateway posture,
@@ -212,6 +218,8 @@ nobodies-collective/Humans#933.)
   peterdrier#1075 dropped the per-staffer PIN flow.)_
 - `Gate:VendorMirrorEnabled` — default off; gates the TicketTailor check-in mirror (see Vendor
   check-in mirror above).
+- `Gate:RetentionDays` — retention window in days for `gate_scan_events` (default 365);
+  `<= 0` disables the purge.
 - `Gate:RosterTeamId` — **optional** GUID of the Shifts department/team that staffs the gate.
   When set, `/Gate/Claim` (unreachable since peterdrier#1075) shows that team's signed-up
   volunteers as one-tap picks; the `/Gate/Search` name search remains for anyone not on the
@@ -232,10 +240,10 @@ and was deleted after that job came home at G5 lane 5b-3.
 **Owning service:** `GateService` (`Humans.Gate.Services`) — also implements `IUserMerge`,
 `IUserDataContributor` and `IGateScanRetention`.
 **Owned tables:** `gate_scan_events`, `gate_settings`, `gate_staff_pins` via `IGateRepository`.
-**Jobs:** `GateRetentionJob` (recurring), `GateVendorCheckInJob` (enqueued on admit), both in
-`Humans.Gate/Jobs/` since G5 lane 5b-3. Their *registration* stays in Shell — recurring jobs
-are named by concrete type in the roll-call and Hangfire serializes the enqueued method
-reference, so neither has a discovery seam yet.
+**Jobs:** both in `Humans.Gate/Jobs/`. `GateRetentionJob` (recurring) is registered by the
+section's own `SectionJobs` (`ISectionJobs`, discovered by Shell — cron `45 3 * * *`);
+`GateVendorCheckInJob` is enqueued fire-and-forget on admit (Hangfire serializes the method
+reference, so it needs no registration).
 **Decorator decision:** none — gate reads must be live (a stale verdict admits or blocks the wrong
 person), mirroring the read-through Scanner section.
 **Layout:** the tablet-facing views (`Claim`, scan terminal `Index`, `Leaderboard`) use the
@@ -246,7 +254,8 @@ check-in backfill page override back to Shell's `_AdminLayout` (desktop admin ta
 `GateTerminal` system account (no roles/teams) sees only this kiosk; on the device, Edge Assigned
 Access removes browser chrome too.
 **Static assets:** `wwwroot/css/gate/` and `wwwroot/js/gate/` ship with the RCL and are served
-at `/_content/Humans.Gate/…`. `GatePageRenderTests` asserts both the `?v=` cache-buster and a
+at `/_content/Humans.Gate/…`. `GatePageRenderTests` (in the local-only
+`Humans.Integration.Tests`, self-skipped under CI) asserts both the `?v=` cache-buster and a
 200 on each file.
 **Status:** new section (gate-scanner feature). Attendance-gateway posture signed off by Peter
 (2026-07-02): a gate admit is the check-in of record and writes the Attended participation row

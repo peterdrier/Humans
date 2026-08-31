@@ -97,8 +97,9 @@ its continued presence is a pending ruling (see Seams), not a structural need.
   while off would hide exactly the rows the backfill exists to recover.
 - Kiosk JS: quiet-timer submit (no reliance on wedge Enter-suffix), 350 ms anti-mistap arming,
   typing `logout` is the only way off the route-locked gate account.
-- Both jobs are `public` (HUM0034 allows nothing else public; Shell names them at
-  registration).
+- Both jobs are `public` (HUM0034 allows nothing else public; Hangfire needs the concrete
+  types — the retention job via the section's own `SectionJobs` registration, the mirror job
+  via the enqueue's serialized method reference).
 
 ## History
 

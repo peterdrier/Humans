@@ -34,8 +34,8 @@ Repository: `IGateRepository`.
 Cross-section calls via `ITicketServiceRead` (barcode → attendee resolved by
 filtering the cached orders projection in memory — no new interface method),
 `IEarlyEntryService` (cached per-user EE for the too-early rule),
-`IBurnSettingsService` (event timezone / active event), `IShiftManagementService`
-(active event + gate-crew shift roster for the claim screen, via
+`IBurnSettingsService` (event timezone / active event), `IShiftManagementServiceRead`
+(gate-crew shift roster for the claim screen, via
 `GetBrowseShiftsAsync`), `IRoleAssignmentService` (server-verified supervisor
 roles for overrides), `IUserService` (participation projection),
 `IAuditLogService` (PIN set/reset audit — never the PIN value), plus
@@ -62,17 +62,18 @@ state (single-server in-memory, see Appendix B). `GatePinThrottle` and
 failures / 15 min) and `GateVendorMirrorLedger`
 (`GateVendorMirrorSent:{vendorTicketId}` — 24 h atomic claim so the vendor
 check-in mirror and the backfill page never double-post a non-idempotent
-TicketTailor check-in). Two helpers remain genuinely Web-layer
-(`src/Humans.Web/Services/` and `Hosting/`) because they gate terminal *sign-in*,
-not gate *admission*: `GateLoginThrottle` (`GateLoginFailures:{sourceIp}` —
-per-IP terminal sign-in throttle) and `GateTerminalAccountSeeder`, which
-provisions the shared kiosk account and fires `InvalidateUserAccess`
-(claims / shift-auth / active-teams eviction).
+TicketTailor check-in). Two helpers live outside the section because they
+gate terminal *sign-in*, not gate *admission*: `GateLoginThrottle`
+(`src/Humans.Web/Services/`, `GateLoginFailures:{sourceIp}` — per-IP
+terminal sign-in throttle) and `GateTerminalAccountSeeder`
+(`src/Sections/Humans.Tickets/Services/`), which provisions the shared
+kiosk account and fires `InvalidateUserAccess` (claims / shift-auth /
+active-teams eviction).
 
-### Background jobs (`Humans.Gate/Contracts/`)
+### Background jobs (`Humans.Gate/Jobs/`)
 
 `GateRetentionJob` (daily purge of scan rows past retention, via
-`IGateService.PurgeScansBeforeAsync` — `Gate:RetentionDays`, default 365)
+`IGateScanRetention.PurgeScansBeforeAsync` — `Gate:RetentionDays`, default 365)
 and `GateVendorCheckInJob` (best-effort mirror of an admit to TicketTailor
 via `ITicketVendorMirror` — the Tickets Contracts leaf's narrow mirror
 surface, not the full `ITicketVendorService` port; off by default behind
