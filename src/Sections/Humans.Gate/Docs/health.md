@@ -9,7 +9,8 @@
 At the event door, a staffer scans a ticket QR on a rugged kiosk tablet. The system says
 ADMIT (green), STOP (red), ASK-FOR-ID (blue), or GET-A-SUPERVISOR (amber), with one reason
 line. A supervisor can push through a too-early or child-without-ID admit by typing a shared
-PIN. Every scan outcome is recorded as the venue's durable admission record; an admit
+PIN. The agent's decision on each scan is recorded as the venue's durable admission record
+(a refusal that ends at the verdict card writes no row — only `POST /Gate/Decision` writes); an admit
 also marks the guest as having attended this year's event, and is optionally mirrored back
 to the ticket vendor. Admins set when general entry opens and the minor-age threshold, and
 can see a per-scanner tally. Scans older than the retention window are purged; a person's
@@ -40,7 +41,8 @@ its continued presence is a pending ruling (see Seams), not a structural need.
 ### Invariants
 
 - The cutoff comparison uses the server clock only; `ClientScanAt` is audit data.
-- Unset cutoff → every scan AMBERs (never a silent admit); the terminal shows a loud banner.
+- Unset cutoff → every otherwise-admissible scan AMBERs — invalid and duplicate still STOP
+  first (never a silent admit); the terminal shows a loud banner.
 - A barcode admits at most once: unique index on `AdmitDedupeKey` (atomic), pre-check for the
   common case; the losing racer records `RejectedDuplicate`.
 - A client flag can never turn a STOP into an admit: `RecordDecisionAsync` re-evaluates
