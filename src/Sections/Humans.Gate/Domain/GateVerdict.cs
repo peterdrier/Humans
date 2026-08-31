@@ -2,7 +2,7 @@ namespace Humans.Gate.Domain;
 
 /// <summary>
 /// The recorded outcome of a single gate scan, stored on
-/// <see cref="Humans.Domain.Entities.GateScanEvent"/>. This is the durable
+/// <see cref="GateScanEvent"/>. This is the durable
 /// audit/leaderboard value — distinct from the pre-ID-check computation
 /// (<see cref="GatePreCheckOutcome"/>) which only decides what the gate agent
 /// is asked to do next.
@@ -18,7 +18,7 @@ internal enum GateVerdict
     /// <summary>Minor admitted accompanied by a named adult; the photo-ID step is waived below the configured age threshold.</summary>
     AdmittedChildWithAdult,
 
-    /// <summary>Admitted by a named supervisor override despite a too-early pre-check (e.g. the holder has an Early Entry grant for a later day). The authorizing supervisor is recorded on <see cref="Humans.Domain.Entities.GateScanEvent.OverrideByUserId"/>.</summary>
+    /// <summary>Admitted by supervisor override despite a too-early pre-check (e.g. the holder has an Early Entry grant for a later day). The override is recorded on <see cref="GateScanEvent.OverrideByUserId"/>.</summary>
     AdmittedEarlyOverride,
 
     /// <summary>Ticket not found for the current event, or void/refunded/cancelled.</summary>

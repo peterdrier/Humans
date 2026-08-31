@@ -438,8 +438,8 @@ internal sealed class GateService(
         GatePreCheckOutcome.TooEarly =>
             input.OverrideByUserId is not null ? GateVerdict.AdmittedEarlyOverride : GateVerdict.RejectedTooEarly,
         GatePreCheckOutcome.NeedsIdCheck or GatePreCheckOutcome.NeedsIdCheckEarly =>
-            // The child-without-ID waiver is itself a supervisor override now (per-PIN), so it
-            // only admits when an authorizing supervisor was recorded.
+            // The child-without-ID waiver is itself a supervisor override, so it only
+            // admits when an authorized override was recorded.
             input.ChildWithAdult
                 ? (input.OverrideByUserId is not null ? GateVerdict.AdmittedChildWithAdult : GateVerdict.RejectedNameMismatch)
             : input.IdConfirmed

@@ -169,8 +169,7 @@ internal sealed class GateController(
     }
 
     // Name-only people search for the claim screen. The route-locked kiosk can't reach
-    // /api/profiles/search (that lock is what keeps the supervisor-override picker a tap-list),
-    // so the claim picker points here instead. Matching is burner-name only — never by email or
+    // /api/profiles/search, so the claim picker points here instead. Matching is burner-name only — never by email or
     // broad fields — but each result shows a *masked* email as a disambiguator (see below), and it
     // stays inside the /Gate route-lock.
     [HttpGet("Search")]
@@ -184,7 +183,7 @@ internal sealed class GateController(
         // (many volunteers share a first name), each result carries a *masked* primary email as a
         // disambiguator — enough to recognise your own address, not enough to broadcast it. The
         // effective email is read per result (cached) and masked here at the presentation layer, so
-        // the search itself and its response shape stay email-free. Mirrors BuildSupervisorOptionsAsync.
+        // the search itself and its response shape stay email-free.
         var matches = (await UserService.SearchUsersAsync(query, PersonSearchFields.Name, 10, ct))
             .OrderByRelevance()
             .ToList();
@@ -271,8 +270,8 @@ internal sealed class GateController(
         return RedirectToAction(nameof(Admin));
     }
 
-    // Admin PIN enrolment: set any user's PIN (incl. supervisors, whose PINs carry override
-    // authority and so are never self-enrolled at the kiosk).
+    // Admin PIN enrolment: set any user's claim PIN out of band (stored AdminEnrolled — see
+    // GateStaffPin). Kiosk overrides themselves use the shared Gate:SupervisorPin, not these.
     [HttpPost("Admin/SetPin")]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
@@ -389,10 +388,11 @@ internal sealed class GateController(
             // waiver lives on the ID-confirm card, so a failed child auth just re-scans.
             AllowSupervisorOverride: !childWithAdult);
 
-    // ── Throttle helpers (keyed on the target user-id only) ──────────────────────
-    // Per-target-user, never per shared device/IP: a 4-digit PIN's brute-force ceiling is
-    // already capped per user (5 / 15 min), and a shared-device key would let one bad run
-    // lock out the whole terminal — the gate-wide-lockout DoS we deliberately avoid.
+    // ── Throttle helpers ─────────────────────────────────────────────────────
+    // Two bucket shapes: claim PINs key per target user (a shared device/IP key would let one
+    // bad run freeze every claim — the proxy collapses all kiosk traffic to one IP), while the
+    // shared override PIN uses the single terminal-wide bucket above, whose lockout blocks
+    // only the override path, never scanning.
     private static string UserKey(Guid userId) => $"u:{userId}";
 
     private int? ThrottleWait(string userKey) => pinThrottle.SecondsUntilRetry(userKey);

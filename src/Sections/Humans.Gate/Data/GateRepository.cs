@@ -119,7 +119,7 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
                     PinHash = fromPin.PinHash,
                     CreatedAt = fromPin.CreatedAt,
                     UpdatedAt = fromPin.UpdatedAt,
-                    AdminEnrolled = fromPin.AdminEnrolled, // keep the survivor's override authority
+                    AdminEnrolled = fromPin.AdminEnrolled, // the enrolment provenance travels with the PIN
                 });
             }
             ctx.Set<GateStaffPin>().Remove(fromPin);

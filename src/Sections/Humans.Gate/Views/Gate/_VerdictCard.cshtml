@@ -68,8 +68,8 @@
         </div>
     }
 
-    @* Too-early scans carry an override affordance; tapping it opens the override panel, where a
-       single confirm tap admits (no PIN, no supervisor pick). *@
+    @* Too-early scans carry an override affordance; tapping it opens the override panel, where
+       the shared supervisor PIN authorizes the admit. *@
     @if (Model.AllowSupervisorOverride)
     {
         <button type="button" class="gate-btn gate-override-btn" data-override="early" data-barcode="@Model.Barcode">

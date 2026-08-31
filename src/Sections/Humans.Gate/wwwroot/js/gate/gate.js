@@ -299,7 +299,7 @@ export function initGate(refs) {
             }));
         });
 
-        // The child-without-ID waiver is now a supervisor override too — open the panel.
+        // The child-without-ID waiver is a supervisor override too — open the panel.
         const childBtn = decide.querySelector('[data-child]');
         if (childBtn) {
             childBtn.addEventListener('click', () => overrideController.open('child', barcode));
