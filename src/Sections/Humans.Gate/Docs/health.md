@@ -9,7 +9,7 @@
 At the event door, a staffer scans a ticket QR on a rugged kiosk tablet. The system says
 ADMIT (green), STOP (red), ASK-FOR-ID (blue), or GET-A-SUPERVISOR (amber), with one reason
 line. A supervisor can push through a too-early or child-without-ID admit by typing a shared
-PIN. Every scan outcome is recorded permanently as the venue's admission record; an admit
+PIN. Every scan outcome is recorded as the venue's durable admission record; an admit
 also marks the guest as having attended this year's event, and is optionally mirrored back
 to the ticket vendor. Admins set when general entry opens and the minor-age threshold, and
 can see a per-scanner tally. Scans older than the retention window are purged; a person's
