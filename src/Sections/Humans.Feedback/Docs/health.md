@@ -35,8 +35,10 @@ holding it there while the archive ages — surface should only ever shrink.
 ## 4. Invariants
 
 - No code path creates a `FeedbackReport` — no service method, repository write, route, or view.
-- Every route and count render is full-`Admin`; `FeedbackAdmin` alone reaches nothing, reporters
-  reach nothing.
+- Every `/Feedback` UI route and count render is full-`Admin`; `FeedbackAdmin` alone reaches
+  nothing, reporters reach nothing. The one exception is the Backdoor API skin
+  (`/api/backdoor/feedback`, owned by the Backdoor section): personal-key auth via
+  `BackdoorApiKeyAuthFilter`, acting human resolved from the key.
 - Every message posted now is an admin reply: stamps `LastAdminMessageAt`, emails the reporter,
   dispatches an in-app notification — and the email sends **before** persisting so an SMTP
   failure leaves nothing committed (retry-safe).
