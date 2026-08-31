@@ -23,13 +23,6 @@ internal interface ILegalDocumentSyncService : ILegalDocumentSyncServiceRead
     /// <summary>Returns a summary message if updated, or null if already up to date.</summary>
     Task<string?> SyncDocumentAsync(Guid documentId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Checks if any documents have updates available.
-    /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Documents with pending updates.</returns>
-    Task<IReadOnlyList<LegalDocument>> CheckForUpdatesAsync(CancellationToken cancellationToken = default);
-
     Task<IReadOnlyList<LegalDocumentSnapshot>> GetActiveDocumentsAsync(CancellationToken cancellationToken = default);
 
     Task<LegalDocumentVersionSnapshot?> GetVersionByIdAsync(Guid versionId, CancellationToken cancellationToken = default);

@@ -31,13 +31,6 @@ internal interface IGitHubLegalDocumentConnector
     Task<string?> GetCommitMessageAsync(string sha, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the latest commit SHA that touched <paramref name="path"/>
-    /// on the configured branch, or null if no commit is found or the
-    /// request fails.
-    /// </summary>
-    Task<string?> GetLatestCommitShaAsync(string path, CancellationToken ct = default);
-
-    /// <summary>
     /// Fetches every <c>.md</c> file under <paramref name="folderPath"/>
     /// whose name starts with <paramref name="filePrefix"/>
     /// (case-insensitive) and returns a language-keyed dictionary of file

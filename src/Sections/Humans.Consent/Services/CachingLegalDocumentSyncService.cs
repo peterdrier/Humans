@@ -152,11 +152,6 @@ internal sealed class CachingLegalDocumentSyncService(
         // from caching at the same shape as the consent-banner read.
         WithInner(inner => inner.GetActiveDocumentsAsync(cancellationToken));
 
-    public Task<IReadOnlyList<LegalDocument>> CheckForUpdatesAsync(
-        CancellationToken cancellationToken = default) =>
-        // GitHub-API-bound check; not a DB read. Pass through.
-        WithInner(inner => inner.CheckForUpdatesAsync(cancellationToken));
-
     // ==========================================================================
     // Writes — passed through; the inner service invalidates directly
     // ==========================================================================
