@@ -106,4 +106,4 @@ none
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| section-doctor | 2026-08-29 | First doctoring: false doc/comment claims fixed, badge + form dedup, cross-assembly test coverage added | peterdrier/Humans#pending |
+| section-doctor | 2026-08-29 | First doctoring: false doc/comment claims fixed, badge + form dedup, cross-assembly test coverage added | peterdrier/Humans#1573 |

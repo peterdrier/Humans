@@ -2,7 +2,7 @@
 
 Invocation: unattended daily run (cloud, `CLAUDE_CODE_REMOTE=true`, repo root, no worktree).
 Branch: `section-doctor/2026-08-29T071612Z`. Anchor commit: `c6e5fb67` (origin/main).
-Budget: standard daily. PR: pending.
+Budget: standard daily. PR: peterdrier/Humans#1573.
 
 Caveat: the container was suspended mid-assessment — 2026-08-29 07:30Z through
 2026-08-31 21:03Z — so assessment ran on the 29th and striking/bookkeeping on the 31st,
