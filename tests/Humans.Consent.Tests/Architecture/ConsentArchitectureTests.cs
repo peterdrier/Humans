@@ -59,6 +59,27 @@ public sealed class ConsentArchitectureTests
             because: "append-only repositories must expose AddAsync as the sole mutation primitive");
     }
 
+    /// <summary>
+    /// Negative assertion: the append-only rule (design-rules §12) means no
+    /// update, delete, or remove surface may ever appear — new state is a new
+    /// row. The DB triggers enforce this at the storage layer; this pins the
+    /// repository surface so the suite fails before a migration is even needed.
+    /// </summary>
+    [HumansFact]
+    public void IConsentRepository_HasNoUpdateDeleteOrRemoveSurface()
+    {
+        var mutators = typeof(IConsentRepository)
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .Where(m => m.Name.Contains("Update", StringComparison.Ordinal)
+                || m.Name.Contains("Delete", StringComparison.Ordinal)
+                || m.Name.Contains("Remove", StringComparison.Ordinal))
+            .Select(m => m.Name)
+            .ToList();
+
+        mutators.Should().BeEmpty(
+            because: "consent_records is append-only — new state is a new row, never an update or delete");
+    }
+
     // ── T-04 cache decorators ────────────────────────────────────────────────
 
     /// <summary>

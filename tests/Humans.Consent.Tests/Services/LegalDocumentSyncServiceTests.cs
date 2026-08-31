@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Notifications.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -282,6 +283,127 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
 
         result.Should().BeNull();
         _invalidator.Received(1).InvalidateAll();
+    }
+
+    // ── GitHub sync — version creation & re-consent pins ─────────────────────
+
+    [HumansFact]
+    public async Task SyncDocumentAsync_FirstVersion_DoesNotRequireReConsent_AndEmitsPublished()
+    {
+        StubActiveUser();
+        var document = await SeedDocumentAsync("Privacy", folderPath: "privacy/", currentCommitSha: "old-sha");
+        StubGitHubFolder("privacy/", "es-content", "sha-1", "Initial commit");
+
+        var result = await _service.SyncDocumentAsync(document.Id, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().Contain("v1.0");
+
+        await using var verifyCtx = LegalDbFactory.CreateDbContext();
+        var version = await verifyCtx.DocumentVersions
+            .AsNoTracking()
+            .SingleAsync(v => v.LegalDocumentId == document.Id, Xunit.TestContext.Current.CancellationToken);
+        version.RequiresReConsent.Should().BeFalse(
+            because: "the first synced version never invalidates prior consent — there is none");
+        version.CommitSha.Should().Be("sha-1");
+
+        await AssertFanout(NotificationSource.LegalDocumentPublished, received: true);
+        await AssertFanout(NotificationSource.ReConsentRequired, received: false);
+    }
+
+    [HumansFact]
+    public async Task SyncDocumentAsync_ShaChanged_CreatesReConsentVersion_AndEmitsReConsentRequired()
+    {
+        StubActiveUser();
+        var document = await SeedDocumentAsync("Privacy", folderPath: "privacy/", currentCommitSha: "sha-1");
+        LegalDb.DocumentVersions.Add(new DocumentVersion
+        {
+            Id = Guid.NewGuid(),
+            LegalDocumentId = document.Id,
+            VersionNumber = "v1.0",
+            CommitSha = "sha-1",
+            Content = new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "old" },
+            EffectiveFrom = Clock.GetCurrentInstant().Minus(Duration.FromDays(30)),
+            RequiresReConsent = false,
+            CreatedAt = Clock.GetCurrentInstant().Minus(Duration.FromDays(30))
+        });
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        StubGitHubFolder("privacy/", "new-es-content", "sha-2", "Tightened wording");
+
+        var result = await _service.SyncDocumentAsync(document.Id, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().Contain("v2.0");
+
+        await using var verifyCtx = LegalDbFactory.CreateDbContext();
+        var newVersion = await verifyCtx.DocumentVersions
+            .AsNoTracking()
+            .SingleAsync(v => v.CommitSha == "sha-2", Xunit.TestContext.Current.CancellationToken);
+        newVersion.RequiresReConsent.Should().BeTrue(
+            because: "every non-initial version invalidates prior consent");
+
+        await AssertFanout(NotificationSource.ReConsentRequired, received: true);
+        await AssertFanout(NotificationSource.LegalDocumentPublished, received: false);
+    }
+
+    [HumansFact]
+    public async Task SyncDocumentAsync_NoCanonicalSpanishFile_Throws_AndPersistsNoVersion()
+    {
+        var document = await SeedDocumentAsync("Privacy", folderPath: "privacy/");
+        _gitHub.DiscoverLanguageFilesAsync("privacy/", Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<string, string>)new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["en"] = "privacy/doc-en.md"
+            });
+
+        var act = () => _service.SyncDocumentAsync(document.Id, Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*No canonical Spanish file*");
+
+        await using var verifyCtx = LegalDbFactory.CreateDbContext();
+        (await verifyCtx.DocumentVersions
+                .AsNoTracking()
+                .AnyAsync(v => v.LegalDocumentId == document.Id, Xunit.TestContext.Current.CancellationToken))
+            .Should().BeFalse(because: "a sync refused for a missing Spanish canonical must not persist a version");
+    }
+
+    private Task AssertFanout(NotificationSource source, bool received)
+    {
+        var call = received ? Notifier.Received(1) : Notifier.DidNotReceive();
+        return call.SendAsync(
+            source,
+            Arg.Any<NotificationClass>(),
+            Arg.Any<NotificationPriority>(),
+            Arg.Any<string>(),
+            Arg.Any<IReadOnlyList<Guid>>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    private void StubActiveUser()
+    {
+        var profile = UserFixtures.Profile(
+            burnerName: "Burner", firstName: "First", lastName: "Last",
+            createdAt: Clock.GetCurrentInstant());
+        var user = UserInfo.Create(
+            user: new User
+            {
+                Id = Guid.NewGuid(),
+                DisplayName = profile.BurnerName,
+                PreferredLanguage = "en",
+                CreatedAt = profile.CreatedAt,
+                State = UserFixtures.StateFor(profile),
+            },
+            userEmails: [],
+            eventParticipations: [],
+            externalLogins: [],
+            profile: profile,
+            communicationPreferences: []);
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyCollection<UserInfo>)[user]);
     }
 
     private void StubGitHubFolder(string folderPath, string content, string sha, string commitMessage)
