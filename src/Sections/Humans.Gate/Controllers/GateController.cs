@@ -39,6 +39,7 @@ internal sealed class GateController(
     IConfiguration configuration,
     GatePinThrottle pinThrottle,
     GateVendorMirrorLedger mirrorLedger,
+    IBackgroundJobClient backgroundJobs,
     IClock clock) : HumansControllerBase(users)
 {
     private const string ScannerSessionKey = "GateScannerId";
@@ -99,7 +100,7 @@ internal sealed class GateController(
         // would hide exactly the rows the backfill page exists to recover.
         if (decision.VendorTicketId is { Length: > 0 } vendorTicketId)
         {
-            BackgroundJob.Enqueue<GateVendorCheckInJob>(j => j.ExecuteAsync(vendorTicketId, CancellationToken.None));
+            backgroundJobs.Enqueue<GateVendorCheckInJob>(j => j.ExecuteAsync(vendorTicketId, CancellationToken.None));
             if (configuration.GetValue<bool>(VendorMirrorEnabledKey))
                 mirrorLedger.TryMarkSent(vendorTicketId);
         }
