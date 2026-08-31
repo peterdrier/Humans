@@ -105,3 +105,4 @@ its continued presence is a pending ruling (see Seams), not a structural need.
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
+| 1 | 2026-08-31 | First pass: comments/docs/UI copy re-anchored to the shipped shared-PIN security model; dead override-picker client remnants cut; GDPR-erasure, merge, retention and deny-path invariants pinned | pending |
