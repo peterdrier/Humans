@@ -119,7 +119,9 @@ public class GateControllerOverridePinTests
     {
         var controller = BuildController(Pin);
 
-        for (var i = 0; i < GatePinThrottle.MaxFailures; i++)
+        // Literal 5, not GatePinThrottle.MaxFailures — a test written against the constant
+        // it pins cannot notice the constant changing.
+        for (var i = 0; i < 5; i++)
             await Decide(controller, overrideEarly: true, pin: "0000");
 
         // Even the CORRECT pin is now refused (locked out)…
@@ -128,10 +130,22 @@ public class GateControllerOverridePinTests
         await _gate.DidNotReceive().RecordDecisionAsync(
             Arg.Any<GateDecisionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
 
+        // …and the lockout does not decay early: 14 minutes in, still locked…
+        _clock.Advance(Duration.FromMinutes(14));
+        var stillLocked = CardOf(await Decide(controller, overrideEarly: true, pin: Pin));
+        Assert.Contains("wait", stillLocked.Reason, StringComparison.OrdinalIgnoreCase);
+
         // …but a plain (non-override) decision on the same terminal still records.
         await Decide(controller);
         await _gate.Received(1).RecordDecisionAsync(
             Arg.Is<GateDecisionInput>(i => i.OverrideByUserId == null),
+            _gateAccount, Arg.Any<CancellationToken>());
+
+        // Past the full 15 minutes the correct PIN authorizes again.
+        _clock.Advance(Duration.FromMinutes(1) + Duration.FromSeconds(1));
+        await Decide(controller, overrideEarly: true, pin: Pin);
+        await _gate.Received(1).RecordDecisionAsync(
+            Arg.Is<GateDecisionInput>(i => i.OverrideByUserId == _gateAccount),
             _gateAccount, Arg.Any<CancellationToken>());
     }
 
