@@ -152,4 +152,7 @@
   <data name="Consent_StubProfile_AddName" xml:space="preserve">
     <value>Aggiunga il Suo nome legale prima di firmare i consensi.</value>
   </data>
+  <data name="Consent_AgreedToBy" xml:space="preserve">
+    <value>Accettato da &lt;strong&gt;{0}&lt;/strong&gt; il {1} alle {2} UTC</value>
+  </data>
 </root>

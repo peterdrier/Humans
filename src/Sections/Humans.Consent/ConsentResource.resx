@@ -71,4 +71,5 @@
   <data name="Consent_ThankYou" xml:space="preserve"><value>Thank you for consenting to {0}.</value><comment>{0} = document name</comment></data>
   <data name="Consent_SubmitError" xml:space="preserve"><value>Something went wrong while recording your consent. Please try again.</value></data>
   <data name="Consent_StubProfile_AddName" xml:space="preserve"><value>Add your legal name before signing consents.</value></data>
+  <data name="Consent_AgreedToBy" xml:space="preserve"><value>Agreed to by &lt;strong&gt;{0}&lt;/strong&gt; on {1} at {2} UTC</value><comment>{0} = full name of the person who consented, {1} = date, {2} = time (UTC)</comment></data>
 </root>

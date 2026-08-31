@@ -152,4 +152,7 @@
   <data name="Consent_StubProfile_AddName" xml:space="preserve">
     <value>Bitte tragen Sie Ihren amtlichen Namen ein, bevor Sie Einwilligungen unterzeichnen.</value>
   </data>
+  <data name="Consent_AgreedToBy" xml:space="preserve">
+    <value>Zugestimmt von &lt;strong&gt;{0}&lt;/strong&gt; am {1} um {2} UTC</value>
+  </data>
 </root>
