@@ -11,22 +11,22 @@ public interface ICampaignServiceRead
     /// Returns code tracking data — campaign summaries and individual grant
     /// details for campaigns that are Active or Completed — for the Tickets
     /// admin dashboard. The returned <see cref="CampaignCodeTrackingData"/>
-    /// carries recipient user IDs and display names sourced from the Campaigns
-    /// section; the caller correlates discount-code redemptions against
+    /// carries recipient user IDs and display names (resolved via the Users
+    /// section); the caller correlates discount-code redemptions against
     /// ticket orders separately.
     /// </summary>
     Task<CampaignCodeTrackingData> GetCodeTrackingAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns campaign grants for a user where the campaign is Active or Completed,
-    /// ordered by AssignedAt descending.
+    /// Returns campaign grants for a user where the campaign is Active or
+    /// Completed. Unordered — callers sort.
     /// </summary>
     Task<IReadOnlyList<CampaignGrantSummary>> GetActiveOrCompletedGrantsForUserAsync(
         Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all campaign grants for a user (any campaign status),
-    /// ordered by AssignedAt descending. Used for admin detail views.
+    /// Returns all campaign grants for a user (any campaign status).
+    /// Unordered — callers sort. Used for admin detail views.
     /// </summary>
     Task<IReadOnlyList<CampaignGrantSummary>> GetAllGrantsForUserAsync(
         Guid userId, CancellationToken ct = default);

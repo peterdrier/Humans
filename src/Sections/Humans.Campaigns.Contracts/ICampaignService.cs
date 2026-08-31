@@ -28,16 +28,14 @@ public sealed record CampaignGrantSummary(
     Instant? RedeemedAt);
 
 /// <summary>
-/// Campaigns' full cross-assembly surface: the read side plus the two grant
-/// reads Shell's profile and admin-detail pages render, and the two writes Base
-/// drives (ticket sync marking codes redeemed, the email outbox recording
+/// Campaigns' full cross-assembly surface: the read side plus the two writes
+/// other sections drive (Tickets marking codes redeemed, Email recording
 /// delivery state).
 /// </summary>
 /// <remarks>
 /// The section's own controller takes the internal <c>CampaignService</c>
-/// directly, so campaign/code CRUD, activation, wave sending, resend and retry —
-/// the other sixteen members of the pre-G5 <c>ICampaignService</c> — are not
-/// public at all (design §15 step 5).
+/// directly, so campaign/code CRUD, activation, wave sending, resend and
+/// retry are not public at all (design §15 step 5).
 /// </remarks>
 public interface ICampaignService : ICampaignServiceRead, IApplicationService
 {

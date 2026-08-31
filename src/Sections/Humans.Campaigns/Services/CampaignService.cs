@@ -18,7 +18,7 @@ namespace Humans.Campaigns.Services;
 /// <summary>
 /// The Campaigns section's service. Implements the cross-assembly
 /// <see cref="ICampaignService"/> contract; the section's own controller injects this
-/// concrete type for the sixteen members that stay inside (design §15 step 5).
+/// concrete type for the members that stay inside (design §15 step 5).
 /// </summary>
 internal sealed class CampaignService(
     ICampaignRepository repository,
