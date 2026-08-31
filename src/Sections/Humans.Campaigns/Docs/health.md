@@ -26,20 +26,20 @@ per campaign. Grants are personal data: exported for GDPR, hard-deleted on erasu
 | Writes other assemblies drive | MarkGrantsRedeemedAsync (ticket sync), UpdateGrantEmailStatusAsync (email outbox) |
 | Platform obligations | GDPR export/erasure (IUserDataContributor), account-merge fold (IUserMerge) |
 
-Six shapes; the first three are the internal admin app, the last three are the section's
-service to the rest of the platform. The contracts leaf carries exactly the last-three
-surface (plus the DTOs they return) and nothing of the first three — that split is correct
-and worth defending.
+The CRUD/lifecycle, code-loading and sending shapes are the internal admin app; the
+cross-assembly reads, writes and platform obligations are the section's service to the rest
+of the platform. The contracts leaf carries exactly that outward surface (plus the DTOs it
+returns) and nothing of the admin app — that split is correct and worth defending.
 
 ## Structure
 
 The shapes imply what is already there, and nothing more:
 
-- One controller (admin routes only), one service, one repository, one DbContext over three
-  tables (`campaigns`, `campaign_codes`, `campaign_grants`).
-- A contracts leaf with the two interfaces (`ICampaignService : ICampaignServiceRead`) and
-  the cross-assembly DTOs; everything else `internal`.
-- Five pages plus a shared Create/Edit form-fields partial; view-local sorting/formatting;
+- One controller (admin routes only), one service, one repository, one DbContext over
+  `campaigns`, `campaign_codes`, `campaign_grants`.
+- A contracts leaf with `ICampaignService : ICampaignServiceRead` and the cross-assembly
+  DTOs; everything else `internal`.
+- Admin pages plus a shared Create/Edit form-fields partial; view-local sorting/formatting;
   badge colours from the shared `EnumBadgeMap` registry, not view-local switch tables.
 - No caching decorator (admin-only, cold), no background jobs of its own (ticket sync and
   outbox live elsewhere and call in through the contract).
@@ -72,16 +72,16 @@ record fields / project references.
 
 ## Seams
 
-none
+- Campaign mutations and sends (create, activate, complete, wave-send, resend, retry-all)
+  leave no audit-log entries, and grant/outbox rows are actor-free — the Board cannot see
+  which admin did what. The repo requires audit entries for admin actions on members'
+  behalf; recorded as section debt (`Docs/debt.yml`), not target shape.
 
 ## Deliberately not done
 
 - No localization: the section is admin-only and ships no resource set at all (§15.3b, with
   Finance and Gate). Don't add keys.
 - No caching decorator — admin pages, not hot.
-- No audit-log entries for campaign mutations; the grant rows themselves (status, timestamps,
-  actor-free) plus email outbox rows are the record so far. Adding audit would be new
-  surface, not cleanup.
 - No `UpdatedAt` on `CampaignGrant` — `ReassignGrantsToUserAsync` deliberately discards the
   merge fold's timestamp argument (signature parity across `IUserMerge` implementers).
 - No status guard on CSV import — Draft and Active both accept imports, on purpose.

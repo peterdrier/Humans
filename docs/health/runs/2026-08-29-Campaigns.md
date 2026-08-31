@@ -13,11 +13,11 @@ in one session with one auto-compaction between them. Two reading threads' final
 
 First doctoring of Campaigns (never-doctored tier, selected as median by reforge score;
 selection details in Phase 2's output). Target shape written fresh at
-`src/Sections/Humans.Campaigns/Docs/health.md`. Eight lenses ran (see `## Threads`);
+`src/Sections/Humans.Campaigns/Docs/health.md`. Every lens ran (see `## Threads`);
 conformance and razor-lint came back clean, and reforge confirmed no structural strike is
 warranted — the section's shape is right, and its residual weight was prose: false doc and
 comment claims, history narration, dead record fields, and a handful of view/test gaps.
-All five cross-assembly contract members were verified live at their external call sites
+Every cross-assembly contract member was verified live at its external call sites
 (Tickets, Email, Users).
 
 ## Ranked findings (numbers are permanent)
@@ -47,7 +47,7 @@ contributed a ranked item.
 19. `Detail.cshtml` badge switches duplicated `EnumBadgeMap` (local Queued had drifted from Base's `bg-warning text-dark`). Collapsed into `EnumBadgeMap.For`; reviewer-approved. **done**
 20. Create/Edit ~48-line duplicated form body — shared `_CampaignFormFields` partial (Calendar precedent); reviewer-approved. **done**
 21. Comment cuts: region banners (repo + tests), restating markers, migration narration. **done**
-22. `EnumStringStabilityTests` asserted subset (`Contain`) not set — now `BeEquivalentTo`. **done**
+22. `EnumStringStabilityTests` asserted subset (`Contain`) not set — tightened to `BeEquivalentTo`, then reverted in review round 1: exact-shape is the forbidden per-section absence assert ([`no-tests-for-absences`](../../../memory/architecture/no-tests-for-absences.md)); subset is the house pattern. **reverted**
 23. SendWave non-Active guard had no negative test. **done**
 24. Per-grant failure isolation never exercised — added a test that throws from `SendAsync`. **done**
 25. SendWave code-order test asserted a disjunction — seeder now sets `ImportOrder`; exact assert. **done**
