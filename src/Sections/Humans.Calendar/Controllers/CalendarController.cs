@@ -271,7 +271,7 @@ internal sealed class CalendarController : HumansControllerBase
         start = default;
         end = null;
 
-        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(form.RecurrenceTimezone);
+        var zone = CalendarEventFormViewModel.TryResolveZone(form.RecurrenceTimezone);
         if (zone is null)
         {
             ModelState.AddModelError(nameof(form.RecurrenceTimezone), "Unknown IANA timezone.");
@@ -359,7 +359,7 @@ internal sealed class CalendarController : HumansControllerBase
         if (ev is null) return NotFound();
         if (OccurrenceOverrideFormViewModel.TryParseOriginal(originalStartUtc) is not { } original) return NotFound();
 
-        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(form.RecurrenceTimezone);
+        var zone = CalendarEventFormViewModel.TryResolveZone(form.RecurrenceTimezone);
         if (zone is null)
         {
             ModelState.AddModelError(nameof(form.RecurrenceTimezone), "Unknown timezone.");
