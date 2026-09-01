@@ -958,12 +958,13 @@ internal sealed class SurveyService(
             var invitation = await repo.GetInvitationByIdAsync(gateInvId, ct);
             if (invitation?.Completed == true)
             {
-                return new SubmissionPreparation([], [], [], AlreadyCompleted: true);
+                return new SubmissionPreparation([], [], [], [], AlreadyCompleted: true);
             }
         }
 
         // Drop answers to questions hidden under full branching (defends against tampered/stale posts).
-        var visibleAnswers = VisibleAnswers(survey, submission.Answers);
+        var visible = VisibleAnswers(survey, submission.Answers);
+        var visibleAnswers = visible.Answers;
         var questions = ToQuestionInputs(survey);
         var answerStates = visibleAnswers.ToDictionary(
             answer => answer.QuestionId,
@@ -978,7 +979,12 @@ internal sealed class SurveyService(
             .ToList();
         var missingRequired = SurveyWizardFlow.RequiredUnanswered(allVisible, answerStates);
 
-        return new SubmissionPreparation(visibleAnswers, questions, missingRequired, AlreadyCompleted: false);
+        return new SubmissionPreparation(
+            visibleAnswers,
+            questions,
+            missingRequired,
+            visible.InvalidAnswers,
+            AlreadyCompleted: false);
     }
 
     private async Task PersistResponseAsync(
@@ -1234,6 +1240,18 @@ internal sealed class SurveyService(
         if (prepared.AlreadyCompleted)
         {
             return new SurveyWizardAdvanceResult(SurveyWizardOutcome.Submitted, []);
+        }
+        if (prepared.InvalidAnswers.Count > 0)
+        {
+            ReplaceWizardAnswers(state, prepared.VisibleAnswers);
+            var invalidIds = prepared.InvalidAnswers.ToHashSet();
+            state.CurrentPage = prepared.Questions
+                .Where(question => question.Id is { } id && invalidIds.Contains(id))
+                .Min(question => question.PageNumber);
+            return new SurveyWizardAdvanceResult(
+                SurveyWizardOutcome.ValidationFailed,
+                [],
+                prepared.InvalidAnswers);
         }
         if (prepared.MissingRequired.Count > 0)
         {
@@ -1876,7 +1894,9 @@ internal sealed class SurveyService(
     /// Keeps only the answers to questions visible under full cascading branching: an answer on a
     /// hidden question neither survives nor counts towards downstream <c>ShowIf</c> conditions.
     /// </summary>
-    private static IReadOnlyList<SurveyAnswerInput> VisibleAnswers(Survey survey, IReadOnlyList<SurveyAnswerInput> answers)
+    private static VisibleAnswerPreparation VisibleAnswers(
+        Survey survey,
+        IReadOnlyList<SurveyAnswerInput> answers)
     {
         var states = answers.ToDictionary(
             a => a.QuestionId,
@@ -1889,7 +1909,8 @@ internal sealed class SurveyService(
             states);
 
         var questions = survey.Questions.ToDictionary(q => q.Id);
-        return answers
+        var invalidAnswers = new List<Guid>();
+        var visibleAnswers = answers
             .Where(a => effective.ContainsKey(a.QuestionId))
             .Where(a => questions.TryGetValue(a.QuestionId, out var question)
                 && question.Type != SurveyQuestionType.Information)
@@ -1906,9 +1927,19 @@ internal sealed class SurveyService(
                         question.GridSelectionMode,
                         a.GridSelections)
                     : null;
-                var normalizedRanked = question.Type == SurveyQuestionType.RankedChoice
-                    ? NormalizeRankedAnswer(question, a.RankedValue)
-                    : null;
+                RankedAnswer? normalizedRanked = null;
+                if (question.Type == SurveyQuestionType.RankedChoice)
+                {
+                    try
+                    {
+                        normalizedRanked = NormalizeRankedAnswer(question, a.RankedValue);
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        normalizedRanked = a.RankedValue;
+                        invalidAnswers.Add(a.QuestionId);
+                    }
+                }
                 return a with
                 {
                     GridSelections = normalizedGridSelections?.Count > 0
@@ -1921,12 +1952,18 @@ internal sealed class SurveyService(
                 };
             })
             .ToList();
+        return new VisibleAnswerPreparation(visibleAnswers, invalidAnswers);
     }
+
+    private sealed record VisibleAnswerPreparation(
+        IReadOnlyList<SurveyAnswerInput> Answers,
+        IReadOnlyList<Guid> InvalidAnswers);
 
     private sealed record SubmissionPreparation(
         IReadOnlyList<SurveyAnswerInput> VisibleAnswers,
         IReadOnlyList<QuestionInput> Questions,
         IReadOnlyList<Guid> MissingRequired,
+        IReadOnlyList<Guid> InvalidAnswers,
         bool AlreadyCompleted);
 
     private static List<SurveyAnswer> MapAnswers(Guid responseId, IReadOnlyList<SurveyAnswerInput> answers)

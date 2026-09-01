@@ -2325,7 +2325,7 @@ public class SurveyServiceTests
         result.MissingRequired.Should().BeEmpty();
         result.InvalidAnswers.Should().ContainSingle().Which.Should().Be(questionId);
         state.CurrentPage.Should().Be(1);
-        state.Answers[questionId.ToString()].RankedValue.Should().Be(ranked);
+        state.Answers[questionId.ToString()].RankedValue.Should().BeEquivalentTo(ranked);
         state.Started.Should().BeFalse();
         await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
@@ -2576,6 +2576,43 @@ public class SurveyServiceTests
         state.CurrentPage.Should().Be(1);
         state.Answers[gridId.ToString()].GridSelections.Keys
             .Should().ContainSingle().Which.Should().Be("monday");
+        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
+            Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task AdvanceWizardAsync_reports_ranked_answer_invalidated_at_submission_reload()
+    {
+        var questionId = Guid.NewGuid();
+        var initial = SurveyWith(SurveyStatus.Open, null, null);
+        var initialRanked = RankedQuestion(questionId, initial.Id);
+        initialRanked.RankedSettings = RankedQuestionSettings.Default with { AllowEqualRanks = true };
+        initial.Questions = [initialRanked];
+
+        var reloaded = SurveyWith(SurveyStatus.Open, null, null);
+        typeof(Survey).GetProperty(nameof(Survey.Id))!.SetValue(reloaded, initial.Id);
+        var reloadedRanked = RankedQuestion(questionId, reloaded.Id);
+        reloadedRanked.RankedSettings = RankedQuestionSettings.Default with { AllowEqualRanks = false };
+        reloaded.Questions = [reloadedRanked];
+        _repo.GetByIdAsync(initial.Id, Arg.Any<CancellationToken>())
+            .Returns(initial, reloaded);
+
+        var state = WizardState(initial.Id);
+        var ranked = new RankedAnswer([["a", "b"]], []);
+        var posted = new SurveyAnswerInput(questionId, [], null, null, null, ranked);
+
+        var result = await CreateService().AdvanceWizardAsync(
+            state,
+            page: 1,
+            back: false,
+            [posted],
+            ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.ValidationFailed);
+        result.MissingRequired.Should().BeEmpty();
+        result.InvalidAnswers.Should().ContainSingle().Which.Should().Be(questionId);
+        state.CurrentPage.Should().Be(1);
+        state.Answers[questionId.ToString()].RankedValue.Should().BeEquivalentTo(ranked);
         await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
