@@ -25,8 +25,10 @@ member.
 - **It lets a person prove an email address is theirs and get signed in.** They type an email;
   a short-lived link arrives; clicking it signs them in, or starts a signup if the address is
   new to us. It never reveals whether the address is known. A *login* link is single-use — it
-  is consumed on redemption. A *signup* link is not: it is verified again on the form's POST,
-  and what stops a second use is that the account now exists.
+  is consumed on redemption. A *signup* link is not, and nothing consumes it: it is verified
+  again on the form's POST, and a POST replayed inside its 15-minute window signs the holder
+  into the account that the first POST created. Whether that asymmetry is intended is F41,
+  open for Peter — describe it, do not "fix" it.
 
 Everything else the section holds exists to serve one of those two: caches so the first job
 can be asked on every request without a query, and rate limits so the second cannot be used
@@ -69,9 +71,13 @@ Written fresh from the shapes above, not from today's tree.
   inner service and never the repository; the row set it holds is the *only* thing it needs, so
   the warm path should ask for rows and nothing else — not for a display-stitched admin page it
   discards.
-- **Sign-in is an orchestrator.** `MagicLinkService` owns no table. Token minting and URL shape
-  sit behind one collaborator; replay and cooldown state behind another. It names no
-  `DbContext`, no `IDataProtectionProvider`, no `IMemoryCache`.
+- **Sign-in is nearly an orchestrator.** `MagicLinkService` owns no table. Token minting and URL
+  shape sit behind one collaborator; replay and cooldown state behind another. It names no
+  `DbContext`, no `IDataProtectionProvider`, no `IMemoryCache`. One thing disqualifies it today:
+  `SendLoginLinkAsync` stamps `user.MagicLinkSentAt` and persists it with `UserManager.UpdateAsync`
+  — a write into Users' table from Auth, not through a Users interface. That is debt (F42), not
+  the target: the cooldown belongs behind a Users write method or in `IMagicLinkRateLimiter`
+  alongside the signup reservation it already owns.
 - **The section ships no controller, no view, no resx.** `AccountController` and
   `Views/Account/*` stay in Shell because every action they expose writes another section's
   tables. That is a deliberate boundary, not an unfinished move.

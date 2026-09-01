@@ -192,7 +192,7 @@ No `userId` in the URL because the user doesn't exist yet. The encrypted email i
 
 **Login tokens (existing users):** As shipped, the DataProtection token carries no server-side state, so single-use is enforced separately: on successful verification, `IMagicLinkRateLimiter.TryConsumeLoginTokenAsync` reserves the token (keyed on a prefix of the token string) in `IMemoryCache` for the remainder of its 15-minute lifetime. A second attempt with the same token finds the reservation already held and fails verification.
 
-**Signup tokens (new users):** Single-use is enforced by the fact that the callback creates the user. A second click with the same token would find the email already taken and show an appropriate message ("Account already created — use the login link instead").
+**Signup tokens (new users):** Not enforced as shipped. This section proposed that creating the user would itself block reuse, showing "Account already created — use the login link instead" — the code does not do that. `VerifySignupToken` only unprotects, and on a replayed POST `AccountProvisioningService.CompleteMagicLinkSignupAsync` finds the now-verified `UserEmail`, returns `ExistingUser`, and `AccountController.CompleteSignup` signs that user in. So a signup token stays redeemable for the remainder of its 15 minutes. Tracked as F41 in `docs/health/runs/2026-09-01-Auth.md`.
 
 ### Email Lookup
 
