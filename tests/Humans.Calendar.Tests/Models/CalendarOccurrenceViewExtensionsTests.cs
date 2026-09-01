@@ -18,6 +18,51 @@ public sealed class CalendarOccurrenceViewExtensionsTests
         occurrence.ShouldHideTimeLabel(DateTimeZone.Utc).Should().BeFalse();
     }
 
+    // The badge and the hide-the-time decision are not the same question. A 22:00–02:00 event
+    // spans two local dates, so its time label would mislead on the second day — but on the
+    // first it is emphatically not an all-day event, and 22:00 is the only time it has.
+    [HumansFact]
+    public void TimeLabelFor_ShowsTheStartTime_OnTheFirstDayOfATimedMultiDayEvent()
+    {
+        var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+        var occurrence = Occurrence(
+            Instant.FromUtc(2026, 6, 1, 20, 0),
+            Instant.FromUtc(2026, 6, 2, 0, 30));
+
+        occurrence.ShouldHideTimeLabel(madrid).Should().BeTrue();
+        occurrence.TimeLabelFor(new LocalDate(2026, 6, 1), madrid)
+            .Should().Be(OccurrenceTimeLabel.StartTime);
+        occurrence.TimeLabelFor(new LocalDate(2026, 6, 2), madrid)
+            .Should().Be(OccurrenceTimeLabel.Continues);
+    }
+
+    [HumansFact]
+    public void TimeLabelFor_MarksAnAllDayEvent_AllDayThenContinues()
+    {
+        var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+        var occurrence = Occurrence(
+            Instant.FromUtc(2026, 5, 31, 22, 0),
+            Instant.FromUtc(2026, 6, 3, 22, 0),
+            isAllDay: true);
+
+        occurrence.TimeLabelFor(new LocalDate(2026, 6, 1), madrid)
+            .Should().Be(OccurrenceTimeLabel.AllDay);
+        occurrence.TimeLabelFor(new LocalDate(2026, 6, 3), madrid)
+            .Should().Be(OccurrenceTimeLabel.Continues);
+    }
+
+    [HumansFact]
+    public void TimeLabelFor_ShowsTheStartTime_ForAnOrdinarySingleDayEvent()
+    {
+        var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+        var occurrence = Occurrence(
+            Instant.FromUtc(2026, 6, 1, 17, 0),
+            Instant.FromUtc(2026, 6, 1, 18, 0));
+
+        occurrence.TimeLabelFor(new LocalDate(2026, 6, 1), madrid)
+            .Should().Be(OccurrenceTimeLabel.StartTime);
+    }
+
     [HumansFact]
     public void ShouldHideTimeLabel_Hides_a_timed_event_that_spans_local_dates()
     {

@@ -25,4 +25,29 @@ internal static class CalendarOccurrenceViewExtensions
         if (occ.IsAllDay) return true;
         return occ.EndLocalDate(zone) > occ.StartLocalDate(zone);
     }
+
+    /// <summary>
+    /// Which badge a day-per-row view shows for this occurrence on <paramref name="day"/>.
+    /// <see cref="ShouldHideTimeLabel"/> answers a different question — whether a time label
+    /// would be misleading — and reading it as "is all day" labels a 22:00–02:00 event "all
+    /// day" on its first day and drops the only time it has. The two views that render this
+    /// badge asked it that way, in duplicate, which is how the defect went unseen.
+    /// </summary>
+    public static OccurrenceTimeLabel TimeLabelFor(
+        this CalendarOccurrence occ, LocalDate day, DateTimeZone zone) =>
+        occ.StartLocalDate(zone) != day ? OccurrenceTimeLabel.Continues
+        : occ.IsAllDay ? OccurrenceTimeLabel.AllDay
+        : OccurrenceTimeLabel.StartTime;
+}
+
+internal enum OccurrenceTimeLabel
+{
+    /// <summary>The occurrence's local start time.</summary>
+    StartTime,
+
+    /// <summary>It covers whole days, and this is the first of them.</summary>
+    AllDay,
+
+    /// <summary>It began on an earlier day and runs through this one.</summary>
+    Continues,
 }
