@@ -8,8 +8,11 @@ using Humans.Base.Interfaces.Caching;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
 using Humans.Auth.Services;
+using Humans.AuditLog.Contracts;
 using Humans.Base.Constants;
+using Humans.Notifications.Contracts;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 
 using Humans.Users.Contracts;
 
@@ -24,6 +27,8 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
     private readonly IUserServiceRead _userService;
     private readonly INavBadgeCacheInvalidator _navBadge;
     private readonly IRoleAssignmentClaimsCacheInvalidator _claimsInvalidator;
+    private readonly IRoleAssignmentCacheInvalidator _rowCache;
+    private readonly ISystemTeamSync _systemTeamSync;
     private readonly RoleAssignmentService _service;
 
     public RoleAssignmentServiceTests()
@@ -35,16 +40,18 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
 
         _navBadge = Substitute.For<INavBadgeCacheInvalidator>();
         _claimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
+        _rowCache = Substitute.For<IRoleAssignmentCacheInvalidator>();
+        _systemTeamSync = Substitute.For<ISystemTeamSync>();
 
         _service = new RoleAssignmentService(
             _repository,
             _userService,
             AuditLog,
             Notifier,
-            Substitute.For<ISystemTeamSync>(),
+            _systemTeamSync,
             _navBadge,
             _claimsInvalidator,
-            Substitute.For<IRoleAssignmentCacheInvalidator>(),
+            _rowCache,
             Clock,
             NullLogger<RoleAssignmentService>.Instance);
     }
@@ -154,6 +161,170 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
         result.Success.Should().BeTrue();
         _claimsInvalidator.Received(1).Invalidate(userId);
         _navBadge.Received(1).Invalidate();
+    }
+
+    [HumansFact]
+    public async Task AssignRoleAsync_InvalidatesRowCache_AndWritesAudit()
+    {
+        // The row cache is a Singleton holding every role_assignments row; a write
+        // that skips InvalidateAll leaves every reader on stale roles until restart.
+        var userId = Guid.NewGuid();
+        var assignerId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Target User");
+        await SeedUserAsync(assignerId, "Admin User");
+
+        await _service.AssignRoleAsync(
+            userId, RoleNames.Board, assignerId, null, TestContext.Current.CancellationToken);
+
+        _rowCache.Received(1).InvalidateAll();
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.RoleAssigned, nameof(User), userId,
+            Arg.Is<string>(d => d.Contains(RoleNames.Board, StringComparison.Ordinal)),
+            assignerId, Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task EndRoleAsync_InvalidatesRowCache_AndWritesAudit()
+    {
+        var userId = Guid.NewGuid();
+        var enderId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Target User");
+        await SeedUserAsync(enderId, "Admin User");
+        var assignment = await AddAssignmentAsync(
+            userId, RoleNames.Board, Clock.GetCurrentInstant() - Duration.FromDays(1), null);
+
+        await _service.EndRoleAsync(
+            assignment.Id, enderId, null, TestContext.Current.CancellationToken);
+
+        _rowCache.Received(1).InvalidateAll();
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.RoleEnded, nameof(User), userId,
+            Arg.Is<string>(d => d.Contains(RoleNames.Board, StringComparison.Ordinal)),
+            enderId, Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task AssignRoleAsync_Board_SyncsBoardSystemTeam_OtherRolesDoNot()
+    {
+        // The Board system team's membership mirrors the Board role. The sync is
+        // guarded on the role name, so both arms of that guard are behaviour.
+        var boardUser = Guid.NewGuid();
+        var adminUser = Guid.NewGuid();
+        var assignerId = Guid.NewGuid();
+        await SeedUserAsync(boardUser, "Board Member");
+        await SeedUserAsync(adminUser, "Admin Member");
+        await SeedUserAsync(assignerId, "Assigner");
+
+        await _service.AssignRoleAsync(
+            adminUser, RoleNames.Admin, assignerId, null, TestContext.Current.CancellationToken);
+        await _systemTeamSync.DidNotReceive().SyncBoardTeamAsync();
+
+        await _service.AssignRoleAsync(
+            boardUser, RoleNames.Board, assignerId, null, TestContext.Current.CancellationToken);
+        await _systemTeamSync.Received(1).SyncBoardTeamAsync();
+    }
+
+    [HumansFact]
+    public async Task EndRoleAsync_Board_SyncsBoardSystemTeam_OtherRolesDoNot()
+    {
+        var boardUser = Guid.NewGuid();
+        var adminUser = Guid.NewGuid();
+        var enderId = Guid.NewGuid();
+        await SeedUserAsync(boardUser, "Board Member");
+        await SeedUserAsync(adminUser, "Admin Member");
+        await SeedUserAsync(enderId, "Ender");
+        var yesterday = Clock.GetCurrentInstant() - Duration.FromDays(1);
+        var adminRow = await AddAssignmentAsync(adminUser, RoleNames.Admin, yesterday, null);
+        var boardRow = await AddAssignmentAsync(boardUser, RoleNames.Board, yesterday, null);
+
+        await _service.EndRoleAsync(adminRow.Id, enderId, null, TestContext.Current.CancellationToken);
+        await _systemTeamSync.DidNotReceive().SyncBoardTeamAsync();
+
+        await _service.EndRoleAsync(boardRow.Id, enderId, null, TestContext.Current.CancellationToken);
+        await _systemTeamSync.Received(1).SyncBoardTeamAsync();
+    }
+
+    [HumansFact]
+    public async Task EndRoleAsync_AlreadyEnded_ReturnsRoleNotActive()
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Target");
+        var assignment = await AddAssignmentAsync(
+            userId,
+            RoleNames.Board,
+            Clock.GetCurrentInstant() - Duration.FromDays(10),
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+
+        var result = await _service.EndRoleAsync(
+            assignment.Id, Guid.NewGuid(), null, TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("RoleNotActive");
+    }
+
+    [HumansFact]
+    public async Task EndRoleAsync_NotYetActive_ReturnsRoleNotActive()
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Target");
+        var assignment = await AddAssignmentAsync(
+            userId, RoleNames.Board, Clock.GetCurrentInstant() + Duration.FromDays(1), null);
+
+        var result = await _service.EndRoleAsync(
+            assignment.Id, Guid.NewGuid(), null, TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("RoleNotActive");
+    }
+
+    [HumansFact]
+    public async Task AssignRoleAsync_NotificationThrows_StillSucceeds()
+    {
+        // The in-app notification is best-effort. A Notifications outage must not
+        // roll a role assignment back or surface as a failure to the admin.
+        var userId = Guid.NewGuid();
+        var assignerId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Target");
+        await SeedUserAsync(assignerId, "Admin");
+        Notifier
+            .SendAsync(
+                Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(),
+                Arg.Any<NotificationPriority>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("notifications down"));
+
+        var result = await _service.AssignRoleAsync(
+            userId, RoleNames.Board, assignerId, null, TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        var rows = await AuthDb.RoleAssignments.AsNoTracking()
+            .Where(ra => ra.UserId == userId)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        rows.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task RevokeAllActiveAsync_StaysSilent_UnlikeTheAdminWritePaths()
+    {
+        // Deliberate asymmetry: bulk revoke is the account-deletion/privacy path, not
+        // an admin role-management action, so it invalidates caches but dispatches no
+        // per-row notification and does not bump the nav-badge counters. The same
+        // roles ended one at a time through EndRoleAsync do both.
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Target");
+        await AddAssignmentAsync(userId, RoleNames.Board, Clock.GetCurrentInstant() - Duration.FromDays(10), null);
+        await AddAssignmentAsync(userId, RoleNames.Admin, Clock.GetCurrentInstant() - Duration.FromDays(5), null);
+
+        await _service.RevokeAllActiveAsync(userId, TestContext.Current.CancellationToken);
+
+        _rowCache.Received(1).InvalidateAll();
+        _navBadge.DidNotReceive().Invalidate();
+        await Notifier.DidNotReceive().SendAsync(
+            Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(),
+            Arg.Any<NotificationPriority>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
