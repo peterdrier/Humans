@@ -6,8 +6,7 @@ namespace Humans.Auth.Data;
 
 /// <summary>
 /// EF-backed implementation of <see cref="IRoleAssignmentRepository"/>. The
-/// only non-test file that writes to <c>DbContext.RoleAssignments</c> after
-/// the Auth migration lands.
+/// only non-test writer of <c>role_assignments</c>.
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>AuthDbContext</c> remains Scoped.
 /// </summary>

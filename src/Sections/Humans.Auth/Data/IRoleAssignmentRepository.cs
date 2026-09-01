@@ -7,12 +7,12 @@ namespace Humans.Auth.Data;
 
 /// <summary>
 /// Repository for the Auth section's table: <c>role_assignments</c>. The only
-/// non-test file that writes to this DbSet after the Auth migration lands.
+/// non-test writer of that table.
 /// </summary>
 /// <remarks>
-/// Reads never <c>.Include()</c> cross-domain navigation properties
-/// (<c>RoleAssignment.User</c>, <c>RoleAssignment.CreatedByUser</c>). Callers
-/// in the Application layer stitch display data from <c>IUserService</c>.
+/// There are no cross-domain navigation properties to <c>.Include()</c>;
+/// <c>RoleAssignmentService</c> stitches display data in memory via
+/// <c>IUserServiceRead</c>.
 ///
 /// Auth is low-traffic (handful of admin writes per month, a few reads per
 /// day). The repository uses the Singleton + <c>IDbContextFactory</c> pattern

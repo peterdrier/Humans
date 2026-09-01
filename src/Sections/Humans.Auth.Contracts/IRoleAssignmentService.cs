@@ -87,7 +87,7 @@ public interface IRoleAssignmentService : IApplicationService
     /// <summary>
     /// Evicts the cached claims for <paramref name="userId"/> so the next
     /// request re-derives roles from <c>role_assignments</c>. Called
-    /// post-commit by <c>AccountMergeService.AcceptAsync</c> after a fold,
+    /// post-commit by <c>AccountMergeService.MergeAsync</c> after a fold,
     /// since the fold can change either user's effective role set.
     /// </summary>
     void InvalidateClaimsCacheForUser(Guid userId);
@@ -95,14 +95,14 @@ public interface IRoleAssignmentService : IApplicationService
     /// <summary>
     /// Bumps the global nav-badge cache so governance role lists (Board,
     /// Coordinators, etc.) re-derive on the next badge read. Called
-    /// post-commit by <c>AccountMergeService.AcceptAsync</c> after a fold.
+    /// post-commit by <c>AccountMergeService.MergeAsync</c> after a fold.
     /// </summary>
     void InvalidateNavBadgeCache();
 
     /// <summary>
     /// Evicts the singleton role-assignment row cache (the one backing
     /// <see cref="GetActiveCountsByRoleAsync"/>). Called post-commit by
-    /// <c>AccountMergeService.AcceptAsync</c> after a fold, since the fold's
+    /// <c>AccountMergeService.MergeAsync</c> after a fold, since the fold's
     /// bulk re-FK happens through <c>IRoleAssignmentRepository.ReassignToUserAsync</c>
     /// without flowing through one of this service's standalone write
     /// methods. Other writes (<see cref="AssignRoleAsync"/>,
