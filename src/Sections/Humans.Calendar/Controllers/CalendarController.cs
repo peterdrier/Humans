@@ -163,7 +163,6 @@ internal sealed class CalendarController : HumansControllerBase
             .Take(5)
             .ToList();
 
-        // §6b: owning-team name via ITeamService lookup (OwningTeam nav is [Obsolete]).
         var owningTeam = await _teams.GetTeamAsync(ev.OwningTeamId, ct);
         var owningTeamName = owningTeam?.Name ?? string.Empty;
 

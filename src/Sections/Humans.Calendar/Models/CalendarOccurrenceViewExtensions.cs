@@ -8,7 +8,6 @@ internal static class CalendarOccurrenceViewExtensions
     public static LocalDate StartLocalDate(this CalendarOccurrence occ, DateTimeZone zone) =>
         occ.OccurrenceStartUtc.InZone(zone).Date;
 
-    // Inclusive local end date; midnight-aligned ends collapse to the prior day (half-open semantics).
     public static LocalDate EndLocalDate(this CalendarOccurrence occ, DateTimeZone zone)
     {
         if (occ.OccurrenceEndUtc is not { } endUtc) return occ.StartLocalDate(zone);

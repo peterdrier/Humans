@@ -7,20 +7,13 @@ namespace Humans.Calendar.Data;
 /// <summary>
 /// EF-backed implementation of <see cref="ICalendarRepository"/>. The only
 /// non-test file that touches the Calendar-owned DbSets
-/// (<c>CalendarEvents</c>, <c>CalendarEventExceptions</c>) after the Calendar
-/// §15 migration (issue #569) lands. Uses
+/// (<c>CalendarEvents</c>, <c>CalendarEventExceptions</c>). Uses
 /// <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>CalendarDbContext</c> remains Scoped.
-/// The owning team is a bare Guid — not in this model at all; the service
-/// stitches team names via
-/// <see cref="Application.Interfaces.Teams.ITeamService"/>.
+/// The owning team is a bare Guid — not in this model at all.
 /// </summary>
 internal sealed class CalendarRepository(IDbContextFactory<CalendarDbContext> factory) : ICalendarRepository
 {
-    // ==========================================================================
-    // Reads
-    // ==========================================================================
-
     public async Task<IReadOnlyList<CalendarEvent>> GetEventsInWindowAsync(
         Instant from,
         Instant to,
@@ -60,10 +53,6 @@ internal sealed class CalendarRepository(IDbContextFactory<CalendarDbContext> fa
             .Include(e => e.Exceptions)
             .ToListAsync(ct);
     }
-
-    // ==========================================================================
-    // Writes — CalendarEvent
-    // ==========================================================================
 
     public async Task AddAsync(CalendarEvent ev, CancellationToken ct = default)
     {
@@ -106,10 +95,6 @@ internal sealed class CalendarRepository(IDbContextFactory<CalendarDbContext> fa
         await ctx.SaveChangesAsync(ct);
         return (ev.OwningTeamId, ev.Title);
     }
-
-    // ==========================================================================
-    // Writes — CalendarEventException
-    // ==========================================================================
 
     public async Task UpsertExceptionAsync(
         Guid eventId,
