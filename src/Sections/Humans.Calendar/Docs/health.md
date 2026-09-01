@@ -34,8 +34,8 @@ Every externally reachable thing, grouped by the question it answers.
 
 | Question-shape | Surfaces answering it | Notes |
 |---|---|---|
-| *What is scheduled between these two instants (optionally for one team)?* | 4 routes — `/Calendar`, `/Calendar/List`, `/Calendar/Agenda`, `/Calendar/Team/{id}` — plus `ICalendarServiceRead.GetOccurrencesInWindowAsync` | The four differ in how the window is derived and how it is rendered. Nothing else. |
-| *What is this one entry?* | `/Calendar/Event/{id}` route; `GetEventByIdAsync` (UI projection) and `GetEventInfoAsync` / `GetAllEventInfosAsync` (cache projections) | One question, three projections of it — two of the three exist for the cache, not for a caller. |
+| *What is scheduled between these two instants (optionally for one team)?* | The routes `/Calendar`, `/Calendar/List`, `/Calendar/Agenda`, `/Calendar/Team/{id}`, plus `ICalendarServiceRead.GetOccurrencesInWindowAsync` | They differ in how the window is derived and how it is rendered. Nothing else. |
+| *What is this one entry?* | `/Calendar/Event/{id}` route; `GetEventByIdAsync` (UI projection) and `GetEventInfoAsync` / `GetAllEventInfosAsync` (cache projections) | One question, several projections of it — all but the UI one exist for the cache, not for a caller. |
 | *Change a whole entry* | `Event/Create`, `Event/{id}/Edit`, `Event/{id}/Delete`; `Create`/`Update`/`Delete` on `ICalendarService` | Create and update each ship twice: a throwing form and a result form. |
 | *Change one occurrence of a repeating entry* | `Event/{id}/Occurrence/{start}/Edit`, `.../Cancel`; `OverrideOccurrenceAsync`, `CancelOccurrenceAsync` | Both are one upsert against `(event, original start)` with a different field-setter. |
 | *What has this person committed to?* | `GET /api/ical/{userId}/{token}.ics`; `IICalFeedService.GetFeedItemsAsync` (Scanner's ticket card, admin widget); `<vc:user-calendar>` | The only public cross-section surface. Table-free. |
@@ -46,17 +46,17 @@ framework discovery, not a question.
 
 ## 3. Structure
 
-The layout those six shapes imply, written fresh.
+The layout those shapes imply, written fresh.
 
 - **One window read.** A single path answers the window shape: snapshot the cached
   projections, prefilter by `(StartUtc, RecurrenceUntilUtc)` against the window, expand
-  recurrence, merge per-occurrence exceptions, sort. It exists once, and the four routes
-  reach it through one shared window-resolver that turns *(year, month)* or *(from, to)*
+  recurrence, merge per-occurrence exceptions, sort. It exists once, and every route
+  reaches it through one shared window-resolver that turns *(year, month)* or *(from, to)*
   plus the viewer's zone into a pair of instants. A route contributes a window and a view
   name; nothing else.
 - **One entry read**, projected for the caller that asks: the UI gets the detail shape,
   the cache gets the row shape.
-- **Five mutations, one silhouette each**: validate the recurrence pair → repository write
+- **One silhouette per mutation**: validate the recurrence pair → repository write
   → audit (best-effort, loud on failure) → refresh this event's cache entry. The
   per-occurrence pair is one upsert with a field-setter argument. A mutation reports
   failure one way, not two.
@@ -77,7 +77,7 @@ Stated so a violation is recognisable.
 2. The feed's four failure modes — unknown user, merged user, no token issued, wrong token —
    are indistinguishable from outside: all 404, no body, no timing tell.
 3. The feed URL and the token never appear in any rendered admin view.
-4. Every one of the five mutations writes an audit entry naming the actor. Entry-level
+4. Every mutation writes an audit entry naming the actor. Entry-level
    mutations also name the owning team; occurrence-level ones do not.
 5. A failed audit write never rolls back or hides a committed change, and never passes silently.
 6. `RecurrenceRule` and `RecurrenceTimezone` are both set or both null — never one.
@@ -107,7 +107,7 @@ Reserved, not ranked, not built this run.
   (`CanEdit`, hard-coded true in one place). Anything touching edit-button rendering is
   shaped by this seam.
 - **A viewer timezone.** Every view resolves `Europe/Madrid` from one private helper, marked
-  as awaiting a browser/profile source. All four window routes are its future callers.
+  as awaiting a browser/profile source. Every window route is a future caller.
 - **The feed's deep-link base**, hardcoded in `CalendarFeedItem` and marked for configuration.
 - **Calendar entries in the personal feed.** The two halves of the section share no data path
   today; the cache projection was designed to absorb that traffic if they ever do.
@@ -150,4 +150,4 @@ Settled decisions. Later runs should stop re-litigating these.
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-09-01 | List view rendered all-day and multi-day events wrong; four invariants pinned; ten false crefs and a phantom `OwningTeam` nav cut | peterdrier/Humans#1578 |
+| 1 | 2026-09-01 | List view rendered all-day and multi-day events wrong; documented-but-unpinned invariants given tests; false crefs and a phantom `OwningTeam` nav cut | peterdrier/Humans#1578 |
