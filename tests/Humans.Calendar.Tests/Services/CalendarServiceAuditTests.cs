@@ -54,6 +54,41 @@ public class CalendarServiceAuditTests
             teamId, AuditEntityTypes.Team);
     }
 
+    // Update was the mutation this suite originally missed, so its LogAsync call stayed
+    // deletable with everything else pinned. The team it names is the one the update *sets*,
+    // which is what keeps a moved event auditable under its new team rather than its old.
+    [HumansFact]
+    public async Task UpdateEventAsync_WritesOneAuditEntry_RelatedToTheOwningTeam()
+    {
+        var id = Guid.NewGuid();
+        var newTeamId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        _repo.UpdateAsync(id, Arg.Any<Action<CalendarEvent>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<Action<CalendarEvent>>()(new CalendarEvent
+                {
+                    Id = id,
+                    CreatedByUserId = actor,
+                    CreatedAt = Now,
+                });
+                return true;
+            });
+
+        await CreateSut().UpdateEventAsync(
+            id,
+            new UpdateCalendarEventDto(
+                "Planning moved", null, null, null, newTeamId,
+                Instant.FromUtc(2026, 6, 1, 10, 0), Instant.FromUtc(2026, 6, 1, 11, 0),
+                false, null, null),
+            actor, TestContext.Current.CancellationToken);
+
+        await _audit.Received(1).LogAsync(
+            AuditAction.CalendarEventUpdated, AuditEntityTypes.CalendarEvent, id,
+            Arg.Any<string>(), actor,
+            newTeamId, AuditEntityTypes.Team);
+    }
+
     [HumansFact]
     public async Task DeleteEventAsync_WritesOneAuditEntry_RelatedToTheOwningTeam()
     {
