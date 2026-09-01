@@ -61,10 +61,13 @@ Repository: `IRoleAssignmentRepository`.
 |-------|-----|
 | RoleAssignments | R |
 
-Read-only — answers "is this user a board member / coordinator / admin"
-for cross-section authorization checks. Cycle-safe (does not pull
-`IAuthorizationService`). No cache (reads route through the inner repo;
-hot reads can migrate to the cached row set incrementally).
+Read-only, and narrower than it sounds: the one method
+(`RequireCurrentUserIsAdminAsync`) hardcodes `RoleNames.Admin` and throws
+`UnauthorizedAccessException` for everyone else. It is a full-Admin guard in
+front of destructive cross-section actions — it answers no Board or
+Coordinator question. Cycle-safe (does not pull `IAuthorizationService`). No
+cache (reads route through the inner repo; hot reads can migrate to the cached
+row set incrementally).
 
 ---
 
