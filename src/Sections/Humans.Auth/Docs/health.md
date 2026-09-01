@@ -93,8 +93,10 @@ checks against.
 3. `EndRoleAsync` refuses a row that is already ended or not yet active.
 4. Exactly one definition of "active at *t*" — `ValidFrom <= t && (ValidTo is null || ValidTo > t)`
    — governs every read, in SQL and in memory alike.
-5. Every write, including the bulk revoke, invalidates the row cache and the claims cache for
-   the affected user before the call returns.
+5. Assign, end, and the bulk revoke invalidate the row cache and the claims cache for the
+   affected user before the call returns. The merge path (`ReassignAsync`) is the exception by
+   contract: it leaves invalidation to `AccountMergeService.MergeAsync`, which flushes after the
+   merge's commit point.
 6. Every single-row write leaves an audit entry attributed to the actor, and best-effort
    notifies the affected person; a notification failure never fails the write.
 7. Granting or ending `Board` reconciles the Board system team.
