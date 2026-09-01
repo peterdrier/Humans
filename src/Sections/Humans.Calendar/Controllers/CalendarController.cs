@@ -41,39 +41,23 @@ internal sealed class CalendarController : HumansControllerBase
         [FromQuery] int? year,
         [FromQuery] int? month,
         [FromQuery] Guid? teamId,
-        CancellationToken ct)
-    {
-        var zone = GetViewerZone();
-        var today = _clock.GetCurrentInstant().InZone(zone).Date;
-        var ym = new YearMonth(year ?? today.Year, month ?? today.Month);
-
-        var firstOfMonth = ym.OnDayOfMonth(1);
-        var from = firstOfMonth.AtMidnight().InZoneLeniently(zone).ToInstant();
-        var daysInMonth = firstOfMonth.Calendar.GetDaysInMonth(ym.Year, ym.Month);
-        var to = ym.OnDayOfMonth(daysInMonth).AtMidnight().InZoneLeniently(zone).ToInstant()
-                     .Plus(Duration.FromDays(1));
-
-        var occ = await _calendarRead.GetOccurrencesInWindowAsync(from, to, teamId, ct);
-        var teams = (await _teams.GetTeamsAsync(ct))
-            .Values
-            .Where(t => t.IsActive)
-            .Select(t => new TeamOption(t.Id, t.Name))
-            .ToList();
-
-        return View(new CalendarMonthViewModel(
-            Month: ym,
-            Occurrences: occ,
-            FilterTeamId: teamId,
-            TeamOptions: teams,
-            ViewerTimezoneLabel: zone.Id));
-    }
+        CancellationToken ct) =>
+        View(await BuildMonthViewAsync(year, month, teamId, ct));
 
     [HttpGet("List")]
     public async Task<IActionResult> List(
         [FromQuery] int? year,
         [FromQuery] int? month,
         [FromQuery] Guid? teamId,
-        CancellationToken ct)
+        CancellationToken ct) =>
+        View(await BuildMonthViewAsync(year, month, teamId, ct));
+
+    /// <summary>
+    /// The month window Index and List both render — same query, same view model,
+    /// differing only in which view renders it (grid vs one row per day).
+    /// </summary>
+    private async Task<CalendarMonthViewModel> BuildMonthViewAsync(
+        int? year, int? month, Guid? teamId, CancellationToken ct)
     {
         var zone = GetViewerZone();
         var today = _clock.GetCurrentInstant().InZone(zone).Date;
@@ -92,12 +76,12 @@ internal sealed class CalendarController : HumansControllerBase
             .Select(t => new TeamOption(t.Id, t.Name))
             .ToList();
 
-        return View(new CalendarMonthViewModel(
+        return new CalendarMonthViewModel(
             Month: ym,
             Occurrences: occ,
             FilterTeamId: teamId,
             TeamOptions: teams,
-            ViewerTimezoneLabel: zone.Id));
+            ViewerTimezoneLabel: zone.Id);
     }
 
     [HttpGet("Agenda")]
