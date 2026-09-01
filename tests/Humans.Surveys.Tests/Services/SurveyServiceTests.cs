@@ -1565,6 +1565,7 @@ public class SurveyServiceTests
         var userId = Guid.NewGuid();
         var invitation = InvitationFor(survey.Id, userId);
         var questionId = Guid.NewGuid();
+        var ranked = new RankedAnswer([["a"], ["b"]], ["c"]);
         var draft = new SurveyResponse
         {
             Id = Guid.NewGuid(),
@@ -1574,7 +1575,15 @@ public class SurveyServiceTests
             Anonymity = ResponseAnonymity.Identified,
             Answers = new List<SurveyAnswer>
             {
-                new() { Id = Guid.NewGuid(), QuestionId = questionId, SelectedOptionValues = ["yes"], TextValue = "note", RatingValue = 4 },
+                new()
+                {
+                    Id = Guid.NewGuid(),
+                    QuestionId = questionId,
+                    SelectedOptionValues = ["yes"],
+                    TextValue = "note",
+                    RatingValue = 4,
+                    RankedValue = ranked,
+                },
             },
         };
 
@@ -1597,6 +1606,7 @@ public class SurveyServiceTests
         answer.SelectedOptionValues.Should().ContainInOrder("yes");
         answer.TextValue.Should().Be("note");
         answer.RatingValue.Should().Be(4);
+        answer.RankedValue.Should().Be(ranked);
     }
 
     [HumansFact]
@@ -2289,6 +2299,36 @@ public class SurveyServiceTests
         result.Outcome.Should().Be(SurveyWizardOutcome.ValidationFailed);
         result.MissingRequired.Should().BeEquivalentTo(new[] { q1Id });
         state.CurrentPage.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task AdvanceWizardAsync_reports_invalid_ranked_answer_and_preserves_it()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        var questionId = Guid.NewGuid();
+        var question = RankedQuestion(questionId, survey.Id);
+        question.RankedSettings = RankedQuestionSettings.Default with { AllowEqualRanks = false };
+        survey.Questions = [question];
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        var state = WizardState(survey.Id);
+        var ranked = new RankedAnswer([["a", "b"]], []);
+        var posted = new SurveyAnswerInput(questionId, [], null, null, null, ranked);
+
+        var result = await CreateService().AdvanceWizardAsync(
+            state,
+            page: 1,
+            back: false,
+            [posted],
+            ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.ValidationFailed);
+        result.MissingRequired.Should().BeEmpty();
+        result.InvalidAnswers.Should().ContainSingle().Which.Should().Be(questionId);
+        state.CurrentPage.Should().Be(1);
+        state.Answers[questionId.ToString()].RankedValue.Should().Be(ranked);
+        state.Started.Should().BeFalse();
+        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
+            Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

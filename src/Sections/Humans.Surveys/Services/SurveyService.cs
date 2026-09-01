@@ -779,7 +779,8 @@ internal sealed class SurveyService(
                     a.GridSelections?.ToDictionary(
                         kv => kv.Key,
                         kv => (IReadOnlyList<string>)kv.Value,
-                        StringComparer.Ordinal)))
+                        StringComparer.Ordinal),
+                    a.RankedValue))
                 .ToList();
 
         return new SurveyAnswerContext(
@@ -1084,6 +1085,7 @@ internal sealed class SurveyService(
         var visibleBefore = SurveyWizardFlow.VisibleQuestionsOnPage(
             editable.Questions, page, SurveyWizardFlow.ToAnswerStates(state.Answers));
         var posted = postedAnswers.ToDictionary(a => a.QuestionId);
+        var invalidAnswers = new List<Guid>();
 
         foreach (var question in visibleBefore)
         {
@@ -1093,6 +1095,20 @@ internal sealed class SurveyService(
             {
                 state.Answers.Remove(id.ToString());
                 continue;
+            }
+
+            RankedAnswer? rankedValue = null;
+            if (question.Type == SurveyQuestionType.RankedChoice)
+            {
+                try
+                {
+                    rankedValue = NormalizeRankedAnswer(question, answer.RankedValue);
+                }
+                catch (InvalidOperationException)
+                {
+                    rankedValue = answer.RankedValue;
+                    invalidAnswers.Add(id);
+                }
             }
 
             state.Answers[id.ToString()] = new SurveyWizardAnswer
@@ -1105,10 +1121,17 @@ internal sealed class SurveyService(
                     answer.GridSelections),
                 TextValue = string.IsNullOrWhiteSpace(answer.TextValue) ? null : answer.TextValue,
                 RatingValue = answer.RatingValue,
-                RankedValue = question.Type == SurveyQuestionType.RankedChoice
-                    ? NormalizeRankedAnswer(question, answer.RankedValue)
-                    : null,
+                RankedValue = rankedValue,
             };
+        }
+
+        if (invalidAnswers.Count > 0)
+        {
+            state.CurrentPage = page;
+            return new SurveyWizardAdvanceResult(
+                SurveyWizardOutcome.ValidationFailed,
+                [],
+                invalidAnswers);
         }
 
         // A survey may be edited while a respondent has a wizard session open. Re-normalize every

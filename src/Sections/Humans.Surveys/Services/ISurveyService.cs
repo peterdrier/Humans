@@ -391,7 +391,7 @@ internal sealed class SurveyWizardAnswer
     public int? RatingValue { get; set; }
 }
 
-/// <summary>Where one wizard advance landed. <c>ValidationFailed</c> carries the missing required question ids.</summary>
+/// <summary>Where one wizard advance landed. <c>ValidationFailed</c> carries question-level validation details.</summary>
 internal enum SurveyWizardOutcome
 {
     /// <summary>The survey no longer exists (treat as an invalid link).</summary>
@@ -403,7 +403,7 @@ internal enum SurveyWizardOutcome
     /// <summary>The Human no longer holds active, approved Asociado voting rights.</summary>
     Ineligible,
 
-    /// <summary>Required visible questions are unanswered; the state stays on the posted page.</summary>
+    /// <summary>One or more visible answers are missing or invalid; the state stays on the relevant page.</summary>
     ValidationFailed,
 
     /// <summary>Moved to the previous/next visible page (<c>state.CurrentPage</c> updated).</summary>
@@ -413,5 +413,8 @@ internal enum SurveyWizardOutcome
     Submitted,
 }
 
-/// <summary>Outcome of one wizard advance. <see cref="MissingRequired"/> is empty except on <see cref="SurveyWizardOutcome.ValidationFailed"/>.</summary>
-internal sealed record SurveyWizardAdvanceResult(SurveyWizardOutcome Outcome, IReadOnlyList<Guid> MissingRequired);
+/// <summary>Outcome of one wizard advance. Validation collections are empty except on <see cref="SurveyWizardOutcome.ValidationFailed"/>.</summary>
+internal sealed record SurveyWizardAdvanceResult(
+    SurveyWizardOutcome Outcome,
+    IReadOnlyList<Guid> MissingRequired,
+    IReadOnlyList<Guid>? InvalidAnswers = null);

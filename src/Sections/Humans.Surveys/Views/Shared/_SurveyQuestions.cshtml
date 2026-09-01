@@ -7,9 +7,8 @@
 @for (var i = 0; i < Model.Questions.Count; i++)
 {
     var q = Model.Questions[i];
-    var hasError = !ViewData.ModelState.IsValid
-        && ViewData.ModelState.TryGetValue(q.Id.ToString(), out var entry)
-        && entry.Errors.Count > 0;
+    ViewData.ModelState.TryGetValue(q.Id.ToString(), out var entry);
+    var hasError = entry?.Errors.Count > 0;
 
     @if (q.Type == SurveyQuestionType.Information)
     {
@@ -280,7 +279,10 @@
 
         @if (hasError)
         {
-            <div class="text-danger small mt-1">@Localizer["Survey_QuestionRequired"]</div>
+            @foreach (var error in entry!.Errors)
+            {
+                <div class="text-danger small mt-1">@error.ErrorMessage</div>
+            }
         }
     </fieldset>
 }

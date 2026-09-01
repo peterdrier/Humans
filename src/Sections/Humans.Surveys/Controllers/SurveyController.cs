@@ -488,6 +488,10 @@ internal sealed class SurveyController(
                 {
                     ModelState.AddModelError(id.ToString(), localizer["Survey_QuestionRequired"]);
                 }
+                foreach (var id in result.InvalidAnswers ?? [])
+                {
+                    ModelState.AddModelError(id.ToString(), localizer["Survey_AnswerInvalid"]);
+                }
 
                 route.Save(HttpContext.Session, state);
                 return await RenderPage(state, route, ct);

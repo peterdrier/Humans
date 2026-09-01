@@ -7,10 +7,15 @@ using Humans.Surveys.Services;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.Surveys.Contracts;
+using Humans.Testing;
+using System.Security.Claims;
 
 namespace Humans.Surveys.Tests.Controllers;
 
@@ -142,6 +147,51 @@ public sealed class SurveyAdminControllerTests
         model.AudienceTeamName.Should().Be("Archived Team");
         await teams.Received(1).GetTeamAsync(teamId, Arg.Any<CancellationToken>());
         await teams.DidNotReceive().GetTeamsAsync(Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RankedAvailability_logs_a_rejected_update()
+    {
+        var surveyId = Guid.NewGuid();
+        var questionId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.SetRankedAvailabilityAsync(
+                surveyId,
+                questionId,
+                Arg.Any<IReadOnlyList<string>>(),
+                actorId,
+                Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new InvalidOperationException("The vote is still open."));
+        var logger = new CapturingLogger<SurveyAdminController>();
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())],
+                "test")),
+        };
+        var sut = new SurveyAdminController(
+            surveys,
+            Substitute.For<ITeamServiceRead>(),
+            Substitute.For<IUserServiceRead>(),
+            logger)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+        };
+
+        var result = await sut.RankedAvailability(
+            surveyId,
+            questionId,
+            [],
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        var entry = logger.Entries.Should().ContainSingle().Subject;
+        entry.Level.Should().Be(LogLevel.Warning);
+        entry.Message.Should().Contain(surveyId.ToString())
+            .And.Contain(questionId.ToString())
+            .And.Contain("The vote is still open.");
     }
 
     private static SurveyAdminController CreateController(

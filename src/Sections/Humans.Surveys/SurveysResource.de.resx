@@ -62,6 +62,8 @@
   <data name="Survey_PageOf" xml:space="preserve"><value>Seite {0} von {1}</value></data>
   <data name="Survey_RequiredAlert" xml:space="preserve"><value>Bitte beantworte die Pflichtfragen, bevor du fortfährst.</value></data>
   <data name="Survey_QuestionRequired" xml:space="preserve"><value>Diese Frage ist erforderlich.</value></data>
+  <data name="Survey_ValidationAlert" xml:space="preserve"><value>Bitte überprüfe die markierten Antworten, bevor du fortfährst.</value></data>
+  <data name="Survey_AnswerInvalid" xml:space="preserve"><value>Bitte überprüfe diese Antwort und versuche es erneut.</value></data>
   <data name="Survey_Back" xml:space="preserve"><value>Zurück</value></data>
   <data name="Survey_Next" xml:space="preserve"><value>Weiter</value></data>
   <data name="Survey_Submit" xml:space="preserve"><value>Absenden</value></data>

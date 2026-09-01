@@ -57,6 +57,8 @@
   <data name="Survey_PageOf" xml:space="preserve"><value>Page {0} of {1}</value></data>
   <data name="Survey_RequiredAlert" xml:space="preserve"><value>Please answer the required questions before continuing.</value></data>
   <data name="Survey_QuestionRequired" xml:space="preserve"><value>This question is required.</value></data>
+  <data name="Survey_ValidationAlert" xml:space="preserve"><value>Please check the highlighted answers before continuing.</value></data>
+  <data name="Survey_AnswerInvalid" xml:space="preserve"><value>Please check this answer and try again.</value></data>
   <data name="Survey_Back" xml:space="preserve"><value>Back</value></data>
   <data name="Survey_Next" xml:space="preserve"><value>Next</value></data>
   <data name="Survey_Submit" xml:space="preserve"><value>Submit</value></data>
