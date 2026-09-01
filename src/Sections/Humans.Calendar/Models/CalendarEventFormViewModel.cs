@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Humans.Calendar.Services.Dtos;
 using NodaTime;
 
 namespace Humans.Calendar.Models;
@@ -52,4 +53,17 @@ internal sealed class CalendarEventFormViewModel
     /// </summary>
     public static DateTimeZone? TryResolveZone(string? tz) =>
         string.IsNullOrWhiteSpace(tz) ? null : DateTimeZoneProviders.Tzdb.GetZoneOrNull(tz);
+
+    /// <summary>
+    /// The form field a mutation's validation error belongs to, given the member name the
+    /// service reported. Empty means the form level, where the validation summary carries it:
+    /// the service names a member only for the recurrence pair it validates by hand, and every
+    /// other rejection reaches the caller with no member name.
+    /// </summary>
+    public static string ErrorFieldFor(string? serviceMemberName) => serviceMemberName switch
+    {
+        nameof(CreateCalendarEventDto.RecurrenceTimezone) => nameof(RecurrenceTimezone),
+        nameof(CreateCalendarEventDto.RecurrenceRule) => nameof(RecurrenceRule),
+        _ => string.Empty,
+    };
 }

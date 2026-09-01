@@ -395,20 +395,17 @@ internal sealed class CalendarController : HumansControllerBase
     private Guid RequireCurrentUserId() =>
         GetCurrentUserId() ?? throw new InvalidOperationException("Current user has no valid ID claim.");
 
-    // The service can only identify one failing member by name (the timezone). Everything
-    // else it reports — Title, EndUtc, start-after-end — goes to the form level, so the
-    // validation summary carries it. Attaching those to RecurrenceRule instead put a Title
-    // error under the RRULE input.
+    // The service names the member for the pair it validates by hand, and leaves it null for
+    // everything else — Title, EndUtc and start-after-end arrive through Failed(), which
+    // carries no member name at all. Null belongs at the form level, where the validation
+    // summary carries it; mapping null to RecurrenceRule is what put a Title error under the
+    // RRULE input.
     private void AddCalendarEventMutationError(
         CalendarEventMutationResult result)
     {
-        var memberName = string.Equals(
-                result.ValidationMemberName,
-                nameof(CreateCalendarEventDto.RecurrenceTimezone),
-                StringComparison.Ordinal)
-            ? nameof(CalendarEventFormViewModel.RecurrenceTimezone)
-            : string.Empty;
-        ModelState.AddModelError(memberName, result.ErrorMessage ?? "Failed to save calendar event.");
+        ModelState.AddModelError(
+            CalendarEventFormViewModel.ErrorFieldFor(result.ValidationMemberName),
+            result.ErrorMessage ?? "Failed to save calendar event.");
     }
 
     // Org default for v1 (all volunteers in Spain). TODO: derive from browser/profile.

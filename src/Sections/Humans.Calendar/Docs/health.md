@@ -11,7 +11,7 @@ the shape the section's behavior implies. History rows at the bottom.
 
 ## 1. What the section does
 
-Two things that share a roof and no data path.
+Separate things that share a roof and no data path.
 
 **A community calendar.** Anyone signed in can see what every team has scheduled — this
 month, as a grid or a list, or as an agenda of what is coming up — and can add, change or
@@ -74,8 +74,8 @@ Stated so a violation is recognisable.
 
 1. Anonymous callers reach exactly one endpoint in this section: the `.ics` feed. Everything
    else is `[Authorize]`.
-2. The feed's four failure modes — unknown user, merged user, no token issued, wrong token —
-   are indistinguishable from outside: all 404, no body, no timing tell.
+2. The feed's failure modes — unknown user, merged user, no token issued, wrong token — are
+   indistinguishable from outside: all 404, no body, no timing tell.
 3. The feed URL and the token never appear in any rendered admin view.
 4. Every mutation writes an audit entry naming the actor. Entry-level
    mutations also name the owning team; occurrence-level ones do not.
@@ -109,7 +109,7 @@ Reserved, not ranked, not built this run.
 - **A viewer timezone.** Every view resolves `Europe/Madrid` from one private helper, marked
   as awaiting a browser/profile source. Every window route is a future caller.
 - **The feed's deep-link base**, hardcoded in `CalendarFeedItem` and marked for configuration.
-- **Calendar entries in the personal feed.** The two halves of the section share no data path
+- **Calendar entries in the personal feed.** The halves of the section share no data path
   today; the cache projection was designed to absorb that traffic if they ever do.
 
 ## 6. Deliberately not done

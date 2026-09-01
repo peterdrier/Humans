@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Calendar.Models;
+using Humans.Calendar.Services.Dtos;
 using Xunit;
 
 namespace Humans.Calendar.Tests.Models;
@@ -33,5 +34,27 @@ public sealed class CalendarEventFormViewModelTests
     public void TryResolveZone_ResolvesAKnownZone()
     {
         CalendarEventFormViewModel.TryResolveZone("Europe/Madrid")!.Id.Should().Be("Europe/Madrid");
+    }
+
+    // Both directions have shipped wrong on this branch: mapping null to RecurrenceRule put a
+    // Title error under the RRULE input, and then mapping every non-timezone member to the form
+    // level took the genuine RRULE error off its own field.
+    [HumansTheory]
+    [InlineData(nameof(CreateCalendarEventDto.RecurrenceTimezone), nameof(CalendarEventFormViewModel.RecurrenceTimezone))]
+    [InlineData(nameof(CreateCalendarEventDto.RecurrenceRule), nameof(CalendarEventFormViewModel.RecurrenceRule))]
+    public void ErrorFieldFor_KeepsAServiceNamedMemberOnItsOwnField(string serviceMember, string expected)
+    {
+        CalendarEventFormViewModel.ErrorFieldFor(serviceMember).Should().Be(expected);
+    }
+
+    // Title, EndUtc and start-after-end reach the caller through Failed(), which names no
+    // member. Those belong to the validation summary, not to a field that did not cause them.
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("Title")]
+    public void ErrorFieldFor_SendsAnUnnamedMemberToTheFormLevel(string? serviceMember)
+    {
+        CalendarEventFormViewModel.ErrorFieldFor(serviceMember).Should().BeEmpty();
     }
 }
