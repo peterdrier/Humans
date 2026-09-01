@@ -156,4 +156,4 @@ Settled decisions that read as smells. Stop re-litigating these.
 
 | Run | Date | Headline | PR |
 |-----|------|----------|-----|
-| 1 | 2026-09-01 | First pass — dead repository surface, doc drift, mock-shaped cache tests | pending |
+| 1 | 2026-09-01 | First pass — dead repository surface, doc drift, mock-shaped cache tests | [#1575](https://github.com/peterdrier/Humans/pull/1575) |
