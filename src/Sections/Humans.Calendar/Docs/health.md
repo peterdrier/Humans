@@ -150,4 +150,4 @@ Settled decisions. Later runs should stop re-litigating these.
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-09-01 | List view rendered all-day and multi-day events wrong; four invariants pinned; ten false crefs and a phantom `OwningTeam` nav cut | pending |
+| 1 | 2026-09-01 | List view rendered all-day and multi-day events wrong; four invariants pinned; ten false crefs and a phantom `OwningTeam` nav cut | peterdrier/Humans#1578 |
