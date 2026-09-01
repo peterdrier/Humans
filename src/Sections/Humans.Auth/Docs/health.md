@@ -91,8 +91,13 @@ checks against.
 2. `AssignRoleAsync` refuses when an active or open-ended assignment for the same
    (user, role) overlaps the new window.
 3. `EndRoleAsync` refuses a row that is already ended or not yet active.
-4. Exactly one definition of "active at *t*" — `ValidFrom <= t && (ValidTo is null || ValidTo > t)`
-   — governs every read, in SQL and in memory alike.
+4. One *semantics* of "active at *t*" — `ValidFrom <= t && (ValidTo is null || ValidTo > t)` —
+   governs every read, in SQL and in memory alike. It is necessarily implemented more than
+   once (`RoleAssignment.IsActive`, `RoleAssignmentRow.IsActiveAt`,
+   `RoleAssignmentSummarySnapshot.IsActive`, and the repository's EF expressions, which cannot
+   call a method and be translated). What this forbids is a second *predicate*, not a second
+   implementation: an in-memory read that spells the comparison out where a method is in reach
+   is the violation (F29).
 5. Assign, end, and the bulk revoke invalidate the row cache and the claims cache for the
    affected user before the call returns. The merge path (`ReassignAsync`) is the exception by
    contract: it leaves invalidation to `AccountMergeService.MergeAsync`, which flushes after the
@@ -145,8 +150,12 @@ Settled decisions that read as smells. Stop re-litigating these.
 
 - **The keyed-inner DI dance in `Section.cs`.** The inner service is registered keyed, an
   unkeyed concrete forwards to it by cast, and `IUserDataContributor`/`IUserMerge` resolve
-  through that concrete. This is what makes GDPR export and merge see the *same* scoped
-  instance the decorator wraps. It is not redundant registration.
+  through that concrete. What it buys is that all three aliases reach the *undecorated* inner
+  through one registration — GDPR export and merge share an instance with whatever else
+  resolves it in their scope, instead of each getting a private `RoleAssignmentService`, and
+  neither re-enters the decorator. It is not redundant registration. Note the decorator itself
+  is a Singleton that opens a fresh scope per call, so it never shares an instance with a
+  caller's scope.
 - **A Singleton repository over `IDbContextFactory`.** Deliberate: the repository owns each
   context's lifetime while `AuthDbContext` stays Scoped.
 - **`FindForMutationAsync` reads `AsNoTracking`.** Correct here — `UpdateAsync` re-attaches to

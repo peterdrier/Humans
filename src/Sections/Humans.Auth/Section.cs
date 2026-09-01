@@ -56,8 +56,9 @@ public sealed class Section : ISection
 
         // nobodies-collective/Humans#749: Inner RoleAssignmentService registered keyed under
         // CachingRoleAssignmentService.InnerServiceKey; the unkeyed concrete forwards to the
-        // keyed registration via cast so IUserDataContributor and IUserMerge resolve the same
-        // scoped instance the decorator wraps.
+        // keyed registration via cast so IUserDataContributor and IUserMerge reach the
+        // undecorated inner through that one registration, rather than each getting a private
+        // RoleAssignmentService.
         services.AddKeyedScoped<IRoleAssignmentService, RoleAssignmentService>(
             CachingRoleAssignmentService.InnerServiceKey);
         services.AddScoped<RoleAssignmentService>(sp =>
