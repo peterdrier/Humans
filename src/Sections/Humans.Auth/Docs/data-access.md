@@ -30,7 +30,7 @@ Repository: `IRoleAssignmentRepository`.
 | `FeedbackBadgeCount` (`INavBadgeCacheInvalidator`) | yes |
 | `claims:{userId}` (`IRoleAssignmentClaimsCacheInvalidator`) | yes |
 
-Cross-section calls via `IUserService`, `ISystemTeamSync`,
+Cross-section calls via `IUserServiceRead`, `ISystemTeamSync`,
 `IAuditLogService`. Implements `IUserDataContributor` for GDPR exports
 and `IUserMerge` for account merges.
 
@@ -47,8 +47,8 @@ Surfaced on `/Debug/CacheStats`.
 ### MagicLinkService (Scoped)
 
 No repository. Uses ASP.NET `UserManager<User>` plus `IUserEmailService`,
-`IEmailService`, `IMagicLinkRateLimiter`, `IMagicLinkUrlBuilder`,
-`IUnsubscribeTokenProvider`. No direct `IMemoryCache` —
+`IUserServiceRead`, `IEmailService`, `IEmailMessageFactory`,
+`IMagicLinkRateLimiter`, `IMagicLinkUrlBuilder`. No direct `IMemoryCache` —
 rate-limit/replay sentinels are owned by `IMagicLinkRateLimiter`
 (same section, `Services/`) which writes `magic_link_used:{tokenPrefix}` and
 `magic_link_signup:{normalizedEmail}` into `IMemoryCache`.

@@ -75,14 +75,19 @@ User (extends IdentityUser<Guid>)
 ```
 RoleAssignment
 ├── Id: Guid
-├── UserId: Guid (FK → User)
+├── UserId: Guid              (bare user id — no FK, no nav property)
 ├── RoleName: string (256) ["Admin", "Board", etc.]
 ├── ValidFrom: Instant
 ├── ValidTo: Instant?
 ├── Notes: string? (2000)
 ├── CreatedAt: Instant
-└── CreatedByUserId: Guid (FK → User)
+└── CreatedByUserId: Guid     (bare user id — no FK, no nav property)
 ```
+
+`role_assignments` lives in `AuthDbContext`, `users` in Users' context, so
+neither id carries a database FK and neither has a navigation property to
+`.Include()`. Display names are stitched in memory via
+`IUserServiceRead.GetUserInfosAsync`.
 
 ## Authentication Flow
 
