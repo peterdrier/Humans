@@ -80,9 +80,9 @@ iCal feed is a separate `[Route("api/ical")]` on `ICalFeedApiController`
 | Method | Route | Action |
 |--------|-------|--------|
 | GET | `/Calendar` | Month grid (`Index`); `?year`, `?month`, `?teamId` |
-| GET | `/Calendar/List` | List view of same month window |
+| GET | `/Calendar/List` | One row per day of the same month window |
 | GET | `/Calendar/Agenda` | Upcoming-events agenda; `?from`, `?to`, `?teamId` (defaults: today → today+60d) |
-| GET | `/Calendar/Team/{teamId:guid}` | Per-team month grid; `?year`, `?month` |
+| GET | `/Calendar/Team/{teamId:guid}` | Per-team, one row per day (same shape as `/Calendar/List`, not the grid); `?year`, `?month` |
 | GET | `/Calendar/Event/{id:guid}` | Event detail + next 5 upcoming occurrences |
 | GET/POST | `/Calendar/Event/Create` | Create form; `?teamId` pre-selects team |
 | GET/POST | `/Calendar/Event/{id:guid}/Edit` | Edit form |
@@ -94,7 +94,7 @@ iCal feed is a separate `[Route("api/ical")]` on `ICalFeedApiController`
 
 | Actor | Capabilities |
 |-------|--------------|
-| Any authenticated human | View all calendar events (month grid, list, agenda views, per-team month view; the `?teamId` query parameter narrows the first three, though no view renders a picker for it). Create, edit, delete events on any team. Cancel or override single occurrences of recurring events. All changes recorded in the audit log |
+| Any authenticated human | View all calendar events (month grid, day-per-row list, agenda, and the per-team list; the `?teamId` query parameter narrows the first three, though no view renders a picker for it). Create, edit, delete events on any team. Cancel or override single occurrences of recurring events. All changes recorded in the audit log |
 | Admin | Same as any authenticated human. No additional calendar-specific privileges in v1 |
 
 The calendar is intentionally open: no resource-based authorization gates edit/delete/cancel. View-side edit/delete buttons render from `CalendarEventViewModel.CanEdit` (currently hard-coded to `true` in `CalendarController.Event` to express the open-edit policy in one place — flip the flag here when a tier check is added). Accountability is via the audit log (`IAuditLogService`), which records who performed each mutation.

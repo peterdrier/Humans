@@ -346,7 +346,8 @@ internal sealed class CalendarController : HumansControllerBase
         var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
-        var original = OccurrenceOverrideFormViewModel.ParseOriginal(originalStartUtc);
+        if (OccurrenceOverrideFormViewModel.TryParseOriginal(originalStartUtc) is not { } original) return NotFound();
+
         await _calendar.CancelOccurrenceAsync(id, original, RequireCurrentUserId(), ct);
         return RedirectToAction(nameof(Event), new { id });
     }
@@ -356,6 +357,7 @@ internal sealed class CalendarController : HumansControllerBase
     {
         var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
+        if (OccurrenceOverrideFormViewModel.TryParseOriginal(originalStartUtc) is null) return NotFound();
 
         return View("OccurrenceEdit", new OccurrenceOverrideFormViewModel
         {
@@ -371,6 +373,7 @@ internal sealed class CalendarController : HumansControllerBase
     {
         var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
+        if (OccurrenceOverrideFormViewModel.TryParseOriginal(originalStartUtc) is not { } original) return NotFound();
 
         var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(form.RecurrenceTimezone);
         if (zone is null)
@@ -378,7 +381,6 @@ internal sealed class CalendarController : HumansControllerBase
             ModelState.AddModelError(nameof(form.RecurrenceTimezone), "Unknown timezone.");
             return View("OccurrenceEdit", form);
         }
-        var original = OccurrenceOverrideFormViewModel.ParseOriginal(originalStartUtc);
 
         Instant? overrideStart = form.OverrideStartLocal is { } s
             ? LocalDateTime.FromDateTime(s).InZoneLeniently(zone).ToInstant()
@@ -409,6 +411,10 @@ internal sealed class CalendarController : HumansControllerBase
     private Guid RequireCurrentUserId() =>
         GetCurrentUserId() ?? throw new InvalidOperationException("Current user has no valid ID claim.");
 
+    // The service can only identify one failing member by name (the timezone). Everything
+    // else it reports — Title, EndUtc, start-after-end — goes to the form level, so the
+    // validation summary carries it. Attaching those to RecurrenceRule instead put a Title
+    // error under the RRULE input.
     private void AddCalendarEventMutationError(
         CalendarEventMutationResult result)
     {
@@ -417,7 +423,7 @@ internal sealed class CalendarController : HumansControllerBase
                 nameof(CreateCalendarEventDto.RecurrenceTimezone),
                 StringComparison.Ordinal)
             ? nameof(CalendarEventFormViewModel.RecurrenceTimezone)
-            : nameof(CalendarEventFormViewModel.RecurrenceRule);
+            : string.Empty;
         ModelState.AddModelError(memberName, result.ErrorMessage ?? "Failed to save calendar event.");
     }
 
