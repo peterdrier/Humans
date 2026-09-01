@@ -13,15 +13,20 @@ design the run measures that against. Run history is at the bottom.
 
 ## 1. What the section does
 
-Two jobs, both about *who you are and what you may do*, neither about who you are as a member.
+Both jobs below are about *who you are and what you may do*, neither about who you are as a
+member.
 
 - **It remembers which offices a person holds, and when.** Someone is made a Board member on a
   date; later they stop being one. The record of that is kept forever, so the association can
   answer "who was on the Board in March" as well as "who is on it now". Every change is
-  attributed to whoever made it, carries a written reason, and tells the affected person.
+  attributed to whoever made it. A single admin assign or end also notifies the affected person
+  and can carry a written reason; the bulk revoke on the deletion path deliberately does
+  neither (§4, §6).
 - **It lets a person prove an email address is theirs and get signed in.** They type an email;
-  a short-lived, one-use link arrives; clicking it signs them in, or starts a signup if the
-  address is new to us. It never reveals whether the address is known.
+  a short-lived link arrives; clicking it signs them in, or starts a signup if the address is
+  new to us. It never reveals whether the address is known. A *login* link is single-use — it
+  is consumed on redemption. A *signup* link is not: it is verified again on the form's POST,
+  and what stops a second use is that the account now exists.
 
 Everything else the section holds exists to serve one of those two: caches so the first job
 can be asked on every request without a query, and rate limits so the second cannot be used
@@ -35,8 +40,8 @@ own shape is a candidate for removal.
 
 | # | Question a caller is asking | Members that answer it | Note |
 |---|---|---|---|
-| S1 | *Does this person hold role X right now?* | `IsUserAdminAsync`, `IsUserBoardMemberAsync`, `IsUserTeamsAdminAsync`, `HasActiveRoleAsync`, `HasAnyActiveAssignmentAsync` | Four of the five are `HasActiveRoleAsync` with a constant baked in |
-| S2 | *Who holds role X?* | `GetActiveUserIdsInRoleAsync`, `GetUserIdsWithActiveAssignmentsAsync`, `GetActiveCountsByRoleAsync` | Three projections of one active-set scan |
+| S1 | *Does this person hold role X right now?* | `IsUserAdminAsync`, `IsUserBoardMemberAsync`, `IsUserTeamsAdminAsync`, `HasActiveRoleAsync`, `HasAnyActiveAssignmentAsync` | All but `HasAnyActiveAssignmentAsync` are `HasActiveRoleAsync` with a constant baked in |
+| S2 | *Who holds role X?* | `GetActiveUserIdsInRoleAsync`, `GetUserIdsWithActiveAssignmentsAsync`, `GetActiveCountsByRoleAsync` | Projections of one active-set scan |
 | S3 | *What does this person hold?* | `GetActiveForUserAsync`, `GetByUserIdAsync` | Active-only vs. full history |
 | S4 | *Render the admin list / one row* | `GetFilteredAsync`, `GetByIdAsync` | The only paged, display-stitched shape |
 | S5 | *Change who holds what* | `AssignRoleAsync`, `EndRoleAsync`, `RevokeAllActiveAsync`, `HasOverlappingAssignmentAsync` | The invariant-bearing shape |
@@ -46,7 +51,7 @@ own shape is a candidate for removal.
 | S9 | *May this principal manage this role name?* | `RoleAssignmentOperationRequirement` + its handler | ASP.NET resource-based, Shell-invoked |
 | S10 | *Who is the current user?* | `ICurrentUserContext.UserId` | Declared here, implemented in Shell |
 
-Two implemented-but-uncontracted shapes ride along on the inner service: GDPR export/erasure
+Implemented-but-uncontracted shapes ride along on the inner service: GDPR export/erasure
 (`IUserDataContributor`) and account-merge re-FK (`IUserMerge`). Both are crosscut interfaces
 the section implements rather than surface it publishes, and that is the right place for them.
 
@@ -70,8 +75,8 @@ Written fresh from the shapes above, not from today's tree.
 - **The section ships no controller, no view, no resx.** `AccountController` and
   `Views/Account/*` stay in Shell because every action they expose writes another section's
   tables. That is a deliberate boundary, not an unfinished move.
-- **S6 does not belong on a role-assignment contract.** Three cache-flush verbs sit on
-  `IRoleAssignmentService` so that one caller — Profiles' `AccountMergeService` — can poke
+- **S6 does not belong on a role-assignment contract.** The cache-flush verbs sit on
+  `IRoleAssignmentService` so that one caller — Users' `AccountMergeService` — can poke
   Auth's caches after a merge fold commits. The target shape is that a merge tells Auth *a
   merge happened* (the `IUserMerge` seam it already implements) and Auth decides what to
   invalidate. Recorded as a seam (§5), not struck: it is a public-surface change.
