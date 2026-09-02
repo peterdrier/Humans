@@ -68,7 +68,7 @@ public sealed class RideshareSnapshotTests
     }
 
     [HumansFact]
-    public void Stats_CountPostings_ActiveSeats_AcceptedSeats_AndUnmatchedRiders()
+    public void Stats_CountPostings_ActiveSeats_AcceptedSeatsOnActiveTrips_AndUnmatchedRiders()
     {
         var active = Trip(seatsOffered: 4, seatsRemaining: 2);
         var cancelled = Trip(seatsOffered: 3, status: TripStatus.Cancelled);
@@ -80,6 +80,7 @@ public sealed class RideshareSnapshotTests
                 Interest(active.Id, seats: 2, status: InterestStatus.Accepted),
                 Interest(active.Id, seats: 1, status: InterestStatus.Pending),
                 Interest(cancelled.Id, seats: 3, status: InterestStatus.Declined),
+                Interest(cancelled.Id, seats: 2, status: InterestStatus.Accepted),
             ]);
 
         snapshot.Stats().Should().Be(new SeasonStats(

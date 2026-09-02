@@ -109,12 +109,16 @@ internal sealed record RideshareSnapshot(
     public IReadOnlyList<RequestView> ActiveRequests(LocalDate date, RideshareDirection direction) =>
         Requests.Where(r => r.Status == RequestStatus.Active && r.Direction == direction && r.DesiredDate == date).ToList();
 
-    public SeasonStats Stats() => new(
-        OffersPosted: Trips.Count,
-        RequestsPosted: Requests.Count,
-        SeatsOffered: Trips.Where(t => t.Status == TripStatus.Active).Sum(t => t.SeatsOffered),
-        SeatsFilled: Interests.Where(i => i.Status == InterestStatus.Accepted).Sum(i => i.Seats),
-        RidersStillLooking: Requests.Count(r => r.Status == RequestStatus.Active && !r.IsMatched));
+    public SeasonStats Stats()
+    {
+        var activeTrips = Trips.Where(t => t.Status == TripStatus.Active).Select(t => t.Id).ToHashSet();
+        return new(
+            OffersPosted: Trips.Count,
+            RequestsPosted: Requests.Count,
+            SeatsOffered: Trips.Where(t => activeTrips.Contains(t.Id)).Sum(t => t.SeatsOffered),
+            SeatsFilled: Interests.Where(i => i.Status == InterestStatus.Accepted && activeTrips.Contains(i.TripId)).Sum(i => i.Seats),
+            RidersStillLooking: Requests.Count(r => r.Status == RequestStatus.Active && !r.IsMatched));
+    }
 }
 
 // ── Commands ──────────────────────────────────────────────────────────────

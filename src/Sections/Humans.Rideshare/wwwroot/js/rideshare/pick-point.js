@@ -1,5 +1,7 @@
 // Coarse point picker for the offer/request forms: click the map to set the latitude and
 // longitude inputs named by data-lat-input / data-lng-input; editing the inputs moves the marker.
+// Retyping the place label (data-place-input) clears the pin so the server geocodes the new label
+// instead of keeping stale coordinates.
 
 const OSM_TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
@@ -43,6 +45,15 @@ function init(el) {
     };
     latInput.addEventListener('change', onEdit);
     lngInput.addEventListener('change', onEdit);
+
+    const placeInput = document.getElementById(el.dataset.placeInput);
+    if (placeInput) {
+        placeInput.addEventListener('change', () => {
+            latInput.value = '';
+            lngInput.value = '';
+            if (marker) { marker.remove(); marker = null; }
+        });
+    }
 }
 
 function readPoint(latInput, lngInput) {

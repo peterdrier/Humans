@@ -301,6 +301,28 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
+    public async Task AcceptInterest_OnAPinAnswer_RechecksThePinIsOpenAndTheTripStillFits()
+    {
+        // Either side may have edited between the driver's answer and the rider's accept.
+        var driver = SeedUser("Ada");
+        var rider = SeedUser("Bo");
+        var trip = await SeedTripAsync(driver, departure: new LocalDate(Year, 7, 10));
+        var cancelled = await SeedRequestAsync(rider, desiredDate: new LocalDate(Year, 7, 10), status: RequestStatus.Cancelled);
+        var moved = await SeedRequestAsync(rider, desiredDate: new LocalDate(Year, 7, 12));
+        var onCancelled = await SeedInterestAsync(driver, trip.Id, requestId: cancelled.Id);
+        var onMoved = await SeedInterestAsync(driver, trip.Id, requestId: moved.Id);
+        var service = NewService();
+
+        var closed = () => service.AcceptInterestAsync(onCancelled.Id, rider, Ct);
+        (await closed.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_RequestClosed");
+        var wrongDay = () => service.AcceptInterestAsync(onMoved.Id, rider, Ct);
+        (await wrongDay.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_RideNotOnRequestDate");
+
+        await using var ctx = OpenContext();
+        (await ctx.Interests.CountAsync(i => i.Status == InterestStatus.Accepted, Ct)).Should().Be(0);
+    }
+
+    [HumansFact]
     public async Task ExpressInterest_InYourOwnTrip_Throws()
     {
         var driver = SeedUser("Ada");
@@ -400,6 +422,24 @@ public sealed class RideshareServiceTests : RideshareTestHarness
             NotificationSource.RideshareInterestDeclined, NotificationClass.Informational, Arg.Any<NotificationPriority>(),
             "Ride update", Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == rider),
             "Ada wasn't able to offer a spot this time.",
+            "/Rideshare/Mine", Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task DeclineInterest_OnAPinAnswer_TellsTheDriverTheRiderWentAnotherWay()
+    {
+        var driver = SeedUser("Ada");
+        var rider = SeedUser("Bo");
+        var trip = await SeedTripAsync(driver);
+        var request = await SeedRequestAsync(rider);
+        var interest = await SeedInterestAsync(driver, trip.Id, requestId: request.Id);
+
+        await NewService().DeclineInterestAsync(interest.Id, rider, Ct);
+
+        await Notifications.Received(1).SendAsync(
+            NotificationSource.RideshareInterestDeclined, NotificationClass.Informational, Arg.Any<NotificationPriority>(),
+            "Ride update", Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == driver),
+            "Bo went with another ride this time.",
             "/Rideshare/Mine", Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 

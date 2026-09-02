@@ -225,14 +225,11 @@ internal sealed class RideshareService(
             // Driver answering a pin: the seat comes from the driver's own trip.
             request = await repository.GetRequestAsync(rid, ct)
                 ?? throw new KeyNotFoundException($"Request {rid} not found.");
-            if (request.Status != RequestStatus.Active)
-                throw new RideshareRuleException("Rideshare_Error_RequestClosed");
             if (trip.UserId != fromUserId)
                 throw new UnauthorizedAccessException("Only the driver of this ride can answer a request with it.");
             if (request.UserId == fromUserId)
                 throw new RideshareRuleException("Rideshare_Error_OwnRequest");
-            if (trip.Direction != request.Direction || !TravelsOn(trip, request.DesiredDate))
-                throw new RideshareRuleException("Rideshare_Error_RideNotOnRequestDate");
+            EnsureAnswerable(trip, request);
             if (seats == 0)
                 seats = request.PartySize;
         }
@@ -281,6 +278,8 @@ internal sealed class RideshareService(
             throw new RideshareRuleException("Rideshare_Error_InterestNotPending");
         if (interest.Trip.Status != TripStatus.Active)
             throw new RideshareRuleException("Rideshare_Error_RideUnavailable");
+        if (interest.Request is { } request)
+            EnsureAnswerable(interest.Trip, request);
         if (SeatsRemaining(interest.Trip) < interest.Seats)
             throw new RideshareRuleException("Rideshare_Error_NotEnoughSeats");
 
@@ -307,11 +306,15 @@ internal sealed class RideshareService(
         await repository.UpdateInterestAsync(interest, ct);
 
         // Declines are private: neutral wording, no reason captured or shown.
+        // A rider declining a driver's answer to their pin reads differently from a driver declining a rider.
         var name = await DisplayNameAsync(actorUserId, ct);
+        var body = interest.RequestId is null
+            ? $"{name} wasn't able to offer a spot this time."
+            : $"{name} went with another ride this time.";
         await NotifyAsync(
             NotificationSource.RideshareInterestDeclined, NotificationClass.Informational, interest.FromUserId,
             "Ride update",
-            $"{name} wasn't able to offer a spot this time.",
+            body,
             ct);
     }
 
@@ -504,6 +507,18 @@ internal sealed class RideshareService(
     /// <summary>Entity twin of <see cref="TripView.CoversDate"/>: departure through departure + duration - 1.</summary>
     private static bool TravelsOn(RideshareTrip trip, LocalDate date) =>
         date >= trip.DepartureDate && date <= trip.DepartureDate.PlusDays(trip.ExpectedDurationDays - 1);
+
+    /// <summary>
+    /// A trip may answer a pin only while the pin is open and the trip still goes that way on that day.
+    /// Checked when the driver answers and again when the rider accepts, since either side may have edited in between.
+    /// </summary>
+    private static void EnsureAnswerable(RideshareTrip trip, RideshareRequest request)
+    {
+        if (request.Status != RequestStatus.Active)
+            throw new RideshareRuleException("Rideshare_Error_RequestClosed");
+        if (trip.Direction != request.Direction || !TravelsOn(trip, request.DesiredDate))
+            throw new RideshareRuleException("Rideshare_Error_RideNotOnRequestDate");
+    }
 
     private static void ValidateTrip(TripSave save)
     {

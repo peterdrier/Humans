@@ -80,7 +80,7 @@ humans look at the map and reach out.
 **Acceptance Criteria:**
 - `/Rideshare/Admin` lets an Admin set `DestinationLabel`/coordinates and the inbound/outbound travel windows for the active year
 - Saving writes an audit log entry
-- The same page shows season statistics: offers posted, requests posted, seats offered, seats filled, riders still looking
+- The same page shows season statistics: offers posted, requests posted, seats offered and seats filled (both on active trips only), riders still looking
 
 ### US-6: Admin Views the Operational Day Roster
 
