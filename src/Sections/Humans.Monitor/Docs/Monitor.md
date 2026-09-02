@@ -66,9 +66,11 @@ registration moves into the section, policy registration does not).
   `<vc:google-sync-log>` tag helper binds). Every name added there is a section
   Monitor now couples to — documentation, not a pinned assertion
   ([`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md)).
-- **Nothing depends on Monitor.** Its whole outward surface is `IDriveActivityMonitorService`
+- **No section depends on Monitor.** Its whole outward surface is `IDriveActivityMonitorService`
   in `Contracts/` — one method, returning `int` — and its only consumer is
-  `DriveActivityMonitorJob` in `Jobs/`, inside this project. The job is `public` because
+  `DriveActivityMonitorJob` in `Jobs/`, inside this project. The Shell's
+  `ProjectReference` is the exception and is required: `Humans.Web` references every section
+  so the dependency context can discover this one's `ISection`, controllers and recurring job. The job is `public` because
   `Section.cs` and `SectionJobs.cs` name the concrete type; HUM0034 allows a section's public
   types under `Contracts/` and, for Hangfire jobs, under `Jobs/`.
 - **The operator never sees an exception; the job does.** `CheckDriveActivity` catches, logs at

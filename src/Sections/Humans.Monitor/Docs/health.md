@@ -25,7 +25,7 @@ or one human. It does not read that history itself.
 
 ## The shapes
 
-Five entry points over two question-shapes.
+Two question-shapes; the entry points that ask them are the table's left-hand column.
 
 | Question shape | Entry points | Answer |
 |---|---|---|

@@ -23,7 +23,8 @@
       No Humans.Infrastructure reference: Monitor owns no tables, so there is no DbContext, no
       repository and no AddSectionDbContext call (G5-SECTION-TEMPLATE.md step 1).
 
-      Monitor is the *consumer* end of every edge it has, with no inbound reference at all.
+      Monitor is the *consumer* end of every edge it has: no section references it, and the
+      Shell's reference is the discovery one every section gets.
       That is what makes Monitor -> GoogleIntegration + AuditLog legal where
       AuditLog -> GoogleIntegration is not: AuditLog is a horizontal (peters-hard-rules.md),
       and Monitor is not.
