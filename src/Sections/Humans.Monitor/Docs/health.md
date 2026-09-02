@@ -115,4 +115,4 @@ None. Nothing here is specified-but-unbuilt.
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| section-doctor | 2026-09-02 | First doctoring: docs and comments still described the pre-carve-out world and a renamed Settings interface; the scan's people-id resolution lived in five fields and three methods and is now one nested resolver; three untested invariants pinned | peterdrier/Humans#pending |
+| section-doctor | 2026-09-02 | First doctoring: docs and comments still described the pre-carve-out world and a renamed Settings interface; the scan's people-id resolution lived in five fields and three methods and is now one nested resolver; three untested invariants pinned | peterdrier/Humans#1582 |
