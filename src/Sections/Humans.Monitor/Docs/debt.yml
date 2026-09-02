@@ -1,0 +1,7 @@
+# Section debt ledger for Humans.Monitor. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+inbox:
+  - added: 2026-09-02
+    what: "Views/Monitor/SyncAudit.cshtml and Models/MonitorViewModels.cs ship English-only strings with no resx set, and no rule currently exempts them: memory/code/localization-admin-exempt.md enumerates /Admin/*, /TeamAdmin/* and /Shifts/Dashboard, while these routes are /Monitor/Resource/{id} and /Monitor/Human/{id} (BoardOrAdmin and HumanAdminBoardOrAdmin). They are operator-only pages of the same shape as the already-exempt /Shifts/Dashboard, so the fix is one of two things and only Peter picks: extend the atom's path list, or give the section a six-culture resx set. Recorded rather than decided (finding 33, /section-doctor on Monitor 2026-09-02, raised by Codex on peterdrier/Humans#1582)."
+    review: panel

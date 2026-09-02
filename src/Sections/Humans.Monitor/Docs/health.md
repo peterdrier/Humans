@@ -86,8 +86,13 @@ None. Nothing here is specified-but-unbuilt.
   key; a table for it would buy nothing.
 - **No `I<Section>ServiceRead` split.** Nothing outside this project consumes the contract,
   so there is no cross-section read to narrow.
-- **No resource set / localization.** The one page is admin-only operator English; the
-  `/Admin`-side exemption applies.
+- **No resource set / localization — open, not settled.** The one page is operator-only
+  English (`BoardOrAdmin` / `HumanAdminBoardOrAdmin`). It is *not* covered by
+  [`localization-admin-exempt`](../../../../memory/code/localization-admin-exempt.md),
+  which enumerates `/Admin/*`, `/TeamAdmin/*` and `/Shifts/Dashboard` — and these routes are
+  `/Monitor/*`. Whether the exemption should reach operator pages off those paths (as
+  `/Shifts/Dashboard` already does) or the section should gain a resx set is Peter's, not this
+  document's: recorded in `Docs/debt.yml` rather than blessed here.
 - **No retry or backoff around the connector.** A failed resource simply holds the marker
   back and the next hourly run re-covers the window — that *is* the retry.
 - **No collapsing `Resource` and `Human` into one route.** They differ in policy and in
