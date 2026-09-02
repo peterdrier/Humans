@@ -82,7 +82,9 @@ public class GdprExportDependencyInjectionTests
         SectionType("Humans.GoogleIntegration.Services.GoogleSyncLogService"),
         SectionType("Humans.MailerLite.Services.MailerLiteGdprContributor"),
         SectionType("Humans.Email.Services.EmailOutboxService"),
-        SectionType("Humans.Backdoor.Services.BackdoorApiKeyService")
+        SectionType("Humans.Backdoor.Services.BackdoorApiKeyService"),
+        // The caching decorator, not RideshareService: erasure empties cached rows.
+        SectionType("Humans.Rideshare.Services.CachingRideshareService")
     ];
 
     /// <summary>

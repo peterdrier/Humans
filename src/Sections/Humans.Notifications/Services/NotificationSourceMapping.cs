@@ -42,6 +42,9 @@ internal static class NotificationSourceMapping
         NotificationSource.IssueStatusChanged => MessageCategory.System,
         NotificationSource.IssueAssigned => MessageCategory.System,
         NotificationSource.IssueSubmitted => MessageCategory.System,
+        NotificationSource.RideshareInterestReceived => MessageCategory.System,
+        NotificationSource.RideshareInterestAccepted => MessageCategory.System,
+        NotificationSource.RideshareInterestDeclined => MessageCategory.System,
         _ => MessageCategory.System
     };
 }
