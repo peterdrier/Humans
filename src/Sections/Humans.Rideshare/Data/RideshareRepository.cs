@@ -70,7 +70,10 @@ internal sealed class RideshareRepository(IDbContextFactory<RideshareDbContext> 
     public async Task<RideshareInterest?> GetInterestAsync(Guid id, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Interests.AsNoTracking()
+        // Interest → Trip → Interests is a cycle, which plain AsNoTracking refuses
+        // ("Cycles are not allowed in no-tracking queries"); identity resolution
+        // keeps the result detached while letting the seat maths see the siblings.
+        return await ctx.Interests.AsNoTrackingWithIdentityResolution()
             .Include(i => i.Trip).ThenInclude(t => t.Interests)
             .Include(i => i.Request)
             .FirstOrDefaultAsync(i => i.Id == id, ct);

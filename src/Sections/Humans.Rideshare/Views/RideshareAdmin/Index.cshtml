@@ -1,0 +1,75 @@
+@model RideshareSettingsViewModel
+@{
+    ViewData["Title"] = $"Rideshare {Model.Year}";
+    var s = Model.Stats;
+}
+
+<h1>Rideshare @Model.Year</h1>
+
+<div class="card mb-4" style="max-width: 720px;">
+    <div class="card-body">
+        <div class="h4 mb-1">
+            @s.OffersPosted offers · @s.SeatsFilled seats filled · @s.RidersStillLooking riders still looking
+        </div>
+        <div class="text-muted">
+            @s.RequestsPosted requests · @s.SeatsOffered seats offered on active rides · fill rate @Model.FillRate.ToString("P0")
+        </div>
+        <div class="mt-2">
+            <a asp-action="Day" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-calendar-day me-1"></i>Day roster</a>
+        </div>
+    </div>
+</div>
+
+<h2 class="h4">Destination &amp; travel windows</h2>
+<form method="post" asp-action="Index" style="max-width: 540px;">
+    <input type="hidden" asp-for="Year" />
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="mb-3">
+        <label class="form-label" asp-for="DestinationLabel">Destination</label>
+        <input class="form-control" asp-for="DestinationLabel" maxlength="200" placeholder="Elsewhere" />
+        <div class="form-text">Where vehicles actually drive to — the routable burn end of every trip.</div>
+        <span asp-validation-for="DestinationLabel" class="text-danger"></span>
+    </div>
+
+    <div class="row g-2 mb-3">
+        <div class="col-6">
+            <label class="form-label" asp-for="DestinationLatitude">Latitude</label>
+            <input class="form-control" asp-for="DestinationLatitude" type="number" step="any" min="-90" max="90" />
+            <span asp-validation-for="DestinationLatitude" class="text-danger"></span>
+        </div>
+        <div class="col-6">
+            <label class="form-label" asp-for="DestinationLongitude">Longitude</label>
+            <input class="form-control" asp-for="DestinationLongitude" type="number" step="any" min="-180" max="180" />
+            <span asp-validation-for="DestinationLongitude" class="text-danger"></span>
+        </div>
+    </div>
+
+    <div class="row g-2 mb-3">
+        <div class="col-6">
+            <label class="form-label" asp-for="InboundWindowStart">Inbound window start</label>
+            <input class="form-control" asp-for="InboundWindowStart" type="date" />
+        </div>
+        <div class="col-6">
+            <label class="form-label" asp-for="InboundWindowEnd">Inbound window end</label>
+            <input class="form-control" asp-for="InboundWindowEnd" type="date" />
+        </div>
+    </div>
+
+    <div class="row g-2 mb-3">
+        <div class="col-6">
+            <label class="form-label" asp-for="OutboundWindowStart">Outbound window start</label>
+            <input class="form-control" asp-for="OutboundWindowStart" type="date" />
+        </div>
+        <div class="col-6">
+            <label class="form-label" asp-for="OutboundWindowEnd">Outbound window end</label>
+            <input class="form-control" asp-for="OutboundWindowEnd" type="date" />
+        </div>
+    </div>
+
+    <div class="form-text mb-3">
+        Routes are computed once when an offer is saved; changing the destination later does not move existing lines.
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save settings</button>
+</form>

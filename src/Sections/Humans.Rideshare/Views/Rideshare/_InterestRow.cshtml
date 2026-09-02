@@ -1,0 +1,47 @@
+@* One interest as a list-group row. Model.Item2 = I own the posting (accept/decline), else I sent it (withdraw only). *@
+@model (MineInterestRow Row, bool IOwnPosting)
+@{
+    var i = Model.Row.Interest;
+    var trip = Model.Row.Trip;
+}
+<li class="list-group-item px-0">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <vc:human user-id="@Model.Row.CounterpartUserId" layout="AvatarName" />
+            <span class="badge @EnumBadgeMap.For(i.Status)">@Localizer.EnumDisplay(i.Status)</span>
+            <span class="small text-muted">@Localizer["Rideshare_SeatsFor", i.Seats]</span>
+        </div>
+        <div class="d-flex gap-2">
+            @if (i.Status == InterestStatus.Pending && Model.IOwnPosting)
+            {
+                <form method="post" asp-action="Accept" asp-route-id="@i.Id">
+                    <button type="submit" class="btn btn-sm btn-success"><i class="fa-solid fa-check me-1"></i>@Localizer["Rideshare_Accept"]</button>
+                </form>
+                <form method="post" asp-action="Decline" asp-route-id="@i.Id">
+                    <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-xmark me-1"></i>@Localizer["Rideshare_Decline"]</button>
+                </form>
+            }
+            @if (i.Status is InterestStatus.Pending or InterestStatus.Accepted)
+            {
+                <form method="post" asp-action="Withdraw" asp-route-id="@i.Id">
+                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-rotate-left me-1"></i>@Localizer["Rideshare_Withdraw"]</button>
+                </form>
+            }
+        </div>
+    </div>
+    @if (!Model.IOwnPosting)
+    {
+        <div class="small text-muted mt-1">
+            @Localizer.EnumDisplay(trip.Direction) · @trip.MemberPlaceLabel · @trip.DepartureDate.ToWeekdayDayMonth()
+        </div>
+    }
+    @if (!string.IsNullOrWhiteSpace(i.Message))
+    {
+        <div class="small mt-1"><i class="fa-solid fa-comment me-1 text-muted"></i>@i.Message</div>
+    }
+    @if (i.Status == InterestStatus.Declined && !Model.IOwnPosting)
+    {
+        @* Declines are private: neutral text, never a reason. *@
+        <div class="small text-muted mt-1">@Localizer["Rideshare_DeclinedNeutral"]</div>
+    }
+</li>

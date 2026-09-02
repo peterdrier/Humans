@@ -429,6 +429,7 @@
   <!-- Volunteer Map            -->
   <!-- ======================== -->
   <data name="Nav_City" xml:space="preserve"><value>City</value></data>
+  <data name="Nav_Rideshare" xml:space="preserve"><value>Rideshare</value></data>
 
   <!-- ======================== -->
   <!-- Contribution & Board     -->

@@ -1,0 +1,18 @@
+@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
+   here ships broken markup with a green build and no runtime error — see design §1/§2. *@
+@using Humans.Rideshare
+@using Humans.Rideshare.Domain
+@using Humans.Rideshare.Models
+@using Humans.Rideshare.Services
+@using Humans.Base.Extensions
+@using Humans.Base
+@using Humans.Base.Models
+@using Humans.Base.Models.Tables
+@using Humans.Base.ViewComponents
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<RideshareResource> Localizer
+@* Genuinely shared strings (Common_*) stay in SharedResource; a view that needs one uses
+   SharedLocalizer explicitly so the source set is visible at the call site. *@
+@inject IStringLocalizer<SharedResource> SharedLocalizer
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@addTagHelper *, Humans.Base
