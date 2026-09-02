@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using System.Security.Claims;
 
 namespace Humans.Surveys.Tests.Controllers;
 
@@ -113,7 +114,7 @@ public sealed class SurveyControllerTests
     {
         var surveyId = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
-        surveys.ResolvePublicContextAsync("other-survey", Arg.Any<CancellationToken>())
+        surveys.ResolvePublicContextAsync("other-survey", null, Arg.Any<CancellationToken>())
             .Returns((SurveyPublicContext?)null);
         var sut = CreateController(surveys, out var session);
         SurveyWizardSession.SaveCompletedBySlug(
@@ -126,6 +127,108 @@ public sealed class SurveyControllerTests
             .Should().BeOfType<SurveyThankYouViewModel>().Subject
             .ThankYou.Should().Be("Thanks!", "another slug's marker must not leak its copy");
         await surveys.DidNotReceive().GetForEditAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Identified_slug_requires_sign_in()
+    {
+        var surveyId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.ResolvePublicContextAsync("board-vote", null, Arg.Any<CancellationToken>())
+            .Returns(new SurveyPublicContext(
+                surveyId,
+                Detail(surveyId, "Thanks!", allowAnonymous: false, publicSlug: "board-vote"),
+                SurveyPublicAccess.AuthenticationRequired));
+        var sut = CreateController(surveys, out _);
+
+        var result = await sut.Public("board-vote", Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ChallengeResult>();
+    }
+
+    [HumansFact]
+    public async Task Eligible_identified_slug_shows_an_identified_intro_without_anonymity_choices()
+    {
+        var surveyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        var detail = Detail(
+            surveyId, "Thanks!", allowAnonymous: false, publicSlug: "board-vote");
+        surveys.ResolvePublicContextAsync("board-vote", userId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyPublicContext(surveyId, detail));
+        var sut = CreateController(surveys, out _, userId);
+
+        var result = await sut.Public("board-vote", Xunit.TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>().Subject.Model
+            .Should().BeOfType<SurveyIntroViewModel>().Subject;
+        model.AllowAnonymous.Should().BeFalse();
+        model.ShowAnonymitySelector.Should().BeFalse();
+        model.Slug.Should().Be("board-vote");
+    }
+
+    [HumansFact]
+    public async Task Identified_slug_forces_identified_even_if_anonymous_is_posted()
+    {
+        var surveyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var participationId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        var detail = Detail(
+            surveyId, "Thanks!", allowAnonymous: false, publicSlug: "board-vote");
+        surveys.ResolvePublicContextAsync("board-vote", userId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyPublicContext(surveyId, detail));
+        surveys.StartPublicTrackedResponseAsync(
+                surveyId,
+                userId,
+                ResponseAnonymity.Identified,
+                "en",
+                Arg.Any<CancellationToken>())
+            .Returns(new SurveyPublicStart(participationId, null, []));
+        var sut = CreateController(surveys, out var session, userId);
+
+        var result = await sut.PublicStart(
+            "board-vote",
+            "en",
+            ResponseAnonymity.Anonymous,
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<RedirectToActionResult>().Subject.ActionName
+            .Should().Be("PublicPage");
+        var state = SurveyWizardSession.LoadBySlug(session, "board-vote");
+        state.Should().NotBeNull();
+        state!.Anonymity.Should().Be(ResponseAnonymity.Identified);
+        state.UserId.Should().Be(userId);
+        state.InvitationId.Should().Be(participationId);
+    }
+
+    [HumansFact]
+    public async Task Public_page_rechecks_audience_and_clears_the_wizard_when_access_is_lost()
+    {
+        var surveyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        var detail = Detail(
+            surveyId, "Thanks!", allowAnonymous: false, publicSlug: "board-vote");
+        surveys.ResolvePublicContextAsync("board-vote", userId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyPublicContext(
+                surveyId, detail, SurveyPublicAccess.Ineligible));
+        var sut = CreateController(surveys, out var session, userId);
+        SurveyWizardSession.SaveBySlug(session, "board-vote", new SurveyWizardState
+        {
+            SurveyId = surveyId,
+            UserId = userId,
+            Anonymity = ResponseAnonymity.Identified,
+        });
+
+        var result = await sut.PublicPage(
+            "board-vote", Xunit.TestContext.Current.CancellationToken);
+
+        var view = result.Should().BeOfType<ViewResult>().Subject;
+        view.ViewName.Should().Be("Closed");
+        view.Model.Should().BeOfType<SurveyClosedViewModel>().Subject.Reason
+            .Should().Be("ineligible");
+        SurveyWizardSession.LoadBySlug(session, "board-vote").Should().BeNull();
     }
 
     [HumansFact]
@@ -148,12 +251,23 @@ public sealed class SurveyControllerTests
             .Should().BeNull("nothing was submitted, so nothing may mark the respondent as done");
     }
 
-    private static SurveyController CreateController(ISurveyService surveys, out ISession session)
+    private static SurveyController CreateController(
+        ISurveyService surveys,
+        out ISession session,
+        Guid? userId = null)
     {
         var localizer = Substitute.For<IStringLocalizer<SurveysResource>>();
         localizer["Survey_ThankYouFallback"]
             .Returns(new LocalizedString("Survey_ThankYouFallback", "Thanks!"));
         session = new InMemorySession();
+        var httpContext = new DefaultHttpContext { Session = session };
+        if (userId is not null)
+        {
+            httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, userId.Value.ToString())],
+                "test"));
+        }
+
         return new SurveyController(
             surveys,
             Substitute.For<IUserServiceRead>(),
@@ -164,12 +278,17 @@ public sealed class SurveyControllerTests
         {
             ControllerContext = new ControllerContext
             {
-                HttpContext = new DefaultHttpContext { Session = session },
+                HttpContext = httpContext,
             },
         };
     }
 
-    private static SurveyDetail Detail(Guid surveyId, string thankYou, string? spanishThankYou = null)
+    private static SurveyDetail Detail(
+        Guid surveyId,
+        string thankYou,
+        string? spanishThankYou = null,
+        bool allowAnonymous = true,
+        string? publicSlug = null)
         => new(
             surveyId,
             SurveyStatus.Open,
@@ -186,14 +305,14 @@ public sealed class SurveyControllerTests
                 LocalizedText.Empty,
                 LocalizedText.Empty,
                 "en",
-                AllowAnonymous: true,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                []));
+                AllowAnonymous: allowAnonymous,
+                OpensAt: null,
+                ClosesAt: null,
+                AudienceType: null,
+                AudienceTeamId: null,
+                AudienceLoggedInSince: null,
+                PublicSlug: publicSlug,
+                Questions: []));
 
     private static LocalizedText Text(string en) =>
         new(new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = en });

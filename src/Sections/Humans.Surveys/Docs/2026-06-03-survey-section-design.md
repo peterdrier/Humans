@@ -55,7 +55,7 @@ All cross-domain references are **bare `Guid` FK columns** — **no navigation p
 | `OpensAt` | Instant? | Optional scheduled open |
 | `ClosesAt` | Instant? | Optional auto-close; after this, the wizard rejects new responses |
 | `AudienceKey` | string? | Key of the reused `IMailerLiteAudience` (null = manual/none) |
-| `PublicSlug` | string? (max 80) | Set when a shareable public link is enabled (requires `AllowAnonymous`); null = invite-only. Unique, filtered non-null. Reserved words (`Admin`, `Answer`) rejected at save to avoid route collisions. |
+| `PublicSlug` | string? (max 80) | Set when a shareable answer link is enabled; identified surveys require sign-in and current audience access. Null = invite-only. Unique, filtered non-null. Reserved words (`Admin`, `Answer`) rejected at save to avoid route collisions. |
 | `PublicStartedCount` | int | Count of public (slug) visitors who began the questionnaire — the slug-path "started" funnel number. Anonymous visitors have no per-person anchor, so this is a plain counter (inflated by reloads; rough by design). Default 0. |
 | `CreatedByUserId` | Guid | Creator user id — **bare `Guid` column**, no nav, no cross-section FK constraint; resolve via `IUserServiceRead` |
 | `CreatedAt` / `UpdatedAt` | Instant | |
@@ -142,7 +142,7 @@ One row per targeted recipient. This is the unit the reminder job and completion
 
 **Author flag `Survey.AllowAnonymous`** governs the whole model:
 
-- **`AllowAnonymous = false`** → survey is **invite-only and always Identified**. No public slug, no anonymity step. The wizard requires a valid invitation token (or a logged-in targeted user). `SurveyResponse.UserId` is always set.
+- **`AllowAnonymous = false`** → responses are always Identified. The wizard requires either a valid invitation token or a shareable slug used by a logged-in Human who currently belongs to the configured audience (any logged-in Human when no audience is configured). There is no anonymity step and `SurveyResponse.UserId` is always set.
 - **`AllowAnonymous = true`** → the wizard's **first step** presents three choices (`ResponseAnonymity`):
 
 | Choice | `Response.UserId` | `Response.InvitationId` | `Invitation.Completed` | Effect |
@@ -266,7 +266,7 @@ Both honour the existing outbox pause flag. Survey invites are **operational, ne
 |--------|-----------|
 | Create / edit / send / view results | `AdminOrBoard` policy |
 | Answer (invited) | Anyone with a valid invitation token (`[AllowAnonymous]`) |
-| Answer (public) | Anyone, when `PublicSlug` set and `AllowAnonymous` (`[AllowAnonymous]`) |
+| Answer (shareable slug) | Anyone when anonymous responses are enabled; otherwise a signed-in Human with current audience access |
 | Reminder job | system (Hangfire) |
 
 `/Survey/Answer` + `/Survey/{slug}` are exempt from `MembershipRequiredFilter` (like `Welcome`/`Guest`/magic-link). A dedicated `SurveyAdmin` role is **out of v1** (follow-up if Board wants to delegate authoring without full Admin/Board).
@@ -368,7 +368,7 @@ The §15 open questions are now settled. Each resolution below is binding for v1
 1. **`LocalizedText` scope** → **Survey-owned** value object. Reuse-first/YAGNI: don't build a shared Domain primitive before a second consumer (Events/Camps) exists; promotion is a clean later refactor. (§6)
 2. **Audience.** **Locked (business):** the send model is an **idempotent per-recipient invitation ledger** — top-up sends diff against existing invitations; nobody is double-invited; sends never revoke (§7). **Predicates (decided 2026-06-04):** v1 ships **Team** first (a team's members), then the easy cohorts — **all active members**, **ticket-holders**, **shift participants**. (These mirror cohorts the MailerLite audiences already express.) **Marketing opt-out (decided 2026-06-04):** surveys are **never marketing** — recipients are ticket-holders or members, and an invite is operational comms — so invites **do not** honour the marketing opt-out. They are sent as `MessageCategory.System` (always-send), bypassing the marketing exclusion entirely. **Deferred (tech impl):** where predicates are computed / whether a cross-section read interface is introduced — not decided now.
 3. **Fully-anonymous reminder trade-off** → **accept** the documented behaviour (a fully-anon invitee may receive the one reminder). The alternative — a privacy-leaking "answered" bit — is rejected; never-leak wins. Disclosed to the respondent on the choice step. (§4)
-4. **Public slug** → **public-link answering path is IN v1** (decided 2026-06-04; representation choice amended 2026-08-23). A survey with a `PublicSlug` set (requires `AllowAnonymous`) can be answered at `/Survey/{slug}` with no emailed invitation. Logged-out responses are Anonymous; logged-in Humans choose Identified, CompletionTracked, or Anonymous. All use `InputMethod = Slug`. Public starts are counted by `Survey.PublicStartedCount`; tracked logged-in starts additionally use the per-survey/user participation ledger. (§4, §8)
+4. **Shareable slug** → **slug answering path is IN v1** (decided 2026-06-04; representation choice amended 2026-08-23; identified access amended 2026-09-02). A survey with a `PublicSlug` can be answered at `/Survey/{slug}` without sending an email. Anonymous-enabled surveys retain the public representation choice: logged-out responses are Anonymous, while logged-in Humans choose Identified, CompletionTracked, or Anonymous. Identified surveys require sign-in and current audience access (or any logged-in Human when no audience is configured), force Identified, and recheck access throughout the wizard. All use `InputMethod = Slug`. Public starts are counted by `Survey.PublicStartedCount`; tracked logged-in starts additionally use the per-survey/user participation ledger. (§4, §8)
 5. **Branch sources** → **choice-question predicates only** in v1; rating/text branch sources are not built. (§5)
 6. **Assisted translation** → **deferred** (§14). v1 ships **manual per-culture** authoring. The Google translation client and both §6.1 pre-fill and §6.2 answer-translate features land together later.
 7. **Data egress / consent** → with §6/§6.2 translation deferred, v1 has **no Google egress**; the only external data flow is the §13.3 analysis API/export to Claude. Posture: (a) a short **transparency note on the wizard intro** — responses may be reviewed/analysed, including by automated tooling; (b) the existing **server-side anonymity-tier gating** on the API/export (identified responses expose identity; completion-tracked/anonymous never do). **No** per-survey "anonymise the payload" toggle in v1 (YAGNI — a survey needing that simply doesn't collect identified responses).

@@ -54,8 +54,6 @@
     }
 </div>
 
-<vc:temp-data-alerts />
-
 <div asp-validation-summary="All" class="alert alert-danger" role="alert" style="@(ViewData.ModelState.IsValid ? "display:none" : "")"></div>
 
 @if (Model.IsDefinitionLocked)
@@ -182,8 +180,12 @@
                     <span asp-validation-for="AudienceLoggedInSince" class="text-danger small"></span>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label small">Public link slug (optional; requires Allow anonymous)</label>
+                    <label class="form-label small">Shareable link slug (optional)</label>
                     <input type="text" asp-for="PublicSlug" class="form-control form-control-sm" placeholder="e.g. feedback-2026" />
+                    <div class="form-text">
+                        Anonymous surveys allow anyone with the link. Identified surveys require sign-in
+                        and, when configured, current audience eligibility.
+                    </div>
                 </div>
             </div>
         </div>
@@ -309,7 +311,6 @@
             const loggedInSinceField = document.getElementById('logged-in-since-field');
             const asociadoVote = document.getElementById('asociadoVote');
             const allowAnon = document.getElementById('allowAnon');
-            const publicSlug = document.querySelector('input[name="PublicSlug"]');
 
             function applyAudienceVisibility() {
                 audienceTeamField.style.display = audienceType.value === 'Team' ? '' : 'none';
@@ -324,12 +325,9 @@
                     audienceType.value = 'Asociados';
                     allowAnon.checked = false;
                     allowAnon.disabled = true;
-                    publicSlug.value = '';
-                    publicSlug.disabled = true;
                     applyAudienceVisibility();
                 } else {
                     allowAnon.disabled = false;
-                    publicSlug.disabled = false;
                 }
             }
 

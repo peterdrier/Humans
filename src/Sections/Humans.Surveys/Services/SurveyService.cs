@@ -875,7 +875,10 @@ internal sealed class SurveyService(
     public Task MarkInvitationStartedAsync(Guid invitationId, CancellationToken ct = default)
         => repo.MarkInvitationStartedAsync(invitationId, ct);
 
-    public async Task<SurveyPublicContext?> ResolvePublicContextAsync(string slug, CancellationToken ct = default)
+    public async Task<SurveyPublicContext?> ResolvePublicContextAsync(
+        string slug,
+        Guid? userId,
+        CancellationToken ct = default)
     {
         var normalized = NormalizeSlug(slug);
         if (normalized is null) return null;
@@ -886,11 +889,27 @@ internal sealed class SurveyService(
         var definition = await GetForEditAsync(surveyId.Value, ct);
         if (definition is null) return null;
 
-        // A slug only answers when anonymous responding is allowed (e.g. AllowAnonymous was switched
-        // off after the slug was set). The service guards this, not just the controller.
-        if (!definition.Editable.AllowAnonymous) return null;
+        var editable = definition.Editable;
+        if (editable.AllowAnonymous)
+            return new SurveyPublicContext(surveyId.Value, definition);
 
-        return new SurveyPublicContext(surveyId.Value, definition);
+        if (userId is null)
+        {
+            return new SurveyPublicContext(
+                surveyId.Value, definition, SurveyPublicAccess.AuthenticationRequired);
+        }
+
+        var isEligible = editable.AudienceType is null
+            || (await ResolveRecipientIdsAsync(
+                editable.AudienceType.Value,
+                editable.AudienceTeamId,
+                editable.AudienceLoggedInSince,
+                ct)).Contains(userId.Value);
+
+        return new SurveyPublicContext(
+            surveyId.Value,
+            definition,
+            isEligible ? SurveyPublicAccess.Allowed : SurveyPublicAccess.Ineligible);
     }
 
     public Task IncrementPublicStartedAsync(Guid surveyId, CancellationToken ct = default)
@@ -2488,8 +2507,6 @@ internal sealed class SurveyService(
             throw new InvalidOperationException("Asociado votes must target the Asociados audience.");
         if (input.AllowAnonymous)
             throw new InvalidOperationException("Asociado votes must use identified responses.");
-        if (!string.IsNullOrWhiteSpace(input.PublicSlug))
-            throw new InvalidOperationException("Asociado votes cannot have a public link.");
     }
 
     private static void ValidateRankedDefinitionFrozen(

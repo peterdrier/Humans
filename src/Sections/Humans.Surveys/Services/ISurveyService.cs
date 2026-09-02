@@ -104,10 +104,16 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
     Task MarkInvitationStartedAsync(Guid invitationId, CancellationToken ct = default);
 
     /// <summary>
-    /// Resolves a public slug into the public answering context (survey id + reused definition), or
-    /// null when no survey owns that slug or the slug is blank. The slug is normalised before lookup.
+    /// Resolves a shareable slug into the answering context (survey id + reused definition) and the
+    /// current Human's access outcome, or null when no survey owns that slug or the slug is blank.
+    /// Anonymous-enabled surveys allow everyone; identified surveys require a logged-in Human who
+    /// currently belongs to the configured audience (or any logged-in Human when no audience is set).
+    /// The slug is normalised before lookup.
     /// </summary>
-    Task<SurveyPublicContext?> ResolvePublicContextAsync(string slug, CancellationToken ct = default);
+    Task<SurveyPublicContext?> ResolvePublicContextAsync(
+        string slug,
+        Guid? userId,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Gets or creates the logged-in Human's per-survey participation ledger for a public-link
@@ -306,7 +312,17 @@ internal sealed record SurveyAnswerContext(
 /// A survey resolved from its public slug: the survey id plus the reused editable definition
 /// (<see cref="SurveyDetail"/>). Representation is selected when the respondent starts.
 /// </summary>
-internal sealed record SurveyPublicContext(Guid SurveyId, SurveyDetail Definition);
+internal sealed record SurveyPublicContext(
+    Guid SurveyId,
+    SurveyDetail Definition,
+    SurveyPublicAccess Access = SurveyPublicAccess.Allowed);
+
+internal enum SurveyPublicAccess
+{
+    Allowed,
+    AuthenticationRequired,
+    Ineligible,
+}
 
 /// <summary>
 /// The logged-in public-link start result. <c>ParticipationId</c> is the existing or newly-created

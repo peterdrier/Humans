@@ -1664,7 +1664,8 @@ public class SurveyServiceTests
     {
         _repo.GetIdByPublicSlugAsync("missing", Arg.Any<CancellationToken>()).Returns((Guid?)null);
 
-        var ctx = await CreateService().ResolvePublicContextAsync("MISSING", TestContext.Current.CancellationToken);
+        var ctx = await CreateService().ResolvePublicContextAsync(
+            "MISSING", null, TestContext.Current.CancellationToken);
 
         ctx.Should().BeNull();
         // Lookup uses the normalised (lower-cased/trimmed) slug.
@@ -1675,7 +1676,8 @@ public class SurveyServiceTests
     [HumansFact]
     public async Task ResolvePublicContextAsync_returns_null_for_blank_slug()
     {
-        var ctx = await CreateService().ResolvePublicContextAsync("   ", TestContext.Current.CancellationToken);
+        var ctx = await CreateService().ResolvePublicContextAsync(
+            "   ", null, TestContext.Current.CancellationToken);
 
         ctx.Should().BeNull();
         await _repo.DidNotReceive().GetIdByPublicSlugAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -1690,28 +1692,74 @@ public class SurveyServiceTests
         _repo.GetIdByPublicSlugAsync("feedback", Arg.Any<CancellationToken>()).Returns(survey.Id);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
-        var ctx = await CreateService().ResolvePublicContextAsync(" Feedback ", TestContext.Current.CancellationToken);
+        var ctx = await CreateService().ResolvePublicContextAsync(
+            " Feedback ", null, TestContext.Current.CancellationToken);
 
         ctx.Should().NotBeNull();
         ctx.SurveyId.Should().Be(survey.Id);
         ctx.Definition.Id.Should().Be(survey.Id);
         ctx.Definition.Status.Should().Be(SurveyStatus.Open);
+        ctx.Access.Should().Be(SurveyPublicAccess.Allowed);
     }
 
     [HumansFact]
-    public async Task ResolvePublicContextAsync_returns_null_when_anonymous_disallowed()
+    public async Task ResolvePublicContextAsync_requires_authentication_when_anonymous_disallowed()
     {
-        // A slug left behind after AllowAnonymous was switched off must not resolve —
-        // the service is the authoritative guard, not just the controller.
         var survey = SurveyWith(SurveyStatus.Open, null, null);
         survey.PublicSlug = "feedback";
         survey.AllowAnonymous = false;
         _repo.GetIdByPublicSlugAsync("feedback", Arg.Any<CancellationToken>()).Returns(survey.Id);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
-        var ctx = await CreateService().ResolvePublicContextAsync("feedback", TestContext.Current.CancellationToken);
+        var ctx = await CreateService().ResolvePublicContextAsync(
+            "feedback", null, TestContext.Current.CancellationToken);
 
-        ctx.Should().BeNull();
+        ctx.Should().NotBeNull();
+        ctx.Access.Should().Be(SurveyPublicAccess.AuthenticationRequired);
+    }
+
+    [HumansFact]
+    public async Task ResolvePublicContextAsync_allows_any_logged_in_human_when_no_audience_is_set()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        survey.PublicSlug = "feedback";
+        survey.AllowAnonymous = false;
+        var userId = Guid.NewGuid();
+        _repo.GetIdByPublicSlugAsync("feedback", Arg.Any<CancellationToken>()).Returns(survey.Id);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var ctx = await CreateService().ResolvePublicContextAsync(
+            "feedback", userId, TestContext.Current.CancellationToken);
+
+        ctx.Should().NotBeNull();
+        ctx.Access.Should().Be(SurveyPublicAccess.Allowed);
+        await _teamService.DidNotReceive()
+            .GetTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ResolvePublicContextAsync_checks_the_current_team_audience()
+    {
+        var teamId = Guid.NewGuid();
+        var eligibleUserId = Guid.NewGuid();
+        var ineligibleUserId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, teamId);
+        survey.PublicSlug = "board-vote";
+        survey.AllowAnonymous = false;
+        _repo.GetIdByPublicSlugAsync("board-vote", Arg.Any<CancellationToken>()).Returns(survey.Id);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(TeamWith(teamId, eligibleUserId));
+
+        var eligible = await CreateService().ResolvePublicContextAsync(
+            "board-vote", eligibleUserId, TestContext.Current.CancellationToken);
+        var ineligible = await CreateService().ResolvePublicContextAsync(
+            "board-vote", ineligibleUserId, TestContext.Current.CancellationToken);
+
+        eligible.Should().NotBeNull();
+        eligible.Access.Should().Be(SurveyPublicAccess.Allowed);
+        ineligible.Should().NotBeNull();
+        ineligible.Access.Should().Be(SurveyPublicAccess.Ineligible);
     }
 
     [HumansFact]
@@ -3464,7 +3512,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task CreateAsync_asociado_vote_requires_identified_restricted_configuration()
+    public async Task CreateAsync_asociado_vote_requires_identified_asociado_configuration_but_allows_a_slug()
     {
         var ranked = RankedInput();
         var service = CreateService();
@@ -3475,15 +3523,6 @@ public class SurveyServiceTests
                 IsAsociadoVote = true,
                 AudienceType = SurveyAudienceType.Asociados,
                 AllowAnonymous = true,
-            },
-            Guid.NewGuid(),
-            TestContext.Current.CancellationToken);
-        var publicVote = async () => await service.CreateAsync(
-            Input(ranked) with
-            {
-                IsAsociadoVote = true,
-                AudienceType = SurveyAudienceType.Asociados,
-                PublicSlug = "vote",
             },
             Guid.NewGuid(),
             TestContext.Current.CancellationToken);
@@ -3498,11 +3537,26 @@ public class SurveyServiceTests
 
         await anonymousVote.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*identified*");
-        await publicVote.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*public link*");
         await wrongAudience.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Asociados audience*");
         await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+
+        Survey? saved = null;
+        _repo.When(repo => repo.AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>()))
+            .Do(call => saved = call.Arg<Survey>());
+
+        await service.CreateAsync(
+            Input(ranked) with
+            {
+                IsAsociadoVote = true,
+                AudienceType = SurveyAudienceType.Asociados,
+                PublicSlug = "vote",
+            },
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
+
+        saved.Should().NotBeNull();
+        saved!.PublicSlug.Should().Be("vote");
     }
 
     [HumansFact]
