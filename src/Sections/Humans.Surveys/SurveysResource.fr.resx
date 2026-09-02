@@ -70,6 +70,8 @@
   <data name="Survey_Closed_Title" xml:space="preserve"><value>Enquête indisponible</value></data>
   <data name="Survey_Closed_Heading" xml:space="preserve"><value>Cette enquête est fermée</value></data>
   <data name="Survey_Closed_Body" xml:space="preserve"><value>Merci de votre intérêt — cette enquête n'accepte plus de réponses.</value></data>
+  <data name="Survey_Ineligible_Heading" xml:space="preserve"><value>Cette enquête ne vous est pas accessible</value></data>
+  <data name="Survey_Ineligible_Body" xml:space="preserve"><value>Vous ne faites actuellement pas partie du public visé par cette enquête.</value></data>
   <data name="Survey_NothingToAnswer_Heading" xml:space="preserve"><value>Il n'y a rien à répondre</value></data>
   <data name="Survey_NothingToAnswer_Body" xml:space="preserve"><value>Cette enquête n'a aucune question pour vous, donc rien n'a été envoyé. Si vous vous attendiez à des questions, dites-le-nous.</value></data>
   <data name="Survey_InvalidLink_Heading" xml:space="preserve"><value>Ce lien n'est plus valide</value></data>
