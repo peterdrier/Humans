@@ -7,6 +7,7 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Rideshare.Controllers;
@@ -22,7 +23,8 @@ internal sealed class RideshareController(
     IRideshareService rideshare,
     IUserServiceRead users,
     IStringLocalizer<RideshareResource> localizer,
-    IClock clock) : HumansControllerBase(users)
+    IClock clock,
+    ILogger<RideshareController> logger) : HumansControllerBase(users)
 {
     // ── Board ─────────────────────────────────────────────────────────────
 
@@ -64,14 +66,18 @@ internal sealed class RideshareController(
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
 
-        var save = model.ToSave();
-        if (save is null) ModelState.AddModelError(nameof(model.DepartureDate), localizer["Rideshare_InvalidDate"]);
         if (!ModelState.IsValid) return View(model);
+        var save = model.ToSave();
+        if (save is null)
+        {
+            ModelState.AddModelError(nameof(model.DepartureDate), localizer["Rideshare_InvalidDate"]);
+            return View(model);
+        }
 
         return await SaveFormAsync(model, async () =>
         {
-            if (model.Id is { } id) await rideshare.UpdateOfferAsync(id, user.Id, save!, ct);
-            else await rideshare.CreateOfferAsync(user.Id, await rideshare.GetActiveYearAsync(ct), save!, ct);
+            if (model.Id is { } id) await rideshare.UpdateOfferAsync(id, user.Id, save, ct);
+            else await rideshare.CreateOfferAsync(user.Id, await rideshare.GetActiveYearAsync(ct), save, ct);
         }, "Rideshare_OfferSaved");
     }
 
@@ -110,14 +116,18 @@ internal sealed class RideshareController(
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
 
-        var save = model.ToSave();
-        if (save is null) ModelState.AddModelError(nameof(model.DesiredDate), localizer["Rideshare_InvalidDate"]);
         if (!ModelState.IsValid) return View(model);
+        var save = model.ToSave();
+        if (save is null)
+        {
+            ModelState.AddModelError(nameof(model.DesiredDate), localizer["Rideshare_InvalidDate"]);
+            return View(model);
+        }
 
         return await SaveFormAsync(model, async () =>
         {
-            if (model.Id is { } id) await rideshare.UpdateRequestAsync(id, user.Id, save!, ct);
-            else await rideshare.CreateRequestAsync(user.Id, await rideshare.GetActiveYearAsync(ct), save!, ct);
+            if (model.Id is { } id) await rideshare.UpdateRequestAsync(id, user.Id, save, ct);
+            else await rideshare.CreateRequestAsync(user.Id, await rideshare.GetActiveYearAsync(ct), save, ct);
         }, "Rideshare_RequestSaved");
     }
 
@@ -192,7 +202,7 @@ internal sealed class RideshareController(
 
     // ── Error-contract mapping ────────────────────────────────────────────
 
-    /// <summary>Redirect-style actions: 404 / 403 pass through, a message becomes an error toast on Mine.</summary>
+    /// <summary>Redirect-style actions: 404 / 403 pass through, a rule becomes a localized error toast on Mine.</summary>
     private async Task<IActionResult> RunThenMineAsync(Func<Task> action, string successKey)
     {
         try
@@ -200,25 +210,46 @@ internal sealed class RideshareController(
             await action();
             SetSuccess(localizer[successKey]);
         }
-        catch (KeyNotFoundException) { return NotFound(); }
-        catch (UnauthorizedAccessException) { return Forbid(); }
-        catch (InvalidOperationException ex) { SetError(ex.Message); }
+        catch (KeyNotFoundException ex)
+        {
+            logger.LogInformation(ex, "Rideshare {Action}: not found", ControllerContext.ActionDescriptor.ActionName);
+            return NotFound();
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            logger.LogWarning(ex, "Rideshare {Action}: forbidden", ControllerContext.ActionDescriptor.ActionName);
+            return Forbid();
+        }
+        catch (RideshareRuleException ex)
+        {
+            logger.LogInformation(ex, "Rideshare {Action}: rule {Rule}", ControllerContext.ActionDescriptor.ActionName, ex.Key);
+            SetError(localizer[ex.Key, ex.Args]);
+        }
 
         return RedirectToAction(nameof(Mine));
     }
 
-    /// <summary>Form POSTs: a message re-renders the form with it as a model error.</summary>
+    /// <summary>Form POSTs: a rule re-renders the form with its localized message as a model error.</summary>
     private async Task<IActionResult> SaveFormAsync(object model, Func<Task> action, string successKey)
     {
         try
         {
             await action();
         }
-        catch (KeyNotFoundException) { return NotFound(); }
-        catch (UnauthorizedAccessException) { return Forbid(); }
-        catch (InvalidOperationException ex)
+        catch (KeyNotFoundException ex)
         {
-            ModelState.AddModelError(string.Empty, ex.Message);
+            logger.LogInformation(ex, "Rideshare {Action}: not found", ControllerContext.ActionDescriptor.ActionName);
+            return NotFound();
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            logger.LogWarning(ex, "Rideshare {Action}: forbidden", ControllerContext.ActionDescriptor.ActionName);
+            return Forbid();
+        }
+        catch (RideshareRuleException ex)
+        {
+            logger.LogInformation(ex, "Rideshare {Action}: rule {Rule}", ControllerContext.ActionDescriptor.ActionName, ex.Key);
+            ModelState.AddModelError(string.Empty, localizer[ex.Key, ex.Args]);
             return View(model);
         }
 

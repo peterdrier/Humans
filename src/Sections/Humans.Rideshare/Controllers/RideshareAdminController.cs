@@ -5,6 +5,7 @@ using Humans.Rideshare.Services;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 using NodaTime;
 
 namespace Humans.Rideshare.Controllers;
@@ -15,6 +16,7 @@ namespace Humans.Rideshare.Controllers;
 internal sealed class RideshareAdminController(
     IRideshareService rideshare,
     IUserServiceRead users,
+    IStringLocalizer<RideshareResource> localizer,
     IClock clock) : HumansControllerBase(users)
 {
     [HttpGet("")]
@@ -32,15 +34,25 @@ internal sealed class RideshareAdminController(
         if (error is not null) return error;
 
         var year = await rideshare.GetActiveYearAsync(ct);
-        var save = model.ToSave();
-        if (save is null) ModelState.AddModelError(string.Empty, "Every window date must be a valid date (yyyy-mm-dd).");
-        if (!ModelState.IsValid)
+        var save = ModelState.IsValid ? model.ToSave() : null;
+        if (save is null)
         {
+            if (ModelState.IsValid) ModelState.AddModelError(string.Empty, "Every window date must be a valid date (yyyy-mm-dd).");
             model.Stats = (await rideshare.GetSnapshotAsync(year, ct)).Stats();
             return View(model);
         }
 
-        await rideshare.SaveSettingsAsync(year, save!, user.Id, ct);
+        try
+        {
+            await rideshare.SaveSettingsAsync(year, save, user.Id, ct);
+        }
+        catch (RideshareRuleException ex)
+        {
+            ModelState.AddModelError(string.Empty, localizer[ex.Key, ex.Args]);
+            model.Stats = (await rideshare.GetSnapshotAsync(year, ct)).Stats();
+            return View(model);
+        }
+
         SetSuccess($"Rideshare settings for {year} saved.");
         return RedirectToAction(nameof(Index));
     }

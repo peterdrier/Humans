@@ -10,8 +10,9 @@ namespace Humans.Rideshare.Services;
 /// <remarks>
 /// Error contract, mapped by the controllers: <see cref="KeyNotFoundException"/> → 404;
 /// <see cref="UnauthorizedAccessException"/> → 403 (not the owner / not a party);
-/// <see cref="InvalidOperationException"/> carries a human-readable message shown to the
-/// user (validation and state problems — not enough seats, place not found, year not set up).
+/// <see cref="RideshareRuleException"/> (an <see cref="InvalidOperationException"/>) carries a
+/// resource key the controller localizes for the user (validation and state problems: not
+/// enough seats, place not found, year not set up).
 /// </remarks>
 internal interface IRideshareService : IApplicationService
 {

@@ -109,12 +109,12 @@ internal sealed class RideshareService(
         if (trip.UserId != actorUserId)
             throw new UnauthorizedAccessException("Only the driver can edit this ride.");
         if (trip.Status == TripStatus.Cancelled)
-            throw new InvalidOperationException("A cancelled ride can't be edited.");
+            throw new RideshareRuleException("Rideshare_Error_CancelledRideEdit");
 
         ValidateTrip(save);
         var accepted = AcceptedSeats(trip);
         if (save.SeatsOffered < accepted)
-            throw new InvalidOperationException($"Seats offered can't go below the {accepted} already accepted.");
+            throw new RideshareRuleException("Rideshare_Error_SeatsBelowAccepted", accepted);
 
         var member = await ResolvePointAsync(save.MemberPlaceLabel, save.MemberLatitude, save.MemberLongitude, ct);
         var existingWaypoints = ParseWaypoints(trip.WaypointsJson);
@@ -185,7 +185,7 @@ internal sealed class RideshareService(
         if (request.UserId != actorUserId)
             throw new UnauthorizedAccessException("Only the rider can edit this request.");
         if (request.Status == RequestStatus.Cancelled)
-            throw new InvalidOperationException("A cancelled request can't be edited.");
+            throw new RideshareRuleException("Rideshare_Error_CancelledRequestEdit");
 
         ValidateRequest(save);
         var pickup = await ResolvePointAsync(save.PickupPlaceLabel, save.PickupLatitude, save.PickupLongitude, ct);
@@ -217,7 +217,7 @@ internal sealed class RideshareService(
         var trip = await repository.GetTripAsync(tripId, ct)
             ?? throw new KeyNotFoundException($"Trip {tripId} not found.");
         if (trip.Status != TripStatus.Active)
-            throw new InvalidOperationException("This ride is no longer available.");
+            throw new RideshareRuleException("Rideshare_Error_RideUnavailable");
 
         RideshareRequest? request = null;
         if (requestId is { } rid)
@@ -226,25 +226,27 @@ internal sealed class RideshareService(
             request = await repository.GetRequestAsync(rid, ct)
                 ?? throw new KeyNotFoundException($"Request {rid} not found.");
             if (request.Status != RequestStatus.Active)
-                throw new InvalidOperationException("This request is no longer open.");
+                throw new RideshareRuleException("Rideshare_Error_RequestClosed");
             if (trip.UserId != fromUserId)
                 throw new UnauthorizedAccessException("Only the driver of this ride can answer a request with it.");
             if (request.UserId == fromUserId)
-                throw new InvalidOperationException("You can't answer your own request.");
+                throw new RideshareRuleException("Rideshare_Error_OwnRequest");
+            if (trip.Direction != request.Direction || !TravelsOn(trip, request.DesiredDate))
+                throw new RideshareRuleException("Rideshare_Error_RideNotOnRequestDate");
             if (seats == 0)
                 seats = request.PartySize;
         }
         else if (trip.UserId == fromUserId)
         {
-            throw new InvalidOperationException("You can't express interest in your own ride.");
+            throw new RideshareRuleException("Rideshare_Error_OwnRide");
         }
 
         if (seats < 1)
-            throw new InvalidOperationException("Ask for at least one seat.");
+            throw new RideshareRuleException("Rideshare_Error_SeatsMinimum");
         if (SeatsRemaining(trip) < seats)
-            throw new InvalidOperationException("This ride doesn't have enough seats left.");
+            throw new RideshareRuleException("Rideshare_Error_NotEnoughSeats");
         if (trip.Interests.Any(i => i.FromUserId == fromUserId && i.RequestId == requestId && i.Status == InterestStatus.Pending))
-            throw new InvalidOperationException("You've already expressed interest — the answer is pending.");
+            throw new RideshareRuleException("Rideshare_Error_AlreadyInterested");
 
         var interest = new RideshareInterest
         {
@@ -276,11 +278,11 @@ internal sealed class RideshareService(
     {
         var interest = await LoadInterestForOwnerAsync(interestId, actorUserId, ct);
         if (interest.Status != InterestStatus.Pending)
-            throw new InvalidOperationException("This interest is no longer pending.");
+            throw new RideshareRuleException("Rideshare_Error_InterestNotPending");
         if (interest.Trip.Status != TripStatus.Active)
-            throw new InvalidOperationException("This ride is no longer available.");
+            throw new RideshareRuleException("Rideshare_Error_RideUnavailable");
         if (SeatsRemaining(interest.Trip) < interest.Seats)
-            throw new InvalidOperationException("This ride doesn't have enough seats left.");
+            throw new RideshareRuleException("Rideshare_Error_NotEnoughSeats");
 
         interest.Status = InterestStatus.Accepted;
         interest.RespondedAt = clock.GetCurrentInstant();
@@ -298,7 +300,7 @@ internal sealed class RideshareService(
     {
         var interest = await LoadInterestForOwnerAsync(interestId, actorUserId, ct);
         if (interest.Status != InterestStatus.Pending)
-            throw new InvalidOperationException("This interest is no longer pending.");
+            throw new RideshareRuleException("Rideshare_Error_InterestNotPending");
 
         interest.Status = InterestStatus.Declined;
         interest.RespondedAt = clock.GetCurrentInstant();
@@ -320,7 +322,7 @@ internal sealed class RideshareService(
         if (interest.FromUserId != actorUserId && PostingOwner(interest) != actorUserId)
             throw new UnauthorizedAccessException("Only the two people involved can withdraw this.");
         if (interest.Status is not (InterestStatus.Pending or InterestStatus.Accepted))
-            throw new InvalidOperationException("This interest can't be withdrawn any more.");
+            throw new RideshareRuleException("Rideshare_Error_InterestNotWithdrawable");
 
         interest.Status = InterestStatus.Withdrawn;
         await repository.UpdateInterestAsync(interest, ct);
@@ -331,9 +333,9 @@ internal sealed class RideshareService(
     public async Task SaveSettingsAsync(int year, SettingsSave save, Guid actorUserId, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(save.DestinationLabel))
-            throw new InvalidOperationException("Please name the destination.");
+            throw new RideshareRuleException("Rideshare_Error_DestinationRequired");
         if (save.InboundWindowEnd < save.InboundWindowStart || save.OutboundWindowEnd < save.OutboundWindowStart)
-            throw new InvalidOperationException("A travel window can't end before it starts.");
+            throw new RideshareRuleException("Rideshare_Error_WindowOrder");
 
         var settings = await repository.GetSettingsAsync(year, ct)
             ?? new RideshareSettings { Id = Guid.NewGuid(), Year = year };
@@ -437,17 +439,17 @@ internal sealed class RideshareService(
 
     private async Task<RideshareSettings> RequireSettingsAsync(int year, CancellationToken ct) =>
         await repository.GetSettingsAsync(year, ct)
-        ?? throw new InvalidOperationException($"Rideshare is not set up for {year} yet.");
+        ?? throw new RideshareRuleException("Rideshare_Error_NotSetUp", year);
 
     private async Task<GeoPoint> ResolvePointAsync(string label, double? latitude, double? longitude, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(label))
-            throw new InvalidOperationException("Please name the place.");
+            throw new RideshareRuleException("Rideshare_Error_PlaceRequired");
         if (latitude is { } lat && longitude is { } lng)
             return new GeoPoint(lat, lng);
 
         return await routeProvider.GeocodeAsync(label.Trim(), ct)
-            ?? throw new InvalidOperationException($"Couldn't find \"{label.Trim()}\" on the map. Try a nearby city, or place the pin yourself.");
+            ?? throw new RideshareRuleException("Rideshare_Error_PlaceNotFound", label.Trim());
     }
 
     /// <summary>Geocodes each label; a label already on the trip keeps its point (no provider call).</summary>
@@ -468,7 +470,7 @@ internal sealed class RideshareService(
             }
 
             var point = await routeProvider.GeocodeAsync(label, ct)
-                ?? throw new InvalidOperationException($"Couldn't find the stop \"{label}\" on the map.");
+                ?? throw new RideshareRuleException("Rideshare_Error_StopNotFound", label);
             result.Add(new Waypoint(label, point.Latitude, point.Longitude));
         }
         return result;
@@ -499,18 +501,22 @@ internal sealed class RideshareService(
 
     // ── Entity helpers ────────────────────────────────────────────────────
 
+    /// <summary>Entity twin of <see cref="TripView.CoversDate"/>: departure through departure + duration - 1.</summary>
+    private static bool TravelsOn(RideshareTrip trip, LocalDate date) =>
+        date >= trip.DepartureDate && date <= trip.DepartureDate.PlusDays(trip.ExpectedDurationDays - 1);
+
     private static void ValidateTrip(TripSave save)
     {
         if (save.ExpectedDurationDays < 1)
-            throw new InvalidOperationException("A trip takes at least one day.");
+            throw new RideshareRuleException("Rideshare_Error_DurationMinimum");
         if (save.SeatsOffered < 1)
-            throw new InvalidOperationException("Offer at least one seat.");
+            throw new RideshareRuleException("Rideshare_Error_OfferSeatsMinimum");
     }
 
     private static void ValidateRequest(RequestSave save)
     {
         if (save.PartySize < 1)
-            throw new InvalidOperationException("A request is for at least one person.");
+            throw new RideshareRuleException("Rideshare_Error_PartyMinimum");
     }
 
     private static RideshareTrip NewTrip(Guid userId, int year, RideshareDirection direction, LocalDate departureDate, Instant now) =>

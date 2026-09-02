@@ -55,7 +55,7 @@
                             <i class="fa-solid fa-pen me-1"></i>@Localizer["Rideshare_Edit"]
                         </a>
                         <form method="post" asp-action="CancelOffer" asp-route-id="@trip.Id"
-                              onsubmit="return confirm('@Localizer["Rideshare_ConfirmCancel"]');">
+                              data-confirm="@Localizer["Rideshare_ConfirmCancel"]">
                             <button type="submit" class="btn btn-sm btn-outline-danger">
                                 <i class="fa-solid fa-ban me-1"></i>@Localizer["Rideshare_CancelOffer"]
                             </button>
@@ -114,7 +114,7 @@
                             <i class="fa-solid fa-pen me-1"></i>@Localizer["Rideshare_Edit"]
                         </a>
                         <form method="post" asp-action="CancelRequest" asp-route-id="@request.Id"
-                              onsubmit="return confirm('@Localizer["Rideshare_ConfirmCancel"]');">
+                              data-confirm="@Localizer["Rideshare_ConfirmCancel"]">
                             <button type="submit" class="btn btn-sm btn-outline-danger">
                                 <i class="fa-solid fa-ban me-1"></i>@Localizer["Rideshare_CancelRequest"]
                             </button>

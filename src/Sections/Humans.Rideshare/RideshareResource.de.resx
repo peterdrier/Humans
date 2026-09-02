@@ -164,4 +164,26 @@
   <data name="Rideshare_InterestAccepted" xml:space="preserve"><value>Angenommen – die Person ist dabei.</value></data>
   <data name="Rideshare_InterestDeclined" xml:space="preserve"><value>Abgelehnt.</value></data>
   <data name="Rideshare_InterestWithdrawn" xml:space="preserve"><value>Zurückgezogen.</value></data>
+  <data name="Rideshare_Error_CancelledRideEdit" xml:space="preserve"><value>Eine stornierte Fahrt kann nicht bearbeitet werden.</value></data>
+  <data name="Rideshare_Error_SeatsBelowAccepted" xml:space="preserve"><value>Die angebotenen Plätze können nicht unter die {0} bereits zugesagten sinken.</value></data>
+  <data name="Rideshare_Error_CancelledRequestEdit" xml:space="preserve"><value>Eine stornierte Anfrage kann nicht bearbeitet werden.</value></data>
+  <data name="Rideshare_Error_RideUnavailable" xml:space="preserve"><value>Diese Fahrt ist nicht mehr verfügbar.</value></data>
+  <data name="Rideshare_Error_RequestClosed" xml:space="preserve"><value>Diese Anfrage ist nicht mehr offen.</value></data>
+  <data name="Rideshare_Error_OwnRequest" xml:space="preserve"><value>Du kannst deine eigene Anfrage nicht beantworten.</value></data>
+  <data name="Rideshare_Error_OwnRide" xml:space="preserve"><value>Du kannst dich nicht für deine eigene Fahrt interessieren.</value></data>
+  <data name="Rideshare_Error_SeatsMinimum" xml:space="preserve"><value>Frage mindestens einen Platz an.</value></data>
+  <data name="Rideshare_Error_NotEnoughSeats" xml:space="preserve"><value>Diese Fahrt hat nicht mehr genug freie Plätze.</value></data>
+  <data name="Rideshare_Error_AlreadyInterested" xml:space="preserve"><value>Du hast bereits Interesse gezeigt. Die Antwort steht noch aus.</value></data>
+  <data name="Rideshare_Error_InterestNotPending" xml:space="preserve"><value>Diese Anfrage ist nicht mehr offen.</value></data>
+  <data name="Rideshare_Error_InterestNotWithdrawable" xml:space="preserve"><value>Diese Anfrage kann nicht mehr zurückgezogen werden.</value></data>
+  <data name="Rideshare_Error_DestinationRequired" xml:space="preserve"><value>Bitte gib das Ziel an.</value></data>
+  <data name="Rideshare_Error_WindowOrder" xml:space="preserve"><value>Ein Reisezeitraum kann nicht enden, bevor er beginnt.</value></data>
+  <data name="Rideshare_Error_NotSetUp" xml:space="preserve"><value>Rideshare ist für {0} noch nicht eingerichtet.</value></data>
+  <data name="Rideshare_Error_PlaceRequired" xml:space="preserve"><value>Bitte gib den Ort an.</value></data>
+  <data name="Rideshare_Error_PlaceNotFound" xml:space="preserve"><value>"{0}" wurde auf der Karte nicht gefunden. Versuche eine Stadt in der Nähe oder setze den Pin selbst.</value></data>
+  <data name="Rideshare_Error_StopNotFound" xml:space="preserve"><value>Der Zwischenstopp "{0}" wurde auf der Karte nicht gefunden.</value></data>
+  <data name="Rideshare_Error_DurationMinimum" xml:space="preserve"><value>Eine Fahrt dauert mindestens einen Tag.</value></data>
+  <data name="Rideshare_Error_OfferSeatsMinimum" xml:space="preserve"><value>Biete mindestens einen Platz an.</value></data>
+  <data name="Rideshare_Error_PartyMinimum" xml:space="preserve"><value>Eine Anfrage gilt für mindestens eine Person.</value></data>
+  <data name="Rideshare_Error_RideNotOnRequestDate" xml:space="preserve"><value>Diese Fahrt geht an dem Tag nicht in diese Richtung.</value></data>
 </root>

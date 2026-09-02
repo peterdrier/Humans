@@ -129,7 +129,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var act = () => NewService().CreateOfferAsync(
             SeedUser(), Year, NewTripSave(place: "Atlantis", latitude: null, longitude: null), Ct);
 
-        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().Contain("Atlantis");
+        (await act.Should().ThrowAsync<RideshareRuleException>()).Which.Args.Should().Contain("Atlantis");
         await using var ctx = OpenContext();
         (await ctx.Trips.CountAsync(Ct)).Should().Be(0);
     }
@@ -143,7 +143,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var act = () => NewService().CreateOfferAsync(
             SeedUser(), Year, NewTripSave(waypoints: ["Nowhere Junction"]), Ct);
 
-        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().Contain("Nowhere Junction");
+        (await act.Should().ThrowAsync<RideshareRuleException>()).Which.Args.Should().Contain("Nowhere Junction");
     }
 
     [HumansFact]
@@ -168,7 +168,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     {
         var act = () => NewService().CreateOfferAsync(SeedUser(), Year, NewTripSave(), Ct);
 
-        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().Contain(Year.ToString());
+        (await act.Should().ThrowAsync<RideshareRuleException>()).Which.Args.Should().Contain(Year);
     }
 
     // ── Offers: ownership and state ───────────────────────────────────────
@@ -322,6 +322,27 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var again = () => service.ExpressInterestAsync(rider, trip.Id, null, 1, null, Ct);
 
         await again.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [HumansFact]
+    public async Task ExpressInterest_AnsweringAPin_RequiresATripGoingThatWayOnThatDay()
+    {
+        var driver = SeedUser("Ada");
+        var rider = SeedUser("Bo");
+        var request = await SeedRequestAsync(rider, desiredDate: new LocalDate(Year, 7, 10));
+        var otherDay = await SeedTripAsync(driver, departure: new LocalDate(Year, 7, 1));
+        var otherWay = await SeedTripAsync(driver, direction: RideshareDirection.Outbound, departure: new LocalDate(Year, 7, 10));
+        var covering = await SeedTripAsync(driver, departure: new LocalDate(Year, 7, 9), durationDays: 2);
+        var service = NewService();
+
+        var wrongDay = () => service.ExpressInterestAsync(driver, otherDay.Id, request.Id, 0, null, Ct);
+        (await wrongDay.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_RideNotOnRequestDate");
+        var wrongWay = () => service.ExpressInterestAsync(driver, otherWay.Id, request.Id, 0, null, Ct);
+        (await wrongWay.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_RideNotOnRequestDate");
+
+        var id = await service.ExpressInterestAsync(driver, covering.Id, request.Id, 0, null, Ct);
+        await using var ctx = OpenContext();
+        (await ctx.Interests.SingleAsync(i => i.Id == id, Ct)).TripId.Should().Be(covering.Id);
     }
 
     [HumansFact]

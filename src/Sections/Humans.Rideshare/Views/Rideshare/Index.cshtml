@@ -41,9 +41,9 @@ else
         <div class="col-auto">
             <div class="form-label">@Localizer["Rideshare_Direction"]</div>
             <div class="btn-group" role="group">
-                <input type="radio" class="btn-check" name="direction" id="dir-inbound" value="@RideshareDirection.Inbound" checked="@isInbound" />
+                <input type="radio" class="btn-check" name="direction" id="dir-inbound" value="@RideshareDirection.Inbound" @(isInbound ? "checked" : "") />
                 <label class="btn btn-outline-primary" for="dir-inbound">@Localizer.EnumDisplay(RideshareDirection.Inbound)</label>
-                <input type="radio" class="btn-check" name="direction" id="dir-outbound" value="@RideshareDirection.Outbound" checked="@(!isInbound)" />
+                <input type="radio" class="btn-check" name="direction" id="dir-outbound" value="@RideshareDirection.Outbound" @(isInbound ? "" : "checked") />
                 <label class="btn btn-outline-primary" for="dir-outbound">@Localizer.EnumDisplay(RideshareDirection.Outbound)</label>
             </div>
         </div>
@@ -251,7 +251,7 @@ else
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Rideshare_Cancel"]</button>
-                        <button type="submit" class="btn btn-primary" disabled="@(Model.MyActiveOffers.Count == 0)">@Localizer["Rideshare_Send"]</button>
+                        <button type="submit" class="btn btn-primary" @(Model.MyActiveOffers.Count == 0 ? "disabled" : "")>@Localizer["Rideshare_Send"]</button>
                     </div>
                 </form>
             </div>

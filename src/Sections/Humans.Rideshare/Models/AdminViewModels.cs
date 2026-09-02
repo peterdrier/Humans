@@ -70,7 +70,7 @@ internal sealed class RideshareSettingsViewModel
     }
 }
 
-/// <summary>One accepted seat on a trip's roster.</summary>
+/// <summary>One accepted seat on a trip's roster. The rider is the request's owner when the driver answered a pin, else whoever expressed interest.</summary>
 internal sealed record RosterRider(Guid UserId, int Seats);
 
 /// <summary>A trip happening on the day, any status, with its accepted riders.</summary>
@@ -80,13 +80,17 @@ internal sealed record DayViewModel(int Year, LocalDate Date, IReadOnlyList<DayR
 {
     public static DayViewModel Build(RideshareSnapshot snapshot, LocalDate date)
     {
+        var requestOwners = snapshot.Requests.ToDictionary(r => r.Id, r => r.UserId);
         var rows = snapshot.TripsHappeningOn(date)
             .OrderBy(t => t.Direction).ThenBy(t => t.DepartureDate).ThenBy(t => t.MemberPlaceLabel, StringComparer.CurrentCultureIgnoreCase)
             .Select(t => new DayRosterRow(t, snapshot.Interests
                 .Where(i => i.TripId == t.Id && i.Status == InterestStatus.Accepted)
-                .Select(i => new RosterRider(i.FromUserId, i.Seats))
+                .Select(i => new RosterRider(RiderOf(i, requestOwners), i.Seats))
                 .ToList()))
             .ToList();
         return new DayViewModel(snapshot.Year, date, rows);
     }
+
+    private static Guid RiderOf(InterestView interest, IReadOnlyDictionary<Guid, Guid> requestOwners) =>
+        interest.RequestId is { } rid && requestOwners.TryGetValue(rid, out var owner) ? owner : interest.FromUserId;
 }
