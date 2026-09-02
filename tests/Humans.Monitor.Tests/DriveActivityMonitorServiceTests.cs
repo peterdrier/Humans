@@ -12,12 +12,11 @@ using Humans.Users.Contracts;
 namespace Humans.Monitor.Tests;
 
 /// <summary>
-/// Behavioral tests for the §15-migrated
-/// <see cref="DriveActivityMonitorService"/>. The service is a dispatcher
-/// over four collaborators — <see cref="IGoogleDriveActivityClient"/>,
-/// <see cref="ITeamResourceService"/>,
-/// <see cref="ISettingsService"/>, and
-/// <see cref="IAuditLogService"/> — so tests substitute all four and pin down:
+/// Behavioral tests for <see cref="DriveActivityMonitorService"/>. The service is a
+/// dispatcher over five collaborators — <see cref="IGoogleDriveActivityClient"/>,
+/// <see cref="ITeamResourceService"/>, <see cref="ISettingsService"/>,
+/// <see cref="IUserServiceRead"/> and
+/// <see cref="IAuditLogService"/> — so tests substitute all five and pin down:
 /// self-initiated changes get filtered, anomaly descriptions are built
 /// correctly and emitted through <see cref="IAuditLogService"/>,
 /// partial-failure keeps the last-run marker, and the happy path advances it.
@@ -413,8 +412,6 @@ public class DriveActivityMonitorServiceTests
         var expectedFilter = NodaTime.Text.InstantPattern.General.Format(expectedLookback);
         _client.Received(1).QueryActivityAsync(resource.GoogleId, expectedFilter, Arg.Any<CancellationToken>());
     }
-
-    // ── helpers ──────────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task CheckForAnomalousActivityAsync_UsesStoredLookback_WhenMarkerParses()

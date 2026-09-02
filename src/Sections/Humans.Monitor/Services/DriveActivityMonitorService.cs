@@ -55,8 +55,7 @@ internal sealed class DriveActivityMonitorService(
             peopleIdCache[$"people/{serviceAccountClientId}"] = serviceAccountEmail;
         }
 
-        // Use time-window dedup: only process events since the last successful run.
-        // Falls back to 24 hours on first run or if the stored timestamp is missing.
+        // Time-window dedup: only events since the last successful run.
         var now = clock.GetCurrentInstant();
         var lookbackTime = await GetLastRunTimestampAsync(cancellationToken)
             ?? now.Minus(Duration.FromHours(24));
@@ -103,9 +102,8 @@ internal sealed class DriveActivityMonitorService(
             }
             catch (DriveActivityResourceNotFoundException)
             {
-                // Resource exists in our DB but is gone on Google's side.
-                // The connector itself worked, so this still counts as a
-                // successful query for "is the connector alive" purposes.
+                // Gone on Google's side, but the connector answered — still a successful
+                // query for "is the connector alive".
                 anyResourceQueried = true;
                 logger.LogWarning(
                     "Drive resource {GoogleId} not found when checking activity (may have been deleted)",
@@ -153,11 +151,8 @@ internal sealed class DriveActivityMonitorService(
             newMarker = now;
         }
 
-        // Persist the monitor's own state (the last-run marker) first, then emit
-        // the audit entries through IAuditLogService so the only writer of
-        // audit_log_entries is the AuditLog section's repository. Audit is logged
-        // after the business save (per IAuditLogService) and regardless of the
-        // marker outcome — anomalies must surface even on a partial-failure run.
+        // Marker first, then audit: anomalies must surface even on a run that holds the
+        // marker back.
         if (newMarker is not null)
         {
             await settingsStore.SetValueAsync(
@@ -263,7 +258,7 @@ internal sealed class DriveActivityMonitorService(
             }
 
             // Drive Activity API often returns "people/{client_id}" instead of the email
-            // for service accounts. Match against the SA's client_id.
+            // for service accounts.
             if (serviceAccountClientId is not null &&
                 string.Equals(actor.KnownUserPersonName, $"people/{serviceAccountClientId}", StringComparison.Ordinal))
             {
@@ -404,7 +399,7 @@ internal sealed class DriveActivityMonitorService(
             return cached;
         }
 
-        // Extract the numeric user ID from "people/123456789" for the UserInfo fallback.
+        // The bare id is the UserInfo ExternalLogin ProviderKey.
         var googleUserId = personName["people/".Length..];
 
         var resolved = await driveActivityClient.TryResolvePersonEmailAsync(personName, cancellationToken);
@@ -425,7 +420,6 @@ internal sealed class DriveActivityMonitorService(
             return resolved;
         }
 
-        // Fall back to raw ID
         peopleIdCache[personName] = personName;
         logger.LogDebug("Could not resolve {PersonName} to an email address", personName);
         return personName;

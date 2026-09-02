@@ -1,3 +1,7 @@
+<!-- freshness:triggers
+  src/Sections/Humans.Monitor/Controllers/MonitorController.cs
+-->
+
 # Monitor — Authorization
 
 | Controller | Scope | Roles | Source |
