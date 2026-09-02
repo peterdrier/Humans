@@ -110,3 +110,9 @@ None. Nothing here is specified-but-unbuilt.
 - **The scan reads Users through `IUserServiceRead.GetAllUserInfosAsync`** — the whole user
   set, lazily, once per run, and only when the Directory connector could not resolve a
   people-id. In-memory over the whole set is the house style at this scale.
+
+## History
+
+| Run | Date | Headline | PR |
+|---|---|---|---|
+| section-doctor | 2026-09-02 | First doctoring: docs and comments still described the pre-carve-out world and a renamed Settings interface; the scan's people-id resolution lived in five fields and three methods and is now one nested resolver; three untested invariants pinned | peterdrier/Humans#pending |
