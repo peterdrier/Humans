@@ -569,7 +569,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task Erase_RemovesTheHumansRows_UnlinksOthersAnswers_AndIsIdempotent()
+    public async Task Erase_RemovesTheHumansRows_AndOthersAnswersToThem_AndIsIdempotent()
     {
         var me = SeedUser("Me");
         var other = SeedUser("Other");
@@ -580,7 +580,8 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         await SeedInterestAsync(me, theirTrip.Id);                                  // mine → gone
         await SeedInterestAsync(me, myTrip.Id, requestId: theirRequest.Id);         // mine → gone
         await SeedInterestAsync(other, myTrip.Id);                                  // theirs on my trip → cascades away
-        var theirAnswer = await SeedInterestAsync(other, theirTrip.Id, requestId: myRequest.Id); // theirs, pointing at my request → unlinked
+        await SeedInterestAsync(other, theirTrip.Id, requestId: myRequest.Id, status: InterestStatus.Accepted); // their seat for me → gone
+        var theirOwnRider = await SeedInterestAsync(SeedUser("Rider"), theirTrip.Id);  // unrelated → stays
         var service = NewService();
 
         await service.EraseForUserAsync(me, Ct);
@@ -589,9 +590,6 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         await using var ctx = OpenContext();
         (await ctx.Trips.Select(t => t.Id).ToListAsync(Ct)).Should().Equal(theirTrip.Id);
         (await ctx.Requests.Select(r => r.Id).ToListAsync(Ct)).Should().Equal(theirRequest.Id);
-        var survivor = (await ctx.Interests.ToListAsync(Ct)).Should().ContainSingle().Subject;
-        survivor.Id.Should().Be(theirAnswer.Id);
-        survivor.RequestId.Should().BeNull();
-        survivor.TripId.Should().Be(theirTrip.Id);
+        (await ctx.Interests.Select(i => i.Id).ToListAsync(Ct)).Should().Equal(theirOwnRider.Id);
     }
 }

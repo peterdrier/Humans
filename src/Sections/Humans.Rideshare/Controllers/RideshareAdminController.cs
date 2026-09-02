@@ -6,6 +6,7 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Rideshare.Controllers;
@@ -17,7 +18,8 @@ internal sealed class RideshareAdminController(
     IRideshareService rideshare,
     IUserServiceRead users,
     IStringLocalizer<RideshareResource> localizer,
-    IClock clock) : HumansControllerBase(users)
+    IClock clock,
+    ILogger<RideshareAdminController> logger) : HumansControllerBase(users)
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
@@ -48,6 +50,7 @@ internal sealed class RideshareAdminController(
         }
         catch (RideshareRuleException ex)
         {
+            logger.LogInformation(ex, "Rideshare settings save for {Year} rejected: rule {Rule}", year, ex.Key);
             ModelState.AddModelError(string.Empty, localizer[ex.Key, ex.Args]);
             model.Stats = (await rideshare.GetSnapshotAsync(year, ct)).Stats();
             return View(model);

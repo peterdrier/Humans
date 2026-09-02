@@ -265,8 +265,9 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **AuditLog**: `IAuditLogService.LogAsync` — settings updates.
 - **Gdpr**: `IUserDataContributor` — exports three slices (`RideshareTrips`,
   `RideshareRequests`, `RideshareInterests`); erasure deletes the user's interests, then their
-  trips (cascades the trips' interests), then their requests (interests referencing them are
-  `SetNull`) — idempotent.
+  trips (cascades the trips' interests), then other drivers' answers to their requests and the
+  requests themselves — idempotent. (The FK's `SetNull` is a database safety net, never the
+  intended path: an orphaned answer would read as the driver riding their own trip.)
 
 ## Architecture
 

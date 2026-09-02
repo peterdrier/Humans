@@ -151,8 +151,7 @@ internal sealed class RideshareRepository(IDbContextFactory<RideshareDbContext> 
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
         // Tracked removes rather than ExecuteDelete so the section's EF-InMemory tests
-        // exercise the same path, and so the SetNull on interests pointing at the
-        // person's requests is applied by the change tracker, not only by the database.
+        // exercise the same path.
         var interests = await ctx.Interests.Where(i => i.FromUserId == userId).ToListAsync(ct);
         ctx.Interests.RemoveRange(interests);
 
@@ -161,11 +160,13 @@ internal sealed class RideshareRepository(IDbContextFactory<RideshareDbContext> 
 
         var requests = await ctx.Requests.Where(r => r.UserId == userId).ToListAsync(ct);
         var requestIds = requests.Select(r => r.Id).ToList();
-        // Load the other people's interests that point at these requests so their
-        // RequestId is nulled in the tracker (DeleteBehavior.SetNull).
-        await ctx.Interests
+        // A driver's answer to one of this person's requests is a seat for this person;
+        // with the request gone it would read as the driver riding their own trip, so it
+        // goes too (rather than the FK's SetNull orphaning it).
+        var answers = await ctx.Interests
             .Where(i => i.RequestId != null && requestIds.Contains(i.RequestId.Value))
-            .LoadAsync(ct);
+            .ToListAsync(ct);
+        ctx.Interests.RemoveRange(answers);
         ctx.Requests.RemoveRange(requests);
 
         await ctx.SaveChangesAsync(ct);
