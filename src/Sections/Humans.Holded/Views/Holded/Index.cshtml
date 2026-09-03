@@ -138,8 +138,7 @@
     </div>
     <div class="card-footer text-muted small">
         <strong>Sync now</strong> pulls purchase docs and sweeps the trailing ledger window;
-        <strong>Full resync</strong> replaces the mirror from inception. Cached ledger lines:
-        @o.LedgerLineCount.ToString("N0", CultureInfo.InvariantCulture).
+        <strong>Full resync</strong> replaces the mirror from inception.
         @if (Model.CreditorBindings is int bindings)
         {
             <text>Creditor bindings: @bindings.</text>
