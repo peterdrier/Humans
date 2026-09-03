@@ -54,11 +54,10 @@ internal sealed class Service(
     }
 
     public async Task<IReadOnlyDictionary<int, decimal>> GetAccountBalancesAsync(
-        int? calendarYear = null, CancellationToken ct = default)
+        CancellationToken ct = default)
     {
         var lines = await repo.GetAllLedgerLinesAsync(ct);
         return lines
-            .Where(l => calendarYear is null || l.Date.InZone(MadridZone).Year == calendarYear)
             .GroupBy(l => l.AccountNum)
             .ToDictionary(g => g.Key, g => g.Sum(l => l.Debit) - g.Sum(l => l.Credit));
     }

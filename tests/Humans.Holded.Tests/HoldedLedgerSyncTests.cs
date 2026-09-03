@@ -228,7 +228,7 @@ public sealed class HoldedLedgerSyncTests
     }
 
     [HumansFact]
-    public async Task Balances_read_supports_year_filter()
+    public async Task Balances_read_sums_the_whole_mirror()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         StubWindowFetch(
@@ -236,7 +236,8 @@ public sealed class HoldedLedgerSyncTests
             Dto(2, 1, 62900105, Instant.FromUtc(2025, 3, 1, 0, 0), debit: 40m));
         await _service.SyncLedgerAsync(full: false, ct);
 
-        (await _service.GetAccountBalancesAsync(2026, ct))[62900105].Should().Be(100m);
-        (await _service.GetAccountBalancesAsync(null, ct))[62900105].Should().Be(140m);
+        // Every cached line, whatever its date — reconciliation compares this against Holded's
+        // own all-time chart balance, so any date narrowing here would manufacture drift.
+        (await _service.GetAccountBalancesAsync(ct))[62900105].Should().Be(140m);
     }
 }
