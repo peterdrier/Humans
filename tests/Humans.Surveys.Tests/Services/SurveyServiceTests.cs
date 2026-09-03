@@ -1857,7 +1857,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task StartPublicTrackedResponseAsync_completion_tracked_creates_ledger_without_draft()
+    public async Task StartPublicTrackedResponseAsync_completion_tracked_preserves_existing_draft_answers_without_linking_the_draft()
     {
         var surveyId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -1873,6 +1873,16 @@ public class SurveyServiceTests
                 Instant.FromUtc(1970, 1, 1, 0, 0),
                 Arg.Any<CancellationToken>())
             .Returns(participation);
+        var questionId = Guid.NewGuid();
+        _repo.GetDraftResponseAsync(surveyId, userId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyResponse
+            {
+                Id = Guid.NewGuid(),
+                SurveyId = surveyId,
+                UserId = userId,
+                Anonymity = ResponseAnonymity.Identified,
+                Answers = [ChoiceAnswer(questionId, "yes")],
+            });
 
         var result = await CreateService().StartPublicTrackedResponseAsync(
             surveyId, userId, ResponseAnonymity.CompletionTracked, "en",
@@ -1881,7 +1891,8 @@ public class SurveyServiceTests
         result.Should().NotBeNull();
         result!.ParticipationId.Should().Be(participation.Id);
         result.DraftResponseId.Should().BeNull();
-        result.DraftAnswers.Should().BeEmpty();
+        result.DraftAnswers.Should().ContainSingle()
+            .Which.SelectedOptionValues.Should().ContainSingle("yes");
         await _repo.DidNotReceive().AddResponseAsync(
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }

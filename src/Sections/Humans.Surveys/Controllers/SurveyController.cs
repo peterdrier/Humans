@@ -64,14 +64,21 @@ internal sealed class SurveyController(
 
         var culture = ResolveCulture(editable.DefaultCulture);
 
-        if (ctx.HasResumableDraft && !editable.IsAsociadoVote)
+        if (ctx.HasResumableDraft)
         {
-            // Establish the wizard session from the resumable Identified draft and jump into the flow.
-            var resumeState = BuildState(ctx, ResponseAnonymity.Identified, culture);
+            // Preserve answers from a pre-change Identified Asociado draft while switching its
+            // eventual submission to CompletionTracked. Finalisation removes the old linked draft.
+            var resumeAnonymity = editable.IsAsociadoVote
+                ? ResponseAnonymity.CompletionTracked
+                : ResponseAnonymity.Identified;
+            var resumeState = BuildState(ctx, resumeAnonymity, culture);
             resumeState.Started = true;
-            resumeState.DraftResponseId = await surveyService.StartIdentifiedDraftAsync(
-                ctx.SurveyId, ctx.InvitationId, ctx.UserId,
-                SurveyInputMethod.UserSpecificLink, culture, ct);
+            if (resumeAnonymity == ResponseAnonymity.Identified)
+            {
+                resumeState.DraftResponseId = await surveyService.StartIdentifiedDraftAsync(
+                    ctx.SurveyId, ctx.InvitationId, ctx.UserId,
+                    SurveyInputMethod.UserSpecificLink, culture, ct);
+            }
             foreach (var a in ctx.DraftAnswers)
             {
                 resumeState.Answers[a.QuestionId.ToString()] = new SurveyWizardAnswer
@@ -101,7 +108,7 @@ internal sealed class SurveyController(
             Culture = culture,
             AllowAnonymous = editable.AllowAnonymous,
             ShowAnonymitySelector = editable.AllowAnonymous,
-            HasResumableDraft = ctx.HasResumableDraft && !editable.IsAsociadoVote,
+            HasResumableDraft = ctx.HasResumableDraft,
             IsAsociadoVote = editable.IsAsociadoVote,
         };
         return View("Intro", vm);

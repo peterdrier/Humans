@@ -860,14 +860,14 @@ internal sealed class SurveyService(
             return null;
         }
 
+        var existingDraft = await repo.GetDraftResponseAsync(surveyId, userId, ct);
         Guid? draftResponseId = null;
-        IReadOnlyList<SurveyDraftAnswer> draftAnswers = [];
+        IReadOnlyList<SurveyDraftAnswer> draftAnswers =
+            existingDraft is null ? [] : MapDraftAnswers(existingDraft);
         if (anonymity == ResponseAnonymity.Identified)
         {
-            var existingDraft = await repo.GetDraftResponseAsync(surveyId, userId, ct);
             draftResponseId = await StartIdentifiedDraftAsync(
                 surveyId, participation.Id, userId, SurveyInputMethod.Slug, culture, ct);
-            draftAnswers = existingDraft is null ? [] : MapDraftAnswers(existingDraft);
         }
         return new SurveyPublicStart(participation.Id, draftResponseId, draftAnswers);
     }
