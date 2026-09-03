@@ -34,6 +34,10 @@ internal static class SurveyResultsBuilder
             Respondents = view.IdentifiedRespondents.Select(BuildRespondent).ToList(),
             IsEmbargoed = scoped.IsEmbargoed,
             RankedQuestions = scoped.RankedQuestions ?? new Dictionary<Guid, RankedQuestionResult>(),
+            IsAsociadoVote = scoped.IsAsociadoVote,
+            UnattributedBallots = (scoped.UnattributedBallots ?? [])
+                .Select(ballot => new SurveyResultsBallotViewModel { Answers = ballot.Answers })
+                .ToList(),
         };
     }
 
@@ -75,8 +79,11 @@ internal sealed class SurveyResultsViewModel
     public int SelectedResponseCount { get; init; }
     public IReadOnlyList<SurveyResultsQuestionViewModel> Questions { get; init; } = [];
     public IReadOnlyList<SurveyResultsRespondentViewModel> Respondents { get; init; } = [];
-    public bool ShowIdentifiedRespondents => Scope != SurveyResultsScope.Anonymous;
+    public bool ShowIdentifiedRespondents => !IsAsociadoVote && Scope != SurveyResultsScope.Anonymous;
+    public bool ShowUnattributedBallots => IsAsociadoVote && !IsEmbargoed;
     public bool IsEmbargoed { get; init; }
+    public bool IsAsociadoVote { get; init; }
+    public IReadOnlyList<SurveyResultsBallotViewModel> UnattributedBallots { get; init; } = [];
     public IReadOnlyDictionary<Guid, RankedQuestionResult> RankedQuestions { get; init; }
         = new Dictionary<Guid, RankedQuestionResult>();
 }
@@ -102,5 +109,11 @@ internal sealed class SurveyResultsRespondentViewModel
     public Guid UserId { get; init; }
     public string Name { get; init; } = string.Empty;
     public string SubmittedAt { get; init; } = "—";
+    public IReadOnlyList<RespondentAnswer> Answers { get; init; } = [];
+}
+
+/// <summary>One Asociado ballot shown after close, deliberately without identity or timestamp.</summary>
+internal sealed class SurveyResultsBallotViewModel
+{
     public IReadOnlyList<RespondentAnswer> Answers { get; init; } = [];
 }

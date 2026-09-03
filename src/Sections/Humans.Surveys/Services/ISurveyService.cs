@@ -182,7 +182,15 @@ internal sealed record SurveyScopedResults(
     int SelectedResponseCount,
     SurveyResultsScope Scope,
     bool IsEmbargoed = false,
-    IReadOnlyDictionary<Guid, RankedQuestionResult>? RankedQuestions = null);
+    IReadOnlyDictionary<Guid, RankedQuestionResult>? RankedQuestions = null,
+    bool IsAsociadoVote = false,
+    IReadOnlyList<UnattributedBallotDetail>? UnattributedBallots = null);
+
+/// <summary>
+/// One ballot whose answers may be inspected after an Asociado vote closes, without exposing
+/// a respondent identity, participation id, response id, or submission timestamp.
+/// </summary>
+internal sealed record UnattributedBallotDetail(IReadOnlyList<RespondentAnswer> Answers);
 
 internal sealed record RankedQuestionResult(
     IReadOnlyList<RankedCandidateResult> Candidates,

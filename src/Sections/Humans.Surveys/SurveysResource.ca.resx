@@ -42,8 +42,8 @@
   </resheader>
   <data name="Survey_TransparencyNote" xml:space="preserve"><value>Les teves respostes poden ser revisades i analitzades, fins i tot mitjançant eines automatitzades, per millorar el col·lectiu.</value></data>
   <data name="Survey_AsociadoVote_Heading" xml:space="preserve"><value>Votació vinculant d'Asociados</value></data>
-  <data name="Survey_AsociadoVote_Body" xml:space="preserve"><value>Aquesta és una votació identificada i vinculant de l'associació. Humans comprova que actualment ets un Asociado actiu i aprovat abans de permetre't participar i de nou quan envies el vot. Els resultats romanen segellats fins que es tanca la votació. Envia únicament el teu propi vot meditat; un vot enviat no es pot substituir.</value></data>
-  <data name="Survey_AsociadoVote_PageReminder" xml:space="preserve"><value>El teu vot identificat forma part d'una decisió vinculant de l'associació. La teva elegibilitat es tornarà a comprovar quan l'enviïs.</value></data>
+  <data name="Survey_AsociadoVote_Body" xml:space="preserve"><value>Aquesta és una votació vinculant de l'associació. Humans comprova que actualment ets un Asociado actiu i aprovat abans de permetre't participar i de nou quan envies el vot. La teva participació es registra per impedir un segon vot, però el vot enviat no queda vinculat a la teva identitat. Els resultats romanen segellats fins que es tanca la votació. Envia únicament el teu propi vot meditat; un vot enviat no es pot substituir.</value></data>
+  <data name="Survey_AsociadoVote_PageReminder" xml:space="preserve"><value>El teu vot forma part d'una decisió vinculant de l'associació. La teva elegibilitat es tornarà a comprovar quan l'enviïs, i el vot enviat no quedarà vinculat a la teva identitat.</value></data>
   <data name="Survey_AsociadoIneligible_Heading" xml:space="preserve"><value>No tens dret a votar</value></data>
   <data name="Survey_AsociadoIneligible_Body" xml:space="preserve"><value>Aquesta votació vinculant està restringida a les persones que actualment són Asociados actius i aprovats. Si creus que el teu registre de membre és incorrecte, posa't en contacte amb la Junta abans que es tanqui el període de votació.</value></data>
   <data name="Survey_TitleFallback" xml:space="preserve"><value>Enquesta</value></data>
@@ -82,4 +82,6 @@
   <data name="Survey_Ranked_Rank" xml:space="preserve"><value>Posició</value></data>
   <data name="Survey_Ranked_Reject" xml:space="preserve"><value>Rebutjar</value></data>
   <data name="Survey_Ranked_Unranked" xml:space="preserve"><value>Sense classificar</value></data>
+  <data name="Survey_Ranked_Best" xml:space="preserve"><value>Millor</value></data>
+  <data name="Survey_Ranked_Worst" xml:space="preserve"><value>Pitjor</value></data>
 </root>

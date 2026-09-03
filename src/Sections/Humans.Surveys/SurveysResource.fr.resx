@@ -42,8 +42,8 @@
   </resheader>
   <data name="Survey_TransparencyNote" xml:space="preserve"><value>Vos réponses peuvent être examinées et analysées, y compris par des outils automatisés, afin d'améliorer le collectif.</value></data>
   <data name="Survey_AsociadoVote_Heading" xml:space="preserve"><value>Vote contraignant des Asociados</value></data>
-  <data name="Survey_AsociadoVote_Body" xml:space="preserve"><value>Il s'agit d'un vote identifié et contraignant de l'association. Humans vérifie que vous êtes actuellement un Asociado actif et approuvé avant de vous autoriser à participer, puis à nouveau lors de l'envoi de votre bulletin. Les résultats restent scellés jusqu'à la clôture du vote. N'envoyez que votre propre bulletin mûrement réfléchi ; un bulletin envoyé ne peut pas être remplacé.</value></data>
-  <data name="Survey_AsociadoVote_PageReminder" xml:space="preserve"><value>Votre bulletin identifié fait partie d'une décision contraignante de l'association. Votre droit de vote sera vérifié à nouveau lors de l'envoi.</value></data>
+  <data name="Survey_AsociadoVote_Body" xml:space="preserve"><value>Il s'agit d'un vote contraignant de l'association. Humans vérifie que vous êtes actuellement un Asociado actif et approuvé avant de vous autoriser à participer, puis à nouveau lors de l'envoi de votre bulletin. Votre participation est enregistrée afin d'empêcher un second vote, mais le bulletin envoyé n'est pas lié à votre identité. Les résultats restent scellés jusqu'à la clôture du vote. N'envoyez que votre propre bulletin mûrement réfléchi ; un bulletin envoyé ne peut pas être remplacé.</value></data>
+  <data name="Survey_AsociadoVote_PageReminder" xml:space="preserve"><value>Votre bulletin fait partie d'une décision contraignante de l'association. Votre droit de vote sera vérifié à nouveau lors de l'envoi, et le bulletin envoyé ne sera pas lié à votre identité.</value></data>
   <data name="Survey_AsociadoIneligible_Heading" xml:space="preserve"><value>Vous n'avez pas le droit de voter</value></data>
   <data name="Survey_AsociadoIneligible_Body" xml:space="preserve"><value>Ce vote contraignant est réservé aux personnes qui sont actuellement des Asociados actifs et approuvés. Si vous pensez que votre statut de membre est incorrect, veuillez contacter le Conseil avant la clôture de la période de vote.</value></data>
   <data name="Survey_TitleFallback" xml:space="preserve"><value>Enquête</value></data>
@@ -82,4 +82,6 @@
   <data name="Survey_Ranked_Rank" xml:space="preserve"><value>Rang</value></data>
   <data name="Survey_Ranked_Reject" xml:space="preserve"><value>Rejeter</value></data>
   <data name="Survey_Ranked_Unranked" xml:space="preserve"><value>Non classé</value></data>
+  <data name="Survey_Ranked_Best" xml:space="preserve"><value>Meilleur</value></data>
+  <data name="Survey_Ranked_Worst" xml:space="preserve"><value>Pire</value></data>
 </root>

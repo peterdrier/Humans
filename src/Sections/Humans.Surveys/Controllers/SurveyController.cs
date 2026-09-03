@@ -64,7 +64,7 @@ internal sealed class SurveyController(
 
         var culture = ResolveCulture(editable.DefaultCulture);
 
-        if (ctx.HasResumableDraft)
+        if (ctx.HasResumableDraft && !editable.IsAsociadoVote)
         {
             // Establish the wizard session from the resumable Identified draft and jump into the flow.
             var resumeState = BuildState(ctx, ResponseAnonymity.Identified, culture);
@@ -101,7 +101,7 @@ internal sealed class SurveyController(
             Culture = culture,
             AllowAnonymous = editable.AllowAnonymous,
             ShowAnonymitySelector = editable.AllowAnonymous,
-            HasResumableDraft = ctx.HasResumableDraft,
+            HasResumableDraft = ctx.HasResumableDraft && !editable.IsAsociadoVote,
             IsAsociadoVote = editable.IsAsociadoVote,
         };
         return View("Intro", vm);
@@ -130,8 +130,13 @@ internal sealed class SurveyController(
             return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
         }
 
-        // When the survey forbids anonymity, the only tier is Identified.
-        var anonymity = editable.AllowAnonymous ? model.Anonymity : ResponseAnonymity.Identified;
+        // Asociado votes use the participation ledger to enforce eligibility and one vote per
+        // person, while storing the submitted ballot without a user/invitation link.
+        var anonymity = editable.IsAsociadoVote
+            ? ResponseAnonymity.CompletionTracked
+            : editable.AllowAnonymous
+                ? model.Anonymity
+                : ResponseAnonymity.Identified;
         var culture = SurveyPageViewModelFactory.ResolveCulture(model.Culture, editable.DefaultCulture);
 
         var state = BuildState(ctx, anonymity, culture);
@@ -226,13 +231,15 @@ internal sealed class SurveyController(
 
         var resolvedCulture = SurveyPageViewModelFactory.ResolveCulture(culture, editable.DefaultCulture);
         var userId = GetCurrentUserId();
-        var resolvedAnonymity = !editable.AllowAnonymous
-            ? ResponseAnonymity.Identified
-            : userId is null
-            ? ResponseAnonymity.Anonymous
-            : Enum.IsDefined(anonymity)
-                ? anonymity
-                : ResponseAnonymity.Identified;
+        var resolvedAnonymity = editable.IsAsociadoVote
+            ? ResponseAnonymity.CompletionTracked
+            : !editable.AllowAnonymous
+                ? ResponseAnonymity.Identified
+                : userId is null
+                    ? ResponseAnonymity.Anonymous
+                    : Enum.IsDefined(anonymity)
+                        ? anonymity
+                        : ResponseAnonymity.Identified;
 
         Guid? participationId = null;
         Guid? draftResponseId = null;

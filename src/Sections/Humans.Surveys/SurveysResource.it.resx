@@ -42,8 +42,8 @@
   </resheader>
   <data name="Survey_TransparencyNote" xml:space="preserve"><value>Le tue risposte possono essere esaminate e analizzate, anche tramite strumenti automatizzati, per migliorare il collettivo.</value></data>
   <data name="Survey_AsociadoVote_Heading" xml:space="preserve"><value>Votazione vincolante degli Asociados</value></data>
-  <data name="Survey_AsociadoVote_Body" xml:space="preserve"><value>Questa è una votazione identificata e vincolante dell'associazione. Humans verifica che tu sia attualmente un Asociado attivo e approvato prima di consentirti di partecipare e di nuovo quando invii la scheda. I risultati restano secretati fino alla chiusura della votazione. Invia solo la tua scheda personale e ponderata; una scheda inviata non può essere sostituita.</value></data>
-  <data name="Survey_AsociadoVote_PageReminder" xml:space="preserve"><value>La tua scheda identificata fa parte di una decisione vincolante dell'associazione. La tua idoneità sarà verificata nuovamente al momento dell'invio.</value></data>
+  <data name="Survey_AsociadoVote_Body" xml:space="preserve"><value>Questa è una votazione vincolante dell'associazione. Humans verifica che tu sia attualmente un Asociado attivo e approvato prima di consentirti di partecipare e di nuovo quando invii la scheda. La tua partecipazione viene registrata per impedire un secondo voto, ma la scheda inviata non viene collegata alla tua identità. I risultati restano secretati fino alla chiusura della votazione. Invia solo la tua scheda personale e ponderata; una scheda inviata non può essere sostituita.</value></data>
+  <data name="Survey_AsociadoVote_PageReminder" xml:space="preserve"><value>La tua scheda fa parte di una decisione vincolante dell'associazione. La tua idoneità sarà verificata nuovamente al momento dell'invio e la scheda inviata non verrà collegata alla tua identità.</value></data>
   <data name="Survey_AsociadoIneligible_Heading" xml:space="preserve"><value>Non hai diritto di voto</value></data>
   <data name="Survey_AsociadoIneligible_Body" xml:space="preserve"><value>Questa votazione vincolante è riservata alle persone che sono attualmente Asociados attivi e approvati. Se ritieni che il tuo stato di membro sia errato, contatta il Consiglio prima della chiusura del periodo di votazione.</value></data>
   <data name="Survey_TitleFallback" xml:space="preserve"><value>Sondaggio</value></data>
@@ -82,4 +82,6 @@
   <data name="Survey_Ranked_Rank" xml:space="preserve"><value>Posizione</value></data>
   <data name="Survey_Ranked_Reject" xml:space="preserve"><value>Rifiuta</value></data>
   <data name="Survey_Ranked_Unranked" xml:space="preserve"><value>Non classificata</value></data>
+  <data name="Survey_Ranked_Best" xml:space="preserve"><value>Migliore</value></data>
+  <data name="Survey_Ranked_Worst" xml:space="preserve"><value>Peggiore</value></data>
 </root>

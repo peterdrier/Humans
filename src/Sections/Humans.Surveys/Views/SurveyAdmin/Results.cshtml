@@ -383,54 +383,43 @@ else
                     </h3>
                     <div id="@collapseId" class="accordion-collapse collapse" aria-labelledby="@headingId" data-bs-parent="#respondents">
                         <div class="accordion-body">
-                            <dl class="row mb-0">
-                                @foreach (var a in r.Answers)
-                                {
-                                    <dt class="col-sm-4">@a.Prompt</dt>
-                                    <dd class="col-sm-8">
-                                        @if (a.GridSelections?.Count > 0)
-                                        {
-                                            <ul class="list-unstyled mb-0">
-                                                @foreach (var selection in a.GridSelections)
-                                                {
-                                                    <li><strong>@selection.RowLabel:</strong> @string.Join(", ", selection.ColumnLabels)</li>
-                                                }
-                                            </ul>
-                                        }
-                                        else if (a.RankedBallot is { } ballot)
-                                        {
-                                            <ol class="mb-0 ps-3">
-                                                @foreach (var group in ballot.RankGroups)
-                                                {
-                                                    <li>@string.Join(" = ", group)</li>
-                                                }
-                                            </ol>
-                                            @if (ballot.Rejected.Count > 0)
-                                            {
-                                                <div class="small text-danger mt-1">
-                                                    <strong>Rejected:</strong> @string.Join(", ", ballot.Rejected)
-                                                </div>
-                                            }
-                                        }
-                                        else if (a.SelectedLabels.Count > 0)
-                                        {
-                                            @string.Join(", ", a.SelectedLabels)
-                                        }
-                                        else if (a.RatingValue is { } rating)
-                                        {
-                                            @rating
-                                        }
-                                        else if (!string.IsNullOrEmpty(a.TextValue))
-                                        {
-                                            @a.TextValue
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted">—</span>
-                                        }
-                                    </dd>
-                                }
-                            </dl>
+                            <partial name="_RespondentAnswers" model="r.Answers" />
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+
+@if (Model.ShowUnattributedBallots)
+{
+    <h2 class="h5">Individual ballots</h2>
+    <p class="text-muted">
+        Humans recorded who completed the vote to enforce eligibility and prevent double-voting,
+        but these submitted ballots are not linked to voter identities.
+    </p>
+    @if (Model.UnattributedBallots.Count == 0)
+    {
+        <p class="text-muted">No ballots in this view.</p>
+    }
+    else
+    {
+        <div class="accordion mb-4" id="unattributed-ballots">
+            @for (var i = 0; i < Model.UnattributedBallots.Count; i++)
+            {
+                var ballot = Model.UnattributedBallots[i];
+                var headingId = $"ballot-heading-{i}";
+                var collapseId = $"ballot-collapse-{i}";
+                <div class="accordion-item">
+                    <h3 class="accordion-header" id="@headingId">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="false" aria-controls="@collapseId">
+                            Ballot @(i + 1)
+                        </button>
+                    </h3>
+                    <div id="@collapseId" class="accordion-collapse collapse" aria-labelledby="@headingId" data-bs-parent="#unattributed-ballots">
+                        <div class="accordion-body">
+                            <partial name="_RespondentAnswers" model="ballot.Answers" />
                         </div>
                     </div>
                 </div>
