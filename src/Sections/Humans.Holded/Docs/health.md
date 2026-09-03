@@ -15,7 +15,7 @@ is the work.
 Keeps a local copy of the association's accounting book so nothing else has to ask Holded for it,
 and owns the one piece of software that talks to Holded at all.
 
-Two jobs, not one:
+The section is not one job:
 
 - **The book-keeper's copy.** Every night it asks Holded what happened in the daybook lately,
   writes that down, and then checks its own arithmetic against Holded's account totals. Where the
@@ -56,11 +56,11 @@ exist solely for Finance, Expenses and Store. That is the section's one real sea
 Written fresh from the shapes, not from today's folders.
 
 ```
-Humans.Holded.Contracts/      the two things other sections may hold
+Humans.Holded.Contracts/      what other sections may hold
   IHoldedClient + its DTOs      shapes 5–12 — the telephone
   IHoldedService                shapes 1–2 — the mirror's cross-section read
   IHoldedNightlySync            shape 2 — the nightly body
-  HoldedApiException            the connector's two-way failure classification
+  HoldedApiException            the connector's transient-vs-permanent failure classification
 Humans.Holded/
   Services/HoldedClient         one class per shape group would be smaller, but the retry,
                                 auth, metering and paging machinery is shared by all of them —
@@ -71,12 +71,12 @@ Humans.Holded/
   Jobs/HoldedSyncJob            the Hangfire shim over it — public only because Hangfire needs
                                 the concrete type; SectionJobs names it and the cron
   Data/Repository               the only code that touches HoldedDbContext
-  Data/Domain/                  the four mirrored tables; internal, and they stay internal
-  Controllers/HoldedController  translation only: five routes, no arithmetic
-  Views/Holded/                 three pages, all read-only, all admin
+  Data/Domain/                  the mirrored tables; internal, and they stay internal
+  Controllers/HoldedController  translation only, no arithmetic
+  Views/Holded/                 all read-only, all admin
 ```
 
-Two structural facts the layout should make obvious and currently does not:
+Structural facts the layout should make obvious and currently does not:
 
 - **`IHoldedClient` is a leaf, not a section service.** It has no repository, no invariant, and
   never touches `HoldedDbContext`. It lives in `Contracts` because Expenses, Finance and Store
@@ -114,8 +114,8 @@ Stated so a violation is recognisable.
 
 ### Negative access
 
-- `/Holded/*` is `FinanceAdmin` or `Admin` only — every route, including the two POSTs, and the
-  POSTs additionally require the antiforgery token.
+- `/Holded/*` is `FinanceAdmin` or `Admin` only — every route, the POSTs included, and those
+  additionally require the antiforgery token.
 - Nothing outside this section may hold `IHoldedAdminService`, `HoldedAdminOverview`,
   `HoldedAccountStatement`, `HoldedEntry` or any `Models/` type.
 - Nothing outside this section may hold a `HoldedDbContext`, a `HoldedLedgerLine` or any other

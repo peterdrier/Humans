@@ -2,8 +2,8 @@
 
   <!--
     Holded's cross-section surface, carved into its own leaf project for the same reason
-    Humans.Finance.Contracts was. Three sections consume it — Humans.Finance, Humans.Expenses
-    and Humans.Store — each reaching the Holded API client and its DTOs from its own services.
+    Humans.Finance.Contracts was. Humans.Finance, Humans.Expenses and Humans.Store consume it,
+    each reaching the Holded API client and its DTOs from its own services.
     A Contracts/ *folder* inside Humans.Holded would make each of them reference a section
     project instead of a leaf (design §15.5b,
     memory/architecture/section-project-cycle-fix.md), so this project stays.
