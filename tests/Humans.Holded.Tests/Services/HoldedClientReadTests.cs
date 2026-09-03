@@ -319,6 +319,23 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
+    public async Task ListAccountingAccounts_refuses_an_account_with_no_number()
+    {
+        // The number is the account's identity: it keys the mirror, picks the PGC group and drives
+        // the POV flip. Reading an absent one as 0 put an "Unclassified", sign-flipped phantom on
+        // the chart and reconciled it against Holded nightly.
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, """
+            {"items":[{"id":"a1","name":"Capital","debit":"0.00","credit":"0.00","balance":"0.00"}],
+             "cursor":null,"has_more":false}
+            """)));
+
+        var act = async () => await client.ListAccountingAccountsAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedPermanentException>();
+    }
+
+    [HumansFact]
     public async Task ListAccountingAccounts_parses_totals()
     {
         var json = """

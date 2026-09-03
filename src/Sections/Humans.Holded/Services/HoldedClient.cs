@@ -594,7 +594,11 @@ internal sealed class HoldedClient : IHoldedClient
             return items.Select(n => new HoldedAccountDto
             {
                 Id = Prop(n, "id")?.GetValue<string>() ?? "",
-                Number = ReadInt(Prop(n, "number")) ?? 0,
+                // Required, like the ledger line's `account`: the number IS the account's identity
+                // here — it keys the mirror, picks the PGC group and drives the POV flip. A
+                // manufactured 0 would enter the chart as an "Unclassified" account with a
+                // sign-flipped balance and be reconciled against Holded every night.
+                Number = ReadRequiredInt(Prop(n, "number"), "number"),
                 Name = Prop(n, "name")?.GetValue<string>() ?? "",
                 Group = Prop(n, "group")?.GetValue<string>(),
                 Debit = ReadDecimalV2(Prop(n, "debit")),
