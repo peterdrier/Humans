@@ -153,11 +153,28 @@ public class BackdoorFeedbackControllerTests
     {
         var id = Guid.NewGuid();
         _feedback.UpdateStatusAsync(id, FeedbackStatus.Resolved, KeyOwnerId, Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(new InvalidOperationException("gone")));
+            .Returns(Task.FromException(new InvalidOperationException($"Feedback report {id} not found")));
 
         var result = await _sut.UpdateStatus(id, new UpdateFeedbackStatusModel { Status = FeedbackStatus.Resolved });
 
         result.Should().BeOfType<NotFoundResult>();
+    }
+
+    /// <summary>
+    /// A rejected move is not a missing report — every patch endpoint here used to answer 404
+    /// to both, which told the caller to stop retrying something that was merely refused.
+    /// </summary>
+    [HumansFact]
+    public async Task UpdateStatus_returns_422_when_the_service_rejects_the_move()
+    {
+        var id = Guid.NewGuid();
+        _feedback.UpdateStatusAsync(id, FeedbackStatus.Resolved, KeyOwnerId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("Already resolved")));
+
+        var result = await _sut.UpdateStatus(id, new UpdateFeedbackStatusModel { Status = FeedbackStatus.Resolved });
+
+        var body = result.Should().BeOfType<UnprocessableEntityObjectResult>().Subject;
+        body.Value.Should().BeEquivalentTo(new { error = "Already resolved" });
     }
 
     // ==========================================================================

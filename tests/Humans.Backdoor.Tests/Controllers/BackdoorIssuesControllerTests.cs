@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Backdoor.Controllers;
 using Humans.Backdoor.Filters;
+using Humans.Base.Constants;
 using Humans.Issues.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
@@ -336,29 +337,71 @@ public class BackdoorIssuesControllerTests
         result.Should().BeOfType<NotFoundResult>();
     }
 
+    /// <summary>
+    /// A rejected move is not a missing issue. The 422 arm used to exist on <c>section</c>
+    /// alone; every patch endpoint carries it now that they share one pipeline.
+    /// </summary>
+    [HumansFact]
+    public async Task UpdateStatus_returns_422_when_the_service_rejects_the_move()
+    {
+        var issueId = Guid.NewGuid();
+        _issues.UpdateStatusAsync(issueId, Arg.Any<IssueStatus>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("Cannot reopen a closed issue")));
+
+        var result = await _sut.UpdateStatus(issueId, new UpdateIssueStatusModel { Status = IssueStatus.Resolved });
+
+        var body = result.Should().BeOfType<UnprocessableEntityObjectResult>().Subject;
+        body.Value.Should().BeEquivalentTo(new { error = "Cannot reopen a closed issue" });
+    }
+
     // ==========================================================================
     // What the machine surface is allowed to see
     // ==========================================================================
 
     /// <summary>
-    /// The queue is fetched as a full admin whoever the key belongs to, so a Board-only key
-    /// holder sees rows the Issues UI would scope away from them. Pinned because it is a
-    /// deliberate-looking choice nothing states: change it and this test is the conversation.
+    /// The queue is fetched as the key's owner, not as a full admin: a Board-only key holder
+    /// sees exactly what the Issues UI would show that person.
     /// </summary>
     [HumansFact]
-    public async Task List_reads_the_queue_with_full_admin_visibility()
+    public async Task List_reads_the_queue_as_the_key_owner()
     {
+        WithRoles("Board");
         StubList();
 
         await _sut.List(status: null, category: null, section: null, assignee: null);
 
         await _issues.Received(1).GetIssueListAsync(
             Arg.Any<IssueListFilter>(),
-            viewerUserId: Guid.Empty,
-            viewerRoles: Arg.Is<IReadOnlyList<string>>(r => r.Count == 0),
+            viewerUserId: KeyOwnerId,
+            viewerRoles: Arg.Is<IReadOnlyList<string>>(r => r.SequenceEqual(new[] { "Board" })),
+            viewerIsAdmin: false,
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task An_admin_key_owner_reads_the_queue_as_an_admin()
+    {
+        WithRoles(RoleNames.Admin);
+        StubList();
+
+        await _sut.List(status: null, category: null, section: null, assignee: null);
+
+        await _issues.Received(1).GetIssueListAsync(
+            Arg.Any<IssueListFilter>(),
+            viewerUserId: KeyOwnerId,
+            Arg.Any<IReadOnlyList<string>>(),
             viewerIsAdmin: true,
             Arg.Any<CancellationToken>());
     }
+
+    /// <summary>Re-installs the principal the auth filter would build for an owner in these roles.</summary>
+    private void WithRoles(params string[] roleNames) =>
+        _sut.ControllerContext.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.NameIdentifier, KeyOwnerId.ToString()),
+                .. roleNames.Select(r => new Claim(ClaimTypes.Role, r))
+            ],
+            BackdoorApiKeyAuthFilter.AuthenticationScheme));
 
     /// <summary>
     /// The raw query value reaches a SQL <c>LIMIT</c> through <see cref="IssueListFilter"/>,

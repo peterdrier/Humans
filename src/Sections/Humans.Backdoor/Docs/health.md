@@ -37,7 +37,7 @@ listed. The grouping is what makes collapse and duplication visible.
 | S4 | **Fetch one item in full** — delegate, 404 on missing, project | issue, feedback report, conversation, survey definition, survey aggregates | One shape |
 | S5 | **Fetch one item's sub-collection** — re-fetch parent, 404, project the collection | issue comments, feedback messages, conversation messages, survey responses | The parent re-fetch is the price of a 404 |
 | S6 | **Append to an item's thread** — validate model, delegate, echo the new row | issue comment, feedback message | One shape |
-| S7 | **Patch one field on an item** — delegate `(id, value, actor)`, `{success:true}`, 404 on missing | issue status / assignee / section / github-issue; feedback status / assignment / github-issue | **One shape** — and the section's largest block of repetition |
+| S7 | **Patch one field on an item** — delegate `(id, value, actor)`, `{success:true}`, 404 on missing, 422 on rejected | issue status / assignee / section / github-issue; feedback status / assignment / github-issue | **One shape** — one `PatchAsync` pipeline per controller |
 | S8 | **Create an item** | issue create | |
 | F1 | **User-data fan-outs** — export slice, erasure, merge fold | the key service | Owed because `backdoor_api_keys` is user-keyed |
 
@@ -83,8 +83,10 @@ The structural rules the layout has to keep:
 
 Stated so a violation is recognisable:
 
-- A presented key resolves to exactly one person, and that person becomes the request principal.
-  No key, unknown key, revoked key → 401, all indistinguishable.
+- A presented key resolves to exactly one person, and that person becomes the request principal —
+  id plus active roles. No key, unknown key, revoked key → 401, all indistinguishable.
+- A key reads no further than its holder does in the browser: the served queues are scoped by the
+  owner's own id, roles and admin flag.
 - The database never holds a plaintext key: SHA-256 hash plus a 12-character display prefix.
 - A key authenticates only while its owner is **both** in Admin or Board **and** in
   `UserState.Active` — tested at issue, at rotate, and on every single request. Failing the test
@@ -96,7 +98,7 @@ Stated so a violation is recognisable:
 - No controller in this section touches a repository or `DbContext` other than
   `IBackdoorApiKeyRepository`; every served datum arrives through another section's published
   contracts interface.
-- A key-authed principal carries the Backdoor scheme and no role or state claims, and the
+- A key-authed principal carries the Backdoor scheme and no state claims, and the
   Shell's onboarding gates let it through rather than redirecting a JSON client to HTML.
 - Erasure hard-deletes the person's own keys and detaches them from anyone else's as both
   creator and revoker. Merge re-points every one of those columns onto the survivor.
@@ -108,9 +110,6 @@ shaped by it.
 
 - **Per-key scope.** A key is all-or-nothing across every surface it opens today. Nothing in the model
   says a key could be read-only or single-surface, and nothing has asked for it.
-- **Viewer fidelity on the served queues.** The issue queue is fetched as a full admin regardless
-  of whether the key's owner is an Admin or only a Board member. Whether the machine surface is
-  deliberately admin-grade, or should mirror its holder's real roles, is unstated anywhere.
 
 ## 6. Deliberately not done
 

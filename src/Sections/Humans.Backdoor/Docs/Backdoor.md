@@ -61,18 +61,20 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 
 | Actor | Capabilities |
 |-------|--------------|
-| Holder of an active key | Everything the five APIs expose, acting as themselves |
+| Holder of an active key | Everything the APIs expose to that person, acting as themselves and scoped to their own roles |
 | Board member | May be issued a key |
 | Admin | All Board capabilities. Additionally: allocate, rotate and revoke anyone's key from `/Backdoor` |
 
 ## Invariants
 
-- A key resolves to exactly one human, and that human is installed as the request principal (`ClaimTypes.NameIdentifier`), so every write records a real actor and every log line is enriched with them.
+- A key resolves to exactly one human, and that human is installed as the request principal — `ClaimTypes.NameIdentifier` plus one `ClaimTypes.Role` claim per active role assignment — so every write records a real actor, every log line is enriched with them, and every read is scoped to what that person may see.
+- A key reads no further than its holder does in the browser. The issue queue is fetched with the owner's id, roles and admin flag, so a Board-only key sees the Board-only queue.
 - The database never holds a plaintext key. `BackdoorApiKeyService` hashes on the way in and compares hashes on the way out.
 - A key only works for a full Admin or a Board member **whose account state is `Active`** — checked at issue, at rotation, **and on every authentication**. A role that expires, is revoked, or is swept by account deletion stops the key working on the next request, and so does suspension, which moves `users.State` while deliberately leaving role assignments standing. The row is refused, not revoked, so restoring the role or lifting the suspension restores the key. The admin page shows such a key as **Disabled** and withholds Rotate, since rotation applies the same test.
 - Issue and revoke both write an audit entry naming the key and its owner (`BackdoorApiKeyIssued` / `BackdoorApiKeyRevoked`); a rotation is recorded as a revoke followed by an issue.
 - Every controller here is an orchestrator: it calls another section's contracts interface and formats the result. None of them touch a repository or a `DbContext` other than through `IBackdoorApiKeyRepository`.
-- A key-authed principal carries the `BackdoorApiKey` authentication scheme (`BackdoorAuthentication.SchemeName`). It never passes through the Shell's claims transformation, so it carries no role or state claims — and the Shell's onboarding gates (`NameRequiredFilter`, `MembershipRequiredFilter`) skip it rather than redirecting a JSON client to an HTML page.
+- A key-authed principal carries the `BackdoorApiKey` authentication scheme (`BackdoorAuthentication.SchemeName`). It never passes through the Shell's claims transformation, so its role claims come from the auth filter's own lookup and it carries no state claims — and the Shell's onboarding gates (`NameRequiredFilter`, `MembershipRequiredFilter`) skip it rather than redirecting a JSON client to an HTML page.
+- Every `PATCH /api/backdoor/{issues,feedback}/{id}/*` answers the same way whichever field moved: `{success:true}`, 404 for a missing item, 422 carrying the service's reason for a rejected change.
 
 ## Negative Access Rules
 

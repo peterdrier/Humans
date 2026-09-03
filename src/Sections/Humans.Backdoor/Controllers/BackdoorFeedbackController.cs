@@ -114,62 +114,49 @@ internal sealed class BackdoorFeedbackController(
     }
 
     [HttpPatch("{id}/status")]
-    public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateFeedbackStatusModel model)
-    {
-        try
-        {
-            await feedback.UpdateStatusAsync(id, model.Status, ActorUserId);
-            return Ok(new { success = true });
-        }
-        catch (InvalidOperationException)
-        {
-            logger.LogWarning("Feedback {FeedbackId} not found during API UpdateStatus", id);
-            return NotFound();
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to update feedback {FeedbackId} status", id);
-            return StatusCode(500, new { error = "Failed to update status" });
-        }
-    }
+    public Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateFeedbackStatusModel model) =>
+        PatchAsync(id, "status", () => feedback.UpdateStatusAsync(id, model.Status, ActorUserId));
 
     [HttpPatch("{id}/assignment")]
-    public async Task<IActionResult> UpdateAssignment(Guid id, [FromBody] UpdateFeedbackAssignmentModel model)
-    {
-        try
-        {
-            await feedback.UpdateAssignmentAsync(id, model.AssignedToUserId, model.AssignedToTeamId, ActorUserId);
-            return Ok(new { success = true });
-        }
-        catch (InvalidOperationException)
-        {
-            logger.LogWarning("Feedback {FeedbackId} not found during API UpdateAssignment", id);
-            return NotFound();
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to update assignment for feedback {FeedbackId}", id);
-            return StatusCode(500, new { error = "Failed to update assignment" });
-        }
-    }
+    public Task<IActionResult> UpdateAssignment(Guid id, [FromBody] UpdateFeedbackAssignmentModel model) =>
+        PatchAsync(id, "assignment", () => feedback.UpdateAssignmentAsync(id, model.AssignedToUserId, model.AssignedToTeamId, ActorUserId));
 
     [HttpPatch("{id}/github-issue")]
-    public async Task<IActionResult> SetGitHubIssue(Guid id, [FromBody] SetFeedbackGitHubIssueModel model)
+    public Task<IActionResult> SetGitHubIssue(Guid id, [FromBody] SetFeedbackGitHubIssueModel model) =>
+        PatchAsync(id, "github-issue", () => feedback.SetGitHubIssueNumberAsync(id, model.IssueNumber, ActorUserId));
+
+    /// <summary>
+    /// The one shape every <c>PATCH /api/backdoor/feedback/{id}/*</c> endpoint has: apply the
+    /// one-field change, answer <c>{success:true}</c>, and map failure the same way whichever
+    /// field moved — a missing report to 404, a rejected move to 422 carrying the service's
+    /// reason, anything else to 500.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately a twin of <c>BackdoorIssuesController.PatchAsync</c> rather than something
+    /// shared: the target shape collapses within a controller, not across them.
+    /// </remarks>
+    private async Task<IActionResult> PatchAsync(Guid id, string field, Func<Task> apply)
     {
         try
         {
-            await feedback.SetGitHubIssueNumberAsync(id, model.IssueNumber, ActorUserId);
+            await apply();
+            logger.LogInformation("Feedback {FeedbackId} {Field} updated via API", id, field);
             return Ok(new { success = true });
         }
-        catch (InvalidOperationException)
+        catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
         {
-            logger.LogWarning("Feedback {FeedbackId} not found during API SetGitHubIssue", id);
+            logger.LogWarning("Feedback {FeedbackId} not found during API {Field} patch: {Reason}", id, field, ex.Message);
             return NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogWarning("Feedback {FeedbackId} API {Field} patch rejected: {Reason}", id, field, ex.Message);
+            return UnprocessableEntity(new { error = ex.Message });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to set GitHub issue for feedback {FeedbackId}", id);
-            return StatusCode(500, new { error = "Failed to set GitHub issue" });
+            logger.LogError(ex, "Failed to update {Field} on feedback {FeedbackId}", field, id);
+            return StatusCode(500, new { error = $"Failed to update {field}" });
         }
     }
 
