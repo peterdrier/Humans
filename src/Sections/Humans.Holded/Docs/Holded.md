@@ -107,7 +107,7 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
 
 ## Triggers
 
-- `HoldedSyncJob` (nightly, this section's `Jobs/`; scheduled from Shell's roll-call): Finance's doc sync, then `SyncLedgerAsync(full: false)`.
+- `HoldedSyncJob` (nightly at 03:00, this section's `Jobs/`; scheduled by this section's `SectionJobs`, job id `holded-sync`): Finance's doc sync, then `SyncLedgerAsync(full: false)`.
 - `/Holded` buttons: `SyncNow` (incremental + reconcile), `FullSync`.
 
 ## Cross-Section Dependencies
@@ -117,7 +117,8 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
 
 ## Architecture
 
-**Owning section:** `Holded` (`src/Sections/Humans.Holded`, G5)
+**Owning section:** `Holded` (`src/Sections/Humans.Holded`)
 **Public contract:** `Humans.Holded.Contracts.IHoldedService` (+ `HoldedLedgerLineInfo`)
 **Owned tables:** the four above
-**Status:** (G5) Own project. Spec: [`2026-08-10-holded-v2-migration-design.md`](2026-08-10-holded-v2-migration-design.md).
+**Target shape:** [`health.md`](health.md). Historical design record:
+[`2026-08-10-holded-v2-migration-design.md`](2026-08-10-holded-v2-migration-design.md).

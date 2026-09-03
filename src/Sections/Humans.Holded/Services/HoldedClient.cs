@@ -576,7 +576,7 @@ internal sealed class HoldedClient : IHoldedClient
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
             or FormatException or OverflowException or UnparsableValueException)
         {
-            // As in ListPurchaseDocumentsPageAsync — permanent, and the whole page fails rather
+            // As in ListPurchaseDocumentsAsync — permanent, and the whole page fails rather
             // than skipping the line. Creditor and account balances are summed from these debits
             // and credits, so a quietly dropped line reads as a settled entry that never happened.
             throw new HoldedPermanentException(
@@ -587,7 +587,7 @@ internal sealed class HoldedClient : IHoldedClient
     public async Task<IReadOnlyList<HoldedAccountDto>> ListAccountingAccountsAsync(
         CancellationToken ct = default)
     {
-        const int pageSafetyCap = 5; // 267 accounts today, unpaginated — plenty of headroom
+        const int pageSafetyCap = 5; // a few hundred accounts, unpaginated in practice — headroom
         var items = await GetPagedAsync("/api/v2/accounting-accounts?limit=200", pageSafetyCap, ct);
         try
         {
@@ -660,7 +660,7 @@ internal sealed class HoldedClient : IHoldedClient
             AttachAuth(req);
             // Forward the real caller (ListLedgerEntriesAsync, ListContactsAsync, …) — SendAsync's own
             // [CallerMemberName] would otherwise record every paginated endpoint as "GetPagedAsync",
-            // collapsing the call log's per-endpoint breakdown (used by the admin overview, Task 7).
+            // collapsing the call log's per-endpoint breakdown the admin overview renders.
             using var resp = await SendAsync(req, ct, caller);
             await using var stream = await resp.Content.ReadAsStreamAsync(ct);
             var root = await JsonNode.ParseAsync(stream, cancellationToken: ct);

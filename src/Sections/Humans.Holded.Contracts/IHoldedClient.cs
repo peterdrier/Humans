@@ -91,7 +91,9 @@ public interface IHoldedClient
     /// <summary>Reads the current API usage/quota counters.</summary>
     Task<HoldedUsageDto> GetUsageAsync(CancellationToken ct = default);
 
-    /// <summary>Lists all contacts (id + name + supplierRecord.num) for account-number → contact resolution.
-    /// Paginates internally by walking `page` until an empty page returns.</summary>
+    /// <summary>Lists all contacts (id + name + supplierRecord.num) for account-number → contact
+    /// resolution. Cursor-paginated internally; a page that cannot be completed throws rather than
+    /// returning the prefix. One contact carrying an unreadable value is skipped and logged — an
+    /// unreadable page envelope is not.</summary>
     Task<IReadOnlyList<HoldedContactDto>> ListContactsAsync(CancellationToken ct = default);
 }

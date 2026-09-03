@@ -96,9 +96,9 @@ internal sealed class Service(
                 state.LastSyncAt = now;
                 state.StatusChangedAt = now;
                 state.LastCount = fetched.Count;
-                // A standing mismatch is reportable state, not a failure: live example — entry
-                // #2412 (352,234.31) is excluded from Holded's own chart totals, so 57200001
-                // legitimately reads as drifted until Holded confirms the entry.
+                // A standing mismatch is reportable state, not a failure: Holded excludes an
+                // unconfirmed entry from its own chart totals, so the account that entry posts to
+                // reads as drifted until Holded confirms it. Nothing here is wrong.
                 state.LastError = mismatches.Count == 0
                     ? null
                     : TruncateForState("Unreconciled after re-pull: " + string.Join("; ",
@@ -353,8 +353,6 @@ internal sealed class Service(
         }).ToList(), ct);
     }
 
-    /// <summary>The replace window's lower bound as an Instant: local midnight of the sweep's
-    /// start date. Rows dated before this are outside the sweep and must survive it.</summary>
     /// <summary>LastError is varchar(2000); an unbounded mismatch list or exception message
     /// would fail the save and report a completed refresh as an error.</summary>
     private static string TruncateForState(string message) =>
@@ -430,6 +428,8 @@ internal sealed class Service(
         return new HoldedCounterparty(largest.AccountNum, account?.Name, opposing.Count);
     }
 
+    /// <summary>The replace window's lower bound as an Instant: local midnight of the sweep's
+    /// start date. Rows dated before this are outside the sweep and must survive it.</summary>
     private static Instant ToWindowStart(LocalDate from) =>
         from.AtStartOfDayInZone(MadridZone).ToInstant();
 
