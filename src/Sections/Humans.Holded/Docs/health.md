@@ -175,3 +175,9 @@ Settled decisions. Later runs should stop re-litigating these.
   a second payment.
 - **`ListContactsAsync` skips one unreadable contact; every other list fails the whole page.**
   A missing contact name is cosmetic; a missing ledger line or purchase total is wrong money.
+
+## History
+
+| Run | Date | Headline | PR |
+|---|---|---|---|
+| 1 | 2026-09-03 | First doctoring: the nightly sweep could skip in silence and a numberless account became account 0; the general-ledger page's own summary asserted the opposite sign convention to the one it renders | peterdrier/Humans#pending |
