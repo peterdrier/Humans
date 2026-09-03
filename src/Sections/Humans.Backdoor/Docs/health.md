@@ -85,8 +85,9 @@ Stated so a violation is recognisable:
 
 - A presented key resolves to exactly one person, and that person becomes the request principal —
   id plus active roles. No key, unknown key, revoked key → 401, all indistinguishable.
-- A key reads no further than its holder does in the browser: the served queues are scoped by the
-  owner's own id, roles and admin flag.
+- The served **queues** are scoped by the owner's own id, roles and admin flag. The per-item
+  routes are not scoped at all — Issues' contract takes no viewer on them — so a key still reads
+  and mutates any issue whose id it holds. Half an invariant until that contract changes.
 - The database never holds a plaintext key: SHA-256 hash plus a 12-character display prefix.
 - A key authenticates only while its owner is **both** in Admin or Board **and** in
   `UserState.Active` — tested at issue, at rotate, and on every single request. Failing the test
@@ -110,6 +111,10 @@ shaped by it.
 
 - **Per-key scope.** A key is all-or-nothing across every surface it opens today. Nothing in the model
   says a key could be read-only or single-surface, and nothing has asked for it.
+- **Viewer fidelity on the per-item routes.** The queue now mirrors its holder's roles; fetching,
+  commenting on and patching one issue by id does not, because `IIssueTriage` takes no viewer on
+  those methods. The browser enforces `IssuesOperationRequirement.Handle` there. Closing it is a
+  change to Issues' published contract, so it is not Backdoor's to make alone.
 
 ## 6. Deliberately not done
 
