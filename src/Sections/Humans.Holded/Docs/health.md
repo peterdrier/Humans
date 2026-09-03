@@ -180,4 +180,4 @@ Settled decisions. Later runs should stop re-litigating these.
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-09-03 | First doctoring: the nightly sweep could skip in silence and a numberless account became account 0; the general-ledger page's own summary asserted the opposite sign convention to the one it renders | peterdrier/Humans#pending |
+| 1 | 2026-09-03 | First doctoring: the nightly sweep could skip in silence and a numberless account became account 0; the general-ledger page's own summary asserted the opposite sign convention to the one it renders | peterdrier/Humans#1583 |
