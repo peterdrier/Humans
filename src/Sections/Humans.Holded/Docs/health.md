@@ -107,8 +107,11 @@ Stated so a violation is recognisable.
    reaches the mirror, because replace semantics would then overwrite a real cached line.
 8. **The connector never clears a Holded field it was not asked to clear** — every payload omits
    its nulls.
-9. **No user-scoped data**, therefore no GDPR contributor and no consent gate. The
-   member→creditor binding is Finance's.
+9. **Nothing here is keyed by member** — no consent gate, no erasure path of this section's own.
+   That is not "no personal data": a creditor account's `Name` is the member's, and the lines on
+   it are their reimbursement history, identifiable by joining Finance's member→creditor binding.
+   Whether the mirror owes an Article 15 slice is open (debt ledger, 2026-09-03). Not a licence
+   to add member-linked columns here.
 10. **Only `Repository` touches `HoldedDbContext`**, and this section reads no other section's
     tables — Finance's doc-sync row arrives through `IHoldedFinanceService`, in the controller.
 

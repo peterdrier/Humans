@@ -97,7 +97,10 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
 - Sweeps are serialized by a non-blocking in-process gate; a second caller is skipped and told
   so, never queued (single-server deployment).
 - Reads (`GetLedgerLinesAsync`, `GetAccountBalancesAsync`) never call Holded.
-- No user-scoped data → no GDPR contributor. The member→creditor binding lives in Finance.
+- Nothing here is keyed by member, so this section holds no consent gate and no erasure path.
+  It is not free of personal data: a creditor account's name is the member's and the lines on it
+  are their reimbursement history, identifiable through Finance's member→creditor binding.
+  Whether that owes an Article 15 slice is open — debt ledger, 2026-09-03.
 
 ## Negative Access Rules
 
