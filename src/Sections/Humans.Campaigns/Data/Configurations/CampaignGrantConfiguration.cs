@@ -17,10 +17,9 @@ internal sealed class CampaignGrantConfiguration : IEntityTypeConfiguration<Camp
 
         builder.Property(g => g.RedeemedAt);
 
-        // UserId is a bare cross-section Guid column — no FK constraint, no nav.
-        // Explicit index: replaces the convention index that died with the FK.
-        // CampaignRepository filters UserId alone (:160,173,327,350,380) and the
-        // unique (CampaignId, UserId) cannot serve a UserId-only lookup.
+        // UserId is a bare cross-section Guid — no FK constraint, no nav. Explicit
+        // index because several reads (per-user grants, GDPR export, erasure, merge
+        // fold) filter UserId alone, which the unique (CampaignId, UserId) cannot serve.
         builder.HasIndex(g => g.UserId);
         builder.HasIndex(g => new { g.CampaignId, g.UserId }).IsUnique();
         builder.HasIndex(g => g.CampaignCodeId).IsUnique();

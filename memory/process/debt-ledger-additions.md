@@ -9,7 +9,7 @@
 | Debt | Goes to |
 |---|---|
 | One-off whose fix is inside a single `src/Sections/Humans.<X>/` — **any** section, not only the one you are working in | that section's [`src/Sections/Humans.<X>/Docs/debt.yml`](../../src/Sections) — create it if absent |
-| One-off spanning sections, or in `Humans.Base` / `Humans.Web` / `tests/` / infrastructure | `inbox:` in [`docs/architecture/debt-ledger.yml`](../../docs/architecture/debt-ledger.yml) |
+| One-off spanning sections, or in `Humans.Base` / `Humans.Web` / `tests/` / infrastructure — except a section's own test project (`tests/Humans.<X>.Tests`), which is section-owned and goes to that section's `debt.yml` | `inbox:` in [`docs/architecture/debt-ledger.yml`](../../docs/architecture/debt-ledger.yml) |
 | Recurring class (a pattern with multiple sites, usually analyzer- or baseline-backed) | `themes:` in the central ledger |
 
 Section files keep the central ledger readable and put the debt where the next reader of that section will meet it. The central ledger stays the home of rotation state — `themes:` is global by construction, and `/debt-sweep` pools every section file into the same inbox at pick time, so routing changes where an item is written, never whether it is served.

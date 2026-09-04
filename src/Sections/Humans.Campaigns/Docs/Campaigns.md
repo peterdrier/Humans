@@ -1,6 +1,11 @@
 <!-- freshness:triggers
   src/Sections/Humans.Campaigns/**
   src/Sections/Humans.Campaigns.Contracts/**
+  src/Sections/Humans.Email/Services/EmailRenderer.cs
+  src/Sections/Humans.Email/Services/OutboxEmailService.cs
+  src/Sections/Humans.Tickets/Services/TicketSyncService.cs
+  src/Sections/Humans.Users/Services/UnsubscribeService.cs
+  src/Sections/Humans.Users/Controllers/GuestAccountController.cs
 -->
 <!-- freshness:flag-on-change
   Campaign lifecycle, code import/grant rules, wave email triggers, and unsubscribe handling — review when Campaign service/entities/controller change.
@@ -72,8 +77,7 @@ Records the assignment of a specific code to a specific user.
 
 **Indexes:** unique `(CampaignCodeId)` (one grant per code) and unique `(CampaignId, UserId)` (one grant per user per campaign).
 
-**Aggregate-local navs:** `CampaignGrant.Campaign`, `CampaignGrant.Code`.
-Cross-domain nav `CampaignGrant.OutboxMessages` (Email) has been removed — Email outbox rows reference the grant by bare FK only, resolved through the Email section's services. Campaigns code never traversed it; email delivery goes through `IEmailOutboxService`.
+**Aggregate-local navs:** `CampaignGrant.Campaign`, `CampaignGrant.Code`. No cross-domain navs — Email outbox rows reference the grant by bare FK only, resolved through the Email section's services.
 
 ### CampaignStatus
 
@@ -95,13 +99,13 @@ Stored as string (`HasConversion<string>()`, max length 20).
 ## Invariants
 
 - Campaign status follows: Draft then Active then Completed. `ActivateAsync` requires Draft + at least one code; `CompleteAsync` requires Active; `SendWaveAsync` requires Active.
-- Vendor-generated codes can only be created while the campaign is in Draft status (controller enforces). CSV code import has no service-side status guard — the Campaign Detail view exposes the import form in both Draft and Active.
+- Vendor-generated codes can only be created while the campaign is in Draft status (service enforces). CSV code import has no service-side status guard — the Campaign Detail view exposes the import form in both Draft and Active.
 - Each code is unique per campaign (DB-enforced via unique `(CampaignId, Code)` index) and can be assigned to at most one human (DB-enforced via unique `CampaignCodeId` on grants).
 - Each human can hold at most one grant per campaign (DB-enforced via unique `(CampaignId, UserId)` on grants).
 - Wave allocation pulls available codes ordered by `CampaignCode.ImportOrder` so batch order is stable and reproducible.
 - Campaign emails are queued through the email outbox system. Each grant tracks the status and timestamp of the most recent delivery attempt; failed enqueues flip the single grant to `Failed` (the loop persists/enqueues one grant at a time so a mid-loop throw cannot orphan grants).
 - `MessageCategory.CampaignCodes` is always-on (`IsAlwaysOn`) — there is no opt-out to gate on, confirmed intended (nobodies-collective/Humans#1032). `SendWaveAsync` / `PreviewWaveSendAsync` send/count every not-yet-granted team member; they do not call `ICommunicationPreferenceService`. Campaign-code mail carries no "Unsubscribe from these emails" footer link and no RFC 8058 `List-Unsubscribe` headers (`OutboxEmailService` skips unsubscribe stamping for always-on categories) — there is nothing for either to do.
-- Campaign template substitution (`{{Code}}`, `{{Name}}`) HTML-encodes every value via `System.Net.WebUtility.HtmlEncode` before insertion into `Campaign.EmailBodyTemplate` / `EmailSubject` — recipient display names are user-controlled and would otherwise be an HTML-injection vector. Placeholder matching uses `StringComparison.Ordinal`. The full substitution vocabulary is `{{Code}}` and `{{Name}}`; new placeholders must be added at the renderer with the same encoding guard.
+- Campaign template substitution (`{{Code}}`, `{{Name}}`) HTML-encodes both values before insertion into `Campaign.EmailBodyTemplate` — recipient display names are user-controlled and would otherwise be an HTML-injection vector. `EmailSubject` substitutes unencoded: subjects are plain text, never rendered as HTML (`EmailRenderer.RenderCampaignCode`). Placeholder matching uses `StringComparison.Ordinal`. The full substitution vocabulary is `{{Code}}` and `{{Name}}`; new body placeholders must keep the encoding guard.
 
 ## Negative Access Rules
 
@@ -112,7 +116,7 @@ Stored as string (`HasConversion<string>()`, max length 20).
 ## Triggers
 
 - When a campaign wave is sent (`SendWaveAsync`), emails are queued to the outbox via `IEmailService.SendAsync(IEmailMessageFactory.CampaignCode(...))` for each eligible human, and a `CampaignReceived` in-app notification is dispatched (best-effort) to every recipient who actually received a grant.
-- Legacy campaign-only unsubscribe tokens map to `MessageCategory.Marketing`, which is opt-outable; `ICommunicationPreferenceService.UpdatePreferenceAsync` flips that preference as normal. There is no live path to a `CampaignCodes` unsubscribe token — `OutboxEmailService` never generates one for an always-on category — and `UpdatePreferenceAsync`/`GuestController.CanUpdatePreference` would refuse the change regardless. (The legacy `User.UnsubscribedFromCampaigns` boolean still exists on the entity for GDPR export but is not read by any active gate.)
+- Legacy campaign-only unsubscribe tokens map to `MessageCategory.Marketing`, which is opt-outable; `ICommunicationPreferenceService.UpdatePreferenceAsync` flips that preference as normal. There is no live path to a `CampaignCodes` unsubscribe token — `OutboxEmailService` never generates one for an always-on category — and `UpdatePreferenceAsync`/`GuestAccountController.CanUpdatePreference` would refuse the change regardless. (The legacy `User.UnsubscribedFromCampaigns` boolean still exists on the entity for GDPR export but is not read by any active gate.)
 - When `TicketSyncService` detects a granted code redeemed in a ticket purchase, it calls `ICampaignService.MarkGrantsRedeemedAsync` to set `CampaignGrant.RedeemedAt`.
 - When an enqueue throws during `SendWaveAsync` or `RetryAllFailedAsync`, the single offending grant is flipped to `Failed` so the next pass of `RetryAllFailedAsync` can pick it up.
 - When an account merge accepts, `IUserMerge.ReassignAsync` (implemented by `CampaignService`) re-FKs `CampaignGrant.UserId` from source to target (collapsing duplicates where target already holds a grant for the same campaign). Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
@@ -122,8 +126,8 @@ Stored as string (`HasConversion<string>()`, max length 20).
 - **Tickets:** `ITicketDiscountCodes` (`Humans.Tickets.Contracts`) — TicketAdmin can generate discount codes via the ticket vendor integration; Campaigns asks Tickets for codes through this leaf rather than reaching past it into the Base vendor port. Generation is invoked from the Campaign Detail page, not from the Tickets section.
 - **Email:** `IEmailService.SendAsync` with `IEmailMessageFactory.CampaignCode` — composes and queues the campaign-code email through the outbox.
 - **Profiles / Users:** `IUserEmailService.GetNotificationTargetEmailsAsync(IReadOnlyCollection<Guid>)` — resolves notification targets for grant emails; `IUserServiceRead.GetUserInfoAsync` / `GetUserInfosAsync` — recipient `DisplayName` for the email payload and code-tracking display; `IUnsubscribeService` (Users section, `Humans.Users.Services.UnsubscribeService`) processes the public `/Unsubscribe/{token}` endpoint, validating legacy campaign-only tokens (mapped to `MessageCategory.Marketing`) before delegating opt-out to `ICommunicationPreferenceService.UpdatePreferenceAsync` — `CampaignService` itself does not call `ICommunicationPreferenceService`.
-- **Notifications:** `INotificationService.SendAsync` — `CampaignReceived` in-app notifications for wave recipients.
-- **Teams:** `ITeamService.GetActiveTeamOptionsAsync` (Send Wave team picker) and `ITeamService.GetTeamMembersAsync` (team-scoped wave targeting).
+- **Notifications:** `INotificationEmitter.SendAsync` — `CampaignReceived` in-app notifications for wave recipients.
+- **Teams:** `ITeamServiceRead.GetTeamsAsync` (Send Wave team picker) and `ITeamServiceRead.GetTeamAsync` (team-scoped wave targeting).
 - **Profiles:** Called by `IAccountMergeService` (Profiles section) — `IUserMerge.ReassignAsync` (implemented by `CampaignService`) re-FKs `CampaignGrant` from source to target during account merge fold.
 
 ## Architecture
@@ -136,7 +140,7 @@ Stored as string (`HasConversion<string>()`, max length 20).
 - `ICampaignRepository` (interface `src/Sections/Humans.Campaigns/Data/ICampaignRepository.cs`, impl `src/Sections/Humans.Campaigns/Data/CampaignRepository.cs`) is the only file that touches this section's tables via `DbContext`.
 - **Decorator decision — no caching decorator.** Admin-only, low write/read volume.
 - **Cross-section reads** route through `ITeamService.GetActiveTeamOptionsAsync` / `GetTeamMembersAsync` and `IUserEmailService.GetNotificationTargetEmailsAsync`, `IUserServiceRead.GetUserInfoAsync` / `GetUserInfosAsync` for display data. Outbound email queueing goes through `IEmailService.SendAsync` with `IEmailMessageFactory.CampaignCode` (the outbox service owns the email_outbox_messages table and applies opt-out/unsubscribe policy itself — `CampaignService` does not call `ICommunicationPreferenceService`).
-- **Cross-domain navs removed:** `Campaign.CreatedByUserId` and `CampaignGrant.UserId` are bare Guid columns — no `CreatedByUser` / `User` nav property, and since G5 no DB-level FK constraint either: the section assembly cannot name `User`, so `CampaignConfiguration` / `CampaignGrantConfiguration` declare no relationship at all. All callers — including `TicketQueryService.GetCodeTrackingDataAsync` via `ICampaignService.GetCodeTrackingAsync` — resolve display names through `IUserService`. `CampaignGrant.OutboxMessages` (Email) is also gone — Email outbox rows reference the grant by bare FK only.
+- **No cross-domain navs:** `Campaign.CreatedByUserId` and `CampaignGrant.UserId` are bare Guid columns — no nav property, no DB-level FK constraint: the section assembly cannot name `User`, so `CampaignConfiguration` / `CampaignGrantConfiguration` declare no relationship at all. All callers — including `TicketQueryService.GetCodeTrackingDataAsync` via `ICampaignService.GetCodeTrackingAsync` — resolve display names through `IUserServiceRead`.
 - **Architecture test** — `tests/Humans.Campaigns.Tests/Architecture/CampaignsArchitectureTests.cs`, alongside the cross-cutting analyzer coverage (`HUM0009`, `HUM0034`; `HUM0024` and `HUM0021` were retired in nobodies-collective/Humans#1278).
 
 ### Touch-and-clean guidance

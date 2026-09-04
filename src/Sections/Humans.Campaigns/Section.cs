@@ -23,8 +23,8 @@ public sealed class Section : ISection
     {
         services.AddSectionDbContext<CampaignsDbContext>(sentinelTable: "campaigns");
 
-        // §15 repository pattern (issue #546): Singleton + IDbContextFactory (§15b) so the
-        // repository owns context lifetime.
+        // §15 repository pattern (nobodies-collective/Humans#546): Singleton +
+        // IDbContextFactory (§15b) so the repository owns context lifetime.
         services.AddSingleton<ICampaignRepository, CampaignRepository>();
         services.AddScoped<CampaignService>();
         services.AddScoped<ICampaignService>(sp => sp.GetRequiredService<CampaignService>());
@@ -34,11 +34,8 @@ public sealed class Section : ISection
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CampaignService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<CampaignService>());
 
-        // The section owns its badge colours rather than Humans.UI holding a literal row per
-        // section enum: Base cannot name CampaignStatus once the enum moves in here, and
-        // referencing the section from Base to get it back is the trap that ends with Base
-        // knowing every section's vocabulary (Peter, 2026-08-09 —
-        // memory/architecture/base-ui-registries-are-section-populated.md).
+        // Section-owned badge colours: Base cannot name an internal CampaignStatus
+        // (memory/architecture/base-ui-registries-are-section-populated.md).
         EnumBadgeMap.Register(new Dictionary<Enum, string>
         {
             [CampaignStatus.Draft] = "bg-secondary",

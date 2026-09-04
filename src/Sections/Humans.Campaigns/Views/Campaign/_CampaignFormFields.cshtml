@@ -1,0 +1,31 @@
+@model CampaignFormValues
+
+<div class="mb-3">
+    <label for="title" class="form-label">Title</label>
+    <input type="text" class="form-control" id="title" name="title" value="@Model.Title" required />
+</div>
+
+<div class="mb-3">
+    <label for="description" class="form-label">Description</label>
+    <markdown-editor name="description" id="description" value="@Model.Description" rows="3" />
+</div>
+
+<div class="mb-3">
+    <label for="emailSubject" class="form-label">Email Subject</label>
+    <input type="text" class="form-control" id="emailSubject" name="emailSubject" value="@Model.EmailSubject" required />
+    <small class="form-text text-muted">You can use <code>{{Name}}</code> to insert the human's name.</small>
+</div>
+
+<div class="mb-3">
+    <label for="emailBodyTemplate" class="form-label">Email Body Template</label>
+    <markdown-editor name="emailBodyTemplate" id="emailBodyTemplate" value="@Model.EmailBodyTemplate" rows="10" required="true" class="font-monospace" />
+    <div class="form-text">
+        Use <code>{{Code}}</code> for the code and <code>{{Name}}</code> for the human's name.
+    </div>
+</div>
+
+<div class="mb-3">
+    <label for="replyToAddress" class="form-label">Reply-To Address <span class="text-muted">(optional)</span></label>
+    <input type="email" class="form-control" id="replyToAddress" name="replyToAddress" value="@Model.ReplyToAddress" placeholder="e.g. tickets@nobodies.team">
+    <small class="form-text text-muted">Recipients who reply to the campaign email will reach this address.</small>
+</div>

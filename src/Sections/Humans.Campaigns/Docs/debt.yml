@@ -1,0 +1,7 @@
+# Section debt ledger for Humans.Campaigns. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+inbox:
+  - added: 2026-08-31
+    what: "CampaignService admin mutations and sends (CreateAsync/UpdateAsync/ActivateAsync/CompleteAsync, ImportCodesAsync, SendWaveAsync, ResendToGrantAsync, RetryAllFailedAsync) write no audit-log entries, and grant/outbox rows carry no actor — the Board cannot see which admin did what. AGENTS.md 'Hit every surface: Audit trail' requires them; surfaced by Codex review on peterdrier/Humans#1573."
+    review: panel

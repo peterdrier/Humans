@@ -3,6 +3,7 @@
   src/Sections/Humans.Campaigns.Contracts/**
   src/Sections/Humans.Users/Services/UnsubscribeService.cs
   src/Sections/Humans.Users/Controllers/UnsubscribeController.cs
+  src/Sections/Humans.Tickets/Services/TicketSyncService.cs
 -->
 <!-- freshness:flag-on-change
   Campaign workflow, wave-send eligibility, unsubscribe behavior, or self-service code lookup may have shifted; verify states/routes/auth still match.
@@ -24,11 +25,11 @@ Draft → Active → Completed
 |-------|-------------|
 | Draft | Created, codes can be imported, not yet sending |
 | Active | Codes have been imported; sending waves is possible |
-| Completed | All codes assigned, campaign closed |
+| Completed | Campaign closed |
 
 Transitions:
 - **Activate**: moves from Draft → Active (requires at least one imported code)
-- **Complete**: moves from Active → Completed (manual or auto)
+- **Complete**: moves from Active → Completed (admin action — there is no auto-complete)
 
 ## Wave Send
 
@@ -80,9 +81,11 @@ Humans can view their campaign codes on their profile page. The profile page sho
 Campaign 1──n CampaignCode
 Campaign 1──n CampaignGrant
 CampaignCode 1──1 CampaignGrant (once assigned)
-CampaignGrant n──1 User
-CampaignGrant 1──n EmailOutboxMessage
+CampaignGrant n──1 User (bare FK, no nav)
 ```
+
+Email outbox rows reference the grant by bare FK inside the Email section; the
+grant carries only the denormalized `LatestEmailStatus`/`LatestEmailAt` pair.
 
 ## Ticket Vendor Integration
 
