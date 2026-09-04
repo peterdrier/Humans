@@ -1,5 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Monitor/**
+  tests/Humans.Integration.Tests/Controllers/MonitorPageRenderTests.cs
+  src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
 -->
 <!-- freshness:flag-on-change
   Monitor's reference set is its whole reason to exist — review the reference list in Invariants below when any ProjectReference is added.
@@ -12,23 +14,15 @@ asked for, and show the Google-sync audit trail for one resource or one human.
 
 ## Why the section exists
 
-Monitor was carved out of **AuditLog**, not out of GoogleIntegration.
-
-`AuditLogController` had three actions that were monitoring rather than audit browsing, and two
-of them injected GoogleIntegration services directly. AuditLog is a **horizontal**;
-[`peters-hard-rules.md`](../../../../docs/architecture/peters-hard-rules.md) forbids a
-horizontal from referencing a vertical section. That reach was invisible while GoogleIntegration
-still lived in `Humans.Application` — both ends were Base — and became an assembly-level
-violation the moment GoogleIntegration went to G5 (nobodies-collective/Humans#866).
-
-`DriveActivityMonitorService` turned out to be the same shape one level down: it injects five
-sections' services (`IGoogleDriveActivityClient`, `ITeamResourceService`, `ISettingsService`,
-`IUserServiceRead`, `IAuditLogService`) and calls **no repository** — a cross-section
-orchestrator by the hard rules' own definition, sitting in `Services/GoogleIntegration/` on code
-locality alone.
-
 **Monitor may reference both GoogleIntegration and AuditLog because Monitor is not a
-horizontal.** It is a leaf consumer: it sits above both and nothing sits above it.
+horizontal.** It is a leaf consumer: it sits above both and nothing sits above it. AuditLog is
+a horizontal, and [`peters-hard-rules.md`](../../../../docs/architecture/peters-hard-rules.md)
+forbids a horizontal from referencing a vertical section — which is why these three actions and
+`DriveActivityMonitorService` live here and not there (nobodies-collective/Humans#866).
+
+`DriveActivityMonitorService` injects four sections' services — GoogleIntegration's
+`IGoogleDriveActivityClient` and `ITeamResourceService`, plus `ISettingsService`,
+`IUserServiceRead` and `IAuditLogService` — and calls **no repository**.
 
 ## Concepts
 
@@ -48,8 +42,10 @@ horizontal.** It is a leaf consumer: it sits above both and nothing sits above i
 
 **Monitor owns no tables.** No `DbContext`, no repository, no migrations, no G4 gate. It reads
 Google through GoogleIntegration's connector abstraction, writes audit through
-`IAuditLogService`, renders the sync log through `<vc:google-sync-log>`, and stores its one piece of state
-(the last-run timestamp) in SystemSettings ([`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md): documentation, not a pinned assertion).
+`IAuditLogService`, renders the sync log through `<vc:google-sync-log>`, and stores its one
+piece of state — the last-run timestamp — through the Settings section's `ISettingsService`.
+Documentation, not a pinned assertion
+([`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md)).
 
 ## Actors / Roles
 
@@ -70,16 +66,16 @@ registration moves into the section, policy registration does not).
   `<vc:google-sync-log>` tag helper binds). Every name added there is a section
   Monitor now couples to — documentation, not a pinned assertion
   ([`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md)).
-- **Nothing depends on Monitor except Shell naming the job.** Its whole outward surface is
-  `IDriveActivityMonitorService` in `Contracts/` — one method, returning `int` — consumed by
-  `DriveActivityMonitorJob` beside it, home since the G5 jobs move
-  (nobodies-collective/Humans#866); the `Humans.Monitor.Contracts` leaf folded back in once
-  that job left Base. It is `public` there because Shell names
-  the concrete type in `AddScoped` and in the recurring roll-call — there is still no
-  `ISection`-style discovery seam for recurring jobs (template step 6b) — and HUM0034 allows a
-  section's public types only under `Contracts/`.
-- **The scan is best-effort and never throws to its caller.** `CheckDriveActivity` catches,
-  logs at Error, and shows the operator an error banner; the recurring job records a failed run.
+- **No section depends on Monitor.** Its whole outward surface is `IDriveActivityMonitorService`
+  in `Contracts/` — one method, returning `int` — and its only consumer is
+  `DriveActivityMonitorJob` in `Jobs/`, inside this project. The Shell's
+  `ProjectReference` is the exception and is required: `Humans.Web` references every section
+  so the dependency context can discover this one's `ISection`, controllers and recurring job. The job is `public` because
+  `Section.cs` and `SectionJobs.cs` name the concrete type; HUM0034 allows a section's public
+  types under `Contracts/` and, for Hangfire jobs, under `Jobs/`.
+- **The operator never sees an exception; the job does.** `CheckDriveActivity` catches, logs at
+  Error and shows an error banner. The scan itself throws when *every* resource failed to
+  query, so the recurring job records a failed run instead of a hollow success.
 - **No resource set.** One admin-only English page — documentation, not a pinned
   assertion ([`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md)).
 
@@ -91,11 +87,15 @@ registration moves into the section, policy registration does not).
 - `GET /Monitor/Resource/{unknown}` is a **404**, not a 500. The distinction is the test: a 500
   means a dependency failed to resolve out of the section's DI graph.
 
+Both live in `tests/Humans.Integration.Tests`, which CI filters out
+([`integration-tests-are-not-ci-tests`](../../../../memory/process/integration-tests-are-not-ci-tests.md)) —
+they are local-only assertions, not branch gates.
+
 ## Triggers
 
 - `DriveActivityMonitorJob` (recurring, Hangfire) → `CheckForAnomalousActivityAsync`.
-- `POST /Monitor/CheckDriveActivity` → the same method, on demand, from the audit log page's
-  toolbar button. The button still lives on `/AuditLog`; only the form's target moved.
+- `POST /Monitor/CheckDriveActivity` → the same method, on demand, from the toolbar button on
+  `/AuditLog`.
 
 ## Cross-section dependencies
 
@@ -105,9 +105,8 @@ registration moves into the section, policy registration does not).
 | out | AuditLog | `IAuditLogService` (write) |
 | out | Settings | `ISettingsService` (last-run marker) |
 | out | Users | `IUserServiceRead` (resolve Google actors to humans) |
-| in | — | none; Shell names `DriveActivityMonitorJob`, which is in this project |
+| in | — | none |
 
 ## Architecture status
 
-At G5: own project (`src/Sections/Humans.Monitor`); its former `.Contracts` leaf folded into
-the project's `Contracts/` folder. Table-less, so no G4 gate applies. `Section.Register` has one line.
+Table-less, so no G4 gate applies.
