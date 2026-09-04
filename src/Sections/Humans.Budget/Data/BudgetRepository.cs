@@ -211,7 +211,6 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         var oldStatus = year.Status;
 
-        // When activating, auto-close any currently active year.
         if (status == BudgetYearStatus.Active)
         {
             var currentlyActive = await ctx.BudgetYears
@@ -526,10 +525,9 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        // No cross-domain Includes — the team navs on BudgetCategory and
-        // BudgetLineItem are obsolete cross-section navs. Callers resolve
-        // team names via ITeamService keyed off TeamId / ResponsibleTeamId.
-        // Line-item display sort (SortOrder) is applied by the CategoryDetail views.
+        // No cross-domain Includes — callers resolve team names via
+        // ITeamServiceRead keyed off TeamId / ResponsibleTeamId. Line-item
+        // display sort (SortOrder) is applied by the CategoryDetail views.
         return await ctx.BudgetCategories
             .AsNoTracking()
             .Include(c => c.BudgetGroup)
@@ -986,8 +984,8 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        // No cross-domain Include — BudgetAuditLog.ActorUser is obsolete; the
-        // Finance audit log view renders actor via <vc:human user-id=@ActorUserId>.
+        // No cross-domain Include — the audit log view renders the actor via
+        // <vc:human user-id=@ActorUserId>.
         var query = ctx.BudgetAuditLogs.AsNoTracking().AsQueryable();
 
         if (budgetYearId.HasValue)
@@ -1285,8 +1283,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
             OccurredAt = occurredAt
         });
 
-        // Downgraded from Information→Debug per design-rules (the audit row in
-        // budget_audit_logs is the durable record; the log line is trace only).
+        // Trace only — the budget_audit_logs row is the durable record.
         logger.LogDebug(
             "BudgetAudit: {EntityType} {EntityId} — {Description} by user {ActorUserId}",
             entityType, entityId, description, actorUserId);

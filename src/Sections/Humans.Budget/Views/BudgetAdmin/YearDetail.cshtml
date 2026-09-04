@@ -307,7 +307,6 @@
                                         '</strong> (at ' + dailyRate.toFixed(1) + '/day &times; ' + days + ' days)';
                                 }
 
-                                // When Daily Sales Rate changes, recalculate Total
                                 dailyRateInput.addEventListener('input', function() {
                                     if (!hasDates()) return;
                                     var rate = parseFloat(this.value) || 0;
@@ -317,7 +316,6 @@
                                     updateBreakdown(rate);
                                 });
 
-                                // When Total Tickets changes, recalculate Daily Sales Rate
                                 totalInput.addEventListener('input', function() {
                                     if (!hasDates()) return;
                                     var target = parseInt(this.value) || 0;
@@ -330,7 +328,6 @@
                                     }
                                 });
 
-                                // When dates change, recalculate
                                 startDateInput.addEventListener('change', function() {
                                     var rate = parseFloat(dailyRateInput.value) || 0;
                                     var days = getRemainingDays();
@@ -362,7 +359,6 @@
                         var catActual = catLineItems.Sum(li => li.Amount);
                         var catBudget = cat.AllocatedAmount;
 
-                        // Display logic for budget vs actual
                         var isExpenseBudget = catBudget < 0;
                         var displayBudget = Math.Abs(catBudget);
                         var displayActual = Math.Abs(catActual);

@@ -11,7 +11,7 @@ namespace Humans.Budget.Contracts;
 /// </summary>
 /// <remarks>
 /// The section's own controllers take the internal <c>BudgetService</c> directly, so the
-/// other ~36 members of the old <c>IBudgetService</c> — year/group/category/line-item
+/// other members of the internal <c>IBudgetService</c> — year/group/category/line-item
 /// CRUD, the audit log, the cash-flow and VAT projections, the ticketing projection
 /// parameters — are not public at all (design §15 step 5).
 /// </remarks>
@@ -51,8 +51,7 @@ public interface IBudgetServiceRead : IApplicationService
 
 /// <summary>
 /// Full budget-year projection (year → groups → categories → line items) used by the
-/// Budget, Expenses, Finance and Tickets presentation flows. Replaces direct exposure of
-/// the <c>BudgetYear</c> EF entity.
+/// Budget, Expenses, Finance and Tickets presentation flows.
 /// </summary>
 public sealed record BudgetYearDetail(
     Guid Id,

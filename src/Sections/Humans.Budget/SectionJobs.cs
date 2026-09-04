@@ -8,7 +8,6 @@ internal sealed class SectionJobs : ISectionJobs
 {
     public IEnumerable<RecurringJobDescriptor> Jobs(IServiceProvider services)
     {
-        // Materialize ticket sales actuals into budget line items.
         yield return new RecurringJobDescriptor(
             "budget-ticketing-sync", typeof(TicketingBudgetSyncJob), "30 4 * * *");
     }

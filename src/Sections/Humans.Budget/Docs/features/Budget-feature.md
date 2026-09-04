@@ -196,7 +196,7 @@ Outbound invoices to members/barrios:
 - Data model: BudgetYear, BudgetGroup, BudgetCategory, BudgetLineItem, BudgetAuditLog
 - EF Core migration with HasBudget on Team for department auto-mapping
 - FinanceAdmin role (replaces "Treasurer" in original spec)
-- Budget CRUD at `/Finance/*` via FinanceController
+- Budget CRUD at `/Finance/*` via then-FinanceController (owned by `BudgetAdminController` since the controller split)
 - Field-level audit trail with old/new values (separate BudgetAuditLog table)
 - Nav link visible to FinanceAdmin + Admin
 - **Exit:** Can recreate 2026 spreadsheet budget in the app
@@ -249,15 +249,13 @@ Outbound invoices to members/barrios:
   - Revenue: "+€X" with ticket count in notes
   - Stripe fees: "-€X" from real Stripe fee data
   - TicketTailor fees: "-€X" from real ApplicationFee data
-  - VAT: "-€X" computed from order VAT amounts
-  - Donations: "+€X" flagged as `IsCashflowOnly` — excluded from income/expense/profit
-  - Quarter-boundary weeks are split for correct VAT attribution
   - Upsert logic: existing auto-generated items updated on re-sync, not duplicated
-- **Projections** via `ITicketingBudgetService.GetProjectionsAsync`:
+  - (VAT is not stored as its own line item — settlement math lives in the cash-flow
+    computation; no donation handling or quarter-boundary splitting exists in the sync)
+- **Projections** via `TicketingBudgetService.GetProjectionsAsync`:
   - Virtual (non-persisted) weekly entries for future weeks from current week to event date
   - Recalculates from latest actuals: remaining tickets / remaining days = projected daily rate
-  - Observed donation rate from actuals applied to projections
-  - Fees computed on revenue + donations; VAT on revenue only (inclusive formula)
+  - Fees computed on revenue; VAT on revenue only (inclusive formula)
 - **Budget totals** exclude `IsCashflowOnly` line items from income/expense/profit/charts
 - **UI changes:**
   - Ticketing group badge ("Ticketing") on year detail views

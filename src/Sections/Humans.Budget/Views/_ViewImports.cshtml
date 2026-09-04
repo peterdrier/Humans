@@ -12,8 +12,8 @@
 @using Microsoft.Extensions.Localization
 @using NodaTime
 @inject IStringLocalizer<BudgetResource> Localizer
-@* No SharedLocalizer: every Localizer[…] call in Budget's views is a Budget_ key, and all
-   21 carved out of SharedResource — including Budget_ColCategory, which Expenses' report
+@* No SharedLocalizer: every Localizer[…] call in Budget's views is a Budget_ key, all
+   carved out of SharedResource — including Budget_ColCategory, which Expenses' report
    grid also renders and now reads through IStringLocalizer<BudgetResource> (§15.3b). *@
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @addTagHelper *, Humans.Base

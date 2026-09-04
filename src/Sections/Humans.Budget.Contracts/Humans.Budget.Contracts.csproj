@@ -5,13 +5,11 @@
     consumers is still in Base: TicketQueryService (Humans.Application) reads the active year
     to compute the break-even summary. A Contracts/ *folder* inside Humans.Budget would
     therefore make Base reference a section and cycle (design §15.5b,
-    memory/architecture/section-project-cycle-fix.md). The second Base consumer,
-    TicketingBudgetSyncJob, moved into Humans.Budget/Contracts/ at G5 lane 5b-3
-    (nobodies-collective/Humans#866), taking Humans.Infrastructure's reference to this leaf
-    with it.
+    memory/architecture/section-project-cycle-fix.md). The former second Base consumer,
+    TicketingBudgetSyncJob, lives in Humans.Budget/Jobs/.
 
-    It holds the read surface the other sections actually call — four methods out of
-    IBudgetService's forty — plus the DTOs and the two enums that appear in their
+    It holds the read surface the other sections actually call — five methods out of
+    IBudgetService's ~forty — plus the DTOs and the two enums that appear in their
     signatures. Everything else Budget does (year/group/category/line-item CRUD, the audit
     log, the cash-flow and VAT projections, the ticketing projection parameters) has no
     consumer outside the section and stays internal to Humans.Budget.

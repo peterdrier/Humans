@@ -17,12 +17,10 @@ namespace Humans.Budget;
 /// nothing names it, so it needs no section prefix.
 /// </summary>
 /// <remarks>
-/// <c>TicketingBudgetSyncJob</c> lives in this project's <c>Jobs/</c> folder since G5
-/// lane 5b-3 (nobodies-collective/Humans#866) — the plan had guessed Tickets, but both its
-/// collaborators are Budget's and the rows it writes are budget line items. Its schedule is
-/// contributed via <c>SectionJobs.cs</c> (#1074's jobs seam); the DI registration stays here as a
-/// factory (Peter's ruling 43): the job's constructor went <c>internal</c> once
-/// <see cref="ITicketingBudgetService"/> did, so only this assembly can build it.
+/// <c>TicketingBudgetSyncJob</c> is Budget's — both its collaborators are Budget's and the
+/// rows it writes are budget line items. Its schedule is contributed via
+/// <c>SectionJobs.cs</c>; the DI registration stays here as a factory (ruling 43): the
+/// job's constructor is <c>internal</c>, so only this assembly can build it.
 /// </remarks>
 public sealed class Section : ISection
 {

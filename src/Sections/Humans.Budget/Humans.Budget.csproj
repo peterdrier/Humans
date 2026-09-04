@@ -45,9 +45,8 @@
       fail the build with NU1010 under Central Package Management. Everything ASP.NET the
       section touches arrives through the framework reference Sdk.Razor already adds
       (design §15 step 1).
-      Hangfire.Core is for Contracts/TicketingBudgetSyncJob's [DisableConcurrentExecution],
-      added with the job at G5 lane 5b-3. Package, not project, so no cycle is possible; it
-      was already arriving transitively through Humans.Infrastructure.
+      Hangfire.Core is for Jobs/TicketingBudgetSyncJob's [DisableConcurrentExecution].
+      Package, not project, so no cycle is possible.
     -->
     <PackageReference Include="Hangfire.Core" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
