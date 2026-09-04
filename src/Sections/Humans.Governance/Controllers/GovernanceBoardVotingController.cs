@@ -186,7 +186,6 @@ internal sealed class GovernanceBoardVotingController(
                     "NotFound" => localizer["BoardVoting_ApplicationNotFound"].Value,
                     "NotSubmitted" => localizer["BoardVoting_ApplicationNotVotable"].Value,
                     "NoVotes" => localizer["BoardVoting_NoVotes"].Value,
-                    "ConcurrencyConflict" => localizer["BoardVoting_ConcurrencyConflict"].Value,
                     _ => localizer["BoardVoting_ApplicationNotVotable"].Value
                 });
                 return string.Equals(result.ErrorKey, "NoVotes", StringComparison.Ordinal)

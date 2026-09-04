@@ -1,47 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Governance's cross-section surface, carved into its own leaf project because most of its
-    consumers are still in Base: OnboardingService, DashboardService, AdminDashboardService and
-    ConsentService read through IApplicationServiceRead / IMembershipCalculatorRead, and
-    HumansMetricsService does the same from Humans.Infrastructure. A Contracts/ *folder*
-    inside Humans.Governance would therefore make Base reference a section and cycle
-    (design §15.5b, memory/architecture/section-project-cycle-fix.md).
-
-    Three names left that census as their jobs went home (nobodies-collective/Humans#866).
-    At lane 5b-4: TermRenewalReminderJob, the sole consumer of the three renewal members,
-    moved into Humans.Governance/Contracts/, and SuspendNonCompliantMembersJob's
-    IMembershipCalculatorRead read became NonCompliantMemberSuspension's inside Humans.Users.
-    At lane 5b-5: SendReConsentReminderJob's IMembershipCalculatorRead read moved into
-    Humans.Consent. Both of those are a section reading a leaf, the ordinary direction.
-    SystemTeamSyncJob had already gone home to Humans.Teams.
+    Governance's cross-section surface. A Contracts/ *folder* inside Humans.Governance would
+    make Base reference a section and cycle, so it is a leaf project: Base-resident consumers
+    read through this (design §15.5b, memory/architecture/section-project-cycle-fix.md).
 
     It holds exactly what lives outside the section: the tier-application read surface, the
-    three members the renewal job needs, the membership-calculator read surface, the DTOs
-    those signatures name, and ApplicationStatus — which cannot follow the entities into the
-    section's internal Domain/ because UserApplicationSnapshot names it and so do a dozen Base
-    and Shell read paths (design §15 step 5, Budget's rule).
+    membership-calculator read surface, the six members the renewal job drives, the DTOs those
+    signatures name, ApplicationStatus, and MembershipStatus/MembershipStatusLabels.
 
-    G5 lane 4b-2k added MembershipStatus and MembershipStatusLabels here. MembershipStatus is
-    named by this leaf's own MembershipSnapshot (Budget's rule); MembershipStatusLabels came
-    with it because its only consumer was Humans.UI's StatusBadgeExtensions, and Base can name a
-    leaf but not a section project. G5 lane 4b-i moved that extension into Humans.Users (it was
-    Base's last site on this leaf), so the consumer is now Humans.Users/Extensions/
-    StatusBadgeExtensions.cs — a section naming a leaf, which is the ordinary direction.
-
-    References Humans.Interfaces (IApplicationService) and — new at G5 lane 3b
-    (nobodies-collective/Humans#866) — Humans.Users.Contracts, for MembershipTier alone.
-    That enum was the last thing keeping the old Humans.Domain edge alive here; lane 3b
-    emptied and deleted that project, sending MembershipTier to Humans.Users.Contracts per
-    the design doc's "UserInfo object graph" ruling. So this is the same single-enum
-    dependency it always was, repointed at the enum's new owner, not a new coupling to
-    Users' service surface.
-
-    This leaf-to-leaf edge is disclosed and acyclic. Humans.Users.Contracts holds exactly one
-    ProjectReference of its own (Humans.Onboarding.Contracts, which holds none), so the
-    chain from here terminates in two hops and cannot reach back. Note that Base references
-    Humans.Users.Contracts — that is fine in this direction, but it means nothing in
-    Humans.Users.Contracts may ever reference this project.
+    References Humans.Users.Contracts for MembershipTier alone. Base references
+    Humans.Users.Contracts, which means nothing in Humans.Users.Contracts may ever reference
+    this project.
   -->
 
   <ItemGroup>

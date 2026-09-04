@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Governance/**
-  src/Sections/Humans.Governance/Services/TermExpiryCalculator.cs
+  src/Sections/Humans.Governance.Contracts/**
 -->
 <!-- freshness:flag-on-change
   Tier application state machine, approval effects, and renewal flow — review when Application entity or governance/application controllers change.
@@ -85,7 +85,6 @@ The Application entity also serves **upgrades** (Volunteer→Colaborador, Volunt
 
 **Acceptance Criteria:**
 - Board Voting dashboard shows pending applications
-- Filter by tier (Colaborador / Asociado / All)
 - View full application details and profile
 - Cast individual vote (Yay / Maybe / No / Abstain)
 - Finalize with meeting date and decision note
@@ -103,7 +102,7 @@ The Application entity also serves **upgrades** (Volunteer→Colaborador, Volunt
 - Submitting renewal creates new Application (same tier)
 - Goes through normal Board voting process
 - On approval, new term starts (next 2-year cycle)
-- On expiry without renewal, reverts to Volunteer
+- On expiry without renewal, downgraded to another tier still held, otherwise to Volunteer
 
 ## Data Model
 

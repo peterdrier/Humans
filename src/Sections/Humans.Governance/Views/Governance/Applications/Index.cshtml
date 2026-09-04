@@ -65,12 +65,10 @@
                                 <dd class="col-sm-8">@app.ResolvedAt.Value.ToDate()</dd>
                             }
 
-                            @if (app.Status == ApplicationStatus.Approved && app.ResolvedAt.HasValue)
+                            @if (app.TermExpiresAt.HasValue)
                             {
-                                var resolvedYear = app.ResolvedAt.Value.Year;
-                                var expiryYear = resolvedYear % 2 == 0 ? resolvedYear + 1 : resolvedYear + 2;
                                 <dt class="col-sm-4">@Localizer["Governance_TermExpiry"]</dt>
-                                <dd class="col-sm-8">31 December @expiryYear</dd>
+                                <dd class="col-sm-8">@app.TermExpiresAt.ToDate()</dd>
                             }
                         </dl>
 

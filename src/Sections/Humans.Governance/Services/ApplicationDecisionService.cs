@@ -393,7 +393,6 @@ internal sealed class ApplicationDecisionService(
             History: history);
     }
 
-    // Onboarding-section support methods — Governance owns application/board-vote tables (design-rules §2c).
     public Task<IReadOnlySet<Guid>> GetUserIdsWithPendingApplicationAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
         repository.GetUserIdsWithSubmittedAsync(userIds, ct);
@@ -409,10 +408,6 @@ internal sealed class ApplicationDecisionService(
                 application.MembershipTier,
                 application.Motivation);
     }
-
-    public Task<IReadOnlyList<MembershipTier>> GetApprovedTiersForUserAsync(
-        Guid userId, CancellationToken ct = default) =>
-        repository.GetApprovedTiersForUserAsync(userId, ct);
 
     public async Task<BoardVotingDashboardData> GetBoardVotingDashboardAsync(
         CancellationToken ct = default)
@@ -727,7 +722,7 @@ internal sealed class ApplicationDecisionService(
                 title,
                 [application.UserId],
                 body: body,
-                actionUrl: "/Governance/MyApplications",
+                actionUrl: "/Governance/Applications",
                 actionLabel: "View application",
                 cancellationToken: cancellationToken);
         }

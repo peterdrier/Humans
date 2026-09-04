@@ -364,9 +364,6 @@
   <data name="BoardVoting_ApplicationNotFound" xml:space="preserve">
     <value>Antrag nicht gefunden.</value>
   </data>
-  <data name="BoardVoting_ConcurrencyConflict" xml:space="preserve">
-    <value>Dieser Antrag wurde von einem anderen Benutzer geändert. Bitte neu laden und erneut versuchen.</value>
-  </data>
   <data name="BoardVoting_AdditionalInfo" xml:space="preserve">
     <value>Zusätzliche Informationen</value>
   </data>
@@ -384,5 +381,11 @@
   </data>
   <data name="Dashboard_GovernanceCardDescription" xml:space="preserve">
     <value>Versammlungen, Wahlen, und das Ernste.</value>
+  </data>
+  <data name="GovernanceCreate_MotivationLabel" xml:space="preserve">
+    <value>Warum möchtest du mitmachen?</value>
+  </data>
+  <data name="GovernanceCreate_AdditionalInfoLabel" xml:space="preserve">
+    <value>Weitere Angaben (optional)</value>
   </data>
 </root>

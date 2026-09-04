@@ -7,22 +7,17 @@ namespace Humans.Governance.Services;
 
 /// <summary>
 /// Thin read-only query surface exposing ONLY the subset of
-/// <see cref="ITeamService"/> and <see cref="IRoleAssignmentService"/> methods
-/// consumed by <see cref="IMembershipCalculator"/>.
+/// <see cref="ITeamServiceRead"/> and <see cref="IRoleAssignmentService"/>
+/// methods consumed by <see cref="MembershipCalculator"/>.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Exists to break a circular DI graph: <see cref="ITeamService"/> and
+/// Exists to break a circular DI graph: <see cref="ITeamServiceRead"/> and
 /// <see cref="IRoleAssignmentService"/> both inject <c>ISystemTeamSync</c>,
 /// whose implementation (<c>SystemTeamSyncJob</c>) injects
-/// <see cref="IMembershipCalculator"/> back. Injecting the full team / role
+/// <see cref="Humans.Governance.Contracts.IMembershipCalculatorRead"/> back. Injecting the full team / role
 /// services into the calculator closes that cycle and trips
 /// <c>ValidateOnBuild</c>.
-/// </para>
-/// <para>
-/// The query adapter depends on the team and role services, but nothing
-/// injects the adapter except <see cref="IMembershipCalculator"/> — so no
-/// cycle.
 /// </para>
 /// </remarks>
 internal interface IMembershipQuery : IApplicationService

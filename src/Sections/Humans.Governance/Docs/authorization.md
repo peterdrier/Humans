@@ -1,3 +1,8 @@
+<!-- freshness:triggers
+  src/Sections/Humans.Governance/**
+  src/Sections/Humans.Governance.Contracts/**
+-->
+
 # Governance — Authorization
 
 | Controller | Scope | Roles | Source |

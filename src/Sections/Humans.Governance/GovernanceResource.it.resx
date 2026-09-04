@@ -364,9 +364,6 @@
   <data name="BoardVoting_ApplicationNotFound" xml:space="preserve">
     <value>Domanda non trovata.</value>
   </data>
-  <data name="BoardVoting_ConcurrencyConflict" xml:space="preserve">
-    <value>Questa domanda è stata modificata da un altro utente. Ricarica e riprova.</value>
-  </data>
   <data name="BoardVoting_AdditionalInfo" xml:space="preserve">
     <value>Informazioni aggiuntive</value>
   </data>
@@ -384,5 +381,11 @@
   </data>
   <data name="Dashboard_GovernanceCardDescription" xml:space="preserve">
     <value>Assemblee, elezioni, e le cose serie.</value>
+  </data>
+  <data name="GovernanceCreate_MotivationLabel" xml:space="preserve">
+    <value>Perché vuoi unirti?</value>
+  </data>
+  <data name="GovernanceCreate_AdditionalInfoLabel" xml:space="preserve">
+    <value>Informazioni aggiuntive (facoltativo)</value>
   </data>
 </root>

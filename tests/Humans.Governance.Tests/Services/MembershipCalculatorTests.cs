@@ -465,46 +465,6 @@ public class MembershipCalculatorTests
         result.Should().BeTrue();
     }
 
-    // --- HasAnyExpiredConsentsAsync tests ---
-
-    [HumansFact]
-    public async Task HasAnyExpiredConsentsAsync_ExpiredUnsigned_ReturnsTrue()
-    {
-        var userId = Guid.NewGuid();
-        SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid(), gracePeriodDays: 0,
-            effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
-
-        var result = await _service.HasAnyExpiredConsentsAsync(userId, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task HasAnyExpiredConsentsAsync_WithinGracePeriod_ReturnsFalse()
-    {
-        var userId = Guid.NewGuid();
-        SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid(), gracePeriodDays: 365,
-            effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
-
-        var result = await _service.HasAnyExpiredConsentsAsync(userId, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task HasAnyExpiredConsentsAsync_AllSigned_ReturnsFalse()
-    {
-        var userId = Guid.NewGuid();
-        var versionId = Guid.NewGuid();
-        SeedRequiredVersion(SystemTeamIds.Volunteers, versionId, gracePeriodDays: 0,
-            effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
-        SeedConsent(userId, versionId);
-
-        var result = await _service.HasAnyExpiredConsentsAsync(userId, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeFalse();
-    }
-
     // --- HasAnyExpiredConsentsForTeamAsync tests ---
 
     [HumansFact]

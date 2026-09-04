@@ -5,18 +5,15 @@ using NodaTime;
 namespace Humans.Governance.Contracts;
 
 /// <summary>
-/// The write half of the tier-application lifecycle that lives outside the section: the
-/// profile-setup submit path (Shell's <c>ProfileController</c>, which renders the same
-/// application form during onboarding). The term-renewal reminder job also drives the three
-/// renewal members, but is no longer outside the section: <c>TermRenewalReminderJob</c> moved
-/// from <c>Humans.Infrastructure/Jobs</c> into <c>Humans.Governance/Contracts/</c> at G5
-/// lane 5b-4 (nobodies-collective/Humans#866).
+/// The write half of the tier-application lifecycle with a consumer outside the section:
+/// Shell's <c>ProfileController</c> submit path. <c>TermRenewalReminderJob</c> drives the
+/// renewal members from inside the section.
 /// </summary>
 /// <remarks>
-/// The rest of the lifecycle — approve, reject, withdraw, board voting, the admin list and
-/// detail reads — has no consumer outside the section and stays on the internal
-/// <c>ApplicationDecisionService</c>, which the section's own controllers inject by concrete
-/// type (design §15 step 5). Carve the leaf from the *call sites*, not from the interface.
+/// Approve, reject, withdraw, board voting and the admin reads have no consumer outside the
+/// section and stay on the internal <c>ApplicationDecisionService</c>, which the section's own
+/// controllers inject by concrete type. Carve the leaf from the *call sites*, not from the
+/// interface.
 /// </remarks>
 public interface IApplicationDecisionService : IApplicationServiceRead, IApplicationService
 {
@@ -43,9 +40,7 @@ public interface IApplicationDecisionService : IApplicationServiceRead, IApplica
         string language, CancellationToken ct = default);
 
     /// <summary>
-    /// Updates a submitted (draft) application's motivation, tier, and optional
-    /// Asociado fields. Only allowed on <see cref="ApplicationStatus.Submitted"/>
-    /// applications. Used by the profile save flow during initial setup.
+    /// Only allowed on <see cref="ApplicationStatus.Submitted"/> applications.
     /// </summary>
     Task UpdateDraftApplicationAsync(
         Guid applicationId, MembershipTier tier, string motivation,
@@ -64,19 +59,13 @@ public interface IApplicationDecisionService : IApplicationServiceRead, IApplica
         LocalDate today, LocalDate reminderThreshold, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the distinct (UserId, MembershipTier) pairs that currently
-    /// have a <see cref="ApplicationStatus.Submitted"/> application. Used by
-    /// the term renewal reminder job to exclude users who have already filed
-    /// a renewal.
+    /// Lets the renewal job exclude users who have already filed a renewal.
     /// </summary>
     Task<IReadOnlySet<(Guid UserId, MembershipTier Tier)>> GetPendingApplicationUserTiersAsync(
         CancellationToken ct = default);
 
     /// <summary>
-    /// Stamps <c>Application.RenewalReminderSentAt</c> to
-    /// <paramref name="sentAt"/>. No-op if the application does not exist.
-    /// Used by the term renewal reminder job so it never writes to
-    /// <c>applications</c> directly.
+    /// No-op if the application does not exist.
     /// </summary>
     Task MarkRenewalReminderSentAsync(
         Guid applicationId, Instant sentAt, CancellationToken ct = default);

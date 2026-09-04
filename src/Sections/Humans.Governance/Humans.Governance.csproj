@@ -13,8 +13,7 @@
 
   <ItemGroup>
     <!--
-      Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
-      Declaring them keeps the files moved out of Humans.Web byte-identical to their originals.
+      Microsoft.NET.Sdk.Razor does not add these to ImplicitUsings; Microsoft.NET.Sdk.Web does.
     -->
     <Using Include="Microsoft.AspNetCore.Http" />
     <Using Include="Microsoft.AspNetCore.Routing" />
@@ -31,34 +30,24 @@
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
-    <!-- ConsentResource only: the statutes page renders one Consent key, whose set came
-         home at Consent's G5. Acyclic — Humans.Consent references
-         Humans.Governance.Contracts, never this project (design §15 step 3b). -->
+    <!-- ConsentResource only. Acyclic — Humans.Consent references
+         Humans.Governance.Contracts, never this project. -->
     <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
-    <!--
-      Onboarding, for OnboardingResource: the board-voting detail page reuses four
-      OnboardingReview_* applicant-summary labels, and a resource marker is a section
-      type rather than a Contracts/ one (design §15 step 3b, Budget's rule). Acyclic —
-      Humans.Onboarding names only Humans.Governance.Contracts.
-    -->
+    <!-- OnboardingResource only — a resource marker is a section type, not a Contracts one.
+         Acyclic: Humans.Onboarding names only Humans.Governance.Contracts. -->
     <ProjectReference Include="..\Humans.Onboarding\Humans.Onboarding.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Contracts/TermRenewalReminderJob.cs — [DisableConcurrentExecution] and IRecurringJob,
-         since G5 lane 5b-4. Package, not project, so no cycle is possible; it was already
-         arriving transitively. -->
+    <!-- [DisableConcurrentExecution] on Jobs/TermRenewalReminderJob.cs. -->
     <PackageReference Include="Hangfire.Core" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="NodaTime" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" />
     <!--
-      Stateless drives Application's state machine (Domain/Application.cs). It used to arrive
-      transitively through Humans.Domain, which declared it; G5 lane 3b deleted that project,
-      so the dependency is now declared where it is actually used. Nothing else in the
-      solution names Stateless.
+      Stateless drives Application's state machine (Domain/Application.cs).
     -->
     <PackageReference Include="Stateless" />
   </ItemGroup>

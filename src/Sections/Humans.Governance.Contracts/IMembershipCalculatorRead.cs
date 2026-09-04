@@ -3,9 +3,8 @@ namespace Humans.Governance.Contracts;
 /// <summary>
 /// Cross-section read surface for the Governance membership calculator:
 /// consent-completeness checks, membership/consent snapshots, required-team
-/// resolution, and status-update batches. External sections inject this
-/// interface instead of the full <see cref="IMembershipCalculator"/>; returns
-/// are scalars, Guid sets/lists, and section read DTOs — no EF entities. See
+/// resolution, and status-update batches. Returns are scalars, Guid
+/// sets/lists, and section read DTOs — no EF entities. See
 /// <c>memory/architecture/section-read-write-split.md</c>.
 /// </summary>
 public interface IMembershipCalculatorRead
@@ -15,9 +14,6 @@ public interface IMembershipCalculatorRead
     /// </summary>
     Task<bool> HasAllRequiredConsentsAsync(Guid userId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Gets the document versions that a user is missing consent for.
-    /// </summary>
     Task<IReadOnlyList<Guid>> GetMissingConsentVersionsAsync(Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>

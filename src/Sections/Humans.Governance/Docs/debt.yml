@@ -1,0 +1,22 @@
+# Section debt ledger for Humans.Governance. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+inbox:
+  - added: 2026-09-02
+    what: "GDPR erasure is untested. ScrubFreeTextForUserAsync is the section's Art. 17 obligation (which free text is cleared, which tier/status/date skeleton is kept, and that notes the person wrote as a Board member on others' applications are cleared too) and no test asserts any part of it (finding 17, /section-doctor on Governance 2026-09-02)."
+    review: panel
+  - added: 2026-09-02
+    what: "The audit entries ApproveAsync/RejectAsync write are unpinned, and the one-vote-per-Board-member overwrite rule is pinned only at ApplicationRepository, not through CastBoardVoteAsync (finding 18, /section-doctor on Governance 2026-09-02)."
+    review: light
+  - added: 2026-09-02
+    what: "Assert-the-mock tests in Humans.Governance.Tests: the GetRequiredTeamIdsForUserAsync Colaborador cases and the HasActiveRolesAsync pair assert the substitute's own configured return; the filtering tests and the user-scoping test duplicate repository coverage at the service layer (finding 19, /section-doctor on Governance 2026-09-02)."
+    review: panel
+  - added: 2026-09-02
+    what: "No test pins that GovernanceApplicationsController.Admin/AdminDetail and GovernanceBoardVotingController carry their authorization attributes. The policies are tested; their placement is not (finding 20, /section-doctor on Governance 2026-09-02)."
+    review: light
+  - added: 2026-09-02
+    what: "DataAnnotations validation on the Create form is unlocalized in all six cultures. AddDataAnnotationsLocalization binds DataAnnotationLocalizerProvider to SharedResource, which carries neither the message templates ('The {0} field is required.') nor any display name for these fields, so both fall back to the attribute's English. ApplicationDecisionService already returns localized ErrorKeys for the same rules (MotivationRequired et al.) but ModelState.IsValid short-circuits before SubmitAsync runs, so the localized path is unreachable for the empty case. Fixing it means either SharedResource keys for the templates in six cultures or ErrorMessage keys per attribute — new shared surface, so Peter's call. Removing the [Display] attributes (finding 7) did not cause this but made the interpolated name a CLR identifier (finding 27, /section-doctor on Governance 2026-09-02)."
+    review: panel
+  - added: 2026-09-02
+    what: "The Nav_Governance label points at two different destinations: the member-dashboard tile uses it for GovernanceApplications/Index, the user dropdown and profile page use it for Governance/Index. Pick one destination for the label, or give them distinct labels (finding 28, /section-doctor on Governance 2026-09-02)."
+    review: light

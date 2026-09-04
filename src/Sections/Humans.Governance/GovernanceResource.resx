@@ -143,11 +143,12 @@
   <data name="BoardVoting_ApplicationNotVotable" xml:space="preserve"><value>This application is no longer open for voting.</value></data>
   <data name="BoardVoting_ApplicationNotVotable_WithStatus" xml:space="preserve"><value>This application cannot be voted on (current status: {0}).</value><comment>{0} = current application status</comment></data>
   <data name="BoardVoting_ApplicationNotFound" xml:space="preserve"><value>Application not found.</value></data>
-  <data name="BoardVoting_ConcurrencyConflict" xml:space="preserve"><value>This application was modified by another user. Please reload and try again.</value></data>
   <data name="BoardVoting_AdditionalInfo" xml:space="preserve"><value>Additional Information</value></data>
   <data name="BoardVoting_NoVotes" xml:space="preserve"><value>Cannot finalize: at least one board vote is required.</value></data>
   <data name="BoardVoting_MeetingDateRequired" xml:space="preserve"><value>Cannot finalize: a board meeting date is required.</value></data>
   <data name="Dashboard_AgreementSingular" xml:space="preserve"><value>agreement to review</value></data>
   <data name="Dashboard_AgreementPlural" xml:space="preserve"><value>agreements to review</value></data>
   <data name="Dashboard_GovernanceCardDescription" xml:space="preserve"><value>Assemblies, elections, and the serious stuff.</value></data>
+  <data name="GovernanceCreate_MotivationLabel" xml:space="preserve"><value>Why do you want to join?</value></data>
+  <data name="GovernanceCreate_AdditionalInfoLabel" xml:space="preserve"><value>Additional information (optional)</value></data>
 </root>
