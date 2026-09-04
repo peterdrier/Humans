@@ -21,19 +21,16 @@ namespace Humans.Consent.Jobs;
 /// never touches a section DbContext
 /// directly (design-rules §2c).
 ///
-/// Moved out of <c>Humans.Infrastructure/Jobs</c> at G5 lane 5b-5
-/// (nobodies-collective/Humans#866). Consent owns it: the reminder exists to close a
-/// re-consent gap, the required-version set it mails about is
-/// <see cref="ILegalDocumentSyncServiceRead"/>'s, and the job id is already
+/// Consent owns it: the reminder exists to close a re-consent gap, the required-version set
+/// it mails about is <see cref="ILegalDocumentSyncServiceRead"/>'s, and the job id is
 /// <c>consent-reconsent-reminders</c>. What it reads from Governance and Users is the
-/// audience and the display data, both through their read interfaces. It sits under
-/// <c>Jobs/</c> because Shell names the concrete type at registration and HUM0034 makes
-/// every other public type in a section an error.
+/// audience and the display data, both through their read interfaces. It is <c>public</c>
+/// and sits under <c>Jobs/</c> because Shell names the concrete type at registration and
+/// HUM0034 makes every other public type in a section an error.
 ///
-/// The move made a write that was always here visible to HUM0032: the cooldown stamp is a
-/// Users column, set through Users' own service, so the class is marked
-/// <see cref="CrossSectionWriteAttribute"/> rather than downgraded to
-/// <c>IUserServiceRead</c> — which cannot set it.
+/// The cooldown stamp is a Users column, set through Users' own service, so the class is
+/// marked <see cref="CrossSectionWriteAttribute"/> rather than downgraded to
+/// <c>IUserServiceRead</c> — which cannot set it (HUM0032).
 /// </remarks>
 [CrossSectionWrite("The re-consent reminder stamps its own cooldown on the user it mailed.")]
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
@@ -54,7 +51,6 @@ public class SendReConsentReminderJob(
     /// Sends re-consent reminders to members who haven't consented to required documents.
     /// Uses ConsentReminderDaysBeforeSuspension and ConsentReminderCooldownDays from EmailSettings.
     /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         var daysBeforeSuspension = _emailSettings.ConsentReminderDaysBeforeSuspension;

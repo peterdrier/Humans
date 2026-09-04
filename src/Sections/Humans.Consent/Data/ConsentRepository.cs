@@ -5,8 +5,7 @@ namespace Humans.Consent.Data;
 
 /// <summary>
 /// EF-backed implementation of <see cref="IConsentRepository"/>. The only
-/// non-test file that touches <c>DbContext.ConsentRecords</c> after the
-/// ConsentService migration lands (issue #547). Uses
+/// non-test file that touches <c>DbContext.ConsentRecords</c>. Uses
 /// <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>LegalDbContext</c> remains Scoped.
 /// </summary>

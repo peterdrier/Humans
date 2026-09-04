@@ -10,7 +10,7 @@ namespace Humans.Consent;
 /// <remarks>
 /// Public because the boot localization diagnostic discovers section resource markers via
 /// <c>GetExportedTypes()</c>; an internal marker is skipped in silence (§15.3b).
-/// The set is the 36 <c>Consent_*</c>, <c>ConsentReview_*</c> and <c>ConsentIndex_*</c>
+/// The set is the 30 <c>Consent_*</c>, <c>ConsentReview_*</c> and <c>ConsentIndex_*</c>
 /// keys. Three of them are rendered from outside the section — Shell's onboarding widget
 /// signs the same documents through the same partial, and Governance's statutes page reuses
 /// one empty-state string — so those callers inject

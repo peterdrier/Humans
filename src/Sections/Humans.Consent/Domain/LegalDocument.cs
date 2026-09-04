@@ -8,14 +8,8 @@ namespace Humans.Consent.Domain;
 /// </summary>
 internal sealed class LegalDocument
 {
-    /// <summary>
-    /// Unique identifier for the document.
-    /// </summary>
     public Guid Id { get; init; }
 
-    /// <summary>
-    /// Human-readable name of the document.
-    /// </summary>
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
@@ -35,39 +29,18 @@ internal sealed class LegalDocument
     /// </summary>
     public string? GitHubFolderPath { get; set; }
 
-    /// <summary>
-    /// Current commit SHA from the GitHub repository.
-    /// </summary>
     public string CurrentCommitSha { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Whether this document requires consent from all members.
-    /// </summary>
     public bool IsRequired { get; set; } = true;
 
-    /// <summary>
-    /// Whether this document is currently active.
-    /// </summary>
     public bool IsActive { get; set; } = true;
 
-    /// <summary>
-    /// When this document record was created.
-    /// </summary>
     public Instant CreatedAt { get; init; }
 
-    /// <summary>
-    /// When this document was last synced from GitHub.
-    /// </summary>
     public Instant LastSyncedAt { get; set; }
 
-    /// <summary>
-    /// Navigation property to document versions.
-    /// </summary>
     public ICollection<DocumentVersion> Versions { get; } = new List<DocumentVersion>();
 
-    /// <summary>
-    /// Gets the current version of this document.
-    /// </summary>
     public DocumentVersion? CurrentVersion =>
         Versions.MaxBy(v => v.EffectiveFrom);
 }

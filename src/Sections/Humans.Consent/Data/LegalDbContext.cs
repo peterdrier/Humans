@@ -4,15 +4,14 @@ using Humans.Consent.Domain;
 namespace Humans.Consent.Data;
 
 /// <summary>
-/// Per-section database context for the Legal section
-/// (nobodies-collective/Humans#858): maps only <c>legal_documents</c>,
-/// <c>document_versions</c> and <c>consent_records</c>, with its own
-/// <c>__EFMigrationsHistory_Legal</c> table and migrations under
-/// <c>Migrations/Legal/</c>. Same database, same connection — the split
+/// Per-section database context for the Legal section: maps only
+/// <c>legal_documents</c>, <c>document_versions</c> and <c>consent_records</c>,
+/// with its own <c>__EFMigrationsHistory_Legal</c> table and migrations under
+/// <c>Data/Migrations/</c>. Same database, same connection — the split
 /// is a code-side partition of the EF model.
 /// </summary>
 /// <remarks>
-/// Internal-sealed like every section context (issue #750): repositories
+/// Internal-sealed like every section context: repositories
 /// are the only consumers. Configurations are applied explicitly (not by
 /// assembly scanning) so this model can never accrete another section's tables.
 /// A consent record's user and a legal document's team are bare Guid

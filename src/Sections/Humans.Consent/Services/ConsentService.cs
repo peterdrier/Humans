@@ -14,7 +14,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Consent.Services;
 
-// consent_records is append-only (design-rules §12). Legal-doc repo migration #547a still pending.
+// consent_records is append-only (design-rules §12).
 internal sealed class ConsentService(
     IConsentRepository repo,
     ILegalDocumentSyncService legalDocumentSyncService,
@@ -47,7 +47,6 @@ internal sealed class ConsentService(
         var membershipCalculator = serviceProvider.GetRequiredService<IMembershipCalculatorRead>();
         var userTeamIds = await membershipCalculator.GetRequiredTeamIdsForUserAsync(userId, ct);
 
-        // Doc listing still goes through ILegalDocumentSyncService (#547a not yet done).
         var documents = await legalDocumentSyncService.GetActiveRequiredDocumentsForTeamsAsync(userTeamIds, ct);
 
         var chainIds = await GetChainFollowIdsAsync(userId, ct);

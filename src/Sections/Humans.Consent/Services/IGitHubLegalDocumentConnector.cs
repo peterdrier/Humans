@@ -3,9 +3,7 @@ namespace Humans.Consent.Services;
 
 /// <summary>
 /// Thin abstraction over the GitHub content API used by Legal document
-/// services. The implementation lives in <c>Humans.Infrastructure</c> and
-/// wraps Octokit; the interface is in <c>Humans.Application</c> so Legal
-/// services don't take a direct Octokit dependency.
+/// services, so they take no direct Octokit dependency.
 /// </summary>
 internal interface IGitHubLegalDocumentConnector
 {
@@ -21,10 +19,8 @@ internal interface IGitHubLegalDocumentConnector
 
     /// <summary>
     /// Fetches raw UTF-8 content plus file SHA for a given repository path.
-    /// Returns null when the file does not exist. The Octokit
-    /// <c>NotFoundException</c> of the original service is translated to a
-    /// null result so Application-layer callers don't depend on Octokit
-    /// types.
+    /// Returns null when the file does not exist (Octokit's
+    /// <c>NotFoundException</c> is translated to a null result).
     /// </summary>
     Task<GitHubFileContent?> GetFileContentAsync(string path, CancellationToken ct = default);
 
@@ -33,13 +29,6 @@ internal interface IGitHubLegalDocumentConnector
     /// for a given SHA, or null if the commit cannot be fetched.
     /// </summary>
     Task<string?> GetCommitMessageAsync(string sha, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the latest commit SHA that touched <paramref name="path"/>
-    /// on the configured branch, or null if no commit is found or the
-    /// request fails.
-    /// </summary>
-    Task<string?> GetLatestCommitShaAsync(string path, CancellationToken ct = default);
 
     /// <summary>
     /// Fetches every <c>.md</c> file under <paramref name="folderPath"/>
@@ -60,10 +49,10 @@ internal interface IGitHubLegalDocumentConnector
 internal sealed record GitHubFileContent(string Content, string Sha);
 
 /// <summary>
-/// Application-layer translation of Octokit's <c>ApiException</c> (Legal's
-/// analogue of <c>HoldedApiException</c>'s transient/permanent split) so Legal
-/// services can distinguish GitHub API failures from other errors without an
-/// Octokit dependency. Thrown by the Infrastructure connector, which classifies
+/// Translation of Octokit's <c>ApiException</c> (Legal's analogue of
+/// <c>HoldedApiException</c>'s transient/permanent split) so Legal services
+/// can distinguish GitHub API failures from other errors without an Octokit
+/// dependency. Thrown by <see cref="GitHubLegalDocumentConnector"/>, which classifies
 /// <see cref="IsTransient"/>: outages (5xx) and rate limits self-heal on the
 /// next run (log Warning); auth/scope/config failures (401/403/422…) repeat
 /// forever and must escalate (log Error). The message carries only the status

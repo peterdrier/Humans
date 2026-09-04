@@ -43,7 +43,6 @@ internal sealed class LegalDocumentConfiguration : IEntityTypeConfiguration<Lega
         builder.HasIndex(ld => ld.IsActive);
         builder.HasIndex(ld => new { ld.TeamId, ld.IsActive });
 
-        // Ignore computed property
         builder.Ignore(ld => ld.CurrentVersion);
     }
 }

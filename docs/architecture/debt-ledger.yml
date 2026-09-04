@@ -383,9 +383,6 @@ inbox:
     what: "HumansControllerBase.SetError resolves ILoggerFactory from HttpContext.RequestServices while SetSuccess and SetInfo resolve nothing, so a controller unit test passes for those two and throws ArgumentNullException on SetError. Onboarding test files now carry duplicated RequestServices/ActionDescriptor scaffolding to work around it; injecting the logger would delete every copy. Base's, so it has no section ledger. Found by /section-doctor on Onboarding 2026-08-23."
     review: panel
   - added: 2026-08-23
-    what: "/Profile/Edit is stale outside Users in each of these — a comment in Humans.Consent/Controllers/ConsentController.cs, a doc comment in Humans.Consent.Tests/Controllers/ConsentControllerTests.cs, and step 2 of .claude/skills/test-site/SKILL.md. The live route is /Profile/Me/Edit. Spans two sections and a skill, so it sits centrally. Found by /section-doctor on Onboarding 2026-08-23."
-    review: light
-  - added: 2026-08-23
     what: "The Humans.Onboarding.Docs data-access blocks for HumanLifecycleService and NonCompliantMemberSuspension describe Users-owned services and belong in src/Sections/Humans.Users/Docs/data-access.md, which does not carry them. Left in place with a pointer rather than moved, because the run that found them could not write another section's file under the concurrency contract. Found by /section-doctor on Onboarding 2026-08-23."
     review: light
   - added: 2026-08-27
@@ -400,3 +397,9 @@ inbox:
   - added: 2026-08-27
     what: "docs/architecture/design-rules.md:340 says contributors \"read through their own IDbContextFactory<TContext>\" and names AgentService as an example; AgentRepository takes a scoped AgentDbContext by injection. The conclusion (sequential is no longer a correctness requirement) is right; the stated mechanism is not — the accurate invariant is that no two contributors share a context instance (finding 25, /section-doctor on Gdpr 2026-08-27)."
     review: panel
+  - added: 2026-08-31
+    what: "docs/architecture/freshness-catalog.yml has no Settings entry — add one covering src/Sections/Humans.Settings/** and src/Sections/Humans.Settings.Contracts/** (finding 14, /section-doctor on Settings 2026-08-28)."
+    review: light
+  - added: 2026-08-31
+    what: "docs/architecture/dependency-graph.md predates the Monitor carve-out — DriveMon is still styled :::google and there is no Monitor section (finding 20, /section-doctor on Settings 2026-08-28)."
+    review: light

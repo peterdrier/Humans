@@ -9,7 +9,7 @@ namespace Humans.Consent.Data;
 /// <summary>
 /// Repository for the Legal Documents aggregate (<c>legal_documents</c>,
 /// <c>document_versions</c>). The only non-test file that may touch those
-/// DbSets after the §15 Legal document migration lands.
+/// DbSets.
 /// </summary>
 /// <remarks>
 /// Used by <c>LegalDocumentSyncService</c> — the sole writer for this
@@ -42,9 +42,8 @@ internal interface ILegalDocumentRepository : IRepository
 
     /// <summary>
     /// Loads legal documents, optionally filtered by team id. Includes
-    /// aggregate-local <c>Versions</c>. Read-only (AsNoTracking).
-    /// Ordered by document name — callers that need per-team grouping should
-    /// stitch with <see cref="ITeamService"/>.
+    /// aggregate-local <c>Versions</c>. Read-only (AsNoTracking). Callers
+    /// that need per-team grouping stitch with <see cref="ITeamService"/>.
     /// </summary>
     Task<IReadOnlyList<LegalDocument>> GetDocumentsAsync(
         Guid? teamId, CancellationToken ct = default);

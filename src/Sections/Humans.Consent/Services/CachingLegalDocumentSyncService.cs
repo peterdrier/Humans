@@ -12,8 +12,9 @@ namespace Humans.Consent.Services;
 /// (T-04). Caches the global active-document set that backs the every-page
 /// consent-banner read (<see cref="GetActiveRequiredDocumentsForTeamsAsync"/>)
 /// and the per-version snapshot lookup
-/// (<see cref="GetVersionByIdAsync"/>). The cache is lazily warmed on first
-/// read and invalidated wholesale after any persisted write to
+/// (<see cref="GetVersionByIdAsync"/>). The cache is warmed on boot
+/// (<c>warmOnStartup: true</c>), re-warmed on demand after invalidation,
+/// and invalidated wholesale after any persisted write to
 /// <c>legal_documents</c> or <c>document_versions</c> — the inner
 /// <c>LegalDocumentSyncService</c> is the sole writer for those tables and calls
 /// <see cref="ILegalDocumentCacheInvalidator.InvalidateAll"/> directly after each
@@ -151,11 +152,6 @@ internal sealed class CachingLegalDocumentSyncService(
         // from caching at the same shape as the consent-banner read.
         WithInner(inner => inner.GetActiveDocumentsAsync(cancellationToken));
 
-    public Task<IReadOnlyList<LegalDocument>> CheckForUpdatesAsync(
-        CancellationToken cancellationToken = default) =>
-        // GitHub-API-bound check; not a DB read. Pass through.
-        WithInner(inner => inner.CheckForUpdatesAsync(cancellationToken));
-
     // ==========================================================================
     // Writes — passed through; the inner service invalidates directly
     // ==========================================================================
@@ -204,12 +200,9 @@ internal sealed class CachingLegalDocumentSyncService(
     /// </summary>
     protected override async Task WarmAllAsync(CancellationToken ct)
     {
-        // Pull every active+required document with versions. The repo
-        // GetActiveRequiredDocumentsAsync read does NOT walk the
-        // deprecated team nav on LegalDocument; team display names are
-        // stitched here via ITeamService so the cache warm path stays
-        // free of the cross-domain nav (docs/sections/Consent.md
-        // "Touch-and-clean guidance").
+        // Pull every active+required document with versions. LegalDocument
+        // carries a bare TeamId (memory/architecture/no-cross-section-ef-joins.md);
+        // team display names are stitched here via ITeamService.
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<ILegalDocumentSyncService>(InnerServiceKey);
         var allDocs = await inner.GetActiveDocumentsAsync(ct);

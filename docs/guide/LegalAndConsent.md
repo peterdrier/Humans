@@ -10,6 +10,7 @@
   src/Sections/Humans.Consent/Controllers/AdminLegalDocumentsController.cs
   src/Sections/Humans.Consent/Services/**
   src/Sections/Humans.Gdpr/Services/**
+  src/Sections/Humans.Onboarding/**
   src/Sections/Humans.Consent/Domain/LegalDocument.cs
   src/Sections/Humans.Consent/Domain/DocumentVersion.cs
   src/Sections/Humans.Consent/Domain/ConsentRecord.cs

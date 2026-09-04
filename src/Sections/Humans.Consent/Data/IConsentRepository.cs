@@ -5,8 +5,7 @@ namespace Humans.Consent.Data;
 
 /// <summary>
 /// Repository for the Legal &amp; Consent section's <c>consent_records</c>
-/// table. The only non-test file that writes to <c>DbContext.ConsentRecords</c>
-/// after the ConsentService migration lands (issue #547).
+/// table. The only non-test file that writes to <c>DbContext.ConsentRecords</c>.
 /// </summary>
 /// <remarks>
 /// <para>
