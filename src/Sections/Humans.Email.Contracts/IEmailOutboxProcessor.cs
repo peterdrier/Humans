@@ -4,7 +4,7 @@ namespace Humans.Email.Contracts;
 /// The outbox drain <c>ProcessEmailOutboxJob</c> runs. One method, so the job stays a
 /// scheduler shim and the queue semantics — the pause check, the pick-up window, the
 /// per-message transport call, the retry backoff and the campaign-grant status mirror —
-/// live inside the section beside the repository they read through (design §15 step 6b;
+/// live inside the section beside the repository they read through (the G5 playbook, step 6b;
 /// the same carve as Notifications' <c>INotificationRetention</c> and Agent's
 /// <c>IAgentConversationRetention</c>). Before it, the job injected
 /// <c>IEmailOutboxRepository</c> and <c>IEmailTransport</c> directly, which is a job

@@ -1,45 +1,36 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Email's cross-section surface, carved into its own leaf project because almost all of
-    its consumers are still in Base: nine Humans.Application services and six
-    Humans.Infrastructure jobs build messages through IEmailMessageFactory and send them
-    through IEmailService, and Shell's ProfileController and UsersAdminController read a
-    human's outbox through IEmailOutboxServiceRead. A Contracts/ *folder* inside
-    Humans.Email would therefore make Base reference a section and cycle (design §15.5b,
-    memory/architecture/section-project-cycle-fix.md).
+    Email's cross-section surface, carved into its own leaf project because most sections
+    that do anything for a human tell them about it by mail: they build a message through
+    IEmailMessageFactory and send it through IEmailService. A section may not reference
+    another section's implementation project, so putting these types in a Contracts/
+    *folder* inside Humans.Email would leave every one of those callers with no way to name
+    them (memory/architecture/section-project-cycle-fix.md — split the upstream section's
+    contracts downward, never promote the shared type into Base). Shell consumes the leaf
+    too, composing the HangfireImmediateOutboxProcessor -> IImmediateOutboxProcessor ->
+    OutboxEmailService chain in EmailInfrastructureExtensions.
 
-    IEmailOutboxProcessor / IEmailOutboxRetention no longer count towards that: their only
-    consumers, ProcessEmailOutboxJob and CleanupEmailOutboxJob, moved into
-    Humans.Email/Contracts/ at G5 lane 5b-1 once the "Hangfire pins a job to its assembly"
-    claim was re-measured and found false (AddOrUpdate<T>(id, …) rewrites the stored type
-    string at every startup, so the job id is the stable key). Both interfaces could follow
-    them inward; that is a later pass, not this lane's.
+    Base is *not* among the consumers: its single ProjectReference is Humans.Users.Contracts
+    and it names no type from this project.
 
-    IImmediateOutboxProcessor was here for the opposite reason — Base *implemented* it.
-    HangfireImmediateOutboxProcessor followed ProcessEmailOutboxJob into
-    Humans.Email/Contracts/ at the same lane (it names the job's concrete type, and Base
-    cannot reference Humans.Email), so both sides of this interface are now section-side
-    and it, too, could go internal in a later pass.
+    IEmailOutboxProcessor / IEmailOutboxRetention no longer earn their place here: their
+    only consumers, ProcessEmailOutboxJob and CleanupEmailOutboxJob, are now section-side.
+    Both could move inward; IImmediateOutboxProcessor could not, because Shell registers it.
+    See Docs/health.md §5.
 
     Everything with no consumer outside the section stays internal: the outbox admin
     surface (IEmailOutboxService), the renderer, the body composer, the SMTP transport,
     the repository and the entity.
 
-    References Humans.Interfaces (IApplicationService, and EmailOutboxStatus which stayed
-    there because three sections persist it), Humans.Events.Contracts (EventStatus, named by
-    EventLifecycleNotification), and — new at G5 lane 3b (nobodies-collective/Humans#866) —
-    Humans.Users.Contracts, for MembershipTier and MessageCategory.
+    References Humans.Base (IApplicationService, and EmailOutboxStatus, which lives there
+    because Campaigns and Surveys persist it too), Humans.Events.Contracts (EventStatus,
+    named by EventLifecycleNotification), and Humans.Users.Contracts, for MembershipTier
+    and MessageCategory — both Users' own vocabulary, named here by IEmailMessageFactory's
+    audience parameters and EmailMessage's Category. That is the enums sitting with their
+    owner, not Email taking a dependency on Users' services.
 
-    That third edge was NOT disclosed by the phase-3 recon, which predicted only Governance
-    and Teams would gain one; it is the same mechanical consequence, found by the compiler.
-    Both enums used to sit in Humans.Domain, which lane 3b emptied and deleted; both are
-    Users' own vocabulary (MessageCategory is the communication-preference axis, MembershipTier
-    the membership one) and both are named here by IEmailMessageFactory's audience parameters
-    and EmailMessage's Category. This is the enums following their owner, not Email taking a
-    dependency on Users' services.
-
-    All three leaf-to-leaf edges are acyclic. Humans.Events.Contracts has zero
+    Both leaf-to-leaf edges are acyclic. Humans.Events.Contracts has zero
     ProjectReference; Humans.Users.Contracts has exactly one, to the equally
     zero-reference Humans.Onboarding.Contracts. Both chains terminate. Note that Base
     references Humans.Users.Contracts, so nothing in that project may ever reference this one.

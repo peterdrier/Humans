@@ -21,11 +21,6 @@ internal sealed class EmailRenderer(
 {
     private readonly EmailSettings _settings = settings.Value;
 
-    // The 70 Email_* keys came home with this file at the section's G5 move: it is the
-    // only renderer of any of them, so "carve by renderer" (design §15 step 3b) pointed
-    // the whole set at the section rather than leaving it in SharedResource.
-    private readonly IStringLocalizer _localizer = localizer;
-
     public EmailContent RenderApplicationSubmitted(Guid applicationId, string applicantName)
     {
         // Admin email — always English, no culture switch
@@ -171,7 +166,7 @@ internal sealed class EmailRenderer(
     public EmailContent RenderFeedbackResponse(string userName, string originalDescription, string responseMessage, string reportLink, string? culture = null)
         => RenderLocalized(culture, () =>
         {
-            var responseHtml = Markdig.Markdown.ToHtml(responseMessage);
+            var responseHtml = SanitizedMarkdownRenderer.Render(responseMessage, allowImages: false);
             return new EmailContent(
                 L("Email_FeedbackResponse_Subject"),
                 Lf("Email_FeedbackResponse_Body", HtmlEncode(userName), HtmlEncode(originalDescription), responseHtml, HtmlEncode(reportLink)));
@@ -180,7 +175,7 @@ internal sealed class EmailRenderer(
     public EmailContent RenderIssueComment(string displayName, string issueTitle, string commentContent, string issueLink, string? culture = null)
         => RenderLocalized(culture, () =>
         {
-            var commentHtml = Markdig.Markdown.ToHtml(commentContent);
+            var commentHtml = SanitizedMarkdownRenderer.Render(commentContent, allowImages: false);
             var fullLink = issueLink.StartsWith("http", StringComparison.OrdinalIgnoreCase)
                 ? issueLink
                 : $"{_settings.BaseUrl.TrimEnd('/')}{(issueLink.StartsWith('/') ? "" : "/")}{issueLink}";
@@ -304,10 +299,10 @@ internal sealed class EmailRenderer(
             L("Email_WorkspaceCredentials_Subject"),
             Lf("Email_WorkspaceCredentials_Body", HtmlEncode(userName), HtmlEncode(workspaceEmail), HtmlEncode(tempPassword))));
 
-    private string L(string key) => _localizer[key].Value;
+    private string L(string key) => localizer[key].Value;
 
     private string Lf(string key, params object[] args) =>
-        string.Format(CultureInfo.CurrentCulture, _localizer[key].Value, args);
+        string.Format(CultureInfo.CurrentCulture, localizer[key].Value, args);
 
     private CultureScope WithCulture(string? culture)
     {

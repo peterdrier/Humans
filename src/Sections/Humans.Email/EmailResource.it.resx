@@ -47,9 +47,6 @@
   <data name="Email_ApplicationApproved_Subject" xml:space="preserve">
     <value>Benvenuto/a su Humans!</value>
   </data>
-  <data name="Email_ApplicationApproved_Heading" xml:space="preserve">
-    <value>La Sua domanda è stata approvata!</value>
-  </data>
   <data name="Email_ApplicationRejected_Subject" xml:space="preserve">
     <value>Riguardo la Sua domanda di iscrizione</value>
   </data>
@@ -69,9 +66,6 @@
   </data>
   <data name="Email_Welcome_Subject" xml:space="preserve">
     <value>Benvenuto/a su Humans!</value>
-  </data>
-  <data name="Email_Welcome_Heading" xml:space="preserve">
-    <value>Benvenuto/a!</value>
   </data>
   <data name="Email_AccessSuspended_Subject" xml:space="preserve">
     <value>Il Suo accesso come membro è stato sospeso</value>
@@ -363,20 +357,6 @@
   <data name="Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve">
     <value>&lt;p&gt;Ciao {0},&lt;/p&gt;&lt;p&gt;Un messaggio dal coordinatore di &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Per tua informazione, le tue fasce nei prossimi turni del team:&lt;/p&gt;{4}&lt;p&gt;Grazie,&lt;/p&gt;{5}</value>
   </data>
-  <data name="Email_BoardDailyDigest_Subject" xml:space="preserve"><value>Riepilogo del consiglio: {0}</value><comment>{0} = date (YYYY-MM-DD)</comment></data>
-  <data name="Email_BoardDailyDigest_Body" xml:space="preserve"><value>&lt;h2&gt;Riepilogo del consiglio &amp;mdash; {1}&lt;/h2&gt;
-&lt;p&gt;Ciao {0},&lt;/p&gt;
-{3}
-{2}
-&lt;p&gt;Il team di Humans&lt;/p&gt;</value><comment>{0} = board member name, {1} = date, {2} = approvals HTML, {3} = outstanding HTML</comment></data>
-  <data name="Email_BoardDigest_OutstandingHeader" xml:space="preserve"><value>Elementi in sospeso</value></data>
-  <data name="Email_BoardDigest_NoApprovals" xml:space="preserve"><value>Nessuna nuova approvazione ieri.</value></data>
-  <data name="Email_BoardDigest_OnboardingReview" xml:space="preserve"><value>{0} in attesa di verifica di integrazione</value><comment>{0} = count</comment></data>
-  <data name="Email_BoardDigest_StillOnboarding" xml:space="preserve"><value>{0} ancora in fase di integrazione</value><comment>{0} = count</comment></data>
-  <data name="Email_BoardDigest_BoardVoting" xml:space="preserve"><value>{0} candidature di livello in attesa di voto ({1} richiedono il tuo)</value><comment>{0} = total count, {1} = member's unvoted count</comment></data>
-  <data name="Email_BoardDigest_TeamJoinRequests" xml:space="preserve"><value>{0} richieste di adesione al team in sospeso</value><comment>{0} = count</comment></data>
-  <data name="Email_BoardDigest_PendingConsents" xml:space="preserve"><value>{0} con requisiti di consenso in sospeso</value><comment>{0} = count</comment></data>
-  <data name="Email_BoardDigest_PendingDeletions" xml:space="preserve"><value>{0} eliminazioni di account in sospeso</value><comment>{0} = count</comment></data>
   <data name="Email_SurveyInvitation_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
 &lt;p&gt;Ciao {0},&lt;/p&gt;
 {3}

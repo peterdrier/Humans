@@ -4,12 +4,11 @@ namespace Humans.Email.Contracts;
 /// Triggers an immediate run of the background email-outbox processor for
 /// time-sensitive templates (email verification, magic link, workspace
 /// credentials). Abstracts the Hangfire <c>IBackgroundJobClient</c> so
-/// <c>OutboxEmailService</c> can live in <see cref="Application"/>
-/// without taking a dependency on the Hangfire runtime.
+/// <c>OutboxEmailService</c> — the section's send path — does not take a
+/// dependency on the Hangfire runtime.
 /// </summary>
 /// <remarks>
-/// The implementation lives in <c>Humans.Email/Contracts/</c> (it moved out of
-/// <c>Humans.Infrastructure</c> with the job at G5 lane 5b-1) and enqueues a
+/// The implementation lives in <c>Humans.Email/Contracts/</c> and enqueues a
 /// one-off run of <c>ProcessEmailOutboxJob</c> in addition to the recurring
 /// 1-minute schedule. This is best-effort: if the scheduler is
 /// unreachable, the recurring run still delivers the message within a

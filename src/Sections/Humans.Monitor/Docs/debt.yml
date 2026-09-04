@@ -1,0 +1,7 @@
+# Section debt ledger for Humans.Monitor. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+inbox:
+  - added: 2026-09-04
+    what: "src/Sections/Humans.Monitor/Docs/data-access.md names ISystemSettingsService and SystemSettingsDbContext throughout; neither exists. The contract is ISettingsService and the Settings section owns the table (finding 12, /section-doctor on Email 2026-09-04)."
+    review: light

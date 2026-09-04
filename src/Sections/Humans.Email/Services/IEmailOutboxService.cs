@@ -12,7 +12,7 @@ namespace Humans.Email.Services;
 /// </summary>
 /// <remarks>
 /// The interface survives the internalise pass because <c>MA0053</c> seals the concrete
-/// service and Castle DynamicProxy cannot substitute a sealed class (design §15 step 5,
+/// service and Castle DynamicProxy cannot substitute a sealed class (the G5 playbook, step 5,
 /// Budget's rule) — <c>EmailOutboxServiceTests</c> and the controller tests stub it.
 /// </remarks>
 internal interface IEmailOutboxService : IEmailOutboxServiceRead, IEmailOutboxRetention, IApplicationService
