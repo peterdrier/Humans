@@ -20,7 +20,8 @@ public interface IStripeService : IApplicationService
 
     /// <summary>
     /// Look up a PaymentIntent and return fee breakdown and payment method details.
-    /// Returns null if the PaymentIntent has no successful charge or the key lacks the required scope.
+    /// Returns <c>null</c> when Stripe could not be asked (Tickets key unset or missing scope;
+    /// logged internally) and when the PaymentIntent has no charge — never throws for either.
     /// </summary>
     Task<StripePaymentDetails?> GetPaymentDetailsAsync(string paymentIntentId, CancellationToken ct = default);
 

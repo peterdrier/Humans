@@ -66,6 +66,9 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 - Everything but `Contracts/` and `Section` is `internal sealed` (HUM0034).
 - `ParseStoreCheckoutEvent` returns `null` for an invalid signature and for an unset
   signing secret; it never throws and never partially trusts a payload.
+- `GetPaymentDetailsAsync` returns `null` when the Tickets key is unset or under-scoped, and
+  when the PaymentIntent has no charge. It never throws: every read in this section reports
+  "could not ask Stripe" the same way, and only `CreateCheckoutSessionAsync` throws.
 - `ListStoreCheckoutSessionsAsync` returns `null` — "Stripe could not be queried" — as
   distinct from an empty list, so a caller cannot mistake an unreadable account for an
   account with no sessions and false-flag recorded payments as orphans.
