@@ -50,6 +50,7 @@ graph LR
     classDef settings fill:#71717a,color:#fff
     classDef surveys fill:#0ea5e9,color:#fff
     classDef icalfeed fill:#38bdf8,color:#000
+    classDef monitor fill:#c084fc,color:#000
     classDef gate fill:#b45309,color:#fff
     classDef holded fill:#ca8a04,color:#fff
     classDef guide fill:#65a30d,color:#fff
@@ -119,7 +120,7 @@ graph LR
     GGroupSync[GoogleGroupSyncService]:::google
     GAdmin[GoogleAdminService]:::google
     EmailProv[EmailProvisioningService]:::google
-    DriveMon[DriveActivityMonitorService]:::google
+    DriveMon[DriveActivityMonitorService]:::monitor
     GRemoval[GoogleRemovalNotificationService]:::google
     GSyncOutbox[GoogleSyncOutboxService]:::google
     GSyncOutboxProc[GoogleSyncOutboxProcessor]:::google

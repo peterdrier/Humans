@@ -38,7 +38,7 @@ public sealed record HoldedContactDto
     /// <summary>supplier_record.num — the 400000xx supplier account number, or null if not yet assigned.</summary>
     public int? SupplierAccountNum { get; init; }
 
-    // Contact-info fields for the creditor-statement header (plan Task 8b).
+    // Contact-info fields for the creditor-statement header.
     public string? TradeName { get; init; }
     public string? Email { get; init; }
     public string? Phone { get; init; }

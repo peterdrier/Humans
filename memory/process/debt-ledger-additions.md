@@ -12,6 +12,8 @@
 | One-off spanning sections, or in `Humans.Base` / `Humans.Web` / `tests/` / infrastructure | `inbox:` in [`docs/architecture/debt-ledger.yml`](../../docs/architecture/debt-ledger.yml) |
 | Recurring class (a pattern with multiple sites, usually analyzer- or baseline-backed) | `themes:` in the central ledger |
 
+The `tests/` in the second row means the shared test infrastructure — `tests/Humans.Testing`, the architecture-test baselines, the harness. A **section's own test project** (`tests/Humans.<X>.Tests`) is section-owned like the section itself, so a test gap there goes in that section's `Docs/debt.yml`, by the first row. (Codex read the row literally on peterdrier/Humans#1553; the first row's "fix is inside a single section" is what decides it.)
+
 Section files keep the central ledger readable and put the debt where the next reader of that section will meet it. The central ledger stays the home of rotation state — `themes:` is global by construction, and `/debt-sweep` pools every section file into the same inbox at pick time, so routing changes where an item is written, never whether it is served.
 
 **Entry shape** (identical in both places):

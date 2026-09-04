@@ -1,6 +1,12 @@
 # Holded API v2 migration + full ledger mirror + Holded admin screen — design
 
-**Status:** Draft — awaiting Peter's sign-off
+**Status:** Shipped 2026-08 — **historical design record, not a description of the code.** Several
+decisions below were changed during implementation (the migration sentinel is `holded_accounts`,
+not `holded_ledger_lines`; the API key is `HOLDED_API_KEY_V2`; the connector, the client interface
+and `HoldedSyncJob` all live in this section rather than the since-deleted `Humans.Infrastructure`
+/ `Humans.Application` projects; there is no "Refresh accounts" button). For what the code does
+now, read [`Holded.md`](Holded.md), [`Holded-connector.md`](Holded-connector.md) and
+[`health.md`](health.md) — this file is kept for the reasoning, not the facts.
 **Date:** 2026-08-10
 **Supersedes:** the sync mechanics of Finance's `2026-06-15-holded-ledger-single-source-design.md`, which has since been deleted (git history has it) — its "daybook is the single source, cache it, derive everything" decision stands and is restated here; the v1 `dailyledger` transport and creditor-range scoping do not.
 

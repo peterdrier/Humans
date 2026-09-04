@@ -54,11 +54,10 @@ internal sealed class Service(
     }
 
     public async Task<IReadOnlyDictionary<int, decimal>> GetAccountBalancesAsync(
-        int? calendarYear = null, CancellationToken ct = default)
+        CancellationToken ct = default)
     {
         var lines = await repo.GetAllLedgerLinesAsync(ct);
         return lines
-            .Where(l => calendarYear is null || l.Date.InZone(MadridZone).Year == calendarYear)
             .GroupBy(l => l.AccountNum)
             .ToDictionary(g => g.Key, g => g.Sum(l => l.Debit) - g.Sum(l => l.Credit));
     }
@@ -96,9 +95,9 @@ internal sealed class Service(
                 state.LastSyncAt = now;
                 state.StatusChangedAt = now;
                 state.LastCount = fetched.Count;
-                // A standing mismatch is reportable state, not a failure: live example — entry
-                // #2412 (352,234.31) is excluded from Holded's own chart totals, so 57200001
-                // legitimately reads as drifted until Holded confirms the entry.
+                // A standing mismatch is reportable state, not a failure: Holded excludes an
+                // unconfirmed entry from its own chart totals, so the account that entry posts to
+                // reads as drifted until Holded confirms it. Nothing here is wrong.
                 state.LastError = mismatches.Count == 0
                     ? null
                     : TruncateForState("Unreconciled after re-pull: " + string.Join("; ",
@@ -187,15 +186,10 @@ internal sealed class Service(
             .Select(a =>
             {
                 var hasLines = local.TryGetValue(a.Number, out var cached);
-                decimal? localBalance = hasLines ? cached.Balance : null;
-                // Reconciled compares the raw (Debit − Credit) convention — the same one Holded's
-                // own chart balance is in — never the POV-flipped display value below.
-                var reconciled = a.Balance == (localBalance ?? 0m);
-                return new HoldedAccountRow(
-                    a.Number, a.Name, GroupName(a.Number),
-                    ToAssociationPov(a.Number, a.Balance),
-                    localBalance is null ? null : ToAssociationPov(a.Number, localBalance.Value),
-                    hasLines ? cached.Count : 0, reconciled,
+                return MakeAccountRow(
+                    a.Number, a.Name, a.Balance,
+                    hasLines ? cached.Balance : null,
+                    hasLines ? cached.Count : 0,
                     a.Debit != 0m || a.Credit != 0m);
             })
             .ToList();
@@ -223,8 +217,6 @@ internal sealed class Service(
         // link to one is a deliberate lookup, and its history is still the answer.
         decimal? localBalanceRaw = lines.Count == 0 ? null : lines.Sum(l => l.Debit) - lines.Sum(l => l.Credit);
         var holdedBalanceRaw = account?.Balance ?? 0m;
-        // Reconciled compares the raw convention, never the POV-flipped display value below.
-        var reconciled = holdedBalanceRaw == (localBalanceRaw ?? 0m);
 
         // Counterparties are resolved from the entry's OTHER legs, which can post to any account —
         // not just this one — so the lookup needs the whole mirror, not this account's slice of it.
@@ -234,11 +226,8 @@ internal sealed class Service(
         var accountsByNumber = accounts.ToDictionary(a => a.Number);
 
         return new HoldedAccountStatement(
-            new HoldedAccountRow(
-                number, account?.Name ?? "", GroupName(number),
-                ToAssociationPov(number, holdedBalanceRaw),
-                localBalanceRaw is null ? null : ToAssociationPov(number, localBalanceRaw.Value),
-                lines.Count, reconciled,
+            MakeAccountRow(
+                number, account?.Name ?? "", holdedBalanceRaw, localBalanceRaw, lines.Count,
                 account is { } a && (a.Debit != 0m || a.Credit != 0m)),
             lines
                 .OrderBy(l => l.Date)
@@ -353,8 +342,6 @@ internal sealed class Service(
         }).ToList(), ct);
     }
 
-    /// <summary>The replace window's lower bound as an Instant: local midnight of the sweep's
-    /// start date. Rows dated before this are outside the sweep and must survive it.</summary>
     /// <summary>LastError is varchar(2000); an unbounded mismatch list or exception message
     /// would fail the save and report a completed refresh as an error.</summary>
     private static string TruncateForState(string message) =>
@@ -399,6 +386,19 @@ internal sealed class Service(
     private static decimal ToAssociationPov(int accountNum, decimal debitMinusCredit) =>
         LeadingDigit(accountNum) is 1 or 2 or 3 or 4 or 5 ? debitMinusCredit : -debitMinusCredit;
 
+    /// <summary>Builds a chart row from the two <em>raw</em> (Debit − Credit) balances — the
+    /// overview's and the statement's only way to make one. The POV flip and the reconciliation
+    /// verdict are computed together here on purpose: the displayed balances flip, the ✓/✗ never
+    /// does, and keeping both in one expression is what stops a later edit from flipping one and
+    /// not the other.</summary>
+    private static HoldedAccountRow MakeAccountRow(
+        int number, string name, decimal holdedBalanceRaw, decimal? localBalanceRaw,
+        int lineCount, bool hasHoldedTotals) =>
+        new(number, name, GroupName(number),
+            ToAssociationPov(number, holdedBalanceRaw),
+            localBalanceRaw is null ? null : ToAssociationPov(number, localBalanceRaw.Value),
+            lineCount, holdedBalanceRaw == (localBalanceRaw ?? 0m), hasHoldedTotals);
+
     private static HoldedStatementLine ToStatementLine(
         HoldedLedgerLine line, int accountNum,
         IReadOnlyDictionary<int, List<HoldedLedgerLine>> byEntry,
@@ -430,6 +430,8 @@ internal sealed class Service(
         return new HoldedCounterparty(largest.AccountNum, account?.Name, opposing.Count);
     }
 
+    /// <summary>The replace window's lower bound as an Instant: local midnight of the sweep's
+    /// start date. Rows dated before this are outside the sweep and must survive it.</summary>
     private static Instant ToWindowStart(LocalDate from) =>
         from.AtStartOfDayInZone(MadridZone).ToInstant();
 
