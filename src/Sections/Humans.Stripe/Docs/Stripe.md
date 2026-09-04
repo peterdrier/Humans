@@ -60,11 +60,8 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 - No Stripe.NET SDK type appears on `Contracts/` — verified by
   `StripeConnectorArchitectureTests.IStripeService_ExposesNoStripeSdkTypesOnItsPublicSurface`,
   which walks nested generics and arrays.
-- `Humans.Stripe` is the only production project with a `Stripe.net` package reference — no
-  longer test-enforced: `HumansApplicationAssembly_HasNoReferenceToStripeNet` was retired at
-  G5 lane 5c once `Humans.Application` was emptied of types (nobodies-collective/Humans#866),
-  and not re-pointed at `Humans.Base` per that batch's ruling against widening a guardrail
-  mid-move.
+- `Humans.Stripe` is the only production project with a `Stripe.net` package reference —
+  convention only; no test enforces it (nobodies-collective/Humans#866 retired the one that did).
 - Everything but `Contracts/` and `Section` is `internal sealed` (HUM0034).
 - `ParseStoreCheckoutEvent` returns `null` for an invalid signature and for an unset
   signing secret; it never throws and never partially trusts a payload.
@@ -114,7 +111,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 
 **Owning services:** `StripeService`, `StripeStartupSmokeService`, `StoreWebhookRegistrationService` (all `internal sealed`, `Humans.Stripe.Services`)
 **Owned tables:** None — connector section.
-**Status:** (A) Migrated — moved out of `Humans.Application` / `Humans.Infrastructure` / `Humans.Web` into its own project by nobodies-collective/Humans#866 (G5 lane 4b-2a), 2026-08-14.
+**Status:** (A) Migrated (nobodies-collective/Humans#866).
 
 ### Cross-section read interface
 

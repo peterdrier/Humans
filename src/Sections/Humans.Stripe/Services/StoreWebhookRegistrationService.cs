@@ -28,7 +28,7 @@ internal sealed class StoreWebhookRegistrationService(
     private const string EventCheckoutSessionAsyncPaymentFailed = "checkout.session.async_payment_failed";
     private const string EventCheckoutSessionExpired = "checkout.session.expired";
 
-    // Matches QA/prod registration. Async-payment events log at Warning until #638 ships.
+    // Must match the event list on the dashboard-configured QA/prod webhook.
     private static readonly IReadOnlyList<string> SubscribedEvents =
     [
         EventCheckoutSessionCompleted,

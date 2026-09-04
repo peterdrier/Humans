@@ -118,7 +118,8 @@ internal sealed class StripeService(IOptions<StripeSettings> settings, ILogger<S
             },
             // Stamp the same order-id metadata and a legible description onto the PaymentIntent
             // itself (not only the session) so the Stripe dashboard, customer receipt, and PI
-            // search can match a payment back to its order. See the 2026-06-04 reconciliation design.
+            // search can match a payment back to its order. See Store's
+            // Docs/2026-06-04-store-stripe-payment-reconciliation-design.md.
             PaymentIntentData = new SessionPaymentIntentDataOptions
             {
                 Description = lineItemDescription,
@@ -173,14 +174,12 @@ internal sealed class StripeService(IOptions<StripeSettings> settings, ILogger<S
             return null;
         }
 
-        // Payment method type and detail
         var pmd = charge.PaymentMethodDetails;
         var methodType = pmd?.Type ?? "unknown";
         string? methodDetail = null;
         if (string.Equals(methodType, "card", StringComparison.Ordinal) && pmd?.Card is not null)
             methodDetail = pmd.Card.Brand;
 
-        // Fee breakdown from BalanceTransaction
         decimal stripeFee = 0;
         decimal applicationFee = 0;
         var bt = charge.BalanceTransaction;
