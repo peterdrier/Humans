@@ -14,7 +14,9 @@ Rows are named by what the run was DOING, not by phase number: each phase-log li
 is `<iso-ts> <phase-id> <label>` and the label becomes the row. Phase 4 writes one
 line per strike item, so the strike rows break down per item rather than collapsing
 into one bucket. The phase id is a trailing column. A line with no label falls back
-to its id, so an older phase log still reports.
+to its id, so an older phase log still reports. A line without a parseable leading
+timestamp is skipped (and counted in a footer warning) rather than corrupting the
+bucketing or failing the report.
 
 Exits 0 with "Cost: unmeasured (...)" on any discovery failure — never fail the run.
 """
@@ -50,17 +52,30 @@ def ts(s):
 
 
 def read_phase_log(path):
-    """`<iso-ts> <phase-id> [label...]` -> [(start_ts, phase_id, label)], time-ordered.
+    """`<iso-ts> <phase-id> [label...]` -> ([(start_ts, phase_id, label)], skipped), time-ordered.
 
     The label says what the run was doing; it is the row name. Older logs carry no
-    label, so the id stands in for one."""
+    label, so the id stands in for one. A line without a parseable leading timestamp
+    cannot be bucketed: it is skipped and counted, and the footer reports the count —
+    its phase's spend folds into the preceding row. A skipped line BEFORE the first
+    valid mark is worse: run_start then derives from a later mark, so the spend before
+    it is excluded from the total, not folded — flagged separately."""
     out = []
+    skipped = 0
+    skipped_before_first = False
     for line in open(path, encoding="utf-8"):
         parts = line.split(None, 2)
         if len(parts) < 2:
             continue
-        out.append((ts(parts[0]), parts[1], parts[2].strip() if len(parts) > 2 else parts[1]))
-    return sorted(out)
+        try:
+            t = ts(parts[0])
+        except ValueError:
+            skipped += 1
+            if not out:
+                skipped_before_first = True
+            continue
+        out.append((t, parts[1], parts[2].strip() if len(parts) > 2 else parts[1]))
+    return sorted(out), skipped, skipped_before_first
 
 
 def phase_at(t, phases):
@@ -84,10 +99,14 @@ def usage_entries(path):
 
 
 def thread_name(path):
-    """The `thread: <Name>` marker a dispatched Phase 3d prompt opens with (SKILL.md §3d)."""
+    """The `thread: <Name>` marker a dispatched prompt opens with — Phase 3d threads and
+    Phase 4 strike executors (`thread: strike <what>`) alike (SKILL.md §3d, §4)."""
     with open(path, encoding="utf-8", errors="ignore") as f:
         for line in list(f)[:3]:  # the prompt is the first record; don't match a later mention
-            m = re.search(r'thread:\s*([A-Za-z][A-Za-z &]*)', line)
+            # capture to the end of the marker's logical line: stop at a real newline,
+            # a JSON escape (\n inside a jsonl-encoded prompt), or a closing quote —
+            # punctuation like / . ' + in a strike name is part of the name
+            m = re.search(r'thread:\s*([A-Za-z][^"\\\n]*)', line)
             if m:
                 return m.group(1).strip()
     return None
@@ -113,7 +132,10 @@ def add(bucket, model, u):
 
 def main():
     branch, phase_log = sys.argv[1], sys.argv[2]
-    phases = read_phase_log(phase_log)
+    phases, skipped_marks, skipped_before_first = read_phase_log(phase_log)
+    if not phases:
+        print("Cost: unmeasured (phase log has no timestamped marks)")
+        return
     run_start = phases[0][0]
 
     own = None
@@ -185,6 +207,17 @@ def main():
         "API-equivalent $, list rates; run under subscription quota. "
         "Measured Phase 1 to PR creation; PR create/backfill and Phase 8 excluded."
     )
+    if skipped_marks:
+        print()
+        print(
+            f"Warning: {skipped_marks} phase-log line(s) without a leading timestamp "
+            "skipped — that spend is folded into the preceding row."
+        )
+        if skipped_before_first:
+            print(
+                "A skipped line preceded the first timestamped mark: usage before "
+                "that mark is excluded entirely, so the total underreports the run."
+            )
 
     # Context telemetry: where the run's context peaked, and whether it was
     # compacted mid-run. Compaction is detected from the usage data itself — a

@@ -92,6 +92,10 @@ is recoverable with `git rev-parse --abbrev-ref HEAD` at any point in the run.
   holds the output DLLs and the build burns MSB3026 retry rounds on locked files. One at a time.
 - Resolve every asserted path from the worktree root. A bare basename test reports a live file
   missing and invites a repo-wide "fix" for a file that was never gone.
+- Build/test output stays out of the transcript: every `dotnet build` / `dotnet test` takes
+  `-v quiet -clp:ErrorsOnly` per `memory/process/dotnet-verbosity-quiet.md`; if output is still
+  long, redirect to a file under `$RUNDIR` and Read it — never pipe through `tail`/`head`/`grep`.
+  Every line of build noise in the transcript is re-read by every later turn of the run.
 
 Getting a toolchain is the *environment's* job, not this skill's — a local run and the
 scheduled cloud run both start with the SDK, `dotnet-ef` and reforge already there. Never
@@ -154,12 +158,15 @@ RUNDIR="${TMPDIR:-/tmp}/section-doctor/$TS"   # re-derive; nothing carries over 
 echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) phase1 worktree" >> "$RUNDIR/phase-log"
 ```
 
-**Write the line out in full at every phase boundary, through Phase 7.** Shell state does not
+**Write the line out in full at every phase boundary, through Phase 7 — always the full
+`$(date -u +%Y-%m-%dT%H:%M:%SZ) <mark>` form.** The leading timestamp is what buckets the
+spend: `cost-report.py` skips any line that does not start with one, so a bare `phase4 …`
+mark silently folds that phase's cost into the row above it. Shell state does not
 survive between tool calls — a `mark()` helper defined here is gone by the next call, and so are
 `$RUNDIR`, `$TS` and `$WORKTREE`. Re-derive the path (or paste it literally) each time rather than
 relying on a variable set in an earlier call:
 
-| Phase | Line to append |
+| Phase | Mark (after the timestamp) |
 |---|---|
 | 2 | `phase2 select section` |
 | 3 | `phase3 assess` |
@@ -267,8 +274,8 @@ Pass 2) — an "ideal shape" that restates the reforge score is the failure this
 prevent.
 
 Phase 2's selector script already built the solution on a normal run; only when it was skipped
-(`--section`) start `dotnet build Humans.slnx -v quiet` in the background now — reforge needs a
-built solution and 3d's tool threads need the build. Do not look at its output until 3d.
+(`--section`) start `dotnet build Humans.slnx -v quiet -clp:ErrorsOnly` in the background now —
+reforge needs a built solution and 3d's tool threads need the build. Do not look at its output until 3d.
 
 ### 3a. Inventory — every file, assigned
 
@@ -485,6 +492,25 @@ way, as a literal line — `Independence check: pass` or `Independence check: fa
 plus one sentence naming which items came from the target rather than a scan. Evidence in the
 run file is not the verdict; write the verdict.
 
+**Checkpoint, then shed the assessment.** The last required 3e step, before any strike executes:
+`mkdir -p "$RUNDIR/assessment"` (Phase 0 created only `$RUNDIR`), then write the assessment's
+outputs there — the ranked list (finding numbers,
+one-line descriptions, source thread, intended play) as `ranked-list.md`, each thread's findings
+list beside it (one file per thread), the independence verdict, the 3a inventory with each
+path's disposition so far, and the thread-status table (how each thread ran, its model, its
+findings count) — everything Phase 5's `## File coverage` and `## Threads` blocks will need.
+Once all of it is on disk a compaction can no longer lose findings or coverage state, and
+everything Phases 4–6 need is re-readable for a few K tokens.
+
+The 3e→4 boundary is the run's context shed. Phases 4–6 are where most of a run's turns happen,
+and they need the checkpoint files, 3c's target and the strike's own files — not the hundreds of
+K of assessment reads behind them. From here, disk is the authoritative state: work each strike
+from its checkpoint entry, re-read `$RUNDIR/assessment/` rather than relying on scrollback, and
+treat a compaction at or after this boundary as costing nothing — the state it sheds is on disk.
+Never re-read a whole file to answer a question a targeted reforge query answers ("who calls
+this", "where is this defined"), and never re-open a file only to confirm what a checkpointed
+finding already states.
+
 ## Phase 4: Strike
 
 Work the ranked list until budget exhausted. **Drain the list — stopping early with strikeable
@@ -496,7 +522,24 @@ subtrees into dead code, so it precedes deletion; deletion is near-zero risk and
 everything downstream of it. A `collapse` or `rearch` item routinely outranks a `delete` one —
 a wrong abstraction costs every future session, a dead local costs one grep — but it is still
 executed after it. Budget checks are real
-`date` reads between items, never estimates. Per item (one item or tight cluster per commit):
+`date` reads between items, never estimates.
+
+**Mechanical strike classes execute in subagents; judgment stays on main.** A strike whose whole
+scope is named by its checkpoint entry — dead-code deletion, doc-drift fixes, comment strikes,
+mechanical renames — dispatches to a per-strike **sonnet** executor subagent, given only the
+strike's checkpoint text, its target file paths — **absolute, rooted at `$WORKTREE`**; a
+subagent does not inherit the run's cwd, and on a local machine a relative path can land in
+another session's checkout — and the rules of this phase it will touch (the doc-sweep and
+delete-sweep rules, the resx/XML rule, the build-output rule). It edits and validates under
+`$WORKTREE` only, runs **no git commands**, and returns a diff summary; the main thread reviews
+the diff and commits. Its prompt opens `thread: strike <what>` — the same `<what>` as the item's
+phase-log mark — so the cost report names its row per 3d's convention instead of falling back to
+an opaque agent filename. Judgment strikes — `collapse`, `rearch`, any deletion whose safety depends on
+cross-file context — and every reviewer gate (step 4) stay on the main thread. The split is per
+strike *class*, never blanket: cross-file context on main is what catches the miscounts a
+narrowly-briefed executor cannot see.
+
+Per item (one item or tight cluster per commit):
 
 1. Pick the play. `/simplify`'s *method* is absorbed into Phase 3 — do not call the skill from a
    run: it is audit-gated (its approval gate is a merged audit PR, then one item per PR) and that
@@ -512,7 +555,7 @@ executed after it. Budget checks are real
    `docs/architecture/code-review-rules.md`'s hard-reject list and the section's own load-bearing
    weirdness, and where a linter owns that shape (`.claude/razor-lint.sh` for views) run it on the
    changed file rather than trusting it to fire later.
-3. `dotnet build Humans.slnx -v quiet`; targeted tests for the touched area.
+3. `dotnet build Humans.slnx -v quiet -clp:ErrorsOnly`; targeted tests for the touched area.
 
    **A test the run adds is only covered if some CI job actually runs it — check the filters, not
    the suite.** Before writing "CI is the gate" about a new test, resolve its assembly against
@@ -570,7 +613,8 @@ executed after it. Budget checks are real
 6. **UI-affecting strikes get runtime verification**: render the changed page in the running app
    (`dotnet run` + browser/test-site) before the PR — a green build does not prove a cshtml/JS
    change works.
-7. Commit `doctor(<section>): <what>`. Full `dotnet test Humans.slnx -v quiet` before each push;
+7. Commit `doctor(<section>): <what>`. Full `dotnet test Humans.slnx -v quiet -clp:ErrorsOnly`
+   before each push;
    push every 3–5 items. When a reviewer gate could not be obtained, say so in the commit message
    as well as the run file — a commit that lands unreviewed should say so where the diff is read.
 
