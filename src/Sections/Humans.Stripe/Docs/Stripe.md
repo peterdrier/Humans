@@ -66,12 +66,15 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 - Everything but `Contracts/` and `Section` is `internal sealed` (HUM0034).
 - `ParseStoreCheckoutEvent` returns `null` for an invalid signature and for an unset
   signing secret; it never throws and never partially trusts a payload.
-- The two network reads return `null` for exactly the cases this section checks, and for
+- The network reads return `null` for exactly the cases this section checks, and for
   nothing else. `GetPaymentDetailsAsync`: the Tickets key is unset, the key lacks the scope
-  (`permission_error`), or the PaymentIntent has no charge. `ListStoreCheckoutSessionsAsync`:
-  the Store key is unset or lacks the read scope. **Every other Stripe failure propagates** —
-  an authentication error, a rate limit, a transport failure, cancellation. "Returns `null`"
-  means "the configuration says Stripe cannot be asked", never "the call failed".
+  (`permission_error`), or Stripe answered and the PaymentIntent has no charge.
+  `ListStoreCheckoutSessionsAsync`: the Store key is unset or lacks the read scope.
+  **Every other Stripe failure propagates** — an authentication error, a rate limit, a
+  transport failure, cancellation. `null` never means "the call failed": it means the section
+  checked and has nothing to hand back, either because the configuration says Stripe cannot be
+  asked or — `GetPaymentDetailsAsync` only — because Stripe was asked and the intent carries no
+  charge to report fees from.
 - `ListStoreCheckoutSessionsAsync`'s `null` is distinct from an empty list, so a caller cannot
   mistake an unreadable account for an account with no sessions and false-flag recorded
   payments as orphans.
@@ -101,7 +104,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   Session (Store key), logging a warning per unconfigured or under-scoped key. It never
   blocks or fails startup.
 - At boot in an ephemeral environment, the registrar lists the account's webhook endpoints
-  once and deletes two kinds in that single pass — any endpoint already pointing at this
+  once and deletes, in that single pass, any endpoint already pointing at this
   host's URL, and any `{N}.n.burn.camp` endpoint whose PR `{N}` is no longer open — then
   creates a fresh one and stamps its signing secret into `StripeSettings` in memory. The
   cross-PR half is skipped when the open-PR list cannot be fetched; the own-URL half always

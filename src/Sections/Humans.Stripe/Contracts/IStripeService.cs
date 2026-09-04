@@ -20,10 +20,10 @@ public interface IStripeService : IApplicationService
 
     /// <summary>
     /// Look up a PaymentIntent and return fee breakdown and payment method details.
-    /// Returns <c>null</c> for the three cases this section checks: the Tickets key is unset, the
-    /// key lacks the scope (Stripe <c>permission_error</c>), and the PaymentIntent has no charge.
-    /// Both configuration cases are logged internally. Any other Stripe failure — an
-    /// authentication error, a rate limit, a transport failure, cancellation — propagates.
+    /// Returns <c>null</c> for the cases this section checks: the Tickets key is unset, the key
+    /// lacks the scope (Stripe <c>permission_error</c>), or Stripe answered and the PaymentIntent
+    /// has no charge. All are logged internally. Any other Stripe failure — an authentication
+    /// error, a rate limit, a transport failure, cancellation — propagates.
     /// </summary>
     Task<StripePaymentDetails?> GetPaymentDetailsAsync(string paymentIntentId, CancellationToken ct = default);
 
@@ -62,7 +62,7 @@ public interface IStripeService : IApplicationService
     /// each projected to <see cref="StoreCheckoutSessionData"/>. Used by Store payment
     /// reconciliation to diff Stripe (source of truth) against recorded payments. Reads with
     /// the existing Store key (checkout_session Write ⊇ Read).
-    /// Returns <c>null</c> for the two cases this section checks — the Store key is unset, or it
+    /// Returns <c>null</c> for the cases this section checks — the Store key is unset, or it
     /// lacks the read scope (Stripe <c>permission_error</c>), both logged internally. Callers must
     /// treat that as "unknown", not "no sessions", so they don't false-flag recorded payments as
     /// orphans. An empty (non-null) list means Stripe was queried successfully and returned no

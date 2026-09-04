@@ -12,12 +12,12 @@ against the previous run's copy. Not a history: what the section *should* be tod
 
 It is the one place the organisation talks to Stripe. Someone buying from the Store gets a
 Stripe-hosted payment page; when they pay, Stripe calls back and this section proves the
-callback really came from Stripe and says which of four things happened. Separately, the
+callback really came from Stripe and says which checkout event it is. Separately, the
 finance side wants to know what a ticket purchase actually cost after Stripe's cut, so this
 section looks a payment up and reports the fees. It decides nothing about what a payment
 *means* — it translates, and hands the translation to whoever asked.
 
-Two side jobs run at boot. One checks each configured key still works, so a wrong or
+Side jobs run at boot. One checks each configured key still works, so a wrong or
 under-permissioned key shows up in the log at startup instead of at the first real payment.
 The other exists only for throwaway preview environments: it tells Stripe where to deliver
 callbacks for this preview, and tidies up the delivery addresses of previews that are gone.
@@ -30,7 +30,7 @@ Everything the section exposes, grouped by the question it answers.
 |---|---|---|
 | **Can I?** | `IsConfigured`, `IsStoreCheckoutConfigured`, `IsStoreWebhookConfigured` | "Is this capability wired up?" — asked *before* the matching call, so the caller can hide a button or skip a pass rather than handle a failure. |
 | **Take a payment** | `CreateCheckoutSessionAsync` | "Give me a URL that charges this order this amount." The only shape that writes to Stripe. |
-| **What did Stripe say?** | `ParseStoreCheckoutEvent` | "Is this callback genuine, and which of the four events is it?" Verification and categorisation, no decision. |
+| **What did Stripe say?** | `ParseStoreCheckoutEvent` | "Is this callback genuine, and which checkout event is it?" Verification and categorisation, no decision. |
 | **What does Stripe hold?** | `GetPaymentDetailsAsync`, `ListStoreCheckoutSessionsAsync` | "Read the account back to me." Fee breakdown for one payment; every session for reconciliation. |
 | **Boot-time self-check** | `StripeStartupSmokeService` | Not a caller shape — a job. One low-risk read per configured key. |
 | **Ephemeral-env plumbing** | `StoreWebhookRegistrationService` | Not a caller shape — a job. Point Stripe at this host; unpoint it from dead hosts. |
@@ -38,14 +38,15 @@ Everything the section exposes, grouped by the question it answers.
 What the rest of this file leans on:
 
 - A **read** shape returns `null` for the cases the section *checks* — a key that is unset, a
-  key that lacks the scope, a signature that does not verify — and an empty result means
-  "Stripe answered, with nothing". Every other failure propagates: `null` says the
-  configuration is wrong, never that the call failed. That distinction is the section's one
-  behavioural rule, and it must hold uniformly across the read shapes — one that returns
-  `null` where its siblings throw would tell a caller a transport failure was a missing key.
+  key that lacks the scope, a signature that does not verify, a PaymentIntent Stripe returned
+  with no charge on it — and an empty collection means "Stripe answered, with nothing". Every
+  other failure propagates: `null` says the section has nothing to hand back, never that the
+  call failed. That distinction is the section's one behavioural rule, and it must hold
+  uniformly across the read shapes — one that returns `null` where its siblings throw would
+  tell a caller a transport failure was a missing key.
 - Every shape that needs a key is preceded by the matching **Can I?** flag, and each
   implementation re-checks it rather than trusting the caller.
-- The two jobs share nothing with the caller shapes but the settings object.
+- The jobs share nothing with the caller shapes but the settings object.
 
 ## 3. Structure
 
@@ -73,18 +74,18 @@ per endpoint against both predicates it has: is this our own URL, and is this a 
 - No Stripe.NET SDK type appears anywhere on `Contracts/` — at any generic depth.
 - `Humans.Stripe` is the only production project referencing `Stripe.net`.
 - Everything outside `Contracts/` and `Section` is `internal sealed`.
-- The section references no other section, in either direction of the project graph. That
-  acyclicity is why it needs no `.Contracts` leaf.
+- The section references no other section. Consumers reference *it* — Store and Tickets both
+  do — and that one-way edge is why it needs no `.Contracts` leaf: there is no cycle to break.
 - The section owns no table, no `DbContext`, no repository, no controller, no view, no
   resource file, and no route.
-- **Reads return `null` when the configuration says Stripe cannot be asked** — key unset,
-  scope missing, signature invalid — and never confuse that with "Stripe said nothing".
-  Applies to `GetPaymentDetailsAsync`, `ListStoreCheckoutSessionsAsync` and
-  `ParseStoreCheckoutEvent` alike.
+- **Reads return `null` when the section has nothing to hand back** — the configuration says
+  Stripe cannot be asked (key unset, scope missing, signature invalid), or, on
+  `GetPaymentDetailsAsync` alone, Stripe answered with a PaymentIntent carrying no charge. A
+  `null` is never confused with "Stripe said nothing": an empty collection is that.
 - **A read does not swallow a failure.** An authentication error, a rate limit, a transport
-  failure or cancellation propagates out of the two network reads; only the checked
-  configuration cases become `null`. (`ParseStoreCheckoutEvent` is the exception that proves
-  it: it does no network I/O, so every `StripeException` it can see *is* a bad payload.)
+  failure or cancellation propagates out of the network reads; only the cases the section
+  checks become `null`. (`ParseStoreCheckoutEvent` is the exception that proves it: it does no
+  network I/O, so every `StripeException` it can see *is* a bad payload.)
 - **The write throws.** `CreateCheckoutSessionAsync` rejects a non-positive amount and an
   unset Store key before any network call, and lets a Stripe failure propagate.
 - EUR → minor units rounds half away from zero; minor units → EUR is exact (a `long` over
@@ -130,7 +131,7 @@ per endpoint against both predicates it has: is this our own URL, and is this a 
   deployed environments.
 - **`Humans.Stripe.Tests` is the one test project allowed to reference `Stripe.net`** — the
   signature sanity test hand-signs a payload and feeds it to the real `EventUtility`.
-- **Two hosted services, no `IHostedService` ordering guarantee between them.** The smoke
+- **The hosted services start unordered — no `IHostedService` guarantee between them.** The smoke
   probe may log "webhook secret not set" moments before the registrar stamps one. Cosmetic,
   and cheaper than coordinating them.
 
@@ -138,4 +139,4 @@ per endpoint against both predicates it has: is this our own URL, and is this a 
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-09-04 | First doctor pass — one real bug (the only read that threw where its three siblings return `null`, unreachable today because its one caller guards), the registrar's duplicate endpoint listing collapsed, and the prose trimmed of a shipped-work TODO, a type that does not exist and the G5 migration's provenance | peterdrier/Humans#1588 |
+| 1 | 2026-09-04 | First doctor pass — one real bug (the only read that threw where its siblings return `null`, unreachable today because its one caller guards), the registrar's duplicate endpoint listing collapsed, and the prose trimmed of a shipped-work TODO, a type that does not exist and the G5 migration's provenance | peterdrier/Humans#1588 |
