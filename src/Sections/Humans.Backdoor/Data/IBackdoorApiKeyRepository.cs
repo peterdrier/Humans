@@ -29,7 +29,7 @@ internal interface IBackdoorApiKeyRepository : IRepository
     /// </summary>
     Task<bool> RevokeAsync(Guid id, Guid revokedByUserId, Instant at, CancellationToken ct = default);
 
-    /// <summary>Stamps <c>LastUsedAt</c>. Fire-and-forget from the auth filter.</summary>
+    /// <summary>Stamps <c>LastUsedAt</c>, once a presented key has resolved to an eligible owner.</summary>
     Task TouchAsync(Guid id, Instant at, CancellationToken ct = default);
 
     /// <summary>Every row belonging to one human, unordered — the GDPR export slice.</summary>
@@ -37,7 +37,8 @@ internal interface IBackdoorApiKeyRepository : IRepository
 
     /// <summary>
     /// Hard-deletes every key owned by <paramref name="userId"/> and detaches them as the
-    /// revoker of anyone else's key. Article 17 — a credential has no basis to outlive its owner.
+    /// creator or revoker of anyone else's key. Article 17 — a credential has no basis to
+    /// outlive its owner.
     /// </summary>
     Task EraseForUserAsync(Guid userId, CancellationToken ct = default);
 

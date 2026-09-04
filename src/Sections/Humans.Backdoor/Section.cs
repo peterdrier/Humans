@@ -13,7 +13,7 @@ namespace Humans.Backdoor;
 /// <summary>
 /// Backdoor's DI entry point, at the project root by convention. Registers the one table
 /// (<c>backdoor_api_keys</c>), the key service behind it, and the single auth filter every
-/// <c>/api/backdoor/*</c> controller hangs off (nobodies-collective/Humans#1128).
+/// <c>/api/backdoor/*</c> controller hangs off.
 /// </summary>
 /// <remarks>
 /// The five machine controllers need no registration of their own — Shell discovers them

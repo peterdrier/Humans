@@ -400,3 +400,9 @@ inbox:
   - added: 2026-08-27
     what: "docs/architecture/design-rules.md:340 says contributors \"read through their own IDbContextFactory<TContext>\" and names AgentService as an example; AgentRepository takes a scoped AgentDbContext by injection. The conclusion (sequential is no longer a correctness requirement) is right; the stated mechanism is not — the accurate invariant is that no two contributors share a context instance (finding 25, /section-doctor on Gdpr 2026-08-27)."
     review: panel
+  - added: 2026-09-03
+    what: "docs/architecture/freshness-catalog.yml has no Settings entry — add one covering src/Sections/Humans.Settings/** and src/Sections/Humans.Settings.Contracts/** (finding 14, /section-doctor on Settings 2026-08-28)."
+    review: light
+  - added: 2026-09-03
+    what: "docs/architecture/dependency-graph.md predates the Monitor carve-out — DriveActivityMonitorService is still styled :::google and there is no Monitor section (finding 20, /section-doctor on Settings 2026-08-28)."
+    review: light

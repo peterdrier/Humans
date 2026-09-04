@@ -6,9 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Backdoor.Controllers;
 
 /// <summary>
-/// Read-only chat-history review for QA/prod (#631). Mutations stay on the admin web UI.
-/// Was <c>/api/agent</c> in the Agent section before the machine surfaces consolidated here
-/// (nobodies-collective/Humans#1128).
+/// Read-only chat-history review for QA/prod. Mutations stay on the admin web UI.
 /// </summary>
 [ApiController]
 [Route("api/backdoor/agent")]
@@ -79,9 +77,6 @@ internal sealed class BackdoorAgentController(IAgentTranscriptRead agent, IUserS
     private static object ToSummary(
         AgentConversationTranscriptSnapshot c, IReadOnlyDictionary<Guid, UserInfo> users)
     {
-        // Most-recent user message preview is useful at-a-glance triage signal —
-        // matches the listing UX in the admin web view but stays JSON-clean for
-        // the API consumer.
         var lastUserMessage = c.Messages
             .Where(m => m.Role == AgentRole.User && !string.IsNullOrEmpty(m.Content))
             .OrderByDescending(m => m.CreatedAt)

@@ -26,7 +26,6 @@ internal sealed class BackdoorApiKeyConfiguration : IEntityTypeConfiguration<Bac
 
         builder.HasIndex(k => k.UserId);
 
-        // Computed from RevokedAt — not a column.
         builder.Ignore(k => k.IsActive);
     }
 }
