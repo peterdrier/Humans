@@ -2,15 +2,10 @@ namespace Humans.Camps.Contracts;
 
 /// <summary>
 /// The camp write verbs <c>Humans.Development</c>'s dev seeders drive.
-///
-/// <para>
-/// Budget's rule (one leaf method per Shell seeder) does not apply here and neither does
-/// taking the seeding in-house: <c>DevPersonaSeeder</c> and <c>DevelopmentCampRoleSeeder</c>
-/// build <b>multi-section</b> persona fixtures, so moving them into this section would steal
-/// another section's fixtures (Teams' <c>ITeamSeeding</c> shape). The section's full write
-/// surface — approve/reject/withdraw seasons, images, historical names, membership and early
-/// entry — stays internal; only the verbs a fixture actually needs are here.
-/// </para>
+/// <c>DevPersonaSeeder</c>/<c>DevelopmentCampRoleSeeder</c> build multi-section persona
+/// fixtures, so taking the seeding in-house would steal another section's fixtures
+/// (Teams' <c>ITeamSeeding</c> shape). Only the verbs a fixture actually needs are here;
+/// the section's full write surface stays internal.
 /// </summary>
 public interface ICampSeeding
 {

@@ -26,7 +26,6 @@ public sealed class Section : ISection
 
         services.AddSingleton<ICampRepository, CampRepository>();
 
-        // Keyed-Scoped inner + Singleton decorator.
         services.AddScoped<CampService>();
         services.AddKeyedScoped<ICampService>(
             CachingCampService.InnerServiceKey,

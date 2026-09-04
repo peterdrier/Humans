@@ -181,7 +181,7 @@ internal partial interface ICampRepository : IRepository
 
     // ==========================================================================
     // Reads — Lead (backed by camp_role_assignments against the Camp Lead
-    // special role; the legacy camp_leads table is gone.)
+    // special role)
     // ==========================================================================
 
     /// <summary>

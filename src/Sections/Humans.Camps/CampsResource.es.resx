@@ -108,9 +108,6 @@
   <data name="Camp_Edit_AddLink" xml:space="preserve">
     <value>Añadir enlace</value>
   </data>
-  <data name="Camp_Edit_RemoveLink" xml:space="preserve">
-    <value>Eliminar</value>
-  </data>
   <data name="Camp_Edit_WebsiteNudge" xml:space="preserve">
     <value>Recomendamos encarecidamente añadir una web para tu barrio para que los visitantes puedan conocerte mejor.</value>
   </data>

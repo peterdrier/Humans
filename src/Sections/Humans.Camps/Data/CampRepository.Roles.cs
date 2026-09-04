@@ -174,7 +174,8 @@ internal sealed partial class CampRepository
         }
         catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
         {
-            // I5 fix — unique-index race on (CampSeasonId, CampRoleDefinitionId, CampMemberId)
+            // Unique-index race on (CampSeasonId, CampRoleDefinitionId, CampMemberId) —
+            // caller treats false as "already holds role".
             return false;
         }
     }

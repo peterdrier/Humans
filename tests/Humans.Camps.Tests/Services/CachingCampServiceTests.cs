@@ -16,10 +16,10 @@ namespace Humans.Camps.Tests.Services;
 /// the architecture tests can't cover from type inspection alone:
 /// <list type="bullet">
 /// <item>Per-camp invalidation rebuilds <see cref="CampSeasonInfo.EeGrantedCount"/>
-///   correctly (PR #583 Codex P1 — RefreshEntryAsync used to call a GetByIdAsync
-///   that omitted <c>Seasons.Members</c>, dropping the count to 0).</item>
+///   from a load that includes <c>Seasons.Members</c> — a projection that omits the
+///   include silently drops the count to 0.</item>
 /// <item>Cold-year requests (years outside the warm scope) fall back to the
-///   inner service instead of returning an empty list (PR #583 Codex P2).</item>
+///   inner service instead of returning an empty list.</item>
 /// </list>
 /// </summary>
 public sealed class CachingCampServiceTests : CampsTestHarness
@@ -538,6 +538,9 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         return member;
     }
 
+    // Test-local mirror of CampService's CampInfo projection. It backs the warm-up
+    // legs of these tests, so keep it in sync with production — in particular the
+    // Status == Active filter on EeGrantedCount.
     private static CampInfo ProjectCampInfo(Camp camp) => new(
         camp.Id,
         camp.Slug,
