@@ -28,9 +28,6 @@ internal sealed class GateScanEventConfiguration : IEntityTypeConfiguration<Gate
         builder.Property(x => x.Note).HasMaxLength(1000);
         builder.Property(x => x.AdmitDedupeKey).HasMaxLength(128);
 
-        // Cross-section links are bare Guid columns (no nav, no FK) per
-        // no-cross-section-EF-joins — TicketAttendeeId, GuestUserId, OverrideByUserId.
-
         // Atomic duplicate guard: at most one admit per barcode across all lanes.
         // Postgres excludes NULLs from unique indexes, so reject/unresolved rows
         // (AdmitDedupeKey == null) never collide.

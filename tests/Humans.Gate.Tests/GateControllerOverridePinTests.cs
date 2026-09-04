@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using AwesomeAssertions;
+using Hangfire;
 using Humans.Gate.Controllers;
 using Humans.Gate.Domain;
 using Humans.Gate.Models;
@@ -40,15 +42,22 @@ public class GateControllerOverridePinTests
                 IsEarly: true, null, null));
     }
 
-    private GateController BuildController(string? configuredPin)
+    private GateController BuildController(
+        string? configuredPin,
+        bool mirrorEnabled = false,
+        GateVendorMirrorLedger? mirrorLedger = null,
+        IBackgroundJobClient? backgroundJobs = null)
     {
         Dictionary<string, string?> settings = new(StringComparer.OrdinalIgnoreCase);
         if (configuredPin is not null)
             settings["Gate:SupervisorPin"] = configuredPin;
+        if (mirrorEnabled)
+            settings["Gate:VendorMirrorEnabled"] = "true";
         var config = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
         var throttle = new GatePinThrottle(new MemoryCache(new MemoryCacheOptions()), _clock);
-        var mirrorLedger = new GateVendorMirrorLedger(new MemoryCache(new MemoryCacheOptions()));
-        var controller = new GateController(_gate, _users, config, throttle, mirrorLedger, _clock);
+        mirrorLedger ??= new GateVendorMirrorLedger(new MemoryCache(new MemoryCacheOptions()));
+        var controller = new GateController(_gate, _users, config, throttle, mirrorLedger,
+            backgroundJobs ?? Substitute.For<IBackgroundJobClient>(), _clock);
 
         var http = new DefaultHttpContext
         {
@@ -110,7 +119,9 @@ public class GateControllerOverridePinTests
     {
         var controller = BuildController(Pin);
 
-        for (var i = 0; i < GatePinThrottle.MaxFailures; i++)
+        // Literal 5, not GatePinThrottle.MaxFailures — a test written against the constant
+        // it pins cannot notice the constant changing.
+        for (var i = 0; i < 5; i++)
             await Decide(controller, overrideEarly: true, pin: "0000");
 
         // Even the CORRECT pin is now refused (locked out)…
@@ -119,10 +130,22 @@ public class GateControllerOverridePinTests
         await _gate.DidNotReceive().RecordDecisionAsync(
             Arg.Any<GateDecisionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
 
+        // …and the lockout does not decay early: 14 minutes in, still locked…
+        _clock.Advance(Duration.FromMinutes(14));
+        var stillLocked = CardOf(await Decide(controller, overrideEarly: true, pin: Pin));
+        Assert.Contains("wait", stillLocked.Reason, StringComparison.OrdinalIgnoreCase);
+
         // …but a plain (non-override) decision on the same terminal still records.
         await Decide(controller);
         await _gate.Received(1).RecordDecisionAsync(
             Arg.Is<GateDecisionInput>(i => i.OverrideByUserId == null),
+            _gateAccount, Arg.Any<CancellationToken>());
+
+        // Past the full 15 minutes the correct PIN authorizes again.
+        _clock.Advance(Duration.FromMinutes(1) + Duration.FromSeconds(1));
+        await Decide(controller, overrideEarly: true, pin: Pin);
+        await _gate.Received(1).RecordDecisionAsync(
+            Arg.Is<GateDecisionInput>(i => i.OverrideByUserId == _gateAccount),
             _gateAccount, Arg.Any<CancellationToken>());
     }
 
@@ -142,5 +165,28 @@ public class GateControllerOverridePinTests
         await _gate.Received(1).RecordDecisionAsync(
             Arg.Is<GateDecisionInput>(i => i.ChildWithAdult && i.OverrideByUserId == _gateAccount),
             _gateAccount, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task AdmitWithVendorTicket_AlwaysEnqueuesTheMirror_ButMarksTheLedgerOnlyWhenTheFlagIsOn()
+    {
+        _gate.RecordDecisionAsync(Arg.Any<GateDecisionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new GateDecisionResult(GateVerdict.Admitted, "Guest", null,
+                IsEarly: false, null, null, VendorTicketId: "vt-1"));
+
+        // Flag off: the job is still enqueued (it no-ops itself), but the ledger must NOT be
+        // marked — a mark would hide exactly the row the backfill page exists to recover.
+        var ledgerOff = new GateVendorMirrorLedger(new MemoryCache(new MemoryCacheOptions()));
+        var jobsOff = Substitute.For<IBackgroundJobClient>();
+        await Decide(BuildController(Pin, mirrorEnabled: false, ledgerOff, jobsOff));
+        jobsOff.ReceivedCalls().Should().NotBeEmpty();
+        ledgerOff.WasSent("vt-1").Should().BeFalse();
+
+        // Flag on: enqueued AND ledger-claimed, so live path + backfill never double-post.
+        var ledgerOn = new GateVendorMirrorLedger(new MemoryCache(new MemoryCacheOptions()));
+        var jobsOn = Substitute.For<IBackgroundJobClient>();
+        await Decide(BuildController(Pin, mirrorEnabled: true, ledgerOn, jobsOn));
+        jobsOn.ReceivedCalls().Should().NotBeEmpty();
+        ledgerOn.WasSent("vt-1").Should().BeTrue();
     }
 }

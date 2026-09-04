@@ -30,9 +30,10 @@
 
 <h2 class="h4">Staff PINs</h2>
 <p class="text-muted" style="max-width: 540px;">
-    Each staffer sets their own 4-digit PIN the first time they claim the gate. <strong>Supervisors</strong>
-    (Admin / Board / Ticket Admin) can't self-enrol — their PIN carries override authority, so enrol it here.
-    Resetting a PIN clears it; that person sets a new one on their next claim.
+    Staff PINs attribute scans when claiming the gate — anyone, supervisors included, can set their
+    own at the kiosk, or enrol one here out of band. Overrides are authorized by the shared supervisor
+    PIN (set in configuration), never by these. Resetting a PIN clears it; that person sets a new one
+    on their next claim.
 </p>
 
 <form method="post" asp-action="SetStaffPin" style="max-width: 540px;" class="mb-3">

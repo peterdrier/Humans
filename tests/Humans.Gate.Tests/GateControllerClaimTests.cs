@@ -1,3 +1,4 @@
+using Hangfire;
 using Humans.Gate.Controllers;
 using Humans.Gate.Services;
 using Humans.Gate.Services.Stores;
@@ -38,7 +39,8 @@ public class GateControllerClaimTests
         _throttle = new GatePinThrottle(new MemoryCache(new MemoryCacheOptions()), _clock);
         _controller = new GateController(
             _gate, _users, new ConfigurationBuilder().Build(), _throttle,
-            new GateVendorMirrorLedger(new MemoryCache(new MemoryCacheOptions())), _clock);
+            new GateVendorMirrorLedger(new MemoryCache(new MemoryCacheOptions())),
+            Substitute.For<IBackgroundJobClient>(), _clock);
 
         var http = new DefaultHttpContext { Session = _session };
         _controller.ControllerContext = new ControllerContext { HttpContext = http };

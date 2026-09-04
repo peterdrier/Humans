@@ -4,16 +4,17 @@ using NodaTime;
 namespace Humans.Gate.Services.Stores;
 
 /// <summary>
-/// Brute-force throttle for personal gate PIN entry (claim take-over and supervisor
-/// override). Stricter than <see cref="GateLoginThrottle"/>: a 4-digit PIN is a small
-/// secret, so after a few failures the key is locked for a real cooldown that does NOT
-/// reset on its own — only a correct PIN (<see cref="Reset"/>) clears it.
+/// Brute-force throttle for gate PIN entry (claim take-over and the shared supervisor
+/// override PIN). A 4-digit PIN is a small secret, so after a few failures the key is
+/// locked for a real cooldown that does NOT reset on its own — only a correct PIN
+/// (<see cref="Reset"/>) clears it.
 ///
-/// Callers throttle per <em>target user-id only</em>. A shared device/IP key was
-/// considered but rejected: in practice the reverse-proxy collapses all kiosk traffic
-/// to one IP, so 5 failures for any one PIN would freeze every claim and override at
-/// the terminal for 15 minutes (gate-wide DoS). The per-user bucket already caps
-/// brute-force at 5 / 15 min across the ~10k PIN space.
+/// Claim callers throttle per <em>target user-id</em>, never per shared device/IP:
+/// in practice the reverse-proxy collapses all kiosk traffic to one IP, so 5 failures
+/// for any one PIN would freeze every claim at the terminal for 15 minutes (gate-wide
+/// DoS); the per-user bucket already caps brute-force at 5 / 15 min across the ~10k
+/// PIN space. The shared override PIN has no per-user key, so it uses one deliberate
+/// terminal-wide bucket whose lockout blocks only the override path, never scanning.
 /// </summary>
 internal sealed class GatePinThrottle(IMemoryCache cache, IClock clock)
 {

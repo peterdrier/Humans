@@ -18,7 +18,9 @@
 > (`Gate:SupervisorPin`, peterdrier#1079); scans attribute to the shared gate account (no
 > claim step); an admit writes the guest's Attended participation row (peterdrier#1081); a
 > mirror ledger + one-off vendor check-in backfill page recover unsent vendor check-ins
-> (peterdrier#1080–#1083).
+> (peterdrier#1080–#1083). Type/namespace names below (e.g. `Humans.Domain.Entities.*`,
+> `Humans.Infrastructure.*`) are the draft-era layout and no longer exist — the section now
+> owns its types under `Humans.Gate.*`.
 
 ## Why
 

@@ -5,9 +5,9 @@ using NodaTime;
 namespace Humans.Gate.Data;
 
 /// <summary>
-/// Owns the Gate section's tables (<c>gate_scan_events</c>, <c>gate_settings</c>).
-/// The only type permitted to read or write them, per the one-table-one-repository
-/// hard rule.
+/// Owns the Gate section's tables (<c>gate_scan_events</c>, <c>gate_settings</c>,
+/// <c>gate_staff_pins</c>). The only type permitted to read or write them, per the
+/// one-table-one-repository hard rule.
 /// </summary>
 internal interface IGateRepository : IRepository
 {
@@ -28,7 +28,7 @@ internal interface IGateRepository : IRepository
     /// <summary>Every scan involving a user — as the guest admitted (<c>GuestUserId</c>) or as the staffer who scanned (<c>ScannedByUserId</c>) — for the GDPR export.</summary>
     Task<IReadOnlyList<GateScanEvent>> GetScansForUserAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>Re-point <c>GuestUserId</c> and <c>ScannedByUserId</c> from <paramref name="fromUserId"/> to <paramref name="toUserId"/> on account merge. Idempotent.</summary>
+    /// <summary>Re-point <c>GuestUserId</c>, <c>ScannedByUserId</c> and <c>OverrideByUserId</c> from <paramref name="fromUserId"/> to <paramref name="toUserId"/> on account merge, and carry the merged-away staff PIN to the survivor if the survivor has none. Idempotent.</summary>
     Task ReassignUserAsync(Guid fromUserId, Guid toUserId, CancellationToken ct = default);
 
     /// <summary>
