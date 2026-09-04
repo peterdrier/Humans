@@ -97,10 +97,12 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 - At boot, the smoke probe reads one PaymentIntent (Tickets key) and lists one Checkout
   Session (Store key), logging a warning per unconfigured or under-scoped key. It never
   blocks or fails startup.
-- At boot in an ephemeral environment, the registrar sweeps webhook endpoints whose host
-  is `{N}.n.burn.camp` for a PR `{N}` no longer open, deletes any endpoint already
-  pointing at this host's URL, creates a fresh one, and stamps its signing secret into
-  `StripeSettings` in memory.
+- At boot in an ephemeral environment, the registrar lists the account's webhook endpoints
+  once and deletes two kinds in that single pass — any endpoint already pointing at this
+  host's URL, and any `{N}.n.burn.camp` endpoint whose PR `{N}` is no longer open — then
+  creates a fresh one and stamps its signing secret into `StripeSettings` in memory. The
+  cross-PR half is skipped when the open-PR list cannot be fetched; the own-URL half always
+  runs.
 - On a `permission_error` from any call, the connector logs which key is missing which
   scope and either returns `null` (reads) or rethrows (checkout creation).
 

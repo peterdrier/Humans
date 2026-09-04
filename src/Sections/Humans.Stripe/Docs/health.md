@@ -56,15 +56,16 @@ Section.cs                    env-var binding + three DI registrations
 Docs/                         Stripe.md (invariants), data-access.md, health.md (this)
 ```
 
-Written fresh, this is what the section would be. Two notes on what *should* change:
+Written fresh, this is what the section would be. One note on what stays as it is:
 
 - `StripeSettings` lives in `StripeService.cs` above the service. It is read by three types,
   only one of which is in that file. It belongs in its own file next to them — but it is
   `internal`, one screen long, and moving it buys a reader nothing they do not already get
   from one grep. **Not worth a move; noted so the next run stops re-asking.**
-- The webhook registrar makes two identical `WebhookEndpointService.ListAsync` calls back to
-  back through two methods that then delete from the same list on two different criteria.
-  The target shape is **one listing, one deletion pass, two predicates**.
+
+The registrar's endpoint cleanup reached this shape on 2026-09-04: **one listing, one deletion
+pass, two predicates** (our own URL, and a closed PR's). It was two identical
+`WebhookEndpointService.ListAsync` calls through two methods deleting from the same list.
 
 ## 4. Invariants
 
