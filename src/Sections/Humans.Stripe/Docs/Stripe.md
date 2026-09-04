@@ -1,5 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Stripe/**
+  tests/Humans.Stripe.Tests/**
 -->
 <!-- freshness:flag-on-change
   Re-read the connector-seam invariant (no Stripe.net type on Contracts/) and the key/scope table when this section changes.
