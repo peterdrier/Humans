@@ -57,6 +57,7 @@
     <ProjectReference Include="..\Sections\Humans.Issues\Humans.Issues.csproj" />
     <ProjectReference Include="..\Sections\Humans.MailerLite\Humans.MailerLite.csproj" />
     <ProjectReference Include="..\Sections\Humans.Notifications\Humans.Notifications.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Rideshare\Humans.Rideshare.csproj" />
     <ProjectReference Include="..\Sections\Humans.Scanner\Humans.Scanner.csproj" />
     <ProjectReference Include="..\Sections\Humans.Monitor\Humans.Monitor.csproj" />
     <ProjectReference Include="..\Sections\Humans.Search\Humans.Search.csproj" />

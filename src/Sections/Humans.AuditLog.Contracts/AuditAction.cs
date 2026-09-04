@@ -248,4 +248,6 @@ public enum AuditAction
     // report's own IBAN page. Entity is the report so it shows in that report's history; the
     // IBAN is unmasked when somebody set it for another member (memory/code/audit-pii-subject-allowed.md).
     ExpensePayeeIbanUpdated,
+    // An admin set or changed a burn year's rideshare destination point and travel windows.
+    RideshareSettingsUpdated,
 }

@@ -1,0 +1,95 @@
+@model RequestFormViewModel
+@{
+    ViewData["Title"] = Localizer[Model.IsEdit ? "Rideshare_RequestTitle_Edit" : "Rideshare_RequestTitle_New"];
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.20.1/dist/maplibre-gl.css" />
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Rideshare_Title"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@ViewData["Title"]</li>
+    </ol>
+</nav>
+
+<h1>@ViewData["Title"]</h1>
+@if (!Model.IsEdit)
+{
+    <p class="text-muted">@Localizer["Rideshare_RequestIntro"]</p>
+}
+
+<div class="card" style="max-width: 760px;">
+    <div class="card-body">
+        <form method="post" asp-action="RideRequest">
+            <input type="hidden" asp-for="Id" />
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="Direction" class="form-label">@Localizer["Rideshare_Field_Direction"]</label>
+                <select asp-for="Direction" class="form-select" asp-items="@Localizer.EnumSelectItems<RideshareDirection>()"></select>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="PickupPlaceLabel" class="form-label">@Localizer["Rideshare_Field_Pickup"]</label>
+                <input asp-for="PickupPlaceLabel" class="form-control" maxlength="200" />
+                <div class="form-text">@Localizer["Rideshare_Field_PlaceHelp"]</div>
+                <span asp-validation-for="PickupPlaceLabel" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <div class="form-text mb-1">@Localizer["Rideshare_PickOnMap"]</div>
+                <div id="pick-map" class="rounded border" style="height: 280px;"
+                     data-lat-input="Latitude" data-lng-input="Longitude" data-place-input="PickupPlaceLabel"></div>
+                <div class="row g-2 mt-1">
+                    <div class="col-6 col-md-4">
+                        <label asp-for="Latitude" class="form-label small">@Localizer["Rideshare_Field_Latitude"]</label>
+                        <input asp-for="Latitude" class="form-control form-control-sm" type="number" step="any" min="-90" max="90" />
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <label asp-for="Longitude" class="form-label small">@Localizer["Rideshare_Field_Longitude"]</label>
+                        <input asp-for="Longitude" class="form-control form-control-sm" type="number" step="any" min="-180" max="180" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label asp-for="DesiredDate" class="form-label">@Localizer["Rideshare_Field_DesiredDate"]</label>
+                    <input asp-for="DesiredDate" type="date" class="form-control" />
+                    <span asp-validation-for="DesiredDate" class="text-danger"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="PartySize" class="form-label">@Localizer["Rideshare_Field_PartySize"]</label>
+                    <input asp-for="PartySize" type="number" min="1" max="20" class="form-control" />
+                    <span asp-validation-for="PartySize" class="text-danger"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="LuggageLoad" class="form-label">@Localizer["Rideshare_Field_LuggageLoad"]</label>
+                    <select asp-for="LuggageLoad" class="form-select" asp-items="@Localizer.EnumSelectItems<LuggageSize>()"></select>
+                </div>
+            </div>
+
+            <div class="form-check mb-3">
+                <input asp-for="CanContributeToFuel" class="form-check-input" />
+                <label asp-for="CanContributeToFuel" class="form-check-label">@Localizer["Rideshare_Field_CanContributeToFuel"]</label>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Notes" class="form-label">@Localizer["Rideshare_Field_Notes"]</label>
+                <textarea asp-for="Notes" class="form-control" rows="3" maxlength="1000"></textarea>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">@Localizer["Rideshare_Save"]</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">@Localizer["Rideshare_BackToBoard"]</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/maplibre-gl@5.20.1/dist/maplibre-gl.js"></script>
+    <script type="module" src="~/_content/Humans.Rideshare/js/rideshare/pick-point.js" asp-append-version="true"></script>
+}

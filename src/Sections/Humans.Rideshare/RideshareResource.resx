@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- Enums -->
+  <data name="Enum_RideshareDirection_Inbound" xml:space="preserve"><value>To the burn</value></data>
+  <data name="Enum_RideshareDirection_Outbound" xml:space="preserve"><value>Home from the burn</value></data>
+  <data name="Enum_VehicleType_Car" xml:space="preserve"><value>Car</value></data>
+  <data name="Enum_VehicleType_Van" xml:space="preserve"><value>Van</value></data>
+  <data name="Enum_VehicleType_Other" xml:space="preserve"><value>Other</value></data>
+  <data name="Enum_LuggageSize_Minimal" xml:space="preserve"><value>A bag or two</value></data>
+  <data name="Enum_LuggageSize_Moderate" xml:space="preserve"><value>A few bags</value></data>
+  <data name="Enum_LuggageSize_Lots" xml:space="preserve"><value>A trunkful</value></data>
+  <data name="Enum_LuggageSize_Huge" xml:space="preserve"><value>A van-load</value></data>
+  <data name="Enum_CostSharing_Free" xml:space="preserve"><value>Free</value></data>
+  <data name="Enum_CostSharing_ShareFuel" xml:space="preserve"><value>Share fuel</value></data>
+  <data name="Enum_CostSharing_Other" xml:space="preserve"><value>Other (see note)</value></data>
+  <data name="Enum_TripStatus_Active" xml:space="preserve"><value>Active</value></data>
+  <data name="Enum_TripStatus_Cancelled" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="Enum_RequestStatus_Active" xml:space="preserve"><value>Active</value></data>
+  <data name="Enum_RequestStatus_Cancelled" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="Enum_InterestStatus_Pending" xml:space="preserve"><value>Pending</value></data>
+  <data name="Enum_InterestStatus_Accepted" xml:space="preserve"><value>Accepted</value></data>
+  <data name="Enum_InterestStatus_Declined" xml:space="preserve"><value>Declined</value></data>
+  <data name="Enum_InterestStatus_Withdrawn" xml:space="preserve"><value>Withdrawn</value></data>
+  <!-- Board -->
+  <data name="Rideshare_Title" xml:space="preserve"><value>Rideshare</value></data>
+  <data name="Rideshare_BoardIntro" xml:space="preserve"><value>Drivers post the ride they're making; riders drop a pin where they need picking up. Spot each other on the map and say hello.</value></data>
+  <data name="Rideshare_BackToBoard" xml:space="preserve"><value>Back to the board</value></data>
+  <data name="Rideshare_OfferARide" xml:space="preserve"><value>Offer a ride</value></data>
+  <data name="Rideshare_RequestARide" xml:space="preserve"><value>Request a ride</value></data>
+  <data name="Rideshare_Mine" xml:space="preserve"><value>My rides</value></data>
+  <data name="Rideshare_NotSetUp" xml:space="preserve"><value>Rideshare isn't set up for {0} yet — check back soon.</value></data>
+  <data name="Rideshare_Date" xml:space="preserve"><value>Date</value></data>
+  <data name="Rideshare_Direction" xml:space="preserve"><value>Direction</value></data>
+  <data name="Rideshare_Show" xml:space="preserve"><value>Show</value></data>
+  <data name="Rideshare_Legend" xml:space="preserve"><value>Legend</value></data>
+  <data name="Rideshare_Legend_Offer" xml:space="preserve"><value>Ride offer</value></data>
+  <data name="Rideshare_Legend_MyOffer" xml:space="preserve"><value>Your ride offer</value></data>
+  <data name="Rideshare_Legend_Request" xml:space="preserve"><value>Ride request</value></data>
+  <data name="Rideshare_Legend_Destination" xml:space="preserve"><value>Destination</value></data>
+  <data name="Rideshare_Offers" xml:space="preserve"><value>Ride offers</value></data>
+  <data name="Rideshare_Requests" xml:space="preserve"><value>Ride requests</value></data>
+  <data name="Rideshare_NoOffers" xml:space="preserve"><value>No ride offers for this day yet.</value></data>
+  <data name="Rideshare_NoRequests" xml:space="preserve"><value>No ride requests for this day yet.</value></data>
+  <data name="Rideshare_ImInterested" xml:space="preserve"><value>I'm interested</value></data>
+  <data name="Rideshare_ICanTakeYou" xml:space="preserve"><value>I can take you</value></data>
+  <data name="Rideshare_YourOffer" xml:space="preserve"><value>Your offer</value></data>
+  <data name="Rideshare_YourRequest" xml:space="preserve"><value>Your request</value></data>
+  <data name="Rideshare_SeatsLeft" xml:space="preserve"><value>{0} of {1} seats left</value></data>
+  <data name="Rideshare_SeatsFor" xml:space="preserve"><value>Seats: {0}</value></data>
+  <data name="Rideshare_Seats" xml:space="preserve"><value>Seats</value></data>
+  <data name="Rideshare_Departs" xml:space="preserve"><value>Departs</value></data>
+  <data name="Rideshare_Days" xml:space="preserve"><value>{0} day(s) on the road</value></data>
+  <data name="Rideshare_WillingToDetour" xml:space="preserve"><value>Happy to detour</value></data>
+  <data name="Rideshare_Restrictions" xml:space="preserve"><value>Restrictions</value></data>
+  <data name="Rideshare_Notes" xml:space="preserve"><value>Notes</value></data>
+  <data name="Rideshare_PartySize" xml:space="preserve"><value>People</value></data>
+  <data name="Rideshare_CanContributeToFuel" xml:space="preserve"><value>Can chip in for fuel</value></data>
+  <data name="Rideshare_Driver" xml:space="preserve"><value>Driver</value></data>
+  <data name="Rideshare_Rider" xml:space="preserve"><value>Rider</value></data>
+  <data name="Rideshare_Message" xml:space="preserve"><value>Message</value></data>
+  <data name="Rideshare_MessagePlaceholder" xml:space="preserve"><value>Say hello — where you are, what you're bringing, anything the driver should know.</value></data>
+  <data name="Rideshare_Send" xml:space="preserve"><value>Send</value></data>
+  <data name="Rideshare_Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Rideshare_InterestModalTitle" xml:space="preserve"><value>I'm interested in this ride</value></data>
+  <data name="Rideshare_TakeModalTitle" xml:space="preserve"><value>I can take this human</value></data>
+  <data name="Rideshare_PickYourOffer" xml:space="preserve"><value>Which of your rides?</value></data>
+  <data name="Rideshare_NoOfferYet" xml:space="preserve"><value>You have no active ride going this way yet.</value></data>
+  <data name="Rideshare_CreateOfferFirst" xml:space="preserve"><value>Post a ride offer first</value></data>
+  <data name="Rideshare_PickAnOffer" xml:space="preserve"><value>Pick one of your rides first.</value></data>
+  <!-- Forms -->
+  <data name="Rideshare_OfferTitle_New" xml:space="preserve"><value>Offer a ride</value></data>
+  <data name="Rideshare_OfferTitle_Edit" xml:space="preserve"><value>Edit your ride offer</value></data>
+  <data name="Rideshare_OfferIntro" xml:space="preserve"><value>Posting a ride to the burn also posts the ride home — you can edit or cancel either leg on its own.</value></data>
+  <data name="Rideshare_RequestTitle_New" xml:space="preserve"><value>Request a ride</value></data>
+  <data name="Rideshare_RequestTitle_Edit" xml:space="preserve"><value>Edit your ride request</value></data>
+  <data name="Rideshare_RequestIntro" xml:space="preserve"><value>Drop a pin where you need picking up. Drivers going your way will see it on the board.</value></data>
+  <data name="Rideshare_Field_Direction" xml:space="preserve"><value>Direction</value></data>
+  <data name="Rideshare_Field_Place" xml:space="preserve"><value>Your city</value></data>
+  <data name="Rideshare_Field_Pickup" xml:space="preserve"><value>Pickup place</value></data>
+  <data name="Rideshare_Field_PlaceHelp" xml:space="preserve"><value>City-level is enough — never your home address. Type a place or tap the map.</value></data>
+  <data name="Rideshare_Field_Latitude" xml:space="preserve"><value>Latitude</value></data>
+  <data name="Rideshare_Field_Longitude" xml:space="preserve"><value>Longitude</value></data>
+  <data name="Rideshare_PickOnMap" xml:space="preserve"><value>Tap the map to set your point</value></data>
+  <data name="Rideshare_Field_Waypoints" xml:space="preserve"><value>Stops along the way</value></data>
+  <data name="Rideshare_Field_WaypointsHelp" xml:space="preserve"><value>One place per line, in travel order. Leave empty for a direct trip.</value></data>
+  <data name="Rideshare_Field_DepartureDate" xml:space="preserve"><value>Departure date</value></data>
+  <data name="Rideshare_Field_DesiredDate" xml:space="preserve"><value>Date</value></data>
+  <data name="Rideshare_Field_DurationDays" xml:space="preserve"><value>Days on the road</value></data>
+  <data name="Rideshare_Field_OvernightPlan" xml:space="preserve"><value>Overnight plan</value></data>
+  <data name="Rideshare_Field_VehicleType" xml:space="preserve"><value>Vehicle</value></data>
+  <data name="Rideshare_Field_SeatsOffered" xml:space="preserve"><value>Seats on offer</value></data>
+  <data name="Rideshare_Field_LuggageCapacity" xml:space="preserve"><value>Luggage space</value></data>
+  <data name="Rideshare_Field_LuggageLoad" xml:space="preserve"><value>Luggage</value></data>
+  <data name="Rideshare_Field_CapacityNote" xml:space="preserve"><value>Space note</value></data>
+  <data name="Rideshare_Field_Restrictions" xml:space="preserve"><value>Restrictions</value></data>
+  <data name="Rideshare_Field_RestrictionsHelp" xml:space="preserve"><value>No smoking, no pets, no drums — whatever matters to you.</value></data>
+  <data name="Rideshare_Field_WillingToDetour" xml:space="preserve"><value>Happy to detour to pick someone up</value></data>
+  <data name="Rideshare_Field_CostSharing" xml:space="preserve"><value>Cost sharing</value></data>
+  <data name="Rideshare_Field_CostNote" xml:space="preserve"><value>Cost note</value></data>
+  <data name="Rideshare_Field_PartySize" xml:space="preserve"><value>How many of you</value></data>
+  <data name="Rideshare_Field_CanContributeToFuel" xml:space="preserve"><value>I can chip in for fuel</value></data>
+  <data name="Rideshare_Field_Notes" xml:space="preserve"><value>Notes</value></data>
+  <data name="Rideshare_Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Rideshare_InvalidDate" xml:space="preserve"><value>Enter a valid date.</value></data>
+  <data name="Rideshare_OfferSaved" xml:space="preserve"><value>Your ride offer is posted.</value></data>
+  <data name="Rideshare_OfferCancelled" xml:space="preserve"><value>Your ride offer is cancelled.</value></data>
+  <data name="Rideshare_RequestSaved" xml:space="preserve"><value>Your ride request is posted.</value></data>
+  <data name="Rideshare_RequestCancelled" xml:space="preserve"><value>Your ride request is cancelled.</value></data>
+  <!-- Mine -->
+  <data name="Rideshare_MineTitle" xml:space="preserve"><value>My rides</value></data>
+  <data name="Rideshare_MyOffers" xml:space="preserve"><value>My ride offers</value></data>
+  <data name="Rideshare_MyRequests" xml:space="preserve"><value>My ride requests</value></data>
+  <data name="Rideshare_InterestsSent" xml:space="preserve"><value>Rides I asked about</value></data>
+  <data name="Rideshare_NoMyOffers" xml:space="preserve"><value>You haven't offered a ride yet.</value></data>
+  <data name="Rideshare_NoMyRequests" xml:space="preserve"><value>You haven't requested a ride yet.</value></data>
+  <data name="Rideshare_NoInterestsSent" xml:space="preserve"><value>You haven't asked about any rides yet.</value></data>
+  <data name="Rideshare_InterestsReceived" xml:space="preserve"><value>Humans interested</value></data>
+  <data name="Rideshare_DriversOffering" xml:space="preserve"><value>Drivers who can take you</value></data>
+  <data name="Rideshare_NoInterestsYet" xml:space="preserve"><value>Nobody yet.</value></data>
+  <data name="Rideshare_Edit" xml:space="preserve"><value>Edit</value></data>
+  <data name="Rideshare_CancelOffer" xml:space="preserve"><value>Cancel offer</value></data>
+  <data name="Rideshare_CancelRequest" xml:space="preserve"><value>Cancel request</value></data>
+  <data name="Rideshare_ConfirmCancel" xml:space="preserve"><value>Cancel this? Anyone with a seat on it will lose it.</value></data>
+  <data name="Rideshare_Accept" xml:space="preserve"><value>Accept</value></data>
+  <data name="Rideshare_Decline" xml:space="preserve"><value>Decline</value></data>
+  <data name="Rideshare_Withdraw" xml:space="preserve"><value>Withdraw</value></data>
+  <data name="Rideshare_DeclinedNeutral" xml:space="preserve"><value>Not this time.</value></data>
+  <data name="Rideshare_Matched" xml:space="preserve"><value>Matched</value></data>
+  <data name="Rideshare_Full" xml:space="preserve"><value>Full</value></data>
+  <data name="Rideshare_LinkedLeg" xml:space="preserve"><value>Paired with your ride the other way</value></data>
+  <data name="Rideshare_InterestSent" xml:space="preserve"><value>Sent — they'll get a notification.</value></data>
+  <data name="Rideshare_InterestAccepted" xml:space="preserve"><value>Accepted — they're in.</value></data>
+  <data name="Rideshare_InterestDeclined" xml:space="preserve"><value>Declined.</value></data>
+  <data name="Rideshare_InterestWithdrawn" xml:space="preserve"><value>Withdrawn.</value></data>
+  <data name="Rideshare_Error_CancelledRideEdit" xml:space="preserve"><value>A cancelled ride can't be edited.</value></data>
+  <data name="Rideshare_Error_SeatsBelowAccepted" xml:space="preserve"><value>Seats offered can't go below the {0} already accepted.</value></data>
+  <data name="Rideshare_Error_CancelledRequestEdit" xml:space="preserve"><value>A cancelled request can't be edited.</value></data>
+  <data name="Rideshare_Error_RideUnavailable" xml:space="preserve"><value>This ride is no longer available.</value></data>
+  <data name="Rideshare_Error_RequestClosed" xml:space="preserve"><value>This request is no longer open.</value></data>
+  <data name="Rideshare_Error_OwnRequest" xml:space="preserve"><value>You can't answer your own request.</value></data>
+  <data name="Rideshare_Error_OwnRide" xml:space="preserve"><value>You can't express interest in your own ride.</value></data>
+  <data name="Rideshare_Error_SeatsMinimum" xml:space="preserve"><value>Ask for at least one seat.</value></data>
+  <data name="Rideshare_Error_NotEnoughSeats" xml:space="preserve"><value>This ride doesn't have enough seats left.</value></data>
+  <data name="Rideshare_Error_AlreadyInterested" xml:space="preserve"><value>You've already expressed interest. The answer is pending.</value></data>
+  <data name="Rideshare_Error_InterestNotPending" xml:space="preserve"><value>This interest is no longer pending.</value></data>
+  <data name="Rideshare_Error_InterestNotWithdrawable" xml:space="preserve"><value>This interest can't be withdrawn any more.</value></data>
+  <data name="Rideshare_Error_DestinationRequired" xml:space="preserve"><value>Please name the destination.</value></data>
+  <data name="Rideshare_Error_WindowOrder" xml:space="preserve"><value>A travel window can't end before it starts.</value></data>
+  <data name="Rideshare_Error_NotSetUp" xml:space="preserve"><value>Rideshare is not set up for {0} yet.</value></data>
+  <data name="Rideshare_Error_PlaceRequired" xml:space="preserve"><value>Please name the place.</value></data>
+  <data name="Rideshare_Error_PlaceNotFound" xml:space="preserve"><value>Couldn't find "{0}" on the map. Try a nearby city, or place the pin yourself.</value></data>
+  <data name="Rideshare_Error_StopNotFound" xml:space="preserve"><value>Couldn't find the stop "{0}" on the map.</value></data>
+  <data name="Rideshare_Error_DurationMinimum" xml:space="preserve"><value>A trip takes at least one day.</value></data>
+  <data name="Rideshare_Error_OfferSeatsMinimum" xml:space="preserve"><value>Offer at least one seat.</value></data>
+  <data name="Rideshare_Error_PartyMinimum" xml:space="preserve"><value>A request is for at least one person.</value></data>
+  <data name="Rideshare_Error_RideNotOnRequestDate" xml:space="preserve"><value>That ride doesn't go that way on the day they need it.</value></data>
+</root>

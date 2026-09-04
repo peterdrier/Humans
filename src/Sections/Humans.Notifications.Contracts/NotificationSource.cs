@@ -100,5 +100,14 @@ public enum NotificationSource
     IssueAssigned = 31,
 
     /// <summary>A new issue was submitted (notifies admins + section role-holders).</summary>
-    IssueSubmitted = 32
+    IssueSubmitted = 32,
+
+    /// <summary>Someone expressed interest in a ride offer, or a driver answered a ride request.</summary>
+    RideshareInterestReceived = 33,
+
+    /// <summary>The posting owner accepted a rideshare interest.</summary>
+    RideshareInterestAccepted = 34,
+
+    /// <summary>The posting owner declined a rideshare interest (neutral wording, no reason).</summary>
+    RideshareInterestDeclined = 35
 }

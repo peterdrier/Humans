@@ -1,0 +1,265 @@
+@model BoardViewModel
+@{
+    ViewData["Title"] = Localizer["Rideshare_Title"];
+    var isInbound = Model.Direction == RideshareDirection.Inbound;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.20.1/dist/maplibre-gl.css" />
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="mb-0"><i class="fa-solid fa-car me-2"></i>@Localizer["Rideshare_Title"]</h1>
+    <div class="d-flex gap-2">
+        <a asp-action="Offer" asp-route-direction="@Model.Direction" class="btn btn-primary">
+            <i class="fa-solid fa-plus me-1"></i>@Localizer["Rideshare_OfferARide"]
+        </a>
+        <a asp-action="RideRequest" asp-route-direction="@Model.Direction" class="btn btn-outline-primary">
+            <i class="fa-solid fa-hand me-1"></i>@Localizer["Rideshare_RequestARide"]
+        </a>
+        <a asp-action="Mine" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-list me-1"></i>@Localizer["Rideshare_Mine"]
+        </a>
+    </div>
+</div>
+
+<p class="text-muted">@Localizer["Rideshare_BoardIntro"]</p>
+
+@if (!Model.HasSettings)
+{
+    <div class="alert alert-info">
+        <i class="fa-solid fa-circle-info me-1"></i>@Localizer["Rideshare_NotSetUp", Model.Year]
+    </div>
+}
+else
+{
+    <form method="get" asp-action="Index" class="row g-2 align-items-end mb-3">
+        <div class="col-auto">
+            <label for="board-date" class="form-label">@Localizer["Rideshare_Date"]</label>
+            <input id="board-date" type="date" name="date" class="form-control" value="@Model.Date.ToInvariantDate()" />
+        </div>
+        <div class="col-auto">
+            <div class="form-label">@Localizer["Rideshare_Direction"]</div>
+            <div class="btn-group" role="group">
+                <input type="radio" class="btn-check" name="direction" id="dir-inbound" value="@RideshareDirection.Inbound" @(isInbound ? "checked" : "") />
+                <label class="btn btn-outline-primary" for="dir-inbound">@Localizer.EnumDisplay(RideshareDirection.Inbound)</label>
+                <input type="radio" class="btn-check" name="direction" id="dir-outbound" value="@RideshareDirection.Outbound" @(isInbound ? "" : "checked") />
+                <label class="btn btn-outline-primary" for="dir-outbound">@Localizer.EnumDisplay(RideshareDirection.Outbound)</label>
+            </div>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-secondary">@Localizer["Rideshare_Show"]</button>
+        </div>
+    </form>
+
+    <div class="position-relative mb-3">
+        <div id="map" style="height: 65vh; min-height: 360px;" class="rounded border"
+             data-board-url="@Url.Action("Board", "RideshareApi", new { date = Model.Date.ToInvariantDate(), direction = Model.Direction })"
+             data-date="@Model.Date.ToInvariantDate()"
+             data-direction="@Model.Direction"
+             data-current-user-id="@Model.CurrentUserId"
+             data-i18n-driver="@Localizer["Rideshare_Driver"]"
+             data-i18n-rider="@Localizer["Rideshare_Rider"]"
+             data-i18n-seats-left="@Localizer["Rideshare_SeatsLeft", "{0}", "{1}"]"
+             data-i18n-departs="@Localizer["Rideshare_Departs"]"
+             data-i18n-days="@Localizer["Rideshare_Days", "{0}"]"
+             data-i18n-detour="@Localizer["Rideshare_WillingToDetour"]"
+             data-i18n-restrictions="@Localizer["Rideshare_Restrictions"]"
+             data-i18n-notes="@Localizer["Rideshare_Notes"]"
+             data-i18n-people="@Localizer["Rideshare_PartySize"]"
+             data-i18n-fuel="@Localizer["Rideshare_CanContributeToFuel"]"
+             data-i18n-interested="@Localizer["Rideshare_ImInterested"]"
+             data-i18n-take="@Localizer["Rideshare_ICanTakeYou"]"
+             data-i18n-your-offer="@Localizer["Rideshare_YourOffer"]"
+             data-i18n-your-request="@Localizer["Rideshare_YourRequest"]"
+             data-i18n-destination="@Localizer["Rideshare_Legend_Destination"]"></div>
+        <div class="card shadow-sm position-absolute bottom-0 start-0 m-3 small" style="z-index: 5;">
+            <div class="card-body py-2 px-3">
+                <div class="fw-semibold text-muted text-uppercase mb-1">@Localizer["Rideshare_Legend"]</div>
+                <div><span class="d-inline-block me-2 align-middle" style="width: 24px; height: 4px; background: #198754;"></span>@Localizer["Rideshare_Legend_Offer"]</div>
+                <div><span class="d-inline-block me-2 align-middle" style="width: 24px; height: 4px; background: #0d6efd;"></span>@Localizer["Rideshare_Legend_MyOffer"]</div>
+                <div><span class="d-inline-block me-2 align-middle rounded-circle" style="width: 12px; height: 12px; background: #fd7e14; border: 2px solid #fff;"></span>@Localizer["Rideshare_Legend_Request"]</div>
+                <div><i class="fa-solid fa-location-dot me-2" style="color: #dc3545;"></i>@Localizer["Rideshare_Legend_Destination"]</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <h2 class="h4">@Localizer["Rideshare_Offers"] <span class="badge bg-secondary">@Model.Trips.Count</span></h2>
+            @if (Model.Trips.Count == 0)
+            {
+                <p class="text-muted">@Localizer["Rideshare_NoOffers"]</p>
+            }
+            <div class="d-grid gap-3">
+                @foreach (var trip in Model.Trips)
+                {
+                    var isMine = trip.UserId == Model.CurrentUserId;
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                <vc:human user-id="@trip.UserId" layout="AvatarName" />
+                                <span class="badge bg-success">@Localizer["Rideshare_SeatsLeft", trip.SeatsRemaining, trip.SeatsOffered]</span>
+                            </div>
+                            <div class="mt-2"><i class="fa-solid fa-location-dot me-1 text-muted"></i>@trip.MemberPlaceLabel</div>
+                            <div class="small text-muted">
+                                @Localizer["Rideshare_Departs"] @trip.DepartureDate.ToWeekdayDayMonth() · @Localizer["Rideshare_Days", trip.ExpectedDurationDays]
+                            </div>
+                            <div class="small">
+                                @Localizer.EnumDisplay(trip.VehicleType) · @Localizer.EnumDisplay(trip.LuggageCapacity) · @Localizer.EnumDisplay(trip.CostSharing)
+                                @if (trip.WillingToDetour)
+                                {
+                                    <span> · @Localizer["Rideshare_WillingToDetour"]</span>
+                                }
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(trip.Restrictions))
+                            {
+                                <div class="small text-muted">@Localizer["Rideshare_Restrictions"]: @trip.Restrictions</div>
+                            }
+                            <div class="mt-2">
+                                @if (isMine)
+                                {
+                                    <span class="badge bg-primary">@Localizer["Rideshare_YourOffer"]</span>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-sm btn-primary js-interest-btn"
+                                            data-trip-id="@trip.Id" data-seats-remaining="@trip.SeatsRemaining">
+                                        <i class="fa-solid fa-hand me-1"></i>@Localizer["Rideshare_ImInterested"]
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <h2 class="h4">@Localizer["Rideshare_Requests"] <span class="badge bg-secondary">@Model.Requests.Count</span></h2>
+            @if (Model.Requests.Count == 0)
+            {
+                <p class="text-muted">@Localizer["Rideshare_NoRequests"]</p>
+            }
+            <div class="d-grid gap-3">
+                @foreach (var request in Model.Requests)
+                {
+                    var isMine = request.UserId == Model.CurrentUserId;
+                    <div class="card">
+                        <div class="card-body">
+                            <vc:human user-id="@request.UserId" layout="AvatarName" />
+                            <div class="mt-2"><i class="fa-solid fa-location-dot me-1 text-muted"></i>@request.PickupPlaceLabel</div>
+                            <div class="small">
+                                @Localizer["Rideshare_PartySize"]: @request.PartySize · @Localizer.EnumDisplay(request.LuggageLoad)
+                                @if (request.CanContributeToFuel)
+                                {
+                                    <span> · @Localizer["Rideshare_CanContributeToFuel"]</span>
+                                }
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(request.Notes))
+                            {
+                                <div class="small text-muted">@request.Notes</div>
+                            }
+                            <div class="mt-2">
+                                @if (isMine)
+                                {
+                                    <span class="badge bg-primary">@Localizer["Rideshare_YourRequest"]</span>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-primary js-take-btn"
+                                            data-request-id="@request.Id" data-party-size="@request.PartySize">
+                                        <i class="fa-solid fa-car me-1"></i>@Localizer["Rideshare_ICanTakeYou"]
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* "I'm interested" — rider → trip *@
+    <div class="modal fade" id="interestModal" tabindex="-1" aria-labelledby="interestModalTitle">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="post" asp-action="Interest">
+                    <input type="hidden" name="tripId" id="interestTripId" />
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="interestModalTitle">@Localizer["Rideshare_InterestModalTitle"]</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label" for="interestSeats">@Localizer["Rideshare_Seats"]</label>
+                            <input type="number" class="form-control" name="seats" id="interestSeats" min="1" value="1" style="max-width: 8rem;" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="interestMessage">@Localizer["Rideshare_Message"]</label>
+                            <textarea class="form-control" name="message" id="interestMessage" rows="3" maxlength="1000"
+                                      placeholder="@Localizer["Rideshare_MessagePlaceholder"]"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Rideshare_Cancel"]</button>
+                        <button type="submit" class="btn btn-primary">@Localizer["Rideshare_Send"]</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    @* "I can take you" — driver's trip → request pin *@
+    <div class="modal fade" id="takeModal" tabindex="-1" aria-labelledby="takeModalTitle">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="post" asp-action="Interest">
+                    <input type="hidden" name="requestId" id="takeRequestId" />
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="takeModalTitle">@Localizer["Rideshare_TakeModalTitle"]</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label" for="takeTripId">@Localizer["Rideshare_PickYourOffer"]</label>
+                            @if (Model.MyActiveOffers.Count == 0)
+                            {
+                                <input type="hidden" name="tripId" value="@Guid.Empty" />
+                                <p class="text-muted mb-1">@Localizer["Rideshare_NoOfferYet"]</p>
+                                <a asp-action="Offer" asp-route-direction="@Model.Direction" class="btn btn-sm btn-outline-primary">
+                                    <i class="fa-solid fa-plus me-1"></i>@Localizer["Rideshare_CreateOfferFirst"]
+                                </a>
+                            }
+                            else
+                            {
+                                <select class="form-select" name="tripId" id="takeTripId">
+                                    @foreach (var offer in Model.MyActiveOffers)
+                                    {
+                                        <option value="@offer.Id">@offer.PlaceLabel · @offer.DepartureDate.ToWeekdayDayMonth() · @Localizer["Rideshare_SeatsFor", offer.SeatsRemaining]</option>
+                                    }
+                                </select>
+                            }
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="takeSeats">@Localizer["Rideshare_Seats"]</label>
+                            <input type="number" class="form-control" name="seats" id="takeSeats" min="1" value="1" style="max-width: 8rem;" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="takeMessage">@Localizer["Rideshare_Message"]</label>
+                            <textarea class="form-control" name="message" id="takeMessage" rows="3" maxlength="1000"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Rideshare_Cancel"]</button>
+                        <button type="submit" class="btn btn-primary" @(Model.MyActiveOffers.Count == 0 ? "disabled" : "")>@Localizer["Rideshare_Send"]</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script src="https://unpkg.com/maplibre-gl@5.20.1/dist/maplibre-gl.js"></script>
+    <script type="module" src="~/_content/Humans.Rideshare/js/rideshare/board.js" asp-append-version="true"></script>
+}

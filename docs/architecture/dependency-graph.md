@@ -53,6 +53,7 @@ graph LR
     classDef gate fill:#b45309,color:#fff
     classDef holded fill:#ca8a04,color:#fff
     classDef guide fill:#65a30d,color:#fff
+    classDef rideshare fill:#f472b6,color:#000
     classDef crosscut fill:#334155,color:#fff
     classDef platform fill:#52525b,color:#fff
 
@@ -179,6 +180,7 @@ graph LR
     SettingsSvc[SettingsWriteService]:::settings
     SettingsCarry[EventSettingsCarryService]:::settings
     Guide[GuideRoleResolver]:::guide
+    Rideshare[RideshareService]:::rideshare
 
     %% ═══════════════════════════════════
     %% Ctor-injected dependencies (solid)
@@ -504,6 +506,12 @@ graph LR
     EventSvc --> User
     EventSvc --> Email
 
+    %% Rideshare
+    Rideshare --> User
+    Rideshare --> BurnSettings
+    Rideshare --> NotifEmitter
+    Rideshare --> Audit
+
     %% Email (admin outbox — pause flag lives in Settings)
     EmailOutbox --> SettingsSvc
     EmailOutboxProc --> Campaign
@@ -560,9 +568,9 @@ graph LR
     GSyncSvc -. "lazy" .-> TRes
 
     %% ── Edge styling ──
-    %% Lazy edges colored + thickened. Eager count: 282 (indices 0..281);
-    %% the 18 lazy edges are indices 282..299. Recompute whenever edges change.
-    linkStyle 282,283,284,285,286,287,288,289,290,291,292,293,294,295,296,297,298,299 stroke:#f97316,stroke-width:2.5px
+    %% Lazy edges colored + thickened. Eager count: 289 (indices 0..288);
+    %% the 18 lazy edges are indices 289..306. Recompute whenever edges change.
+    linkStyle 289,290,291,292,293,294,295,296,297,298,299,300,301,302,303,304,305,306 stroke:#f97316,stroke-width:2.5px
 ```
 
 ## Services with no cross-section edges

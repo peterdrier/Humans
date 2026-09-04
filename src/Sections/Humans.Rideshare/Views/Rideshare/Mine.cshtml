@@ -1,0 +1,160 @@
+@model MineViewModel
+@{
+    ViewData["Title"] = Localizer["Rideshare_MineTitle"];
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Rideshare_Title"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@ViewData["Title"]</li>
+    </ol>
+</nav>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="mb-0">@ViewData["Title"] <small class="text-muted">@Model.Year</small></h1>
+    <div class="d-flex gap-2">
+        <a asp-action="Offer" class="btn btn-primary"><i class="fa-solid fa-plus me-1"></i>@Localizer["Rideshare_OfferARide"]</a>
+        <a asp-action="RideRequest" class="btn btn-outline-primary"><i class="fa-solid fa-hand me-1"></i>@Localizer["Rideshare_RequestARide"]</a>
+    </div>
+</div>
+
+@* ── My offers ─────────────────────────────────────────────────────────── *@
+<h2 class="h4 mt-4">@Localizer["Rideshare_MyOffers"]</h2>
+@if (Model.Offers.Count == 0)
+{
+    <p class="text-muted">@Localizer["Rideshare_NoMyOffers"]</p>
+}
+@foreach (var row in Model.Offers)
+{
+    var trip = row.Trip;
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                <div>
+                    <div class="fw-semibold">
+                        @Localizer.EnumDisplay(trip.Direction) · @trip.MemberPlaceLabel
+                        <span class="badge @EnumBadgeMap.For(trip.Status) ms-1">@Localizer.EnumDisplay(trip.Status)</span>
+                        @if (trip.Status == TripStatus.Active && trip.IsFull)
+                        {
+                            <span class="badge bg-secondary">@Localizer["Rideshare_Full"]</span>
+                        }
+                    </div>
+                    <div class="small text-muted">
+                        @Localizer["Rideshare_Departs"] @trip.DepartureDate.ToWeekdayDayMonth() · @Localizer["Rideshare_Days", trip.ExpectedDurationDays]
+                        · @Localizer["Rideshare_SeatsLeft", trip.SeatsRemaining, trip.SeatsOffered]
+                    </div>
+                    @if (trip.LinkedTripId is not null)
+                    {
+                        <div class="small text-muted"><i class="fa-solid fa-link me-1"></i>@Localizer["Rideshare_LinkedLeg"]</div>
+                    }
+                </div>
+                @if (trip.Status == TripStatus.Active)
+                {
+                    <div class="d-flex gap-2">
+                        <a asp-action="Offer" asp-route-id="@trip.Id" class="btn btn-sm btn-outline-secondary">
+                            <i class="fa-solid fa-pen me-1"></i>@Localizer["Rideshare_Edit"]
+                        </a>
+                        <form method="post" asp-action="CancelOffer" asp-route-id="@trip.Id"
+                              data-confirm="@Localizer["Rideshare_ConfirmCancel"]">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="fa-solid fa-ban me-1"></i>@Localizer["Rideshare_CancelOffer"]
+                            </button>
+                        </form>
+                    </div>
+                }
+            </div>
+
+            <h3 class="h6 mt-3 mb-2">@Localizer["Rideshare_InterestsReceived"]</h3>
+            @if (row.Received.Count == 0)
+            {
+                <p class="text-muted small mb-0">@Localizer["Rideshare_NoInterestsYet"]</p>
+            }
+            else
+            {
+                <ul class="list-group list-group-flush">
+                    @foreach (var i in row.Received)
+                    {
+                        @await Html.PartialAsync("_InterestRow", (i, true))
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+}
+
+@* ── My requests ───────────────────────────────────────────────────────── *@
+<h2 class="h4 mt-4">@Localizer["Rideshare_MyRequests"]</h2>
+@if (Model.Requests.Count == 0)
+{
+    <p class="text-muted">@Localizer["Rideshare_NoMyRequests"]</p>
+}
+@foreach (var row in Model.Requests)
+{
+    var request = row.Request;
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                <div>
+                    <div class="fw-semibold">
+                        @Localizer.EnumDisplay(request.Direction) · @request.PickupPlaceLabel
+                        <span class="badge @EnumBadgeMap.For(request.Status) ms-1">@Localizer.EnumDisplay(request.Status)</span>
+                        @if (request.IsMatched)
+                        {
+                            <span class="badge bg-info text-dark">@Localizer["Rideshare_Matched"]</span>
+                        }
+                    </div>
+                    <div class="small text-muted">
+                        @request.DesiredDate.ToWeekdayDayMonth() · @Localizer["Rideshare_PartySize"]: @request.PartySize · @Localizer.EnumDisplay(request.LuggageLoad)
+                    </div>
+                </div>
+                @if (request.Status == RequestStatus.Active)
+                {
+                    <div class="d-flex gap-2">
+                        <a asp-action="RideRequest" asp-route-id="@request.Id" class="btn btn-sm btn-outline-secondary">
+                            <i class="fa-solid fa-pen me-1"></i>@Localizer["Rideshare_Edit"]
+                        </a>
+                        <form method="post" asp-action="CancelRequest" asp-route-id="@request.Id"
+                              data-confirm="@Localizer["Rideshare_ConfirmCancel"]">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="fa-solid fa-ban me-1"></i>@Localizer["Rideshare_CancelRequest"]
+                            </button>
+                        </form>
+                    </div>
+                }
+            </div>
+
+            <h3 class="h6 mt-3 mb-2">@Localizer["Rideshare_DriversOffering"]</h3>
+            @if (row.Received.Count == 0)
+            {
+                <p class="text-muted small mb-0">@Localizer["Rideshare_NoInterestsYet"]</p>
+            }
+            else
+            {
+                <ul class="list-group list-group-flush">
+                    @foreach (var i in row.Received)
+                    {
+                        @await Html.PartialAsync("_InterestRow", (i, true))
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+}
+
+@* ── Interests I sent ──────────────────────────────────────────────────── *@
+<h2 class="h4 mt-4">@Localizer["Rideshare_InterestsSent"]</h2>
+@if (Model.Sent.Count == 0)
+{
+    <p class="text-muted">@Localizer["Rideshare_NoInterestsSent"]</p>
+}
+else
+{
+    <ul class="list-group mb-4">
+        @foreach (var i in Model.Sent)
+        {
+            @await Html.PartialAsync("_InterestRow", (i, false))
+        }
+    </ul>
+}
+
+<a asp-action="Index" class="btn btn-outline-secondary"><i class="fa-solid fa-arrow-left me-1"></i>@Localizer["Rideshare_BackToBoard"]</a>

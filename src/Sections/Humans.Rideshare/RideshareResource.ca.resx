@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- Enums -->
+  <data name="Enum_RideshareDirection_Inbound" xml:space="preserve"><value>Cap al burn</value></data>
+  <data name="Enum_RideshareDirection_Outbound" xml:space="preserve"><value>De tornada del burn</value></data>
+  <data name="Enum_VehicleType_Car" xml:space="preserve"><value>Cotxe</value></data>
+  <data name="Enum_VehicleType_Van" xml:space="preserve"><value>Furgoneta</value></data>
+  <data name="Enum_VehicleType_Other" xml:space="preserve"><value>Altre</value></data>
+  <data name="Enum_LuggageSize_Minimal" xml:space="preserve"><value>Una o dues bosses</value></data>
+  <data name="Enum_LuggageSize_Moderate" xml:space="preserve"><value>Unes quantes bosses</value></data>
+  <data name="Enum_LuggageSize_Lots" xml:space="preserve"><value>Un maleter ple</value></data>
+  <data name="Enum_LuggageSize_Huge" xml:space="preserve"><value>Una furgoneta plena</value></data>
+  <data name="Enum_CostSharing_Free" xml:space="preserve"><value>Gratis</value></data>
+  <data name="Enum_CostSharing_ShareFuel" xml:space="preserve"><value>Compartir benzina</value></data>
+  <data name="Enum_CostSharing_Other" xml:space="preserve"><value>Altre (vegeu la nota)</value></data>
+  <data name="Enum_TripStatus_Active" xml:space="preserve"><value>Actiu</value></data>
+  <data name="Enum_TripStatus_Cancelled" xml:space="preserve"><value>Cancel·lat</value></data>
+  <data name="Enum_RequestStatus_Active" xml:space="preserve"><value>Activa</value></data>
+  <data name="Enum_RequestStatus_Cancelled" xml:space="preserve"><value>Cancel·lada</value></data>
+  <data name="Enum_InterestStatus_Pending" xml:space="preserve"><value>Pendent</value></data>
+  <data name="Enum_InterestStatus_Accepted" xml:space="preserve"><value>Acceptat</value></data>
+  <data name="Enum_InterestStatus_Declined" xml:space="preserve"><value>Declinat</value></data>
+  <data name="Enum_InterestStatus_Withdrawn" xml:space="preserve"><value>Retirat</value></data>
+  <!-- Board -->
+  <data name="Rideshare_Title" xml:space="preserve"><value>Compartir cotxe</value></data>
+  <data name="Rideshare_BoardIntro" xml:space="preserve"><value>Qui condueix publica el viatge que farà; qui busca lloc marca on necessita que el recullin. Trobeu-vos al mapa i saludeu-vos.</value></data>
+  <data name="Rideshare_BackToBoard" xml:space="preserve"><value>Torna al tauler</value></data>
+  <data name="Rideshare_OfferARide" xml:space="preserve"><value>Oferir un viatge</value></data>
+  <data name="Rideshare_RequestARide" xml:space="preserve"><value>Demanar un viatge</value></data>
+  <data name="Rideshare_Mine" xml:space="preserve"><value>Els meus viatges</value></data>
+  <data name="Rideshare_NotSetUp" xml:space="preserve"><value>Compartir cotxe encara no està configurat per al {0}; torna aviat.</value></data>
+  <data name="Rideshare_Date" xml:space="preserve"><value>Data</value></data>
+  <data name="Rideshare_Direction" xml:space="preserve"><value>Direcció</value></data>
+  <data name="Rideshare_Show" xml:space="preserve"><value>Mostra</value></data>
+  <data name="Rideshare_Legend" xml:space="preserve"><value>Llegenda</value></data>
+  <data name="Rideshare_Legend_Offer" xml:space="preserve"><value>Viatge ofert</value></data>
+  <data name="Rideshare_Legend_MyOffer" xml:space="preserve"><value>El teu viatge ofert</value></data>
+  <data name="Rideshare_Legend_Request" xml:space="preserve"><value>Viatge demanat</value></data>
+  <data name="Rideshare_Legend_Destination" xml:space="preserve"><value>Destinació</value></data>
+  <data name="Rideshare_Offers" xml:space="preserve"><value>Viatges oferts</value></data>
+  <data name="Rideshare_Requests" xml:space="preserve"><value>Viatges demanats</value></data>
+  <data name="Rideshare_NoOffers" xml:space="preserve"><value>Encara no hi ha viatges oferts per a aquest dia.</value></data>
+  <data name="Rideshare_NoRequests" xml:space="preserve"><value>Encara no hi ha viatges demanats per a aquest dia.</value></data>
+  <data name="Rideshare_ImInterested" xml:space="preserve"><value>M'interessa</value></data>
+  <data name="Rideshare_ICanTakeYou" xml:space="preserve"><value>Et puc portar</value></data>
+  <data name="Rideshare_YourOffer" xml:space="preserve"><value>La teva oferta</value></data>
+  <data name="Rideshare_YourRequest" xml:space="preserve"><value>La teva sol·licitud</value></data>
+  <data name="Rideshare_SeatsLeft" xml:space="preserve"><value>Queden {0} de {1} places</value></data>
+  <data name="Rideshare_SeatsFor" xml:space="preserve"><value>Places: {0}</value></data>
+  <data name="Rideshare_Seats" xml:space="preserve"><value>Places</value></data>
+  <data name="Rideshare_Departs" xml:space="preserve"><value>Surt</value></data>
+  <data name="Rideshare_Days" xml:space="preserve"><value>{0} dia/dies de viatge</value></data>
+  <data name="Rideshare_WillingToDetour" xml:space="preserve"><value>Pot desviar-se</value></data>
+  <data name="Rideshare_Restrictions" xml:space="preserve"><value>Restriccions</value></data>
+  <data name="Rideshare_Notes" xml:space="preserve"><value>Notes</value></data>
+  <data name="Rideshare_PartySize" xml:space="preserve"><value>Persones</value></data>
+  <data name="Rideshare_CanContributeToFuel" xml:space="preserve"><value>Pot contribuir a la benzina</value></data>
+  <data name="Rideshare_Driver" xml:space="preserve"><value>Condueix</value></data>
+  <data name="Rideshare_Rider" xml:space="preserve"><value>Busca lloc</value></data>
+  <data name="Rideshare_Message" xml:space="preserve"><value>Missatge</value></data>
+  <data name="Rideshare_MessagePlaceholder" xml:space="preserve"><value>Saluda: on ets, què portes, qualsevol cosa que hagi de saber qui condueix.</value></data>
+  <data name="Rideshare_Send" xml:space="preserve"><value>Envia</value></data>
+  <data name="Rideshare_Cancel" xml:space="preserve"><value>Cancel·la</value></data>
+  <data name="Rideshare_InterestModalTitle" xml:space="preserve"><value>M'interessa aquest viatge</value></data>
+  <data name="Rideshare_TakeModalTitle" xml:space="preserve"><value>Puc portar aquest human</value></data>
+  <data name="Rideshare_PickYourOffer" xml:space="preserve"><value>Quin dels teus viatges?</value></data>
+  <data name="Rideshare_NoOfferYet" xml:space="preserve"><value>Encara no tens cap viatge actiu en aquesta direcció.</value></data>
+  <data name="Rideshare_CreateOfferFirst" xml:space="preserve"><value>Publica primer un viatge</value></data>
+  <data name="Rideshare_PickAnOffer" xml:space="preserve"><value>Tria primer un dels teus viatges.</value></data>
+  <!-- Forms -->
+  <data name="Rideshare_OfferTitle_New" xml:space="preserve"><value>Oferir un viatge</value></data>
+  <data name="Rideshare_OfferTitle_Edit" xml:space="preserve"><value>Edita el teu viatge ofert</value></data>
+  <data name="Rideshare_OfferIntro" xml:space="preserve"><value>En publicar un viatge cap al burn també es publica el de tornada; pots editar o cancel·lar cada tram per separat.</value></data>
+  <data name="Rideshare_RequestTitle_New" xml:space="preserve"><value>Demanar un viatge</value></data>
+  <data name="Rideshare_RequestTitle_Edit" xml:space="preserve"><value>Edita la teva sol·licitud de viatge</value></data>
+  <data name="Rideshare_RequestIntro" xml:space="preserve"><value>Marca on necessites que et recullin. Qui condueix en la teva direcció ho veurà al tauler.</value></data>
+  <data name="Rideshare_Field_Direction" xml:space="preserve"><value>Direcció</value></data>
+  <data name="Rideshare_Field_Place" xml:space="preserve"><value>La teva ciutat</value></data>
+  <data name="Rideshare_Field_Pickup" xml:space="preserve"><value>Lloc de recollida</value></data>
+  <data name="Rideshare_Field_PlaceHelp" xml:space="preserve"><value>Amb la ciutat n'hi ha prou; mai la teva adreça. Escriu un lloc o toca el mapa.</value></data>
+  <data name="Rideshare_Field_Latitude" xml:space="preserve"><value>Latitud</value></data>
+  <data name="Rideshare_Field_Longitude" xml:space="preserve"><value>Longitud</value></data>
+  <data name="Rideshare_PickOnMap" xml:space="preserve"><value>Toca el mapa per fixar el teu punt</value></data>
+  <data name="Rideshare_Field_Waypoints" xml:space="preserve"><value>Parades pel camí</value></data>
+  <data name="Rideshare_Field_WaypointsHelp" xml:space="preserve"><value>Un lloc per línia, en ordre de viatge. Deixa-ho buit si vas directe.</value></data>
+  <data name="Rideshare_Field_DepartureDate" xml:space="preserve"><value>Data de sortida</value></data>
+  <data name="Rideshare_Field_DesiredDate" xml:space="preserve"><value>Data</value></data>
+  <data name="Rideshare_Field_DurationDays" xml:space="preserve"><value>Dies de viatge</value></data>
+  <data name="Rideshare_Field_OvernightPlan" xml:space="preserve"><value>Pla per a la nit</value></data>
+  <data name="Rideshare_Field_VehicleType" xml:space="preserve"><value>Vehicle</value></data>
+  <data name="Rideshare_Field_SeatsOffered" xml:space="preserve"><value>Places ofertes</value></data>
+  <data name="Rideshare_Field_LuggageCapacity" xml:space="preserve"><value>Espai per a equipatge</value></data>
+  <data name="Rideshare_Field_LuggageLoad" xml:space="preserve"><value>Equipatge</value></data>
+  <data name="Rideshare_Field_CapacityNote" xml:space="preserve"><value>Nota sobre l'espai</value></data>
+  <data name="Rideshare_Field_Restrictions" xml:space="preserve"><value>Restriccions</value></data>
+  <data name="Rideshare_Field_RestrictionsHelp" xml:space="preserve"><value>Sense fumar, sense mascotes, sense tambors: el que t'importi.</value></data>
+  <data name="Rideshare_Field_WillingToDetour" xml:space="preserve"><value>Puc desviar-me per recollir algú</value></data>
+  <data name="Rideshare_Field_CostSharing" xml:space="preserve"><value>Repartiment de despeses</value></data>
+  <data name="Rideshare_Field_CostNote" xml:space="preserve"><value>Nota sobre les despeses</value></data>
+  <data name="Rideshare_Field_PartySize" xml:space="preserve"><value>Quants sou</value></data>
+  <data name="Rideshare_Field_CanContributeToFuel" xml:space="preserve"><value>Puc contribuir a la benzina</value></data>
+  <data name="Rideshare_Field_Notes" xml:space="preserve"><value>Notes</value></data>
+  <data name="Rideshare_Save" xml:space="preserve"><value>Desa</value></data>
+  <data name="Rideshare_InvalidDate" xml:space="preserve"><value>Introdueix una data vàlida.</value></data>
+  <data name="Rideshare_OfferSaved" xml:space="preserve"><value>El teu viatge està publicat.</value></data>
+  <data name="Rideshare_OfferCancelled" xml:space="preserve"><value>El teu viatge està cancel·lat.</value></data>
+  <data name="Rideshare_RequestSaved" xml:space="preserve"><value>La teva sol·licitud de viatge està publicada.</value></data>
+  <data name="Rideshare_RequestCancelled" xml:space="preserve"><value>La teva sol·licitud de viatge està cancel·lada.</value></data>
+  <!-- Mine -->
+  <data name="Rideshare_MineTitle" xml:space="preserve"><value>Els meus viatges</value></data>
+  <data name="Rideshare_MyOffers" xml:space="preserve"><value>Els meus viatges oferts</value></data>
+  <data name="Rideshare_MyRequests" xml:space="preserve"><value>Els meus viatges demanats</value></data>
+  <data name="Rideshare_InterestsSent" xml:space="preserve"><value>Viatges pels quals he preguntat</value></data>
+  <data name="Rideshare_NoMyOffers" xml:space="preserve"><value>Encara no has ofert cap viatge.</value></data>
+  <data name="Rideshare_NoMyRequests" xml:space="preserve"><value>Encara no has demanat cap viatge.</value></data>
+  <data name="Rideshare_NoInterestsSent" xml:space="preserve"><value>Encara no has preguntat per cap viatge.</value></data>
+  <data name="Rideshare_InterestsReceived" xml:space="preserve"><value>Humans interessats</value></data>
+  <data name="Rideshare_DriversOffering" xml:space="preserve"><value>Qui et pot portar</value></data>
+  <data name="Rideshare_NoInterestsYet" xml:space="preserve"><value>Encara ningú.</value></data>
+  <data name="Rideshare_Edit" xml:space="preserve"><value>Edita</value></data>
+  <data name="Rideshare_CancelOffer" xml:space="preserve"><value>Cancel·la el viatge</value></data>
+  <data name="Rideshare_CancelRequest" xml:space="preserve"><value>Cancel·la la sol·licitud</value></data>
+  <data name="Rideshare_ConfirmCancel" xml:space="preserve"><value>Cancel·lar? Qui tingui plaça la perdrà.</value></data>
+  <data name="Rideshare_Accept" xml:space="preserve"><value>Accepta</value></data>
+  <data name="Rideshare_Decline" xml:space="preserve"><value>Declina</value></data>
+  <data name="Rideshare_Withdraw" xml:space="preserve"><value>Retira</value></data>
+  <data name="Rideshare_DeclinedNeutral" xml:space="preserve"><value>Aquesta vegada no.</value></data>
+  <data name="Rideshare_Matched" xml:space="preserve"><value>Aparellat</value></data>
+  <data name="Rideshare_Full" xml:space="preserve"><value>Ple</value></data>
+  <data name="Rideshare_LinkedLeg" xml:space="preserve"><value>Aparellat amb el teu viatge en l'altra direcció</value></data>
+  <data name="Rideshare_InterestSent" xml:space="preserve"><value>Enviat; rebran una notificació.</value></data>
+  <data name="Rideshare_InterestAccepted" xml:space="preserve"><value>Acceptat; ja tenen plaça.</value></data>
+  <data name="Rideshare_InterestDeclined" xml:space="preserve"><value>Declinat.</value></data>
+  <data name="Rideshare_InterestWithdrawn" xml:space="preserve"><value>Retirat.</value></data>
+  <data name="Rideshare_Error_CancelledRideEdit" xml:space="preserve"><value>Un viatge cancel·lat no es pot editar.</value></data>
+  <data name="Rideshare_Error_SeatsBelowAccepted" xml:space="preserve"><value>Les places ofertes no poden baixar de les {0} ja acceptades.</value></data>
+  <data name="Rideshare_Error_CancelledRequestEdit" xml:space="preserve"><value>Una sol·licitud cancel·lada no es pot editar.</value></data>
+  <data name="Rideshare_Error_RideUnavailable" xml:space="preserve"><value>Aquest viatge ja no està disponible.</value></data>
+  <data name="Rideshare_Error_RequestClosed" xml:space="preserve"><value>Aquesta sol·licitud ja no està oberta.</value></data>
+  <data name="Rideshare_Error_OwnRequest" xml:space="preserve"><value>No pots respondre a la teva pròpia sol·licitud.</value></data>
+  <data name="Rideshare_Error_OwnRide" xml:space="preserve"><value>No et pots apuntar al teu propi viatge.</value></data>
+  <data name="Rideshare_Error_SeatsMinimum" xml:space="preserve"><value>Demana almenys una plaça.</value></data>
+  <data name="Rideshare_Error_NotEnoughSeats" xml:space="preserve"><value>A aquest viatge no li queden prou places.</value></data>
+  <data name="Rideshare_Error_AlreadyInterested" xml:space="preserve"><value>Ja t'has apuntat. La resposta està pendent.</value></data>
+  <data name="Rideshare_Error_InterestNotPending" xml:space="preserve"><value>Aquesta petició de plaça ja no està pendent.</value></data>
+  <data name="Rideshare_Error_InterestNotWithdrawable" xml:space="preserve"><value>Aquesta petició de plaça ja no es pot retirar.</value></data>
+  <data name="Rideshare_Error_DestinationRequired" xml:space="preserve"><value>Indica la destinació.</value></data>
+  <data name="Rideshare_Error_WindowOrder" xml:space="preserve"><value>Una finestra de viatge no pot acabar abans de començar.</value></data>
+  <data name="Rideshare_Error_NotSetUp" xml:space="preserve"><value>Rideshare encara no està configurat per a {0}.</value></data>
+  <data name="Rideshare_Error_PlaceRequired" xml:space="preserve"><value>Indica el lloc.</value></data>
+  <data name="Rideshare_Error_PlaceNotFound" xml:space="preserve"><value>No hem trobat "{0}" al mapa. Prova amb una ciutat propera o col·loca el marcador tu mateix.</value></data>
+  <data name="Rideshare_Error_StopNotFound" xml:space="preserve"><value>No hem trobat la parada "{0}" al mapa.</value></data>
+  <data name="Rideshare_Error_DurationMinimum" xml:space="preserve"><value>Un viatge dura almenys un dia.</value></data>
+  <data name="Rideshare_Error_OfferSeatsMinimum" xml:space="preserve"><value>Ofereix almenys una plaça.</value></data>
+  <data name="Rideshare_Error_PartyMinimum" xml:space="preserve"><value>Una sol·licitud és per a almenys una persona.</value></data>
+  <data name="Rideshare_Error_RideNotOnRequestDate" xml:space="preserve"><value>Aquest viatge no va en aquesta direcció el dia que ho necessiten.</value></data>
+</root>
