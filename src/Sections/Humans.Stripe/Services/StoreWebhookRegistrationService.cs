@@ -144,9 +144,10 @@ internal sealed class StoreWebhookRegistrationService(
     }
 
     /// <summary>
-    /// One pass over the account's endpoints, deleting the two kinds that should not survive
-    /// this boot: our own URL (we are about to recreate it, with a fresh signing secret) and
-    /// any <c>{N}.n.burn.camp</c> endpoint whose PR <c>{N}</c> is no longer open.
+    /// One listing of the account's endpoints, deleting the kinds that should not survive this
+    /// boot: any <c>{N}.n.burn.camp</c> endpoint whose PR <c>{N}</c> is no longer open, and then
+    /// our own URL, which we are about to recreate with a fresh signing secret. Our own goes
+    /// last so that a failure part-way through leaves the account as this boot found it.
     /// </summary>
     /// <remarks>
     /// The cross-PR half needs the open-PR list; the own-URL half does not, and still runs when
@@ -157,6 +158,8 @@ internal sealed class StoreWebhookRegistrationService(
         WebhookEndpointService service, string ownWebhookUrl, CancellationToken ct)
     {
         var openPrs = await TryListOpenPullRequestsAsync();
+
+        var ours = new List<WebhookEndpoint>();
 
         var listed = await service.ListAsync(new WebhookEndpointListOptions { Limit = 100 }, cancellationToken: ct);
         foreach (var endpoint in listed.Data)
@@ -170,12 +173,8 @@ internal sealed class StoreWebhookRegistrationService(
 
             if (string.Equals(endpoint.Url, ownWebhookUrl, StringComparison.OrdinalIgnoreCase))
             {
-                // Ours. A failure here must abort registration rather than leave a duplicate
-                // endpoint delivering to this host under a secret we no longer hold.
-                await service.DeleteAsync(endpoint.Id, cancellationToken: ct);
-                logger.LogInformation(
-                    "Deleted Stripe webhook {EndpointId} pointing at {Url} (current-PR cleanup).",
-                    endpoint.Id, endpoint.Url);
+                // Set aside, not deleted here: see the second pass below.
+                ours.Add(endpoint);
                 continue;
             }
 
@@ -202,6 +201,20 @@ internal sealed class StoreWebhookRegistrationService(
                     "Could not delete webhook {EndpointId} during sweep — likely already gone.",
                     endpoint.Id);
             }
+        }
+
+        // Our own URL goes last, immediately before the caller recreates it. A failure here
+        // aborts registration — deliberately, rather than leave a duplicate endpoint delivering
+        // to this host under a secret we no longer hold — and the sweep above is best-effort per
+        // endpoint but can still abort on a non-Stripe failure such as the timeout expiring. Do
+        // this first and such an abort would leave the host with no endpoint at all; doing it
+        // last means an abort leaves the account exactly as this boot found it.
+        foreach (var endpoint in ours)
+        {
+            await service.DeleteAsync(endpoint.Id, cancellationToken: ct);
+            logger.LogInformation(
+                "Deleted Stripe webhook {EndpointId} pointing at {Url} (current-PR cleanup).",
+                endpoint.Id, endpoint.Url);
         }
     }
 

@@ -66,8 +66,10 @@ Written fresh, this is what the section would be. One note on what stays as it i
   `internal`, one screen long, and moving it buys a reader nothing they do not already get
   from one grep. **Not worth a move; noted so the next run stops re-asking.**
 
-The registrar's endpoint cleanup is **a single listing and a single deletion pass**, deciding
-per endpoint against both predicates it has: is this our own URL, and is this a closed PR's.
+The registrar's endpoint cleanup is **a single listing**, deciding per endpoint against both
+predicates it has: is this our own URL, and is this a closed PR's. The closed-PR deletions run
+first and the own-URL deletion last, so a failure part-way through leaves the account as the
+boot found it rather than with this host's endpoint gone and not yet recreated.
 
 ## 4. Invariants
 
