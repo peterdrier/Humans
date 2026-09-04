@@ -31,7 +31,10 @@ internal sealed class FeedbackReport
     public Instant CreatedAt { get; init; }
     public Instant UpdatedAt { get; set; }
 
-    /// <summary>Defaults to UserReport; set to AgentUnresolved when created by the agent's route_to_feedback tool.</summary>
+    /// <summary>
+    /// Vestigial for new rows — no creation path remains. Historical rows hold
+    /// UserReport or AgentUnresolved (agent-created); do not assume UserReport when reading.
+    /// </summary>
     public FeedbackSource Source { get; set; } = FeedbackSource.UserReport;
 
     /// <summary>

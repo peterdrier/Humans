@@ -8,7 +8,7 @@ namespace Humans.Feedback.Data;
 /// <summary>
 /// EF-backed implementation of <see cref="IFeedbackRepository"/>. The only
 /// non-test file that touches <c>DbContext.FeedbackReports</c> or
-/// <c>DbContext.FeedbackMessages</c> after the Feedback migration lands.
+/// <c>DbContext.FeedbackMessages</c>.
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>FeedbackDbContext</c> remains Scoped.
 /// </summary>
@@ -127,9 +127,7 @@ internal sealed class FeedbackRepository(IDbContextFactory<FeedbackDbContext> fa
         FeedbackMessage message, FeedbackReport report, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Attach the report (mutated by the caller) and mark it modified so
-        // timestamp/status fields are persisted in the same transaction as the
-        // new message.
+        // The caller-mutated report and the new message commit in one SaveChanges.
         ctx.Attach(report);
         ctx.Entry(report).State = EntityState.Modified;
         ctx.FeedbackMessages.Add(message);
@@ -137,7 +135,7 @@ internal sealed class FeedbackRepository(IDbContextFactory<FeedbackDbContext> fa
     }
 
     // ==========================================================================
-    // Account-merge fold
+    // GDPR erasure and account-merge fold
     // ==========================================================================
 
     public async Task<IReadOnlyList<string>> EraseForUserAsync(Guid userId, CancellationToken ct = default)

@@ -26,20 +26,15 @@ internal sealed class FeedbackController(
     IUserServiceRead userService,
     ILogger<FeedbackController> logger) : HumansControllerBase(userService)
 {
-    private readonly IUserServiceRead _userService = userService;
-
     /// <summary>
-    /// Resolves active-approved humans into <see cref="AssigneeOption"/>
-    /// rows for the assignee dropdowns. Replaces the deleted
-    /// <c>IProfileService.GetFilteredHumansAsync(null, "Active")</c> path:
-    /// person-search consolidation moved that surface to
-    /// <c>IUserService.SearchUsersAsync</c>, which is for text search, not
-    /// population queries. Population goes through the UserInfo snapshot +
-    /// <c>IUserServiceRead.GetAllUserInfosAsync</c> primitive.
+    /// Resolves active humans into <see cref="AssigneeOption"/> rows for the
+    /// assignee dropdowns. Population query, not text search — it reads the
+    /// UserInfo snapshot via <c>GetAllUserInfosAsync</c>, never
+    /// <c>SearchUsersAsync</c>.
     /// </summary>
     private async Task<List<AssigneeOption>> GetActiveAssigneeOptionsAsync(CancellationToken ct = default)
     {
-        var options = (await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
+        var options = (await UserService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
             .Where(u => u.IsActive)
             .Select(u => new AssigneeOption { Id = u.Id, DisplayName = u.BurnerName })
             .OrderBy(o => o.DisplayName, StringComparer.OrdinalIgnoreCase)
@@ -169,6 +164,12 @@ internal sealed class FeedbackController(
             var (userMissing, user) = await RequireCurrentUserAsync();
             if (userMissing is not null) return userMissing;
 
+            if (!ModelState.IsValid)
+            {
+                SetError("Invalid status.");
+                return RedirectToAction(nameof(Index), new { selected = id });
+            }
+
             await feedbackService.UpdateStatusAsync(id, model.Status, user.Id);
             SetSuccess("Status updated.");
         }
@@ -194,6 +195,12 @@ internal sealed class FeedbackController(
             var (userMissing, user) = await RequireCurrentUserAsync();
             if (userMissing is not null) return userMissing;
 
+            if (!ModelState.IsValid)
+            {
+                SetError("Invalid assignment.");
+                return RedirectToAction(nameof(Index), new { selected = id });
+            }
+
             await feedbackService.UpdateAssignmentAsync(id, model.AssignedToUserId, model.AssignedToTeamId, user.Id);
             SetSuccess("Assignment updated.");
         }
@@ -218,6 +225,12 @@ internal sealed class FeedbackController(
         {
             var (userMissing, user) = await RequireCurrentUserAsync();
             if (userMissing is not null) return userMissing;
+
+            if (!ModelState.IsValid)
+            {
+                SetError("Invalid issue number.");
+                return RedirectToAction(nameof(Index), new { selected = id });
+            }
 
             await feedbackService.SetGitHubIssueNumberAsync(id, model.IssueNumber, user.Id);
             SetSuccess("GitHub issue linked.");
@@ -251,7 +264,6 @@ internal sealed class FeedbackController(
             ReporterUserId = report.UserId,
             GitHubIssueNumber = report.GitHubIssueNumber,
             CreatedAt = report.CreatedAt.ToDateTimeUtc(),
-            UpdatedAt = report.UpdatedAt.ToDateTimeUtc(),
             ResolvedAt = report.ResolvedAt?.ToDateTimeUtc(),
             ResolvedByName = report.ResolvedByName,
             AssignedToUserId = report.AssignedToUserId,
@@ -290,7 +302,7 @@ internal sealed class FeedbackController(
 
         viewModel.AssigneeOptions = await GetActiveAssigneeOptionsAsync();
 
-        // Include currently assigned human even if inactive, to prevent silent clearing
+        // Same for the assignee.
         if (viewModel.AssignedToUserId.HasValue &&
             viewModel.AssigneeOptions.All(a => a.Id != viewModel.AssignedToUserId.Value))
         {
