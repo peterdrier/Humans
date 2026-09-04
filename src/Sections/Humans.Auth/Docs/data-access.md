@@ -30,7 +30,7 @@ Repository: `IRoleAssignmentRepository`.
 | `FeedbackBadgeCount` (`INavBadgeCacheInvalidator`) | yes |
 | `claims:{userId}` (`IRoleAssignmentClaimsCacheInvalidator`) | yes |
 
-Cross-section calls via `IUserService`, `ISystemTeamSync`,
+Cross-section calls via `IUserServiceRead`, `ISystemTeamSync`,
 `IAuditLogService`. Implements `IUserDataContributor` for GDPR exports
 and `IUserMerge` for account merges.
 
@@ -47,8 +47,8 @@ Surfaced on `/Debug/CacheStats`.
 ### MagicLinkService (Scoped)
 
 No repository. Uses ASP.NET `UserManager<User>` plus `IUserEmailService`,
-`IEmailService`, `IMagicLinkRateLimiter`, `IMagicLinkUrlBuilder`,
-`IUnsubscribeTokenProvider`. No direct `IMemoryCache` —
+`IUserServiceRead`, `IEmailService`, `IEmailMessageFactory`,
+`IMagicLinkRateLimiter`, `IMagicLinkUrlBuilder`. No direct `IMemoryCache` —
 rate-limit/replay sentinels are owned by `IMagicLinkRateLimiter`
 (same section, `Services/`) which writes `magic_link_used:{tokenPrefix}` and
 `magic_link_signup:{normalizedEmail}` into `IMemoryCache`.
@@ -61,10 +61,13 @@ Repository: `IRoleAssignmentRepository`.
 |-------|-----|
 | RoleAssignments | R |
 
-Read-only — answers "is this user a board member / coordinator / admin"
-for cross-section authorization checks. Cycle-safe (does not pull
-`IAuthorizationService`). No cache (reads route through the inner repo;
-hot reads can migrate to the cached row set incrementally).
+Read-only, and narrower than it sounds: the one method
+(`RequireCurrentUserIsAdminAsync`) hardcodes `RoleNames.Admin` and throws
+`UnauthorizedAccessException` for everyone else. It is a full-Admin guard in
+front of destructive cross-section actions — it answers no Board or
+Coordinator question. Cycle-safe (does not pull `IAuthorizationService`). No
+cache (reads route through the inner repo; hot reads can migrate to the cached
+row set incrementally).
 
 ---
 

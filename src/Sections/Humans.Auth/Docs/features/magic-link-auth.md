@@ -192,11 +192,11 @@ No `userId` in the URL because the user doesn't exist yet. The encrypted email i
 
 **Login tokens (existing users):** As shipped, the DataProtection token carries no server-side state, so single-use is enforced separately: on successful verification, `IMagicLinkRateLimiter.TryConsumeLoginTokenAsync` reserves the token (keyed on a prefix of the token string) in `IMemoryCache` for the remainder of its 15-minute lifetime. A second attempt with the same token finds the reservation already held and fails verification.
 
-**Signup tokens (new users):** Single-use is enforced by the fact that the callback creates the user. A second click with the same token would find the email already taken and show an appropriate message ("Account already created — use the login link instead").
+**Signup tokens (new users):** Not enforced as shipped. This section proposed that creating the user would itself block reuse, showing "Account already created — use the login link instead" — the code does not do that. `VerifySignupToken` only unprotects, and on a replayed POST `AccountProvisioningService.CompleteMagicLinkSignupAsync` finds the now-verified `UserEmail`, returns `ExistingUser`, and `AccountController.CompleteSignup` signs that user in. So a signup token stays redeemable for the remainder of its 15 minutes. Note the shipped signup email says otherwise — `Email_MagicLinkSignup_Body` promises "can only be used once" in all six cultures, so the false guarantee is user-facing, not just internal. Tracked as F41 in `docs/health/runs/2026-09-01-Auth.md`; the resx copy is deliberately left alone, because rewording it would settle F41 in favour of accepting the behaviour, and that is Peter's call.
 
 ### Email Lookup
 
-The magic link request endpoint must search for emails across both tables:
+`MagicLinkService.SendMagicLinkAsync` resolves the address before choosing a link type:
 
 ```csharp
 // 1. Check UserEmails (covers all verified addresses including non-primary)
@@ -219,14 +219,13 @@ The same lookup pattern applies to the Google OAuth account linking in `External
 The decision ladder now lives in `ExternalLoginService.CompleteExternalLoginAsync`; `AccountController.ExternalLoginCallback` only dispatches to it:
 
 ```
-Current: no user by provider key → create new user
-New:     no user by provider key
-           → check UserEmails for verified match (IMagicLinkService.FindUserByVerifiedEmailAsync)
-           → if found: AddLoginAsync + sign in (same user)
-           → else: create new user (existing flow)
+no user by provider key
+  → check UserEmails for verified match (IMagicLinkService.FindUserByVerifiedEmailAsync)
+  → if found: AddLoginAsync + sign in (same user)
+  → else: create new user
 ```
 
-This is a small change (~15 lines) in the existing callback. Wrapped in try-catch so a linking failure doesn't block the OAuth flow — falls through to create new user with a logged warning.
+The link attempt is wrapped in try-catch so a linking failure doesn't block the OAuth flow — it falls through to creating a new user with a logged warning.
 
 ### Email Template
 
@@ -263,7 +262,7 @@ Category: `MessageCategory.System` (not opt-outable).
 ### Rate Limiting
 
 To prevent abuse of the magic link endpoint:
-- Track `MagicLinkSentAt` (new nullable `Instant` on `User`) — reject requests within 60 seconds of the last send
+- Login sends are cooled down off `User.MagicLinkSentAt` (nullable `Instant`) — a request within 60 seconds of the last send is silently skipped. Signup sends use a separate per-address reservation in `IMagicLinkRateLimiter`
 - Always show the same "If that email exists, we've sent a link" message regardless of whether the email exists (prevents account enumeration)
 - Log suspicious patterns (multiple requests for different emails from same IP) but don't block at this scale
 

@@ -7,12 +7,12 @@ namespace Humans.Auth.Data;
 
 /// <summary>
 /// Repository for the Auth section's table: <c>role_assignments</c>. The only
-/// non-test file that writes to this DbSet after the Auth migration lands.
+/// non-test writer of that table.
 /// </summary>
 /// <remarks>
-/// Reads never <c>.Include()</c> cross-domain navigation properties
-/// (<c>RoleAssignment.User</c>, <c>RoleAssignment.CreatedByUser</c>). Callers
-/// in the Application layer stitch display data from <c>IUserService</c>.
+/// There are no cross-domain navigation properties to <c>.Include()</c>;
+/// <c>RoleAssignmentService</c> stitches display data in memory via
+/// <c>IUserServiceRead</c>.
 ///
 /// Auth is low-traffic (handful of admin writes per month, a few reads per
 /// day). The repository uses the Singleton + <c>IDbContextFactory</c> pattern
@@ -118,32 +118,11 @@ internal interface IRoleAssignmentRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Distinct role names the user holds via an active assignment at
-    /// <paramref name="now"/>. Used by the claims transformation to populate
-    /// Identity role claims every authenticated request.
-    /// </summary>
-    Task<IReadOnlyList<string>> GetActiveRoleNamesAsync(
-        Guid userId,
-        Instant now,
-        CancellationToken ct = default);
-
-    /// <summary>
     /// Counts active assignments at <paramref name="now"/> grouped by role
     /// name. Used by the metrics snapshot refresh.
     /// </summary>
     Task<IReadOnlyDictionary<string, int>> GetActiveCountsByRoleAsync(
         Instant now,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Loads every <c>role_assignments</c> row as a <see cref="RoleAssignment"/>
-    /// entity. Used by the <c>CachingRoleAssignmentService</c> warm path so the
-    /// singleton cache can derive active-by-role counts in memory at any clock
-    /// instant without re-reading the table. The caller projects to
-    /// <see cref="RoleAssignmentRow"/> for cache storage; the repository
-    /// returns entities to keep the boundary aligned with design-rules §3a.1.
-    /// </summary>
-    Task<IReadOnlyList<RoleAssignment>> GetAllRowsForCacheAsync(
         CancellationToken ct = default);
 
     // ==========================================================================

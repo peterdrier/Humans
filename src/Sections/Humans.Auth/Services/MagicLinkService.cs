@@ -8,11 +8,16 @@ using Humans.Users.Contracts;
 namespace Humans.Auth.Services;
 
 /// <summary>
-/// The magic-link sign-in orchestrator. Moved out of <c>Humans.Application</c> at
-/// nobodies-collective/Humans#866 G5 lane 4b-2i: the Base floor ruling of 2026-08-14 makes a
-/// section's leaf reference legal from anywhere, so "it injects Humans.Email.Contracts" stopped
-/// being a reason for Auth's own sign-in path to live in the hub.
+/// The magic-link sign-in orchestrator. Owns no table: its only persistent state is
+/// <c>User.MagicLinkSentAt</c>, written through <see cref="UserManager{TUser}"/>. Token
+/// minting and URL shape sit behind <see cref="IMagicLinkUrlBuilder"/>; replay and cooldown
+/// state behind <see cref="IMagicLinkRateLimiter"/>, so this type names no <c>DbContext</c>,
+/// no <c>IDataProtectionProvider</c> and no <c>IMemoryCache</c>.
 /// </summary>
+/// <remarks>
+/// It sends through <c>Humans.Email.Contracts</c> — a vertical section's leaf, legal from a
+/// horizontal since Peter's Base-floor decision of 2026-08-14.
+/// </remarks>
 internal sealed class MagicLinkService(
     UserManager<User> userManager,
     IUserEmailService userEmailService,

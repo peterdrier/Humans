@@ -284,7 +284,7 @@ internal sealed class RoleAssignmentService(
         var now = clock.GetCurrentInstant();
         var all = await repository.GetByUserIdAsync(userId, ct);
         return all
-            .Where(ra => ra.ValidFrom <= now && (ra.ValidTo == null || ra.ValidTo > now))
+            .Where(ra => ra.IsActive(now))
             .OrderBy(ra => ra.RoleName, StringComparer.Ordinal)
             .Select(ra => new RoleAssignmentSnapshot(ra.RoleName, ra.ValidTo))
             .ToList();

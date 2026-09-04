@@ -1,31 +1,29 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Auth's cross-section surface, carved into its own leaf project because almost every
-    consumer is in Base: IRoleAssignmentService alone is injected by ~30 production files —
-    Humans.Application services (Users, Profiles, Shifts, GoogleIntegration), Humans.Infrastructure
-    jobs and the metrics service, Shell's claims transformation and admin controllers, and twelve
-    already-moved sections. A Contracts/ *folder* inside Humans.Auth would therefore make Base
-    reference a section and cycle (design §15.5b,
+    Auth's cross-section surface, carved into its own leaf project because its consumers are
+    everywhere: IRoleAssignmentService alone is injected across many sections plus Shell's claims
+    transformation and admin controllers. A Contracts/ *folder* inside Humans.Auth would make a
+    Base-side consumer reference a section and cycle (design §15.5b,
     memory/architecture/section-project-cycle-fix.md).
 
-    RoleAssignmentOperationRequirement — an IAuthorizationRequirement Shell's
+    RoleAssignmentOperationRequirement — an IAuthorizationRequirement that Humans.Users'
     UsersAdminController passes to IAuthorizationService.AuthorizeAsync — sits in Humans.Auth's
-    own Contracts/ *folder* rather than here. Tickets was the first section to ship both halves;
-    the split is what each may name (template step 5b).
+    own Contracts/ *folder* rather than here. The split is what each half may name
+    (template step 5b).
 
     That placement stands, but its old stated reason does not. This comment used to read
     "framework-free by construction (Microsoft.NET.Sdk; no FrameworkReference)", i.e. that the
     leaf *could not* name an ASP.NET type. Measured false, G5 lane 3c, 2026-08-15:
-    Humans.Interfaces has carried FrameworkReference Microsoft.AspNetCore.App since ISection
+    Humans.Base has carried FrameworkReference Microsoft.AspNetCore.App since ISection
     landed, and FrameworkReference flows transitively through ProjectReference, so this leaf
     resolves Microsoft.AspNetCore.App with IsTransitiveFrameworkReference=true. It could name
     IAuthorizationRequirement today and the build would not complain.
 
-    The reason to keep the requirement out is therefore a choice, not a constraint: Base
-    consumers of this leaf want Auth's *vocabulary*, not its ASP.NET authorization plumbing, and
-    the one type that is plumbing has exactly one caller, in Shell. The rule that is actually
-    mechanical here is the ProjectReference set below — see Humans.Interfaces.csproj for the
+    The reason to keep the requirement out is therefore a choice, not a constraint: consumers
+    of this leaf want Auth's *vocabulary*, not its ASP.NET authorization plumbing, and the one
+    type that is plumbing has exactly one caller. The rule that is actually
+    mechanical here is the ProjectReference set below — see Humans.Base.csproj for the
     single invariant (zero Humans.* ProjectReferences on Base; external packages unrestricted,
     Peter 2026-08-15). "This leaf names no ASP.NET type" is a property of what the code names,
     not a pinned assertion.
@@ -35,10 +33,10 @@
 
     Humans.Users.Contracts is the one leaf-to-leaf reference here, added with IMagicLinkService
     at nobodies-collective/Humans#866 G5 lane 4b-2i. It is forced, not chosen: two of that
-    interface's members return Humans.Users.Contracts.User, and its Base consumer
-    (Humans.Application's ExternalLoginService, which calls FindUserByVerifiedEmailAsync) cannot
-    reference the Humans.Auth *section* project — design §15 step 5b's "a consumer in Base forces
-    Humans.<Section>.Contracts", the same shape that put IUserService on the Users leaf.
+    interface's members return Humans.Users.Contracts.User, and its consumer — Humans.Users'
+    ExternalLoginService, which calls FindUserByVerifiedEmailAsync — must reach the interface
+    without referencing the Humans.Auth *section* project (design §15 step 5b), the same shape
+    that put IUserService on the Users leaf.
 
     It is NOT an unwind item, and the 2026-08-14 design's "each gets unwound" phrasing was
     corrected in G5 lane 3c. Humans.Users.Contracts holds exactly one ProjectReference of its own

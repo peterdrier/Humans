@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 // The subject is internal to Humans.Auth; this project reaches it through that assembly's
 // InternalsVisibleTo. Assertions are unchanged from before the move.
 using MagicLinkService = Humans.Auth.Services.MagicLinkService;
@@ -188,6 +189,78 @@ public sealed class MagicLinkServiceTests : IDisposable
 
         _emailMessages.DidNotReceive().MagicLinkSignup(
             Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task SendMagicLinkAsync_SignupSendThrows_ReleasesTheReservation()
+    {
+        // The reservation is taken before the send. If a send failure left it
+        // standing, the address would be locked out of retrying for the whole
+        // cooldown over an error that was never the caller's fault.
+        _emailService
+            .SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("SMTP down"));
+
+        var send = async () => await _service.SendMagicLinkAsync(
+            "newperson@example.com", null, Xunit.TestContext.Current.CancellationToken);
+
+        await send.Should().ThrowAsync<InvalidOperationException>();
+        _rateLimiter.Received(1).ReleaseSignupReservation("newperson@example.com");
+    }
+
+    [HumansFact]
+    public async Task SendLoginLink_SendThrows_DoesNotStampMagicLinkSentAt()
+    {
+        // MagicLinkSentAt is the login cooldown. Stamping it before the send would
+        // cool the user down for 60s on an email that never left the building.
+        var userId = Guid.NewGuid();
+        var user = new User
+        {
+            Id = userId,
+            UserName = "alice@gmail.com",
+            Email = "alice@gmail.com",
+            DisplayName = "Alice",
+            CreatedAt = Clock.GetCurrentInstant()
+        };
+
+        _userEmailService
+            .FindVerifiedEmailWithUserAsync("alice@gmail.com", Arg.Any<CancellationToken>())
+            .Returns(new UserEmailWithUser(userId, "alice@gmail.com", null, null));
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+        _emailService
+            .SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("SMTP down"));
+
+        var send = async () => await _service.SendMagicLinkAsync(
+            "alice@gmail.com", null, Xunit.TestContext.Current.CancellationToken);
+
+        await send.Should().ThrowAsync<InvalidOperationException>();
+        user.MagicLinkSentAt.Should().BeNull();
+        await _userManager.DidNotReceive().UpdateAsync(user);
+    }
+
+    [HumansFact]
+    public async Task SendLoginLink_Sends_ThenStampsMagicLinkSentAt()
+    {
+        var userId = Guid.NewGuid();
+        var user = new User
+        {
+            Id = userId,
+            UserName = "alice@gmail.com",
+            Email = "alice@gmail.com",
+            DisplayName = "Alice",
+            CreatedAt = Clock.GetCurrentInstant()
+        };
+
+        _userEmailService
+            .FindVerifiedEmailWithUserAsync("alice@gmail.com", Arg.Any<CancellationToken>())
+            .Returns(new UserEmailWithUser(userId, "alice@gmail.com", null, null));
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+
+        await _service.SendMagicLinkAsync("alice@gmail.com", null, Xunit.TestContext.Current.CancellationToken);
+
+        user.MagicLinkSentAt.Should().Be(Clock.GetCurrentInstant());
+        await _userManager.Received(1).UpdateAsync(user);
     }
 
     [HumansFact]
