@@ -35,12 +35,14 @@ Everything the section exposes, grouped by the question it answers.
 | **Boot-time self-check** | `StripeStartupSmokeService` | Not a caller shape — a job. One low-risk read per configured key. |
 | **Ephemeral-env plumbing** | `StoreWebhookRegistrationService` | Not a caller shape — a job. Point Stripe at this host; unpoint it from dead hosts. |
 
-Three consequences the rest of this file leans on:
+What the rest of this file leans on:
 
-- Every **read** shape returns `null` for "could not ask Stripe", never an empty result and
-  never an exception. The **write** shape throws. That split is the section's one behavioural
-  rule and it must hold *uniformly* — a read that throws where its siblings return `null` is a
-  defect, not a variation.
+- A **read** shape returns `null` for the cases the section *checks* — a key that is unset, a
+  key that lacks the scope, a signature that does not verify — and an empty result means
+  "Stripe answered, with nothing". Every other failure propagates: `null` says the
+  configuration is wrong, never that the call failed. That distinction is the section's one
+  behavioural rule, and it must hold uniformly across the read shapes — one that returns
+  `null` where its siblings throw would tell a caller a transport failure was a missing key.
 - Every shape that needs a key is preceded by the matching **Can I?** flag, and each
   implementation re-checks it rather than trusting the caller.
 - The two jobs share nothing with the caller shapes but the settings object.
@@ -48,24 +50,23 @@ Three consequences the rest of this file leans on:
 ## 3. Structure
 
 ```
-Contracts/IStripeService.cs   the seam: one interface, three flags, four methods, three DTOs
+Contracts/IStripeService.cs   the seam: the interface, its capability flags, its methods, its DTOs
 Services/StripeService.cs     the seam's only implementation + StripeSettings
 Services/StripeStartupSmokeService.cs    boot job: probe each key
 Services/StoreWebhookRegistrationService.cs  boot job: ephemeral-env webhook lifecycle
-Section.cs                    env-var binding + three DI registrations
+Section.cs                    env-var binding + the section's DI registrations
 Docs/                         Stripe.md (invariants), data-access.md, health.md (this)
 ```
 
 Written fresh, this is what the section would be. One note on what stays as it is:
 
-- `StripeSettings` lives in `StripeService.cs` above the service. It is read by three types,
-  only one of which is in that file. It belongs in its own file next to them — but it is
+- `StripeSettings` lives in `StripeService.cs` above the service. Every service in the
+  section reads it, and only one of them is in that file. It belongs in its own file next to them — but it is
   `internal`, one screen long, and moving it buys a reader nothing they do not already get
   from one grep. **Not worth a move; noted so the next run stops re-asking.**
 
-The registrar's endpoint cleanup reached this shape on 2026-09-04: **one listing, one deletion
-pass, two predicates** (our own URL, and a closed PR's). It was two identical
-`WebhookEndpointService.ListAsync` calls through two methods deleting from the same list.
+The registrar's endpoint cleanup is **a single listing and a single deletion pass**, deciding
+per endpoint against both predicates it has: is this our own URL, and is this a closed PR's.
 
 ## 4. Invariants
 
@@ -76,15 +77,19 @@ pass, two predicates** (our own URL, and a closed PR's). It was two identical
   acyclicity is why it needs no `.Contracts` leaf.
 - The section owns no table, no `DbContext`, no repository, no controller, no view, no
   resource file, and no route.
-- **Reads return `null` when Stripe cannot be asked** — key unset, scope missing, signature
-  invalid — and never confuse that with "Stripe said nothing". Applies to
-  `GetPaymentDetailsAsync`, `ListStoreCheckoutSessionsAsync` and `ParseStoreCheckoutEvent`
-  alike.
+- **Reads return `null` when the configuration says Stripe cannot be asked** — key unset,
+  scope missing, signature invalid — and never confuse that with "Stripe said nothing".
+  Applies to `GetPaymentDetailsAsync`, `ListStoreCheckoutSessionsAsync` and
+  `ParseStoreCheckoutEvent` alike.
+- **A read does not swallow a failure.** An authentication error, a rate limit, a transport
+  failure or cancellation propagates out of the two network reads; only the checked
+  configuration cases become `null`. (`ParseStoreCheckoutEvent` is the exception that proves
+  it: it does no network I/O, so every `StripeException` it can see *is* a bad payload.)
 - **The write throws.** `CreateCheckoutSessionAsync` rejects a non-positive amount and an
   unset Store key before any network call, and lets a Stripe failure propagate.
 - EUR → minor units rounds half away from zero; minor units → EUR is exact (a `long` over
-  `100m` cannot round). Both directions live in exactly one pair of functions, and the
-  round trip is lossless.
+  `100m` cannot round). `ToStripeMinorUnits` and `FromStripeMinorUnits` are the only places
+  either conversion happens, and the round trip is lossless.
 - Neither boot job can block, delay or fail startup, and neither throws out of its own body.
 - The registrar cannot act without `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY`, and cannot touch an
   endpoint whose host is not `*.n.burn.camp` with path `/Store/StripeWebhook`.
@@ -100,8 +105,9 @@ pass, two predicates** (our own URL, and a closed PR's). It was two identical
 - **No read/write interface split.** `I<Section>ServiceRead` separates table readers from
   table writers; this section writes no table — its "write" is an HTTP call — so the split has
   nothing to separate.
-- **No retry, backoff or circuit breaker.** One server, low volume; a failed Stripe read is
-  surfaced as `null` and retried by the next sync pass or the next page load.
+- **No retry, backoff or circuit breaker.** One server, low volume. A Stripe read that fails
+  for a transport or rate-limit reason throws, and the next sync pass or page load asks
+  again; nothing here treats a failure as a value.
 - **No caching decorator.** Every call exists to see Stripe's *current* state; a cached
   reconciliation list would be worse than no reconciliation list.
 - **No refunds, payouts or chargebacks.** Dashboard-manual by standing decision

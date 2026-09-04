@@ -66,12 +66,15 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 - Everything but `Contracts/` and `Section` is `internal sealed` (HUM0034).
 - `ParseStoreCheckoutEvent` returns `null` for an invalid signature and for an unset
   signing secret; it never throws and never partially trusts a payload.
-- `GetPaymentDetailsAsync` returns `null` when the Tickets key is unset or under-scoped, and
-  when the PaymentIntent has no charge. It never throws: every read in this section reports
-  "could not ask Stripe" the same way, and only `CreateCheckoutSessionAsync` throws.
-- `ListStoreCheckoutSessionsAsync` returns `null` — "Stripe could not be queried" — as
-  distinct from an empty list, so a caller cannot mistake an unreadable account for an
-  account with no sessions and false-flag recorded payments as orphans.
+- The two network reads return `null` for exactly the cases this section checks, and for
+  nothing else. `GetPaymentDetailsAsync`: the Tickets key is unset, the key lacks the scope
+  (`permission_error`), or the PaymentIntent has no charge. `ListStoreCheckoutSessionsAsync`:
+  the Store key is unset or lacks the read scope. **Every other Stripe failure propagates** —
+  an authentication error, a rate limit, a transport failure, cancellation. "Returns `null`"
+  means "the configuration says Stripe cannot be asked", never "the call failed".
+- `ListStoreCheckoutSessionsAsync`'s `null` is distinct from an empty list, so a caller cannot
+  mistake an unreadable account for an account with no sessions and false-flag recorded
+  payments as orphans.
 - `CreateCheckoutSessionAsync` rejects a non-positive amount and an unconfigured Store key
   before any network call, and throws (rather than returning a sentinel) on Stripe failure.
 - EUR ↔ minor units round half away from zero, both directions, in one place
