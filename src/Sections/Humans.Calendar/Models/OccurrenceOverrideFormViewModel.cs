@@ -19,6 +19,14 @@ internal sealed class OccurrenceOverrideFormViewModel
 
     public string RecurrenceTimezone { get; set; } = "Europe/Madrid";
 
-    public static Instant ParseOriginal(string s) =>
-        InstantPattern.ExtendedIso.Parse(s).Value;
+    /// <summary>
+    /// Parses the <c>{originalStartUtc}</c> route segment, or null when it is not a
+    /// valid ISO-8601 instant. Null means the URL names no occurrence, so callers
+    /// answer 404 — a hand-typed or truncated segment is a missing page, not a fault.
+    /// </summary>
+    public static Instant? TryParseOriginal(string s)
+    {
+        var result = InstantPattern.ExtendedIso.Parse(s);
+        return result.Success ? result.Value : null;
+    }
 }

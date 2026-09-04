@@ -8,17 +8,14 @@ using Humans.Calendar.Services.Dtos;
 namespace Humans.Calendar.Tests;
 
 /// <summary>
-/// Architecture tests enforcing the section shape for Calendar
-/// (nobodies-collective/Humans#866, G5).
+/// Architecture tests enforcing the section shape for Calendar.
 /// </summary>
 /// <remarks>
-/// Replaces <c>Humans.Application.Tests/Architecture/CalendarArchitectureTests.cs</c>. Its
-/// <c>CalendarService_DoesNotImportMicrosoftEntityFrameworkCore</c> test is gone: it asserted
-/// that <c>Humans.Application</c> carries no EF reference, and the section assembly holds the
-/// repository and legitimately does. The invariant it was reaching for — the service never
-/// touches a <c>DbContext</c> — is asserted directly on the constructor instead, which is
-/// stronger and survives the move. The §15 decorator and DTO-only read surface assertions carry
-/// over unchanged.
+/// Two shape rules this file does NOT cover, so nothing here should be read as
+/// covering them: that <c>CalendarService</c> never touches a <c>DbContext</c>, and
+/// that the <c>ICalendarServiceRead</c> surface stays DTO-only. Both are review-time
+/// rules; the section assembly holds the repository, so neither is a reference-graph
+/// property any test can read off the assembly.
 /// </remarks>
 public class CalendarArchitectureTests
 {

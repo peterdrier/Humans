@@ -37,7 +37,7 @@ internal sealed class CalendarService(
     private async Task<IReadOnlyDictionary<Guid, string>> ResolveTeamNamesAsync(
         IReadOnlyList<CalendarEventInfo> events, CancellationToken ct)
     {
-        // In-memory join (§6b): no .Include(e => e.OwningTeam).
+        // In-memory join (§6b): team names are never joined in SQL.
         var teamIds = events.Select(e => e.OwningTeamId).Distinct().ToList();
         var teamsById = await teamService.GetTeamsAsync(ct);
         return teamIds
@@ -216,7 +216,6 @@ internal sealed class CalendarService(
 
         if (count is null) return null;
 
-        // Expand COUNT-bounded rule via Ical.Net; return last-occurrence end-time.
         var ruleZone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(tz);
         if (ruleZone is null) return null;
 

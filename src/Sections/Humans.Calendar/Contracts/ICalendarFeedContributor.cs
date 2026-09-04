@@ -16,8 +16,7 @@ namespace Humans.Calendar.Contracts;
 /// <para>
 /// Lives under Calendar's <c>Contracts/</c> because a contributor fan-out inverts
 /// the dependency arrow: implementers reference Calendar, Calendar references none
-/// of them, so the folder is enough and no <c>.Contracts</c> leaf is needed
-/// (nobodies-collective/Humans#866, G5 lane 4b-2c).
+/// of them, so the folder is enough and no <c>.Contracts</c> leaf is needed.
 /// </para>
 /// </summary>
 public interface ICalendarFeedContributor : IFanout

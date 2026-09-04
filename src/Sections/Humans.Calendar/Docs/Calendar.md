@@ -1,8 +1,9 @@
 <!-- freshness:triggers
   src/Sections/Humans.Calendar/**
+  tests/Humans.Calendar.Tests/**
 -->
 <!-- freshness:flag-on-change
-  Calendar event/recurrence rules, soft-delete, audit-log triggers, and open-edit authorization model — review when Calendar service/entities/controller change.
+  Calendar event/recurrence rules, soft-delete, audit-log triggers, and open-edit authorization model — review when Calendar service/entities/controller change. The Architecture section names specific tests: review when the test project changes.
 -->
 
 # Calendar — Section Invariants
@@ -30,7 +31,7 @@ A community-calendar event belonging to a team. May be a single event or a recur
 | Description | string (4000) | Optional |
 | Location | string (500) | Optional |
 | LocationUrl | string (2000) | Optional |
-| OwningTeamId | Guid | Bare cross-section Guid column — no FK constraint, no nav (all cross-section FK constraints were cut in nobodies-collective/Humans#992; `memory/architecture/no-cross-section-ef-joins.md`). The Application service stitches team display names via `ITeamService.GetTeamNamesByIdsAsync` (§6b). |
+| OwningTeamId | Guid | Bare cross-section Guid column — no FK constraint, no nav (all cross-section FK constraints were cut in nobodies-collective/Humans#992; `memory/architecture/no-cross-section-ef-joins.md`). Team display names are stitched in memory via `ITeamServiceRead.GetTeamsAsync` (§6b). |
 | StartUtc | Instant | First (or only) occurrence start in UTC |
 | EndUtc | Instant? | Required iff `IsAllDay = false`. For all-day events, set to half-open exclusive midnight (`EndDate + 1 day` 00:00 in `RecurrenceTimezone`). May be null on legacy single-day all-day rows |
 | IsAllDay | bool | All-day event |
@@ -79,9 +80,9 @@ iCal feed is a separate `[Route("api/ical")]` on `ICalFeedApiController`
 | Method | Route | Action |
 |--------|-------|--------|
 | GET | `/Calendar` | Month grid (`Index`); `?year`, `?month`, `?teamId` |
-| GET | `/Calendar/List` | List view of same month window |
+| GET | `/Calendar/List` | One row per day of the same month window |
 | GET | `/Calendar/Agenda` | Upcoming-events agenda; `?from`, `?to`, `?teamId` (defaults: today → today+60d) |
-| GET | `/Calendar/Team/{teamId:guid}` | Per-team month grid; `?year`, `?month` |
+| GET | `/Calendar/Team/{teamId:guid}` | Per-team, one row per day (same shape as `/Calendar/List`, not the grid); `?year`, `?month` |
 | GET | `/Calendar/Event/{id:guid}` | Event detail + next 5 upcoming occurrences |
 | GET/POST | `/Calendar/Event/Create` | Create form; `?teamId` pre-selects team |
 | GET/POST | `/Calendar/Event/{id:guid}/Edit` | Edit form |
@@ -93,14 +94,14 @@ iCal feed is a separate `[Route("api/ical")]` on `ICalFeedApiController`
 
 | Actor | Capabilities |
 |-------|--------------|
-| Any authenticated human | View all calendar events (month grid, list, agenda views, per-team month view, filter by team). Create, edit, delete events on any team. Cancel or override single occurrences of recurring events. All changes recorded in the audit log |
+| Any authenticated human | View all calendar events (month grid, day-per-row list, agenda, and the per-team list; the `?teamId` query parameter narrows the first three, though no view renders a picker for it). Create, edit, delete events on any team. Cancel or override single occurrences of recurring events. All changes recorded in the audit log |
 | Admin | Same as any authenticated human. No additional calendar-specific privileges in v1 |
 
 The calendar is intentionally open: no resource-based authorization gates edit/delete/cancel. View-side edit/delete buttons render from `CalendarEventViewModel.CanEdit` (currently hard-coded to `true` in `CalendarController.Event` to express the open-edit policy in one place — flip the flag here when a tier check is added). Accountability is via the audit log (`IAuditLogService`), which records who performed each mutation.
 
 ## Invariants
 
-- Every `CalendarEvent` has a non-null `OwningTeamId` (foreign key to Teams).
+- Every `CalendarEvent` has a non-null `OwningTeamId` — a bare Guid naming a team, with no database FK constraint and no navigation property.
 - Only authenticated humans may create, edit, or delete events, or manage exceptions (enforced by `[Authorize]` on `CalendarController`).
 - Every mutating action (create / update / delete / cancel-occurrence / override-occurrence) writes an `AuditLogEntry` with the actor's user ID.
 - Title is required (non-null, non-empty).
@@ -127,7 +128,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 
 ## Cross-Section Dependencies
 
-- **Teams:** `ITeamServiceRead.GetTeamsAsync` — owning-team display names are stitched in-memory (§6b) instead of `.Include(e => e.OwningTeam)`. `ITeamServiceRead.GetTeamsAsync` / `GetTeamAsync` populate the team picker on Create/Edit/Index/Team views. Event-level audit entries reference the owning team as `relatedEntityId` for team-scoped audit filtering.
+- **Teams:** `ITeamServiceRead.GetTeamsAsync` / `GetTeamAsync` — owning-team display names are stitched in memory (§6b), never joined in SQL, and populate the team picker on the Create/Edit forms. Event-level audit entries reference the owning team as `relatedEntityId` for team-scoped audit filtering.
 - **Users/Identity:** `CreatedByUserId` is persisted on the entity; every subsequent mutation logs the actor via the audit log (no `UpdatedByUserId` column).
 - **Audit Log:** `IAuditLogService` — every mutation writes an entry. The `Event` view embeds the `AuditLog` view component scoped to `entityType = AuditEntityTypes.CalendarEvent` (a literal, not `nameof` — the string is persisted), `entityId = event.Id`.
 - **Users (iCal feed):** `IUserServiceRead.GetUserInfoAsync` — validates the caller's stored `ICalToken` and rejects merged users. Calendar's only outbound section reference.
@@ -137,19 +138,19 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 
 **Owning services:** `CalendarService` (keyed inner write/read service), `CachingCalendarService` (decorator exposing `ICalendarService` and `ICalendarServiceRead`), `ICalFeedService` (personal iCal feed orchestrator — owns no tables, injects no repository)
 **Owned tables:** `calendar_events`, `calendar_event_exceptions`
-**Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#569, 2026-04-23, design-rules §15i). Caching decorator added 2026-05-16. Per-section `CalendarDbContext` split out of `HumansDbContext` in nobodies-collective/Humans#858 (live in prod 2026-08-02). Moved into its own project `src/Sections/Humans.Calendar` at G5 (nobodies-collective/Humans#866). G5 lane 4b-2c then moved the personal iCal feed in from Base: `ICalendarFeedContributor`, `CalendarFeedItem`, `IICalFeedService` and `UserCalendarViewComponent` are public under `Contracts/` (a folder, not a `.Contracts` leaf — no consumer lives in Base and the fan-out inverts the arrow), the service and `ICalFeedApiController` are `internal`. Nothing outside the section reads a calendar *event*.
+**Status:** (A) Migrated — own project, own `CalendarDbContext`, §15 caching decorator. `ICalendarFeedContributor`, `CalendarFeedItem`, `IICalFeedService` and `UserCalendarViewComponent` are public under `Contracts/` (a folder, not a `.Contracts` leaf — no consumer lives in Base and the fan-out inverts the arrow); the service and `ICalFeedApiController` are `internal`. Nothing outside the section reads a calendar *event*.
 
-- Service lives in `Services/CalendarService.cs` and never touches a `DbContext`. The section assembly holds the repository, so this is no longer a reference-graph property — `CalendarArchitectureTests.CalendarService_ConstructorTakesNoEfType` asserts it on the constructor instead.
-- `ICalendarRepository` (impl in `Data/CalendarRepository.cs`) is the only code path that touches `calendar_events` / `calendar_event_exceptions`, via `IDbContextFactory<CalendarDbContext>` (per-section DbContext, nobodies-collective/Humans#858) for per-call scoped contexts. `OwningTeamId` is a bare Guid, so the Teams tables stay in `HumansDbContext` and are deliberately absent from `CalendarDbContext`.
+- Service lives in `Services/CalendarService.cs` and never touches a `DbContext`. The section assembly holds the repository, so this is no longer a reference-graph property and no test asserts it — it is a review-time rule.
+- `ICalendarRepository` (impl in `Data/CalendarRepository.cs`) is the only code path that touches `calendar_events` / `calendar_event_exceptions`, via `IDbContextFactory<CalendarDbContext>` (per-section DbContext, nobodies-collective/Humans#858) for per-call scoped contexts. `OwningTeamId` is a bare Guid, so no Teams table is mapped in `CalendarDbContext`.
 - **Caching decorator** — `CachingCalendarService` (Singleton, in `Services/`) wraps the keyed Scoped inner `ICalendarService` and owns the `CalendarEventInfo` projection — every non-soft-deleted event row with its `Exceptions` collection embedded, keyed by event id. Load-all warmup uses the normal `ICalendarService.GetAllEventInfosAsync` read method; per-key refresh uses `GetEventInfoAsync`. Window queries (`GetOccurrencesInWindowAsync`) are answered by snapshot-scanning the dict and delegating expansion to `CalendarOccurrenceExpander`. All five mutation paths (`Create`, `Update`, `Delete`, `CancelOccurrence`, `OverrideOccurrence`) flow through the decorator, which delegates to the inner and then calls `ReplaceAsync` (inherited from `TrackedCache`) to refresh the single cache entry (or remove it if soft-deleted). **Per-occurrence writes (cancel/override) evict the PARENT event entry** — there is no separate cache row for `CalendarEventException`. Documented on the projection record (`CalendarEventInfo` `<remarks>`). Surfaced on `/Debug/CacheStats` as `Calendar.Event`. `TrackedCache` owns startup warmup; the decorator is registered as the hosted service.
 - **Cross-domain navs** — `CalendarEvent.OwningTeamId` is a bare Guid column with no FK constraint and no `OwningTeam` nav property (nobodies-collective/Humans#992). Display stitching routes through `ITeamServiceRead.GetTeamsAsync` (§6b in-memory join). Aggregate-local nav `CalendarEvent.Exceptions` is kept and eagerly loaded by the repository.
 - **Cross-section calls** — public interfaces this section consumes: `ITeamServiceRead` (display names, team picker), `IAuditLogService` (mutation audit), `IUserServiceRead` (iCal token validation).
 - **iCal feed fan-out** — `ICalFeedService` is an orchestrator: no repository, injects `IEnumerable<ICalendarFeedContributor>` and iterates sequentially, rethrowing any contributor failure rather than silently omitting a section's items. It never reads `calendar_events` — the community calendar and the personal feed share a section, not a data path.
-- **Architecture test** — `tests/Humans.Calendar.Tests/CalendarArchitectureTests.cs` pins the §15 shape and the decorator invariants (`CachingCalendarService` is sealed, implements `ICalendarService`/`ICalendarServiceRead`, surfaces `ICacheStats`, and keeps the read interface DTO-only).
+- **Architecture test** — `tests/Humans.Calendar.Tests/CalendarArchitectureTests.cs` asserts four things and no more: `CachingCalendarService` implements both `ICalendarService` and `ICalendarServiceRead`; it surfaces `ICacheStats`; `CalendarEventInfo` is a sealed record; `CalendarEvent` keeps `OwningTeamId`. It also pins the `AuditEntityTypes` literals. The read surface being DTO-only is not asserted anywhere.
 
 ### Touch-and-clean guidance
 
 - When adding new read-only controller actions, route through `ICalendarServiceRead`; mutations route through `ICalendarService`. Do not inject `CalendarDbContext` (or any `DbContext`) into `CalendarController`.
-- Do not add `.Include(e => e.OwningTeam)` or `.Include(e => e.CreatedByUser)` — the entity carries FKs only.
+- Do not add navigation properties to Teams or Users on either entity — both carry bare Guids, and stitching happens in memory through the owning section's read interface.
 - Every new mutation must write an `AuditLogEntry` via `IAuditLogService`; do not skip audit for "admin convenience" operations.
 - Every new page must have a nav link (CLAUDE.md coding rules — no orphan pages).

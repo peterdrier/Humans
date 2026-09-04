@@ -5,19 +5,17 @@ using Microsoft.EntityFrameworkCore;
 namespace Humans.Calendar.Data;
 
 /// <summary>
-/// Per-section database context for the Calendar section
-/// (nobodies-collective/Humans#858): maps only <c>calendar_events</c> and
-/// <c>calendar_event_exceptions</c>, with its own
+/// Per-section database context for the Calendar section: maps only
+/// <c>calendar_events</c> and <c>calendar_event_exceptions</c>, with its own
 /// <c>__EFMigrationsHistory_Calendar</c> table and migrations under
-/// <c>Migrations/Calendar/</c>. Same database, same connection — the split is a
+/// <c>Data/Migrations/</c>. Same database, same connection — the split is a
 /// code-side partition of the EF model.
 /// </summary>
 /// <remarks>
-/// Internal-sealed like every section context (issue #750): repositories
-/// are the only consumers. Configurations are applied explicitly (not by
-/// assembly scanning) so this model can never accrete another section's tables.
-/// The owning team is a bare Guid, so the Teams tables stay in
-/// <see cref="UsersDbContext"/> and are deliberately absent here.
+/// Internal-sealed like every section context: repositories are the only
+/// consumers. Configurations are applied explicitly (not by assembly scanning)
+/// so this model can never accrete another section's tables. The owning team is
+/// a bare Guid, so no Teams table is mapped here.
 /// </remarks>
 internal sealed class CalendarDbContext(DbContextOptions<CalendarDbContext> options)
     : DbContext(options)

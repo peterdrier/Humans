@@ -29,8 +29,7 @@ public sealed record CalendarFeedItem(
     string? Url)
 {
     /// <summary>
-    /// Hardcoded production base for feed deep links — won't change before the
-    /// 2026 event. TODO(2027): move to configuration.
+    /// Hardcoded production base for feed deep links. TODO: move to configuration.
     /// </summary>
     public const string BaseUrl = "https://humans.nobodies.team";
 }

@@ -53,19 +53,21 @@
                 @foreach (var (day, o) in dayGroup.OrderBy(x => x.Occ.OccurrenceStartUtc))
                 {
                     var localStart = o.OccurrenceStartUtc.InZone(zone).LocalDateTime;
-                    var hideTime = o.ShouldHideTimeLabel(zone);
-                    var isContinuation = o.StartLocalDate(zone) != day;
                     <li class="mb-2">
-                        @if (hideTime)
-                        {
-                            <span class="badge bg-light text-dark me-2">
-                                @(isContinuation ? Localizer["Calendar_Continues"].Value : Localizer["Calendar_AllDay"].Value)
-                            </span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-light text-dark me-2">@DateFormattingExtensions.TimeOfDayPattern.Format(localStart.TimeOfDay)</span>
-                        }
+                        <span class="badge bg-light text-dark me-2">
+                            @switch (o.TimeLabelFor(day, zone))
+                            {
+                                case OccurrenceTimeLabel.Continues:
+                                    @Localizer["Calendar_Continues"].Value
+                                    break;
+                                case OccurrenceTimeLabel.AllDay:
+                                    @Localizer["Calendar_AllDay"].Value
+                                    break;
+                                default:
+                                    @DateFormattingExtensions.TimeOfDayPattern.Format(localStart.TimeOfDay)
+                                    break;
+                            }
+                        </span>
                         <a asp-action="Event" asp-route-id="@o.EventId">@o.Title</a>
                         <small class="text-muted">— @o.OwningTeamName</small>
                         @if (!string.IsNullOrWhiteSpace(o.Location))

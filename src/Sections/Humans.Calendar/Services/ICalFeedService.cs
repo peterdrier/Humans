@@ -8,8 +8,9 @@ namespace Humans.Calendar.Services;
 
 /// <summary>
 /// Orchestrator: fans the personal iCal feed out across <see cref="ICalendarFeedContributor"/>s
-/// into one VCALENDAR. Sequential, not Task.WhenAll: contributors share the
-/// scoped section DbContexts which are not thread-safe (same as GdprService).
+/// into one VCALENDAR. Sequential, not Task.WhenAll — not for safety (each contributor's
+/// factory-created context is safe to run concurrently, design-rules §8a) but for consistency
+/// with the other contributor fan-outs.
 /// </summary>
 internal sealed class ICalFeedService(
     IUserServiceRead users,

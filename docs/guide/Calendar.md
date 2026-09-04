@@ -4,6 +4,7 @@
   src/Sections/Humans.Calendar/Domain/**
   src/Sections/Humans.Calendar/Data/Configurations/**
   src/Sections/Humans.Calendar/Views/**
+  src/Sections/Humans.Calendar/Models/**
 -->
 <!-- freshness:flag-on-change
   Calendar event/recurrence rules, soft-delete, audit-log triggers, and the open-edit model — review when Calendar service/entities/controller change.

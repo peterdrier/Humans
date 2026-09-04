@@ -13,7 +13,6 @@ internal static class CalendarGridLayout
         IReadOnlyList<CalendarOccurrence> weekOccurrences,
         DateTimeZone zone)
     {
-        // Determine each occurrence's local start/end dates (inclusive end for display).
         var multiDay = new List<BannerPlacement>();
         var singleDayByDow = new List<CalendarOccurrence>[7];
         for (var i = 0; i < 7; i++) singleDayByDow[i] = [];
@@ -29,13 +28,11 @@ internal static class CalendarGridLayout
             var startDate = o.StartLocalDate(zone);
             var endDate = o.EndLocalDate(zone);
 
-            // Determine if this should render as a banner (multi-day covering >1 day in this week,
-            // OR an all-day event that covers the week at all).
+            // Anything spanning more than one local day renders as a banner.
             var coversMultipleDays = endDate > startDate;
 
             if (!coversMultipleDays)
             {
-                // Single-day timed event → regular per-cell render if the day is in this week.
                 var dow = Period.Between(weekStart, startDate, PeriodUnits.Days).Days;
                 if (dow >= 0 && dow < 7)
                 {

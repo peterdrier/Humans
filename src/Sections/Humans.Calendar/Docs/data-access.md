@@ -24,8 +24,9 @@ Repository: `ICalendarRepository`.
 | CalendarEvents | R/W |
 | CalendarEventExceptions | R/W |
 
-Cross-section calls via `ITeamService`, `IAuditLogService`,
-`ICalendarOccurrenceExpander`.
+Cross-section calls via `ITeamServiceRead` and `IAuditLogService`.
+Recurrence expansion is in-section and static (`CalendarOccurrenceExpander`),
+not an injected dependency.
 
 ### CachingCalendarService (Singleton, `Humans.Calendar.Services`)
 
