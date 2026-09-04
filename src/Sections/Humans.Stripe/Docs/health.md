@@ -127,3 +127,9 @@ pass, two predicates** (our own URL, and a closed PR's). It was two identical
 - **Two hosted services, no `IHostedService` ordering guarantee between them.** The smoke
   probe may log "webhook secret not set" moments before the registrar stamps one. Cosmetic,
   and cheaper than coordinating them.
+
+## History
+
+| Run | Date | Headline | PR |
+|---|---|---|---|
+| 1 | 2026-09-04 | First doctor pass — one real bug (the only read that threw where its three siblings return `null`, unreachable today because its one caller guards), the registrar's duplicate endpoint listing collapsed, and the prose trimmed of a shipped-work TODO, a type that does not exist and the G5 migration's provenance | peterdrier/Humans#pending |
