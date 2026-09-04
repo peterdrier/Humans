@@ -1,4 +1,4 @@
 using System.Runtime.CompilerServices;
 
-// Castle DynamicProxy, behind NSubstitute in Humans.Stripe.Tests.
+// Lets NSubstitute (Castle DynamicProxy) mock the section's internal types from its test project.
 [assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]

@@ -1,5 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Stripe/**
+  tests/Humans.Stripe.Tests/**
 -->
 <!-- freshness:flag-on-change
   Re-read the connector-seam invariant (no Stripe.net type on Contracts/) and the key/scope table when this section changes.
@@ -60,17 +61,23 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 - No Stripe.NET SDK type appears on `Contracts/` — verified by
   `StripeConnectorArchitectureTests.IStripeService_ExposesNoStripeSdkTypesOnItsPublicSurface`,
   which walks nested generics and arrays.
-- `Humans.Stripe` is the only production project with a `Stripe.net` package reference — no
-  longer test-enforced: `HumansApplicationAssembly_HasNoReferenceToStripeNet` was retired at
-  G5 lane 5c once `Humans.Application` was emptied of types (nobodies-collective/Humans#866),
-  and not re-pointed at `Humans.Base` per that batch's ruling against widening a guardrail
-  mid-move.
+- `Humans.Stripe` is the only production project with a `Stripe.net` package reference —
+  convention only; no test enforces it (nobodies-collective/Humans#866 retired the one that did).
 - Everything but `Contracts/` and `Section` is `internal sealed` (HUM0034).
 - `ParseStoreCheckoutEvent` returns `null` for an invalid signature and for an unset
   signing secret; it never throws and never partially trusts a payload.
-- `ListStoreCheckoutSessionsAsync` returns `null` — "Stripe could not be queried" — as
-  distinct from an empty list, so a caller cannot mistake an unreadable account for an
-  account with no sessions and false-flag recorded payments as orphans.
+- The network reads return `null` for exactly the cases this section checks, and for
+  nothing else. `GetPaymentDetailsAsync`: the Tickets key is unset, the key lacks the scope
+  (`permission_error`), or Stripe answered and the PaymentIntent has no charge.
+  `ListStoreCheckoutSessionsAsync`: the Store key is unset or lacks the read scope.
+  **Every other Stripe failure propagates** — an authentication error, a rate limit, a
+  transport failure, cancellation. `null` never means "the call failed": it means the section
+  checked and has nothing to hand back, either because the configuration says Stripe cannot be
+  asked or — `GetPaymentDetailsAsync` only — because Stripe was asked and the intent carries no
+  charge to report fees from.
+- `ListStoreCheckoutSessionsAsync`'s `null` is distinct from an empty list, so a caller cannot
+  mistake an unreadable account for an account with no sessions and false-flag recorded
+  payments as orphans.
 - `CreateCheckoutSessionAsync` rejects a non-positive amount and an unconfigured Store key
   before any network call, and throws (rather than returning a sentinel) on Stripe failure.
 - EUR ↔ minor units round half away from zero, both directions, in one place
@@ -96,10 +103,13 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 - At boot, the smoke probe reads one PaymentIntent (Tickets key) and lists one Checkout
   Session (Store key), logging a warning per unconfigured or under-scoped key. It never
   blocks or fails startup.
-- At boot in an ephemeral environment, the registrar sweeps webhook endpoints whose host
-  is `{N}.n.burn.camp` for a PR `{N}` no longer open, deletes any endpoint already
-  pointing at this host's URL, creates a fresh one, and stamps its signing secret into
-  `StripeSettings` in memory.
+- At boot in an ephemeral environment, the registrar lists the account's webhook endpoints
+  once and, from that one listing, deletes any `{N}.n.burn.camp` endpoint whose PR `{N}` is no
+  longer open and then any endpoint already pointing at this host's URL — then creates a fresh
+  one and stamps its signing secret into `StripeSettings` in memory. The own-URL deletion is
+  ordered last, immediately before the create, so an abort mid-cleanup cannot leave this host
+  without an endpoint. The cross-PR half is skipped when the open-PR list cannot be fetched;
+  the own-URL half always runs.
 - On a `permission_error` from any call, the connector logs which key is missing which
   scope and either returns `null` (reads) or rethrows (checkout creation).
 
@@ -114,7 +124,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 
 **Owning services:** `StripeService`, `StripeStartupSmokeService`, `StoreWebhookRegistrationService` (all `internal sealed`, `Humans.Stripe.Services`)
 **Owned tables:** None — connector section.
-**Status:** (A) Migrated — moved out of `Humans.Application` / `Humans.Infrastructure` / `Humans.Web` into its own project by nobodies-collective/Humans#866 (G5 lane 4b-2a), 2026-08-14.
+**Status:** (A) Migrated (nobodies-collective/Humans#866).
 
 ### Cross-section read interface
 

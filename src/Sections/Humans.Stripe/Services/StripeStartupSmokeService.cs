@@ -18,7 +18,7 @@ namespace Humans.Stripe.Services;
 /// Stripe does not expose a REST endpoint that introspects a Restricted Key's scopes
 /// (verified against docs.stripe.com/keys/restricted-api-keys, 2026-05-03). The probe can confirm
 /// that the scopes the integration uses ARE present — it cannot prove that no extra scopes are
-/// granted. Refunds/payouts/chargebacks remain dashboard-manual regardless.
+/// granted.
 /// </remarks>
 internal sealed class StripeStartupSmokeService(IOptions<StripeSettings> settings, ILogger<StripeStartupSmokeService> logger)
     : IHostedService
