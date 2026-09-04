@@ -37,7 +37,12 @@ public class StripeBootJobTests
 
         start.IsCompleted.Should().BeTrue("boot must not wait on a Stripe round trip");
         // Tickets key, Store key, webhook secret — one warning each, and no throw.
-        await WaitUntil(() => log.Entries.Count(e => e.Level == LogLevel.Warning) >= 3);
+        // Count, not Count(predicate): CapturingLogger appends to a plain List, so enumerating it
+        // while the probe is still logging is a concurrent read/write. The count field is not an
+        // enumeration; and with nothing configured the probe logs these three and then awaits an
+        // empty probe set, so once the third lands nobody is writing and the assertion below is
+        // free to enumerate. The dropped level predicate is not lost — the next line asserts it.
+        await WaitUntil(() => log.Entries.Count >= 3);
         log.Entries.Should().HaveCount(3).And.OnlyContain(e => e.Level == LogLevel.Warning);
 
         await probe.StopAsync(CancellationToken.None);
