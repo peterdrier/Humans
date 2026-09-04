@@ -13,20 +13,13 @@
     var codesRedeemed = Model.Stats.CodesRedeemed;
     var totalGrants = Model.Stats.TotalGrants;
     var redemptionPct = totalGrants > 0 ? (int)Math.Round(100.0 * codesRedeemed / totalGrants) : 0;
-    var statusClass = Model.Campaign.Status switch
-    {
-        CampaignStatus.Draft => "bg-secondary",
-        CampaignStatus.Active => "bg-success",
-        CampaignStatus.Completed => "bg-info",
-        _ => "bg-secondary"
-    };
     var isAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
     var canGenerateCodes = (await AuthService.AuthorizeAsync(User, PolicyNames.TicketAdminOrAdmin)).Succeeded;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h1>@Model.Campaign.Title <span class="badge @statusClass fs-6">@Model.Campaign.Status</span></h1>
+        <h1>@Model.Campaign.Title <span class="badge @EnumBadgeMap.For(Model.Campaign.Status) fs-6">@Model.Campaign.Status</span></h1>
         @if (!string.IsNullOrWhiteSpace(Model.Campaign.Description))
         {
             <div class="text-muted mb-0">@Html.SanitizedMarkdown(Model.Campaign.Description)</div>
@@ -47,8 +40,6 @@
     </div>
 </div>
 
-
-@* Action buttons *@
 <div class="d-flex flex-wrap gap-2 mb-4">
     @if (isAdmin && Model.Campaign.Status == CampaignStatus.Active)
     {
@@ -115,7 +106,6 @@
     }
 </div>
 
-@* Stats cards *@
 <div class="row mb-4">
     <div class="col-md-3">
         <div class="card text-center">
@@ -151,7 +141,6 @@
     </div>
 </div>
 
-@* Redemption stats *@
 @if (totalGrants > 0)
 {
     <div class="alert alert-info mb-4">
@@ -160,7 +149,6 @@
     </div>
 }
 
-@* Grants table *@
 <div class="card">
     <div class="card-header">Grants</div>
     <div class="card-body p-0">
@@ -188,14 +176,7 @@
             Func<CampaignGrantSummary, IHtmlContent> emailStatusCell = @<text>
                 @if (item.LatestEmailStatus.HasValue)
                 {
-                    var emailStatusClass = item.LatestEmailStatus switch
-                    {
-                        EmailOutboxStatus.Queued => "bg-warning",
-                        EmailOutboxStatus.Sent => "bg-success",
-                        EmailOutboxStatus.Failed => "bg-danger",
-                        _ => "bg-secondary"
-                    };
-                    <span class="badge @emailStatusClass">@item.LatestEmailStatus</span>
+                    <span class="badge @EnumBadgeMap.For(item.LatestEmailStatus.Value)">@item.LatestEmailStatus</span>
                     @if (item.LatestEmailAt.HasValue)
                     {
                         <small class="text-muted ms-1">@item.LatestEmailAt.Value.ToDateTime()</small>
@@ -206,14 +187,18 @@
                     <span class="text-muted">-</span>
                 }
             </text>;
+            @* POST Resend is AdminOnly; don't render a button TicketAdmin can only 403 on. *@
             Func<CampaignGrantSummary, IHtmlContent> resendCell =
                 @<text>
-                    <form asp-action="Resend" asp-route-grantId="@item.Id" method="post" class="d-inline">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-outline-secondary btn-sm">
-                            <i class="fa-solid fa-rotate-right me-1"></i>Resend
-                        </button>
-                    </form>
+                    @if (isAdmin)
+                    {
+                        <form asp-action="Resend" asp-route-grantId="@item.Id" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-outline-secondary btn-sm">
+                                <i class="fa-solid fa-rotate-right me-1"></i>Resend
+                            </button>
+                        </form>
+                    }
                 </text>;
             var grantsTable = TableModel.For(rows)
                 .Template("Human", humanCell)

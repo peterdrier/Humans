@@ -23,8 +23,8 @@ public sealed class Section : ISection
     {
         services.AddSectionDbContext<CampaignsDbContext>(sentinelTable: "campaigns");
 
-        // §15 repository pattern (issue #546): Singleton + IDbContextFactory (§15b) so the
-        // repository owns context lifetime.
+        // §15 repository pattern (nobodies-collective/Humans#546): Singleton +
+        // IDbContextFactory (§15b) so the repository owns context lifetime.
         services.AddSingleton<ICampaignRepository, CampaignRepository>();
         services.AddScoped<CampaignService>();
         services.AddScoped<ICampaignService>(sp => sp.GetRequiredService<CampaignService>());

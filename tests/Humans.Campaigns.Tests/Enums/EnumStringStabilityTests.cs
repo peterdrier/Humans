@@ -26,12 +26,9 @@ public class EnumStringStabilityTests
 
     private static void AssertNames(Type enumType, string[] expectedNames)
     {
-        var actualNames = Enum.GetNames(enumType);
-        foreach (var expected in expectedNames)
-        {
-            actualNames.Should().Contain(expected,
-                $"enum {enumType.Name} member '{expected}' is stored as a string in the DB. " +
-                "If you renamed it, create a DB migration to UPDATE the old values.");
-        }
+        Enum.GetNames(enumType).Should().BeEquivalentTo(expectedNames,
+            $"enum {enumType.Name} members are stored as strings in the DB. " +
+            "If you renamed one, create a DB migration to UPDATE the old values; " +
+            "if you added or removed one, update this expected list.");
     }
 }

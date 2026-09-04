@@ -18,7 +18,7 @@ namespace Humans.Campaigns.Services;
 /// <summary>
 /// The Campaigns section's service. Implements the cross-assembly
 /// <see cref="ICampaignService"/> contract; the section's own controller injects this
-/// concrete type for the sixteen members that stay inside (design §15 step 5).
+/// concrete type for the members that stay inside the section (design §15 step 5).
 /// </summary>
 internal sealed class CampaignService(
     ICampaignRepository repository,
@@ -220,7 +220,7 @@ internal sealed class CampaignService(
     public Task<Guid?> GetCampaignIdForGrantAsync(Guid grantId, CancellationToken ct = default) =>
         repository.GetCampaignIdForGrantAsync(grantId, ct);
 
-    public async Task ImportCodesAsync(Guid campaignId, IEnumerable<string> codes, CancellationToken ct = default)
+    public async Task<(int Imported, int Skipped)> ImportCodesAsync(Guid campaignId, IEnumerable<string> codes, CancellationToken ct = default)
     {
         var campaign = await repository.FindForMutationWithCodesAsync(campaignId, ct)
             ?? throw new InvalidOperationException($"Campaign {campaignId} not found.");
@@ -265,6 +265,8 @@ internal sealed class CampaignService(
         logger.LogInformation(
             "Campaign {CampaignId}: imported {Imported} codes, skipped {Skipped} duplicates",
             campaignId, imported, skipped);
+
+        return (imported, skipped);
     }
 
     private async Task ImportGeneratedCodesAsync(Guid campaignId, IReadOnlyList<string> codes,

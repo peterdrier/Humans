@@ -9,11 +9,8 @@ namespace Humans.Campaigns.Tests.Architecture;
 /// (nobodies-collective/Humans#866, G5).
 /// </summary>
 /// <remarks>
-/// Replaces <c>Humans.Application.Tests/Architecture/CampaignsArchitectureTests.cs</c>. Its
-/// <c>CampaignService_DoesNotReferenceEntityFrameworkCore</c> test is gone: it asserted that
-/// <c>Humans.Application</c> carries no EF reference, and the section assembly holds the
-/// repository and legitimately does — so over there the assertion is either false or vacuous.
-/// Keeping the service off the DbSets is HUM0025's job now.
+/// No EF-reference assertion here: the section assembly holds the repository and
+/// legitimately references EF. Keeping the service off the DbSets is HUM0025's job.
 /// </remarks>
 public class CampaignsArchitectureTests
 {

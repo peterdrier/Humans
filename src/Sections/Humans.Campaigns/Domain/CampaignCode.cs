@@ -10,7 +10,6 @@ internal sealed class CampaignCode
     public int ImportOrder { get; set; }
     public Instant ImportedAt { get; set; }
 
-    // Navigation
     public Campaign Campaign { get; set; } = null!;
     public CampaignGrant? Grant { get; set; }
 }

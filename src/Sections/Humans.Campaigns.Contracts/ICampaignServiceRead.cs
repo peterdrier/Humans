@@ -18,15 +18,15 @@ public interface ICampaignServiceRead
     Task<CampaignCodeTrackingData> GetCodeTrackingAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns campaign grants for a user where the campaign is Active or Completed,
-    /// ordered by AssignedAt descending.
+    /// Returns campaign grants for a user where the campaign is Active or
+    /// Completed. Unordered — callers sort.
     /// </summary>
     Task<IReadOnlyList<CampaignGrantSummary>> GetActiveOrCompletedGrantsForUserAsync(
         Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all campaign grants for a user (any campaign status),
-    /// ordered by AssignedAt descending. Used for admin detail views.
+    /// Returns all campaign grants for a user (any campaign status). Unordered —
+    /// callers sort. Used for admin detail views.
     /// </summary>
     Task<IReadOnlyList<CampaignGrantSummary>> GetAllGrantsForUserAsync(
         Guid userId, CancellationToken ct = default);

@@ -149,8 +149,10 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
             return RedirectToAction(nameof(Detail), new { id });
         }
 
-        await campaignService.ImportCodesAsync(id, codes);
-        SetSuccess($"Imported {codes.Count} codes.");
+        var (imported, skipped) = await campaignService.ImportCodesAsync(id, codes);
+        SetSuccess(skipped > 0
+            ? $"Imported {imported} codes; skipped {skipped} duplicates."
+            : $"Imported {imported} codes.");
         return RedirectToAction(nameof(Detail), new { id });
     }
 

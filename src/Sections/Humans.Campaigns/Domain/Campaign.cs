@@ -17,7 +17,6 @@ internal sealed class Campaign
     public Instant CreatedAt { get; set; }
     public Guid CreatedByUserId { get; set; }
 
-    // Navigation.
     public ICollection<CampaignCode> Codes { get; } = new List<CampaignCode>();
     public ICollection<CampaignGrant> Grants { get; } = new List<CampaignGrant>();
 }
