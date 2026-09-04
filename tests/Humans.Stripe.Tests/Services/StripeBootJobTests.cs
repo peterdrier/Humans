@@ -17,6 +17,16 @@ public class StripeBootJobTests
 {
     private static readonly TimeSpan Settle = TimeSpan.FromSeconds(5);
 
+    /// <summary>
+    /// How long a test that asserts <em>silence</em> waits before believing it. Asserting an
+    /// absence here is time-bounded by nature — the registrar's fire-and-forget task is not
+    /// observable from outside — so unlike <see cref="Settle"/>, which is an upper bound a
+    /// passing test never reaches, this window is paid in full on every run. Do not shave it to
+    /// tens of milliseconds: under CI load the <c>Task.Run</c> body may not have been scheduled
+    /// yet, and the test would pass without the code having had a chance to speak.
+    /// </summary>
+    private static readonly TimeSpan SilenceWindow = TimeSpan.FromMilliseconds(500);
+
     [HumansFact]
     public async Task Smoke_probe_does_not_block_startup_and_warns_per_unconfigured_key()
     {
@@ -40,7 +50,15 @@ public class StripeBootJobTests
         // registrar must then do nothing at all — not even complain.
         var (registrar, log) = BuildRegistrar(new StripeSettings(), "https://5.n.burn.camp");
 
-        (await StartAndSettle(registrar, log)).Should().BeEmpty();
+        var start = registrar.StartAsync(CancellationToken.None);
+        start.IsCompleted.Should().BeTrue("boot must not wait on a Stripe round trip");
+
+        // Not StartAndSettle: its wait is for an entry to appear, which is exactly what must not
+        // happen here, so it could only ever time out. See SilenceWindow.
+        await Task.Delay(SilenceWindow);
+        await registrar.StopAsync(CancellationToken.None);
+
+        log.Entries.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -89,9 +107,9 @@ public class StripeBootJobTests
         var start = registrar.StartAsync(CancellationToken.None);
         start.IsCompleted.Should().BeTrue("boot must not wait on a Stripe round trip");
 
-        // Every path under test returns before any network call, so it settles immediately; the
-        // wait is only for the background task to be scheduled. A silent path has nothing to wait
-        // for, so this drains the full window and asserts on what did not appear.
+        // Every caller of this helper expects exactly one entry, and every path they exercise
+        // returns before any network call — so the wait is only for the background task to be
+        // scheduled, and returns as soon as it has been. Settle is the upper bound, not the cost.
         await WaitUntil(() => log.Entries.Count > 0);
         await registrar.StopAsync(CancellationToken.None);
         return log.Entries;
