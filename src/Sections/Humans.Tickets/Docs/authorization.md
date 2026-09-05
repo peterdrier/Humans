@@ -1,3 +1,8 @@
+<!-- freshness:triggers
+  src/Sections/Humans.Tickets/Controllers/**
+  src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
+-->
+
 # Tickets — Authorization
 
 | Controller | Scope | Roles | Source |

@@ -1,6 +1,6 @@
 <!-- freshness:triggers
-  src/Sections/Humans.Tickets/Views/Ticket/**
-  src/Sections/Humans.Tickets/Controllers/TicketController.cs
+  src/Sections/Humans.Tickets/Views/**
+  src/Sections/Humans.Tickets/Controllers/**
   src/Sections/Humans.Tickets/Services/**
   src/Sections/Humans.Tickets/Domain/TicketAttendee.cs
   src/Sections/Humans.Tickets/Domain/TicketOrder.cs
@@ -30,7 +30,7 @@ Ticket data syncs automatically. Attendees are auto-matched to humans by email, 
 - **Orders** (`/Tickets/Orders`) — paginated orders with donation/VAT columns
 - **Attendees** (`/Tickets/Attendees`) — paginated attendees with VIP badges and taxable/donation split
 - **Codes** (`/Tickets/Codes`) — discount-code redemption tied to campaigns (read-only here; codes are *generated* on the Campaign detail page)
-- **Gate List** (`/Tickets/GateList`) — door check-in list
+- **Gate List** (`/Tickets/GateList`) — placeholder; door lookup lives at `/Scanner/Tickets`
 - **Who Hasn't Bought** (`/Tickets/WhoHasntBought`) — active Volunteers without matched tickets
 - **Sales Aggregates** (`/Tickets/SalesAggregates`) — weekly and quarterly reports
 
@@ -92,7 +92,7 @@ When you import historical attendance from outside the vendor (e.g. from a previ
 
 ### Process ticket transfers
 
-When a Volunteer requests a ticket transfer (see [Transferring your ticket](TicketTransfers.md)), it lands in the admin queue at `/Tickets/Admin/Transfers`. Open a request's detail to review it, then process it one of two ways. **Process transfer** does the void-and-reissue at the vendor automatically — the original ticket is voided to a hold and the same ticket type is reissued to the recipient at the original price, with no refund or order change. Or do the swap by hand in the vendor dashboard and use **Mark successful** to record it (the next sync reconciles the local attendee rows). If the automated path half-fails (ticket voided but the reissue failed), a **Retry reissue** button finishes it from the held seat. Either way both people are emailed. **Cancel transfer** requires a reason, which is emailed to the sender and recipient. Ticket Admin and Admin can decide; Board can view.
+When a Volunteer requests a ticket transfer (see [Transferring your ticket](TicketTransfers.md)), it lands in the admin queue at `/Tickets/Admin/Transfers`. Open a request's detail to review it, then process it one of two ways. **Process transfer** does the void-and-reissue at the vendor automatically — the original ticket is voided to a hold and the same ticket type is reissued to the recipient at the original price, with no refund or order change. Or do the swap by hand in the vendor dashboard and use **Mark successful** to record it (the next sync reconciles the local attendee rows). If the automated path half-fails (ticket voided but the reissue failed), a **Retry reissue** button finishes it from the held seat. Either way both people are emailed. **Cancel transfer** requires a reason, which is emailed to the sender and recipient. The queue and its decisions are Ticket Admin and Admin only; Board cannot open it.
 
 ### Import attendee contacts
 

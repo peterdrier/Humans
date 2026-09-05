@@ -105,9 +105,9 @@ internal sealed class TicketTransferService(
         if (attendee.Status != TicketAttendeeStatus.Valid)
             throw new InvalidOperationException("Only Valid tickets can be transferred.");
 
-        // A gate scan keeps Status = Valid and records the scan in CheckedInAt
-        // (nobodies-collective/Humans#736), so the Valid check above no longer
-        // catches an already-used ticket — guard on CheckedInAt explicitly.
+        // A gate scan keeps Status = Valid and records the scan in CheckedInAt,
+        // so the Valid check above does not catch an already-used ticket — guard
+        // on CheckedInAt explicitly.
         if (attendee.CheckedInAt is not null)
             throw new InvalidOperationException("Checked-in tickets cannot be transferred.");
 

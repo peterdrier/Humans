@@ -1,0 +1,13 @@
+# Section debt ledger for Humans.Tickets. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+inbox:
+  - added: 2026-09-05
+    what: "Test gaps from the invariant matrix (finding 15, /section-doctor on Tickets 2026-09-05): (a) TicketQueryService.EraseForUserAsync has no behavior test (only the DI sweep); (b) GetUserTicketExportDataAsync is untested; (c) TicketRepository.HasEventTicketAsync, TicketQueryService.ComputeUserTicketCountAsync, GetMatchedTicketUserIdsAsync and GetMatchedUserIdsForEmailsAsync have no test anywhere, including the verified-email fallback; (d) 'sync removes Ticketed when no valid ticket remains' is unpinned — the participation tests cover add/flip only."
+    review: light
+  - added: 2026-09-05
+    what: "TicketController.Orders/Attendees/Codes/SalesAggregates copy service DTOs into Models/TicketViewModels.cs field-by-field (TicketDashboardDtos.cs mirrored, ~150 lines; the Attendees VIP split IsVip/TaxableAmount/VipDonation is computed in the controller). Collapse: bind the DTOs directly as TicketTransferAdmin/Detail and Onsite already do, moving the VIP split onto the AttendeeRow DTO or into the view; the views declare the row types in Func<TicketOrderRow, IHtmlContent> helpers, so each needs a render check. Skipped by the 2026-09-05 run (finding 6) because the cloud container has no Postgres for that check."
+    review: panel
+  - added: 2026-09-05
+    what: "CachingTicketQueryService carries WithInner twice — once on the outer class and once on the nested UserHoldingsCache. One resolver would do; touch when the file is next open for a behavior change (finding S4, /section-doctor on Tickets 2026-09-05)."
+    review: light

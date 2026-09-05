@@ -8,11 +8,11 @@ namespace Humans.Tickets.Contracts;
 /// Shared by the transfer wizard, the /Profile/Me ticket card, and the homepage.
 /// </summary>
 /// <remarks>
-/// On the Tickets contracts leaf rather than Shell because <c>Humans.Scanner</c>'s ticket card
-/// renders <c>&lt;vc:ticket-stub&gt;</c>, and a section's <c>_ViewImports</c> can only reach
-/// assemblies it references — a Shell-resident component renders as inert literal
-/// markup from a section view (G5-SECTION-TEMPLATE.md step 6). It qualifies: the component
-/// names no section vocabulary, only <c>TicketStubInfo</c>, which already lives in Base.
+/// Public, in this section's <c>Contracts/</c> folder, because <c>Humans.Scanner</c>'s ticket
+/// card renders <c>&lt;vc:ticket-stub&gt;</c>, and a section's <c>_ViewImports</c> can only
+/// reach assemblies it references — a Shell-resident component renders as inert literal
+/// markup from a section view. It names no section vocabulary, only
+/// <see cref="TicketStubInfo"/> from the contracts leaf.
 /// </remarks>
 public sealed class TicketStubViewComponent : ViewComponent
 {

@@ -10,7 +10,7 @@ namespace Humans.Tickets;
 /// <remarks>
 /// Public because the boot localization diagnostic discovers section resource markers via
 /// <c>GetExportedTypes()</c>; an internal marker is skipped in silence (§15.3b).
-/// The set is the 25 <c>TicketTransfer_*</c> keys read by the transfer wizard — the only
+/// The set is the <c>TicketTransfer_*</c> keys read by the transfer wizard — the only
 /// view in the section that localizes anything — plus the four
 /// <c>Enum_TicketTransferStatus_*</c> keys, which have no call site (the wizard spells the
 /// four statuses with its own <c>TicketTransfer_Status*</c> keys) and moved with the set

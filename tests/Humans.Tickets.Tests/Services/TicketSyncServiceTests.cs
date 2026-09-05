@@ -226,6 +226,12 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     [HumansFact]
     public async Task SyncOrdersAndAttendeesAsync_NonTransientError_SetsErrorState()
     {
+        // A failed sync must not move the cursor: the next run re-fetches from the last success.
+        var lastSuccess = Instant.FromUtc(2026, 2, 1, 0, 0);
+        var seeded = await TicketsDb.TicketSyncStates.FirstAsync(s => s.Id == 1, Xunit.TestContext.Current.CancellationToken);
+        seeded.LastSyncAt = lastSuccess;
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
         _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Throws(new HttpRequestException("Unauthorized", null, System.Net.HttpStatusCode.Unauthorized));
 
@@ -237,6 +243,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             .FirstAsync(s => s.Id == 1, Xunit.TestContext.Current.CancellationToken);
         syncState.SyncStatus.Should().Be(TicketSyncStatus.Error);
         syncState.LastError.Should().Be("Unauthorized");
+        syncState.LastSyncAt.Should().Be(lastSuccess);
     }
 
     // ==========================================================================

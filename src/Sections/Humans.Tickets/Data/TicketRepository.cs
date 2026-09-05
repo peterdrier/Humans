@@ -11,9 +11,8 @@ namespace Humans.Tickets.Data;
 
 /// <summary>
 /// EF-backed implementation of <see cref="ITicketRepository"/>. The only
-/// non-test file that writes to <c>ticket_orders</c>, <c>ticket_attendees</c>,
-/// and <c>ticket_sync_states</c> after the TicketSyncService migration lands
-/// (per PR #545c / umbrella #545).
+/// non-test file that writes to <c>ticket_orders</c>, <c>ticket_attendees</c>
+/// and <c>ticket_sync_state</c>.
 /// </summary>
 /// <remarks>
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
@@ -103,7 +102,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         await using var ctx = await factory.CreateDbContextAsync(ct);
         // Exclude NULL / empty / placeholder ("--") / whitespace-only PI rows at the
         // SQL layer so we don't drag them into memory and hit Stripe with bogus ids.
-        // LTRIM(RTRIM(...)) is the SQL-Server-friendly trim; it collapses any pure-whitespace
+        // LTRIM(RTRIM(...)) collapses any pure-whitespace
         // value to '' and lets us catch the placeholder regardless of surrounding spaces.
         return await ctx.TicketOrders
             .AsNoTracking()

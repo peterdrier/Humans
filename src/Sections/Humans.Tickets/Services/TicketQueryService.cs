@@ -17,7 +17,7 @@ using Humans.Tickets.Services.Dtos;
 namespace Humans.Tickets.Services;
 
 /// <summary>
-/// Tickets read service (inner) behind <c>CachingTicketQueryService</c> decorator (§15 / T-07).
+/// Tickets read service (inner) behind <c>CachingTicketQueryService</c> decorator (§15).
 /// </summary>
 internal sealed class TicketQueryService(
     ITicketRepository ticketRepository,

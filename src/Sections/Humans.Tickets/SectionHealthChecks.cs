@@ -9,7 +9,7 @@ namespace Humans.Tickets;
 /// <summary>
 /// Tickets' health-check contribution, at the project root by convention. Discovered by
 /// Shell — nothing names it, so it needs no section prefix. Keeps the "ticket-vendor"
-/// monitoring key its existing name and "external" tag (nobodies-collective/Humans#1075).
+/// monitoring key its existing name and "external" tag.
 /// </summary>
 internal sealed class SectionHealthChecks : ISectionHealthChecks
 {

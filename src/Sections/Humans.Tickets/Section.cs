@@ -20,15 +20,10 @@ namespace Humans.Tickets;
 /// nothing names it, so it needs no section prefix.
 /// </summary>
 /// <remarks>
-/// <c>TicketSyncJob</c> lives in this project's <c>Contracts/</c> folder since G5 lane 5b-3
-/// (nobodies-collective/Humans#866); its registration and schedule are contributed via
-/// <c>SectionJobs.cs</c> (#1074's jobs seam). The other two jobs the section used to be credited
-/// with went to their real owners in the same
-/// move — <c>TicketingBudgetSyncJob</c> to <c>Humans.Budget</c> (both its collaborators are
-/// Budget's) and <c>GateVendorCheckInJob</c> to <c>Humans.Gate</c> (both its enqueue sites
-/// are Gate controllers). Shell's <c>TicketVendorHealthCheck</c> is the same shape, and it
-/// probes this section's vendor port deliberately — it is the one injection site of
-/// <c>ITicketVendorService</c> outside <c>Humans.Tickets</c>.
+/// <c>TicketSyncJob</c> (<c>Jobs/</c>) is the section's only job; its registration and
+/// schedule are contributed via <c>SectionJobs.cs</c>. <c>TicketVendorHealthCheck</c>
+/// (<c>Health/</c>) is the section's own probe over the vendor port, contributed via
+/// <c>SectionHealthChecks.cs</c>.
 /// </remarks>
 public sealed class Section : ISection
 {
@@ -38,8 +33,7 @@ public sealed class Section : ISection
 
         services.AddSingleton<ITicketRepository, TicketRepository>();
 
-        // Gate-terminal account management, provisioned from /Tickets/Admin/Gate — moved
-        // here with that controller (nobodies-collective/Humans#1091).
+        // Gate-terminal account management, provisioned from /Tickets/Admin/Gate.
         services.AddScoped<GateTerminalAccountSeeder>();
         services.AddScoped<TicketSyncService>();
         services.AddScoped<ITicketSyncService>(sp => sp.GetRequiredService<TicketSyncService>());

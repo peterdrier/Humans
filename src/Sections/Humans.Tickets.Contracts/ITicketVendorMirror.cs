@@ -9,9 +9,7 @@ namespace Humans.Tickets.Contracts;
 /// dashboard and vendor check-in app stay consistent with what happened at the gate.
 /// </summary>
 /// <remarks>
-/// Driven by <c>GateVendorCheckInJob</c>, which moved to <c>Humans.Gate/Contracts/</c> at G5
-/// lane 5b-3 (nobodies-collective/Humans#866) — this is now a plain section-to-section call
-/// through a public contract, not a Base consumer. It goes through
+/// Driven by Gate's <c>GateVendorCheckInJob</c>. It goes through
 /// Tickets rather than straight at the vendor port for the reason
 /// <see cref="ITicketDiscountCodes"/> does. This is a write, so it is not on
 /// <see cref="ITicketServiceRead"/>. The Gate section's own <c>gate_scan_events</c>

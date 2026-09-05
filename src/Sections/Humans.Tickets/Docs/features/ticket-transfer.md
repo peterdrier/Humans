@@ -35,9 +35,8 @@ ticket team.
 
 Tracked in: peterdrier/Humans#382. The void+reissue mechanics are researched in
 [`docs/superpowers/probes/2026-05-04-tickettailor-write-api.md`](../../../../../docs/superpowers/probes/2026-05-04-tickettailor-write-api.md)
-and [`…-tt-reissue-verification.md`](../../../../../docs/superpowers/probes/2026-05-04-tt-reissue-verification.md). The
-earlier engine's retry-issue + vendor-step timeline UI were **not** restored — outcomes are recorded on the
-request columns + audit log instead.
+and [`…-tt-reissue-verification.md`](../../../../../docs/superpowers/probes/2026-05-04-tt-reissue-verification.md).
+Outcomes are recorded on the request columns + audit log.
 
 ## User Stories
 

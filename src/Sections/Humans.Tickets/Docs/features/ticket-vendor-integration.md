@@ -32,11 +32,11 @@ Nobodies Collective sells event tickets through external vendors (currently Tick
 
 ## Architecture
 
-- **ITicketVendorService** — vendor-agnostic interface, owned by `Humans.Tickets` (`Contracts/` folder) since G5 lane 4b-2g (nobodies-collective/Humans#866); previously sat in Base's Application layer
+- **ITicketVendorService** — vendor-agnostic interface, owned by `Humans.Tickets` (`Contracts/` folder)
 - **TicketTailorService** — TicketTailor API client, the vendor adapter implementation of `ITicketVendorService` (`src/Sections/Humans.TicketTailor`, its own project — the only implementation of the vendor port; a future vendor swap adds `Humans.<NewVendor>` and deletes this one, per `TicketVendorPortArchitectureTests`). Basic Auth, cursor-based pagination. Captures `txn_id` (Stripe PaymentIntent ID), discount amounts from line items, and the per-ticket `barcode` from issued tickets. Also implements the check-in and write surface: `GET /check_ins` (gate check-in sync — checkout/undo records with quantity −1 are netted out), `POST /check_ins` (best-effort mirror of Humans gate admits), `POST /issued_tickets/{id}/void` (void-to-hold for transfers), and `POST /issued_tickets` (reissue from a hold).
 - **IStripeService / StripeService** — Stripe API client (read-only). Looks up PaymentIntent → Charge → BalanceTransaction to get payment method type and fee breakdown (Stripe processing fee vs TT application fee).
 - **ITicketSyncService / TicketSyncService** — sync orchestration: fetch orders/attendees/check-ins, upsert, apply gate check-ins onto attendee rows (write-once `CheckedInAt`), email-match to users, match discount codes to campaign grants, enrich orders with Stripe fee data, compute VAT using VIP split logic
-- **TicketSyncJob** — Hangfire recurring job (every 5 min via `TicketVendor:SyncIntervalMinutes`)
+- **TicketSyncJob** — Hangfire recurring job (`TicketVendor:SyncIntervalMinutes`; default 15, `appsettings.json` sets 5)
 
 ## VAT and Donation Tracking
 
@@ -73,6 +73,11 @@ Tickets priced above 315 EUR (the VIP threshold, `TicketConstants.VipThresholdEu
 | `/Tickets/GateList` | Placeholder page (gate lookup is handled via `/Scanner/Tickets` — gate-terminal login, #930) |
 | `/Tickets/WhoHasntBought` | Active humans without ticket purchases |
 | `/Tickets/SalesAggregates` | Weekly (Mon–Sun) and quarterly (Spanish tax Q1–Q4) aggregate reports with real VAT/donation data |
+| `/Tickets/Sync`, `/Tickets/FullResync` | POST: incremental sync (`TicketAdminOrAdmin`) / full re-sync (`AdminOnly`) |
+| `/Tickets/Export/Attendees`, `/Tickets/Export/Orders` | CSV exports (`TicketAdminOrAdmin`) |
+| `/Tickets/Participation/Backfill` | CSV participation backfill (`AdminOnly`) — [event-participation.md](event-participation.md) |
+| `/Tickets/Transfers`, `/Tickets/Admin/Transfers` | Member transfer wizard and admin queue — [ticket-transfer.md](ticket-transfer.md) |
+| `/Tickets/Admin/Contacts`, `/Tickets/Admin/Onsite`, `/Tickets/Admin/Gate` | Contact import, onsite roster, gate-terminal credential — see `Docs/Tickets.md` Routing |
 | `/Welcome` | Public post-purchase landing — TicketTailor redirect target, sign-in CTA → `/Shifts` |
 
 ## Post-Purchase Landing (`/Welcome`)

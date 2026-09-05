@@ -7,18 +7,17 @@ namespace Humans.TicketTailor.Tests.Architecture;
 /// Architecture tests enforcing the connector boundary for the Ticket Tailor
 /// integration (issue #555 — §15 Part 1). <c>ITicketVendorService</c> is the port and
 /// lives under <c>Humans.Tickets/Contracts/</c>, the section that owns ticketing; the two
-/// adapters live in this section, which references <c>Humans.Tickets</c> directly
-/// (nobodies-collective/Humans#866, G5 lane 4b-2g — it used to sit in
-/// <c>Humans.Application</c>). The interface must never leak HTTP-client or vendor-SDK types across
+/// adapters live in this section, which references <c>Humans.Tickets</c> directly.
+/// The interface must never leak HTTP-client or vendor-SDK types across
 /// the boundary — its entire signature set (parameters, return types) must be expressible
 /// in port terms (the port's own DTOs, primitives, NodaTime, BCL collections).
 ///
 /// <para>
 /// This is what makes the 2027 vendor swap a project delete: keep the port free of
 /// vendor vocabulary and <c>Humans.&lt;NewVendor&gt;</c> drops in behind it. The companion
-/// check on the other side — that only <c>Humans.Tickets</c> and Shell's health check
-/// <em>inject</em> the port — is
-/// <c>Humans.Application.Tests/Architecture/TicketVendorPortArchitectureTests</c>, which
+/// check on the other side — that only <c>Humans.Tickets</c> (its own health check
+/// included) <em>injects</em> the port — is
+/// <c>Humans.Web.Tests/Architecture/TicketVendorPortArchitectureTests</c>, which
 /// needs the whole section graph and so cannot live here.
 /// </para>
 /// </summary>

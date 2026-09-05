@@ -10,8 +10,9 @@ internal interface ITicketTransferService : ITicketTransferQueue, IApplicationSe
 {
     /// <summary>
     /// Build the "My tickets" rows for a user, with send-eligibility flags
-    /// pre-computed: only `Valid` attendees the user is the order's
-    /// MatchedUserId for, with no existing Pending transfer, can be sent.
+    /// pre-computed: only `Valid`, not-checked-in attendees the user currently
+    /// owns (`TicketAttendeeOwnership.IsCurrentOwner`), with no existing Pending
+    /// transfer, can be sent.
     /// </summary>
     Task<IReadOnlyList<MyAttendeeRowDto>> GetMyAttendeesAsync(
         Guid userId, CancellationToken ct = default);

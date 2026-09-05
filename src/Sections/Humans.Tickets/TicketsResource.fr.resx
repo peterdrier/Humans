@@ -43,12 +43,6 @@
   <data name="TicketTransfer_Pending" xml:space="preserve">
     <value>En attente de validation</value>
   </data>
-  <data name="TicketTransfer_SendButton" xml:space="preserve">
-    <value>Envoyer</value>
-  </data>
-  <data name="TicketTransfer_CancelButton" xml:space="preserve">
-    <value>Annuler</value>
-  </data>
   <data name="Enum_TicketTransferStatus_Approved" xml:space="preserve"><value>Terminé</value></data>
   <data name="Enum_TicketTransferStatus_Cancelled" xml:space="preserve"><value>Annulé</value></data>
   <data name="Enum_TicketTransferStatus_Pending" xml:space="preserve"><value>En attente de révision</value></data>
