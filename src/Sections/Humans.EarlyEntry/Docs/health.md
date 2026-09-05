@@ -153,4 +153,4 @@ a field when it is `Sources.Count > 1`.
 
 | Date | Run | Headline |
 |---|---|---|
-| 2026-09-05 | [run](../../../../docs/health/runs/2026-09-05-EarlyEntry.md) | First doctor pass. PR pending |
+| 2026-09-05 | [run](../../../../docs/health/runs/2026-09-05-EarlyEntry.md) | First doctor pass. peterdrier/Humans#1593 |

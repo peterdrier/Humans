@@ -4,7 +4,7 @@
 - **Anchor commit:** `10199a23` (`origin/main`)
 - **Branch:** `section-doctor/2026-09-05T061605Z` (cloud run, repo root — no worktree)
 - **Budget:** 2.5h, single PR.
-- **PR:** pending
+- **PR:** peterdrier/Humans#1593
 
 ## Assessment summary
 
@@ -44,7 +44,7 @@ Value = bug surface removed, then concepts removed, then words removed.
 | 10 | **Collapse written twice** in `EarlyEntryService` (`Min` + `Distinct(Ordinal)` in both read methods). One private `Collapse`; reviewer-gated, accept. | med | **worked** |
 | 11 | **`HasMultiple` is derivable** (`Sources.Count > 1`) and `UserEarlyEntry` is `EarlyEntryRosterRow` minus `UserId`. Dropping the field or folding the records is a public-contract change (six referencing sections). | low | **Needs Peter** |
 | 12 | **Delete paths do not evict:** `CampService.DeleteCampAsync` and `TeamService.PermanentlyDeleteTeamAsync` remove grants without calling `IEarlyEntryInvalidator`, so a deleted camp's or team's members keep a cached date until their next own change. Other sections' code → sweep queue. | med | **queued** |
-| 13 | **`EarlyEntry.md` rewritten end to end** (898 → ~700 words): Cross-Section Dependencies rebuilt from the csproj; caching and fan-out explanations that lived three times (doc, `data-access.md`, xmldoc) now live once each; Status footer trimmed to the issue ref. | low | **worked** |
+| 13 | **`EarlyEntry.md` rewritten end to end** (898 → 848 words): Cross-Section Dependencies rebuilt from the csproj; caching and fan-out explanations that lived three times (doc, `data-access.md`, xmldoc) now live once each; Status footer trimmed to the issue ref. | low | **worked** |
 | 14 | **Freshness triggers watched only the section's own tree** while the doc asserts about Camps, Shifts, Teams, Gate, Scanner and Tickets files. Widened in `EarlyEntry.md`; `health.md` also watches the three contributors' `Section.cs`, Shifts' `SectionPolicies.cs` and the integration render test. | low | **worked** |
 | 15 | **`docs/sections/SECTION-TEMPLATE.md`'s (A) block names `Humans.Application` / `Humans.Infrastructure`**, projects that no longer exist, so every new section doc starts stale. Shared file → sweep queue. | low | **queued** |
 | 16 | **`design-rules.md:620` wheat comment cites `docs/superpowers/plans/2026-05-25-early-entry-roster.md`**, which does not exist in the tree. Provenance marker, shared file → sweep queue. | low | **queued** |
@@ -126,8 +126,15 @@ that `health.md` §3 described the collapse as written twice one commit after it
 **Target diff:** none possible — first doctor pass; `health.md` was written this run. Next run
 gets the first real diff.
 
-One auto-compaction occurred at the end of Phase 3; Phase 5's re-read of Phases 5–7 was applied
-after it.
+Two auto-compactions occurred: at the end of Phase 3, and mid-Phase 7 before the push. Phase 5's
+re-read of Phases 5–7 was applied after the first; the second landed on the pre-push gate, which
+was re-run from the phase log rather than from memory.
+
+**Environment noise:** the full-solution build twice reported Razor compile errors in sections this
+run never touched (Camps `RoleDrillDown.cshtml`, Debug `CacheStats.cshtml`), on files unchanged
+since #1382 / #1362 that had compiled cleanly at run start. `dotnet build-server shutdown` and a
+serial build (`-m:1`) cleared both; nothing in the tree was edited. A parallel Razor source-generator
+race in the compiler server, not a defect in either section.
 
 ## Needs Peter
 
