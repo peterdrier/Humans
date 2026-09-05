@@ -104,6 +104,7 @@ internal static class EventSettingsFormMapper
         }
         catch (JsonException)
         {
+            // Not logged: the admin typed the JSON into the form, and the field error hands it back to them.
             errors.Add(new EventSettingsFormError(fieldName, "Invalid JSON: expected {\"dayOffset\": count, ...}."));
             return null;
         }

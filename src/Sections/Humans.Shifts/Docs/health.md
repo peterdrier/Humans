@@ -34,8 +34,6 @@ audited and the affected coordinators are notified.
 | **Tell people** — rota / team-rota coordinator email | `ShiftAdminController` `Email` routes, `IRotaCoordinatorMessageService` | none |
 | **Housekeeping** — GDPR export/delete, account merge re-FK, iCal feed, cache eviction, orphan scan | `IUserDataContributor`, `IUserMerge` ×3, `ICalendarFeedContributor`, `IShiftViewInvalidator`, `IShiftAuthorizationInvalidator`, `GET /Shifts/OrphanSignups` | Gdpr, Users (merge, deletion), Calendar, Teams/Users (auth eviction) |
 
-Ten question-shapes over six controllers, three services with a public face, two repositories.
-
 ## 3. Structure
 
 The shapes imply:
