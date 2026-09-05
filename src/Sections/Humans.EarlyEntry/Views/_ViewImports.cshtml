@@ -1,16 +1,13 @@
-@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
-   here ships broken markup with a green build and no runtime error — see design §1/§2.
-   Guarded by EarlyEntryPageRenderTests (step 12). *@
+@* A section RCL does not inherit the host's Views/_ViewImports.cshtml. A missing @using
+   here ships broken markup with a green build — only EarlyEntryPageRenderTests catches it,
+   and that is a local-only integration test. *@
 @using Humans.Base.Extensions
 @using Humans.EarlyEntry
-@using Humans.EarlyEntry.Contracts
-@using Humans.EarlyEntry.Controllers
 @using Humans.EarlyEntry.Models
 @using Humans.Base
 @using Humans.Base.Models.Tables
 @using NodaTime
-@* The section renders no localized copy: every string on the roster page is inline
-   English, so there is no Resources/ folder and no EarlyEntryResource marker (§15.3b).
-   Pinned by EarlyEntryArchitectureTests.SectionTypesTakeNoStringLocalizer. *@
+@* No localized copy: the roster is an admin page, inline English
+   (memory/code/localization-admin-exempt.md). *@
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @addTagHelper *, Humans.Base

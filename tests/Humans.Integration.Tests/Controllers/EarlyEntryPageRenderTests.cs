@@ -67,10 +67,9 @@ public class EarlyEntryPageRenderTests(HumansTestDatabase database) : Integratio
     [HumansFact(Timeout = 120000)]
     public async Task A_volunteer_cannot_reach_the_roster()
     {
-        // The section's negative access rule. Worth pinning at the move because the controller
-        // is now an internal type in another assembly routed through
-        // SectionControllerFeatureProvider, while ShiftDashboardAccess stayed in Shell's
-        // AuthorizationPolicyExtensions (design §15 step 6's asymmetry).
+        // The section's negative access rule, end to end: the controller is an internal type in
+        // another assembly routed through SectionControllerFeatureProvider, and the policy is
+        // registered by Shifts (SectionPolicies.cs), not by this section.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 

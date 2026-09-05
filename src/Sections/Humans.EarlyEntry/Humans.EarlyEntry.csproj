@@ -7,43 +7,32 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.EarlyEntry.Tests" />
-    <!-- The one assembly allowed to see many sections (design §5). -->
+    <!-- The one assembly allowed to see many sections at once. -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 
   <ItemGroup>
-    <!--
-      Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
-      Declaring them keeps the files moved out of Humans.Web byte-identical to their originals.
-    -->
+    <!-- Sdk.Web puts these in ImplicitUsings; Sdk.Razor does not. -->
     <Using Include="Microsoft.AspNetCore.Http" />
     <Using Include="Microsoft.AspNetCore.Routing" />
     <Using Include="Microsoft.Extensions.Logging" />
   </ItemGroup>
 
   <ItemGroup>
-    <!--
-      No Humans.Infrastructure reference: the section owns no tables, has no DbContext and
-      no G4 gate (Scanner's shape, design §15 preconditions). TrackedCache / ICacheStats
-      live in Humans.Base.Interfaces.Caching, and HumansControllerBase / PolicyNames
-      in Humans.UI.
-    -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <!--
-      No AspNetCore package here: those ship with no PackageVersion on purpose and would fail
-      the build with NU1010 under Central Package Management. Everything ASP.NET the section
-      touches arrives through the framework reference Sdk.Razor already adds
-      (design §15 step 1).
+      No AspNetCore PackageReference: NU1010 under Central Package Management. It arrives
+      via the framework reference Sdk.Razor adds.
     -->
     <PackageReference Include="NodaTime" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
+    <!-- Keep the section's docs visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

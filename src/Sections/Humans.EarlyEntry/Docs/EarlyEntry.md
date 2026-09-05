@@ -1,5 +1,20 @@
 <!-- freshness:triggers
   src/Sections/Humans.EarlyEntry/**
+  src/Sections/Humans.Camps/Section.cs
+  src/Sections/Humans.Camps/Services/CachingCampService.cs
+  src/Sections/Humans.Camps/Services/CampService.cs
+  src/Sections/Humans.Shifts/Section.cs
+  src/Sections/Humans.Shifts/SectionPolicies.cs
+  src/Sections/Humans.Shifts/Services/VolunteerTrackingExportService.cs
+  src/Sections/Humans.Shifts/Services/ShiftSignupService.cs
+  src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
+  src/Sections/Humans.Teams/Section.cs
+  src/Sections/Humans.Teams/Services/TeamService.cs
+  src/Sections/Humans.Gate/Services/GateService.cs
+  src/Sections/Humans.Scanner/Controllers/ScannerController.cs
+  src/Sections/Humans.Tickets/Controllers/TicketTransferController.cs
+  src/Sections/Humans.Tickets/ViewComponents/MyTicketStubsViewComponent.cs
+  src/Sections/Humans.Tickets/ViewComponents/TicketHoldingsViewComponent.cs
 -->
 <!-- freshness:flag-on-change
   Re-read the provider fan-out contract and the eviction rules: EE is derived data with no
@@ -14,26 +29,24 @@ because of what. The section owns no data — it fans out over every contributin
 ## Concepts
 
 - An **EE grant** (`EarlyEntryGrant`) is one source's claim that a human may enter on a given
-  `LocalDate`, with a human-readable `Source` label (`"Camp: Flaming Lotus"`, `"Shift: Flags"`,
-  `"{TeamName}: {ProjectName}"`). It is a projection, never a row this section stores.
-- An **EE provider** (`IEarlyEntryProvider`) is a section that contributes grants. Registered as
-  `IEnumerable<IEarlyEntryProvider>`; a section with nothing to contribute returns an empty list.
+  `LocalDate`, with a display label `Source` (`"Camp: Flaming Lotus"`, `"Shift: Flags"`,
+  `"{TeamName}: {ProjectName}"`) rendered verbatim. A projection, never a row this section stores.
+- An **EE provider** (`IEarlyEntryProvider`) is a section that contributes grants; one with
+  nothing to contribute returns an empty list.
 - A **roster row** (`EarlyEntryRosterRow`) is one human's grants collapsed: earliest date, the
   distinct source labels, and `HasMultiple` when more than one source grants them EE — the flag
-  the roster page uses to surface reallocatable slots.
-- **User EE** (`UserEarlyEntry`) is the same collapse for a single human: earliest date + sources,
-  or `null` when they hold none.
+  the roster uses to surface reallocatable slots.
+- **User EE** (`UserEarlyEntry`) is the same collapse for one human, or `null` when they hold none.
 
 ## Data Model
 
-None — the section owns no tables and has no `DbContext`. Every grant is derived at read time
-from the contributing sections' own tables.
+None — no tables, no `DbContext`. Every grant is derived at read time from the contributing
+sections' own data.
 
 ## Routing
 
 `/Shifts/Admin/EarlyEntry` — the cross-source roster. The URL predates the section and is kept
-verbatim: the page is reached from the shift-dashboard nav and the route prefix is a nav
-location, not an ownership claim.
+verbatim; the nav entry sits in the "Tickets" admin group. Neither is an ownership claim.
 
 ## Actors & Roles
 
@@ -45,70 +58,73 @@ location, not an ownership claim.
 
 ## Invariants
 
-- The section owns no tables and injects no repository. It is an orchestrator by the hard rules'
-  own definition, and the territory it orchestrates is its own (Peter, 2026-08-14).
-- The fan-out is **sequential**, not `Task.WhenAll`: providers share the scoped section
-  `DbContext`s, which are not thread-safe (the same reason `GdprService` is sequential).
-- `GetRosterAsync` is **never cached** — the admin roster must see live data.
-  `GetForUserAsync` is cached per user, negative results included, so the no-EE majority does
-  not re-fan-out on every render.
-- The caching decorator calls the inner service through `IEarlyEntryService` and never a
-  repository (`peters-hard-rules.md`). The Singleton decorator resolves the Scoped inner service
-  per call through the keyed registration `CachingEarlyEntryService.InnerServiceKey`.
-- The roster collapses to **one row per human**: earliest date wins, sources are distinct and
-  ordinal-compared, and `HasMultiple` is `Sources.Count > 1`.
-- No `Resources/` folder: the roster page's copy is inline English. Pinned structurally by
-  `EarlyEntryArchitectureTests.SectionTypesTakeNoStringLocalizer`.
+- The section owns no tables and injects no repository; the orchestrator's only dependency is
+  the provider fan-out (`EarlyEntryArchitectureTests.OrchestratorInjectsOnlyTheProviderFanout`).
+- The fan-out is sequential — a simplicity choice, not a thread-safety requirement
+  (design-rules §8b); each provider reads through its own section.
+- `GetRosterAsync` is **never cached**. `GetForUserAsync` is cached per human, negative results
+  included; only eviction refreshes it (no warmup, no expiry).
+- The Singleton decorator resolves the Scoped inner service per call through the keyed
+  registration `CachingEarlyEntryService.InnerServiceKey`, never a repository.
+- Per human: earliest date wins, sources are distinct and ordinal-compared in provider order,
+  and `HasMultiple` is `Sources.Count > 1`.
+- The roster is gated by `ShiftDashboardAccess`
+  (`EarlyEntryArchitectureTests.RosterRequiresShiftDashboardAccess`).
+- No `Resources/` folder: the roster is an admin page with inline English
+  ([`localization-admin-exempt`](../../../../memory/code/localization-admin-exempt.md)).
 
 ## Negative Access Rules
 
-- A holder **cannot** see another holder's EE on any holder-facing stub surface — all three go
-  through `TicketStubInfo.From(row, holderEarlyEntry)` with the *viewer's* value. The Scanner
-  gate card is the deliberate staff-facing exception.
+- A holder **cannot** see another holder's EE on any holder-facing stub surface — all of them go
+  through `TicketStubInfo.From(row, holderEarlyEntry)` with the *viewer's* value. The gate card
+  is the deliberate staff-facing exception.
 - A human without `ShiftDashboardAccess` **cannot** reach `/Shifts/Admin/EarlyEntry`.
-- No section **cannot**-clause needed for writes: this section exposes no write path at all.
+- The section exposes no write path, so no write **cannot**-clause applies.
 
 ## Triggers
 
 - When a contributing section changes a single human's EE-relevant data, it evicts that human
-  through `IEarlyEntryInvalidator.InvalidateUser` — Camps on `SetEarlyEntryAsync` and the
-  member-removal cascade, Shifts on every build-shift confirm/bail/remove/reassign, Teams on
-  every EE grant add/edit/remove.
+  through `IEarlyEntryInvalidator.InvalidateUser` — Camps on `SetEarlyEntryAsync`, member
+  removal, GDPR erasure and account merge; Shifts on every build-shift
+  confirm/bail/remove/reassign, erasure and merge; Teams on every EE grant add/edit/remove,
+  erasure and merge.
 - When a global setting moves every holder's date at once, the contributor calls
   `InvalidateAll` — the camps' global `EeStartDate`, and Shifts' EventSettings gate /
   build-offset edits. Teams also calls it when a team's `EarlyEntryEnabled` flag flips, because
   that changes *who* contributes.
-- Eviction is pure: the cache has no warmup, so the next read lazy-reloads.
+- Eviction is pure: the next read lazy-reloads.
 
 ## Cross-Section Dependencies
 
-- **Users** — `IUserServiceRead` (through `HumansControllerBase.FindUserInfoByIdAsync`) for the
-  legal name column on the roster. The only outbound reference the section has.
-- Inbound, all through `Contracts/`:
-  - **Camps** — `CachingCampService` implements `IEarlyEntryProvider`; `CampService` injects
-    `IEarlyEntryInvalidator`.
-  - **Shifts** — `VolunteerTrackingExportService` implements `IEarlyEntryProvider`;
-    `ShiftSignupService` injects `IEarlyEntryInvalidator`.
-  - **Teams** — `TeamService` implements `IEarlyEntryProvider` and injects
-    `IEarlyEntryInvalidator`.
-  - **Gate** — `GateService` calls `IEarlyEntryService.GetForUserAsync`.
-  - **Scanner** — `ScannerController` calls `GetForUserAsync` for the scanned attendee.
-  - **Tickets** — `TicketTransferController` calls `GetForUserAsync` for the viewer.
-  - **Shell** — `MyTicketStubsViewComponent`, `TicketHoldingsViewComponent`.
+Outbound (the `.csproj` references `Humans.Base` and `Humans.Users.Contracts` only):
+
+- **Users** — `IUserServiceRead` through `HumansControllerBase.FindUserInfoByIdAsync`, for the
+  roster's legal-name column.
+
+Inbound, all through `Contracts/`:
+
+- **Camps** — `CachingCampService` implements `IEarlyEntryProvider`; `CampService` injects
+  `IEarlyEntryInvalidator`.
+- **Shifts** — `VolunteerTrackingExportService` implements `IEarlyEntryProvider`;
+  `ShiftSignupService` injects `IEarlyEntryInvalidator`.
+- **Teams** — `TeamService` implements `IEarlyEntryProvider` and injects `IEarlyEntryInvalidator`.
+- **Gate** — `GateService` calls `IEarlyEntryService.GetForUserAsync` for the scanned attendee.
+- **Scanner** — `ScannerController` calls `GetForUserAsync` for the scanned attendee.
+- **Tickets** — `TicketTransferController`, `MyTicketStubsViewComponent` and
+  `TicketHoldingsViewComponent` call `GetForUserAsync` for the viewer.
 
 ## Architecture
 
 **Owning services:** `EarlyEntryService` (orchestrator), `CachingEarlyEntryService` (§15 decorator)
 **Owned tables:** None — orchestrator over every registered `IEarlyEntryProvider`.
 **Status:** (A) Migrated — moved into `src/Sections/Humans.EarlyEntry` 2026-08-14
-(nobodies-collective/Humans#866, G5 lane 4b-2b).
+(nobodies-collective/Humans#866).
 
 ### Cross-section read interface
 
-The whole outward surface is read-only already, so there is no read/write split to make:
-`IEarlyEntryService` has two read members and no writes. It lives in `Contracts/` beside
-`IEarlyEntryProvider` (the inbound contribution contract) and `IEarlyEntryInvalidator` (the §15e
-one-way staleness signal).
+The whole outward surface is read-only, so there is no read/write split to make. The
+contracts live in `Contracts/`, a folder rather than a leaf project: the section references no
+contributor, so there is no cycle to break.
 
 | Read interface | Methods | Notes |
 |---|---:|---|
@@ -116,15 +132,15 @@ one-way staleness signal).
 
 ### For (A) Migrated sections
 
-- The section takes **no `Humans.Infrastructure` reference**: it owns no tables, has no `DbContext`
-  and no G4 gate. `TrackedCache` comes from `Humans.Base.Caching`; `ICacheStats` from `Humans.Base.Interfaces.Caching`.
-- **No repository.** The hard rules' orchestrator clause applies: this service calls services,
-  never repositories.
-- **Decorator decision** — caching decorator, Singleton, `TrackedCache`-backed, `warmOnStartup: false`.
-  Not registered as a hosted service: there is nothing to warm.
+- **No repository, no `DbContext`.** `TrackedCache` comes from `Humans.Base.Caching`,
+  `ICacheStats` from `Humans.Base.Interfaces.Caching`.
+- **Decorator decision** — caching decorator, Singleton, `TrackedCache`-backed,
+  `warmOnStartup: false`; not a hosted service, there is nothing to warm. Negative results are
+  cached by hand (`TryGet` / `Set`) because `TrackedCache.GetAsync` never stores a null.
 - **Cross-section calls** — `IUserServiceRead` only.
-- **Architecture test** — `tests/Humans.EarlyEntry.Tests/EarlyEntryArchitectureTests.cs`; the page
-  itself is pinned by `tests/Humans.Integration.Tests/Controllers/EarlyEntryPageRenderTests.cs`.
+- **Architecture test** — `tests/Humans.EarlyEntry.Tests/EarlyEntryArchitectureTests.cs`; the
+  rendered page is pinned by `tests/Humans.Integration.Tests/Controllers/EarlyEntryPageRenderTests.cs`
+  (local-only, never runs in CI).
 - **Known debt** — `IEarlyEntryInvalidator` carries `[Grandfathered(HUM0028)]`
   (nobodies-collective/Humans#805): the contributing sections flush this section's cache rather
   than the decorator owning invalidation end-to-end.

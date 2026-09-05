@@ -35,10 +35,54 @@ public class EarlyEntryServiceTests
         var row = roster[0];
         row.UserId.Should().Be(userId);
         row.EarliestEntryDate.Should().Be(new LocalDate(2026, 7, 1));
-        row.Sources.Should().HaveCount(2);
-        row.Sources.Should().Contain("Camp: Flags");
-        row.Sources.Should().Contain("Shift: Power");
+        row.Sources.Should().Equal("Camp: Flags", "Shift: Power");
         row.HasMultiple.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task Roster_keeps_one_row_per_user()
+    {
+        var alice = Guid.NewGuid();
+        var bob = Guid.NewGuid();
+        var sut = new EarlyEntryService(new[]
+        {
+            ProviderReturning(
+                new EarlyEntryGrant(alice, new LocalDate(2026, 7, 7), "Camp: Flags"),
+                new EarlyEntryGrant(bob, new LocalDate(2026, 7, 3), "Camp: Flags")),
+            ProviderReturning(new EarlyEntryGrant(alice, new LocalDate(2026, 7, 1), "Shift: Power")),
+        });
+
+        var roster = await sut.GetRosterAsync(Xunit.TestContext.Current.CancellationToken);
+
+        roster.Should().HaveCount(2);
+        var aliceRow = roster.Single(r => r.UserId == alice);
+        aliceRow.EarliestEntryDate.Should().Be(new LocalDate(2026, 7, 1));
+        aliceRow.Sources.Should().Equal("Camp: Flags", "Shift: Power");
+        var bobRow = roster.Single(r => r.UserId == bob);
+        bobRow.EarliestEntryDate.Should().Be(new LocalDate(2026, 7, 3));
+        bobRow.Sources.Should().Equal("Camp: Flags");
+        bobRow.HasMultiple.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task Same_source_label_twice_is_one_source_and_not_multiple()
+    {
+        var userId = Guid.NewGuid();
+        var sut = new EarlyEntryService(new[]
+        {
+            ProviderReturning(new EarlyEntryGrant(userId, new LocalDate(2026, 7, 7), "Camp: Flags")),
+            ProviderReturning(new EarlyEntryGrant(userId, new LocalDate(2026, 7, 5), "Camp: Flags")),
+        });
+
+        var roster = await sut.GetRosterAsync(Xunit.TestContext.Current.CancellationToken);
+        var mine = await sut.GetForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        roster.Should().ContainSingle();
+        roster[0].EarliestEntryDate.Should().Be(new LocalDate(2026, 7, 5));
+        roster[0].Sources.Should().Equal("Camp: Flags");
+        roster[0].HasMultiple.Should().BeFalse();
+        mine.Should().NotBeNull();
+        mine.Sources.Should().Equal("Camp: Flags");
     }
 
     [HumansFact]
@@ -71,7 +115,7 @@ public class EarlyEntryServiceTests
         var found = await sut.GetForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
         found.Should().NotBeNull();
         found.EarliestEntryDate.Should().Be(new LocalDate(2026, 7, 1));
-        found.Sources.Should().HaveCount(2);
+        found.Sources.Should().Equal("Camp: Flags", "Shift: Power");
 
         var notFound = await sut.GetForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
         notFound.Should().BeNull();
