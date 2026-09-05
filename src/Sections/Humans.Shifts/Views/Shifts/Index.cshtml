@@ -66,7 +66,6 @@
 <div class="container py-4">
     @* Antiforgery token for InstantToggle AJAX (shifts.js reads this). *@
     @Html.AntiForgeryToken()
-    @* === Tabs: Browse / My Shifts === *@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <ul class="nav nav-tabs shifts-nav-tabs border-0" role="tablist">
             <li class="nav-item" role="presentation">
@@ -100,7 +99,6 @@
 
     @await Component.InvokeAsync("DietaryMissingBanner", new { userId = Model.UserId })
 
-    @* === Hero Banner === *@
     <div class="shifts-hero-banner mb-4">
         <div class="d-flex align-items-center gap-3">
             <div class="shifts-hero-icon">
@@ -116,7 +114,6 @@
         </div>
     </div>
 
-    @* === Phase Multiselect Cards === *@
     <div class="row g-2 mb-3">
         <div class="col-md-4">
             <div class="phase-card phase-card-build @(isBuildActive ? "phase-card-active" : "")" data-phase="Build">
@@ -229,7 +226,6 @@
 
     @await Html.PartialAsync("_DepartmentCoveragePieRow", Model)
 
-    @* === Tag Filters with Preferences as Defaults === *@
     @if (Model.AllTags.Count > 0)
     {
         <div class="mb-3">
@@ -366,7 +362,6 @@
     }
     else if (isUrgencySort)
     {
-        @* === Urgency-sorted flat view: rotas ranked by most needed === *@
         @foreach (var rotaGroup in Model.UrgencyRankedRotas)
         {
             var rotaMatchesPreference = Model.UserPreferredTagIds.Count > 0
@@ -481,7 +476,6 @@
     }
     else
     {
-        @* === Default department-grouped view === *@
         var singleDept = Model.Departments.Count == 1;
         var filteredToDept = Model.FilterDepartmentId.HasValue;
         @foreach (var dept in Model.Departments)

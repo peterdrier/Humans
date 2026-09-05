@@ -323,7 +323,7 @@ internal sealed class ShiftAdminController(
         return RedirectToAction(nameof(Index), new { slug });
     }
 
-    // see nobodies-collective/Humans#732 — coordinator "email a rota" (mgmt scope, excludes NoInfoAdmin).
+    // Coordinator "email a rota" (mgmt scope, excludes NoInfoAdmin).
     [HttpGet("Rotas/{rotaId}/Email")]
     public async Task<IActionResult> EmailRota(string slug, Guid rotaId)
     {

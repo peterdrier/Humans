@@ -6,13 +6,13 @@ namespace Humans.Shifts.ViewComponents;
 /// <summary>
 /// The "Staffing by department" card — event-wide coverage plus the per-department
 /// breakdown. Contributed into the admin dashboard's <c>admin-dashboard</c> chrome slot
-/// (<see cref="Humans.Shifts.SectionChrome"/>) since nobodies-collective/Humans#1091.
+/// (<see cref="Humans.Shifts.SectionChrome"/>).
 /// </summary>
 /// <remarks>
 /// Internal — invoked by name through <c>ChromeSlotViewComponent</c>'s
 /// <c>Component.InvokeAsync</c>, not a <c>&lt;vc:&gt;</c> tag helper, so it does not need to
-/// be public under <c>Contracts/</c>. The department breakdown has no source yet; the card
-/// says so and points at Shifts.
+/// be public under <c>Contracts/</c>. Renders a real per-department breakdown when
+/// <c>Departments</c> is populated, falling back to the "no data yet" copy only when it is empty.
 /// </remarks>
 internal sealed class StaffingByDepartmentViewComponent(IShiftManagementServiceRead shifts) : ViewComponent
 {

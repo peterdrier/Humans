@@ -34,9 +34,7 @@ internal sealed class ShiftsController(
     IAuditLogService auditLogService,
     IUserService userService,
     IStringLocalizer<ShiftsResource> localizer,
-    // The name-gate message is Onboarding's copy, rendered from here: the key came home
-    // with that section's G5 and a Shell caller injects the section's marker directly
-    // (design §15 step 3b).
+    // The name-gate message is Onboarding's copy, rendered from here (design §15 step 3b).
     IStringLocalizer<OnboardingResource> onboardingLocalizer,
     IClock clock,
     ShiftBrowsePageBuilder browsePageBuilder,
@@ -61,7 +59,7 @@ internal sealed class ShiftsController(
         var isPrivileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
                            (await shiftMgmt.GetCoordinatorTeamIdsAsync(user.Id)).Count > 0;
 
-        // see #720: cached ShiftUserView, already event-scoped.
+        // Cached ShiftUserView, already event-scoped.
         var userView = await shiftView.GetUserAsync(user.Id);
         var userSignups = userView.Signups;
         var hasSignups = userSignups.Count > 0;
@@ -88,7 +86,7 @@ internal sealed class ShiftsController(
             isPrivileged),
             HttpContext.RequestAborted);
 
-        // Dietary-prompt tightening (#279): lock the rota Sign-Up buttons + show the banner
+        // Dietary-prompt tightening: lock the rota Sign-Up buttons + show the banner
         // when this human has a qualifying signup but no dietary preference on file.
         model.UserId = user.Id;
         model.SignupsBlockedByMissingDietary = await ComputeSignupsBlockedByMissingDietaryAsync(user, HttpContext.RequestAborted);
@@ -332,7 +330,7 @@ internal sealed class ShiftsController(
 
         var es = await burnSettings.GetActiveAsync();
 
-        // see #720: cached ShiftUserView, event-scoped (empty when no active event).
+        // Cached ShiftUserView, event-scoped (empty when no active event).
         var userView = await shiftView.GetUserAsync(user.Id);
         var signups = userView.Signups;
 

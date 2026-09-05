@@ -27,13 +27,10 @@
     </div>
 
 
-    @* Build/Strike Staffing Chart *@
     @await Html.PartialAsync("_StaffingChart", (Model.StaffingData, "deptStaffingChart"))
 
-    @* Staffing Hours by Priority *@
     @await Html.PartialAsync("_StaffingHoursChart", (Model.StaffingHours, "deptStaffingHoursChart"))
 
-    @* Pending Approvals *@
     @if (Model.CanApproveSignups && (Model.PendingSignups.Count > 0 || Model.IncompleteOnboardingFilter))
     {
         var pendingGroups = Model.PendingSignups
@@ -157,7 +154,6 @@
         </div>
     }
 
-    @* Rotas *@
     @foreach (var rota in Model.Rotas)
     {
         <div class="card mb-3" id="rota-@rota.Id.ToString("N")">
@@ -203,7 +199,6 @@
                             }
                         </form>
                         <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#edit-rota-@rota.Id.ToString("N")">Edit</button>
-                        @* Issue nobodies-collective/Humans#732 — coordinator "Email a rota" action. *@
                         <a class="btn btn-sm btn-outline-primary"
                            asp-action="EmailRota"
                            asp-route-slug="@Model.Department.Slug"
@@ -681,7 +676,6 @@
                     <p class="text-muted">No shifts yet.</p>
                 }
 
-                @* Staffing Grid for Build/Strike rotas *@
                 @if (Model.CanManageShifts && rota.Period != RotaPeriod.Event)
                 {
                     var periodRange = rota.Period switch
@@ -697,7 +691,6 @@
                         <h6>@(rota.Shifts.Count > 0 ? "Add More Days" : "Configure Staffing")</h6>
                         <p class="text-muted small">Pick your date range, then set min/max humans per day. Days that already have shifts are excluded.</p>
 
-                        @* Step 1: Date range picker *@
                         <div class="staffing-step1 row g-2 align-items-end mb-3">
                             <div class="col-auto">
                                 <label class="form-label form-label-sm">Start</label>
@@ -726,7 +719,6 @@
                             </div>
                         </div>
 
-                        @* Step 2: Day grid (hidden until Show Days clicked) *@
                         <div class="staffing-step2" style="display:none">
                             <form asp-action="ConfigureStaffing" asp-route-slug="@Model.Department.Slug" asp-route-rotaId="@rota.Id" method="post">
                                 @Html.AntiForgeryToken()
@@ -755,7 +747,6 @@
                     </div>
                 }
 
-                @* Range Voluntell for Build/Strike rotas *@
                 @if (Model.CanApproveSignups && rota.Period != RotaPeriod.Event && rota.Shifts.Count > 0)
                 {
                     var rangeVoluntellId = "range-voluntell-" + rota.Id.ToString("N");
@@ -812,7 +803,6 @@
                     </div>
                 }
 
-                @* Generate Shifts for Event-period rotas *@
                 @if (Model.CanManageShifts && rota.Period == RotaPeriod.Event && rota.Shifts.Count == 0)
                 {
                     var genCollapseId = "gen-shifts-" + rota.Id.ToString("N");
@@ -889,7 +879,6 @@
                     </div>
                 }
 
-                @* Create Shift *@
                 @if (Model.CanManageShifts)
                 {
                     <div class="mt-3 border-top pt-3">
@@ -951,7 +940,6 @@
         </div>
     }
 
-    @* Create Rota *@
     @if (Model.CanManageShifts)
     {
         <div class="card mb-4">
@@ -1043,7 +1031,6 @@
             </div>
         </div>
 
-        @* Email Everyone in Upcoming Rotas *@
         <div class="card mb-4">
             <div class="card-header"><h5 class="mb-0">Email everyone in upcoming rotas</h5></div>
             <div class="card-body">
