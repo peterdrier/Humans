@@ -256,19 +256,6 @@ internal sealed partial class ShiftRepository
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlySet<Guid>> GetActiveCommittedUserIdsForEventAsync(
-        Guid eventSettingsId, CancellationToken ct = default)
-    {
-        var userIds = await _dbContext.ShiftSignups
-            .AsNoTracking()
-            .Where(s => s.Shift.Rota.EventSettingsId == eventSettingsId
-                     && (s.Status == SignupStatus.Pending || s.Status == SignupStatus.Confirmed))
-            .Select(s => s.UserId)
-            .Distinct()
-            .ToListAsync(ct);
-        return userIds.ToHashSet();
-    }
-
     public async Task<IReadOnlyList<EligibleBuildSignup>> GetEligibleBuildSignupsAsync(
         Guid eventSettingsId, CancellationToken ct = default)
     {

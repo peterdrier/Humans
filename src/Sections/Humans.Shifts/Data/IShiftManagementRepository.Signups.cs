@@ -165,13 +165,6 @@ internal partial interface IShiftManagementRepository
     Task<IReadOnlyList<ShiftSignup>> GetAllForOrphanScanAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns user-ids with at least one Pending or Confirmed signup for the
-    /// given event. Read-only. Used by MailerLite audience computations.
-    /// </summary>
-    Task<IReadOnlySet<Guid>> GetActiveCommittedUserIdsForEventAsync(
-        Guid eventSettingsId, CancellationToken ct = default);
-
-    /// <summary>
     /// All eligible Build-period signups for the event: rows where
     /// Shift.DayOffset ∈ [BuildStartOffset, 0), the rota's period
     /// is Build or All, and Status ∈ {Confirmed, Pending}.

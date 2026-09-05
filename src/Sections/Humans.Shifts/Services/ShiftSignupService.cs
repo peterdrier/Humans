@@ -1371,10 +1371,6 @@ internal sealed class ShiftSignupService(
             s.SignupBlockId)).ToList();
     }
 
-    public Task<IReadOnlySet<Guid>> GetActiveCommittedUserIdsForEventAsync(
-        Guid eventSettingsId, CancellationToken ct = default) =>
-        repo.GetActiveCommittedUserIdsForEventAsync(eventSettingsId, ct);
-
     public async Task<ToggleDaySignupOutcome> ToggleDayAsync(
         Guid userId,
         Guid shiftId,

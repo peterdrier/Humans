@@ -259,17 +259,6 @@ internal partial interface IShiftManagementRepository : IRepository
     Task SetVolunteerTagPreferencesAsync(
         Guid userId, IReadOnlyList<Guid> tagIds, CancellationToken ct = default);
 
-    // ==========================================================================
-    // Volunteer event profiles
-    // ==========================================================================
-
-    /// <summary>
-    /// Loads a volunteer event profile for a user (tracked). Returns null
-    /// if none exists.
-    /// </summary>
-    Task<VolunteerEventProfile?> GetVolunteerEventProfileForUpdateAsync(
-        Guid userId, CancellationToken ct = default);
-
     /// <summary>
     /// Loads a volunteer event profile (read-only). Returns null if none exists.
     /// </summary>

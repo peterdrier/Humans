@@ -2097,14 +2097,6 @@ internal sealed class ShiftManagementService(
             ShiftDayUserStatusScope.ConfirmedOnly,
             ct);
 
-    public async Task<int> DeleteShiftProfilesForUserAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        var deleted = await repo.DeleteVolunteerEventProfilesForUserAsync(userId, ct);
-        viewInvalidator.InvalidateUser(userId);
-        return deleted;
-    }
-
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {

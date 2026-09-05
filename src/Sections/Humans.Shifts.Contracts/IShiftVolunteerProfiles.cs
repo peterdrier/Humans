@@ -2,9 +2,8 @@ namespace Humans.Shifts.Contracts;
 
 /// <summary>
 /// The volunteer's own shift profile — skills/quirks/languages and shift-tag
-/// preferences — as consumed from outside the section: Shell's profile edit
-/// page and its two dashboard view components read and write it, and the
-/// account-anonymisation flow deletes it.
+/// preferences — as consumed from outside the section: Users' profile edit
+/// page reads and writes it.
 /// </summary>
 /// <remarks>
 /// Carries writes, so it is deliberately not called <c>…Read</c>
@@ -30,15 +29,6 @@ public interface IShiftVolunteerProfiles
     /// Profile — read those via <c>IUserServiceRead</c>.
     /// </summary>
     Task<ShiftVolunteerProfileInfo?> GetShiftProfileAsync(Guid userId);
-
-    /// <summary>
-    /// Deletes every <c>VolunteerEventProfile</c> row owned by
-    /// <paramref name="userId"/>. Returns the number of rows removed. Used by
-    /// the account anonymization flow so the job does not write to
-    /// <c>volunteer_event_profiles</c> directly (design-rules §2c).
-    /// </summary>
-    Task<int> DeleteShiftProfilesForUserAsync(
-        Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Gets shift tags, optionally filtered by name (case-insensitive contains).

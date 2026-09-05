@@ -74,14 +74,6 @@ internal interface IShiftSignupService : IShiftSignupSeeding, IApplicationServic
     Task<IReadOnlyList<OrphanSignupSnapshot>> GetAllForOrphanScanAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns user-ids with at least one ShiftSignup for the given event whose
-    /// Status is Pending or Confirmed. Used by audience computations to identify
-    /// "users who have a shift". Refused/Bailed/Cancelled/NoShow signups do not count.
-    /// </summary>
-    Task<IReadOnlySet<Guid>> GetActiveCommittedUserIdsForEventAsync(
-        Guid eventSettingsId, CancellationToken ct = default);
-
-    /// <summary>
     /// Self-service day-row toggle for the current user: bails an existing active
     /// signup for <paramref name="shiftId"/>, or signs up if none exists (auto-confirm
     /// per <paramref name="privileged"/>, mirroring <see cref="IShiftSignups.SignUpAsync"/>'s

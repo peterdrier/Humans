@@ -645,21 +645,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         await ctx.SaveChangesAsync(ct);
     }
 
-    // ==========================================================================
-    // Volunteer event profiles
-    // ==========================================================================
-
-    public async Task<VolunteerEventProfile?> GetVolunteerEventProfileForUpdateAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var profile = await ctx.VolunteerEventProfiles
-            .FirstOrDefaultAsync(p => p.UserId == userId, ct);
-        if (profile is null) return null;
-        ctx.Entry(profile).State = EntityState.Detached;
-        return profile;
-    }
-
     public async Task<VolunteerEventProfile?> GetVolunteerEventProfileAsync(
         Guid userId, CancellationToken ct = default)
     {
