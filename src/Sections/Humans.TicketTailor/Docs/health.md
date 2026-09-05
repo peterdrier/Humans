@@ -121,4 +121,4 @@ non-2xx as "not redeemed".
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-09-05 | First doctoring — invariant doc written, wire records collapsed to one naming mechanism, dead test scaffolding cut, untested invariants pinned | peterdrier/Humans#pending |
+| 1 | 2026-09-05 | First doctoring — invariant doc written, wire records collapsed to one naming mechanism, dead test scaffolding cut, untested invariants pinned | peterdrier/Humans#1595 |
