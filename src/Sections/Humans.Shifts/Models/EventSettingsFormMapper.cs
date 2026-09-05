@@ -57,16 +57,13 @@ internal static class EventSettingsFormMapper
                 errors.Add(new EventSettingsFormError(nameof(model.EarlyEntryClose), "Invalid UTC instant format."));
         }
 
+        var earlyEntryCapacity = ParseOffsetMap(
+            model.EarlyEntryCapacityJson, nameof(model.EarlyEntryCapacityJson), errors) ?? new();
+        var barriosAllocation = ParseOffsetMap(
+            model.BarriosEarlyEntryAllocationJson, nameof(model.BarriosEarlyEntryAllocationJson), errors);
+
         if (errors.Count > 0)
             return new EventSettingsFormParseResult(null, errors);
-
-        var earlyEntryCapacity = !string.IsNullOrEmpty(model.EarlyEntryCapacityJson)
-            ? JsonSerializer.Deserialize<Dictionary<int, int>>(model.EarlyEntryCapacityJson) ?? new()
-            : new Dictionary<int, int>();
-
-        var barriosAllocation = !string.IsNullOrEmpty(model.BarriosEarlyEntryAllocationJson)
-            ? JsonSerializer.Deserialize<Dictionary<int, int>>(model.BarriosEarlyEntryAllocationJson)
-            : null;
 
         var draft = new EventSettingsDraft(
             model.Id,
@@ -89,6 +86,27 @@ internal static class EventSettingsFormMapper
             model.IsActive);
 
         return new EventSettingsFormParseResult(draft, []);
+    }
+
+    /// <summary>
+    /// Parses a day-offset → count JSON object from the form. Empty input is
+    /// <c>null</c>; malformed input is a field error, not an exception.
+    /// </summary>
+    private static Dictionary<int, int>? ParseOffsetMap(
+        string? json, string fieldName, List<EventSettingsFormError> errors)
+    {
+        if (string.IsNullOrEmpty(json))
+            return null;
+
+        try
+        {
+            return JsonSerializer.Deserialize<Dictionary<int, int>>(json);
+        }
+        catch (JsonException)
+        {
+            errors.Add(new EventSettingsFormError(fieldName, "Invalid JSON: expected {\"dayOffset\": count, ...}."));
+            return null;
+        }
     }
 
     internal static EventSettings Create(EventSettingsDraft draft, Instant now)
