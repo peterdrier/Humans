@@ -457,8 +457,11 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteRota(string slug, Guid rotaId)
     {
-        var (teamError, _, _) = await ResolveDepartmentManagementAsync(slug);
+        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
+
+        var rota = await GetRotaForTeamAsync(rotaId, team.Id);
+        if (rota is null) return NotFound();
 
         try
         {
@@ -478,8 +481,11 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteShift(string slug, Guid shiftId)
     {
-        var (teamError, _, _) = await ResolveDepartmentManagementAsync(slug);
+        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
+
+        var shift = await GetShiftForTeamAsync(shiftId, team.Id);
+        if (shift is null) return NotFound();
 
         try
         {
