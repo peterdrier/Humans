@@ -46,15 +46,15 @@ Value = bug surface removed, then concepts removed, then words removed.
 | 12 | **`StubTicketVendorService.BuildSampleData` is reforge's one longMethod hit** (133 LOC / CC 23) — the single fixture the target blesses. Recorded in the section's `Docs/debt.yml`, not split. | low | **debt.yml** |
 | 13 | **Freshness catalog's `data-access.md` entry never triggers on `src/Sections/*/Section.cs`**, so a registration-only change cannot dirty the map — exactly how finding 2's claim went stale. Shared file → sweep queue. | med | **queued** |
 | 14 | **`tests/Humans.TicketTailor.Tests/Architecture/TicketVendorArchitectureTests.cs`:** bare `#555`, "Shell's health check", a `Humans.Application.Tests` path, a comment on the wrong const, deleted-assertion narration, dead `Humans.Infrastructure` and never-matching `TicketTailor` prefixes, and `ThePortsAssemblyDoesNotReferenceTheAdapterSection` asserting a build-cycle impossibility ([`no-tests-for-absences`](../../../memory/architecture/no-tests-for-absences.md)). peterdrier/Humans#1589 writes lines 7–24 of this file. | med | **Needs Peter** |
-| 15 | **`ITicketVendorService.GetDiscountCodeUsageAsync` / `DiscountCodeStatusDto` have no caller** outside the port and its two adapters, and the live implementation swallows a non-2xx as "not redeemed", unlike every other read. Port is Tickets' (`src/Sections/Humans.Tickets/Contracts/`, #1589 writes it). | med | **Needs Peter** |
+| 15 | **`ITicketVendorService.GetDiscountCodeUsageAsync` / `DiscountCodeStatusDto` have no caller** outside the port and its two adapters, and the live implementation swallows a non-2xx as "not redeemed", unlike every other read. Port is Tickets' (`src/Sections/Humans.Tickets/Contracts/`, peterdrier/Humans#1589 writes it). | med | **Needs Peter** |
 | 16 | **`VendorOrderDto.Tickets`** is `[]` from the live client, populated by the stub, never read by Tickets. Tickets-owned DTO. | low | **Needs Peter** |
 | 17 | **`docs/architecture/debt-ledger.yml` 2026-06-29 entry** (nested `check_in` mapping, nobodies-collective/Humans#736) describes code that no longer exists — its own prescribed fix (read `/check_ins`, `check_in_at` epoch seconds) is implemented. Runs never mutate existing entries. | med | **Needs Peter** |
-| 18 | **Gate's docs assert TicketTailor facts** (form-encoded `POST /v1/check_ins`, required fields, non-idempotency: `Gate.md:67-77`) but trigger only on `src/Sections/Humans.Gate/**`; `gate-admissions.md:65` names `ITicketVendorService.CreateCheckInAsync`, the port Gate is banned from injecting (it calls `ITicketVendorMirror`). Gate is blocked (#1574). | med | **queued** |
-| 19 | **Tickets' `ticket-transfer.md` triggers omit `src/Sections/Humans.TicketTailor/**`** while asserting the vendor void+reissue writeback; `Tickets.md:237` credits `TicketVendorArchitectureTests` with pinning "the two adapters" (that is `TicketVendorPortArchitectureTests`). Tickets is blocked (#1589). | low | **queued** |
+| 18 | **Gate's docs assert TicketTailor facts** (form-encoded `POST /v1/check_ins`, required fields, non-idempotency: `Gate.md:67-77`) but trigger only on `src/Sections/Humans.Gate/**`; `gate-admissions.md:65` names `ITicketVendorService.CreateCheckInAsync`, the port Gate is banned from injecting (it calls `ITicketVendorMirror`). Gate is blocked (peterdrier/Humans#1574). | med | **queued** |
+| 19 | **Tickets' `ticket-transfer.md` triggers omit `src/Sections/Humans.TicketTailor/**`** while asserting the vendor void+reissue writeback; `Tickets.md:237` credits `TicketVendorArchitectureTests` with pinning "the two adapters" (that is `TicketVendorPortArchitectureTests`). Tickets is blocked (peterdrier/Humans#1589). | low | **queued** |
 | 20 | **Inbox:** no open peterdrier/Humans issue names TicketTailor; the ledger's 2026-08-21 re-sync entry is Tickets' and stays; in-app issues unreachable from this container. | — | **no change** |
 | 21 | **`StubTicketVendorService.cs` says "Every 5th ticket is scanned" but `(orderIndex * 10 + t) % 5 == 0` reduces to `t == 0`** (orders hold one or two tickets), so the first ticket of every paid order is checked in — 450 of 600. Comment and code disagree and the code looks wrong; changed neither ([`when doc and code disagree`](2026-08-22-Cantina.md)). The new stub test and both docs pin the gate day, not the fraction. | med | **Needs Peter** |
-| 22 | **`ITicketVendorService.cs:81` documents `CreateCheckInAsync` as "Safe to retry"**; the vendor call is not idempotent (each POST creates a record) and Gate's job runs with `Attempts = 0` for that reason. Raised by the cut-cluster reviewer. Tickets-owned, #1589 writes the file. | med | **queued** |
-| 23 | **The stale "Shell's `TicketVendorHealthCheck`" claim also stands at `src/Sections/Humans.Tickets/Contracts/ITicketVendorService.cs:15` and `src/Sections/Humans.Tickets/Section.cs:29`.** Found sweeping finding 3; #1589 writes both. | low | **queued** |
+| 22 | **`ITicketVendorService.cs:81` documents `CreateCheckInAsync` as "Safe to retry"**; the vendor call is not idempotent (each POST creates a record) and Gate's job runs with `Attempts = 0` for that reason. Raised by the cut-cluster reviewer. Tickets-owned, peterdrier/Humans#1589 writes the file. | med | **queued** |
+| 23 | **The stale "Shell's `TicketVendorHealthCheck`" claim also stands at `src/Sections/Humans.Tickets/Contracts/ITicketVendorService.cs:15` and `src/Sections/Humans.Tickets/Section.cs:29`.** Found sweeping finding 3; peterdrier/Humans#1589 writes both. | low | **queued** |
 | 24 | **`GetEventSummaryAsync` caches inline through `IMemoryCache`** rather than behind a caching decorator over the port. One key, one adapter, a vendor-facing boundary — the target records "no decorator" as the decision, but two implementers would differ. | low | **Needs Peter** |
 | 25 | **`docs/architecture/section-conformance.yml:67` records "no Docs/ in Settings or TicketTailor"** as a pre-existing hit; both now carry `Docs/`. Read-only to a run. | low | **queued** |
 | 26 | **`docs/architecture/dependency-graph.md` lists `TicketVendorService` among services with no cross-section edges**; no such type exists — the adapter's services are `TicketTailorService` and `StubTicketVendorService`. Shared file. | low | **queued** |
@@ -92,12 +92,12 @@ Findings 12–28 (dispositions above): 12 to the section's `Docs/debt.yml`; 13, 
 
 Off-limits this run under the concurrency contract: `TicketVendorArchitectureTests.cs`, every
 `src/Sections/Humans.Tickets/**` file, `docs/guide/Tickets.md` and `debt-ledger.yml` appends
-(all peterdrier/Humans#1589); `src/Sections/Humans.Gate/**` (#1574).
+(all peterdrier/Humans#1589); `src/Sections/Humans.Gate/**` (peterdrier/Humans#1574).
 
-Sections passed over as blocked (open doctor PRs): Auth (#1575), Backdoor (#1586), Budget
-(#1565), Calendar (#1578), Campaigns (#1564), Camps (#1561), Consent (#1572), EarlyEntry
-(#1593), Email (#1587), Feedback (#1566), Gate (#1574), Governance (#1580), Holded (#1583),
-Monitor (#1582), Stripe (#1588), Teams (#1594), Tickets (#1589). Feature-active and set aside:
+Sections passed over as blocked (open doctor PRs): Auth (peterdrier/Humans#1575), Backdoor (peterdrier/Humans#1586), Budget
+(peterdrier/Humans#1565), Calendar (peterdrier/Humans#1578), Campaigns (peterdrier/Humans#1564), Camps (peterdrier/Humans#1561), Consent (peterdrier/Humans#1572), EarlyEntry
+(peterdrier/Humans#1593), Email (peterdrier/Humans#1587), Feedback (peterdrier/Humans#1566), Gate (peterdrier/Humans#1574), Governance (peterdrier/Humans#1580), Holded (peterdrier/Humans#1583),
+Monitor (peterdrier/Humans#1582), Stripe (peterdrier/Humans#1588), Teams (peterdrier/Humans#1594), Tickets (peterdrier/Humans#1589). Feature-active and set aside:
 AuditLog, Gdpr, Notifications, Rideshare.
 
 ## Threads
@@ -127,8 +127,10 @@ with room for the full test matrix.
 cost a verification round — the comment was false. The Conformance thread returned no detector
 output and the main thread re-ran the detectors (finding 28). Two build rounds on the new tests
 were analyzer feedback (`MA0006`, `MA0002`, a missing `using Xunit;`) that a read of a sibling
-test file would have pre-empted. One auto-compaction landed mid-Phase 4, between the dedup
-strike and its reviewer verdict; Phase 5's mandatory re-read of Phases 5–7 was applied after it.
+test file would have pre-empted. Two auto-compactions landed: one during the Phase 3 assessment,
+one mid-Phase 4 between the dedup strike and its reviewer verdict; Phase 5's mandatory re-read of
+Phases 5–7 was applied after the second. The second and third reviewer dispatches opened without
+a `thread:` marker, so the cost comment names those rows by agent id rather than by thread.
 
 **What the assessment missed that striking revealed:** the stub's every-5th comment versus its
 modulus (finding 21) surfaced only while writing the dataset test — the behavior read had
@@ -190,6 +192,6 @@ outside the section: `docs/README.md` ·
 
 **Reviewed:**
 `src/Sections/Humans.TicketTailor/Properties/AssemblyInfo.cs` ·
-`tests/Humans.TicketTailor.Tests/Architecture/TicketVendorArchitectureTests.cs` (off-limits: #1589)
+`tests/Humans.TicketTailor.Tests/Architecture/TicketVendorArchitectureTests.cs` (off-limits: peterdrier/Humans#1589)
 
 **Generated:** none.
