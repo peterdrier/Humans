@@ -72,8 +72,8 @@ A read-side aggregator with no storage of its own. Written fresh:
 - **One controller and one admin view**: sort the roster, stitch the legal name from Users,
   render a table. No business rule.
 
-The layout matches this. What differs from the fresh form is small: the collapse is written
-twice in the orchestrator, and `HasMultiple` travels as a field when it is `Sources.Count > 1`.
+The layout matches this. What differs from the fresh form is small: `HasMultiple` travels as
+a field when it is `Sources.Count > 1`.
 
 ## 4. Invariants
 

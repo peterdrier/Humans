@@ -16,12 +16,8 @@ internal sealed class EarlyEntryService(IEnumerable<IEarlyEntryProvider> provide
             .GroupBy(g => g.UserId)
             .Select(grp =>
             {
-                var sources = grp.Select(g => g.Source).Distinct(StringComparer.Ordinal).ToList();
-                return new EarlyEntryRosterRow(
-                    grp.Key,
-                    grp.Min(g => g.EntryDate),
-                    sources,
-                    sources.Count > 1);
+                var entry = Collapse(grp);
+                return new EarlyEntryRosterRow(grp.Key, entry.EarliestEntryDate, entry.Sources, entry.Sources.Count > 1);
             })
             .ToList();
     }
@@ -30,11 +26,12 @@ internal sealed class EarlyEntryService(IEnumerable<IEarlyEntryProvider> provide
     {
         var all = await GatherAsync(ct);
         var mine = all.Where(g => g.UserId == userId).ToList();
-        if (mine.Count == 0) return null;
-        return new UserEarlyEntry(
-            mine.Min(g => g.EntryDate),
-            mine.Select(g => g.Source).Distinct(StringComparer.Ordinal).ToList());
+        return mine.Count == 0 ? null : Collapse(mine);
     }
+
+    private static UserEarlyEntry Collapse(IEnumerable<EarlyEntryGrant> grants) => new(
+        grants.Min(g => g.EntryDate),
+        grants.Select(g => g.Source).Distinct(StringComparer.Ordinal).ToList());
 
     private async Task<List<EarlyEntryGrant>> GatherAsync(CancellationToken ct)
     {
