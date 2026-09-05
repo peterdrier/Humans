@@ -20,8 +20,8 @@ invariants sitting in a `Contracts/README.md` titled after a project that does n
 (finding 1); a data-access map and three comments describing a credential-based switch and a
 Shell-owned health check, both years stale (findings 2, 3); comment drift of the recognizable
 kind — decision history, provenance tags, a live-verification diary, next-line restatements
-(findings 8–10); two naming mechanisms for the wire shape and seven unread wire fields
-(finding 6); three copies of the test scaffolding and dead test-project references
+(findings 8–10); a second naming mechanism for the wire shape and unread wire fields
+(finding 6); copy-pasted test scaffolding and dead test-project references
 (findings 5, 7); and a matrix of untested invariants, the environment switch first among them
 (finding 4). Striking surfaced one code-vs-comment disagreement in the stub (finding 21) and
 one wrong claim in the port's own doc comment (finding 22).
@@ -43,7 +43,7 @@ Value = bug surface removed, then concepts removed, then words removed.
 | 9 | **`TicketTailorService.cs` comments:** the 11-line "VERIFIED LIVE" diary, an analyzer apology, next-line restatements, three copies of one provenance ref, a class summary restating the name, a real vendor order id. Cut; the check-in comment kept as four constraints. | med | **worked** |
 | 10 | **`StubTicketVendorService.cs` comments:** a bare `#736`, "Development-only" (the rule is every non-Production environment), restatements. Cut/rewritten. | med | **worked** |
 | 11 | **`VoidIssuedTicketAsync` / `IssueTicketAsync` opened no `TimeOperation()` scope** unlike every other port method. Added. | low | **worked** |
-| 12 | **`StubTicketVendorService.BuildSampleData` is reforge's one longMethod hit** (133 LOC / CC 23) — the single fixture the target blesses. Recorded in the section's `Docs/debt.yml`, not split. | low | **debt.yml** |
+| 12 | **`StubTicketVendorService.BuildSampleData` is reforge's one longMethod hit** — the single fixture the target blesses. Recorded in the section's `Docs/debt.yml`, not split. | low | **debt.yml** |
 | 13 | **Freshness catalog's `data-access.md` entry never triggers on `src/Sections/*/Section.cs`**, so a registration-only change cannot dirty the map — exactly how finding 2's claim went stale. Shared file → sweep queue. | med | **queued** |
 | 14 | **`tests/Humans.TicketTailor.Tests/Architecture/TicketVendorArchitectureTests.cs`:** bare `#555`, "Shell's health check", a `Humans.Application.Tests` path, a comment on the wrong const, deleted-assertion narration, dead `Humans.Infrastructure` and never-matching `TicketTailor` prefixes, and `ThePortsAssemblyDoesNotReferenceTheAdapterSection` asserting a build-cycle impossibility ([`no-tests-for-absences`](../../../memory/architecture/no-tests-for-absences.md)). peterdrier/Humans#1589 writes lines 7–24 of this file. | med | **Needs Peter** |
 | 15 | **`ITicketVendorService.GetDiscountCodeUsageAsync` / `DiscountCodeStatusDto` have no caller** outside the port and its two adapters, and the live implementation swallows a non-2xx as "not redeemed", unlike every other read. Port is Tickets' (`src/Sections/Humans.Tickets/Contracts/`, peterdrier/Humans#1589 writes it). | med | **Needs Peter** |
@@ -120,8 +120,8 @@ Raw per-thread finding counts before consolidation into the ranked list above.
 ## Retro
 
 **What the selector/rubric got wrong:** nothing. TicketTailor was the lower-middle of eight
-never-doctored sections by reforge score; at 886 LOC and three source files it fit the budget
-with room for the full test matrix.
+never-doctored sections by reforge score; small enough to fit the budget with room for the full
+test matrix.
 
 **Wasted motion:** the History thread's "keep" verdict on the test-csproj comment (finding 7)
 cost a verification round — the comment was false. The Conformance thread returned no detector
