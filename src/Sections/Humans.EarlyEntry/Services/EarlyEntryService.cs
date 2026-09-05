@@ -3,10 +3,9 @@ using Humans.EarlyEntry.Contracts;
 namespace Humans.EarlyEntry.Services;
 
 /// <summary>
-/// Fans out over every <see cref="IEarlyEntryProvider"/> and assembles per-user
-/// EE results. Sequential, not Task.WhenAll: providers share the scoped
-/// section DbContexts, which are not thread-safe (same reason GdprService is
-/// sequential). Owns no repository.
+/// Fans out over the registered providers and collapses per person: earliest date wins,
+/// distinct reasons kept. Sequential is a simplicity choice, not a thread-safety
+/// requirement (design-rules §8b) — nothing here is slow enough to want otherwise.
 /// </summary>
 internal sealed class EarlyEntryService(IEnumerable<IEarlyEntryProvider> providers) : IEarlyEntryService
 {
