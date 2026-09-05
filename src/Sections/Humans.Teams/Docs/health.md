@@ -148,4 +148,4 @@ The shapes imply:
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-09-05 | First pass — leaf trimmed to its cross-section half, docs and comments re-derived from code, dead keys and duplicate tests cut, audit/approval/directory invariants pinned | peterdrier/Humans#pending |
+| 1 | 2026-09-05 | First pass — leaf trimmed to its cross-section half, docs and comments re-derived from code, dead keys and duplicate tests cut, audit/approval/directory invariants pinned | peterdrier/Humans#1594 |
