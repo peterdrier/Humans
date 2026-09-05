@@ -16,7 +16,8 @@ namespace Humans.TicketTailor.Services;
 
 /// <summary>
 /// Ticket Tailor v1 client: one method per <see cref="ITicketVendorService"/> port method.
-/// Reads throw <see cref="HttpRequestException"/>; void and issue throw
+/// List and event reads throw <see cref="HttpRequestException"/> (discount-code usage
+/// reports a failed lookup as unredeemed); void and issue throw
 /// <see cref="TicketVendorWriteException"/>.
 /// </summary>
 internal sealed class TicketTailorService : ITicketVendorService

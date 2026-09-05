@@ -5,6 +5,7 @@
 Project: `src/Sections/Humans.TicketTailor` — services under `Services/`. **No
 DbContext, no repository, no tables:** the section is the adapter behind Tickets'
 `ITicketVendorService` port; Tickets owns every local row mirrored from the vendor.
+Invariants: `Docs/TicketTailor.md`.
 
 ### TicketTailorService (typed HttpClient, Production only)
 
