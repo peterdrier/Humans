@@ -392,66 +392,65 @@ internal sealed class TicketTailorService : ITicketVendorService
         return donationCents > 0 ? donationCents / 100m : 0m;
     }
 
-    // Must be internal (not private) for System.Text.Json deserialization
+    // Wire records: internal (not private) for System.Text.Json; names follow JsonOptions'
+    // snake_case policy.
 
     internal sealed record TtPaginatedResponse<T>(
-        [property: JsonPropertyName("data")] List<T> Data,
-        [property: JsonPropertyName("links")] TtLinks? Links);
+        List<T> Data,
+        TtLinks? Links);
 
     internal sealed record TtLinks(
-        [property: JsonPropertyName("next")] string? Next,
-        [property: JsonPropertyName("previous")] string? Previous);
+        string? Next);
 
     internal sealed record TtOrder(
-        [property: JsonPropertyName("id")] string Id,
-        [property: JsonPropertyName("buyer_details")] TtBuyerDetails? BuyerDetails,
-        [property: JsonPropertyName("total")] int? Total,
-        [property: JsonPropertyName("currency")] TtCurrency? Currency,
-        [property: JsonPropertyName("status")] string? Status,
-        [property: JsonPropertyName("created_at")] long CreatedAt,
-        [property: JsonPropertyName("line_items")] List<TtLineItem>? LineItems,
-        [property: JsonPropertyName("txn_id")] string? TxnId);
+        string Id,
+        TtBuyerDetails? BuyerDetails,
+        int? Total,
+        TtCurrency? Currency,
+        string? Status,
+        long CreatedAt,
+        List<TtLineItem>? LineItems,
+        string? TxnId);
 
     internal sealed record TtLineItem(
-        [property: JsonPropertyName("description")] string? Description,
-        [property: JsonPropertyName("type")] string? Type,
-        [property: JsonPropertyName("total")] int? Total);
+        string? Description,
+        string? Type,
+        int? Total);
 
     internal sealed record TtBuyerDetails(
-        [property: JsonPropertyName("first_name")] string? FirstName,
-        [property: JsonPropertyName("last_name")] string? LastName,
-        [property: JsonPropertyName("email")] string? Email,
-        [property: JsonPropertyName("name")] string? Name);
+        string? FirstName,
+        string? LastName,
+        string? Email,
+        string? Name);
 
     internal sealed record TtCurrency(
-        [property: JsonPropertyName("code")] string? Code,
-        [property: JsonPropertyName("base_multiplier")] int? BaseMultiplier);
+        string? Code);
 
     internal sealed record TtIssuedTicket(
-        [property: JsonPropertyName("id")] string Id,
-        [property: JsonPropertyName("first_name")] string? FirstName,
-        [property: JsonPropertyName("last_name")] string? LastName,
-        [property: JsonPropertyName("full_name")] string? FullName,
-        [property: JsonPropertyName("email")] string? Email,
-        [property: JsonPropertyName("description")] string? Description,
-        [property: JsonPropertyName("listed_price")] int? ListedPrice,
-        [property: JsonPropertyName("status")] string? Status,
-        [property: JsonPropertyName("order_id")] string? OrderId,
-        [property: JsonPropertyName("custom_questions")] List<TtCustomQuestion>? CustomQuestions,
-        [property: JsonPropertyName("barcode")] string? Barcode = null);
+        string Id,
+        string? FirstName,
+        string? LastName,
+        string? FullName,
+        string? Email,
+        string? Description,
+        int? ListedPrice,
+        string? Status,
+        string? OrderId,
+        List<TtCustomQuestion>? CustomQuestions,
+        string? Barcode = null);
 
     // Gate scans are their own /check_ins resource; the issued ticket stays "valid".
     // check_in_at and created_at are epoch seconds.
     internal sealed record TtCheckIn(
-        [property: JsonPropertyName("id")] string Id,
-        [property: JsonPropertyName("issued_ticket_id")] string? IssuedTicketId,
-        [property: JsonPropertyName("check_in_at")] long? CheckInAt,
-        [property: JsonPropertyName("created_at")] long? CreatedAt,
-        [property: JsonPropertyName("quantity")] int? Quantity);
+        string Id,
+        string? IssuedTicketId,
+        long? CheckInAt,
+        long? CreatedAt,
+        int? Quantity);
 
     internal sealed record TtCustomQuestion(
-        [property: JsonPropertyName("question")] string? Question,
-        [property: JsonPropertyName("answer")] string? Answer);
+        string? Question,
+        string? Answer);
 
     // TT's issued_ticket.email is the buyer/account email replicated onto every
     // ticket in the order — useless for matching the actual attendee. The real
@@ -471,28 +470,25 @@ internal sealed class TicketTailorService : ITicketVendorService
     }
 
     internal sealed record TtEvent(
-        [property: JsonPropertyName("name")] string? Name,
-        [property: JsonPropertyName("total_holds")] int? TotalHolds,
-        [property: JsonPropertyName("total_issued_tickets")] int? TotalIssuedTickets,
-        [property: JsonPropertyName("total_orders")] int? TotalOrders,
-        [property: JsonPropertyName("ticket_types")] List<TtTicketType>? TicketTypes,
-        [property: JsonPropertyName("ticket_groups")] List<TtTicketGroup>? TicketGroups);
+        string? Name,
+        int? TotalIssuedTickets,
+        List<TtTicketType>? TicketTypes,
+        List<TtTicketGroup>? TicketGroups);
 
     internal sealed record TtTicketType(
-        [property: JsonPropertyName("quantity_total")] int? QuantityTotal,
-        [property: JsonPropertyName("quantity_issued")] int? QuantityIssued);
+        int? QuantityTotal);
 
     internal sealed record TtTicketGroup(
-        [property: JsonPropertyName("name")] string? Name,
-        [property: JsonPropertyName("max_quantity")] int? MaxQuantity);
+        int? MaxQuantity);
 
     internal sealed record TtVoucherCode(
-        [property: JsonPropertyName("code")] string? Code,
-        [property: JsonPropertyName("times_used")] int? TimesUsed);
+        string? Code,
+        int? TimesUsed);
 
     public async Task<VoidIssuedTicketResult> VoidIssuedTicketAsync(
         string vendorTicketId, bool voidToHold, CancellationToken ct = default)
     {
+        using var _ = _logger.TimeOperation();
         var url = $"{BaseUrl}/issued_tickets/{vendorTicketId}/void";
         using var content = new FormUrlEncodedContent(new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -523,6 +519,7 @@ internal sealed class TicketTailorService : ITicketVendorService
     public async Task<VendorTicketDto> IssueTicketAsync(
         IssueTicketRequest request, CancellationToken ct = default)
     {
+        using var _ = _logger.TimeOperation();
         if (string.IsNullOrEmpty(request.HoldId) &&
             (string.IsNullOrEmpty(request.EventId) || string.IsNullOrEmpty(request.TicketTypeId)))
         {
@@ -579,9 +576,8 @@ internal sealed class TicketTailorService : ITicketVendorService
     }
 
     internal sealed record TtVoidResponse(
-        [property: JsonPropertyName("id")] string? Id,
-        [property: JsonPropertyName("hold_id")] string? HoldId,
-        [property: JsonPropertyName("voided")] string? Voided);
+        string? Id,
+        string? HoldId);
 
     private static async Task<TicketVendorWriteException> BuildVendorWriteExceptionAsync(
         HttpResponseMessage response, string op, string subject, CancellationToken ct)
