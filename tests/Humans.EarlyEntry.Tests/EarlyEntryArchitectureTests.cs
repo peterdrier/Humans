@@ -1,6 +1,10 @@
+using System.Reflection;
 using AwesomeAssertions;
+using Humans.Base.Authorization;
 using Humans.EarlyEntry.Contracts;
+using Humans.EarlyEntry.Controllers;
 using Humans.EarlyEntry.Services;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.EarlyEntry.Tests;
 
@@ -17,4 +21,14 @@ public class EarlyEntryArchitectureTests
 
         paramTypes.Should().BeEquivalentTo([typeof(IEnumerable<IEarlyEntryProvider>)]);
     }
+
+    [HumansFact]
+    public void RosterRequiresShiftDashboardAccess()
+    {
+        var authorize = typeof(EarlyEntryRosterController).GetCustomAttribute<AuthorizeAttribute>();
+
+        authorize.Should().NotBeNull();
+        authorize!.Policy.Should().Be(PolicyNames.ShiftDashboardAccess);
+    }
 }
+
