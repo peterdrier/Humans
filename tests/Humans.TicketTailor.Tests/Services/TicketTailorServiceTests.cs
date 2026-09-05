@@ -297,4 +297,80 @@ public class TicketTailorServiceTests
         checkIns.Should().NotContain(c => c.VendorTicketId == "it_undo");
         checkIns.Single().CheckedInAt.Should().Be(Instant.FromUnixTimeSeconds(1751983320L));
     }
+
+    [HumansFact]
+    public async Task Since_FiltersOrdersAndTicketsByUpdatedAtAndCheckInsByCreatedAt()
+    {
+        var handler = new RecordingHttpHandler();
+        for (var i = 0; i < 3; i++)
+            handler.EnqueueResponse(HttpStatusCode.OK, new { data = Array.Empty<object>(), links = new { next = (string?)null } });
+
+        var service = TicketTailorTestHost.CreateService(handler);
+        var since = Instant.FromUnixTimeSeconds(1700000000L);
+        await service.GetOrdersAsync(since, "ev_test", Xunit.TestContext.Current.CancellationToken);
+        await service.GetIssuedTicketsAsync(since, "ev_test", Xunit.TestContext.Current.CancellationToken);
+        await service.GetCheckInsAsync(since, "ev_test", Xunit.TestContext.Current.CancellationToken);
+
+        var urls = handler.Requests.Select(r => r.Request.RequestUri!.ToString()).ToList();
+        urls[0].Should().Contain("/orders?event_id=ev_test").And.Contain("updated_at.gte=1700000000");
+        urls[1].Should().Contain("/issued_tickets?event_id=ev_test").And.Contain("updated_at.gte=1700000000");
+        urls[2].Should().Contain("/check_ins?event_id=ev_test").And.Contain("created_at.gte=1700000000");
+    }
+
+    [HumansFact]
+    public async Task Paging_FollowsLinksNextByStartingAfterTheLastId()
+    {
+        var handler = new RecordingHttpHandler();
+        handler.EnqueueResponse(HttpStatusCode.OK, new
+        {
+            data = new[] { new { id = "it_1", order_id = "ord_1" }, new { id = "it_2", order_id = "ord_1" } },
+            links = new { next = "more" }
+        });
+        handler.EnqueueResponse(HttpStatusCode.OK, new
+        {
+            data = new[] { new { id = "it_3", order_id = "ord_2" } },
+            links = new { next = (string?)null }
+        });
+        handler.EnqueueResponse(HttpStatusCode.OK, new
+        {
+            data = new[] { new { id = "ci_1", issued_ticket_id = "it_1", created_at = 1751983320L, quantity = 1 } },
+            links = new { next = "more" }
+        });
+        handler.EnqueueResponse(HttpStatusCode.OK, new
+        {
+            data = new[] { new { id = "ci_2", issued_ticket_id = "it_2", created_at = 1751983330L, quantity = 1 } },
+            links = new { next = (string?)null }
+        });
+
+        var service = TicketTailorTestHost.CreateService(handler);
+        var tickets = await service.GetIssuedTicketsAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
+        var checkIns = await service.GetCheckInsAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
+
+        tickets.Should().HaveCount(3);
+        checkIns.Should().HaveCount(2);
+        var urls = handler.Requests.Select(r => r.Request.RequestUri!.ToString()).ToList();
+        urls[0].Should().NotContain("starting_after");
+        urls[1].Should().EndWith("starting_after=it_2");
+        urls[2].Should().NotContain("starting_after");
+        urls[3].Should().EndWith("starting_after=ci_1");
+    }
+
+    [HumansFact]
+    public async Task ApiKey_IsSentAsBasicAuthOnlyWhenPresent()
+    {
+        var withKey = new RecordingHttpHandler();
+        withKey.EnqueueResponse(HttpStatusCode.OK, new { data = Array.Empty<object>(), links = new { next = (string?)null } });
+        var withoutKey = new RecordingHttpHandler();
+        withoutKey.EnqueueResponse(HttpStatusCode.OK, new { data = Array.Empty<object>(), links = new { next = (string?)null } });
+
+        await TicketTailorTestHost.CreateService(withKey, apiKey: "sk_test")
+            .GetOrdersAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
+        await TicketTailorTestHost.CreateService(withoutKey, apiKey: "")
+            .GetOrdersAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
+
+        var auth = withKey.Requests.Single().Request.Headers.Authorization;
+        auth!.Scheme.Should().Be("Basic");
+        auth.Parameter.Should().Be(Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes("sk_test:")));
+        withoutKey.Requests.Single().Request.Headers.Authorization.Should().BeNull();
+    }
 }

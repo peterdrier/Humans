@@ -1,6 +1,7 @@
 using System.Net;
 using AwesomeAssertions;
 using Humans.Tickets.Contracts;
+using NodaTime;
 using Xunit;
 
 namespace Humans.TicketTailor.Tests.Services;
@@ -291,5 +292,72 @@ public class TicketTailorServiceWriteTests
 
         var ex = await act.Should().ThrowAsync<TicketVendorWriteException>();
         ex.Which.Kind.Should().Be(kind);
+    }
+
+    [HumansFact]
+    public async Task IssueTicketAsync_TransportException_ThrowsTransient()
+    {
+        var handler = new RecordingHttpHandler();
+        handler.EnqueueThrow(new HttpRequestException("network failure"));
+
+        var service = TicketTailorTestHost.CreateService(handler);
+        var act = () => service.IssueTicketAsync(new IssueTicketRequest(
+            EventId: "ev_test", TicketTypeId: "tt_1", HoldId: null,
+            FullName: "Test User", Email: null, SendEmail: false, ExternalReference: null));
+
+        var ex = await act.Should().ThrowAsync<TicketVendorWriteException>();
+        ex.Which.Kind.Should().Be(TicketVendorFailureKind.Transient);
+        ex.Which.InnerException.Should().BeOfType<HttpRequestException>();
+    }
+
+    [HumansFact]
+    public async Task CreateCheckInAsync_PostsFormEncodedRequiredFields()
+    {
+        var handler = new RecordingHttpHandler();
+        handler.EnqueueResponse(HttpStatusCode.OK, new { id = "ci_1" });
+
+        var service = TicketTailorTestHost.CreateService(handler);
+        await service.CreateCheckInAsync("tt_1", Instant.FromUnixTimeSeconds(1751983320L), Xunit.TestContext.Current.CancellationToken);
+
+        var (request, body) = handler.Requests.Single();
+        request.RequestUri!.ToString().Should().EndWith("/check_ins");
+        request.Content!.Headers.ContentType!.MediaType.Should().Be("application/x-www-form-urlencoded");
+        body.Should().Contain("issued_ticket_id=tt_1").And.Contain("quantity=1").And.Contain("check_in_at=1751983320");
+    }
+
+    [HumansFact]
+    public async Task CreateCheckInAsync_ThrowsRawHttpRequestExceptionOnFailure()
+    {
+        var handler = new RecordingHttpHandler();
+        handler.EnqueueResponse(HttpStatusCode.Forbidden, new { error = "Order-manager key" });
+
+        var service = TicketTailorTestHost.CreateService(handler);
+        var act = () => service.CreateCheckInAsync("tt_1", Instant.FromUnixTimeSeconds(1751983320L), Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HttpRequestException>();
+    }
+
+    [HumansTheory]
+    [InlineData(DiscountType.Percentage, "\"type\":\"percentage\"", "\"value\":25")]
+    [InlineData(DiscountType.Fixed, "\"type\":\"monetary\"", "\"value\":2500")]
+    public async Task GenerateDiscountCodesAsync_PostsNoboPrefixedCodesWithMonetaryValuesInCents(
+        DiscountType type, string expectedType, string expectedValue)
+    {
+        var handler = new RecordingHttpHandler();
+        handler.EnqueueResponse(HttpStatusCode.OK, new { code = "NOBO-ONE" });
+        handler.EnqueueResponse(HttpStatusCode.OK, new { code = "NOBO-TWO" });
+
+        var service = TicketTailorTestHost.CreateService(handler);
+        var codes = await service.GenerateDiscountCodesAsync(
+            new DiscountCodeSpec(Count: 2, DiscountType: type, DiscountValue: 25m, ExpiresAt: null),
+            Xunit.TestContext.Current.CancellationToken);
+
+        codes.Should().Equal("NOBO-ONE", "NOBO-TWO");
+        handler.Requests.Should().HaveCount(2);
+        foreach (var (request, body) in handler.Requests)
+        {
+            request.RequestUri!.ToString().Should().EndWith("/voucher_codes");
+            body.Should().MatchRegex("\"code\":\"NOBO-[0-9A-F]{8}\"").And.Contain(expectedType).And.Contain(expectedValue);
+        }
     }
 }

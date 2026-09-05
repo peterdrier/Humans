@@ -39,4 +39,42 @@ public class TicketTailorServiceCachingTests
         second.TicketsSold.Should().Be(96);
         handler.RequestCount.Should().Be(2);
     }
+
+    [HumansFact]
+    public async Task GetEventSummaryAsync_ServesTheSecondCallFromCache()
+    {
+        var handler = new RecordingHttpHandler();
+        handler.EnqueueResponse(HttpStatusCode.OK, new
+        {
+            name = "Elsewhere 2026",
+            total_issued_tickets = 96,
+            ticket_groups = new[] { new { max_quantity = 2000 } }
+        });
+
+        var service = TicketTailorTestHost.CreateService(handler);
+        var first = await service.GetEventSummaryAsync("ev_test", Xunit.TestContext.Current.CancellationToken);
+        var second = await service.GetEventSummaryAsync("ev_test", Xunit.TestContext.Current.CancellationToken);
+
+        second.Should().Be(first);
+        handler.RequestCount.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task GetEventSummaryAsync_FallsBackToTicketTypeTotalsWhenNoGroups()
+    {
+        var handler = new RecordingHttpHandler();
+        handler.EnqueueResponse(HttpStatusCode.OK, new
+        {
+            name = "Elsewhere 2026",
+            total_issued_tickets = 10,
+            ticket_types = new[] { new { quantity_total = 300 }, new { quantity_total = 200 } },
+            ticket_groups = Array.Empty<object>()
+        });
+
+        var service = TicketTailorTestHost.CreateService(handler);
+        var summary = await service.GetEventSummaryAsync("ev_test", Xunit.TestContext.Current.CancellationToken);
+
+        summary.TotalCapacity.Should().Be(500);
+        summary.TicketsRemaining.Should().Be(490);
+    }
 }

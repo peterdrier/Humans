@@ -11,13 +11,13 @@ namespace Humans.TicketTailor.Tests.Services;
 
 internal static class TicketTailorTestHost
 {
-    public static TicketTailorService CreateService(HttpMessageHandler handler)
+    public static TicketTailorService CreateService(HttpMessageHandler handler, string apiKey = "test_key")
     {
         var settings = Options.Create(new TicketVendorSettings
         {
             EventId = "ev_test",
             SyncIntervalMinutes = 15,
-            ApiKey = "test_key"
+            ApiKey = apiKey
         });
 
         return new TicketTailorService(
