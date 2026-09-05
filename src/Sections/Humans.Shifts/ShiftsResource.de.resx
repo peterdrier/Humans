@@ -1078,9 +1078,6 @@
   <data name="EmailRota_Send" xml:space="preserve">
     <value>An {0} Empf&#xE4;nger senden</value>
   </data>
-  <data name="EmailRota_Success" xml:space="preserve">
-    <value>{0} E-Mail(s) an Empf&#xE4;nger im Dienstplan '{1}' eingereiht.</value>
-  </data>
   <data name="EmailRota_NoActiveSignups" xml:space="preserve">
     <value>Dieser Dienstplan hat keine aktiven Anmeldungen, denen eine E-Mail gesendet werden k&#xF6;nnte.</value>
   </data>
@@ -1186,4 +1183,5 @@
   <data name="Shifts_AvailabilityUpdated" xml:space="preserve"><value>Verfügbarkeit aktualisiert.</value></data>
   <data name="Shifts_IcalRegenerated" xml:space="preserve"><value>iCal-URL neu erzeugt.</value></data>
   <data name="Shifts_TagPreferencesSaved" xml:space="preserve"><value>Tag-Einstellungen gespeichert.</value></data>
+  <data name="VolTrack_Msg_DayOffNotSet" xml:space="preserve"><value>Für diesen Tag war kein freier Tag markiert.</value></data>
 </root>

@@ -1078,9 +1078,6 @@
   <data name="EmailRota_Send" xml:space="preserve">
     <value>Invia a {0} destinatario/i</value>
   </data>
-  <data name="EmailRota_Success" xml:space="preserve">
-    <value>Accodate {0} email per i destinatari del turno '{1}'.</value>
-  </data>
   <data name="EmailRota_NoActiveSignups" xml:space="preserve">
     <value>Questo turno non ha iscrizioni attive a cui inviare email.</value>
   </data>
@@ -1186,4 +1183,5 @@
   <data name="Shifts_AvailabilityUpdated" xml:space="preserve"><value>Disponibilità aggiornata.</value></data>
   <data name="Shifts_IcalRegenerated" xml:space="preserve"><value>URL iCal rigenerato.</value></data>
   <data name="Shifts_TagPreferencesSaved" xml:space="preserve"><value>Preferenze tag salvate.</value></data>
+  <data name="VolTrack_Msg_DayOffNotSet" xml:space="preserve"><value>Nessun giorno libero era impostato per quel giorno.</value></data>
 </root>

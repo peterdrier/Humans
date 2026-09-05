@@ -332,6 +332,10 @@ internal sealed class VolunteerTrackingController(
                 current.Id);
             SetSuccess(localizer["VolTrack_Msg_DayOffCleared"]);
         }
+        else
+        {
+            SetInfo(localizer["VolTrack_Msg_DayOffNotSet"]);
+        }
 
         return RedirectBack(returnUrl);
     }

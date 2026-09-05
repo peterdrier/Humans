@@ -1078,9 +1078,6 @@
   <data name="EmailRota_Send" xml:space="preserve">
     <value>Enviar a {0} destinatari(s)</value>
   </data>
-  <data name="EmailRota_Success" xml:space="preserve">
-    <value>S'han encuat {0} correu(s) per als destinataris del torn '{1}'.</value>
-  </data>
   <data name="EmailRota_NoActiveSignups" xml:space="preserve">
     <value>Aquest torn no t&#xE9; inscripcions actives a les quals enviar correu.</value>
   </data>
@@ -1186,4 +1183,5 @@
   <data name="Shifts_AvailabilityUpdated" xml:space="preserve"><value>Disponibilitat actualitzada.</value></data>
   <data name="Shifts_IcalRegenerated" xml:space="preserve"><value>URL d'iCal regenerada.</value></data>
   <data name="Shifts_TagPreferencesSaved" xml:space="preserve"><value>Preferències d'etiquetes desades.</value></data>
+  <data name="VolTrack_Msg_DayOffNotSet" xml:space="preserve"><value>No hi havia cap dia lliure marcat per a aquest dia.</value></data>
 </root>

@@ -1078,9 +1078,6 @@
   <data name="EmailRota_Send" xml:space="preserve">
     <value>Envoyer &#xE0; {0} destinataire(s)</value>
   </data>
-  <data name="EmailRota_Success" xml:space="preserve">
-    <value>{0} e-mail(s) mis en file d'attente pour les destinataires du roulement &#xAB;&#xA0;{1}&#xA0;&#xBB;.</value>
-  </data>
   <data name="EmailRota_NoActiveSignups" xml:space="preserve">
     <value>Ce roulement n'a aucune inscription active &#xE0; qui envoyer un e-mail.</value>
   </data>
@@ -1186,4 +1183,5 @@
   <data name="Shifts_AvailabilityUpdated" xml:space="preserve"><value>Disponibilité mise à jour.</value></data>
   <data name="Shifts_IcalRegenerated" xml:space="preserve"><value>URL iCal régénérée.</value></data>
   <data name="Shifts_TagPreferencesSaved" xml:space="preserve"><value>Préférences de tags enregistrées.</value></data>
+  <data name="VolTrack_Msg_DayOffNotSet" xml:space="preserve"><value>Aucun jour de repos n'était défini pour ce jour.</value></data>
 </root>
