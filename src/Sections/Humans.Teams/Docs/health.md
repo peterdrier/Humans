@@ -25,12 +25,12 @@ reflected in the Coordinators system team when a management role is involved.
 | "Which teams exist / what is team X?" (whole graph, by id, by slug, with parents, name fan-out, search) | almost every section, Shell tiles, global search, the auth handler | `ITeamServiceRead.GetTeamsAsync` / `GetTeamAsync` / `GetTeamBySlugAsync` / `GetTeamsWithParentsAsync` / `SearchAsync`; `IEntityNameContributor` |
 | "What may this human do on this team?" (coordinator of, coordinated ids, budget-scoped ids) | Shifts, Expenses, GoogleIntegration, `TeamAuthorizationHandler` | `ITeamServiceRead.IsUserCoordinatorOfTeamAsync` / `GetUserCoordinatedTeamIdsAsync` / `GetEffectiveBudgetCoordinatorTeamIdsAsync`; `TeamCoordinatorAccess` |
 | "Which teams is this human in?" | Users, GoogleIntegration, the profile card | `ITeamServiceRead.GetUserTeamMembershipsAsync` |
-| "Show me the directory / a team page / my teams / the roster" | the section's own two controllers | `ITeamManagementService.GetTeamDirectoryAsync` / `GetTeamDetailAsync` / `GetMyTeamMembershipsAsync` / `GetRosterAsync` / `GetAdminTeamListAsync`; `ITeamPageService` |
+| "Show me the directory / a team page / my teams / the roster" | the section's own controllers | `ITeamManagementService.GetTeamDirectoryAsync` / `GetTeamDetailAsync` / `GetMyTeamMembershipsAsync` / `GetRosterAsync` / `GetAdminTeamListAsync`; `ITeamPageService` |
 | "Let me in / let me out" (join, request, withdraw, leave; approve, reject) | members and coordinators via the controllers | `JoinTeamAsync` / `LeaveTeamAsync` / `WithdrawJoinRequestAsync` / `ApproveJoinRequestAsync` / `RejectJoinRequestAsync` + the two pending-request reads |
 | "Shape the team" (create, edit, deactivate, page content, Google group prefix) | TeamsAdmin/Board/Admin via the controllers; GoogleIntegration for the prefix | `CreateTeamWithGoogleGroupAsync` / `UpdateTeamWithGoogleGroupAsync` / `DeleteTeamAsync` / `UpdateTeamPageContentAsync`; `ITeamService.SetGoogleGroupPrefixAsync` |
-| "Staff the team" (members, role definitions, role assignments) | coordinators via the controllers | `AddMemberToTeamAsync` / `RemoveMemberAsync`; the five role-definition members; `AssignToRoleAsync` / `UnassignFromRoleAsync` |
-| "Who gets in early, for what?" | the per-team EE page; the EE roster | the four EE-grant members; `IEarlyEntryProvider.GetEarlyEntriesAsync` |
-| "Recompute the system teams" | Hangfire, the Google sync admin page, six sections' provisioning flows | `ISystemTeamSync` (job) over `ITeamService.ApplySystemTeamMembershipDeltaAsync` and the management interface's two role-reconciliation members |
+| "Staff the team" (members, role definitions, role assignments) | coordinators via the controllers | `AddMemberToTeamAsync` / `RemoveMemberAsync`; the role-definition members; `AssignToRoleAsync` / `UnassignFromRoleAsync` |
+| "Who gets in early, for what?" | the per-team EE page; the EE roster | the EE-grant members; `IEarlyEntryProvider.GetEarlyEntriesAsync` |
+| "Recompute the system teams" | Hangfire, the Google sync admin page, other sections' provisioning flows | `ISystemTeamSync` (job) over `ITeamService.ApplySystemTeamMembershipDeltaAsync` and the management interface's role-reconciliation members |
 | "This human is gone / merged" | Users (deletion, merge), Gdpr | `RevokeAllMembershipsAsync` / `RemoveMemberFromAllTeamsCache`; `IUserMerge.ReassignAsync`; `IUserDataContributor` (export + erasure) |
 | "Something changed underneath you" | Users, Development | `IActiveTeamsCacheInvalidator` → `InvalidateActiveTeamsCache` |
 | "Seed a fixture" | Development, Budget dev seeders | `ITeamSeeding` |
@@ -44,13 +44,13 @@ Vocabulary the leaf carries: `TeamInfo` (+ `TeamMemberInfo`, `TeamRoleDefinition
 
 The shapes imply:
 
-- **A contracts leaf** with exactly the cross-section half: the read interface (the first
-  three question shapes), a write interface carrying only members some *other* section
+- **A contracts leaf** with exactly the cross-section half: the read interface (the
+  whole-graph, authority and membership shapes), a write interface carrying only members some *other* section
   calls, the system-sync contract, the seeding contract, the cache-invalidator contract,
   and the flat records those signatures name. A member with no caller outside the
   assembly does not belong on the leaf.
 - **One inner service** owning every business rule, behind the internal management
-  interface, talking only to `ITeamRepository` for its own seven tables and to other
+  interface, talking only to `ITeamRepository` for its own tables and to other
   sections through their interfaces (audit, notifications, Google outbox, shifts auth
   eviction, early-entry eviction, user read model).
 - **One singleton caching decorator** over the same interface holding the canonical
@@ -58,7 +58,7 @@ The shapes imply:
   write so the next read re-warms the whole graph — no per-mutation diffing. Pending-request
   reads bypass it on purpose.
 - **One repository** with thick, named methods; no LINQ leaks.
-- **Two controllers**: member-facing (`/Teams/*`) and per-team management
+- **Controllers**: member-facing (`/Teams/*`) and per-team management
   (`/Teams/{slug}/*`), both thin, sharing one resolve-slug-then-authorise base. The
   resource-based handler plus its requirement live beside them.
 - **One system-team reconciler** (the hourly job) that reads other sections' facts and
@@ -96,7 +96,7 @@ The shapes imply:
 ## 5. Seams
 
 - **`IRoleAssignmentServiceRead` / `ITeamResourceServiceRead`** do not exist yet; the
-  reconciler's two read-only cross-section calls stay on full interfaces until Auth and
+  reconciler's read-only cross-section calls stay on full interfaces until Auth and
   GoogleIntegration split (ledger 2026-08-14).
 - **Cross-camp / sub-team shift management** (guide: "the system is being updated to
   reflect this properly") — coordinator scoping for shifts is Shifts' call, shaped by

@@ -283,5 +283,5 @@ User clicks "Leave"
 - [Authentication](../../../Humans.Auth/Docs/features/authentication.md) — Board role enables team creation
 - [Volunteer Status](../../../Humans.Onboarding/Docs/features/volunteer-status.md) — Determines Volunteers team membership
 - [Google Integration](../../../Humans.GoogleIntegration/Docs/features/google-integration.md) — Team resource provisioning
-- [Background Jobs](../../../../docs/features/global/background-jobs.md) — System team sync job
+- [Background Jobs](../../../../../docs/features/global/background-jobs.md) — System team sync job
 - [Hidden Teams](hidden-teams.md) — Admin-only team visibility flag
