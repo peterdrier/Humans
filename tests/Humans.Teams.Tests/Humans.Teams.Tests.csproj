@@ -19,7 +19,7 @@
     <ProjectReference Include="..\..\src\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <!--
       Temporary, and the condition that removes it: this project's harness seeds Users rows
-      through an in-memory UsersDbContext, which moved into Humans.Users at G5 lane 2 PR B.
+      through an in-memory UsersDbContext, which lives in Humans.Users.
       It drops out when the harness stops building the other section's context directly.
     -->
     <ProjectReference Include="..\..\src\Sections\Humans.Users\Humans.Users.csproj" />
@@ -41,8 +41,7 @@
     <!--
       The section's two controllers and its authorization handler are ASP.NET types, and a
       plain Microsoft.NET.Sdk test project does not get the shared framework — a
-      PackageReference cannot supply it either (NU1010 under Central Package Management,
-      design §15 step 8).
+      PackageReference cannot supply it either (NU1010 under Central Package Management).
     -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>

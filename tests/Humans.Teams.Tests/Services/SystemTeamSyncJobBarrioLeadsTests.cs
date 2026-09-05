@@ -21,12 +21,11 @@ namespace Humans.Teams.Tests.Services;
 
 /// <summary>
 /// Regression tests for <see cref="SystemTeamSyncJob.SyncMembershipForUserAsync"/>.
-/// Covers #498: duplicate camp registration for a user who is already an active member of the
+/// Covers nobodies-collective/Humans#498: duplicate camp registration for a user who is already an active member of the
 /// Barrio Leads system team must not violate IX_team_members_active_unique.
 /// </summary>
 /// <remarks>
-/// Rewritten for the §15 Google-writing jobs migration (issue #570): the job no
-/// longer owns a <c>UsersDbContext</c>, so the test coordinates through the
+/// The job owns no DbContext, so the test coordinates through the
 /// <see cref="ITeamManagementService"/> / <see cref="ICampLeadDirectory"/> seams. The
 /// Barrio Leads system team's <see cref="Team.Members"/> collection is stubbed
 /// so the job's idempotency guard can see the existing active membership

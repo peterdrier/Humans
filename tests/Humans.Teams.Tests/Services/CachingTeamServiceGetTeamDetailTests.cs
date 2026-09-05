@@ -12,7 +12,7 @@ using NSubstitute;
 namespace Humans.Teams.Tests.Services;
 
 /// <summary>
-/// Pins the T-01 invariant: <see cref="CachingTeamService.GetTeamDetailAsync"/>
+/// Pins that <see cref="CachingTeamService.GetTeamDetailAsync"/>
 /// projects entirely from the cached <c>TeamInfo</c> snapshot.
 /// </summary>
 public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable

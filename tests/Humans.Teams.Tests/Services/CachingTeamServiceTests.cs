@@ -378,8 +378,8 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         var inner = _serviceProvider.GetRequiredKeyedService<ITeamManagementService>(
             CachingTeamService.InnerServiceKey);
 
-        // A warm-cache second call must NOT touch the inner ITeamManagementService â€” the
-        // T-01 zero-EF-on-warm assertion for GetMyTeamMembershipsAsync.
+        // A warm-cache second call must NOT touch the inner ITeamManagementService:
+        // GetMyTeamMembershipsAsync projects from the cache alone.
         var second = await _service.GetMyTeamMembershipsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
         second.Should().ContainSingle();
 
