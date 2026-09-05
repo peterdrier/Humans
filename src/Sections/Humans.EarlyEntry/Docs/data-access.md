@@ -12,12 +12,10 @@ implementations. The inner `IEarlyEntryService` is wrapped by
 
 No repository. Injects `IEnumerable<IEarlyEntryProvider>` — every section
 that grants early entry implements this and contributes its rows.
-Current providers: Camps (`CampService` — camp-lead grants), Shifts
+Current providers: Camps (`CachingCampService` — camp-lead grants), Shifts
 (`VolunteerTrackingExportService` — confirmed build-shift grants), Teams
-(`TeamService` — role-gated team EE grants). Each provider reads via its
-own section's DbContext, so no shared context instance forces sequential
-access; fan-out is nonetheless kept sequential for consistency with the
-other contributor orchestrators (`GdprService`, `ICalFeedService`).
+(`TeamService` — role-gated team EE grants). Each reads through its own
+section; fan-out is sequential (`Docs/EarlyEntry.md` Invariants).
 No direct DB access, no cache.
 
 ### CachingEarlyEntryService (Singleton, `Humans.EarlyEntry.Services`)
@@ -27,11 +25,6 @@ No direct DB access, no cache.
 | `TrackedCache<Guid, UserEarlyEntry?>` (`EarlyEntry.UserEarlyEntry`, lazy, no warmup) | Per-User (caches negative result) | yes | yes | yes (`IEarlyEntryInvalidator.InvalidateUser` / `InvalidateAll`, fired from Shifts, Camps, and Teams writes) |
 
 Implements `IEarlyEntryService`, `IEarlyEntryInvalidator`. `GetRosterAsync`
-always delegates to the inner service (admin roster needs live data);
-`GetForUserAsync` is cached per-user (including the no-EE negative result
-since most users have no EE). Resolves the keyed Scoped inner via
+always delegates to the inner service; `GetForUserAsync` is cached per user,
+negative result included. Resolves the keyed Scoped inner via
 `IServiceScopeFactory`. Surfaced on `/Debug/CacheStats`.
-
----
-
-
