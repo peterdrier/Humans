@@ -153,7 +153,6 @@
         </div>
     </div>
 
-    @* === Filters Row: Department + Sort === *@
     <form method="get" id="shifts-filter-form" class="row g-2 mb-3 align-items-end">
         <div class="col-auto">
             <label class="form-label mb-1">@Localizer["Shifts_Department"]</label>
@@ -179,7 +178,7 @@
         @if (!hasDayFilter)
         {
             <div class="col-auto">
-                <div class="btn-group" role="group" aria-label="Sort order">
+                <div class="btn-group" role="group" aria-label="@Localizer["Shifts_SortOrder"]">
                     <a href="@Url.Action("Index", urgencySortRoute)"
                        class="btn btn-sm @(isUrgencySort ? "btn-warning" : "btn-outline-warning")" title="@Localizer["Shifts_SortUrgencyHint"]">
                         <i class="fa-solid fa-fire me-1"></i>@Localizer["Shifts_SortUrgency"]

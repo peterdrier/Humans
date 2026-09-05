@@ -1173,4 +1173,17 @@
   <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>We need your dietary info</value></data>
   <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>You're signed up for a long shift. The cantina can't plan your meals until you tell us your food preferences.</value></data>
   <data name="DietaryMissingBanner_Cta" xml:space="preserve"><value>Tell us now</value></data>
+  <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>Veure tots els meus torns</value></data>
+  <data name="Shifts_IcalFeedTitle" xml:space="preserve"><value>Feed iCal</value></data>
+  <data name="Shifts_IcalFeedHelp" xml:space="preserve"><value>Subscriu-te als teus torns i esdeveniments desats a la teva app de calendari:</value></data>
+  <data name="Shifts_IcalCopy" xml:space="preserve"><value>Copiar</value></data>
+  <data name="Shifts_IcalRegenerateConfirm" xml:space="preserve"><value>Això invalidarà l'URL actual. Continuar?</value></data>
+  <data name="Shifts_IcalRegenerate" xml:space="preserve"><value>Regenerar l'URL</value></data>
+  <data name="Shifts_SortOrder" xml:space="preserve"><value>Ordre</value></data>
+  <data name="Shifts_BailRangeSuccess" xml:space="preserve"><value>Has cancel·lat el rang de torns.</value></data>
+  <data name="Shifts_BailFailed" xml:space="preserve"><value>No s'ha pogut cancel·lar el torn.</value></data>
+  <data name="Shifts_BailSuccess" xml:space="preserve"><value>Has cancel·lat el torn.</value></data>
+  <data name="Shifts_AvailabilityUpdated" xml:space="preserve"><value>Disponibilitat actualitzada.</value></data>
+  <data name="Shifts_IcalRegenerated" xml:space="preserve"><value>URL d'iCal regenerada.</value></data>
+  <data name="Shifts_TagPreferencesSaved" xml:space="preserve"><value>Preferències d'etiquetes desades.</value></data>
 </root>

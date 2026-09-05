@@ -288,7 +288,7 @@ internal sealed class ShiftsController(
         try
         {
             await signupService.BailRangeAsync(signupBlockId, user.Id);
-            SetSuccess("Successfully bailed from shift range.");
+            SetSuccess(localizer["Shifts_BailRangeSuccess"].Value);
         }
         catch (InvalidOperationException ex)
         {
@@ -313,11 +313,11 @@ internal sealed class ShiftsController(
 
         if (!result.Success)
         {
-            SetError(result.Error ?? "Shift bail failed.");
+            SetError(result.Error ?? localizer["Shifts_BailFailed"].Value);
             return RedirectToAction(nameof(Mine));
         }
 
-        SetSuccess("Successfully bailed from shift.");
+        SetSuccess(localizer["Shifts_BailSuccess"].Value);
         return RedirectToAction(nameof(Mine));
     }
 
@@ -411,7 +411,7 @@ internal sealed class ShiftsController(
         if (es is null) return BadRequest("No active event.");
 
         await volunteerTrackingService.SetAvailabilityAsync(user.Id, es.Id, dayOffsets ?? []);
-        SetSuccess("Availability updated.");
+        SetSuccess(localizer["Shifts_AvailabilityUpdated"].Value);
         return RedirectToAction(nameof(Mine));
     }
 
@@ -428,7 +428,7 @@ internal sealed class ShiftsController(
         var newToken = Guid.NewGuid();
         await _userService.SetICalTokenAsync(user.Id, newToken);
 
-        SetSuccess("iCal URL regenerated.");
+        SetSuccess(localizer["Shifts_IcalRegenerated"].Value);
         return RedirectToAction(nameof(Mine));
     }
 
@@ -443,7 +443,7 @@ internal sealed class ShiftsController(
         }
 
         await shiftMgmt.SetVolunteerTagPreferencesAsync(user.Id, tagIds ?? []);
-        SetSuccess("Tag preferences saved.");
+        SetSuccess(localizer["Shifts_TagPreferencesSaved"].Value);
         return RedirectToAction(nameof(Index));
     }
 

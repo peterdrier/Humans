@@ -386,4 +386,17 @@
   <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>We need your dietary info</value></data>
   <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>You're signed up for a long shift. The cantina can't plan your meals until you tell us your food preferences.</value></data>
   <data name="DietaryMissingBanner_Cta" xml:space="preserve"><value>Tell us now</value></data>
+  <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>View All My Shifts</value></data>
+  <data name="Shifts_IcalFeedTitle" xml:space="preserve"><value>iCal Feed</value></data>
+  <data name="Shifts_IcalFeedHelp" xml:space="preserve"><value>Subscribe to your shifts and saved events in your calendar app:</value></data>
+  <data name="Shifts_IcalCopy" xml:space="preserve"><value>Copy</value></data>
+  <data name="Shifts_IcalRegenerateConfirm" xml:space="preserve"><value>This will invalidate the current URL. Continue?</value></data>
+  <data name="Shifts_IcalRegenerate" xml:space="preserve"><value>Regenerate URL</value></data>
+  <data name="Shifts_SortOrder" xml:space="preserve"><value>Sort order</value></data>
+  <data name="Shifts_BailRangeSuccess" xml:space="preserve"><value>Successfully bailed from shift range.</value></data>
+  <data name="Shifts_BailFailed" xml:space="preserve"><value>Shift bail failed.</value></data>
+  <data name="Shifts_BailSuccess" xml:space="preserve"><value>Successfully bailed from shift.</value></data>
+  <data name="Shifts_AvailabilityUpdated" xml:space="preserve"><value>Availability updated.</value></data>
+  <data name="Shifts_IcalRegenerated" xml:space="preserve"><value>iCal URL regenerated.</value></data>
+  <data name="Shifts_TagPreferencesSaved" xml:space="preserve"><value>Tag preferences saved.</value></data>
 </root>
