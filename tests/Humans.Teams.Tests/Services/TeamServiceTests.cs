@@ -8,6 +8,7 @@
 using AwesomeAssertions;
 using Humans.Base.Caching;
 using Humans.Base.Interfaces.Caching;
+using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Services;
@@ -1105,6 +1106,55 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     // ==========================================================================
+    // ApproveJoinRequestAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task ApproveJoinRequestAsync_ApproverLacksPermission_Throws()
+    {
+        var stranger = SeedUser(displayName: "Stranger");
+        var requester = SeedUser(displayName: "Requester");
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        var request = SeedJoinRequest(team.Id, requester.Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var act = () => _service.ApproveJoinRequestAsync(request.Id, stranger.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*permission*");
+        (await TeamsDb.TeamMembers.AnyAsync(tm => tm.UserId == requester.Id, Xunit.TestContext.Current.CancellationToken))
+            .Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task ApproveJoinRequestAsync_HappyPath_AddsMemberAndAuditsApproval()
+    {
+        var coordinator = SeedUser(displayName: "Coordinator");
+        var requester = SeedUser(displayName: "Requester");
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        SeedTeamMember(team.Id, coordinator.Id, TeamMemberRole.Coordinator);
+        var request = SeedJoinRequest(team.Id, requester.Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var member = await _service.ApproveJoinRequestAsync(request.Id, coordinator.Id, "welcome", Xunit.TestContext.Current.CancellationToken);
+
+        member.UserId.Should().Be(requester.Id);
+        member.Role.Should().Be(TeamMemberRole.Member);
+
+        ClearAllTrackers();
+        var stored = await TeamsDb.TeamJoinRequests.AsNoTracking().SingleAsync(r => r.Id == request.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.Status.Should().Be(TeamJoinRequestStatus.Approved);
+        stored.ReviewedByUserId.Should().Be(coordinator.Id);
+        (await TeamsDb.TeamMembers.AsNoTracking().AnyAsync(
+            tm => tm.TeamId == team.Id && tm.UserId == requester.Id && tm.LeftAt == null,
+            Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.TeamJoinRequestApproved, nameof(Team), team.Id,
+            Arg.Any<string>(), coordinator.Id,
+            requester.Id, nameof(User));
+    }
+
+    // ==========================================================================
     // CreateRoleDefinitionAsync
     // ==========================================================================
 
@@ -2023,6 +2073,40 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var memberInDb = await TeamsDb.TeamMembers
             .FirstOrDefaultAsync(tm => tm.TeamId == team.Id && tm.UserId == target.Id && tm.LeftAt == null, Xunit.TestContext.Current.CancellationToken);
         memberInDb.Should().NotBeNull();
+    }
+
+    [HumansFact]
+    public async Task AddMemberToTeamAsync_AuditsTheAdd()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        var target = SeedUser(displayName: "Target");
+        var team = SeedTeam("Alpha");
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _service.AddMemberToTeamAsync(team.Id, target.Id, actor.Id, Xunit.TestContext.Current.CancellationToken);
+
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.TeamMemberAdded, nameof(Team), team.Id,
+            Arg.Any<string>(), actor.Id,
+            target.Id, nameof(User));
+    }
+
+    [HumansFact]
+    public async Task RemoveMemberAsync_AuditsTheRemoval()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        var target = SeedUser(displayName: "Target");
+        var team = SeedTeam("Alpha");
+        SeedTeamMember(team.Id, actor.Id, TeamMemberRole.Coordinator);
+        SeedTeamMember(team.Id, target.Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _service.RemoveMemberAsync(team.Id, target.Id, actor.Id, Xunit.TestContext.Current.CancellationToken);
+
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.TeamMemberRemoved, nameof(Team), team.Id,
+            Arg.Any<string>(), actor.Id,
+            target.Id, nameof(User));
     }
 
     [HumansFact]
