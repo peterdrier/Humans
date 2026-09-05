@@ -74,7 +74,8 @@ internal sealed class VolunteerTrackingController(
                 .ThenBy(r => nameByUserId.GetValueOrDefault(r.UserId, ""), StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-        // Export card form state — the active event's departments.
+        // Export card form state — the active event's departments. The page is gated on
+        // an active event, so the null fall-back only covers a race between the two reads.
         var activeEvent = await burnSettings.GetActiveAsync(ct);
         var departments = activeEvent is null
             ? []

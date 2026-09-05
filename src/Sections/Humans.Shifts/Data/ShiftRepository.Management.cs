@@ -34,7 +34,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         _clock = clock;
     }
 
-
     public async Task<EventSettings?> GetActiveEventSettingsAsync(CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -120,7 +119,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         await tx.CommitAsync(ct);
         return deleted;
     }
-
 
     public async Task SaveRotaAsync(Rota rota, EntityMutationMode mode, CancellationToken ct = default)
     {
@@ -245,7 +243,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         await ctx.SaveChangesAsync(ct);
     }
 
-
     public async Task SaveShiftAsync(Shift shift, EntityMutationMode mode, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -303,7 +300,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
             .Distinct()
             .ToListAsync(ct);
     }
-
 
     public async Task<IReadOnlyList<Shift>> GetEventShiftsAsync(
         ShiftEventQuery request,
@@ -570,7 +566,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
             .ToList();
     }
 
-
     public async Task<IReadOnlyList<ShiftTag>> GetTagsAsync(string? query = null, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -599,7 +594,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         await ctx.SaveChangesAsync(ct);
         return tag;
     }
-
 
     public async Task SetVolunteerTagPreferencesAsync(
         Guid userId, IReadOnlyList<Guid> tagIds, CancellationToken ct = default)
@@ -678,7 +672,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         await ctx.SaveChangesAsync(ct);
         return profiles.Count;
     }
-
 
     public async Task<int> ReassignProfilesAndTagPrefsToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,

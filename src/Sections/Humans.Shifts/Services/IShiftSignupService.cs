@@ -20,7 +20,7 @@ namespace Humans.Shifts.Services;
 internal interface IShiftSignupService : IShiftSignupSeeding, IApplicationService
 {
     /// <summary>
-    /// Re-validates invariants.
+    /// Approves a pending signup. Re-validates invariants.
     /// </summary>
     Task<SignupResult> ApproveAsync(Guid signupId, Guid reviewerUserId);
 
@@ -31,6 +31,9 @@ internal interface IShiftSignupService : IShiftSignupSeeding, IApplicationServic
     /// </summary>
     Task<SignupResult> VoluntellRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid enrollerUserId);
 
+    /// <summary>
+    /// Marks a confirmed signup as no-show. Fails before the shift has ended.
+    /// </summary>
     Task<SignupResult> MarkNoShowAsync(Guid signupId, Guid reviewerUserId);
 
     Task<SignupResult> RemoveSignupAsync(Guid signupId, Guid removedByUserId, string? reason);

@@ -362,7 +362,7 @@ internal sealed class ShiftInfoViewModel
     public List<string> SelectedSkills { get; set; } = [];
     public string? SkillOtherText { get; set; }
     public List<string> SelectedQuirks { get; set; } = [];
-    public string? TimePreference { get; set; }
+    public string? TimePreference { get; set; } // Mutually exclusive; persisted as a quirk value.
     public List<string> SelectedLanguages { get; set; } = [];
     public string? LanguageOtherText { get; set; }
 

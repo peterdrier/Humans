@@ -7,7 +7,7 @@ namespace Humans.Shifts.Contracts;
 /// <para><see cref="MedicalConditions"/> is GDPR Art. 9 — it is populated only when
 /// the building code has confirmed the viewer holds the MedicalDataViewer policy.
 /// The partial additionally guards on <see cref="ShowMedical"/>.</para>
-/// <para>Public under <c>Contracts/</c> so MVC discovers the tag helper (HUM0034 carve-out).</para>
+/// <para>Public under <c>Contracts/</c> because Debug's widget gallery constructs it.</para>
 /// </summary>
 public sealed record VolunteerBadgesViewModel(
     IReadOnlyList<string> Skills,

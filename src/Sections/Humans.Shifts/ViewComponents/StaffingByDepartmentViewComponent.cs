@@ -11,8 +11,9 @@ namespace Humans.Shifts.ViewComponents;
 /// <remarks>
 /// Internal — invoked by name through <c>ChromeSlotViewComponent</c>'s
 /// <c>Component.InvokeAsync</c>, not a <c>&lt;vc:&gt;</c> tag helper, so it does not need to
-/// be public under <c>Contracts/</c>. Renders a real per-department breakdown when
-/// <c>Departments</c> is populated, falling back to the "no data yet" copy only when it is empty.
+/// be public under <c>Contracts/</c>. The department breakdown has no source yet:
+/// <c>Departments</c> is always empty, so the card renders the "no data yet" copy and
+/// points at Shifts.
 /// </remarks>
 internal sealed class StaffingByDepartmentViewComponent(IShiftManagementServiceRead shifts) : ViewComponent
 {

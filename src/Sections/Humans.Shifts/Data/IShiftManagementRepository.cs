@@ -35,6 +35,7 @@ internal partial interface IShiftManagementRepository : IRepository
 {
     Task<EventSettings?> GetActiveEventSettingsAsync(CancellationToken ct = default);
 
+    /// <summary>Loads an <see cref="EventSettings"/> by id (read-only).</summary>
     Task<EventSettings?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>Every <see cref="EventSettings"/> row, oldest cycle first (read-only).</summary>

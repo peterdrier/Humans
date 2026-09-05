@@ -1547,6 +1547,7 @@ internal sealed class ShiftManagementService(
 
     public async Task<IReadOnlyList<CoordinatorActivityRow>> GetCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null)
     {
+        // Sub-period results aren't cached (4× key fan-out); base period is.
         if (subPeriod is not null)
             return await ComputeCoordinatorActivityAsync(eventSettingsId, period, subPeriod);
 
@@ -1671,6 +1672,7 @@ internal sealed class ShiftManagementService(
         Guid eventSettingsId, TrendWindow window, ShiftPeriod? period = null,
         BuildSubPeriod? subPeriod = null)
     {
+        // Sub-period results aren't cached (4× key fan-out); base period is.
         if (subPeriod is not null)
             return await ComputeDashboardTrendsAsync(eventSettingsId, window, period, subPeriod);
 

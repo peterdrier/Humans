@@ -12,7 +12,7 @@ namespace Humans.Shifts.Contracts;
 /// boundary.
 /// </summary>
 /// <remarks>
-/// Members are restricted to BCL and NodaTime types so this leaf drags no project reference.
+/// Members use only BCL and NodaTime types.
 /// </remarks>
 public interface IBurnSettingsInfo
 {
