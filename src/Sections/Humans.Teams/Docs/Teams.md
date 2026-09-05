@@ -225,7 +225,7 @@ Three controllers serve this section. `TeamController` (`[Route("Teams")]`) hand
 - The system team sync job runs hourly (Hangfire `Cron.Hourly` recurring job `teams-system-sync`), reconciling system team membership for Volunteers (consent compliance), Coordinators (department-level management role assignments), Board (active Board role assignments), Asociados/Colaboradors (approved tier applications with active terms), and Barrio Leads (active camp lead assignments). The job also reconciles `TeamMember.Role` against `IsManagement` role assignments and backfills `User.GoogleEmail` for verified `@nobodies.team` accounts.
 - When an account merge accepts, `ITeamService.ReassignToUserAsync` re-FKs `TeamMember`, `TeamJoinRequest`, and `TeamEarlyEntryGrant` rows from source to target, collapsing duplicates so the same target doesn't end up with two memberships of the same team. Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
 - Each Early Entry mutation writes an `AuditLogEntry` (`EarlyEntryGranted` on add, `EarlyEntryUpdated` on edit, `EarlyEntryRevoked` on remove) against the `TeamEarlyEntryGrant` and evicts the affected user's EE cache.
-- Right-to-erasure: `DeleteEarlyEntryGrantsForUserAsync` drops all of a user's EE grants; the GDPR export contributes a `TeamEarlyEntry` data slice.
+- Right-to-erasure (`IUserDataContributor.EraseForUserAsync`): ends live memberships, then hard-deletes the user's join requests and EE grants; the GDPR export contributes a `TeamEarlyEntry` data slice.
 
 ## Cross-Section Dependencies
 

@@ -58,15 +58,6 @@ public record TeamMemberInfo(
 
 public record TeamCoordinatorRef(Guid TeamId, Guid UserId);
 
-public record TeamRoleReconciliationMembership(
-    Guid TeamMemberId,
-    Guid UserId,
-    Guid TeamId,
-    string TeamName,
-    TeamMemberRole Role,
-    SystemTeamType SystemTeamType,
-    bool HasManagementRoleAssignment);
-
 public record SystemTeamMembershipSnapshot(
     Guid Id,
     string Name,
@@ -102,11 +93,10 @@ public sealed record UserTeamMembershipInfo(
     Instant JoinedAt);
 
 /// <summary>
-/// The half of the Teams service that lives outside the section: everything Base, Shell and
-/// the Budget / Consent / Development / Expenses sections call, expressed in flat projections
-/// so no Teams entity leaves the assembly. The section's own ~40-member management surface is
-/// on the internal <c>ITeamManagementService</c>, which inherits this
-/// (design §15 step 5b — carve the leaf from the call sites, not the interface).
+/// The half of the Teams service that lives outside the section: the members Base and other
+/// sections call, expressed in flat projections so no Teams entity leaves the assembly. The
+/// section's own management surface is on the internal <c>ITeamManagementService</c>, which
+/// inherits this. A member with no caller outside the assembly does not belong here.
 /// </summary>
 public interface ITeamService : ITeamServiceRead, IApplicationService
 {
@@ -139,15 +129,6 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
     // ==========================================================================
     // Coordinator Queries
     // ==========================================================================
-
-    /// <summary>
-    /// Returns the active (non-Volunteers) teams the user belongs to with the
-    /// user's role on each team. Callers that only need names project via
-    /// <c>.Select(m =&gt; m.TeamName)</c>. Display ordering is the caller's
-    /// responsibility (rendering layer).
-    /// </summary>
-    Task<IReadOnlyList<TeamMembership>> GetActiveTeamMembershipsForUserAsync(
-        Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Enqueues AddUserToTeamResources sync events for all active team
@@ -192,31 +173,10 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
     Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default);
 
     // ==========================================================================
-    // System team sync support (issue #570 — §15 Google-writing jobs)
-    //
-    // Narrow read/write methods used exclusively by SystemTeamSyncJob so the
-    // job can drop its DbContext dependency. Each mutation commits in
-    // its own repository-owned unit of work; the caller fan-outs Google sync
-    // calls externally.
+    // System team sync support — the bulk-apply protocol used by SystemTeamSyncJob and
+    // by Development's persona seeder. Each call commits in its own repository-owned
+    // unit of work; the caller fans out Google sync and audit calls afterwards.
     // ==========================================================================
-
-    /// <summary>
-    /// Loads every active membership with enough role-assignment / role-
-    /// definition / team context to decide coordinator promotion and
-    /// demotion in-memory. Used by <c>SystemTeamSyncJob.ReconcileCoordinatorRolesAsync</c>.
-    /// </summary>
-    Task<IReadOnlyList<TeamRoleReconciliationMembership>> GetActiveMembershipsForRoleReconciliationAsync(
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Applies a bulk list of <see cref="TeamMember.Role"/> changes (promote
-    /// to Coordinator / demote to Member) in a single save. Invalidates the
-    /// ActiveTeams cache if any change is applied. Returns the number of
-    /// memberships updated.
-    /// </summary>
-    Task<int> ApplyMemberRoleChangesAsync(
-        IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes,
-        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Applies a system-team membership reconciliation in a single save:
@@ -239,11 +199,6 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
         IReadOnlyCollection<Guid> userIdsToRemove,
         Instant now,
         CancellationToken cancellationToken = default);
-
-    /// <summary>Deletes every early-entry grant belonging to a user (right-to-erasure).</summary>
-    Task DeleteEarlyEntryGrantsForUserAsync(Guid userId, CancellationToken ct = default);
-
-
 }
 
 public sealed record TeamRoleDefinitionSnapshot(

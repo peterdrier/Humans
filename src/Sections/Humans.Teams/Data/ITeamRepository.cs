@@ -354,9 +354,6 @@ internal interface ITeamRepository : IRepository
     Task<IReadOnlyDictionary<Guid, int>> GetPendingCountsByTeamIdsAsync(
         IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default);
 
-    /// <summary>Total pending join requests across all teams.</summary>
-    Task<int> GetTotalPendingCountAsync(CancellationToken ct = default);
-
     /// <summary>Inserts a new join request.</summary>
     Task AddRequestAsync(TeamJoinRequest request, CancellationToken ct = default);
 

@@ -279,67 +279,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     // ==========================================================================
-    // GetActiveTeamMembershipsForUserAsync
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task GetActiveTeamMembershipsForUserAsync_ReturnsActiveNonSystemMembershipWithHiddenFlag()
-    {
-        var user = SeedUser();
-        var team = SeedTeam("Build");
-        team.IsHidden = true;
-        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Coordinator);
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var result = await _service.GetActiveTeamMembershipsForUserAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().ContainSingle();
-        result[0].TeamName.Should().Be("Build");
-        result[0].Role.Should().Be(TeamMemberRole.Coordinator);
-        result[0].IsHidden.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task GetActiveTeamMembershipsForUserAsync_SkipsVolunteersSystemTeam()
-    {
-        var user = SeedUser();
-        var vols = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
-        SeedTeamMember(vols.Id, user.Id);
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var result = await _service.GetActiveTeamMembershipsForUserAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetActiveTeamMembershipsForUserAsync_SkipsInactiveTeams()
-    {
-        var user = SeedUser();
-        var team = SeedTeam("Old", isActive: false);
-        SeedTeamMember(team.Id, user.Id);
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var result = await _service.GetActiveTeamMembershipsForUserAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetActiveTeamMembershipsForUserAsync_SkipsTeamsWhereUserIsNotMember()
-    {
-        var user = SeedUser();
-        var other = SeedUser();
-        var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, other.Id);
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var result = await _service.GetActiveTeamMembershipsForUserAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeEmpty();
-    }
-
-    // ==========================================================================
     // IsUserCoordinatorOfTeamAsync
     // ==========================================================================
 

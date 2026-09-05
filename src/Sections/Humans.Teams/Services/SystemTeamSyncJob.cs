@@ -35,7 +35,7 @@ namespace Humans.Teams.Services;
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 [CrossSectionWrite("Syncs team Google resources and downgrades expired membership tiers.")]
 internal sealed class SystemTeamSyncJob(
-    ITeamService teamService,
+    ITeamManagementService teamService,
     IUserService userService,
     ICampLeadDirectory campLeadDirectory,
     IServiceProvider serviceProvider,
