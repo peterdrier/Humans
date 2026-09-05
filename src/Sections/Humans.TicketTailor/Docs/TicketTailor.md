@@ -45,7 +45,7 @@ None — the section owns no tables. Tickets owns every local row mirrored from 
 - List and event reads throw `HttpRequestException`; `GetDiscountCodeUsageAsync` alone reports a non-2xx as "not redeemed" instead. Void and issue throw `TicketVendorWriteException` with a `TicketVendorFailureKind`: 400/422 Validation, 401/403 AuthFailed, 404 NotFound, 429 RateLimited, 5xx and transport failure Transient.
 - Issue requires either `HoldId` or both `EventId` and `TicketTypeId`; anything else is an `ArgumentException` before any call.
 - Check-in posts form-encoded `issued_ticket_id`, `quantity=1` and `check_in_at`; the vendor call is not idempotent, so callers never retry it. The key needs Event-manager scope.
-- The stub dataset is deterministic: the first order is `peter@nobodies.team`; 600 valid tickets across 450 paid orders plus four non-paid orders with one void ticket each; check-ins fall on 2026-07-08; incremental syncs (`since` set) return no tickets and no check-ins (`tests/Humans.TicketTailor.Tests/Services/StubTicketVendorServiceTests.cs`).
+- The stub dataset is deterministic: the first order is `peter@nobodies.team`; every paid order holds one or two valid tickets and every non-paid order one void ticket; check-ins fall on 2026-07-08; incremental syncs (`since` set) return no tickets and no check-ins. Exact totals are the tests' to own (`tests/Humans.TicketTailor.Tests/Services/StubTicketVendorServiceTests.cs`).
 
 ## Negative Access Rules
 

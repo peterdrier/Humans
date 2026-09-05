@@ -67,10 +67,10 @@ non-2xx as "not redeemed".
   call is not idempotent, so callers never retry it.
 - Both implementations are `internal sealed`; only `Section.Register` binds them, and
   only Tickets injects the port (`tests/Humans.Web.Tests/Architecture/TicketVendorPortArchitectureTests.cs`).
-- The stub dataset is deterministic: the first order is `peter@nobodies.team`; 600 paid
-  tickets across 450 paid orders plus four non-paid orders with one void ticket each;
-  check-ins fall on 2026-07-08; incremental syncs (`since` set) return no
-  tickets and no check-ins.
+- The stub dataset is deterministic: the first order is `peter@nobodies.team`; every paid
+  order holds one or two valid tickets and every non-paid order one void ticket; check-ins
+  fall on 2026-07-08; incremental syncs (`since` set) return no tickets and no check-ins.
+  Exact totals are the tests' to own.
 - No tables, no repository, no cross-section call in either direction beyond the port.
 
 ## Seams
