@@ -27,9 +27,10 @@ namespace Humans.Shifts.Tests.Controllers;
 /// <summary>
 /// A department coordinator may delete only rotas and shifts of the department in the URL.
 /// The id in the route is untrusted: one that belongs to another team is a 404, and the
-/// service is never asked to delete it.
+/// service is never asked to delete it. Edits validate the posted model before writing,
+/// exactly as the create actions do.
 /// </summary>
-public class ShiftAdminControllerDeleteScopeTests
+public class ShiftAdminControllerTests
 {
     private static readonly Guid UserId = Guid.NewGuid();
     private static readonly Guid TeamId = Guid.NewGuid();
@@ -44,7 +45,7 @@ public class ShiftAdminControllerDeleteScopeTests
     private readonly IShiftRowView _shiftView = Substitute.For<IShiftRowView>();
     private readonly IVolunteerTrackingService _tracking = Substitute.For<IVolunteerTrackingService>();
 
-    public ShiftAdminControllerDeleteScopeTests()
+    public ShiftAdminControllerTests()
     {
         _userService.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(UserId));
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(
@@ -100,6 +101,32 @@ public class ShiftAdminControllerDeleteScopeTests
 
         result.Should().BeOfType<RedirectToActionResult>();
         await _shiftMgmt.Received(1).DeleteShiftAsync(shift.Id);
+    }
+
+    [HumansFact]
+    public async Task EditRota_InvalidModel_IsNotSaved()
+    {
+        var rota = MakeRota(TeamId);
+        _shiftMgmt.GetRotaByIdAsync(rota.Id).Returns(rota);
+        var ctrl = BuildSut();
+        ctrl.ModelState.AddModelError(nameof(EditRotaModel.Name), "required");
+
+        var result = await ctrl.EditRota(Slug, rota.Id, new EditRotaModel { RotaId = rota.Id, Name = "" });
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        await _shiftMgmt.DidNotReceive().UpdateRotaAsync(Arg.Any<Rota>(), Arg.Any<IReadOnlyList<Guid>?>());
+    }
+
+    [HumansFact]
+    public async Task EditShift_InvalidModel_IsNotSaved()
+    {
+        var ctrl = BuildSut();
+        ctrl.ModelState.AddModelError(nameof(EditShiftModel.Description), "too long");
+
+        var result = await ctrl.EditShift(Slug, Guid.NewGuid(), new EditShiftModel { StartTime = "08:00" });
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        await _shiftMgmt.DidNotReceive().UpdateShiftAsync(Arg.Any<UpdateShiftInput>());
     }
 
     private ShiftAdminController BuildSut()

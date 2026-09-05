@@ -110,6 +110,12 @@ internal sealed class ShiftAdminController(
         var rota = await GetRotaForTeamAsync(rotaId, team.Id);
         if (rota is null) return NotFound();
 
+        if (!ModelState.IsValid)
+        {
+            SetError("Please fix the errors below.");
+            return RedirectToAction(nameof(Index), new { slug });
+        }
+
         rota.Name = model.Name;
         rota.Description = model.Description;
         rota.Priority = model.Priority;
@@ -247,6 +253,12 @@ internal sealed class ShiftAdminController(
     {
         var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
+
+        if (!ModelState.IsValid)
+        {
+            SetError("Please fix the errors below.");
+            return RedirectToAction(nameof(Index), new { slug });
+        }
 
         if (!model.StartTime.TryParseInvariantLocalTime(out var parsedTime))
         {
