@@ -69,14 +69,8 @@
   <data name="Teams_MyTeamsSection" xml:space="preserve">
     <value>I miei team</value>
   </data>
-  <data name="Teams_OtherTeamsSection" xml:space="preserve">
-    <value>Altri team</value>
-  </data>
   <data name="Teams_NotOnAnyTeam" xml:space="preserve">
     <value>Non ha ancora aderito a nessun team.</value>
-  </data>
-  <data name="Teams_NoOtherTeams" xml:space="preserve">
-    <value>Nessun altro team disponibile.</value>
   </data>
   <data name="Teams_System" xml:space="preserve">
     <value>Sistema</value>
@@ -94,13 +88,6 @@
   </data>
   <data name="TeamDetail_ManageMembers" xml:space="preserve">
     <value>Gestisci membri</value>
-  </data>
-  <data name="TeamDetail_Joined" xml:space="preserve">
-    <value>Iscritto</value>
-  </data>
-  <data name="TeamDetail_AndMoreMembers" xml:space="preserve">
-    <value>E altri {0} humans...</value>
-    <comment>{0} = remaining count</comment>
   </data>
   <data name="TeamDetail_NoMembers" xml:space="preserve">
     <value>Nessun human ancora.</value>
@@ -222,22 +209,11 @@
   <data name="TeamAdmin_RequestRejected" xml:space="preserve">
     <value>Richiesta rifiutata.</value>
   </data>
-  <data name="TeamAdmin_RoleUpdated" xml:space="preserve">
-    <value>Ruolo del membro aggiornato a {0}.</value>
-    <comment>{0} = role name</comment>
-  </data>
   <data name="TeamAdmin_MemberRemoved" xml:space="preserve">
     <value>Membro rimosso dal team.</value>
   </data>
   <data name="TeamAdmin_InvalidDriveUrl" xml:space="preserve">
     <value>Inserisca un URL valido di una cartella Google Drive.</value>
-  </data>
-  <data name="TeamAdmin_DriveFolderLinked" xml:space="preserve">
-    <value>Cartella Drive "{0}" collegata con successo.</value>
-    <comment>{0} = folder name</comment>
-  </data>
-  <data name="TeamAdmin_DriveFolderLinkFailed" xml:space="preserve">
-    <value>Collegamento della cartella Drive non riuscito.</value>
   </data>
   <data name="TeamAdmin_ServiceAccount" xml:space="preserve">
     <value>Account di servizio: {0}</value>
@@ -342,9 +318,6 @@
   <data name="AdminTeams_RequireApprovalHelp" xml:space="preserve">
     <value>Se abilitato, i nuovi membri devono essere approvati da un lead del team o un membro del Consiglio.</value>
   </data>
-  <data name="AdminEditTeam_SystemTeamWarning" xml:space="preserve">
-    <value>Questo è un team gestito dal sistema. La maggior parte delle impostazioni non può essere modificata.</value>
-  </data>
   <data name="AdminEditTeam_TeamIsActive" xml:space="preserve">
     <value>Il team è attivo</value>
   </data>
@@ -372,9 +345,6 @@
   <data name="TeamAdmin_BackToTeam" xml:space="preserve">
     <value>Torna al Team</value>
   </data>
-  <data name="TeamAdmin_ViewPendingRequests" xml:space="preserve">
-    <value>Visualizza richieste in sospeso</value>
-  </data>
   <data name="TeamAdmin_Message" xml:space="preserve">
     <value>Messaggio</value>
   </data>
@@ -393,15 +363,8 @@
   <data name="TeamAdmin_RejectRequest" xml:space="preserve">
     <value>Rifiuta richiesta</value>
   </data>
-  <data name="TeamAdmin_RejectingFrom" xml:space="preserve">
-    <value>Rifiuto della richiesta da &lt;strong&gt;{0}&lt;/strong&gt;</value>
-    <comment>{0} = display name</comment>
-  </data>
   <data name="TeamAdmin_RejectionReason" xml:space="preserve">
     <value>Motivo del rifiuto (obbligatorio)</value>
-  </data>
-  <data name="TeamAdmin_NoPendingRequests" xml:space="preserve">
-    <value>Nessuna richiesta in sospeso al momento.</value>
   </data>
   <data name="TeamAdmin_Resources" xml:space="preserve">
     <value>Risorse</value>
@@ -433,41 +396,8 @@
   <data name="TeamAdmin_LastSynced" xml:space="preserve">
     <value>Ultima sincronizzazione</value>
   </data>
-  <data name="TeamAdmin_Sync" xml:space="preserve">
-    <value>Sincronizza</value>
-  </data>
-  <data name="TeamAdmin_UnlinkConfirm" xml:space="preserve">
-    <value>È sicuro/a di voler scollegare questa risorsa?</value>
-  </data>
-  <data name="TeamAdmin_Unlink" xml:space="preserve">
-    <value>Scollega</value>
-  </data>
   <data name="TeamAdmin_NoResources" xml:space="preserve">
     <value>Nessuna risorsa collegata a questo team. Utilizzi i moduli sottostanti per collegare una cartella Google Drive o un Google Group.</value>
-  </data>
-  <data name="TeamAdmin_LinkDriveFolder" xml:space="preserve">
-    <value>Collega cartella Drive</value>
-  </data>
-  <data name="TeamAdmin_FolderUrl" xml:space="preserve">
-    <value>URL della cartella</value>
-  </data>
-  <data name="TeamAdmin_FolderUrlHelp" xml:space="preserve">
-    <value>Incolli l'URL della cartella Google Drive. La cartella deve essere condivisa con l'account di servizio.</value>
-  </data>
-  <data name="TeamAdmin_LinkFolder" xml:space="preserve">
-    <value>Collega cartella</value>
-  </data>
-  <data name="TeamAdmin_LinkGoogleGroup" xml:space="preserve">
-    <value>Collega Google Group</value>
-  </data>
-  <data name="TeamAdmin_GroupEmail" xml:space="preserve">
-    <value>Email del gruppo</value>
-  </data>
-  <data name="TeamAdmin_GroupEmailHelp" xml:space="preserve">
-    <value>Inserisca l'indirizzo email del Google Group. L'account di servizio deve essere Manager del gruppo.</value>
-  </data>
-  <data name="TeamAdmin_LinkGroup" xml:space="preserve">
-    <value>Collega gruppo</value>
   </data>
   <data name="TeamDetail_TeamCoordinators" xml:space="preserve">
     <value>Coordinatori</value>
@@ -488,7 +418,7 @@
     <value>Aggiungi Contenuto</value>
   </data>
   <data name="TeamDetail_ChildTeamMembers" xml:space="preserve">
-    <value>Humans via sub-teams ({0})</value>
+    <value>Humans tramite sottoteam ({0})</value>
     <comment>{0} = count</comment>
   </data>
   <data name="TeamDetail_ManageRoles" xml:space="preserve">
@@ -551,9 +481,6 @@
   <data name="TeamAdmin_MemberAdded" xml:space="preserve">
     <value>Membro aggiunto con successo.</value>
   </data>
-  <data name="TeamAdmin_NoResults" xml:space="preserve">
-    <value>Nessun human trovato</value>
-  </data>
   <data name="TeamAdmin_Add" xml:space="preserve">
     <value>Aggiungi</value>
   </data>
@@ -588,10 +515,6 @@
   </data>
   <data name="TeamAdminMembers_Title" xml:space="preserve">
     <value>Gestisci membri - {0}</value>
-    <comment>{0} = team name</comment>
-  </data>
-  <data name="TeamAdminRequests_Title" xml:space="preserve">
-    <value>Richieste in sospeso - {0}</value>
     <comment>{0} = team name</comment>
   </data>
 </root>
