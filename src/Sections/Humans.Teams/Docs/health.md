@@ -30,7 +30,7 @@ reflected in the Coordinators system team when a management role is involved.
 | "Shape the team" (create, edit, deactivate, page content, Google group prefix) | TeamsAdmin/Board/Admin via the controllers; GoogleIntegration for the prefix | `CreateTeamWithGoogleGroupAsync` / `UpdateTeamWithGoogleGroupAsync` / `DeleteTeamAsync` / `UpdateTeamPageContentAsync`; `ITeamService.SetGoogleGroupPrefixAsync` |
 | "Staff the team" (members, role definitions, role assignments) | coordinators via the controllers | `AddMemberToTeamAsync` / `RemoveMemberAsync`; the five role-definition members; `AssignToRoleAsync` / `UnassignFromRoleAsync` |
 | "Who gets in early, for what?" | the per-team EE page; the EE roster | the four EE-grant members; `IEarlyEntryProvider.GetEarlyEntriesAsync` |
-| "Recompute the system teams" | Hangfire, the Google sync admin page, six sections' provisioning flows | `ISystemTeamSync` (job) over `ITeamService`'s three bulk-apply members |
+| "Recompute the system teams" | Hangfire, the Google sync admin page, six sections' provisioning flows | `ISystemTeamSync` (job) over `ITeamService.ApplySystemTeamMembershipDeltaAsync` and the management interface's two role-reconciliation members |
 | "This human is gone / merged" | Users (deletion, merge), Gdpr | `RevokeAllMembershipsAsync` / `RemoveMemberFromAllTeamsCache`; `IUserMerge.ReassignAsync`; `IUserDataContributor` (export + erasure) |
 | "Something changed underneath you" | Users, Development | `IActiveTeamsCacheInvalidator` → `InvalidateActiveTeamsCache` |
 | "Seed a fixture" | Development, Budget dev seeders | `ITeamSeeding` |

@@ -1,6 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Teams/**
   src/Humans.Base/Constants/SystemTeamIds.cs
+  src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
 -->
 <!-- freshness:flag-on-change
   Team directory, join/leave/approval flow, sub-team scoping, role slots, public team page editing, system-team sync, and Teams Admin actions. Review when team views, services, entities, or system-team constants change.
@@ -151,7 +152,7 @@ Toggle `IsHidden` on create or edit. Hidden teams do not appear in the directory
 
 ### System team sync
 
-Admins (TeamsAdmin / Board / Admin) view per-service sync mode at `/Google/SyncSettings` and (Admin only) trigger an immediate run via POST to `/Google/SyncSystemTeams`, with results landing on `/Google/SyncResults`. The hourly Hangfire job (`teams-system-sync`, `Cron.Hourly`) keeps Volunteers (consent-compliant approved profiles), Coordinators (department-level management role assignments), Board, Asociados, Colaboradors, and Barrio Leads (active camp leads) aligned, also reconciling `TeamMember.Role` against `IsManagement` role assignments and backfilling `User.GoogleEmail` for verified `@nobodies.team` accounts.
+Admins (TeamsAdmin / Board / Admin) view per-service sync mode at `/Google/SyncSettings` and (Admin only) trigger an immediate run via POST to `/Google/SyncSystemTeams`, with results landing on `/Google/SyncResults`. The hourly Hangfire job (`teams-system-sync`) keeps Volunteers (consent-compliant approved profiles), Coordinators (department-level management role assignments), Board, Asociados, Colaboradors, and Barrio Leads (active camp leads) aligned, also reconciling `TeamMember.Role` against `IsManagement` role assignments and backfilling `User.GoogleEmail` for verified `@nobodies.team` accounts.
 
 ## Related sections
 
