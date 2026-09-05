@@ -1,12 +1,5 @@
 using System.Net;
-using System.Text.Json;
 using AwesomeAssertions;
-using Humans.TicketTailor.Services;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
-
-using Humans.Tickets.Contracts;
 
 namespace Humans.TicketTailor.Tests.Services;
 
@@ -15,7 +8,7 @@ public class TicketTailorServiceCachingTests
     [HumansFact]
     public async Task GetEventSummaryAsync_DoesNotCacheTransientServerFailures()
     {
-        var handler = new CountingTicketTailorHandler();
+        var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.InternalServerError, new { error = "temporary outage" });
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
@@ -33,7 +26,7 @@ public class TicketTailorServiceCachingTests
             }
         });
 
-        var service = CreateService(handler);
+        var service = TicketTailorTestHost.CreateService(handler);
 
         // 5xx throws — must not be cached so the second call can succeed
         var act = () => service.GetEventSummaryAsync("ev_test", Xunit.TestContext.Current.CancellationToken);
@@ -45,44 +38,5 @@ public class TicketTailorServiceCachingTests
         second.TotalCapacity.Should().Be(2000);
         second.TicketsSold.Should().Be(96);
         handler.RequestCount.Should().Be(2);
-    }
-
-    private static TicketTailorService CreateService(HttpMessageHandler handler)
-    {
-        var client = new HttpClient(handler);
-        var cache = new MemoryCache(new MemoryCacheOptions());
-        var settings = Options.Create(new TicketVendorSettings
-        {
-            EventId = "ev_test",
-            SyncIntervalMinutes = 15,
-            ApiKey = "test_key"
-        });
-
-        return new TicketTailorService(client, settings, cache,
-            NullLogger<TicketTailorService>.Instance);
-    }
-}
-
-internal sealed class CountingTicketTailorHandler : HttpMessageHandler
-{
-    private readonly Queue<HttpResponseMessage> _responses = new();
-
-    public int RequestCount { get; private set; }
-
-    public void EnqueueResponse(HttpStatusCode status, object body)
-    {
-        _responses.Enqueue(new HttpResponseMessage(status)
-        {
-            Content = new StringContent(
-                JsonSerializer.Serialize(body),
-                System.Text.Encoding.UTF8,
-                "application/json")
-        });
-    }
-
-    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-    {
-        RequestCount++;
-        return Task.FromResult(_responses.Dequeue());
     }
 }

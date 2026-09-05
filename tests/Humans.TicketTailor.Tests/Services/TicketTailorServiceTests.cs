@@ -1,37 +1,15 @@
 using System.Net;
-using System.Text.Json;
 using AwesomeAssertions;
-using Humans.TicketTailor.Services;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using NodaTime;
-
-using Humans.Tickets.Contracts;
 
 namespace Humans.TicketTailor.Tests.Services;
 
 public class TicketTailorServiceTests
 {
-    private static TicketTailorService CreateService(HttpMessageHandler handler)
-    {
-        var client = new HttpClient(handler);
-        var cache = new MemoryCache(new MemoryCacheOptions());
-        var settings = Options.Create(new TicketVendorSettings
-        {
-            EventId = "ev_test",
-            SyncIntervalMinutes = 15,
-            ApiKey = "test_key"
-        });
-
-        return new TicketTailorService(client, settings, cache,
-            NullLogger<TicketTailorService>.Instance);
-    }
-
     [HumansFact]
     public async Task GetOrdersAsync_ParsesOrderResponse()
     {
-        var handler = new MockHttpHandler();
+        var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
             data = new[]
@@ -54,7 +32,7 @@ public class TicketTailorServiceTests
             links = new { next = (string?)null }
         });
 
-        var service = CreateService(handler);
+        var service = TicketTailorTestHost.CreateService(handler);
         var orders = await service.GetOrdersAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
 
         orders.Should().HaveCount(1);
@@ -66,7 +44,7 @@ public class TicketTailorServiceTests
     [HumansFact]
     public async Task GetOrdersAsync_HandlesPagination()
     {
-        var handler = new MockHttpHandler();
+        var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
             data = new[]
@@ -96,7 +74,7 @@ public class TicketTailorServiceTests
             links = new { next = (string?)null }
         });
 
-        var service = CreateService(handler);
+        var service = TicketTailorTestHost.CreateService(handler);
         var orders = await service.GetOrdersAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
 
         orders.Should().HaveCount(2);
@@ -105,10 +83,10 @@ public class TicketTailorServiceTests
     [HumansFact]
     public async Task GetOrdersAsync_ThrowsOnApiError()
     {
-        var handler = new MockHttpHandler();
+        var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.Unauthorized, new { error = "Invalid API key" });
 
-        var service = CreateService(handler);
+        var service = TicketTailorTestHost.CreateService(handler);
         var act = () => service.GetOrdersAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<HttpRequestException>();
@@ -117,7 +95,7 @@ public class TicketTailorServiceTests
     [HumansFact]
     public async Task GetIssuedTicketsAsync_ParsesTicketResponse()
     {
-        var handler = new MockHttpHandler();
+        var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
             data = new[]
@@ -138,7 +116,7 @@ public class TicketTailorServiceTests
             links = new { next = (string?)null }
         });
 
-        var service = CreateService(handler);
+        var service = TicketTailorTestHost.CreateService(handler);
         var tickets = await service.GetIssuedTicketsAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
 
         tickets.Should().HaveCount(1);
@@ -156,7 +134,7 @@ public class TicketTailorServiceTests
         // top-level `email` is the buyer's account email replicated onto each
         // ticket; the actual attendee email lives in custom_questions where
         // question == "Email".
-        var handler = new MockHttpHandler();
+        var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
             data = new[]
@@ -181,7 +159,7 @@ public class TicketTailorServiceTests
             links = new { next = (string?)null }
         });
 
-        var service = CreateService(handler);
+        var service = TicketTailorTestHost.CreateService(handler);
         var tickets = await service.GetIssuedTicketsAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
 
         tickets[0].AttendeeEmail.Should().Be("dpmirandadp@gmail.com");
@@ -190,7 +168,7 @@ public class TicketTailorServiceTests
     [HumansFact]
     public async Task GetIssuedTicketsAsync_FallsBackToTopLevelEmailWhenCustomAnswerBlank()
     {
-        var handler = new MockHttpHandler();
+        var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
             data = new[]
@@ -215,42 +193,7 @@ public class TicketTailorServiceTests
             links = new { next = (string?)null }
         });
 
-        var service = CreateService(handler);
-        var tickets = await service.GetIssuedTicketsAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
-
-        tickets[0].AttendeeEmail.Should().Be("jane@example.com");
-    }
-
-    [HumansFact]
-    public async Task GetIssuedTicketsAsync_IgnoresNonEmailCustomQuestions()
-    {
-        var handler = new MockHttpHandler();
-        handler.EnqueueResponse(HttpStatusCode.OK, new
-        {
-            data = new[]
-            {
-                new
-                {
-                    id = "it_003",
-                    first_name = "Jane",
-                    last_name = "Doe",
-                    full_name = "Jane Doe",
-                    email = "jane@example.com",
-                    custom_questions = new[]
-                    {
-                        new { question = "Dietary restrictions", answer = "vegan" },
-                        new { question = "T-shirt size", answer = "M" }
-                    },
-                    description = "Full Week",
-                    listed_price = 15000,
-                    status = "valid",
-                    order_id = "ord_001"
-                }
-            },
-            links = new { next = (string?)null }
-        });
-
-        var service = CreateService(handler);
+        var service = TicketTailorTestHost.CreateService(handler);
         var tickets = await service.GetIssuedTicketsAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
 
         tickets[0].AttendeeEmail.Should().Be("jane@example.com");
@@ -260,8 +203,9 @@ public class TicketTailorServiceTests
     public async Task GetIssuedTicketsAsync_RequiresExactEmailQuestionString()
     {
         // Match is case-sensitive and exact: "email" / "Email Address" / "Your Email"
-        // must not match. Only a question whose text is exactly "Email" qualifies.
-        var handler = new MockHttpHandler();
+        // must not match, and unrelated questions are ignored. Only a question
+        // whose text is exactly "Email" qualifies.
+        var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
             data = new[]
@@ -275,6 +219,7 @@ public class TicketTailorServiceTests
                     email = "jane@example.com",
                     custom_questions = new[]
                     {
+                        new { question = "Dietary restrictions", answer = "vegan" },
                         new { question = "email", answer = "lower@example.com" },
                         new { question = "Email Address", answer = "labelled@example.com" },
                         new { question = "Your Email", answer = "phrased@example.com" }
@@ -288,7 +233,7 @@ public class TicketTailorServiceTests
             links = new { next = (string?)null }
         });
 
-        var service = CreateService(handler);
+        var service = TicketTailorTestHost.CreateService(handler);
         var tickets = await service.GetIssuedTicketsAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
 
         tickets[0].AttendeeEmail.Should().Be("jane@example.com");
@@ -297,7 +242,7 @@ public class TicketTailorServiceTests
     [HumansFact]
     public async Task GetEventSummaryAsync_ParsesEventResponse()
     {
-        var handler = new MockHttpHandler();
+        var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
             name = "Elsewhere 2026",
@@ -316,7 +261,7 @@ public class TicketTailorServiceTests
             }
         });
 
-        var service = CreateService(handler);
+        var service = TicketTailorTestHost.CreateService(handler);
         var summary = await service.GetEventSummaryAsync("ev_test", Xunit.TestContext.Current.CancellationToken);
 
         summary.EventName.Should().Be("Elsewhere 2026");
@@ -331,7 +276,7 @@ public class TicketTailorServiceTests
         // TicketTailor /check_ins returns checkout/undo records (quantity = -1)
         // alongside check-ins (quantity = +1). A ticket whose records net to zero
         // (checked in then out), or a bare checkout, must not be reported onsite.
-        var handler = new MockHttpHandler();
+        var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
             data = new[]
@@ -344,35 +289,12 @@ public class TicketTailorServiceTests
             links = new { next = (string?)null }
         });
 
-        var service = CreateService(handler);
+        var service = TicketTailorTestHost.CreateService(handler);
         var checkIns = await service.GetCheckInsAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
 
         checkIns.Should().ContainSingle(c => c.VendorTicketId == "it_in");
         checkIns.Should().NotContain(c => c.VendorTicketId == "it_out");
         checkIns.Should().NotContain(c => c.VendorTicketId == "it_undo");
         checkIns.Single().CheckedInAt.Should().Be(Instant.FromUnixTimeSeconds(1751983320L));
-    }
-}
-
-/// <summary>Simple mock handler for testing HTTP responses.</summary>
-public sealed class MockHttpHandler : HttpMessageHandler
-{
-    private readonly Queue<HttpResponseMessage> _responses = new();
-
-    public void EnqueueResponse(HttpStatusCode status, object body)
-    {
-        _responses.Enqueue(new HttpResponseMessage(status)
-        {
-            Content = new StringContent(
-                JsonSerializer.Serialize(body),
-                System.Text.Encoding.UTF8,
-                "application/json")
-        });
-    }
-
-    protected override Task<HttpResponseMessage> SendAsync(
-        HttpRequestMessage request, CancellationToken ct)
-    {
-        return Task.FromResult(_responses.Dequeue());
     }
 }

@@ -1,83 +1,52 @@
 using System.Net;
-using System.Text.Json;
 using AwesomeAssertions;
 using Humans.Tickets.Contracts;
-using Humans.TicketTailor.Services;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
+using Xunit;
 
 namespace Humans.TicketTailor.Tests.Services;
 
 public class TicketTailorServiceWriteTests
 {
-    private static TicketTailorService CreateService(HttpMessageHandler handler)
-    {
-        var client = new HttpClient(handler);
-        var cache = new MemoryCache(new MemoryCacheOptions());
-        var settings = Options.Create(new TicketVendorSettings
-        {
-            EventId = "ev_test",
-            SyncIntervalMinutes = 15,
-            ApiKey = "test_key"
-        });
-
-        return new TicketTailorService(client, settings, cache,
-            NullLogger<TicketTailorService>.Instance);
-    }
-
-    // ==========================================================================
-    // VoidIssuedTicketAsync — happy path
-    // ==========================================================================
-
     [HumansFact]
     public async Task VoidIssuedTicketAsync_VoidToHold_True_PostsCorrectFormBody()
     {
-        string? capturedBody = null;
-        var handler = new CapturingMockHttpHandler();
+        var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
             id = "tt_xyz",
             hold_id = "hold_abc",
             voided = "yes"
-        }, onReceive: async req =>
-        {
-            capturedBody = await req.Content!.ReadAsStringAsync();
         });
 
-        var service = CreateService(handler);
+        var service = TicketTailorTestHost.CreateService(handler);
         var result = await service.VoidIssuedTicketAsync("tt_xyz", voidToHold: true);
 
         result.VendorTicketId.Should().Be("tt_xyz");
         result.HoldId.Should().Be("hold_abc");
-        capturedBody.Should().Contain("void_to_hold=true");
+        handler.Requests.Single().Body.Should().Contain("void_to_hold=true");
     }
 
     [HumansFact]
     public async Task VoidIssuedTicketAsync_VoidToHold_False_PostsFalseBody()
     {
-        string? capturedBody = null;
-        var handler = new CapturingMockHttpHandler();
+        var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
             id = "tt_xyz",
             hold_id = (string?)null,
             voided = "yes"
-        }, onReceive: async req =>
-        {
-            capturedBody = await req.Content!.ReadAsStringAsync();
         });
 
-        var service = CreateService(handler);
+        var service = TicketTailorTestHost.CreateService(handler);
         await service.VoidIssuedTicketAsync("tt_xyz", voidToHold: false);
 
-        capturedBody.Should().Contain("void_to_hold=false");
+        handler.Requests.Single().Body.Should().Contain("void_to_hold=false");
     }
 
     [HumansFact]
     public async Task VoidIssuedTicketAsync_ResponseWithNoHoldId_ReturnsNullHoldId()
     {
-        var handler = new MockHttpHandler();
+        var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
             id = "tt_xyz",
@@ -85,7 +54,7 @@ public class TicketTailorServiceWriteTests
             // no hold_id field
         });
 
-        var service = CreateService(handler);
+        var service = TicketTailorTestHost.CreateService(handler);
         var result = await service.VoidIssuedTicketAsync("tt_xyz", voidToHold: false);
 
         result.VendorTicketId.Should().Be("tt_xyz");
@@ -95,112 +64,46 @@ public class TicketTailorServiceWriteTests
     [HumansFact]
     public async Task VoidIssuedTicketAsync_PostsToCorrectUrl()
     {
-        string? capturedUrl = null;
-        var handler = new CapturingMockHttpHandler();
+        var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
             id = "tt_abc",
             voided = "yes"
-        }, onReceive: req =>
-        {
-            capturedUrl = req.RequestUri?.ToString();
-            return Task.CompletedTask;
         });
 
-        var service = CreateService(handler);
+        var service = TicketTailorTestHost.CreateService(handler);
         await service.VoidIssuedTicketAsync("tt_abc", voidToHold: true);
 
-        capturedUrl.Should().Contain("/v1/issued_tickets/tt_abc/void");
+        handler.Requests.Single().Request.RequestUri!.ToString().Should().Contain("/v1/issued_tickets/tt_abc/void");
     }
 
-    // ==========================================================================
-    // VoidIssuedTicketAsync — error status codes
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task VoidIssuedTicketAsync_400_ThrowsValidation()
+    [HumansTheory]
+    [InlineData(HttpStatusCode.BadRequest, TicketVendorFailureKind.Validation)]
+    [InlineData(HttpStatusCode.UnprocessableEntity, TicketVendorFailureKind.Validation)]
+    [InlineData(HttpStatusCode.Unauthorized, TicketVendorFailureKind.AuthFailed)]
+    [InlineData(HttpStatusCode.Forbidden, TicketVendorFailureKind.AuthFailed)]
+    [InlineData(HttpStatusCode.NotFound, TicketVendorFailureKind.NotFound)]
+    [InlineData(HttpStatusCode.TooManyRequests, TicketVendorFailureKind.RateLimited)]
+    [InlineData(HttpStatusCode.InternalServerError, TicketVendorFailureKind.Transient)]
+    public async Task VoidIssuedTicketAsync_MapsStatusToFailureKind(HttpStatusCode status, TicketVendorFailureKind kind)
     {
-        var handler = new MockHttpHandler();
-        handler.EnqueueResponse(HttpStatusCode.BadRequest, new { error = "bad request" });
+        var handler = new RecordingHttpHandler();
+        handler.EnqueueResponse(status, new { error = "vendor says no" });
 
-        var service = CreateService(handler);
+        var service = TicketTailorTestHost.CreateService(handler);
         var act = () => service.VoidIssuedTicketAsync("tt_xyz", voidToHold: false);
 
         var ex = await act.Should().ThrowAsync<TicketVendorWriteException>();
-        ex.Which.Kind.Should().Be(TicketVendorFailureKind.Validation);
-    }
-
-    [HumansFact]
-    public async Task VoidIssuedTicketAsync_401_ThrowsAuthFailed()
-    {
-        var handler = new MockHttpHandler();
-        handler.EnqueueResponse(HttpStatusCode.Unauthorized, new { error = "unauthorized" });
-
-        var service = CreateService(handler);
-        var act = () => service.VoidIssuedTicketAsync("tt_xyz", voidToHold: false);
-
-        var ex = await act.Should().ThrowAsync<TicketVendorWriteException>();
-        ex.Which.Kind.Should().Be(TicketVendorFailureKind.AuthFailed);
-    }
-
-    [HumansFact]
-    public async Task VoidIssuedTicketAsync_403_ThrowsAuthFailed()
-    {
-        var handler = new MockHttpHandler();
-        handler.EnqueueResponse(HttpStatusCode.Forbidden, new { error = "forbidden" });
-
-        var service = CreateService(handler);
-        var act = () => service.VoidIssuedTicketAsync("tt_xyz", voidToHold: false);
-
-        var ex = await act.Should().ThrowAsync<TicketVendorWriteException>();
-        ex.Which.Kind.Should().Be(TicketVendorFailureKind.AuthFailed);
-    }
-
-    [HumansFact]
-    public async Task VoidIssuedTicketAsync_404_ThrowsNotFound()
-    {
-        var handler = new MockHttpHandler();
-        handler.EnqueueResponse(HttpStatusCode.NotFound, new { error = "not found" });
-
-        var service = CreateService(handler);
-        var act = () => service.VoidIssuedTicketAsync("tt_xyz", voidToHold: false);
-
-        var ex = await act.Should().ThrowAsync<TicketVendorWriteException>();
-        ex.Which.Kind.Should().Be(TicketVendorFailureKind.NotFound);
-    }
-
-    [HumansFact]
-    public async Task VoidIssuedTicketAsync_429_ThrowsRateLimited()
-    {
-        var handler = new MockHttpHandler();
-        handler.EnqueueResponse(HttpStatusCode.TooManyRequests, new { error = "rate limited" });
-
-        var service = CreateService(handler);
-        var act = () => service.VoidIssuedTicketAsync("tt_xyz", voidToHold: false);
-
-        var ex = await act.Should().ThrowAsync<TicketVendorWriteException>();
-        ex.Which.Kind.Should().Be(TicketVendorFailureKind.RateLimited);
-    }
-
-    [HumansFact]
-    public async Task VoidIssuedTicketAsync_500_ThrowsTransient()
-    {
-        var handler = new MockHttpHandler();
-        handler.EnqueueResponse(HttpStatusCode.InternalServerError, new { error = "server error" });
-
-        var service = CreateService(handler);
-        var act = () => service.VoidIssuedTicketAsync("tt_xyz", voidToHold: false);
-
-        var ex = await act.Should().ThrowAsync<TicketVendorWriteException>();
-        ex.Which.Kind.Should().Be(TicketVendorFailureKind.Transient);
+        ex.Which.Kind.Should().Be(kind);
     }
 
     [HumansFact]
     public async Task VoidIssuedTicketAsync_TransportException_ThrowsTransient()
     {
-        var handler = new ThrowingHttpHandler(new HttpRequestException("network failure"));
+        var handler = new RecordingHttpHandler();
+        handler.EnqueueThrow(new HttpRequestException("network failure"));
 
-        var service = CreateService(handler);
+        var service = TicketTailorTestHost.CreateService(handler);
         var act = () => service.VoidIssuedTicketAsync("tt_xyz", voidToHold: false);
 
         var ex = await act.Should().ThrowAsync<TicketVendorWriteException>();
@@ -208,14 +111,11 @@ public class TicketTailorServiceWriteTests
         ex.Which.InnerException.Should().BeOfType<HttpRequestException>();
     }
 
-    // ==========================================================================
-    // IssueTicketAsync — argument validation
-    // ==========================================================================
-
     [HumansFact]
-    public async Task IssueTicketAsync_NeitherHoldNorEventAndType_ThrowsArgumentException()
+    public async Task IssueTicketAsync_NeitherHoldNorEventAndType_ThrowsArgumentExceptionBeforeAnyCall()
     {
-        var service = CreateService(new MockHttpHandler());
+        var handler = new RecordingHttpHandler();
+        var service = TicketTailorTestHost.CreateService(handler);
         var request = new IssueTicketRequest(
             EventId: null,
             TicketTypeId: null,
@@ -228,17 +128,13 @@ public class TicketTailorServiceWriteTests
         var act = () => service.IssueTicketAsync(request);
 
         await act.Should().ThrowAsync<ArgumentException>();
+        handler.RequestCount.Should().Be(0);
     }
-
-    // ==========================================================================
-    // IssueTicketAsync — happy path with HoldId
-    // ==========================================================================
 
     [HumansFact]
     public async Task IssueTicketAsync_WithHoldId_PostsHoldIdFormKey()
     {
-        string? capturedBody = null;
-        var handler = new CapturingMockHttpHandler();
+        var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
             id = "it_new",
@@ -248,12 +144,9 @@ public class TicketTailorServiceWriteTests
             listed_price = 40000,
             status = "valid",
             order_id = (string?)null
-        }, onReceive: async req =>
-        {
-            capturedBody = await req.Content!.ReadAsStringAsync();
         });
 
-        var service = CreateService(handler);
+        var service = TicketTailorTestHost.CreateService(handler);
         var request = new IssueTicketRequest(
             EventId: null,
             TicketTypeId: null,
@@ -265,21 +158,17 @@ public class TicketTailorServiceWriteTests
 
         var result = await service.IssueTicketAsync(request);
 
-        capturedBody.Should().Contain("hold_id=hold_xyz");
-        capturedBody.Should().NotContain("event_id");
-        capturedBody.Should().NotContain("ticket_type_id");
+        var body = handler.Requests.Single().Body;
+        body.Should().Contain("hold_id=hold_xyz");
+        body.Should().NotContain("event_id");
+        body.Should().NotContain("ticket_type_id");
         result.VendorTicketId.Should().Be("it_new");
     }
-
-    // ==========================================================================
-    // IssueTicketAsync — happy path with EventId + TicketTypeId
-    // ==========================================================================
 
     [HumansFact]
     public async Task IssueTicketAsync_WithEventAndType_PostsEventAndTypeFormKeys()
     {
-        string? capturedBody = null;
-        var handler = new CapturingMockHttpHandler();
+        var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
             id = "it_new2",
@@ -289,12 +178,9 @@ public class TicketTailorServiceWriteTests
             listed_price = 40000,
             status = "valid",
             order_id = (string?)null
-        }, onReceive: async req =>
-        {
-            capturedBody = await req.Content!.ReadAsStringAsync();
         });
 
-        var service = CreateService(handler);
+        var service = TicketTailorTestHost.CreateService(handler);
         var request = new IssueTicketRequest(
             EventId: "ev_test",
             TicketTypeId: "tt_type_001",
@@ -306,16 +192,16 @@ public class TicketTailorServiceWriteTests
 
         await service.IssueTicketAsync(request);
 
-        capturedBody.Should().Contain("event_id=ev_test");
-        capturedBody.Should().Contain("ticket_type_id=tt_type_001");
-        capturedBody.Should().NotContain("hold_id");
+        var body = handler.Requests.Single().Body;
+        body.Should().Contain("event_id=ev_test");
+        body.Should().Contain("ticket_type_id=tt_type_001");
+        body.Should().NotContain("hold_id");
     }
 
     [HumansFact]
     public async Task IssueTicketAsync_SetsFullNameAndSendEmailInBody()
     {
-        string? capturedBody = null;
-        var handler = new CapturingMockHttpHandler();
+        var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
             id = "it_new3",
@@ -325,12 +211,9 @@ public class TicketTailorServiceWriteTests
             listed_price = 40000,
             status = "valid",
             order_id = (string?)null
-        }, onReceive: async req =>
-        {
-            capturedBody = await req.Content!.ReadAsStringAsync();
         });
 
-        var service = CreateService(handler);
+        var service = TicketTailorTestHost.CreateService(handler);
         var request = new IssueTicketRequest(
             EventId: "ev_test",
             TicketTypeId: "tt_type_001",
@@ -342,16 +225,17 @@ public class TicketTailorServiceWriteTests
 
         await service.IssueTicketAsync(request);
 
-        capturedBody.Should().Contain("full_name=Carol+White");
-        capturedBody.Should().Contain("send_email=true");
-        capturedBody.Should().Contain("email=carol%40example.com");
-        capturedBody.Should().Contain("reference=ref_abc");
+        var body = handler.Requests.Single().Body;
+        body.Should().Contain("full_name=Carol+White");
+        body.Should().Contain("send_email=true");
+        body.Should().Contain("email=carol%40example.com");
+        body.Should().Contain("reference=ref_abc");
     }
 
     [HumansFact]
     public async Task IssueTicketAsync_MapsResponseToVendorTicketDto()
     {
-        var handler = new MockHttpHandler();
+        var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
             id = "it_mapped",
@@ -363,7 +247,7 @@ public class TicketTailorServiceWriteTests
             order_id = (string?)null
         });
 
-        var service = CreateService(handler);
+        var service = TicketTailorTestHost.CreateService(handler);
         var request = new IssueTicketRequest(
             EventId: "ev_test",
             TicketTypeId: "tt_type_001",
@@ -384,17 +268,16 @@ public class TicketTailorServiceWriteTests
         result.Status.Should().Be("valid");
     }
 
-    // ==========================================================================
-    // IssueTicketAsync — error status codes
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task IssueTicketAsync_400_ThrowsValidation()
+    [HumansTheory]
+    [InlineData(HttpStatusCode.BadRequest, TicketVendorFailureKind.Validation)]
+    [InlineData(HttpStatusCode.UnprocessableEntity, TicketVendorFailureKind.Validation)]
+    [InlineData(HttpStatusCode.InternalServerError, TicketVendorFailureKind.Transient)]
+    public async Task IssueTicketAsync_MapsStatusToFailureKind(HttpStatusCode status, TicketVendorFailureKind kind)
     {
-        var handler = new MockHttpHandler();
-        handler.EnqueueResponse(HttpStatusCode.BadRequest, new { error = "sold out" });
+        var handler = new RecordingHttpHandler();
+        handler.EnqueueResponse(status, new { error = "sold out" });
 
-        var service = CreateService(handler);
+        var service = TicketTailorTestHost.CreateService(handler);
         var request = new IssueTicketRequest(
             EventId: "ev_test",
             TicketTypeId: "tt_type_001",
@@ -407,67 +290,6 @@ public class TicketTailorServiceWriteTests
         var act = () => service.IssueTicketAsync(request);
 
         var ex = await act.Should().ThrowAsync<TicketVendorWriteException>();
-        ex.Which.Kind.Should().Be(TicketVendorFailureKind.Validation);
+        ex.Which.Kind.Should().Be(kind);
     }
-
-    [HumansFact]
-    public async Task IssueTicketAsync_500_ThrowsTransient()
-    {
-        var handler = new MockHttpHandler();
-        handler.EnqueueResponse(HttpStatusCode.InternalServerError, new { error = "server error" });
-
-        var service = CreateService(handler);
-        var request = new IssueTicketRequest(
-            EventId: "ev_test",
-            TicketTypeId: "tt_type_001",
-            HoldId: null,
-            FullName: "Test User",
-            Email: null,
-            SendEmail: false,
-            ExternalReference: null);
-
-        var act = () => service.IssueTicketAsync(request);
-
-        var ex = await act.Should().ThrowAsync<TicketVendorWriteException>();
-        ex.Which.Kind.Should().Be(TicketVendorFailureKind.Transient);
-    }
-}
-
-/// <summary>
-/// Mock handler that supports an optional per-response callback for inspecting
-/// the outgoing request (URL, body, headers). Used by write-operation tests that
-/// need to assert on the request payload.
-/// </summary>
-internal sealed class CapturingMockHttpHandler : HttpMessageHandler
-{
-    private readonly Queue<(HttpResponseMessage Response, Func<HttpRequestMessage, Task>? OnReceive)> _queue = new();
-
-    public void EnqueueResponse(HttpStatusCode status, object body,
-        Func<HttpRequestMessage, Task>? onReceive = null)
-    {
-        _queue.Enqueue((new HttpResponseMessage(status)
-        {
-            Content = new StringContent(
-                JsonSerializer.Serialize(body),
-                System.Text.Encoding.UTF8,
-                "application/json")
-        }, onReceive));
-    }
-
-    protected override async Task<HttpResponseMessage> SendAsync(
-        HttpRequestMessage request, CancellationToken ct)
-    {
-        var (response, onReceive) = _queue.Dequeue();
-        if (onReceive is not null)
-            await onReceive(request);
-        return response;
-    }
-}
-
-/// <summary>Always throws the given exception from SendAsync.</summary>
-internal sealed class ThrowingHttpHandler(Exception exception) : HttpMessageHandler
-{
-    protected override Task<HttpResponseMessage> SendAsync(
-        HttpRequestMessage request, CancellationToken ct)
-        => throw exception;
 }
