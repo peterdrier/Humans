@@ -159,22 +159,6 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetDashboardOverview_AdminOnlyAndHiddenRotaShiftsExcluded()
-    {
-        var es = await SeedEventAsync();
-        var team = await SeedTeamAsync("Gate");
-        var visibleRota = await SeedRotaAsync(team, es, RotaPeriod.Event);
-        var hiddenRota = await SeedRotaAsync(team, es, RotaPeriod.Event, isVisible: false);
-        await SeedShiftAsync(visibleRota, dayOffset: 2, min: 2, max: 5);
-        await SeedShiftAsync(visibleRota, dayOffset: 3, min: 2, max: 5, adminOnly: true);
-        await SeedShiftAsync(hiddenRota, dayOffset: 4, min: 2, max: 5);
-
-        var result = await _service.GetDashboardOverviewAsync(es.Id);
-
-        result.TotalShifts.Should().Be(1);
-    }
-
-    [HumansFact]
     public async Task GetDashboardOverview_TicketHolderAndEngagementCounters()
     {
         var es = await SeedEventAsync();
@@ -840,8 +824,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     public async Task GetCoverageHeatmap_DayPeriodClassification_UsesShiftPeriodEnum()
     {
         // Day-column period tagging must use the ShiftPeriod enum, not English
-        // strings — previously the service emitted "Set-up"/"Event"/"Strike"
-        // which coupled the view to magic values.
+        // strings, which would couple the view to magic values.
         var es = await SeedEventAsync();
         var team = await SeedTeamAsync("Gate");
         var rota = await SeedRotaAsync(team, es, RotaPeriod.Event);

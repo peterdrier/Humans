@@ -11,7 +11,7 @@ namespace Humans.Shifts.Tests.Services;
 /// <summary>
 /// Tests for <see cref="CachingShiftViewService"/> — Singleton decorator over a
 /// keyed Scoped inner. Covers dict-cache hit / miss, batch-miss fan-in,
-/// invalidation, and that cache-hit reads never resolve the inner. Issue #720.
+/// invalidation, and that cache-hit reads never resolve the inner. Issue nobodies-collective/Humans#720.
 /// </summary>
 public class CachingShiftViewServiceTests
 {
