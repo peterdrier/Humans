@@ -190,5 +190,6 @@ Off-inventory files changed by finding 6's sweep: `src/Sections/Humans.Shifts/Do
 `src/Sections/Humans.Teams/Docs/Teams.md`, `docs/architecture/design-rules.md`,
 `docs/architecture/service-data-access-map.md`,
 `tests/Humans.Integration.Tests/Controllers/EarlyEntryPageRenderTests.cs`; by the Phase 5 sweep:
-`docs/architecture/debt-ledger.yml`, `src/Sections/Humans.Agent/Docs/debt.yml`,
-`memory/process/debt-ledger-additions.md`.
+`docs/architecture/debt-ledger.yml`, `memory/process/debt-ledger-additions.md` (the Agent
+`debt.yml` entry the sweep also carried over was dropped in review round 2: it blessed a design
+rather than naming a defect, and Agent's `health.md` already holds the rationale).
