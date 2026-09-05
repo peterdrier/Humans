@@ -29,13 +29,6 @@ namespace Humans.Teams.Tests.Infrastructure;
 /// their service-under-test in their own ctor using these resources; the harness does not
 /// pre-build the service.
 /// </summary>
-/// <remarks>
-/// A trimmed copy of <c>Humans.Application.Tests</c>' <c>ServiceTestHarness</c>, which cannot
-/// be shared: it is built around the internal <c>UsersDbContext</c> and the moved tests use
-/// most of it — the clock, the cache, four substitutes, the users pile and five seeders across
-/// three section contexts. Governance finding 95's "split the helper before deciding" comes out
-/// the other way here (design §15 step 8).
-/// </remarks>
 public abstract class TeamsTestHarness : IDisposable
 {
     private static readonly System.Reflection.PropertyInfo LegacyDisplayNameProperty =
@@ -189,16 +182,6 @@ public abstract class TeamsTestHarness : IDisposable
         foreach (var sectionDb in CreatedSectionContexts())
         {
             sectionDb.ChangeTracker.Clear();
-        }
-    }
-
-    /// <summary>Synchronous <see cref="SaveAllAsync"/>.</summary>
-    private protected void SaveAll()
-    {
-        Db.SaveChanges();
-        foreach (var sectionDb in CreatedSectionContexts())
-        {
-            sectionDb.SaveChanges();
         }
     }
 

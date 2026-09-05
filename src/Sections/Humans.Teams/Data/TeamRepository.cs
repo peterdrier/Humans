@@ -480,13 +480,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         return result;
     }
 
-    public async Task<int> GetTotalPendingCountAsync(CancellationToken ct = default)
-    {
-        await using var db = await factory.CreateDbContextAsync(ct);
-        return await db.TeamJoinRequests
-            .CountAsync(r => r.Status == TeamJoinRequestStatus.Pending, ct);
-    }
-
     public async Task AddRequestAsync(TeamJoinRequest request, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);

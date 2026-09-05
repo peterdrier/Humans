@@ -1,64 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Teams' cross-section surface, carved into its own leaf project because most of its
-    consumers are still in Base: DashboardService, AuditViewerService, ContactFieldService,
-    the Shifts services, GoogleIntegration's TeamResourceService / GoogleAdminService /
-    GoogleGroupSyncService / GoogleWorkspaceSyncService, AccountDeletionService and
-    DuplicateAccountService all read through ITeamServiceRead or ITeamService, and
-    HumansMetricsService does the same from Humans.Infrastructure — re-derived at G5 lane
-    5b-4 (nobodies-collective/Humans#866): SystemTeamSyncJob lives in Humans.Teams itself,
-    and SuspendNonCompliantMembersJob's team reads are now NonCompliantMemberSuspension's
-    inside Humans.Users. A Contracts/ *folder*
-    inside Humans.Teams would therefore make Base reference a section and cycle
-    (design §15.5b, memory/architecture/section-project-cycle-fix.md).
+    Teams' cross-section surface, in its own leaf so that Base and other sections can
+    reference it without referencing the section (a Contracts/ folder inside Humans.Teams
+    would make Base reference a section and cycle — memory/architecture/section-project-cycle-fix.md).
 
     It holds exactly what lives outside the section: the read surface every other section
-    injects, the ~20 members Base and four moved sections call on the full service, and the
-    flat projections those signatures name. Everything else — the directory, detail, admin
-    list, roster, join-request, role-management and early-entry DTOs — is internal.
+    injects, the few members other sections call on the full service, the system-sync,
+    seeding and cache-invalidator contracts, and the flat projections those signatures name
+    (TeamMemberRole, RolePeriod, TeamJoinRequestStatus, SlotPriority, CallToAction).
+    Everything else — the directory, detail, admin list, roster, join-request,
+    role-management and early-entry DTOs — is internal to Humans.Teams.
 
-    G5 lane 4b-2k brought this section's own vocabulary home from Humans.Domain:
-    TeamMemberRole, RolePeriod, TeamJoinRequestStatus, SlotPriority, CallToActionStyle and
-    the CallToAction value object all live here now, because the leaf's own signatures name
-    them (Budget's rule). Measured, not assumed: CallToAction/CallToActionStyle/SlotPriority
-    were filed under Camps and Shifts in the #866 appendix and have no consumer outside Teams.
-
-    G5 lane 3a-1 added one non-Teams type on purpose: IActiveTeamsCacheInvalidator, in
-    namespace Humans.Teams.Contracts. Its six IMemoryCache-backed siblings went
-    to Base, but this one's implementation injects ITeamService and had to land in the section,
-    where HUM0034 makes it internal. Humans.Users injects the interface (AccountMergeService,
-    NonCompliantMemberSuspension) and already referenced this leaf, so it costs zero csproj
-    edits here or there; putting it on Humans.Teams would have forced a new Users → Teams edge.
-
-    References Humans.Interfaces (IApplicationService, SurfaceBudgetAttribute) and — new at
-    G5 lane 3b (nobodies-collective/Humans#866) — Humans.Users.Contracts, for GoogleEmailStatus
-    alone. That enum was the last thing keeping the old Humans.Domain edge alive here (lane
-    3a-1 had already taken SystemTeamType and DomainConstants to Base); lane 3b emptied and
-    deleted Humans.Domain and sent GoogleEmailStatus to its owner. Same single-enum dependency,
-    repointed — not a new coupling to Users' service surface.
-
-    Acyclic: Humans.Users.Contracts holds exactly one ProjectReference of its own
-    (Humans.Onboarding.Contracts, which holds none), so the chain terminates in two hops. Note
-    that Base references Humans.Users.Contracts, so nothing in that project may ever reference
-    this one.
-
-    G5 lane 3c deleted a reference to Humans.Auth.Contracts. It was dead, not unwound: a grep
-    for "Auth" across every file under this project matched only the ProjectReference line
-    itself — no using, no fully-qualified name, no see cref. The 2026-08-14 Base-floor design
-    listed Teams.Contracts -> Auth.Contracts as one of two known leaf-to-leaf edges needing an
-    unwind; it was never an edge, only a stale line. Do not re-add it: Auth.Contracts
-    references Humans.Users.Contracts, so an edge from here would make this leaf's chain
-    Teams -> Auth -> Users -> Onboarding, four hops of graph nobody is watching, for a
-    dependency this project does not have.
-
-    G5 lane 5c added ISystemTeamSync and its SyncReport result shape, from
-    Humans.Base.Interfaces.GoogleIntegration. The interface names Google nowhere, every
-    write its implementation makes lands in Teams' tables, and six sections outside Teams
-    inject it (Auth, Camps, Development, GoogleIntegration, Governance, Onboarding) — which is
-    what a leaf is for. It had sat in the hub on the belief that Hangfire pinned its
-    assembly-qualified name as the "teams-system-sync" job target; AddOrUpdate&lt;T&gt;(id, …) is
-    keyed on the id and rewrites the stored type at every startup, so the pin was never real.
+    Humans.Users.Contracts is referenced for GoogleEmailStatus alone. Base references
+    Humans.Users.Contracts, so nothing in that project may ever reference this one. Do not
+    add Humans.Auth.Contracts: nothing here names an Auth type, and the edge would pull
+    Users and Onboarding into this leaf's chain.
   -->
 
   <ItemGroup>

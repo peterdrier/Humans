@@ -1,0 +1,19 @@
+# Section debt ledger for Humans.Teams. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+inbox:
+  - added: 2026-09-05
+    what: "Controllers/TeamAdminController.cs LookupTicket holds ticket/barcode matching logic (and its nine controller tests pin it there); controllers translate only, so the matching belongs in a service (finding 12, /section-doctor on Teams 2026-09-05)."
+    review: panel
+  - added: 2026-09-05
+    what: "Services/TeamService.cs is the section's largest class (reforge largeClass) with UpdateTeamAsync at CC 32 over 14 parameters, and Data/Configurations/TeamConfiguration.cs Configure is one 241-line method. The target shape blesses one inner service; recorded so the score is not mistaken for unexamined debt (finding 12, /section-doctor on Teams 2026-09-05)."
+    review: panel
+  - added: 2026-09-05
+    what: "Views/TeamAdmin/EditTeam.cshtml carries eight hardcoded English strings on a member-facing coordinator route (/Teams/{slug}/Edit is not in localization-admin-exempt's list); each needs a TeamsResource key in all six cultures (finding 12, /section-doctor on Teams 2026-09-05)."
+    review: light
+  - added: 2026-09-05
+    what: "Most TeamsResource keys lack the Teams_ prefix (TeamDetail_*, TeamAdmin_*, MyTeams_*, AdminEditTeam_*); pre-existing baseline, report only — a rename is a six-culture sweep plus every view binding (finding 12, /section-doctor on Teams 2026-09-05)."
+    review: panel
+  - added: 2026-09-05
+    what: "health.md §4 says IsSensitive is written only by a global Admin; the gate lives in Controllers/TeamController.cs Edit (non-Admin posts pass null) and not in TeamService.UpdateTeamAsync, so a second caller of the service could set it. Either move the check into the service or restate the invariant as controller-enforced (finding 16, /section-doctor on Teams 2026-09-05)."
+    review: panel

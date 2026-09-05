@@ -1,5 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Teams/**
+  src/Sections/Humans.GoogleIntegration/Services/GoogleWorkspaceSyncService.cs
+  src/Sections/Humans.EarlyEntry/Services/EarlyEntryService.cs
 -->
 <!-- freshness:flag-on-change
   User-facing flows: browse/join/leave, public team pages, role assignment UX. Section invariants and data model live in src/Sections/Humans.Teams/Docs/Teams.md.
@@ -11,7 +13,7 @@
 
 ## Business Context
 
-Nobodies Collective operates through self-organizing working groups (teams). Teams can be created for specific initiatives and managed by their members. Teams can optionally be organized into departments (parent-child hierarchy) for logical grouping. Three system-managed teams automatically track key organizational roles: all volunteers, all team coordinators, and board members.
+Nobodies Collective operates through self-organizing working groups (teams). Teams can be created for specific initiatives and managed by their members. Teams can optionally be organized into departments (parent-child hierarchy) for logical grouping. System-managed teams track organisational facts automatically: all volunteers, department coordinators, Board members, Asociados, Colaboradors and camp leads.
 
 ## User Stories
 
@@ -23,7 +25,7 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 **Acceptance Criteria:**
 - Page split into two sections: "My Teams" at top, "Other Teams" below
 - "My Teams" shows teams the user belongs to (empty state: "You haven't joined any teams yet")
-- "Other Teams" shows remaining teams with pagination
+- "Other Teams" shows the remaining directory-visible teams
 - Each team card shows name, description, member count, role badge, and system badge
 - Shows if team requires approval to join
 - Distinguishes system teams from user-created teams

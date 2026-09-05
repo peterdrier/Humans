@@ -1,12 +1,10 @@
 namespace Humans.Teams.Contracts;
 
 /// <summary>
-/// Lightweight projection of a user's active membership on a single team —
-/// just the team name and the user's role within that team. Used by
-/// <see cref="AgentUserSnapshot"/> so the agent can distinguish a coordinator
-/// on Build from a regular member on Cantina without leaking the full
-/// <see cref="Humans.Domain.Entities.TeamMember"/> graph into the prompt
-/// surface.
+/// A user's active membership on a single team — just the team name and the user's
+/// role. Users' profile popover and Agent's user snapshot build it themselves from
+/// <see cref="ITeamServiceRead.GetUserTeamMembershipsAsync"/>; nothing in Teams
+/// produces it.
 /// </summary>
 public sealed record TeamMembership(string TeamName, TeamMemberRole Role)
 {
