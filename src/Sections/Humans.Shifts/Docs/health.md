@@ -26,7 +26,7 @@ audited and the affected coordinators are notified.
 | **Describe the work** — rota/shift CRUD, bulk generation, tag labels, move rota between departments | `ShiftAdminController` (`/Teams/{slug}/Shifts/*`), `IShiftManagementService` create/update/delete/generate/tag/move, `IShiftSeeding` | Development seeder only (`IShiftSeeding`) |
 | **Take a slot** — self sign-up (single, range, per-day toggle) and bail; policy gates: browsing open, EE freeze, name/dietary completeness, capacity, overlap | `ShiftsController` `ToggleDay`/`Bail`/`BailRange`, `IShiftSignups.SignUp*`/`Bail`, `ShiftSignupService` | Onboarding wizard, Agent |
 | **Review a slot** — approve/refuse/no-show/remove/voluntell, single and block | `ShiftAdminController` signups/voluntell routes, `ShiftDashboardController.Voluntell`, `IShiftSignupService` review methods, `IShiftSignups.Voluntell/Refuse` | Agent (voluntell) |
-| **Look at the schedule** — browse, mine, urgent, staffing snapshot, summary-by-camp, per-user/per-rota projections, search hit | `GET /Shifts`, `/Shifts/Mine`, `/Shifts/Summary*`, `IShiftManagementServiceRead` (11 reads), `IShiftView`/`IShiftRowView`, `<vc:shifts-search-result>`, `<vc:dashboard-shifts>`, `<vc:shifts-gallery>`, `<vc:shift-signups>`, `<vc:onboarding-shifts-list>` | Search, Teams, Tickets, Store, Cantina, Gate, MailerLite, Camps, Events, Users, Scanner, Surveys |
+| **Look at the schedule** — browse, mine, urgent, staffing snapshot, summary-by-camp, per-user/per-rota projections, search hit | `GET /Shifts`, `/Shifts/Mine`, `/Shifts/Summary*`, `IShiftManagementServiceRead` (13 reads), `IShiftView`/`IShiftRowView`, `<vc:shifts-search-result>`, `<vc:dashboard-shifts>`, `<vc:shifts-gallery>`, `<vc:shift-signups>`, `<vc:onboarding-shifts-list>` | Search, Teams, Tickets, Store, Cantina, Gate, MailerLite, Camps, Events, Users, Scanner, Surveys |
 | **The event calendar** — active event settings, build sub-periods, EE close, browsing toggle | `GET/POST /Shifts/Settings`, `IBurnSettingsService`/`BurnSettingsInfo`, `BuildSubPeriodClassifier` | Every section that needs "which year / which day offset is today" (Events, Camps, Tickets, Notifications, Settings, …) |
 | **Who I am as a volunteer** — shift profile, tag preferences, general availability | `ShiftProfileController` (`/Profile/Me/ShiftInfo`), `POST /Shifts/Preferences/Tags`, `POST /Shifts/Mine/Availability`, `IShiftVolunteerProfiles`, `IVolunteerTrackingService.SetAvailabilityAsync` | Users (profile page), Onboarding |
 | **Coordinator analytics** — overview, activity, trends, heatmap, daily staffing, duration breakdown, coverage pies, post-event stats, workload | `ShiftDashboardController`, `ShiftWorkloadAdminController`, `IShiftManagementService` analytics methods, `IWorkloadService` | none |
@@ -34,7 +34,7 @@ audited and the affected coordinators are notified.
 | **Tell people** — rota / team-rota coordinator email | `ShiftAdminController` `Email` routes, `IRotaCoordinatorMessageService` | none |
 | **Housekeeping** — GDPR export/delete, account merge re-FK, iCal feed, cache eviction, orphan scan | `IUserDataContributor`, `IUserMerge` ×3, `ICalendarFeedContributor`, `IShiftViewInvalidator`, `IShiftAuthorizationInvalidator`, `GET /Shifts/OrphanSignups` | Gdpr, Users (merge, deletion), Calendar, Teams/Users (auth eviction) |
 
-Ten question-shapes over five controllers, three services with a public face, two repositories.
+Ten question-shapes over six controllers, three services with a public face, two repositories.
 
 ## 3. Structure
 
@@ -87,8 +87,9 @@ The shapes imply:
 - **Event settings cutover** (nobodies-collective/Humans#1104): the app-wide event values are
   moving to the Settings section; `IBurnSettingsService`/`BurnSettingsInfo` is the surface
   every consumer holds until then. Do not widen it, do not split it early.
-- **Legacy signup reads on `IShiftSignupService`** (`GetByUserAsync`, `GetTeamProbeAsync`) are
-  the last per-user reads not on `IShiftView`; they drain when their controllers move.
+- **Per-user reads still on `IShiftSignupService`** (`GetByUserAsync`, `GetTeamProbeAsync`):
+  the constraint is that `IShiftView` stays the only cached per-user projection, so do not add
+  a second cache in front of these; move callers onto `IShiftView` when they are touched.
 - **Unused VEP dietary/medical columns** await a post-prod-soak drop
   (`no-drops-until-prod-verified`).
 
@@ -98,6 +99,7 @@ The shapes imply:
 - **No per-shift `IsCancelled`** — cancellation is a signup state plus cascade delete.
 - **No caching decorator over `ShiftManagementService`** — it holds two small caches (auth
   60 s, dashboard 5 min) directly; a decorator would have to know the invalidation keys anyway.
+  The one decorator in the section is `CachingShiftViewService` over `IShiftView`/`IShiftRowView`.
 - **No dashboard cache key fan-out for sub-period** — sub-period filtered calls bypass the
   cache by design.
 - **No analytics-service split this run** — it is the right direction but a structural move

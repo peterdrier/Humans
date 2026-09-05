@@ -13,18 +13,16 @@ namespace Humans.Shifts;
 /// <c>GetExportedTypes()</c>; an internal marker is skipped in silence (§15 step 3b).
 /// </para>
 /// <para>
-/// The set is 328 keys: all of <c>ShiftDash_</c> (99), <c>VolTrack_</c> (94),
-/// <c>ShiftInfo_</c> (13), <c>EmailRota_</c> (11), <c>EmailTeamRotas_</c> (9), and 102 of the
-/// 108 <c>Shifts_</c>. Two prefixes and six keys stayed in <c>SharedResource</c>, each for a
-/// renderer that cannot see this set:
+/// The set holds every <c>ShiftDash_</c>, <c>VolTrack_</c>, <c>ShiftInfo_</c>, <c>EmailRota_</c>,
+/// <c>EmailTeamRotas_</c>, <c>GetInvolved_</c>, <c>Dashboard_</c> and <c>DietaryMissingBanner_</c>
+/// key and all but six <c>Shifts_</c> keys. One prefix and six keys stay in
+/// <c>SharedResource</c>, each for a renderer that cannot see this set:
 /// </para>
 /// <list type="bullet">
 /// <item><description>
 /// <c>ShiftsSummary_</c> (7) — rendered by
-/// <c>Humans.Teams/Views/Shared/_ShiftsSummaryCard.cshtml</c> since G5 lane 4b-i
-/// (nobodies-collective/Humans#866). Re-measured then: the card has <b>zero</b> Shifts
-/// consumers — Teams builds the model, Teams renders it — so it is Teams' vocabulary, not
-/// this section's, and the seven keys stay in <c>SharedResource</c> because
+/// <c>Humans.Teams/Views/Shared/_ShiftsSummaryCard.cshtml</c>: Teams builds the model and
+/// renders it, so the keys are Teams' vocabulary and stay in <c>SharedResource</c> because
 /// <c>Humans.Shifts</c> already references <c>Humans.Teams</c> and cannot be referenced back.
 /// The partial binds <c>SharedLocalizer</c> for all seven.
 /// </description></item>
@@ -45,15 +43,14 @@ namespace Humans.Shifts;
 /// </list>
 /// <para>
 /// Views read those six through <c>SharedLocalizer</c>, bound beside <c>Localizer</c> in
-/// <c>Views/_ViewImports.cshtml</c>. <c>ShiftsArchitectureTests.SectionTypesLocalizeThroughTheSectionsOwnResourceSet</c>
-/// is what stops a controller quietly keeping <c>IStringLocalizer&lt;SharedResource&gt;</c>
-/// after its keys moved here — a failure mode no render test reaches, because
-/// controller-resolved copy sits on the validation and error paths (Surveys' finding).
+/// <c>Views/_ViewImports.cshtml</c>. Controllers resolve copy through
+/// <c>IStringLocalizer&lt;ShiftsResource&gt;</c>, never <c>SharedResource</c>: controller-resolved
+/// copy sits on the validation and error paths that no render test reaches.
 /// </para>
 /// <para>
-/// Shell's <c>Views/Profile/Edit.cshtml</c> is the one outside renderer that <em>could</em>
-/// rebind and did: it injects <c>IStringLocalizer&lt;ShiftsResource&gt;</c> for the two
-/// shift-preference keys rather than have them split off the section's own preferences card.
+/// <c>Humans.Users/Views/Profile/Edit.cshtml</c> is the one outside renderer that binds this
+/// set: it injects <c>IStringLocalizer&lt;ShiftsResource&gt;</c> for the two shift-preference
+/// keys rather than have them split off the section's own preferences card.
 /// </para>
 /// </remarks>
 public class ShiftsResource;

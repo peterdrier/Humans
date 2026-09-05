@@ -1,6 +1,11 @@
 <!-- freshness:triggers
   src/Sections/Humans.Shifts/**
   src/Sections/Humans.Shifts.Contracts/**
+  src/Humans.Base/Authorization/ShiftRoleChecks.cs
+  src/Humans.Base/Authorization/PolicyNames.cs
+  src/Sections/Humans.Users.Contracts/ParticipationStatus.cs
+  src/Sections/Humans.Teams.Contracts/ITeamServiceRead.cs
+  src/Sections/Humans.Users.Contracts/IUserMerge.cs
 -->
 <!-- freshness:flag-on-change
   Shift signup state machine, capacity ceilings, range-block atomicity, voluntelling rules, and coordinator/manager scope — review when Shifts services/entities/controllers change.
@@ -18,7 +23,7 @@ Event shifts, rotas, signups, range blocks, event settings, general availability
 - **Range Signups** link multiple shifts via a block ID (`SignupBlockId`). Operations on a range (sign-up, voluntell, bail, approve, refuse) apply to the entire block atomically.
 - **Event Settings** is a singleton per event controlling dates, timezone, early-entry capacity, barrios EE allocation, early-entry close instant, global volunteer cap, reminder lead time, and whether shift browsing is open to regular volunteers.
 - **General Availability** tracks per-human per-event day availability (one row per user per event; `AvailableDayOffsets` is a jsonb list of day offsets).
-- **Volunteer Event Profile** stores per-user shift-matching data: skills, quirks (working-style toggles like Sober Shift, Work In Shade, plus a single time preference), and languages. One-to-one with `User`. **Dietary preference, allergies, intolerances, and medical conditions moved to `Profile` (Users section)** — see the dietary-medical-to-profile migration; read them via `IUserServiceRead`. The old VEP columns are retained (unused) pending a post-prod-soak drop.
+- **Volunteer Event Profile** stores per-user shift-matching data: skills, quirks (working-style toggles like Sober Shift, Work In Shade, plus a single time preference), and languages. One-to-one with `User`. Dietary preference, allergies, intolerances and medical conditions live on `Profile` (Users section) and are read via `IUserServiceRead`; the unused VEP columns for them await a post-prod-soak drop.
 - **Rota Tags** (`shift_tags`) are labels applied to rotas (e.g., "Heavy lifting"). Volunteers save preferred tags via `VolunteerTagPreference`; matching rotas are starred on the browse page.
 - **Voluntelling** is when an Admin, NoInfoAdmin, VolunteerCoordinator, or department coordinator signs up a human for a shift on their behalf. Voluntold signups are auto-confirmed and recorded with `Enrolled = true` and `EnrolledByUserId`.
 - **Event Participation** is a per-user, per-year record tracking declared event participation status, used cross-section (e.g., to gate "who hasn't bought a ticket" lists). Owned by Users (see [`Users.md`](../../Humans.Users/Docs/Users.md)); Shifts may surface it as a derived view but does not write to it.
@@ -73,7 +78,7 @@ Per-user per-event day availability. `AvailableDayOffsets` stored as jsonb. Uniq
 
 **Table:** `general_availability`
 
-Cross-domain nav `GeneralAvailability.User` was **stripped** in peterdrier/Humans PR for sub-task nobodies-collective/Humans#541c; `UserId` is now a bare Guid column with no FK constraint (nobodies-collective/Humans#992).
+`UserId` is a bare Guid column with no navigation property and no FK constraint.
 
 <!-- wheat: docs/superpowers/plans/2026-05-27-coordinator-availability-on-profile.md §Deviations from spec -->
 **Write-path asymmetry:** `VolunteerTrackingService.SetDayAvailabilityAsync` (the coordinator per-day availability toggle on a volunteer's profile) only guards `dayOffset >= 0` — unlike `SetDayOffAsync`, which validates the full window (`dayOffset < es.BuildStartOffset || dayOffset >= 0`). An offset earlier than `BuildStartOffset` can therefore be stored, but is inert: every heatmap/build-strip render loop is bounded to `[BuildStartOffset, 0)`, so an out-of-window offset never surfaces.
@@ -94,17 +99,17 @@ Per-user per-event build-period coordination state. Drives the Volunteer Trackin
 
 **Write paths:**
 
-- `VolunteerTrackingController` (Admin / VolunteerCoordinator, gated by the `VolunteerTrackingWrite` policy) writes `BarrioSetupStartDate`, `Notes`, `SetByUserId`, `SetAt`, and individual `DayOffs` entries via `IVolunteerTrackingService.SetCampSetupAsync` / `ClearCampSetupAsync` / `SetDayOffAsync` / `ClearDayOffAsync`.
+- `VolunteerTrackingController` (Admin / VolunteerCoordinator, gated by the `VolunteerTrackingWrite` policy) writes `BarrioSetupStartDate`, `Notes`, `SetByUserId`, `SetAt`, and individual `DayOffs` entries via `IVolunteerTrackingService.SetCampSetupAsync` / `ClearCampSetupAsync` / `SetDayOffAsync` / `ClearDayOffAsync`; the same controller's `SetAvailabilityDay` / `ClearAvailabilityDay` toggle one day on a volunteer's `GeneralAvailability` via `SetDayAvailabilityAsync`.
 
-All mutations route through `IVolunteerTrackingRepository` and emit `AuditAction.VolunteerCampSetupSet` / `VolunteerCampSetupCleared` / `VolunteerDayOffMarked` / `VolunteerDayOffCleared` audit entries with `EntityType = nameof(VolunteerBuildStatus)`.
+All mutations route through `IVolunteerTrackingRepository` and emit `AuditAction.VolunteerCampSetupSet` / `VolunteerCampSetupCleared` / `VolunteerDayOffMarked` / `VolunteerDayOffCleared` audit entries with `EntityType = nameof(VolunteerBuildStatus)`, and `VolunteerAvailabilitySet` / `VolunteerAvailabilityCleared` with `EntityType = nameof(GeneralAvailability)`.
 
 ### VolunteerEventProfile
 
-Per-user shift-matching profile (1:1 with User) capturing `Skills`, `Quirks`, `Languages` (jsonb lists). Unique on `UserId`. The dietary/medical columns (`DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText`, `MedicalConditions`) moved to `Profile`; the VEP columns remain in the schema (unused) pending a post-prod-soak drop.
+Per-user shift-matching profile (1:1 with User) capturing `Skills`, `Quirks`, `Languages` (jsonb lists). Unique on `UserId`. The columns `DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText`, `MedicalConditions` are unused (the data lives on `Profile`) and await a post-prod-soak drop.
 
 **Table:** `volunteer_event_profiles`
 
-Cross-domain nav to `User` is stripped from the entity; `UserId` is a bare Guid column with no FK constraint (nobodies-collective/Humans#992) — the DB-level cascade delete no longer applies.
+`UserId` is a bare Guid column with no navigation property and no FK constraint, so no DB-level cascade delete applies; account deletion goes through `CancelActiveSignupsForUserAsync` and the GDPR path.
 
 ### EventParticipation (owned by Users)
 
@@ -150,10 +155,11 @@ These controllers serve this section, each with distinct URL scope and authoriza
 | Controller | Base route | Auth |
 |---|---|---|
 | `ShiftsController` | `/Shifts` | `[Authorize]` (per-action for admin/settings) |
-| `ShiftAdminController` | `/Teams/{slug}/Shifts` | `[Authorize]` + `CanManageDepartment` / `CanApproveDepartment` |
+| `ShiftAdminController` | `/Teams/{slug}/Shifts` | `[Authorize]` + runtime department checks (`CanManageDepartmentAsync` / `CanApproveDepartmentAsync`, private to the controller, over `ShiftRoleChecks` + `IsDeptCoordinatorAsync`) |
 | `ShiftDashboardController` | `/Shifts/Dashboard` | `[Authorize(Policy = PolicyNames.ShiftDepartmentManager)]` |
 | `VolunteerTrackingController` | `/Shifts/Dashboard/VolunteerTracking` | `[Authorize(Policy = PolicyNames.ShiftDashboardAccess)]` (per-action `VolunteerTrackingWrite` for mutating POSTs — Admin / VolunteerCoordinator) |
-| `ShiftProfileController` | `/Profile` | `[Authorize]` — two actions (`GET`/`POST /Profile/Me/ShiftInfo`) carved off Shell's `ProfileController` at G5 (nobodies-collective/Humans#866); the route stays under `/Profile` so the URL doesn't change |
+| `ShiftWorkloadAdminController` | `/Shifts/Admin/Workload` | `[Authorize(Policy = PolicyNames.ShiftDashboardAccess)]` |
+| `ShiftProfileController` | `/Profile` | `[Authorize]` — two actions (`GET`/`POST /Profile/Me/ShiftInfo`); the route stays under `/Profile` because the URL is bookmarked |
 
 Selected routes:
 
@@ -180,10 +186,11 @@ Selected routes:
 | `POST /Teams/{slug}/Shifts/Rotas/{rotaId}/GenerateShifts` | Bulk-generate event shifts |
 | `POST /Teams/{slug}/Shifts/Rotas/{rotaId}/ToggleVisibility` | Toggle `IsVisibleToVolunteers` |
 | `POST /Teams/{slug}/Shifts/Rotas/{rotaId}/Move` | Move rota to different team |
-| `POST /Teams/{slug}/Shifts/Rotas/{rotaId}/Delete` | Delete rota |
+| `POST /Teams/{slug}/Shifts/Rotas/{rotaId}/Delete` | Delete rota (404 unless the rota belongs to `{slug}`) |
+| `GET/POST /Teams/{slug}/Shifts/Rotas/{rotaId}/Email` | Compose / send a coordinator message to everyone booked on one rota |
 | `POST /Teams/{slug}/Shifts/Shifts` | Create shift |
 | `POST /Teams/{slug}/Shifts/Shifts/{shiftId}` | Edit shift |
-| `POST /Teams/{slug}/Shifts/Shifts/{shiftId}/Delete` | Delete shift |
+| `POST /Teams/{slug}/Shifts/Shifts/{shiftId}/Delete` | Delete shift (404 unless the shift's rota belongs to `{slug}`) |
 | `POST /Teams/{slug}/Shifts/BailRange` | Admin bail range |
 | `POST /Teams/{slug}/Shifts/ApproveRange` | Approve range |
 | `POST /Teams/{slug}/Shifts/RefuseRange` | Refuse range |
@@ -202,9 +209,14 @@ Selected routes:
 | `GET /Shifts/Dashboard/PostEventStats` | Post-event stats: completion/no-show rates by department (`ShiftDashboardAccess`) |
 | `GET /Shifts/Dashboard/SearchVolunteers` | Dashboard volunteer search |
 | `POST /Shifts/Dashboard/Voluntell` | Dashboard voluntell |
+| `GET /Shifts/Dashboard/VolunteerTracking` | Build-week availability grid (`ShiftDashboardAccess`) |
+| `GET /Shifts/Dashboard/VolunteerTracking/ExportXlsx` | Grid export, burner names only |
+| `POST /Shifts/Dashboard/VolunteerTracking/{SetCampSetup,ClearCampSetup,SetDayOff,ClearDayOff,SetAvailabilityDay,ClearAvailabilityDay}` | Coordinator edits to a volunteer's build-week status and per-day availability (`VolunteerTrackingWrite`) |
+| `GET /Shifts/Admin/Workload` | Per-person / per-department hour workload (`ShiftDashboardAccess`) |
 | `GET /Profile/Me/ShiftInfo` | Volunteer's own shift-matching profile (skills, quirks, languages) |
 | `POST /Profile/Me/ShiftInfo` | Save shift-matching profile |
-| `GET /Shifts/Admin/EarlyEntry` | Cross-source Early Entry roster (Camps + Shifts + Teams grants), flagging humans who hold EE from more than one source. Orchestrator page, deliberately not its own section; interim location, gated by `ShiftDashboardAccess` |
+
+The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryRosterController` in `Humans.EarlyEntry`; Shifts only contributes to it through `IEarlyEntryProvider`.
 
 ## Actors & Roles
 
@@ -226,7 +238,7 @@ Selected routes:
   - All other transitions throw `InvalidOperationException` at the entity layer; `ShiftSignupService.MarkNoShowAsync` additionally guards for a non-Confirmed signup at the service layer and returns `SignupResult.Fail` rather than letting the entity throw. NoShow is post-shift only (`now >= shift.GetAbsoluteEnd(es)`). Cancel is system-only (rota/shift deletion, account deletion).
 - MaxVolunteers is a hard capacity ceiling. SignUp, Approve, Voluntell, and ApproveRange are blocked when the confirmed count reaches MaxVolunteers. Range signups skip full shifts; ApproveRange auto-refuses pending signups for shifts that have filled since the request was placed.
 - Rota visibility is controlled by `IsVisibleToVolunteers` (default: visible). Hidden rotas are only shown to privileged roles (Admin/NoInfoAdmin/VolunteerCoordinator/dept coordinator). Browse and Mine queries pass `includeHidden = isPrivileged`. The Hidden pill rendered on hidden rotas is therefore admin-only by virtue of the server-side filter (no separate role check).
-- Signup-list visibility on `/Shifts` is currently public to all authenticated viewers (temporary policy — see [feature 26](features/shift-signup-visibility.md)). The browse partials (`_EventRotaTable`, `_BuildStrikeRotaTable`) render avatar chips for everyone; pending signups appear faded with a dashed border and the localized "Pending" label in the hover popover. `includeSignups` is unconditionally true so the column has data; the `isPrivileged` computation is preserved so reverting visibility is a one-line flip in `ShiftsController`. Admin-side signup lists (`/Teams/{slug}/Shifts`) remain coordinator-gated via `CanApproveAsync`.
+- Signup-list visibility on `/Shifts` is currently public to all authenticated viewers (temporary policy — see [feature 26](features/shift-signup-visibility.md)). The browse partials (`_EventRotaTable`, `_BuildStrikeRotaTable`) render avatar chips for everyone; pending signups appear faded with a dashed border and the localized "Pending" label in the hover popover. `includeSignups` is unconditionally true so the column has data; the `isPrivileged` computation is preserved so reverting visibility is a one-line flip in `ShiftsController`. Admin-side signup lists (`/Teams/{slug}/Shifts`) remain coordinator-gated via `IShiftManagementService.CanApproveSignupsAsync`.
 - Voluntelling (admin/coordinator-initiated signup) creates a Confirmed `ShiftSignup` with `Enrolled = true` and records `EnrolledByUserId` / `ReviewedByUserId`. Range voluntell uses a shared `SignupBlockId` and skips shifts that are full or already booked.
 - The team-wide coordinator message (`/Teams/{slug}/Shifts/Email`) targets distinct users holding a **Pending or Confirmed** signup on any shift in any of the team's rotas that still has at least one shift not yet ended (`shift.GetAbsoluteEnd(eventSettings) > now` — end, not start). Each recipient gets exactly one email listing only their own shifts, grouped by rota; `Reply-To` is the sending coordinator while `From` stays the shared address.
 - Voluntell (single and range) is permitted on **past shifts** so coordinators can correct the rota retroactively; capacity ceiling and overlap checks still apply. Self-signup remains unavailable for past shifts (a browsing-window property, not a hard service guard). In the department admin view, past and future shifts are managed through the **same Manage control**: a unified panel listing confirmed humans with **Remove** (always), plus **Mark No-Show** and **Bail Range** only when the shift is past (post-shift corrections). Past shifts additionally list no-show/bailed humans as read-only history. The **Voluntell** control is available on all shifts.
@@ -288,7 +300,7 @@ Selected routes:
 - Sending the team-wide coordinator message writes one `AuditAction.CoordinatorTeamRotasMessageSent` entry per dispatch — not one per recipient.
 - `GET /Shifts/Dashboard/VolunteerTracking/ExportXlsx` deliberately writes **no** audit entry, unlike every mutating action on `VolunteerTrackingController`: the grid carries burner names only — no legal names, no emails, no medical data. If the export is ever widened to carry PII, an audit entry must land in the same change.
 - Deleting a rota or shift is rejected if any signup is in Confirmed state. Pending signups on a deleted rota/shift are auto-Cancelled via the entity's `Cancel` method.
-- When an account merge accepts, `IShiftSignupService.ReassignToUserAsync` re-FKs `ShiftSignup` rows (volunteer / enrolled-by / reviewed-by user references) from source to target; `IShiftManagementService.ReassignProfilesAndTagPrefsToUserAsync` re-FKs `VolunteerEventProfile` + `VolunteerTagPreference` (with conflict resolution since both are `(UserId)`-unique); `IGeneralAvailabilityService.ReassignToUserAsync` re-FKs `GeneralAvailability`. Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
+- When an account merge accepts, the section's three `IUserMerge` implementations re-FK its user-keyed rows from source to target: `ShiftSignupService` moves `ShiftSignup` rows (volunteer / enrolled-by / reviewed-by references), `ShiftManagementService` moves `VolunteerEventProfile` + `VolunteerTagPreference` (with conflict resolution since both are `(UserId)`-unique), `VolunteerTrackingService` moves `GeneralAvailability`. Called only by `AccountMergeService.AcceptAsync` (Users section) through the `IUserMerge` fan-out.
 
 ## Cross-Section Dependencies
 
@@ -296,9 +308,7 @@ Selected routes:
 
 Everything outside the section reaches Shifts through the `Humans.Shifts.Contracts`
 leaf project, never through `IShiftManagementService` / `IShiftSignupService` (both
-declared `internal` — compiler-enforced to `Humans.Shifts` since the section's G5 move
-into its own project, and unchanged for the section's own ~73 call sites, which they
-still serve by inheriting the leaf):
+declared `internal`; they serve the section's own call sites by inheriting the leaf):
 
 | Leaf interface | What it carries |
 |---|---|
@@ -318,42 +328,40 @@ section and is not on the leaf.
 
 ### Outbound
 
-- **Search (downstream consumer):** the global `/Search` page renders every rota hit through this section's own public `<vc:shifts-search-result rota-id>`, which reads the rota via `IShiftManagementServiceRead.GetRotaAsync` (per-rota cache) and stitches the owning team's name itself. Search passes the id and no display fields (nobodies-collective/Humans#1062); `RotaSearchHit` is `(RotaId, Name, Score)` — the team-name stitch it used to carry is gone. `GetRotaAsync` applies no visibility filter: the id came from a filtered search and the destination page enforces access (nobodies-collective/Humans#985). Shifts does not depend on Search.
-- **Teams:** `ITeamService` — rotas belong to a department or sub-team. Used for `GetByIdsWithParentsAsync`, `GetTeamNamesByIdsAsync`, `GetCoordinatorUserIdsAsync`, `GetUserCoordinatedTeamIdsAsync`. Coordinator status determines shift management access.
+- **Search (downstream consumer):** the global `/Search` page renders every rota hit through this section's own public `<vc:shifts-search-result rota-id>`, which reads the rota via `IShiftManagementServiceRead.GetRotaAsync` (per-rota cache) and stitches the owning team's name itself. `RotaSearchHit` is `(RotaId, Name, Score)` — Search passes the id and no display fields (nobodies-collective/Humans#1062). `GetRotaAsync` applies no visibility filter: the id came from a filtered search and the destination page enforces access (nobodies-collective/Humans#985). Shifts does not depend on Search.
+- **Teams:** `ITeamServiceRead` — rotas belong to a department or sub-team. Used for `GetTeamsAsync`, `GetTeamAsync`, `GetTeamBySlugAsync`, `GetUserCoordinatedTeamIdsAsync`. Coordinator status determines shift management access.
 - **Users:** `IUserServiceRead` — `GetUserInfosAsync` resolves display data (name, profile picture) for signup rows now that `ShiftSignup.User` nav is stripped. Also used by the dashboard activity computation and the volunteer search builder.
 - **Auth:** `IRoleAssignmentService` (lazy-resolved) — role checks for `Admin`, `NoInfoAdmin`, `VolunteerCoordinator` from `HasActiveRoleAsync`.
 - **Tickets:** `ITicketServiceRead` — used by the coordinator dashboard to compute ticket-buyer cross-references from `TicketOrderInfo`; `EventParticipation` is consumed by Tickets to gate "who hasn't bought" lists.
 - **Audit Log:** `IAuditLogService` — every signup state change and rota move emits an audit entry.
 - **Notifications:** `INotificationService` — coordinator notifications for signup changes, voluntell assignments, and coverage gaps. No direct email-outbox dependency from this section.
 - **GDPR:** `ShiftSignupService` implements `IUserDataContributor` (export of signups, volunteer event profile, general availability, tag preferences) and `CancelActiveSignupsForUserAsync` (deletion).
-- **iCal feed:** `ShiftSignupService` implements `Humans.Calendar.Contracts.ICalendarFeedContributor` (the fan-out moved from Base into `Humans.Calendar` at G5 lane 4b-2c, so `Humans.Shifts` references `Humans.Calendar`) — contributes the user's Confirmed and Pending shift signups (with rota/team name, shift description, and practical info) to the personal iCal feed assembled by `IICalFeedService`. Only active commitments (Confirmed + Pending) are exported; Cancelled/Bailed/NoShow history is excluded.
-- **Profiles:** Called by `IAccountMergeService` (Profiles section) — `IShiftSignupService.ReassignToUserAsync`, `IShiftManagementService.ReassignProfilesAndTagPrefsToUserAsync`, and `IGeneralAvailabilityService.ReassignToUserAsync` re-FK Shifts-owned user-scoped rows from source to target during account merge fold.
+- **iCal feed:** `ShiftSignupService` implements `Humans.Calendar.Contracts.ICalendarFeedContributor` (`Humans.Shifts` references `Humans.Calendar` for the contributor interface) — contributes the user's Confirmed and Pending shift signups (with rota/team name, shift description, and practical info) to the personal iCal feed assembled by `IICalFeedService`. Only active commitments (Confirmed + Pending) are exported; Cancelled/Bailed/NoShow history is excluded.
+- **Users (account merge):** `ShiftManagementService`, `ShiftSignupService` and `VolunteerTrackingService` each register as `IUserMerge`; `AccountMergeService.AcceptAsync` fans out to them to re-FK Shifts-owned user-scoped rows from source to target (see Triggers).
 - **Early Entry contributor:** `VolunteerTrackingExportService` implements `IEarlyEntryProvider` — derives EE grants (earliest confirmed build-shift day − 1, source = that shift's team) for the cross-source EE roster. `ShiftSignupService` evicts the per-user EE cache via `IEarlyEntryInvalidator` on every build-shift confirm/bail/remove/reassign path.
 
 ## Architecture
 
 **Owning services:** `ShiftManagementService`, `ShiftSignupService`, `VolunteerTrackingService`, `BurnSettingsService` (cross-section read DTO supplier — returns `BurnSettingsInfo` over `event_settings`, issue nobodies-collective/Humans#719), `WorkloadService` (read-only aggregations, no DbSet writes)
 **Owned tables:** `rotas`, `shifts`, `shift_signups`, `event_settings`, `general_availability`, `volunteer_event_profiles`, `volunteer_build_statuses`, `shift_tags`, `volunteer_tag_preferences`, `rota_shift_tags` (join table). `event_participations` is owned by Users (see [`Users.md`](../../Humans.Users/Docs/Users.md)); Shifts only reads it via `IUserService`.
-**Status:** (A) Fully migrated. The services live in `Humans.Shifts.Services` and route through `IShiftManagementRepository` / `IVolunteerTrackingRepository`. Cross-domain navs on Shifts-owned entities deleted 2026-04-25 in nobodies-collective/Humans#541 final pass; the remaining cross-section FK constraints were cut in nobodies-collective/Humans#992 — cross-section links are now bare Guid columns with no FK constraint.
+**Status:** (A) Fully migrated. The services live in `Humans.Shifts.Services` and route through `IShiftManagementRepository` / `IVolunteerTrackingRepository`. Cross-section links on Shifts-owned entities are bare Guid columns: no navigation property, no FK constraint.
 
 - Services live in `src/Sections/Humans.Shifts/Services/` (`Humans.Shifts.Services`) and never import `Microsoft.EntityFrameworkCore`.
 - `IShiftManagementRepository`, `IVolunteerTrackingRepository` (impls in `src/Sections/Humans.Shifts/Data/`) are the only code paths touching this section's tables via `DbContext`.
-- **Own DbContext (#858):** every owned table lives in `ShiftsDbContext` (`src/Sections/Humans.Shifts/Data/ShiftsDbContext.cs`), peeled out of `HumansDbContext` on 2026-08-10; both repositories take `IDbContextFactory<ShiftsDbContext>`. Migrations under `Data/Migrations/` against `__EFMigrationsHistory_Shifts`, baselined by `20260810220204_BaselineShifts`. `ShiftsDbContext` declares no `EventParticipation` DbSet — that table went with Users. The DbContext peel predates the section's G5 project move (nobodies-collective/Humans#866, PR #1289), which relocated the whole section from Base into `src/Sections/Humans.Shifts/`.
+- **Own DbContext:** every owned table lives in `ShiftsDbContext` (`src/Sections/Humans.Shifts/Data/ShiftsDbContext.cs`); both repositories take `IDbContextFactory<ShiftsDbContext>`. Migrations under `Data/Migrations/` against `__EFMigrationsHistory_Shifts`, baselined by `20260810220204_BaselineShifts`. `ShiftsDbContext` declares no `EventParticipation` DbSet — that table is Users'.
 - **Caching:**
   - `ShiftManagementService` takes `IMemoryCache` directly (no decorator). Auth cache (`shift-auth:{userId}`, 60 s absolute) wraps `ITeamService.GetUserCoordinatedTeamIdsAsync` on a hot per-request path. Dashboard queries (overview / coordinator-activity / trends) use a 5-minute sliding cache. External sections (Teams, Profiles) invalidate the auth cache via `IShiftAuthorizationInvalidator.Invalidate(userId)` rather than poking `IMemoryCache` directly. `ShiftSignupService` and `VolunteerTrackingService` use no cache (§15 Option A).
-  - **View cache (`IShiftView`)** — issue #720. Singleton `CachingShiftViewService` wraps a keyed Scoped `ShiftViewService` (both in `Humans.Shifts.Services`). Two `ConcurrentDictionary` caches keyed by user id (`ShiftUserView`) and rota id (`ShiftRotaView`). Synchronous read surface — `IShiftView.GetUser(uid)` returns dict-hit data without a `DbContext` round-trip. Lazy-on-miss cold build; no startup warmup (open Q 2). Implements `IShiftViewInvalidator` (`InvalidateUser` / `InvalidateRota` / `InvalidateShift` / `InvalidateAll`). Every Shifts mutation in `ShiftSignupService` / `ShiftManagementService` / `GeneralAvailabilityService` / `VolunteerTrackingService` calls the appropriate `Invalidate*` after `SaveChanges`; signup mutations also evict the coordinator dashboard aggregates through `IShiftManagementService.InvalidateDashboardCaches`, and cross-section fan-in from `AccountDeletionService` uses the existing `IShiftAuthorizationInvalidator` hooks. Mirrors `CachingProfileService` / `CachingTeamService`. **T-09 + T-10 (issue #720)** drained the per-user signup-bypass callers onto `IShiftView`. T-09 covered the hot path: `ShiftVolunteerSearchBuilder` (bulk `GetUsersAsync`, replacing an N+1 voluntell-search loop), `AgentUserSnapshotProvider` and `AgentToolDispatcher` (`GetUserAsync` replacing `IShiftSignupService.GetByUserAsync`), and `ShiftProfileController` + `DashboardService` (read `TagPreferences` from `ShiftUserView` instead of `IShiftManagementService.GetVolunteerTagPreferencesAsync`). T-10 covered the legacy controller/VC surface: `ShiftsController.Index` / `Mine`, `ShiftSignupsViewComponent`, and `ShiftBrowsePageBuilder` — all per-user signup reads (and `Index`'s tag-preference + availability reads) now route through `IShiftView.GetUserAsync`. Remaining legacy read methods on `IShiftSignupService` / `IShiftManagementService` migrate in follow-up batches.
-- **Cross-domain navs stripped** 2026-04-25 (#541 final pass): `Rota.Team`, `ShiftSignup.User` / `EnrolledByUser` / `ReviewedByUser`, `VolunteerEventProfile.User`, `VolunteerTagPreference.User`. Display stitching routes through `IUserServiceRead.GetUserInfosAsync` and `ITeamService.GetTeamNamesByIdsAsync`.
-- **Cross-section calls:** `ITeamService`, `IUserService`, `IRoleAssignmentService` (lazy), `ITicketServiceRead` (lazy, dashboard only), `IAuditLogService`, `INotificationService`.
-- **Architecture tests:** `tests/Humans.Shifts.Tests/Architecture/ShiftManagementArchitectureTests.cs`, `ShiftViewArchitectureTests.cs` (the former `ShiftSignupArchitectureTests.cs` folded into `ShiftManagementArchitectureTests.cs` when `IShiftSignupRepository` was folded into `IShiftManagementRepository`).
-- **Resource set:** `ShiftsResource.{resx,es,ca,de,fr,it}` (at the project root since nobodies-collective/Humans#1365) — 328 keys carved out of `SharedResource`: all of `ShiftDash_`, `VolTrack_`, `ShiftInfo_`, `EmailRota_`, `EmailTeamRotas_`, and 102 of the 108 `Shifts_`. Views bind it as `Localizer` and `SharedResource` as `SharedLocalizer` in `Views/_ViewImports.cshtml`; `ShiftsResource.cs`'s remarks name every key that stayed behind and the renderer that pins it there. All three pins are now reference cycles — `Humans.Shifts` already references `Humans.Teams` and `Humans.Onboarding`, so neither can rebind onto this set, and the third pin, `_ShiftsSummaryCard.cshtml`, moved to **`Humans.Teams`** at G5 lane 4b-i (nobodies-collective/Humans#866) once it was measured to have zero Shifts consumers. Its 7 `ShiftsSummary_` keys stay in `SharedResource` for the same cycle reason; the partial binds `SharedLocalizer` for every one. This section's own `_VolunteerProfileBadges.cshtml` arrived from `Humans.UI` in that lane and keeps `Medical_Badge` on `SharedLocalizer`. `ShiftsArchitectureTests.SectionTypesLocalizeThroughTheSectionsOwnResourceSet` guards the controller side; `ShiftsPageRenderTests` asserts no raw key reaches the HTML, in English and in Spanish.
+  - **View cache (`IShiftView`)** — nobodies-collective/Humans#720. Singleton `CachingShiftViewService` wraps a keyed Scoped `ShiftViewService` (both in `Humans.Shifts.Services`). Two `ConcurrentDictionary` caches keyed by user id (`ShiftUserView`) and rota id (`ShiftRotaView`); `GetUserAsync` / `GetUsersAsync` / `GetRotaAsync` return a dict hit without a `DbContext` round-trip, lazy-on-miss cold build, no startup warmup. Implements `IShiftViewInvalidator` (`InvalidateUser` / `InvalidateRota` / `InvalidateShift` / `InvalidateAll`). Every Shifts mutation in `ShiftSignupService` / `ShiftManagementService` / `VolunteerTrackingService` calls the appropriate `Invalidate*` after `SaveChanges`; signup mutations also evict the coordinator dashboard aggregates through `IShiftManagementService.InvalidateDashboardCaches`. Per-user signup, tag-preference and availability reads on the browse/mine pages, the volunteer search builder, the Agent snapshot and the shift-profile page all go through `IShiftView`; `IShiftSignupService.GetByUserAsync` / `GetTeamProbeAsync` are the remaining per-user reads not on it (see `health.md` §5).
+- **No cross-domain navs:** `Rota.Team`, `ShiftSignup.User` / `EnrolledByUser` / `ReviewedByUser`, `VolunteerEventProfile.User`, `VolunteerTagPreference.User`, `GeneralAvailability.User` do not exist. Display stitching routes through `IUserServiceRead.GetUserInfosAsync` and `ITeamServiceRead.GetTeamsAsync`.
+- **Cross-section calls:** `ITeamServiceRead`, `IUserServiceRead`, `IRoleAssignmentService` (lazy), `ITicketServiceRead` (lazy, dashboard only), `IAuditLogService`, `INotificationService`.
+- **Architecture tests:** `tests/Humans.Shifts.Tests/Architecture/ShiftManagementArchitectureTests.cs`, `ShiftViewArchitectureTests.cs`.
+- **Resource set:** `ShiftsResource.{resx,es,ca,de,fr,it}` at the project root — every `ShiftDash_`, `VolTrack_`, `ShiftInfo_`, `EmailRota_`, `EmailTeamRotas_`, `GetInvolved_`, `Dashboard_`, `DietaryMissingBanner_` key and all but six `Shifts_` keys. Views bind it as `Localizer` and `SharedResource` as `SharedLocalizer` in `Views/_ViewImports.cshtml`; `ShiftsResource.cs`'s remarks name every key that stays in `SharedResource` and the renderer that pins it there (the 7 `ShiftsSummary_` keys bound by Teams' `_ShiftsSummaryCard.cshtml`, `Medical_Badge` bound by `_VolunteerProfileBadges.cshtml`) — each is a reference cycle, since `Humans.Shifts` already references `Humans.Teams` and `Humans.Onboarding`. `ShiftsPageRenderTests` (integration, local-only) asserts no raw key reaches the HTML, in English and in Spanish.
 
 ### Repository surface
 
-- **`IShiftManagementRepository`** (impl: `ShiftRepository`) — owns `rotas`, `shifts`, `event_settings`, `shift_tags`, `volunteer_tag_preferences`, `rota_shift_tags`, `volunteer_event_profiles`, and `shift_signups`. Signup state-machine reads/writes are declared on the signup-focused partial of this single interface (the former `IShiftSignupRepository` was folded in), so Shifts has one repository contract backed by one `ShiftRepository` adapter. The signup partial also carries the Build-period gap/export reads `GetEligibleBuildSignupsAsync` and `GetConfirmedShiftsInRangeAsync` (converged off `IVolunteerTrackingRepository` in #882). The GDPR contributor's `volunteer_event_profiles` read is `GetVolunteerEventProfilesByUserIdsAsync`.
-  - Aggregate-local navs kept: `Rota.Shifts`, `Rota.EventSettings`, `Rota.Tags`, `Shift.Rota`, `Shift.ShiftSignups` (read-side, capacity counts), `EventSettings.Rotas`, `ShiftSignup.Shift` (read-only projection chain).
-  - Cross-domain navs stripped: `Rota.Team` (team display via `ITeamService.GetByIdsWithParentsAsync` / `GetTeamNamesByIdsAsync`); `ShiftSignup.User`, `ShiftSignup.ReviewedByUser` (display via `IUserServiceRead.GetUserInfosAsync`).
-- **`IVolunteerTrackingRepository`** (impl: `VolunteerTrackingRepository`) — owns `general_availability`, `volunteer_build_statuses` and **only** those two tables (#882). The Build-period signup reads it formerly surfaced (`GetEligibleBuildSignupsAsync`, `GetConfirmedShiftsInRangeAsync` over `shift_signups` / `shifts` / `rotas`) were converged onto `IShiftManagementRepository` so each Shifts table has a single repository owner; `VolunteerTrackingService` and `VolunteerTrackingExportService` now read them via `IShiftManagementRepository`. The HUM0025 grandfathered markers on the two repositories were removed in the same pass.
-  - Cross-domain navs stripped: `GeneralAvailability.User` (removed 2026-04-22 in #541c; the FK constraint was later cut in #992 — `UserId` is now a bare Guid column).
+- **`IShiftManagementRepository`** (impl: `ShiftRepository`) — owns `rotas`, `shifts`, `event_settings`, `shift_tags`, `volunteer_tag_preferences`, `rota_shift_tags`, `volunteer_event_profiles`, and `shift_signups`. Signup state-machine reads/writes are declared on the signup-focused partial (`IShiftManagementRepository.Signups.cs`) of this single interface. The signup partial also carries the Build-period gap/export reads `GetEligibleBuildSignupsAsync` and `GetConfirmedShiftsInRangeAsync`, which `VolunteerTrackingService` and `VolunteerTrackingExportService` use. The GDPR contributor's `volunteer_event_profiles` read is `GetVolunteerEventProfilesByUserIdsAsync`.
+  - Aggregate-local navs: `Rota.Shifts`, `Rota.EventSettings`, `Rota.Tags`, `Shift.Rota`, `Shift.ShiftSignups` (read-side, capacity counts), `EventSettings.Rotas`, `ShiftSignup.Shift` (read-only projection chain).
+- **`IVolunteerTrackingRepository`** (impl: `VolunteerTrackingRepository`) — owns `general_availability` and `volunteer_build_statuses` and **only** those two tables; each Shifts table has exactly one repository owner.
 
 ### Touch-and-clean guidance
 

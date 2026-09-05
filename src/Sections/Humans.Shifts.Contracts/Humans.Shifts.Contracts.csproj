@@ -1,17 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Shifts' cross-section surface, carved into its own leaf project because most of its
-    consumers are still in Base: DashboardService and AdminDashboardService build the
-    home and admin dashboards off IShiftView and IShiftManagementServiceRead,
-    AccountDeletionService cancels signups and drops volunteer profiles,
-    UserParticipationBackfillService reads the active burn (SuspendNonCompliantMembersJob
-    used to read it here too; its body became NonCompliantMemberSuspension inside
-    Humans.Users at G5 lane 4b-2d and the job itself followed at lane 5b-4,
-    nobodies-collective/Humans#866), and ShiftVolunteerSearchBuilder / the Shell
-    authorization handlers read the
-    coordinator surface. A Contracts/ *folder* inside Humans.Shifts would therefore make
-    Base reference a section and cycle (design §15.5b,
+    Shifts' cross-section surface, carved into its own leaf project because its consumers
+    include sections that Humans.Shifts itself references (Teams, Users, Onboarding,
+    Camps): a Contracts/ *folder* inside Humans.Shifts would make each of them reference
+    the section back and cycle (design §15.5b,
     memory/architecture/section-project-cycle-fix.md).
 
     The split is carved from the call sites, not from the interfaces (Notifications'
@@ -28,12 +21,11 @@
     fixture, so the verbs come to the leaf rather than the seeding going into the
     section), and the review surface stays internal.
 
-    References Humans.Interfaces (IApplicationService, IInvalidator, SurfaceBudget,
-    Grandfathered) and nothing else. The Humans.Domain reference is gone as of G5 lane
-    4b-2k: it existed for the section's persisted-string enums (SignupStatus, ShiftPeriod,
-    ShiftPriority, RotaPeriod, BuildSubPeriod, SignupPolicy), and those now live here, in
-    Humans.Shifts.Contracts, because this leaf's own signatures name them (Budget's rule).
-    Their EnumStringStabilityTests rows live in tests/Humans.Shifts.Tests/Enums.
+    References Humans.Base (IApplicationService, IInvalidator, SurfaceBudget,
+    Grandfathered) and nothing else. The section's persisted-string enums (SignupStatus,
+    ShiftPeriod, ShiftPriority, RotaPeriod, BuildSubPeriod, SignupPolicy) live here because
+    this leaf's own signatures name them; their EnumStringStabilityTests rows live in
+    tests/Humans.Shifts.Tests/Enums.
 
     No entity crosses this boundary. Shift / ShiftSignup / Rota / EventSettings /
     VolunteerEventProfile are internal sealed types in Humans.Shifts.Domain, and every
