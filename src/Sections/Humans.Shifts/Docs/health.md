@@ -132,4 +132,4 @@ The shapes imply:
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-09-05 | first doctoring | pending |
+| 1 | 2026-09-05 | a coordinator could delete any team's rota or shift by id; docs, comments and member-facing copy brought back to the tree | pending |
