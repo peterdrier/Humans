@@ -15,9 +15,9 @@ using NodaTime;
 namespace Humans.TicketTailor.Services;
 
 /// <summary>
-/// TicketTailor API client implementing the vendor-agnostic interface.
-/// API key comes from TICKET_VENDOR_API_KEY environment variable.
-/// Non-sensitive config comes from appsettings TicketVendor section.
+/// Ticket Tailor v1 client: one method per <see cref="ITicketVendorService"/> port method.
+/// Reads throw <see cref="HttpRequestException"/>; void and issue throw
+/// <see cref="TicketVendorWriteException"/>.
 /// </summary>
 internal sealed class TicketTailorService : ITicketVendorService
 {
@@ -80,8 +80,6 @@ internal sealed class TicketTailorService : ITicketVendorService
                 var purchasedAt = Instant.FromUnixTimeSeconds(order.CreatedAt);
                 var buyer = order.BuyerDetails;
 
-                // Discount codes are in line_items with type "gift_card",
-                // code embedded in description like "NCA Contributor Discount (DISC25-OPGYT8-004)"
                 var discountCode = ExtractDiscountCode(order.LineItems);
                 var discountAmount = ExtractDiscountAmount(order.LineItems);
                 var donationAmount = ExtractDonationAmount(order.LineItems);
@@ -165,10 +163,8 @@ internal sealed class TicketTailorService : ITicketVendorService
         do
         {
             var url = $"{BaseUrl}/check_ins?event_id={eventId}";
-            // Page by created_at (when the record reached TT), NOT check_in_at: a
-            // scanner that was offline can upload a scan whose check_in_at predates
-            // our last sync, and a check_in_at cursor would drop it forever. The
-            // earlier arrival time is still stored as CheckedInAt below.
+            // Page by created_at, not check_in_at: an offline scanner uploads scans whose
+            // check_in_at predates our last sync, and a check_in_at cursor would drop them forever.
             if (since.HasValue)
                 url += $"&created_at.gte={since.Value.ToUnixTimeSeconds()}";
             if (cursor is not null)
@@ -198,8 +194,7 @@ internal sealed class TicketTailorService : ITicketVendorService
     // check-ins (quantity = +1, or more for a group ticket). Net the quantity per issued
     // ticket and report a check-in only when the net is positive — otherwise a checkout
     // record would wrongly mark the attendee onsite. The recorded arrival is the earliest
-    // positive scan (check_in_at, falling back to created_at). Issue
-    // nobodies-collective/Humans#736.
+    // positive scan (check_in_at, falling back to created_at).
     private static IReadOnlyList<VendorCheckInDto> NetCheckIns(IEnumerable<TtCheckIn> records)
     {
         var result = new List<VendorCheckInDto>();
@@ -253,7 +248,6 @@ internal sealed class TicketTailorService : ITicketVendorService
         // Capacity comes from ticket_groups (waves share the same pool).
         // Summing ticket_types.quantity_total is wrong — waves are subdivisions, not additive.
         var totalCapacity = evt?.TicketGroups?.Sum(g => g.MaxQuantity ?? 0) ?? 0;
-        // Fall back to ungrouped ticket types if no groups defined
         if (totalCapacity == 0)
             totalCapacity = evt?.TicketTypes?.Sum(tt => tt.QuantityTotal ?? 0) ?? 0;
         var ticketsSold = evt?.TotalIssuedTickets ?? 0;
@@ -331,22 +325,13 @@ internal sealed class TicketTailorService : ITicketVendorService
     {
         using var _ = _logger.TimeOperation();
 
-        // TicketTailor records check-ins against an issued ticket.
-        // VERIFIED LIVE 2026-06-30 with a real POST /v1/check_ins (→ 201) against a test ticket:
-        //  • the endpoint is FORM-ENCODED (application/x-www-form-urlencoded), NOT JSON — a JSON
-        //    body is ignored and every field reads as null/missing (silent 400);
-        //  • `issued_ticket_id` AND `quantity` are REQUIRED; `check_in_at` (unix seconds) is
-        //    accepted; `event_id` is OPTIONAL (the API derives it from the ticket);
-        //  • the API key must have Event-manager (or Admin) scope — an Order-manager key 403s here
-        //    (read AND write), so the production vendor key must be scoped accordingly.
-        //  • repeat check-ins are NOT idempotent — each POST creates a new check_in record (the
-        //    ticket just stays checked in), which is why GateVendorCheckInJob does not retry.
-        // The mirror stays gated behind Gate:VendorMirrorEnabled (default off).
-        // StringComparer.Ordinal only to satisfy MA0002 — FormUrlEncodedContent just enumerates the pairs.
+        // Form-encoded, not JSON — a JSON body silently 400s. issued_ticket_id and quantity are
+        // required; check_in_at is unix seconds. Not idempotent (each POST creates a record), so
+        // callers never retry. The key needs Event-manager scope; an Order-manager key 403s.
         var form = new FormUrlEncodedContent(new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["issued_ticket_id"] = vendorTicketId,
-            ["quantity"] = "1", // exactly one issued ticket per gate scan (the job carries a single ticket id)
+            ["quantity"] = "1",
             ["check_in_at"] = occurredAt.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture),
         });
 
@@ -365,9 +350,8 @@ internal sealed class TicketTailorService : ITicketVendorService
     }
 
     /// <summary>
-    /// Extract discount code from line_items. TT puts discount codes in line items
-    /// with type "gift_card" and the code in parentheses in the description,
-    /// e.g. "NCA Contributor Discount (DISC25-OPGYT8-004)".
+    /// TT puts the code in a "gift_card" line item's description, in parentheses:
+    /// "NCA Contributor Discount (DISC25-OPGYT8-004)".
     /// </summary>
     private static string? ExtractDiscountCode(List<TtLineItem>? lineItems)
     {
@@ -376,7 +360,6 @@ internal sealed class TicketTailorService : ITicketVendorService
 
         if (discountItem?.Description is null) return null;
 
-        // Extract code from parentheses: "Some Label (CODE123)" → "CODE123"
         var openParen = discountItem.Description.LastIndexOf('(');
         var closeParen = discountItem.Description.LastIndexOf(')');
         if (openParen >= 0 && closeParen > openParen)
@@ -385,10 +368,7 @@ internal sealed class TicketTailorService : ITicketVendorService
         return discountItem.Description;
     }
 
-    /// <summary>
-    /// Sum the absolute value of gift_card line item totals (they're negative in the API).
-    /// Returns null if no discount was applied.
-    /// </summary>
+    /// <summary>gift_card totals are negative in the API; null when no discount applied.</summary>
     private static decimal? ExtractDiscountAmount(List<TtLineItem>? lineItems)
     {
         if (lineItems is null) return null;
@@ -400,11 +380,7 @@ internal sealed class TicketTailorService : ITicketVendorService
         return discountCents > 0 ? discountCents / 100m : null;
     }
 
-    /// <summary>
-    /// Sum standalone donation line items from TT (type "donation").
-    /// These are VAT-exempt add-on donations. Returns 0 if none.
-    /// TT amounts are in cents — converted to euros.
-    /// </summary>
+    /// <summary>Standalone "donation" line items (VAT-exempt add-ons); 0 when none.</summary>
     private static decimal ExtractDonationAmount(List<TtLineItem>? lineItems)
     {
         if (lineItems is null) return 0m;
@@ -464,10 +440,8 @@ internal sealed class TicketTailorService : ITicketVendorService
         [property: JsonPropertyName("custom_questions")] List<TtCustomQuestion>? CustomQuestions,
         [property: JsonPropertyName("barcode")] string? Barcode = null);
 
-    // TicketTailor records gate scans as their own `/check_ins` resource — NOT as
-    // a status change on the issued ticket (which stays "valid"). `issued_ticket_id`
-    // links back to the issued ticket; `check_in_at` / `created_at` are epoch seconds.
-    // Issue nobodies-collective/Humans#736.
+    // Gate scans are their own /check_ins resource; the issued ticket stays "valid".
+    // check_in_at and created_at are epoch seconds.
     internal sealed record TtCheckIn(
         [property: JsonPropertyName("id")] string Id,
         [property: JsonPropertyName("issued_ticket_id")] string? IssuedTicketId,
@@ -482,8 +456,8 @@ internal sealed class TicketTailorService : ITicketVendorService
     // TT's issued_ticket.email is the buyer/account email replicated onto every
     // ticket in the order — useless for matching the actual attendee. The real
     // attendee email is collected via a custom checkout question whose text is
-    // exactly "Email" (see order or_76148796). Match the question string
-    // verbatim; fall back to the top-level field when absent.
+    // exactly "Email". Match the question string verbatim; fall back to the
+    // top-level field when absent.
     internal static string? ResolveAttendeeEmail(TtIssuedTicket ticket)
     {
         var customEmail = ticket.CustomQuestions?

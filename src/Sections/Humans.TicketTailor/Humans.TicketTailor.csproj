@@ -8,26 +8,10 @@
 
   <ItemGroup>
     <!--
-      The adapter section: one implementation of Humans.Tickets' vendor-agnostic
-      ITicketVendorService port. It owns no tables (no DbContext, no repository, no
-      AddSectionDbContext — the Data steps of G5-SECTION-TEMPLATE.md are skipped
-      wholesale), no controllers and no views, so this is plain Microsoft.NET.Sdk rather
-      than Sdk.Razor (SystemSettings' shape).
-
-      Everything the client needs is either the ASP.NET shared framework
-      (IHttpClientFactory), Base (TicketVendorSettings) or Humans.Tickets (the port and its
-      DTOs).
-
-      The Humans.Tickets reference is a direct section-to-section project reference,
-      sanctioned by Peter's 2026-08-14 G5 ruling ("TicketVendor -> Tickets; TicketTailor
-      references Tickets directly — no new leaf"). It is acyclic: Humans.Tickets names
-      nothing in this project, and the adapter is bound only by Section.Register. It does
-      pull Humans.Infrastructure/Humans.UI in transitively, which this project previously
-      avoided — nothing here names them (nobodies-collective/Humans#866, G5 lane 4b-2g).
-
-      When the 2027 vendor lands, this project is deleted and Humans.<NewVendor> is
-      added. Nothing in Humans.Tickets, in Base or in any consumer changes — which is
-      the entire reason the connector is not inside the section.
+      Adapter section: one implementation of Humans.Tickets' ITicketVendorService port. No
+      tables, no controllers, no views, so plain Microsoft.NET.Sdk. The direct reference to
+      Humans.Tickets (the owner, not a leaf) is sanctioned and acyclic: Tickets names nothing
+      here, and only Section.Register binds the adapter (nobodies-collective/Humans#866).
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Tickets\Humans.Tickets.csproj" />
@@ -36,16 +20,15 @@
 
   <ItemGroup>
     <!--
-      No AspNetCore package here: those ship with no PackageVersion on purpose and would
-      fail the build with NU1010 under Central Package Management. IHttpClientFactory and
-      friends arrive through the framework reference below (design §15 step 1).
+      No AspNetCore PackageReference: those ship with no PackageVersion and fail NU1010 under
+      Central Package Management. IHttpClientFactory arrives via the FrameworkReference.
     -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="NodaTime" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
+    <!-- The section owns its documentation; keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 
