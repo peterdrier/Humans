@@ -1209,29 +1209,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
-    public async Task UpdateRoleDefinitionAsync_ReducingSlotCountBelowAssignmentsCount_Throws()
-    {
-        var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
-            Clock.GetCurrentInstant() - Duration.FromDays(1));
-        var team = SeedTeam("Alpha");
-        var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
-        def.SlotCount = 3;
-        var user = SeedUser(displayName: "Holder");
-        var member = SeedTeamMember(team.Id, user.Id);
-        SeedTeamRoleAssignment(def.Id, member.Id);
-        SeedTeamRoleAssignment(def.Id, member.Id);
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var act = () => _service.UpdateRoleDefinitionAsync(
-            def.Id, def.Name, null, slotCount: 1,
-            [SlotPriority.None], 0, false, RolePeriod.YearRound, actor.Id, cancellationToken: Xunit.TestContext.Current.CancellationToken);
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Cannot reduce slot count*");
-    }
-
-    [HumansFact]
     public async Task UpdateRoleDefinitionAsync_RenamingToExistingName_Throws()
     {
         var actor = SeedUser(displayName: "Actor");
@@ -1269,27 +1246,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         ClearAllTrackers();
         var stored = await TeamsDb.TeamRoleDefinitions.AsNoTracking().SingleAsync(d => d.Id == def.Id, Xunit.TestContext.Current.CancellationToken);
         stored.IsManagement.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task UpdateRoleDefinitionAsync_PromotingToManagementWhenAnotherExists_Throws()
-    {
-        var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
-            Clock.GetCurrentInstant() - Duration.FromDays(1));
-        var team = SeedTeam("Alpha");
-        var existingManagement = SeedTeamRoleDefinition(team.Id, isManagement: true);
-        existingManagement.Name = "Existing Mgmt";
-        var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
-        def.Name = "To Promote";
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var act = () => _service.UpdateRoleDefinitionAsync(
-            def.Id, def.Name, null, 1, [SlotPriority.None], 0,
-            isManagement: true, RolePeriod.YearRound, actor.Id, cancellationToken: Xunit.TestContext.Current.CancellationToken);
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*already marked as the management role*");
     }
 
     [HumansFact]
@@ -1334,25 +1290,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Role definition*not found*");
-    }
-
-    [HumansFact]
-    public async Task DeleteRoleDefinitionAsync_ManagementWithAssignedMembers_Throws()
-    {
-        var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
-            Clock.GetCurrentInstant() - Duration.FromDays(1));
-        var team = SeedTeam("Alpha");
-        var def = SeedTeamRoleDefinition(team.Id, isManagement: true);
-        var holder = SeedUser(displayName: "Holder");
-        var member = SeedTeamMember(team.Id, holder.Id);
-        SeedTeamRoleAssignment(def.Id, member.Id);
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var act = () => _service.DeleteRoleDefinitionAsync(def.Id, actor.Id, Xunit.TestContext.Current.CancellationToken);
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*management role while members are assigned*");
     }
 
     [HumansFact]

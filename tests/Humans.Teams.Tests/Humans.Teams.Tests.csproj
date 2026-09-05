@@ -4,7 +4,7 @@
     <!--
       Teams' TeamRoleServiceTests/TeamServiceTests build the real RoleAssignmentService over a
       real AuthDbContext, and TeamsTestHarness seeds role_assignments rows. Temporary, and the
-      mirror of Humans.Auth's InternalsVisibleTo("Humans.Teams.Tests") — see Teams finding 36.
+      mirror of Humans.Auth's InternalsVisibleTo("Humans.Teams.Tests").
     -->
     <ProjectReference Include="..\..\src\Sections\Humans.Auth\Humans.Auth.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />

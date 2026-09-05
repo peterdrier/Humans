@@ -192,16 +192,6 @@ public abstract class TeamsTestHarness : IDisposable
         }
     }
 
-    /// <summary>Synchronous <see cref="SaveAllAsync"/>.</summary>
-    private protected void SaveAll()
-    {
-        Db.SaveChanges();
-        foreach (var sectionDb in CreatedSectionContexts())
-        {
-            sectionDb.SaveChanges();
-        }
-    }
-
     public virtual void Dispose()
     {
         Cache.Dispose();
