@@ -5,10 +5,8 @@ using NodaTime;
 namespace Humans.TicketTailor.Services;
 
 /// <summary>
-/// Development-only ticket vendor stub that returns canned sample data.
-/// The real TicketSyncService processes this through the normal sync pipeline
-/// (upsert, email matching, VAT computation, etc.) so dev environments
-/// exercise the production code path with realistic data.
+/// Non-Production stand-in: a deterministic sample event so every other environment runs
+/// the real sync, transfer and gate code without a vendor account.
 /// </summary>
 internal sealed class StubTicketVendorService : ITicketVendorService
 {
@@ -37,10 +35,9 @@ internal sealed class StubTicketVendorService : ITicketVendorService
     private const string TestUserEmail = "peter@nobodies.team";
     private const string TestUserName = "Peter Drier";
 
-    // Pre-built sample data, generated once and cached for the process lifetime.
     private static readonly Lazy<SampleData> Sample = new(BuildSampleData);
 
-    // Instance-level fixtures for the deterministic dev/preview data set.
+    // Per-instance copies: void/issue mutate _tickets, so nothing persists across requests.
     private readonly List<VendorTicketDto> _tickets = [.. Sample.Value.Tickets];
     private readonly List<VendorCheckInDto> _checkIns = [.. Sample.Value.CheckIns];
 
@@ -231,10 +228,8 @@ internal sealed class StubTicketVendorService : ITicketVendorService
                 vendorTickets.Add(ticketDto);
                 tickets.Add(ticketDto);
 
-                // Every 5th ticket has been scanned at the gate — recorded as its
-                // own check-in resource (mirrors TicketTailor /check_ins; the issued
-                // ticket itself stays "valid"). Spreads arrivals across the gate-day
-                // window so dev/preview exercises the "Who's onsite" view (#736).
+                // Every 5th ticket is scanned, recorded as its own check-in resource (the
+                // ticket stays "valid"), spread across the gate day.
                 if ((orderIndex * 10 + t) % 5 == 0)
                 {
                     var gateDay = new LocalDate(2026, 7, 8);
@@ -305,10 +300,9 @@ internal sealed class StubTicketVendorService : ITicketVendorService
 
     private static Instant BuildPurchaseInstant(LocalDate saleStart, int orderIndex, int totalOrders)
     {
-        // Spread orders across ~3 weeks with front-loading
+        // Spread orders across ~3 weeks, front-loaded.
         var daysSpan = 22;
         var progress = (double)orderIndex / totalOrders;
-        // Front-loaded curve: more orders in the first few days
         var day = (int)(Math.Pow(progress, 0.6) * daysSpan);
         var hour = 9 + (orderIndex % 9);
         var minute = (orderIndex * 11) % 60;

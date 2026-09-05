@@ -1,0 +1,10 @@
+# Section debt ledger for Humans.TicketTailor. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+inbox:
+  - added: 2026-09-05
+    what: "StubTicketVendorService.BuildSampleData trips reforge longMethod and cognitiveComplexity, the section's whole score. It is the one deterministic fixture the target shape blesses; recorded so the score is not mistaken for unexamined debt. Split only if the dataset grows a second shape (finding 12, /section-doctor on TicketTailor 2026-09-05)."
+    review: light
+  - added: 2026-09-05
+    what: "Two client behaviours in Services/TicketTailorService.cs have no test: GetDiscountCodeUsageAsync reporting a non-2xx as DiscountCodeStatusDto(code, false, 0) instead of throwing, and IssueTicketAsync turning a 2xx with an empty body into a Transient TicketVendorWriteException. Pin both in tests/Humans.TicketTailor.Tests/Services once finding 15's ruling on the usage read lands (/section-doctor on TicketTailor 2026-09-05)."
+    review: light

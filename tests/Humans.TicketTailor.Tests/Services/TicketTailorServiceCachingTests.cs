@@ -1,12 +1,5 @@
 using System.Net;
-using System.Text.Json;
 using AwesomeAssertions;
-using Humans.TicketTailor.Services;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
-
-using Humans.Tickets.Contracts;
 
 namespace Humans.TicketTailor.Tests.Services;
 
@@ -15,7 +8,7 @@ public class TicketTailorServiceCachingTests
     [HumansFact]
     public async Task GetEventSummaryAsync_DoesNotCacheTransientServerFailures()
     {
-        var handler = new CountingTicketTailorHandler();
+        var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.InternalServerError, new { error = "temporary outage" });
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
@@ -33,7 +26,7 @@ public class TicketTailorServiceCachingTests
             }
         });
 
-        var service = CreateService(handler);
+        var service = TicketTailorTestHost.CreateService(handler);
 
         // 5xx throws — must not be cached so the second call can succeed
         var act = () => service.GetEventSummaryAsync("ev_test", Xunit.TestContext.Current.CancellationToken);
@@ -47,42 +40,41 @@ public class TicketTailorServiceCachingTests
         handler.RequestCount.Should().Be(2);
     }
 
-    private static TicketTailorService CreateService(HttpMessageHandler handler)
+    [HumansFact]
+    public async Task GetEventSummaryAsync_ServesTheSecondCallFromCache()
     {
-        var client = new HttpClient(handler);
-        var cache = new MemoryCache(new MemoryCacheOptions());
-        var settings = Options.Create(new TicketVendorSettings
+        var handler = new RecordingHttpHandler();
+        handler.EnqueueResponse(HttpStatusCode.OK, new
         {
-            EventId = "ev_test",
-            SyncIntervalMinutes = 15,
-            ApiKey = "test_key"
+            name = "Elsewhere 2026",
+            total_issued_tickets = 96,
+            ticket_groups = new[] { new { max_quantity = 2000 } }
         });
 
-        return new TicketTailorService(client, settings, cache,
-            NullLogger<TicketTailorService>.Instance);
+        var service = TicketTailorTestHost.CreateService(handler);
+        var first = await service.GetEventSummaryAsync("ev_test", Xunit.TestContext.Current.CancellationToken);
+        var second = await service.GetEventSummaryAsync("ev_test", Xunit.TestContext.Current.CancellationToken);
+
+        second.Should().Be(first);
+        handler.RequestCount.Should().Be(1);
     }
-}
 
-internal sealed class CountingTicketTailorHandler : HttpMessageHandler
-{
-    private readonly Queue<HttpResponseMessage> _responses = new();
-
-    public int RequestCount { get; private set; }
-
-    public void EnqueueResponse(HttpStatusCode status, object body)
+    [HumansFact]
+    public async Task GetEventSummaryAsync_FallsBackToTicketTypeTotalsWhenNoGroups()
     {
-        _responses.Enqueue(new HttpResponseMessage(status)
+        var handler = new RecordingHttpHandler();
+        handler.EnqueueResponse(HttpStatusCode.OK, new
         {
-            Content = new StringContent(
-                JsonSerializer.Serialize(body),
-                System.Text.Encoding.UTF8,
-                "application/json")
+            name = "Elsewhere 2026",
+            total_issued_tickets = 10,
+            ticket_types = new[] { new { quantity_total = 300 }, new { quantity_total = 200 } },
+            ticket_groups = Array.Empty<object>()
         });
-    }
 
-    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-    {
-        RequestCount++;
-        return Task.FromResult(_responses.Dequeue());
+        var service = TicketTailorTestHost.CreateService(handler);
+        var summary = await service.GetEventSummaryAsync("ev_test", Xunit.TestContext.Current.CancellationToken);
+
+        summary.TotalCapacity.Should().Be(500);
+        summary.TicketsRemaining.Should().Be(490);
     }
 }
