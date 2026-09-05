@@ -93,14 +93,12 @@ internal sealed class ShiftManagementService(
         if (teamIds.Contains(departmentTeamId))
             return true;
 
-        // Parent department coordinators can manage child teams
         var team = await TeamService.GetTeamAsync(departmentTeamId);
         return team?.ParentTeamId is not null && teamIds.Contains(team.ParentTeamId.Value);
     }
 
     public async Task<bool> CanApproveSignupsAsync(Guid userId, Guid departmentTeamId)
     {
-        // Admin, NoInfoAdmin, and VolunteerCoordinator can approve signups system-wide
         if (await RoleAssignmentService.HasActiveRoleAsync(userId, RoleNames.Admin) ||
             await RoleAssignmentService.HasActiveRoleAsync(userId, RoleNames.NoInfoAdmin) ||
             await RoleAssignmentService.HasActiveRoleAsync(userId, RoleNames.VolunteerCoordinator))
@@ -1427,7 +1425,6 @@ internal sealed class ShiftManagementService(
         EventSettings es,
         IReadOnlyDictionary<Guid, TeamInfo> teamLookup)
     {
-        // Helper: resolve the department ID (parent team if any, else own team) for a shift.
         Guid DeptIdOf(Shift s)
         {
             if (!teamLookup.TryGetValue(s.Rota.TeamId, out var team))
@@ -1550,7 +1547,6 @@ internal sealed class ShiftManagementService(
 
     public async Task<IReadOnlyList<CoordinatorActivityRow>> GetCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null)
     {
-        // Sub-period bypasses cache (4× key fan-out).
         if (subPeriod is not null)
             return await ComputeCoordinatorActivityAsync(eventSettingsId, period, subPeriod);
 
@@ -1675,7 +1671,6 @@ internal sealed class ShiftManagementService(
         Guid eventSettingsId, TrendWindow window, ShiftPeriod? period = null,
         BuildSubPeriod? subPeriod = null)
     {
-        // Sub-period bypasses cache (4× key fan-out).
         if (subPeriod is not null)
             return await ComputeDashboardTrendsAsync(eventSettingsId, window, period, subPeriod);
 

@@ -14,11 +14,7 @@ namespace Humans.Shifts.Contracts;
 ///
 /// <para>
 /// The read crosses the boundary as <see cref="ShiftVolunteerProfileInfo"/>,
-/// never as the <c>VolunteerEventProfile</c> entity. The get-or-create and
-/// update pair used to sit here taking it; both left at the section's G5,
-/// because their only outside caller was Shell's <c>/Profile/Me/ShiftInfo</c>
-/// pair of actions, which write a Shifts table and moved into the section
-/// with it (nobodies-collective/Humans#866, G5).
+/// never as the <c>VolunteerEventProfile</c> entity.
 /// </para>
 /// </remarks>
 public interface IShiftVolunteerProfiles

@@ -32,7 +32,6 @@ internal sealed class ShiftTagConfiguration : IEntityTypeConfiguration<ShiftTag>
                 });
 
         // Reserved GUID block: 0003. See docs/guid-reservations.md.
-        // Seed initial tags from coordinator feedback.
         builder.HasData(
             new { Id = new Guid("00000000-0000-0000-0003-000000000001"), Name = "Heavy lifting" },
             new { Id = new Guid("00000000-0000-0000-0003-000000000002"), Name = "Working in the sun" },

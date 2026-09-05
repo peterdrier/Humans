@@ -22,7 +22,7 @@ namespace Humans.Shifts.Services;
 /// misses delegate to <see cref="IShiftRowView.GetUserAsync"/>; batch reads
 /// gather all cache-misses into one <see cref="IShiftRowView.GetUsersAsync"/>
 /// call so a cold /Admin first-hit collapses to one inner round-trip per
-/// surface, not N (issue #720).
+/// surface, not N.
 /// <para>
 /// The two caches are exposed via <see cref="UserCacheStats"/> /
 /// <see cref="RotaCacheStats"/> and registered as <see cref="ICacheStats"/>
@@ -46,10 +46,6 @@ internal sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory,
     public ICacheStats UserCacheStats => _userCache;
     public ICacheStats RotaCacheStats => _rotaCache;
 
-    // ==========================================================================
-    // Reads — cache lookup + lazy load
-    // ==========================================================================
-
     public ValueTask<ShiftUserView> GetUserAsync(Guid userId, CancellationToken ct = default)
     {
         if (_userCache.TryGet(userId, out var hit))
@@ -62,7 +58,7 @@ internal sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory,
     /// call on the inner — the inner is responsible for bulk-loading every
     /// contributing table in one round-trip per table. This is the hot path
     /// for /Admin first-hit (set-membership across the full user base); a per-id
-    /// fan-out here is what made the page slow before issue #720.
+    /// fan-out here is what made the page slow.
     /// </summary>
     public async ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>> GetUsersAsync(
         IEnumerable<Guid> userIds, CancellationToken ct = default)
@@ -146,10 +142,6 @@ internal sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory,
     async ValueTask<IReadOnlyDictionary<Guid, ShiftUserSummary>> IShiftView.GetUsersAsync(
         IEnumerable<Guid> userIds, CancellationToken ct) =>
         (await GetUsersAsync(userIds, ct).ConfigureAwait(false)).ToSummaries();
-
-    // ==========================================================================
-    // IShiftViewInvalidator implementation
-    // ==========================================================================
 
     public void InvalidateUser(Guid userId)
     {

@@ -12,8 +12,7 @@ namespace Humans.Shifts.Data;
 /// </summary>
 /// <remarks>
 /// Uses the Scoped <see cref="ShiftsDbContext"/> directly (not
-/// <see cref="IDbContextFactory{TContext}"/>) — same pattern as
-/// <see cref="RoleAssignmentRepository"/> and Governance's <c>ApplicationRepository</c>.
+/// <see cref="IDbContextFactory{TContext}"/>).
 /// Because <see cref="ShiftSignupService"/>'s mutation paths are
 /// multi-step (load, mutate, audit-log, save), a Scoped context lets all
 /// steps participate in a single EF change-tracker, which is simpler than
@@ -21,10 +20,6 @@ namespace Humans.Shifts.Data;
 /// </remarks>
 internal sealed partial class ShiftRepository
 {
-    // ============================================================
-    // Reads — ShiftSignup
-    // ============================================================
-
     public async Task<IReadOnlyList<ShiftSignup>> GetForUsersAsync(
         IReadOnlyCollection<Guid> userIds,
         Guid? eventSettingsId = null,
@@ -124,10 +119,6 @@ internal sealed partial class ShiftRepository
             .ToListAsync(ct);
     }
 
-    // ============================================================
-    // Reads - signup-adjacent Shifts data
-    // ============================================================
-
     public async Task<IReadOnlyList<VolunteerTagPreference>> GetVolunteerTagPreferencesForUsersAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
@@ -138,10 +129,6 @@ internal sealed partial class ShiftRepository
             .Where(vtp => userIds.Contains(vtp.UserId))
             .ToListAsync(ct);
     }
-
-    // ============================================================
-    // Writes — ShiftSignup
-    // ============================================================
 
     public async Task<int> DeleteVolunteerTagPreferencesForUserAsync(Guid userId, CancellationToken ct = default)
     {
@@ -206,10 +193,6 @@ internal sealed partial class ShiftRepository
             .Where(s => userIds.Contains(s.UserId))
             .ExecuteDeleteAsync(ct);
     }
-
-    // ============================================================
-    // Account-merge fold
-    // ============================================================
 
     public async Task<int> ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,

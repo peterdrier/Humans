@@ -20,7 +20,7 @@ namespace Humans.Shifts.Services;
 internal interface IShiftSignupService : IShiftSignupSeeding, IApplicationService
 {
     /// <summary>
-    /// Approves a pending signup. Re-validates invariants.
+    /// Re-validates invariants.
     /// </summary>
     Task<SignupResult> ApproveAsync(Guid signupId, Guid reviewerUserId);
 
@@ -31,34 +31,16 @@ internal interface IShiftSignupService : IShiftSignupSeeding, IApplicationServic
     /// </summary>
     Task<SignupResult> VoluntellRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid enrollerUserId);
 
-    /// <summary>
-    /// Marks a confirmed signup as no-show (post-shift only).
-    /// </summary>
     Task<SignupResult> MarkNoShowAsync(Guid signupId, Guid reviewerUserId);
 
-    /// <summary>
-    /// Removes a confirmed signup (coordinator/admin unassignment).
-    /// </summary>
     Task<SignupResult> RemoveSignupAsync(Guid signupId, Guid removedByUserId, string? reason);
 
-    /// <summary>
-    /// Approves all pending signups sharing a SignupBlockId.
-    /// </summary>
     Task<SignupResult> ApproveRangeAsync(Guid signupBlockId, Guid reviewerUserId);
 
-    /// <summary>
-    /// Refuses all pending signups sharing a SignupBlockId.
-    /// </summary>
     Task<SignupResult> RefuseRangeAsync(Guid signupBlockId, Guid reviewerUserId, string? reason);
 
-    /// <summary>
-    /// Bails all signups sharing a SignupBlockId.
-    /// </summary>
     Task BailRangeAsync(Guid signupBlockId, Guid actorUserId, string? reason = null);
 
-    /// <summary>
-    /// Gets all signups for a user, optionally filtered by event.
-    /// </summary>
     Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null);
 
     /// <summary>

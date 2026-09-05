@@ -6,7 +6,7 @@ namespace Humans.Shifts.Services;
 
 /// <summary>
 /// Read-only adapter mapping <see cref="EventSettings"/> → <see cref="BurnSettingsInfo"/> at the
-/// section boundary. No caching (single active row, cold path — see #719).
+/// section boundary. No caching (single active row, cold path).
 /// </summary>
 internal sealed class BurnSettingsService(IShiftManagementRepository repo) : IBurnSettingsService
 {

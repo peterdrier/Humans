@@ -34,9 +34,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         _clock = clock;
     }
 
-    // ==========================================================================
-    // EventSettings
-    // ==========================================================================
 
     public async Task<EventSettings?> GetActiveEventSettingsAsync(CancellationToken ct = default)
     {
@@ -124,9 +121,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         return deleted;
     }
 
-    // ==========================================================================
-    // Rota
-    // ==========================================================================
 
     public async Task SaveRotaAsync(Rota rota, EntityMutationMode mode, CancellationToken ct = default)
     {
@@ -251,9 +245,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         await ctx.SaveChangesAsync(ct);
     }
 
-    // ==========================================================================
-    // Shift
-    // ==========================================================================
 
     public async Task SaveShiftAsync(Shift shift, EntityMutationMode mode, CancellationToken ct = default)
     {
@@ -313,9 +304,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
             .ToListAsync(ct);
     }
 
-    // ==========================================================================
-    // Reads for dashboards / urgency / staffing
-    // ==========================================================================
 
     public async Task<IReadOnlyList<Shift>> GetEventShiftsAsync(
         ShiftEventQuery request,
@@ -582,9 +570,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
             .ToList();
     }
 
-    // ==========================================================================
-    // Shift tags
-    // ==========================================================================
 
     public async Task<IReadOnlyList<ShiftTag>> GetTagsAsync(string? query = null, CancellationToken ct = default)
     {
@@ -615,9 +600,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         return tag;
     }
 
-    // ==========================================================================
-    // Volunteer tag preferences
-    // ==========================================================================
 
     public async Task SetVolunteerTagPreferencesAsync(
         Guid userId, IReadOnlyList<Guid> tagIds, CancellationToken ct = default)
@@ -697,9 +679,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         return profiles.Count;
     }
 
-    // ==========================================================================
-    // Account-merge fold
-    // ==========================================================================
 
     public async Task<int> ReassignProfilesAndTagPrefsToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
