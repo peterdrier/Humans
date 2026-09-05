@@ -29,6 +29,7 @@ graph LR
     classDef tickets fill:#14b8a6,color:#fff
     classDef campaigns fill:#ef4444,color:#fff
     classDef google fill:#0ea5e9,color:#fff
+    classDef monitor fill:#0369a1,color:#fff
     classDef onboarding fill:#a3e635,color:#000
     classDef feedback fill:#d946ef,color:#fff
     classDef auth fill:#facc15,color:#000
@@ -119,7 +120,7 @@ graph LR
     GGroupSync[GoogleGroupSyncService]:::google
     GAdmin[GoogleAdminService]:::google
     EmailProv[EmailProvisioningService]:::google
-    DriveMon[DriveActivityMonitorService]:::google
+    DriveMon[DriveActivityMonitorService]:::monitor
     GRemoval[GoogleRemovalNotificationService]:::google
     GSyncOutbox[GoogleSyncOutboxService]:::google
     GSyncOutboxProc[GoogleSyncOutboxProcessor]:::google
@@ -340,6 +341,7 @@ graph LR
     GRemoval --> UEmail
     GRemoval --> User
     GRemoval --> Email
+    %% Monitor (DriveActivityMonitorService moved out of GoogleIntegration; edges kept here so linkStyle indices hold)
     DriveMon --> TRes
     DriveMon --> User
     DriveMon --> SettingsSvc
