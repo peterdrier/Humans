@@ -132,4 +132,4 @@ The shapes imply:
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-09-05 | a coordinator could delete any team's rota or shift by id; docs, comments and member-facing copy brought back to the tree | pending |
+| 1 | 2026-09-05 | a coordinator could delete any team's rota or shift by id; docs, comments and member-facing copy brought back to the tree | [peterdrier/Humans#1596](https://github.com/peterdrier/Humans/pull/1596) |
