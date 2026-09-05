@@ -75,7 +75,7 @@ verbatim; the nav entry sits in the "Tickets" admin group. Neither is an ownersh
 
 ## Negative Access Rules
 
-- A holder **cannot** see another holder's EE on any holder-facing stub surface — all three go
+- A holder **cannot** see another holder's EE on any holder-facing stub surface — all of them go
   through `TicketStubInfo.From(row, holderEarlyEntry)` with the *viewer's* value. The gate card
   is the deliberate staff-facing exception.
 - A human without `ShiftDashboardAccess` **cannot** reach `/Shifts/Admin/EarlyEntry`.
@@ -122,7 +122,7 @@ Inbound, all through `Contracts/`:
 
 ### Cross-section read interface
 
-The whole outward surface is read-only, so there is no read/write split to make. The three
+The whole outward surface is read-only, so there is no read/write split to make. The
 contracts live in `Contracts/`, a folder rather than a leaf project: the section references no
 contributor, so there is no cycle to break.
 

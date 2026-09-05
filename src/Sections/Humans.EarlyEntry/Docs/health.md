@@ -30,13 +30,13 @@ Last assessed: 2026-09-05 (section-doctor).
 Answers one question about the days before the gates open: **who may come onto site early,
 from which day, and because of what.**
 
-It does not decide any of that itself. Three other parts of the app hand out early entry for
+It does not decide any of that itself. Other parts of the app hand out early entry for
 their own reasons — a camp lead grants it to a camp member, a confirmed build shift earns it
 for the volunteer, a team coordinator grants it for a project — and this section is the one
 place those answers are added up. A person with early entry from two places gets the earliest
 of their dates and both reasons listed; a person with none gets nothing.
 
-Two audiences read the sum. The person themself sees their own date beside their ticket, and
+The person themself sees their own date beside their ticket, and
 gate staff see the scanned attendee's date on the gate card. A volunteer coordinator sees the
 whole list at once, with the people who hold early entry from more than one place marked, so a
 redundant slot can be given to someone else.
@@ -46,7 +46,7 @@ redundant slot can be given to someone else.
 | Shape | The question | Surfaces |
 |---|---|---|
 | **Everyone's early entry** | Who holds early entry, from when, and why — all of them, live? | `GET /Shifts/Admin/EarlyEntry`; `IEarlyEntryService.GetRosterAsync` |
-| **One person's early entry** | Does this person hold early entry, from when, and why? | `IEarlyEntryService.GetForUserAsync` (Gate card, Scanner card, the three ticket-stub surfaces) |
+| **One person's early entry** | Does this person hold early entry, from when, and why? | `IEarlyEntryService.GetForUserAsync` (Gate card, Scanner card, the ticket-stub surfaces) |
 | **Here is what I grant** | A contributing section's grants for the active event. | `IEarlyEntryProvider.GetEarlyEntriesAsync` (Camps, Shifts, Teams) |
 | **Someone's grant changed** | Forget what you remembered about this person / about everyone. | `IEarlyEntryInvalidator.InvalidateUser` / `InvalidateAll` (called by Camps, Shifts, Teams) |
 
@@ -58,18 +58,18 @@ call it.
 
 A read-side aggregator with no storage of its own. Written fresh:
 
-- **Three contracts, one folder.** The read service, the provider, and the invalidator, in
-  `Contracts/`, with the three small records they carry (a grant; a roster row; one person's
+- **The contracts in one folder.** The read service, the provider, and the invalidator, in
+  `Contracts/`, with the small records they carry (a grant; a roster row; one person's
   entry). Contributors and readers reference the section project and see nothing else, because
   everything outside `Contracts/` is internal.
-- **One orchestrator** holding the whole business rule: fan out over every registered
+- **An orchestrator** holding the whole business rule: fan out over every registered
   provider, collapse per person. Both read methods are the same collapse over a different
   subset. It injects the providers and nothing else.
-- **One caching decorator**, Singleton, over the orchestrator, remembering the per-person
+- **A caching decorator**, Singleton, over the orchestrator, remembering the per-person
   answer — including "none" — and forgetting it when a contributor says so. The roster is
   never remembered. The decorator resolves the scoped orchestrator per call through a keyed
   registration.
-- **One controller and one admin view**: sort the roster, stitch the legal name from Users,
+- **A controller and an admin view**: sort the roster, stitch the legal name from Users,
   render a table. No business rule.
 
 The layout matches this. What differs from the fresh form is small: `HasMultiple` travels as
@@ -111,7 +111,7 @@ a field when it is `Sources.Count > 1`.
 ## 6. Deliberately not done
 
 - **No `Humans.EarlyEntry.Contracts` project.** The `Contracts/` folder is the public surface
-  and the six referencing sections see only it. A leaf project would matter only if this
+  and the referencing sections see only it. A leaf project would matter only if this
   section had to reference a contributor — it references Users.Contracts alone, so there is
   no cycle to break.
 - **No per-user provider method.** `GetForUserAsync` gathers every contributor's full list to
