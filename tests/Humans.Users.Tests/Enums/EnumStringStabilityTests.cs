@@ -5,13 +5,10 @@ using Xunit;
 namespace Humans.Users.Tests.Enums;
 
 /// <summary>
-/// Users' share of the string-stored-enum guard, moved out of
-/// <c>Humans.Domain.Tests.Enums.EnumStringStabilityTests</c> when that orphaned project's rows
-/// were distributed to their owners —
+/// Users' share of the string-stored-enum guard:
 /// <see cref="MembershipTier"/>, <see cref="ConsentCheckStatus"/>, <see cref="MessageCategory"/>,
 /// <see cref="ContactFieldType"/> and <see cref="ContactFieldVisibility"/> live on
-/// <c>Humans.Users.Contracts</c>, so the guard belongs to the section that owns them
-/// (nobodies-collective/Humans#866).
+/// <c>Humans.Users.Contracts</c>, so the guard belongs to the section that owns them.
 /// </summary>
 /// <remarks>
 /// All five are persisted with <c>HasConversion&lt;string&gt;()</c>: renaming a member leaves

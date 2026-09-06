@@ -435,8 +435,8 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task BackfillLegacyIdentityEmails_FlaggedUser_CallsAddVerifiedAndReturnsPair()
     {
-        // Issue nobodies-collective/Humans#697: the OAuth-aware "tag via
-        // LinkAsync when an external login exists" branch is gone. The legacy
+        // The OAuth-aware "tag via LinkAsync when an external login exists"
+        // branch is gone. The legacy
         // address is added as a plain verified row; the next OAuth sign-in's
         // reconcile attaches the provider tag via TagMoved.
         var userId = Guid.NewGuid();

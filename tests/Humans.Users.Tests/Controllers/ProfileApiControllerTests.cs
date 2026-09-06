@@ -24,8 +24,7 @@ namespace Humans.Users.Tests.Controllers;
 /// through <c>GetSharedDetailAsync</c>, whose job is to pick a viewer-visible
 /// disambiguation line: viewer-visible primary email → highest-priority
 /// visible contact field (Phone → Signal → Telegram → WhatsApp → Discord →
-/// Other) → null. Legal name is never surfaced (dropped from the priority
-/// chain at PR #538 review).
+/// Other) → null. Legal name is never surfaced.
 /// </para>
 ///
 /// <para>

@@ -19,7 +19,7 @@ namespace Humans.Users.Tests.Controllers;
 
 /// <summary>
 /// Verifies <see cref="GuestAccountController.RequestDeletion"/>'s flash-message
-/// mapping. Moved from Humans.Web.Tests with the controller (nobodies-collective/Humans#1091).
+/// mapping.
 /// </summary>
 public class GuestAccountControllerTests
 {

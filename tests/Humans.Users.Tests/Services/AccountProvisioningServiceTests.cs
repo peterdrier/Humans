@@ -48,8 +48,8 @@ file sealed class StubAuditLog : IAuditLogService
 }
 
 /// <summary>
-/// Unit tests for the Application-layer <see cref="AccountProvisioningService"/>
-/// (§15 migration, issue #558). Repositories are stubbed in-memory so these
+/// Unit tests for the Application-layer <see cref="AccountProvisioningService"/>.
+/// Repositories are stubbed in-memory so these
 /// tests do not depend on Npgsql-specific translations (<c>ILike</c>) that
 /// the EF InMemory provider does not support; behaviour of the actual
 /// <see cref="UserEmail"/> / <see cref="User"/> matching is covered in
@@ -320,8 +320,7 @@ public class AccountProvisioningServiceTests
 
     /// <summary>
     /// In-memory fake of the two <c>IUserEmailService</c> methods that
-    /// <c>AccountProvisioningService</c> calls. Issue
-    /// nobodies-collective/Humans#687: AccountProvisioningService routes
+    /// <c>AccountProvisioningService</c> calls. AccountProvisioningService routes
     /// UserEmail mutations through <c>IUserEmailService</c> instead of the
     /// repository, so the test fixture mirrors the same boundary.
     /// </summary>
@@ -366,8 +365,7 @@ public class AccountProvisioningServiceTests
                 UserId = userId,
                 Email = email,
                 IsVerified = true,
-                // Issue nobodies-collective/Humans#687: simulate the
-                // EnsurePrimaryInvariantAsync + EnsureGoogleInvariantAsync
+                // Simulates the EnsurePrimaryInvariantAsync + EnsureGoogleInvariantAsync
                 // orchestrator behaviour for newly-provisioned single-row
                 // users — the fresh row becomes both Primary and Google.
                 IsPrimary = true,
@@ -521,8 +519,7 @@ public class AccountProvisioningServiceTests
             "alice@example.com", "Alice Smith", ContactSource.TicketTailor, Xunit.TestContext.Current.CancellationToken);
 
         result.Created.Should().BeTrue();
-        // Per PR 1 of email-identity-decoupling spec: User.Email is no longer
-        // populated on creation — the UserEmail row carries the email.
+        // User.Email is no longer the identity — the verified row is.
         result.User.Email.Should().BeNull();
         result.User.DisplayName.Should().Be("Alice Smith");
         result.User.ContactSource.Should().Be(ContactSource.TicketTailor);
@@ -714,9 +711,8 @@ public class AccountProvisioningServiceTests
         result2.Created.Should().BeFalse();
         result3.Created.Should().BeFalse();
 
-        // Only one user should exist. Per PR 1 of email-identity-decoupling
-        // spec, User.Email is null on newly-created users — assert via the
-        // UserEmail row instead.
+        // Only one user should exist. User.Email is no longer the identity —
+        // assert via the UserEmail row instead.
         _userEmailFake.All
             .Count(ue => string.Equals(ue.Email, "henry@example.com", StringComparison.Ordinal))
             .Should().Be(1);
@@ -725,7 +721,6 @@ public class AccountProvisioningServiceTests
     [HumansFact]
     public async Task FindOrCreateUserByEmailAsync_NewUser_GetsExactlyOneIsGoogleRow()
     {
-        // Issue nobodies-collective/Humans#687 acceptance criterion:
         // AccountProvisioningService path enforces the IsGoogle invariant via
         // the IUserEmailService orchestrator — a newly-provisioned user gets
         // exactly one IsGoogle row (the one we just created).
@@ -747,9 +742,8 @@ public class AccountProvisioningServiceTests
     [HumansFact]
     public async Task FindOrCreateUserByEmailAsync_RoutesEmailRowsThroughIUserEmailService()
     {
-        // Issue nobodies-collective/Humans#687: email-row policy still routes
-        // through IUserEmailService even though Users now owns the underlying
-        // repository storage methods.
+        // Email-row policy still routes through IUserEmailService even though
+        // Users now owns the underlying repository storage methods.
         var result = await _service.FindOrCreateUserByEmailAsync(
             "jane@example.com", "Jane", ContactSource.MailerLite, Xunit.TestContext.Current.CancellationToken);
 

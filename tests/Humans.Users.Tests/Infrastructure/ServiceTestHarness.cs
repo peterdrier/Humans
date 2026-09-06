@@ -35,11 +35,11 @@ public abstract class ServiceTestHarness : IDisposable
     private protected UsersDbContext Db { get; }
     private protected TestDbContextFactory DbFactory { get; }
 
-    // ----- Peeled-section contexts (nobodies-collective/Humans#858) ----------
+    // ----- Peeled-section contexts ----------
     // These sections' tables are no longer in Db's model, so seeding them and
     // wiring their repositories both go through the section context. Each pair
-    // is an independent in-memory store; a test that seeds across two saves on
-    // each. Add a pair here as each further section peels.
+    // is an independent in-memory store; a test that seeds across two pairs
+    // must save each independently. Add a pair here as each further section peels.
     //
     // Every pair is built on FIRST TOUCH, not in the constructor: this class is
     // the base for ~4000 tests and almost none of them touch any given section.
@@ -119,7 +119,7 @@ public abstract class ServiceTestHarness : IDisposable
         _sectionContextProbes.Select(probe => probe()).OfType<DbContext>();
 
     /// <summary>
-    /// In-memory options for a per-section DbContext (nobodies-collective/Humans#858),
+    /// In-memory options for a per-section DbContext,
     /// e.g. <c>ContainersDbContext</c>. Pair with
     /// <c>new TestDbContextFactory&lt;TContext&gt;(options)</c> for the repository under
     /// test and construct a context directly from the options for seeding.

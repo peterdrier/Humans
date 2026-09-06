@@ -23,7 +23,7 @@ namespace Humans.Users.Tests.Services.Users;
 /// <summary>
 /// <see cref="AccountDeletionServiceTests"/> substitutes every contributor, which is
 /// why a second identity collapse layered on top of the Account contributor's went
-/// unnoticed (nobodies-collective/Humans#853). These run the orchestrator with the
+/// unnoticed. These run the orchestrator with the
 /// real <see cref="UserService"/> as both <see cref="IUserService"/> and the Account
 /// <see cref="IUserDataContributor"/>, over the harness's in-memory store, so the
 /// row the purge leaves behind is asserted rather than assumed.
