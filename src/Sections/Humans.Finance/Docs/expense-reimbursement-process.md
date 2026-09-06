@@ -90,8 +90,7 @@ robbed, automation everywhere else.**
   tracked in Humans), and Humans never writes journal entries by hand — settlement goes through
   Holded's own payment API so the accountant sees a normal ledger.
 
-## Status (2026-08-26)
+## Status (2026-09-06)
 
-Steps 1–8 are live in production. Steps 9–11 — the booking screen (`/Finance/Sepa`,
-nobodies-collective/Humans#1141) — are on QA under test, verified with a real €50 payout the
-treasurer sent himself.
+Steps 1–11 are in production: the booking screen (`/Finance/Sepa`, nobodies-collective/Humans#1141)
+is on `upstream/main`.

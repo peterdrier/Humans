@@ -23,7 +23,7 @@ creditor-**contact binding** surface (`HoldedCreditorContacts` — user ↔
 Holded supplier-account bindings, including an at-most-one-member
 collision guard).
 
-### HoldedFinanceService (Scoped)
+### Service (Scoped)
 
 Repository: `IHoldedRepository`.
 
@@ -36,8 +36,7 @@ Repository: `IHoldedRepository`.
 | SepaPayoutFiles | R/W (append-only writes; read joined for the Article 15 export and for `/Finance/Sepa`) |
 | SepaPayoutTransfers | R/W (appended at generation; the booking columns are the only update — `SaveSepaTransferBookingAsync`. Read per user for the Article 15 export and flattened with the file for `/Finance/Sepa`) |
 
-Cross-section calls via `IBudgetServiceRead` (migrated to the read-split
-surface — `budget` in the ctor), `IHoldedService` (the Holded section's
+Cross-section calls via `IBudgetServiceRead` (`budget` in the ctor), `IHoldedService` (the Holded section's
 ledger-mirror read surface — `holded` in the ctor; ledger-line /
 account-balance reads for creditor status, ledger, and account listing),
 `IHoldedClient` (Holded section leaf — purchase-document / contact / expense-account
@@ -52,14 +51,13 @@ SEPA identity.
 `IHoldedFinanceAdminService` (`Services/IHoldedFinanceAdminService.cs`) is
 **internal** — the `/Finance/Holded` connector index is this section's own
 screen, so its read model is not cross-section surface; the same shape as the
-Holded section's `IHoldedAdminService`. Its one method,
-`GetConnectorOverviewAsync`, reads `HoldedDocSyncStates`,
+Holded section's `IHoldedAdminService`. `GetConnectorOverviewAsync` reads `HoldedDocSyncStates`,
 `HoldedCategoryMap`, `HoldedExpenseDocs` (via `GetAllDocsAsync` — the
 unmatched and matched-for-year reads are each a filtered slice and neither
 composes into "all docs") and `HoldedCreditorContacts`, plus
 `IBudgetServiceRead` for category names. **No `IHoldedClient` call** — the
 index must not inherit the connector's 30 s timeout
-(nobodies-collective/Humans#976, #1000). Its other methods,
+(nobodies-collective/Humans#976, #1000). The SEPA methods,
 `GetSepaPayoutSettings`, `GenerateSepaPayoutAsync`, `GetSepaPayoutsAsync` and
 `BookSepaTransferAsync`, serve `/Finance/Creditors`' payout column,
 `POST /Finance/Sepa/Generate`, `GET /Finance/Sepa` and
