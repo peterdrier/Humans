@@ -127,7 +127,7 @@ public sealed record ProfileInfo(
 
 /// <summary>
 /// Canonical "everything-about-a-person" cached read-model spanning User + Profile sections — see #703.
-/// Built by <see cref="Create"/> from 8 contributing tables. Sensitive fields ride along; visibility filtering is view-layer.
+/// Built by <see cref="Create"/> from the contributing tables. Sensitive fields ride along; visibility filtering is view-layer.
 /// </summary>
 public sealed record UserInfo(
     Guid Id,
@@ -343,7 +343,7 @@ public sealed record UserInfo(
         && !IsTombstone;
 
     /// <summary>
-    /// Builds <see cref="UserInfo"/> from the projections of the 8 contributing tables;
+    /// Builds <see cref="UserInfo"/> from the projections of the contributing tables;
     /// snapshotting + ordering happen here so the cached payload is immutable. The six
     /// Profile-side entities are internal to <c>Humans.Users</c>, so the entity-taking factory is
     /// <c>Humans.Users.Services.UserInfoFactory</c> and this overload names none of them — it

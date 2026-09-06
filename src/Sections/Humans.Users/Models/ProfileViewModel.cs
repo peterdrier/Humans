@@ -16,14 +16,8 @@ internal sealed class ProfileViewModel
     public string DisplayName { get; set; } = string.Empty;
     public string? ProfilePictureUrl { get; set; }
 
-    /// <summary>
-    /// Whether the profile has a custom uploaded picture.
-    /// </summary>
     public bool HasCustomProfilePicture { get; set; }
 
-    /// <summary>
-    /// URL to the custom profile picture endpoint (if uploaded).
-    /// </summary>
     public string? CustomProfilePictureUrl { get; set; }
 
     [Required]
@@ -41,9 +35,6 @@ internal sealed class ProfileViewModel
     [Display(Name = "Legal Last Name(s)")]
     public string LastName { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Whether the viewer can see legal name (own profile or board member).
-    /// </summary>
     public bool CanViewLegalName { get; set; }
 
     /// <summary>
@@ -59,25 +50,13 @@ internal sealed class ProfileViewModel
     [StringLength(2)]
     public string? CountryCode { get; set; }
 
-    /// <summary>
-    /// Latitude coordinate from Google Places.
-    /// </summary>
     public double? Latitude { get; set; }
 
-    /// <summary>
-    /// Longitude coordinate from Google Places.
-    /// </summary>
     public double? Longitude { get; set; }
 
-    /// <summary>
-    /// Google Places ID for future reference.
-    /// </summary>
     [StringLength(512)]
     public string? PlaceId { get; set; }
 
-    /// <summary>
-    /// Display-friendly location string for the autocomplete input.
-    /// </summary>
     public string? LocationDisplay => !string.IsNullOrEmpty(City) && !string.IsNullOrEmpty(CountryCode)
         ? $"{City}, {CountryCode}"
         : City ?? CountryCode;
@@ -148,15 +127,9 @@ internal sealed class ProfileViewModel
     [Display(Name = "Emergency Contact Relationship")]
     public string? EmergencyContactRelationship { get; set; }
 
-    /// <summary>
-    /// Profile picture file upload (max 2MB, JPEG/PNG).
-    /// </summary>
     [Display(Name = "Profile Picture")]
     public IFormFile? ProfilePictureUpload { get; set; }
 
-    /// <summary>
-    /// Whether to remove the current custom profile picture.
-    /// </summary>
     public bool RemoveProfilePicture { get; set; }
 
     public MembershipStatus MembershipStatus { get; set; }
@@ -164,19 +137,10 @@ internal sealed class ProfileViewModel
     public bool HasPendingConsents { get; set; }
     public int PendingConsentCount { get; set; }
 
-    /// <summary>
-    /// Status of the user's latest tier application (Submitted, Approved, Rejected), or null if none.
-    /// </summary>
     public ApplicationStatus? TierApplicationStatus { get; set; }
 
-    /// <summary>
-    /// The tier the user applied for (Colaborador or Asociado), or null if no application.
-    /// </summary>
     public MembershipTier? TierApplicationTier { get; set; }
 
-    /// <summary>
-    /// Bootstrap badge CSS class for the tier application status.
-    /// </summary>
     public string? TierApplicationBadgeClass { get; set; }
 
     /// <summary>
@@ -239,16 +203,10 @@ internal sealed class ProfileViewModel
     [DataType(DataType.MultilineText)]
     public string? ApplicationRoleUnderstanding { get; set; }
 
-    /// <summary>
-    /// The effective profile picture URL.
-    /// </summary>
     public string? EffectiveProfilePictureUrl => HasCustomProfilePicture
         ? CustomProfilePictureUrl
         : ProfilePictureUrl;
 
-    /// <summary>
-    /// Formatted birthday for display (e.g., "March 15").
-    /// </summary>
     public string? FormattedBirthday
     {
         get
@@ -261,57 +219,26 @@ internal sealed class ProfileViewModel
         }
     }
 
-    /// <summary>
-    /// User email addresses visible on the profile (for display).
-    /// </summary>
     public IReadOnlyList<UserEmailDisplayViewModel> UserEmails { get; set; } = [];
 
-    /// <summary>
-    /// Non-BoardOnly emails for the public contact info section.
-    /// </summary>
     public IReadOnlyList<UserEmailDisplayViewModel> PublicUserEmails =>
         UserEmails.Where(e => e.Visibility != ContactFieldVisibility.BoardOnly).ToList();
 
-    /// <summary>
-    /// BoardOnly emails for the board/private section.
-    /// </summary>
     public IReadOnlyList<UserEmailDisplayViewModel> BoardOnlyUserEmails =>
         UserEmails.Where(e => e.Visibility == ContactFieldVisibility.BoardOnly).ToList();
 
-    /// <summary>
-    /// Contact fields visible to the current viewer (for display).
-    /// </summary>
     public IReadOnlyList<ContactFieldViewModel> ContactFields { get; set; } = [];
 
-    /// <summary>
-    /// Contact fields for editing (owner only).
-    /// </summary>
     public List<ContactFieldEditViewModel> EditableContactFields { get; set; } = [];
 
-    /// <summary>
-    /// Volunteer history entries for display.
-    /// </summary>
     public IReadOnlyList<VolunteerHistoryEntryViewModel> VolunteerHistory { get; set; } = [];
 
-    /// <summary>
-    /// Volunteer history entries for editing (owner only).
-    /// </summary>
     public List<VolunteerHistoryEntryEditViewModel> EditableVolunteerHistory { get; set; } = [];
 
-    /// <summary>
-    /// Teams the user is a member of (excluding Volunteers system team).
-    /// </summary>
     public IReadOnlyList<TeamMembershipViewModel> Teams { get; set; } = [];
 
-    /// <summary>
-    /// Campaign grants assigned to this user (Active and Completed campaigns only).
-    /// Only populated when IsOwnProfile is true.
-    /// </summary>
     public IReadOnlyList<CampaignGrantSummary> CampaignGrants { get; set; } = [];
 
-    /// <summary>
-    /// No-show history for coordinators/admins viewing other profiles.
-    /// </summary>
     public List<NoShowHistoryItem>? NoShowHistory { get; set; }
 
     /// <summary>
@@ -320,19 +247,10 @@ internal sealed class ProfileViewModel
     /// </summary>
     public bool CanViewShiftSignups { get; set; }
 
-    /// <summary>
-    /// Languages for editing (owner only).
-    /// </summary>
     public List<ProfileLanguageEditViewModel> EditableLanguages { get; set; } = [];
 
-    /// <summary>
-    /// Languages for display (profile card).
-    /// </summary>
     public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];
 
-    /// <summary>
-    /// All available shift tags (for the picker). Owner only.
-    /// </summary>
     public IReadOnlyList<ShiftTagSummary> AllShiftTags { get; set; } = [];
 
     /// <summary>
@@ -343,15 +261,14 @@ internal sealed class ProfileViewModel
 
     /// <summary>
     /// Dietary preference (single choice). Surfaced on the Edit page as a second
-    /// entry point for the same <see cref="Humans.Domain.Entities.VolunteerEventProfile.DietaryPreference"/>
-    /// field also editable on the dedicated DietaryMedical page. Empty = not set.
+    /// entry point for <c>Profile.DietaryPreference</c>, also editable on the
+    /// dedicated DietaryMedical page. Empty = not set.
     /// </summary>
     public string DietaryPreference { get; set; } = string.Empty;
 
     /// <summary>
     /// Selected allergy chips. May include the "Other" sentinel, which pairs with
-    /// <see cref="AllergyOtherText"/>. Writes to
-    /// <see cref="Humans.Domain.Entities.VolunteerEventProfile.Allergies"/>.
+    /// <see cref="AllergyOtherText"/>. Writes to <c>Profile.Allergies</c>.
     /// </summary>
     public List<string> Allergies { get; set; } = [];
 
@@ -384,9 +301,6 @@ internal sealed class ProfileViewModel
     public bool CanViewSentMessages { get; set; }
 }
 
-/// <summary>
-/// Team membership for display purposes.
-/// </summary>
 internal sealed class TeamMembershipViewModel
 {
     public Guid TeamId { get; set; }
@@ -396,9 +310,6 @@ internal sealed class TeamMembershipViewModel
     public bool IsSystemTeam { get; set; }
 }
 
-/// <summary>
-/// Contact field for display purposes.
-/// </summary>
 internal sealed class ContactFieldViewModel
 {
     public Guid Id { get; set; }
@@ -473,9 +384,6 @@ internal sealed class ContactFieldViewModel
     };
 }
 
-/// <summary>
-/// Contact field for editing purposes.
-/// </summary>
 internal sealed class ContactFieldEditViewModel
 {
     public Guid? Id { get; set; }
@@ -497,9 +405,6 @@ internal sealed class ContactFieldEditViewModel
     public int DisplayOrder { get; set; }
 }
 
-/// <summary>
-/// Volunteer history entry for display purposes.
-/// </summary>
 internal sealed class VolunteerHistoryEntryViewModel
 {
     public Guid Id { get; set; }
@@ -519,9 +424,6 @@ internal sealed class VolunteerHistoryEntryViewModel
     }
 }
 
-/// <summary>
-/// Volunteer history entry for editing purposes.
-/// </summary>
 internal sealed class VolunteerHistoryEntryEditViewModel
 {
     public Guid? Id { get; set; }
@@ -569,9 +471,6 @@ internal sealed class VolunteerHistoryEntryEditViewModel
     }
 }
 
-/// <summary>
-/// User email for display on profile view.
-/// </summary>
 internal sealed class UserEmailDisplayViewModel
 {
     public string Email { get; set; } = string.Empty;
@@ -590,9 +489,6 @@ internal sealed class UserEmailDisplayViewModel
     };
 }
 
-/// <summary>
-/// Language entry for editing purposes.
-/// </summary>
 internal sealed class ProfileLanguageEditViewModel
 {
     public Guid? Id { get; set; }
@@ -605,9 +501,6 @@ internal sealed class ProfileLanguageEditViewModel
     public LanguageProficiency Proficiency { get; set; }
 }
 
-/// <summary>
-/// Language entry for display purposes.
-/// </summary>
 internal sealed class ProfileLanguageDisplayViewModel
 {
     public string LanguageCode { get; set; } = string.Empty;
@@ -626,9 +519,6 @@ internal sealed class ProfileLanguageDisplayViewModel
     };
 }
 
-/// <summary>
-/// View model for the privacy/data management page.
-/// </summary>
 internal sealed class PrivacyViewModel
 {
     public bool IsDeletionPending { get; set; }
@@ -637,9 +527,8 @@ internal sealed class PrivacyViewModel
 }
 
 /// <summary>
-/// One no-show row on another user's profile. Shell's: <c>ProfileController</c> builds
-/// the five strings from <c>IShiftSignups.GetNoShowHistoryAsync</c> and this page is its
-/// only consumer, so it never crosses into Humans.Shifts (nobodies-collective/Humans#866).
+/// One no-show row. Built from <c>IShiftSignups.GetNoShowHistoryAsync</c>;
+/// this page is the only consumer.
 /// </summary>
 internal sealed class NoShowHistoryItem
 {

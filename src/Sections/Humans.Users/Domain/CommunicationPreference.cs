@@ -14,14 +14,8 @@ internal sealed class CommunicationPreference
 
     public Guid UserId { get; init; }
 
-    /// <summary>
-    /// The message category this preference applies to.
-    /// </summary>
     public MessageCategory Category { get; init; }
 
-    /// <summary>
-    /// True if the user has opted out of this category.
-    /// </summary>
     public bool OptedOut { get; set; }
 
     /// <summary>
@@ -31,9 +25,6 @@ internal sealed class CommunicationPreference
     /// </summary>
     public bool InboxEnabled { get; set; } = true;
 
-    /// <summary>
-    /// When this preference was last changed.
-    /// </summary>
     public Instant UpdatedAt { get; set; }
 
     /// <summary>

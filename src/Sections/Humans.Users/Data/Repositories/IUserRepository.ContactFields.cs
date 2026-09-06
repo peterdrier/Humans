@@ -17,7 +17,7 @@ internal partial interface IUserRepository
 
     /// <summary>
     /// Returns every contact field row, read-only, with no ordering. Used by
-    /// person-search (<c>IProfileService.SearchProfilesAsync</c>) so the
+    /// person-search (<c>IUserServiceRead.SearchUsersAsync</c>) so the
     /// matcher can scan public + non-public ContactField values without
     /// per-profile round-trips. Trivial at our small scale; the row count
     /// across all profiles is far smaller than the user count.
@@ -36,8 +36,7 @@ internal partial interface IUserRepository
     /// <summary>
     /// Atomic batch write: adds new fields, updates mutated fields, removes
     /// deleted fields, and persists all changes in one <c>SaveChangesAsync</c> call.
-    /// Callers that previously relied on EF change-tracking for in-place mutations
-    /// should pass the mutated entities in <paramref name="toUpdate"/>.
+    /// Callers must pass mutated entities back in <paramref name="toUpdate"/>.
     /// </summary>
     Task BatchSaveAsync(
         IReadOnlyList<ContactField> toAdd,

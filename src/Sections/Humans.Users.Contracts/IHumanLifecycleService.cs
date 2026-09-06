@@ -7,11 +7,8 @@ namespace Humans.Users.Contracts;
 /// (suspend / unsuspend, and — over time — re-consent suspensions, status
 /// recomputes triggered by external events, and term-renewal flows). This
 /// service is the lifecycle state-machine counterpart to
-/// <c>IOnboardingService</c> (the intake funnel) and the future
-/// account-deletion service (the cascade). All three were originally
-/// bundled into <c>OnboardingService</c>; the split is by mission and
-/// workflow stage, not by dependency shape (see umbrella issue
-/// nobodies-collective#563).
+/// <c>IOnboardingService</c> (the intake funnel) and
+/// <c>IAccountDeletionService</c> (the cascade).
 /// </summary>
 // The IOrchestrator marker lives on HumanLifecycleService, not here: this leaf must reach zero
 // <ProjectReference> and the analyzers (HUM0026, HUM0027) key on the implementing class anyway.

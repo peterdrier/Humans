@@ -179,7 +179,7 @@ internal sealed class ProfileController(
 
         var applications = await applicationDecisionService.GetUserApplicationsAsync(user.Id, ct);
         var allShiftTags = await shiftProfiles.GetTagsAsync();
-        // see #720 (T-09) — tag prefs from cached ShiftUserView, not repo.
+        // Tag prefs from cached ShiftUserView, not repo.
         var userShiftView = await shiftView.GetUserAsync(user.Id, ct);
         var preferredShiftTags = userShiftView.TagPreferences;
         var viewModel = ProfileEditViewModelBuilder.Build(
@@ -284,8 +284,7 @@ internal sealed class ProfileController(
 
     // Simple field-level guards (phone E.164 format, allergy "Other" text) —
     // localized, form-field-targeted, so they stay controller-side alongside
-    // the ModelState they populate. Extracted only to keep Edit(POST) within
-    // HUM0031's statement/complexity budget.
+    // the ModelState they populate.
     private void ValidateEditSimpleFieldGuards(ProfileViewModel model)
     {
         var phoneTypes = new[] { ContactFieldType.Phone, ContactFieldType.WhatsApp };
@@ -452,7 +451,7 @@ internal sealed class ProfileController(
         // Peer-call into Onboarding; ProfileEditorService doesn't.
         await onboardingService.SetConsentCheckPendingIfEligibleAsync(user.Id);
 
-        // Initial-setup tier-app: form's `isTierLocked` guard + ApplicationDecisionService AlreadyPending backstop. see #685.
+        // Initial-setup tier-app: form's `isTierLocked` guard + ApplicationDecisionService AlreadyPending backstop.
         if (isInitialSetup && model.SelectedTier != MembershipTier.Volunteer)
         {
             var existingApps = await applicationDecisionService.GetUserApplicationsAsync(user.Id);
@@ -1619,14 +1618,6 @@ internal sealed class ProfileController(
         return RedirectToAction(nameof(Privacy));
     }
 
-    // CancelDeletion moved to UserController (Profile* retirement) — the cancel-deletion lever now
-    // lives with the User section; Views/Profile/Privacy.cshtml posts to User/Deletion/Cancel.
-
-    // Me/ShiftInfo (GET + POST) moved to Humans.Shifts' ShiftProfileController at that
-    // section's G5 (nobodies-collective/Humans#866): both actions read and write
-    // volunteer_event_profiles, a Shifts table. [Route("Profile")] stayed on both halves,
-    // so /Profile/Me/ShiftInfo is unchanged.
-
     [HttpGet("Me/DietaryMedical")]
     public async Task<IActionResult> DietaryMedical(
         string? returnAction = null,
@@ -1718,10 +1709,7 @@ internal sealed class ProfileController(
         }
     }
 
-    // The inline flash-mapping duplicates ShiftsController's two existing inline
-    // copies; extracted here as the third call site per project doctrine (this
-    // copy stays local to ProfileController — see #857 tracking for a follow-up
-    // to share it with ShiftsController.SignUp/SignUpRange).
+    // Flash mapping duplicated from ShiftsController.SignUp/SignUpRange; sharing it is tracked separately.
     private async Task<IActionResult> ReplayShiftSignupAfterDietaryMedicalSaveAsync(Guid userId, DietaryMedicalViewModel model)
     {
         switch (model.ReturnAction)
@@ -1858,7 +1846,7 @@ internal sealed class ProfileController(
     [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Client)]
     public async Task<IActionResult> Picture(Guid id, CancellationToken ct)
     {
-        // §2: controller routes through the profile-picture service (owns FS read path + GDPR gate, see #527).
+        // Controller routes through the profile-picture service, which owns the FS read path + GDPR gate.
         var result = await profilePictureService.GetProfilePictureAsync(id, ct);
         if (result is null)
         {
@@ -1891,10 +1879,7 @@ internal sealed class ProfileController(
 
         var noShowContext = await BuildNoShowHistoryContextAsync(id, viewer.Id, isOwnProfile, ct);
 
-        // Onsite chip visibility (#736): self always, plus the same admin/board
-        // policy that gates /Tickets/Admin/Onsite. Coordinators below board
-        // tier don't see the chip on other humans — wider visibility is a
-        // follow-up PR if needed.
+        // Onsite chip: self always, plus the admin/board policy gating /Tickets/Admin/Onsite.
         var canViewOnsiteChip = isOwnProfile
             || (await authorizationService.AuthorizeAsync(
                 User, PolicyNames.TicketAdminBoardOrAdmin)).Succeeded;
@@ -2099,7 +2084,7 @@ internal sealed class ProfileController(
         if (currentUser.Id == id)
             return RedirectToAction(nameof(ViewProfile), new { id });
 
-        // see #635 (§15i) — bulk-fetch via section service, not cross-domain nav.
+        // Bulk-fetch via section service, not cross-domain nav.
         var participants = await _userService.GetUserInfosAsync([id, currentUser.Id]);
         if (!participants.TryGetValue(id, out var targetUser))
             return NotFound();

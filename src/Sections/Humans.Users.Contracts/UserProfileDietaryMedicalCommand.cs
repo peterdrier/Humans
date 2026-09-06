@@ -10,7 +10,7 @@ namespace Humans.Users.Contracts;
 /// Lives on the leaf rather than beside the rest of <c>UserProfileCommands</c> because
 /// <see cref="IProfileEditorService.SaveDietaryMedicalAsync"/> names it and Onboarding
 /// injects that interface. The sibling commands are <c>IUserService</c>'s surface and stay
-/// with the section (nobodies-collective/Humans#866, lane 2 PR A).
+/// with the section.
 /// </remarks>
 public sealed record UserProfileDietaryMedicalCommand(
     string? DietaryPreference,

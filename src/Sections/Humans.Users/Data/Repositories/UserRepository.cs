@@ -5,7 +5,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Users.Data.Repositories;
 
-/// <summary>EF-backed <see cref="IUserRepository"/>.</summary>
 internal sealed partial class UserRepository : IUserRepository
 {
     private readonly IDbContextFactory<UsersDbContext> _factory;

@@ -59,16 +59,13 @@ internal sealed class AccountDeletionService(
             eligibleAfter = ticketHoldings.PostEventHoldDate;
         }
 
-        // 1. Persist deletion-pending fields on User.
         await userService.SetDeletionPendingAsync(userId, now, deletionDate, eligibleAfter, ct);
 
-        // 2. Revoke team memberships immediately — user loses access during grace period.
+        // User loses access during grace period.
         var endedMemberships = await teamService.RevokeAllMembershipsAsync(userId, ct);
 
-        // 3. Revoke governance roles.
         var endedRoles = await roleAssignmentService.RevokeAllActiveAsync(userId, ct);
 
-        // 4. Audit.
         await auditLogService.LogAsync(
             AuditAction.MembershipsRevokedOnDeletionRequest, nameof(User), userId,
             $"Revoked {endedMemberships} team membership(s) and {endedRoles} role assignment(s) on deletion request",
@@ -79,7 +76,6 @@ internal sealed class AccountDeletionService(
             "Revoked {MembershipCount} memberships and {RoleCount} roles immediately",
             userId, deletionDate, eligibleAfter, endedMemberships, endedRoles);
 
-        // 5. Send deletion confirmation email.
         var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync([userId], ct);
         var notificationEmail = notificationEmails.GetValueOrDefault(userId) ?? user.Email;
         if (notificationEmail is not null)
@@ -92,7 +88,7 @@ internal sealed class AccountDeletionService(
                 ct);
         }
 
-        // 6. Drop shift-authorization cache so coordinator privilege reverts immediately (parity with Purge/AnonymizeExpired).
+        // Drop shift-authorization cache so coordinator privilege reverts immediately (parity with Purge/AnonymizeExpired).
         shiftAuthorizationInvalidator.Invalidate(userId);
         shiftViewInvalidator.InvalidateUser(userId);
 

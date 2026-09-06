@@ -19,8 +19,8 @@ internal sealed class UserEmailConfiguration : IEntityTypeConfiguration<UserEmai
         builder.Property(e => e.IsVerified)
             .IsRequired();
 
-        // PR 4: C# property renamed IsNotificationTarget → IsPrimary; DB column
-        // keeps the legacy name per architecture_dont_drop_columns_for_decoupling.
+        // C# property renamed IsNotificationTarget → IsPrimary; DB column keeps
+        // the legacy name per memory/architecture/no-drops-until-prod-verified.md.
         builder.Property(e => e.IsPrimary)
             .HasColumnName("IsNotificationTarget")
             .IsRequired();
@@ -35,8 +35,8 @@ internal sealed class UserEmailConfiguration : IEntityTypeConfiguration<UserEmai
         builder.Property(e => e.UpdatedAt)
             .IsRequired();
 
-        // PR 3 (additive): Provider / ProviderKey carry the OAuth identity tied
-        // to this row; IsGoogle marks the canonical Workspace identity.
+        // Provider / ProviderKey carry the OAuth identity tied to this row;
+        // IsGoogle marks the canonical Workspace identity.
         // Single-row-per-(Provider, ProviderKey) and at-most-one-IsGoogle-true-
         // per-UserId are service-enforced inside UserEmailService — no DB
         // indexes per feedback_db_enforcement_minimal.
@@ -49,8 +49,8 @@ internal sealed class UserEmailConfiguration : IEntityTypeConfiguration<UserEmai
         builder.Property(e => e.IsGoogle)
             .IsRequired();
 
-        // Per-address Google sync status (#687) — moved off the user. Mirrors the legacy
-        // User.GoogleEmailStatus column mapping: string-converted enum, Unknown default/sentinel.
+        // Per-address Google sync status. Mirrors the legacy User.GoogleEmailStatus
+        // column mapping: string-converted enum, Unknown default/sentinel.
         builder.Property(e => e.GoogleEmailStatus)
             .HasConversion<string>()
             .HasMaxLength(50)

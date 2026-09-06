@@ -6,10 +6,7 @@ namespace Humans.Users.Contracts;
 /// Looks up existing accounts by email across all UserEmails for dedup,
 /// creates User + UserEmail when no match exists.
 /// </summary>
-// COVERAGE REDUCED (G5 lane 3b, nobodies-collective/Humans#866): dropped ": IApplicationService".
-// The marker lives in Humans.Interfaces and this leaf must reach zero <ProjectReference>
-// so Base may reference it. Lost on the implementing class: HUM0027 (role-axis exclusivity).
-// Restore the inheritance when Base is referenceable from this leaf again.
+// No marker interface — see Humans.Users.Contracts.csproj.
 public interface IAccountProvisioningService
 {
     /// <summary>

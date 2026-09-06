@@ -18,9 +18,7 @@ namespace Humans.Users.Services;
 /// grace period has expired, and runs each suspension's downstream side effects.
 /// </summary>
 /// <remarks>
-/// The body of <c>SuspendNonCompliantMembersJob</c>, carved into the section at
-/// G5 lane 4b-2d; the job class followed at lane 5b-4 and is now
-/// <c>Humans.Users/Contracts/SuspendNonCompliantMembersJob.cs</c>.
+/// The body of the nightly job (<c>Jobs/SuspendNonCompliantMembersJob.cs</c>).
 /// All reads/writes fan out through section services
 /// (<see cref="IUserService"/>, <see cref="ITeamServiceRead"/>,
 /// <see cref="IGoogleSyncService"/>) so this never touches another section's
@@ -57,7 +55,6 @@ internal sealed class NonCompliantMemberSuspension(
 
     public async Task SuspendNonCompliantAsync(CancellationToken cancellationToken = default)
     {
-        // Get users who are now Inactive (missing consents + grace period expired)
         var usersToSuspend = await membershipCalculator
             .GetUsersRequiringStatusUpdateAsync(cancellationToken);
 
@@ -96,7 +93,6 @@ internal sealed class NonCompliantMemberSuspension(
                 continue;
             }
 
-            // 1. Send email notification
             var effectiveEmail = user.Email;
             if (effectiveEmail is not null)
             {
@@ -115,7 +111,7 @@ internal sealed class NonCompliantMemberSuspension(
                 }
             }
 
-            // 2. Send in-app notification (best-effort)
+            // Best-effort: failures are logged, not thrown.
             try
             {
                 await notificationService.SendAsync(
@@ -134,7 +130,6 @@ internal sealed class NonCompliantMemberSuspension(
                 logger.LogError(ex, "Failed to dispatch AccessSuspended notification for user {UserId}", user.Id);
             }
 
-            // 3. Remove from all team resources (Google Drive/Groups) for the user's active teams.
             var memberTeamIds = (await teamService.GetTeamsAsync(cancellationToken)).Values
                 .Where(t => t.Members.Any(m => m.UserId == user.Id))
                 .Select(t => t.Id)
@@ -161,7 +156,6 @@ internal sealed class NonCompliantMemberSuspension(
 
             metrics.RecordMemberSuspended("job");
 
-            // 4. Audit log + cross-cutting cache invalidation.
             await auditLogService.LogAsync(
                 AuditAction.MemberSuspended, nameof(User), user.Id,
                 $"{user.BurnerName} suspended for missing required document consent (grace period expired)",

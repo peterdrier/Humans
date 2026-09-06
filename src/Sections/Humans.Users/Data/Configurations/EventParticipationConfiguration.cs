@@ -28,7 +28,6 @@ internal sealed class EventParticipationConfiguration : IEntityTypeConfiguration
             .HasMaxLength(50)
             .IsRequired();
 
-        // Unique constraint on (UserId, Year)
         builder.HasIndex(ep => new { ep.UserId, ep.Year })
             .IsUnique();
 

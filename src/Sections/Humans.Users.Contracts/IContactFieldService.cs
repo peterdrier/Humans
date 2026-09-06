@@ -4,8 +4,7 @@ namespace Humans.Users.Contracts;
 /// <summary>
 /// Service for managing contact fields with visibility controls.
 /// </summary>
-// COVERAGE REDUCED (G5 lane 3b, nobodies-collective/Humans#866): dropped ": IApplicationService".
-// Lost on the implementing class: HUM0027 (role-axis exclusivity). See Humans.Users.Contracts.csproj.
+// No marker interface — see Humans.Users.Contracts.csproj.
 public interface IContactFieldService
 {
     /// <summary>
