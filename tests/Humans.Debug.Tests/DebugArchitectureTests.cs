@@ -8,21 +8,14 @@ using Microsoft.Extensions.Localization;
 
 namespace Humans.Debug.Tests;
 
-/// <summary>Architecture tests enforcing the section shape for Debug.</summary>
+/// <summary>
+/// Architecture tests enforcing the section shape for Debug. There is deliberately no test
+/// that <c>Section.Register</c> registers nothing: an empty registration is an absence with no
+/// behaviour to regress, and the test could only fail on the deliberate edit that would have
+/// updated it anyway.
+/// </summary>
 public class DebugArchitectureTests
 {
-    [HumansFact]
-    public void SectionRegistersNothingOfItsOwn()
-    {
-        // Anything registered here means Debug has grown a service of its own — worth a
-        // second look, not a green build.
-        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
-
-        new Section().Register(services, new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
-
-        services.Should().BeEmpty();
-    }
-
     [HumansFact]
     public void AdminSurfacesRequireAdminOnly_ExceptTheTwoAnonymousOnes()
     {

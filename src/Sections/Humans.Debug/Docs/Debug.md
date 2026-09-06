@@ -22,7 +22,7 @@ This section owns no entities. Displayed telemetry comes from in-memory, process
 
 ## Routing
 
-Three controllers, one per audience: `DebugController` (`/Debug/*`, diagnostics and the two reflection galleries), `WidgetGalleryController` (`/WidgetGallery`) and `ColorPaletteController` (`/ColorPalette`). Pages sit at `/Debug/<Page>` directly, not `/Debug/Admin/*`: the section has no user-facing pages, so there is no public-vs-admin split to disambiguate. The `/<Section>/Admin/*` shape in [`../../../../memory/architecture/no-admin-url-section.md`](../../../../memory/architecture/no-admin-url-section.md) exists to separate admin actions from public ones inside a mixed section.
+One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the reflection galleries), `WidgetGalleryController` (`/WidgetGallery`) and `ColorPaletteController` (`/ColorPalette`). Pages sit at `/Debug/<Page>` directly, not `/Debug/Admin/*`: the section has no user-facing pages, so there is no public-vs-admin split to disambiguate. The `/<Section>/Admin/*` shape in [`../../../../memory/architecture/no-admin-url-section.md`](../../../../memory/architecture/no-admin-url-section.md) exists to separate admin actions from public ones inside a mixed section.
 
 | Route | Method | Auth | Purpose |
 |-------|--------|------|---------|
@@ -54,7 +54,7 @@ Three controllers, one per audience: `DebugController` (`/Debug/*`, diagnostics 
 
 ## Invariants
 
-- Every page requires `PolicyNames.AdminOnly` (class-level `[Authorize]` on `DebugController` and `WidgetGalleryController`) except two deliberate anonymous surfaces: `/Debug/DbVersion`, which returns only migration names and counts, and `/ColorPalette`, which renders static markup. Pinned by `DebugArchitectureTests`.
+- Every page requires `PolicyNames.AdminOnly` (class-level `[Authorize]` on `DebugController` and `WidgetGalleryController`) except the deliberate anonymous surfaces: `/Debug/DbVersion`, which returns only migration names and counts, and `/ColorPalette`, which renders static markup. Pinned by `DebugArchitectureTests`.
 - Sensitive configuration values never render in full on `/Debug/Configuration`: at most the first four characters, and values of four characters or fewer are fully masked. Pinned by `DebugControllerTests`.
 - Debug owns no domain data; its in-memory telemetry is process-local and resets on restart/redeploy.
 - New developer/diagnostics pages are added here (`/Debug/*`), never under `/Admin/*`.
@@ -82,9 +82,9 @@ The widget gallery and the dashboard card read other sections through their cont
 **Owning services:** None - controllers project singleton snapshots into view models. One static calculator (`UserSetMembershipCalculator`) backs the dashboard card.
 **Owned tables:** None.
 
-- All three controllers are `internal sealed` in `Humans.Debug.Controllers`, routed by Shell's `SectionControllerFeatureProvider`. `DebugController` consumes telemetry trackers, configuration metadata, query/cache counters, and admin database diagnostics, all of them Base singletons registered by their owners.
+- All controllers are `internal sealed` in `Humans.Debug.Controllers`, routed by Shell's `SectionControllerFeatureProvider`. `DebugController` consumes telemetry trackers, configuration metadata, query/cache counters, and admin database diagnostics, all of them Base singletons registered by their owners.
 - `Section.Register` is **empty**, and the class ships anyway: `ISection` is what puts the assembly in the discovered-sections log. `Contracts/` holds only a README - nothing outside the section names a Debug type.
-- Two root-level seams contribute by name: `SectionAdminNav` (`ISectionAdminNav`) supplies the Diagnostics and Design sidebar groups, merged into the Shell nav by `AdminNavComposition`; `SectionChrome` (`ISectionChrome`) contributes the `UserSetMembershipCard` view component to the admin dashboard's chrome slot.
+- Root-level seams contribute by name: `SectionAdminNav` (`ISectionAdminNav`) supplies the Diagnostics and Design sidebar groups, merged into the Shell nav by `AdminNavComposition`; `SectionChrome` (`ISectionChrome`) contributes the `UserSetMembershipCard` view component to the admin dashboard's chrome slot.
 - The section references `Humans.Base` despite owning no tables: it names `QueryStatistics` (`Humans.Base.Data`) and the host-local `InMemoryLogSink` (`Humans.Base.Logging`; Shell configures it from `Program.cs`, and Backdoor's `BackdoorLogsController` reads the same DI instance at `/api/backdoor/logs`). Cache-entry counts come from `ICacheStatsProvider.GetActiveEntryCounts()`; Debug never names `TrackingMemoryCache`.
 - `TranslationsGalleryModelBuilder` lives in Base (`src/Humans.Base/Models/TranslationsGalleryViewModel.cs`): it enumerates `SharedResource` and `CultureCatalog`, and `SharedResourceParityTests` asserts translation parity through it. `FormatGalleryModelBuilder` lives here - its only consumer is `/Debug/FormatGallery`.
 - **Decorator decision - no caching decorator.** Owns no data; the trackers are already in-memory singletons.

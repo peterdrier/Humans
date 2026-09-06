@@ -11,7 +11,7 @@ the caches are being hit, how long named operations take, which configuration va
 and which sections the app was composed from. Nearly all of it is read from memory and
 vanishes on the next deploy; the section says so on every page.
 
-Two operational levers sit beside the read-outs: reset a counter, and clear Hangfire's stale
+Operational levers sit beside the read-outs: reset a counter, and clear Hangfire's stale
 locks after a job dies mid-run. One anonymous machine endpoint reports migration status to
 deployment tooling.
 
@@ -33,7 +33,7 @@ overlaps across profile, ticket, shift and marketing opt-in.
 | "What migrations has this instance applied?" | deployment tooling, anonymous | `DbVersion` — JSON, names and counts only |
 | "Unstick Hangfire" | admin, acting | `ClearHangfireLocks` — the one write to infrastructure state; logged at Warning |
 | "What does the design system contain?" | designer/developer | `ColorPalette` (static, anonymous), `WidgetGallery` (admin; live keys for the search-row cards), `FormatGallery` and `Translations` (reflection over Base's formatter and resource sets) |
-| "How does the member base overlap?" | the admin dashboard, via a chrome slot | `UserSetMembershipCardViewComponent` + `UserSetMembershipCalculator` — 16-bucket bitmask partition of the user cache |
+| "How does the member base overlap?" | the admin dashboard, via a chrome slot | `UserSetMembershipCardViewComponent` + `UserSetMembershipCalculator` — bitmask partition of the user cache over profile, ticket, shift and marketing |
 
 Vocabulary: none crosses the boundary. Every model here is `internal` and read only by
 this section's views.
@@ -42,15 +42,15 @@ this section's views.
 
 The shapes imply a section with no data layer at all:
 
-- **Three controllers, one per audience.** `DebugController` (diagnostics + the two
+- **One controller per audience.** `DebugController` (diagnostics + the
   reflection galleries), `WidgetGalleryController` (the widget catalogue, which needs live
-  keys and sample DTOs from five other sections' contracts) and `ColorPaletteController`
+  keys and sample DTOs from other sections' contracts) and `ColorPaletteController`
   (a static page). All `internal`, routed by Shell's feature provider.
 - **View models per page**, internal records/classes, built in the controller from the
   Base singletons' snapshots. No service layer: there is no rule to enforce, only projection.
 - **One static calculator** (`UserSetMembershipCalculator`) and its view component, because
   the dashboard card's mask math is the one piece of logic worth a unit test.
-- **Two contribution seams at the root**: `SectionAdminNav` (the Diagnostics and Design
+- **Contribution seams at the root**: `SectionAdminNav` (the Diagnostics and Design
   sidebar groups) and `SectionChrome` (the dashboard card). `Section.Register` is empty and
   the class exists only so Shell discovers the assembly.
 - **Docs** — the invariant doc, the authorization table, and one feature spec per
@@ -61,7 +61,7 @@ The shapes imply a section with no data layer at all:
 ## 4. Invariants
 
 - **Every page and endpoint is Admin-only** (`PolicyNames.AdminOnly`, class-level on
-  `DebugController` and `WidgetGalleryController`) **except two deliberate anonymous
+  `DebugController` and `WidgetGalleryController`) **except the deliberate anonymous
   surfaces**: `/Debug/DbVersion` (migration names and counts, for deployment tooling) and
   `/ColorPalette` (static design tokens, no data).
 - **Sensitive configuration values never render in full**: at most the first four
@@ -84,7 +84,7 @@ The shapes imply a section with no data layer at all:
 - **Read-split on `IBurnSettingsService`.** Both the widget gallery and the dashboard card
   inject the full Shifts write interface to ask one read question ("what is the active
   event?"). No `IBurnSettingsServiceRead` exists yet; when Shifts carves one, both callers
-  move to it. Items touching those two constructors are shaped by this.
+  move to it. Items touching those constructors are shaped by this.
 - **`/api/client-metrics`, `ClientStatsMiddleware`, the trackers and `UserAgentClassifier`
   live in Shell / Base**, not here. The feature specs in this section describe them because
   the screens are the only consumer; if a Telemetry section ever forms, the specs move with
@@ -116,8 +116,9 @@ The shapes imply a section with no data layer at all:
   fan-in is the page's job — it renders other sections' public view components as `<vc:>` tag
   helpers — and every one of those references is opened in `_ViewImports` so a binding walk
   sees the tags as bound.
-- **`Section.Register` is empty and must stay so**; `DebugArchitectureTests` asserts it.
-  Anything Debug would register is something another owner should register.
+- **`Section.Register` is empty and must stay so.** Anything Debug would register is
+  something another owner should register; no test pins the absence
+  ([`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md)).
 - **The status-code tally and the error buffer disagree slightly by design**: Kestrel-rejected
   requests never reach the middleware, so `/Debug/HttpErrors` can run below the
   `/Debug/ClientStats` meter count. Both pages say so.
@@ -128,4 +129,4 @@ The shapes imply a section with no data layer at all:
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-09-06 | First doctor pass — the code is close to target; the docs are not: the invariant doc knows one controller where three exist, the contracts README credits a nav tree the section replaced, and comments across the section name projects (`Humans.Infrastructure`, `Humans.UI`) that no longer exist | peterdrier/Humans#1598 |
+| 1 | 2026-09-06 | First doctor pass — the code is close to target; the docs are not: the invariant doc knows only one of the section's controllers, the contracts README credits a nav tree the section replaced, and comments across the section name projects (`Humans.Infrastructure`, `Humans.UI`) that no longer exist | peterdrier/Humans#1598 |
