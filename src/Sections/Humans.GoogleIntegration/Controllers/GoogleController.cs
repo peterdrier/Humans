@@ -266,7 +266,7 @@ internal sealed class GoogleController(
     [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
     public IActionResult Sync()
     {
-        return View(new TeamSyncViewModel());
+        return View();
     }
 
     [HttpGet("Sync/Preview/{resourceType}")]
