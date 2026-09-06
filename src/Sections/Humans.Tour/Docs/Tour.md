@@ -74,7 +74,7 @@ Routes out: the header bar to `/`, and Shell's `/About` for the engineering stor
 
 ## Architecture
 
-**Owning services:** None — one anonymous controller over static views, plus one `ISectionNav`
+**Owning services:** None — `TourController` (anonymous, static views) plus the `SectionNav`
 contribution.
 **Owned tables:** None.
 **Status:** (A) Migrated — born in `src/Sections/Humans.Tour`, never lived elsewhere.

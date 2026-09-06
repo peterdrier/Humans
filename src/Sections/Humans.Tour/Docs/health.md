@@ -19,7 +19,7 @@ members.
 | Question shape | Asked by | Answered by |
 |---|---|---|
 | "Show me what Humans is" | anyone, signed in or not | `GET /Tour` → `TourController.Index` → `Views/Tour/Index.cshtml` under `_TourLayout` |
-| "Where do I find the Tour?" (anonymous) | Shell's top nav, via `<vc:section-nav>` | `SectionNav` — one `ISectionNav` item, visible only while not authenticated |
+| "Where do I find the Tour?" (anonymous) | Shell's top nav, via `<vc:section-nav>` | `SectionNav` — the `ISectionNav` item "Tour", visible only while not authenticated |
 
 Inbound links the section does not own: Shell's dashboard tile
 (`src/Humans.Web/Views/Home/Dashboard.cshtml`, `Controller = "Tour"`) for signed-in
@@ -32,9 +32,10 @@ No contract methods, no jobs, no events, no config keys, no tables.
 
 The shapes imply exactly this, and it is today's layout:
 
-- **One controller, one action**, no injected services, `[AllowAnonymous]` at class level.
-- **One view and one layout of its own** — the page steps outside Shell's chrome on
-  purpose — with a `_ViewStart` binding them.
+- **`TourController.Index` and nothing else**, no injected services, `[AllowAnonymous]` at
+  class level.
+- **`Views/Tour/Index.cshtml` under the section's own `_TourLayout`** — the page steps
+  outside Shell's chrome on purpose — with a `_ViewStart` binding them.
 - **`_ViewImports`** carrying the MVC tag helpers and Humans.Base's (see weirdness).
 - **Static assets** under `wwwroot/` (the stylesheet, the script, the photos), served as
   RCL static web assets at `/_content/Humans.Tour/`.
@@ -42,10 +43,9 @@ The shapes imply exactly this, and it is today's layout:
 - **No Contracts leaf and no test project of its own.** Routing, rendering and the
   `ISection` are pinned by the render test in `Humans.Integration.Tests`, and the nav
   contribution by that test's anonymous `/About` assertion (a Shell page that links Tour
-  through `<vc:section-nav>` alone) — all local-only by design. The one CI test that
-  reaches Tour is `EndpointAuthorizationTests`, and it pins only that every action carries
-  an authorization attribute — not which. Delete `SectionNav.cs` or `Section.cs` and CI
-  stays green.
+  through `<vc:section-nav>` alone) — all local-only by design. What reaches Tour in CI is
+  `EndpointAuthorizationTests`, and it pins only that every action carries an authorization
+  attribute — not which. Delete `SectionNav.cs` or `Section.cs` and CI stays green.
 - Project references: `Humans.Base` and nothing else.
 
 ## 4. Invariants
@@ -77,8 +77,11 @@ The shapes imply exactly this, and it is today's layout:
   (`memory/architecture/no-tests-for-absences.md`).
 - **No signed-in nav slot.** Peter, 2026-08-13: the signed-in top nav is too busy; the
   dashboard tile is the member entry.
-- **No dashboard-tile seam.** The tile is Shell's, by string. A seam interface for one
-  consumer would be public surface with no second caller.
+- **The dashboard tile is still Shell's, by string.** The `ISectionMemberDashboard` seam
+  exists (`<vc:chrome-slot name="member-dashboard">`), but it renders a section's own row
+  above Shell's "Your stuff" grid, and the Tour tile is a compact card inside that grid.
+  Taking the seam means Tour ships a view component and the tile leaves the grid — Peter's
+  call (run 1, finding 14), not this section's.
 - **No shared layout with Shell.** The promo look is the point of the page.
 
 ## Load-bearing weirdness
