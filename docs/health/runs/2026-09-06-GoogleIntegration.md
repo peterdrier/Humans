@@ -4,7 +4,7 @@
 - **Anchor commit:** `10199a23` (`origin/main`)
 - **Branch:** `section-doctor/2026-09-06T031623Z` (cloud run, repo root — no worktree)
 - **Budget:** 2.5h, single PR.
-- **PR:** pending
+- **PR:** peterdrier/Humans#1599
 
 ## Assessment summary
 
@@ -133,8 +133,8 @@ written before the scan absorbed two wrong invariants from the section's own old
 
 **Target diff:** none possible — first doctor pass; `health.md` was written this run.
 
-One auto-compaction occurred mid-Phase 4; Phase 5's mandatory re-read of Phases 5–7 was
-applied after it.
+Two auto-compactions occurred (mid-Phase 3 assessment, mid-Phase 4); Phase 5's mandatory
+re-read of Phases 5–7 was applied after the second.
 
 ## Needs Peter
 
