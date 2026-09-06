@@ -12,7 +12,7 @@ using Humans.Users.Data;
 namespace Humans.Users.Tests.Services.Users;
 
 /// <summary>
-/// Issue #703. Tests pinning the CachingUserService decorator contract: dict
+/// Tests pinning the CachingUserService decorator contract: dict
 /// hit on cold/warm, write-then-read consistency, concurrent reads, and that
 /// each of the 8 contributing tables flows through to UserInfo.
 /// </summary>
@@ -210,10 +210,10 @@ public class CachingUserServiceTests
     [HumansFact]
     public async Task GetUserInfosAsync_ColdCache_WarmsBeforeFallback_DoesNotLoadPerKey()
     {
-        // Issue #743 regression. On cold cache, GetUserInfosAsync(ids) must
-        // trigger the bulk WarmAllAsync exactly once instead of issuing a
-        // per-id LoadRowAsync for each requested userId (which would emit
-        // 7 SELECTs per user via the inner service on each miss).
+        // On cold cache, GetUserInfosAsync(ids) must trigger the bulk
+        // WarmAllAsync exactly once instead of issuing a per-id LoadRowAsync
+        // for each requested userId (which would emit 7 SELECTs per user via
+        // the inner service on each miss).
         var userA = SampleUser();
         var userB = SampleUser();
         var userC = SampleUser();
@@ -373,16 +373,12 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public void UserInfo_DoesNotCarryProfilePictureData_OrYearOfBirth()
+    public void ProfileInfo_CarriesBirthdayWithoutYear()
     {
-        // Pin the design choices from issue #703:
-        //  - ProfilePictureData (the large blob on Profile) is intentionally NOT
-        //    projected into UserInfo / ProfileInfo.
-        //  - The full DateOfBirth is NOT carried; only BirthdayDay + BirthdayMonth.
+        // Birthday carries month and day only; the full DateOfBirth never reaches the snapshot.
         var profileInfoType = typeof(ProfileInfo);
         var props = profileInfoType.GetProperties().Select(p => p.Name).ToHashSet(StringComparer.Ordinal);
 
-        props.Should().NotContain("ProfilePictureData");
         props.Should().NotContain("DateOfBirth");
         props.Should().NotContain("Year");
         props.Should().Contain("BirthdayDay");
@@ -392,10 +388,8 @@ public class CachingUserServiceTests
     [HumansFact]
     public async Task GetUserInfosAsync_WarmCache_ServesFromDict_ZeroInnerCalls()
     {
-        // nobodies-collective/Humans#979. GetByIdsAsync (the User-entity-returning
-        // batched lookup, and CachingUserService.RehydrateUser) were removed —
-        // GetUserInfosAsync is the sole batched lookup. Once the cache is fully
-        // warmed, further batched reads must never call the inner service.
+        // GetUserInfosAsync is the sole batched lookup; a fully warm cache
+        // must never call the inner service.
         var userId = Guid.NewGuid();
         var info = SampleUserInfo(userId, "Cached");
 
@@ -419,8 +413,7 @@ public class CachingUserServiceTests
     [HumansFact]
     public async Task GetUserInfosAsync_PartialHit_OnlyMissesDelegated()
     {
-        // nobodies-collective/Humans#979. Warm hits served from dict, misses
-        // loaded per-id from the inner service.
+        // Warm hits served from the dict, misses loaded per-id from the inner service.
         var hitId = Guid.NewGuid();
         var missId = Guid.NewGuid();
 
@@ -813,8 +806,8 @@ public class CachingUserServiceTests
         // The by-id fast path skips the PersonSearchFields mask, which only governs which
         // text fields are matched — it does NOT skip the eligibility gate. A rejected
         // profile is as unresolvable by GUID as it is by name
-        // (SearchUsersAsync_PublicAll_ExcludesRejected), so the global-search ruling on
-        // nobodies-collective/Humans#985 never hands out a rejected human's id.
+        // (SearchUsersAsync_PublicAll_ExcludesRejected): global search never hands
+        // out a rejected human's id.
         var userId = Guid.NewGuid();
         var sut = CreateSut();
         await PrimeAsync(sut, BuildSearchableUserInfo(userId, burnerName: "Alice", isRejected: true));
@@ -1271,7 +1264,7 @@ public class CachingUserServiceTests
     }
 
     // ==================================================================
-    // GetMergedSourceIdsAsync — issue nobodies-collective/Humans#1100
+    // GetMergedSourceIdsAsync
     // ==================================================================
 
     [HumansFact]

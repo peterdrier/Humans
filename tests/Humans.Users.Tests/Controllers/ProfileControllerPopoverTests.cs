@@ -245,6 +245,20 @@ public class ProfileControllerPopoverTests
         vm.CampRoles.Should().Equal("Camp Lead", "Greeter");
     }
 
+    [HumansFact]
+    public async Task ViewProfile_SuspendedTarget_ReturnsNotFound()
+    {
+        var id = Guid.NewGuid();
+        var user = new User { Id = id, DisplayName = "Suspended Human", State = UserState.Suspended };
+        var profile = new Profile { Id = Guid.NewGuid(), UserId = id, MembershipTier = MembershipTier.Volunteer, IsApproved = true };
+        _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
+            .Returns(BuildUserInfo(user, profile, userEmails: null));
+
+        var result = await _controller.ViewProfile(id, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<NotFoundResult>();
+    }
+
     private static UserInfo BuildUserInfo(User user, Profile? profile, IReadOnlyList<UserEmail>? userEmails) =>
         UserInfoFactory.Create(
             user: user,
