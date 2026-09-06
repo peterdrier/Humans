@@ -53,6 +53,7 @@ graph LR
     classDef gate fill:#b45309,color:#fff
     classDef holded fill:#ca8a04,color:#fff
     classDef guide fill:#65a30d,color:#fff
+    classDef monitor fill:#0891b2,color:#fff
     classDef crosscut fill:#334155,color:#fff
     classDef platform fill:#52525b,color:#fff
 
@@ -119,13 +120,14 @@ graph LR
     GGroupSync[GoogleGroupSyncService]:::google
     GAdmin[GoogleAdminService]:::google
     EmailProv[EmailProvisioningService]:::google
-    DriveMon[DriveActivityMonitorService]:::google
     GRemoval[GoogleRemovalNotificationService]:::google
     GSyncOutbox[GoogleSyncOutboxService]:::google
     GSyncOutboxProc[GoogleSyncOutboxProcessor]:::google
     GTrans[GoogleTranslationService]:::google
     GSyncHistMig[GoogleSyncHistoryMigrationService]:::google
     GSyncLog[GoogleSyncLogService]:::google
+
+    DriveMon[DriveActivityMonitorService]:::monitor
 
     Onboard[OnboardingService]:::onboarding
     OnboardWidget[OnboardingWidgetState]:::onboarding
@@ -340,13 +342,15 @@ graph LR
     GRemoval --> UEmail
     GRemoval --> User
     GRemoval --> Email
+    GSyncOutboxProc --> User
+    GSyncOutboxProc --> Team
+    GSyncOutboxProc --> Metrics
+
+    %% Monitor
     DriveMon --> TRes
     DriveMon --> User
     DriveMon --> SettingsSvc
     DriveMon --> Audit
-    GSyncOutboxProc --> User
-    GSyncOutboxProc --> Team
-    GSyncOutboxProc --> Metrics
 
     %% Onboarding
     Onboard --> User

@@ -11,3 +11,6 @@ inbox:
   - added: 2026-08-27
     what: "ProfileController.DownloadData has no catch, so a GDPR export contributor failure is an unhandled 500 there, where the same failure on /Guest/DownloadData sets an error toast and redirects (finding 16, /section-doctor on Gdpr 2026-08-27)."
     review: panel
+  - added: 2026-08-27
+    what: "The erasure fan-out's sequential-run rationale is false in two places — Services/AccountDeletionService.cs:200-201 and Docs/Users.md:212 — the same wrong justification the Gdpr export fan-out carried (finding 22, /section-doctor on Gdpr 2026-08-27)."
+    review: light
