@@ -6,6 +6,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using Humans.Base.Constants;
 using Humans.Base.Interfaces;
 using Humans.GoogleIntegration.Tests.Infrastructure;
 using Humans.Notifications.Contracts;
@@ -18,6 +19,7 @@ public class GoogleResourceReconciliationJobTests : IDisposable
     private readonly IGoogleGroupSync _googleGroupSync;
     private readonly FakeClock _clock;
     private readonly IHumansMetrics _metrics;
+    private readonly INotificationService _notifications;
     private readonly GoogleResourceReconciliationJob _job;
 
     public GoogleResourceReconciliationJobTests()
@@ -26,11 +28,12 @@ public class GoogleResourceReconciliationJobTests : IDisposable
         _googleGroupSync = Substitute.For<IGoogleGroupSync>();
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 9, 2, 0));
         _metrics = TestMetrics.Create();
+        _notifications = Substitute.For<INotificationService>();
 
         _job = new GoogleResourceReconciliationJob(
             _googleSyncService,
             _googleGroupSync,
-            Substitute.For<INotificationService>(),
+            _notifications,
             _metrics,
             NullLogger<GoogleResourceReconciliationJob>.Instance,
             _clock);
@@ -57,6 +60,28 @@ public class GoogleResourceReconciliationJobTests : IDisposable
             .SyncResourcesByTypeAsync(GoogleResourceType.Group, Arg.Any<SyncAction>(), Arg.Any<CancellationToken>());
         await _googleGroupSync.Received(1)
             .ReconcileAllAsync(SyncAction.Execute, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ExecuteAsync_WhenDriftCorrected_LinksAdminsToTheSyncPage()
+    {
+        _googleSyncService.EnforceInheritedAccessRestrictionsAsync(Arg.Any<CancellationToken>())
+            .Returns(1);
+        _googleSyncService.CheckGroupSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(new GroupSettingsDriftResult());
+
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _notifications.Received(1).SendToRoleAsync(
+            NotificationSource.GoogleDriftDetected,
+            Arg.Any<NotificationClass>(),
+            Arg.Any<NotificationPriority>(),
+            Arg.Any<string>(),
+            RoleNames.Admin,
+            Arg.Any<string?>(),
+            "/Google/Sync",
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

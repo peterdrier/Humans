@@ -153,7 +153,7 @@ public class GoogleResourceReconciliationJob(
                     $"Google reconciliation fixed {totalDrift} drift issue(s)",
                     RoleNames.Admin,
                     body: $"Inheritance corrections: {inheritanceCorrected}, group settings drift: {settingsResult.DriftCount}",
-                    actionUrl: "/Admin/GoogleSync",
+                    actionUrl: "/Google/Sync",
                     actionLabel: "View sync status",
                     cancellationToken: cancellationToken);
             }
@@ -181,7 +181,7 @@ public class GoogleResourceReconciliationJob(
                     RoleNames.Admin,
                     body: $"The following phase(s) encountered errors and did not complete: {failedPhaseList}. " +
                           "Other phases ran normally. Check application logs for details.",
-                    actionUrl: "/Admin/GoogleSync",
+                    actionUrl: "/Google/Sync",
                     actionLabel: "View sync status",
                     cancellationToken: cancellationToken);
             }
