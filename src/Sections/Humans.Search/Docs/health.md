@@ -11,21 +11,21 @@ within each group, with a row of chips to narrow the page to one kind. Pasting a
 of a name jumps straight to that thing. The page finds; it never decides who may open what
 it found — that is each destination page's job.
 
-The section owns nothing: no tables, no scores of its own, no row markup. It asks five other
+The section owns nothing: no tables, no scores of its own, no row markup. It asks the owning
 sections the same question and lays their answers out.
 
 ## 2. The shapes
 
 | Question shape | Asked of | Answered by |
 |---|---|---|
-| "Which of your entities match this text or id, and how well?" | Users, Teams, Camps, Shifts, Events | each section's `SearchAsync` on its read interface — four return `(Id, Name, Score)`, Users returns the match context too |
-| "Draw one of your rows for this id" | the same five | each section's `<vc:…-search-result>` view component |
+| "Which of your entities match this text or id, and how well?" | Users, Teams, Camps, Shifts, Events | each section's `SearchAsync` on its read interface — `(Id, Name, Score)`, plus the match context from Users |
+| "Draw one of your rows for this id" | the same sections | each section's `<vc:…-search-result>` view component |
 | "Order this bucket for display" | the controller | score desc then name asc; people by the shared relevance order |
 | "Should this bucket exist at all?" | the orchestrator and the view | query under 2 chars → nothing; a filter chip → one bucket; `Features:Events` off → no Events bucket, chip or heading |
 
-Vocabulary: `SearchResultType` (the five kinds), `GlobalSearchResult` (a key and an
-ordering handle, nothing displayable), `GlobalSearchResults` (five buckets and the echoed
-query).
+Vocabulary: `SearchResultType` (one value per kind), `GlobalSearchResult` (a key and an
+ordering handle, nothing displayable), `GlobalSearchResults` (one bucket per kind and the
+echoed query).
 
 ## 3. Structure
 
@@ -37,14 +37,14 @@ The shapes imply exactly today's layout, and nothing more:
   carry each section's key/score through untouched.
 - **One results record, one view-model, one view plus one partial** that switches a row
   onto its owner's component.
-- **A member-nav item, a resource marker with six resx files, `_ViewImports`** binding
-  five publishers' tag helpers.
+- **A member-nav item, a resource marker with one resx per supported culture, `_ViewImports`**
+  binding every publisher's tag helpers.
 - **No `Contracts/` content, no `Data/`, no decorator, no jobs.**
 
 ## 4. Invariants
 
 - Under 2 characters after trim: no section is called, every bucket is empty.
-- A filter calls one section and skips four — skipped means not called, not called-and-discarded.
+- A filter calls one section and skips the rest — skipped means not called, not called-and-discarded.
 - Text queries reach only each section's public-visibility surface, and people are matched
   on `PersonSearchFields.PublicAll` — a constant, not a role branch. No viewer, admin
   included, gets more through this page.
@@ -71,8 +71,8 @@ The shapes imply exactly today's layout, and nothing more:
 
 ## 6. Deliberately not done
 
-- **No Search-level cache.** Four buckets are already served from their owners' warm
-  snapshots; a cache here caches a cache and duplicates invalidation.
+- **No Search-level cache.** Every bucket but Shifts is already served from its owner's warm
+  snapshot; a cache here caches a cache and duplicates invalidation.
 - **No display fields on `GlobalSearchResult`.** Title/subtitle/url were removed on purpose
   (nobodies-collective/Humans#1062); the owner's component renders the row.
 - **No cross-modal pull-ins**, no unified cross-type ranking, no autocomplete.
@@ -84,7 +84,7 @@ The shapes imply exactly today's layout, and nothing more:
 
 ## Load-bearing weirdness
 
-- **Whole-project references to the five publishers**, not just their leaves: `@addTagHelper`
+- **Whole-project references to the publishers**, not just their leaves: `@addTagHelper`
   binds only against a referenced assembly. An orchestrator referencing what it orchestrates
   is expected; only cycles are forbidden.
 - **`_ViewImports` carries one `@addTagHelper` per publisher.** Dropping one ships that
@@ -97,7 +97,7 @@ The shapes imply exactly today's layout, and nothing more:
 - **`ISearchService` is internal and exists for two reasons**: it carries the `IOrchestrator`
   marker the analyzers police, and the controller tests substitute it.
 - **Shifts is the only DB-backed bucket** (Postgres `ILike` in the Shifts repository); the
-  other four match in memory in their caching decorators.
+  others match in memory in their caching decorators.
 - **`Features:Events` is read twice** — by the service (skip the call) and by the view (hide
   the chip and heading). The view-model does not carry the flag.
 - **The Events gate reads `_eventsFeatureEnabled && onlyType is null or Event`** — a
