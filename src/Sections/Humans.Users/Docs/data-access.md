@@ -16,14 +16,13 @@ The account-merge surface (`AccountMergeService`, `DuplicateAccountService`,
 by Profiles. `DuplicateAccountService` is detection-only (no repository, no
 DB access).
 
-The Profiles section's per-user persistence is consolidated into a single
-`IUserRepository`, which owns `Users`, `Profiles`, `UserEmails`,
-`ContactFields`, `ProfileLanguages`, `VolunteerHistoryEntries`,
-`EventParticipations`, and the ASP.NET-Identity `IdentityUserLogins`
-bridge. `IProfileService` is retired (now `IProfilePictureService` only)
-and the unified User+Profile read-model lives behind
-`IUserService.GetUserInfoAsync`. The Profiles repositories remain
-**Singletons** (`IDbContextFactory` pattern).
+Per-user persistence is a single `IUserRepository`, which owns `Users`,
+`Profiles`, `UserEmails`, `ContactFields`, `ProfileLanguages`,
+`VolunteerHistoryEntries`, `EventParticipations`, and the ASP.NET-Identity
+`IdentityUserLogins` bridge. `ProfileService` exposes only
+`IProfilePictureService`; the unified User+Profile read-model lives behind
+`IUserService.GetUserInfoAsync`. Repositories are **Singletons**
+(`IDbContextFactory` pattern).
 
 ### ProfileService (Scoped — `IProfilePictureService`)
 
@@ -162,9 +161,8 @@ decorator inheriting `TrackedCache<Guid, UserInfo>`, in the section's
 own `Data/` folder) which holds the
 canonical `UserInfo` read-model spanning User + Profile sections. The
 decorator exposes the budgeted cross-section read surface as
-`IUserServiceRead`. Following the User+Profile section merge,
-`IUserService` absorbed the legacy `IProfileService` surface; the
-interface's `[SurfaceBudget]` remains intentionally suspended.
+`IUserServiceRead`. `IUserService` carries the profile write surface too;
+the interface's `[SurfaceBudget]` is intentionally suspended.
 
 ### UserService (Scoped — wrapped by CachingUserService Singleton decorator)
 
@@ -198,7 +196,7 @@ Cross-section calls via `IAdminAuthorizationService`. No direct
 | `TrackedCache<Guid, UserInfo>` (`User.UserInfo`, in-process, no `IMemoryCache`) | Per-User | yes | yes | yes (`IUserInfoInvalidator` — fired by UserService/ProfileService writes, by `IUserMerge` participants, and by `UserInfoSaveChangesInterceptor` for Identity-machinery writes) |
 
 Implements `IUserService`, `IUserServiceRead`, `IUserMerge`,
-`IUserInfoInvalidator`, and the Infrastructure-internal
+`IUserInfoInvalidator`, and the section-internal
 `IUserInfoSliceRefresher` (consumed by `UserInfoSaveChangesInterceptor` to
 catch OAuth/`UpdateAsync`/`LastLoginAt` writes that bypass the service
 surface). Surfaced on `/Debug/CacheStats`.
@@ -227,7 +225,7 @@ Idempotent provisioning for import jobs. Uses ASP.NET `UserManager<User>`
 for password / identity primitives. Cross-section calls via
 `IUserEmailService`, `IUserService`, `IAuditLogService`. No cache.
 
-### AccountDeletionService (Scoped) — `Users/AccountLifecycle/`
+### AccountDeletionService (Scoped)
 
 No repository. GDPR right-to-deletion orchestrator. Fans out over
 `IUserService`, `IUserEmailService`, `ITeamService`,

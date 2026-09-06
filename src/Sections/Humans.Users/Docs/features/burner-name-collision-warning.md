@@ -100,6 +100,6 @@ five locale siblings (es/ca/fr/de/it).
 
 ## Related
 
-- [`docs/sections/Profiles.md`](../Users.md) — Profile section invariants.
+- [Users section doc](../Users.md) — Profile invariants.
 - [`src/Sections/Humans.Users/Docs/features/profile-search-detail.md`](profile-search-detail.md) — the person-search endpoint and matcher this feature extends.
 - [`memory/code/search-endpoint-response-shape.md`](../../../../../memory/code/search-endpoint-response-shape.md) — typed search/JSON responses.

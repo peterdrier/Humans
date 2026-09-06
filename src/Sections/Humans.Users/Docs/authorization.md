@@ -11,7 +11,7 @@
 | `UsersAdminController` | Class | `HumanAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` (class-level — `AdminList`, `Roles`, `AdminDetail`, `AdminOutbox`, `SuspendHuman`, `UnsuspendHuman`, `RejectSignup`, `AddRole` GET/POST, `EndRole` all inherit) |
 | `UsersAdminController.RevealIban` | Action | `Admin` | `PolicyNames.AdminOnly` (override; `Audience` and `PurgeHuman` are the other `AdminOnly` overrides) |
 | `UsersAdminController.AddRole/EndRole` runtime guards | In-method | `authorizationService.AuthorizeAsync(User, roleName, PolicyNames.RoleAssignmentManage)` — called via the named policy string rather than passing `RoleAssignmentOperationRequirement.Manage` directly (still resolves to the same resource-based handler, owned by `Humans.Auth`) | Resource-based |
-| `ProfileController` email-action runtime guards | In-method | `authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit)` (gating 18 email-edit endpoints) | Resource-based (see handler below) |
+| `ProfileController` email-action runtime guards | In-method | `authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit)` — every mutating `Me/Emails/*` and `{id}/Admin/Emails/*` action plus `Me/LinkedAccounts/Unlink` and the `{id}/Admin/Emails` GET, except the two `AdminOnly` overrides above | Resource-based (see handler below) |
 | `ProfileApiController` | Class | `[Authorize]` (authenticated) | — |
 | `ProfileApiController.Search` | Action | `[Authorize]` inherited (`[HttpGet("search")]`) | — (people search; admin bit never set on this endpoint) |
 | `ProfileApiController.BurnerNameCount` | Action | `[Authorize]` inherited (`[HttpGet("burner-name-count")]`) | — (excludes the authenticated viewer; self-exclusion uses session identity, not a caller-supplied id) |
@@ -25,9 +25,9 @@
 | `UsersAdminDebugController` | Class | `Admin` | `PolicyNames.AdminOnly` |
 | `UserController` | Class | `[Authorize]` (authenticated) | — (account-status wall + cancel-deletion landings at `/User`; exempt from `MembershipRequiredFilter` since these ARE the redirect targets — each action self-checks the caller's `UserState`) |
 | `UnsubscribeController` | Class | (no class-level `[Authorize]`) | — |
-| `GuestAccountController` | Class | `[Authorize]` (authenticated) | — (profileless-account self-service: comms preferences, GDPR erasure; moved from Shell's `GuestController`, #1091) |
+| `GuestAccountController` | Class | `[Authorize]` (authenticated) | — (profileless-account self-service: comms preferences, GDPR erasure) |
 | `GuestAccountController.CommunicationPreferences` (GET) / `UpdatePreference` (POST) | Action | `AllowAnonymous` | Override (accepts an unsubscribe token in place of a session; see `EndpointAuthorizationTests` allowlist) |
-| `UserNameBackfillAdminController` | Class | `Admin` | `PolicyNames.AdminOnly` (BurnerName/legal-name backfill onto `User`, #1097; idempotent, retires once done) |
+| `UserNameBackfillAdminController` | Class | `Admin` | `PolicyNames.AdminOnly` (BurnerName/legal-name backfill onto `User`; idempotent, retires once done) |
 
 ## Resource-Based Authorization Handler
 

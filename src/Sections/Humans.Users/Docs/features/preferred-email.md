@@ -124,7 +124,7 @@ UserEmail
 ├── IsVerified: bool
 ├── IsGoogle: bool (user-controlled; Google sync target)
 ├── GoogleEmailStatus: GoogleEmailStatus (per-address sync status; default Unknown)
-├── IsPrimary: bool (exactly one per user; DB column name IsNotificationTarget — C# renamed PR 4)
+├── IsPrimary: bool (exactly one per user; DB column keeps the legacy name IsNotificationTarget per no-drops-until-prod-verified)
 ├── Visibility: ContactFieldVisibility? (null = hidden)
 ├── VerificationSentAt: Instant? (rate limiting)
 ├── CreatedAt: Instant
@@ -133,7 +133,7 @@ UserEmail
 
 ### Google Email Preference (UserInfo)
 
-`User.GoogleEmail` C# property and the computed methods `GetEffectiveEmail()` / `GetGoogleServiceEmail()` were removed from the `User` entity (issue #635 §15i). The canonical read path is:
+`User` carries no Google-email property or helper (analyzer `HUM0001` enforces it). The canonical read path is:
 
 - `UserInfo.GoogleEmail` — the `UserEmail` row flagged `IsGoogle = true`; used by Google sync for Groups/Drive access.
 - `UserInfo.PrimaryEmail` — the `UserEmail` row flagged `IsPrimary = true`; used for system notification emails.
