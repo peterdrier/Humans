@@ -42,7 +42,7 @@ Finance when a SEPA transfer is booked) and `IHoldedCallLog`
 are its only outbound
 dependencies, plus `IOptions<HoldedSectionOptions>` for the monthly
 call-budget display. Implements `IHoldedService` (the ledger-read
-surface consumed cross-section by `HoldedFinanceService` —
+surface consumed cross-section by Finance's `Service` —
 `GetLedgerLinesAsync`, `GetAccountBalancesAsync`) and `IHoldedAdminService`
 (the `/Holded` admin-overview surface — usage, monthly call counts,
 per-account reconciliation status, account statements). No
