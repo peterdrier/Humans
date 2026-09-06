@@ -100,7 +100,7 @@
         Func<HoldedProvisioningRow, IHtmlContent> notesCell = @<text>
             @if (string.Equals(item.State, "Orphan", StringComparison.Ordinal))
             {
-                <span>Account exists in Holded but has no matching category — archived locally, not deleted from Holded.</span>
+                <span>Account exists in Holded but has no matching category — nothing is removed here or in Holded.</span>
             }
         </text>;
         var planRows = Model.Rows
