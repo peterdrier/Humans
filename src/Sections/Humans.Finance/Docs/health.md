@@ -5,7 +5,7 @@ section-doctor run and diffed against the previous run's copy.
 
 - Last assessed: 2026-09-06
 - Anchor: 10199a23
-- Previous target: 2026-08-18. Diff: the section moved. Two shapes the previous target did not
+- Previous target: 2026-08-18. Diff: the section moved. Shapes the previous target did not
   have — paying what is owed (SEPA generate and book) and the member's own data (GDPR export and
   erasure) — and the read/write split the previous target named as a seam has shipped. Structure
   and the Holded write-boundary statement updated to match; the rest holds.
@@ -15,7 +15,7 @@ section-doctor run and diffed against the previous run's copy.
 Finance is the treasurer's window onto what the organisation actually spent and actually owes its
 members, with Holded — the outside bookkeeping system — as the system of record.
 
-Four things happen here:
+What happens here:
 
 **Money out of the org, by budget category.** Every purchase invoice the bookkeeper enters in
 Holded is pulled in nightly and attributed to one budget category, so the budget pages can show
@@ -86,29 +86,29 @@ What the grouping shows:
 
 ## 3. Structure
 
-The layout those six shapes imply:
+The layout the shapes imply:
 
 ```
-Humans.Finance.Contracts/      two interfaces (read, read+write), the DTOs their methods return
+Humans.Finance.Contracts/      the read and read+write interfaces, the DTOs their methods return
 Humans.Finance/
   Section.cs                   DI
   Controllers/                 one controller — the pages and their posts
   Models/                      view models for those pages
   Views/Finance/               those pages
   Services/
-    Service.cs                 the six shapes
+    Service.cs                 the shapes
     HoldedMatcher.cs           pure attribution, no dependencies
     SepaPaymentFileBuilder.cs  pure pain.001 XML from a batch, no dependencies
     SepaSchema.cs, SepaText.cs the schema and the character rules that builder obeys
     IHoldedFinanceAdminService.cs  Finance's own page's interface (E, plus the connector overview)
-  Domain/                      six entities, two enums
-  Data/                        one repository over one context, six tables
+  Domain/                      the entities and their enums
+  Data/                        one repository over one context, the tables
   Resources/                   the pain.001.001.09 schema the file is validated against
 ```
 
 That is what is there. The file structure is right; the work is inside the files, not between them.
 
-Four things the shapes say about the inside:
+What the shapes say about the inside:
 
 - Shape **D**'s three methods share one derivation of balance and owed from a set of cached journal
   lines, and one accessor for the cached Holded contact list. A fourth path to either is an
@@ -163,6 +163,9 @@ Specified, not built. Not ranked, not struck; items touching these callers are s
   repository write.
 - **`holded_*` tables under a section called Finance** (nobodies-collective/Humans#1012). A rename is
   schema work, deferred wholesale.
+- **The creditor statement shows the IBAN raw** (`Views/Finance/CreditorStatement.cshtml`). The
+  invariant in §4 says every screen masks it; whether the view masks or the invariant narrows is
+  open (run 2026-09-06, finding 1).
 - **Booking is not cancellable mid-flight.** `BookSepaTransferAsync` takes no cancellation token by
   design — a half-posted payment is worse than a slow one — so the whole posting loop runs to the
   end once started.
@@ -222,5 +225,5 @@ Settled; do not re-litigate.
 
 | Run | Anchor | Headline | PR |
 |---|---|---|---|
-| [2026-09-06](../../../../docs/health/runs/2026-09-06-Finance.md) | `10199a23` | Second target; the section moved (SEPA payout and GDPR shapes, read split shipped). Docs and comments narrated the moves and counted things; three named invariants had no test and one test pinned an absence. No code defect found. A raw IBAN on the creditor statement contradicts the docs — Peter's call. | [#1613](https://github.com/peterdrier/Humans/pull/1613) |
+| [2026-09-06](../../../../docs/health/runs/2026-09-06-Finance.md) | `10199a23` | Second target; the section moved (SEPA payout and GDPR shapes, read split shipped). Docs and comments narrated the moves and counted things; named invariants had no test and one test pinned an absence. No code defect found. A raw IBAN on the creditor statement contradicts the docs — Peter's call. | [#1613](https://github.com/peterdrier/Humans/pull/1613) |
 | [2026-08-18](../../../../docs/health/runs/2026-08-18-Finance.md) | `41fd7374d` | First target. Doc led with 23 routes the section does not serve; a tag-collision bug in provisioning; a published DTO with no consumer. Prod code −113 lines, tests 55 → 92, mutation 34.4% → 57.9%. | [#1374](https://github.com/peterdrier/Humans/pull/1374) |
