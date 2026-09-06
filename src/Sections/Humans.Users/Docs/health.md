@@ -130,4 +130,4 @@ The shapes imply one register with one cache and one write funnel:
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-09-06 | First doctoring | pending |
+| 1 | 2026-09-06 | First doctoring | peterdrier/Humans#1603 |
