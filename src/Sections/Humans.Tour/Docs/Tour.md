@@ -6,7 +6,7 @@
   tests/Humans.Integration.Tests/Controllers/TourPageRenderTests.cs
 -->
 <!-- freshness:flag-on-change
-  Anonymous reachability of /Tour, the three entry points that lead to it, and the capability claims made in its copy — review when the Tour controller, view, layout or nav contribution changes, when the Welcome link or the dashboard card moves, or when a capability the page advertises is added or removed elsewhere in the app.
+  Anonymous reachability of /Tour, the entry points that lead to it, and the capability claims made in its copy — review when the Tour controller, view, layout or nav contribution changes, when the Welcome link or the dashboard card moves, or when a capability the page advertises is added or removed elsewhere in the app.
 -->
 
 # Tour — Section Invariants

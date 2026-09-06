@@ -5,9 +5,9 @@
 One public page that answers "what is Humans, and could it run my burn?" for someone who
 has never signed in — a Board member from another burn, a regional org still on
 spreadsheets, a curious volunteer handed the link. It reads like a promo site rather than a
-membership tool: a photo hero with a one-paragraph pitch, six plain-language chapters
+membership tool: a photo hero with a one-paragraph pitch, plain-language chapters
 (people, organize, money, govern, communicate, at the gate) each with a short feature list,
-two full-bleed photo interludes, an honest paragraph about modularity and the per-burn
+full-bleed photo interludes, an honest paragraph about modularity and the per-burn
 roadmap, an engineering-credibility strip, and a closing invitation to write to the team or
 read the source.
 
@@ -103,7 +103,7 @@ already left behind. The `ISectionMemberDashboard` seam exists for it (§5).
   as internals.
 - **The nav item's weight of 1000** sorts it last among contributed links, beside Legal.
 - **Google Fonts are loaded from the CDN**, as the Shell, Admin and Gate layouts do; the
-  Shell's Content-Security-Policy allows the two hosts.
+  Shell's Content-Security-Policy allows the Google Fonts hosts.
 - **Hero slides two and three lazy-load** via `data-bg`; only the first carries an inline
   background so the page paints without the script.
 

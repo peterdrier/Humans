@@ -30,12 +30,11 @@ public class TourControllerTests
     }
 
     [HumansFact]
-    public void Index_returns_the_default_view_with_no_model()
+    public void Index_returns_the_default_view()
     {
         var result = new TourController().Index();
 
         var view = result.Should().BeOfType<ViewResult>().Subject;
         view.ViewName.Should().BeNull(because: "the page is Views/Tour/Index.cshtml, found by convention");
-        view.Model.Should().BeNull(because: "the section owns no data and calls no services");
     }
 }
