@@ -8,13 +8,12 @@ using Humans.GoogleIntegration.Services.Workspace;
 
 namespace Humans.GoogleIntegration.Tests;
 
+
 /// <summary>
-/// Unit tests for the migrated Google Integration
-/// <see cref="GoogleWorkspaceUserService"/>. The service is a thin orchestrator
-/// over <see cref="IWorkspaceUserDirectoryClient"/>; these tests pin down the
-/// dispatch contract (connector calls happen with the expected arguments) and
-/// the only piece of real behavior owned by the service — the
-/// <c>lastName</c> pre-flight guard from the pre-§15 implementation.
+/// <see cref="GoogleWorkspaceUserService"/> forwards to <see cref="IWorkspaceUserDirectoryClient"/>
+/// unchanged. The one rule it owns is the blank-last-name guard: a blank name must never
+/// reach Google. The forwarding test is kept for ProvisionAccountAsync alone, whose five
+/// same-typed string parameters would let a swapped argument compile silently.
 /// </summary>
 public class GoogleWorkspaceUserServiceTests
 {
@@ -26,32 +25,6 @@ public class GoogleWorkspaceUserServiceTests
         _client = Substitute.For<IWorkspaceUserDirectoryClient>();
         _service = new GoogleWorkspaceUserService(
             _client, NullLogger<GoogleWorkspaceUserService>.Instance);
-    }
-
-    [HumansFact]
-    public async Task ListAccountsAsync_DelegatesToClient()
-    {
-        IReadOnlyList<WorkspaceUserAccount> expected =
-        [
-            new("a@nobodies.team", "A", "Alpha", false, DateTime.UtcNow, null, IsEnrolledIn2Sv: false)
-        ];
-        _client.ListAccountsAsync(Arg.Any<CancellationToken>()).Returns(expected);
-
-        var result = await _service.ListAccountsAsync(TestContext.Current.CancellationToken);
-
-        result.Should().BeSameAs(expected);
-    }
-
-    [HumansFact]
-    public async Task GetAccountAsync_DelegatesToClient_AndReturnsNullWhenMissing()
-    {
-        _client.GetAccountAsync("missing@nobodies.team", Arg.Any<CancellationToken>())
-            .Returns((WorkspaceUserAccount?)null);
-
-        var result = await _service.GetAccountAsync("missing@nobodies.team", TestContext.Current.CancellationToken);
-
-        result.Should().BeNull();
-        await _client.Received(1).GetAccountAsync("missing@nobodies.team", Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -86,32 +59,5 @@ public class GoogleWorkspaceUserServiceTests
             .WithMessage("*FamilyName is required*");
         await _client.DidNotReceiveWithAnyArgs().ProvisionAccountAsync(
             null!, null!, null!, null!, null, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task SuspendAccountAsync_DelegatesToClient()
-    {
-        await _service.SuspendAccountAsync("target@nobodies.team", TestContext.Current.CancellationToken);
-
-        await _client.Received(1).SuspendAccountAsync(
-            "target@nobodies.team", Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task ReactivateAccountAsync_DelegatesToClient()
-    {
-        await _service.ReactivateAccountAsync("target@nobodies.team", TestContext.Current.CancellationToken);
-
-        await _client.Received(1).ReactivateAccountAsync(
-            "target@nobodies.team", Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task ResetPasswordAsync_DelegatesToClient()
-    {
-        await _service.ResetPasswordAsync("target@nobodies.team", "NewP@ss", TestContext.Current.CancellationToken);
-
-        await _client.Received(1).ResetPasswordAsync(
-            "target@nobodies.team", "NewP@ss", Arg.Any<CancellationToken>());
     }
 }
