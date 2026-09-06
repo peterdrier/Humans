@@ -111,4 +111,4 @@ already left behind. The `ISectionMemberDashboard` seam exists for it (§5).
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-09-06 | First doctoring: CI-run tests for a section that had none; docs and comments cut to the current state | pending |
+| 1 | 2026-09-06 | First doctoring: CI-run tests for a section that had none; docs and comments cut to the current state | peterdrier/Humans#1611 |
