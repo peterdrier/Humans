@@ -1,0 +1,7 @@
+# Section debt ledger for Humans.Search. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+inbox:
+  - added: 2026-09-06
+    what: "View-side half of the Features:Events gate is unpinned in CI (finding 17, /section-doctor on Search 2026-09-06): SearchServiceTests pins that the service never calls Events when the flag is off, but nothing CI-run asserts that Index.cshtml hides the Events chip and heading — the only render tests (SearchPageRenderTests, GlobalSearchSectionRenderTests) live in the local-only Humans.Integration.Tests. Candidate: a Web.Tests page-render case with Features:Events=false asserting the chip is absent."
+    review: light
