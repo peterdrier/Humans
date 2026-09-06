@@ -128,4 +128,4 @@ The shapes imply a section with no data layer at all:
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-09-06 | First doctor pass — the code is close to target; the docs are not: the invariant doc knows one controller where three exist, the contracts README credits a nav tree the section replaced, and comments across the section name projects (`Humans.Infrastructure`, `Humans.UI`) that no longer exist | peterdrier/Humans#pending |
+| 1 | 2026-09-06 | First doctor pass — the code is close to target; the docs are not: the invariant doc knows one controller where three exist, the contracts README credits a nav tree the section replaced, and comments across the section name projects (`Humans.Infrastructure`, `Humans.UI`) that no longer exist | peterdrier/Humans#1598 |
