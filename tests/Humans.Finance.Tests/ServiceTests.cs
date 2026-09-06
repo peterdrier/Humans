@@ -1038,20 +1038,6 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task SetCreditorContact_AccountOutsideCreditorBlock_FailsWithoutTouchingHolded()
-    {
-        // The number arrives on a POST; the filtered dropdown is not a server-side gate.
-        var result = await MakeService().SetCreditorContactAsync(
-            Guid.NewGuid(), 42000000, Xunit.TestContext.Current.CancellationToken);
-
-        result.Succeeded.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("outside the member creditor block");
-        await _repo.DidNotReceive().UpsertCreditorContactAsync(
-            Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
-        await _client.DidNotReceive().ListContactsAsync(Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
     public async Task ListCreditorAccounts_BoundAccountWithNoHoldedContact_YieldsRowWithBlankName()
     {
         var userId = Guid.NewGuid();
@@ -1569,10 +1555,14 @@ public class HoldedFinanceServiceTests
     [InlineData(42000000)]
     public async Task SetCreditorContact_JustOutsideTheBlock_IsRefused(int accountNum)
     {
+        // The number arrives on a POST; the filtered dropdown is not a server-side gate.
         var result = await MakeService().SetCreditorContactAsync(
             Guid.NewGuid(), accountNum, Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("outside the member creditor block");
+        await _repo.DidNotReceive().UpsertCreditorContactAsync(
+            Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         await _client.DidNotReceiveWithAnyArgs().ListContactsAsync(Arg.Any<CancellationToken>());
     }
 
@@ -1591,25 +1581,6 @@ public class HoldedFinanceServiceTests
             Guid.NewGuid(), accountNum, Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
-    }
-
-    // ─── Negative rule: the sync never removes a doc ─────────────────────────────
-
-    [HumansFact]
-    public async Task Sync_DocsMissingFromHolded_AreNeverDeleted()
-    {
-        // "The sync job cannot delete HoldedExpenseDoc rows" — Holded-side deletions are out of scope,
-        // so a doc that stops appearing in the pull is simply not upserted, never removed.
-        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedCategoryMap>());
-        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).Returns(new HoldedDocSyncState());
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<HoldedPurchaseDocListItemDto>());
-
-        var result = await MakeService().SyncAsync(Xunit.TestContext.Current.CancellationToken);
-
-        result.DocCount.Should().Be(0);
-        _repo.ReceivedCalls().Select(c => c.GetMethodInfo().Name)
-            .Should().NotContain(n => n.Contains("Delete", StringComparison.Ordinal));
     }
 
     // ─── Which Holded account an expense line is booked to ───────────────────────

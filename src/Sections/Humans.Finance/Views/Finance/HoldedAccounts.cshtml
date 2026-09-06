@@ -3,7 +3,7 @@
 @using Microsoft.AspNetCore.Html
 @{
     ViewData["Title"] = "Holded Account Provisioning";
-    var blockStart = (int)(ViewBag.BlockStart ?? 62900100);
+    var blockStart = (int)ViewBag.BlockStart;
     var toAddRows = Model.Rows.Where(r => r.State == "ToAdd").ToList();
     var hasToAdd = toAddRows.Count > 0;
 }
