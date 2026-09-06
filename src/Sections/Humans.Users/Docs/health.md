@@ -1,8 +1,5 @@
 # Users — target shape
 
-Written by the section doctor before any scan; regenerated every run and diffed against the
-previous copy. History rows are at the bottom.
-
 ## 1. What the section does
 
 Users is the register of people. It knows who each person is (one account, the addresses
