@@ -87,7 +87,7 @@
     <value>Vista prèvia en directe de la càmera</value>
   </data>
   <data name="Scanner_Index_Intro" xml:space="preserve">
-    <value>Eines d'escàner al navegador. No s'envien dades al servidor — tot s'executa al teu dispositiu.</value>
+    <value>Eines de càmera per a l'equip d'entrades. El descodificador de codis de barres s'executa al teu dispositiu i no envia res; la consulta d'entrades envia el codi escanejat al servidor per trobar l'entrada. Cap de les dues s'usa per al check-in.</value>
   </data>
   <data name="Scanner_Index_Title" xml:space="preserve">
     <value>Eines d'escàner</value>

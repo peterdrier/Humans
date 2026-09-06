@@ -50,7 +50,7 @@
   <data name="Scanner_Barcode_Stop" xml:space="preserve"><value>Stop</value></data>
   <data name="Scanner_Barcode_Title" xml:space="preserve"><value>Barcode scanner</value></data>
   <data name="Scanner_Barcode_VideoAria" xml:space="preserve"><value>Live camera preview</value></data>
-  <data name="Scanner_Index_Intro" xml:space="preserve"><value>In-browser scanner tools. No data is sent to the server — everything runs on your device.</value></data>
+  <data name="Scanner_Index_Intro" xml:space="preserve"><value>Camera tools for ticket staff. The barcode decoder runs on your device and sends nothing; the ticket lookup sends the scanned code to the server to find the ticket. Neither tool is used for check-in.</value></data>
   <data name="Scanner_Index_Title" xml:space="preserve"><value>Scanner tools</value></data>
   <data name="Scanner_Section" xml:space="preserve"><value>Scanner</value></data>
   <data name="Scanner_Tickets_CardBlurb" xml:space="preserve"><value>Scan a ticket barcode to view the ticket holder, status, and transfer history.</value></data>

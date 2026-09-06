@@ -87,7 +87,7 @@
     <value>Aperçu en direct de la caméra</value>
   </data>
   <data name="Scanner_Index_Intro" xml:space="preserve">
-    <value>Outils de scanner dans le navigateur. Aucune donnée n'est envoyée au serveur — tout s'exécute sur ton appareil.</value>
+    <value>Outils caméra pour l'équipe billetterie. Le décodeur de codes-barres s'exécute sur ton appareil et n'envoie rien ; la recherche de billets envoie le code scanné au serveur pour retrouver le billet. Aucun des deux n'est utilisé pour le check-in.</value>
   </data>
   <data name="Scanner_Index_Title" xml:space="preserve">
     <value>Outils de scanner</value>

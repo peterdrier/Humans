@@ -87,7 +87,7 @@
     <value>Live-Kameravorschau</value>
   </data>
   <data name="Scanner_Index_Intro" xml:space="preserve">
-    <value>Scanner-Tools im Browser. Es werden keine Daten an den Server gesendet — alles läuft auf deinem Gerät.</value>
+    <value>Kamera-Tools für das Ticket-Team. Der Barcode-Decoder läuft auf deinem Gerät und sendet nichts; die Ticket-Suche sendet den gescannten Code an den Server, um das Ticket zu finden. Keines der beiden wird für den Check-in verwendet.</value>
   </data>
   <data name="Scanner_Index_Title" xml:space="preserve">
     <value>Scanner-Tools</value>

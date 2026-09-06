@@ -87,7 +87,7 @@
     <value>Vista previa en vivo de la cámara</value>
   </data>
   <data name="Scanner_Index_Intro" xml:space="preserve">
-    <value>Herramientas de escáner en el navegador. No se envían datos al servidor — todo se ejecuta en tu dispositivo.</value>
+    <value>Herramientas de cámara para el equipo de entradas. El decodificador de códigos de barras se ejecuta en tu dispositivo y no envía nada; la consulta de entradas envía el código escaneado al servidor para encontrar la entrada. Ninguna de las dos se usa para el check-in.</value>
   </data>
   <data name="Scanner_Index_Title" xml:space="preserve">
     <value>Herramientas de escáner</value>
