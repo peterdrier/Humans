@@ -45,7 +45,7 @@ Value = bug surface removed, then concepts removed, then words removed.
 | 10 | **Restating comments:** ten `GoogleResource` property docs repeating the property name, `// ====` region banners in two repositories and `IGoogleSyncService`, six `// Phase N` labels beside self-describing calls, a numbered step list, two Razor region markers. Cut. | low | **worked** |
 | 11 | **The target shape's §4 was wrong twice:** it said admin-triggered actions bypass sync mode (the invariant doc and a passing test say mode gates every Execute) and that all `/Google/*` deny non-Admin (Sync/Preview admit TeamsAdmin and Board; ProvisionEmail admits HumanAdmin). Corrected, plus the run-derivation subtitle dropped per peterdrier/Humans#1590. | med | **worked** |
 | 12 | **`GoogleWorkspaceUserServiceTests`: six of seven tests asserted the substitute they arranged.** Collapsed to the blank-last-name guard plus the `ProvisionAccountAsync` forwarding smoke (five same-typed strings, where a swap compiles). Reviewer: approve with condition — applied. | low | **worked** |
-| 13 | **Over-exposed public interfaces:** `IGoogleSyncService` 10 of 14 methods, `ITeamResourceService` 8 of 23, `IGoogleGroupSync` 2 of 3 have no caller outside the section. The shapes table wants one internal interface per reconciler and a leaf carrying only what Teams, Users, Monitor, Surveys and Notifications ask. Rearch — Peter's call. | high | **Needs Peter** |
+| 13 | **Over-exposed public interfaces:** most of `IGoogleSyncService` and `ITeamResourceService`, and part of `IGoogleGroupSync`, have no caller outside the section. The shapes table wants one internal interface per reconciler and a leaf carrying only what Teams, Users, Monitor, Surveys and Notifications ask. Rearch — Peter's call. | high | **Needs Peter** |
 | 14 | **Conformance `section-file-layout` flags `Health/`** at the project root; five sections carry it (Agent, Email, Guide, Tickets, GoogleIntegration). The allow-set is behind, not the sections; conformance rows change only at Peter's direction. | low | **Needs Peter** |
 | 15 | **`resource-key-prefix`:** the section's two keys use `GoogleAccounts_`, not `GoogleIntegration_`. Backlog, count only. | low | **no change** |
 | 16 | **`Docs/features/drive-activity-monitoring.md` documents a feature Monitor owns end to end** (service, job, schedule); its home is Monitor's `Docs/features/`. Cross-section move — Peter's call. | low | **Needs Peter** |
@@ -123,6 +123,10 @@ comment- and doc-heavy; a section this size with real behavior debt would not fi
 (finding 6) cost a broken build and a revert — the file's extension method is called by name.
 The History thread claimed `docs/sections/G5-SECTION-TEMPLATE.md` no longer exists (it does),
 which would have cut every step citation had it been trusted. Both settled by re-checking.
+Every review round returned a hand-written count (`no-derived-aggregates-in-docs`) in
+`health.md` or this file — an interface tally, a list size, a line count, a method ratio. The
+target shape and the run file should be written predicate-first; a number in either is the
+next round's finding.
 
 **What the assessment missed that striking revealed:** the history cut kept finding more once
 inside the files — `IGoogleSyncOutboxRepository`'s remarks and `IGoogleSyncServiceRead`'s

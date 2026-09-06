@@ -34,8 +34,8 @@ section's own sync log, which other pages render for a resource or a person.
 | "Provision `name@nobodies.team` for this person" | Teams' team-admin page | `IEmailProvisioningService.ProvisionNobodiesEmailAsync` |
 | "What happened in these Drive folders since T?" | Monitor | `IGoogleDriveActivityClient` + `ITeamResourceService.GetActiveDriveFoldersAsync` |
 | "Translate this text" | Surveys | `IGoogleTranslationService.TranslateAsync` |
-| "How many sync events are pending / failed?" | Notifications' admin meters | `IGoogleSyncServiceRead` |
-| "What did sync do to this resource / person?" | Teams' and Users' pages via `<vc:google-sync-log>` | `IGoogleSyncLogViewer` |
+| "How many sync events have failed?" | Notifications' admin meter | `IGoogleSyncServiceRead.GetFailedSyncEventCountAsync` (the pending count beside it is asked only by the section's own metrics service) |
+| "What did sync do to this resource / person?" | Monitor's sync-audit page via `<vc:google-sync-log>` | `IGoogleSyncLogViewer` |
 | "Which Google resources are mine?" | the member dashboard slot | `MyGoogleResourcesViewComponent` (own) |
 | Everything an admin does by hand: modes, outbox, accounts, groups, renames, flags, checks | the section's own `/Google/*` screens | `GoogleController` → internal services |
 | Nightly: reconcile, settings, inheritance, paths; every 10 min: drain the queue | Hangfire | `GoogleResourceReconciliationJob`, `ProcessGoogleSyncOutboxJob` |
