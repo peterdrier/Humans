@@ -68,7 +68,9 @@ The shapes imply one register with one cache and one write funnel:
 - The full app is reachable only when `User.State == Active`; state is written at each
   transition and never derived on read.
 - Exactly one verified `IsPrimary` address per account; at most one `IsGoogle`; a verified
-  address belongs to at most one account (partial unique index).
+  address belongs to at most one account. All three are service-enforced: the verify paths
+  open a merge request when another account already holds the address verified, and the OAuth
+  reconcile blocks or displaces before it writes.
 - An address is rewritten by exactly one path: the OAuth reconcile, matched on
   `(Provider, ProviderKey)`.
 - `Attended` is permanent; a `NotAttending` self-declaration is undone only by its author.
@@ -97,6 +99,9 @@ The shapes imply one register with one cache and one write funnel:
 - `AccountMergeRequest` still carries `User` navs; strip when the nav-strip pattern is
   generalised.
 - `PolicyNames.HumanAdminOnly` is registered with no call site.
+- The partial unique index on `user_emails.Email` (verified rows) is a unique index on an
+  editable string, which [`unique-constraints-ids-only`](../../../../memory/architecture/unique-constraints-ids-only.md)
+  forbids; the service check above is the contract and the drop is schema work (`Docs/debt.yml`).
 - Analyzer enforcement of the read/write split is advisory today.
 
 ## 6. Deliberately not done

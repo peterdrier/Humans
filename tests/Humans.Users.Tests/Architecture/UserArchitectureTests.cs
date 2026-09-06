@@ -4,6 +4,7 @@ using Humans.Users.Data;
 using Humans.Base;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using UserService = Humans.Users.Services.UserService;
@@ -37,18 +38,12 @@ public class UserArchitectureTests
     [HumansFact]
     public void IUserService_IUserServiceRead_And_IUserInfoInvalidator_ResolveToSameSingleton()
     {
-        // Mirrors the Users-section DI shape: the same CachingUserService
-        // singleton is exposed under all three interface keys.
+        // The real section registration: the same CachingUserService singleton
+        // must back all three interface keys, or an external "user changed"
+        // signal misses the cache owner.
         var services = new ServiceCollection();
-        services.AddSingleton(Substitute.For<IUserRepository>());
-        services.AddSingleton(Substitute.For<ICommunicationPreferenceRepository>());
-        services.AddSingleton(Substitute.For<IServiceScopeFactory>());
-        services.AddSingleton(Substitute.For<ILogger<CachingUserService>>());
-
-        services.AddSingleton<CachingUserService>();
-        services.AddSingleton<IUserService>(sp => sp.GetRequiredService<CachingUserService>());
-        services.AddSingleton<IUserServiceRead>(sp => sp.GetRequiredService<CachingUserService>());
-        services.AddSingleton<IUserInfoInvalidator>(sp => sp.GetRequiredService<CachingUserService>());
+        new Section().Register(services, new ConfigurationBuilder().Build());
+        services.AddLogging();
 
         using var provider = services.BuildServiceProvider();
 

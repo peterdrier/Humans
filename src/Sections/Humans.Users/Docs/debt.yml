@@ -17,3 +17,6 @@ inbox:
   - added: 2026-09-06
     what: "UsersAdminController (suspend, unsuspend, reject, roles, IBAN reveal, audience) has no tests in tests/Humans.Users.Tests beyond the purge negatives; the deny paths in Docs/authorization.md are pinned only by the repo-wide EndpointAuthorizationTests sweep (/section-doctor on Users 2026-09-06)."
     review: light
+  - added: 2026-09-06
+    what: "Data/Configurations/UserEmailConfiguration.cs:68-71 declares a partial unique index on user_emails.Email (IsVerified = true) — a unique index on a user-editable string, forbidden by memory/architecture/unique-constraints-ids-only.md. The cross-account check is already service-enforced (VerifyEmailAsync and AdminMarkVerifiedAsync open a merge request; the OAuth reconcile blocks or displaces), so the index is a backstop only. Dropping it is a Users migration (Codex finding on peterdrier/Humans#1603)."
+    review: light

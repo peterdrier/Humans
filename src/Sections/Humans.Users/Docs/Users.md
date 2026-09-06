@@ -440,7 +440,7 @@ Per-user email addresses (login, verified, notifications). `UserEmail` has no `U
 | VerificationSentAt | Instant? | Last time a verification email was sent (rate limiting) |
 | CreatedAt / UpdatedAt | Instant | Maintained by `UserEmailService` |
 
-**Indexes:** `UserId`; **unique partial index** on `Email` filtered to `IsVerified = true` (Postgres `"IsVerified" = true`) — prevents email squatting across accounts.
+**Indexes:** `UserId`; **unique partial index** on `Email` filtered to `IsVerified = true` (Postgres `"IsVerified" = true`). The cross-account check is service-enforced (`VerifyEmailAsync`, `AdminMarkVerifiedAsync`, the OAuth reconcile); the index is a unique index on an editable string, forbidden by `memory/architecture/unique-constraints-ids-only.md`, and its drop is recorded in `Docs/debt.yml`.
 
 No shadow columns (`IsOAuth` and `DisplayOrder` are gone from the table; `HUM0001` rejects references to either). Display sorting is alphabetical on `Email`.
 
