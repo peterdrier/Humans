@@ -5,15 +5,13 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Tour;
 
 /// <summary>
-/// Tour's DI entry point, at the project root by convention. Discovered by Shell.
-/// Register is empty: Tour owns no tables and no services — it is one anonymous
-/// controller rendering static content. The type exists because ISection is what puts
-/// the assembly in SectionDiscoveryExtensions' discovered-sections log (the Scanner shape).
+/// Tour's DI entry point. Register is empty by design (no tables, no services); the
+/// ISection type is what makes the assembly a discovered section — delete it and the
+/// internal controller is no longer routed, so /Tour 404s with a green build.
 /// </summary>
 public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
-        // Intentionally empty — see the remarks above.
     }
 }

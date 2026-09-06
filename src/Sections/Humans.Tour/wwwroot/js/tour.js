@@ -1,6 +1,5 @@
 // Tour landing page — hero slideshow, scroll-triggered fade-ups, and the dust
-// canvas. Patterns lifted from nobodies.team so the two pages feel like siblings.
-// Plain JS, no dependencies; everything degrades to a static page without it.
+// canvas. Plain JS, no dependencies; everything degrades to a static page without it.
 (function () {
     'use strict';
 
@@ -32,7 +31,6 @@
         setInterval(advance, 5000);
     }
 
-    // Scroll fade-ups.
     function initScrollAnimations() {
         var animEls = document.querySelectorAll('.anim');
         if (!animEls.length || !('IntersectionObserver' in window)) {

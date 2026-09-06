@@ -1,14 +1,12 @@
-/* Tour landing page — visual language borrowed from nobodies.team (warm desert
-   palette, Inter + Permanent Marker, scroll fade-ups). Scoped to the Tour layout;
-   nothing here loads anywhere else in the app. */
+/* Tour landing page styles. Scoped to _TourLayout; loaded nowhere else in the app. */
 
 :root {
     --tour-bg: #faf5ee;
     --tour-bg-alt: #f2ebe0;
     --tour-text: #2c2418;
     --tour-text-muted: #6b5e50;
-    /* Darkened from nobodies.team's #c2703e for WCAG AA: ≥4.5:1 as white-on-accent
-       (buttons, header CTA) and as accent text on --tour-bg/--tour-bg-alt. */
+    /* WCAG AA (≥4.5:1) both as white-on-accent (buttons, header CTA) and as accent
+       text on --tour-bg/--tour-bg-alt — keep it this dark. */
     --tour-accent: #96522c;
     --tour-accent-hover: #7d4425;
     --tour-yellow: #c9922a;
