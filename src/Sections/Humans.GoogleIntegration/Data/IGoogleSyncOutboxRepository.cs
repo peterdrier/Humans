@@ -6,7 +6,7 @@ namespace Humans.GoogleIntegration.Data;
 
 /// <summary>
 /// Repository for the Google Integration section's
-/// <c>google_sync_outbox_events</c> table.
+/// <c>google_sync_outbox</c> table.
 /// </summary>
 /// <remarks>
 /// Part 1 of issue #554 introduced this repository surface so Notifications

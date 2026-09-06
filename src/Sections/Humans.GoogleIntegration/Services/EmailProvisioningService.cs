@@ -10,7 +10,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.GoogleIntegration.Services;
 
-/// <summary>4-step @nobodies.team email provisioning flow. Used by HumanController (Admin) and TeamAdminController (Coordinators).</summary>
+/// <summary>4-step @nobodies.team email provisioning flow. Used by GoogleController (Admin, HumanAdmin) and TeamAdminController (Coordinators).</summary>
 internal sealed class EmailProvisioningService(
     IUserServiceRead userService,
     IGoogleWorkspaceUserService workspaceUserService,

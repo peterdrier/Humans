@@ -2,6 +2,10 @@
   src/Sections/Humans.GoogleIntegration/**
   src/Sections/Humans.GoogleIntegration.Contracts/**
   src/Sections/Humans.Teams.Contracts/ISystemTeamSync.cs
+  src/Sections/Humans.AuditLog.Contracts/ILegacyGoogleSyncAuditReader.cs
+  src/Sections/Humans.Monitor/Services/DriveActivityMonitorService.cs
+  src/Sections/Humans.Monitor/Views/_ViewImports.cshtml
+  src/Sections/Humans.Users/Services/UserEmailService.cs
 -->
 <!-- freshness:flag-on-change
   Sync mode invariants, Shared-Drive-only constraint, GoogleEmailStatus rules, and reconciliation gateway operations — review when Google Integration services/entities/controller change.
@@ -81,7 +85,6 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 | `/Google/LinkGroupToTeam` | POST | Admin | Link an unlinked domain group to a team |
 | `/Google/CheckEmailRenames` | POST | Admin | Detect OAuth email renames |
 | `/Google/EmailRenames` | GET | Admin | PRG landing for email rename results |
-| `/Google/FixEmailRename` | POST | Admin | Apply one email rename fix |
 | `/Google/EmailFlagViolations` | GET | Admin | List users with `IsGoogle`/`IsPrimary` flag violations |
 | `/Google/Accounts` | GET | Admin | @nobodies.team Workspace account list (2FA, recovery email) |
 | `/Google/Accounts/Provision` | POST | Admin | Provision standalone @nobodies.team account |
@@ -176,7 +179,7 @@ The read/write split is deliberate: `IGoogleSyncLogViewer` and its `GoogleSyncLo
 ### Repository surface
 
 - **`ISyncSettingsRepository`** — owns `sync_service_settings`. Unique index on `ServiceType` (`SyncServiceSettingsConfiguration.cs:34`). One row per `SyncServiceType`, seeded (reserved GUID block 0002).
-- **`IGoogleSyncOutboxRepository`** — owns `google_sync_outbox` (table name in EF config: `google_sync_outbox`; `design-rules.md §8` lists this as `google_sync_outbox_events` — that name is stale, the table is `google_sync_outbox`). Entity holds `TeamId`/`UserId` scalars only; no entity-level navs and, since #992, no FK constraint either — bare Guid columns. Indexes on `(ProcessedAt, OccurredAt)`, `(TeamId, UserId, ProcessedAt)`, and `DeduplicationKey` (unique). Enqueue writes live here (`AddAsync` / `AddRangeAsync`) and are surfaced to producers through `IGoogleSyncOutboxService`. When an enqueue must be atomic with another section's mutation — e.g. `TeamService` queuing an event on a `TeamMember` change — the producer wraps the team-repository call and `IGoogleSyncOutboxService.AddAsync` in an ambient `TransactionScope` rather than folding the outbox write into `TeamRepository`.
+- **`IGoogleSyncOutboxRepository`** — owns `google_sync_outbox`. Entity holds `TeamId`/`UserId` scalars only; no entity-level navs and, since #992, no FK constraint either — bare Guid columns. Indexes on `(ProcessedAt, OccurredAt)`, `(TeamId, UserId, ProcessedAt)`, and `DeduplicationKey` (unique). Enqueue writes live here (`AddAsync` / `AddRangeAsync`) and are surfaced to producers through `IGoogleSyncOutboxService`. When an enqueue must be atomic with another section's mutation — e.g. `TeamService` queuing an event on a `TeamMember` change — the producer wraps the team-repository call and `IGoogleSyncOutboxService.AddAsync` in an ambient `TransactionScope` rather than folding the outbox write into `TeamRepository`.
 - **`IGoogleSyncLogRepository`** — owns `google_sync_log`. Append + two top-N reads (by resource, by user ids), capped at 200 rows each. Its main caller is `GoogleSyncLogService`, which writes best-effort (a failed log is swallowed after an Error, never failing the sync) and reads for `<vc:google-sync-log>`. `AddRangeAsync` + `GetExistingIdsAsync` exist for the one-time history migration and go with it.
 - **`IGoogleResourceRepository`** — narrow writes to the sibling-owned `google_resources` table (Teams section §8 owner). Used by `GoogleWorkspaceSyncService` for reconciliation-loop atomic writes. All broader reads/writes route through `ITeamResourceService`.
 

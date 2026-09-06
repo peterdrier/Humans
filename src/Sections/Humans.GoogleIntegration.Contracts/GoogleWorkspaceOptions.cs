@@ -1,20 +1,12 @@
 namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
-/// Non-sensitive Google Workspace configuration consumed by the
-/// Application-layer <c>GoogleWorkspaceSyncService</c> (§15 Part 2b, issue #575).
-/// Credential-sensitive values (service-account key path / inline JSON) stay on
-/// <c>Humans.Base.Configuration.GoogleWorkspaceSettings</c>; both
-/// bind to the same <c>GoogleWorkspace</c> appsettings section at DI
-/// registration time.
+/// Non-sensitive Google Workspace configuration: domain, customer id, default group
+/// settings. Credential-sensitive values (service-account key path / inline JSON) stay on
+/// <c>Humans.Base.Configuration.GoogleWorkspaceSettings</c>; both bind to the same
+/// <c>GoogleWorkspace</c> appsettings section, and the shared property names keep the two
+/// bindings identical.
 /// </summary>
-/// <remarks>
-/// Lives in <c>Humans.Base.Configuration</c> so the Application-layer
-/// sync service can read domain / customer id / default group settings without
-/// reaching into Infrastructure. Mirrors the same field names as the
-/// corresponding properties on <c>GoogleWorkspaceSettings</c> so the shared
-/// binding path produces identical values.
-/// </remarks>
 public sealed class GoogleWorkspaceOptions
 {
     /// <summary>

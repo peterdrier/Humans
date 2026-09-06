@@ -73,7 +73,7 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 **So that** I can troubleshoot access issues and verify correctness
 
 **Acceptance Criteria:**
-- Sync status page at `/Teams/Sync` shows all active resources (accessible to TeamsAdmin, Board, Admin)
+- Sync status page at `/Google/Sync` shows all active resources (accessible to TeamsAdmin, Board, Admin)
 - Tabbed interface: Google Drive tab and Google Groups tab
 - Per-tab preview loads via AJAX (read-only API calls)
 - Summary cards per tab: Total Resources, In Sync, Drifted, Errors
@@ -566,7 +566,7 @@ Process: Calls SyncResourcesByTypeAsync / ReconcileAllAsync with SyncAction.Exec
 
 **Per-phase fault isolation:** Each top-level phase (DriveFolder sync, DriveFile sync, Group membership reconcile, Drive folder path updates, Inherited access enforcement, Group settings check) runs independently. A failure in one phase does not abort the others. After all phases complete, the job records `google_resource_reconciliation / partial_failure` in metrics and dispatches a single `SyncError` Admin alert listing which phases failed. If all phases succeed, the metric is `success` and no error alert fires.
 
-**Drive folder path updates:** After permission sync, the job calls `UpdateDriveFolderPathsAsync` to fetch the current folder name and parent chain for each active Drive resource via the Drive API (`files.get` with `fields=name,parents`). If a folder has been renamed or moved, `GoogleResource.Name` is updated to reflect the full logical path (e.g. "Shared Drive / Department / Subfolder"). This keeps the `/Teams/Sync` page accurate without requiring manual intervention.
+**Drive folder path updates:** After permission sync, the job calls `UpdateDriveFolderPathsAsync` to fetch the current folder name and parent chain for each active Drive resource via the Drive API (`files.get` with `fields=name,parents`). If a folder has been renamed or moved, `GoogleResource.Name` is updated to reflect the full logical path (e.g. "Shared Drive / Department / Subfolder"). This keeps the `/Google/Sync` page accurate without requiring manual intervention.
 
 > Jobs are active but mode-gated: each service must have its sync mode set to AddOnly or AddAndRemove at `/Google/SyncSettings` before the job will modify Google resources.
 

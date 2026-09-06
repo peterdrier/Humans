@@ -7,16 +7,11 @@ namespace Humans.GoogleIntegration.Contracts;
 /// classification included.
 /// </summary>
 /// <remarks>
-/// Here rather than internal because <c>ProcessGoogleSyncOutboxJob</c> sits in the section's
-/// <c>Contracts/</c> folder — a separate assembly from this leaf — where it has to be public
-/// itself, since recurring jobs are named by concrete type in Shell's
-/// <c>UseHumansRecurringJobs</c> roll-call and have no discovery seam yet
-/// (G5-SECTION-TEMPLATE.md step 6b). The job used to inject
-/// <c>IGoogleSyncOutboxRepository</c> and <c>IGoogleResourceRepository</c> and run the drain
-/// itself, which stopped being possible when both repositories became internal to the
-/// section. The contract is deliberately "do the thing" and not "give me the rows": the
-/// classification it turns on is <c>Google.GoogleApiException.Error.Code</c>, and
-/// <c>Humans.Application</c> carries no <c>Google.Apis.*</c> package by design.
+/// Public rather than internal because the Hangfire job that calls it,
+/// <c>ProcessGoogleSyncOutboxJob</c>, is public. The contract is deliberately "do the thing"
+/// and not "give me the rows": the permanent-vs-retry classification turns on
+/// <c>GoogleApiException.Error.Code</c>, which stays inside the section with the
+/// <c>Google.Apis.*</c> packages.
 /// </remarks>
 public interface IGoogleSyncOutboxProcessor : IApplicationService
 {

@@ -3,7 +3,7 @@
   src/Sections/Humans.GoogleIntegration/Services/EmailProvisioningService.cs
   src/Sections/Humans.Users/Services/AccountProvisioningService.cs
   src/Sections/Humans.Users/Services/UserEmailService.cs
-  src/Humans.Web/Controllers/AdminController.cs
+  src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
   src/Sections/Humans.Email/Controllers/EmailController.cs
   src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Sections/Humans.GoogleIntegration/Services/**

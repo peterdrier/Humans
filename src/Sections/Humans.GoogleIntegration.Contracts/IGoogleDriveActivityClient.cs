@@ -3,12 +3,10 @@ namespace Humans.GoogleIntegration.Contracts;
 /// <summary>
 /// Narrow connector over the Google Drive Activity API v2 and the Admin
 /// Directory API, scoped to the read-only operations performed by
-/// <see cref="IDriveActivityMonitorService"/>. Implementations live in
-/// <c>Humans.Infrastructure</c> (real Google-backed implementation for
-/// production, stub for dev without service-account credentials). The
-/// Application-layer service depends only on this interface so the
-/// <c>Humans.Application</c> project stays free of <c>Google.Apis.*</c>
-/// imports inside business logic (design-rules §13).
+/// <see cref="IDriveActivityMonitorService"/>. The real Google-backed client and the
+/// dev-mode stub live in <c>Humans.GoogleIntegration/Services/Workspace/</c>. On this leaf
+/// because Monitor consumes it across an assembly boundary; shape-neutral so no consumer
+/// imports <c>Google.Apis.*</c> (design-rules §13).
 /// </summary>
 public interface IGoogleDriveActivityClient
 {
