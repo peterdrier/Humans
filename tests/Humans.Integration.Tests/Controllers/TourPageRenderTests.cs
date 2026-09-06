@@ -6,11 +6,9 @@ using Xunit;
 namespace Humans.Integration.Tests.Controllers;
 
 /// <summary>
-/// Renders the Tour section's public page. Tour is the first section created directly in
-/// src/Sections (never lived in Shell), so this is the standing proof that a from-scratch
-/// section RCL routes, resolves a layout (Tour ships its own _TourLayout), and renders —
-/// the failure modes are a 404 (controller not discovered) or a 200 with literal markup
-/// (missing _ViewImports line).
+/// Renders the Tour section's public page: proof that a section RCL routes, resolves its
+/// own layout (_TourLayout) and renders. The failure modes are a 404 (controller not
+/// discovered) or a 200 with literal markup (missing _ViewImports line).
 /// </summary>
 public class TourPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
@@ -29,6 +27,8 @@ public class TourPageRenderTests(HumansTestDatabase database) : IntegrationTestB
         html.Should().Contain("Communicate");
         html.Should().Contain("Humans for your burn");
         html.Should().Contain("href=\"/About\"");
+        html.Should().Contain("Elsewhere");
+        html.Should().NotContain("Nowhere", because: "the copy may name Elsewhere only (Docs/Tour.md)");
     }
 
     [HumansFact(Timeout = 60000)]
@@ -50,12 +50,16 @@ public class TourPageRenderTests(HumansTestDatabase database) : IntegrationTestB
     [HumansFact(Timeout = 60000)]
     public async Task Signed_in_members_reach_Tour_from_a_dashboard_tile_not_the_nav()
     {
-        // The signed-in top nav is too busy for a Tour slot (Peter, 2026-08-13); members get
-        // a dashboard action card instead.
+        // The signed-in top nav has no Tour slot; the dashboard tile is the member entry.
         var ct = TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
         var homeHtml = await (await Client.GetAsync("/", ct)).Content.ReadAsStringAsync(ct);
         homeHtml.Should().Contain("href=\"/Tour\"", because: "the dashboard Tour tile is the member-facing entry");
+
+        // A signed-in page without the dashboard carries the top nav alone.
+        var teamsHtml = await (await Client.GetAsync("/Teams", ct)).Content.ReadAsStringAsync(ct);
+        teamsHtml.Should().NotContain("href=\"/Tour\"",
+            because: "SectionNav's Tour link is anonymous-only; signed in, only the dashboard tile links it");
     }
 }
