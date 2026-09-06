@@ -109,4 +109,4 @@ The shapes imply exactly today's layout, and nothing more:
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-09-06 | First doctor pass — the code is at target; the docs are not: the Shifts read-split, the nav's move to `ISectionNav`, and two rulings that closed as designed are all recorded as still pending, and every line-number citation had drifted | peterdrier/Humans#pending |
+| 1 | 2026-09-06 | First doctor pass — the code is at target; the docs are not: the Shifts read-split, the nav's move to `ISectionNav`, and two rulings that closed as designed are all recorded as still pending, and every line-number citation had drifted | peterdrier/Humans#1602 |
