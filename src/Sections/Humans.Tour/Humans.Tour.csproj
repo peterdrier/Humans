@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Humans.Tour.Tests" />
     <!-- The one assembly allowed to see many sections. -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
