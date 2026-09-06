@@ -102,9 +102,6 @@
   <data name="Profile_NotificationTargetShort" xml:space="preserve">
     <value>Notificacions</value>
   </data>
-  <data name="Profile_Teams" xml:space="preserve">
-    <value>Equips</value>
-  </data>
   <data name="Profile_Motivation" xml:space="preserve">
     <value>Motivació</value>
   </data>
@@ -126,21 +123,8 @@
   <data name="Profile_Languages" xml:space="preserve">
     <value>Idiomes parlats</value>
   </data>
-  <data name="Profile_Pronouns" xml:space="preserve">
-    <value>Pronoms</value>
-  </data>
   <data name="Profile_EnterEmail" xml:space="preserve">
     <value>Si us plau, introdueix una adreça de correu electrònic.</value>
-  </data>
-  <data name="Profile_AlreadySignInEmail" xml:space="preserve">
-    <value>Aquesta ja és la teva adreça d'inici de sessió. No cal establir-la com a preferida.</value>
-  </data>
-  <data name="Profile_VerificationCooldown" xml:space="preserve">
-    <value>Si us plau, espera {0} minut(s) abans de sol·licitar un altre correu de verificació.</value>
-    <comment>{0} = minutes remaining</comment>
-  </data>
-  <data name="Profile_EmailInUse" xml:space="preserve">
-    <value>Aquesta adreça de correu ja està en ús per un altre compte.</value>
   </data>
   <data name="Profile_VerificationSent" xml:space="preserve">
     <value>Correu de verificació enviat a {0}. Si us plau, revisa la teva safata d'entrada.</value>
@@ -148,15 +132,6 @@
   </data>
   <data name="Profile_InvalidVerificationLink" xml:space="preserve">
     <value>Enllaç de verificació no vàlid.</value>
-  </data>
-  <data name="Profile_NoEmailPending" xml:space="preserve">
-    <value>No hi ha cap correu pendent de verificació.</value>
-  </data>
-  <data name="Profile_VerificationExpired" xml:space="preserve">
-    <value>L'enllaç de verificació no és vàlid o ha expirat.</value>
-  </data>
-  <data name="Profile_EmailClaimed" xml:space="preserve">
-    <value>Aquesta adreça de correu ha estat reclamada per un altre compte.</value>
   </data>
   <data name="Profile_EmailVerified" xml:space="preserve">
     <value>L'adreça de correu {0} ha estat verificada.</value>
@@ -170,9 +145,6 @@
   </data>
   <data name="Profile_NotificationTargetUpdated" xml:space="preserve">
     <value>Adreça de correu de notificacions actualitzada.</value>
-  </data>
-  <data name="Profile_PreferredEmailCleared" xml:space="preserve">
-    <value>El correu preferit s'ha eliminat. Els correus del sistema s'enviaran a la teva adreça d'inici de sessió.</value>
   </data>
   <data name="Profile_DeletionAlreadyPending" xml:space="preserve">
     <value>Ja existeix una sol·licitud d'eliminació pendent.</value>
@@ -217,9 +189,6 @@
   <data name="Profile_EmergencyContactRelationship" xml:space="preserve">
     <value>Relació</value>
   </data>
-  <data name="Profile_EmergencyContactBoardOnly" xml:space="preserve">
-    <value>Només visible per a tu i la junta directiva.</value>
-  </data>
   <data name="Profile_NoPriorBurnExperience" xml:space="preserve">
     <value>No tinc experiència prèvia en burns</value>
   </data>
@@ -244,13 +213,6 @@
   <data name="Profile_WhatsApp" xml:space="preserve">
     <value>WhatsApp</value>
   </data>
-  <data name="Profile_ImportGooglePhoto_Success" xml:space="preserve"><value>La teva foto de Google s'ha importat com a foto de perfil.</value></data>
-  <data name="Profile_ImportGooglePhoto_Unavailable" xml:space="preserve"><value>No podem importar una foto de Google: el teu compte no està vinculat a Google o no es va capturar cap avatar en iniciar sessió.</value></data>
-  <data name="Profile_ImportGooglePhoto_NoProfile" xml:space="preserve"><value>Acaba de configurar el teu perfil primer i després podràs importar la teva foto de Google.</value></data>
-  <data name="Profile_ImportGooglePhoto_AlreadyHasCustom" xml:space="preserve"><value>Ja tens una foto de perfil personalitzada. Elimina-la primer per importar la teva foto de Google.</value></data>
-  <data name="Profile_ImportGooglePhoto_FetchFailed" xml:space="preserve"><value>No hem pogut obtenir la teva foto de Google. Prova-ho més tard o puja'n una directament.</value></data>
-  <data name="Profile_ImportGooglePhoto_InvalidFormat" xml:space="preserve"><value>No s'ha pogut processar la teva foto de Google: format no admès o resposta incorrecta.</value></data>
-  <data name="Profile_ImportGooglePhoto_NotGoogleUrl" xml:space="preserve"><value>No hem pogut importar la teva foto de Google: la URL de l'avatar emmagatzemat no sembla una adreça de Google. Puja'n una directament.</value></data>
   <data name="Profile_DietaryMedical_PageTitle" xml:space="preserve"><value>Dietary &amp; medical info</value></data>
   <data name="Profile_DietaryMedical_DietaryPreference_Label" xml:space="preserve"><value>Dietary preference</value></data>
   <data name="Profile_DietaryMedical_DietaryPreference_Omnivore" xml:space="preserve"><value>Omnivore</value></data>
@@ -376,20 +338,11 @@
   <data name="ProfileEdit_AddEntry" xml:space="preserve">
     <value>Afegeix entrada</value>
   </data>
-  <data name="ProfileEdit_ManageEmails" xml:space="preserve">
-    <value>Adreces de correu</value>
-  </data>
-  <data name="ProfileEdit_ManageEmailsHelp" xml:space="preserve">
-    <value>Afegeix adreces de correu, estableix preferències de notificació i controla la visibilitat del perfil.</value>
-  </data>
   <data name="ProfileEdit_PictureHelp" xml:space="preserve">
     <value>Puja una imatge JPEG, PNG, WebP o HEIC (màx. 20MB). Les imatges grans es redimensionen automàticament.</value>
   </data>
   <data name="ProfileEdit_RemovePicture" xml:space="preserve">
     <value>Elimina foto personalitzada</value>
-  </data>
-  <data name="ProfileEdit_DateOfBirthHelp" xml:space="preserve">
-    <value>Només visible per a tu i la junta directiva. S'utilitza per al calendari d'aniversaris.</value>
   </data>
   <data name="ProfileEdit_EmergencyContactHelp" xml:space="preserve">
     <value>Proporciona una persona de contacte per a emergències en esdeveniments.</value>
@@ -400,17 +353,12 @@
   <data name="ProfileEdit_SectionContributor" xml:space="preserve">
     <value>Informació de contribució</value>
   </data>
-  <data name="ProfileEdit_ContributorNote" xml:space="preserve">
-    <value>Pot ser considerada per a sol·licituds de Col·laborador o Associat.</value>
-  </data>
   <data name="ProfileEdit_ContributionInterestsHelp" xml:space="preserve">
     <value>Comparteix les teves habilitats, interessos i com t'agradaria participar. Visible per a tots els humans.</value>
   </data>
   <data name="ProfileEdit_BoardNotesHelp" xml:space="preserve">
     <value>Notes privades per a la Junta.</value>
   </data>
-  <data name="ProfileEdit_ImportGooglePhoto" xml:space="preserve"><value>Importa la meva foto de Google</value></data>
-  <data name="ProfileEdit_ImportGooglePhotoHelp" xml:space="preserve"><value>Copia la foto del teu compte de Google com a foto de perfil. Podràs reemplaçar-la més endavant pujant-ne una de nova.</value></data>
   <data name="ProfileEdit_CityPlaceholder" xml:space="preserve"><value>Comença a escriure la teva ciutat…</value></data>
   <data name="ProfileEdit_ContactType" xml:space="preserve"><value>Tipus</value></data>
   <data name="ProfileEdit_ContactValue" xml:space="preserve"><value>Valor</value></data>
@@ -634,35 +582,8 @@
   <data name="Emails_ManageLater" xml:space="preserve">
     <value>Pots afegir i gestionar adreces de correu addicionals des del teu perfil després de completar la configuració.</value>
   </data>
-  <data name="Emails_Header_Email" xml:space="preserve">
-    <value>Correu</value>
-  </data>
-  <data name="Emails_Header_Status" xml:space="preserve">
-    <value>Estat</value>
-  </data>
-  <data name="Emails_Header_Notifications" xml:space="preserve">
-    <value>Notificacions</value>
-  </data>
-  <data name="Emails_Header_Visibility" xml:space="preserve">
-    <value>Visibilitat del perfil</value>
-  </data>
-  <data name="Emails_MergePending" xml:space="preserve">
-    <value>Fusió pendent</value>
-  </data>
-  <data name="Emails_Verified" xml:space="preserve">
-    <value>Verificat</value>
-  </data>
-  <data name="Emails_StatusPending" xml:space="preserve">
-    <value>Pendent</value>
-  </data>
   <data name="Emails_Unverified" xml:space="preserve">
     <value>No verificat</value>
-  </data>
-  <data name="Emails_NotifActive" xml:space="preserve">
-    <value>Actiu</value>
-  </data>
-  <data name="Emails_SetAsTarget" xml:space="preserve">
-    <value>Establir com a destinatari</value>
   </data>
   <data name="Emails_VerifyFirst" xml:space="preserve">
     <value>Verifica primer</value>
@@ -685,33 +606,6 @@
   <data name="Emails_ConfirmRemove" xml:space="preserve">
     <value>Segur que vols eliminar aquest correu?</value>
   </data>
-  <data name="Emails_GoogleTitle" xml:space="preserve">
-    <value>Correu de serveis de Google</value>
-  </data>
-  <data name="Emails_GoogleDescription" xml:space="preserve">
-    <value>Aquest correu s'utilitza per a Grups de Google i unitats compartides.</value>
-  </data>
-  <data name="Emails_GoogleAutoNobodies" xml:space="preserve">
-    <value>El teu correu @nobodies.team s'utilitza automàticament.</value>
-  </data>
-  <data name="Emails_GoogleRejected" xml:space="preserve">
-    <value>La sincronització de Google ha fallat. El correu actual ha estat rebutjat per Google. Selecciona un altre correu.</value>
-  </data>
-  <data name="Emails_GoogleValid" xml:space="preserve">
-    <value>La sincronització de Google funciona amb el correu actual.</value>
-  </data>
-  <data name="Emails_AutoSelected" xml:space="preserve">
-    <value>Seleccionat automàticament</value>
-  </data>
-  <data name="Emails_GoogleRejectedBadge" xml:space="preserve">
-    <value>Rebutjat</value>
-  </data>
-  <data name="Emails_UseThis" xml:space="preserve">
-    <value>Usar aquest</value>
-  </data>
-  <data name="Emails_AdminUnknownTarget" xml:space="preserve">
-    <value>un altre usuari</value>
-  </data>
 
   <!-- ======================== -->
   <!-- Email grid               -->
@@ -722,9 +616,6 @@
   <data name="EmailGrid_AdminContextBannerNamed" xml:space="preserve">
     <value>Gestionant correus de {0}</value>
     <comment>{0} = target user display name</comment>
-  </data>
-  <data name="EmailGrid_AdminUnknownTarget" xml:space="preserve">
-    <value>un altre usuari</value>
   </data>
   <data name="EmailGrid_Email" xml:space="preserve">
     <value>Correu</value>
@@ -779,9 +670,6 @@
   </data>
   <data name="EmailGrid_StatusPending" xml:space="preserve">
     <value>Pendent</value>
-  </data>
-  <data name="EmailGrid_PrimarySelected" xml:space="preserve">
-    <value>Principal</value>
   </data>
   <data name="EmailGrid_LinkGoogleAccount" xml:space="preserve">
     <value>Vincular compte de Google</value>
@@ -1041,20 +929,12 @@
   <data name="AdminHumans_Deleted" xml:space="preserve">
     <value>Eliminat</value>
   </data>
-  <data name="AdminHumans_MissingConsents" xml:space="preserve"><value>Consentiments pendents</value></data>
-  <data name="AdminHumans_IncompleteSignup" xml:space="preserve"><value>Registre incomplet</value></data>
 
   <!-- ======================== -->
   <!-- Admin: member detail     -->
   <!-- ======================== -->
   <data name="AdminHuman_Information" xml:space="preserve">
     <value>Informació del membre</value>
-  </data>
-  <data name="AdminHuman_Suspended" xml:space="preserve">
-    <value>Suspès</value>
-  </data>
-  <data name="AdminHuman_PendingApproval" xml:space="preserve">
-    <value>Pendent d'aprovació</value>
   </data>
   <data name="AdminHuman_ConsentCheck" xml:space="preserve">
     <value>Verificació de consentiment</value>
@@ -1064,9 +944,6 @@
   </data>
   <data name="AdminHuman_UserId" xml:space="preserve">
     <value>ID d'usuari</value>
-  </data>
-  <data name="AdminHuman_FullName" xml:space="preserve">
-    <value>Nom complet</value>
   </data>
   <data name="AdminHuman_AdminNotes" xml:space="preserve">
     <value>Notes de la junta</value>
@@ -1103,9 +980,6 @@
   </data>
   <data name="AdminHuman_AuditHistory" xml:space="preserve">
     <value>Historial d'auditoria</value>
-  </data>
-  <data name="AdminHuman_NoAuditHistory" xml:space="preserve">
-    <value>Sense historial d'auditoria.</value>
   </data>
   <data name="AdminHuman_Statistics" xml:space="preserve">
     <value>Estadístiques</value>
@@ -1166,10 +1040,6 @@
   <!-- ======================== -->
   <data name="AdminAddRole_Title" xml:space="preserve">
     <value>Afegir rol</value>
-  </data>
-  <data name="AdminAddRole_Heading" xml:space="preserve">
-    <value>Afegir rol a {0}</value>
-    <comment>{0} = display name</comment>
   </data>
   <data name="AdminAddRole_SelectRole" xml:space="preserve">
     <value>Selecciona un rol...</value>
