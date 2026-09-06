@@ -5,9 +5,15 @@ inbox:
   - added: 2026-08-24
     what: "Admin_SortBy in Views/UsersAdmin/AdminList.cshtml:78 has no shared resource and renders raw. The call is correctly through SharedLocalizer, but adding a new Admin_* resource key conflicts with memory/code/localization-admin-exempt.md, which forbids new localization keys for admin pages. Peter must decide whether this existing admin localizer call should gain a resource or become an unlocalized literal."
     review: panel
-  - added: 2026-08-23
-    what: "Misbound resource keys in Controllers/ProfileController.cs — Profile_EmailDeleted, Profile_EmailVisibilityUpdated and Profile_NotificationTargetUpdated are bound to UsersResource but the keys live in SharedResource, so each renders as its own key name to the user in all six languages. Found by running Onboarding's new binding sweep repo-wide (/section-doctor on Onboarding 2026-08-23)."
-    review: light
   - added: 2026-08-27
     what: "ProfileController.DownloadData has no catch, so a GDPR export contributor failure is an unhandled 500 there, where the same failure on /Guest/DownloadData sets an error toast and redirects (finding 16, /section-doctor on Gdpr 2026-08-27)."
     review: panel
+  - added: 2026-09-06
+    what: "Controllers/ProfileController.cs sets ~14 member-facing flash/error strings as hardcoded English (lines near 584, 589, 616, 630, 638, 642, 716, 760, 1414, 1424, 1738-1764, 1790, 2077, 2109) instead of UsersResource keys; each needs a key in all six cultures (/section-doctor on Users 2026-09-06)."
+    review: light
+  - added: 2026-09-06
+    what: "PersonSearchFields.ManageAll and PersonSearchFields.LegalName have zero call sites — the user-search-overhaul follow-up that would use them was never built. Either build the caller or drop the members (public surface; /section-doctor on Users 2026-09-06)."
+    review: light
+  - added: 2026-09-06
+    what: "UsersAdminController (suspend, unsuspend, reject, roles, IBAN reveal, audience) has no tests in tests/Humans.Users.Tests beyond the purge negatives; the deny paths in Docs/authorization.md are pinned only by the repo-wide EndpointAuthorizationTests sweep (/section-doctor on Users 2026-09-06)."
+    review: light
