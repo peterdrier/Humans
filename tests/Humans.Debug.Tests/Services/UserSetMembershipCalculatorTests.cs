@@ -18,7 +18,7 @@ public class UserSetMembershipCalculatorTests
 
     public UserSetMembershipCalculatorTests()
     {
-        _burnSettings.GetActiveAsync().Returns(MakeBurnSettings(2026));
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(MakeBurnSettings(2026));
     }
 
     [HumansFact]
@@ -113,7 +113,7 @@ public class UserSetMembershipCalculatorTests
 
     private static BurnSettingsInfo MakeBurnSettings(int year) => new(
         Id: Guid.NewGuid(),
-        EventName: "Nowhere " + year,
+        EventName: "Elsewhere " + year,
         Year: year,
         TimeZoneId: "Europe/Madrid",
         GateOpeningDate: new LocalDate(year, 7, 1),

@@ -139,7 +139,7 @@ internal sealed class WidgetGalleryController(
     /// </summary>
     private static BurnSettingsInfo BuildSampleEventSettings() => new(
         Id: Guid.NewGuid(),
-        EventName: "Nowhere 2026",
+        EventName: "Elsewhere 2026",
         Year: 2026,
         TimeZoneId: "Europe/Madrid",
         GateOpeningDate: new LocalDate(2026, 7, 1),

@@ -25,7 +25,7 @@ internal static class UserSetMembershipCalculator
         IShiftView shiftView,
         CancellationToken ct)
     {
-        var activeEvent = await burnSettings.GetActiveAsync();
+        var activeEvent = await burnSettings.GetActiveAsync(ct);
         var activeYear = activeEvent?.Year ?? 0;
         var shiftViews = await shiftView.GetUsersAsync(snapshot.Select(u => u.Id), ct);
 

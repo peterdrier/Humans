@@ -58,7 +58,7 @@ internal sealed class DebugController(
     [HttpGet("Logs")]
     public IActionResult Logs(int count = 1000, string? minLevel = null)
     {
-        count = Math.Clamp(count, 1, 1000);
+        count = count.ClampPageSize(1, 1000);
 
         LogEventLevel? minLogLevel = minLevel?.ToUpperInvariant() switch
         {
