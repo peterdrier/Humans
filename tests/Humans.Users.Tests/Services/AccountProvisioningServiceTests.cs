@@ -284,9 +284,6 @@ public class AccountProvisioningServiceTests
         public Task<UserEmail?> FindUserEmailByNormalizedEmailAsync(
             string normalizedEmail, string? alternateEmail, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<string?> GetVerifiedUserEmailAddressAsync(
-            Guid userId, Guid emailId, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetUserIdsByUserEmailPrefixAndSuffixAsync(
             string prefix, string suffix, CancellationToken ct = default) =>
             throw new NotSupportedException();
@@ -309,8 +306,6 @@ public class AccountProvisioningServiceTests
         public Task AddUserEmailAsync(UserEmail email, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task RemoveUserEmailAsync(UserEmail email, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task RemoveAllUserEmailsForUserAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task UpdateUserEmailAsync(UserEmail email, CancellationToken ct = default) =>
             throw new NotSupportedException();

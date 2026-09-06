@@ -162,13 +162,6 @@ internal partial interface IUserRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the email address for a verified email owned by the user,
-    /// or null if not found or not verified.
-    /// </summary>
-    Task<string?> GetVerifiedUserEmailAddressAsync(
-        Guid userId, Guid emailId, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns distinct user ids whose email starts with <paramref name="prefix"/>
     /// and ends with <paramref name="suffix"/>.
     /// </summary>
@@ -233,7 +226,6 @@ internal partial interface IUserRepository
 
     Task AddUserEmailAsync(UserEmail email, CancellationToken ct = default);
     Task RemoveUserEmailAsync(UserEmail email, CancellationToken ct = default);
-    Task RemoveAllUserEmailsForUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Persists changes to a single <see cref="UserEmail"/> entity by attaching it
