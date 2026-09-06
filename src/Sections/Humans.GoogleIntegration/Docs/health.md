@@ -164,4 +164,4 @@ The shapes imply:
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-09-06 | pending | pending |
+| 1 | 2026-09-06 | Dead drift-notification link fixed; migration history cut; `ITeamResourceService` narrowed | pending |
