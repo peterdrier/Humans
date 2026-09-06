@@ -35,7 +35,6 @@ public class GoogleResourceReconciliationJob(
         int inheritanceCorrected = 0;
         var settingsResult = new GroupSettingsDriftResult();
 
-        // Phase 1: Sync Drive folders
         try
         {
             await googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, cancellationToken);
@@ -46,7 +45,6 @@ public class GoogleResourceReconciliationJob(
             phaseFailures.Add("DriveFolder sync");
         }
 
-        // Phase 2: Sync Drive files
         // DriveFile is handled by the same Drive permission path as DriveFolder; omitting it
         // meant soft-deleted teams with linked files kept Google permissions indefinitely.
         try
@@ -59,7 +57,6 @@ public class GoogleResourceReconciliationJob(
             phaseFailures.Add("DriveFile sync");
         }
 
-        // Phase 3: Reconcile Google Group membership
         // Provisioning of missing Google Groups is handled inside ReconcileAllAsync — when a
         // claim references a group that doesn't yet exist in Google, the reconcile path creates
         // it inline (best-effort) before reconciling membership.
@@ -73,7 +70,7 @@ public class GoogleResourceReconciliationJob(
             phaseFailures.Add("Group membership reconcile");
         }
 
-        // Phase 4: Update Drive folder paths (detects renames and moves)
+        // Detects renames and moves.
         try
         {
             var pathUpdates = await googleSyncService.UpdateDriveFolderPathsAsync(cancellationToken);
@@ -88,7 +85,6 @@ public class GoogleResourceReconciliationJob(
             phaseFailures.Add("Drive folder path updates");
         }
 
-        // Phase 5: Enforce inherited access restrictions on Drive folders
         try
         {
             inheritanceCorrected = await googleSyncService.EnforceInheritedAccessRestrictionsAsync(cancellationToken);
@@ -103,7 +99,6 @@ public class GoogleResourceReconciliationJob(
             phaseFailures.Add("Inherited access enforcement");
         }
 
-        // Phase 6: Check Google Group settings for drift and auto-remediate
         try
         {
             settingsResult = await googleSyncService.CheckGroupSettingsAsync(cancellationToken);

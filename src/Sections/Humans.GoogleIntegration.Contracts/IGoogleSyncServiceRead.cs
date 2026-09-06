@@ -21,11 +21,6 @@ public interface IGoogleSyncServiceRead
     /// <summary>
     /// Returns the count of outbox events that have not yet been processed
     /// (<c>ProcessedAt == null</c>), for the Admin pending-queue-size gauge.
-    /// Added at GoogleIntegration's G5 so <c>HumansMetricsService</c> stops
-    /// injecting <c>IGoogleSyncOutboxRepository</c> directly — the repository
-    /// moves into the section with its table, and a Base caller reaching a
-    /// section's repository is what design-rules §2a/§2c forbid. Finishes the
-    /// migration #554 began for <c>NotificationMeterProvider</c>.
     /// </summary>
     Task<int> GetPendingSyncEventCountAsync(CancellationToken cancellationToken = default);
 

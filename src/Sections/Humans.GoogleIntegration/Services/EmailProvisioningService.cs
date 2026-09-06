@@ -79,8 +79,6 @@ internal sealed class EmailProvisioningService(
                 return new EmailProvisioningResult(false, fullEmail, ErrorMessage: "Cannot provision account: the human must have a first and last name in their profile.");
 
             // ORDERING IS CRITICAL — do NOT reorder. Recovery email must be captured BEFORE AddVerifiedEmailAsync flips the notification target to @nobodies.team.
-            // 1. Capture recovery (personal) email  2. Provision Workspace  3. Link @nobodies.team  4. Send creds to recovery
-
             var recoveryEmail = await ResolveRecoveryEmailAsync(userId, user.Email);
 
             var tempPassword = PasswordGenerator.GenerateTemporary();
@@ -88,7 +86,7 @@ internal sealed class EmailProvisioningService(
                 fullEmail, firstName, lastName, tempPassword,
                 recoveryEmail);
 
-            // Step 3: Link the email — flips notification target; orchestrator stamps IsGoogle (#687). Do NOT move above step 1.
+            // Link the email — flips notification target; orchestrator stamps IsGoogle (#687). Do NOT move above the recovery-email capture.
             await userEmailService.AddVerifiedEmailAsync(userId, fullEmail);
 
             // Half-completed-prior-provisioning recovery: if an unverified row predated this call, verify + stamp IsGoogle explicitly.
