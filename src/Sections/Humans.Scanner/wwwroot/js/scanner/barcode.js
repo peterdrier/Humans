@@ -1,8 +1,5 @@
-// Scanner section — phase 1 barcode decode.
-//
-// Feature-detects the native BarcodeDetector API (Chrome/Edge/most Android). Falls back
-// to @zxing/browser via CDN for iOS Safari and anywhere else the native API isn't shipped.
-// Everything runs in the browser — no server round trip, no state written.
+// Camera barcode decode: the native BarcodeDetector API where shipped (Chrome/Edge/most
+// Android), else @zxing/browser from CDN (iOS Safari). Nothing leaves the browser.
 
 const ZXING_CDN_URL = 'https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/+esm';
 const DEDUPE_WINDOW_MS = 1500;
