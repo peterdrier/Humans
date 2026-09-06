@@ -101,4 +101,4 @@ The shapes imply exactly this, and it is today's layout:
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-09-06 | First pass: routes into the page documented, comment sediment cut, two local pins | peterdrier/Humans#pending |
+| 1 | 2026-09-06 | First pass: routes into the page documented, comment sediment cut, two local pins | peterdrier/Humans#1610 |
