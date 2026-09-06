@@ -33,10 +33,10 @@ People manage themselves under `/Profile/Me/*`; member admins manage people unde
 | **Presence** | for year N: declare not attending, undo, ticket-sync upsert/remove, admin backfill; who was on site | `IUserService` participation methods, `IUserServiceRead.GetOnsiteUsersAsync`, `IUserParticipationBackfillService` |
 | **Account life** | create (OAuth callback, magic link, import), suspend / unsuspend / reject / restore, request and cancel deletion, anonymize on expiry, purge (non-prod), merge two accounts | `IExternalLoginService`, `IAccountProvisioningService`, `IHumanLifecycleService`, `IAccountDeletionService`, `IAccountMergeService` + `IDuplicateAccountService`, `INonCompliantMemberSuspension` |
 | **Cache signal** | "this person changed" from a write the service did not see | `IUserInfoInvalidator`, `IUserInfoSliceRefresher` + `UserInfoSaveChangesInterceptor` |
-| **Repair** | email-invariant violations; profile-less accounts; unsynced names; picture migration | `IEmailProblemsService`, the three `/Profile/Admin/*` backfill controllers |
+| **Repair** | email-invariant violations; profile-less accounts; unsynced names; picture migration | `IEmailProblemsService`, the `/Profile/Admin/*` backfill controllers |
 | **Admin views** | list / detail / roles roster / audience / debug grid / merges | `UsersAdminController`, `UsersAdminAccountMergesController`, `UsersAdminDebugController` |
 
-Two recurring jobs: nightly deletion expiry, nightly non-compliance suspension.
+Recurring jobs: nightly deletion expiry, nightly non-compliance suspension.
 
 ## 3. Structure
 
@@ -60,9 +60,9 @@ The shapes imply one register with one cache and one write funnel:
   reach `IUserRepository` and `UserManager<User>` around the funnel (the pending-email settle,
   the contact-source stamp, account create); the target is that those writes go through the
   funnel too. Merge is an ordered fan-out over `IUserMerge` with the tombstone last.
-- **Controllers translate only.** `ProfileController` is one controller over three unrelated
-  shapes (own profile, own addresses, others' profiles + messaging); the target is three, or a
-  controller per shape at most.
+- **Controllers translate only.** `ProfileController` is one controller over unrelated
+  shapes (own profile, own addresses, others' profiles + messaging); the target is a
+  controller per shape.
 - **Repair screens are temporary** and sit under an admin nav group named Temp; each retires
   when its count reads zero in production.
 
@@ -71,7 +71,7 @@ The shapes imply one register with one cache and one write funnel:
 - The full app is reachable only when `User.State == Active`; state is written at each
   transition and never derived on read.
 - Exactly one verified `IsPrimary` address per account; at most one `IsGoogle`; a verified
-  address belongs to at most one account. All three are service-enforced: the verify paths
+  address belongs to at most one account. Each is service-enforced: the verify paths
   open a merge request when another account already holds the address verified, and the OAuth
   reconcile blocks or displaces before it writes.
 - An address is rewritten by exactly one path: the OAuth reconcile, matched on
@@ -98,7 +98,7 @@ The shapes imply one register with one cache and one write funnel:
   `user_emails.IsNotificationTarget`-named columns waits on prod verification.
 - Retiring `Profile.BurnerName/FirstName/LastName` once `/Profile/Admin/NameBackfill` reads 0
   in production (nobodies-collective/Humans#1098).
-- The three Temp backfill screens retire on the same signal.
+- The Temp backfill screens retire on the same signal.
 - `AccountMergeRequest` still carries `User` navs; strip when the nav-strip pattern is
   generalised.
 - `PolicyNames.HumanAdminOnly` is registered with no call site.
@@ -132,7 +132,8 @@ The shapes imply one register with one cache and one write funnel:
   analyzer names it by full name.
 - `AccountController` (Shell) and the Development seeders inject `UserManager` directly — the
   §2a exception.
-- `Views/Profile/Edit.cshtml` localizes two strings through `ShiftsResource` on purpose.
+- `Views/Profile/Edit.cshtml` localizes its shift-preference strings (`Shifts_EditPreferences`,
+  `Shifts_PreferencesHelp`) through `ShiftsResource` on purpose.
 
 ## History
 
