@@ -28,8 +28,8 @@
   Rotas are the non-obvious one: a rota hit links to /Shifts?departmentId=, not to the rota, so its
   destination gate is ShiftBrowsePageBuilder's IncludeAdminOnly/IncludeHidden flags behind
   ShiftsController — that is where an admin-only rota would be exposed, not in Shifts' search call.
-  Fixing nobodies-collective/Humans#993 in CampController must force a review of this doc; without
-  these paths it would not.
+  A change to CampController's season gating must force a review of this doc; without these paths
+  it would not.
 -->
 
 # Global Search (`/Search`)
@@ -38,10 +38,10 @@
 
 Members regularly want to find a person, team, camp, shift, or event without first guessing which list page to start from. As membership grows and camps/teams multiply, the friction of "which area do I look in?" gets worse. A single magnifying-glass entry point in the top nav routes to `/Search`, which fans out across the searchable sections and renders type-grouped results. The Events bucket is only included when the `Features:Events` flag is on (it gates the section's nav and routes the same way).
 
-The feature is deliberately scoped to matching **confined to each entity's own public fields** — no cross-modal traversal. Earlier drafts proposed cross-modal pull-ins (a person → their teams; a team → its rotas) and a unified ranked list, but those were dropped:
+The feature matches **each entity's own public fields only** — no cross-modal pull-ins (a person → their teams; a team → its rotas) and no unified ranked list:
 
-- Cross-modal traversal invited 2nd- and 3rd-order links the user didn't ask for (e.g. "camps you lead" surfaced when matching a person), and the orchestration code was disproportionate to the value.
-- Names are what users actually type when they remember "I think it was called Foo." Matching on adjacency leaves Foo at the top instead of burying it under loosely-related rows.
+- Cross-modal traversal surfaces 2nd- and 3rd-order links the user didn't ask for (e.g. "camps you lead" when matching a person), and the orchestration cost is disproportionate to the value.
+- Names are what users type when they remember "I think it was called Foo." Matching on adjacency leaves Foo at the top instead of burying it under loosely-related rows.
 
 ## User Stories
 
@@ -80,7 +80,7 @@ The feature is deliberately scoped to matching **confined to each entity's own p
 - **Shifts** (rotas) match on `Rota.Name` only.
 - Teams, Camps, Shifts, and Humans additionally match by pasting the entity's own id (a `Guid.TryParse` fast-path scored as an exact match). For humans the pasted UserId resolves against the cached snapshot (`CachingUserService`) and is reported as a `User ID` match; rejected profiles are excluded, and `ExactName` queries skip id resolution so a GUID-shaped burner name matches by name, never by id collision.
 - **Events** match on `Event.Title` or `Event.Description` and are filtered to `Status = Approved` only, via `IEventServiceRead.SearchAsync` — event copy is short and free-form so description text is often the load-bearing name signal users remember. A Title match scores via the standard exact/prefix/contains rubric; a Description-only match uses the same three tiers halved (50/40/30) so it's still surfaced but always ranks below every Title match, and orders sensibly against other description-only hits instead of tying (nobodies-collective/Humans#1062).
-- Humans, Teams, Camps **and Events** match in-memory against the cached snapshots (`CachingUserService` / `CachingTeamService` / `CachingCampService` / `CachingEventService`) — case-insensitive contains, accent-folded for humans; search never hits the DB for these four buckets. **Shifts is the only DB-backed bucket**, running case-insensitive Postgres `EF.Functions.ILike` per `memory/feedback_ef_ilike_not_toupper.md`.
+- Humans, Teams, Camps **and Events** match in-memory against the cached snapshots (`CachingUserService` / `CachingTeamService` / `CachingCampService` / `CachingEventService`) — case-insensitive contains, accent-folded for humans; search never hits the DB for these four buckets. **Shifts is the only DB-backed bucket**, running case-insensitive Postgres `EF.Functions.ILike`.
 
 ### US-GS.4: A text query surfaces the public-visibility set, never more
 **As an** authenticated viewer (any role)
@@ -104,23 +104,23 @@ The feature is deliberately scoped to matching **confined to each entity's own p
 **Acceptance Criteria:**
 - The Teams, Camps and Rotas buckets treat a parseable GUID as an id lookup and skip the visibility filters in US-GS.4 — the hit comes back for a hidden team, a non-public camp season, or a rota hidden from volunteers.
 - Humans are the exception: the id path skips only the `PersonSearchFields` mask, not the eligibility gate. `CachingUserService.SearchUsersAsync` requires `Profile is not null && Profile.RejectedAt is null` on the GUID branch exactly as it does per-row on the text branch, so a profile-less or rejected user resolves to nothing either way.
-- The hit is scored as an exact match and its URL is the entity's normal page. Opening it re-runs that page's own access checks — a detail page refuses (`/Teams/{slug}` 404s a hidden team), and a rota's `/Shifts?departmentId={teamId}` listing opens but omits the hidden rota. `/Camps/{slug}` is the one that does not yet hold up its end (see Authorization Model).
-- Rotas carry one further exception, and it is about reach rather than visibility. The GUID branch of `ShiftManagementService.SearchAsync` has no event filter, but `/Shifts` always builds from the active event — so a rota belonging to a **past** event resolves to a link that cannot show it, even when it is volunteer-visible. Tracked as nobodies-collective/Humans#998. The text branch does not have this problem: it is already scoped to the active event.
+- The hit is scored as an exact match and its URL is the entity's normal page. Opening it re-runs that page's own access checks — a detail page refuses (`/Teams/{slug}` 404s a hidden team), and a rota's `/Shifts?departmentId={teamId}` listing opens but omits the hidden rota. `/Camps/{slug}` applies no season gate; that is the destination's design, not Search's (see Authorization Model).
+- Rotas carry one further case, about reach rather than visibility. The GUID branch of `ShiftManagementService.SearchAsync` has no event filter, but `/Shifts` always builds from the active event — so a rota belonging to a **past** event resolves to a link that cannot show it, even when it is volunteer-visible. Ruled as designed (nobodies-collective/Humans#998): the id did its routing job and the destination's narrower scope wins. The text branch is already scoped to the active event.
 
 ## Authorization Model
 
 `/Search` is gated by `[Authorize]` — anonymous viewers can't reach it. Beyond that, **search is not an authorization boundary**: a hit says a URL exists, not that the caller may open it. Visibility is enforced at the destination, in whatever shape that destination has — a detail page refuses outright, a listing page renders and omits the row (ruling on nobodies-collective/Humans#985, 2026-08-07). Text queries are still filtered to the public surface per US-GS.4; the GUID path in US-GS.5 is deliberately unfiltered, because you can only use it if you already hold the id.
 
-That destination-page guarantee has one known hole: `CampController.Details` (and `SeasonDetails`) has no season-status gate, so a camp whose public-year season is `Pending`, `Rejected` or `Withdrawn` renders its detail page to anyone, signed-out included. Tracked as nobodies-collective/Humans#993; `CampControllerTests.Details_NonPublicSeason_AnonymousViewer_IsRefused` is skipped until that lands.
+The destination decides what "refuse" means. `CampController.Details` (and `SeasonDetails`) has no season-status gate, so a camp whose public-year season is `Pending`, `Rejected` or `Withdrawn` renders its detail page to anyone, signed-out included — ruled as designed (nobodies-collective/Humans#993); nothing in Search changes for it.
 
 There is no scope parameter on `ISearchService` and no role check in `SearchController`.
 
-This is a deliberate descope. An earlier draft had a `SearchScope { Public, Admin }` parameter threaded through every search service that promoted `Admin` / `HumanAdmin` / `Board` callers to a wider surface (hidden teams, non-public camp seasons, admin-only profile fields). It was removed because:
+This is a deliberate descope. A `SearchScope { Public, Admin }` parameter threaded through every search service, promoting `Admin` / `HumanAdmin` / `Board` callers to a wider surface (hidden teams, non-public camp seasons, admin-only profile fields), is rejected because:
 
 - A single global scope can't honor the admin-superset rule (`memory/code/admin-role-superset.md`) for `TeamsAdmin` / `CampAdmin` / `TicketAdmin` without leaking admin profile fields cross-domain — see the discussion in nobodies-collective/Humans#693.
 - Privileged search isn't a basic-feature requirement. The basics are "find a person/team/camp/rota by name from any page." Admins still have section-specific admin pages for the privileged view.
 
-If privileged search is added later, the right shape is per-bucket scope (TeamsAdmin gets the admin Teams surface but the public Humans surface), not a single global enum. Tracked at #693.
+If privileged search is added later, the right shape is per-bucket scope (TeamsAdmin gets the admin Teams surface but the public Humans surface), not a single global enum. Tracked at nobodies-collective/Humans#693.
 
 ## Architecture
 
@@ -132,11 +132,11 @@ SearchController
          ├── IUserServiceRead.SearchUsersAsync(query, PersonSearchFields.PublicAll, limit)   → IReadOnlyList<HumanSearchResult>
          ├── ITeamServiceRead.SearchAsync(query, max)                                         → IReadOnlyList<TeamSearchHit>
          ├── ICampServiceRead.SearchAsync(query, max)                                         → IReadOnlyList<CampSearchHit>
-         ├── IShiftManagementService.SearchAsync(query, max)                                  → IReadOnlyList<RotaSearchHit>
+         ├── IShiftManagementServiceRead.SearchAsync(query, max)                              → IReadOnlyList<RotaSearchHit>
          └── IEventServiceRead.SearchAsync(query, max)  (skipped when Features:Events is off)  → IReadOnlyList<EventSearchHit>
 ```
 
-Humans, Teams, Camps and Events are served entirely from their caching decorators' warm in-memory snapshots — the inner `TeamService` / `CampService` / `EventService` `SearchAsync` throw `NotSupportedException` and the DB-search repository methods are gone. `IEventServiceRead` is registered as the `CachingEventService` singleton (`Section.cs:54`), whose `SearchAsync` filters the approved-event cache in memory with `Contains(…, OrdinalIgnoreCase)` — no DB round trip per search. **Shifts is the only bucket that reaches Postgres**, running the case-insensitive `ILike` filter against the name field with `EscapeLikePattern` to defang `%` / `_` / `\` in user input. Section services map their domain entities to type-specific search-hit DTOs (`TeamSearchHit`, `CampSearchHit`, `RotaSearchHit`, `EventSearchHit`) so the orchestrator never has to traverse cross-domain navigation properties to render a row.
+Humans, Teams, Camps and Events are served entirely from their caching decorators' warm in-memory snapshots — the inner `TeamService` / `CampService` / `EventService` `SearchAsync` throw `NotSupportedException` and the DB-search repository methods are gone. `IEventServiceRead` is registered as the `CachingEventService` singleton (Events' `Section.cs`), whose `SearchAsync` filters the approved-event cache in memory with `Contains(…, OrdinalIgnoreCase)` — no DB round trip per search. **Shifts is the only bucket that reaches Postgres**, running the case-insensitive `ILike` filter against the name field with `EscapeLikePattern` to defang `%` / `_` / `\` in user input. Section services map their domain entities to type-specific search-hit DTOs (`TeamSearchHit`, `CampSearchHit`, `RotaSearchHit`, `EventSearchHit`) so the orchestrator never has to traverse cross-domain navigation properties to render a row.
 
 Every hit arrives pre-scored by the section that produced it, against one shared rubric —
 `StringSearchExtensions.NameMatchScore` in `Humans.Base` (humans use `PersonSearchMatcher`, which
@@ -161,7 +161,7 @@ Counts reflect every match — there is no cap, so the chip count is the true nu
 | `HumanSearchResult` | `IUserServiceRead.SearchUsersAsync` | View passes each hit's id + match context to `<vc:user-search-result>` |
 | `TeamSearchHit (TeamId, Name, Score)` | `ITeamServiceRead.SearchAsync` | Key + ordering → `GlobalSearchResult` |
 | `CampSearchHit (CampId, Name, Score)` | `ICampServiceRead.SearchAsync` | Key + ordering → `GlobalSearchResult` |
-| `RotaSearchHit (RotaId, Name, Score)` | `IShiftManagementService.SearchAsync` | Key + ordering → `GlobalSearchResult` |
+| `RotaSearchHit (RotaId, Name, Score)` | `IShiftManagementServiceRead.SearchAsync` | Key + ordering → `GlobalSearchResult` |
 | `EventSearchHit (EventId, Title, Score)` | `IEventServiceRead.SearchAsync` | Key + ordering → `GlobalSearchResult` |
 | `GlobalSearchResult (Type, Key, SortKey, Score)` | Orchestrator | `Key` is a `Guid` for every bucket; view passes it to the owning section's `<vc:…-search-result>` |
 | `GlobalSearchResults (Query, Humans, Teams, Camps, Shifts, Events)` | `ISearchService` | View-model / view |
