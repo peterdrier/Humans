@@ -9,7 +9,7 @@
 | Debt | Goes to |
 |---|---|
 | One-off whose fix is inside a single `src/Sections/Humans.<X>/` — **any** section, not only the one you are working in | that section's [`src/Sections/Humans.<X>/Docs/debt.yml`](../../src/Sections) — create it if absent |
-| One-off spanning sections, or in `Humans.Base` / `Humans.Web` / shared `tests/` (`Humans.Testing`, `Humans.Application.Tests`, `Humans.Integration.Tests`) / infrastructure | `inbox:` in [`docs/architecture/debt-ledger.yml`](../../docs/architecture/debt-ledger.yml) |
+| One-off spanning sections, or in `Humans.Base` / `Humans.Web` / shared `tests/` (`Humans.Testing`, `Humans.Web.Tests`, `Humans.Integration.Tests`) / infrastructure | `inbox:` in [`docs/architecture/debt-ledger.yml`](../../docs/architecture/debt-ledger.yml) |
 | Recurring class (a pattern with multiple sites, usually analyzer- or baseline-backed) | `themes:` in the central ledger |
 
 A section's own test project (`tests/Humans.<X>.Tests`) is section-owned: its test gaps go to that section's file, not the central ledger.
