@@ -22,7 +22,6 @@ export function initBarcodeScanner(refs) {
     let nativeLoopHandle = null;
     let zxingReader = null;
     let zxingControls = null;
-    let decodePath = null; // 'native' | 'zxing'
     const recentHits = new Map(); // dedupe key → timestamp
 
     function setStatus(message) {
@@ -129,14 +128,12 @@ export function initBarcodeScanner(refs) {
         stopButton.disabled = false;
 
         if ('BarcodeDetector' in window) {
-            decodePath = 'native';
             console.info('Scanner: using native BarcodeDetector');
             setStatus(`${labels.running} (${labels.pathNative})`);
             startNativeLoop();
             return;
         }
 
-        decodePath = 'zxing';
         console.info('Scanner: falling back to @zxing/browser via CDN');
         setStatus(`${labels.running} (${labels.pathZxing})`);
         try {
@@ -157,7 +154,6 @@ export function initBarcodeScanner(refs) {
         } catch (err) {
             // Some browsers report BarcodeDetector but constructors fail for unsupported formats.
             console.warn('Scanner: BarcodeDetector constructor failed, falling back to ZXing', err);
-            decodePath = 'zxing';
             setStatus(`${labels.running} (${labels.pathZxing})`);
             startZxing().catch((e) => {
                 if (!mediaStream) return; // user pressed Stop while CDN was loading
@@ -235,7 +231,6 @@ export function initBarcodeScanner(refs) {
         setStatus(labels.stopped);
         startButton.disabled = false;
         stopButton.disabled = true;
-        decodePath = null;
     }
 
     startButton.addEventListener('click', start);
