@@ -18,7 +18,7 @@ Finance is the **treasurer's reality side** of the money story. Budget owns plan
 
 The end-to-end *business* process — how a reimbursement actually moves from expense report through the bank and back to a zero balance, including the manual steps and external parties — is [`expense-reimbursement-process.md`](expense-reimbursement-process.md). This file stays about code invariants.
 
-Three things live here: the Holded purchase-doc sync and its attribution to budget categories; creditor bindings and the balances derived from the Holded section's ledger mirror ([Feature 2](#feature-2--creditor-reads-over-the-holded-sections-mirror)); and SEPA payout generation and booking ([Feature 3](#feature-3--sepa-payout-of-creditor-balances), [`features/sepa-payout.md`](features/sepa-payout.md)). The Budget surface on the same `/Finance` prefix is Budget's — see Routing.
+What lives here: the Holded purchase-doc sync and its attribution to budget categories; creditor bindings and the balances derived from the Holded section's ledger mirror ([Feature 2](#feature-2--creditor-reads-over-the-holded-sections-mirror)); and SEPA payout generation and booking ([Feature 3](#feature-3--sepa-payout-of-creditor-balances), [`features/sepa-payout.md`](features/sepa-payout.md)). The Budget surface on the same `/Finance` prefix is Budget's — see Routing.
 
 ## Concepts
 
