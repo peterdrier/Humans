@@ -177,11 +177,11 @@ internal sealed partial class TeamResourceService(
             resource.DrivePermissionLevel,
             resource.RestrictInheritedAccess);
 
-    public async Task<LinkResourceResult> LinkDriveFolderAsync(
+    private async Task<LinkResourceResult> LinkDriveFolderAsync(
         Guid teamId,
         string folderUrl,
-        DrivePermissionLevel permissionLevel = DrivePermissionLevel.Contributor,
-        CancellationToken ct = default)
+        DrivePermissionLevel permissionLevel,
+        CancellationToken ct)
     {
         var folderId = ParseDriveFolderId(folderUrl);
         if (folderId is null)
@@ -236,11 +236,11 @@ internal sealed partial class TeamResourceService(
         return new LinkResourceResult(true, Resource: resource);
     }
 
-    public async Task<LinkResourceResult> LinkDriveFileAsync(
+    private async Task<LinkResourceResult> LinkDriveFileAsync(
         Guid teamId,
         string fileUrl,
-        DrivePermissionLevel permissionLevel = DrivePermissionLevel.Contributor,
-        CancellationToken ct = default)
+        DrivePermissionLevel permissionLevel,
+        CancellationToken ct)
     {
         var fileId = ParseDriveFileId(fileUrl);
         if (fileId is null)

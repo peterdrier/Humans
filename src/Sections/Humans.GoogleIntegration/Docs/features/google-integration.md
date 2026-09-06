@@ -40,7 +40,7 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 - All API calls use `SupportsAllDrives = true`
 
 > The system does not create Drive folders. Linking is the only way a Drive
-> resource enters the system (`ITeamResourceService.LinkDriveFolderAsync`);
+> resource enters the system (`ITeamResourceService.LinkDriveResourceAsync`);
 > only Google Groups are provisioned automatically.
 
 ### US-7.2: Automatic Access Grants
@@ -432,8 +432,7 @@ Separate interface from IGoogleSyncService for linking/validation (not provision
 public interface ITeamResourceService
 {
     Task<IReadOnlyList<GoogleResource>> GetTeamResourcesAsync(Guid teamId, ...);
-    Task<LinkResourceResult> LinkDriveFolderAsync(Guid teamId, string folderUrl, ...);
-    Task<LinkResourceResult> LinkDriveFileAsync(Guid teamId, string fileUrl, ...);
+    Task<LinkResourceResult> LinkDriveResourceAsync(Guid teamId, string url, ...);
     Task<LinkResourceResult> LinkGroupAsync(Guid teamId, string groupEmail, ...);
     Task UnlinkResourceAsync(Guid resourceId, ...);
     Task<bool> CanManageTeamResourcesAsync(Guid teamId, Guid userId, ...);
