@@ -25,8 +25,7 @@ internal sealed class GoogleController(
     [HttpGet("SyncSettings")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SyncSettings(
-        [FromServices] ISyncSettingsService syncSettingsService,
-        [FromServices] IUserServiceRead userService)
+        [FromServices] ISyncSettingsService syncSettingsService)
     {
         var settings = (await syncSettingsService.GetAllAsync())
             // Sort by the enum's string name to match the prior EF ordering
@@ -42,7 +41,7 @@ internal sealed class GoogleController(
             .Distinct()
             .ToList();
         var updatedByUsers = updatedByUserIds.Count > 0
-            ? await userService.GetUserInfosAsync(updatedByUserIds)
+            ? await UserService.GetUserInfosAsync(updatedByUserIds)
             : new Dictionary<Guid, UserInfo>();
 
         var viewModel = new SyncSettingsViewModel
@@ -606,7 +605,6 @@ internal sealed class GoogleController(
     [HttpGet("SyncOutbox")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SyncOutbox(
-        [FromServices] IUserServiceRead userService,
         [FromServices] ITeamServiceRead teamService)
     {
         var events = (await googleSyncService.GetRecentOutboxEventsAsync(200)).ToList();
@@ -618,7 +616,7 @@ internal sealed class GoogleController(
         var displayNameLookup = new Dictionary<Guid, string>(userIds.Count);
         foreach (var userId in userIds)
         {
-            var info = await userService.GetUserInfoAsync(userId);
+            var info = await UserService.GetUserInfoAsync(userId);
             googleEmailLookup[userId] = info?.GoogleEmail ?? info?.Email ?? "unknown";
             displayNameLookup[userId] = info?.BurnerName ?? "(unknown)";
         }
