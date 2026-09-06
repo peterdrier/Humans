@@ -3,11 +3,9 @@ using Humans.Base.Interfaces;
 namespace Humans.Tour;
 
 /// <summary>
-/// Member top-nav contribution — was the anonymous-only Tour link Shell's
-/// <c>_Layout.cshtml</c> named by <c>asp-controller="Tour"</c>
-/// (nobodies-collective/Humans#1090). Anonymous-only: the signed-in top nav is too busy for
-/// a Tour slot — members get a dashboard tile instead (Home/Dashboard.cshtml). High weight so
-/// it sorts last among contributed nav links, closest to its previous position beside Legal.
+/// The top-nav Tour link, offered only while signed out: the signed-in nav is too busy for a
+/// Tour slot, so members get a dashboard card instead (Shell's Home/Dashboard.cshtml). The
+/// weight sorts it last among contributed links, beside Legal.
 /// </summary>
 internal sealed class SectionNav : ISectionNav
 {

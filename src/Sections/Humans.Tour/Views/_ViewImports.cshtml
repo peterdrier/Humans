@@ -1,5 +1,8 @@
 @* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
    here ships broken markup with a green build — guarded by TourPageRenderTests.
+   The Humans.Base line looks unused but is load-bearing: its NonceTagHelper stamps the
+   CSP nonce on every <script>, including _TourLayout's inline tour-js script; without it
+   the browser blocks that script and the page silently stops animating.
    No localizer binding: Tour is deliberately English-only (spec 2026-08-12). *@
 @using Humans.Tour
 @using Humans.Tour.Controllers
