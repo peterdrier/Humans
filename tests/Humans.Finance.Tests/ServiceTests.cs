@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
@@ -270,6 +272,34 @@ public class HoldedFinanceServiceTests
         d3.MatchStatus.Should().Be(HoldedMatchStatus.Unmatched);
         d3.MatchSource.Should().Be(HoldedMatchSource.None);
         d3.BudgetCategoryId.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task Sync_DocWithNoDraftFlag_IsStoredAsNotApproved()
+    {
+        // Holded's list item may omit `draft` entirely. Absent is not "approved": only an explicit
+        // `draft: false` counts toward actuals (Service.MapDoc, strict equality).
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedCategoryMap>());
+        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new HoldedDocSyncState());
+        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(
+            (IReadOnlyList<HoldedPurchaseDocListItemDto>)
+            [
+                new()
+                {
+                    Id = "d-null", DocNumber = "F010", ContactName = "Dan", Date = Instant.FromUtc(2026, 4, 15, 10, 0),
+                    Subtotal = 10, Tax = 0, Total = 10, Currency = "eur", IsDraft = null,
+                    Lines = [new HoldedPurchaseLineDto { Amount = 10, AccountId = "acc-x", Tags = [] }],
+                    Tags = [],
+                },
+            ]);
+        IReadOnlyList<HoldedExpenseDoc>? capturedDocs = null;
+        await _repo.UpsertDocsAsync(
+            Arg.Do<IReadOnlyList<HoldedExpenseDoc>>(d => capturedDocs = d),
+            Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+
+        await MakeService().SyncAsync(Xunit.TestContext.Current.CancellationToken);
+
+        capturedDocs.Should().ContainSingle().Which.IsApproved.Should().BeFalse();
     }
 
     [HumansFact]
@@ -1682,6 +1712,24 @@ public class HoldedFinanceServiceTests
             .And.NotContain(AnaIban, "the export masks the IBAN even though the payout row keeps it raw");
     }
 
+    [HumansFact]
+    public async Task EraseForUser_DropsTheBindingAndDeclaresThePayoutsRetained()
+    {
+        // Article 17: the binding is erased in full; the payout files are the accounting record
+        // and stay, on a stated legal basis the declaration carries.
+        var userId = Guid.NewGuid();
+        _repo.DeleteCreditorContactAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
+        var svc = MakeService();
+
+        await svc.EraseForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).DeleteCreditorContactAsync(userId, Arg.Any<CancellationToken>());
+        svc.ErasureDeclaration.Should().ContainKey(GdprExportSections.HoldedCreditorAccount)
+            .WhoseValue.Should().BeNull("the binding is erased in full");
+        svc.ErasureDeclaration.Should().ContainKey(GdprExportSections.SepaPayouts)
+            .WhoseValue.Should().Contain("Art. 17(3)(b)");
+    }
+
     // ─── Purchase-doc sync state, as the /Holded screen reads it ─────────────────
 
     [HumansFact]
@@ -2025,6 +2073,30 @@ public class HoldedFinanceServiceTests
             Arg.Is<string>(d => d.Contains("ES79****789", StringComparison.Ordinal)
                                 && !d.Contains(AnaIban, StringComparison.Ordinal)),
             actor, userId, Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task GenerateSepaPayout_StoresTheBytesTheTreasurerDownloads()
+    {
+        // The stored XML is the record of what the bank was given, so it must be the same string
+        // the response streams — and the checksum must be that string's, not a rebuilt one's.
+        ConfigureSepa();
+        SeedPayableCreditor();
+        SepaPayoutFile? stored = null;
+        await _repo.AddSepaPayoutAsync(
+            Arg.Do<SepaPayoutFile>(f => stored = f),
+            Arg.Any<IReadOnlyList<SepaPayoutTransfer>>(), Arg.Any<CancellationToken>());
+
+        var result = await MakeService().GenerateSepaPayoutAsync(
+            [new SepaPayoutSelection(40000004, 12.34m)], 50m, Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        stored.Should().NotBeNull();
+        stored!.Xml.Should().Be(result.Xml);
+        stored.FileName.Should().Be(result.FileName);
+        stored.Checksum.Should().Be(
+            Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(result.Xml!))).ToLowerInvariant());
     }
 
     [HumansFact]
