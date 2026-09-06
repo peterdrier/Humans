@@ -17,6 +17,19 @@ public class TourControllerTests
     }
 
     [HumansFact]
+    public void Index_is_routed_as_GET_Tour()
+    {
+        typeof(TourController)
+            .GetCustomAttributes(typeof(RouteAttribute), inherit: false)
+            .Should().ContainSingle().Which.As<RouteAttribute>().Template.Should().Be("Tour");
+
+        typeof(TourController).GetMethod(nameof(TourController.Index))!
+            .GetCustomAttributes(typeof(HttpGetAttribute), inherit: false)
+            .Should().ContainSingle().Which.As<HttpGetAttribute>().Template.Should().Be("",
+                because: "the page lives at /Tour itself; the render test that proves it end to end is local-only");
+    }
+
+    [HumansFact]
     public void Index_returns_the_default_view_with_no_model()
     {
         var result = new TourController().Index();
