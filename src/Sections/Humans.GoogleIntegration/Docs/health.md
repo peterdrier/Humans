@@ -18,8 +18,8 @@ reach them), spotting people whose Workspace address was renamed under them, rep
 which mail addresses break the one-Google-identity rule, watching Drive activity for the
 Monitor section, and translating survey text. Admins choose per service whether automation
 may add, add-and-remove, or do nothing, can look at the queue and re-run failed items, and
-can run any of the nightly checks by hand. Every Google-side action lands in the section's
-own sync log, which other pages render for a resource or a person.
+can run any of the nightly checks by hand. Every permission grant or revocation lands in the
+section's own sync log, which other pages render for a resource or a person.
 
 ## 2. The shapes
 
@@ -45,13 +45,14 @@ and how much access members get), `GoogleSyncOutboxEvent` + `GoogleSyncOutboxEve
 (a remembered membership change), `SyncServiceType` / `SyncMode` (what automation may do
 per service), `SyncAction` / `ResourceSyncDiff` / `SyncPreviewResult` (what a reconcile
 would or did change), `GoogleSyncLogView` (one line of the trail), `GoogleWorkspaceOptions`
-(domain, service account, admin identity).
+(domain, customer id, default group settings; credentials live in Base's
+`GoogleWorkspaceSettings`).
 
 ## 3. Structure
 
 The shapes imply:
 
-- **A contracts leaf** carrying the eight cross-section interfaces above and the DTO/enum
+- **A contracts leaf** carrying the cross-section interfaces above and the DTO/enum
   vocabulary, and nothing else. Each interface names one shape; the wide ones
   (`IGoogleSyncService`, `ITeamResourceService`) should carry only the methods an outside
   caller actually asks — the rest belong to internal interfaces.
@@ -82,8 +83,9 @@ The shapes imply:
   403, 404) is parked visibly with a per-event retry, never silently dropped.
 - **Sync mode gates every Execute, scheduled and manual alike**: `None` means no writes;
   `AddOnly` means adds only; an admin's "Sync Now" has no bypass.
-- **Every Google-side write leaves a sync-log row** (success or failure), and every
-  admin-triggered write leaves an audit entry naming the admin.
+- **Every Drive/Group permission grant or revocation leaves a sync-log row** (success or
+  failure); account, rename and group-settings writes leave audit entries instead, and
+  every admin-triggered write names the admin in its entry.
 - **A removal notifies the person exactly once, and never an orphan address** (no
   `UserEmail` row → suppressed and logged).
 - **The person's Google-email status is only set from sync when Google actually answered**:
