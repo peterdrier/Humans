@@ -18,7 +18,7 @@ reach them), spotting people whose Workspace address was renamed under them, rep
 which mail addresses break the one-Google-identity rule, watching Drive activity for the
 Monitor section, and translating survey text. Admins choose per service whether automation
 may add, add-and-remove, or do nothing, can look at the queue and re-run failed items, and
-can run any of the nightly checks by hand. Every permission grant or revocation lands in the
+can run the reconcile and group-settings checks by hand. Every permission grant or revocation lands in the
 section's own sync log, which other pages render for a resource or a person.
 
 ## 2. The shapes
@@ -66,10 +66,10 @@ The shapes imply:
   credential-less configuration runs the same code paths.
 - **One email-provisioning orchestration**, **one removal-notification decision**, **one
   translation client**, **one settings service** (the per-service mode).
-- **Repositories** over the section's four tables (resources, outbox, sync log, service
+- **Repositories** over the section's tables (resources, outbox, sync log, service
   settings), each internal, each the only writer of its table.
-- **One controller** for every admin screen, authorized per action, plus the two view components
-  the rest of the app embeds, plus the two Hangfire jobs, health check, metrics and nav
+- **One controller** for every admin screen, authorized per action, plus the view components
+  the rest of the app embeds, the Hangfire jobs, health check, metrics and nav
   contributions.
 - **`Section.cs` + `SectionAdminNav.cs` + `SectionJobs.cs` + `SectionMemberDashboard.cs`
   + `SectionHealthChecks.cs`** and nothing else at the root.
@@ -125,10 +125,11 @@ The shapes imply:
   meter and the outbox screen with Retry; the alert was removed as noise.
 - **No admin fix for renamed addresses.** Renames self-heal on the person's next Google
   sign-in; the screen is read-only by design.
-- **No resx for the admin screens** (`localization-admin-exempt`); the section's two
+- **No resx for the admin screens** (`localization-admin-exempt`); the section's resx
   keys exist only for the Accounts page.
-- **No DB-level uniqueness on the outbox or the settings row** — project rule; service
-  guards and tests are the enforcement.
+- **No unique index on anything user-editable** (`unique-constraints-ids-only`): the
+  outbox's `DeduplicationKey` and the settings row's `ServiceType` are the only non-Id
+  unique indexes, both system keys; service guards and tests enforce the rest.
 - **No second membership source registry.** Teams and Camps each register themselves as
   an `IGoogleGroupMembershipSource`; the section asks all of them and merges. A central
   "who is in what" service would re-widen the lane.
@@ -147,7 +148,7 @@ The shapes imply:
 - **`GoogleSyncOutboxProcessor` carries `[CrossSectionWrite]`** because marking the
   person's Google email valid/rejected is Users' data, written through Users' own
   `TrySetGoogleEmailStatusFromSyncAsync` — a declared, narrow write, not a leak.
-- **Two DI registrations per client type** (real vs stub) chosen by `hasGoogleCredentials`
+- **Paired DI registrations per client type** (real vs stub) chosen by `hasGoogleCredentials`
   in `Section.cs`, with a production guard; the stubs are the test doubles for the whole
   section and are deliberately not in the test project.
 - **`GoogleWorkspaceSyncService` is ~1.8k lines** because it is the facade every outside
