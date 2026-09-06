@@ -84,16 +84,18 @@ The shapes imply:
 - **Sync mode gates every Execute, scheduled and manual alike**: `None` means no writes;
   `AddOnly` means adds only; an admin's "Sync Now" has no bypass.
 - **Every Drive/Group permission grant or revocation leaves a sync-log row** (success or
-  failure); account, rename and group-settings writes leave audit entries instead, and
-  every admin-triggered write names the admin in its entry.
+  failure); account, rename and group-settings writes leave audit entries instead. The
+  account and rename entries name the acting admin; a manual sync or settings remediation
+  does not (see §5).
 - **A removal notifies the person exactly once, and never an orphan address** (no
   `UserEmail` row → suppressed and logged).
 - **The person's Google-email status is only set from sync when Google actually answered**:
   valid after a real add, rejected after a permanent failure, untouched otherwise.
 - **Provisioning captures the recovery address before linking the new mailbox**, rejects
   any address already bound to another human or to a team's group, and audits the act.
-- **Without credentials the section runs, stubbed**: registration swaps real clients for
-  stubs by configuration alone; production refuses to start stubbed.
+- **Without credentials the section boots, stubbed**: registration swaps real clients for
+  stubs by configuration alone, in every environment; the missing credentials surface
+  through the health check, never as a refusal to start (`no-startup-guards`).
 - **The reconciliation job never stops mid-list**: one resource's failure is recorded
   against that resource and the walk continues.
 - **Every `/Google/*` screen and action denies Volunteers and Coordinators**: the sync
@@ -111,6 +113,13 @@ The shapes imply:
   the health check are shaped by it.
 - **`SyncExecute` reconciles inline on the request thread** (`debt-ledger.yml`); the
   queued shape is "enqueue and return".
+- **`Section.cs` throws in Production without Google credentials** (moved there under
+  nobodies-collective/Humans#1091). That is a startup guard, against `no-startup-guards`;
+  the target is to boot stubbed and let the health check report it.
+- **Manual sync and group-settings remediation carry no actor**: `SyncExecute`,
+  `SyncExecuteAll` and `RemediateGroupSettings` pass no acting user, `IGoogleSyncLogService`
+  has no actor parameter, and the remediation audit names the service. Propagating the
+  admin's identity is unbuilt.
 - **Sync-history migration** (`GoogleSyncHistoryMigrationAdminController` and its service,
   the "Temp" nav group) is a one-shot data move awaiting its retirement; nothing new
   should hang off it.
@@ -149,12 +158,12 @@ The shapes imply:
   person's Google email valid/rejected is Users' data, written through Users' own
   `TrySetGoogleEmailStatusFromSyncAsync` — a declared, narrow write, not a leak.
 - **Paired DI registrations per client type** (real vs stub) chosen by `hasGoogleCredentials`
-  in `Section.cs`, with a production guard; the stubs are the test doubles for the whole
-  section and are deliberately not in the test project.
-- **`GoogleWorkspaceSyncService` is ~1.8k lines** because it is the facade every outside
-  caller sees (`IGoogleSyncService`) *and* the Drive reconciler. The split into a thin
-  facade over the group and Drive reconcilers is real work, not a doctor strike; until
-  then its size is known, not news.
+  in `Section.cs`; the stubs are the test doubles for the whole section and are
+  deliberately not in the test project.
+- **`GoogleWorkspaceSyncService` is the section's largest class** because it is the facade
+  every outside caller sees (`IGoogleSyncService`) *and* the Drive reconciler. The split
+  into a thin facade over the group and Drive reconcilers is real work, not a doctor
+  strike; until then its size is known, not news.
 - **`SyncServiceType.Discord` is seeded** although no Discord integration exists — the
   settings row and the mode UI were built ahead of it; the enum value is data, not code.
 - **Removal notifications pick Variant 2 ("secondary cleanup") when the person still has

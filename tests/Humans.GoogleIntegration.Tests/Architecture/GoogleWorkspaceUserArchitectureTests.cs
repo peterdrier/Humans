@@ -1,16 +1,32 @@
 using AwesomeAssertions;
+using GoogleWorkspaceUserService = Humans.GoogleIntegration.Services.GoogleWorkspaceUserService;
 using Humans.GoogleIntegration.Services.Workspace;
 using Humans.GoogleIntegration.Tests.Infrastructure;
 
 namespace Humans.GoogleIntegration.Tests.Architecture;
 
 /// <summary>
-/// <see cref="IWorkspaceUserDirectoryClient"/> is the connector every Google SDK call for
-/// Workspace accounts goes through: it must sit in the connector namespace and stay
-/// shape-neutral.
+/// Architecture tests enforcing the §15 pattern for the Google Integration
+/// section's <see cref="GoogleWorkspaceUserService"/> — migrated under issue
+/// #554 (split from the umbrella PR into an isolated sub-task). The service
+/// now lives in <c>Humans.GoogleIntegration.Services</c> and
+/// routes all Google SDK calls through
+/// <see cref="IWorkspaceUserDirectoryClient"/>. These tests are the compile-
+/// time guarantee that the connector boundary does not leak back into the
+/// Application project.
 /// </summary>
 public class GoogleWorkspaceUserArchitectureTests
 {
+    // ── Application assembly cleanliness ─────────────────────────────────────
+
+    [HumansFact]
+    public void GoogleWorkspaceUserService_DoesNotReferenceGoogleSdkTypes() =>
+        // Scoped to the type. The module-wide form was true while the service lived in
+        // Humans.Application; the section now holds the connectors too.
+        GoogleSdkContainment.AssertNamesNoGoogleSdkType(typeof(GoogleWorkspaceUserService));
+
+    // ── IWorkspaceUserDirectoryClient ────────────────────────────────────────
+
     [HumansFact]
     public void IWorkspaceUserDirectoryClient_LivesInTheConnectorNamespace()
     {
@@ -22,8 +38,8 @@ public class GoogleWorkspaceUserArchitectureTests
     [HumansFact]
     public void IWorkspaceUserDirectoryClient_HasNoGoogleSdkTypesInSignatures()
     {
-        // Every method parameter and return type must be the section's own or BCL —
-        // never Google.Apis.*. Enforces the "shape-neutral" contract.
+        // Every method parameter and return type must come from Humans.Application
+        // or the BCL — never Google.Apis.*. Enforces the "shape-neutral" contract.
         var methods = typeof(IWorkspaceUserDirectoryClient).GetMethods();
 
         foreach (var method in methods)
