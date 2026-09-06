@@ -509,7 +509,7 @@ Actions (on `TeamAdminController`, `src/Sections/Humans.Teams/Controllers/`):
 ## Sync Status Page
 
 ### Route: `/Google/Sync`
-Accessible to TeamsAdmin, Board, and Admin. Shows drift across all active resources with a tabbed interface (Google Drive / Google Groups). Formerly at `/Teams/Sync`.
+Accessible to TeamsAdmin, Board, and Admin. Shows drift across all active resources with a tabbed interface (Google Drive / Google Groups).
 
 | Route | Method | Auth | Action |
 |-------|--------|------|--------|
@@ -531,14 +531,12 @@ Drifted resources shown first, then in-sync.
 ### Sync Settings Page
 
 #### Route: `/Google/SyncSettings`
-Admin-only page for configuring per-service sync modes. Formerly at `/Google/SyncSettings`.
+Admin-only page for configuring per-service sync modes.
 
 | Route | Method | Action |
 |-------|--------|--------|
 | `/Google/SyncSettings` | GET | View current sync mode per service |
 | `/Google/SyncSettings` | POST | Update sync mode for a service |
-
-> **Note:** The legacy `/Admin/GoogleSync` route (combined sync preview/apply) has been removed. All sync operations are now at `/Google/Sync`.
 
 ## Stub Implementations
 
@@ -614,7 +612,7 @@ On Google API error (resource sync):
 
 ### Failed-Sync Admin Meter
 
-Failed Google sync health surfaces to Admins as a notification meter (`NotificationMeterProvider`), backed by `IGoogleSyncServiceRead.GetFailedSyncEventCountAsync` — the count of unprocessed outbox events carrying a non-null `LastError`. The meter links to `/Google/Sync`. (There is no longer a daily admin digest reporting these counts; that job was retired.)
+Failed Google sync health surfaces to Admins as a notification meter (`NotificationMeterProvider`), backed by `IGoogleSyncServiceRead.GetFailedSyncEventCountAsync` — the count of unprocessed outbox events carrying a non-null `LastError`. The meter links to `/Google/Sync`.
 
 ## Security Considerations
 

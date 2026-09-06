@@ -13,8 +13,7 @@ namespace Humans.GoogleIntegration.Services.Workspace;
 /// Talks to the Google Drive v3 API using the configured service account.
 /// This is the only file that imports <c>Google.Apis.*</c> for Drive
 /// folder and permission management performed by
-/// <c>GoogleWorkspaceSyncService</c>; the Application-layer sync service
-/// (coming in §15 Part 2b) never sees SDK types.
+/// <c>GoogleWorkspaceSyncService</c>.
 /// </summary>
 /// <remarks>
 /// Every request is issued with <c>SupportsAllDrives = true</c> per the

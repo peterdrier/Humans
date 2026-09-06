@@ -86,7 +86,7 @@ public class EmailProvisioningServiceTests
     // These tests verify that provisioning rejects prefixes already in use
     // by another human in our system BEFORE calling Workspace or writing DB.
     // All DB state is mocked at the IUserService / IUserEmailService / ITeamService
-    // boundary — the Application-layer service no longer touches DbContext.
+    // boundary — the service never touches DbContext.
 
     private sealed record ProvisioningFixture(
         EmailProvisioningService Service,

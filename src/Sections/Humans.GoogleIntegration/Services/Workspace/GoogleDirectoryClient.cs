@@ -11,8 +11,7 @@ namespace Humans.GoogleIntegration.Services.Workspace;
 /// Talks to the Google Workspace Admin Directory API (Users.List and
 /// Groups.List) using the configured service account. This is the only file
 /// that imports <c>Google.Apis.*</c> for domain-wide enumeration performed
-/// by <c>GoogleWorkspaceSyncService</c>; the Application-layer sync service
-/// (coming in §15 Part 2b) never sees SDK types.
+/// by <c>GoogleWorkspaceSyncService</c>.
 /// </summary>
 internal sealed class GoogleDirectoryClient(
     IOptions<GoogleWorkspaceSettings> settings,

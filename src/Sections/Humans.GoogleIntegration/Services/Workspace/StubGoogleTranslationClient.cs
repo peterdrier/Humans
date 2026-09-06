@@ -1,9 +1,9 @@
 namespace Humans.GoogleIntegration.Services.Workspace;
 
 /// <summary>
-/// Dev/test <see cref="IGoogleTranslationClient"/> used when no Google credentials are configured
-/// (per the §15 connector pattern there is no stub *service* — the Application-layer service runs
-/// against this). Returns the input prefixed with the target language so the translate flow is
+/// Dev/test <see cref="IGoogleTranslationClient"/> used when no Google credentials are configured;
+/// the real service runs against it — there is no separate stub service. Returns the input
+/// prefixed with the target language so the translate flow is
 /// exercisable end-to-end and the fake output is unmistakable.
 /// </summary>
 internal sealed class StubGoogleTranslationClient(ILogger<StubGoogleTranslationClient> logger) : IGoogleTranslationClient

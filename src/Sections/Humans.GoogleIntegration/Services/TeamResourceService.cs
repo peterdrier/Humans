@@ -657,14 +657,12 @@ internal sealed partial class TeamResourceService(
 }
 
 /// <summary>
-/// Application-layer options for <see cref="TeamResourceService"/> behavior.
-/// Bound by the Web layer from configuration.
+/// Options for <see cref="TeamResourceService"/> behavior, bound from configuration.
 /// </summary>
 internal sealed class TeamResourceManagementOptions
 {
     /// <summary>
-    /// Configuration section name (matches the pre-migration
-    /// <c>TeamResourceManagementSettings</c> section).
+    /// Configuration section name.
     /// </summary>
     public const string SectionName = "TeamResourceManagement";
 

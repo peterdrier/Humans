@@ -4,11 +4,8 @@ namespace Humans.GoogleIntegration.Services.Workspace;
 /// Narrow connector over the Google Workspace Admin Directory API scoped to
 /// the domain-wide enumeration operations performed by
 /// <c>GoogleWorkspaceSyncService</c> (email-mismatch detection and the admin
-/// "all Google groups" page). Implementations live in
-/// <c>Humans.Infrastructure</c>; the Application-layer sync service (coming
-/// in §15 Part 2b, issue #575) depends only on this interface so that
-/// <c>Humans.Application</c> stays free of <c>Google.Apis.*</c> imports
-/// (design-rules §13).
+/// "all Google groups" page). Shape-neutral so the service layer never names a
+/// <c>Google.Apis.*</c> type (design-rules §13).
 /// </summary>
 /// <remarks>
 /// Distinct from <see cref="IWorkspaceUserDirectoryClient"/>: that connector

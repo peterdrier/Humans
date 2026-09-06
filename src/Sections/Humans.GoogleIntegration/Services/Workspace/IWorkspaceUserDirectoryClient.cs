@@ -3,12 +3,8 @@ namespace Humans.GoogleIntegration.Services.Workspace;
 /// <summary>
 /// Narrow connector over the Google Workspace Admin SDK (Directory API)
 /// scoped to the @nobodies.team user-account operations performed by
-/// <see cref="IGoogleWorkspaceUserService"/>. Implementations live in
-/// <c>Humans.Infrastructure</c> (real Google-backed implementation for
-/// production, stub for dev without service-account credentials). The
-/// Application-layer service depends only on this interface so the
-/// <c>Humans.Application</c> project stays free of <c>Google.Apis.*</c>
-/// imports inside business logic.
+/// <see cref="IGoogleWorkspaceUserService"/>. Shape-neutral so the service layer never
+/// names a <c>Google.Apis.*</c> type (design-rules §13).
 /// </summary>
 internal interface IWorkspaceUserDirectoryClient
 {
