@@ -53,10 +53,13 @@ The shapes imply one register with one cache and one write funnel:
   (`UserInfo.UserEmails`), not a query. Variants differ by predicate (verified? primary?
   Google? nobodies.team?) and by cardinality (one id, one address, a set). The ideal is a
   handful of methods over a predicate, not one method per predicate × cardinality.
-- **Account life as orchestrators**: `HumanLifecycleService`, `AccountDeletionService`,
-  `AccountMergeService`, `ExternalLoginService`, `AccountProvisioningService` own no tables and
-  call the funnel plus other sections' leaves. Merge is an ordered fan-out over `IUserMerge`
-  with the tombstone last.
+- **Account life**: `HumanLifecycleService`, `AccountDeletionService` and
+  `ExternalLoginService` are orchestrators — no tables, no repository; they call the funnel and
+  other sections' leaves. `AccountMergeService` is a section service over
+  `account_merge_requests` through its own repository. It and `AccountProvisioningService` also
+  reach `IUserRepository` and `UserManager<User>` around the funnel (the pending-email settle,
+  the contact-source stamp, account create); the target is that those writes go through the
+  funnel too. Merge is an ordered fan-out over `IUserMerge` with the tombstone last.
 - **Controllers translate only.** `ProfileController` is one controller over three unrelated
   shapes (own profile, own addresses, others' profiles + messaging); the target is three, or a
   controller per shape at most.
