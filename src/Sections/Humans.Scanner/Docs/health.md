@@ -116,4 +116,4 @@ them. That needs a read method on Events' contract, so it is a seam, not a strik
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-09-06 | First doctoring: five stale doc claims, one false page string, two unpinned invariants | peterdrier/Humans#pending |
+| 1 | 2026-09-06 | First doctoring: five stale doc claims, one false page string, two unpinned invariants | peterdrier/Humans#1608 |
