@@ -1,7 +1,5 @@
 # GoogleIntegration — Target Shape
 
-Derived fresh each section-doctor run, before any scan. History rows at the bottom.
-
 ## 1. What the section does
 
 The collective works in Google Workspace, and this section keeps Google in step with
@@ -69,7 +67,7 @@ The shapes imply:
   translation client**, **one settings service** (the per-service mode).
 - **Repositories** over the section's four tables (resources, outbox, sync log, service
   settings), each internal, each the only writer of its table.
-- **One controller** for every admin screen, all `AdminOnly`, plus the two view components
+- **One controller** for every admin screen, authorized per action, plus the two view components
   the rest of the app embeds, plus the two Hangfire jobs, health check, metrics and nav
   contributions.
 - **`Section.cs` + `SectionAdminNav.cs` + `SectionJobs.cs` + `SectionMemberDashboard.cs`
@@ -82,8 +80,8 @@ The shapes imply:
 - **A membership change is never lost**: it is written to the outbox before the caller
   returns, drained in order, retried up to ten times, and a permanent failure (HTTP 400,
   403, 404) is parked visibly with a per-event retry, never silently dropped.
-- **Sync mode gates automation, never a human**: `None` means jobs skip the service;
-  `AddOnly` means jobs never remove; admin-triggered actions always run.
+- **Sync mode gates every Execute, scheduled and manual alike**: `None` means no writes;
+  `AddOnly` means adds only; an admin's "Sync Now" has no bypass.
 - **Every Google-side write leaves a sync-log row** (success or failure), and every
   admin-triggered write leaves an audit entry naming the admin.
 - **A removal notifies the person exactly once, and never an orphan address** (no
@@ -96,8 +94,10 @@ The shapes imply:
   stubs by configuration alone; production refuses to start stubbed.
 - **The reconciliation job never stops mid-list**: one resource's failure is recorded
   against that resource and the walk continues.
-- **All `/Google/*` screens and actions deny non-Admin**; the team-resource actions on Teams'
-  pages defer to `CanManageTeamResourcesAsync`.
+- **Every `/Google/*` screen and action denies Volunteers and Coordinators**: the sync
+  dashboard and its preview admit TeamsAdmin and Board, email provisioning admits
+  HumanAdmin, everything else is Admin-only; the team-resource actions on Teams' pages
+  defer to `CanManageTeamResourcesAsync`.
 
 ## 5. Seams
 
@@ -123,8 +123,8 @@ The shapes imply:
   meter and the outbox screen with Retry; the alert was removed as noise.
 - **No admin fix for renamed addresses.** Renames self-heal on the person's next Google
   sign-in; the screen is read-only by design.
-- **No resx for the admin screens** (`localization-admin-exempt`); the section's three
-  keys exist only for the member-facing Accounts page.
+- **No resx for the admin screens** (`localization-admin-exempt`); the section's two
+  keys exist only for the Accounts page.
 - **No DB-level uniqueness on the outbox or the settings row** — project rule; service
   guards and tests are the enforcement.
 - **No second membership source registry.** Teams and Camps each register themselves as
