@@ -39,10 +39,11 @@ The shapes imply exactly this, and it is today's layout:
 - **Static assets** under `wwwroot/` (one stylesheet, one script, the photos), served as
   RCL static web assets at `/_content/Humans.Tour/`.
 - **`Section.cs`** (empty `Register`) and **`SectionNav.cs`** at the root; nothing else.
-- **No Contracts leaf and no test project of its own.** Routing and rendering are pinned only
-  by the render test in `Humans.Integration.Tests`, local-only by design. CI reaches Tour
-  generically: `EndpointAuthorizationTests` (every action carries an authorization attribute)
-  and `SectionCatalogTests` (the `ISection` is discovered and its nav contribution found).
+- **No Contracts leaf and no test project of its own.** Routing, rendering, the `ISection`
+  and the nav contribution are pinned only by the render test in `Humans.Integration.Tests`,
+  local-only by design. The one CI test that reaches Tour is `EndpointAuthorizationTests`,
+  and it pins only that every action carries an authorization attribute — not which.
+  Delete `SectionNav.cs` or `Section.cs` and CI stays green.
 - Project references: `Humans.Base` and nothing else.
 
 ## 4. Invariants
