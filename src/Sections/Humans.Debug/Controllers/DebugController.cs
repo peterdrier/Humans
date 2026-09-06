@@ -46,10 +46,8 @@ internal sealed class DebugController(
     InMemoryLogSink logSink) : HumansControllerBase(userService)
 {
     /// <summary>
-    /// What the composition root knows about every section: what it owns, what it depends on,
-    /// which seams it implements, and which of guide page / agent doc / issue queue it has
-    /// (nobodies-collective/Humans#1509). The one place a hand-maintained section list that has
-    /// drifted off a rename becomes visible.
+    /// What the composition root knows about every section: what it owns, depends on, and
+    /// implements. Where a hand-maintained section list that drifted off a rename becomes visible.
     /// </summary>
     [HttpGet("Sections")]
     public IActionResult Sections() => View(sectionCatalog);

@@ -7,10 +7,7 @@ using NSubstitute;
 
 namespace Humans.Debug.Tests.Services;
 
-/// <summary>
-/// Unit tests for the Venn/UpSet set-membership mask math, extracted from the deleted
-/// admin-dashboard aggregator at nobodies-collective/Humans#1091.
-/// </summary>
+/// <summary>Unit tests for the Venn/UpSet set-membership mask math.</summary>
 public class UserSetMembershipCalculatorTests
 {
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();

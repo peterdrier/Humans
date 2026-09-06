@@ -6,9 +6,7 @@
 @using Humans.Tickets.Contracts
 @using Humans.Base.Enums
 @using Microsoft.AspNetCore.Html
-@* This page's whole job is a fan-in catalog of every section's public widgets, so it is
-   the one Debug view that names other sections' contracts (nobodies-collective/Humans#1091).
-   The section tag-helper assemblies it renders are opened in Views/_ViewImports.cshtml.
+@* The section tag-helper assemblies this catalog renders are opened in Views/_ViewImports.cshtml.
    Shell-resident components (AdminBreadcrumb, ChromeSlot, SectionNav, …) are invoked by name —
    Debug cannot addTagHelper against Humans.Web. *@
 @{
@@ -249,7 +247,6 @@
 
         <div class="col-md-9">
 
-            @* ============== PROFILE & IDENTITY ============== *@
             <section id="profile" class="wg-section">
                 <h2>Profile &amp; Identity</h2>
 
@@ -318,9 +315,8 @@
                     </div>
                 </div>
 
-                @* _ProfileCard + _HumanPopover cards: their ProfileSummaryViewModel sample is
-                   internal to Humans.Users, so the Users section renders both cards itself
-                   (ShiftsGallery's shape; nobodies-collective/Humans#1091). *@
+                @* ProfileSummaryViewModel is internal to Humans.Users, so that section renders
+                   the _ProfileCard + _HumanPopover cards itself. *@
                 @await Component.InvokeAsync("UsersGallery", new { currentUserId = Model.CurrentUserId, displayName = Model.CurrentUserDisplayName })
 
                 <div class="wg-card">
@@ -461,7 +457,6 @@
                 </div>
             </section>
 
-            @* ============== PERSONAL DASHBOARD ============== *@
             <section id="dashboard" class="wg-section">
                 <h2>Personal Dashboard</h2>
 
@@ -539,10 +534,8 @@
                     @ParamsBlock()
                     @AuthLine("Authenticated only.")
                     <div class="wg-card-example">
-                        @* Invoked by name: the component is internal to Humans.GoogleIntegration and
-                           routed by SectionViewComponentFeatureProvider, so the compile-time <vc:>
-                           tag helper cannot see it and would ship as inert literal markup. The
-                           dashboard's call site already used this form (step 6). *@
+                        @* Invoked by name: the component is internal to Humans.GoogleIntegration, so a
+                           <vc:> tag helper would ship as inert literal markup. *@
                         @await Component.InvokeAsync("MyGoogleResources")
                     </div>
                 </div>
@@ -678,7 +671,6 @@
                 </div>
             </section>
 
-            @* ============== SHIFTS & ROTA ============== *@
             <section id="shifts" class="wg-section">
                 <h2>Shifts &amp; Rota</h2>
 
@@ -707,10 +699,8 @@
                     </div>
                 </div>
 
-                @* The four rota cards live in Humans.Shifts: they construct RotaHeaderViewModel,
-                   RotaInfo, ShiftTag and EventRotaTableViewModel, all internal to that section
-                   since its G5. Resolved by name across application parts
-                   (nobodies-collective/Humans#866). *@
+                @* The four rota cards live in Humans.Shifts on types internal to it, so
+                   ShiftsGallery is resolved by name across application parts. *@
                 @await Component.InvokeAsync("ShiftsGallery", new { currentUserId = Model.CurrentUserId })
 
                 <div class="wg-card">
@@ -764,7 +754,6 @@
                 </div>
             </section>
 
-            @* ============== NOTIFICATIONS & ALERTS ============== *@
             <section id="alerts" class="wg-section">
                 <h2>Notifications &amp; Alerts</h2>
 
@@ -826,7 +815,6 @@
                 </div>
             </section>
 
-            @* ============== ADMIN CHROME ============== *@
             <section id="admin" class="wg-section">
                 <h2>Admin Chrome</h2>
 
@@ -897,7 +885,6 @@
                 </div>
             </section>
 
-            @* ============== FORMS & INPUTS ============== *@
             <section id="forms" class="wg-section">
                 <h2>Forms &amp; Inputs</h2>
 
@@ -1121,7 +1108,6 @@
                 </div>
             </section>
 
-            @* ============== LAYOUT BITS ============== *@
             <section id="layout" class="wg-section">
                 <h2>Layout Bits</h2>
 
@@ -1269,7 +1255,6 @@
                 </div>
             </section>
 
-            @* ============== SKIPPED ============== *@
             <section id="skipped" class="wg-section">
                 <h2>Skipped (with reason)</h2>
                 <p class="text-muted">A handful of widgets are intentionally not rendered standalone here:</p>
@@ -1292,7 +1277,6 @@
                 </ul>
             </section>
 
-            @* ============== CHOOSING BETWEEN THEM ============== *@
             <section id="choosing" class="wg-section">
                 <h2>Choosing between them</h2>
                 <p class="text-muted">
@@ -1399,7 +1383,6 @@
             </section>
 
 
-            @* ============== TABLES ============== *@
             <section class="wg-section" id="wg-tables">
                 <h2>Tables</h2>
                 <div class="wg-card">

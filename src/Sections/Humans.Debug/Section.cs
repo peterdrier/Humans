@@ -9,22 +9,14 @@ namespace Humans.Debug;
 /// nothing names it, so it needs no section prefix.
 /// </summary>
 /// <remarks>
-/// <see cref="Register"/> is empty: every dependency the diagnostics pages read is a Base
-/// singleton registered by its owner —
-/// <c>IClientStatsTracker</c>, <c>IHttpStatusTracker</c>, <c>ConfigurationRegistry</c>,
-/// <c>QueryStatistics</c>, <c>ICacheStatsProvider</c>, the <c>ICacheStats</c> decorator fan-in
-/// and <c>IAdminDatabaseDiagnosticsService</c>. The section owns no tables, so there is no
-/// <c>AddSectionDbContext</c> call and no repository. The class still ships: <see cref="ISection"/>
-/// is what puts the assembly in <c>SectionDiscoveryExtensions</c>'s discovered-sections log,
-/// which is the first thing to read when a section's page 404s. Access is the <c>AdminOnly</c>
-/// policy, which stays in Shell's <c>AuthorizationPolicyExtensions</c> (design §8).
+/// <see cref="Register"/> is empty: every singleton the pages read is registered by its owner,
+/// and the section owns no tables. The class ships so Shell's section discovery finds the
+/// assembly — its discovered-sections log is the first thing to read when a page 404s.
 /// </remarks>
 public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
-        // Nothing to register: every dependency the diagnostics pages read is a Base
-        // singleton owned by someone else, and the log-reading API moved to Backdoor
-        // (nobodies-collective/Humans#1128). The class still ships — see the remarks.
+        // Nothing to register — see the remarks.
     }
 }
