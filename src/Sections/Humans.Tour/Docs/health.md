@@ -36,11 +36,13 @@ The shapes imply exactly this, and it is today's layout:
 - **One view and one layout of its own** — the page steps outside Shell's chrome on
   purpose — with a `_ViewStart` binding them.
 - **`_ViewImports`** carrying the MVC tag helpers and Humans.Base's (see weirdness).
-- **Static assets** under `wwwroot/` (one stylesheet, one script, five photos), served as
+- **Static assets** under `wwwroot/` (one stylesheet, one script, the photos), served as
   RCL static web assets at `/_content/Humans.Tour/`.
 - **`Section.cs`** (empty `Register`) and **`SectionNav.cs`** at the root; nothing else.
-- **No Contracts leaf and no test project of its own.** The only pin is the render test in
-  `Humans.Integration.Tests`, local-only by design.
+- **No Contracts leaf and no test project of its own.** Routing and rendering are pinned only
+  by the render test in `Humans.Integration.Tests`, local-only by design. CI reaches Tour
+  generically: `EndpointAuthorizationTests` (every action carries an authorization attribute)
+  and `SectionCatalogTests` (the `ISection` is discovered and its nav contribution found).
 - Project references: `Humans.Base` and nothing else.
 
 ## 4. Invariants
@@ -99,4 +101,4 @@ The shapes imply exactly this, and it is today's layout:
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-09-06 | First doctor pass — pending | peterdrier/Humans#pending |
+| 1 | 2026-09-06 | First pass: routes into the page documented, comment sediment cut, two local pins | peterdrier/Humans#pending |
