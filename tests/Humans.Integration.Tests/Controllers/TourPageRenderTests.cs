@@ -40,6 +40,11 @@ public class TourPageRenderTests(HumansTestDatabase database) : IntegrationTestB
         welcomeHtml.Should().Contain("href=\"/Tour\"",
             because: "the Welcome landing is where anonymous visitors arrive (no-orphan-pages rule)");
 
+        // /About links Tour only through <vc:section-nav>, so this pins SectionNav itself.
+        var aboutHtml = await (await Client.GetAsync("/About", ct)).Content.ReadAsStringAsync(ct);
+        aboutHtml.Should().Contain("href=\"/Tour\"",
+            because: "Tour's ISectionNav contribution is the anonymous top-nav entry");
+
         var tourHtml = await (await Client.GetAsync("/Tour", ct)).Content.ReadAsStringAsync(ct);
         tourHtml.Should().Contain("tour-header",
             because: "the landing page uses its own layout, whose fixed header bar is the chrome");

@@ -6,11 +6,11 @@ Derived fresh each section-doctor run, before any scan. History rows at the bott
 
 One public web page — "What is Humans" — that anyone can read without logging in. It is
 the URL you hand another burn organisation. The visitor gets a long-form landing page: a
-photo hero with a one-paragraph pitch and four headline numbers, six plain-language
-capability groups (people, organising, money, governance, communication, the gate), two
-photo interludes, a "take the parts your burn needs" closing with the engineering
-credentials, and a contact / source-code call to action. The page always offers one way
-back into the app (the fixed header bar) and one link onward to the engineering story.
+photo hero with a short pitch and headline numbers, plain-language capability groups
+(people, organising, money, governance, communication, the gate), photo interludes, a
+"take the parts your burn needs" closing with the engineering credentials, and a contact /
+source-code call to action. The page always offers the way back into the app (the fixed
+header bar) and a link onward to the engineering story.
 It is written in English only: its audience is outsiders evaluating the platform, not
 members.
 
@@ -24,7 +24,7 @@ members.
 Inbound links the section does not own: Shell's dashboard tile
 (`src/Humans.Web/Views/Home/Dashboard.cshtml`, `Controller = "Tour"`) for signed-in
 members, and Onboarding's Welcome page (`href="/Tour"`) for anonymous arrivals. Outbound:
-`/` (header brand and CTA), `/About` (twice), a mailto, the GitHub repo, Google Fonts.
+`/` (header brand and CTA), `/About`, a mailto, the GitHub repo, Google Fonts.
 
 No contract methods, no jobs, no events, no config keys, no tables.
 
@@ -36,14 +36,16 @@ The shapes imply exactly this, and it is today's layout:
 - **One view and one layout of its own** — the page steps outside Shell's chrome on
   purpose — with a `_ViewStart` binding them.
 - **`_ViewImports`** carrying the MVC tag helpers and Humans.Base's (see weirdness).
-- **Static assets** under `wwwroot/` (one stylesheet, one script, the photos), served as
+- **Static assets** under `wwwroot/` (the stylesheet, the script, the photos), served as
   RCL static web assets at `/_content/Humans.Tour/`.
 - **`Section.cs`** (empty `Register`) and **`SectionNav.cs`** at the root; nothing else.
-- **No Contracts leaf and no test project of its own.** Routing, rendering, the `ISection`
-  and the nav contribution are pinned only by the render test in `Humans.Integration.Tests`,
-  local-only by design. The one CI test that reaches Tour is `EndpointAuthorizationTests`,
-  and it pins only that every action carries an authorization attribute — not which.
-  Delete `SectionNav.cs` or `Section.cs` and CI stays green.
+- **No Contracts leaf and no test project of its own.** Routing, rendering and the
+  `ISection` are pinned by the render test in `Humans.Integration.Tests`, and the nav
+  contribution by that test's anonymous `/About` assertion (a Shell page that links Tour
+  through `<vc:section-nav>` alone) — all local-only by design. The one CI test that
+  reaches Tour is `EndpointAuthorizationTests`, and it pins only that every action carries
+  an authorization attribute — not which. Delete `SectionNav.cs` or `Section.cs` and CI
+  stays green.
 - Project references: `Humans.Base` and nothing else.
 
 ## 4. Invariants
