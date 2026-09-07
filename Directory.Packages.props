@@ -72,7 +72,7 @@
     <PackageVersion Include="Serilog.Sinks.OpenTelemetry" Version="4.2.0" />
     <!-- Image Processing -->
     <!-- 14.15.0 patches GHSA-422r-8c97-xcg4 / GHSA-56m6-8q75-f2rw -->
-    <PackageVersion Include="Magick.NET-Q8-AnyCPU" Version="14.16.0" />
+    <PackageVersion Include="Magick.NET-Q8-AnyCPU" Version="14.17.1" />
     <!-- Transitive pin: patches GHSA-37gx-xxp4-5rgx / GHSA-w3x6-4m5h-cxqf / GHSA-9mv3-2cwr-p262;
          10.0.10 patches GHSA-23rf-6693-g89p / GHSA-8q5v-6pqq-x66h / GHSA-cvvh-rhrc-wg4q /
          GHSA-g8r8-53c2-pm3f / GHSA-mmjf-rqrv-855v -->
