@@ -422,6 +422,36 @@ public class SurveyServiceTests
         await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(SurveyQuestionType.RankedChoice)]
+    [InlineData(SurveyQuestionType.Information)]
+    public async Task CreateAsync_rejects_ranked_and_information_questions_as_branching_sources(SurveyQuestionType sourceType)
+    {
+        var sourceId = Guid.NewGuid();
+        var source = sourceType == SurveyQuestionType.RankedChoice
+            ? RankedInput(sourceId)
+            : new QuestionInput(
+                sourceId, 1, 1, SurveyQuestionType.Information,
+                L("Context"), L("Read this first."), false, null, null,
+                LocalizedText.Empty, LocalizedText.Empty, null, []);
+        var dependent = new QuestionInput(
+            Guid.NewGuid(), 2, 1, SurveyQuestionType.ShortText,
+            L("Why?"), LocalizedText.Empty, false, null, null,
+            LocalizedText.Empty, LocalizedText.Empty,
+            new BranchCondition
+            {
+                Clauses = { new BranchClause { QuestionId = sourceId, Operator = BranchOperator.Answered } },
+            },
+            []);
+
+        var act = async () => await CreateService().CreateAsync(
+            Input(source, dependent), Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*cannot be branching sources*");
+        await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+    }
+
     private static SurveyEditInput InputWithSlug(string? slug) =>
         new(
             L("Title"), L("Intro"), L("Thanks"),
@@ -3766,6 +3796,25 @@ public class SurveyServiceTests
             Arg.Is<string>(value => value.Contains("unavailable (c)", StringComparison.Ordinal)
                 && value.Contains("restored (b)", StringComparison.Ordinal)),
             actor);
+    }
+
+    [HumansFact]
+    public async Task SetRankedAvailabilityAsync_refuses_while_the_vote_is_open()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Asociados, null);
+        survey.IsAsociadoVote = true;
+        var questionId = Guid.NewGuid();
+        survey.Questions = [RankedQuestion(questionId, survey.Id)];
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var act = async () => await CreateService().SetRankedAvailabilityAsync(
+            survey.Id, questionId, ["b"], Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*only change after the vote closes*");
+        await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+        await _audit.DidNotReceive().LogAsync(
+            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>());
     }
 
     [HumansFact]
