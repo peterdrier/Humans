@@ -164,4 +164,4 @@ stamped with the reforge version that produced it, lives in that run's file and 
 | Date | Outcome | PR |
 |---|---|---|
 | 2026-08-27 | first doctor run — thank-you copy restored on the invited path, reminder window honoured, anonymous 500 closed, an all-hidden page no longer reports itself as completed, stale prose swept | peterdrier/Humans#1538 |
-| 2026-09-07 | second run, after ranked-choice voting shipped — target gains the Decide shape; JSON export carries ranked ballots again; the ranked-freeze test exercises the freeze; Send page labels the Asociados audience; section docs caught up to the vote schema; comment cuts | PR: pending |
+| 2026-09-07 | second run, after ranked-choice voting shipped — target gains the Decide shape; JSON export carries ranked ballots again; the ranked-freeze test exercises the freeze; Send page labels the Asociados audience; section docs caught up to the vote schema; comment cuts | peterdrier/Humans#1618 |
