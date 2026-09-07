@@ -17,8 +17,8 @@ using NodaTime;
 namespace Humans.Surveys.Services;
 
 /// <summary>
-/// Application-layer <see cref="ISurveyService"/>. Plain Scoped service (no caching decorator, per
-/// spec §12). Cross-domain display data is stitched from <c>I…ServiceRead</c> interfaces — the
+/// Application-layer <see cref="ISurveyService"/>. Plain Scoped service (no caching decorator).
+/// Cross-domain display data is stitched from <c>I…ServiceRead</c> interfaces — the
 /// repository never resolves user/team navs.
 /// </summary>
 internal sealed class SurveyService(

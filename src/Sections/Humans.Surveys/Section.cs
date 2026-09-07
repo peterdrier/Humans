@@ -13,7 +13,7 @@ namespace Humans.Surveys;
 /// <summary>
 /// Surveys' DI entry point, at the project root by convention. Discovered by Shell —
 /// nothing names it, so it needs no section prefix. Plain Scoped service (Feedback/Issues
-/// pattern) — no caching decorator, per the section design spec §12.
+/// pattern) — no caching decorator.
 /// </summary>
 /// <remarks>
 /// <c>SendSurveyReminderJob</c> drives <see cref="ISurveyReminderSender"/>. Its
