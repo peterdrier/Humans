@@ -83,8 +83,8 @@ Stated in full in [`Surveys.md`](Surveys.md). The ones the structure exists to p
   eligibility at entry, on every page, and again at submit — current status, not status at send.
 - While an Asociado vote is Open, nothing answer-derived leaves the service: results, both
   exports, the analysis API and the drill-down all return participation only.
-- After close, a ballot is shown and exported without name, id, participation id or timestamp,
-  including any legacy Identified row.
+- After close, a ballot is shown without name, id, participation id or timestamp, and exported
+  without name or user id, including any legacy Identified row.
 - An Asociado vote's definition and audience are frozen once it opens; a ranked question's
   counting settings freeze at the first saved answer of any survey; the only post-close mutable
   input is ranked-option availability, which never rewrites a stored ballot.
@@ -164,3 +164,4 @@ stamped with the reforge version that produced it, lives in that run's file and 
 | Date | Outcome | PR |
 |---|---|---|
 | 2026-08-27 | first doctor run — thank-you copy restored on the invited path, reminder window honoured, anonymous 500 closed, an all-hidden page no longer reports itself as completed, stale prose swept | peterdrier/Humans#1538 |
+| 2026-09-07 | second run, after ranked-choice voting shipped — target gains the Decide shape; JSON export carries ranked ballots again; the ranked-freeze test exercises the freeze; Send page labels the Asociados audience; section docs caught up to the vote schema; comment cuts | PR: pending |
