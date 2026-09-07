@@ -3721,8 +3721,8 @@ public class SurveyServiceTests
     [HumansFact]
     public async Task UpdateAsync_freezes_ranked_candidates_order_and_settings_after_first_saved_answer()
     {
+        // Not an Asociado vote: the freeze must hold on its own, without the open-vote lock.
         var survey = SurveyWith(SurveyStatus.Open, null, null);
-        survey.IsAsociadoVote = true;
         var questionId = Guid.NewGuid();
         survey.Questions = [RankedQuestion(questionId, survey.Id)];
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
@@ -3733,17 +3733,10 @@ public class SurveyServiceTests
             options: [Opt("b", "B", 1), Opt("a", "A", 2), Opt("c", "C", 3)]);
 
         var act = async () => await CreateService().UpdateAsync(
-            survey.Id,
-            Input(changed) with
-            {
-                IsAsociadoVote = true,
-                AudienceType = SurveyAudienceType.Asociados,
-            },
-            Guid.NewGuid(),
-            TestContext.Current.CancellationToken);
+            survey.Id, Input(changed), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*cannot be edited after it has opened*");
+            .WithMessage("*cannot change after the first saved answer*");
         await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
