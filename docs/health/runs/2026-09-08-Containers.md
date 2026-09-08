@@ -3,7 +3,7 @@
 - Invocation: unattended daily run (cloud), no arguments; Phase 8 skipped per the stored prompt.
 - Anchor commit: `10199a23` (origin/main at branch point); branch `section-doctor/2026-09-08T011600Z`.
 - Budget: standard daily (~2.5 h).
-- PR: pending
+- PR: peterdrier/Humans#1620
 
 ## Assessment summary
 
@@ -97,6 +97,9 @@ not a gap).
     own `tests/Humans.<X>.Tests` is section-owned and its gaps go to that section's `debt.yml`;
     `tests/Humans.Testing` and other shared test projects stay central — in the atom and its INDEX
     line. Confirm or revert.
+22. [lesson, Phase 4] The doctor-reviewer dispatch prompt did not open with a `thread:` marker, so
+    the cost report names its row by a transcript hash instead of "Reviewer". Phase 4's reviewer
+    dispatch should carry the marker the way 3d's thread prompts do.
 
 ## Worked
 
@@ -147,9 +150,9 @@ and City Planning's container pages get looked at.
   placement-image branches unpinned (7), which is exactly the drift a re-doctor exists to catch.
 - **Wasted motion.** Two build rounds on the request-size test (a missing `using`, then the
   attribute exposing no public limit — read via reflection). Thread outputs arrived as JSONL
-  transcripts and needed extraction before reading. One context compaction landed between Phase 4
-  and Phase 5; the Phase 5 re-read rule did its job — the mechanics below were re-anchored from
-  the skill, not the summary.
+  transcripts and needed extraction before reading. The cost report detected two context
+  compactions (during assess and during the section-docs strike); the Phase 5 re-read rule did
+  its job — the mechanics below were re-anchored from the skill, not the summary.
 - **Missed by the assessment, found by striking.** The ranked list called the view models
   "field-for-field copies"; the reviewer corrected that to "subsets" (the view models dropped
   fields the DTO carried), which is the wording this file uses. The collapse also pulled two
@@ -169,6 +172,7 @@ and City Planning's container pages get looked at.
 - [ ] 14 — `Containers_` prefix backlog: rename now (every consumer) or leave?
 - [ ] 20 — Phase 4/7: when a run cannot render a page, state it and lean on the preview deploy (this run), or hold view strikes for interactive runs?
 - [ ] 21 — Phase 5: confirm the `debt-ledger-additions` reading the sweep applied, or revert it.
+- [ ] 22 — Phase 4: open the reviewer dispatch prompt with a `thread:` marker so the cost report names its row?
 
 ## Sweep queue
 
@@ -242,7 +246,7 @@ Callers changed outside the inventory, as the collapse (1–3) required:
 |---|---|---|---|
 | Inbox | main | main session | 0 |
 | Conformance | main (detector script) | main session | 1 (report only) |
-| Prose & surface | subagent `doctor-reader` | opus, low | 6 |
+| Prose & surface | subagent `doctor-reader` | haiku | 6 |
 | Freshness | subagent `doctor-reader` | opus, low | 12 |
 | Tests | subagent `doctor-reader` | opus, low | 15 |
 | History | subagent `doctor-reader` | opus, low | 20 |

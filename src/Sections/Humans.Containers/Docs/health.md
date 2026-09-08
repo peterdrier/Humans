@@ -102,4 +102,4 @@ A DTO field carrying a URL is named as a URL (`PlacementImageUrl`).
 | Date | Headline | PR |
 |---|---|---|
 | 2026-08-16 | Doc-code alignment (phase gate, `HumansDbContext`), dead `GetPlacementAsync` removed, 5 tests added, clear-placement flow localized, 3 dead resx keys deleted | peterdrier/Humans#1341 |
-| 2026-09-08 | View-model layer collapsed into the DTOs (URL field renamed, dead surface deleted), camp container page fully localized, placement/audit/request-size invariants pinned, section docs and comments realigned; health.md moved to the target-shape format | pending |
+| 2026-09-08 | View-model layer collapsed into the DTOs (URL field renamed, dead surface deleted), camp container page fully localized, placement/audit/request-size invariants pinned, section docs and comments realigned; health.md moved to the target-shape format | peterdrier/Humans#1620 |
