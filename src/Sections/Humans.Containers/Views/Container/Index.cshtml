@@ -1,6 +1,6 @@
 @model Humans.Containers.Contracts.ContainerIndexViewModel
 @{
-    ViewData["Title"] = $"Containers — {Model.CampName}";
+    ViewData["Title"] = $"{Localizer["Container_Breadcrumb"]} — {Model.CampName}";
 
     var routeValues = new Dictionary<string, string>(StringComparer.Ordinal)
     {

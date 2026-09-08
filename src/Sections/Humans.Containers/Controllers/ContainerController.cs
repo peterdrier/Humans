@@ -4,6 +4,7 @@ using Humans.Containers.Contracts;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 
 using Humans.Users.Contracts;
 
@@ -17,6 +18,7 @@ internal sealed class ContainerController(
     ICityPlanningServiceRead cityPlanningService,
     IAuthorizationService authorizationService,
     IUserServiceRead userService,
+    IStringLocalizer<ContainersResource> localizer,
     ILogger<ContainerController> logger) : HumansControllerBase(userService)
 {
     private async Task<bool> AuthorizeAsync(ContainerAuthorizationTarget target, ContainerOperationRequirement requirement) =>
@@ -86,14 +88,14 @@ internal sealed class ContainerController(
 
         if (!ModelState.IsValid)
         {
-            SetError("Please correct the validation errors.");
+            SetError(localizer["Container_ValidationErrors"].Value);
             return RedirectToAction(nameof(Index), new { slug });
         }
 
         return await TryRunContainerWriteAsync(
             () => containerService.CreateAsync(model.ToContainerData(camp.Id), user.Id, ct),
             slug,
-            "Container added.");
+            localizer["Container_Added"].Value);
     }
 
     [HttpPost("{id}/Edit")]
@@ -109,14 +111,14 @@ internal sealed class ContainerController(
 
         if (!ModelState.IsValid)
         {
-            SetError("Please correct the validation errors.");
+            SetError(localizer["Container_ValidationErrors"].Value);
             return RedirectToAction(nameof(Index), new { slug });
         }
 
         return await TryRunContainerWriteAsync(
             () => containerService.UpdateAsync(id, model.ToContainerData(container!.CampId), user.Id, ct),
             slug,
-            "Container updated.");
+            localizer["Container_Updated"].Value);
     }
 
     [HttpPost("{id}/Delete")]
@@ -130,7 +132,7 @@ internal sealed class ContainerController(
         if (notFound is not null) return notFound;
 
         await containerService.DeleteAsync(id, user.Id, ct);
-        SetSuccess("Container deleted.");
+        SetSuccess(localizer["Container_Deleted"].Value);
         return RedirectToAction(nameof(Index), new { slug });
     }
 

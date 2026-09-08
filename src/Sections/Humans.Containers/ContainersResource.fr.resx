@@ -111,4 +111,22 @@
   <data name="ContainerMap_Legend_Door" xml:space="preserve">
     <value>Triangle = côté porte</value>
   </data>
+  <data name="Container_ValidationErrors" xml:space="preserve">
+    <value>Veuillez corriger les erreurs de validation.</value>
+  </data>
+  <data name="Container_Added" xml:space="preserve">
+    <value>Conteneur ajouté.</value>
+  </data>
+  <data name="Container_Updated" xml:space="preserve">
+    <value>Conteneur mis à jour.</value>
+  </data>
+  <data name="Container_Deleted" xml:space="preserve">
+    <value>Conteneur supprimé.</value>
+  </data>
+  <data name="Container_Carousel_Previous" xml:space="preserve">
+    <value>Précédent</value>
+  </data>
+  <data name="Container_Carousel_Next" xml:space="preserve">
+    <value>Suivant</value>
+  </data>
 </root>
