@@ -1,0 +1,7 @@
+# Section debt ledger for Humans.Containers. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+inbox:
+  - added: 2026-09-08
+    what: "No controller tests for ContainerController (finding 13, /section-doctor on Containers 2026-09-08): the 403 on /Camp/{slug}/Containers for a non-lead, the Forbid on Create/Edit/Delete, the NotFound on an unknown slug or id, and the ModelState → flash → redirect path are unpinned end to end; the handler is unit-tested by hand-built context only. Needs the controller-test scaffolding other sections use (HumansControllerBase + IAuthorizationService substitute)."
+    review: panel
