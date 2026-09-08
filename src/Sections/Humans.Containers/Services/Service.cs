@@ -374,7 +374,7 @@ internal sealed class Service(
     private static ContainerDto ToDto(Container c, IReadOnlyList<ContainerImage> images)
     {
         var gallery = new List<ContainerImageDto>(images.Count + 1);
-        // Pre-#797 containers still hold their single image in the containers columns;
+        // Pre-nobodies-collective/Humans#797 containers still hold their single image in the containers columns;
         // Guid.Empty addresses it so callers see one uniform, removable gallery.
         if (c.ImageStoragePath is not null)
         {

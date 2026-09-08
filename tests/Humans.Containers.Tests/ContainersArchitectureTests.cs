@@ -9,8 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Containers.Tests;
 
 /// <summary>
-/// Architecture tests enforcing the section shape for Containers
-/// (nobodies-collective/Humans#866, G5).
+/// Architecture tests enforcing the section shape for Containers.
 /// </summary>
 public class ContainersArchitectureTests
 {
@@ -54,10 +53,7 @@ public class ContainersArchitectureTests
             && d.ImplementationType!.Name == "ContainerAuthorizationHandler");
     }
 
-    /// <summary>
-    /// The section's own DI registrations. Since G5 these come from
-    /// <see cref="Section.Register"/> rather than a Shell extension method.
-    /// </summary>
+    /// <summary>The section's own DI registrations, from <see cref="Section.Register"/>.</summary>
     private static ServiceCollection Registrations()
     {
         var services = new ServiceCollection();

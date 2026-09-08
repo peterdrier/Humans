@@ -12,7 +12,6 @@ public interface IContainerService : IApplicationService
     Task<ContainerDto> UpdateAsync(Guid id, ContainerData data, Guid actorUserId, CancellationToken ct = default);
     Task DeleteAsync(Guid id, Guid actorUserId, CancellationToken ct = default);
 
-    // Placement
     Task<IReadOnlyList<ContainerPlacementDto>> GetPlacementsByYearAsync(int year, CancellationToken ct = default);
     Task<ContainerPlacementDto> SavePlacementAsync(Guid containerId, int year, string geoJson, Guid actorUserId, CancellationToken ct = default);
     Task ClearPlacementAsync(Guid containerId, int year, Guid actorUserId, CancellationToken ct = default);
@@ -56,7 +55,7 @@ public record ContainerImageUpload(Stream Content, string ContentType, string Fi
 
 /// <summary>
 /// One image in a container's gallery, in display order. <see cref="Id"/> is
-/// <see cref="Guid.Empty"/> for the pre-#797 single image still held in the
+/// <see cref="Guid.Empty"/> for the pre-nobodies-collective/Humans#797 single image still held in the
 /// <c>containers</c> image columns; every other id is a <c>container_images</c> row.
 /// </summary>
 public record ContainerImageDto(Guid Id, string Url, string? FileName);
