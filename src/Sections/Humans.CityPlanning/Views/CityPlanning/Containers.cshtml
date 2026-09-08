@@ -2,11 +2,10 @@
 @{
     ViewData["Title"] = $"{ContainersLocalizer["Container_Breadcrumb"]} {Model.Year}";
 
-    ContainerCardModel CardFor(ContainerWithPlacementViewModel c) => new()
+    ContainerCardModel CardFor(ContainerWithPlacement c) => new()
     {
         Container = c.Container,
         Placement = c.Placement,
-        CanManage = true,
         FormController = "CityPlanning",
         EditAction = "EditContainer",
         DeleteAction = "DeleteContainer",

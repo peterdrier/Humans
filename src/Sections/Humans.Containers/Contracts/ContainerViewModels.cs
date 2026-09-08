@@ -6,43 +6,11 @@ public class ContainerIndexViewModel
 {
     public string CampSlug { get; set; } = string.Empty;
     public string CampName { get; set; } = string.Empty;
-    public Guid CampId { get; set; }
-    public List<ContainerViewModel> Containers { get; set; } = [];
-    public Dictionary<Guid, ContainerPlacementViewModel> PlacementsByContainerId { get; set; } = new();
-    public bool CanManage { get; set; }
+    public List<ContainerDto> Containers { get; set; } = [];
+    public Dictionary<Guid, ContainerPlacementDto> PlacementsByContainerId { get; set; } = new();
     public int CurrentYear { get; set; }
     public bool IsPlacementOpen { get; set; }
     public bool IsLeadButPhaseClosed { get; set; }
-}
-
-public class ContainerViewModel
-{
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string? Description { get; set; }
-
-    /// <summary>Gallery in display order; carries <see cref="ContainerImageDto"/> straight through.</summary>
-    public IReadOnlyList<ContainerImageDto> Images { get; set; } = [];
-}
-
-public class ContainerPlacementViewModel
-{
-    public Guid ContainerId { get; set; }
-    public int Year { get; set; }
-    public string? LocationGeoJson { get; set; }
-    public string? PlacementNotes { get; set; }
-    public string? PlacementImageUrl { get; set; }
-    public string? PlacementImageFileName { get; set; }
-    public bool IsPlaced => LocationGeoJson is not null;
-    public bool HasPlacementInfo => !string.IsNullOrEmpty(PlacementNotes) || PlacementImageUrl is not null;
-}
-
-public class ContainerWithPlacementViewModel
-{
-    public ContainerViewModel Container { get; set; } = new();
-    public ContainerPlacementViewModel? Placement { get; set; }
-    public bool IsPlaced => Placement?.IsPlaced ?? false;
-    public bool HasPlacementInfo => Placement?.HasPlacementInfo ?? false;
 }
 
 public class ContainerFormModel

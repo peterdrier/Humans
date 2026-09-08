@@ -2,9 +2,8 @@ namespace Humans.Containers.Contracts;
 
 public class ContainerCardModel
 {
-    public ContainerViewModel Container { get; set; } = null!;
-    public ContainerPlacementViewModel? Placement { get; set; }
-    public bool CanManage { get; set; }
+    public ContainerDto Container { get; set; } = null!;
+    public ContainerPlacementDto? Placement { get; set; }
     public string FormController { get; set; } = string.Empty;
     public string EditAction { get; set; } = string.Empty;
     public string DeleteAction { get; set; } = string.Empty;

@@ -46,7 +46,6 @@ public record ContainerAdminOverview(
 public record ContainerCampGroup(
     Guid CampId,
     string CampName,
-    string CampSlug,
     IReadOnlyList<ContainerWithPlacement> Containers);
 
 public record ContainerWithPlacement(ContainerDto Container, ContainerPlacementDto? Placement);
@@ -75,12 +74,15 @@ public record ContainerPlacementDto(
     int Year,
     string? LocationGeoJson,
     string? PlacementNotes,
-    string? PlacementImageStoragePath,
-    string? PlacementImageContentType,
+    string? PlacementImageUrl,
     string? PlacementImageFileName,
     Instant CreatedAt,
     Instant UpdatedAt
-);
+)
+{
+    public bool IsPlaced => LocationGeoJson is not null;
+    public bool HasPlacementInfo => !string.IsNullOrEmpty(PlacementNotes) || PlacementImageUrl is not null;
+}
 
 public record ContainerData(
     Guid CampId,

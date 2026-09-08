@@ -42,23 +42,20 @@
                 @Localizer["Container_PlacementNotes_ButtonLabel"]
             </button>
         }
-        @if (Model.CanManage)
-        {
-            <button type="button" class="btn btn-outline-secondary btn-sm"
-                    data-bs-toggle="modal" data-bs-target="#editModal-@c.Id"
-                    title="@SharedLocalizer["Common_Edit"]">
-                <i class="fa-solid fa-pen"></i>
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                data-bs-toggle="modal" data-bs-target="#editModal-@c.Id"
+                title="@SharedLocalizer["Common_Edit"]">
+            <i class="fa-solid fa-pen"></i>
+        </button>
+        <form asp-controller="@Model.FormController" asp-action="@Model.DeleteAction"
+              asp-all-route-data="@Model.ExtraRouteValues" asp-route-id="@c.Id"
+              method="post" class="d-inline">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-outline-danger btn-sm"
+                    data-confirm="@string.Format(Localizer["Container_DeleteConfirm"], c.Name)"
+                    title="@SharedLocalizer["Common_Delete"]">
+                <i class="fa-solid fa-trash"></i>
             </button>
-            <form asp-controller="@Model.FormController" asp-action="@Model.DeleteAction"
-                  asp-all-route-data="@Model.ExtraRouteValues" asp-route-id="@c.Id"
-                  method="post" class="d-inline">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-outline-danger btn-sm"
-                        data-confirm="@string.Format(Localizer["Container_DeleteConfirm"], c.Name)"
-                        title="@SharedLocalizer["Common_Delete"]">
-                    <i class="fa-solid fa-trash"></i>
-                </button>
-            </form>
-        }
+        </form>
     </div>
 </li>

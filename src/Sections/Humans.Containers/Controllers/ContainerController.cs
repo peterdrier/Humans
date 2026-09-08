@@ -57,38 +57,18 @@ internal sealed class ContainerController(
         var containerIds = containers.Select(c => c.Id).ToHashSet();
         var placementsByContainerId = placements
             .Where(p => containerIds.Contains(p.ContainerId))
-            .ToDictionary(p => p.ContainerId, ToPlacementViewModel);
+            .ToDictionary(p => p.ContainerId);
         return new ContainerIndexViewModel
         {
             CampSlug = camp.Slug,
             CampName = displayName,
-            CampId = camp.Id,
             CurrentYear = currentYear,
-            CanManage = true, // controller already authorized Manage above
             IsPlacementOpen = isPlacementOpen,
             IsLeadButPhaseClosed = !canPlace && !isPlacementOpen,
-            Containers = containers.Select(ToContainerViewModel).ToList(),
+            Containers = containers.ToList(),
             PlacementsByContainerId = placementsByContainerId,
         };
     }
-
-    private static ContainerPlacementViewModel ToPlacementViewModel(ContainerPlacementDto p) => new()
-    {
-        ContainerId = p.ContainerId,
-        Year = p.Year,
-        LocationGeoJson = p.LocationGeoJson,
-        PlacementNotes = p.PlacementNotes,
-        PlacementImageUrl = p.PlacementImageStoragePath,
-        PlacementImageFileName = p.PlacementImageFileName,
-    };
-
-    private static ContainerViewModel ToContainerViewModel(ContainerDto c) => new()
-    {
-        Id = c.Id,
-        Name = c.Name,
-        Description = c.Description,
-        Images = c.Images,
-    };
 
     [HttpPost("Create")]
     [ValidateAntiForgeryToken]

@@ -272,7 +272,6 @@ internal sealed class Service(
             .Select(camp => new ContainerCampGroup(
                 camp.Id,
                 camp.Seasons.First(s => s.Year == year).Name,
-                camp.Slug,
                 byCampId.TryGetValue(camp.Id, out var cs)
                     ? cs.Select(Compose).ToList()
                     : []))
@@ -393,7 +392,6 @@ internal sealed class Service(
         p.LocationGeoJson,
         p.PlacementNotes,
         p.PlacementImageStoragePath is not null ? $"/{p.PlacementImageStoragePath}" : null,
-        p.PlacementImageContentType,
         p.PlacementImageFileName,
         p.CreatedAt,
         p.UpdatedAt);
