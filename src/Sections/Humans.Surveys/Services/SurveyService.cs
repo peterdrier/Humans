@@ -779,7 +779,8 @@ internal sealed class SurveyService(
                     a.GridSelections?.ToDictionary(
                         kv => kv.Key,
                         kv => (IReadOnlyList<string>)kv.Value,
-                        StringComparer.Ordinal)))
+                        StringComparer.Ordinal),
+                    a.RankedValue))
                 .ToList();
 
         return new SurveyAnswerContext(
@@ -859,14 +860,14 @@ internal sealed class SurveyService(
             return null;
         }
 
+        var existingDraft = await repo.GetDraftResponseAsync(surveyId, userId, ct);
         Guid? draftResponseId = null;
-        IReadOnlyList<SurveyDraftAnswer> draftAnswers = [];
+        IReadOnlyList<SurveyDraftAnswer> draftAnswers =
+            existingDraft is null ? [] : MapDraftAnswers(existingDraft);
         if (anonymity == ResponseAnonymity.Identified)
         {
-            var existingDraft = await repo.GetDraftResponseAsync(surveyId, userId, ct);
             draftResponseId = await StartIdentifiedDraftAsync(
                 surveyId, participation.Id, userId, SurveyInputMethod.Slug, culture, ct);
-            draftAnswers = existingDraft is null ? [] : MapDraftAnswers(existingDraft);
         }
         return new SurveyPublicStart(participation.Id, draftResponseId, draftAnswers);
     }
@@ -874,7 +875,10 @@ internal sealed class SurveyService(
     public Task MarkInvitationStartedAsync(Guid invitationId, CancellationToken ct = default)
         => repo.MarkInvitationStartedAsync(invitationId, ct);
 
-    public async Task<SurveyPublicContext?> ResolvePublicContextAsync(string slug, CancellationToken ct = default)
+    public async Task<SurveyPublicContext?> ResolvePublicContextAsync(
+        string slug,
+        Guid? userId,
+        CancellationToken ct = default)
     {
         var normalized = NormalizeSlug(slug);
         if (normalized is null) return null;
@@ -885,11 +889,27 @@ internal sealed class SurveyService(
         var definition = await GetForEditAsync(surveyId.Value, ct);
         if (definition is null) return null;
 
-        // A slug only answers when anonymous responding is allowed (e.g. AllowAnonymous was switched
-        // off after the slug was set). The service guards this, not just the controller.
-        if (!definition.Editable.AllowAnonymous) return null;
+        var editable = definition.Editable;
+        if (editable.AllowAnonymous)
+            return new SurveyPublicContext(surveyId.Value, definition);
 
-        return new SurveyPublicContext(surveyId.Value, definition);
+        if (userId is null)
+        {
+            return new SurveyPublicContext(
+                surveyId.Value, definition, SurveyPublicAccess.AuthenticationRequired);
+        }
+
+        var isEligible = editable.AudienceType is null
+            || (await ResolveRecipientIdsAsync(
+                editable.AudienceType.Value,
+                editable.AudienceTeamId,
+                editable.AudienceLoggedInSince,
+                ct)).Contains(userId.Value);
+
+        return new SurveyPublicContext(
+            surveyId.Value,
+            definition,
+            isEligible ? SurveyPublicAccess.Allowed : SurveyPublicAccess.Ineligible);
     }
 
     public Task IncrementPublicStartedAsync(Guid surveyId, CancellationToken ct = default)
@@ -938,10 +958,12 @@ internal sealed class SurveyService(
         }
         if (survey.IsAsociadoVote == true)
         {
-            if (submission.Anonymity != ResponseAnonymity.Identified || submission.UserId is not { } userId)
+            if (submission.Anonymity != ResponseAnonymity.CompletionTracked
+                || submission.UserId is not { } userId
+                || submission.InvitationId is null)
             {
                 throw new InvalidOperationException(
-                    "Asociado votes require an identified eligible Asociado.");
+                    "Asociado votes require an eligible Asociado with completion tracking.");
             }
             if (!await IsEligibleAsociadoAsync(userId, ct))
             {
@@ -957,12 +979,13 @@ internal sealed class SurveyService(
             var invitation = await repo.GetInvitationByIdAsync(gateInvId, ct);
             if (invitation?.Completed == true)
             {
-                return new SubmissionPreparation([], [], [], AlreadyCompleted: true);
+                return new SubmissionPreparation([], [], [], [], AlreadyCompleted: true);
             }
         }
 
         // Drop answers to questions hidden under full branching (defends against tampered/stale posts).
-        var visibleAnswers = VisibleAnswers(survey, submission.Answers);
+        var visible = VisibleAnswers(survey, submission.Answers);
+        var visibleAnswers = visible.Answers;
         var questions = ToQuestionInputs(survey);
         var answerStates = visibleAnswers.ToDictionary(
             answer => answer.QuestionId,
@@ -977,7 +1000,12 @@ internal sealed class SurveyService(
             .ToList();
         var missingRequired = SurveyWizardFlow.RequiredUnanswered(allVisible, answerStates);
 
-        return new SubmissionPreparation(visibleAnswers, questions, missingRequired, AlreadyCompleted: false);
+        return new SubmissionPreparation(
+            visibleAnswers,
+            questions,
+            missingRequired,
+            visible.InvalidAnswers,
+            AlreadyCompleted: false);
     }
 
     private async Task PersistResponseAsync(
@@ -1084,6 +1112,7 @@ internal sealed class SurveyService(
         var visibleBefore = SurveyWizardFlow.VisibleQuestionsOnPage(
             editable.Questions, page, SurveyWizardFlow.ToAnswerStates(state.Answers));
         var posted = postedAnswers.ToDictionary(a => a.QuestionId);
+        var invalidAnswers = new List<Guid>();
 
         foreach (var question in visibleBefore)
         {
@@ -1093,6 +1122,20 @@ internal sealed class SurveyService(
             {
                 state.Answers.Remove(id.ToString());
                 continue;
+            }
+
+            RankedAnswer? rankedValue = null;
+            if (question.Type == SurveyQuestionType.RankedChoice)
+            {
+                try
+                {
+                    rankedValue = NormalizeRankedAnswer(question, answer.RankedValue);
+                }
+                catch (InvalidOperationException)
+                {
+                    rankedValue = answer.RankedValue;
+                    invalidAnswers.Add(id);
+                }
             }
 
             state.Answers[id.ToString()] = new SurveyWizardAnswer
@@ -1105,10 +1148,17 @@ internal sealed class SurveyService(
                     answer.GridSelections),
                 TextValue = string.IsNullOrWhiteSpace(answer.TextValue) ? null : answer.TextValue,
                 RatingValue = answer.RatingValue,
-                RankedValue = question.Type == SurveyQuestionType.RankedChoice
-                    ? NormalizeRankedAnswer(question, answer.RankedValue)
-                    : null,
+                RankedValue = rankedValue,
             };
+        }
+
+        if (invalidAnswers.Count > 0)
+        {
+            state.CurrentPage = page;
+            return new SurveyWizardAdvanceResult(
+                SurveyWizardOutcome.ValidationFailed,
+                [],
+                invalidAnswers);
         }
 
         // A survey may be edited while a respondent has a wizard session open. Re-normalize every
@@ -1212,6 +1262,18 @@ internal sealed class SurveyService(
         {
             return new SurveyWizardAdvanceResult(SurveyWizardOutcome.Submitted, []);
         }
+        if (prepared.InvalidAnswers.Count > 0)
+        {
+            ReplaceWizardAnswers(state, prepared.VisibleAnswers);
+            var invalidIds = prepared.InvalidAnswers.ToHashSet();
+            state.CurrentPage = prepared.Questions
+                .Where(question => question.Id is { } id && invalidIds.Contains(id))
+                .Min(question => question.PageNumber);
+            return new SurveyWizardAdvanceResult(
+                SurveyWizardOutcome.ValidationFailed,
+                [],
+                prepared.InvalidAnswers);
+        }
         if (prepared.MissingRequired.Count > 0)
         {
             ReplaceWizardAnswers(state, prepared.VisibleAnswers);
@@ -1274,9 +1336,12 @@ internal sealed class SurveyService(
             SlugStarted: survey.PublicStartedCount,
             SlugFinished: responses.Count(r => r.InputMethod == SurveyInputMethod.Slug));
 
-        var identified = embargoed
+        var identified = embargoed || survey.IsAsociadoVote == true
             ? []
             : await BuildIdentifiedRespondentsAsync(survey, responses, culture, ct);
+        var unattributedBallots = !embargoed && survey.IsAsociadoVote == true
+            ? BuildUnattributedBallots(survey, selectedResponses, culture)
+            : [];
         var rankedQuestions = embargoed
             ? new Dictionary<Guid, RankedQuestionResult>()
             : survey.Questions
@@ -1299,7 +1364,9 @@ internal sealed class SurveyService(
             embargoed ? 0 : selectedResponses.Count,
             scope,
             embargoed,
-            rankedQuestions);
+            rankedQuestions,
+            survey.IsAsociadoVote == true,
+            unattributedBallots);
     }
 
     private static RankedQuestionResult BuildRankedQuestionResult(
@@ -1449,9 +1516,12 @@ internal sealed class SurveyService(
             q => q.Id,
             q => q.Options.ToDictionary(o => o.Value, o => o.Label.Resolve(culture, culture), StringComparer.Ordinal));
 
-        // Identity is resolved only for Identified rows (no name lookup for tracked/anonymous responses).
+        // Identity is resolved only for Identified rows in ordinary surveys. Asociado exports never
+        // expose a ballot-to-voter link, including for legacy Identified rows.
         var identifiedUserIds = responses
-            .Where(r => r.Anonymity == ResponseAnonymity.Identified && r.UserId.HasValue)
+            .Where(r => survey.IsAsociadoVote != true
+                && r.Anonymity == ResponseAnonymity.Identified
+                && r.UserId.HasValue)
             .Select(r => r.UserId!.Value)
             .Distinct()
             .ToList();
@@ -1465,7 +1535,9 @@ internal sealed class SurveyService(
             {
                 Guid? userId = null;
                 string? userName = null;
-                if (r.Anonymity == ResponseAnonymity.Identified && r.UserId is { } id)
+                if (survey.IsAsociadoVote != true
+                    && r.Anonymity == ResponseAnonymity.Identified
+                    && r.UserId is { } id)
                 {
                     userId = id;
                     userName = users.TryGetValue(id, out var user) ? user.BurnerName : id.ToString();
@@ -1685,33 +1757,57 @@ internal sealed class SurveyService(
         var userIds = identified.Select(r => r.UserId!.Value).Distinct().ToList();
         var users = await userService.GetUserInfosAsync(userIds, ct);
 
-        var optionLabels = survey.Questions.ToDictionary(
-            q => q.Id,
-            q => q.Options.ToDictionary(o => o.Value, o => o.Label.Resolve(culture, culture), StringComparer.Ordinal));
-        var prompts = survey.Questions.ToDictionary(q => q.Id, q => q.Prompt.Resolve(culture, culture));
-        var questionsById = survey.Questions.ToDictionary(q => q.Id);
+        var answerContext = BuildRespondentAnswerContext(survey, culture);
 
         return identified
             .Select(r =>
             {
                 var userId = r.UserId!.Value;
                 var name = users.TryGetValue(userId, out var user) ? user.BurnerName : userId.ToString();
-                var answers = r.Answers
-                    .Select(a => new RespondentAnswer(
-                        a.QuestionId,
-                        prompts.GetValueOrDefault(a.QuestionId, string.Empty),
-                        ResolveSelectedLabels(a, optionLabels),
-                        a.TextValue,
-                        a.RatingValue,
-                         questionsById.TryGetValue(a.QuestionId, out var question)
-                             ? ResolveGridSelections(a, question, culture)
-                             : [],
-                         ResolveRankedBallot(a, optionLabels)))
-                    .ToList();
+                var answers = BuildRespondentAnswers(r, answerContext, culture);
                 return new RespondentDetail(userId, name, r.SubmittedAt, answers);
             })
             .ToList();
     }
+
+    private static IReadOnlyList<UnattributedBallotDetail> BuildUnattributedBallots(
+        Survey survey, IReadOnlyList<SurveyResponse> responses, string culture)
+    {
+        var answerContext = BuildRespondentAnswerContext(survey, culture);
+        return responses
+            .OrderBy(response => response.Id)
+            .Select(response => new UnattributedBallotDetail(
+                BuildRespondentAnswers(response, answerContext, culture)))
+            .ToList();
+    }
+
+    private static RespondentAnswerContext BuildRespondentAnswerContext(Survey survey, string culture) =>
+        new(
+            survey.Questions.ToDictionary(
+                question => question.Id,
+                question => question.Options.ToDictionary(
+                    option => option.Value,
+                    option => option.Label.Resolve(culture, culture),
+                    StringComparer.Ordinal)),
+            survey.Questions.ToDictionary(
+                question => question.Id,
+                question => question.Prompt.Resolve(culture, culture)),
+            survey.Questions.ToDictionary(question => question.Id));
+
+    private static IReadOnlyList<RespondentAnswer> BuildRespondentAnswers(
+        SurveyResponse response, RespondentAnswerContext context, string culture) =>
+        response.Answers
+            .Select(answer => new RespondentAnswer(
+                answer.QuestionId,
+                context.Prompts.GetValueOrDefault(answer.QuestionId, string.Empty),
+                ResolveSelectedLabels(answer, context.OptionLabels),
+                answer.TextValue,
+                answer.RatingValue,
+                context.QuestionsById.TryGetValue(answer.QuestionId, out var question)
+                    ? ResolveGridSelections(answer, question, culture)
+                    : [],
+                ResolveRankedBallot(answer, context.OptionLabels)))
+            .ToList();
 
     private static IReadOnlyList<string> ResolveSelectedLabels(
         SurveyAnswer answer, IReadOnlyDictionary<Guid, Dictionary<string, string>> optionLabels)
@@ -1853,7 +1949,9 @@ internal sealed class SurveyService(
     /// Keeps only the answers to questions visible under full cascading branching: an answer on a
     /// hidden question neither survives nor counts towards downstream <c>ShowIf</c> conditions.
     /// </summary>
-    private static IReadOnlyList<SurveyAnswerInput> VisibleAnswers(Survey survey, IReadOnlyList<SurveyAnswerInput> answers)
+    private static VisibleAnswerPreparation VisibleAnswers(
+        Survey survey,
+        IReadOnlyList<SurveyAnswerInput> answers)
     {
         var states = answers.ToDictionary(
             a => a.QuestionId,
@@ -1866,7 +1964,8 @@ internal sealed class SurveyService(
             states);
 
         var questions = survey.Questions.ToDictionary(q => q.Id);
-        return answers
+        var invalidAnswers = new List<Guid>();
+        var visibleAnswers = answers
             .Where(a => effective.ContainsKey(a.QuestionId))
             .Where(a => questions.TryGetValue(a.QuestionId, out var question)
                 && question.Type != SurveyQuestionType.Information)
@@ -1883,9 +1982,19 @@ internal sealed class SurveyService(
                         question.GridSelectionMode,
                         a.GridSelections)
                     : null;
-                var normalizedRanked = question.Type == SurveyQuestionType.RankedChoice
-                    ? NormalizeRankedAnswer(question, a.RankedValue)
-                    : null;
+                RankedAnswer? normalizedRanked = null;
+                if (question.Type == SurveyQuestionType.RankedChoice)
+                {
+                    try
+                    {
+                        normalizedRanked = NormalizeRankedAnswer(question, a.RankedValue);
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        normalizedRanked = a.RankedValue;
+                        invalidAnswers.Add(a.QuestionId);
+                    }
+                }
                 return a with
                 {
                     GridSelections = normalizedGridSelections?.Count > 0
@@ -1898,12 +2007,18 @@ internal sealed class SurveyService(
                 };
             })
             .ToList();
+        return new VisibleAnswerPreparation(visibleAnswers, invalidAnswers);
     }
+
+    private sealed record VisibleAnswerPreparation(
+        IReadOnlyList<SurveyAnswerInput> Answers,
+        IReadOnlyList<Guid> InvalidAnswers);
 
     private sealed record SubmissionPreparation(
         IReadOnlyList<SurveyAnswerInput> VisibleAnswers,
         IReadOnlyList<QuestionInput> Questions,
         IReadOnlyList<Guid> MissingRequired,
+        IReadOnlyList<Guid> InvalidAnswers,
         bool AlreadyCompleted);
 
     private static List<SurveyAnswer> MapAnswers(Guid responseId, IReadOnlyList<SurveyAnswerInput> answers)
@@ -2427,10 +2542,13 @@ internal sealed class SurveyService(
         if (input.AudienceType != SurveyAudienceType.Asociados)
             throw new InvalidOperationException("Asociado votes must target the Asociados audience.");
         if (input.AllowAnonymous)
-            throw new InvalidOperationException("Asociado votes must use identified responses.");
-        if (!string.IsNullOrWhiteSpace(input.PublicSlug))
-            throw new InvalidOperationException("Asociado votes cannot have a public link.");
+            throw new InvalidOperationException("Asociado votes use fixed completion-tracked representation.");
     }
+
+    private sealed record RespondentAnswerContext(
+        IReadOnlyDictionary<Guid, Dictionary<string, string>> OptionLabels,
+        IReadOnlyDictionary<Guid, string> Prompts,
+        IReadOnlyDictionary<Guid, SurveyQuestion> QuestionsById);
 
     private static void ValidateRankedDefinitionFrozen(
         IEnumerable<SurveyQuestion> existing,

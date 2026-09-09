@@ -383,6 +383,9 @@ internal sealed class SurveyAdminController(
         }
         catch (InvalidOperationException ex)
         {
+            logger.LogWarning(
+                "Ranked availability update rejected for survey {SurveyId}, question {QuestionId}: {Reason}",
+                id, questionId, ex.Message);
             SetError(ex.Message);
         }
         return RedirectToAction(nameof(Results), new { id });

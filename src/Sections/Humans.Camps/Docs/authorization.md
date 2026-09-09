@@ -15,6 +15,6 @@
 
 | Handler | Requirement | Resource | Path |
 |---|---|---|---|
-| `CampAuthorizationHandler` | `CampOperationRequirement` (`Manage`, `SubmitEvent`) | `CampLookup` / `Camp` entity / camp id (`Guid`) | `Authorization/CampAuthorizationHandler.cs` (registered in `Section.cs`) |
+| `CampAuthorizationHandler` | `CampOperationRequirement` (`Manage`, `SubmitEvent`) | `CampInfo` / `Camp` entity / camp id (`Guid`) | `Authorization/CampAuthorizationHandler.cs` (registered in `Section.cs`) |
 
-`CampComplianceAccess` is a composite policy (`CampComplianceAccessHandler`, registered in `src/Humans.Web/Authorization/Requirements/`) — it short-circuits for CampAdmin/Admin and otherwise admits any team/sub-team coordinator via `IShiftManagementService.GetCoordinatorTeamIdsAsync`, gating only the read-only Barrios compliance matrix.
+`CampComplianceAccess` is a composite policy (`CampComplianceAccessHandler`, `Authorization/CampComplianceAccessHandler.cs`, registered in this section's `Section.cs` / `SectionPolicies.cs`) — it short-circuits for CampAdmin/Admin and otherwise admits any team/sub-team coordinator via `IShiftManagementServiceRead.GetCoordinatorTeamIdsAsync`, gating only the read-only Barrios compliance matrix.
