@@ -12,15 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!--
-      Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
-    -->
-    <Using Include="Microsoft.AspNetCore.Http" />
-    <Using Include="Microsoft.AspNetCore.Routing" />
-    <Using Include="Microsoft.Extensions.Logging" />
-  </ItemGroup>
-
-  <ItemGroup>
     <!-- Base only: Tour owns no tables — no DbContext, no repository, no migrations. -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
   </ItemGroup>

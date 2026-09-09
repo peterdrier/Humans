@@ -62,8 +62,8 @@ The rendered page, its header bar, the Welcome link and the dashboard card are p
 
 ## Negative Access Rules
 
-- No actor **cannot** view the page — it is fully public by design. The section exposes no
-  write surface at all.
+- Every actor may view the page — it is fully public by design. The section exposes no write
+  surface at all.
 
 ## Triggers
 
