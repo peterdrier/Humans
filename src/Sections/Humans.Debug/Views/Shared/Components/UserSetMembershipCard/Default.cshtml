@@ -78,7 +78,7 @@
             Object.keys(buckets).forEach(function (k) {
                 var mask = +k;
                 var count = buckets[k];
-                if (mask === 0 || count === 0) return; // skip the "none of the sets" bucket
+                if (mask === 0 || count === 0) return;
                 var elemSets = [];
                 for (var b = 0; b < dims.length; b++) {
                     if (mask & (1 << b)) elemSets.push(dims[b]);

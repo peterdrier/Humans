@@ -7,15 +7,12 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Debug.Tests" />
-    <!-- The one assembly allowed to see many sections (design §5). -->
+    <!-- The one assembly allowed to see many sections. -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 
   <ItemGroup>
-    <!--
-      Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
-      Declaring them keeps the files moved out of Humans.Web byte-identical to their originals.
-    -->
+    <!-- Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not. -->
     <Using Include="Microsoft.AspNetCore.Http" />
     <Using Include="Microsoft.AspNetCore.Routing" />
     <Using Include="Microsoft.Extensions.Logging" />
@@ -23,12 +20,8 @@
 
   <ItemGroup>
     <!--
-      Humans.Infrastructure is referenced even though Debug owns no tables (contrast Scanner
-      and Cantina, which take none): the diagnostics pages name QueryStatistics
-      (Humans.Infrastructure.Data), TrackingMemoryCache (Humans.Infrastructure.Services) and
-      InMemoryLogSink (Humans.Infrastructure.Logging). Decide the reference from what the
-      section names, not from whether it has a DbContext
-      (G5-SECTION-TEMPLATE.md, Preconditions).
+      Base for QueryStatistics and InMemoryLogSink; Users.Contracts for the dashboard card's
+      UserInfo.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
@@ -36,11 +29,10 @@
 
   <ItemGroup>
     <!--
-      Widget-gallery fan-in (nobodies-collective/Humans#1091): /WidgetGallery is the
-      catalog of every section's public widgets, so this diagnostics section names the
-      contracts leaves whose sample DTOs it constructs and the section assemblies whose
-      public view components it renders as <vc:> tag helpers. Only Contracts-folder
-      public surface is reachable through these references (HUM0034).
+      Widget-gallery fan-in: /WidgetGallery renders other sections' public view components
+      as <vc:> tag helpers and builds sample DTOs from their contracts, so it names those
+      assemblies and contracts leaves. Only Contracts-folder public surface is reachable
+      through these references (HUM0034).
     -->
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Shifts\Humans.Shifts.csproj" />
@@ -49,7 +41,6 @@
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Tickets\Humans.Tickets.csproj" />
     <ProjectReference Include="..\Humans.Camps\Humans.Camps.csproj" />
-    <!-- The five <vc:*-search-result> rows (nobodies-collective/Humans#1062). -->
     <ProjectReference Include="..\Humans.Users\Humans.Users.csproj" />
     <ProjectReference Include="..\Humans.Events\Humans.Events.csproj" />
     <ProjectReference Include="..\Humans.Calendar\Humans.Calendar.csproj" />
@@ -59,18 +50,15 @@
   <ItemGroup>
     <!--
       No AspNetCore package here: those ship with no PackageVersion on purpose and would fail
-      the build with NU1010 under Central Package Management. Everything the controller needs
-      arrives through the framework reference Sdk.Razor already adds (step 1).
-      Serilog: /Debug/Logs binds IReadOnlyList<LogEvent> and filters on LogEventLevel.
-      NodaTime: the format gallery renders every DateFormattingExtensions formatter.
-      No EF Core — the section owns no tables.
+      the build with NU1010 under Central Package Management; Sdk.Razor's framework reference
+      already covers it.
     -->
     <PackageReference Include="NodaTime" />
     <PackageReference Include="Serilog" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
+    <!-- Keep the section's docs visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

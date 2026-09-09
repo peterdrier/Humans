@@ -6,9 +6,7 @@
 @using Humans.Tickets.Contracts
 @using Humans.Base.Enums
 @using Microsoft.AspNetCore.Html
-@* This page's whole job is a fan-in catalog of every section's public widgets, so it is
-   the one Debug view that names other sections' contracts (nobodies-collective/Humans#1091).
-   The section tag-helper assemblies it renders are opened in Views/_ViewImports.cshtml.
+@* The section tag-helper assemblies this catalog renders are opened in Views/_ViewImports.cshtml.
    Shell-resident components (AdminBreadcrumb, ChromeSlot, SectionNav, …) are invoked by name —
    Debug cannot addTagHelper against Humans.Web. *@
 @{
@@ -249,7 +247,6 @@
 
         <div class="col-md-9">
 
-            @* ============== PROFILE & IDENTITY ============== *@
             <section id="profile" class="wg-section">
                 <h2>Profile &amp; Identity</h2>
 
@@ -259,7 +256,7 @@
                             <span class="wg-card-name">&lt;vc:human&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/HumanViewComponent.cs</span>
+                        <span class="wg-card-path">src/Humans.Base/ViewComponents/HumanViewComponent.cs</span>
                     </div>
                     <div class="wg-card-note">
                         One-stop human reference — text link, avatar, avatar+name, or card. Display name and avatar are resolved internally from the Profile section by human id.
@@ -318,9 +315,8 @@
                     </div>
                 </div>
 
-                @* _ProfileCard + _HumanPopover cards: their ProfileSummaryViewModel sample is
-                   internal to Humans.Users, so the Users section renders both cards itself
-                   (ShiftsGallery's shape; nobodies-collective/Humans#1091). *@
+                @* ProfileSummaryViewModel is internal to Humans.Users, so that section renders
+                   the _ProfileCard + _HumanPopover cards itself. *@
                 @await Component.InvokeAsync("UsersGallery", new { currentUserId = Model.CurrentUserId, displayName = Model.CurrentUserDisplayName })
 
                 <div class="wg-card">
@@ -461,7 +457,6 @@
                 </div>
             </section>
 
-            @* ============== PERSONAL DASHBOARD ============== *@
             <section id="dashboard" class="wg-section">
                 <h2>Personal Dashboard</h2>
 
@@ -471,7 +466,7 @@
                             <span class="wg-card-name">&lt;vc:ticket-stub&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/TicketStubViewComponent.cs</span>
+                        <span class="wg-card-path">src/Sections/Humans.Tickets/Contracts/TicketStubViewComponent.cs</span>
                     </div>
                     <div class="wg-card-note">Renders one held ticket as a physical admission stub. Shared by the transfer wizard, the <code>/Profile/Me</code> ticket card, and the homepage. A pending outgoing transfer shows a diagonal "Transfer pending" stamp; voided tickets render muted with a struck name. The event label is currently a constant (open item to source from the active event).</div>
                     @ParamsBlock(
@@ -490,7 +485,7 @@
                             <span class="wg-card-name">_DashboardActionCard.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_DashboardActionCard.cshtml</span>
+                        <span class="wg-card-path">src/Humans.Base/Views/Shared/_DashboardActionCard.cshtml</span>
                     </div>
                     <div class="wg-card-note">Reusable dashboard/guest action card. Caller supplies the route, text, icon, visual variant, and compact/full layout mode.</div>
                     @ParamsBlock(
@@ -517,7 +512,7 @@
                             <span class="wg-card-name">&lt;vc:my-camps&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/MyCampsViewComponent.cs</span>
+                        <span class="wg-card-path">src/Sections/Humans.Camps/Contracts/MyCampsViewComponent.cs</span>
                     </div>
                     <div class="wg-card-note">Camp memberships for the current human, grouped by year. Renders nothing if the human belongs to no camps.</div>
                     @ParamsBlock()
@@ -539,10 +534,8 @@
                     @ParamsBlock()
                     @AuthLine("Authenticated only.")
                     <div class="wg-card-example">
-                        @* Invoked by name: the component is internal to Humans.GoogleIntegration and
-                           routed by SectionViewComponentFeatureProvider, so the compile-time <vc:>
-                           tag helper cannot see it and would ship as inert literal markup. The
-                           dashboard's call site already used this form (step 6). *@
+                        @* Invoked by name: the component is internal to Humans.GoogleIntegration, so a
+                           <vc:> tag helper would ship as inert literal markup. *@
                         @await Component.InvokeAsync("MyGoogleResources")
                     </div>
                 </div>
@@ -553,7 +546,7 @@
                             <span class="wg-card-name">&lt;vc:shift-signups&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/ShiftSignupsViewComponent.cs</span>
+                        <span class="wg-card-path">src/Sections/Humans.Shifts/Contracts/ShiftSignupsViewComponent.cs</span>
                     </div>
                     <div class="wg-card-note">A human's shift signups for the active event, split into Upcoming / Pending / Past.</div>
                     @ParamsBlock(
@@ -678,7 +671,6 @@
                 </div>
             </section>
 
-            @* ============== SHIFTS & ROTA ============== *@
             <section id="shifts" class="wg-section">
                 <h2>Shifts &amp; Rota</h2>
 
@@ -707,10 +699,8 @@
                     </div>
                 </div>
 
-                @* The four rota cards live in Humans.Shifts: they construct RotaHeaderViewModel,
-                   RotaInfo, ShiftTag and EventRotaTableViewModel, all internal to that section
-                   since its G5. Resolved by name across application parts
-                   (nobodies-collective/Humans#866). *@
+                @* The four rota cards live in Humans.Shifts on types internal to it, so
+                   ShiftsGallery is resolved by name across application parts. *@
                 @await Component.InvokeAsync("ShiftsGallery", new { currentUserId = Model.CurrentUserId })
 
                 <div class="wg-card">
@@ -719,7 +709,7 @@
                             <span class="wg-card-name">_StaffingChart.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_StaffingChart.cshtml</span>
+                        <span class="wg-card-path">src/Sections/Humans.Shifts/Views/Shared/_StaffingChart.cshtml</span>
                     </div>
                     <div class="wg-card-note">Per-day staffing chart: confirmed vs total slots, set-up / event / strike. Caller passes a unique chart id so multiple instances can coexist.</div>
                     @ParamsBlock(
@@ -744,7 +734,7 @@
                             <span class="wg-card-name">_StaffingHoursChart.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_StaffingHoursChart.cshtml</span>
+                        <span class="wg-card-path">src/Sections/Humans.Shifts/Views/Shared/_StaffingHoursChart.cshtml</span>
                     </div>
                     <div class="wg-card-note">Per-day staffing hours, stacked by shift priority (Essential / Important / Normal). Hours = duration × MaxVolunteers; all-day shifts count 8h per slot.</div>
                     @ParamsBlock(
@@ -764,7 +754,6 @@
                 </div>
             </section>
 
-            @* ============== NOTIFICATIONS & ALERTS ============== *@
             <section id="alerts" class="wg-section">
                 <h2>Notifications &amp; Alerts</h2>
 
@@ -780,8 +769,8 @@
                     @ParamsBlock()
                     @AuthLine("Authenticated only — empty model when unauthenticated.")
                     <div class="wg-card-example">
-                        @* Internal to the Notifications section, so the <vc:> tag helper cannot see it
-                           from Shell — invoke by name across application parts instead (design §15 step 6). *@
+                        @* Internal to Notifications, so the <vc:> tag helper cannot bind it — invoke by
+                           name across application parts. *@
                         @await Component.InvokeAsync("NotificationBell")
                     </div>
                 </div>
@@ -792,7 +781,7 @@
                             <span class="wg-card-name">&lt;vc:temp-data-alerts&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/TempDataAlertsViewComponent.cs</span>
+                        <span class="wg-card-path">src/Humans.Base/ViewComponents/TempDataAlertsViewComponent.cs</span>
                     </div>
                     <div class="wg-card-note">
                         Renders flash messages from <code>TempData</code> (success / error / info). Empty here because no flash
@@ -826,7 +815,6 @@
                 </div>
             </section>
 
-            @* ============== ADMIN CHROME ============== *@
             <section id="admin" class="wg-section">
                 <h2>Admin Chrome</h2>
 
@@ -838,11 +826,11 @@
                         </div>
                         <span class="wg-card-path">src/Humans.Web/ViewComponents/AdminBreadcrumbViewComponent.cs</span>
                     </div>
-                    <div class="wg-card-note">Auto-resolves the admin breadcrumb from <code>AdminNavTree</code> based on the current route. Falls back to the page title when no nav match.</div>
+                    <div class="wg-card-note">Auto-resolves the admin breadcrumb from the sections' <code>ISectionAdminNav</code> contributions based on the current route. Falls back to the page title when no nav match.</div>
                     @ParamsBlock()
                     <div class="wg-card-example">
                         @await Component.InvokeAsync("AdminBreadcrumb")
-                        <div class="text-muted small">↑ resolves to whatever AdminNavTree entry matches this route, or the page title.</div>
+                        <div class="text-muted small">↑ resolves to whatever admin nav entry matches this route, or the page title.</div>
                     </div>
                 </div>
 
@@ -852,7 +840,7 @@
                             <span class="wg-card-name">&lt;vc:access-matrix&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.UI/ViewComponents/AccessMatrixViewComponent.cs</span>
+                        <span class="wg-card-path">src/Humans.Base/ViewComponents/AccessMatrixViewComponent.cs</span>
                     </div>
                     <div class="wg-card-note">Section-help bundle: guide markdown + glossary + access matrix. Renders nothing for sections with no help content registered.</div>
                     @ParamsBlock(
@@ -897,7 +885,6 @@
                 </div>
             </section>
 
-            @* ============== FORMS & INPUTS ============== *@
             <section id="forms" class="wg-section">
                 <h2>Forms &amp; Inputs</h2>
 
@@ -907,7 +894,7 @@
                             <span class="wg-card-name">HumanSearchViewComponent.cs</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/HumanSearchViewComponent.cs</span>
+                        <span class="wg-card-path">src/Humans.Base/ViewComponents/HumanSearchViewComponent.cs</span>
                     </div>
                     <div class="wg-card-note">Type-ahead human picker (<code>&lt;vc:human-search&gt;</code>). Hits <code>/api/profiles/search</code>; the picked human's id ends up on a hidden input so it submits with the surrounding form. Pass <code>selected-user-id</code> to prefill for edit forms.</div>
                     @ParamsBlock(
@@ -1076,7 +1063,7 @@
                             <span class="wg-card-name">&lt;markdown-editor&gt;</span>
                             <span class="wg-card-kind kind-th">TagHelper</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/TagHelpers/MarkdownEditorTagHelper.cs</span>
+                        <span class="wg-card-path">src/Humans.Base/TagHelpers/MarkdownEditorTagHelper.cs</span>
                     </div>
                     <div class="wg-card-note">
                         Textarea upgraded with the EasyMDE WYSIWYG-ish Markdown editor (toolbar, preview, syntax help).
@@ -1105,7 +1092,7 @@
                             <span class="wg-card-name">_MarkdownHelp.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_MarkdownHelp.cshtml</span>
+                        <span class="wg-card-path">src/Humans.Base/Views/Shared/_MarkdownHelp.cshtml</span>
                     </div>
                     <div class="wg-card-note">
                         Hidden Bootstrap modal — include once per page, then trigger with
@@ -1121,7 +1108,6 @@
                 </div>
             </section>
 
-            @* ============== LAYOUT BITS ============== *@
             <section id="layout" class="wg-section">
                 <h2>Layout Bits</h2>
 
@@ -1172,7 +1158,7 @@
                             <span class="wg-card-name">_Pager.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_Pager.cshtml</span>
+                        <span class="wg-card-path">src/Humans.Base/Views/Shared/_Pager.cshtml</span>
                     </div>
                     <div class="wg-card-note">Numbered pager with first/last + window. Hidden entirely when <code>TotalPages &lt;= 1</code>. Synthetic 8-page pager below.</div>
                     @ParamsBlock(
@@ -1189,7 +1175,7 @@
                             <span class="wg-card-name">authorize-policy="…"</span>
                             <span class="wg-card-kind kind-th">TagHelper</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/TagHelpers/AuthorizeViewTagHelper.cs</span>
+                        <span class="wg-card-path">src/Humans.Base/TagHelpers/AuthorizeViewTagHelper.cs</span>
                     </div>
                     <div class="wg-card-note">
                         Attribute that conditionally renders an element based on a named ASP.NET Core authorization policy.
@@ -1269,14 +1255,13 @@
                 </div>
             </section>
 
-            @* ============== SKIPPED ============== *@
             <section id="skipped" class="wg-section">
                 <h2>Skipped (with reason)</h2>
                 <p class="text-muted">A handful of widgets are intentionally not rendered standalone here:</p>
                 <ul>
-                    <li><strong>Admin shell chrome</strong> — <code>AdminSidebarViewComponent</code>, <code>AdminNavTree</code>, <code>AdminNav</code>: this page is rendered inside the admin shell, so the sidebar is already on screen around you.</li>
+                    <li><strong>Admin shell chrome</strong> — <code>AdminSidebarViewComponent</code>, <code>AdminNavComposition</code>: this page is rendered inside the admin shell, so the sidebar is already on screen around you.</li>
                     <li><strong>Layout partials</strong> — <code>_Layout</code>, <code>_AdminLayout</code>, <code>_GuideLayout</code>, <code>_LoginPartial</code>, <code>_VersionInfo</code>: page chrome that doesn't render in isolation.</li>
-                    <li><strong>Build/Strike sign-up form</strong> — <code>_BuildStrikeRotaTable</code>: a sign-up form (not a display widget) keyed to all-day shifts under one rota; submits to <code>/OnboardingWidget/SignUpRange</code> (onboarding-only — the <code>ShiftsController</code> SignUpRange route was removed). Rendering it standalone is misleading because it's an inert form here. See <a href="/Shifts">/Shifts</a>.</li>
+                    <li><strong>Build/Strike sign-up form</strong> — <code>_BuildStrikeRotaTable</code>: a sign-up form (not a display widget) keyed to all-day shifts under one rota; submits to <code>/OnboardingWidget/SignUpRange</code> (onboarding-only). Rendering it standalone is misleading because it's an inert form here. See <a href="/Shifts">/Shifts</a>.</li>
                     <li><strong>Event rota row</strong> — <code>_EventRotaRow.cshtml</code>: context-bound rota row, rendered only inside <code>_EventRotaTable</code>. Needs the row's shift/signup state from the parent table; renders nothing standalone.</li>
                     <li><strong>Build/Strike rota row</strong> — <code>_BuildStrikeRotaRow.cshtml</code>: context-bound rota row, rendered only inside <code>_BuildStrikeRotaTable</code>. Needs the row's all-day shift/signup state from the parent table; renders nothing standalone.</li>
                     <li><strong>Coordinator dashboard</strong> — <code>AdminSummaryViewComponent</code>, <code>vc:staffing-by-department</code>, <code>vc:audit-log layout="activity"</code>: the summary strip is assembled from the tiles sections contribute, so it only renders inside a request that carries an admin identity. See <a href="/Admin/Dashboard">/Admin/Dashboard</a>.</li>
@@ -1292,7 +1277,6 @@
                 </ul>
             </section>
 
-            @* ============== CHOOSING BETWEEN THEM ============== *@
             <section id="choosing" class="wg-section">
                 <h2>Choosing between them</h2>
                 <p class="text-muted">
@@ -1399,7 +1383,6 @@
             </section>
 
 
-            @* ============== TABLES ============== *@
             <section class="wg-section" id="wg-tables">
                 <h2>Tables</h2>
                 <div class="wg-card">
@@ -1408,13 +1391,13 @@
                             <span class="wg-card-name">_Table.cshtml (TableModel)</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_Table.cshtml · src/Humans.Web/Models/Tables/</span>
+                        <span class="wg-card-path">src/Humans.Base/Views/Shared/_Table.cshtml · src/Humans.Base/Models/Tables/</span>
                     </div>
                     <div class="wg-card-note">
                         Column-model table component — the single authority for list tables. Sorting, filtering,
                         and formatting are per-column config. Client mode shown here (sort: click headers;
                         filter row + search box). Server mode (query-param sort links, GET filter form, _Pager)
-                        is live on /Ticket/Attendees. Spec: docs/superpowers/specs/2026-06-10-table-component-design.md
+                        is live on /Ticket/Attendees.
                     </div>
                     <div class="wg-card-example">
                         @{
