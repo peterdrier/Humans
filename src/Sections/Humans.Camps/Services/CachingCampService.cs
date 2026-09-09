@@ -227,9 +227,9 @@ internal sealed class CachingCampService(
     }
 
     public async Task UpdateSeasonAsync(
-        Guid seasonId, CampSeasonData data, CancellationToken cancellationToken = default)
+        Guid scopedCampId, Guid seasonId, CampSeasonData data, CancellationToken cancellationToken = default)
     {
-        await WithInner(inner => inner.UpdateSeasonAsync(seasonId, data, cancellationToken));
+        await WithInner(inner => inner.UpdateSeasonAsync(scopedCampId, seasonId, data, cancellationToken));
         await InvalidateBySeasonAsync(seasonId, cancellationToken);
     }
 
@@ -247,9 +247,10 @@ internal sealed class CachingCampService(
         await InvalidateBySeasonAsync(seasonId, cancellationToken);
     }
 
-    public async Task WithdrawSeasonAsync(Guid seasonId, CancellationToken cancellationToken = default)
+    public async Task WithdrawSeasonAsync(
+        Guid scopedCampId, Guid seasonId, CancellationToken cancellationToken = default)
     {
-        await WithInner(inner => inner.WithdrawSeasonAsync(seasonId, cancellationToken));
+        await WithInner(inner => inner.WithdrawSeasonAsync(scopedCampId, seasonId, cancellationToken));
         await InvalidateBySeasonAsync(seasonId, cancellationToken);
     }
 
@@ -290,11 +291,10 @@ internal sealed class CachingCampService(
     }
 
     public async Task RemoveHistoricalNameAsync(
-        Guid historicalNameId, CancellationToken cancellationToken = default)
+        Guid scopedCampId, Guid historicalNameId, CancellationToken cancellationToken = default)
     {
-        // No campId on the API surface; historical-name churn is rare — RefreshAll.
-        await WithInner(inner => inner.RemoveHistoricalNameAsync(historicalNameId, cancellationToken));
-        RefreshAll();
+        await WithInner(inner => inner.RemoveHistoricalNameAsync(scopedCampId, historicalNameId, cancellationToken));
+        await InvalidateCampAsync(scopedCampId, cancellationToken);
     }
 
     public async Task<CampImageUploadResult> UploadImageAsync(
@@ -308,11 +308,11 @@ internal sealed class CachingCampService(
         return result;
     }
 
-    public async Task DeleteImageAsync(Guid imageId, CancellationToken cancellationToken = default)
+    public async Task DeleteImageAsync(
+        Guid scopedCampId, Guid imageId, CancellationToken cancellationToken = default)
     {
-        // No campId on the API surface; image churn is rare — RefreshAll.
-        await WithInner(inner => inner.DeleteImageAsync(imageId, cancellationToken));
-        RefreshAll();
+        await WithInner(inner => inner.DeleteImageAsync(scopedCampId, imageId, cancellationToken));
+        await InvalidateCampAsync(scopedCampId, cancellationToken);
     }
 
     public async Task ReorderImagesAsync(
@@ -350,9 +350,9 @@ internal sealed class CachingCampService(
     }
 
     public async Task ChangeSeasonNameAsync(
-        Guid seasonId, string newName, CancellationToken cancellationToken = default)
+        Guid scopedCampId, Guid seasonId, string newName, CancellationToken cancellationToken = default)
     {
-        await WithInner(inner => inner.ChangeSeasonNameAsync(seasonId, newName, cancellationToken));
+        await WithInner(inner => inner.ChangeSeasonNameAsync(scopedCampId, seasonId, newName, cancellationToken));
         await InvalidateBySeasonAsync(seasonId, cancellationToken);
     }
 

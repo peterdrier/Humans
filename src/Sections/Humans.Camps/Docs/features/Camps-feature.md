@@ -404,8 +404,8 @@ Authenticated User
   │ Active  │  │ Rejected  │  │Withdrawn │
   └────┬────┘  └───────────┘  └────┬─────┘
        │                           │
-  ┌────┼─────┐                Rejoin (lead or
-  │          │                 CampAdmin)
+  ┌────┼─────┐                Reactivate
+  │          │                (CampAdmin only)
 ┌─▼──┐ ┌────▼─────┐               │
 │Full│ │Withdrawn │               │
 └─┬──┘ └──────────┘               │
@@ -425,7 +425,7 @@ Transitions:
 - Active → Withdrawn (lead withdraws)
 - Active → Full (lead or CampAdmin marks full via `MarkFull`)
 - Full → Active (CampAdmin reactivates)
-- Withdrawn → Pending (lead or CampAdmin rejoins; requires re-approval)
+- Withdrawn → Pending (CampAdmin reactivates; requires re-approval)
 
 Note: `Full` is informational only — it does not gate join requests. A camp lead or CampAdmin marks an Active season Full via `POST /Camps/{slug}/MarkFull/{seasonId}` (`CampService.SetSeasonStatusAsync` → `CampSeason.SetStatus`, a plain field flip with no transition validation).
 
@@ -466,7 +466,6 @@ Note: `Full` is informational only — it does not gate join requests. A camp le
 | `POST /Camps/{slug}/OptIn/{year}` | Opt-in to season |
 | `POST /Camps/{slug}/Withdraw/{seasonId}` | Lead withdraws a season |
 | `POST /Camps/{slug}/MarkFull/{seasonId}` | Lead or CampAdmin marks an Active season Full |
-| `POST /Camps/{slug}/Rejoin/{seasonId}` | Lead or CampAdmin rejoins a Withdrawn season (back to Pending) |
 | `POST /Camps/{slug}/HistoricalNames/Add` | Manually add a historical name |
 | `POST /Camps/{slug}/HistoricalNames/Remove/{nameId}` | Remove a historical name |
 | `POST /Camps/{slug}/Images/Upload` | Upload image |
