@@ -6,6 +6,7 @@ using Humans.Events.Controllers;
 using Humans.Events.Domain;
 using Humans.Events.Models;
 using Humans.Events.Services;
+using Humans.Events.Services.Dtos;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -51,6 +52,40 @@ public sealed class EventsModerationControllerTests
         await _guide.Received(1).ApplyModerationAsync(
             guideEvent.Id, moderatorId, EventModerationActionType.Approved, null,
             $"/Events/Submit/{guideEvent.Id}/Edit", Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Index_names_the_moderator_behind_each_history_entry()
+    {
+        var moderatorId = Guid.NewGuid();
+        var erasedModeratorId = Guid.NewGuid();
+        var submitterId = Guid.NewGuid();
+        var pending = new EventInfo(
+            Guid.NewGuid(), null, null, submitterId, Guid.NewGuid(), "Music", "music", false, null,
+            "Pending event", "Description", null, null, Instant.FromUtc(2026, 8, 1, 18, 0), 60,
+            false, null, null, EventStatus.Pending, Instant.FromUtc(2026, 7, 1, 0, 0), Instant.FromUtc(2026, 7, 1, 0, 0),
+            [
+                new EventModerationHistoryInfo(moderatorId, EventModerationActionType.ResubmitRequested, "Fix the time", Instant.FromUtc(2026, 7, 2, 0, 0)),
+                new EventModerationHistoryInfo(erasedModeratorId, EventModerationActionType.Approved, null, Instant.FromUtc(2026, 7, 3, 0, 0)),
+            ]);
+        _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventGuideSettingsView?)null);
+        _guide.GetEventStatusCountsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<EventStatus, int>());
+        _guide.GetEventsByStatusAsync(EventStatus.Pending, Arg.Any<CancellationToken>()).Returns([pending]);
+        _users.GetUserInfoAsync(moderatorId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfoFor(moderatorId)));
+        _users.GetUserInfoAsync(submitterId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfoFor(submitterId)));
+        _users.GetUserInfoAsync(erasedModeratorId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>((UserInfo?)null));
+
+        var controller = BuildController(moderatorId, pending.Id);
+
+        var result = await controller.Index(null);
+
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<ModerationQueueViewModel>().Which;
+        var history = model.Events.Single().History;
+        history.Select(h => h.ActorName).Should().Equal(
+            erasedModeratorId.ToString("N")[..8], "Moderator");
     }
 
     private EventsModerationController BuildController(Guid moderatorId, Guid eventId)

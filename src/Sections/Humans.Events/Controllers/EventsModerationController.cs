@@ -40,7 +40,10 @@ internal sealed class EventsModerationController(
             : unsortedEvents.OrderByDescending(e => e.SubmittedAt)).ToList();
 
         var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year);
-        var submitterInfoById = await LoadSubmittersAsync(UserService, events.Select(e => e.SubmitterUserId).Distinct());
+        var peopleById = await LoadSubmittersAsync(UserService, events
+            .Select(e => e.SubmitterUserId)
+            .Concat(events.SelectMany(e => e.ModerationHistory.Select(a => a.ActorUserId)))
+            .Distinct());
 
         var model = new ModerationQueueViewModel
         {
@@ -51,7 +54,7 @@ internal sealed class EventsModerationController(
             ResubmitRequestedCount = counts.GetValueOrDefault(EventStatus.ResubmitRequested),
             WithdrawnCount = counts.GetValueOrDefault(EventStatus.Withdrawn),
             TimeZoneId = eventSettings?.TimeZoneId,
-            Events = events.Select(e => BuildRow(e, tz, campsById, submitterInfoById)).ToList()
+            Events = events.Select(e => BuildRow(e, tz, campsById, peopleById)).ToList()
         };
 
         // Duplicate detection for camp events
@@ -363,9 +366,9 @@ internal sealed class EventsModerationController(
         EventInfo e,
         DateTimeZone? tz,
         IReadOnlyDictionary<Guid, CampInfo> campsById,
-        IReadOnlyDictionary<Guid, UserInfo> submitterInfoById)
+        IReadOnlyDictionary<Guid, UserInfo> peopleById)
     {
-        var submitter = submitterInfoById.GetValueOrDefault(e.SubmitterUserId);
+        var submitter = peopleById.GetValueOrDefault(e.SubmitterUserId);
         var submitterName = submitter?.BurnerName ?? submitter?.Email ?? "Unknown";
 
         var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
@@ -394,13 +397,17 @@ internal sealed class EventsModerationController(
                 .OrderByDescending(a => a.CreatedAt)
                 .Select(a => new ModerationHistoryItemViewModel
                 {
-                    ActorName = a.ActorUserId.ToString("N")[..8],
+                    ActorName = ActorNameFor(peopleById.GetValueOrDefault(a.ActorUserId), a.ActorUserId),
                     Action = a.Action,
                     Reason = a.Reason,
                     CreatedAt = ToLocalDateTime(a.CreatedAt, tz)
                 }).ToList()
         };
     }
+
+    /// <summary>Falls back to a GUID stub only when the actor no longer resolves (e.g. erased).</summary>
+    private static string ActorNameFor(UserInfo? actor, Guid actorUserId)
+        => actor?.BurnerName ?? actor?.Email ?? actorUserId.ToString("N")[..8];
 
 
 }
