@@ -8,11 +8,11 @@
     memory/architecture/section-project-cycle-fix.md). The former second Base consumer,
     TicketingBudgetSyncJob, lives in Humans.Budget/Jobs/.
 
-    It holds the read surface the other sections actually call plus the DTOs and the two
-    enums that appear in their signatures. Everything else Budget does (year/group/category/
-    line-item CRUD, the audit
-    log, the cash-flow and VAT projections, the ticketing projection parameters) has no
-    consumer outside the section and stays internal to Humans.Budget.
+    It holds the read surface the other sections actually call plus the DTOs and enums
+    that appear in their signatures. Everything else Budget does (year/group/category/
+    line-item CRUD, the audit log, the cash-flow and VAT projections, the ticketing
+    projection parameters) has no consumer outside the section and stays internal to
+    Humans.Budget.
 
     References Humans.Interfaces only — the bottom of the graph.
   -->
