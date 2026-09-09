@@ -8,7 +8,7 @@
 
 ## Assessment summary
 
-First doctor pass over Governance (reforge 626, loc=3888, files=57, cognitive p95=6,
+First doctor pass over Governance (reforge 626, loc=3888, cognitive p95=6,
 max=14, maxClassLoc=612 `ApplicationDecisionService`) — the median never-doctored section
 by score. The target shape
 ([`health.md`](../../../src/Sections/Humans.Governance/Docs/health.md), written this run

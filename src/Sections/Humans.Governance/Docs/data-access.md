@@ -63,7 +63,7 @@ Polls `IMembershipCalculatorRead`, `IApplicationServiceRead`,
 ### MembershipCalculator (Scoped)
 
 No repository. Pure read computation over `IMembershipQuery`,
-`IUserServiceRead`, `ILegalDocumentSyncService`, `IConsentServiceRead`
+`IUserServiceRead`, `ILegalDocumentSyncServiceRead`, `IConsentServiceRead`
 (resolved lazily via `IServiceProvider` to break a DI cycle), and
 `IClock`. Implements `IMembershipCalculatorRead`. No DB access, no cache.
 

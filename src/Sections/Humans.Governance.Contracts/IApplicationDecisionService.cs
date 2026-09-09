@@ -6,7 +6,7 @@ namespace Humans.Governance.Contracts;
 
 /// <summary>
 /// The write half of the tier-application lifecycle with a consumer outside the section:
-/// Shell's <c>ProfileController</c> submit path. <c>TermRenewalReminderJob</c> drives the
+/// Users' <c>ProfileController</c> submit path. <c>TermRenewalReminderJob</c> drives the
 /// renewal members from inside the section.
 /// </summary>
 /// <remarks>
