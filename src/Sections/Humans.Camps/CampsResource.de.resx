@@ -202,4 +202,16 @@
   <data name="Enum_CampVibe_Sober" xml:space="preserve"><value>Nüchtern</value></data>
   <data name="Enum_CampVibe_Wellness" xml:space="preserve"><value>Wellness</value></data>
   <data name="Enum_CampVibe_Workshop" xml:space="preserve"><value>Workshop</value></data>
+  <data name="Camp_Details_AlsoKnownAs" xml:space="preserve"><value>Auch bekannt als:</value></data>
+  <data name="Camp_Details_SwissCampBadge" xml:space="preserve"><value>Swiss Camp</value></data>
+  <data name="Camp_Details_RosterEmpty" xml:space="preserve"><value>Für diese Saison sind noch keine Humans erfasst.</value></data>
+  <data name="Camp_Members_NoRolesDefined" xml:space="preserve"><value>Noch keine Camp-Rollen definiert.</value></data>
+  <data name="Camp_Members_NoRolesAdminHint" xml:space="preserve"><value>CampAdmin kann sie hinzufügen unter</value></data>
+  <data name="Camp_Members_NoRolesAdminHintLink" xml:space="preserve"><value>Camp-Rollen</value></data>
+  <data name="Camp_Members_RoleRequiredBadge" xml:space="preserve"><value>erforderlich</value></data>
+  <data name="Camp_Members_RoleSlotsFilled" xml:space="preserve"><value>{0} / {1} besetzt</value></data>
+  <data name="Camp_Members_RoleOverCapacityBadge" xml:space="preserve"><value>Überbelegt</value></data>
+  <data name="Camp_Members_RoleOverCapacityTitle" xml:space="preserve"><value>Mehr Zuweisungen als die konfigurierte Anzahl an Plätzen.</value></data>
+  <data name="Camp_Members_AddMemberSearchHelp" xml:space="preserve"><value>Suche nach Namen. Der Human wird der offenen Saison des Camps als Aktiv hinzugefügt.</value></data>
+  <data name="Camp_Members_NoPendingRequests" xml:space="preserve"><value>Keine ausstehenden Anfragen.</value></data>
 </root>

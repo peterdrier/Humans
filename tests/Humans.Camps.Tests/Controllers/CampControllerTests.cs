@@ -171,12 +171,13 @@ public class CampControllerTests
         vm.ActiveMembers.Single(m => m.UserId == fivePlusShiftMemberId).EventShiftSignupDisplay.Should().Be("5+");
     }
 
-    [HumansFact(Skip = "nobodies-collective/Humans#993 — /Camps/{slug} has no season-status gate, so a non-public season renders. Unskip with the fix.")]
+    [HumansFact]
     public async Task Details_NonPublicSeason_AnonymousViewer_IsRefused()
     {
         // Destination-page half of the nobodies-collective/Humans#985 ruling: global search
         // stops offering a camp once its public-year season leaves Active/Full, and the id
-        // path deliberately does not — so /Camps/{slug} has to be the enforcement point.
+        // path deliberately does not — so /Camps/{slug} has to be the enforcement point
+        // (nobodies-collective/Humans#993).
         var pending = MakeCamp("pending-camp", "Pending Camp", CampSeasonStatus.Pending);
         StubCampReadModel([pending]);
         _camps.GetCampBySlugAsync(pending.Slug, Arg.Any<CancellationToken>())
@@ -190,6 +191,124 @@ public class CampControllerTests
         var result = await BuildController().Details(pending.Slug, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<NotFoundResult>();
+    }
+
+    [HumansFact]
+    public async Task SeasonDetails_NonPublicSeason_AnonymousViewer_IsRefused()
+    {
+        // Equivalent nobodies-collective/Humans#993 coverage for the arbitrary-year route.
+        var withdrawn = MakeCamp("withdrawn-camp", "Withdrawn Camp", CampSeasonStatus.Withdrawn);
+        StubCampReadModel([withdrawn]);
+        _authorization.AuthorizeAsync(
+                Arg.Any<ClaimsPrincipal>(),
+                Arg.Any<object?>(),
+                Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Failed());
+
+        var result = await BuildController().SeasonDetails(withdrawn.Slug, 2026, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<NotFoundResult>();
+    }
+
+    [HumansFact]
+    public async Task Details_NonPublicSeason_Lead_StillRenders()
+    {
+        // The #993 gate must not lock a lead out of their own Pending camp.
+        var leadUserId = Guid.NewGuid();
+        var pending = MakeCamp("pending-camp", "Pending Camp", CampSeasonStatus.Pending, leadUserId: leadUserId);
+        StubCampReadModel([pending]);
+        _camps.GetCampBySlugAsync(pending.Slug, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<CampInfo?>(pending));
+        _users.GetUserInfoAsync(leadUserId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(leadUserId)));
+        _cityPlanning.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new CityPlanningSettingsDto(
+                Guid.NewGuid(), 2026, false, null, null, null, null, null, null, null, false, null, null,
+                Instant.FromUtc(2026, 1, 1, 0, 0))));
+        _roles.BuildPanelAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(new CampRolesPanelData(call.ArgAt<Guid>(0), [])));
+        _authorization.AuthorizeAsync(
+                Arg.Any<ClaimsPrincipal>(),
+                Arg.Any<object?>(),
+                Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+
+        var result = await BuildController(leadUserId).Details(pending.Slug, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ViewResult>();
+    }
+
+    [HumansFact]
+    public async Task Details_AnonymousRender_CarriesNoMemberOrEarlyEntryData()
+    {
+        // Behavioral pin for "membership/EE data never render publicly": walk the actual
+        // anonymous view-model graph — a leak that is renamed or nested still shows up
+        // as the member's id or an Ee*/EarlyEntry-named node somewhere in the graph.
+        var memberUserId = Guid.NewGuid();
+        var member = new CampSeasonMemberInfo(
+            Guid.NewGuid(), memberUserId, CampMemberStatus.Active,
+            Instant.FromUtc(2026, 1, 1, 0, 0), Instant.FromUtc(2026, 1, 2, 0, 0),
+            HasEarlyEntry: true);
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, members: [member]);
+        StubCampReadModel([camp]);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<CampInfo?>(camp));
+        _authorization.AuthorizeAsync(
+                Arg.Any<ClaimsPrincipal>(),
+                Arg.Any<object?>(),
+                Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Failed());
+
+        var result = await BuildController().Details(camp.Slug, Xunit.TestContext.Current.CancellationToken);
+
+        var vm = result.Should().BeOfType<ViewResult>().Subject.Model!;
+        var leaves = new List<(string Path, object? Value)>();
+        CollectLeaves(vm, "vm", leaves, []);
+
+        leaves.Should().NotContain(
+            l => Equals(l.Value, memberUserId) || memberUserId.ToString().Equals(l.Value as string, StringComparison.OrdinalIgnoreCase),
+            because: "an anonymous detail render must not carry any member identity");
+        leaves.Where(l => l.Path.Split('.', '[')
+                .Any(seg => seg.StartsWith("Ee", StringComparison.Ordinal)
+                            || seg.Contains("EarlyEntry", StringComparison.OrdinalIgnoreCase)))
+            .Should().BeEmpty("Early Entry state is admin-only (issue #490, spec §4.4) and must not reach the public detail shape");
+    }
+
+    private static void CollectLeaves(object? obj, string path, List<(string Path, object? Value)> leaves, HashSet<object> seen)
+    {
+        if (obj is null)
+        {
+            return;
+        }
+
+        var type = obj.GetType();
+        if (type.IsPrimitive || type.IsEnum || obj is string || obj is Guid || obj is decimal
+            || type.Namespace?.StartsWith("NodaTime", StringComparison.Ordinal) == true)
+        {
+            leaves.Add((path, obj));
+            return;
+        }
+
+        if (obj is System.Collections.IEnumerable enumerable)
+        {
+            var i = 0;
+            foreach (var item in enumerable)
+            {
+                CollectLeaves(item, $"{path}[{i++}]", leaves, seen);
+            }
+
+            return;
+        }
+
+        if (!seen.Add(obj))
+        {
+            return;
+        }
+
+        foreach (var property in type.GetProperties().Where(p => p.GetIndexParameters().Length == 0))
+        {
+            CollectLeaves(property.GetValue(obj), $"{path}.{property.Name}", leaves, seen);
+        }
     }
 
     private void StubCampReadModel(IReadOnlyList<CampInfo> camps)

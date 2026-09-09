@@ -188,6 +188,13 @@ internal sealed class CampController(
 
         var currentUser = await GetCurrentUserInfoAsync(ct);
         var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp.Id, currentUser, ct);
+
+        // nobodies-collective/Humans#993: a season outside Active/Full is non-public everywhere
+        // else (directory, search), so the destination page refuses it too — 404, not 403, so
+        // the slug leaks nothing. Leads and CampAdmin keep access to their own non-public camp.
+        if (season.Status is not (CampSeasonStatus.Active or CampSeasonStatus.Full) && !isLead && !isCampAdmin)
+            return NotFound();
+
         var membership = ResolveCurrentUserMembershipState(camp, currentUser);
         await PopulateCityPlanningViewBagAsync(currentUser, ct);
 
@@ -214,6 +221,10 @@ internal sealed class CampController(
         var settings = await _campService.GetSettingsAsync(ct);
         var currentUser = await GetCurrentUserInfoAsync(ct);
         var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp.Id, currentUser, ct);
+
+        // Same nobodies-collective/Humans#993 gate as Details, for arbitrary-year seasons.
+        if (season.Status is not (CampSeasonStatus.Active or CampSeasonStatus.Full) && !isLead && !isCampAdmin)
+            return NotFound();
         var membership = ResolveCurrentUserMembershipState(camp, currentUser);
         await PopulateCityPlanningViewBagAsync(currentUser, ct);
 
@@ -638,7 +649,7 @@ internal sealed class CampController(
 
         try
         {
-            await _campService.WithdrawSeasonAsync(seasonId);
+            await _campService.WithdrawSeasonAsync(camp.Id, seasonId);
             SetSuccess("Season withdrawn.");
         }
         catch (InvalidOperationException ex)
@@ -675,30 +686,8 @@ internal sealed class CampController(
         return RedirectToAction(nameof(Details), new { slug });
     }
 
-    [Authorize]
-    [HttpPost("{slug}/Rejoin/{seasonId:guid}")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Rejoin(string slug, Guid seasonId)
-    {
-        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
-        if (errorResult is not null)
-        {
-            return errorResult;
-        }
-
-        try
-        {
-            await _campService.ReactivateSeasonAsync(seasonId);
-            SetSuccess("Season reactivated. Welcome back!");
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning(ex, "Camp season reactivation failed for camp {CampId}, slug {Slug}, and season {SeasonId}", camp.Id, slug, seasonId);
-            SetError(ex.Message);
-        }
-
-        return RedirectToAction(nameof(Details), new { slug });
-    }
+    // Season reactivation (Withdrawn → Pending, Full → Active) is CampAdmin-only:
+    // CampAdminController.Reactivate. Leads withdraw; only CampAdmin brings a season back.
 
     // The legacy AddLead / RemoveLead actions were retired in
     // issue nobodies-collective/Humans#753 (Camp Lead retired into the
@@ -745,7 +734,7 @@ internal sealed class CampController(
 
         try
         {
-            await _campService.RemoveHistoricalNameAsync(nameId);
+            await _campService.RemoveHistoricalNameAsync(camp.Id, nameId);
             SetSuccess("Historical name removed.");
         }
         catch (InvalidOperationException ex)
@@ -806,7 +795,7 @@ internal sealed class CampController(
 
         try
         {
-            await _campService.DeleteImageAsync(imageId);
+            await _campService.DeleteImageAsync(camp.Id, imageId);
             SetSuccess("Image deleted.");
         }
         catch (InvalidOperationException ex)

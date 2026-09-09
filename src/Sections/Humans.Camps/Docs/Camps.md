@@ -149,7 +149,7 @@ Four controllers serve this section. The MVC URL surface is dual-routed under `/
 | `/Camps/{slug}/Edit` | `CampController` | Lead-only edit of season copy / images / leads (links through to Members for role/membership management) |
 | `/Camps/{slug}/Edit/Members` | `CampController.Members` | Lead-only members + roles management (pending requests, active members, role assignments) |
 | `/Camps/Register` | `CampController` | New camp registration |
-| `/Camps/{slug}/OptIn/{year}`, `.../Withdraw/{seasonId}`, `.../Rejoin/{seasonId}`, `.../MarkFull/{seasonId}` | `CampController` | Per-season participation toggles |
+| `/Camps/{slug}/OptIn/{year}`, `.../Withdraw/{seasonId}`, `.../MarkFull/{seasonId}` | `CampController` | Per-season participation toggles (reactivation is CampAdmin-only, under `/Camps/Admin`) |
 | `/Camps/{slug}/Members/*` | `CampController` | Member request/approve/reject/remove/leave |
 | `/Camps/{slug}/Roles/*` | `CampController` | Per-camp role assignment/unassignment |
 | `/Camps/{slug}/Images/*` | `CampController` | Image upload/delete/reorder |
@@ -172,7 +172,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 
 | Actor | Capabilities |
 |-------|--------------|
-| Anyone (including anonymous) | Browse the camps directory, view camp details and season details |
+| Anyone (including anonymous) | Browse the camps directory, view camp details and season details — for publicly visible (`Active`/`Full`) seasons only; other statuses 404 unless the viewer is a lead of that camp or CampAdmin (nobodies-collective/Humans#993) |
 | Any authenticated human | Register a new camp (which creates a new season in Pending status). Request to join a camp for its open season; withdraw their own pending request; leave their own active membership. |
 | Camp lead | Edit their camp's details, manage season registrations, manage co-leads, upload/manage images, manage historical names. Approve / reject pending membership requests for their camp. Remove active members. Add an active member directly to their camp (lead-driven shortcut). Assign / unassign per-camp role assignments for their camp. Mark their camp's Active season Full — an informational label only, shown to visitors, that does not block join requests. |
 | CampAdmin, Admin | All camp lead capabilities on all camps. Approve/reject season registrations. Reactivate a Full or Withdrawn season. Manage camp settings (public year, open seasons, name lock dates). Update registration info copy. View withdrawn seasons on the admin dashboard. Export camp data as CSV. Manage the role-definition catalogue (create, edit, deactivate, reactivate). View the role-staffing compliance matrix. |
@@ -185,6 +185,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - Camp season status follows: Pending then Active, Full, Rejected, or Withdrawn. Only CampAdmin can approve or reject a season. A camp lead or CampAdmin can set an Active season's status to Full (`CampService.SetSeasonStatusAsync` → `CampSeason.SetStatus`, a plain field flip with no transition validation); only CampAdmin can reactivate a Full (or Withdrawn) season back to Active/Pending.
 - **`Full` is informational only — it does not gate join requests.** It tells visitors the camp currently looks full; `RequestCampMembershipAsync` still matches `Active` **or** `Full` for the public year, because Humans doesn't yet know everyone who is actually in the camp (Peter, 2026-08-20). Don't reintroduce a block here — that reading of the issue was explicitly overridden.
 - Only camp leads or CampAdmin can edit a camp.
+- **Lead-facing mutations are camp-scoped.** Ids arriving from a form (seasonId, imageId, nameId) are proven to belong to the slug-resolved camp in `CampService` (`UpdateSeasonAsync`, `WithdrawSeasonAsync`, `ChangeSeasonNameAsync`, `DeleteImageAsync`, `RemoveHistoricalNameAsync`, `SetSeasonStatusAsync` all take a `scopedCampId` and throw on mismatch) — a lead of camp A cannot mutate camp B by crafting an id.
 - Camp images are stored on disk via the shared `IFileStorage` abstraction (key prefix `uploads/camps/{campId}/`); metadata and display order are tracked per camp.
 - **Name-lock + historical-name auto-log:** renaming a season (`ChangeSeasonNameAsync`) is rejected once the season's `NameLockDate` has passed (today ≥ `NameLockDate`). Before the lock date, a rename auto-records the *old* name as a `CampHistoricalName` with `Source = NameChange` and writes a `CampNameChanged` audit entry.
 - Camp settings control which year is shown publicly and which seasons accept registrations.
@@ -192,6 +193,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - Membership is **per-season**. One live (`Pending`/`Active`) row per `(CampSeasonId, UserId)` enforced by a partial unique index. `Removed` rows are kept for audit and do not block re-requests.
 - Membership mutations (approve, reject, remove) are **scoped to the authorizing camp**. A lead or CampAdmin operating on camp A cannot mutate a member row whose season belongs to camp B even if they know the row id.
 - Membership state is **never rendered on anonymous or public views**. It is only shown to the human themselves and to leads/CampAdmin of the camp.
+- **A season outside `Active`/`Full` is non-public everywhere.** The directory, search, and the JSON API already filter to public statuses; `/Camps/{slug}` and `/Camps/{slug}/Season/{year}` enforce the same rule at the destination — a viewer without Manage on the camp gets a 404 (not a 403, so the slug leaks nothing). Leads and CampAdmin keep access to their own non-public camp (nobodies-collective/Humans#993).
 - A `CampRoleAssignment` requires the linked `CampMember` to have `Status = Active` for the same `CampSeasonId`. Service rejects with `MemberNotActive` or `MemberSeasonMismatch` otherwise.
 - A human cannot hold the same role twice in the same season — enforced by unique index on `(CampSeasonId, CampRoleDefinitionId, CampMemberId)`.
 - Camp-role slots have no per-slot identity — there is deliberately no `SlotIndex` column (rejected alternative from the original PR peterdrier/Humans#335 blueprint). Storage is the `(CampSeasonId, CampRoleDefinitionId, CampMemberId)` binding; slots are a display concern (the roles panel orders assignments and pads with empty rows up to `SlotCount`). When CampAdmin lowers `SlotCount` below current assignments, the panel renders an over-capacity indicator (`CampRolesPanelData.OverCapacity`) instead of blocking or evicting — a lead must unassign to return to capacity.

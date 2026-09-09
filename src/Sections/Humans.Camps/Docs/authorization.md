@@ -4,7 +4,8 @@
 |---|---|---|---|
 | `CampController` | Class | None at class level — anonymous public actions + `[Authorize]` per action | Camp lead + CampAdmin runtime checks |
 | `CampController.Index` / `Details` / `SeasonDetails` | Action | `AllowAnonymous` | Override |
-| `CampController.*` (Contact/Register/Edit/OptIn/Withdraw/Rejoin/HistoricalNames/Images/Members/Roles/etc.) | Action | `[Authorize]` (authenticated) | — |
+| `CampController.Details` / `SeasonDetails` runtime guard | In-method | A season outside `Active`/`Full` returns 404 unless the viewer passes the `Manage` check (lead of that camp, or CampAdmin/Admin) — nobodies-collective/Humans#993 | Resource-based (see handler below) |
+| `CampController.*` (Contact/Register/Edit/OptIn/Withdraw/HistoricalNames/Images/Members/Roles/etc.) | Action | `[Authorize]` (authenticated) | — |
 | `CampController` runtime guards | In-method | `authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.Manage)` via `HumansCampControllerBase` | Resource-based (see handler below) |
 | `CampAdminController` | Class | `CampAdmin, Admin` | `PolicyNames.CampAdminOrAdmin` |
 | `CampAdminController.Delete` | Action | `Admin` | `PolicyNames.AdminOnly` |

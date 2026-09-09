@@ -724,7 +724,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var season = await CampsDb.CampSeasons.FirstAsync(s => s.CampId == camp.Id, Xunit.TestContext.Current.CancellationToken);
         await _service.ApproveSeasonAsync(season.Id, Guid.NewGuid(), null, Xunit.TestContext.Current.CancellationToken);
 
-        await _service.ChangeSeasonNameAsync(season.Id, "New Name", Xunit.TestContext.Current.CancellationToken);
+        await _service.ChangeSeasonNameAsync(camp.Id, season.Id, "New Name", Xunit.TestContext.Current.CancellationToken);
 
         var updated = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id, Xunit.TestContext.Current.CancellationToken);
         updated.Name.Should().Be("New Name");
@@ -748,7 +748,7 @@ public sealed class CampServiceTests : CampsTestHarness
         season.NameLockDate = new LocalDate(2026, 3, 1);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var act = () => _service.ChangeSeasonNameAsync(season.Id, "Too Late", Xunit.TestContext.Current.CancellationToken);
+        var act = () => _service.ChangeSeasonNameAsync(camp.Id, season.Id, "Too Late", Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*locked*");
     }
 
@@ -1293,7 +1293,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var season = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id, Xunit.TestContext.Current.CancellationToken);
         Notifier.ClearReceivedCalls();
 
-        await _service.WithdrawSeasonAsync(season.Id, Xunit.TestContext.Current.CancellationToken);
+        await _service.WithdrawSeasonAsync(camp.Id, season.Id, Xunit.TestContext.Current.CancellationToken);
 
         var member = await CampsDb.CampMembers.AsNoTracking().FirstAsync(m => m.Id == request.CampMemberId, Xunit.TestContext.Current.CancellationToken);
         member.Status.Should().Be(CampMemberStatus.Pending);
@@ -1352,6 +1352,87 @@ public sealed class CampServiceTests : CampsTestHarness
         var action = () => _service.SetSeasonStatusAsync(Guid.NewGuid(), season.Id, CampSeasonStatus.Full, Xunit.TestContext.Current.CancellationToken);
 
         await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("*does not belong*");
+    }
+
+    [HumansFact]
+    public async Task UpdateSeasonAsync_WrongCamp_Throws()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var season = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id, Xunit.TestContext.Current.CancellationToken);
+
+        var action = () => _service.UpdateSeasonAsync(Guid.NewGuid(), season.Id, MakeSeasonData(), Xunit.TestContext.Current.CancellationToken);
+
+        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("*does not belong*");
+    }
+
+    [HumansFact]
+    public async Task WithdrawSeasonAsync_WrongCamp_Throws()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var season = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id, Xunit.TestContext.Current.CancellationToken);
+
+        var action = () => _service.WithdrawSeasonAsync(Guid.NewGuid(), season.Id, Xunit.TestContext.Current.CancellationToken);
+
+        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("*does not belong*");
+
+        var unchanged = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id, Xunit.TestContext.Current.CancellationToken);
+        unchanged.Status.Should().Be(CampSeasonStatus.Active);
+    }
+
+    [HumansFact]
+    public async Task ChangeSeasonNameAsync_WrongCamp_Throws()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var season = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id, Xunit.TestContext.Current.CancellationToken);
+
+        var action = () => _service.ChangeSeasonNameAsync(Guid.NewGuid(), season.Id, "Hijacked", Xunit.TestContext.Current.CancellationToken);
+
+        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("*does not belong*");
+    }
+
+    [HumansFact]
+    public async Task DeleteImageAsync_WrongCamp_Throws()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        await using var imageStream = new MemoryStream([1, 2, 3, 4]);
+        var upload = await _service.UploadImageAsync(camp.Id, imageStream, "camp.jpg", "image/jpeg", imageStream.Length, Xunit.TestContext.Current.CancellationToken);
+        upload.Succeeded.Should().BeTrue();
+
+        var action = () => _service.DeleteImageAsync(Guid.NewGuid(), upload.Image!.Id, Xunit.TestContext.Current.CancellationToken);
+
+        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("*does not belong*");
+
+        var stillThere = await CampsDb.CampImages.AsNoTracking().FirstOrDefaultAsync(i => i.Id == upload.Image!.Id, Xunit.TestContext.Current.CancellationToken);
+        stillThere.Should().NotBeNull();
+    }
+
+    [HumansFact]
+    public async Task RemoveHistoricalNameAsync_WrongCamp_Throws()
+    {
+        await SeedSettingsAsync();
+        var campA = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(campA.Id);
+        var campB = await _service.CreateCampAsync(
+            Guid.NewGuid(), "Other Camp", "other@camp.com", "+34600000001",
+            null, null, false, 1, MakeSeasonData(), null, 2026, Xunit.TestContext.Current.CancellationToken);
+        await _service.AddHistoricalNameAsync(campA.Id, "Old Name", Xunit.TestContext.Current.CancellationToken);
+        var name = await CampsDb.CampHistoricalNames.AsNoTracking().FirstAsync(n => n.CampId == campA.Id, Xunit.TestContext.Current.CancellationToken);
+
+        // Scope check resolves the scoped camp's aggregate, so the wrong camp must exist.
+        var action = () => _service.RemoveHistoricalNameAsync(campB.Id, name.Id, Xunit.TestContext.Current.CancellationToken);
+
+        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("*does not belong*");
+
+        var stillThere = await CampsDb.CampHistoricalNames.AsNoTracking().FirstOrDefaultAsync(n => n.Id == name.Id, Xunit.TestContext.Current.CancellationToken);
+        stillThere.Should().NotBeNull();
     }
 
     [HumansFact]

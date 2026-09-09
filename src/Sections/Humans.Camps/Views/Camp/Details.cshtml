@@ -72,7 +72,7 @@
                 {
                     <p class="text-muted mb-0">
                         <i class="fa-solid fa-clock-rotate-left me-1"></i>
-                        Also known as: @string.Join(", ", Model.HistoricalNames)
+                        @Localizer["Camp_Details_AlsoKnownAs"] @string.Join(", ", Model.HistoricalNames)
                     </p>
                 }
             </div>
@@ -80,12 +80,12 @@
                 @if (Model.IsSwissCamp)
                 {
                     <span class="badge bg-danger fs-6">
-                        <i class="fa-solid fa-flag me-1"></i>Swiss Camp
+                        <i class="fa-solid fa-flag me-1"></i>@Localizer["Camp_Details_SwissCampBadge"]
                     </span>
                 }
                 @if (Model.CurrentSeason?.Status == CampSeasonStatus.Full)
                 {
-                    <span class="badge bg-warning text-dark fs-6">Full</span>
+                    <span class="badge bg-warning text-dark fs-6">@Localizer["CampCard_Full"]</span>
                 }
             </div>
         </div>
@@ -457,16 +457,7 @@
                                 </button>
                             </form>
                         }
-                        @if ((Model.IsCurrentUserLead || Model.IsCurrentUserCampAdmin) && s.Status == CampSeasonStatus.Withdrawn)
-                        {
-                            <form asp-controller="Camp" asp-action="Rejoin" asp-route-slug="@Model.Slug" asp-route-seasonId="@s.Id" method="post">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-outline-success w-100">
-                                    <i class="fa-solid fa-rotate-left me-1"></i> Rejoin Season
-                                </button>
-                            </form>
-                        }
-                        @if (Model.IsCurrentUserCampAdmin && s.Status == CampSeasonStatus.Full)
+                        @if (Model.IsCurrentUserCampAdmin && (s.Status == CampSeasonStatus.Withdrawn || s.Status == CampSeasonStatus.Full))
                         {
                             <form asp-controller="CampAdmin" asp-action="Reactivate" asp-route-seasonId="@s.Id" method="post">
                                 @Html.AntiForgeryToken()
