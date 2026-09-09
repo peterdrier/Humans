@@ -11,7 +11,6 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
 {
     public async Task<Survey?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
-        // Order applied by the service/consumer (display-sort lives above the repository).
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.Surveys
             .AsNoTracking()
@@ -22,7 +21,6 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
 
     public async Task<IReadOnlyList<Survey>> GetAllSummariesAsync(CancellationToken ct = default)
     {
-        // No display ordering here — the admin controller sorts the index (hard rule).
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.Surveys
             .AsNoTracking()
@@ -133,7 +131,6 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
 
     public async Task<IReadOnlyList<SurveyInvitation>> GetInvitationsAsync(Guid surveyId, CancellationToken ct = default)
     {
-        // No display ordering here — the controller sorts the Send status list (hard rule).
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.SurveyInvitations
             .AsNoTracking()
@@ -197,8 +194,7 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
 
     public async Task<IReadOnlyList<SurveyInvitation>> GetInvitationsDueForReminderAsync(Instant cutoff, CancellationToken ct = default)
     {
-        // No display ordering — the service sweeps the result (hard rule). Uses the
-        // (SurveyId, Completed, SentAt) index. Joins to the survey's status (repo owns both tables).
+        // Uses the (SurveyId, Completed, SentAt) index. Joins to the survey's status (repo owns both tables).
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.SurveyInvitations
             .AsNoTracking()
@@ -248,7 +244,6 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
 
     public async Task<SurveyResponse?> GetDraftResponseAsync(Guid surveyId, Guid userId, CancellationToken ct = default)
     {
-        // No display ordering here — answer order is reconstructed by question (caller/wizard).
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.SurveyResponses
             .AsNoTracking()
@@ -379,7 +374,6 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
 
     public async Task<IReadOnlyList<SurveyResponse>> GetResponsesForResultsAsync(Guid surveyId, CancellationToken ct = default)
     {
-        // No display ordering here — aggregation/sorting lives in the service (hard rule).
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.SurveyResponses
             .AsNoTracking()
@@ -398,7 +392,6 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
 
     public async Task<IReadOnlyList<SurveyResponse>> GetIdentifiedResponsesForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        // No display ordering here — the GDPR contributor shapes/orders the payload (hard rule).
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.SurveyResponses
             .AsNoTracking()

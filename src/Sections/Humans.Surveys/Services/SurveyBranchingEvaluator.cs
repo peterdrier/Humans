@@ -8,7 +8,7 @@ namespace Humans.Surveys.Services;
 /// required-validation, rejecting answers to hidden questions) and by author-save validation
 /// (no-forward-reference check). Answers-so-far are modelled as questionId → <see cref="AnswerState"/>;
 /// an absent entry means unanswered. <c>Is</c>/<c>IsNot</c> match selected option values;
-/// <c>Answered</c>/<c>NotAnswered</c> consider options, text, and rating alike.
+/// <c>Answered</c>/<c>NotAnswered</c> use <see cref="AnswerState.IsAnswered"/> — every answer shape counts.
 /// </summary>
 internal static class SurveyBranchingEvaluator
 {

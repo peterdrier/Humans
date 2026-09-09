@@ -7,15 +7,15 @@ using NodaTime;
 namespace Humans.Surveys.Services;
 
 /// <summary>
-/// Survey section service: authoring (create/update/open/close), and — added in later phases —
-/// send, submit, results, export and GDPR contribution. Implements the
-/// <see cref="IApplicationService"/> marker. Read methods return DTOs, never EF entities.
+/// Survey section service: authoring, sending, the answering wizard, submission, results, export
+/// and the GDPR contribution. Implements the <see cref="IApplicationService"/> marker. Read
+/// methods return DTOs, never EF entities.
 /// </summary>
 /// <remarks>
-/// Two consumers live outside the section: the reminder job in Base, which sees
-/// <see cref="Contracts.ISurveyReminderSender"/>, and the Backdoor machine API, which sees
-/// <see cref="ISurveyAnalysisRead"/> (nobodies-collective/Humans#1128). Everything else here
-/// — authoring, sending, the wizard, submission — has no caller outside Surveys.
+/// The only consumer outside the section is the Backdoor machine API, which sees
+/// <see cref="ISurveyAnalysisRead"/> (nobodies-collective/Humans#1128); the section's own
+/// reminder job sees <see cref="Contracts.ISurveyReminderSender"/>. Everything else here —
+/// authoring, sending, the wizard, submission — has no caller outside Surveys.
 /// </remarks>
 internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
 {
@@ -35,8 +35,8 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
     /// <summary>
     /// Machine-translates the survey's authored content (title, intro, thank-you, invitation copy,
     /// prompts, help, rating/option/Grid-row labels) from its default culture into every <paramref name="targetCultures"/>
-    /// entry that is still blank — existing text is never overwritten (spec §6.1: pre-fill, then the
-    /// author reviews). Returns the number of fields filled; 0 means nothing was missing.
+    /// entry that is still blank — existing text is never overwritten. Returns the number of fields
+    /// filled; 0 means nothing was missing.
     /// </summary>
     Task<int> PreFillTranslationsAsync(
         Guid surveyId, IReadOnlyList<string> targetCultures, Guid actorUserId, CancellationToken ct = default);
@@ -161,11 +161,19 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
         CancellationToken ct = default);
 
     // ── Results ────────────────────────────────────────────────────────────
+    /// <summary>
+    /// Results for one anonymity scope, or null if not found. While an Asociado vote is Open the
+    /// result is participation-only (<c>IsEmbargoed</c>); after close it carries unattributed ballots.
+    /// </summary>
     Task<SurveyScopedResults?> GetScopedResultsAsync(
         Guid surveyId,
         SurveyResultsScope scope,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Strikes ranked options from the count of a Closed survey. Rewrites no stored ballot;
+    /// audit-logged as a survey update.
+    /// </summary>
     Task SetRankedAvailabilityAsync(
         Guid surveyId,
         Guid questionId,

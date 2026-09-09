@@ -3,5 +3,11 @@
 version: 1
 inbox:
   - added: 2026-08-28
-    what: "SurveyService is 1831 LOC (reforge largeClass, 65 pts). Deliberate per the section's target shape (one aggregate, one anonymity contract), but recorded so the score is not mistaken for unexamined debt (/section-doctor on Surveys 2026-08-27)."
+    what: "SurveyService is the solution's largest class by reforge's largeClass rule and grew again with ranked-choice voting. Deliberate per the section's target shape (one aggregate, one anonymity contract, now one embargo), but recorded so the score is not mistaken for unexamined debt (/section-doctor on Surveys 2026-08-27, re-examined 2026-09-07; the measurements live in those run files)."
+    review: light
+  - added: 2026-09-07
+    what: "Surveys.md invariants with no test that pins them: individual submissions are never audit-logged; a CompletionTracked public start stamps the shared epoch CreatedAt; exactly one reminder per invitee; Close is audit-logged; eligibility is re-checked on every wizard page; a SentAt = null ledger row is excluded from invited counts, status and reminders; Article 17 erasure unlinks a response; ballots in the drill-down are ordered by response id. Found by /section-doctor's Tests thread on 2026-09-07; two sibling gaps were closed in that run."
+    review: light
+  - added: 2026-09-07
+    what: "Services/RankedChoiceCounter.cs carries no comment naming the precommitment — Ranked Pairs is the official method and authored option order the disclosed final tie-break — which health.md and Docs/features/ranked-choice-voting.md both state. Flagged by /section-doctor 2026-09-07 without reading the algorithm; wants one read-through and a header comment."
     review: light

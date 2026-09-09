@@ -6,8 +6,7 @@ namespace Humans.Surveys.Services;
 
 /// <summary>
 /// ASP.NET Data Protection implementation of <see cref="ISurveyInviteTokenProvider"/>. The token
-/// payload is just the invitation id; a per-survey lifetime tied to <c>ClosesAt</c> is a later
-/// refinement (fixed 60-day lifetime is fine for v1).
+/// payload is just the invitation id, with a fixed 60-day lifetime.
 /// </summary>
 internal sealed class SurveyInviteTokenProvider(IDataProtectionProvider dataProtection) : ISurveyInviteTokenProvider
 {

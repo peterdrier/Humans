@@ -8,7 +8,7 @@ internal sealed class SurveyInvitation
 {
     public Guid Id { get; init; }
     public Guid SurveyId { get; init; }
-    public Guid UserId { get; init; }   // bare FK: no nav, no cross-section EF FK constraint; resolve via IUserServiceRead
+    public Guid UserId { get; init; }
     public Instant? SentAt { get; set; }
     public EmailOutboxStatus? LatestEmailStatus { get; set; }
     public Instant? ReminderSentAt { get; set; }
