@@ -22,11 +22,12 @@ namespace Humans.Budget.Data;
 /// materialization inside one <c>DbContext</c>.
 /// <para>
 /// <c>budget_audit_logs</c> is append-only per §12 — the only surface is the
-/// three reads (<see cref="GetAuditLogAsync"/>,
+/// reads (<see cref="GetAuditLogAsync"/>,
 /// <see cref="GetAuditLogEntriesForUserAsync"/>,
-/// <see cref="GetAuditLogEntriesForUserIdsAsync"/>). Audit entries are written
-/// inside each mutation method so they commit in the same <c>SaveChanges</c>
-/// as the business change.
+/// <see cref="GetAuditLogEntriesForUserIdsAsync"/>). Each mutation method
+/// writes its own audit entries so they commit in the same <c>SaveChanges</c>
+/// as the business change — except the two ticketing sync paths, currently
+/// outside that guarantee (see <c>Docs/health.md</c> Seams).
 /// </para>
 /// </remarks>
 internal interface IBudgetRepository : IRepository

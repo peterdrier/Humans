@@ -5,6 +5,3 @@ inbox:
   - added: 2026-08-28
     what: "Test gaps from the invariant matrix (finding 14, /section-doctor on Agent 2026-08-28): (a) enabled gate — no test asserts the widget hides when Enabled=false (the other half, POST /Agent/Ask → 503, is pinned by AgentControllerTests.Ask_accepts_a_message_at_exactly_the_cap); (b) DailyTokenCap is set in every fixture but never exceeded — the third cap of invariant 3 has no reject test; (c) anonymous → 401 unpinned anywhere; (d) nothing asserts the tool catalog AgentPromptAssembler advertises equals AgentToolNames.All; (e) AgentFeatureSpecReader has no path-traversal negative test (CommunityFaqReader does); (f) an abuse-flagged message is never driven through AskAsync to a RefusalReason row."
     review: light
-  - added: 2026-08-30
-    what: "AgentService.RunTurnAsync is 210 LOC / CC 42 and AnthropicClient.StreamAsync 153 LOC / CC 42 (reforge). Both are the load-bearing streaming loops the target shape blesses (manual enumerator for error-path billing; SSE block assembly); recorded so the score is not mistaken for unexamined debt (/section-doctor on Agent 2026-08-28; swept by /section-doctor on Budget 2026-08-30)."
-    review: light
