@@ -92,7 +92,7 @@ boot found it rather than with this host's endpoint gone and not yet recreated.
   unset Store key before any network call, and lets a Stripe failure propagate.
 - EUR → minor units rounds half away from zero; minor units → EUR is exact (a `long` over
   `100m` cannot round). `ToStripeMinorUnits` and `FromStripeMinorUnits` are the only places
-  either conversion happens, and the round trip is lossless.
+  either conversion happens; the round trip is lossless for amounts representable in cents.
 - Neither boot job can block, delay or fail startup, and neither throws out of its own body.
 - The registrar cannot act without `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY`, and cannot touch an
   endpoint whose host is not `*.n.burn.camp` with path `/Store/StripeWebhook`.

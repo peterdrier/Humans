@@ -14,8 +14,9 @@ using Stripe;
 namespace Humans.Stripe.Tests.Services;
 
 /// <summary>
-/// The connector's one behavioural rule: every read returns <c>null</c> when Stripe cannot be
-/// asked, and the write throws. Both halves are reachable without a network call — each guard
+/// The connector's read/write contract: a read returns <c>null</c> for the cases the section
+/// checks and propagates everything else (an authentication error, a rate limit, a transport
+/// failure); the write throws. Both halves are reachable without a network call — each guard
 /// runs before the <c>StripeClient</c> is constructed — so this pins them from a unit test.
 /// A read that throws where its siblings return null is the defect these tests exist to catch.
 /// </summary>
@@ -32,7 +33,7 @@ public class StripeServiceContractTests
         return (new StripeService(Options.Create(settings), log), log);
     }
 
-    // ── Reads return null, never throw ──────────────────────────────────────
+    // ── Reads return null for the cases the section checks ───────────────────
 
     [HumansFact]
     public async Task GetPaymentDetails_returns_null_when_tickets_key_unset()
