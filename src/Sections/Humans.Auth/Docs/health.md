@@ -61,10 +61,10 @@ the section implements rather than surface it publishes, and that is the right p
 
 Written fresh from the shapes above, not from today's tree.
 
-- **One table, one repository.** `role_assignments` is the section's only data. The repository
-  is the sole SQL surface and exposes exactly the queries the shapes need — no method exists
-  for a caller that does not exist.
-- **One service holds the invariants.** Temporal overlap, the ended/not-yet-active guard, the
+- **The repository is the section's only SQL surface.** `role_assignments` is the section's only
+  data. The repository exposes exactly the queries the shapes need — no method exists for a
+  caller that does not exist.
+- **The service holds the invariants.** Temporal overlap, the ended/not-yet-active guard, the
   audit row, the notification, the Board team sync, the cache pokes. Nothing else may write.
 - **One caching decorator over the service interface**, holding the whole row set in memory and
   deriving S1–S3 from it at the caller's clock instant. It is a decorator, so it may reach the
