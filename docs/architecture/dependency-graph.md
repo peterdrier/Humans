@@ -568,8 +568,8 @@ graph LR
     GSyncSvc -. "lazy" .-> TRes
 
     %% ── Edge styling ──
-    %% Lazy edges colored + thickened. Eager count: 289 (indices 0..288);
-    %% the 18 lazy edges are indices 289..306. Recompute whenever edges change.
+    %% Lazy edges colored + thickened. linkStyle indices are edge declaration order;
+    %% the lazy block is declared last. Recompute the indices whenever edges change.
     linkStyle 289,290,291,292,293,294,295,296,297,298,299,300,301,302,303,304,305,306 stroke:#f97316,stroke-width:2.5px
 ```
 

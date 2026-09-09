@@ -19,8 +19,10 @@ internal sealed class RequestFormViewModel
     public string PickupPlaceLabel { get; set; } = string.Empty;
 
     /// <summary>Null = geocode the label.</summary>
+    [Range(-90, 90)]
     public double? Latitude { get; set; }
 
+    [Range(-180, 180)]
     public double? Longitude { get; set; }
 
     [Required]

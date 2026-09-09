@@ -170,8 +170,7 @@ namespace Humans.Rideshare.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Year")
-                        .IsUnique();
+                    b.HasIndex("Year");
 
                     b.ToTable("rideshare_settings", (string)null);
                 });

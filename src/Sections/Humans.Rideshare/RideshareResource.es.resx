@@ -60,6 +60,7 @@
   <data name="Rideshare_OfferARide" xml:space="preserve"><value>Ofrecer un viaje</value></data>
   <data name="Rideshare_RequestARide" xml:space="preserve"><value>Pedir un viaje</value></data>
   <data name="Rideshare_Mine" xml:space="preserve"><value>Mis viajes</value></data>
+  <data name="Rideshare_Settings" xml:space="preserve"><value>Ajustes de Rideshare</value></data>
   <data name="Rideshare_NotSetUp" xml:space="preserve"><value>Compartir coche aún no está configurado para {0}; vuelve pronto.</value></data>
   <data name="Rideshare_Date" xml:space="preserve"><value>Fecha</value></data>
   <data name="Rideshare_Direction" xml:space="preserve"><value>Dirección</value></data>

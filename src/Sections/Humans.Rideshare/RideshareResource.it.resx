@@ -60,6 +60,7 @@
   <data name="Rideshare_OfferARide" xml:space="preserve"><value>Offri un passaggio</value></data>
   <data name="Rideshare_RequestARide" xml:space="preserve"><value>Cerca un passaggio</value></data>
   <data name="Rideshare_Mine" xml:space="preserve"><value>I miei passaggi</value></data>
+  <data name="Rideshare_Settings" xml:space="preserve"><value>Impostazioni Rideshare</value></data>
   <data name="Rideshare_NotSetUp" xml:space="preserve"><value>I passaggi non sono ancora configurati per il {0}: torna presto.</value></data>
   <data name="Rideshare_Date" xml:space="preserve"><value>Data</value></data>
   <data name="Rideshare_Direction" xml:space="preserve"><value>Direzione</value></data>

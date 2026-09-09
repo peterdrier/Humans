@@ -60,6 +60,7 @@
   <data name="Rideshare_OfferARide" xml:space="preserve"><value>Fahrt anbieten</value></data>
   <data name="Rideshare_RequestARide" xml:space="preserve"><value>Fahrt suchen</value></data>
   <data name="Rideshare_Mine" xml:space="preserve"><value>Meine Fahrten</value></data>
+  <data name="Rideshare_Settings" xml:space="preserve"><value>Rideshare-Einstellungen</value></data>
   <data name="Rideshare_NotSetUp" xml:space="preserve"><value>Mitfahren ist für {0} noch nicht eingerichtet – schau bald wieder vorbei.</value></data>
   <data name="Rideshare_Date" xml:space="preserve"><value>Datum</value></data>
   <data name="Rideshare_Direction" xml:space="preserve"><value>Richtung</value></data>

@@ -60,6 +60,7 @@
   <data name="Rideshare_OfferARide" xml:space="preserve"><value>Offer a ride</value></data>
   <data name="Rideshare_RequestARide" xml:space="preserve"><value>Request a ride</value></data>
   <data name="Rideshare_Mine" xml:space="preserve"><value>My rides</value></data>
+  <data name="Rideshare_Settings" xml:space="preserve"><value>Rideshare settings</value></data>
   <data name="Rideshare_NotSetUp" xml:space="preserve"><value>Rideshare isn't set up for {0} yet — check back soon.</value></data>
   <data name="Rideshare_Date" xml:space="preserve"><value>Date</value></data>
   <data name="Rideshare_Direction" xml:space="preserve"><value>Direction</value></data>

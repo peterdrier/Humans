@@ -150,8 +150,7 @@ namespace Humans.Rideshare.Data.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_rideshare_settings_Year",
                 table: "rideshare_settings",
-                column: "Year",
-                unique: true);
+                column: "Year");
 
             migrationBuilder.CreateIndex(
                 name: "IX_rideshare_trips_UserId",

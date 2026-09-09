@@ -21,7 +21,8 @@ internal sealed class RideshareSettingsConfiguration : IEntityTypeConfiguration<
         builder.Property(s => s.OutboundWindowEnd).IsRequired();
         builder.Property(s => s.UpdatedAt).IsRequired();
 
-        // One row per burn year. No HasData seed: the row is created on first admin save.
-        builder.HasIndex(s => s.Year).IsUnique();
+        // One row per burn year, enforced by the repository upsert (uniqueness rests on Id only).
+        // No HasData seed: the row is created on first admin save.
+        builder.HasIndex(s => s.Year);
     }
 }

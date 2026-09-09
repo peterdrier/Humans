@@ -444,7 +444,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task Snapshot_MarksARequestMatched_ByItsAuthorOrByItsId()
+    public async Task Snapshot_MarksARequestMatched_ByItsAuthorOrByItsId_OnActiveTripsOnly()
     {
         var driver = SeedUser("Ada");
         var trip = await SeedTripAsync(driver, seatsOffered: 5);
@@ -464,11 +464,18 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var pendingRequest = await SeedRequestAsync(pendingOnly);
         await SeedInterestAsync(driver, trip.Id, status: InterestStatus.Pending, requestId: pendingRequest.Id);
 
+        // Accepted, but the trip was cancelled since: the rider is looking again.
+        var cancelledTrip = await SeedTripAsync(driver, status: TripStatus.Cancelled);
+        var strandedRider = SeedUser("Ed");
+        var strandedRequest = await SeedRequestAsync(strandedRider);
+        await SeedInterestAsync(strandedRider, cancelledTrip.Id, status: InterestStatus.Accepted);
+
         var snapshot = await NewService().GetSnapshotAsync(Year, Ct);
 
         snapshot.Requests.Single(r => r.Id == byAuthorRequest.Id).IsMatched.Should().BeTrue();
         snapshot.Requests.Single(r => r.Id == byIdRequest.Id).IsMatched.Should().BeTrue();
         snapshot.Requests.Single(r => r.Id == pendingRequest.Id).IsMatched.Should().BeFalse();
+        snapshot.Requests.Single(r => r.Id == strandedRequest.Id).IsMatched.Should().BeFalse();
     }
 
     // ── Notifications ─────────────────────────────────────────────────────

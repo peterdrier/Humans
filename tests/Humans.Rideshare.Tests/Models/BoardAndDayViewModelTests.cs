@@ -21,8 +21,9 @@ public sealed class BoardAndDayViewModelTests
         var otherDay = Trip(driver, departure: July3.PlusDays(4));
         var otherWay = Trip(driver, departure: July3, direction: RideshareDirection.Outbound);
         var cancelled = Trip(driver, departure: July3, status: TripStatus.Cancelled);
+        var full = Trip(driver, departure: July3, seatsRemaining: 0);
         var someoneElses = Trip(Guid.NewGuid(), departure: July3);
-        var snapshot = Snapshot(trips: [onTheDay, spanning, otherDay, otherWay, cancelled, someoneElses]);
+        var snapshot = Snapshot(trips: [onTheDay, spanning, otherDay, otherWay, cancelled, full, someoneElses]);
 
         var board = BoardViewModel.Build(snapshot, July3, RideshareDirection.Inbound, driver);
 
@@ -60,8 +61,9 @@ public sealed class BoardAndDayViewModelTests
         LocalDate departure,
         RideshareDirection direction = RideshareDirection.Inbound,
         int durationDays = 1,
-        TripStatus status = TripStatus.Active) =>
+        TripStatus status = TripStatus.Active,
+        int seatsRemaining = 3) =>
         new(Guid.NewGuid(), userId, 2026, direction, "Paris", 48.85, 2.35, [], null,
-            departure, durationDays, null, VehicleType.Car, 3, 3,
+            departure, durationDays, null, VehicleType.Car, 3, seatsRemaining,
             LuggageSize.Minimal, null, null, false, CostSharing.ShareFuel, null, null, status, Now, Now);
 }

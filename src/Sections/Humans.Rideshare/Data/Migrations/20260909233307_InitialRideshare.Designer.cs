@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Rideshare.Data.Migrations
 {
     [DbContext(typeof(RideshareDbContext))]
-    [Migration("20260902012721_InitialRideshare")]
+    [Migration("20260909233307_InitialRideshare")]
     partial class InitialRideshare
     {
         /// <inheritdoc />
@@ -173,8 +173,7 @@ namespace Humans.Rideshare.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Year")
-                        .IsUnique();
+                    b.HasIndex("Year");
 
                     b.ToTable("rideshare_settings", (string)null);
                 });

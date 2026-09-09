@@ -116,7 +116,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 | Property | Type | Notes |
 |----------|------|-------|
 | Id | Guid | PK |
-| Year | int | unique index |
+| Year | int | indexed; one row per year is a repository upsert rule, not a constraint |
 | DestinationLabel | string | max 200, required |
 | DestinationLatitude | double | required |
 | DestinationLongitude | double | required |
@@ -211,8 +211,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Members-only board.** Every route requires `AppAccess` or `RideshareAdminOrAdmin`; there is no anonymous or public access.
 - **Interest always anchors to a trip.** `RideshareInterest.TripId` is required on both the rider→offer and driver→request-pin paths; `RequestId` is an optional origin pointer only, never the anchor.
 - **Seats remaining is derived, never stored.** `SeatsRemaining = SeatsOffered − Σ(Seats of Accepted interests on the trip)`; a trip is full when this is `≤ 0`.
-- **A request's Matched state is derived, never stored.** True when an `Accepted` interest exists with `FromUserId == request.UserId` or `RequestId == request.Id`.
-- **Route geometry is computed once at save and frozen.** Recomputed only on create, or on an update that changes the member point, waypoints, or direction — never at view time, and never invalidated by a later settings edit.
+- **A request's Matched state is derived, never stored.** True when an `Accepted` interest on an `Active` trip exists with `FromUserId == request.UserId` or `RequestId == request.Id`; cancelling the trip un-matches the request.
+- **Route geometry is computed once at save and frozen.** Recomputed only on create, or on an update that changes the member point, waypoints, or direction — never at view time, and never invalidated by a later settings edit. The straight-line fallback the board draws when the stored route is null is not a route: it is rendered at view time through the current destination, so it follows a later destination edit.
 - **A null route never blocks a save.** When the routing provider is unavailable, `RouteGeoJson` is stored as null and a warning is logged; the save still succeeds.
 - **Declines are private.** No reason is required or stored; the declined party sees neutral language only, never a score or a broadcast reason.
 - **Driver discretion is absolute.** Accept/decline is the posting owner's call; the app never prompts for or records a justification.

@@ -56,9 +56,10 @@ internal sealed class RideshareService(
             .OrderBy(t => t.DepartureDate).ThenBy(t => t.CreatedAt)
             .Select(ToView)
             .ToList();
+        var activeTripIds = graph.Trips.Where(t => t.Status == TripStatus.Active).Select(t => t.Id).ToHashSet();
         var requests = graph.Requests
             .OrderBy(r => r.DesiredDate).ThenBy(r => r.CreatedAt)
-            .Select(r => ToView(r, interests))
+            .Select(r => ToView(r, interests, activeTripIds))
             .ToList();
 
         return new RideshareSnapshot(
@@ -624,10 +625,11 @@ internal sealed class RideshareService(
         t.VehicleType, t.SeatsOffered, SeatsRemaining(t), t.LuggageCapacity, t.CapacityNote, t.Restrictions,
         t.WillingToDetour, t.CostSharing, t.CostNote, t.LinkedTripId, t.Status, t.CreatedAt, t.UpdatedAt);
 
-    private static RequestView ToView(RideshareRequest r, IReadOnlyList<InterestView> interests) => new(
+    private static RequestView ToView(RideshareRequest r, IReadOnlyList<InterestView> interests, IReadOnlySet<Guid> activeTripIds) => new(
         r.Id, r.UserId, r.Year, r.Direction, r.PickupPlaceLabel, r.PickupLatitude, r.PickupLongitude,
         r.DesiredDate, r.PartySize, r.LuggageLoad, r.CanContributeToFuel, r.Notes, r.Status,
-        IsMatched: interests.Any(i => i.Status == InterestStatus.Accepted && (i.FromUserId == r.UserId || i.RequestId == r.Id)),
+        IsMatched: interests.Any(i => i.Status == InterestStatus.Accepted && activeTripIds.Contains(i.TripId)
+            && (i.FromUserId == r.UserId || i.RequestId == r.Id)),
         r.CreatedAt, r.UpdatedAt);
 
     private static InterestView ToView(RideshareInterest i) => new(

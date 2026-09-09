@@ -60,6 +60,7 @@
   <data name="Rideshare_OfferARide" xml:space="preserve"><value>Proposer un trajet</value></data>
   <data name="Rideshare_RequestARide" xml:space="preserve"><value>Demander un trajet</value></data>
   <data name="Rideshare_Mine" xml:space="preserve"><value>Mes trajets</value></data>
+  <data name="Rideshare_Settings" xml:space="preserve"><value>Paramètres Rideshare</value></data>
   <data name="Rideshare_NotSetUp" xml:space="preserve"><value>Le covoiturage n'est pas encore configuré pour {0} — revenez bientôt.</value></data>
   <data name="Rideshare_Date" xml:space="preserve"><value>Date</value></data>
   <data name="Rideshare_Direction" xml:space="preserve"><value>Direction</value></data>

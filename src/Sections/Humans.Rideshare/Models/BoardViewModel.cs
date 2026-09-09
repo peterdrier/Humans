@@ -23,7 +23,7 @@ internal sealed record BoardViewModel(
     public static BoardViewModel Build(RideshareSnapshot snapshot, LocalDate date, RideshareDirection direction, Guid currentUserId)
     {
         var mine = snapshot.Trips
-            .Where(t => t.UserId == currentUserId && t.Status == TripStatus.Active && t.Direction == direction && t.CoversDate(date))
+            .Where(t => t.UserId == currentUserId && t.IsJoinable && t.Direction == direction && t.CoversDate(date))
             .OrderBy(t => t.DepartureDate)
             .Select(t => new MyOfferOption(t.Id, t.MemberPlaceLabel, t.DepartureDate, t.SeatsRemaining))
             .ToList();
