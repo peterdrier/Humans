@@ -87,7 +87,7 @@ plus transfer detail (`TransferredToName` / `TransferredAt` for void
 attendees, resolved from approved `TicketTransferRequests` via the
 `ITicketTransferRepository` read in `TicketQueryService`). The admin
 attendee search predicate in `TicketRepository` matches barcode alongside
-name/email. The Scanner gate card (`ScannerController`) resolves a barcode
+name/email. The Scanner ticket card (`ScannerController`) resolves a barcode
 by filtering `ITicketServiceRead.GetTicketOrdersAsync` in memory.
 
 `TicketAttendees` also has a `CheckedInAt` column — `TicketSyncService`

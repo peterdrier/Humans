@@ -3,7 +3,7 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Scanner;
 
-/// <summary>Scanner's contribution to the shared "Tickets" admin group (nobodies-collective/Humans#1077).</summary>
+/// <summary>Scanner's entry in the shared "Tickets" admin group.</summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>

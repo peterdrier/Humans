@@ -66,9 +66,9 @@ Ticket Admin, Admin, and Board all see the Tickets dashboard. Board can view eve
 
 ### Look up a ticket at the gate
 
-The Scanner section's ticket lookup (`/Scanner/Tickets`) uses your device camera to scan a ticket's barcode and shows the holder, ticket type, and status — and, for a voided ticket, who it was transferred to and when. Only the current event's tickets match; an older barcode reads as not found. It is read-only — it never checks anyone in.
+The Scanner section's ticket lookup (`/Scanner/Tickets`) uses your device camera to scan a ticket's barcode and shows the holder, ticket type, and status — and, for a voided ticket, who it was transferred to and when. Only the current event's tickets match; an older barcode reads as not found. When the ticket is matched to a member, the card also shows their early-entry date and how they earned it, whether they have already checked in this event, any required consents they have not signed, and what they have committed to provide — shifts and the events they host. It is read-only — it never checks anyone in.
 
-The gate laptop signs in with a shared, admin-free account to reach the lookup tool. Ticket Admin and Admin set or rotate its password at `/Tickets/Admin/Gate`; the laptop then signs in at `/Account/GateLogin`. Rotating the password signs out any existing gate sessions within half an hour.
+The gate laptop signs in with a shared, admin-free account and lands on the Gate terminal (`/Gate`), not on this lookup. Ticket Admin and Admin set or rotate its password at `/Tickets/Admin/Gate`; the laptop then signs in at `/Account/GateLogin`. Rotating the password signs out any existing gate sessions within half an hour.
 
 ### Trigger a sync
 

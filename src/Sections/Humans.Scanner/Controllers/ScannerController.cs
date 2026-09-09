@@ -14,7 +14,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Scanner.Controllers;
 
-/// <summary>Scanner section — in-browser barcode/QR decoders; no server-side writes. See nobodies-collective/Humans#525.</summary>
+/// <summary>Camera tools for ticket staff: a client-only barcode decoder and a read-only ticket lookup. No action writes.</summary>
 [Authorize(Policy = PolicyNames.ScannerAccess)]
 [Route("Scanner")]
 internal sealed class ScannerController(
@@ -42,8 +42,7 @@ internal sealed class ScannerController(
         if (code.Length == 0)
             return PartialView("_TicketCard", new ScannerTicketCardViewModel(false, null, null, null, null, null));
 
-        // Gate scope: only the current event's tickets are admissible here, so a
-        // barcode from a previous event reads as "not found" rather than a valid card.
+        // Only this event's tickets: an older barcode reads as not found.
         var orders = await tickets.GetTicketOrdersAsync(ct);
         var hit = orders
             .Where(o => o.IsCurrentEvent)
@@ -53,8 +52,6 @@ internal sealed class ScannerController(
         if (hit is null)
             return PartialView("_TicketCard", new ScannerTicketCardViewModel(false, code, null, null, null, null));
 
-        // Per-person door context (nobodies-collective/Humans#860) — only when the
-        // ticket is matched to a Human; unmatched tickets render the bare card.
         UserEarlyEntry? ee = null;
         Instant? checkedInAt = null;
         IReadOnlyList<string>? pendingConsents = null;
@@ -96,13 +93,10 @@ internal sealed class ScannerController(
     }
 
     /// <summary>
-    /// What this human signed up to provide: shift commitments plus events they
-    /// are offering, merged and sorted by start. Shifts reuse the iCal feed's
-    /// items (its Events half is favourites — the wrong signal at the door, so
-    /// those are filtered out); offered events use the same personal filter as
-    /// the profile events card (SubmitterUserId match, non-camp — see #935),
-    /// with recurring events expanded into one item per occurrence the same way
-    /// the Events feed contributor does.
+    /// What this human signed up to provide: shift commitments plus events they are
+    /// offering, sorted by start. The iCal feed's Events half is favourites — the wrong
+    /// signal at the door — so only its Shifts items are kept; offered events are the
+    /// member's own non-camp submissions, one item per occurrence.
     /// </summary>
     private async Task<IReadOnlyList<CalendarFeedItem>> GetProvideItemsAsync(
         Guid userId, BurnSettingsInfo? burn, DateTimeZone? tz, CancellationToken ct)

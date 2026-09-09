@@ -1,6 +1,5 @@
-@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
-   here ships broken markup with a green build and no runtime error — see design §1/§2.
-   Guarded by ScannerPageRenderTests (step 12). *@
+@* A section RCL does not inherit the host's Views/_ViewImports.cshtml; a missing line here
+   ships literal markup with a green build. Guarded by ScannerPageRenderTests. *@
 @using Humans.Base.Extensions
 @using Humans.Base.Enums
 @using Humans.Scanner
@@ -12,8 +11,6 @@
 @inject IStringLocalizer<ScannerResource> Localizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @addTagHelper *, Humans.Base
-@* <vc:ticket-stub> is the Tickets section's own component, public under
-   Humans.Tickets/Contracts/ so MVC's default provider discovers it and the tag helper is
-   generated. It was parked in Humans.UI until Tickets' own G5; a Shell-resident component
-   would have rendered as inert literal markup (step 6). *@
+@* <vc:ticket-stub> is the Tickets section's component, public under Humans.Tickets/Contracts/
+   so MVC discovers it and generates the tag helper. *@
 @addTagHelper *, Humans.Tickets

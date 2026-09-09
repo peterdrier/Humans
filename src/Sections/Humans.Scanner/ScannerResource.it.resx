@@ -87,7 +87,7 @@
     <value>Anteprima dal vivo della fotocamera</value>
   </data>
   <data name="Scanner_Index_Intro" xml:space="preserve">
-    <value>Strumenti di scanner nel browser. Non si inviano dati al server — tutto gira sul tuo dispositivo.</value>
+    <value>Strumenti fotocamera per il team biglietti. Il decodificatore di codici a barre gira sul tuo dispositivo e non invia nulla; la ricerca biglietti invia il codice scansionato al server per trovare il biglietto. Nessuno dei due si usa per il check-in.</value>
   </data>
   <data name="Scanner_Index_Title" xml:space="preserve">
     <value>Strumenti di scanner</value>
