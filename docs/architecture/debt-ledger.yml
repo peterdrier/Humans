@@ -267,6 +267,9 @@ themes:
     notes: Each inbox entry carries its own review tier; drained entries are deleted from the list.
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
+  - added: 2026-09-06
+    what: "View-side half of Search's Features:Events gate is unpinned in CI: SearchServiceTests pins that the service never calls Events when the flag is off, but nothing CI-run asserts that Search's Index.cshtml hides the Events chip and heading — the only render tests (SearchPageRenderTests, GlobalSearchSectionRenderTests) live in the local-only Humans.Integration.Tests, and Humans.Web.Tests has no page-render harness to add a case to. Routed here rather than to Search's section ledger because the fix is shared test infrastructure, not Search code (finding 17, /section-doctor on Search 2026-09-06; moved on a review finding on peterdrier/Humans#1602)."
+    review: panel
   - added: 2026-08-27
     what: "The GDPR export document's JSON serialization lives twice, byte-identically: GuestDataController (Humans.Gdpr) and ProfileController (Humans.Users) each carry a private ExportJsonOptions and a private BuildExportPayload. Key stability across re-downloads is an invariant Gdpr owns, enforced by copies nothing keeps in step. The fix spans both sections and adds public surface either way — a shared serializer on Humans.Gdpr.Contracts, or a method on IGdprService — so it is Peter's call. Found by /section-doctor on Gdpr 2026-08-27 (finding 2 of docs/health/runs/2026-08-27-Gdpr.md); routed here rather than to Gdpr's section ledger on a review finding on peterdrier/Humans#1540, because no single section owns the fix."
     review: panel

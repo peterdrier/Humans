@@ -14,21 +14,12 @@ namespace Humans.Search.Tests.Services;
 
 /// <summary>
 /// Orchestration tests for <see cref="SearchService"/> against substitutes for the five
-/// section read interfaces it fans out to. Two things are pinned here that no other test
-/// can see: the field mask the human bucket asks for (<see cref="PersonSearchFields.PublicAll"/>
-/// — the only search-time privacy filter this service owns), and the key/sort-key mapping
-/// that is all this section keeps of another section's row
-/// (nobodies-collective/Humans#1062). Name-match scoring belongs to each section (including
-/// Events, since #1062's Events follow-up) and is pinned where it lives.
-///
-/// <para>
-/// Per the 2026-08-07 ruling on nobodies-collective/Humans#985, search is not an
-/// authorization boundary: a hit is a routing convenience and the destination page enforces
-/// visibility. The per-section text-query filters that this service depends on are pinned
-/// where they live — <c>CachingTeamServiceTests</c>, <c>CachingCampServiceTests</c>,
-/// <c>CachingEventServiceTests</c>, <c>ShiftManagementServiceTests</c> and
-/// <c>ShiftRepositoryRotaSearchVisibilityTests</c>.
-/// </para>
+/// section read interfaces. Pinned here and nowhere else: the field mask the human bucket
+/// asks for (<see cref="PersonSearchFields.PublicAll"/>, the only search-time privacy
+/// filter this service owns) and the key/sort-key pass-through. Scoring and the per-section
+/// visibility filters are pinned where they live — <c>CachingTeamServiceTests</c>,
+/// <c>CachingCampServiceTests</c>, <c>CachingEventServiceTests</c>,
+/// <c>ShiftManagementServiceTests</c> and <c>ShiftRepositoryRotaSearchTests</c>.
 /// </summary>
 public sealed class SearchServiceTests
 {
@@ -75,6 +66,7 @@ public sealed class SearchServiceTests
         await _teams.DidNotReceive().SearchAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
         await _camps.DidNotReceive().SearchAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
         await _shifts.DidNotReceive().SearchAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await _events.DidNotReceive().SearchAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -101,16 +93,10 @@ public sealed class SearchServiceTests
     // ==========================================================================
 
     /// <summary>
-    /// Each <c>onlyType</c> value queries just that section's source and skips the other four.
+    /// Each <c>onlyType</c> value queries just that section and skips the other four. One
+    /// fact over the five cases: a public test method cannot take the internal
+    /// <see cref="SearchResultType"/> as a theory parameter (CS0051).
     /// </summary>
-    /// <remarks>
-    /// One <c>[Fact]</c> over the five cases rather than a <c>[HumansTheory]</c> with five
-    /// <c>[InlineData]</c>: <c>SearchResultType</c> turned <c>internal</c> at the G5 move, and a
-    /// <c>public</c> test method cannot take an internal parameter (CS0051) even with
-    /// <c>InternalsVisibleTo</c>. Each case clears the substitutes' received calls first, which
-    /// is what the per-case theory instance used to give for free
-    /// (G5-SECTION-TEMPLATE.md step 8, Issues' rule).
-    /// </remarks>
     [HumansFact]
     public async Task SearchAsync_OnlyType_QueriesThatSectionAndSkipsTheOtherFour()
     {
@@ -161,14 +147,13 @@ public sealed class SearchServiceTests
     }
 
     // ==========================================================================
-    // Keys and ordering fields — this section carries them, it no longer projects display
+    // Keys and ordering fields pass through untouched
     // ==========================================================================
 
     [HumansFact]
     public async Task SearchAsync_CarriesEachSectionsOwnScore_WithoutRescoring()
     {
-        // Teams/Camps/Shifts/Events score their own hits (nobodies-collective/Humans#1062). A
-        // score that contradicts the name proves this service takes the section's word for it.
+        // A score that contradicts the name proves this service takes the section's word for it.
         StubTeams(new TeamSearchHit(Guid.NewGuid(), "Nothing Like The Query", ScorePrefix));
         StubEvents(new EventSearchHit(Guid.NewGuid(), "Nothing Like The Query", ScorePrefix));
 
@@ -216,10 +201,9 @@ public sealed class SearchServiceTests
     [HumansFact]
     public async Task SearchAsync_GuidQuery_ReturnsWhateverEachSectionResolved()
     {
-        // Ruling (nobodies-collective/Humans#985, 2026-08-07): by-GUID lookups skip the
-        // visibility filter. The caller already holds the id; the destination page decides
-        // whether they may open it. Each section owns that branch and scores it exact; this
-        // service passes the hits through unchanged, for admin and non-admin alike.
+        // By-GUID lookups skip the visibility filter (nobodies-collective/Humans#985): the
+        // destination page decides whether the caller may open it. Each section owns that
+        // branch; this service passes the hits through unchanged.
         var id = Guid.NewGuid();
         StubTeams(new TeamSearchHit(Guid.NewGuid(), "Hidden Ops", ScoreExact));
         StubCamps(new CampSearchHit(Guid.NewGuid(), "Pending Camp", ScoreExact));
@@ -254,10 +238,8 @@ public sealed class SearchServiceTests
     [HumansFact]
     public async Task SearchAsync_HumanBucket_AlwaysAsksForPublicFieldsOnly()
     {
-        // The only privacy guarantee that survives the ruling at *search* time: admin-only
-        // profile fields (verified emails, non-public contact fields, legal names) are never
-        // matched, for anyone. SearchService takes no viewer, so "regardless of role" is
-        // structural — the mask is a constant, and this asserts the constant.
+        // SearchService takes no viewer, so "admin-only fields match for nobody" is
+        // structural: the mask is a constant, and this asserts the constant.
         await Build().SearchAsync("Kitchen", ct: TestContext.Current.CancellationToken);
 
         await _users.Received(1).SearchUsersAsync(
@@ -273,10 +255,8 @@ public sealed class SearchServiceTests
     [HumansFact]
     public async Task SearchAsync_GuidQuery_AlsoAsksForPublicFieldsOnly()
     {
-        // The id path must not widen the field mask on the way. It skips only the mask:
-        // CachingUserService.SearchUsersAsync still requires a non-rejected profile on its
-        // GUID branch, so eligibility is unchanged — that gate is covered where it lives,
-        // not here, since this harness stubs IUserServiceRead.
+        // The id path must not widen the field mask. Users' own eligibility gate on the
+        // GUID branch is pinned where it lives; this harness stubs IUserServiceRead.
         await Build().SearchAsync(Guid.NewGuid().ToString(), ct: TestContext.Current.CancellationToken);
 
         await _users.Received(1).SearchUsersAsync(
@@ -294,6 +274,7 @@ public sealed class SearchServiceTests
         await _teams.Received(1).SearchAsync(Arg.Any<string>(), int.MaxValue, Arg.Any<CancellationToken>());
         await _camps.Received(1).SearchAsync(Arg.Any<string>(), int.MaxValue, Arg.Any<CancellationToken>());
         await _shifts.Received(1).SearchAsync(Arg.Any<string>(), int.MaxValue, Arg.Any<CancellationToken>());
+        await _events.Received(1).SearchAsync(Arg.Any<string>(), int.MaxValue, Arg.Any<CancellationToken>());
     }
 
     // ==========================================================================

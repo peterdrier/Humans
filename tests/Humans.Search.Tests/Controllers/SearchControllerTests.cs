@@ -96,7 +96,7 @@ public sealed class SearchControllerTests
     }
 
     [HumansFact]
-    public async Task Index_ProjectsEveryHumanField_OntoTheSharedPartialsViewModel()
+    public async Task Index_PassesTheHumanMatchContext_ThroughToTheView_Untouched()
     {
         var hit = new HumanSearchResult(
             UserId: Guid.NewGuid(),
