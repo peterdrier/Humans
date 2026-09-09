@@ -14,8 +14,9 @@
   src/Sections/Humans.Camps/Domain/CampImage.cs
   src/Sections/Humans.Camps/Domain/CampHistoricalName.cs
   src/Sections/Humans.Camps/Domain/CampSettings.cs
+  src/Sections/Humans.Camps/Domain/CampRoleDefinition.cs
+  src/Sections/Humans.Camps/Domain/CampRoleAssignment.cs
   src/Sections/Humans.Camps/Data/Configurations/**
-  src/Sections/Humans.Camps/Data/Configurations/CampMemberConfiguration.cs
 -->
 <!-- freshness:flag-on-change
   Camp registration/season approval workflow, CampMember per-season affiliation, lead management, and route table — review when Camp services, controllers, or entities change.
@@ -259,7 +260,8 @@ CampSeason
 CampSettings
 ├── Id: Guid
 ├── PublicYear: int
-└── OpenSeasons: List<int> [JSON]
+├── OpenSeasons: List<int> [JSON]
+└── EeStartDate: LocalDate? [global Early Entry start date; null until set by CampAdmin]
 ```
 
 ### Supporting Entities
@@ -283,7 +285,8 @@ CampMember
 ├── ConfirmedAt: Instant?
 ├── ConfirmedByUserId: Guid?
 ├── RemovedAt: Instant?
-└── RemovedByUserId: Guid?
+├── RemovedByUserId: Guid?
+└── HasEarlyEntry: bool [survives removal when the holder already entered the event — consumed grants keep counting]
 ```
 
 - Partial unique index `IX_camp_members_active_unique` on
@@ -401,8 +404,8 @@ Authenticated User
   │ Active  │  │ Rejected  │  │Withdrawn │
   └────┬────┘  └───────────┘  └────┬─────┘
        │                           │
-  ┌────┼─────┐                Rejoin (lead or
-  │          │                 CampAdmin)
+  ┌────┼─────┐                Reactivate
+  │          │                (CampAdmin only)
 ┌─▼──┐ ┌────▼─────┐               │
 │Full│ │Withdrawn │               │
 └─┬──┘ └──────────┘               │
@@ -422,7 +425,7 @@ Transitions:
 - Active → Withdrawn (lead withdraws)
 - Active → Full (lead or CampAdmin marks full via `MarkFull`)
 - Full → Active (CampAdmin reactivates)
-- Withdrawn → Pending (lead or CampAdmin rejoins; requires re-approval)
+- Withdrawn → Pending (CampAdmin reactivates; requires re-approval)
 
 Note: `Full` is informational only — it does not gate join requests. A camp lead or CampAdmin marks an Active season Full via `POST /Camps/{slug}/MarkFull/{seasonId}` (`CampService.SetSeasonStatusAsync` → `CampSeason.SetStatus`, a plain field flip with no transition validation).
 
@@ -463,7 +466,6 @@ Note: `Full` is informational only — it does not gate join requests. A camp le
 | `POST /Camps/{slug}/OptIn/{year}` | Opt-in to season |
 | `POST /Camps/{slug}/Withdraw/{seasonId}` | Lead withdraws a season |
 | `POST /Camps/{slug}/MarkFull/{seasonId}` | Lead or CampAdmin marks an Active season Full |
-| `POST /Camps/{slug}/Rejoin/{seasonId}` | Lead or CampAdmin rejoins a Withdrawn season (back to Pending) |
 | `POST /Camps/{slug}/HistoricalNames/Add` | Manually add a historical name |
 | `POST /Camps/{slug}/HistoricalNames/Remove/{nameId}` | Remove a historical name |
 | `POST /Camps/{slug}/Images/Upload` | Upload image |
@@ -491,10 +493,11 @@ Note: `Full` is informational only — it does not gate join requests. A camp le
 | `POST /Camps/Admin/SetEeStartDate` | Set the global Early Entry start date |
 | `GET /Camps/Admin/Roles` | List role definitions |
 | `GET /Camps/Admin/Roles/{slug}` | Cross-camp roster for one role definition (assignees + mailto to the derived group email) |
-| `POST /Camps/Admin/Roles/Create` | Create role definition |
-| `POST /Camps/Admin/Roles/{id}/Edit` | Edit role definition |
+| `GET/POST /Camps/Admin/Roles/Create` | Create role definition |
+| `GET/POST /Camps/Admin/Roles/{id}/Edit` | Edit role definition |
 | `POST /Camps/Admin/Roles/{id}/Deactivate` | Soft-delete role definition |
 | `POST /Camps/Admin/Roles/{id}/Reactivate` | Reactivate a soft-deleted role definition |
+| `POST /Camps/Admin/SeedSystemRoles` | Idempotent seeding of missing `CampSpecialRole` definitions (button renders only while one is missing) |
 | `GET /Camps/Admin/Compliance` | Role-staffing compliance matrix (`CampComplianceController`): barrios × role definitions grid, defaults to current public year |
 | `POST /Camps/{slug}/Members/Add` | Lead-adds-active-member shortcut |
 | `POST /Camps/{slug}/Roles/AssignByUser` | Picker-driven assign: adds the human as a member (if needed) and assigns the role in one step |

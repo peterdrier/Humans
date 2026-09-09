@@ -10,7 +10,7 @@
     <div class="card-body">
         @if (Model.Roster.Count == 0)
         {
-            <p class="text-center text-muted mb-0">No humans recorded for this season yet.</p>
+            <p class="text-center text-muted mb-0">@Localizer["Camp_Details_RosterEmpty"]</p>
         }
         else
         {
