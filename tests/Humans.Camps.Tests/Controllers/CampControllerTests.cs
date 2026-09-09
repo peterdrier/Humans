@@ -288,7 +288,10 @@ public class CampControllerTests
         var renewal = MakeCamp("garden", "Garden Camp", CampSeasonStatus.Pending, year: 2027);
         var priorSeason = renewal.Seasons.Single() with
         {
-            Id = Guid.NewGuid(), Year = 2026, Status = CampSeasonStatus.Active, LeadUserIds = [leadUserId]
+            Id = Guid.NewGuid(),
+            Year = 2026,
+            Status = CampSeasonStatus.Active,
+            LeadUserIds = [leadUserId]
         };
         var fullCamp = renewal with { Seasons = [priorSeason, renewal.Seasons.Single()] };
         StubCampReadModel([]);
