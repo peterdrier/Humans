@@ -102,7 +102,7 @@ The numbered invariants in `Agent.md` are the contract; the load-bearing ones re
   (Warning+ only).
 - **`SectionAnnotations` publishes canonical keys only** — aliases are spellings, not sections.
 - **`AgentService.RunTurnAsync` and `AnthropicClient.StreamAsync` are big by design** — the
-  two load-bearing streaming loops (manual enumerator for error-path billing; SSE block
+  load-bearing streaming loops (manual enumerator for error-path billing; SSE block
   assembly). Their reforge complexity scores are examined and accepted; don't refactor them
   for score.
 
