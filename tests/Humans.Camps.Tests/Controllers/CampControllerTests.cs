@@ -279,6 +279,52 @@ public class CampControllerTests
     }
 
     [HumansFact]
+    public async Task SeasonDetails_OptedInRenewalSeason_PriorSeasonLead_StillRenders()
+    {
+        // OptInToSeasonAsync copies no lead assignments into the renewal season, so the
+        // year projection for the new year carries no leads — viewer state must resolve
+        // from the slug-loaded camp, whose earlier seasons carry them.
+        var leadUserId = Guid.NewGuid();
+        var renewal = MakeCamp("garden", "Garden Camp", CampSeasonStatus.Pending, year: 2027);
+        var priorSeason = renewal.Seasons.Single() with
+        {
+            Id = Guid.NewGuid(), Year = 2026, Status = CampSeasonStatus.Active, LeadUserIds = [leadUserId]
+        };
+        var fullCamp = renewal with { Seasons = [priorSeason, renewal.Seasons.Single()] };
+        StubCampReadModel([]);
+        _camps.GetCampsForYearAsync(2027, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<CampInfo>>([renewal]));
+        _camps.GetCampBySlugAsync(renewal.Slug, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<CampInfo?>(fullCamp));
+        _users.GetUserInfoAsync(leadUserId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(leadUserId)));
+        _cityPlanning.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new CityPlanningSettingsDto(
+                Guid.NewGuid(), 2026, false, null, null, null, null, null, null, null, false, null, null,
+                Instant.FromUtc(2026, 1, 1, 0, 0))));
+        _roles.BuildPanelAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(new CampRolesPanelData(call.ArgAt<Guid>(0), [])));
+        // Succeed only for the slug-loaded camp — the year projection cannot answer the
+        // lead check, exactly as the real handler behaves.
+        _authorization.AuthorizeAsync(
+                Arg.Any<ClaimsPrincipal>(),
+                Arg.Any<object?>(),
+                Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Failed());
+        _authorization.AuthorizeAsync(
+                Arg.Any<ClaimsPrincipal>(),
+                Arg.Is<object?>(resource => ReferenceEquals(resource, fullCamp)),
+                Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+
+        var result = await BuildController(leadUserId)
+            .SeasonDetails(renewal.Slug, 2027, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ViewResult>(
+            because: "a lead must reach their camp's not-yet-approved renewal season");
+    }
+
+    [HumansFact]
     public async Task Details_AnonymousRender_CarriesNoMemberOrEarlyEntryData()
     {
         // Behavioral pin for "membership/EE data never render publicly": walk the actual

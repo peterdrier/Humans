@@ -220,7 +220,12 @@ internal sealed class CampController(
 
         var settings = await _campService.GetSettingsAsync(ct);
         var currentUser = await GetCurrentUserInfoAsync(ct);
-        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp, currentUser);
+        // Authorize against the slug-loaded camp, not the year projection above: the
+        // projection carries only the requested year's season, and an opted-in renewal
+        // season starts with no lead assignments — the camp's leads are only visible
+        // on its earlier seasons.
+        var fullCamp = await GetCampBySlugAsync(slug, ct) ?? camp;
+        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(fullCamp, currentUser);
 
         // Same nobodies-collective/Humans#993 gate as Details, for arbitrary-year seasons.
         if (season.Status is not (CampSeasonStatus.Active or CampSeasonStatus.Full) && !isLead && !isCampAdmin)
