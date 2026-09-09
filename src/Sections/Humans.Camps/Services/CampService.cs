@@ -738,6 +738,20 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
     {
         try
         {
+            // Prove the season belongs to the camp before the first write: the scoped check
+            // inside UpdateSeasonAsync fires only after the camp-level fields have committed,
+            // which would leave a partial update behind an uninvalidated cache on failure.
+            var scopedSeason = await _repo.GetSeasonByIdAsync(input.SeasonId, cancellationToken);
+            if (scopedSeason is null)
+            {
+                return CampUpdateResult.Failure("Season not found.");
+            }
+
+            if (scopedSeason.CampId != input.CampId)
+            {
+                return CampUpdateResult.Failure("Season does not belong to the specified camp.");
+            }
+
             var updated = await _repo.UpdateCampFieldsAsync(
                 input.CampId,
                 input.ContactEmail,

@@ -1416,6 +1416,32 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
+    public async Task UpdateCampAsync_SeasonOfAnotherCamp_FailsBeforeAnyWrite()
+    {
+        // The scoped check inside UpdateSeasonAsync fires after the camp-level fields have
+        // committed; UpdateCampAsync must refuse the cross-camp season before its first write,
+        // or a failed update leaves the camp partially changed behind an uninvalidated cache.
+        await SeedSettingsAsync();
+        var campA = await CreateTestCamp();
+        var campB = await _service.CreateCampAsync(
+            Guid.NewGuid(), "Other Camp", "other@camp.com", "+34600000001",
+            null, null, false, 1, MakeSeasonData(), null, 2026, Xunit.TestContext.Current.CancellationToken);
+        var seasonB = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == campB.Id, Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _service.UpdateCampAsync(
+            new CampUpdateInput(
+                campA.Id, "hijacked@camp.com", "+34999999999", null, null,
+                true, 9, true, seasonB.Id, "Hijacked", MakeSeasonData()),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        var unchanged = await CampsDb.Camps.AsNoTracking().FirstAsync(c => c.Id == campA.Id, Xunit.TestContext.Current.CancellationToken);
+        unchanged.ContactEmail.Should().Be("test@camp.com",
+            because: "no camp-level field may commit when the submitted season belongs to another camp");
+        unchanged.TimesAtNowhere.Should().Be(1);
+    }
+
+    [HumansFact]
     public async Task DeleteImageAsync_WrongCamp_Throws()
     {
         await SeedSettingsAsync();
