@@ -222,7 +222,9 @@ def main():
     # Context telemetry: where the run's context peaked, and whether it was
     # compacted mid-run. Compaction is detected from the usage data itself — a
     # sustained drop of >50% and >100k tokens between consecutive main-thread
-    # calls (a one-call dip, e.g. a small utility request, does not count).
+    # calls. Sustained means the NEXT call also stays below the same threshold:
+    # a one-call dip (a small utility request between two full-context calls,
+    # e.g. 200k -> 10k -> 199k) rebounds above it and does not count.
     if contexts:
         peak_label, peak_ctx = max(contexts, key=lambda c: c[1])
         print()
@@ -230,7 +232,7 @@ def main():
         compactions = []
         for i in range(1, len(contexts)):
             prev, cur = contexts[i - 1][1], contexts[i][1]
-            sustained = i + 1 >= len(contexts) or contexts[i + 1][1] < prev
+            sustained = i + 1 >= len(contexts) or contexts[i + 1][1] < prev * 0.5
             if cur < prev * 0.5 and prev - cur > 100_000 and sustained:
                 compactions.append(contexts[i][0])
         if compactions:

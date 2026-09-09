@@ -531,7 +531,9 @@ strike's checkpoint text, its target file paths — **absolute, rooted at `$WORK
 subagent does not inherit the run's cwd, and on a local machine a relative path can land in
 another session's checkout — and the rules of this phase it will touch (the doc-sweep and
 delete-sweep rules, the resx/XML rule, the build-output rule). It edits and validates under
-`$WORKTREE` only, runs **no git commands**, and returns a diff summary; the main thread reviews
+`$WORKTREE` only, runs **no git commands** — where a handed rule prescribes `git grep` (the
+delete sweep), the executor runs the same search with the Grep tool or `rg -n` rooted at
+`$WORKTREE` instead — and returns a diff summary; the main thread reviews
 **`git diff` in the worktree, never the executor's own summary,** and commits. One executor at a
 time — Phase 0's one-build-per-worktree rule applies to them too. Its prompt's whole first line,
 nothing after it, is the `thread: strike <what>` marker — the same `<what>` as the item's
