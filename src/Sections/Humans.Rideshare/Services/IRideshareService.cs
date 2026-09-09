@@ -1,5 +1,6 @@
 using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
+using NodaTime;
 
 namespace Humans.Rideshare.Services;
 
@@ -45,10 +46,11 @@ internal interface IRideshareService : IApplicationService
     // ── Admin ─────────────────────────────────────────────────────────────
     Task SaveSettingsAsync(int year, SettingsSave save, Guid actorUserId, CancellationToken ct = default);
 
-    // ── GDPR ──────────────────────────────────────────────────────────────
-    // IUserDataContributor is carried by CachingRideshareService (erasure empties cached
-    // rows); these two are how it reaches the inner service, so they sit here rather
-    // than only on the concrete type (the Events shape).
+    // ── GDPR and account merge ────────────────────────────────────────────
+    // IUserDataContributor and IUserMerge are carried by CachingRideshareService (erasure
+    // and the merge fold change cached rows); these are how it reaches the inner service,
+    // so they sit here rather than only on the concrete type (the Events shape).
     Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct);
     Task EraseForUserAsync(Guid userId, CancellationToken ct);
+    Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct);
 }

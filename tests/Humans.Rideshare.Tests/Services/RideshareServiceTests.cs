@@ -632,4 +632,44 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         (await ctx.Requests.Select(r => r.Id).ToListAsync(Ct)).Should().Equal(theirRequest.Id);
         (await ctx.Interests.Select(i => i.Id).ToListAsync(Ct)).Should().Equal(theirOwnRider.Id);
     }
+
+    [HumansFact]
+    public async Task Reassign_FoldsRowsOntoTheSurvivor_DropsSelfInterestAndDuplicates_AndIsIdempotent()
+    {
+        var archived = SeedUser("Archived");
+        var survivor = SeedUser("Survivor");
+        var driver = SeedUser("Driver");
+        var archivedTrip = await SeedTripAsync(archived);
+        var survivorTrip = await SeedTripAsync(survivor);
+        var driverTrip = await SeedTripAsync(driver);
+        var archivedRequest = await SeedRequestAsync(archived);
+        var survivorRequest = await SeedRequestAsync(survivor);
+        var rider = await SeedInterestAsync(archived, driverTrip.Id);                                   // moves to survivor
+        await SeedInterestAsync(archived, survivorTrip.Id);                       // self-interest → dropped
+        await SeedInterestAsync(survivor, archivedTrip.Id);                // self-interest → dropped
+        await SeedInterestAsync(survivor, survivorTrip.Id, requestId: archivedRequest.Id); // own request → dropped
+        var driverAnswer = await SeedInterestAsync(driver, driverTrip.Id, requestId: archivedRequest.Id);           // stays, request now survivor's
+        Clock.Advance(Duration.FromMinutes(1));
+        await SeedInterestAsync(survivor, driverTrip.Id);                               // later pending duplicate → dropped
+        var accepted = await SeedInterestAsync(archived, driverTrip.Id, status: InterestStatus.Accepted); // non-pending → kept
+        var unrelated = await SeedInterestAsync(SeedUser("Other"), driverTrip.Id);
+        var service = NewService();
+        var now = Clock.GetCurrentInstant();
+
+        await service.ReassignAsync(archived, survivor, Guid.NewGuid(), now, Ct);
+        await service.ReassignAsync(archived, survivor, Guid.NewGuid(), now, Ct);
+
+        await using var ctx = OpenContext();
+        (await ctx.Trips.Where(t => t.UserId == archived).CountAsync(Ct)).Should().Be(0);
+        (await ctx.Requests.Where(r => r.UserId == archived).CountAsync(Ct)).Should().Be(0);
+        (await ctx.Interests.Where(i => i.FromUserId == archived).CountAsync(Ct)).Should().Be(0);
+        var movedTrip = await ctx.Trips.SingleAsync(t => t.Id == archivedTrip.Id, Ct);
+        movedTrip.UserId.Should().Be(survivor);
+        movedTrip.UpdatedAt.Should().Be(now);
+        (await ctx.Requests.SingleAsync(r => r.Id == archivedRequest.Id, Ct)).UserId.Should().Be(survivor);
+        (await ctx.Requests.SingleAsync(r => r.Id == survivorRequest.Id, Ct)).UserId.Should().Be(survivor);
+        (await ctx.Interests.Select(i => i.Id).ToListAsync(Ct))
+            .Should().BeEquivalentTo([rider.Id, driverAnswer.Id, accepted.Id, unrelated.Id]);
+        (await ctx.Interests.SingleAsync(i => i.Id == rider.Id, Ct)).FromUserId.Should().Be(survivor);
+    }
 }

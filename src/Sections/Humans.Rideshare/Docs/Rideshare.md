@@ -257,7 +257,11 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 ## Cross-Section Dependencies
 
 - **Users**: `IUserServiceRead` — display name/picture for driver and rider cards, board
-  properties, and notification "from" names.
+  properties, and notification "from" names. `IUserMerge` — on account merge,
+  `ReassignAsync` re-points the archived user's trips, requests and interests at the survivor,
+  then drops interests the fold made self-interest (rider on their own trip, driver answering
+  their own request) and duplicate pending interests on one trip/request (earliest wins).
+  Idempotent; the decorator clears the snapshot cache afterwards.
 - **Shifts**: `IBurnSettingsService.GetActiveAsync()` — the active year settings anchor to
   (`GetActiveYearAsync` falls back to the clock's UTC year when no active burn is set).
 - **Notifications**: `INotificationEmitter.SendAsync` — interest created/accepted/declined

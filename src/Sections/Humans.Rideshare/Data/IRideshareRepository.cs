@@ -1,5 +1,6 @@
 using Humans.Base.Interfaces.Repositories;
 using Humans.Rideshare.Domain;
+using NodaTime;
 
 namespace Humans.Rideshare.Data;
 
@@ -56,4 +57,14 @@ internal interface IRideshareRepository : IRepository
     /// requests (referencing interests keep the trip, lose the request pointer). Idempotent.
     /// </summary>
     Task DeleteUserRowsAsync(Guid userId, CancellationToken ct = default);
+
+    // ── Account merge ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Account-merge fold: re-points the source user's trips, requests and interests at the
+    /// target, then drops interests the fold turned into self-interest (a rider on their own
+    /// trip, a driver answering their own request) and duplicate pending interests on the
+    /// same trip/request, keeping the earliest. Idempotent.
+    /// </summary>
+    Task ReassignToUserAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default);
 }

@@ -7,6 +7,7 @@ using Humans.Rideshare.Controllers;
 using Humans.Rideshare.Data;
 using Humans.Rideshare.Domain;
 using Humans.Rideshare.Services;
+using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -105,6 +106,23 @@ public class RideshareArchitectureTests
         using var scope = provider.CreateScope();
 
         scope.ServiceProvider.GetRequiredService<IUserDataContributor>()
+            .Should().BeSameAs(provider.GetRequiredService<CachingRideshareService>());
+    }
+
+    [HumansFact]
+    public void UserMerge_IsForwardedToTheDecorator()
+    {
+        // The merge fold re-points rows the snapshot cache serves, so the account-merge
+        // fan-out must reach the decorator — drop this forwarder and a merged member's
+        // trips, requests and interests silently stay on the archived account.
+        var services = Registrations();
+        services.Should().ContainSingle(d => d.ServiceType == typeof(IUserMerge));
+
+        services.AddLogging();
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+
+        scope.ServiceProvider.GetRequiredService<IUserMerge>()
             .Should().BeSameAs(provider.GetRequiredService<CachingRideshareService>());
     }
 

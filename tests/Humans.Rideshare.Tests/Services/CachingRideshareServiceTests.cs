@@ -112,6 +112,22 @@ public sealed class CachingRideshareServiceTests
     }
 
     [HumansFact]
+    public async Task Reassign_ForwardsToTheInner_AndClearsTheCache()
+    {
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        var now = Instant.FromUtc(2026, 3, 1, 12, 0);
+        await _service.GetSnapshotAsync(2026, Ct);
+
+        await _service.ReassignAsync(source, target, actor, now, Ct);
+        await _service.GetSnapshotAsync(2026, Ct);
+
+        await _inner.Received(1).ReassignAsync(source, target, actor, now, Arg.Any<CancellationToken>());
+        await _inner.Received(2).GetSnapshotAsync(2026, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ContributeForUser_ForwardsToTheInner()
     {
         var userId = Guid.NewGuid();

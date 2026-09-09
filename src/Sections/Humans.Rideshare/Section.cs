@@ -7,6 +7,7 @@ using Humans.Rideshare.Data;
 using Humans.Rideshare.Domain;
 using Humans.Rideshare.Services;
 using Humans.Rideshare.Services.Routing;
+using Humans.Users.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -48,8 +49,10 @@ public sealed class Section : ISection
         services.AddSingleton<CachingRideshareService>();
         services.AddSingleton<IRideshareService>(sp => sp.GetRequiredService<CachingRideshareService>());
 
-        // GDPR fan-out binds to the decorator, not the inner: erasure empties cached rows.
+        // GDPR and account-merge fan-outs bind to the decorator, not the inner: erasure and
+        // the merge fold change cached rows.
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CachingRideshareService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<CachingRideshareService>());
 
         // Surface the snapshot cache on /Debug/CacheStats.
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingRideshareService>().SnapshotCacheStats);

@@ -1,7 +1,9 @@
 using Humans.Base.Caching;
 using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
+using Humans.Users.Contracts;
 using Microsoft.Extensions.DependencyInjection;
+using NodaTime;
 
 namespace Humans.Rideshare.Services;
 
@@ -16,12 +18,13 @@ namespace Humans.Rideshare.Services;
 /// <remarks>
 /// Depends only on the inner service (via <see cref="IServiceScopeFactory"/>) and the
 /// cache plumbing (memory/architecture/decorators-talk-only-to-inner.md). Carries
-/// <see cref="IUserDataContributor"/> because erasure empties rows the cache holds.
+/// <see cref="IUserDataContributor"/> and <see cref="IUserMerge"/> because erasure and the
+/// account-merge fold change rows the cache holds.
 /// </remarks>
 internal sealed class CachingRideshareService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingRideshareService> logger)
-    : IRideshareService, IUserDataContributor
+    : IRideshareService, IUserDataContributor, IUserMerge
 {
     /// <summary>
     /// DI service key under which the undecorated inner <see cref="IRideshareService"/>
@@ -148,6 +151,14 @@ internal sealed class CachingRideshareService(
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
         await WithInner(inner => inner.EraseForUserAsync(userId, ct));
+        _cache.Clear();
+    }
+
+    // ── IUserMerge — account merge fold ───────────────────────────────────
+
+    public async Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct)
+    {
+        await WithInner(inner => inner.ReassignAsync(mergedFromUserId, mergedToUserId, actorUserId, now, ct));
         _cache.Clear();
     }
 

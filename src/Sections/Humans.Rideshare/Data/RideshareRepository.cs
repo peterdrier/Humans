@@ -1,5 +1,6 @@
 using Humans.Rideshare.Domain;
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
 
 namespace Humans.Rideshare.Data;
 
@@ -168,6 +169,64 @@ internal sealed class RideshareRepository(IDbContextFactory<RideshareDbContext> 
             .ToListAsync(ct);
         ctx.Interests.RemoveRange(answers);
         ctx.Requests.RemoveRange(requests);
+
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    // ── Account merge ─────────────────────────────────────────────────────
+
+    public async Task ReassignToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+
+        // Every interest the fold can affect: either person's own (the target's existing ones
+        // take part in the duplicate pass), and anyone's on the source's trips or requests
+        // (those become self-interest once the trip/request is the target's). Loaded with
+        // navigations first so the conflict pass below sees the re-pointed graph — the tracked
+        // Trip/Request instances are the same ones mutated just after.
+        var affected = await ctx.Interests
+            .Include(i => i.Trip)
+            .Include(i => i.Request)
+            .Where(i => i.FromUserId == sourceUserId
+                || i.FromUserId == targetUserId
+                || i.Trip.UserId == sourceUserId
+                || (i.Request != null && i.Request.UserId == sourceUserId))
+            .ToListAsync(ct);
+
+        var trips = await ctx.Trips.Where(t => t.UserId == sourceUserId).ToListAsync(ct);
+        foreach (var t in trips)
+        {
+            t.UserId = targetUserId;
+            t.UpdatedAt = updatedAt;
+        }
+
+        var requests = await ctx.Requests.Where(r => r.UserId == sourceUserId).ToListAsync(ct);
+        foreach (var r in requests)
+        {
+            r.UserId = targetUserId;
+            r.UpdatedAt = updatedAt;
+        }
+
+        foreach (var i in affected.Where(i => i.FromUserId == sourceUserId))
+            i.FromUserId = targetUserId;
+
+        // Self-interest mirrors the Rideshare_Error_OwnRide / Rideshare_Error_OwnRequest rules.
+        var selfInterest = affected
+            .Where(i => i.RequestId is null
+                ? i.FromUserId == i.Trip.UserId
+                : i.Request!.UserId == i.Trip.UserId)
+            .ToList();
+
+        // Two pending interests from the (now single) person on the same trip/request would
+        // have been refused as Rideshare_Error_AlreadyInterested; keep the earliest.
+        var duplicates = affected
+            .Except(selfInterest)
+            .Where(i => i.FromUserId == targetUserId && i.Status == InterestStatus.Pending)
+            .GroupBy(i => (i.TripId, i.RequestId))
+            .SelectMany(g => g.Where(i => i != g.MinBy(x => x.CreatedAt)));
+
+        ctx.Interests.RemoveRange(selfInterest.Concat(duplicates));
 
         await ctx.SaveChangesAsync(ct);
     }
