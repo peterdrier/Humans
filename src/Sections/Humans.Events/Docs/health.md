@@ -110,4 +110,4 @@ these are the ones this shape rests on.)
 | Run | Date | Reforge | Notes |
 |---|---|---|---|
 | 1 | 2026-08-24 | 258 (loc=6367, cogP95=9, cogMax=35) | first pass — peterdrier/Humans#1483 |
-| 2 | 2026-09-09 | — | docs and comments caught up to the two August fixes; one settings lookup for every controller; the moderation queue names its moderators — pending |
+| 2 | 2026-09-09 | — | docs and comments caught up to the two August fixes; one settings lookup for every controller; the moderation queue names its moderators — peterdrier/Humans#1621 |
