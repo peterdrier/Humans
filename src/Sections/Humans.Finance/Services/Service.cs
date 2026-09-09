@@ -21,8 +21,8 @@ using NodaTime;
 namespace Humans.Finance.Services;
 
 /// <summary>
-/// Application-layer service for the Holded finance integration.
-/// Manages account provisioning, purchase-doc sync, actuals computation, and unmatched reporting.
+/// Finance's service: every shape in <c>Docs/health.md</c> §2, over one repository, one clock and
+/// one cached Holded contact list.
 /// </summary>
 internal sealed class Service(
     IHoldedRepository repo,
@@ -73,10 +73,8 @@ internal sealed class Service(
         var usedTags = map.Where(m => m.IsActive).Select(m => m.Tag).ToHashSet(StringComparer.Ordinal);
         var currentActiveCatIds = categories.Select(c => c.Id).ToHashSet();
 
-        // Track the rolling "next free" number across ToAdd assignments.
         int nextFree = blockStart;
 
-        // Walk categories in stable order: group then category name.
         foreach (var (catId, catName, groupName) in categories
             .OrderBy(c => c.Group, StringComparer.Ordinal)
             .ThenBy(c => c.Name, StringComparer.Ordinal))
@@ -97,7 +95,6 @@ internal sealed class Service(
                 var tag = UniqueTag(groupName, catName, catId, usedTags);
                 usedTags.Add(tag);
 
-                // Advance nextFree past any already-used numbers.
                 while (usedNumbers.Contains(nextFree))
                     nextFree++;
                 var proposed = nextFree;
@@ -128,7 +125,6 @@ internal sealed class Service(
                 State: "Orphan"));
         }
 
-        // Final nextFree after all assignments.
         while (usedNumbers.Contains(nextFree))
             nextFree++;
 
@@ -308,7 +304,6 @@ internal sealed class Service(
                 d.ContactName,
                 d.Total,
                 ReasonFor(d),
-                // TODO(probe): confirm Holded deep-link URL format
                 $"https://app.holded.com/purchases/{d.HoldedDocId}"))
             .ToList();
     }
@@ -823,7 +818,7 @@ internal sealed class Service(
 
         // Same re-check as EnsureCreditorContactAsync: the row below carries the contact id, Source and
         // CreatedAt read above, so writing it over an admin's newer binding reverts it wholesale
-        // (nobodies-collective/Humans#995). No I/O since that read, so the window is sub-millisecond.
+        // (nobodies-collective/Humans#995).
         if (!await BindingUnchangedAsync(nameof(SetCreditorAccountNumAsync), userId, binding, ct)) return;
 
         var now = clock.GetCurrentInstant();
@@ -997,9 +992,8 @@ internal sealed class Service(
         var unavailable = BookingUnavailableReason();
         if (rows.Count == 0 || unavailable is not null) return (rows, unavailable);
 
-        var bindingByUser = (await repo.GetCreditorContactsAsync(ct))
-            .GroupBy(c => c.UserId)
-            .ToDictionary(g => g.Key, g => g.First());
+        // UserId is the one column the DB keeps unique, so this cannot throw.
+        var bindingByUser = (await repo.GetCreditorContactsAsync(ct)).ToDictionary(c => c.UserId);
 
         // One pull for the whole screen — the same full list the doc sync already walks. A vendor
         // failure leaves coverage unknown, and an unknown coverage still offers the button: the
@@ -1290,7 +1284,6 @@ internal sealed class Service(
         if (!usedTags.Contains(baseTag))
             return baseTag;
 
-        // Disambiguate with first 4 hex chars of the category id.
         return baseTag + categoryId.ToString("N")[..4];
     }
 }

@@ -1,0 +1,10 @@
+# Section debt ledger for Humans.Finance. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+inbox:
+  - added: 2026-09-06
+    what: "HoldedCategoryMap.IsActive is dead state: nothing in the section clears it (Holded.cshtml's own footer says an Archived row should not appear), yet HoldedConnectorVm.ArchivedMappings, the Archived badge and GetConnectorOverview_ListsActiveAndArchivedMappings_WithCategoryNames all exist to render it. The fix is dropping the column, which is a Finance migration — out of section-doctor's remit. Found by /section-doctor on Finance 2026-09-06 (finding 14)."
+    review: panel
+  - added: 2026-09-06
+    what: "Views/Finance/CreditorStatement.cshtml flips the sign of every ledger line so a payable reads positive to the member; the arithmetic lives in the view and no test in tests/Humans.Finance.Tests pins it (health.md §4 names it an invariant). Needs either a render test or the sign moved into the DTO the service builds. Found by /section-doctor on Finance 2026-09-06 (finding 11)."
+    review: panel

@@ -3,10 +3,8 @@ using NodaTime;
 namespace Humans.Finance.Domain;
 
 /// <summary>
-/// Status of the purchase-document sync (Finance's own concern — doc matching feeds the
-/// unmatched queue). The ledger mirror's sync state moved to the Holded section with the
-/// mirror itself; this singleton replaces the old shared <c>holded_sync_states</c> row.
-/// Lazy-created on first sync — no seed.
+/// Status of the purchase-document sync only (the ledger mirror's sync state is the Holded
+/// section's). Singleton, lazy-created on first sync — no seed.
 /// </summary>
 internal sealed class HoldedDocSyncState
 {

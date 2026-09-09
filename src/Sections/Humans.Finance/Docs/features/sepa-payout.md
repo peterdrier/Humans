@@ -122,7 +122,7 @@ A payment Holded **accepted** but gave no readable id for is not a failure at al
 `"unconfirmed:{documentId}"`, the allocation continues, and the transfer books normally. The sentinel
 lands in `HoldedPaymentRefs` and in the audit entry, naming the document the treasurer has to eyeball
 in Holded. Throwing there would have lost a real payment from the record and left the transfer
-retryable — so reaching the catch on the *first* payment now genuinely means Holded refused it.
+retryable — so reaching the catch on the *first* payment means Holded refused it.
 
 ## The file
 
