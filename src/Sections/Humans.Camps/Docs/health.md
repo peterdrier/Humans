@@ -26,7 +26,7 @@ question-family of Camps: who is in a camp / who leads one, for a given year.
 | Membership self-service | Join (request), Leave | Own-row mutations, scoped by userId |
 | Season/EE administration | CampAdmin dashboard: approve/reject, MarkFull/Reactivate, open/close seasons, PublicYear, name-lock, EE start + slot caps, CSV export, seed system roles | Cross-camp by design |
 | Role definitions | CampAdmin CRUD + compliance matrix + drill-down | Global definitions, per-season assignments |
-| Cross-section reads | `ICampServiceRead`, `ICampLeadDirectory`, membership/lead queries for provisioning & gate | One projection (`CampInfo`) answers all of them |
+| Cross-section reads | `ICampServiceRead`, `ICampLeadDirectory`, membership/lead queries for provisioning & gate | `ICampServiceRead` reads off the cached `CampInfo` projection; `ICampLeadDirectory` passes through to the repository (year-agnostic) |
 | Seeding | `ICampSeeding`/`ICampRoleSeeding` | Dev fixtures only |
 | Contact relay | Contact form → email via crosscut | No data owned |
 

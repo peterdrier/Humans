@@ -279,6 +279,6 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 
 ### Touch-and-clean guidance
 
-- Lead authority is `CampRoleAssignment` only (issue nobodies-collective/Humans#774). The `AuditAction.CampLeadAdded` / `CampLeadRemoved` enum members stay because historical `audit_log` rows persist those strings.
+- Lead authority is `CampRoleAssignment` only. The `AuditAction.CampLeadAdded` / `CampLeadRemoved` enum members stay because historical `audit_log` rows persist those strings.
 - `CampMemberConfiguration.cs` lives in
   `src/Sections/Humans.Camps/Data/Configurations/` with the rest of the Camps entity configuration.
