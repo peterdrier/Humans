@@ -187,7 +187,7 @@ internal sealed class CampController(
             return NotFound();
 
         var currentUser = await GetCurrentUserInfoAsync(ct);
-        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp.Id, currentUser, ct);
+        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp, currentUser);
 
         // nobodies-collective/Humans#993: a season outside Active/Full is non-public everywhere
         // else (directory, search), so the destination page refuses it too — 404, not 403, so
@@ -220,7 +220,7 @@ internal sealed class CampController(
 
         var settings = await _campService.GetSettingsAsync(ct);
         var currentUser = await GetCurrentUserInfoAsync(ct);
-        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp.Id, currentUser, ct);
+        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp, currentUser);
 
         // Same nobodies-collective/Humans#993 gate as Details, for arbitrary-year seasons.
         if (season.Status is not (CampSeasonStatus.Active or CampSeasonStatus.Full) && !isLead && !isCampAdmin)

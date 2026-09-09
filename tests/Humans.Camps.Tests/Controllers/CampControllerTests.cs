@@ -239,6 +239,46 @@ public class CampControllerTests
     }
 
     [HumansFact]
+    public async Task Details_FutureSeasonOnlyCamp_Lead_StillRenders()
+    {
+        // A camp registered for an open future year has no PublicYear season, so the
+        // public-year projection cannot answer "is this user its lead" — the #993 gate
+        // must authorize against the loaded camp, or it 404s the lead's own camp right
+        // after registration.
+        var leadUserId = Guid.NewGuid();
+        var future = MakeCamp("future-camp", "Future Camp", CampSeasonStatus.Pending,
+            leadUserId: leadUserId, year: 2027);
+        StubCampReadModel([]); // the PublicYear (2026) projection does not contain the camp
+        _camps.GetCampBySlugAsync(future.Slug, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<CampInfo?>(future));
+        _users.GetUserInfoAsync(leadUserId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(leadUserId)));
+        _cityPlanning.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new CityPlanningSettingsDto(
+                Guid.NewGuid(), 2026, false, null, null, null, null, null, null, null, false, null, null,
+                Instant.FromUtc(2026, 1, 1, 0, 0))));
+        _roles.BuildPanelAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(new CampRolesPanelData(call.ArgAt<Guid>(0), [])));
+        // Succeed only for the loaded CampInfo resource — mirrors the real handler, which
+        // sees the lead assignment on the camp itself but not through the id lookup.
+        _authorization.AuthorizeAsync(
+                Arg.Any<ClaimsPrincipal>(),
+                Arg.Any<object?>(),
+                Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Failed());
+        _authorization.AuthorizeAsync(
+                Arg.Any<ClaimsPrincipal>(),
+                Arg.Is<object?>(resource => ReferenceEquals(resource, future)),
+                Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+
+        var result = await BuildController(leadUserId).Details(future.Slug, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ViewResult>(
+            because: "the lead of a not-yet-public camp must reach their own camp page");
+    }
+
+    [HumansFact]
     public async Task Details_AnonymousRender_CarriesNoMemberOrEarlyEntryData()
     {
         // Behavioral pin for "membership/EE data never render publicly": walk the actual
@@ -360,14 +400,15 @@ public class CampControllerTests
         CampSeasonStatus status,
         Guid? leadUserId = null,
         YesNoMaybe kidsWelcome = YesNoMaybe.Yes,
-        IReadOnlyList<CampSeasonMemberInfo>? members = null)
+        IReadOnlyList<CampSeasonMemberInfo>? members = null,
+        int year = 2026)
     {
         var campId = Guid.NewGuid();
         var season = new CampSeasonInfo(
             Guid.NewGuid(),
             campId,
             slug,
-            2026,
+            year,
             NameLockDate: null,
             name,
             $"{name} short",
