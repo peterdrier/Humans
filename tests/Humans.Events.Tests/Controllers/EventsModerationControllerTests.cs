@@ -55,10 +55,10 @@ public sealed class EventsModerationControllerTests
     }
 
     [HumansFact]
-    public async Task Index_names_the_moderator_behind_each_history_entry()
+    public async Task Index_carries_the_actor_of_each_history_entry_newest_first()
     {
         var moderatorId = Guid.NewGuid();
-        var erasedModeratorId = Guid.NewGuid();
+        var laterModeratorId = Guid.NewGuid();
         var submitterId = Guid.NewGuid();
         var pending = new EventInfo(
             Guid.NewGuid(), null, null, submitterId, Guid.NewGuid(), "Music", "music", false, null,
@@ -66,17 +66,13 @@ public sealed class EventsModerationControllerTests
             false, null, null, EventStatus.Pending, Instant.FromUtc(2026, 7, 1, 0, 0), Instant.FromUtc(2026, 7, 1, 0, 0),
             [
                 new EventModerationHistoryInfo(moderatorId, EventModerationActionType.ResubmitRequested, "Fix the time", Instant.FromUtc(2026, 7, 2, 0, 0)),
-                new EventModerationHistoryInfo(erasedModeratorId, EventModerationActionType.Approved, null, Instant.FromUtc(2026, 7, 3, 0, 0)),
+                new EventModerationHistoryInfo(laterModeratorId, EventModerationActionType.Approved, null, Instant.FromUtc(2026, 7, 3, 0, 0)),
             ]);
         _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventGuideSettingsView?)null);
         _guide.GetEventStatusCountsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<EventStatus, int>());
         _guide.GetEventsByStatusAsync(EventStatus.Pending, Arg.Any<CancellationToken>()).Returns([pending]);
-        _users.GetUserInfoAsync(moderatorId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(UserInfoFor(moderatorId)));
         _users.GetUserInfoAsync(submitterId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfoFor(submitterId)));
-        _users.GetUserInfoAsync(erasedModeratorId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>((UserInfo?)null));
 
         var controller = BuildController(moderatorId, pending.Id);
 
@@ -84,8 +80,7 @@ public sealed class EventsModerationControllerTests
 
         var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<ModerationQueueViewModel>().Which;
         var history = model.Events.Single().History;
-        history.Select(h => h.ActorName).Should().Equal(
-            erasedModeratorId.ToString("N")[..8], "Moderator");
+        history.Select(h => h.ActorUserId).Should().Equal(laterModeratorId, moderatorId);
     }
 
     private EventsModerationController BuildController(Guid moderatorId, Guid eventId)

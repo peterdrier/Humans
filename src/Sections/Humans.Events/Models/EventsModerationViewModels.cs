@@ -52,7 +52,8 @@ internal sealed class ModerationEventRowViewModel
 
 internal sealed class ModerationHistoryItemViewModel
 {
-    public string ActorName { get; set; } = string.Empty;
+    /// <summary>Rendered via <c>&lt;vc:human&gt;</c>, which owns the erased-user fallback.</summary>
+    public Guid ActorUserId { get; set; }
     public EventModerationActionType Action { get; set; }
     public string? Reason { get; set; }
     public DateTime CreatedAt { get; set; }
