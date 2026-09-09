@@ -1,7 +1,9 @@
 using Humans.Base.Extensions;
 using Humans.Camps.Contracts;
 using Humans.Shifts.Contracts;
+using Humans.Events.Contracts;
 using Humans.Events.Models;
+using Humans.Events.Services;
 using NodaTime;
 using Humans.Users.Contracts;
 
@@ -54,6 +56,14 @@ internal static class EventsLookupHelpers
             if (info != null) result[id] = info;
         }
         return result;
+    }
+
+    /// <summary>The burn the guide is configured for, or null when the guide is not configured.</summary>
+    public static async Task<BurnSettingsInfo?> LoadBurnSettingsAsync(
+        IEventService guide, EventGuideSettingsView? guideSettings)
+    {
+        if (guideSettings == null) return null;
+        return await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId);
     }
 
     public static async Task<Dictionary<Guid, CampInfo>> LoadCampsByIdAsync(

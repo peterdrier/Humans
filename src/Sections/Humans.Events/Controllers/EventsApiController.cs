@@ -33,15 +33,13 @@ internal sealed class EventsApiController(IEventService guide, ICampServiceRead 
         [FromQuery] string? q)
     {
         var guideSettings = await guide.GetGuideSettingsAsync();
-        var eventSettings = await LoadBurnSettingsAsync(guideSettings);
-        DateTimeZone? tz = eventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
-            : null;
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings);
+        var tz = GetTimeZone(eventSettings);
         var gateOpeningDate = eventSettings?.GateOpeningDate;
 
         var excludedSlugs = await GetExcludedSlugsAsync();
         var events = await guide.GetApprovedEventsAsync(barrioId, null, null, q, excludedSlugs);
-        var campsById = await LoadCampsByIdAsync(gateOpeningDate?.Year);
+        var campsById = await LoadCampsByIdAsync(camps, gateOpeningDate?.Year);
         var submitterInfoById = await EventsLookupHelpers.LoadSubmittersAsync(
             UserService, events.Where(e => e.CampId == null).Select(e => e.SubmitterUserId).Distinct());
 
@@ -69,16 +67,14 @@ internal sealed class EventsApiController(IEventService guide, ICampServiceRead 
     public async Task<IActionResult> GetEvent(Guid id)
     {
         var guideSettings = await guide.GetGuideSettingsAsync();
-        var eventSettings = await LoadBurnSettingsAsync(guideSettings);
-        DateTimeZone? tz = eventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
-            : null;
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings);
+        var tz = GetTimeZone(eventSettings);
 
         var e = await guide.GetApprovedEventByIdAsync(id);
         if (e == null) return NotFound();
 
         var gateOpeningDate = eventSettings?.GateOpeningDate;
-        var campsById = await LoadCampsByIdAsync(gateOpeningDate?.Year);
+        var campsById = await LoadCampsByIdAsync(camps, gateOpeningDate?.Year);
         var campName = ResolveCampNameById(e.CampId, campsById);
         var submitterName = e.CampId == null
             ? (await UserService.GetUserInfoAsync(e.SubmitterUserId))?.BurnerName
@@ -91,8 +87,8 @@ internal sealed class EventsApiController(IEventService guide, ICampServiceRead 
     public async Task<IActionResult> GetBarrios()
     {
         var guideSettings = await guide.GetGuideSettingsAsync();
-        var eventSettings = await LoadBurnSettingsAsync(guideSettings);
-        var campsById = await LoadCampsByIdAsync(eventSettings?.GateOpeningDate.Year);
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings);
+        var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year);
 
         var events = await guide.GetApprovedEventsAsync(null, null, null, null, []);
         var barrioGroups = events
@@ -115,16 +111,14 @@ internal sealed class EventsApiController(IEventService guide, ICampServiceRead 
     public async Task<IActionResult> GetBarrio(Guid id)
     {
         var guideSettings = await guide.GetGuideSettingsAsync();
-        var eventSettings = await LoadBurnSettingsAsync(guideSettings);
-        DateTimeZone? tz = eventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
-            : null;
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings);
+        var tz = GetTimeZone(eventSettings);
         var gateOpeningDate = eventSettings?.GateOpeningDate;
 
         var events = await guide.GetApprovedEventsAsync(id, null, null, null, []);
         if (!events.Any()) return NotFound();
 
-        var campsById = await LoadCampsByIdAsync(gateOpeningDate?.Year);
+        var campsById = await LoadCampsByIdAsync(camps, gateOpeningDate?.Year);
         var camp = campsById.GetValueOrDefault(id);
         var campName = ResolveCampName(camp);
 
@@ -203,14 +197,12 @@ internal sealed class EventsApiController(IEventService guide, ICampServiceRead 
         if (userId == null) return Unauthorized();
 
         var guideSettings = await guide.GetGuideSettingsAsync();
-        var eventSettings = await LoadBurnSettingsAsync(guideSettings);
-        DateTimeZone? tz = eventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
-            : null;
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings);
+        var tz = GetTimeZone(eventSettings);
         var gateOpeningDate = eventSettings?.GateOpeningDate;
 
         var favourites = await guide.GetFavouritesWithEventsAsync(userId.Value);
-        var campsById = await LoadCampsByIdAsync(gateOpeningDate?.Year);
+        var campsById = await LoadCampsByIdAsync(camps, gateOpeningDate?.Year);
         var submitterInfoById = await EventsLookupHelpers.LoadSubmittersAsync(
             UserService, favourites.Where(f => f.Event.CampId == null).Select(f => f.Event.SubmitterUserId).Distinct());
         var results = favourites.SelectMany(f =>
@@ -266,19 +258,6 @@ internal sealed class EventsApiController(IEventService guide, ICampServiceRead 
         var userId = GetCurrentUserId();
         if (userId == null) return [];
         return await guide.GetExcludedCategorySlugsAsync(userId.Value);
-    }
-
-    private async Task<BurnSettingsInfo?> LoadBurnSettingsAsync(EventGuideSettingsView? guideSettings)
-    {
-        if (guideSettings == null) return null;
-        return await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId);
-    }
-
-    private async Task<Dictionary<Guid, CampInfo>> LoadCampsByIdAsync(int? year)
-    {
-        if (year is null) return [];
-        var camps1 = await camps.GetCampsForYearAsync(year.Value);
-        return camps1.ToDictionary(c => c.Id);
     }
 
     private static string? ResolveCampNameById(Guid? campId, IReadOnlyDictionary<Guid, CampInfo> campsById)

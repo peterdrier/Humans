@@ -31,13 +31,7 @@ internal sealed class EventsModerationController(
     {
         var activeTab = tab ?? EventStatus.Pending;
 
-        var guideSettings = await guide.GetGuideSettingsAsync();
-        var eventSettings = guideSettings != null
-            ? await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId)
-            : null;
-        DateTimeZone? tz = eventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
-            : null;
+        var (eventSettings, tz) = await LoadEventSettingsAsync();
 
         var counts = await guide.GetEventStatusCountsAsync();
         var unsortedEvents = await guide.GetEventsByStatusAsync(activeTab);
@@ -254,10 +248,7 @@ internal sealed class EventsModerationController(
 
     private async Task<(BurnSettingsInfo? eventSettings, DateTimeZone? tz)> LoadEventSettingsAsync()
     {
-        var guideSettings = await guide.GetGuideSettingsAsync();
-        var eventSettings = guideSettings != null
-            ? await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId)
-            : null;
+        var eventSettings = await LoadBurnSettingsAsync(guide, await guide.GetGuideSettingsAsync());
         return (eventSettings, GetTimeZone(eventSettings));
     }
 
@@ -342,10 +333,7 @@ internal sealed class EventsModerationController(
         string? campSlug = null;
         if (guideEvent.CampId.HasValue)
         {
-            var guideSettings = await guide.GetGuideSettingsAsync();
-            var eventSettings = guideSettings != null
-                ? await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId)
-                : null;
+            var (eventSettings, _) = await LoadEventSettingsAsync();
             var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year);
             campSlug = campsById.GetValueOrDefault(guideEvent.CampId.Value)?.Slug;
         }
