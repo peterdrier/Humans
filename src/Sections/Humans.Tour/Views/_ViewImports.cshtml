@@ -1,7 +1,5 @@
-@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
-   here ships broken markup with a green build — guarded by TourPageRenderTests.
-   No localizer binding: Tour is deliberately English-only (spec 2026-08-12). *@
-@using Humans.Tour
-@using Humans.Tour.Controllers
+@* A section RCL does not inherit Shell's _ViewImports: omitting a line here ships broken
+   markup with a green build. Humans.Base is load-bearing — its NonceTagHelper is what lets
+   the inline script in _TourLayout run under the CSP. No localizer: Tour is English-only. *@
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @addTagHelper *, Humans.Base

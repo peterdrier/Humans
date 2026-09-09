@@ -11,24 +11,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!--
-      Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
-    -->
-    <Using Include="Microsoft.AspNetCore.Http" />
-    <Using Include="Microsoft.AspNetCore.Routing" />
-    <Using Include="Microsoft.Extensions.Logging" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!--
-      No Humans.Infrastructure reference: Tour owns no tables — no DbContext, no repository,
-      no migrations (the Scanner shape, G5-SECTION-TEMPLATE.md preconditions).
-    -->
+    <!-- Base only: no tables, no services, no Contracts leaf to consume. -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
+    <!-- Keep the section's docs visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

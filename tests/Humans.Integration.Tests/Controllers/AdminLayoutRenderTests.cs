@@ -29,9 +29,9 @@ namespace Humans.Integration.Tests.Controllers;
 /// <c>data-testid="user-nav"</c> — never on the status code alone.
 /// </para>
 /// <para>
-/// <b>Cross-part resolution in this direction was already proven</b> by
-/// <c>Humans.Tour/Views/Tour/_ViewStart.cshtml</c>, which resolves <c>_Layout</c> out of
-/// <c>Humans.Web</c>. What was new in 4b-ii is the volume: 41 call sites (27
+/// <b>Cross-part resolution in this direction was already proven</b> by Tour's
+/// <c>_ViewStart.cshtml</c> at the time (it resolved <c>_Layout</c> out of <c>Humans.Web</c>;
+/// Tour has since moved to its own <c>_TourLayout</c>). What was new in 4b-ii is the volume: 41 call sites (27
 /// <c>_ViewStart.cshtml</c> files and 14 inline <c>Layout = "_AdminLayout"</c> overrides)
 /// across 24 projects. The render tests below cover one page from most of them; the two
 /// source scans cover the whole set structurally, and cover whatever call site is added next.
