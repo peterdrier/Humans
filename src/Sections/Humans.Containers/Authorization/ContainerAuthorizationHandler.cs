@@ -8,9 +8,6 @@ using Microsoft.AspNetCore.Authorization;
 namespace Humans.Containers.Authorization;
 
 /// <summary>
-/// Resource-based authorization handler for container operations.
-///
-/// Authorization logic:
 /// - Admin / CampAdmin: allow any container
 /// - City Planning team member: allow any container
 /// - Camp lead: allow only containers belonging to their camp; for

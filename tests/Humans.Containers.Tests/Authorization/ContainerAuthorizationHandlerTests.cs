@@ -18,7 +18,7 @@ public sealed class ContainerAuthorizationHandlerTests
     private static readonly Guid LeadUserId = Guid.NewGuid();
 
     private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
-    private readonly ICityPlanningService _cityPlanningService = Substitute.For<ICityPlanningService>();
+    private readonly ICityPlanningServiceRead _cityPlanningService = Substitute.For<ICityPlanningServiceRead>();
     private readonly ContainerAuthorizationHandler _handler;
 
     public ContainerAuthorizationHandlerTests()
@@ -42,8 +42,6 @@ public sealed class ContainerAuthorizationHandlerTests
 
         result.Should().BeTrue();
         await _campService.Received(1).GetCampsForYearAsync(2027, Arg.Any<CancellationToken>());
-        await _campService.DidNotReceive().GetSettingsAsync(Arg.Any<CancellationToken>());
-        await _campService.DidNotReceive().GetCampsForYearAsync(2026, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

@@ -251,6 +251,20 @@ public sealed class ServiceImageTests
     }
 
     [HumansFact]
+    public async Task CreateAsync_RejectsImageOver10MB()
+    {
+        var act = async () => await _sut.CreateAsync(actorUserId: Guid.NewGuid(), data: new ContainerData(
+            CampId: CampId,
+            Name: "Big",
+            Description: null,
+            NewImages: [new(Stream.Null, "image/jpeg", "big.jpg", 10 * 1024 * 1024 + 1)]), ct: TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*under 10 MB*");
+        await _fileStorage.DidNotReceive().SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task CreateAsync_ValidatesEveryImage_NotJustTheFirst()
     {
         var act = async () => await _sut.CreateAsync(actorUserId: Guid.NewGuid(), data: new ContainerData(

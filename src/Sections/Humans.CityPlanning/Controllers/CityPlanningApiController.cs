@@ -199,7 +199,7 @@ internal sealed class CityPlanningApiController(
                 campNameById.GetValueOrDefault(c.CampId) ?? string.Empty,
                 placement?.LocationGeoJson,
                 placement?.PlacementNotes,
-                placement?.PlacementImageStoragePath,
+                placement?.PlacementImageUrl,
                 placement?.PlacementImageFileName,
                 isMapAdmin ||
                     (settings.IsContainerPlacementOpen &&
@@ -314,7 +314,7 @@ internal sealed class CityPlanningApiController(
                 id = updated.ContainerId,
                 year = updated.Year,
                 placementNotes = updated.PlacementNotes,
-                placementImageUrl = updated.PlacementImageStoragePath,
+                placementImageUrl = updated.PlacementImageUrl,
                 placementImageFileName = updated.PlacementImageFileName,
             });
         }

@@ -59,4 +59,10 @@
   <data name="ContainerMap_Legend_Title" xml:space="preserve"><value>Container legend</value></data>
   <data name="ContainerMap_Legend_Body" xml:space="preserve"><value>6 m × 2.4 m body</value></data>
   <data name="ContainerMap_Legend_Door" xml:space="preserve"><value>Triangle = door end</value></data>
+  <data name="Container_ValidationErrors" xml:space="preserve"><value>Please correct the validation errors.</value></data>
+  <data name="Container_Added" xml:space="preserve"><value>Container added.</value></data>
+  <data name="Container_Updated" xml:space="preserve"><value>Container updated.</value></data>
+  <data name="Container_Deleted" xml:space="preserve"><value>Container deleted.</value></data>
+  <data name="Container_Carousel_Previous" xml:space="preserve"><value>Previous</value></data>
+  <data name="Container_Carousel_Next" xml:space="preserve"><value>Next</value></data>
 </root>
