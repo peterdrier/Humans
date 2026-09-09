@@ -22,7 +22,7 @@ question-family of Camps: who is in a camp / who leads one, for a given year.
 | Shape | Surface | Notes |
 |---|---|---|
 | Public browse | `/Camps` (+`/Barrios` alias), Details, search view-component, API list | All read the same cached year-filtered projection |
-| Camp self-service (lead) | Register, Edit (season data, images, links, names), Members confirm/remove/EE, role assign/unassign, Withdraw/Rejoin | One authorization question — "does this user lead *this* camp?" — answered once in `ResolveCampManagementAsync` |
+| Camp self-service (lead) | Register, Edit (season data, images, links, names), Members confirm/remove/EE, role assign/unassign, Withdraw (reactivation is CampAdmin-only) | One authorization question — "does this user lead *this* camp?" — answered once in `ResolveCampManagementAsync` |
 | Membership self-service | Join (request), Leave | Own-row mutations, scoped by userId |
 | Season/EE administration | CampAdmin dashboard: approve/reject, MarkFull/Reactivate, open/close seasons, PublicYear, name-lock, EE start + slot caps, CSV export, seed system roles | Cross-camp by design |
 | Role definitions | CampAdmin CRUD + compliance matrix + drill-down | Global definitions, per-season assignments |
