@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-09
 **Section:** Events
-**Status:** Approved (design), pending implementation
+**Status:** Shipped — `EventsModerationController.Edit`/`Update` → `IEventService.AdminUpdateAsync`
 
 ## Problem
 

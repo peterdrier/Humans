@@ -179,7 +179,7 @@ Every table is owned by exactly one repository; there are no HUM0025
    `ICampServiceRead`, `ITicketServiceRead`, `IGoogleSyncServiceRead`
    (consumed by `NotificationMeterProvider` for failed-sync-event counts),
    `ICampaignServiceRead` (consumed by `TicketQueryService`),
-   `IEventServiceRead` (consumed by `CampEventsViewComponent`
+   `IEventServiceRead` (consumed by `EventsCardViewComponent`
    for the camp detail page's events card),
    `ICityPlanningServiceRead` (exposes `GetSettingsAsync` /
    `GetRegistrationInfoAsync` / `IsCityPlanningTeamMemberAsync` — current
