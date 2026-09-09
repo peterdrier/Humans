@@ -15,16 +15,16 @@ namespace Humans.Shifts;
 /// <para>
 /// The set holds every <c>ShiftDash_</c>, <c>VolTrack_</c>, <c>ShiftInfo_</c>, <c>EmailRota_</c>,
 /// <c>EmailTeamRotas_</c>, <c>GetInvolved_</c>, <c>Dashboard_</c> and <c>DietaryMissingBanner_</c>
-/// key and all but six <c>Shifts_</c> keys. One prefix and six keys stay in
+/// key and every <c>Shifts_</c> key no other section's view binds. The keys below stay in
 /// <c>SharedResource</c>, each for a renderer that cannot see this set:
 /// </para>
 /// <list type="bullet">
 /// <item><description>
-/// <c>ShiftsSummary_</c> (7) — rendered by
+/// <c>ShiftsSummary_</c> — rendered by
 /// <c>Humans.Teams/Views/Shared/_ShiftsSummaryCard.cshtml</c>: Teams builds the model and
 /// renders it, so the keys are Teams' vocabulary and stay in <c>SharedResource</c> because
 /// <c>Humans.Shifts</c> already references <c>Humans.Teams</c> and cannot be referenced back.
-/// The partial binds <c>SharedLocalizer</c> for all seven.
+/// The partial binds <c>SharedLocalizer</c> for all of them.
 /// </description></item>
 /// <item><description>
 /// <c>Shifts_SetUp</c> / <c>Shifts_Event</c> / <c>Shifts_Strike</c> — <c>Humans.Teams</c>'
@@ -42,7 +42,7 @@ namespace Humans.Shifts;
 /// </description></item>
 /// </list>
 /// <para>
-/// Views read those six through <c>SharedLocalizer</c>, bound beside <c>Localizer</c> in
+/// Views read those keys through <c>SharedLocalizer</c>, bound beside <c>Localizer</c> in
 /// <c>Views/_ViewImports.cshtml</c>. Controllers resolve copy through
 /// <c>IStringLocalizer&lt;ShiftsResource&gt;</c>, never <c>SharedResource</c>: controller-resolved
 /// copy sits on the validation and error paths that no render test reaches.
