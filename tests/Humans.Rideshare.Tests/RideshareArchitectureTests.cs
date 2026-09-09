@@ -41,10 +41,10 @@ public class RideshareArchitectureTests
     }
 
     [HumansFact]
-    public void AdminSurface_RequiresAdminOnly()
+    public void AdminSurface_RequiresRideshareAdminOrAdmin()
     {
-        PolicyFor<RideshareAdminController>().Should().Be(PolicyNames.AdminOnly,
-            because: "settings, season stats and the day roster are Board tooling");
+        PolicyFor<RideshareAdminController>().Should().Be(PolicyNames.RideshareAdminOrAdmin,
+            because: "settings, season stats and the day roster are RideshareAdmin tooling; Admin is always a superset");
     }
 
     // ── DI shape ──────────────────────────────────────────────────────────

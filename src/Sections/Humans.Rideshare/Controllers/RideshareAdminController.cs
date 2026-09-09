@@ -11,8 +11,8 @@ using NodaTime;
 
 namespace Humans.Rideshare.Controllers;
 
-/// <summary>Admin-only: the active year's destination + travel windows, season stats, and the day roster.</summary>
-[Authorize(Policy = PolicyNames.AdminOnly)]
+/// <summary>RideshareAdmin or Admin: the active year's destination + travel windows, season stats, and the day roster.</summary>
+[Authorize(Policy = PolicyNames.RideshareAdminOrAdmin)]
 [Route("Rideshare/Admin")]
 internal sealed class RideshareAdminController(
     IRideshareService rideshare,

@@ -193,8 +193,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 | `/Rideshare/Mine` | GET | `AppAccess` | Own offers, requests, and interests received/sent |
 | `/Rideshare/Interest` | POST | `AppAccess` | Express interest in a trip, optionally answering a request's pin |
 | `/Rideshare/Interest/{id}/Accept`, `/Decline`, `/Withdraw` | POST | `AppAccess` | Interest lifecycle transitions |
-| `/Rideshare/Admin` | GET/POST | `AdminOnly` | Set the year's destination + travel windows; season statistics |
-| `/Rideshare/Admin/Day?date=` | GET | `AdminOnly` | Operational day roster: every trip happening that day, any status, with its accepted riders |
+| `/Rideshare/Admin` | GET/POST | `RideshareAdminOrAdmin` | Set the year's destination + travel windows; season statistics |
+| `/Rideshare/Admin/Day?date=` | GET | `RideshareAdminOrAdmin` | Operational day roster: every trip happening that day, any status, with its accepted riders |
 | `/api/rideshare/board?date=&direction=` | GET | `AppAccess` | GeoJSON FeatureCollection of joinable trips, active requests, and the destination |
 
 ## Actors & Roles
@@ -202,12 +202,13 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 | Actor | Capabilities |
 |-------|--------------|
 | Any active human | Browse the board; post/edit/cancel own offers and requests; express interest in a trip (optionally answering a request's pin); accept/decline/withdraw interests on own postings; view own offers/requests/interests on `Mine` |
-| Admin | All active-human capabilities. Additionally: set the year's destination and travel windows; view season statistics; view the operational day roster (every trip happening on a date, including full and cancelled, with its accepted rider roster) |
+| RideshareAdmin | Set the year's destination and travel windows; view season statistics; view the operational day roster (every trip happening on a date, including full and cancelled, with its accepted rider roster). Board-grantable; confers nothing outside Rideshare |
+| Admin | Everything RideshareAdmin can do (Admin is always a superset) |
 
 ## Invariants
 
 - **No anonymous postings.** Every trip, request, and interest is bound to a real Humans profile (`UserId`/`FromUserId`).
-- **Members-only board.** Every route requires `AppAccess` or `AdminOnly`; there is no anonymous or public access.
+- **Members-only board.** Every route requires `AppAccess` or `RideshareAdminOrAdmin`; there is no anonymous or public access.
 - **Interest always anchors to a trip.** `RideshareInterest.TripId` is required on both the rider→offer and driver→request-pin paths; `RequestId` is an optional origin pointer only, never the anchor.
 - **Seats remaining is derived, never stored.** `SeatsRemaining = SeatsOffered − Σ(Seats of Accepted interests on the trip)`; a trip is full when this is `≤ 0`.
 - **A request's Matched state is derived, never stored.** True when an `Accepted` interest exists with `FromUserId == request.UserId` or `RequestId == request.Id`.
@@ -216,7 +217,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Declines are private.** No reason is required or stored; the declined party sees neutral language only, never a score or a broadcast reason.
 - **Driver discretion is absolute.** Accept/decline is the posting owner's call; the app never prompts for or records a justification.
 - **Coarse locations only.** Only city-level points are geocoded and sent to the routing provider; profile location is a pre-fill the user can always override.
-- **Rosters are admin-and-driver only.** A trip's accepted riders are visible to that trip's driver (via `Mine`) and to Admins (Day roster); never on the public board. The rider on a roster row is the request's owner when the driver answered a pin, else the interest's `FromUserId`.
+- **Rosters are admin-and-driver only.** A trip's accepted riders are visible to that trip's driver (via `Mine`) and to RideshareAdmin/Admin (Day roster); never on the public board. The rider on a roster row is the request's owner when the driver answered a pin, else the interest's `FromUserId`.
 - **Rule failures are localized.** Services throw `RideshareRuleException` carrying a `RideshareResource` key (plus format args); controllers localize it, never show an exception message verbatim.
 - **Ownership gates edits.** Only `trip.UserId` may update or cancel that trip; only `request.UserId` may update or cancel that request. A cancelled trip or request cannot be edited.
 - **ExpressInterest requires capacity and consent.** The trip must be `Active` with `SeatsRemaining ≥ seats` (seats ≥ 1); a human cannot express interest in their own trip; when `requestId` is given, the request must be `Active`, the caller must be the trip's owner (driver answering a pin), and the trip must go the request's direction and travel on its `DesiredDate`; a duplicate `Pending` interest by the same user on the same trip+request pair is rejected.
@@ -232,7 +233,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - A human **cannot** accept or decline an interest on a posting they do not own.
 - A human **cannot** withdraw an interest they neither authored nor own the posting for.
 - Non-admins **cannot** set the destination/travel windows, view season statistics, or view the operational day roster.
-- The public board **cannot** show a `Full` or `Cancelled` trip as joinable — only the Admin day view does.
+- The public board **cannot** show a `Full` or `Cancelled` trip as joinable — only the admin day view does.
 - The declined party **cannot** see a reason for the decline — none is stored.
 
 ## Triggers
