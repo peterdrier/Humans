@@ -57,7 +57,7 @@ The tasks below need the **Events Admin** or **Admin** role.
 
 ### Review the moderation queue
 
-Go to `/Events/Moderate` to see everything waiting for review. You can **approve** an event, **reject** it, or **send it back** to the submitter for edits — each with an optional reason. Whatever you decide, the submitter is emailed automatically. The decision history is kept; nothing is overwritten. You can only act on events that are still pending.
+Go to `/Events/Moderate` to see everything waiting for review. You can **approve** an event, **reject** it, or **send it back** to the submitter for edits — rejecting and sending back require a reason. Whatever you decide, the submitter is emailed automatically. The decision history is kept; nothing is overwritten. You can only act on events that are still pending.
 
 ### Manage the programme
 

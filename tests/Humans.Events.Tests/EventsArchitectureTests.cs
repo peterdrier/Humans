@@ -15,18 +15,9 @@ using Microsoft.Extensions.Hosting;
 namespace Humans.Events.Tests;
 
 /// <summary>
-/// Architecture tests enforcing the repository/service shape for the Event
-/// Guide section. The section is not public yet, so URL shape is intentionally
-/// pinned here while the route rename is still fresh.
+/// Architecture tests enforcing the repository/service shape and the URL shape
+/// of the Events section.
 /// </summary>
-/// <remarks>
-/// The three namespace-pinning tests this file used to carry (IEventService,
-/// CachingEventService and IEventViewInvalidator each asserting a
-/// <c>Humans.Application.*</c> / <c>Humans.Infrastructure.*</c> namespace) are gone:
-/// the assembly boundary subsumes them (design §15 step 11). Everything asserted
-/// here now lives in <c>Humans.Events</c> by construction — this test project can
-/// only see it through <c>InternalsVisibleTo</c>.
-/// </remarks>
 public class EventsArchitectureTests
 {
     [HumansFact]
@@ -48,8 +39,6 @@ public class EventsArchitectureTests
     [HumansFact]
     public void EventsAdminController_RequiresEventsAdminOrAdminPolicy()
     {
-        // Moved from Humans.Application.Tests' EndpointAuthorizationTests, which sweeps
-        // Shell's controllers and can no longer name this one by type.
         typeof(EventsAdminController).GetCustomAttribute<AuthorizeAttribute>()?.Policy
             .Should().Be("EventsAdminOrAdmin");
     }
@@ -129,7 +118,7 @@ public class EventsArchitectureTests
     [HumansFact]
     public void CachingEventService_IsItsOwnHostedService()
     {
-        // Post-#587 TrackedCache self-hosting pattern: caching decorators
+        // TrackedCache self-hosting pattern: caching decorators
         // implement IHostedService directly rather than relying on an external
         // *WarmupHostedService. CachingEventService composes TrackedCache
         // (mixed-state decorator), so it owns IHostedService on the class
@@ -149,11 +138,7 @@ public class EventsArchitectureTests
                 because: "other sections consume the Events section through the IEventServiceRead read surface");
     }
 
-    /// <summary>
-    /// The section's own DI registrations. Since G5 these come from
-    /// <see cref="Section.Register"/> rather than a Shell extension method, so the
-    /// reflection that used to reach into <c>EventsSectionExtensions</c> is gone.
-    /// </summary>
+    /// <summary>The section's own DI registrations, from <see cref="Section.Register"/>.</summary>
     private static ServiceCollection Registrations()
     {
         var services = new ServiceCollection();

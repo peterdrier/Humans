@@ -184,7 +184,7 @@ Id,Barrio,Status,Title,Description,Category,Date,StartTime,DurationMinutes,Locat
 | `Host` | Optional. Max 40 chars. |
 | `IsRecurring` | `true` or `false`. |
 | `RecurrenceDays` | Only used when `IsRecurring` is true. Space-separated day names: `Mon Tue Wed Thu Fri Sat Sun`. Converted to day offsets from gate-opening date on import. |
-| `PriorityRank` | Required. Integer, 1–100. |
+| `PriorityRank` | Optional. Integer 1–100 when present; blank = unranked (sorted last in the print guide) and round-trips as blank. |
 
 **Encoding:** comma-separated, UTF-8, RFC 4180 quoting — fields containing commas are wrapped in `"double quotes"`. `RecurrenceDays` uses spaces as the day separator (`Mon Tue Fri`) so it never needs quoting.
 
@@ -215,16 +215,6 @@ If any field differs:
 | ResubmitRequested | Yes | Update fields → `UpdateAndResubmitAsync` (re-queues for moderation) |
 | Withdrawn | No | **Validation error** — row rejected, upload fails |
 
-#### Files to Change
-
-Modified:
-
-- `src/Sections/Humans.Events/Controllers/EventsController.cs` — add `BulkUploadTemplate` (GET), `BulkUploadImport` (POST); parse the upload via the shared `BulkEventCsvParser.Parse` helper (`src/Sections/Humans.Events/Services/`); update `MySubmissions` to read bulk upload errors from TempData. Row validation lives in `EventService.ValidateBulkRows` (private static), not in the controller
-- `src/Sections/Humans.Events/Models/BarrioEventViewModels.cs` — add `BulkRowError` (row number, title, error list); add `BulkUploadErrors` to the barrio block view model
-- `src/Sections/Humans.Events/Views/Events/MySubmissions.cshtml` — add download link, file upload form, and error table to each barrio block
-
-No changes needed to domain or repository; no EF migration. (`IEventService` later gained `BuildBulkUploadTemplateAsync`, which absorbed the template CSV/banner assembly — see below.)
-
 #### Key Reused Pieces
 
 | What | Where |
@@ -234,20 +224,7 @@ No changes needed to domain or repository; no EF migration. (`IEventService` lat
 | `SubmitEventAsync(event)` | `IEventService` — submits new events |
 | `UpdateAndResubmitAsync(event)` | `IEventService` — updates + resubmits existing events |
 | `GetActiveCategoriesAsync()` | `IEventService` — category lookup for validation |
-| `ToInstant(date + time, tz)` | `EventsController` private helper — date+time → UTC Instant |
-
-#### Verification
-
-1. `dotnet build Humans.slnx -v quiet` — 0 errors.
-2. `dotnet test Humans.slnx -v quiet` — all pass.
-3. Manual:
-   - Camp lead opens `/Events/MySubmissions` → barrio block shows download link and file upload form.
-   - Download template → CSV has correct columns, existing events populated, Withdrawn events absent, comment lines at top.
-   - Upload CSV with one new row (empty Id) → event appears in MySubmissions as Pending.
-   - Upload same CSV again (now has an Id, fields unchanged) → event not duplicated, status preserved.
-   - Upload CSV with a changed field on an existing event → event updated and re-queued for moderation.
-   - Upload CSV with an invalid row (bad category, missing title, etc.) → error table shown, nothing saved.
-   - Non-lead user attempts upload → 403.
+| `ToInstant(date + time, tz)` | `Helpers/EventsTimeHelpers.cs` — date+time → UTC Instant |
 
 ### US-26.9: Moderator Exports the Print Guide
 
@@ -317,7 +294,7 @@ All emails use the existing `EmailOutboxMessage` / `ProcessEmailOutboxJob` infra
 | `/Events/MySubmissions` | Any human: unified view — own individual events plus a block per led barrio |
 | `/Events/Submit` | Any human: individual event submission form |
 | `/Events/Moderate` | EventsAdmin: pending submissions queue |
-| `/Admin/Guide*` | EventsAdmin/Admin: GuideSettings, categories, venues |
+| `/Events/Admin/{Settings,Categories,Venues}` | EventsAdmin/Admin: guide settings, categories, venues |
 | `/Events/Export` | EventsAdmin/Admin: CSV and print-guide exports |
 | `/Events/Barrio/{slug}/Submit` | Lead: submit/edit a barrio event (barrio block on My Event Submissions) |
 | `/Events/Barrio/{slug}/BulkUpload` | Lead: download CSV template of existing events; upload updated CSV |

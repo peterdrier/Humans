@@ -9,7 +9,8 @@ barrio — during a window the organisers open and close. Moderators decide what
 correct a listing without knocking it off the programme. Everyone else browses what was accepted,
 hearts the ones they want, and gets that back as a personal schedule, an iCal feed, and a printed
 guide. Organisers configure the window, the taxonomy of activity types, and the named places
-things happen.
+things happen. When a person leaves, their hearts and preferences go with them and their name
+comes off their listings; the programme itself stays whole.
 
 ## 2. The shapes
 
@@ -17,7 +18,7 @@ Six question-shapes. Every route, contract method, component and job answers exa
 
 | Shape | The question | Answered by |
 |---|---|---|
-| **Programme** | what is on? | `/Events/Browse`, `/api/events`, `/api/events/{id}`, `/api/barrios`, `/api/barrios/{id}`, `/api/categories`, `EventsCard` + `EventsSearchResult` view components, all of `IEventServiceRead` |
+| **Programme** | what is on? | `/Events/Browse`, `/api/events/events`, `/api/events/events/{id}`, `/api/events/barrios`, `/api/events/barrios/{id}`, `/api/events/categories`, `EventsCard` + `EventsSearchResult` view components, all of `IEventServiceRead` |
 | **Mine** | what did I pick or propose? | `/Events/MySubmissions`, `/Events/Schedule`, `/api/events/favourites` (GET/POST/DELETE), `/api/events/preferences` (GET/PUT), `ICalendarFeedContributor`, `IUserDataContributor` |
 | **Propose** | I want to run something | `/Events/Submit` (+`/{id}/Edit`, `/Withdraw`), `/Events/Barrio/{slug}/*` (submit, edit, withdraw, bulk upload + template) |
 | **Decide** | should this be in the programme? | `/Events/Moderate` (queue, Approve, Reject, RequestEdit, Withdraw) and `/Events/Moderate/{id}/Edit` (in-place, status-preserving) |
@@ -26,8 +27,10 @@ Six question-shapes. Every route, contract method, component and job answers exa
 
 Collapse pressure this grouping exposes: **Programme** is answered five different ways over one
 cached snapshot, each re-deriving occurrence expansion, camp-name resolution and submitter-name
-fallback from scratch; **Propose** has two near-identical form pipelines (individual, barrio) that
-differ only in which two fields apply.
+fallback from scratch — and because favourites come back as the internal `EventInfo` while browse
+comes back as the published `ApprovedEventView`, the API controller carries every projection
+helper twice; **Propose** has two near-identical form pipelines (individual, barrio) that differ
+only in which two fields apply.
 
 ## 3. Structure
 
@@ -45,6 +48,8 @@ The layout the shapes imply:
 - **Decide** and **Configure** are correct as built.
 - Cross-section reads (camp names, submitter names) belong behind the two helpers in
   `EventsLookupHelpers`; every controller should go through them rather than hand-rolling the loop.
+- The GDPR contributor sits on the caching decorator, because erasure edits rows the cache serves
+  and the inner service cannot invalidate what it does not own.
 
 ## 4. Invariants
 
@@ -60,12 +65,15 @@ these are the ones this shape rests on.)
    re-uploading them unchanged is a no-op.
 7. Moderation history is append-only.
 8. `StartAt` is stored UTC; every local rendering goes through the burn timezone.
+9. Erasure deletes a person's favourites and preference and blanks `Host` on their submissions;
+   the submissions themselves survive, and the approved-events cache reflects the blanked host
+   immediately.
 
 ## 5. Seams
 
-- **#719** — no invalidation hook when the Shifts-owned `event_settings` row changes, so a cached
-  `TimeZoneId` stays stale until the next Events write. `IEventViewInvalidator` is the reserved
-  seat.
+- **nobodies-collective/Humans#719** — no invalidation hook when the Shifts-owned
+  `event_settings` row changes, so a cached `TimeZoneId` stays stale until the next Events write.
+  `IEventViewInvalidator` is the reserved seat.
 - Individual events have a `Draft` status the domain honours (`IsEditableBySubmitter`) that no
   route ever produces. Either a seam for a save-without-submitting flow, or dead.
 
@@ -85,6 +93,9 @@ these are the ones this shape rests on.)
   inner `EventService` proves a DI mistake. Mirrors Teams and Camps.
 - **`CachingEventService` is its own `IHostedService`.** Warm-up must run on the same Singleton
   that serves reads.
+- **`CachingEventService` is the `IUserDataContributor`, not `EventService`.** Erasure blanks
+  `Host` on rows the approved-events cache serves; binding the inner service would leave the
+  erased name visible until the next unrelated write.
 - **`PriorityRank` is camp-events-only.** Camp events carry 1–100 (print-guide ordering) or
   null = unranked (sorted last); individual events are always null. The bulk validator's `1..100`
   applies only when a value is present; blank round-trips as blank.
@@ -99,3 +110,4 @@ these are the ones this shape rests on.)
 | Run | Date | Reforge | Notes |
 |---|---|---|---|
 | 1 | 2026-08-24 | 258 (loc=6367, cogP95=9, cogMax=35) | first pass — peterdrier/Humans#1483 |
+| 2 | 2026-09-09 | — | docs and comments caught up to the two August fixes; one settings lookup for every controller; the moderation queue names its moderators — peterdrier/Humans#1621 |

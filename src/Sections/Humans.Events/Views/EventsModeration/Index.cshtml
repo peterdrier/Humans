@@ -166,7 +166,7 @@ else
                                         {
                                             <li class="mb-2">
                                                 <span class="badge @h.ActionBadgeClass">@h.Action</span>
-                                                by <strong>@h.ActorName</strong>
+                                                by <vc:human user-id="@h.ActorUserId" link="Admin" />
                                                 <small class="text-muted">@h.CreatedAt.ToDateTime()</small>
                                                 @if (!string.IsNullOrEmpty(h.Reason))
                                                 {

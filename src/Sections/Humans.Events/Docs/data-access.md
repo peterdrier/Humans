@@ -28,8 +28,8 @@ two is not possible without a second context injection. The inner
 flat snapshots for categories, venues, and the guide-settings singleton.
 Writes delegate to the inner service then invalidate the affected slice
 inline (no `SaveChangesInterceptor` — all `event_*` writes flow through
-`IEventService` by design, enforced by the
-`Only_EventRepository_Writes_Event_DbSets` architecture test).
+`IEventService` by design, enforced by the universal `HUM0025` analyzer —
+only `EventRepository` references the Event DbSets).
 
 ### EventService (Scoped, keyed `"event-inner"` — inner of CachingEventService)
 
@@ -64,7 +64,7 @@ erasure edits a cached row's Host name),
 `IHostedService` (`StartAsync` warms all four projections).
 `IEventServiceRead` (approved events / guide settings / favourite ids) is
 registered as a forward to this singleton so cross-section consumers (the
-camp detail page's events card, `CampEventsViewComponent`) read from the
+camp detail and profile pages' events card, `EventsCardViewComponent`) read from the
 cache. The moderator-only `GetAllEventsForDashboardAsync` passes through
 to the inner service (needs a fresh pending count; the cache only holds
 approved events). Only the event projection is surfaced on

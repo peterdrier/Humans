@@ -6,11 +6,11 @@ using Humans.Events.Contracts;
 namespace Humans.Events.Services.Dtos;
 
 /// <summary>
-/// T-03 — Cached projection of an <see cref="EventCategory"/> row.
+/// Cached projection of an <see cref="EventCategory"/> row.
 /// </summary>
 /// <remarks>
 /// Held as a flat <see cref="IReadOnlyList{T}"/> inside
-/// <c>CachingEventService</c>. ~10–30 categories × ~100 bytes ≈ trivial.
+/// <c>CachingEventService</c>.
 /// </remarks>
 internal sealed record EventCategoryView(
     Guid Id,
@@ -21,11 +21,11 @@ internal sealed record EventCategoryView(
     bool IsActive);
 
 /// <summary>
-/// T-03 — Cached projection of an <see cref="EventVenue"/> row.
+/// Cached projection of an <see cref="EventVenue"/> row.
 /// </summary>
 /// <remarks>
 /// Held as a flat <see cref="IReadOnlyList{T}"/> inside
-/// <c>CachingEventService</c>. ~10–30 venues × ~200 bytes ≈ trivial.
+/// <c>CachingEventService</c>.
 /// </remarks>
 internal sealed record EventVenueView(
     Guid Id,

@@ -8,19 +8,8 @@ namespace Humans.Events.Domain;
 /// </summary>
 internal sealed class EventFavourite
 {
-    /// <summary>
-    /// Unique identifier.
-    /// </summary>
     public Guid Id { get; init; }
-
-    /// <summary>
-    /// FK to the user.
-    /// </summary>
     public Guid UserId { get; set; }
-
-    /// <summary>
-    /// FK to the favourited event.
-    /// </summary>
     public Guid GuideEventId { get; set; }
 
     /// <summary>
@@ -30,16 +19,8 @@ internal sealed class EventFavourite
     /// and rows created before this column existed mean.
     /// </summary>
     public int? DayOffset { get; set; }
-
-    /// <summary>
-    /// When the favourite was created.
-    /// </summary>
     public Instant CreatedAt { get; init; }
 
     // Navigation properties
-
-    /// <summary>
-    /// Navigation property to the event.
-    /// </summary>
     public Event Event { get; set; } = null!;
 }
