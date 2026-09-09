@@ -16,10 +16,12 @@ public interface IEarlyEntryService : IOrchestrator
     Task<UserEarlyEntry?> GetForUserAsync(Guid userId, CancellationToken ct);
 }
 
+/// <summary>One roster row: a holder's earliest entry date and the distinct sources that granted it.</summary>
 public sealed record EarlyEntryRosterRow(
     Guid UserId,
     LocalDate EarliestEntryDate,
     IReadOnlyList<string> Sources,
     bool HasMultiple);
 
+/// <summary>One person's early entry: earliest date across sources, and the distinct sources that granted it.</summary>
 public sealed record UserEarlyEntry(LocalDate EarliestEntryDate, IReadOnlyList<string> Sources);
