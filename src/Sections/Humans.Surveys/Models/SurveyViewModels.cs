@@ -61,6 +61,9 @@ internal sealed class SurveyIntroViewModel
     /// <summary>True when the invitee already has answers in progress (Identified resume).</summary>
     public bool HasResumableDraft { get; init; }
 
+    /// <summary>True when this is a binding, identified Asociado vote.</summary>
+    public bool IsAsociadoVote { get; init; }
+
     /// <summary>True for the protected, side-effect-free Board/Admin preview flow.</summary>
     public bool IsPreview { get; init; }
 
@@ -95,6 +98,7 @@ internal sealed class SurveySendViewModel
     public LocalDate? AudienceLoggedInSince { get; init; }
     public int NewRecipientCount { get; init; }
     public IReadOnlyList<SurveyInviteStatus> Invitations { get; init; } = [];
+    public bool IsAsociadoVote { get; init; }
 
     public bool CanSend => Status == SurveyStatus.Open && AudienceType is not null && NewRecipientCount > 0;
 }
@@ -113,7 +117,10 @@ internal sealed record SurveyLocalizedFieldModel(
     bool Markdown = false);
 
 /// <summary>One question card in the builder. <paramref name="Key"/> is the non-sequential indexer key (or the <c>__QKEY__</c> placeholder in the JS template).</summary>
-internal sealed record SurveyQuestionCardModel(string Key, SurveyQuestionBuilderViewModel Question);
+internal sealed record SurveyQuestionCardModel(
+    string Key,
+    SurveyQuestionBuilderViewModel Question,
+    bool RankedDefinitionLocked = false);
 
 /// <summary>One option row in the builder. Keys are non-sequential indexers (or <c>__QKEY__</c>/<c>__OKEY__</c> placeholders in templates).</summary>
 internal sealed record SurveyOptionRowModel(string QuestionKey, string OptionKey, SurveyOptionBuilderViewModel Option);
@@ -152,6 +159,7 @@ internal sealed class SurveyBuilderViewModel
 
     public string DefaultCulture { get; set; } = CultureCatalog.DefaultCultureCode;
     public bool AllowAnonymous { get; set; }
+    public bool IsAsociadoVote { get; set; }
     public LocalDateTime? OpensAt { get; set; }
     public LocalDateTime? ClosesAt { get; set; }
     public SurveyAudienceType? AudienceType { get; set; }
@@ -164,8 +172,10 @@ internal sealed class SurveyBuilderViewModel
     // Render-only (not bound back).
     public IReadOnlyList<string> Cultures { get; } = CultureCatalog.SupportedCultureCodes;
     public IReadOnlyList<SurveyTeamOption> Teams { get; set; } = [];
+    public bool HasSavedAnswers { get; set; }
 
     public bool IsNew => Id is null;
+    public bool IsDefinitionLocked => !IsNew && IsAsociadoVote && Status != SurveyStatus.Draft;
 
     // datetime-local <input> values (empty when unset).
     public string OpensAtInput => FormatLocal(OpensAt);
@@ -193,7 +203,8 @@ internal sealed class SurveyBuilderViewModel
         AudienceType == SurveyAudienceType.Team ? AudienceTeamId : null,
         AudienceType == SurveyAudienceType.LoggedInSince ? ToStartOfDayInstant(AudienceLoggedInSince, zone) : null,
         string.IsNullOrWhiteSpace(PublicSlug) ? null : PublicSlug,
-        ToQuestionInputsInPageOrder());
+        ToQuestionInputsInPageOrder(),
+        IsAsociadoVote);
 
     private IReadOnlyList<QuestionInput> ToQuestionInputsInPageOrder()
     {
@@ -221,6 +232,7 @@ internal sealed class SurveyBuilderViewModel
             InvitationEmailMessage = ToDict(e.InvitationEmailMessage),
             DefaultCulture = e.DefaultCulture,
             AllowAnonymous = e.AllowAnonymous,
+            IsAsociadoVote = e.IsAsociadoVote,
             OpensAt = FromInstant(e.OpensAt, zone),
             ClosesAt = FromInstant(e.ClosesAt, zone),
             AudienceType = e.AudienceType,
@@ -258,6 +270,8 @@ internal sealed class SurveyQuestionBuilderViewModel
     public Dictionary<string, string> RatingMinLabel { get; set; } = new(StringComparer.Ordinal);
     public Dictionary<string, string> RatingMaxLabel { get; set; } = new(StringComparer.Ordinal);
     public GridSelectionMode? GridSelectionMode { get; set; }
+    public bool RankedAllowEqualRanks { get; set; } = true;
+    public bool RankedAllowReject { get; set; }
     public BranchCombine ShowIfCombine { get; set; } = BranchCombine.All;
     public List<SurveyBranchClauseBuilderViewModel> ShowIfClauses { get; set; } = [];
     public List<SurveyOptionBuilderViewModel> Options { get; set; } = [];
@@ -282,6 +296,12 @@ internal sealed class SurveyQuestionBuilderViewModel
         Type == SurveyQuestionType.Grid ? GridRows.Select(r => r.ToInput()).ToList() : null,
         Type == SurveyQuestionType.Information
             ? InformationImages.Select(image => image.ToInput()).ToList()
+            : null,
+        Type == SurveyQuestionType.RankedChoice
+            ? new RankedQuestionSettings(
+                RankedAllowEqualRanks,
+                RankedAllowReject,
+                RankedVotingMethod.RankedPairs)
             : null);
 
     public static SurveyQuestionBuilderViewModel FromInput(QuestionInput q) => new()
@@ -304,6 +324,8 @@ internal sealed class SurveyQuestionBuilderViewModel
         InformationImages = q.InformationImages?
             .Select(SurveyInformationImageBuilderViewModel.FromInput)
             .ToList() ?? [],
+        RankedAllowEqualRanks = q.RankedSettings?.AllowEqualRanks ?? true,
+        RankedAllowReject = q.RankedSettings?.AllowReject ?? false,
     };
 
     /// <summary>Clauses without a target question (never picked / target removed) are dropped; no clauses ⇒ always visible.</summary>

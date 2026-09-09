@@ -152,7 +152,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 - [`diff-snapshot-after-ef-tool`](process/diff-snapshot-after-ef-tool.md) — after any `dotnet ef --context <C>` tool run, `git diff` that context's `*DbContextModelSnapshot.cs` before staging; empty migration body ≠ clean snapshot. Don't run EF tooling for code-only refactors (nav drop/rename, reorder) — pure C# changes can't change schema.
 - [`discord-release-notes-format`](process/discord-release-notes-format.md) — audience-grouped (coordinators/volunteers/under-the-hood/known-issues), plain-language, no emojis
 - [`dotnet-clean-not-rm`](process/dotnet-clean-not-rm.md) — stale-metadata build errors after a rebase/branch-switch: `dotnet clean Humans.slnx -v quiet`, never `rm -rf` bin/obj
-- [`dotnet-verbosity-quiet`](process/dotnet-verbosity-quiet.md) — always `-v quiet` on `dotnet build`/`test`; never pipe through `tail`/`head`/`grep`
+- [`dotnet-verbosity-quiet`](process/dotnet-verbosity-quiet.md) — always `-v quiet -clp:ErrorsOnly` on `dotnet build`/`test` (ErrorsOnly is temporary until nobodies-collective/Humans#691 closes); never pipe through `tail`/`head`/`grep`
 - [`drive-by-fixes-ok`](process/drive-by-fixes-ok.md) — small unrelated fixes can land in the same PR ONLY after Peter explicitly approves; surface and ask, never bundle silently
 - [`ef-inmemory-is-fine`](process/ef-inmemory-is-fine.md) — HARD RULE. EF-InMemory tests are fine here; never propose migrating repository tests to a real Postgres fixture
 - [`ef-migration-review-gate`](process/ef-migration-review-gate.md) — MANDATORY. Run `.claude/agents/ef-migration-reviewer.md` before commit/PR

@@ -20,6 +20,8 @@ internal sealed class SurveyQuestion
     public GridSelectionMode? GridSelectionMode { get; set; }
     public List<SurveyGridRow>? GridRows { get; set; }           // jsonb; null for non-Grid questions
     public List<SurveyInformationImage>? InformationImages { get; set; } // jsonb; null for non-Information items
+    public RankedQuestionSettings? RankedSettings { get; set; } // jsonb; null for non-RankedChoice questions
+    public List<string>? RankedUnavailableOptionValues { get; set; } // jsonb; post-close availability
     public BranchCondition? ShowIf { get; set; }
     public Survey Survey { get; set; } = null!;
     public ICollection<SurveyQuestionOption> Options { get; set; } = new List<SurveyQuestionOption>();

@@ -83,6 +83,34 @@ public sealed class SurveyResponsesMarkdownBuilderTests
     }
 
     [HumansFact]
+    public void Serializes_ranked_ballot_as_stable_value_json()
+    {
+        var questionId = Guid.NewGuid();
+        var md = SurveyResponsesMarkdownBuilder.Build(
+            [
+                new SurveyExportQuestion(
+                    questionId,
+                    "Rank dates",
+                    SurveyQuestionType.RankedChoice,
+                    [new SurveyExportOption("a", "Apple"), new SurveyExportOption("b", "Banana")]),
+            ],
+            [
+                new SurveyExportRow(
+                    Guid.NewGuid(), ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
+                    "en", Submitted, Guid.NewGuid(), "Sparkle",
+                    [
+                        new SurveyExportAnswer(
+                            questionId, [], [], null, null,
+                            RankedBallot: new SurveyRankedBallot([["a"]], ["b"])),
+                    ]),
+            ]);
+
+        md.Should().Contain(@"{""RankGroups"":[[""a""]],""Rejected"":[""b""]}");
+        md.Should().NotContain("Apple");
+        md.Should().NotContain("Banana");
+    }
+
+    [HumansFact]
     public void Leaves_user_name_blank_for_non_identified_row()
     {
         var textId = Guid.NewGuid();

@@ -24,13 +24,22 @@
     <h1 class="mb-0">@(string.IsNullOrWhiteSpace(Model.Title) ? "(untitled)" : Model.Title)</h1>
     <div class="d-flex align-items-center gap-2">
         <span class="badge @StatusBadge(Model.Status)">@Model.Status</span>
-        <a asp-controller="SurveyAdmin" asp-action="ExportCsv" asp-route-id="@Model.SurveyId" class="btn btn-outline-secondary btn-sm">Download CSV</a>
-        <a asp-controller="SurveyAdmin" asp-action="ExportJson" asp-route-id="@Model.SurveyId" class="btn btn-outline-secondary btn-sm">Download JSON</a>
+        @if (!Model.IsEmbargoed)
+        {
+            <a asp-controller="SurveyAdmin" asp-action="ExportCsv" asp-route-id="@Model.SurveyId" class="btn btn-outline-secondary btn-sm">Download CSV</a>
+            <a asp-controller="SurveyAdmin" asp-action="ExportJson" asp-route-id="@Model.SurveyId" class="btn btn-outline-secondary btn-sm">Download JSON</a>
+        }
     </div>
 </div>
 
-<vc:temp-data-alerts />
-
+@if (Model.IsEmbargoed)
+{
+    <div class="alert alert-info">
+        This is an Asociado vote. Answer-derived results, exports, and respondent details become available only after the vote closes.
+    </div>
+}
+else
+{
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
     <div>
         <strong>Question results:</strong>
@@ -51,6 +60,7 @@
         </a>
     </div>
 </div>
+}
 
 <div class="row g-3 mb-4">
     <div class="col-sm-4">
@@ -91,6 +101,8 @@
     </div>
 </div>
 
+@if (!Model.IsEmbargoed)
+{
 <h2 class="h5">Questions</h2>
 @if (Model.Questions.Count == 0)
 {
@@ -103,6 +115,151 @@
         <div class="card-body">
             @switch (q.Type)
             {
+                case SurveyQuestionType.RankedChoice:
+                    @if (!Model.RankedQuestions.TryGetValue(q.QuestionId, out var ranked))
+                    {
+                        <p class="text-muted mb-0">No ranked ballots.</p>
+                    }
+                    else
+                    {
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <div class="text-muted small">Original official result — all authored options</div>
+                                        <div class="h5 mb-0">@(ranked.OriginalOfficialResult.WinnerLabel ?? "No winner")</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <div class="text-muted small">Current official result — available options</div>
+                                        <div class="h5 mb-0">@(ranked.CurrentOfficialResult.WinnerLabel ?? "No winner")</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        var originalCycleLabels = ranked.OriginalPreferenceCycle
+                            .Select(value => ranked.Candidates
+                                .FirstOrDefault(candidate => string.Equals(candidate.Value, value, StringComparison.Ordinal))
+                                ?.Label ?? value)
+                            .ToList();
+                        var currentCycleLabels = ranked.CurrentPreferenceCycle
+                            .Select(value => ranked.Candidates
+                                .FirstOrDefault(candidate => string.Equals(candidate.Value, value, StringComparison.Ordinal))
+                                ?.Label ?? value)
+                            .ToList();
+                        @if (currentCycleLabels.Count > 0 || originalCycleLabels.Count > 0)
+                        {
+                            var showingCurrentCycle = currentCycleLabels.Count > 0;
+                            var cycleLabels = showingCurrentCycle ? currentCycleLabels : originalCycleLabels;
+                            <div class="alert alert-info">
+                                <strong>Preference cycle detected in the @(showingCurrentCycle ? "available-options" : "all-options") count:</strong>
+                                @string.Join(" → ", cycleLabels).
+                                @if (showingCurrentCycle)
+                                {
+                                    <text>Like rock–paper–scissors, each option beats another but is beaten by a third. No option beats every other option head-to-head, so Ranked Pairs resolves the cycle by locking the strongest victories without creating a loop.</text>
+                                }
+                                else
+                                {
+                                    <text>Like rock–paper–scissors, each option beat another but was beaten by a third. Removing an unavailable option breaks this cycle. The remaining options are then compared directly, so the winner can change even when the previous winner is still available.</text>
+                                }
+                                <a href="https://nobodies.team/event-dates-2027-voting-method.html#preference-cycles-and-availability"
+                                   target="_blank" rel="noopener noreferrer">Why availability changes can look counter-intuitive</a>.
+                            </div>
+                        }
+                        @if (!string.Equals(
+                            ranked.OriginalOfficialResult.WinnerValue,
+                            ranked.CurrentOfficialResult.WinnerValue,
+                            StringComparison.Ordinal))
+                        {
+                            <div class="alert alert-warning py-2">
+                                Excluding unavailable options changes the official winner.
+                            </div>
+                        }
+
+                        <h4 class="h6">Sensitivity analysis — current available options</h4>
+                        <div class="table-responsive mb-3">
+                            <table class="table table-sm align-middle">
+                                <thead><tr><th>Method</th><th>Winner</th><th>Notes</th></tr></thead>
+                                <tbody>
+                                @foreach (var method in ranked.Methods)
+                                {
+                                    <tr class="@(method.Method.StartsWith("Ranked Pairs", StringComparison.Ordinal) ? "table-primary" : "")">
+                                        <th scope="row">@method.Method</th>
+                                        <td>@(method.WinnerLabel ?? "No unique winner")</td>
+                                        <td>@(method.TieBreakUsed ? "Authored-order tie-break applied" : "")</td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <details class="mb-3">
+                            <summary>Pairwise comparisons</summary>
+                            <div class="table-responsive mt-2">
+                                <table class="table table-sm">
+                                    <thead><tr><th>Pair</th><th>Votes</th></tr></thead>
+                                    <tbody>
+                                    @foreach (var contest in ranked.Pairwise)
+                                    {
+                                        var first = ranked.Candidates.First(candidate => candidate.Value == contest.First).Label;
+                                        var second = ranked.Candidates.First(candidate => candidate.Value == contest.Second).Label;
+                                        <tr><td>@first vs @second</td><td>@contest.PreferFirst – @contest.PreferSecond</td></tr>
+                                    }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </details>
+
+                        <h4 class="h6">Rejections</h4>
+                        <div class="table-responsive mb-3">
+                            <table class="table table-sm">
+                                <thead><tr><th>Option</th><th>Rejected</th><th>Status</th></tr></thead>
+                                <tbody>
+                                @foreach (var candidate in ranked.Candidates)
+                                {
+                                    <tr>
+                                        <td>@candidate.Label</td>
+                                        <td>@candidate.RejectionCount (@Math.Round(candidate.RejectionPercent)%)</td>
+                                        <td>
+                                            @if (!candidate.IsAvailable)
+                                            {
+                                                <span class="badge text-bg-warning">No longer available</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        @if (Model.Status == SurveyStatus.Closed)
+                        {
+                            <form asp-action="RankedAvailability" asp-route-id="@Model.SurveyId" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="questionId" value="@q.QuestionId" />
+                                <fieldset>
+                                    <legend class="h6">Unavailable options</legend>
+                                    <p class="form-text">Exclude dates or choices that are no longer available, without changing saved ballots.</p>
+                                    @foreach (var candidate in ranked.Candidates)
+                                    {
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox"
+                                                   id="unavailable-@q.QuestionId-@candidate.Value"
+                                                   name="unavailableValues" value="@candidate.Value"
+                                                   checked="@(!candidate.IsAvailable ? "checked" : null)" />
+                                            <label class="form-check-label" for="unavailable-@q.QuestionId-@candidate.Value">@candidate.Label</label>
+                                        </div>
+                                    }
+                                    <button type="submit" class="btn btn-outline-primary btn-sm mt-2">Recalculate</button>
+                                </fieldset>
+                            </form>
+                        }
+                    }
+                    break;
+
                 case SurveyQuestionType.SingleChoice:
                 case SurveyQuestionType.MultiChoice:
                     @if (q.OptionCounts.Count == 0)
@@ -226,45 +383,50 @@
                     </h3>
                     <div id="@collapseId" class="accordion-collapse collapse" aria-labelledby="@headingId" data-bs-parent="#respondents">
                         <div class="accordion-body">
-                            <dl class="row mb-0">
-                                @foreach (var a in r.Answers)
-                                {
-                                    <dt class="col-sm-4">@a.Prompt</dt>
-                                    <dd class="col-sm-8">
-                                        @if (a.GridSelections?.Count > 0)
-                                        {
-                                            <ul class="list-unstyled mb-0">
-                                                @foreach (var selection in a.GridSelections)
-                                                {
-                                                    <li><strong>@selection.RowLabel:</strong> @string.Join(", ", selection.ColumnLabels)</li>
-                                                }
-                                            </ul>
-                                        }
-                                        else if (a.SelectedLabels.Count > 0)
-                                        {
-                                            @string.Join(", ", a.SelectedLabels)
-                                        }
-                                        else if (a.RatingValue is { } rating)
-                                        {
-                                            @rating
-                                        }
-                                        else if (!string.IsNullOrEmpty(a.TextValue))
-                                        {
-                                            @a.TextValue
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted">—</span>
-                                        }
-                                    </dd>
-                                }
-                            </dl>
+                            <partial name="_RespondentAnswers" model="r.Answers" />
                         </div>
                     </div>
                 </div>
             }
         </div>
     }
+}
+
+@if (Model.ShowUnattributedBallots)
+{
+    <h2 class="h5">Individual ballots</h2>
+    <p class="text-muted">
+        Humans recorded who completed the vote to enforce eligibility and prevent double-voting,
+        but these submitted ballots are not linked to voter identities.
+    </p>
+    @if (Model.UnattributedBallots.Count == 0)
+    {
+        <p class="text-muted">No ballots in this view.</p>
+    }
+    else
+    {
+        <div class="accordion mb-4" id="unattributed-ballots">
+            @for (var i = 0; i < Model.UnattributedBallots.Count; i++)
+            {
+                var ballot = Model.UnattributedBallots[i];
+                var headingId = $"ballot-heading-{i}";
+                var collapseId = $"ballot-collapse-{i}";
+                <div class="accordion-item">
+                    <h3 class="accordion-header" id="@headingId">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="false" aria-controls="@collapseId">
+                            Ballot @(i + 1)
+                        </button>
+                    </h3>
+                    <div id="@collapseId" class="accordion-collapse collapse" aria-labelledby="@headingId" data-bs-parent="#unattributed-ballots">
+                        <div class="accordion-body">
+                            <partial name="_RespondentAnswers" model="ballot.Answers" />
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
 }
 
 <div class="mt-3">

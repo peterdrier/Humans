@@ -106,6 +106,40 @@ public sealed class SurveyCsvExportBuilderTests
     }
 
     [HumansFact]
+    public void Serializes_ranked_ballot_as_stable_value_json()
+    {
+        var questionId = Guid.NewGuid();
+        var export = new SurveyResponseExport(
+            Guid.NewGuid(), "T", "en",
+            [
+                new SurveyExportQuestion(
+                    questionId,
+                    "Rank dates",
+                    SurveyQuestionType.RankedChoice,
+                    [new SurveyExportOption("a", "Apple"), new SurveyExportOption("b", "Banana")]),
+            ],
+            [
+                new SurveyExportRow(
+                    Guid.NewGuid(), ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
+                    "en", Submitted, Guid.NewGuid(), "Sparkle",
+                    [
+                        new SurveyExportAnswer(
+                            questionId, [], [], null, null,
+                            RankedBallot: new SurveyRankedBallot([["a"]], ["b"])),
+                    ]),
+            ]);
+
+        var csv = Encoding.UTF8.GetString(SurveyCsvExportBuilder.Build(export));
+
+        csv.Should().Contain("RankGroups");
+        csv.Should().Contain("Rejected");
+        csv.Should().Contain(@"""""a""""");
+        csv.Should().Contain(@"""""b""""");
+        csv.Should().NotContain("Apple");
+        csv.Should().NotContain("Banana");
+    }
+
+    [HumansFact]
     public void Leaves_identity_columns_blank_for_non_identified_row()
     {
         var textId = Guid.NewGuid();

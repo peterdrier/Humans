@@ -35,6 +35,9 @@ internal partial interface ISurveyRepository : IRepository
     /// <summary>Current status of a survey, or null if it does not exist. Read-only.</summary>
     Task<SurveyStatus?> GetStatusAsync(Guid id, CancellationToken ct = default);
 
+    /// <summary>True when any draft or submitted answer has been saved for the survey.</summary>
+    Task<bool> HasSavedAnswersAsync(Guid surveyId, CancellationToken ct = default);
+
     /// <summary>Sets a survey's status and stamps <c>UpdatedAt</c>. No-op if the survey does not exist.</summary>
     Task SetStatusAsync(Guid id, SurveyStatus status, Instant updatedAt, CancellationToken ct = default);
 

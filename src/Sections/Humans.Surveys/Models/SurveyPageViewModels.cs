@@ -33,6 +33,7 @@ internal sealed class SurveyPageViewModel
     public int Page { get; init; }
 
     public string Title { get; init; } = string.Empty;
+    public bool IsAsociadoVote { get; init; }
 
     /// <summary>1-based position of this page among the visible pages.</summary>
     public int StepNumber { get; init; }
@@ -73,6 +74,9 @@ internal sealed class SurveyPageQuestion
         = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
     public string? TextValue { get; init; }
     public int? RatingValue { get; init; }
+    public RankedAnswer? RankedValue { get; init; }
+    public bool RankedAllowEqualRanks { get; init; }
+    public bool RankedAllowReject { get; init; }
 }
 
 /// <summary>One resolved choice option: stable machine <see cref="Value"/> + display <see cref="Label"/>.</summary>
@@ -109,6 +113,7 @@ internal sealed class SurveyPostedAnswer
     public List<SurveyPostedGridRow> GridRows { get; set; } = [];
     public string? TextValue { get; set; }
     public int? RatingValue { get; set; }
+    public List<SurveyPostedRankedOption> RankedOptions { get; set; } = [];
 }
 
 /// <summary>One posted Grid row and its selected column values.</summary>
@@ -116,6 +121,12 @@ internal sealed class SurveyPostedGridRow
 {
     public string RowValue { get; set; } = string.Empty;
     public List<string> SelectedColumnValues { get; set; } = [];
+}
+
+internal sealed class SurveyPostedRankedOption
+{
+    public string OptionValue { get; set; } = string.Empty;
+    public string? Selection { get; set; }
 }
 
 /// <summary>The closing thank-you page, with the survey's ThankYou copy resolved for display.</summary>

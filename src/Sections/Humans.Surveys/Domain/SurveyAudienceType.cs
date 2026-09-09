@@ -10,5 +10,6 @@ internal enum SurveyAudienceType
     AllActiveMembers = 1,
     TicketHolders = 2,
     ShiftParticipants = 3,
-    LoggedInSince = 4
+    LoggedInSince = 4,
+    Asociados = 5
 }

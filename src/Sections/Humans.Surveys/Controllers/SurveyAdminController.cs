@@ -39,6 +39,26 @@ internal sealed class SurveyAdminController(
         return View(new SurveyAdminIndexViewModel { Surveys = ordered });
     }
 
+    [HttpGet("Official/{id:guid}")]
+    public async Task<IActionResult> Official(Guid id, CancellationToken ct)
+    {
+        var userId = GetCurrentUserId();
+        if (userId is null) return Forbid();
+
+        var link = await surveyService.GetOfficialLinkAsync(id, userId.Value, ct);
+        if (link?.InvitationToken is { } token)
+        {
+            return RedirectToAction(nameof(SurveyController.Answer), "Survey", new { t = token });
+        }
+        if (link?.PublicSlug is { } slug)
+        {
+            return RedirectToAction(nameof(SurveyController.Public), "Survey", new { slug });
+        }
+
+        SetError("No active survey link is available for you.");
+        return RedirectToAction(nameof(Send), new { id });
+    }
+
     [HttpGet("Create")]
     public async Task<IActionResult> Create(CancellationToken ct)
     {
@@ -53,6 +73,7 @@ internal sealed class SurveyAdminController(
         if (detail is null) return NotFound();
 
         var vm = SurveyBuilderViewModel.FromDetail(detail, await LoadTeamsAsync(ct), Zone);
+        vm.HasSavedAnswers = await surveyService.HasSavedAnswersAsync(id, ct);
         return View("Builder", vm);
     }
 
@@ -71,6 +92,7 @@ internal sealed class SurveyAdminController(
             Culture = resolvedCulture,
             AllowAnonymous = editable.AllowAnonymous,
             ShowAnonymitySelector = editable.AllowAnonymous,
+            IsAsociadoVote = editable.IsAsociadoVote,
             IsPreview = true,
             PreviewSurveyId = detail.Id,
         };
@@ -202,7 +224,7 @@ internal sealed class SurveyAdminController(
 
         if (!ModelState.IsValid)
         {
-            model.Teams = await LoadTeamsAsync(ct);
+            await PrepareBuilderForRenderAsync(model, ct);
             return View("Builder", model);
         }
 
@@ -224,7 +246,7 @@ internal sealed class SurveyAdminController(
         {
             logger.LogWarning("Survey save rejected for {SurveyId}: {Reason}", model.Id, ex.Message);
             ModelState.AddModelError(string.Empty, ex.Message);
-            model.Teams = await LoadTeamsAsync(ct);
+            await PrepareBuilderForRenderAsync(model, ct);
             return View("Builder", model);
         }
 
@@ -301,6 +323,7 @@ internal sealed class SurveyAdminController(
             AudienceLoggedInSince = detail.Editable.AudienceLoggedInSince?.InZone(Zone).Date,
             NewRecipientCount = newRecipientCount,
             Invitations = statuses.OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase).ToList(),
+            IsAsociadoVote = detail.Editable.IsAsociadoVote,
         };
         return View(vm);
     }
@@ -336,6 +359,36 @@ internal sealed class SurveyAdminController(
         if (results is null) return NotFound();
 
         return View(SurveyResultsBuilder.Build(results));
+    }
+
+    [HttpPost("Results/{id:guid}/RankedAvailability")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RankedAvailability(
+        Guid id,
+        Guid questionId,
+        List<string>? unavailableValues,
+        CancellationToken ct)
+    {
+        var actorId = GetCurrentUserId();
+        if (actorId is null) return Forbid();
+        try
+        {
+            await surveyService.SetRankedAvailabilityAsync(
+                id,
+                questionId,
+                unavailableValues ?? [],
+                actorId.Value,
+                ct);
+            SetSuccess("Candidate availability updated; ranked results were recalculated.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogWarning(
+                "Ranked availability update rejected for survey {SurveyId}, question {QuestionId}: {Reason}",
+                id, questionId, ex.Message);
+            SetError(ex.Message);
+        }
+        return RedirectToAction(nameof(Results), new { id });
     }
 
     [HttpGet("Results/{id:guid}/Export.csv")]
@@ -379,6 +432,15 @@ internal sealed class SurveyAdminController(
             .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
             .Select(t => new SurveyTeamOption(t.Id, t.Name))
             .ToList();
+    }
+
+    private async Task PrepareBuilderForRenderAsync(
+        SurveyBuilderViewModel model,
+        CancellationToken ct)
+    {
+        model.Teams = await LoadTeamsAsync(ct);
+        model.HasSavedAnswers = model.Id is { } id
+            && await surveyService.HasSavedAnswersAsync(id, ct);
     }
 
 }

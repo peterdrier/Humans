@@ -53,6 +53,7 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
         existing.InvitationEmailMessage = survey.InvitationEmailMessage;
         existing.DefaultCulture = survey.DefaultCulture;
         existing.AllowAnonymous = survey.AllowAnonymous;
+        existing.IsAsociadoVote = survey.IsAsociadoVote;
         // Status is owned by Open/Close (SetStatusAsync) — authoring updates never change it.
         existing.OpensAt = survey.OpensAt;
         existing.ClosesAt = survey.ClosesAt;
@@ -75,6 +76,14 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
             .Where(s => s.Id == id)
             .Select(s => (SurveyStatus?)s.Status)
             .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<bool> HasSavedAnswersAsync(Guid surveyId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.SurveyAnswers
+            .AsNoTracking()
+            .AnyAsync(answer => answer.Response.SurveyId == surveyId, ct);
     }
 
     public async Task SetStatusAsync(Guid id, SurveyStatus status, Instant updatedAt, CancellationToken ct = default)
@@ -463,6 +472,8 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
             keptQuestion.GridSelectionMode = incomingQuestion.GridSelectionMode;
             keptQuestion.GridRows = incomingQuestion.GridRows;
             keptQuestion.InformationImages = incomingQuestion.InformationImages;
+            keptQuestion.RankedSettings = incomingQuestion.RankedSettings;
+            keptQuestion.RankedUnavailableOptionValues = incomingQuestion.RankedUnavailableOptionValues;
             keptQuestion.ShowIf = incomingQuestion.ShowIf;
 
             ReconcileOptions(ctx, keptQuestion, incomingQuestion);

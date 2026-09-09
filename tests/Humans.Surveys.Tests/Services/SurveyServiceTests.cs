@@ -70,6 +70,20 @@ public class SurveyServiceTests
             mode,
             rows ?? [new GridRowInput("monday", L("Monday")), new GridRowInput("tuesday", L("Tuesday"))]);
 
+    private static QuestionInput RankedInput(
+        Guid? id = null,
+        bool allowEqualRanks = true,
+        bool allowReject = true,
+        IReadOnlyList<OptionInput>? options = null) =>
+        new(
+            id, 1, 1, SurveyQuestionType.RankedChoice, L("Rank dates"), LocalizedText.Empty,
+            true, null, null, LocalizedText.Empty, LocalizedText.Empty, null,
+            options ?? [Opt("a", "A", 1), Opt("b", "B", 2), Opt("c", "C", 3)],
+            RankedSettings: new RankedQuestionSettings(
+                allowEqualRanks,
+                allowReject,
+                RankedVotingMethod.RankedPairs));
+
     private static SurveyEditInput Input(params QuestionInput[] qs) =>
         new(
             L("Title"), L("Intro"), L("Thanks"),
@@ -810,6 +824,45 @@ public class SurveyServiceTests
             new User { Id = id, PreferredLanguage = "en", LastLoginAt = lastLogin, State = state },
             [], [], [], null, []);
 
+    private static UserInfo Asociado(Guid id, MembershipTier tier = MembershipTier.Asociado)
+    {
+        var profile = UserFixtures.Profile(
+            burnerName: "Voter",
+            firstName: "Eligible",
+            lastName: "Human",
+            isApproved: true,
+            membershipTier: tier);
+        return new UserInfo(
+            Id: id,
+            BurnerName: profile.BurnerName,
+            IsGdprAnonymized: false,
+            PreferredLanguage: "en",
+            FallbackPictureUrl: null,
+            CreatedAt: Instant.MinValue,
+            LastLoginAt: null,
+            LastConsentReminderSentAt: null,
+            DeletionRequestedAt: null,
+            DeletionScheduledFor: null,
+            DeletionEligibleAfter: null,
+            UnsubscribedFromCampaigns: false,
+            ICalToken: null,
+            SuppressScheduleChangeEmails: false,
+            MagicLinkSentAt: null,
+            ContactSource: null,
+            ExternalSourceId: null,
+            MergedToUserId: null,
+            MergedAt: null,
+            IdentityEmailColumn: null,
+            UserEmails: [],
+            EventParticipations: [],
+            ExternalLogins: [],
+            Profile: profile,
+            CommunicationPreferences: [])
+        {
+            State = UserState.Active,
+        };
+    }
+
     private static TeamInfo TeamWith(Guid teamId, params Guid[] memberUserIds) => new(
         teamId, "Team", null, "team",
         IsActive: true, IsSystemTeam: false, SystemTeamType.None, RequiresApproval: false,
@@ -1447,6 +1500,38 @@ public class SurveyServiceTests
         rows.Single(r => r.UserId == unknown).Name.Should().Be(unknown.ToString());
     }
 
+    [HumansFact]
+    public async Task GetOfficialLinkAsync_uses_the_current_humans_unspent_invitation()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        survey.PublicSlug = "public-fallback";
+        var userId = Guid.NewGuid();
+        var invitation = InvitationFor(survey.Id, userId);
+        invitation.SentAt = _clock.GetCurrentInstant();
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _repo.GetInvitationsAsync(survey.Id, Arg.Any<CancellationToken>())
+            .Returns([invitation]);
+        _tokenProvider.Create(invitation.Id).Returns("official-token");
+
+        var link = await CreateService().GetOfficialLinkAsync(
+            survey.Id, userId, TestContext.Current.CancellationToken);
+
+        link.Should().Be(new SurveyOfficialLink("official-token", null));
+    }
+
+    [HumansFact]
+    public async Task GetOfficialLinkAsync_falls_back_to_the_public_slug()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        survey.PublicSlug = "public-survey";
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var link = await CreateService().GetOfficialLinkAsync(
+            survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        link.Should().Be(new SurveyOfficialLink(null, "public-survey"));
+    }
+
     private static UserInfo UserInfoWithName(Guid id, string burnerName, string culture = "en") => new(
         id, burnerName, false, culture, null, Instant.MinValue, null, null, null, null, null,
         false, null, false, null, null, null, null, null, null,
@@ -1480,6 +1565,7 @@ public class SurveyServiceTests
         var userId = Guid.NewGuid();
         var invitation = InvitationFor(survey.Id, userId);
         var questionId = Guid.NewGuid();
+        var ranked = new RankedAnswer([["a"], ["b"]], ["c"]);
         var draft = new SurveyResponse
         {
             Id = Guid.NewGuid(),
@@ -1489,7 +1575,15 @@ public class SurveyServiceTests
             Anonymity = ResponseAnonymity.Identified,
             Answers = new List<SurveyAnswer>
             {
-                new() { Id = Guid.NewGuid(), QuestionId = questionId, SelectedOptionValues = ["yes"], TextValue = "note", RatingValue = 4 },
+                new()
+                {
+                    Id = Guid.NewGuid(),
+                    QuestionId = questionId,
+                    SelectedOptionValues = ["yes"],
+                    TextValue = "note",
+                    RatingValue = 4,
+                    RankedValue = ranked,
+                },
             },
         };
 
@@ -1512,6 +1606,7 @@ public class SurveyServiceTests
         answer.SelectedOptionValues.Should().ContainInOrder("yes");
         answer.TextValue.Should().Be("note");
         answer.RatingValue.Should().Be(4);
+        answer.RankedValue.Should().Be(ranked);
     }
 
     [HumansFact]
@@ -1542,11 +1637,35 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task ResolveAnswerContextAsync_rejects_a_non_asociado_from_an_asociado_vote()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Asociados, null);
+        survey.IsAsociadoVote = true;
+        var userId = Guid.NewGuid();
+        var invitation = InvitationFor(survey.Id, userId);
+        _tokenProvider.Resolve("vote").Returns(invitation.Id);
+        _repo.GetInvitationByIdAsync(invitation.Id, Arg.Any<CancellationToken>()).Returns(invitation);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Asociado(userId, MembershipTier.Colaborador));
+
+        var ctx = await CreateService().ResolveAnswerContextAsync(
+            "vote", TestContext.Current.CancellationToken);
+
+        ctx.Should().NotBeNull();
+        ctx.IsEligible.Should().BeFalse();
+        ctx.HasResumableDraft.Should().BeFalse();
+        await _repo.DidNotReceive().GetDraftResponseAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ResolvePublicContextAsync_returns_null_for_unknown_slug()
     {
         _repo.GetIdByPublicSlugAsync("missing", Arg.Any<CancellationToken>()).Returns((Guid?)null);
 
-        var ctx = await CreateService().ResolvePublicContextAsync("MISSING", TestContext.Current.CancellationToken);
+        var ctx = await CreateService().ResolvePublicContextAsync(
+            "MISSING", null, TestContext.Current.CancellationToken);
 
         ctx.Should().BeNull();
         // Lookup uses the normalised (lower-cased/trimmed) slug.
@@ -1557,7 +1676,8 @@ public class SurveyServiceTests
     [HumansFact]
     public async Task ResolvePublicContextAsync_returns_null_for_blank_slug()
     {
-        var ctx = await CreateService().ResolvePublicContextAsync("   ", TestContext.Current.CancellationToken);
+        var ctx = await CreateService().ResolvePublicContextAsync(
+            "   ", null, TestContext.Current.CancellationToken);
 
         ctx.Should().BeNull();
         await _repo.DidNotReceive().GetIdByPublicSlugAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -1572,28 +1692,74 @@ public class SurveyServiceTests
         _repo.GetIdByPublicSlugAsync("feedback", Arg.Any<CancellationToken>()).Returns(survey.Id);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
-        var ctx = await CreateService().ResolvePublicContextAsync(" Feedback ", TestContext.Current.CancellationToken);
+        var ctx = await CreateService().ResolvePublicContextAsync(
+            " Feedback ", null, TestContext.Current.CancellationToken);
 
         ctx.Should().NotBeNull();
         ctx.SurveyId.Should().Be(survey.Id);
         ctx.Definition.Id.Should().Be(survey.Id);
         ctx.Definition.Status.Should().Be(SurveyStatus.Open);
+        ctx.Access.Should().Be(SurveyPublicAccess.Allowed);
     }
 
     [HumansFact]
-    public async Task ResolvePublicContextAsync_returns_null_when_anonymous_disallowed()
+    public async Task ResolvePublicContextAsync_requires_authentication_when_anonymous_disallowed()
     {
-        // A slug left behind after AllowAnonymous was switched off must not resolve —
-        // the service is the authoritative guard, not just the controller.
         var survey = SurveyWith(SurveyStatus.Open, null, null);
         survey.PublicSlug = "feedback";
         survey.AllowAnonymous = false;
         _repo.GetIdByPublicSlugAsync("feedback", Arg.Any<CancellationToken>()).Returns(survey.Id);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
-        var ctx = await CreateService().ResolvePublicContextAsync("feedback", TestContext.Current.CancellationToken);
+        var ctx = await CreateService().ResolvePublicContextAsync(
+            "feedback", null, TestContext.Current.CancellationToken);
 
-        ctx.Should().BeNull();
+        ctx.Should().NotBeNull();
+        ctx.Access.Should().Be(SurveyPublicAccess.AuthenticationRequired);
+    }
+
+    [HumansFact]
+    public async Task ResolvePublicContextAsync_allows_any_logged_in_human_when_no_audience_is_set()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        survey.PublicSlug = "feedback";
+        survey.AllowAnonymous = false;
+        var userId = Guid.NewGuid();
+        _repo.GetIdByPublicSlugAsync("feedback", Arg.Any<CancellationToken>()).Returns(survey.Id);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var ctx = await CreateService().ResolvePublicContextAsync(
+            "feedback", userId, TestContext.Current.CancellationToken);
+
+        ctx.Should().NotBeNull();
+        ctx.Access.Should().Be(SurveyPublicAccess.Allowed);
+        await _teamService.DidNotReceive()
+            .GetTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ResolvePublicContextAsync_checks_the_current_team_audience()
+    {
+        var teamId = Guid.NewGuid();
+        var eligibleUserId = Guid.NewGuid();
+        var ineligibleUserId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, teamId);
+        survey.PublicSlug = "board-vote";
+        survey.AllowAnonymous = false;
+        _repo.GetIdByPublicSlugAsync("board-vote", Arg.Any<CancellationToken>()).Returns(survey.Id);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(TeamWith(teamId, eligibleUserId));
+
+        var eligible = await CreateService().ResolvePublicContextAsync(
+            "board-vote", eligibleUserId, TestContext.Current.CancellationToken);
+        var ineligible = await CreateService().ResolvePublicContextAsync(
+            "board-vote", ineligibleUserId, TestContext.Current.CancellationToken);
+
+        eligible.Should().NotBeNull();
+        eligible.Access.Should().Be(SurveyPublicAccess.Allowed);
+        ineligible.Should().NotBeNull();
+        ineligible.Access.Should().Be(SurveyPublicAccess.Ineligible);
     }
 
     [HumansFact]
@@ -1691,7 +1857,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task StartPublicTrackedResponseAsync_completion_tracked_creates_ledger_without_draft()
+    public async Task StartPublicTrackedResponseAsync_completion_tracked_preserves_existing_draft_answers_without_linking_the_draft()
     {
         var surveyId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -1707,6 +1873,16 @@ public class SurveyServiceTests
                 Instant.FromUtc(1970, 1, 1, 0, 0),
                 Arg.Any<CancellationToken>())
             .Returns(participation);
+        var questionId = Guid.NewGuid();
+        _repo.GetDraftResponseAsync(surveyId, userId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyResponse
+            {
+                Id = Guid.NewGuid(),
+                SurveyId = surveyId,
+                UserId = userId,
+                Anonymity = ResponseAnonymity.Identified,
+                Answers = [ChoiceAnswer(questionId, "yes")],
+            });
 
         var result = await CreateService().StartPublicTrackedResponseAsync(
             surveyId, userId, ResponseAnonymity.CompletionTracked, "en",
@@ -1715,7 +1891,8 @@ public class SurveyServiceTests
         result.Should().NotBeNull();
         result!.ParticipationId.Should().Be(participation.Id);
         result.DraftResponseId.Should().BeNull();
-        result.DraftAnswers.Should().BeEmpty();
+        result.DraftAnswers.Should().ContainSingle()
+            .Which.SelectedOptionValues.Should().ContainSingle("yes");
         await _repo.DidNotReceive().AddResponseAsync(
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
@@ -1836,6 +2013,59 @@ public class SurveyServiceTests
             "en",
             Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SubmitResponseAsync_rechecks_asociado_eligibility_before_finalising()
+    {
+        var survey = SurveyForSubmit(out var questionId, out _);
+        survey.IsAsociadoVote = true;
+        var userId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Asociado(userId, MembershipTier.Colaborador));
+        var submission = new SurveySubmission(
+            survey.Id, Guid.NewGuid(), userId, null,
+            ResponseAnonymity.CompletionTracked, SurveyInputMethod.UserSpecificLink, "en",
+            [Ans(questionId, "yes")]);
+
+        var act = async () => await CreateService().SubmitResponseAsync(
+            submission, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*active, approved Asociado*");
+        await _repo.DidNotReceive().FinalizeCompletionTrackedResponseAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<SurveyResponse>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SubmitResponseAsync_rejects_an_identified_asociado_ballot()
+    {
+        var survey = SurveyForSubmit(out var questionId, out _);
+        survey.IsAsociadoVote = true;
+        var userId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Asociado(userId));
+        var submission = new SurveySubmission(
+            survey.Id, Guid.NewGuid(), userId, Guid.NewGuid(),
+            ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink, "en",
+            [Ans(questionId, "yes")]);
+
+        var act = async () => await CreateService().SubmitResponseAsync(
+            submission, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*completion tracking*");
+        await _repo.DidNotReceive().FinalizeIdentifiedResponseAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<IReadOnlyList<SurveyAnswer>>(),
+            Arg.Any<Instant>(),
+            Arg.Any<SurveyInputMethod>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -2156,6 +2386,36 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task AdvanceWizardAsync_reports_invalid_ranked_answer_and_preserves_it()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        var questionId = Guid.NewGuid();
+        var question = RankedQuestion(questionId, survey.Id);
+        question.RankedSettings = RankedQuestionSettings.Default with { AllowEqualRanks = false };
+        survey.Questions = [question];
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        var state = WizardState(survey.Id);
+        var ranked = new RankedAnswer([["a", "b"]], []);
+        var posted = new SurveyAnswerInput(questionId, [], null, null, null, ranked);
+
+        var result = await CreateService().AdvanceWizardAsync(
+            state,
+            page: 1,
+            back: false,
+            [posted],
+            ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.ValidationFailed);
+        result.MissingRequired.Should().BeEmpty();
+        result.InvalidAnswers.Should().ContainSingle().Which.Should().Be(questionId);
+        state.CurrentPage.Should().Be(1);
+        state.Answers[questionId.ToString()].RankedValue.Should().BeEquivalentTo(ranked);
+        state.Started.Should().BeFalse();
+        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
+            Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task AdvanceWizardAsync_submits_after_last_visible_page()
     {
         var survey = SurveyForWizard(out var q1Id, out var q2Id);
@@ -2404,6 +2664,43 @@ public class SurveyServiceTests
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task AdvanceWizardAsync_reports_ranked_answer_invalidated_at_submission_reload()
+    {
+        var questionId = Guid.NewGuid();
+        var initial = SurveyWith(SurveyStatus.Open, null, null);
+        var initialRanked = RankedQuestion(questionId, initial.Id);
+        initialRanked.RankedSettings = RankedQuestionSettings.Default with { AllowEqualRanks = true };
+        initial.Questions = [initialRanked];
+
+        var reloaded = SurveyWith(SurveyStatus.Open, null, null);
+        typeof(Survey).GetProperty(nameof(Survey.Id))!.SetValue(reloaded, initial.Id);
+        var reloadedRanked = RankedQuestion(questionId, reloaded.Id);
+        reloadedRanked.RankedSettings = RankedQuestionSettings.Default with { AllowEqualRanks = false };
+        reloaded.Questions = [reloadedRanked];
+        _repo.GetByIdAsync(initial.Id, Arg.Any<CancellationToken>())
+            .Returns(initial, reloaded);
+
+        var state = WizardState(initial.Id);
+        var ranked = new RankedAnswer([["a", "b"]], []);
+        var posted = new SurveyAnswerInput(questionId, [], null, null, null, ranked);
+
+        var result = await CreateService().AdvanceWizardAsync(
+            state,
+            page: 1,
+            back: false,
+            [posted],
+            ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.ValidationFailed);
+        result.MissingRequired.Should().BeEmpty();
+        result.InvalidAnswers.Should().ContainSingle().Which.Should().Be(questionId);
+        state.CurrentPage.Should().Be(1);
+        state.Answers[questionId.ToString()].RankedValue.Should().BeEquivalentTo(ranked);
+        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
+            Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+    }
+
     // ── Results aggregation (Task 6.1) ─────────────────────────────────────────
 
     private static SurveyQuestion ChoiceQuestion(Guid id, Guid surveyId, SurveyQuestionType type, int order, params (string Value, string Label, int Order)[] opts) => new()
@@ -2461,6 +2758,44 @@ public class SurveyServiceTests
 
     private static SurveyAnswer TextAnswer(Guid questionId, string? text) =>
         new() { Id = Guid.NewGuid(), QuestionId = questionId, TextValue = text };
+
+    private static SurveyQuestion RankedQuestion(Guid id, Guid surveyId) => new()
+    {
+        Id = id,
+        SurveyId = surveyId,
+        PageNumber = 1,
+        Order = 1,
+        Type = SurveyQuestionType.RankedChoice,
+        Prompt = L("Rank dates"),
+        IsRequired = true,
+        RankedSettings = RankedQuestionSettings.Default with { AllowReject = true },
+        Options =
+        [
+            new SurveyQuestionOption
+            {
+                Id = Guid.NewGuid(), QuestionId = id, Order = 1, Value = "a", Label = L("A"),
+            },
+            new SurveyQuestionOption
+            {
+                Id = Guid.NewGuid(), QuestionId = id, Order = 2, Value = "b", Label = L("B"),
+            },
+            new SurveyQuestionOption
+            {
+                Id = Guid.NewGuid(), QuestionId = id, Order = 3, Value = "c", Label = L("C"),
+            },
+        ],
+    };
+
+    private static SurveyAnswer RankedAnswerFor(
+        Guid questionId,
+        IReadOnlyList<IReadOnlyList<string>> groups,
+        params string[] rejected) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            QuestionId = questionId,
+            RankedValue = new RankedAnswer(groups, rejected),
+        };
 
     private static SurveyQuestion GridQuestion(Guid id, Guid surveyId, GridSelectionMode mode = GridSelectionMode.Multiple) => new()
     {
@@ -3017,6 +3352,48 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task GetResponseExportAsync_includes_ranked_schema_availability_and_raw_ballot()
+    {
+        var surveyId = Guid.NewGuid();
+        var questionId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        typeof(Survey).GetProperty(nameof(Survey.Id))!.SetValue(survey, surveyId);
+        survey.IsAsociadoVote = true;
+        var question = RankedQuestion(questionId, surveyId);
+        question.RankedUnavailableOptionValues = ["c"];
+        survey.Questions = [question];
+        _repo.GetByIdAsync(surveyId, Arg.Any<CancellationToken>()).Returns(survey);
+        _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(
+            [
+                SubmittedResponse(
+                    surveyId,
+                    ResponseAnonymity.Identified,
+                    SurveyInputMethod.UserSpecificLink,
+                    _clock.GetCurrentInstant(),
+                    Guid.NewGuid(),
+                    RankedAnswerFor(questionId, [["a", "b"]], "c")),
+            ]);
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+
+        var export = await CreateService().GetResponseExportAsync(surveyId, TestContext.Current.CancellationToken);
+
+        var schema = export!.Questions.Should().ContainSingle().Subject;
+        schema.RankedSettings.Should().Be(new SurveyRankedSettings(true, true, "RankedPairs"));
+        schema.RankedUnavailableOptionValues.Should().ContainSingle().Which.Should().Be("c");
+        var row = export.Rows.Single();
+        row.UserId.Should().BeNull();
+        row.UserName.Should().BeNull();
+        var ballot = row.Answers.Single().RankedBallot!;
+        ballot.RankGroups.Should().ContainSingle()
+            .Which.Should().ContainInOrder("a", "b");
+        ballot.Rejected.Should().ContainSingle().Which.Should().Be("c");
+        await _userService.DidNotReceive().GetUserInfosAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task GetResponseExportAsync_preserves_raw_grid_keys_removed_from_the_current_definition()
     {
         var surveyId = Guid.NewGuid();
@@ -3153,5 +3530,305 @@ public class SurveyServiceTests
         slices.Should().ContainSingle();
         await _repo.Received(1).GetIdentifiedResponsesForUserAsync(userId, Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().GetResponsesForResultsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_allows_ranked_choice_in_an_ordinary_survey()
+    {
+        Survey? captured = null;
+        _repo.When(repository => repository.AddAsync(
+                Arg.Any<Survey>(),
+                Arg.Any<CancellationToken>()))
+            .Do(call => captured = call.Arg<Survey>());
+
+        await CreateService().CreateAsync(
+            Input(RankedInput()),
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
+
+        captured.Should().NotBeNull();
+        captured!.IsAsociadoVote.Should().BeFalse();
+        captured.Questions.Should().ContainSingle()
+            .Which.Type.Should().Be(SurveyQuestionType.RankedChoice);
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_asociado_vote_requires_fixed_asociado_configuration_but_allows_a_slug()
+    {
+        var ranked = RankedInput();
+        var service = CreateService();
+
+        var anonymousVote = async () => await service.CreateAsync(
+            Input(ranked) with
+            {
+                IsAsociadoVote = true,
+                AudienceType = SurveyAudienceType.Asociados,
+                AllowAnonymous = true,
+            },
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
+        var wrongAudience = async () => await service.CreateAsync(
+            Input(ranked) with
+            {
+                IsAsociadoVote = true,
+                AudienceType = SurveyAudienceType.AllActiveMembers,
+            },
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
+
+        await anonymousVote.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*completion-tracked*");
+        await wrongAudience.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Asociados audience*");
+        await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+
+        Survey? saved = null;
+        _repo.When(repo => repo.AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>()))
+            .Do(call => saved = call.Arg<Survey>());
+
+        await service.CreateAsync(
+            Input(ranked) with
+            {
+                IsAsociadoVote = true,
+                AudienceType = SurveyAudienceType.Asociados,
+                PublicSlug = "vote",
+            },
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
+
+        saved.Should().NotBeNull();
+        saved!.PublicSlug.Should().Be("vote");
+    }
+
+    [HumansFact]
+    public async Task OpenAsync_rejects_reopening_a_closed_asociado_vote()
+    {
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        survey.IsAsociadoVote = true;
+        _repo.GetStatusAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(SurveyStatus.Closed);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var act = async () => await CreateService().OpenAsync(
+            survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*cannot be reopened*");
+        await _repo.DidNotReceive().SetStatusAsync(
+            Arg.Any<Guid>(), Arg.Any<SurveyStatus>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UpdateAsync_cannot_edit_an_asociado_vote_after_opening()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        survey.IsAsociadoVote = true;
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var act = async () => await CreateService().UpdateAsync(
+            survey.Id,
+            Input() with { IsAsociadoVote = false },
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*cannot be edited after it has opened*");
+        await _repo.DidNotReceive().UpdateAsync(
+            Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Open_asociado_vote_exposes_participation_but_embargoes_answer_results_and_exports()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        survey.IsAsociadoVote = true;
+        var questionId = Guid.NewGuid();
+        survey.Questions = [TextQuestion(questionId, survey.Id, 1)];
+        var response = SubmittedResponse(
+            survey.Id,
+            ResponseAnonymity.Identified,
+            SurveyInputMethod.UserSpecificLink,
+            _clock.GetCurrentInstant(),
+            Guid.NewGuid(),
+            TextAnswer(questionId, "secret"));
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _repo.GetResponsesForResultsAsync(survey.Id, Arg.Any<CancellationToken>())
+            .Returns([response]);
+        _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, int> { [survey.Id] = 4 });
+        _repo.GetStartedInvitationCountAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(2);
+
+        var service = CreateService();
+        var scoped = await service.GetScopedResultsAsync(
+            survey.Id, SurveyResultsScope.Combined, TestContext.Current.CancellationToken);
+        var publicResults = await service.GetResultsAsync(survey.Id, TestContext.Current.CancellationToken);
+        var export = await service.GetResponseExportAsync(survey.Id, TestContext.Current.CancellationToken);
+
+        scoped!.IsEmbargoed.Should().BeTrue();
+        scoped.Results.ResponseCount.Should().Be(1);
+        scoped.Results.InvitedCount.Should().Be(4);
+        scoped.Results.Questions.Should().BeEmpty();
+        scoped.Results.IdentifiedRespondents.Should().BeEmpty();
+        scoped.UnattributedBallots.Should().BeEmpty();
+        scoped.RankedQuestions.Should().BeEmpty();
+        publicResults.Should().BeNull();
+        export.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task Closed_asociado_vote_exposes_unattributed_ballots_without_identified_respondents()
+    {
+        var survey = SurveyWith(SurveyStatus.Closed, SurveyAudienceType.Asociados, null);
+        survey.IsAsociadoVote = true;
+        var questionId = Guid.NewGuid();
+        survey.Questions = [TextQuestion(questionId, survey.Id, 1)];
+        var now = _clock.GetCurrentInstant();
+        var responses = new[]
+        {
+            SubmittedResponse(
+                survey.Id,
+                ResponseAnonymity.CompletionTracked,
+                SurveyInputMethod.UserSpecificLink,
+                now,
+                null,
+                TextAnswer(questionId, "unlinkable")),
+            SubmittedResponse(
+                survey.Id,
+                ResponseAnonymity.Identified,
+                SurveyInputMethod.UserSpecificLink,
+                now,
+                Guid.NewGuid(),
+                TextAnswer(questionId, "legacy")),
+        };
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _repo.GetResponsesForResultsAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(responses);
+        _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, int>());
+
+        var scoped = await CreateService().GetScopedResultsAsync(
+            survey.Id, SurveyResultsScope.Combined, TestContext.Current.CancellationToken);
+
+        scoped!.IsAsociadoVote.Should().BeTrue();
+        scoped.Results.IdentifiedRespondents.Should().BeEmpty();
+        scoped.UnattributedBallots.Should().HaveCount(2);
+        scoped.UnattributedBallots!
+            .SelectMany(ballot => ballot.Answers)
+            .Select(answer => answer.TextValue)
+            .Should().BeEquivalentTo("unlinkable", "legacy");
+        await _userService.DidNotReceive().GetUserInfosAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UpdateAsync_freezes_ranked_candidates_order_and_settings_after_first_saved_answer()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        survey.IsAsociadoVote = true;
+        var questionId = Guid.NewGuid();
+        survey.Questions = [RankedQuestion(questionId, survey.Id)];
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _repo.HasSavedAnswersAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(true);
+        var changed = RankedInput(
+            questionId,
+            allowEqualRanks: false,
+            options: [Opt("b", "B", 1), Opt("a", "A", 2), Opt("c", "C", 3)]);
+
+        var act = async () => await CreateService().UpdateAsync(
+            survey.Id,
+            Input(changed) with
+            {
+                IsAsociadoVote = true,
+                AudienceType = SurveyAudienceType.Asociados,
+            },
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*cannot be edited after it has opened*");
+        await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SetRankedAvailabilityAsync_is_post_close_only_and_audits_stable_values()
+    {
+        var survey = SurveyWith(SurveyStatus.Closed, SurveyAudienceType.Asociados, null);
+        survey.IsAsociadoVote = true;
+        var questionId = Guid.NewGuid();
+        var question = RankedQuestion(questionId, survey.Id);
+        question.RankedUnavailableOptionValues = ["b"];
+        survey.Questions = [question];
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        Survey? captured = null;
+        _repo.When(repo => repo.UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>()))
+            .Do(call => captured = call.Arg<Survey>());
+        var actor = Guid.NewGuid();
+
+        await CreateService().SetRankedAvailabilityAsync(
+            survey.Id, questionId, ["c", "unknown"], actor, TestContext.Current.CancellationToken);
+
+        captured!.Questions.Single().RankedUnavailableOptionValues.Should().Equal("c");
+        await _audit.Received(1).LogAsync(
+            AuditAction.SurveyUpdated,
+            AuditEntityTypes.Survey,
+            survey.Id,
+            Arg.Is<string>(value => value.Contains("unavailable (c)", StringComparison.Ordinal)
+                && value.Contains("restored (b)", StringComparison.Ordinal)),
+            actor);
+    }
+
+    [HumansFact]
+    public async Task Closed_ranked_results_preserve_original_and_recount_available_options()
+    {
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        survey.IsAsociadoVote = true;
+        var questionId = Guid.NewGuid();
+        var question = RankedQuestion(questionId, survey.Id);
+        question.RankedUnavailableOptionValues = ["b"];
+        survey.Questions = [question];
+        var responses = new[]
+        {
+            SubmittedResponse(
+                survey.Id, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
+                _clock.GetCurrentInstant(), Guid.NewGuid(),
+                RankedAnswerFor(questionId, [["a"], ["b"]], "c")),
+            SubmittedResponse(
+                survey.Id, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
+                _clock.GetCurrentInstant(), Guid.NewGuid(),
+                RankedAnswerFor(questionId, [["a"], ["b"], ["c"]])),
+            SubmittedResponse(
+                survey.Id, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
+                _clock.GetCurrentInstant(), Guid.NewGuid(),
+                RankedAnswerFor(questionId, [["b"], ["c"], ["a"]])),
+            SubmittedResponse(
+                survey.Id, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
+                _clock.GetCurrentInstant(), Guid.NewGuid(),
+                RankedAnswerFor(questionId, [["b"], ["c"], ["a"]])),
+            SubmittedResponse(
+                survey.Id, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
+                _clock.GetCurrentInstant(), Guid.NewGuid(),
+                RankedAnswerFor(questionId, [["c"], ["a"], ["b"]])),
+        };
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _repo.GetResponsesForResultsAsync(survey.Id, Arg.Any<CancellationToken>())
+            .Returns(responses);
+        _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, int>());
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo>());
+
+        var scoped = await CreateService().GetScopedResultsAsync(
+            survey.Id, SurveyResultsScope.Combined, TestContext.Current.CancellationToken);
+
+        var ranked = scoped!.RankedQuestions![questionId];
+        ranked.OriginalOfficialResult.WinnerValue.Should().Be("a");
+        ranked.CurrentOfficialResult.WinnerValue.Should().Be("c");
+        ranked.OriginalPreferenceCycle.Should().HaveCount(4);
+        ranked.OriginalPreferenceCycle[0].Should().Be(ranked.OriginalPreferenceCycle[^1]);
+        ranked.CurrentPreferenceCycle.Should().BeEmpty();
+        ranked.Methods.Select(method => method.Method).Should().Equal(
+            "Ranked Pairs (official)", "Condorcet check", "Borda Count");
+        ranked.Candidates.Single(candidate => string.Equals(candidate.Value, "c", StringComparison.Ordinal))
+            .RejectionCount.Should().Be(1);
+        ranked.Candidates.Single(candidate => string.Equals(candidate.Value, "b", StringComparison.Ordinal))
+            .IsAvailable.Should().BeFalse();
     }
 }

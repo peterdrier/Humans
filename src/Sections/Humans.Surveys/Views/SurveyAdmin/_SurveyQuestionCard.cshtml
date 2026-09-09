@@ -110,6 +110,50 @@
             <div class="form-text grid-column-help">Grid questions support at most five columns.</div>
         </div>
 
+        <div class="ranked-section border-top pt-2 mt-2">
+            <div class="alert alert-info small py-2">
+                Ranked choice uses Ranked Pairs (Tideman) as the official method.
+                If two outcomes remain tied, the option listed earlier wins.
+            </div>
+            @if (Model.RankedDefinitionLocked)
+            {
+                <input type="hidden" name="@(prefix).RankedAllowEqualRanks"
+                       value="@(q.RankedAllowEqualRanks ? "true" : "false")" />
+                <input type="hidden" name="@(prefix).RankedAllowReject"
+                       value="@(q.RankedAllowReject ? "true" : "false")" />
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="ranked-equal-@key"
+                           checked="@(q.RankedAllowEqualRanks ? "checked" : null)" disabled />
+                    <label class="form-check-label small" for="ranked-equal-@key">Allow equal ranks</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="ranked-reject-@key"
+                           checked="@(q.RankedAllowReject ? "checked" : null)" disabled />
+                    <label class="form-check-label small" for="ranked-reject-@key">Include a Reject option</label>
+                </div>
+                <div class="form-text">
+                    Ranked candidates, order, and settings are locked because an answer has been saved.
+                </div>
+            }
+            else
+            {
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="ranked-equal-@key"
+                           name="@(prefix).RankedAllowEqualRanks" value="true"
+                           checked="@(q.RankedAllowEqualRanks ? "checked" : null)" />
+                    <input type="hidden" name="@(prefix).RankedAllowEqualRanks" value="false" />
+                    <label class="form-check-label small" for="ranked-equal-@key">Allow equal ranks</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="ranked-reject-@key"
+                           name="@(prefix).RankedAllowReject" value="true"
+                           checked="@(q.RankedAllowReject ? "checked" : null)" />
+                    <input type="hidden" name="@(prefix).RankedAllowReject" value="false" />
+                    <label class="form-check-label small" for="ranked-reject-@key">Include a Reject option</label>
+                </div>
+            }
+        </div>
+
         <div class="grid-section border-top pt-2 mt-2">
             <div class="mb-2">
                 <label class="form-label small fw-semibold" for="grid-mode-@key">Selections per row</label>

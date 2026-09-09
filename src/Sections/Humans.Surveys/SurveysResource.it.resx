@@ -41,6 +41,11 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="Survey_TransparencyNote" xml:space="preserve"><value>Le tue risposte possono essere esaminate e analizzate, anche tramite strumenti automatizzati, per migliorare il collettivo.</value></data>
+  <data name="Survey_AsociadoVote_Heading" xml:space="preserve"><value>Votazione vincolante degli Asociados</value></data>
+  <data name="Survey_AsociadoVote_Body" xml:space="preserve"><value>Questa è una votazione vincolante dell'associazione. Humans verifica che tu sia attualmente un Asociado attivo e approvato prima di consentirti di partecipare e di nuovo quando invii la scheda. La tua partecipazione viene registrata per impedire un secondo voto, ma la scheda inviata non viene collegata alla tua identità. I risultati restano secretati fino alla chiusura della votazione. Invia solo la tua scheda personale e ponderata; una scheda inviata non può essere sostituita.</value></data>
+  <data name="Survey_AsociadoVote_PageReminder" xml:space="preserve"><value>La tua scheda fa parte di una decisione vincolante dell'associazione. La tua idoneità sarà verificata nuovamente al momento dell'invio e la scheda inviata non verrà collegata alla tua identità.</value></data>
+  <data name="Survey_AsociadoIneligible_Heading" xml:space="preserve"><value>Non hai diritto di voto</value></data>
+  <data name="Survey_AsociadoIneligible_Body" xml:space="preserve"><value>Questa votazione vincolante è riservata alle persone che sono attualmente Asociados attivi e approvati. Se ritieni che il tuo stato di membro sia errato, contatta il Consiglio prima della chiusura del periodo di votazione.</value></data>
   <data name="Survey_TitleFallback" xml:space="preserve"><value>Sondaggio</value></data>
   <data name="Survey_ResumeNotice" xml:space="preserve"><value>Hai risposte in corso — continua da dove avevi lasciato.</value></data>
   <data name="Survey_Language" xml:space="preserve"><value>Lingua</value></data>
@@ -57,16 +62,26 @@
   <data name="Survey_PageOf" xml:space="preserve"><value>Pagina {0} di {1}</value></data>
   <data name="Survey_RequiredAlert" xml:space="preserve"><value>Rispondi alle domande obbligatorie prima di continuare.</value></data>
   <data name="Survey_QuestionRequired" xml:space="preserve"><value>Questa domanda è obbligatoria.</value></data>
+  <data name="Survey_ValidationAlert" xml:space="preserve"><value>Controlla le risposte evidenziate prima di continuare.</value></data>
+  <data name="Survey_AnswerInvalid" xml:space="preserve"><value>Controlla questa risposta e riprova.</value></data>
   <data name="Survey_Back" xml:space="preserve"><value>Indietro</value></data>
   <data name="Survey_Next" xml:space="preserve"><value>Avanti</value></data>
   <data name="Survey_Submit" xml:space="preserve"><value>Invia</value></data>
   <data name="Survey_Closed_Title" xml:space="preserve"><value>Sondaggio non disponibile</value></data>
   <data name="Survey_Closed_Heading" xml:space="preserve"><value>Questo sondaggio è chiuso</value></data>
   <data name="Survey_Closed_Body" xml:space="preserve"><value>Grazie per il tuo interesse — questo sondaggio non accetta più risposte.</value></data>
+  <data name="Survey_Ineligible_Heading" xml:space="preserve"><value>Questo sondaggio non è disponibile per te</value></data>
+  <data name="Survey_Ineligible_Body" xml:space="preserve"><value>Al momento non fai parte del pubblico destinatario di questo sondaggio.</value></data>
   <data name="Survey_NothingToAnswer_Heading" xml:space="preserve"><value>Non c'è nulla a cui rispondere</value></data>
   <data name="Survey_NothingToAnswer_Body" xml:space="preserve"><value>Questo sondaggio non ha domande per te, quindi non è stato inviato nulla. Se ti aspettavi delle domande, faccelo sapere.</value></data>
   <data name="Survey_InvalidLink_Heading" xml:space="preserve"><value>Questo link non è più valido</value></data>
   <data name="Survey_InvalidLink_Body" xml:space="preserve"><value>Il link del sondaggio non è valido o è scaduto. Se pensi che sia un errore, richiedi un nuovo link.</value></data>
   <data name="Survey_ThankYou_Heading" xml:space="preserve"><value>Grazie</value></data>
   <data name="Survey_ThankYouFallback" xml:space="preserve"><value>Grazie per la tua risposta.</value></data>
+  <data name="Survey_Ranked_Option" xml:space="preserve"><value>Opzione</value></data>
+  <data name="Survey_Ranked_Rank" xml:space="preserve"><value>Posizione</value></data>
+  <data name="Survey_Ranked_Reject" xml:space="preserve"><value>Rifiuta</value></data>
+  <data name="Survey_Ranked_Unranked" xml:space="preserve"><value>Non classificata</value></data>
+  <data name="Survey_Ranked_Best" xml:space="preserve"><value>Migliore</value></data>
+  <data name="Survey_Ranked_Worst" xml:space="preserve"><value>Peggiore</value></data>
 </root>

@@ -23,6 +23,9 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
     /// <summary>Loads a survey's full editable graph for the builder, or null if not found.</summary>
     Task<SurveyDetail?> GetForEditAsync(Guid surveyId, CancellationToken ct = default);
 
+    /// <summary>Whether any draft or submitted answer has frozen counting-affecting ranked settings.</summary>
+    Task<bool> HasSavedAnswersAsync(Guid surveyId, CancellationToken ct = default);
+
     /// <summary>Creates a Draft survey from the builder input; returns the new survey id.</summary>
     Task<Guid> CreateAsync(SurveyEditInput input, Guid actorUserId, CancellationToken ct = default);
 
@@ -61,6 +64,12 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
     /// <summary>Per-invite delivery/participation status for the admin Send page, with display names stitched in. Unsorted — caller sorts.</summary>
     Task<IReadOnlyList<SurveyInviteStatus>> GetInviteStatusesAsync(Guid surveyId, CancellationToken ct = default);
 
+    /// <summary>The current Human's official entry link for an Open survey: their unspent invitation, or the public slug fallback.</summary>
+    Task<SurveyOfficialLink?> GetOfficialLinkAsync(
+        Guid surveyId,
+        Guid userId,
+        CancellationToken ct = default);
+
     /// <summary>
     /// Job-driven sweep: sends the one-time 7-day reminder to every invitee of an Open survey who
     /// hasn't completed and hasn't already been reminded (<c>SentAt</c> ≥ 7 days ago). Stamps
@@ -74,6 +83,9 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
     /// Identified draft), or null when the token is invalid/expired or the invitation/survey is gone.
     /// </summary>
     Task<SurveyAnswerContext?> ResolveAnswerContextAsync(string token, CancellationToken ct = default);
+
+    /// <summary>Whether the Human currently holds active, approved Asociado voting rights.</summary>
+    Task<bool> IsEligibleAsociadoAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Creates (or, idempotently, returns the existing) Identified in-progress draft response for the
@@ -92,10 +104,16 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
     Task MarkInvitationStartedAsync(Guid invitationId, CancellationToken ct = default);
 
     /// <summary>
-    /// Resolves a public slug into the public answering context (survey id + reused definition), or
-    /// null when no survey owns that slug or the slug is blank. The slug is normalised before lookup.
+    /// Resolves a shareable slug into the answering context (survey id + reused definition) and the
+    /// current Human's access outcome, or null when no survey owns that slug or the slug is blank.
+    /// Anonymous-enabled surveys allow everyone; identified surveys require a logged-in Human who
+    /// currently belongs to the configured audience (or any logged-in Human when no audience is set).
+    /// The slug is normalised before lookup.
     /// </summary>
-    Task<SurveyPublicContext?> ResolvePublicContextAsync(string slug, CancellationToken ct = default);
+    Task<SurveyPublicContext?> ResolvePublicContextAsync(
+        string slug,
+        Guid? userId,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Gets or creates the logged-in Human's per-survey participation ledger for a public-link
@@ -147,12 +165,50 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
         Guid surveyId,
         SurveyResultsScope scope,
         CancellationToken ct = default);
+
+    Task SetRankedAvailabilityAsync(
+        Guid surveyId,
+        Guid questionId,
+        IReadOnlyList<string> unavailableValues,
+        Guid actorUserId,
+        CancellationToken ct = default);
+
 }
+
+internal sealed record SurveyOfficialLink(string? InvitationToken, string? PublicSlug);
 
 internal sealed record SurveyScopedResults(
     SurveyResultsView Results,
     int SelectedResponseCount,
-    SurveyResultsScope Scope);
+    SurveyResultsScope Scope,
+    bool IsEmbargoed = false,
+    IReadOnlyDictionary<Guid, RankedQuestionResult>? RankedQuestions = null,
+    bool IsAsociadoVote = false,
+    IReadOnlyList<UnattributedBallotDetail>? UnattributedBallots = null);
+
+/// <summary>
+/// One ballot whose answers may be inspected after an Asociado vote closes, without exposing
+/// a respondent identity, participation id, response id, or submission timestamp.
+/// </summary>
+internal sealed record UnattributedBallotDetail(IReadOnlyList<RespondentAnswer> Answers);
+
+internal sealed record RankedQuestionResult(
+    IReadOnlyList<RankedCandidateResult> Candidates,
+    RankedMethodResult OriginalOfficialResult,
+    RankedMethodResult CurrentOfficialResult,
+    IReadOnlyList<RankedMethodResult> Methods,
+    IReadOnlyList<PairwiseContest> Pairwise,
+    IReadOnlyList<string> OriginalPreferenceCycle,
+    IReadOnlyList<string> CurrentPreferenceCycle,
+    IReadOnlyList<string> UnavailableValues);
+
+internal sealed record RankedCandidateResult(
+    string Value,
+    string Label,
+    bool IsAvailable,
+    int RejectionCount,
+    double RejectionPercent);
+internal sealed record RankedMethodResult(string Method, string? WinnerValue, string? WinnerLabel, bool TieBreakUsed);
 
 internal enum SurveyResultsScope
 {
@@ -181,7 +237,8 @@ internal sealed record SurveyEditInput(
     Guid? AudienceTeamId,
     Instant? AudienceLoggedInSince,
     string? PublicSlug,
-    IReadOnlyList<QuestionInput> Questions);
+    IReadOnlyList<QuestionInput> Questions,
+    bool IsAsociadoVote = false);
 
 /// <summary>One question in the builder graph.</summary>
 internal sealed record QuestionInput(
@@ -200,7 +257,9 @@ internal sealed record QuestionInput(
     IReadOnlyList<OptionInput> Options,
     GridSelectionMode? GridSelectionMode = null,
     IReadOnlyList<GridRowInput>? GridRows = null,
-    IReadOnlyList<InformationImageInput>? InformationImages = null);
+    IReadOnlyList<InformationImageInput>? InformationImages = null,
+    RankedQuestionSettings? RankedSettings = null,
+    IReadOnlyList<string>? RankedUnavailableOptionValues = null);
 
 /// <summary>One choice option in the builder graph. <c>Value</c> is the stable machine key.</summary>
 internal sealed record OptionInput(
@@ -254,13 +313,24 @@ internal sealed record SurveyAnswerContext(
     Guid UserId,
     SurveyDetail Definition,
     IReadOnlyList<SurveyDraftAnswer> DraftAnswers,
-    bool HasResumableDraft);
+    bool HasResumableDraft,
+    bool IsEligible = true);
 
 /// <summary>
 /// A survey resolved from its public slug: the survey id plus the reused editable definition
 /// (<see cref="SurveyDetail"/>). Representation is selected when the respondent starts.
 /// </summary>
-internal sealed record SurveyPublicContext(Guid SurveyId, SurveyDetail Definition);
+internal sealed record SurveyPublicContext(
+    Guid SurveyId,
+    SurveyDetail Definition,
+    SurveyPublicAccess Access = SurveyPublicAccess.Allowed);
+
+internal enum SurveyPublicAccess
+{
+    Allowed,
+    AuthenticationRequired,
+    Ineligible,
+}
 
 /// <summary>
 /// The logged-in public-link start result. <c>ParticipationId</c> is the existing or newly-created
@@ -278,7 +348,8 @@ internal sealed record SurveyDraftAnswer(
     IReadOnlyList<string> SelectedOptionValues,
     string? TextValue,
     int? RatingValue,
-    IReadOnlyDictionary<string, IReadOnlyList<string>>? GridSelections = null);
+    IReadOnlyDictionary<string, IReadOnlyList<string>>? GridSelections = null,
+    RankedAnswer? RankedValue = null);
 
 /// <summary>
 /// A finalised wizard submission. Identity columns (<c>UserId</c>/<c>InvitationId</c>) are written on
@@ -303,7 +374,8 @@ internal sealed record SurveyAnswerInput(
     IReadOnlyList<string> SelectedOptionValues,
     string? TextValue,
     int? RatingValue,
-    IReadOnlyDictionary<string, IReadOnlyList<string>>? GridSelections = null);
+    IReadOnlyDictionary<string, IReadOnlyList<string>>? GridSelections = null,
+    RankedAnswer? RankedValue = null);
 
 /// <summary>
 /// Per-session state of the answering wizard. The Web layer JSON-serialises it into the HTTP session
@@ -338,11 +410,12 @@ internal sealed class SurveyWizardAnswer
 {
     public List<string> SelectedOptionValues { get; set; } = [];
     public Dictionary<string, List<string>> GridSelections { get; set; } = new(StringComparer.Ordinal);
+    public RankedAnswer? RankedValue { get; set; }
     public string? TextValue { get; set; }
     public int? RatingValue { get; set; }
 }
 
-/// <summary>Where one wizard advance landed. <c>ValidationFailed</c> carries the missing required question ids.</summary>
+/// <summary>Where one wizard advance landed. <c>ValidationFailed</c> carries question-level validation details.</summary>
 internal enum SurveyWizardOutcome
 {
     /// <summary>The survey no longer exists (treat as an invalid link).</summary>
@@ -351,7 +424,10 @@ internal enum SurveyWizardOutcome
     /// <summary>The survey is not Open or is outside its answer window.</summary>
     Closed,
 
-    /// <summary>Required visible questions are unanswered; the state stays on the posted page.</summary>
+    /// <summary>The Human no longer holds active, approved Asociado voting rights.</summary>
+    Ineligible,
+
+    /// <summary>One or more visible answers are missing or invalid; the state stays on the relevant page.</summary>
     ValidationFailed,
 
     /// <summary>Moved to the previous/next visible page (<c>state.CurrentPage</c> updated).</summary>
@@ -361,5 +437,8 @@ internal enum SurveyWizardOutcome
     Submitted,
 }
 
-/// <summary>Outcome of one wizard advance. <see cref="MissingRequired"/> is empty except on <see cref="SurveyWizardOutcome.ValidationFailed"/>.</summary>
-internal sealed record SurveyWizardAdvanceResult(SurveyWizardOutcome Outcome, IReadOnlyList<Guid> MissingRequired);
+/// <summary>Outcome of one wizard advance. Validation collections are empty except on <see cref="SurveyWizardOutcome.ValidationFailed"/>.</summary>
+internal sealed record SurveyWizardAdvanceResult(
+    SurveyWizardOutcome Outcome,
+    IReadOnlyList<Guid> MissingRequired,
+    IReadOnlyList<Guid>? InvalidAnswers = null);

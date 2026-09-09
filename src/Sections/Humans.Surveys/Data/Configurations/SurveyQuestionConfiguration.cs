@@ -42,6 +42,44 @@ internal sealed class SurveyQuestionConfiguration : IEntityTypeConfiguration<Sur
                     v => v == null ? 0 : string.GetHashCode(SurveyJson.SerializeInformationImages(v)!, StringComparison.Ordinal),
                     v => SurveyJson.DeserializeInformationImages(SurveyJson.SerializeInformationImages(v))));
 
+        b.Property(q => q.RankedSettings)
+            .HasColumnType("jsonb")
+            .HasConversion(
+                v => JsonSerializer.Serialize(v, SurveyJson.Options),
+                v => JsonSerializer.Deserialize<RankedQuestionSettings>(v, SurveyJson.Options),
+                new ValueComparer<RankedQuestionSettings?>(
+                    (a, c) => JsonSerializer.Serialize(a, SurveyJson.Options)
+                        == JsonSerializer.Serialize(c, SurveyJson.Options),
+                    v => v == null
+                        ? 0
+                        : string.GetHashCode(
+                            JsonSerializer.Serialize(v, SurveyJson.Options),
+                            StringComparison.Ordinal),
+                    v => v == null
+                        ? null
+                        : JsonSerializer.Deserialize<RankedQuestionSettings>(
+                            JsonSerializer.Serialize(v, SurveyJson.Options),
+                            SurveyJson.Options)));
+
+        b.Property(q => q.RankedUnavailableOptionValues)
+            .HasColumnType("jsonb")
+            .HasConversion(
+                v => JsonSerializer.Serialize(v, SurveyJson.Options),
+                v => JsonSerializer.Deserialize<List<string>>(v, SurveyJson.Options),
+                new ValueComparer<List<string>?>(
+                    (a, c) => JsonSerializer.Serialize(a, SurveyJson.Options)
+                        == JsonSerializer.Serialize(c, SurveyJson.Options),
+                    v => v == null
+                        ? 0
+                        : string.GetHashCode(
+                            JsonSerializer.Serialize(v, SurveyJson.Options),
+                            StringComparison.Ordinal),
+                    v => v == null
+                        ? null
+                        : JsonSerializer.Deserialize<List<string>>(
+                            JsonSerializer.Serialize(v, SurveyJson.Options),
+                            SurveyJson.Options)));
+
         b.Property(q => q.ShowIf)
             .HasColumnType("jsonb")
             .HasConversion(

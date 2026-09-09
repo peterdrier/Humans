@@ -66,6 +66,8 @@ internal static class SurveyCsvExportBuilder
                     selection => selection.Key,
                     selection => selection.Value,
                     StringComparer.Ordinal)),
+        SurveyQuestionType.RankedChoice =>
+            answer.RankedBallot is null ? string.Empty : JsonSerializer.Serialize(answer.RankedBallot),
         SurveyQuestionType.Rating =>
             answer.RatingValue?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
         _ => answer.TextValue ?? string.Empty,
