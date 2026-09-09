@@ -224,7 +224,7 @@ If any field differs:
 | `SubmitEventAsync(event)` | `IEventService` — submits new events |
 | `UpdateAndResubmitAsync(event)` | `IEventService` — updates + resubmits existing events |
 | `GetActiveCategoriesAsync()` | `IEventService` — category lookup for validation |
-| `ToInstant(date + time, tz)` | `EventsController` private helper — date+time → UTC Instant |
+| `ToInstant(date + time, tz)` | `Helpers/EventsTimeHelpers.cs` — date+time → UTC Instant |
 
 ### US-26.9: Moderator Exports the Print Guide
 
