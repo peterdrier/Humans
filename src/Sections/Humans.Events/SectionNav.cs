@@ -6,8 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Events;
 
 /// <summary>
-/// Member top-nav contribution — was the Events dropdown in Shell's <c>_Layout.cshtml</c>,
-/// gated on the <c>Features:Events</c> flag plus <see cref="PolicyNames.AppAccess"/>. The two
+/// Member top-nav contribution — the Events dropdown, gated on the <c>Features:Events</c> flag plus <see cref="PolicyNames.AppAccess"/>. The two
 /// admin sub-groups (guide dashboard/moderation/export, then guide settings/categories/venues)
 /// are further gated on <see cref="PolicyNames.EventsAdminOrAdmin"/>, each behind its own
 /// divider so the group appears only when its items do.

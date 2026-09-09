@@ -4,7 +4,7 @@ using NodaTime;
 namespace Humans.Events.Contracts;
 
 /// <summary>
-/// T-03 — Cached projection of a single approved <c>Event</c> row,
+/// Cached projection of a single approved <c>Event</c> row,
 /// flattened with its <c>EventCategory</c> and <c>EventVenue</c>
 /// fields so the public guide / API can render without joining at read time.
 /// </summary>
@@ -14,13 +14,11 @@ namespace Humans.Events.Contracts;
 /// keyed by <see cref="Id"/> inside <c>CachingEventService</c>. Only events in
 /// <c>EventStatus.Approved</c> are projected — the moderation dashboard
 /// (which needs the live pending count) reads direct DB via
-/// <c>GetAllEventsForDashboardAsync</c>. Cache size at the expected ~500
-/// approved events × ~2 KB per row ≈ 1 MB — well under the 50 MB budget.
+/// <c>GetAllEventsForDashboardAsync</c>.
 /// </para>
 /// <para>
-/// Sub-property records embed the joined-in category and venue so consumers
-/// don't need to look them up separately at read time. Both are pre-stitched
-/// at warm/refresh time from the in-memory category + venue tables.
+/// Category and venue fields are pre-stitched at warm/refresh time from the
+/// in-memory category + venue tables.
 /// </para>
 /// </remarks>
 public sealed record ApprovedEventView(

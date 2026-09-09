@@ -6,9 +6,6 @@ namespace Humans.Events.Domain;
 /// </summary>
 internal sealed class EventCategory
 {
-    /// <summary>
-    /// Unique identifier.
-    /// </summary>
     public Guid Id { get; init; }
 
     /// <summary>
@@ -25,10 +22,6 @@ internal sealed class EventCategory
     /// Whether this category triggers the opt-out UI (Adult, Spiritual, etc.).
     /// </summary>
     public bool IsSensitive { get; set; }
-
-    /// <summary>
-    /// Sort order for display.
-    /// </summary>
     public int DisplayOrder { get; set; }
 
     /// <summary>
@@ -37,9 +30,5 @@ internal sealed class EventCategory
     public bool IsActive { get; set; } = true;
 
     // Navigation properties
-
-    /// <summary>
-    /// Navigation property to events in this category.
-    /// </summary>
     public ICollection<Event> Events { get; } = new List<Event>();
 }

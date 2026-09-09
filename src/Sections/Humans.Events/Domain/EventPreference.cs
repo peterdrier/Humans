@@ -8,9 +8,6 @@ namespace Humans.Events.Domain;
 /// </summary>
 internal sealed class EventPreference
 {
-    /// <summary>
-    /// Unique identifier.
-    /// </summary>
     public Guid Id { get; init; }
 
     /// <summary>
@@ -22,10 +19,6 @@ internal sealed class EventPreference
     /// JSON array of category slugs the user has opted out of (e.g. ["adult","spiritual"]).
     /// </summary>
     public string ExcludedCategorySlugs { get; set; } = "[]";
-
-    /// <summary>
-    /// When this preference was last updated.
-    /// </summary>
     public Instant UpdatedAt { get; set; }
 
 }

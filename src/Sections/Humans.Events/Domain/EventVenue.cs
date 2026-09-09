@@ -6,19 +6,8 @@ namespace Humans.Events.Domain;
 /// </summary>
 internal sealed class EventVenue
 {
-    /// <summary>
-    /// Unique identifier.
-    /// </summary>
     public Guid Id { get; init; }
-
-    /// <summary>
-    /// Venue display name.
-    /// </summary>
     public string Name { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Optional venue description.
-    /// </summary>
     public string? Description { get; set; }
 
     /// <summary>
@@ -30,16 +19,8 @@ internal sealed class EventVenue
     /// Whether this venue is active and available for event submissions.
     /// </summary>
     public bool IsActive { get; set; } = true;
-
-    /// <summary>
-    /// Sort order for display.
-    /// </summary>
     public int DisplayOrder { get; set; }
 
     // Navigation properties
-
-    /// <summary>
-    /// Navigation property to events at this venue.
-    /// </summary>
     public ICollection<Event> Events { get; } = new List<Event>();
 }

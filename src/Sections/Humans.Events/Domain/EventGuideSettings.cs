@@ -8,9 +8,6 @@ namespace Humans.Events.Domain;
 /// </summary>
 internal sealed class EventGuideSettings
 {
-    /// <summary>
-    /// Unique identifier.
-    /// </summary>
     public Guid Id { get; init; }
 
     /// <summary>
@@ -37,15 +34,7 @@ internal sealed class EventGuideSettings
     /// Maximum number of events in the printed programme.
     /// </summary>
     public int MaxPrintSlots { get; set; }
-
-    /// <summary>
-    /// When this record was created.
-    /// </summary>
     public Instant CreatedAt { get; init; }
-
-    /// <summary>
-    /// When this record was last updated.
-    /// </summary>
     public Instant UpdatedAt { get; set; }
 
     /// <summary>
