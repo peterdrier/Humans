@@ -117,7 +117,7 @@ Detail row within a category.
 
 ### BudgetAuditLog
 
-Append-only per design-rules §12. `IBudgetRepository` exposes no add/update/delete surface for audit rows — each mutation method writes its own audit rows inside the same `SaveChanges` — plus three reads: `GetAuditLogAsync`, `GetAuditLogEntriesForUserAsync`, `GetAuditLogEntriesForUserIdsAsync`.
+Append-only per design-rules §12. `IBudgetRepository` exposes no add/update/delete surface for audit rows — each mutation method writes its own audit rows inside the same `SaveChanges`, except the two ticketing sync paths, currently outside it (see Seams in health.md) — plus three reads: `GetAuditLogAsync`, `GetAuditLogEntriesForUserAsync`, `GetAuditLogEntriesForUserIdsAsync`.
 
 **Table:** `budget_audit_logs`
 
