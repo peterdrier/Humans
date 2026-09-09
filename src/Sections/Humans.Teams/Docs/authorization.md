@@ -1,3 +1,13 @@
+<!-- freshness:triggers
+  src/Sections/Humans.Teams/Controllers/**
+  src/Sections/Humans.Teams/Contracts/HumansTeamControllerBase.cs
+  src/Sections/Humans.Teams/Authorization/**
+  src/Sections/Humans.Teams/SectionPolicies.cs
+-->
+<!-- freshness:flag-on-change
+  Route/attribute table below is read off the controllers; any auth attribute or resolver change moves a row.
+-->
+
 # Teams — Authorization
 
 | Controller | Scope | Roles | Source |

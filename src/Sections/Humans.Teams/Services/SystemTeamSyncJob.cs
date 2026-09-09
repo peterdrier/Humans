@@ -19,23 +19,15 @@ namespace Humans.Teams.Services;
 
 /// <summary>Background job that syncs membership for system-managed teams.</summary>
 /// <remarks>
-/// Moved here from <c>Humans.Infrastructure/Jobs</c> at G5 lane 4b-2e
-/// (nobodies-collective/Humans#866): system-team membership is a Teams invariant
-/// (Teams.md — "system team membership is managed exclusively by an automated sync job"),
-/// every write it makes lands in Teams' own tables, and three <c>ITeamService</c> members
-/// exist solely to let this job reach in from Base. The other sections it names are
-/// eligibility inputs and downstream effects, consumed through their contracts leaves.
-/// <para>
-/// <c>ISystemTeamSync</c> caught up at G5 lane 5c and now sits on <c>Humans.Teams.Contracts</c>.
-/// It had stayed in <c>Humans.Application</c> on the belief that Hangfire pinned its
-/// assembly-qualified name; <c>RecurringJob.AddOrUpdate&lt;T&gt;(id, …)</c> is keyed on the id and
-/// rewrites the stored type string at every startup, so nothing was pinned.
-/// </para>
+/// System-team membership is a Teams invariant and every write this job makes lands in
+/// Teams' own tables, through the service's bulk-apply members — never the repository. The
+/// other sections it names are eligibility inputs and downstream effects, consumed through
+/// their contracts leaves.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 [CrossSectionWrite("Syncs team Google resources and downgrades expired membership tiers.")]
 internal sealed class SystemTeamSyncJob(
-    ITeamService teamService,
+    ITeamManagementService teamService,
     IUserService userService,
     ICampLeadDirectory campLeadDirectory,
     IServiceProvider serviceProvider,
@@ -377,10 +369,7 @@ internal sealed class SystemTeamSyncJob(
         };
     }
 
-    /// <summary>
-    /// Syncs Volunteers team membership for a single user. Call this after approving
-    /// a volunteer or after they complete their required consents.
-    /// </summary>
+    /// <summary>Volunteers membership for one user: in when approved with required consents signed.</summary>
     private async Task SyncVolunteersMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var team = (await teamService.GetTeamsAsync(cancellationToken)).Values
@@ -406,10 +395,7 @@ internal sealed class SystemTeamSyncJob(
         await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, singleUserSync: userId);
     }
 
-    /// <summary>
-    /// Syncs Coordinators team membership for a single user. Call this after changing
-    /// a team member's role to/from Coordinator.
-    /// </summary>
+    /// <summary>Coordinators membership for one user: in when they hold a management role on any team.</summary>
     private async Task SyncCoordinatorsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var team = (await teamService.GetTeamsAsync(cancellationToken)).Values
@@ -436,10 +422,7 @@ internal sealed class SystemTeamSyncJob(
         await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, singleUserSync: userId);
     }
 
-    /// <summary>
-    /// Syncs Colaboradors team membership for a single user. Call this after approving
-    /// a Colaborador application or after a user's Colaborador status changes.
-    /// </summary>
+    /// <summary>Tier-team (Colaboradors / Asociados) membership for one user: in while the tier is active.</summary>
     private async Task SyncTierMembershipForUserAsync(Guid userId, MembershipTier tier,
         SystemTeamType teamType, Guid teamId, CancellationToken cancellationToken)
     {
@@ -499,10 +482,7 @@ internal sealed class SystemTeamSyncJob(
         report?.Steps.Add(step);
     }
 
-    /// <summary>
-    /// Syncs Barrio Leads team membership for a single user. Call this after adding
-    /// or removing a camp lead assignment.
-    /// </summary>
+    /// <summary>Barrio Leads membership for one user: in while they are an active lead of any camp.</summary>
     private async Task SyncBarrioLeadsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var team = (await teamService.GetTeamsAsync(cancellationToken)).Values

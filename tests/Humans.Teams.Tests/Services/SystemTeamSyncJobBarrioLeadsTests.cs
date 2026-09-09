@@ -21,13 +21,12 @@ namespace Humans.Teams.Tests.Services;
 
 /// <summary>
 /// Regression tests for <see cref="SystemTeamSyncJob.SyncMembershipForUserAsync"/>.
-/// Covers #498: duplicate camp registration for a user who is already an active member of the
+/// Covers nobodies-collective/Humans#498: duplicate camp registration for a user who is already an active member of the
 /// Barrio Leads system team must not violate IX_team_members_active_unique.
 /// </summary>
 /// <remarks>
-/// Rewritten for the §15 Google-writing jobs migration (issue #570): the job no
-/// longer owns a <c>UsersDbContext</c>, so the test coordinates through the
-/// <see cref="ITeamService"/> / <see cref="ICampLeadDirectory"/> seams. The
+/// The job owns no DbContext, so the test coordinates through the
+/// <see cref="ITeamManagementService"/> / <see cref="ICampLeadDirectory"/> seams. The
 /// Barrio Leads system team's <see cref="Team.Members"/> collection is stubbed
 /// so the job's idempotency guard can see the existing active membership
 /// without reading the DB directly.
@@ -35,7 +34,7 @@ namespace Humans.Teams.Tests.Services;
 public class SystemTeamSyncJobBarrioLeadsTests
 {
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 15, 12, 0));
-    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly ITeamManagementService _teamService = Substitute.For<ITeamManagementService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICampLeadDirectory _campRepository = Substitute.For<ICampLeadDirectory>();
     private readonly IGoogleSyncService _googleSyncService = Substitute.For<IGoogleSyncService>();

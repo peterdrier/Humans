@@ -486,9 +486,6 @@ internal sealed class CachingTeamService(
     public Task RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default)
         => WithInner(inner => inner.RemoveEarlyEntryGrantAsync(teamId, grantId, actorUserId, ct));
 
-    public Task DeleteEarlyEntryGrantsForUserAsync(Guid userId, CancellationToken ct = default)
-        => WithInner(inner => inner.DeleteEarlyEntryGrantsForUserAsync(userId, ct));
-
     public async Task DeleteTeamAsync(Guid teamId, CancellationToken cancellationToken = default)
     {
         await WithInner(inner => inner.DeleteTeamAsync(teamId, cancellationToken));
@@ -796,29 +793,6 @@ internal sealed class CachingTeamService(
         return result.ToList();
     }
 
-    public async Task<IReadOnlyList<TeamMembership>> GetActiveTeamMembershipsForUserAsync(
-        Guid userId,
-        CancellationToken cancellationToken = default)
-    {
-        var teamsById = await GetTeamsByIdAsync(cancellationToken);
-        var rows = new List<TeamMembership>();
-
-        foreach (var team in teamsById.Values.Where(t => t.IsActive))
-        {
-            if (team.SystemTeamType == SystemTeamType.Volunteers)
-                continue;
-
-            var membership = team.Members.FirstOrDefault(m => m.UserId == userId);
-            if (membership is not null)
-                rows.Add(new TeamMembership(team.Name, membership.Role)
-                {
-                    IsHidden = team.IsHidden,
-                });
-        }
-
-        return rows;
-    }
-
     public Task EnqueueGoogleResyncForUserTeamsAsync(
         Guid userId,
         CancellationToken cancellationToken = default) =>
@@ -985,9 +959,6 @@ internal sealed class CachingTeamService(
             RemoveMemberFromAllTeamsCache(userId);
         return result;
     }
-
-    public Task<int> GetTotalPendingJoinRequestCountAsync(CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetTotalPendingJoinRequestCountAsync(cancellationToken));
 
     public Task<IReadOnlyList<TeamRoleReconciliationMembership>> GetActiveMembershipsForRoleReconciliationAsync(
         CancellationToken cancellationToken = default) =>

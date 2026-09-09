@@ -7,16 +7,10 @@ using TeamPageService = Humans.Teams.Services.TeamPageService;
 namespace Humans.Teams.Tests.Architecture;
 
 /// <summary>
-/// Architecture tests enforcing the §15 Application-layer shape for
-/// <see cref="TeamPageService"/> — migrated as part of the Teams section
-/// Part 1 split (<c>#540</c>, sub-task <c>#540b</c>).
-///
-/// <para>
-/// TeamPageService owns no tables — it composes across <see cref="ITeamService"/>,
-/// <see cref="ITeamResourceService"/>, <see cref="IShiftManagementService"/>,
-/// and <see cref="IUserService"/>. No repository is needed; the tests below
-/// guard that it never takes one.
-/// </para>
+/// <see cref="TeamPageService"/> owns no tables — it composes across the management
+/// service, <see cref="ITeamResourceService"/>, Shifts' and Users' read interfaces and
+/// <c>IBurnSettingsService</c>. No repository is needed; the tests below guard that it
+/// never takes one.
 /// </summary>
 public class TeamPageArchitectureTests
 {

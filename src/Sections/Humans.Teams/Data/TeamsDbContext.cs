@@ -11,7 +11,7 @@ namespace Humans.Teams.Data;
 /// <c>team_join_request_state_history</c>, <c>team_role_definitions</c>,
 /// <c>team_role_assignments</c> and <c>team_early_entry_grants</c>, with its
 /// own <c>__EFMigrationsHistory_Teams</c> table and migrations under
-/// <c>Migrations/Teams/</c>. Same database, same connection — the split
+/// <c>Data/Migrations/</c>. Same database, same connection — the split
 /// is a code-side partition of the EF model.
 /// </summary>
 /// <remarks>

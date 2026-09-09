@@ -23,8 +23,7 @@ namespace Humans.Teams.Tests.Services;
 /// <see cref="ITeamService"/> and <c>TeamService</c> resolves <c>ISystemTeamSync</c> and the
 /// Google sync surface lazily through <c>IServiceProvider</c> to break the cycle back. The
 /// assertion needs the concrete <c>TeamService</c> in the graph, which is internal to this
-/// assembly now, so the method lives here rather than in Humans.Application.Tests
-/// (design §15 step 8; CityPlanning finding 18's shape, resolved by moving).
+/// assembly, so the test lives here.
 /// </summary>
 public sealed class TeamsDependencyCycleTests
 {
@@ -52,7 +51,7 @@ public sealed class TeamsDependencyCycleTests
         // Users is another section; UserService, its DbContext and its two repository
         // interfaces are internal to Humans.Users and its own graph is pinned by that
         // section's own tests. Same call as IRoleAssignmentService below — the subject
-        // here is the Teams chain (#866, G5 lane 2).
+        // here is the Teams chain.
         services.AddScoped<IUserService>(_ => Substitute.For<IUserService>());
 
         // Auth is another section; RoleAssignmentService is internal to Humans.Auth and its

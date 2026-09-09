@@ -11,13 +11,8 @@ namespace Humans.Teams.Contracts;
 /// every Teams-section read entirely from memory.
 /// </summary>
 /// <remarks>
-/// <para>Cache size estimate (T-01):</para>
-/// <list type="bullet">
-/// <item><description>~50 teams × ~30 fields ≈ ~3 KB per record, plus ~10 members × ~250 B ≈ ~2.5 KB.</description></item>
-/// <item><description><c>RoleDefinitions</c> adds ~5 defs × ~200 B + their assignments (~5 × ~80 B) ≈ ~1.4 KB per team.</description></item>
-/// <item><description><c>PageContent</c> is the largest variable field — markdown, capped in practice at a few KB; budget ~5 KB per team.</description></item>
-/// <item><description>Full population footprint: ~50 teams × ~12 KB ≈ ~0.6 MB. Well under the 50 MB per-projection budget.</description></item>
-/// </list>
+/// The whole graph is a few dozen teams with their members, role definitions and page
+/// markdown — well under a megabyte — so it is held in full and re-warmed wholesale.
 /// </remarks>
 public record TeamInfo(
     Guid Id, string Name, string? Description, string Slug,
@@ -58,15 +53,6 @@ public record TeamMemberInfo(
 
 public record TeamCoordinatorRef(Guid TeamId, Guid UserId);
 
-public record TeamRoleReconciliationMembership(
-    Guid TeamMemberId,
-    Guid UserId,
-    Guid TeamId,
-    string TeamName,
-    TeamMemberRole Role,
-    SystemTeamType SystemTeamType,
-    bool HasManagementRoleAssignment);
-
 public record SystemTeamMembershipSnapshot(
     Guid Id,
     string Name,
@@ -102,32 +88,27 @@ public sealed record UserTeamMembershipInfo(
     Instant JoinedAt);
 
 /// <summary>
-/// The half of the Teams service that lives outside the section: everything Base, Shell and
-/// the Budget / Consent / Development / Expenses sections call, expressed in flat projections
-/// so no Teams entity leaves the assembly. The section's own ~40-member management surface is
-/// on the internal <c>ITeamManagementService</c>, which inherits this
-/// (design §15 step 5b — carve the leaf from the call sites, not the interface).
+/// The half of the Teams service that lives outside the section: the members Base and other
+/// sections call, expressed in flat projections so no Teams entity leaves the assembly. The
+/// section's own management surface is on the internal <c>ITeamManagementService</c>, which
+/// inherits this. A member with no caller outside the assembly does not belong here.
 /// </summary>
 public interface ITeamService : ITeamServiceRead, IApplicationService
 {
-
-
     /// <summary>
     /// Sets <c>Team.GoogleGroupPrefix</c> to <paramref name="prefix"/> (may be
     /// null to clear) and persists the change. Returns the previous prefix so
     /// callers can revert on downstream-service failure. Returns (<c>false</c>,
-    /// <c>null</c>) if the team does not exist. Narrow alternative to
-    /// <see cref="UpdateTeamAsync"/> for flows that only need to touch the
-    /// Google-group wiring.
+    /// <c>null</c>) if the team does not exist. Narrow alternative to the
+    /// management surface's <c>UpdateTeamAsync</c> for flows that only touch the
+    /// Google-group wiring; GoogleIntegration is the caller.
     /// </summary>
     Task<(bool Updated, string? PreviousPrefix)> SetGoogleGroupPrefixAsync(
         Guid teamId, string? prefix, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Sets the <see cref="TeamMember.Role"/> for an active membership to the
-    /// given value. Used by the account-merge fan-out to preserve a coordinator
-    /// role when migrating the membership from the archived source account to
-    /// the target. No-op if the user has no active membership on the team.
+    /// Sets the role of an active membership. Development's persona seeder is the
+    /// caller. No-op if the user has no active membership on the team.
     /// </summary>
     Task SetMemberRoleAsync(
         Guid teamId,
@@ -136,22 +117,10 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
         Guid actorUserId,
         CancellationToken cancellationToken = default);
 
-    // ==========================================================================
-    // Coordinator Queries
-    // ==========================================================================
-
-    /// <summary>
-    /// Returns the active (non-Volunteers) teams the user belongs to with the
-    /// user's role on each team. Callers that only need names project via
-    /// <c>.Select(m =&gt; m.TeamName)</c>. Display ordering is the caller's
-    /// responsibility (rendering layer).
-    /// </summary>
-    Task<IReadOnlyList<TeamMembership>> GetActiveTeamMembershipsForUserAsync(
-        Guid userId, CancellationToken cancellationToken = default);
-
     /// <summary>
     /// Enqueues AddUserToTeamResources sync events for all active team
-    /// memberships of a user. Used when the user's Google service email changes.
+    /// memberships of a user. GoogleIntegration calls it when the user's Google
+    /// service email changes.
     /// </summary>
     Task EnqueueGoogleResyncForUserTeamsAsync(
         Guid userId, CancellationToken cancellationToken = default);
@@ -172,16 +141,17 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
     // ==========================================================================
 
     /// <summary>
-    /// Removes a user from all teams in the cache (e.g., on account deletion/suspension).
+    /// Drops the cached team graph after a user's memberships were changed underneath
+    /// the service (Users' account deletion). The inner service has no cache; only the
+    /// decorator does anything here.
     /// </summary>
     void RemoveMemberFromAllTeamsCache(Guid userId);
 
     /// <summary>
-    /// Evicts the ActiveTeams master cache entry so the next read repopulates
-    /// from the database. Use when an orchestrator can't rely on the in-place
-    /// cache mutations the team service performs during writes — typically
-    /// after a transactional rollback, where the DB has reverted but the
-    /// in-memory mutations haven't.
+    /// Drops the cached team graph so the next read repopulates from the database.
+    /// For callers that wrote around the service or rolled a transaction back — Users
+    /// evicts through <c>IActiveTeamsCacheInvalidator</c>. The inner service has no
+    /// cache; only the decorator does anything here.
     /// </summary>
     void InvalidateActiveTeamsCache();
 
@@ -192,40 +162,18 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
     Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default);
 
     // ==========================================================================
-    // System team sync support (issue #570 — §15 Google-writing jobs)
-    //
-    // Narrow read/write methods used exclusively by SystemTeamSyncJob so the
-    // job can drop its DbContext dependency. Each mutation commits in
-    // its own repository-owned unit of work; the caller fan-outs Google sync
-    // calls externally.
+    // System team sync support — the bulk-apply protocol used by SystemTeamSyncJob and
+    // by Development's persona seeder. Each call commits in its own repository-owned
+    // unit of work; the caller fans out Google sync and audit calls afterwards.
     // ==========================================================================
 
     /// <summary>
-    /// Loads every active membership with enough role-assignment / role-
-    /// definition / team context to decide coordinator promotion and
-    /// demotion in-memory. Used by <c>SystemTeamSyncJob.ReconcileCoordinatorRolesAsync</c>.
-    /// </summary>
-    Task<IReadOnlyList<TeamRoleReconciliationMembership>> GetActiveMembershipsForRoleReconciliationAsync(
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Applies a bulk list of <see cref="TeamMember.Role"/> changes (promote
-    /// to Coordinator / demote to Member) in a single save. Invalidates the
-    /// ActiveTeams cache if any change is applied. Returns the number of
-    /// memberships updated.
-    /// </summary>
-    Task<int> ApplyMemberRoleChangesAsync(
-        IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Applies a system-team membership reconciliation in a single save:
-    /// inserts new <see cref="TeamMember"/> rows for <paramref name="userIdsToAdd"/>
+    /// inserts new membership rows for <paramref name="userIdsToAdd"/>
     /// with <see cref="TeamMemberRole.Member"/> + <c>JoinedAt=now</c>, and
     /// soft-removes the active memberships for <paramref name="userIdsToRemove"/>
-    /// by stamping <see cref="TeamMember.LeftAt"/> and cascade-deleting any
-    /// attached <see cref="TeamRoleAssignment"/> rows. Bumps
-    /// <see cref="Team.UpdatedAt"/> and invalidates the ActiveTeams cache
+    /// by stamping <c>LeftAt</c> and cascade-deleting any attached role
+    /// assignments. Bumps the team's <c>UpdatedAt</c> and invalidates the cache
     /// when at least one change lands. Returns true when any writes occur.
     /// </summary>
     /// <remarks>
@@ -239,11 +187,6 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
         IReadOnlyCollection<Guid> userIdsToRemove,
         Instant now,
         CancellationToken cancellationToken = default);
-
-    /// <summary>Deletes every early-entry grant belonging to a user (right-to-erasure).</summary>
-    Task DeleteEarlyEntryGrantsForUserAsync(Guid userId, CancellationToken ct = default);
-
-
 }
 
 public sealed record TeamRoleDefinitionSnapshot(
@@ -274,8 +217,7 @@ public sealed record TeamRoleAssignmentSnapshot(
 /// <c>DevPersonaSeeder</c> and <c>DevelopmentDashboardSeeder</c> in <c>Humans.Development</c>
 /// and <c>DevelopmentBudgetSeeder</c> in <c>Humans.Budget</c>, all of which build multi-section
 /// fixtures and so cannot be pulled into this section. Kept off <see cref="ITeamService"/>
-/// because these three are the only callers and none of them is a production path
-/// (design §15 step 5b, Budget's dev-seeder rule).
+/// because these three are the only callers and none of them is a production path.
 /// </summary>
 /// <remarks>
 /// Implemented explicitly by the section's caching decorator: the Teams-internal members of the

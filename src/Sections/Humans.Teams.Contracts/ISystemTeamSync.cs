@@ -8,12 +8,10 @@ namespace Humans.Teams.Contracts;
 /// </summary>
 /// <remarks>
 /// System-team membership is a Teams invariant and every write the implementation
-/// (<c>Humans.Teams/Services/SystemTeamSyncJob</c>) makes lands in Teams' own tables, so the
-/// contract belongs on this leaf. It sat in <c>Humans.Base.Interfaces.GoogleIntegration</c>
-/// until G5 lane 5c (nobodies-collective/Humans#866) on the belief that Hangfire pinned its
-/// assembly-qualified name; the hourly sweep is registered with
-/// <c>RecurringJob.AddOrUpdate&lt;ISystemTeamSync&gt;(id, …)</c>, which is keyed on the id and
-/// rewritten at every startup, so the stored type string follows the move at boot.
+/// (<c>SystemTeamSyncJob</c>) makes lands in Teams' own tables, so the contract lives on
+/// this leaf. The hourly sweep is registered with
+/// <c>RecurringJob.AddOrUpdate&lt;ISystemTeamSync&gt;(id, …)</c>, keyed on the id, so the
+/// implementing type may move freely.
 /// </remarks>
 public interface ISystemTeamSync
 {

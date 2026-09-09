@@ -8,9 +8,9 @@ namespace Humans.Teams.Data;
 /// <summary>
 /// Repository for the Teams section's tables: <c>teams</c>,
 /// <c>team_members</c>, <c>team_join_requests</c>,
-/// <c>team_join_request_state_histories</c>, <c>team_role_definitions</c>,
-/// <c>team_role_assignments</c>. The only non-test file that touches these
-/// DbSets after the Teams migration lands (§15 Part 1, issue #540).
+/// <c>team_join_request_state_history</c>, <c>team_role_definitions</c>,
+/// <c>team_role_assignments</c> and <c>team_early_entry_grants</c>. The only
+/// non-test file that touches these DbSets.
 ///
 /// <para>
 /// Aggregate-local navs (<c>Team.ParentTeam</c>, <c>Team.ChildTeams</c>,
@@ -353,9 +353,6 @@ internal interface ITeamRepository : IRepository
     /// </summary>
     Task<IReadOnlyDictionary<Guid, int>> GetPendingCountsByTeamIdsAsync(
         IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default);
-
-    /// <summary>Total pending join requests across all teams.</summary>
-    Task<int> GetTotalPendingCountAsync(CancellationToken ct = default);
 
     /// <summary>Inserts a new join request.</summary>
     Task AddRequestAsync(TeamJoinRequest request, CancellationToken ct = default);

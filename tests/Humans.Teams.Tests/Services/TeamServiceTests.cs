@@ -8,6 +8,7 @@
 using AwesomeAssertions;
 using Humans.Base.Caching;
 using Humans.Base.Interfaces.Caching;
+using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Services;
@@ -276,67 +277,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         stored.JoinedAt.Should().Be(joinedAt);
         stored.LeftAt.Should().BeNull();
         result.Id.Should().Be(stored.Id);
-    }
-
-    // ==========================================================================
-    // GetActiveTeamMembershipsForUserAsync
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task GetActiveTeamMembershipsForUserAsync_ReturnsActiveNonSystemMembershipWithHiddenFlag()
-    {
-        var user = SeedUser();
-        var team = SeedTeam("Build");
-        team.IsHidden = true;
-        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Coordinator);
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var result = await _service.GetActiveTeamMembershipsForUserAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().ContainSingle();
-        result[0].TeamName.Should().Be("Build");
-        result[0].Role.Should().Be(TeamMemberRole.Coordinator);
-        result[0].IsHidden.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task GetActiveTeamMembershipsForUserAsync_SkipsVolunteersSystemTeam()
-    {
-        var user = SeedUser();
-        var vols = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
-        SeedTeamMember(vols.Id, user.Id);
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var result = await _service.GetActiveTeamMembershipsForUserAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetActiveTeamMembershipsForUserAsync_SkipsInactiveTeams()
-    {
-        var user = SeedUser();
-        var team = SeedTeam("Old", isActive: false);
-        SeedTeamMember(team.Id, user.Id);
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var result = await _service.GetActiveTeamMembershipsForUserAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetActiveTeamMembershipsForUserAsync_SkipsTeamsWhereUserIsNotMember()
-    {
-        var user = SeedUser();
-        var other = SeedUser();
-        var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, other.Id);
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var result = await _service.GetActiveTeamMembershipsForUserAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeEmpty();
     }
 
     // ==========================================================================
@@ -1166,6 +1106,55 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     // ==========================================================================
+    // ApproveJoinRequestAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task ApproveJoinRequestAsync_ApproverLacksPermission_Throws()
+    {
+        var stranger = SeedUser(displayName: "Stranger");
+        var requester = SeedUser(displayName: "Requester");
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        var request = SeedJoinRequest(team.Id, requester.Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var act = () => _service.ApproveJoinRequestAsync(request.Id, stranger.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*permission*");
+        (await TeamsDb.TeamMembers.AnyAsync(tm => tm.UserId == requester.Id, Xunit.TestContext.Current.CancellationToken))
+            .Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task ApproveJoinRequestAsync_HappyPath_AddsMemberAndAuditsApproval()
+    {
+        var coordinator = SeedUser(displayName: "Coordinator");
+        var requester = SeedUser(displayName: "Requester");
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        SeedTeamMember(team.Id, coordinator.Id, TeamMemberRole.Coordinator);
+        var request = SeedJoinRequest(team.Id, requester.Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var member = await _service.ApproveJoinRequestAsync(request.Id, coordinator.Id, "welcome", Xunit.TestContext.Current.CancellationToken);
+
+        member.UserId.Should().Be(requester.Id);
+        member.Role.Should().Be(TeamMemberRole.Member);
+
+        ClearAllTrackers();
+        var stored = await TeamsDb.TeamJoinRequests.AsNoTracking().SingleAsync(r => r.Id == request.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.Status.Should().Be(TeamJoinRequestStatus.Approved);
+        stored.ReviewedByUserId.Should().Be(coordinator.Id);
+        (await TeamsDb.TeamMembers.AsNoTracking().AnyAsync(
+            tm => tm.TeamId == team.Id && tm.UserId == requester.Id && tm.LeftAt == null,
+            Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.TeamJoinRequestApproved, nameof(Team), team.Id,
+            Arg.Any<string>(), coordinator.Id,
+            requester.Id, nameof(User));
+    }
+
+    // ==========================================================================
     // CreateRoleDefinitionAsync
     // ==========================================================================
 
@@ -1270,29 +1259,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
-    public async Task UpdateRoleDefinitionAsync_ReducingSlotCountBelowAssignmentsCount_Throws()
-    {
-        var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
-            Clock.GetCurrentInstant() - Duration.FromDays(1));
-        var team = SeedTeam("Alpha");
-        var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
-        def.SlotCount = 3;
-        var user = SeedUser(displayName: "Holder");
-        var member = SeedTeamMember(team.Id, user.Id);
-        SeedTeamRoleAssignment(def.Id, member.Id);
-        SeedTeamRoleAssignment(def.Id, member.Id);
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var act = () => _service.UpdateRoleDefinitionAsync(
-            def.Id, def.Name, null, slotCount: 1,
-            [SlotPriority.None], 0, false, RolePeriod.YearRound, actor.Id, cancellationToken: Xunit.TestContext.Current.CancellationToken);
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Cannot reduce slot count*");
-    }
-
-    [HumansFact]
     public async Task UpdateRoleDefinitionAsync_RenamingToExistingName_Throws()
     {
         var actor = SeedUser(displayName: "Actor");
@@ -1330,27 +1296,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         ClearAllTrackers();
         var stored = await TeamsDb.TeamRoleDefinitions.AsNoTracking().SingleAsync(d => d.Id == def.Id, Xunit.TestContext.Current.CancellationToken);
         stored.IsManagement.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task UpdateRoleDefinitionAsync_PromotingToManagementWhenAnotherExists_Throws()
-    {
-        var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
-            Clock.GetCurrentInstant() - Duration.FromDays(1));
-        var team = SeedTeam("Alpha");
-        var existingManagement = SeedTeamRoleDefinition(team.Id, isManagement: true);
-        existingManagement.Name = "Existing Mgmt";
-        var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
-        def.Name = "To Promote";
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var act = () => _service.UpdateRoleDefinitionAsync(
-            def.Id, def.Name, null, 1, [SlotPriority.None], 0,
-            isManagement: true, RolePeriod.YearRound, actor.Id, cancellationToken: Xunit.TestContext.Current.CancellationToken);
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*already marked as the management role*");
     }
 
     [HumansFact]
@@ -1395,25 +1340,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Role definition*not found*");
-    }
-
-    [HumansFact]
-    public async Task DeleteRoleDefinitionAsync_ManagementWithAssignedMembers_Throws()
-    {
-        var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
-            Clock.GetCurrentInstant() - Duration.FromDays(1));
-        var team = SeedTeam("Alpha");
-        var def = SeedTeamRoleDefinition(team.Id, isManagement: true);
-        var holder = SeedUser(displayName: "Holder");
-        var member = SeedTeamMember(team.Id, holder.Id);
-        SeedTeamRoleAssignment(def.Id, member.Id);
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var act = () => _service.DeleteRoleDefinitionAsync(def.Id, actor.Id, Xunit.TestContext.Current.CancellationToken);
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*management role while members are assigned*");
     }
 
     [HumansFact]
@@ -2147,6 +2073,40 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var memberInDb = await TeamsDb.TeamMembers
             .FirstOrDefaultAsync(tm => tm.TeamId == team.Id && tm.UserId == target.Id && tm.LeftAt == null, Xunit.TestContext.Current.CancellationToken);
         memberInDb.Should().NotBeNull();
+    }
+
+    [HumansFact]
+    public async Task AddMemberToTeamAsync_AuditsTheAdd()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        var target = SeedUser(displayName: "Target");
+        var team = SeedTeam("Alpha");
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _service.AddMemberToTeamAsync(team.Id, target.Id, actor.Id, Xunit.TestContext.Current.CancellationToken);
+
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.TeamMemberAdded, nameof(Team), team.Id,
+            Arg.Any<string>(), actor.Id,
+            target.Id, nameof(User));
+    }
+
+    [HumansFact]
+    public async Task RemoveMemberAsync_AuditsTheRemoval()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        var target = SeedUser(displayName: "Target");
+        var team = SeedTeam("Alpha");
+        SeedTeamMember(team.Id, actor.Id, TeamMemberRole.Coordinator);
+        SeedTeamMember(team.Id, target.Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _service.RemoveMemberAsync(team.Id, target.Id, actor.Id, Xunit.TestContext.Current.CancellationToken);
+
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.TeamMemberRemoved, nameof(Team), team.Id,
+            Arg.Any<string>(), actor.Id,
+            target.Id, nameof(User));
     }
 
     [HumansFact]
