@@ -345,7 +345,7 @@ Four fanouts exist today:
 |--------------|----------------------|----------------------|---------------|
 | `IGdprService` | `IUserDataContributor` (`Humans.Gdpr.Contracts`) | every user-scoped §8 section (see §8a) | GDPR Article 15 export document + Article 17 erasure |
 | `IICalFeedService` (`ICalFeedService`) | `ICalendarFeedContributor` (`Humans.Calendar.Contracts`) | `EventService` (Event Guide), `ShiftSignupService` (Shifts) | a user's personal iCal `VCALENDAR` of `CalendarFeedItem` rows |
-| `IEarlyEntryService` (`EarlyEntryService`) | `IEarlyEntryProvider` (`Humans.EarlyEntry.Contracts`) | Camps, Shifts, Teams | a user's assembled early-entry grants |
+| `IEarlyEntryService` (`EarlyEntryService`) | `IEarlyEntryProvider` (`Humans.EarlyEntry`, `Contracts/` folder) | Camps, Shifts, Teams | a user's assembled early-entry grants |
 | any holder of bare Guids | `IEntityNameContributor` (`Humans.Base.Interfaces`) | `CachingTeamService` (Teams), `CachingUserService` (Users) | `Guid → EntityName(type, display name, slug?)` for the ids on one page |
 
 `IEntityNameContributor` is the one that lives in Base rather than in a consumer's contracts leaf, because it has more than one consumer and they must not reference each other (nobodies-collective/Humans#1059). It inverts the arrow that used to make AuditLog reference Teams and GoogleIntegration just to print names: sections point at the Base contract, and the consumer names no section. Wide-fan-in sections that must not gain outbound links — Audit, Auth, Search — are exactly its intended callers.

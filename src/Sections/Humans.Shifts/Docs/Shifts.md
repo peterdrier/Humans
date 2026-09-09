@@ -204,7 +204,7 @@ Selected routes:
 | `POST /Shifts/Dashboard/Voluntell` | Dashboard voluntell |
 | `GET /Profile/Me/ShiftInfo` | Volunteer's own shift-matching profile (skills, quirks, languages) |
 | `POST /Profile/Me/ShiftInfo` | Save shift-matching profile |
-| `GET /Shifts/Admin/EarlyEntry` | Cross-source Early Entry roster (Camps + Shifts + Teams grants), flagging humans who hold EE from more than one source. Orchestrator page, deliberately not its own section; interim location, gated by `ShiftDashboardAccess` |
+| `GET /Shifts/Admin/EarlyEntry` | Cross-source Early Entry roster, owned by the EarlyEntry section (`src/Sections/Humans.EarlyEntry`); the URL prefix predates it. Gated by `ShiftDashboardAccess` |
 
 ## Actors & Roles
 

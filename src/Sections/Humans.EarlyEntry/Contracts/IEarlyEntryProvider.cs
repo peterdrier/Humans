@@ -3,20 +3,11 @@ using NodaTime;
 
 namespace Humans.EarlyEntry.Contracts;
 
-/// <summary>
-/// Contributes the Early Entry grants this section owns for the active event.
-/// Mirrors the GDPR <c>IUserDataContributor</c> fan-out: each section that owns
-/// EE-relevant data implements this; <see cref="IEarlyEntryService"/> assembles
-/// the cross-source view. Read-only. A section with nothing to contribute
-/// (e.g. no EE start date configured) returns an empty list.
-/// </summary>
+/// <summary>What this section grants for the active event; empty when it grants nothing.</summary>
 public interface IEarlyEntryProvider : IFanout
 {
     Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct);
 }
 
-/// <summary>
-/// One EE grant: the user, the date they may enter, and a display label for the
-/// source (e.g. "Camp: Flaming Lotus", "Shift: Flags").
-/// </summary>
+/// <summary><c>Source</c> is display copy, rendered verbatim (e.g. "Camp: Flaming Lotus").</summary>
 public sealed record EarlyEntryGrant(Guid UserId, LocalDate EntryDate, string Source);

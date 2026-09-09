@@ -238,7 +238,7 @@ Three controllers serve this section. `TeamController` (`[Route("Teams")]`) hand
 - **Camps:** Active camp lead assignments feed the Barrio Leads system team via `ICampRepository.GetActiveLeadUserIdsAsync` / `IsLeadAnywhereAsync`.
 - **Users/Identity:** `IUserServiceRead.GetUserInfosAsync` — batch-resolves `UserInfo` for nav-stripped sections, projected directly into DTOs (not stitched back onto entity navs).
 - **Profiles:** Called by `IAccountMergeService` (Profiles section) — `ITeamService.ReassignToUserAsync` re-FKs `TeamMember` and `TeamJoinRequest` from source to target during account merge fold.
-- **Early Entry:** `TeamService` implements `IEarlyEntryProvider` (registered in `TeamsSectionExtensions`); `GetEarlyEntriesAsync` projects grants from `EarlyEntryEnabled` teams to the cross-section `EarlyEntryGrant` view (`"{TeamName}: {ProjectName}"`) via `TeamEarlyEntryProjection`. `IEarlyEntryService` fans out over all providers (Camps, Shifts, Teams) to assemble the festival EE roster.
+- **Early Entry:** `TeamService` implements `IEarlyEntryProvider` (registered in the section's `Section.cs`); `GetEarlyEntriesAsync` projects grants from `EarlyEntryEnabled` teams to the cross-section `EarlyEntryGrant` view (`"{TeamName}: {ProjectName}"`) via `TeamEarlyEntryProjection`. `IEarlyEntryService` fans out over all providers (Camps, Shifts, Teams) to assemble the festival EE roster.
 
 ## Architecture
 
