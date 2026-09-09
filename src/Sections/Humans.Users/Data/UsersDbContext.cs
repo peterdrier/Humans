@@ -18,11 +18,6 @@ namespace Humans.Users.Data;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Profiles was mid-transition into Users and the move was never finished;
-/// peel 15 accepts the merged state as the end state (design doc §10.3) —
-/// one context, one repository family, no profiles↔users boundary.
-/// </para>
-/// <para>
 /// Carries the Identity base (<c>IdentityDbContext</c>): nothing pins Identity
 /// to a context name, so the base class moved here when <c>HumansDbContext</c>
 /// was deleted. Internal-sealed like every section context (issue #750);

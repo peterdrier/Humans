@@ -77,7 +77,7 @@ internal sealed class AccountProvisioningService(
         // see nobodies-collective/Humans#687
         await userEmailService.AddProvisionedEmailAsync(newUser.Id, email, ct);
 
-        // see #635 (§15i) — Stub Profile invariant; UserService owns UserInfo storage/cache.
+        // Stub Profile invariant; UserService owns UserInfo storage/cache.
         // Import path seeds no names; the empty stub is filled in during onboarding.
         await userService.EnsureStubProfileAsync(newUser.Id, ct: ct);
 

@@ -281,17 +281,6 @@ internal sealed partial class UserRepository
             .ToDictionaryAsync(x => x.UserId, x => x.Email, ct);
     }
 
-    public async Task<string?> GetVerifiedUserEmailAddressAsync(
-        Guid userId, Guid emailId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.UserEmails
-            .AsNoTracking()
-            .Where(ue => ue.Id == emailId && ue.UserId == userId && ue.IsVerified)
-            .Select(ue => ue.Email)
-            .FirstOrDefaultAsync(ct);
-    }
-
     public async Task<IReadOnlyList<Guid>> GetUserIdsByUserEmailPrefixAndSuffixAsync(
         string prefix,
         string suffix,
@@ -375,17 +364,6 @@ internal sealed partial class UserRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         ctx.Attach(email);
         ctx.UserEmails.Remove(email);
-        await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task RemoveAllUserEmailsForUserAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var emails = await ctx.UserEmails
-            .Where(e => e.UserId == userId)
-            .ToListAsync(ct);
-
-        ctx.UserEmails.RemoveRange(emails);
         await ctx.SaveChangesAsync(ct);
     }
 

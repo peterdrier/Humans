@@ -68,8 +68,8 @@ public class UserInfoTests
     [HumansFact]
     public void GoogleEmailStatus_falls_back_to_verified_provider_row_when_no_IsGoogle_row()
     {
-        // ~pre-#687 users have no IsGoogle row; sync targets the verified provider (OAuth) row,
-        // so its rejection must drive suppression (Codex review on #1015).
+        // Legacy users predating the IsGoogle column have no IsGoogle row; sync
+        // targets the verified provider (OAuth) row, so its rejection must drive suppression.
         var userId = Guid.NewGuid();
         var providerRow = new UserEmail
         {
@@ -268,7 +268,7 @@ public class UserInfoTests
         info.HasTicket.Should().BeFalse();
     }
 
-    // #1097 — resolution order User.BurnerName → Profile.BurnerName → legacy DisplayName.
+    // Resolution order: User.BurnerName → Profile.BurnerName → legacy DisplayName.
 
     [HumansFact]
     public void BurnerName_prefers_the_User_column_over_the_Profile()

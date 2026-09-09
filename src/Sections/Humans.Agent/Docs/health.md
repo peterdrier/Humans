@@ -101,6 +101,9 @@ The numbered invariants in `Agent.md` are the contract; the load-bearing ones re
 - **Retention job logs at Warning** on deletion so the entry shows in the prod log viewer
   (Warning+ only).
 - **`SectionAnnotations` publishes canonical keys only** — aliases are spellings, not sections.
+- **`AgentService.RunTurnAsync` and `AnthropicClient.StreamAsync` are long by design.** They are
+  the streaming loops (the manual enumerator above; SSE block assembly), and their weight on
+  the reforge score is examined complexity, not unexamined debt.
 
 ## History
 

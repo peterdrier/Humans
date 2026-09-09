@@ -96,7 +96,6 @@ internal sealed class DuplicateAccountService(
                     if (pairGroups.ContainsKey(pairKey))
                         continue;
 
-                    // Raw email for display from first source.
                     var firstSource = entries.First().Source;
                     var emailStart = firstSource.IndexOf('(');
                     var emailEnd = firstSource.IndexOfAny([',', ')'], emailStart + 1);

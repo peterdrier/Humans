@@ -12,8 +12,8 @@ using Humans.Users.Services;
 namespace Humans.Users.Tests.Services;
 
 /// <summary>
-/// Tests for <see cref="IUserEmailService.ReconcileOAuthIdentityAsync"/>
-/// (issue nobodies-collective/Humans#697). The reconcile method is the
+/// Tests for <see cref="IUserEmailService.ReconcileOAuthIdentityAsync"/>.
+/// The reconcile method is the
 /// single OAuth-callback entry point that mutates <see cref="UserEmail"/>
 /// rows; it owns every audit row written for the OAuth path.
 /// </summary>

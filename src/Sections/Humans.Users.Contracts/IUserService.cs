@@ -12,8 +12,7 @@ namespace Humans.Users.Contracts;
 /// next several PRs and per-PR budget churn is not useful while that is in
 /// flight. Owner re-adds [SurfaceBudget(N)] once the merged surface stabilizes.
 /// </remarks>
-// COVERAGE REDUCED (G5 lane 3b, nobodies-collective/Humans#866): dropped IApplicationService.
-// Lost on the implementing class: HUM0027 (role-axis exclusivity). See Humans.Users.Contracts.csproj.
+// No marker interface — see Humans.Users.Contracts.csproj.
 public interface IUserService : IUserServiceRead, IUserMerge
 {
     /// <summary>
@@ -75,7 +74,7 @@ public interface IUserService : IUserServiceRead, IUserMerge
     Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(
         Guid userId, CancellationToken ct = default);
 
-    // ---- Methods added for Profile-section migration (§15 Step 0) ----
+    // ---- User storage commands ----
 
     /// <summary>
     /// Sync-driven Google status write targeting the user's canonical verified
@@ -293,7 +292,7 @@ public interface IUserService : IUserServiceRead, IUserMerge
         UserEmailReconcilePlanCommand command,
         CancellationToken ct = default);
 
-    // ---- Methods added for ContactService migration ----
+    // ---- Consent-reminder storage command ----
 
     /// <summary>
     /// Sets <c>User.LastConsentReminderSentAt</c> to <paramref name="sentAt"/>.
@@ -303,7 +302,7 @@ public interface IUserService : IUserServiceRead, IUserMerge
     Task SetLastConsentReminderSentAsync(
         Guid userId, Instant sentAt, CancellationToken ct = default);
 
-    // ---- Methods added for AccountMergeService fold-into-target redesign ----
+    // ---- Merge & admin cleanup commands ----
 
     /// <summary>
     /// Tombstones source user as merged into target. Sets

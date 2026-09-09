@@ -23,30 +23,9 @@ namespace Humans.Users;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Registrations are <c>UsersSectionExtensions.AddUsersSection</c> and
-/// <c>ProfileSectionExtensions.AddProfileSection</c> merged verbatim, plus the
-/// <c>AddSectionDbContext&lt;UsersDbContext&gt;</c> line moved out of
-/// <c>InfrastructureServiceCollectionExtensions</c> (design §15 step 11).
-/// </para>
-/// <para>
-/// <c>IDashboardService</c> and <c>IAdminDashboardService</c> are both gone entirely — the
-/// member dashboard's content and the admin dashboard's tiles are section-contributed chrome
-/// now (nobodies-collective/Humans#1091). The admin-dashboard aggregator's pieces scattered to
-/// their owning sections: the tier-applications card to Governance, the preferred-language
-/// card and audience-segmentation diagnostic stayed here (<c>IUsersAudienceService</c>), and
-/// the Venn/UpSet set-membership card to Debug.
-/// </para>
-/// <para>
-/// The <c>CachingUserService</c> block is copied as-is and is deliberately not tidied: one
-/// Singleton resolved six ways, an <c>AddHostedService</c> for its startup warm, and the inner
-/// <c>UserService</c> registered keyed with a Scoped unwrap so the decorator can open a scope
-/// per call.
-/// </para>
-/// <para>
-/// <c>ProcessAccountDeletionsJob</c> and <c>SuspendNonCompliantMembersJob</c> moved into this
-/// project's <c>Contracts/</c> folder at G5 lane 5b-4 (nobodies-collective/Humans#866), and
-/// their registration followed from Shell's <c>AdminSectionExtensions</c> at #1074's jobs
-/// seam — their schedule is contributed via <c>SectionJobs.cs</c>.
+/// The <c>CachingUserService</c> registration block: one Singleton resolved six ways, an
+/// <c>AddHostedService</c> for its startup warm, and the inner <c>UserService</c> registered
+/// keyed-scoped so the decorator can open a scope per call.
 /// </para>
 /// </remarks>
 public sealed class Section : ISection
@@ -54,25 +33,22 @@ public sealed class Section : ISection
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         // Users carries the seven ASP.NET Identity tables; its sentinel is the chain-created
-        // users table. Registered here rather than in AddHumansPersistence since #866 lane 2.
+        // users table.
         services.AddSectionDbContext<UsersDbContext>(sentinelTable: "users");
 
         // Catches Identity-machinery writes (UpdateAsync, LastLoginAt, OAuth UserEmail).
-        // Singleton, and resolved by AddSectionDbContext through IEnumerable<IInterceptor> onto
-        // both the DbContext and the DbContextFactory pipelines of EVERY section — the
-        // interceptor pattern-matches User/UserEmail/EventParticipation/CommunicationPreference
-        // wherever they are saved. AddSectionDbContext named the concrete type until this lane;
-        // it resolves sp.GetServices<IInterceptor>() now, so a section owns its own
-        // interceptors and Base names none of them.
+        // Singleton, resolved onto every section's DbContext and DbContextFactory pipelines via
+        // IEnumerable<IInterceptor> — the interceptor pattern-matches
+        // User/UserEmail/EventParticipation/CommunicationPreference wherever they are saved.
+        // A section owns its own interceptors; Base names none of them.
         services.AddSingleton<UserInfoSaveChangesInterceptor>();
         services.AddSingleton<IInterceptor>(sp => sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
 
-        // User section — see #511 / #703. CachingUserService decorator + UserInfo read-model spans User/Profile sections.
+        // CachingUserService decorator + UserInfo read-model span the User and Profile tables.
         services.AddSingleton<IUserRepository, UserRepository>();
 
-        // Account merge + duplicate detection — moved Profiles → Users (PR 899): the
-        // AccountMergeRequests table is a Users table, so its repository + services live here.
-        // AccountMergeService also contributes to the GDPR export fan-out (IUserDataContributor).
+        // AccountMergeRequests is a Users table, so its repository and services live here;
+        // AccountMergeService also feeds the GDPR export fan-out.
         services.AddSingleton<IAccountMergeRepository, AccountMergeRepository>();
         services.AddScoped<AccountMergeService>();
         services.AddScoped<IAccountMergeService>(sp => sp.GetRequiredService<AccountMergeService>());
@@ -89,7 +65,7 @@ public sealed class Section : ISection
         services.AddSingleton<CachingUserService>();
         services.AddSingleton<IUserService>(sp => sp.GetRequiredService<CachingUserService>());
         services.AddSingleton<IUserServiceRead>(sp => sp.GetRequiredService<CachingUserService>());
-        // Guid → display-name fan-out (nobodies-collective/Humans#1059).
+        // Guid → display-name fan-out.
         services.AddSingleton<IEntityNameContributor>(sp => sp.GetRequiredService<CachingUserService>());
 
         // Same Singleton instance must back invalidator + merge so external "user changed" signals hit the cache owner.
@@ -108,7 +84,7 @@ public sealed class Section : ISection
         // Hosted service for TrackedCache StartAsync → WarmAllAsync.
         services.AddHostedService(sp => sp.GetRequiredService<CachingUserService>());
 
-        // Profile section — see #504. Singleton repos so CachingUserService injects directly without scope-factory.
+        // Singleton repos so CachingUserService injects directly without a scope factory.
         services.AddSingleton<ICommunicationPreferenceRepository, CommunicationPreferenceRepository>();
 
         services.AddScoped<IUnsubscribeTokenProvider, UnsubscribeTokenProvider>();
@@ -132,29 +108,23 @@ public sealed class Section : ISection
         services.AddScoped<IProfileEditorService, ProfileEditorService>();
         services.AddScoped<IAccountProvisioningService, AccountProvisioningService>();
 
-        // Resource-based authorization handler for UserEmail operations. The *policy* stays in
-        // Shell's AuthorizationPolicyExtensions; the handler moves in with the section
-        // (design §15 step 6's asymmetry).
+        // Resource-based authorization handler for UserEmail operations. Policy stays in
+        // Shell's AuthorizationPolicyExtensions; the handler lives with the section.
         services.AddSingleton<IAuthorizationHandler, UserEmailAuthorizationHandler>();
 
         // Backs PolicyNames.HumanAdminOnly (registered in this section's Policies).
         services.AddSingleton<IAuthorizationHandler, HumanAdminOnlyHandler>();
 
-        // FullProfile cache retired — denormalized reads go through IUserService.GetUserInfoAsync.
         services.AddScoped<ProfileService>();
         services.AddScoped<IProfilePictureService>(sp => sp.GetRequiredService<ProfileService>());
 
         // The suspend/unsuspend state machine over this section's own IUserService, and the body
-        // of the nightly non-compliance sweep. Both arrived at G5 lane 4b-2d from Base (Peter,
-        // 2026-08-14: membership lifecycle is Users, not Governance). Both are orchestrators by
-        // the hard rules' definition — they inject no I*Repository — but they orchestrate *this*
-        // section, and every outbound edge is another section's leaf.
+        // of the nightly non-compliance sweep. Orchestrators: no repository injected, and every
+        // outbound edge is another section's leaf.
         services.AddScoped<IHumanLifecycleService, HumanLifecycleService>();
         services.AddScoped<INonCompliantMemberSuspension, NonCompliantMemberSuspension>();
 
-        // The last three Users services to leave Base, at G5 lane 5c. Same shape as the pair
-        // above: no repository, so orchestrators by the hard rules' definition, but what they
-        // orchestrate is this section and every outbound edge is another section's leaf.
+        // Same shape: no repository, so orchestrators by the hard rules' definition.
         // ExternalLoginService keeps its Humans.Application.Services.Users namespace —
         // HUM0005 names it as the sole legal caller of ReconcileOAuthIdentityAsync by full name.
         services.AddScoped<IAccountDeletionService, AccountDeletionService>();
@@ -164,8 +134,7 @@ public sealed class Section : ISection
         services.AddScoped<ProcessAccountDeletionsJob>();
         services.AddScoped<SuspendNonCompliantMembersJob>();
 
-        // Audience-segmentation diagnostic for UsersAdminController.Audience — split off the
-        // deleted admin-dashboard aggregator at nobodies-collective/Humans#1091.
+        // Audience-segmentation diagnostic for UsersAdminController.Audience.
         services.AddScoped<IUsersAudienceService, UsersAudienceService>();
     }
 }

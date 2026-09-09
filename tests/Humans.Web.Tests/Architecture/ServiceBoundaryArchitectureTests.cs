@@ -90,7 +90,7 @@ public class ServiceBoundaryArchitectureTests
     /// injects <c>IUserServiceRead</c> and <c>Humans.UI</c> names the <c>User</c> entity — so
     /// that leaf must hold no reference back, or 4b-iii closes an assembly cycle when
     /// <c>HumansControllerBase</c> moves into Base. Peter's ruling: the migration outranks the
-    /// marker. The markers were dropped and each declaration carries a COVERAGE REDUCED comment.
+    /// marker. The markers were dropped; <c>Humans.Users.Contracts.csproj</c> carries the record.
     ///
     /// Listed by name rather than excluding the whole assembly ON PURPOSE: a NEW unmarked
     /// I*Service on that leaf still fails this test. The exclusion covers exactly the interfaces

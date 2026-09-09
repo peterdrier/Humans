@@ -35,14 +35,12 @@ internal sealed class CommunicationPreferenceConfiguration : IEntityTypeConfigur
             .HasColumnName("SubscribedAt")
             .HasColumnType("timestamp with time zone");
 
-        // Issue #635 (§15i): inverse-side FK preservation after the User-side
-        // nav (User.CommunicationPreferences) was stripped.
+        // This config owns the cascade-delete FK from User to CommunicationPreference.
         builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(cp => cp.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // One preference per user per category
         builder.HasIndex(cp => new { cp.UserId, cp.Category })
             .IsUnique();
 

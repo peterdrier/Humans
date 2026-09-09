@@ -10,7 +10,7 @@ using Humans.Users.Data;
 namespace Humans.Users.Tests.Repositories;
 
 /// <summary>
-/// Repository tests for <see cref="UserRepository"/> — PR 4 Task 4.
+/// Repository tests for <c>UserRepository</c> user-email lookups.
 /// </summary>
 public sealed class UserRepositoryUserEmailTests : IDisposable
 {
@@ -62,7 +62,7 @@ public sealed class UserRepositoryUserEmailTests : IDisposable
     [HumansFact]
     public async Task SetUserEmailGoogleExclusiveAsync_ClearsRejectedStatus_OnPromotedRow()
     {
-        // Switching the Google identity to a previously-rejected address retries it (#687).
+        // Switching the Google identity to a previously-rejected address retries it.
         var userId = Guid.NewGuid();
         await SeedVerifiedAsync(userId, "a@x.test", isGoogle: true);
         var rowB = await SeedVerifiedAsync(userId, "b@x.test", isGoogle: false, googleStatus: GoogleEmailStatus.Rejected);
@@ -80,7 +80,7 @@ public sealed class UserRepositoryUserEmailTests : IDisposable
     public async Task SetUserEmailGoogleExclusiveAsync_ClearsRejectedStatus_WhenReassertingCurrentGoogleRow()
     {
         // The sole/current Google address got rejected — re-asserting it (the Retry path) must
-        // clear the rejection even though IsGoogle does not change (#687).
+        // clear the rejection even though IsGoogle does not change.
         var userId = Guid.NewGuid();
         var rowA = await SeedVerifiedAsync(userId, "a@x.test", isGoogle: true, googleStatus: GoogleEmailStatus.Rejected);
 
@@ -117,9 +117,8 @@ public sealed class UserRepositoryUserEmailTests : IDisposable
     // agree with it in GoogleGroupSyncServiceTests / GoogleWorkspaceSyncServiceTests.
 
     // Note: the OAuth-callback write path is now driven by
-    // UserEmailService.ReconcileOAuthIdentityAsync (issue
-    // nobodies-collective/Humans#697); the legacy repo-level UpdateEmailAsync
-    // primitive is gone. Service-level coverage lives in
+    // UserEmailService.ReconcileOAuthIdentityAsync; the legacy repo-level
+    // UpdateEmailAsync primitive is gone. Service-level coverage lives in
     // UserEmailServiceReconcileOAuthTests; controller-level coverage in
     // AccountControllerOAuthReconcileTests.
 

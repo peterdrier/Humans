@@ -15,9 +15,9 @@
 
 ## Business Context
 
-The cantina feeds humans working shifts of 6+ hours. Dietary preferences, allergies, intolerances, and medical conditions are only relevant once someone has actually signed up for a qualifying shift — collecting them at preference-setup time is premature and was removed from `/Profile/ShiftInfo` when Feature 33 (Shift Preference Wizard) shipped.
+The cantina feeds humans working shifts of 6+ hours. Dietary preferences, allergies, intolerances, and medical conditions are only relevant once someone has actually signed up for a qualifying shift, so `/Profile/Me/ShiftInfo` (the preference wizard) does not collect them.
 
-This feature replaces that loss by surfacing the questions exactly when the data becomes useful: when a human signs up for (or is voluntold into) a 6+ hour shift and the cantina therefore needs to plan their meals.
+This feature surfaces the questions exactly when the data becomes useful: when a human signs up for (or is voluntold into) a 6+ hour shift and the cantina therefore needs to plan their meals.
 
 ## Authorization
 
@@ -69,8 +69,8 @@ No retention policy changes; the data lives only as long as the user account doe
   - **Allergies** — optional multi-select chips: `Peanut`, `Tree nut`, `Dairy`, `Egg`, `Shellfish`, `Wheat/Gluten`, `Soy`, `Sesame`, `Other`. Choosing `Other` reveals a single-line text input (`AllergyOtherText`, max 500 chars — matches existing DB length).
   - **Intolerances** — optional multi-select chips: `Lactose`, `Gluten`, `Histamine`, `Other`. Choosing `Other` reveals a single-line text input (`IntoleranceOtherText`, max 500 chars — matches existing DB length).
   - **Medical conditions** — optional free-text textarea (max 4000 chars, the existing DB length). Hint copy: "Only visible to you and the No-Info Admins. Anything coordinators should know — diabetes, epilepsy, severe injuries, etc."
-- All values persist to `Profile` columns of the same name (moved from `VolunteerEventProfile`). No new columns.
-- POST validates: "Other" text fields required iff `Other` is selected in their parent chip; medical conditions ≤ 4000 chars; allergies are filtered against `DietaryOptions.AllergyOptions` before saving. **Dietary preference is not re-validated on POST** — the radio group constrains the UI, but `Profile.DietaryPreference` is free text and any non-blank string persists (see `docs/sections/Profiles.md` Invariants for the rationale).
+- All values persist to `Profile` columns of the same name. No new columns.
+- POST validates: "Other" text fields required iff `Other` is selected in their parent chip; medical conditions ≤ 4000 chars; allergies are filtered against `DietaryOptions.AllergyOptions` before saving. **Dietary preference is not re-validated on POST** — the radio group constrains the UI, but `Profile.DietaryPreference` is free text and any non-blank string persists (see the [section doc](../Users.md) Invariants for the rationale).
 - On success: redirect back to `/` (dashboard). The Things-to-do card re-renders on the dashboard with the dietary/medical item gone (per US-35.1).
 - On validation failure: re-render with errors, preserve all entered values.
 
@@ -109,7 +109,7 @@ No retention policy changes; the data lives only as long as the user account doe
 **So that** the cantina never gets blindsided
 
 **Acceptance Criteria:**
-- `ShiftsController.ToggleDay` redirects to `/Profile/Me/DietaryMedical?returnAction=signup&shiftId=...` when `ShiftSignupService.ToggleDayAsync` returns `NeedsDietaryFirst` — i.e. the target shift `QualifiesForCantinaMeal()` and `DietaryPreference` is empty. (`SignUp` / `SignUpRange` no longer exist on the controller.)
+- `ShiftsController.ToggleDay` redirects to `/Profile/Me/DietaryMedical?returnAction=signup&shiftId=...` when `ShiftSignupService.ToggleDayAsync` returns `NeedsDietaryFirst` — i.e. the target shift `QualifiesForCantinaMeal()` and `DietaryPreference` is empty.
 - On successful save, the form replays the signup (`ProfileController.DietaryMedical` POST branches on `returnAction`).
 - A banner on `/Shifts` and `/Shifts/Mine` (`DietaryMissingBannerViewComponent`) plus disabled Sign-Up buttons catch humans who already have a qualifying signup but no dietary on file.
 
@@ -140,7 +140,7 @@ The check operates over the user's **currently-active signups only**:
 
 ## Data Model
 
-Fields live on `Profile` (moved from `VolunteerEventProfile`; the current invariants are in [`sections/Profiles.md`](../Users.md)). The corresponding columns on `VolunteerEventProfile` are retained-only tombstones (XML-doc'd "RETAINED for prod-soak drop — do NOT read or write these") pending a deferred column-drop PR per `memory/architecture/no-drops-until-prod-verified.md`:
+Fields live on `Profile` (invariants in the [section doc](../Users.md)). Same-named columns on `VolunteerEventProfile` are retained-only tombstones (XML-doc'd "RETAINED for prod-soak drop — do NOT read or write these") pending a deferred column-drop PR per `memory/architecture/no-drops-until-prod-verified.md`:
 
 | Column | Type | Notes |
 |---|---|---|
@@ -166,7 +166,7 @@ Fields live on `Profile` (moved from `VolunteerEventProfile`; the current invari
 
 ## Cross-section dependencies
 
-Dietary/medical fields were moved from `VolunteerEventProfile` to `Profile` (see [`sections/Profiles.md`](../Users.md) and [`sections/Shifts.md`](../../../Humans.Shifts/Docs/Shifts.md)). Saves now go through `IProfileEditorService.SaveDietaryMedicalAsync` (→ `IUserService.SaveDietaryMedicalAsync` → `ProfileRepository`) — **not** `IShiftManagementService`.
+Dietary/medical fields are `Profile`-owned (see the [Users](../Users.md) and [Shifts](../../../Humans.Shifts/Docs/Shifts.md) section docs). Saves go through `IProfileEditorService.SaveDietaryMedicalAsync` (→ `IUserService.SaveDietaryMedicalAsync` → `IUserRepository`) — **not** `IShiftManagementService`.
 
 - **Shifts** (reads, gate): `ShiftSignup` status + `Shift.Duration`/`IsAllDay` to compute qualifying-shift gate. Method `IShiftManagementService.HasQualifyingCantinaSignupAsync(Guid userId, CancellationToken ct)` on the existing service. Pure-query, no `Include` of `User`. Internally calls `Shift.QualifiesForCantinaMeal()` (pure helper on the entity).
 - **Profile** (reads, form): The dietary/medical form view pre-populates from `UserInfo` (loaded by `ProfileController` via `IUserService`). The `DietaryPreference`/`Allergies`/`Intolerances`/`AllergyOtherText`/`IntoleranceOtherText`/`MedicalConditions` fields are now `Profile`-owned.
@@ -187,7 +187,7 @@ Dietary/medical fields were moved from `VolunteerEventProfile` to `Profile` (see
 
 ## Related Features
 
-- [33 — Shift Preference Wizard](../../../Humans.Shifts/Docs/features/shift-preference-wizard.md): removed dietary/medical from `/Profile/ShiftInfo`, creating the need for this nudge.
+- [33 — Shift Preference Wizard](../../../Humans.Shifts/Docs/features/shift-preference-wizard.md): `/Profile/Me/ShiftInfo` collects no dietary/medical data; this nudge does.
 - [25 — Shift Management](../../../Humans.Shifts/Docs/features/shift-management.md): supplies the `ShiftSignup` rows the gate queries.
 - [Issue #273](https://github.com/nobodies-collective/Humans/issues/273): Dashboard "Things to do" card pattern — this feature adds one more item type.
 - [Issue #279](https://github.com/nobodies-collective/Humans/issues/279): tracking issue (this spec fleshes it out and unblocks).

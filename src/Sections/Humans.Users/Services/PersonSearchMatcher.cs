@@ -62,7 +62,7 @@ internal static class PersonSearchMatcher
         if (includeExactName && string.Equals(Fold(user.BurnerName), foldedQuery, StringComparison.Ordinal))
             return new PersonSearchMatch("Exact Name", null, null, ScoreExactName);
 
-        // ── Name bucket: resolved display name (BurnerName → DisplayName fallback). Public. ──
+        // ── Name bucket: the already-resolved UserInfo.BurnerName. Public. ──
         if (includeName && AllTokensIn(user.BurnerName, tokens))
             return new PersonSearchMatch("Name", null, null, ScoreNameTier(Fold(user.BurnerName), foldedQuery));
 

@@ -6,7 +6,7 @@ using Humans.Base.Authorization;
 
 namespace Humans.Users.Controllers;
 
-// Profile-picture DB→FS migration verification — see #702. Idempotent; drives migrate-on-read.
+// Profile-picture DB→FS migration verification. Idempotent; drives migrate-on-read.
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Profile/Admin/PictureMigration")]
 internal sealed class ProfilePictureMigrationAdminController(

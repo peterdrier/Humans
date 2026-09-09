@@ -19,10 +19,7 @@ using NSubstitute;
 namespace Humans.Users.Tests.Services;
 
 /// <summary>
-/// Orchestration coverage for <see cref="IAccountDeletionService"/> — the
-/// single entry point that replaced the cascade code formerly scattered
-/// across <c>UserService</c>, <c>ProfileService</c>, and
-/// <c>OnboardingService</c> (issue nobodies-collective/Humans#582). Verifies the order + side effects
+/// The single deletion entry point. Verifies cascade order and side effects
 /// of the three deletion paths: user-requested, admin-initiated, expiry.
 /// </summary>
 public class AccountDeletionServiceTests
@@ -429,8 +426,8 @@ public class AccountDeletionServiceTests
     [HumansFact]
     public async Task PurgeAsync_PartialFanoutFailure_StillInvalidatesTheIdsAlreadyErased()
     {
-        // Regression guard (peterdrier/Humans#1544 review): erasure is interleaved with
-        // invalidation, so an archived source fully erased before a later id throws keeps
+        // Erasure is interleaved with the cascade, not appended after it: an
+        // archived source fully erased before a later id throws still keeps
         // its cache dropped — an admin purge has no daily retry to fix it otherwise.
         var survivor = Guid.NewGuid();
         var archived = Guid.NewGuid();

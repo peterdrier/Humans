@@ -31,8 +31,8 @@ public class UserEmailServiceTests
         var store = Substitute.For<IUserStore<User>>();
         _userManager = Substitute.For<UserManager<User>>(
             store, null, null, null, null, null, null, null, null);
-        // Default: user holds no ticket-linked emails, so the #758 delete-guard is a no-op
-        // unless a test overrides GetTicketOrdersAsync.
+        // Default: user holds no ticket-linked emails, so the ticket-linked delete
+        // guard is a no-op unless a test overrides GetTicketOrdersAsync.
         _ticketServiceRead.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<TicketOrderInfo>>([]));
         _serviceProvider = new ServiceLocatorBuilder()
@@ -441,7 +441,7 @@ public class UserEmailServiceTests
     {
         // Verified non-OAuth secondary email + a remaining verified primary +
         // an OAuth login on AspNetUserLogins → preserve-auth-method invariant
-        // is satisfied; delete proceeds and invalidates the FullProfile cache.
+        // is satisfied; delete proceeds and invalidates the UserInfo cache.
         var userId = Guid.NewGuid();
         var deletingId = Guid.NewGuid();
         var keepingId = Guid.NewGuid();
@@ -483,10 +483,10 @@ public class UserEmailServiceTests
     [HumansFact]
     public async Task DeleteEmailAsync_RejectsProviderAttachedRow()
     {
-        // PR 4 service-level guard: Provider-attached rows MUST go through
-        // UnlinkAsync (which removes both the AspNetUserLogins row and the
-        // UserEmail row). The per-row UI never routes a Provider-attached row
-        // to Delete; this test pins the service-level guard for non-UI callers.
+        // Provider-attached rows MUST go through UnlinkAsync (which removes both
+        // the AspNetUserLogins row and the UserEmail row). The per-row UI never
+        // routes a Provider-attached row to Delete; this test pins the
+        // service-level guard for non-UI callers.
         var userId = Guid.NewGuid();
         var providerRowId = Guid.NewGuid();
         var providerRow = new UserEmail
@@ -1141,7 +1141,7 @@ public class UserEmailServiceTests
     {
         // Provider-attached row is removed from both the AspNetUserLogins table
         // (via UserManager.RemoveLoginAsync) and user_emails (via _repo.RemoveUserEmailAsync).
-        // FullProfile cache is invalidated and an audit log entry is written.
+        // UserInfo cache is invalidated and an audit log entry is written.
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
         var rowId = Guid.NewGuid();

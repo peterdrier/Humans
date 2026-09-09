@@ -110,7 +110,7 @@ Emergency contact fields are marked `[PersonalData]` and included in the data ex
 
 ## Membership Status
 
-`MembershipStatus` is no longer computed on `Profile` — it moved to Governance's `IMembershipCalculator` (`Humans.Governance.Contracts.MembershipStatus`), computed from RoleAssignments and ConsentRecords:
+`MembershipStatus` is not stored on `Profile`; Governance's `IMembershipCalculator` (`Humans.Governance.Contracts.MembershipStatus`) computes it from RoleAssignments and ConsentRecords:
 
 | Status | Description | Visual |
 |--------|-------------|--------|
@@ -295,7 +295,7 @@ This two-step approach ensures Google deprovisioning uses the same tested code p
 |-------|--------|---------|
 | `/Profile/Me/Privacy` | GET | View deletion status, data export link |
 | `/Profile/Me/Privacy/RequestDeletion` | POST | Start 30-day deletion countdown |
-| `/User/Deletion/Cancel` | POST | Cancel pending deletion (moved to the User section) |
+| `/User/Deletion/Cancel` | POST | Cancel pending deletion (`UserController`) |
 | `/Profile/Me/DownloadData` | GET | Download personal data as JSON |
 
 ## Related Features

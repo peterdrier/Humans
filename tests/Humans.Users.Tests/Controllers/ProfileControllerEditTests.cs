@@ -37,17 +37,8 @@ using Humans.GoogleIntegration.Contracts;
 namespace Humans.Users.Tests.Controllers;
 
 /// <summary>
-/// Coverage for the initial-setup tier-application orchestration that moved
-/// from the profile save coordinator into <c>ProfileController.Edit</c>
-/// POST under issue nobodies-collective/Humans#685. The four removed
-/// <c>ProfileServiceTests</c> tests that exercised the old service-layer
-/// dispatch are replaced here at the controller layer:
-///   * Volunteer + initial setup → no Application created.
-///   * Colaborador + initial setup, no existing app → SubmitAsync called.
-///   * Colaborador + initial setup, existing draft → UpdateDraftApplicationAsync called.
-///   * Approved profile (not initial setup) → tier dispatch skipped entirely.
-/// The no-duplicate guard (no second SubmitAsync when a Submitted app exists) is
-/// the critical path: prevents data integrity issues if the form is replayed.
+/// Initial-setup tier-application dispatch on <c>ProfileController.Edit</c> POST.
+/// The no-duplicate guard is the critical path: a replayed form must not submit twice.
 /// </summary>
 public class ProfileControllerEditTests
 {

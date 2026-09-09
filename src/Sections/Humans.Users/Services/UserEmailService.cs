@@ -327,15 +327,11 @@ internal sealed class UserEmailService(
             cancellationToken);
     }
 
-    public Task RemoveAllEmailsAsync(
-        Guid userId, CancellationToken cancellationToken = default) =>
-        repository.RemoveAllUserEmailsForUserAsync(userId, cancellationToken);
-
     /// <inheritdoc />
     public async Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now,
         CancellationToken ct)
     {
-        // Caller invalidates cache AFTER the ambient TransactionScope commits — see AccountMergeService.AcceptAsync.
+        // Caller invalidates the cache after this completes.
         await repository.ReassignUserEmailsToUserAsync(
             mergedFromUserId, mergedToUserId, now, ct);
     }
@@ -363,59 +359,6 @@ internal sealed class UserEmailService(
             .FirstOrDefault(e => e.IsVerified
                 && e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))
             ?.Email;
-    }
-
-    public async Task<bool> HasNobodiesTeamEmailAsync(
-        Guid userId, CancellationToken cancellationToken = default)
-    {
-        var info = await userService.GetUserInfoAsync(userId, cancellationToken);
-        return info?.UserEmails.Any(e => e.IsVerified
-            && e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase)) ?? false;
-    }
-
-    public Task<string?> GetVerifiedEmailAddressAsync(
-        Guid userId, Guid emailId, CancellationToken cancellationToken = default) =>
-        repository.GetVerifiedUserEmailAddressAsync(userId, emailId, cancellationToken);
-
-    public async Task<Dictionary<Guid, bool>> GetNobodiesTeamEmailStatusByUserAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var infos = await userService.GetAllUserInfosAsync(cancellationToken);
-        var result = new Dictionary<Guid, bool>();
-        foreach (var info in infos)
-        {
-            var nobodies = info.UserEmails
-                .Where(e => e.IsVerified
-                    && e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))
-                .ToList();
-            if (nobodies.Count == 0) continue;
-            result[info.Id] = nobodies.Any(e => e.IsPrimary);
-        }
-        return result;
-    }
-
-    public async Task<Dictionary<Guid, string>> GetNobodiesTeamEmailsByUserIdsAsync(
-        IEnumerable<Guid> userIds, CancellationToken cancellationToken = default)
-    {
-        var userIdSet = userIds.ToHashSet();
-        if (userIdSet.Count == 0)
-            return new Dictionary<Guid, string>();
-
-        var infos = await userService.GetUserInfosAsync(userIdSet.ToList(), cancellationToken);
-        var result = new Dictionary<Guid, string>();
-        foreach (var (uid, info) in infos)
-        {
-            // Primary-first then any verified — same ordering as the prior repo-driven query (IsPrimary desc, CreatedAt asc).
-            var pick = info.UserEmails
-                .Where(e => e.IsVerified
-                    && e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(e => e.IsPrimary)
-                .Select(e => e.Email)
-                .FirstOrDefault();
-            if (pick is not null)
-                result[uid] = pick;
-        }
-        return result;
     }
 
     public async Task<IReadOnlyDictionary<Guid, string>> GetNotificationTargetEmailsAsync(

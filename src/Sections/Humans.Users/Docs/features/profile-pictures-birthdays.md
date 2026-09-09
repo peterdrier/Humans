@@ -14,7 +14,7 @@
 
 ## Business Context
 
-Humans need a way to personalize their profiles. Custom profile pictures make team pages more personal and help humans recognize each other. The birthday calendar fosters community by letting humans see upcoming birthdays within the organization. Google OAuth avatars are no longer rendered anywhere in the UI, and the former one-click Google-photo import (US-14.5) was removed in peterdrier/Humans#745.
+Humans need a way to personalize their profiles. Custom profile pictures make team pages more personal and help humans recognize each other. The birthday calendar fosters community by letting humans see upcoming birthdays within the organization. Google OAuth avatars are not rendered anywhere in the UI, and there is no Google-photo import.
 
 ## User Stories
 
@@ -67,9 +67,9 @@ Humans need a way to personalize their profiles. Custom profile pictures make te
 - Privacy note explaining visibility rules
 - System teams excluded from team name display
 
-### US-14.5: Import Google Photo as Profile Picture — REMOVED
+### US-14.5: Import Google Photo as Profile Picture — not offered
 
-The one-click Google-photo import (`POST /Profile/Me/ImportGooglePhoto`) was removed in peterdrier/Humans#745. Humans upload pictures via US-14.1 only. The orphaned `ProfileEdit_ImportGooglePhoto*` / `Profile_ImportGooglePhoto_*` resx keys remain in the resource files pending cleanup.
+There is no Google-photo import; humans upload pictures via US-14.1 only.
 
 ## Data Model
 
@@ -87,7 +87,7 @@ Profile.HasCustomProfilePicture: bool (computed, not mapped)
 ```
 
 ### Storage Approach
-Profile pictures are stored on the application's filesystem via the shared `IFileStorage` abstraction (rooted at `wwwroot/`, the same Coolify-mounted volume that serves camp images and any future uploads). The key format is `uploads/profile-pictures/{profileId}{.ext}` where `.ext` is derived from the content type (`.jpg`, `.png`, `.webp`, or empty for unknown). The filesystem is the only store — the old `Profile.ProfilePictureData` bytea column was dropped (nobodies-collective/Humans#528). Writes go to a temporary sibling and rename into place so readers never see a partial file.
+Profile pictures are stored on the application's filesystem via the shared `IFileStorage` abstraction (rooted at `wwwroot/`, the same Coolify-mounted volume that serves camp images and any future uploads). The key format is `uploads/profile-pictures/{profileId}{.ext}` where `.ext` is derived from the content type (`.jpg`, `.png`, `.webp`, or empty for unknown). The filesystem is the only store — there is no DB picture column. Writes go to a temporary sibling and rename into place so readers never see a partial file.
 
 Profile pictures live under `uploads/` but are NOT publicly served — `Program.cs` registers middleware that 404s `/uploads/profile-pictures/*` before `UseStaticFiles` sees it, so reads must go through the controller (and therefore through the GDPR gate below).
 
@@ -140,7 +140,7 @@ Saves and removals are filesystem-only: `IProfilePictureService.SetProfilePictur
 
 ## Picture Priority
 
-Only the custom uploaded picture is rendered in the UI. Google OAuth avatar URLs are never displayed directly — humans without a custom picture get the initial-letter placeholder. (The former one-click import that consumed the captured Google avatar URL was removed in peterdrier/Humans#745.)
+Only the custom uploaded picture is rendered in the UI. Google OAuth avatar URLs are never displayed directly — humans without a custom picture get the initial-letter placeholder.
 
 The team photo gallery (US-14.2) renders member pictures through the shared `<vc:human>` component (`HumanViewComponent`), not a per-page view model: it resolves `UserInfo.Profile.HasCustomPicture`, and when true builds the picture URL via `Url.Action("Picture", "Profile", new { id = profile.Id, v = profile.UpdatedAt })` (`GET /Profile/Picture?id={id}&v={updatedAtTicks}` — the `v` query param cache-busts on picture change). The own-profile edit page still uses `ProfileViewModel.EffectiveProfilePictureUrl` (`HasCustomProfilePicture ? CustomProfilePictureUrl : ProfilePictureUrl`) for its own preview. Either way, a null/false result falls back to the initial-letter placeholder — never a Google avatar.
 
@@ -158,11 +158,8 @@ All UI strings are localized in 6 languages: EN, ES, CA, DE, FR, IT. Keys includ
 - `Profile_ProfilePicture`, `Profile_DateOfBirth`
 - `Profile_PictureTooLarge`, `Profile_PictureInvalidFormat`
 - `ProfileEdit_PictureHelp`, `ProfileEdit_RemovePicture`
-- `ProfileEdit_DateOfBirthHelp`
 - `TeamDetail_TeamLeads`
 - `Birthdays_Title`, `Birthdays_Count`, `Birthdays_None`, `Birthdays_Privacy`
-
-The `ProfileEdit_ImportGooglePhoto*` / `Profile_ImportGooglePhoto_*` keys still present in the resx files belong to the removed US-14.5 import flow and are orphaned (no code references them).
 
 ## Related Features
 

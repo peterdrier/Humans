@@ -19,8 +19,7 @@ using Humans.Users.Tests.Infrastructure;
 namespace Humans.Users.Tests.Services;
 
 /// <summary>
-/// The body of the nightly non-compliance sweep, carved out of
-/// <c>SuspendNonCompliantMembersJob</c> into this section at G5 lane 4b-2d. The job class
+/// The body of the nightly non-compliance sweep. The job class
 /// itself stays in <c>Humans.Infrastructure</c> because Hangfire pins its serialized type
 /// name; what is left of it is a start log, a try/catch and a failure metric.
 /// </summary>

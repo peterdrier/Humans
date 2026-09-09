@@ -5,8 +5,7 @@ namespace Humans.Users.Contracts;
 /// <summary>
 /// Service for managing user email addresses.
 /// </summary>
-// COVERAGE REDUCED (G5 lane 3b, nobodies-collective/Humans#866): dropped ": IApplicationService".
-// Lost on the implementing class: HUM0027 (role-axis exclusivity). See Humans.Users.Contracts.csproj.
+// No marker interface — see Humans.Users.Contracts.csproj.
 public interface IUserEmailService
 {
     /// <summary>
@@ -124,13 +123,6 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Removes all email records for a user (used during account anonymization).
-    /// </summary>
-    Task RemoveAllEmailsAsync(
-        Guid userId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Adds a verified email directly (admin provisioning/linking — no verification flow needed).
     /// If the email is @nobodies.team, it's automatically set as the notification target.
     /// Idempotent: if the email already exists for this user, skips the insert
@@ -185,22 +177,6 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Checks if a user has a verified @nobodies.team email.
-    /// </summary>
-    Task<bool> HasNobodiesTeamEmailAsync(
-        Guid userId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets the email address for a verified email record owned by the user.
-    /// Returns null if not found, not owned by the user, or not verified.
-    /// </summary>
-    Task<string?> GetVerifiedEmailAddressAsync(
-        Guid userId,
-        Guid emailId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Finds a verified UserEmail matching the given address (or gmail/googlemail alternate).
     /// Includes the owning User for contact-creation conflict checks.
     /// Returns null if no match.
@@ -219,22 +195,6 @@ public interface IUserEmailService
     /// </summary>
     Task<IReadOnlyList<Guid>> GetDistinctVerifiedUserIdsAsync(
         string email,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets @nobodies.team email status for all users who have one.
-    /// Returns a dictionary of userId → isNotificationTarget (i.e., is it their primary email).
-    /// Used for admin listing pages.
-    /// </summary>
-    Task<Dictionary<Guid, bool>> GetNobodiesTeamEmailStatusByUserAsync(
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets the verified @nobodies.team email for each of the given users (batch query).
-    /// Returns a dictionary of userId → email address. Users without a @nobodies.team email are omitted.
-    /// </summary>
-    Task<Dictionary<Guid, string>> GetNobodiesTeamEmailsByUserIdsAsync(
-        IEnumerable<Guid> userIds,
         CancellationToken cancellationToken = default);
 
     /// <summary>

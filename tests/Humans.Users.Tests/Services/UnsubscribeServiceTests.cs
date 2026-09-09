@@ -9,8 +9,8 @@ using Humans.Users.Data.Repositories;
 namespace Humans.Users.Tests.Services;
 
 /// <summary>
-/// Unit tests for the Application-layer <see cref="UnsubscribeService"/>
-/// (§15 migration, issue #558). Dependencies are mocked; the repository
+/// Unit tests for the Application-layer <see cref="UnsubscribeService"/>.
+/// Dependencies are mocked; the repository
 /// replacement simply returns the seeded user by id so we can verify the
 /// service's decision paths (valid / expired / legacy / missing user).
 /// </summary>
@@ -147,6 +147,9 @@ public class UnsubscribeServiceTests
         result.IsValid.Should().BeTrue();
         await _preferenceService.Received(1).UpdatePreferenceAsync(
             userId, MessageCategory.Marketing, true, "MagicLink", Arg.Any<CancellationToken>());
+        // Only the per-category preference flips; the User row (UnsubscribedFromCampaigns) is never written.
+        _userRepo.ReceivedCalls().Select(c => c.GetMethodInfo().Name)
+            .Should().OnlyContain(name => name == nameof(IUserRepository.GetByIdAsync));
     }
 
     [HumansFact]

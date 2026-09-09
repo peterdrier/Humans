@@ -36,10 +36,8 @@ using Humans.GoogleIntegration.Contracts;
 namespace Humans.Users.Tests.Controllers;
 
 /// <summary>
-/// Unit tests for the self-route controller actions on
-/// <see cref="ProfileController"/> that wrap the new UserEmailService grid
-/// methods (SetGoogle, Link, Unlink) and the SetPrimary rename. Covers PR 4
-/// tasks 13/14/15 of the email/OAuth decoupling plan.
+/// Self-route <c>ProfileController</c> actions over the UserEmailService grid:
+/// SetGoogle, Link, Unlink, SetPrimary.
 /// </summary>
 public class ProfileControllerEmailGridTests
 {

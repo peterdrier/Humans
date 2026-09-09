@@ -306,23 +306,16 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         result.Should().BeNull("DB content-type is null after anonymization, so the stale on-disk file must not be served");
     }
 
-    // Profile-index/edit/admin-detail bundling moved to ProfileController in
-    // issue nobodies-collective/Humans#685 — composition is now controller
-    // concern (Profile + Application data are fetched separately and assembled
-    // for the view). No ProfileService methods to test here.
+    // Profile-index/edit/admin-detail bundling is a controller concern:
+    // Profile + Application data are fetched separately and assembled for the view.
 
-    // Birthday/Location snapshot tests removed alongside the FullProfile delete —
-    // those widgets now read directly from the UserInfo cache via CachingUserService.
-
-    // GetAdminHumanDetailAsync moved to UsersAdminController.AdminDetail in
-    // issue nobodies-collective/Humans#685 — composition is now controller
-    // concern.
+    // Birthday/Location widgets read directly from the UserInfo cache via
+    // CachingUserService.
 
     // --- Cooldown and export ---
 
-    // SearchProfilesAsync + GetFullProfileAsync tests removed alongside the
-    // FullProfile delete. The search surface lives on IUserService.SearchUsersAsync
-    // and is covered by CachingUserServiceTests.
+    // The search surface lives on IUserService.SearchUsersAsync and is
+    // covered by CachingUserServiceTests.
 
     // --- SaveProfileVolunteerHistoryAsync ---
 
