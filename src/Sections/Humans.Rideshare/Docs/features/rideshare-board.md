@@ -8,7 +8,7 @@
 
 # Rideshare Board
 
-Design of record: [`docs/superpowers/specs/2026-06-14-rideshare-section-design.md`](../../../../../docs/superpowers/specs/2026-06-14-rideshare-section-design.md).
+Design of record: [`Docs/2026-06-14-rideshare-section-design.md`](../2026-06-14-rideshare-section-design.md).
 Current-state invariants: [`Rideshare.md`](../Rideshare.md).
 
 ## Business Context
@@ -122,4 +122,4 @@ never stored).
 ## Related Docs
 
 - [`Rideshare.md`](../Rideshare.md) — section invariants, data model, routing, GDPR wiring
-- [`docs/superpowers/specs/2026-06-14-rideshare-section-design.md`](../../../../../docs/superpowers/specs/2026-06-14-rideshare-section-design.md) — design of record
+- [`Docs/2026-06-14-rideshare-section-design.md`](../2026-06-14-rideshare-section-design.md) — design of record
