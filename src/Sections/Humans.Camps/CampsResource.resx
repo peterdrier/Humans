@@ -59,7 +59,6 @@
   <data name="Camp_Links_Header" xml:space="preserve"><value>Links &amp; Contact</value></data>
   <data name="Camp_Edit_Links" xml:space="preserve"><value>Links</value></data>
   <data name="Camp_Edit_AddLink" xml:space="preserve"><value>Add link</value></data>
-  <data name="Camp_Edit_RemoveLink" xml:space="preserve"><value>Remove</value></data>
   <data name="Camp_Edit_WebsiteNudge" xml:space="preserve"><value>We strongly recommend adding a website for your barrio so visitors can learn more about you.</value></data>
   <data name="CampCard_NeedsPhoto" xml:space="preserve"><value>This barrio needs a photo!</value></data>
   <data name="Camp_AboutHeading" xml:space="preserve"><value>About Your {0}</value></data>

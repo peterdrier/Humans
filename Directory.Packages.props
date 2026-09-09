@@ -5,7 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- AI/LLM -->
-    <PackageVersion Include="Anthropic" Version="12.44.0" />
+    <PackageVersion Include="Anthropic" Version="12.46.0" />
     <!-- Core Framework -->
     <PackageVersion Include="ClosedXML" Version="0.105.1" />
     <!-- CSV — ALL CSV reading/writing goes through CsvHelper (memory/code/csv-use-csvhelper.md). Exact package name "CsvHelper" only; "CsvHelper.Excel.Core.Net" is known malware. -->
@@ -49,8 +49,8 @@
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <!-- Google Workspace APIs -->
     <PackageVersion Include="Google.Apis.Admin.Directory.directory_v1" Version="1.75.0.4227" />
-    <PackageVersion Include="Google.Apis.CloudIdentity.v1" Version="1.76.0.4246" />
-    <PackageVersion Include="Google.Apis.Drive.v3" Version="1.75.0.4218" />
+    <PackageVersion Include="Google.Apis.CloudIdentity.v1" Version="1.76.0.4255" />
+    <PackageVersion Include="Google.Apis.Drive.v3" Version="1.76.0.4252" />
     <PackageVersion Include="Google.Apis.DriveActivity.v2" Version="1.74.0.3880" />
     <PackageVersion Include="Google.Apis.Groupssettings.v1" Version="1.74.0.2721" />
     <PackageVersion Include="Google.Apis.Auth" Version="1.76.0" />
@@ -72,7 +72,7 @@
     <PackageVersion Include="Serilog.Sinks.OpenTelemetry" Version="4.2.0" />
     <!-- Image Processing -->
     <!-- 14.15.0 patches GHSA-422r-8c97-xcg4 / GHSA-56m6-8q75-f2rw -->
-    <PackageVersion Include="Magick.NET-Q8-AnyCPU" Version="14.16.0" />
+    <PackageVersion Include="Magick.NET-Q8-AnyCPU" Version="14.17.1" />
     <!-- Transitive pin: patches GHSA-37gx-xxp4-5rgx / GHSA-w3x6-4m5h-cxqf / GHSA-9mv3-2cwr-p262;
          10.0.10 patches GHSA-23rf-6693-g89p / GHSA-8q5v-6pqq-x66h / GHSA-cvvh-rhrc-wg4q /
          GHSA-g8r8-53c2-pm3f / GHSA-mmjf-rqrv-855v -->
