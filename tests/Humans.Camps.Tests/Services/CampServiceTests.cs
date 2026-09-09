@@ -36,9 +36,9 @@ public sealed class CampServiceTests : CampsTestHarness
 
         _earlyEntryInvalidator = Substitute.For<IEarlyEntryInvalidator>();
 
-        // Substituted since City Planning became its own assembly (G5, #866): the section's
-        // own tests own "the rows actually go"; what Camps must prove is that DeleteCampAsync
-        // asks for the deletion, with the right season ids.
+        // City Planning is its own assembly: its tests own "the rows actually go"; what
+        // Camps must prove is that DeleteCampAsync asks for the deletion, with the right
+        // season ids.
         _cityPlanningService = Substitute.For<ICityPlanningService>();
 
         _service = new CampService(
@@ -278,19 +278,6 @@ public sealed class CampServiceTests : CampsTestHarness
     // ==========================================================================
 
     [HumansFact]
-    public async Task GetCampsForYearAsync_LeadRole_CanBeFilteredFromCampInfo()
-    {
-        await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
-        var leadUserId = camp.CreatedByUserId;
-
-        var result = (await _service.GetCampsForYearAsync(2026, Xunit.TestContext.Current.CancellationToken))
-            .Single(c => c.Id == camp.Id)
-            .IsLead(leadUserId);
-        result.Should().BeTrue();
-    }
-
-    [HumansFact]
     public async Task GetCampsForYearAsync_NonLead_FilterReturnsFalse()
     {
         await SeedSettingsAsync();
@@ -368,7 +355,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetCampsForYearAsync_RoleAndLegacyLead_CanBeFilteredOnceFromCampInfo()
+    public async Task GetCampsForYearAsync_LeadRoleHolders_CanBeFilteredOnceFromCampInfo()
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCamp(); // creator is a role-backed Camp Lead.
@@ -891,6 +878,53 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
+    public async Task RejectCampMemberAsync_CrossCampMemberId_Throws()
+    {
+        await SeedSettingsAsync();
+        var campA = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(campA.Id);
+        var campB = await _service.CreateCampAsync(
+            Guid.NewGuid(), "Other Camp", "other@camp.com", "+34600000001",
+            null, null, false, 1, MakeSeasonData(), null, 2026, Xunit.TestContext.Current.CancellationToken);
+        await ApproveLatestSeasonAsync(campB.Id);
+
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var requestInCampB = await _service.RequestCampMembershipAsync(campB.Id, userId, Xunit.TestContext.Current.CancellationToken);
+
+        // A lead of camp A tries to reject a member belonging to camp B.
+        var act = () => _service.RejectCampMemberAsync(campA.Id, requestInCampB.CampMemberId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
+
+        var memberB = await CampsDb.CampMembers.AsNoTracking().FirstAsync(m => m.Id == requestInCampB.CampMemberId, Xunit.TestContext.Current.CancellationToken);
+        memberB.Status.Should().Be(CampMemberStatus.Pending);
+    }
+
+    [HumansFact]
+    public async Task RemoveCampMemberAsync_CrossCampMemberId_Throws()
+    {
+        await SeedSettingsAsync();
+        var campA = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(campA.Id);
+        var campB = await _service.CreateCampAsync(
+            Guid.NewGuid(), "Other Camp", "other@camp.com", "+34600000001",
+            null, null, false, 1, MakeSeasonData(), null, 2026, Xunit.TestContext.Current.CancellationToken);
+        await ApproveLatestSeasonAsync(campB.Id);
+
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var requestInCampB = await _service.RequestCampMembershipAsync(campB.Id, userId, Xunit.TestContext.Current.CancellationToken);
+        await _service.ApproveCampMemberAsync(campB.Id, requestInCampB.CampMemberId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        // A lead of camp A tries to remove an active member belonging to camp B.
+        var act = () => _service.RemoveCampMemberAsync(campA.Id, requestInCampB.CampMemberId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
+
+        var memberB = await CampsDb.CampMembers.AsNoTracking().FirstAsync(m => m.Id == requestInCampB.CampMemberId, Xunit.TestContext.Current.CancellationToken);
+        memberB.Status.Should().Be(CampMemberStatus.Active);
+    }
+
+    [HumansFact]
     public async Task RejectCampMemberAsync_PendingRequest_SetsRemovedAndNotifies()
     {
         await SeedSettingsAsync();
@@ -1188,21 +1222,6 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task AddMemberAndAssignRoleInActiveSeason_without_active_season_returns_season_not_found()
-    {
-        var camp = new Camp { Id = Guid.NewGuid(), Slug = "inactive-role-camp" };
-        var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Pending };
-        CampsDb.Camps.Add(camp);
-        CampsDb.CampSeasons.Add(season);
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var result = await _service.AddMemberAndAssignRoleInActiveSeasonAsync(
-            camp.Id, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().Be(AssignCampRoleOutcome.SeasonNotFound);
-    }
-
-    [HumansFact]
     public async Task LeaveCamp_cascades_role_assignment_cleanup()
     {
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "leave-cascade" };
@@ -1371,8 +1390,8 @@ public sealed class CampServiceTests : CampsTestHarness
         var request = await _service.RequestCampMembershipAsync(camp.Id, memberUserId, Xunit.TestContext.Current.CancellationToken);
 
         var pendingCamp = (await _service.GetCampsForYearAsync(2026, Xunit.TestContext.Current.CancellationToken)).Single(c => c.Id == camp.Id);
-        pendingCamp.CurrentSeason.Should().NotBeNull();
-        var pendingSeason = pendingCamp.CurrentSeason!;
+        pendingCamp.Active.Should().NotBeNull();
+        var pendingSeason = pendingCamp.Active!;
 
         pendingSeason.PendingMembers.Should()
             .ContainSingle(m => m.UserId == memberUserId && m.Id == request.CampMemberId);
@@ -1381,8 +1400,8 @@ public sealed class CampServiceTests : CampsTestHarness
         await _service.ApproveCampMemberAsync(camp.Id, request.CampMemberId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         var activeCamp = (await _service.GetCampsForYearAsync(2026, Xunit.TestContext.Current.CancellationToken)).Single(c => c.Id == camp.Id);
-        activeCamp.CurrentSeason.Should().NotBeNull();
-        var activeSeason = activeCamp.CurrentSeason!;
+        activeCamp.Active.Should().NotBeNull();
+        var activeSeason = activeCamp.Active!;
 
         activeSeason.ActiveMembers.Should().Contain(m => m.UserId == memberUserId && m.Id == request.CampMemberId);
         activeSeason.ActiveMembers.Should().ContainSingle(m => m.UserId == leadUserId);
@@ -1462,8 +1481,8 @@ public sealed class CampServiceTests : CampsTestHarness
         await _service.ApproveCampMemberAsync(camp.Id, req.CampMemberId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         var projectedCamp = (await _service.GetCampsForYearAsync(2026, Xunit.TestContext.Current.CancellationToken)).Single(c => c.Id == camp.Id);
-        projectedCamp.CurrentSeason.Should().NotBeNull();
-        var members = projectedCamp.CurrentSeason!.ActiveMembers;
+        projectedCamp.Active.Should().NotBeNull();
+        var members = projectedCamp.Active!.ActiveMembers;
 
         // Two real Active members: the creator-lead (real row) + the approved member.
         members.Should().HaveCount(2);
