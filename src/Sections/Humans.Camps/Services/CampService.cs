@@ -1110,7 +1110,6 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         {
             return;
         }
-        // Leads come from the role system (Camp Lead special role on each season).
         var leadUserIds = new HashSet<Guid>();
         foreach (var season in camp.Seasons)
         {
