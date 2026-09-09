@@ -274,7 +274,7 @@ Pass 2) — an "ideal shape" that restates the reforge score is the failure this
 prevent.
 
 Phase 2's selector script already built the solution on a normal run; only when it was skipped
-(`--section`) start `dotnet build Humans.slnx -v quiet -clp:ErrorsOnly` in the background now —
+(`--section`) start `dotnet build Humans.slnx -v quiet` in the background now —
 reforge needs a built solution and 3d's tool threads need the build. Do not look at its output until 3d.
 
 ### 3a. Inventory — every file, assigned
@@ -532,7 +532,9 @@ subagent does not inherit the run's cwd, and on a local machine a relative path 
 another session's checkout — and the rules of this phase it will touch (the doc-sweep and
 delete-sweep rules, the resx/XML rule, the build-output rule). It edits and validates under
 `$WORKTREE` only, runs **no git commands**, and returns a diff summary; the main thread reviews
-the diff and commits. Its prompt opens `thread: strike <what>` — the same `<what>` as the item's
+**`git diff` in the worktree, never the executor's own summary,** and commits. One executor at a
+time — Phase 0's one-build-per-worktree rule applies to them too. Its prompt's whole first line,
+nothing after it, is the `thread: strike <what>` marker — the same `<what>` as the item's
 phase-log mark — so the cost report names its row per 3d's convention instead of falling back to
 an opaque agent filename. Judgment strikes — `collapse`, `rearch`, any deletion whose safety depends on
 cross-file context — and every reviewer gate (step 4) stay on the main thread. The split is per
@@ -555,7 +557,7 @@ Per item (one item or tight cluster per commit):
    `docs/architecture/code-review-rules.md`'s hard-reject list and the section's own load-bearing
    weirdness, and where a linter owns that shape (`.claude/razor-lint.sh` for views) run it on the
    changed file rather than trusting it to fire later.
-3. `dotnet build Humans.slnx -v quiet -clp:ErrorsOnly`; targeted tests for the touched area.
+3. `dotnet build Humans.slnx -v quiet`; targeted tests for the touched area.
 
    **A test the run adds is only covered if some CI job actually runs it — check the filters, not
    the suite.** Before writing "CI is the gate" about a new test, resolve its assembly against
@@ -613,7 +615,7 @@ Per item (one item or tight cluster per commit):
 6. **UI-affecting strikes get runtime verification**: render the changed page in the running app
    (`dotnet run` + browser/test-site) before the PR — a green build does not prove a cshtml/JS
    change works.
-7. Commit `doctor(<section>): <what>`. Full `dotnet test Humans.slnx -v quiet -clp:ErrorsOnly`
+7. Commit `doctor(<section>): <what>`. Full `dotnet test Humans.slnx -v quiet`
    before each push;
    push every 3–5 items. When a reviewer gate could not be obtained, say so in the commit message
    as well as the run file — a commit that lands unreviewed should say so where the diff is read.
