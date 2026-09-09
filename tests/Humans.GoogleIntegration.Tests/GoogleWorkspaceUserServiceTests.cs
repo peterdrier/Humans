@@ -8,7 +8,6 @@ using Humans.GoogleIntegration.Services.Workspace;
 
 namespace Humans.GoogleIntegration.Tests;
 
-
 /// <summary>
 /// <see cref="GoogleWorkspaceUserService"/> forwards to <see cref="IWorkspaceUserDirectoryClient"/>
 /// unchanged. The one rule it owns is the blank-last-name guard: a blank name must never

@@ -154,6 +154,7 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 
 **Owning services:** `GoogleWorkspaceSyncService` (implements `IGoogleSyncService`), `GoogleGroupSyncService` (implements `IGoogleGroupSync`), `GoogleAdminService`, `GoogleWorkspaceUserService`, `SyncSettingsService`, `EmailProvisioningService`, `GoogleTranslationService` (implements `IGoogleTranslationService`)
 **Owned tables:** `sync_service_settings`, `google_sync_outbox`, `google_sync_log`
+**Status:** (A) Migrated.
 
 - Service(s) live in `src/Sections/Humans.GoogleIntegration/Services/` (namespace `Humans.GoogleIntegration.Services`) and never import `Microsoft.EntityFrameworkCore`.
 - `ISyncSettingsRepository`, `IGoogleSyncOutboxRepository`, `IGoogleResourceRepository` (all `internal`, in `src/Sections/Humans.GoogleIntegration/Data/`) are the only code paths that touch this section's tables via `DbContext`. They are unreachable from outside the section assembly, which is what retired the old `check-google-resource-ownership.sh` grep guard.

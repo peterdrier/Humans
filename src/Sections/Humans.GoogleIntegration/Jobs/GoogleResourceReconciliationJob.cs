@@ -14,7 +14,7 @@ namespace Humans.GoogleIntegration.Jobs;
 /// A summary Admin alert fires via SyncError if any phase fails.
 /// </summary>
 /// <remarks>
-/// Public because Shell names the concrete type at two sites (<c>AddScoped</c> in
+/// Public because the concrete type is named at two sites (<c>AddScoped</c> in
 /// <c>Section.cs</c>, the descriptor in <c>SectionJobs.cs</c>); HUM0034 allows a section's
 /// public job types.
 /// </remarks>
