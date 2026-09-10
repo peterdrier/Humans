@@ -8,18 +8,13 @@ using NodaTime;
 namespace Humans.Rideshare.Services;
 
 /// <summary>
-/// Singleton caching decorator for <see cref="IRideshareService"/>. Caches one
-/// <see cref="RideshareSnapshot"/> per burn year in a <see cref="TrackedCache{TKey, TValue}"/>
-/// (lazy, no startup warmup — the board is seasonal). Every write delegates to the
-/// keyed inner service and then clears the whole cache: at this scale one year's
-/// snapshot rebuilds in milliseconds, and resolving which year a row belongs to
-/// would cost more code than it saves.
+/// Singleton caching decorator for <see cref="IRideshareService"/>: one
+/// <see cref="RideshareSnapshot"/> per burn year, lazily; every write delegates to the keyed
+/// inner service and clears the whole cache (a year rebuilds in milliseconds).
 /// </summary>
 /// <remarks>
-/// Depends only on the inner service (via <see cref="IServiceScopeFactory"/>) and the
-/// cache plumbing (memory/architecture/decorators-talk-only-to-inner.md). Carries
-/// <see cref="IUserDataContributor"/> and <see cref="IUserMerge"/> because erasure and the
-/// account-merge fold change rows the cache holds.
+/// Carries <see cref="IUserDataContributor"/> and <see cref="IUserMerge"/> because erasure
+/// and the account-merge fold change rows the cache holds.
 /// </remarks>
 internal sealed class CachingRideshareService(
     IServiceScopeFactory scopeFactory,
