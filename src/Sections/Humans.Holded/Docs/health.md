@@ -155,7 +155,7 @@ callers are shaped by them.
 - **No `Debit`/`Credit` columns on any `/Holded` page.** Peter's call: a single signed amount in
   the association's POV is the thing a reader can act on. Bookkeeping sign lives in the data and
   in reconciliation, never on screen.
-- **No abstraction over the two sales-document kinds** beyond the path segment. They differ in
+- **No abstraction over the sales-document kinds** beyond the path segment. They differ in
   one string; a strategy would be a class per string.
 
 ## Load-bearing weirdness
