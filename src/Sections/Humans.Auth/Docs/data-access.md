@@ -51,7 +51,12 @@ No repository. Uses ASP.NET `UserManager<User>` plus `IUserEmailService`,
 `IMagicLinkRateLimiter`, `IMagicLinkUrlBuilder`. No direct `IMemoryCache` —
 rate-limit/replay sentinels are owned by `IMagicLinkRateLimiter`
 (same section, `Services/`) which writes `magic_link_used:{tokenPrefix}` and
-`magic_link_signup:{normalizedEmail}` into `IMemoryCache`.
+`magic_link_signup:{normalizedEmail}` into `IMemoryCache`. Both link types
+redeem through the same `magic_link_used:` sentinel — login tokens on
+`VerifyLoginTokenAsync`, signup tokens on `VerifyAndConsumeSignupTokenAsync` —
+and their strings come from different DataProtection purposes, so they cannot
+collide. Survey and unsubscribe tokens have their own providers and never
+reach this limiter.
 
 ### AdminAuthorizationService (Scoped)
 

@@ -10,11 +10,14 @@ namespace Humans.Auth.Services;
 internal interface IMagicLinkRateLimiter
 {
     /// <summary>
-    /// Attempts to reserve a login token so it can only be consumed once.
+    /// Attempts to reserve a sign-in token so it can only be consumed once.
     /// Returns false if the token has already been consumed within the
-    /// token lifetime.
+    /// token lifetime. Both link types redeem through here: login tokens on
+    /// <c>VerifyLoginTokenAsync</c>, signup tokens on
+    /// <c>VerifyAndConsumeSignupTokenAsync</c>. The two token strings come
+    /// from different DataProtection purposes, so they never collide.
     /// </summary>
-    Task<bool> TryConsumeLoginTokenAsync(string token, TimeSpan lifetime);
+    Task<bool> TryConsumeTokenAsync(string token, TimeSpan lifetime);
 
     /// <summary>
     /// Attempts to reserve a signup-send for the given email. Returns false

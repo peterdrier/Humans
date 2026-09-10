@@ -243,8 +243,22 @@ public class AccountController(
             return View("CompleteSignup");
         }
 
+        // Redeem only once the submission is complete — consuming before the
+        // validation re-render above would burn the link on a blank field.
+        var redeemedEmail = await magicLinkService.VerifyAndConsumeSignupTokenAsync(
+            token, email, HttpContext.RequestAborted);
+        if (redeemedEmail is null)
+        {
+            // Already redeemed. A double-submit from the person who just signed up
+            // is harmless — they are signed in, so send them on. Anyone else errors.
+            if (User.Identity?.IsAuthenticated == true)
+                return RedirectToLocal(returnUrl);
+
+            return View("MagicLinkError");
+        }
+
         var result = await accountProvisioningService.CompleteMagicLinkSignupAsync(
-            verifiedEmail,
+            redeemedEmail,
             burnerName,
             firstName,
             lastName,

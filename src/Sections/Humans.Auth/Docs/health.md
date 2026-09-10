@@ -24,11 +24,12 @@ member.
   neither (§4, §6).
 - **It lets a person prove an email address is theirs and get signed in.** They type an email;
   a short-lived link arrives; clicking it signs them in, or starts a signup if the address is
-  new to us. It never reveals whether the address is known. A *login* link is single-use — it
-  is consumed on redemption. A *signup* link is not, and nothing consumes it: it is verified
-  again on the form's POST, and a POST replayed inside its 15-minute window signs the holder
-  into the account that the first POST created. Whether that asymmetry is intended is F41,
-  open for Peter — describe it, do not "fix" it.
+  new to us. It never reveals whether the address is known. Both link types are single-use:
+  each is consumed at the moment it is redeemed — the login link on verification, the signup
+  link on the form's POST, after validation so a blank field cannot burn it. A replayed signup
+  POST is refused, except from the person who just signed up, who is already signed in and is
+  simply sent onward. Survey and unsubscribe links are a different mechanism and stay reusable
+  by design (F41, answered by Peter 2026-09-10).
 
 Everything else the section holds exists to serve one of those two: caches so the first job
 can be asked on every request without a query, and rate limits so the second cannot be used
@@ -48,7 +49,7 @@ own shape is a candidate for removal.
 | S4 | *Render the admin list / one row* | `GetFilteredAsync`, `GetByIdAsync` | The only paged, display-stitched shape |
 | S5 | *Change who holds what* | `AssignRoleAsync`, `EndRoleAsync`, `RevokeAllActiveAsync`, `HasOverlappingAssignmentAsync` | The invariant-bearing shape |
 | S6 | *Flush a cache on my behalf* | `InvalidateClaimsCacheForUser`, `InvalidateNavBadgeCache`, `InvalidateRoleAssignmentCache` | Not a question about roles at all — see §3 |
-| S7 | *Sign this person in from an emailed link* | `SendMagicLinkAsync`, `VerifyLoginTokenAsync`, `VerifySignupToken`, `FindUserByVerifiedEmailAsync` | `IMagicLinkService` |
+| S7 | *Sign this person in from an emailed link* | `SendMagicLinkAsync`, `VerifyLoginTokenAsync`, `VerifySignupToken`, `VerifyAndConsumeSignupTokenAsync`, `FindUserByVerifiedEmailAsync` | `IMagicLinkService`; the two signup members split read (form prefill) from redemption |
 | S8 | *Stop this request unless it is a full Admin* | `RequireCurrentUserIsAdminAsync` | `IAdminAuthorizationService` |
 | S9 | *May this principal manage this role name?* | `RoleAssignmentOperationRequirement` + its handler | ASP.NET resource-based, Shell-invoked |
 | S10 | *Who is the current user?* | `ICurrentUserContext.UserId` | Declared here, implemented in Shell |

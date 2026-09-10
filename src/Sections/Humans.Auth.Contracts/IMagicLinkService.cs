@@ -23,12 +23,26 @@ public interface IMagicLinkService : IApplicationService
     Task<User?> VerifyLoginTokenAsync(Guid userId, string token, CancellationToken ct = default);
 
     /// <summary>
-    /// Verifies a signup magic link token and returns the email if valid.
+    /// Decodes a signup magic link token and returns the email if valid.
+    /// Does <em>not</em> consume the token — this is the read used to render the
+    /// signup form, so an email security scanner following the link cannot burn
+    /// it. Redemption goes through <see cref="VerifyAndConsumeSignupTokenAsync"/>.
     /// </summary>
-    /// <param name="token">The signup token to verify.</param>
+    /// <param name="token">The signup token to decode.</param>
     /// <param name="expectedEmail">Optional email for logging on failure.</param>
     /// <returns>The email address if the token is valid; null if expired or invalid.</returns>
     string? VerifySignupToken(string token, string? expectedEmail = null);
+
+    /// <summary>
+    /// Verifies a signup magic link token and consumes it, so it works exactly once.
+    /// The signup counterpart of <see cref="VerifyLoginTokenAsync"/>; call it at the
+    /// point of redemption, never on a GET.
+    /// </summary>
+    /// <param name="token">The signup token to redeem.</param>
+    /// <param name="expectedEmail">Optional email for logging on failure.</param>
+    /// <returns>The email address if the token was valid and unused; null if expired, invalid, or already redeemed.</returns>
+    Task<string?> VerifyAndConsumeSignupTokenAsync(
+        string token, string? expectedEmail = null, CancellationToken ct = default);
 
     /// <summary>
     /// Finds a user by verified <see cref="UserEmail"/>. Used

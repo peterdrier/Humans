@@ -73,7 +73,7 @@ internal sealed class MagicLinkService(
         }
 
         // Replay-prevention: consume token for its lifetime.
-        if (!await rateLimiter.TryConsumeLoginTokenAsync(token, TokenLifetime))
+        if (!await rateLimiter.TryConsumeTokenAsync(token, TokenLifetime))
         {
             logger.LogInformation("Magic link login: token already used for user {UserId}", userId);
             return null;
@@ -89,6 +89,24 @@ internal sealed class MagicLinkService(
         {
             logger.LogInformation("Magic link signup: invalid or expired token for email {Email}",
                 expectedEmail ?? "unknown");
+        }
+
+        return payload;
+    }
+
+    public async Task<string?> VerifyAndConsumeSignupTokenAsync(
+        string token, string? expectedEmail = null, CancellationToken ct = default)
+    {
+        var payload = VerifySignupToken(token, expectedEmail);
+        if (payload is null)
+            return null;
+
+        // Replay-prevention: consume token for its lifetime, as the login path does.
+        if (!await rateLimiter.TryConsumeTokenAsync(token, TokenLifetime))
+        {
+            logger.LogInformation("Magic link signup: token already used for email {Email}",
+                expectedEmail ?? "unknown");
+            return null;
         }
 
         return payload;

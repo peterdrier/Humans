@@ -61,6 +61,7 @@ Magic link authentication is the foundation: a human enters their email, receive
 - On first login, the user is prompted for a burner name and their first and last (legal) name (email is pre-filled); all three are required
 - The new user follows the normal onboarding flow (profile completion, consent, etc.)
 - A `UserEmail` record is created (non-OAuth, verified, notification target)
+- The link is single-use: redeemed on the completion POST, so it cannot be replayed to sign a second holder into the new account
 
 ### US-3: Claim a pre-provisioned account
 
@@ -190,9 +191,18 @@ No `userId` in the URL because the user doesn't exist yet. The encrypted email i
 
 ### Single-Use Enforcement
 
-**Login tokens (existing users):** As shipped, the DataProtection token carries no server-side state, so single-use is enforced separately: on successful verification, `IMagicLinkRateLimiter.TryConsumeLoginTokenAsync` reserves the token (keyed on a prefix of the token string) in `IMemoryCache` for the remainder of its 15-minute lifetime. A second attempt with the same token finds the reservation already held and fails verification.
+The DataProtection token carries no server-side state, so single-use is enforced separately, and both link types enforce it the same way: at the moment of redemption, `IMagicLinkRateLimiter.TryConsumeTokenAsync` reserves the token (keyed on a prefix of the token string) in `IMemoryCache` for the remainder of its 15-minute lifetime. A second attempt with the same token finds the reservation already held and fails. Login and signup tokens come from different protector purposes, so their strings never collide in that cache.
 
-**Signup tokens (new users):** Not enforced as shipped. This section proposed that creating the user would itself block reuse, showing "Account already created — use the login link instead" — the code does not do that. `VerifySignupToken` only unprotects, and on a replayed POST `AccountProvisioningService.CompleteMagicLinkSignupAsync` finds the now-verified `UserEmail`, returns `ExistingUser`, and `AccountController.CompleteSignup` signs that user in. So a signup token stays redeemable for the remainder of its 15 minutes. Note the shipped signup email says otherwise — `Email_MagicLinkSignup_Body` promises "can only be used once" in all six cultures, so the false guarantee is user-facing, not just internal. Tracked as F41 in `docs/health/runs/2026-09-01-Auth.md`; the resx copy is deliberately left alone, because rewording it would settle F41 in favour of accepting the behaviour, and that is Peter's call.
+**Login tokens (existing users):** consumed inside `VerifyLoginTokenAsync`, on the POST to `/Account/MagicLink`.
+
+**Signup tokens (new users):** consumed inside `VerifyAndConsumeSignupTokenAsync`, called from `AccountController.CompleteSignup`. Two placement rules matter:
+
+- The signup **GET** reads the token through `VerifySignupToken`, which does *not* consume — it only unprotects, to pre-fill the form. Consuming on a GET would let an email-security scanner burn the link, the same hazard `MagicLinkConfirm` exists to avoid on the login side.
+- The **POST** consumes *after* field validation, not before. The validation branch re-renders the form with the same token, so consuming first would lock out anyone who submitted with a field blank.
+
+A replayed POST therefore fails the reservation and renders `MagicLinkError` — except for a duplicate submit by the person the first POST just created and signed in, who is already authenticated and is redirected onward, preserving the documented double-click behaviour. This makes the shipped signup email's promise true: `Email_MagicLinkSignup_Body` says the link "can only be used once" in all six cultures.
+
+Survey and unsubscribe links are a different mechanism (`SurveyPreviewTokenProvider`, `SurveyInviteTokenProvider`, `UnsubscribeTokenProvider`) and are deliberately reusable — nothing outside Auth redeems through `IMagicLinkRateLimiter`.
 
 ### Email Lookup
 
