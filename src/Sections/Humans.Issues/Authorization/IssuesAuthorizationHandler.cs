@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Humans.Base.Constants;
 using Humans.Issues.Domain;
 using Humans.Issues.Contracts;
 using Microsoft.AspNetCore.Authorization;

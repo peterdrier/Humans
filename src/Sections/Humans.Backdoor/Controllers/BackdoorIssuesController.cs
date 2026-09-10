@@ -2,7 +2,6 @@ using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using System.Text.Json.Serialization;
 using Humans.Backdoor.Filters;
-using Humans.Base.Constants;
 using Humans.Base.Controllers;
 using Humans.Issues.Contracts;
 using Humans.Users.Contracts;
