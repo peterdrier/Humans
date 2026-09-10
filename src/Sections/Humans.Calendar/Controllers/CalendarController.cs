@@ -213,9 +213,8 @@ internal sealed class CalendarController : HumansControllerBase
         var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(tzId)
             ?? DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         var startDate = ev.StartUtc.InZone(zone).Date;
-        // Stored end is half-open exclusive midnight; subtract a tick for inclusive display.
         var endDateInclusive = ev.EndUtc is { } endUtc
-            ? endUtc.Minus(Duration.FromNanoseconds(1)).InZone(zone).Date
+            ? CalendarService.AllDayInclusiveEndDate(endUtc, zone)
             : startDate;
         return View(new CalendarEventFormViewModel
         {
@@ -266,7 +265,9 @@ internal sealed class CalendarController : HumansControllerBase
         return View(form);
     }
 
-    // All-day stored as half-open [Start 00:00, EndDate+1 00:00). Bad input → ModelState (no throw).
+    // Validates the posted form and resolves it to stored instants. The all-day storage shape
+    // itself is CalendarService.AllDayWindow's; what stays here is the ModelState translation.
+    // Bad input → ModelState (no throw).
     private void TryResolveStartEnd(CalendarEventFormViewModel form, out Instant start, out Instant? end)
     {
         start = default;
@@ -293,8 +294,7 @@ internal sealed class CalendarController : HumansControllerBase
                 ModelState.AddModelError(nameof(form.EndDateLocal), "End date must be on or after the start date.");
                 return;
             }
-            start = startDate.AtMidnight().InZoneLeniently(zone).ToInstant();
-            end = inclusiveEnd.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant();
+            (start, end) = CalendarService.AllDayWindow(startDate, inclusiveEnd, zone);
             return;
         }
 

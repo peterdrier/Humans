@@ -25,6 +25,24 @@ internal sealed class CalendarService(
     IAuditLogService audit,
     ILogger<CalendarService> logger) : ICalendarService
 {
+    /// <summary>
+    /// The instants an all-day event is stored as: half-open, from local midnight on
+    /// <paramref name="startDate"/> to local midnight the day after
+    /// <paramref name="inclusiveEndDate"/>. Forms and views speak in the inclusive last day,
+    /// storage does not, and this is the one place that conversion happens.
+    /// </summary>
+    public static (Instant Start, Instant End) AllDayWindow(
+        LocalDate startDate, LocalDate inclusiveEndDate, DateTimeZone zone) =>
+        (startDate.AtMidnight().InZoneLeniently(zone).ToInstant(),
+         inclusiveEndDate.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant());
+
+    /// <summary>
+    /// Inverse of <see cref="AllDayWindow"/>: the last day an all-day event covers, given its
+    /// stored exclusive end. A nanosecond back off the exclusive midnight lands on that day.
+    /// </summary>
+    public static LocalDate AllDayInclusiveEndDate(Instant exclusiveEndUtc, DateTimeZone zone) =>
+        exclusiveEndUtc.Minus(NodaTime.Duration.FromNanoseconds(1)).InZone(zone).Date;
+
     public async Task<IReadOnlyList<CalendarEventInfo>> GetAllEventInfosAsync(CancellationToken ct = default)
     {
         var events = await repo.GetAllAsync(ct);

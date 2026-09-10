@@ -106,7 +106,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 - Every mutating action (create / update / delete / cancel-occurrence / override-occurrence) writes an `AuditLogEntry` with the actor's user ID.
 - Title is required (non-null, non-empty).
 - `StartUtc` is required.
-- `EndUtc` is required for timed events (`IsAllDay = false`). For all-day events created or edited via the calendar form, `EndUtc` is set to half-open exclusive midnight (`StartDate.PlusDays(InclusiveDays).AtMidnight()` in `RecurrenceTimezone`); the display layer recovers the inclusive end date by subtracting one tick before projecting to local. Legacy all-day rows may still have null `EndUtc` (treated as single-day).
+- `EndUtc` is required for timed events (`IsAllDay = false`). For all-day events created or edited via the calendar form, `EndUtc` is set to half-open exclusive midnight (`StartDate.PlusDays(InclusiveDays).AtMidnight()` in `RecurrenceTimezone`); the display layer recovers the inclusive end date by stepping a nanosecond back off that midnight. Both halves are `CalendarService.AllDayWindow` / `CalendarService.AllDayInclusiveEndDate` — the controller only translates form input and errors. Legacy all-day rows may still have null `EndUtc` (treated as single-day).
 - `StartUtc <= EndUtc` when both are non-null.
 - `RecurrenceRule` and `RecurrenceTimezone` are set together, or neither is set (all-or-nothing invariant).
 - `RecurrenceTimezone` defaults to `"Europe/Madrid"` if not specified on a recurring event.
