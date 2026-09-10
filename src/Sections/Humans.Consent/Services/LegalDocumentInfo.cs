@@ -11,12 +11,8 @@ namespace Humans.Consent.Services;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Footprint budget (CLAUDE.md "Scale and Deployment"): a handful of
-/// documents (currently ~3–5; bounded by the number of Teams that scope
-/// documents to themselves, which is at most a dozen in practice).
-/// Each entry carries its versions inline including full multilingual
-/// content; at typical document sizes the whole cache is well under
-/// 1 MB. The Spec's 50 MB per-projection budget is not approached.
+/// Footprint: a handful of documents, each carrying its versions inline
+/// including full multilingual content — the whole cache is well under 1 MB.
 /// </para>
 /// <para>
 /// Built and held by <c>CachingLegalDocumentSyncService</c>. Invalidation
