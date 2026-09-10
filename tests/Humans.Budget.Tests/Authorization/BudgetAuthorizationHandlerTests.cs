@@ -25,23 +25,25 @@ public sealed class BudgetAuthorizationHandlerTests
             .Returns([CoordinatorTeamId]);
     }
 
-    public static TheoryData<string, string, bool, bool, bool, bool> BudgetAuthorizationCases => new()
+    public static TheoryData<string, string, bool, bool, bool, bool, bool> BudgetAuthorizationCases => new()
     {
-        { "admin", "other", false, false, true, true },
-        { "admin", "other", true, false, true, true },
-        { "admin", "other", false, true, true, true },
-        { "finance-admin", "other", false, false, true, true },
-        { "finance-admin", "other", true, false, true, true },
-        { "finance-admin", "none", false, false, true, true },
-        { "coordinator", "coordinator", false, false, true, true },
-        { "coordinator", "other", false, false, true, false },
-        { "coordinator", "coordinator", true, false, true, false },
-        { "coordinator", "coordinator", false, true, true, false },
-        { "coordinator", "none", false, false, true, false },
-        { "regular", "coordinator", false, false, true, false },
-        { "anonymous", "coordinator", false, false, true, false },
-        { "invalid-id", "coordinator", false, false, true, false },
-        { "coordinator", "coordinator", false, false, false, true },
+        { "admin", "other", false, false, false, true, true },
+        { "admin", "other", true, false, false, true, true },
+        { "admin", "other", false, true, false, true, true },
+        { "finance-admin", "other", false, false, false, true, true },
+        { "finance-admin", "other", true, false, false, true, true },
+        { "finance-admin", "other", false, false, true, true, true },
+        { "finance-admin", "none", false, false, false, true, true },
+        { "coordinator", "coordinator", false, false, false, true, true },
+        { "coordinator", "other", false, false, false, true, false },
+        { "coordinator", "coordinator", true, false, false, true, false },
+        { "coordinator", "coordinator", false, true, false, true, false },
+        { "coordinator", "coordinator", false, false, true, true, false },
+        { "coordinator", "none", false, false, false, true, false },
+        { "regular", "coordinator", false, false, false, true, false },
+        { "anonymous", "coordinator", false, false, false, true, false },
+        { "invalid-id", "coordinator", false, false, false, true, false },
+        { "coordinator", "coordinator", false, false, false, false, true },
     };
 
     [HumansTheory]
@@ -51,6 +53,7 @@ public sealed class BudgetAuthorizationHandlerTests
         string teamKind,
         bool isRestricted,
         bool isDeleted,
+        bool isTicketing,
         bool hasBudgetGroup,
         bool expected)
     {
@@ -61,7 +64,7 @@ public sealed class BudgetAuthorizationHandlerTests
         }
 
         var user = CreateUser(userKind);
-        var category = CreateCategory(teamKind, isRestricted, isDeleted, hasBudgetGroup);
+        var category = CreateCategory(teamKind, isRestricted, isDeleted, isTicketing, hasBudgetGroup);
 
         var result = await EvaluateAsync(user, category);
 
@@ -81,6 +84,7 @@ public sealed class BudgetAuthorizationHandlerTests
         string teamKind,
         bool isRestricted = false,
         bool isDeleted = false,
+        bool isTicketing = false,
         bool hasBudgetGroup = true)
     {
         Guid? teamId = teamKind switch
@@ -108,7 +112,7 @@ public sealed class BudgetAuthorizationHandlerTests
                     yearId,
                     "Group",
                     isRestricted,
-                    false,
+                    isTicketing,
                     new BudgetCategoryYearSnapshot(yearId, "2026", "Budget 2026", isDeleted))
                 : null,
             []);
