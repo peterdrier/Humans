@@ -217,25 +217,27 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact(Timeout = 10000)]
-    public async Task ActivateAsync_NoCodes_Throws()
+    public async Task ActivateAsync_NoCodes_ReturnsNoCodes()
     {
         var campaign = await SeedCampaignAsync();
 
-        var act = () => _service.ActivateAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.ActivateAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*at least one code*");
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("NoCodes");
+        var updated = await CampaignsDb.Campaigns.FindAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        updated!.Status.Should().Be(CampaignStatus.Draft);
     }
 
     [HumansFact]
-    public async Task ActivateAsync_NotDraft_Throws()
+    public async Task ActivateAsync_NotDraft_ReturnsNotDraft()
     {
         var campaign = await SeedCampaignAsync(CampaignStatus.Active);
 
-        var act = () => _service.ActivateAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.ActivateAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Draft*");
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("NotDraft");
     }
 
     [HumansFact]
@@ -359,14 +361,16 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
-    public async Task CompleteAsync_NotActive_Throws()
+    public async Task CompleteAsync_NotActive_ReturnsNotActive()
     {
         var campaign = await SeedCampaignAsync();
 
-        var act = () => _service.CompleteAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.CompleteAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Active*");
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("NotActive");
+        var updated = await CampaignsDb.Campaigns.FindAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        updated!.Status.Should().Be(CampaignStatus.Draft);
     }
 
     [HumansFact]
@@ -381,9 +385,9 @@ public sealed class CampaignServiceTests
         SeedTeamMember(team.Id, user.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var count = await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
 
-        count.Should().Be(1);
+        result.SentCount.Should().Be(1);
 
         var grants = await CampaignsDb.CampaignGrants
             .Where(g => g.CampaignId == campaign.Id)
@@ -433,7 +437,7 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
-    public async Task SendWaveAsync_NotActive_Throws()
+    public async Task SendWaveAsync_NotActive_ReturnsNotActive()
     {
         var campaign = await SeedCampaignAsync();
         await _service.ImportCodesAsync(campaign.Id, ["CODE-1"], Xunit.TestContext.Current.CancellationToken);
@@ -442,10 +446,10 @@ public sealed class CampaignServiceTests
         SeedTeamMember(team.Id, user.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var act = () => _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Active*");
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("NotActive");
         (await CampaignsDb.CampaignGrants.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
@@ -467,10 +471,10 @@ public sealed class CampaignServiceTests
                 ? Task.FromException(new InvalidOperationException("enqueue boom"))
                 : Task.CompletedTask);
 
-        var count = await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
 
         // The wave survives the throw: both grants exist, only the offending one is Failed.
-        count.Should().Be(2);
+        result.SentCount.Should().Be(2);
         var grants = await CampaignsDb.CampaignGrants
             .Where(g => g.CampaignId == campaign.Id)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
@@ -492,16 +496,16 @@ public sealed class CampaignServiceTests
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         // First wave sends to both
-        var count1 = await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
-        count1.Should().Be(2);
+        var wave1 = await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+        wave1.SentCount.Should().Be(2);
 
         // Second wave should send to nobody (both already granted)
-        var count2 = await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
-        count2.Should().Be(0);
+        var wave2 = await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+        wave2.SentCount.Should().Be(0);
     }
 
     [HumansFact]
-    public async Task SendWaveAsync_InsufficientCodes_Throws()
+    public async Task SendWaveAsync_InsufficientCodes_ReturnsNotEnoughCodes()
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(["ONLY-ONE"]);
 
@@ -512,10 +516,13 @@ public sealed class CampaignServiceTests
         SeedTeamMember(team.Id, user2.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var act = () => _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Not enough codes*");
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("NotEnoughCodes");
+        result.CodesNeeded.Should().Be(2);
+        result.CodesAvailable.Should().Be(1);
+        (await CampaignsDb.CampaignGrants.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
 

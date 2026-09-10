@@ -53,7 +53,7 @@ contributed a ranked item.
 25. SendWave code-order test asserted a disjunction — seeder now sets `ImportOrder`; exact assert. **done**
 26. Cross-assembly surface untested — added merge fold (target-wins), erasure, export tests. Remainder (`UpdateGrantEmailStatusAsync`, `GetCodeTrackingAsync`, grant-read tests) queued as in-section debt. **partially done**
 27. Overlapping template-forwarding email tests asserted the factory, not the send — merged into one asserting `SendAsync` receives the factory's message. **done**
-28. Admin POSTs surface raw 500s on wrong state: double-click Activate/Complete, SendWave insufficient-codes race, ImportCodes bad id, SendWave GET unguarded by status (page renders for Draft/Completed; POST 500s). Fixing changes behavior (error toasts/redirects instead of 500s) → Needs-Peter. **queued**
+28. Admin POSTs surface raw 500s on wrong state: double-click Activate/Complete, SendWave insufficient-codes race, ImportCodes bad id, SendWave GET unguarded by status (page renders for Draft/Completed; POST 500s). Fixing changes behavior (error toasts/redirects instead of 500s) → Needs-Peter. **done** — Peter ruled toast+redirect (2026-09-10); Activate/Complete/SendWave/ImportCodes return error results the controller maps to toasts, and the SendWave GET redirects for non-Active campaigns.
 29. `Detail.cshtml` Resend column rendered for TicketAdmin who gets 403 on click — hidden behind `isAdmin`; reviewer-approved. **done**
 30. Detail/SendWave lack breadcrumbs (Index/Create/Edit have them). **skipped** — low value; both pages have working back buttons, and a nav-pattern change is more than this run's budget wanted to spend against item 28's pending ruling on those same pages.
 31. Freshness trigger gaps — section docs assert about Email/Users/Tickets files their triggers didn't watch; trigger lists extended. **done**
@@ -97,7 +97,7 @@ plus the target shape, this file, and the sweep commit.
 
 ## Needs Peter
 
-- [ ] 28 — admin POSTs 500 on wrong state (double-click Activate/Complete, SendWave races/GET): fix to toast+redirect, or leave as-is?
+- [x] 28 — admin POSTs 500 on wrong state (double-click Activate/Complete, SendWave races/GET): fix to toast+redirect, or leave as-is? **Answered: toast+redirect — implemented.**
 - [ ] 32 — Phase 4 lesson: when a strike stages a section's `Docs/` directory wholesale, an untracked working file (here the 3c target shape) rides into the wrong commit; propose Phase 4 name files explicitly in `git add` rather than staging directories.
 - [ ] 33 — Phase 3c lesson: the target shape draft inherited two overclaims from the section docs it summarized (subject-line encoding; view count); propose Phase 3c require each invariant line in the target to cite code, not docs, the first time a section is doctored.
 

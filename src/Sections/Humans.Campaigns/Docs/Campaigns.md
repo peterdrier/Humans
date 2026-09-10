@@ -98,7 +98,7 @@ Stored as string (`HasConversion<string>()`, max length 20).
 
 ## Invariants
 
-- Campaign status follows: Draft then Active then Completed. `ActivateAsync` requires Draft + at least one code; `CompleteAsync` requires Active; `SendWaveAsync` requires Active.
+- Campaign status follows: Draft then Active then Completed. `ActivateAsync` requires Draft + at least one code; `CompleteAsync` requires Active; `SendWaveAsync` requires Active. Wrong-state attempts (double-clicks, stale forms, the Send Wave GET on a non-Active campaign) return error results the controller surfaces as an error toast + redirect, never a 500.
 - Vendor-generated codes can only be created while the campaign is in Draft status (service enforces). CSV code import has no service-side status guard — the Campaign Detail view exposes the import form in both Draft and Active.
 - Each code is unique per campaign (DB-enforced via unique `(CampaignId, Code)` index) and can be assigned to at most one human (DB-enforced via unique `CampaignCodeId` on grants).
 - Each human can hold at most one grant per campaign (DB-enforced via unique `(CampaignId, UserId)` on grants).

@@ -52,7 +52,8 @@ record fields / project references.
 
 - Lifecycle is one-way: Draft → Active → Completed. Activate requires Draft + ≥1 code;
   Complete requires Active; SendWave requires Active; vendor generation requires Draft
-  (service-enforced). CSV import is deliberately allowed in Draft and Active.
+  (service-enforced). CSV import is deliberately allowed in Draft and Active. Wrong-state
+  attempts surface as an error toast + redirect, never a 500.
 - A code belongs to one campaign, is unique within it (DB: unique `(CampaignId, Code)`),
   and is granted at most once (DB: unique `CampaignCodeId` on grants).
 - A person holds at most one grant per campaign (DB: unique `(CampaignId, UserId)`); the
