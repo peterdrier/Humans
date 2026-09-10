@@ -351,6 +351,7 @@ All roles are defined in `RoleNames` constants and use temporal `RoleAssignment`
 | **FinanceAdmin** | Manage budgets, budget years, groups, categories, and line items. Full Finance section access. |
 | **StoreAdmin** | Store catalog, summary, and payments. |
 | **CantinaAdmin** | Cantina weekly roster. |
+| **RideshareAdmin** | Rideshare settings (year's destination, travel windows), season statistics, and the day roster. |
 | **ConsentCoordinator** | Safety checks on new humans during onboarding. Can clear or flag consent checks. |
 | **VolunteerCoordinator** | Read-only access to onboarding review queue. |
 | **EETeamAdmin** | Cross-team Early-Entry administrator — grant/edit/revoke early-entry grants on any team that has early entry enabled. Confers nothing else; team coordinators manage EE on their own team without this role. |
@@ -364,7 +365,7 @@ Role claims are synced from the `RoleAssignment` table to Identity claims via `R
 ### Role Assignment Authorization
 Resource-based: `UsersAdminController.AddRole`/`EndRole` call `IAuthorizationService.AuthorizeAsync(User, roleName, PolicyNames.RoleAssignmentManage)`, evaluated by `RoleAssignmentAuthorizationHandler` (`Humans.Auth`) against the target role name (the resource):
 - **Admin** can assign/end any role
-- **Board** or **HumanAdmin** can assign/end any role in `RoleNames.BoardManageableRoles` — Board, HumanAdmin, TeamsAdmin, CampAdmin, TicketAdmin, NoInfoAdmin, FeedbackAdmin, FinanceAdmin, EventsAdmin, StoreAdmin, CantinaAdmin, EETeamAdmin, ConsentCoordinator, VolunteerCoordinator (not Admin)
+- **Board** or **HumanAdmin** can assign/end any role in `RoleNames.BoardManageableRoles` — Board, HumanAdmin, TeamsAdmin, CampAdmin, TicketAdmin, NoInfoAdmin, FeedbackAdmin, FinanceAdmin, EventsAdmin, StoreAdmin, CantinaAdmin, EETeamAdmin, RideshareAdmin, ConsentCoordinator, VolunteerCoordinator (not Admin)
 - Everyone else is denied
 - Attempting to assign a role outside your permissions returns 403 Forbidden; ending one outside your permissions returns 404 (the row is treated as not found rather than as a permissions error)
 
