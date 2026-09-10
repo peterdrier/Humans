@@ -21,8 +21,8 @@ Repository: `IBudgetRepository`.
 | BudgetAuditLogs | R/W |
 | TicketingProjections | R/W |
 
-Cross-section calls via `ITeamService`, `IUserServiceRead`, plus `IClock`.
-Team labels are stitched at the service layer via `ITeamService`.
+Cross-section calls via `ITeamServiceRead`, `IUserServiceRead`, plus `IClock`.
+Team labels are stitched at the service layer via `ITeamServiceRead`.
 Implements `IUserDataContributor`. No `IMemoryCache`.
 
 ### TicketingBudgetService (Scoped)
@@ -35,8 +35,9 @@ those to `IBudgetService.SyncTicketingActualsAsync`, which owns every resulting
 `ITicketServiceRead`, plus `IClock` and `ILogger`.
 
 The class is `internal` per HUM0034 and its contract
-`ITicketingBudgetService` is a single-member internal interface, driven by
-`TicketingBudgetSyncJob` in `Humans.Budget/Jobs/`. The job's constructor is
+`ITicketingBudgetService` is a single-member internal interface — the test seam
+for `TicketingBudgetSyncJob` in `Humans.Budget/Jobs/`; `BudgetAdminController`
+deliberately injects the concrete class for its sync/projection actions. The job's constructor is
 internal too, so its DI registration lives in Budget's own `Section.Register`;
 Hangfire scheduling names the public job class from Shell's roll-call.
 
