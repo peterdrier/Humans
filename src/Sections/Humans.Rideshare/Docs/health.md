@@ -211,3 +211,4 @@ Essential complexity and settled decisions, so later runs stop re-litigating the
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
+| section-doctor | 2026-09-10 | A sent interest now shows when its trip was cancelled; the untested rules and projections pinned | PR: pending |
