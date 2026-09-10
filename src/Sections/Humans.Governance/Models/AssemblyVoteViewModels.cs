@@ -175,6 +175,16 @@ internal sealed class AssemblyVotePeekViewModel
 {
     public Guid VoteId { get; init; }
     public required AssemblyVoteResult Result { get; init; }
+
+    /// <summary>
+    /// The authored options, so the rounds table can print labels instead of the raw keys the
+    /// counting result is keyed by. An Admin peeking mid-assembly has to read this out loud.
+    /// </summary>
+    public IReadOnlyList<AssemblyVoteOptionView> Options { get; init; } = [];
+
+    /// <summary>The option's label, falling back to its key when the option is gone.</summary>
+    public string LabelFor(string key) =>
+        Options.FirstOrDefault(o => string.Equals(o.Key, key, StringComparison.Ordinal))?.Label ?? key;
 }
 
 /// <summary>Admin/Board ballots list on a closed vote.</summary>

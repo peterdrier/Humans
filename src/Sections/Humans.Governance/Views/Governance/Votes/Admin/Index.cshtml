@@ -1,0 +1,129 @@
+@model AssemblyVoteAdminListViewModel
+@using NodaTime
+@{
+    ViewData["Title"] = "Assembly Votes";
+    Layout = "_AdminLayout";
+    var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+}
+
+@* Admin routes are localization-exempt (AGENTS.md) — plain English literals throughout. *@
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Assembly Votes</h1>
+    <a asp-action="Create" class="btn btn-primary btn-sm">New vote</a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Status</th>
+                        <th>Kind</th>
+                        <th>Closes at (Madrid)</th>
+                        <th>Closed at</th>
+                        <th>Roster / Ballots</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Votes.Count == 0)
+                    {
+                        <tr><td colspan="7" class="text-center text-muted py-4">No votes yet.</td></tr>
+                    }
+                    @foreach (var vote in Model.Votes)
+                    {
+                        var p = vote.Participation;
+                        var extendId = "extend-" + vote.Id.ToString("N");
+                        var cancelId = "cancel-" + vote.Id.ToString("N");
+                        <tr>
+                            <td>@vote.Title</td>
+                            <td><span class="badge @EnumBadgeMap.For(vote.Status)">@vote.Status</span></td>
+                            <td>@vote.Kind</td>
+                            <td>@vote.ClosesAt.ToDateTime(madrid)</td>
+                            <td>@(vote.ClosedAt.HasValue ? vote.ClosedAt.Value.ToDateTime(madrid) : "—")</td>
+                            <td>
+                                <span title="Official roster / cast">O: @p.OfficialCast/@p.OfficialRoster</span>
+                                @if (p.IndicativeRoster > 0)
+                                {
+                                    <span class="text-muted ms-2" title="Indicative roster / cast">I: @p.IndicativeCast/@p.IndicativeRoster</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                @if (vote.Status == AssemblyVoteStatus.Draft)
+                                {
+                                    <a asp-action="Edit" asp-route-voteId="@vote.Id" class="btn btn-outline-primary btn-sm">Edit</a>
+                                    <form asp-action="Delete" asp-route-voteId="@vote.Id" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-outline-danger btn-sm"
+                                                data-confirm="Delete this draft? This cannot be undone.">Delete</button>
+                                    </form>
+                                    <form asp-action="Open" asp-route-voteId="@vote.Id" method="post" class="d-inline" authorize-policy="AdminOnly">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-primary btn-sm"
+                                                data-confirm="Open this vote? The roster will be snapshotted and notified, and content will be locked except the closing time.">Open</button>
+                                    </form>
+                                }
+                                else if (vote.Status == AssemblyVoteStatus.Open)
+                                {
+                                    <div authorize-policy="AdminOnly" class="d-inline">
+                                        <a asp-action="Peek" asp-route-voteId="@vote.Id" class="btn btn-outline-warning btn-sm"
+                                           title="Live tally — audited">Peek</a>
+                                        <form asp-action="Stop" asp-route-voteId="@vote.Id" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-outline-danger btn-sm"
+                                                    data-confirm="Stop this vote now? Ballots will be rejected from this moment on.">Stop</button>
+                                        </form>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#@extendId">Extend</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#@cancelId">Cancel</button>
+                                    </div>
+                                }
+                                else if (vote.Status == AssemblyVoteStatus.Closed)
+                                {
+                                    <a href="/Governance/Votes/@vote.Id/Results" class="btn btn-outline-secondary btn-sm">Results</a>
+                                    <a asp-action="Ballots" asp-route-voteId="@vote.Id" class="btn btn-outline-secondary btn-sm">Ballots</a>
+                                }
+                            </td>
+                        </tr>
+                        @if (vote.Status == AssemblyVoteStatus.Open)
+                        {
+                            <tr class="collapse" id="@extendId" authorize-policy="AdminOnly">
+                                <td colspan="7">
+                                    <form asp-action="Extend" asp-route-voteId="@vote.Id" method="post" class="row g-2 align-items-end">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="VoteId" value="@vote.Id" />
+                                        <div class="col-auto">
+                                            <label class="form-label small mb-0">New closing time (Europe/Madrid)</label>
+                                            <input type="datetime-local" name="NewClosesAt" class="form-control form-control-sm" required />
+                                        </div>
+                                        <div class="col-auto">
+                                            <button type="submit" class="btn btn-outline-primary btn-sm">Extend</button>
+                                        </div>
+                                    </form>
+                                </td>
+                            </tr>
+                            <tr class="collapse" id="@cancelId" authorize-policy="AdminOnly">
+                                <td colspan="7">
+                                    <form asp-action="Cancel" asp-route-voteId="@vote.Id" method="post" class="row g-2 align-items-end">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="VoteId" value="@vote.Id" />
+                                        <div class="col">
+                                            <label class="form-label small mb-0">Cancellation reason (required, kept on the record)</label>
+                                            <textarea name="Reason" class="form-control form-control-sm" rows="2" required></textarea>
+                                        </div>
+                                        <div class="col-auto">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm"
+                                                    data-confirm="Cancel this vote? This is terminal — ballots are kept but no result is computed, and the roster is notified.">Cancel vote</button>
+                                        </div>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

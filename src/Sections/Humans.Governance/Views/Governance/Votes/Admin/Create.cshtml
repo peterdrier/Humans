@@ -1,0 +1,233 @@
+@model AssemblyVoteDraftFormViewModel
+@{
+    ViewData["Title"] = "New assembly vote";
+    Layout = "_AdminLayout";
+}
+
+@* Admin routes are localization-exempt (AGENTS.md) — plain English literals throughout.
+   Create and Edit intentionally duplicate this form body (small duplication, per the task's
+   own guidance) rather than sharing a partial, since this worker may only touch these two
+   files plus Index/Peek/Ballots. *@
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">Assembly Votes</a></li>
+        <li class="breadcrumb-item active" aria-current="page">New vote</li>
+    </ol>
+</nav>
+
+<h1 class="mb-3">New assembly vote</h1>
+
+<div class="alert alert-info">
+    This is a draft: every field here is editable and the draft can be deleted. Once
+    <strong>opened</strong>, everything below is locked except the closing time — only Stop,
+    Extend and Cancel remain available.
+</div>
+
+<div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert" style="@(ViewData.ModelState.IsValid ? "display:none" : "")"></div>
+
+<form asp-action="Create" method="post">
+    @Html.AntiForgeryToken()
+
+    <div class="card mb-3">
+        <div class="card-header fw-semibold">Title</div>
+        <div class="card-body">
+            @foreach (var culture in Model.Cultures)
+            {
+                Model.Title.TryGetValue(culture, out var value);
+                <div class="input-group input-group-sm mb-2">
+                    <span class="input-group-text" style="min-width:6rem;">@culture.ToDisplayLanguageName()</span>
+                    <input type="text" name="Title[@culture]" class="form-control" value="@value" />
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header fw-semibold">Official text (Markdown)</div>
+        <div class="card-body">
+            <p class="text-muted small">
+                One culture's text is binding (choose it as the <strong>official culture</strong> below);
+                the others are shown to readers as translations.
+            </p>
+            @foreach (var culture in Model.Cultures)
+            {
+                Model.OfficialText.TryGetValue(culture, out var value);
+                <div class="mb-2">
+                    <label class="form-label small fw-semibold mb-1">@culture.ToDisplayLanguageName()</label>
+                    <textarea name="OfficialText[@culture]" class="form-control" rows="4">@value</textarea>
+                </div>
+            }
+            <div class="row g-3 mt-1">
+                <div class="col-md-4">
+                    <label asp-for="OfficialCulture" class="form-label small">Official culture (binding text)</label>
+                    <select asp-for="OfficialCulture" class="form-select form-select-sm">
+                        @foreach (var culture in Model.Cultures)
+                        {
+                            <option value="@culture">@culture.ToDisplayLanguageName()</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-8">
+                    <label asp-for="InfoUrl" class="form-label small">Information link (optional)</label>
+                    <input asp-for="InfoUrl" type="url" class="form-control form-control-sm" placeholder="https://…" />
+                    <span asp-validation-for="InfoUrl" class="text-danger small"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header fw-semibold">Settings</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label asp-for="Kind" class="form-label small">Kind</label>
+                    <select asp-for="Kind" class="form-select form-select-sm" id="voteKindSelect">
+                        @foreach (var kind in Enum.GetValues<AssemblyVoteKind>())
+                        {
+                            <option value="@kind">@kind</option>
+                        }
+                    </select>
+                    <div class="form-text">YesNo has fixed Yes / No / Abstain options — the option rows below are ignored for it.</div>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="RequiredMajority" class="form-label small">Required majority</label>
+                    <select asp-for="RequiredMajority" class="form-select form-select-sm">
+                        @foreach (var v in Enum.GetValues<RequiredMajority>())
+                        {
+                            <option value="@v">@v</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="IndicativeAudience" class="form-label small">Indicative audience</label>
+                    <select asp-for="IndicativeAudience" class="form-select form-select-sm">
+                        @foreach (var v in Enum.GetValues<IndicativeAudience>())
+                        {
+                            <option value="@v">@v</option>
+                        }
+                    </select>
+                    <div class="form-text">Their ballots are shown separately and never count toward the official result.</div>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="BallotDisclosure" class="form-label small">Ballot disclosure</label>
+                    <select asp-for="BallotDisclosure" class="form-select form-select-sm">
+                        @foreach (var v in Enum.GetValues<BallotDisclosure>())
+                        {
+                            <option value="@v">@v</option>
+                        }
+                    </select>
+                    <div class="form-text">Defaults to Board/Admin only; RosterSeesNames also shows names to roster members after close.</div>
+                </div>
+            </div>
+            <div class="row g-3 mt-1">
+                <div class="col-md-4">
+                    <label asp-for="AssemblyDate" class="form-label small">Assembly date (optional, for the acta)</label>
+                    <input asp-for="AssemblyDate" type="date" class="form-control form-control-sm" />
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="ClosesAt" class="form-label small">Closes at (Europe/Madrid local time)</label>
+                    <input asp-for="ClosesAt" type="datetime-local" class="form-control form-control-sm" required />
+                    <span asp-validation-for="ClosesAt" class="text-danger small"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3" id="optionsCard">
+        <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+            <span>Options (RankedChoice only)</span>
+            <button type="button" id="addOptionBtn" class="btn btn-outline-primary btn-sm">Add option</button>
+        </div>
+        <div class="card-body">
+            <p class="text-muted small">
+                At least two options, authored order is the order the rows are posted in. Each
+                option needs a stable key (used in stored ballots) and a label per culture.
+                Ignored for a YesNo vote.
+            </p>
+            <div id="optionRows">
+                @foreach (var row in Model.Options)
+                {
+                    var rowKey = Guid.NewGuid().ToString("N");
+                    <div class="option-row border rounded p-2 mb-2">
+                        <input type="hidden" name="Options.Index" value="@rowKey" />
+                        <div class="d-flex gap-2 align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="input-group input-group-sm mb-2">
+                                    <span class="input-group-text">Key</span>
+                                    <input type="text" name="Options[@rowKey].Key" class="form-control" value="@row.Key" placeholder="stable key, e.g. motion-a" />
+                                </div>
+                                @foreach (var culture in Model.Cultures)
+                                {
+                                    row.Label.TryGetValue(culture, out var labelValue);
+                                    <div class="input-group input-group-sm mb-1">
+                                        <span class="input-group-text" style="min-width:6rem;">@culture.ToDisplayLanguageName()</span>
+                                        <input type="text" name="Options[@rowKey].Label[@culture]" class="form-control" value="@labelValue" />
+                                    </div>
+                                }
+                            </div>
+                            <button type="button" class="btn btn-outline-danger btn-sm remove-option-row">&times;</button>
+                        </div>
+                    </div>
+                }
+            </div>
+            <template id="optionRowTemplate">
+                <div class="option-row border rounded p-2 mb-2">
+                    <input type="hidden" name="Options.Index" value="__ROWKEY__" />
+                    <div class="d-flex gap-2 align-items-start">
+                        <div class="flex-grow-1">
+                            <div class="input-group input-group-sm mb-2">
+                                <span class="input-group-text">Key</span>
+                                <input type="text" name="Options[__ROWKEY__].Key" class="form-control" placeholder="stable key, e.g. motion-a" />
+                            </div>
+                            @foreach (var culture in Model.Cultures)
+                            {
+                                <div class="input-group input-group-sm mb-1">
+                                    <span class="input-group-text" style="min-width:6rem;">@culture.ToDisplayLanguageName()</span>
+                                    <input type="text" name="Options[__ROWKEY__].Label[@culture]" class="form-control" />
+                                </div>
+                            }
+                        </div>
+                        <button type="button" class="btn btn-outline-danger btn-sm remove-option-row">&times;</button>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between mb-5">
+        <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save draft</button>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            var container = document.getElementById('optionRows');
+            var template = document.getElementById('optionRowTemplate');
+            var addBtn = document.getElementById('addOptionBtn');
+            if (!container || !template || !addBtn) return;
+
+            function freshKey() {
+                return (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)).replace(/-/g, '');
+            }
+
+            addBtn.addEventListener('click', function () {
+                var html = template.innerHTML.split('__ROWKEY__').join(freshKey());
+                var wrapper = document.createElement('div');
+                wrapper.innerHTML = html.trim();
+                container.appendChild(wrapper.firstElementChild);
+            });
+
+            container.addEventListener('click', function (ev) {
+                var btn = ev.target.closest('.remove-option-row');
+                if (!btn) return;
+                var row = btn.closest('.option-row');
+                if (row) row.remove();
+            });
+        })();
+    </script>
+}

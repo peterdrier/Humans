@@ -175,7 +175,17 @@ internal sealed class GovernanceVotesAdminController(
         var result = await voteService.PeekAsync(voteId, adminId, ct);
         if (result is null) return NotFound();
 
-        return View("~/Views/Governance/Votes/Admin/Peek.cshtml", new AssemblyVotePeekViewModel { VoteId = voteId, Result = result });
+        // The counting result is keyed by option key; the member-facing read supplies the
+        // labels so the rounds table is readable out loud at the assembly. It carries no
+        // tally of its own, so it adds nothing to what the peek already disclosed.
+        var vote = await voteService.GetVoteForMemberAsync(voteId, adminId, ct);
+
+        return View("~/Views/Governance/Votes/Admin/Peek.cshtml", new AssemblyVotePeekViewModel
+        {
+            VoteId = voteId,
+            Result = result,
+            Options = vote?.Options ?? []
+        });
     }
 
     [HttpGet("{voteId:guid}/Ballots")]
