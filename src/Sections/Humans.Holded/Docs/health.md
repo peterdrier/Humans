@@ -106,8 +106,8 @@ Stated so a violation is recognisable.
 7. **An identity or amount field Holded did not send fails the page.** No manufactured `0`
    reaches the mirror. The harm differs by list, and only the first is about replace semantics:
    on a ledger window a fabricated line overwrites a real cached one; on the chart, whose upsert
-   is additive, it *creates* a phantom account instead. Whether the chart should therefore skip
-   the row rather than fail the page is open — see Load-bearing weirdness.
+   is additive, it *creates* a phantom account instead. The chart fails the page too rather than
+   skipping the row — settled, see Load-bearing weirdness.
 8. **The connector never clears a Holded field it was not asked to clear** — every payload omits
    its nulls.
 9. **Nothing here is keyed by member** — no consent gate, no erasure path of this section's own.
@@ -182,12 +182,14 @@ Settled decisions. Later runs should stop re-litigating these.
   a second payment.
 - **`ListContactsAsync` skips one unreadable contact; every other list fails the whole page.**
   A missing contact name is cosmetic; a missing ledger line or purchase total is wrong money.
-  Settled for contacts and for the ledger. **Not settled for the chart:** a numberless account
-  fails `ListAccountingAccountsAsync`, which runs first in `RefreshAccountsAndReconcileAsync`, so
-  one malformed upstream row blocks every valid account's refresh *and* the whole reconciliation
-  pass for as long as it exists. `UpsertAccountsAsync` is additive — it never deletes an omitted
-  account — so skip-and-log costs a stale row here rather than a wrong balance. Peter's call
-  (peterdrier/Humans#1583, item 1); do not change it unattended.
+  The chart fails the page as well — Peter's ruling of 2026-09-10 against skip-and-log
+  (peterdrier/Humans#1583, item 1). Holded documents an account's `number` as a non-nullable
+  integer and a live read of the chart returned none without one, so the numberless account is a
+  test fixture rather than an observed incident. The cost of skipping is the decisive part:
+  `ListAccountingAccountsAsync` runs first in `RefreshAccountsAndReconcileAsync`, so a skip would
+  let that pass report a completed refresh *and* reconciliation having silently dropped an
+  account. A blocked nightly is the louder failure, and the one we keep. `UpsertAccountsAsync`
+  being additive — it never deletes an omitted account — argues the other way and did not carry it.
 
 ## History
 
