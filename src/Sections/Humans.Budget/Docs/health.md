@@ -39,7 +39,8 @@ The shapes imply exactly the layered split that exists:
 - One `TicketingBudgetService` bridge: aggregates paid orders from `ITicketServiceRead` into
   weekly actuals and hands them to `IBudgetService`; no data of its own.
 - One singleton `BudgetRepository` (`IDbContextFactory`): each mutation is one atomic
-  method that writes its audit rows in the same `SaveChanges`. The projected-week
+  method that writes its audit rows in the same `SaveChanges` — except the two ticketing
+  sync paths, which currently write none (see Seams). The projected-week
   materialization lives here so it runs against post-sync projection parameters.
 - Contracts leaf carries only what external callers read: the read methods, the seeder
   hook, the DTO records, the enums.

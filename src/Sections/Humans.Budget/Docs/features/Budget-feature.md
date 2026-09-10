@@ -255,7 +255,8 @@ Outbound invoices to members/barrios:
 - **Projections** via `TicketingBudgetService.GetProjectionsAsync`:
   - Virtual (non-persisted) weekly entries for future weeks from current week to event date
   - Recalculates from latest actuals: remaining tickets / remaining days = projected daily rate
-  - Fees computed on revenue; VAT on revenue only (inclusive formula)
+  - Fees computed on revenue; VAT on revenue at the projection's VAT rate (inclusive
+    formula), while the Stripe/TicketTailor fee line items carry the fixed 21% fee VAT rate
 - **Budget totals** exclude `IsCashflowOnly` line items from income/expense/profit/charts
 - **UI changes:**
   - Ticketing group badge ("Ticketing") on year detail views
