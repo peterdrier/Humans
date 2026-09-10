@@ -65,7 +65,7 @@ public sealed record HoldedPurchaseDocListItemDto
     public required string DocNumber { get; init; }
     public string? ContactId { get; init; }            // `contact_id` — who the doc is payable to
     public required string ContactName { get; init; }
-    public required Instant Date { get; init; }        // doc `date` (epoch s)
+    public required Instant Date { get; init; }        // doc `date` (ISO yyyy-MM-dd, Madrid midnight)
     public required decimal Subtotal { get; init; }
     public required decimal Tax { get; init; }
     public required decimal Total { get; init; }
@@ -74,8 +74,8 @@ public sealed record HoldedPurchaseDocListItemDto
     public decimal PaymentsPending { get; init; }
     // v2 list items carry no approval timestamp (only the single-GET does — see
     // HoldedPurchaseDocumentDto.ApprovedAt), but they do carry `draft`: true while the doc is
-    // still a draft. Null when Holded does not report the field (treated as not-yet-approved —
-    // see Service.MapDoc).
+    // still a draft. Null when Holded does not report the field, which Finance treats as
+    // not-yet-approved.
     public bool? IsDraft { get; init; }
     public string Currency { get; init; } = "eur";
     public IReadOnlyList<string> Tags { get; init; } = []; // doc-level tags
