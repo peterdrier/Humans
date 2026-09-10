@@ -564,7 +564,7 @@ public sealed class BudgetServiceTests
                 TicketTailorFees: 5m)
         };
 
-        var changed = await _service.SyncTicketingActualsAsync(_yearId, actuals, TestContext.Current.CancellationToken);
+        var changed = await _service.SyncTicketingActualsAsync(_yearId, actuals, actorUserId: null, TestContext.Current.CancellationToken);
 
         changed.Should().BeGreaterThan(0);
 
@@ -585,6 +585,49 @@ public sealed class BudgetServiceTests
     }
 
     [HumansFact]
+    public async Task SyncTicketingActualsAsync_writes_audit_entry_with_null_actor_for_automation()
+    {
+        await SeedTicketingYearAsync();
+
+        var actuals = new List<TicketingWeeklyActuals>
+        {
+            new(Monday: new LocalDate(2026, 3, 2),
+                Sunday: new LocalDate(2026, 3, 8),
+                WeekLabel: "Mar 2–Mar 8",
+                TicketCount: 10,
+                Revenue: 500m,
+                StripeFees: 15m,
+                TicketTailorFees: 5m)
+        };
+
+        await _service.SyncTicketingActualsAsync(_yearId, actuals, actorUserId: null, TestContext.Current.CancellationToken);
+
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var auditEntry = await ctx.BudgetAuditLogs
+            .SingleAsync(a => a.BudgetYearId == _yearId && a.Description.StartsWith("Ticketing sync:"), TestContext.Current.CancellationToken);
+        auditEntry.ActorUserId.Should().BeNull(because: "a null actor marks the entry as automation");
+    }
+
+    [HumansFact]
+    public async Task RefreshTicketingProjectionsAsync_writes_audit_entry_with_the_acting_user()
+    {
+        var (groupId, _, _, _) = await SeedTicketingYearAsync();
+        await ConfigureProjectionAsync(groupId,
+            startDate: new LocalDate(2026, 3, 15),
+            eventDate: new LocalDate(2026, 4, 15),
+            averageTicketPrice: 100m,
+            dailySalesRate: 5m);
+
+        var actor = Guid.NewGuid();
+        await _service.RefreshTicketingProjectionsAsync(_yearId, actor, TestContext.Current.CancellationToken);
+
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var auditEntry = await ctx.BudgetAuditLogs
+            .SingleAsync(a => a.BudgetYearId == _yearId && a.Description.StartsWith("Ticketing projections refreshed:"), TestContext.Current.CancellationToken);
+        auditEntry.ActorUserId.Should().Be(actor);
+    }
+
+    [HumansFact]
     public async Task SyncTicketingActualsAsync_is_noop_when_no_ticketing_group()
     {
         await using (var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
@@ -601,7 +644,7 @@ public sealed class BudgetServiceTests
 
         var result = await _service.SyncTicketingActualsAsync(
             _yearId,
-            new List<TicketingWeeklyActuals>(), TestContext.Current.CancellationToken);
+            new List<TicketingWeeklyActuals>(), actorUserId: null, TestContext.Current.CancellationToken);
 
         result.Should().Be(0);
     }
@@ -616,7 +659,7 @@ public sealed class BudgetServiceTests
             averageTicketPrice: 100m,
             dailySalesRate: 5m);
 
-        var created = await _service.RefreshTicketingProjectionsAsync(_yearId, TestContext.Current.CancellationToken);
+        var created = await _service.RefreshTicketingProjectionsAsync(_yearId, actorUserId: null, TestContext.Current.CancellationToken);
 
         created.Should().BeGreaterThan(0);
 
@@ -656,7 +699,7 @@ public sealed class BudgetServiceTests
                 TicketTailorFees: 0m)
         };
 
-        await _service.SyncTicketingActualsAsync(_yearId, actuals, TestContext.Current.CancellationToken);
+        await _service.SyncTicketingActualsAsync(_yearId, actuals, actorUserId: null, TestContext.Current.CancellationToken);
 
         await using var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
 
@@ -742,7 +785,7 @@ public sealed class BudgetServiceTests
                 TicketTailorFees: 30m)
         };
 
-        await _service.SyncTicketingActualsAsync(_yearId, actuals, TestContext.Current.CancellationToken);
+        await _service.SyncTicketingActualsAsync(_yearId, actuals, actorUserId: null, TestContext.Current.CancellationToken);
 
         await using var verify = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
         var manual = await verify.BudgetLineItems.SingleAsync(li => li.Id == manualId, TestContext.Current.CancellationToken);
@@ -800,7 +843,8 @@ public sealed class BudgetServiceTests
         "create-group", "update-group", "delete-group",
         "create-category", "update-category", "delete-category",
         "create-line-item", "update-line-item", "delete-line-item",
-        "sync-departments", "ensure-ticketing-group", "update-ticketing-projection"
+        "sync-departments", "ensure-ticketing-group", "update-ticketing-projection",
+        "update-year", "sync-ticketing-actuals", "refresh-ticketing-projections"
     };
 
     [HumansTheory]
@@ -841,6 +885,9 @@ public sealed class BudgetServiceTests
             "sync-departments" => () => _repository.SyncDepartmentCategoriesAsync(_yearId, [new BudgetableTeamRef(Guid.NewGuid(), "Team")], actor, now, ct),
             "ensure-ticketing-group" => () => _repository.EnsureTicketingGroupAsync(_yearId, actor, now, ct),
             "update-ticketing-projection" => () => _repository.UpdateTicketingProjectionAsync(new TicketingProjectionUpdate(ticketingGroupId, null, null, 0, 0m, 0m, 10, 0m, 0m, 0m), actor, now, ct),
+            "update-year" => () => _repository.UpdateYearAsync(_yearId, "2027", "Renamed", actor, now, ct),
+            "sync-ticketing-actuals" => () => _repository.SyncTicketingActualsAsync(_yearId, [], Clock.GetCurrentInstant().InUtc().Date, actor, now, ct),
+            "refresh-ticketing-projections" => () => _repository.RefreshTicketingProjectionsAsync(_yearId, Clock.GetCurrentInstant().InUtc().Date, actor, now, ct),
             _ => throw new ArgumentOutOfRangeException(nameof(mutation), mutation, null)
         };
 

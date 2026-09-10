@@ -11,7 +11,7 @@ items for their own departments; every member can see a high-level summary. Tick
 actuals flow in nightly and replace the auto-generated projections (hand-entered line
 items are never touched); projected future ticket weeks are re-forecast from those
 actuals. Every change to the plan is recorded in an append-only audit trail the Board
-can read — except the two ticketing sync paths, currently outside it (see Seams). Cash-flow views answer "when does the money move, and do
+can read. Cash-flow views answer "when does the money move, and do
 we run out?" including the VAT the association will settle each quarter.
 
 ## The shapes
@@ -39,8 +39,7 @@ The shapes imply exactly the layered split that exists:
 - One `TicketingBudgetService` bridge: aggregates paid orders from `ITicketServiceRead` into
   weekly actuals and hands them to `IBudgetService`; no data of its own.
 - One singleton `BudgetRepository` (`IDbContextFactory`): each mutation is one atomic
-  method that writes its audit rows in the same `SaveChanges` — except the two ticketing
-  sync paths, which currently write none (see Seams). The projected-week
+  method that writes its audit rows in the same `SaveChanges`. The projected-week
   materialization lives here so it runs against post-sync projection parameters.
 - Contracts leaf carries only what external callers read: the read methods, the seeder
   hook, the DTO records, the enums.
@@ -49,11 +48,12 @@ The shapes imply exactly the layered split that exists:
 
 - At most one `Active` year: activating a Draft auto-closes any other Active year, with
   audit entries for both transitions.
-- A `Closed` year is read-only: repository mutations gate on it and refuse (the ticketing
-  sync pair and the year-metadata rename sit outside the gate today — see Seams).
+- A `Closed` year is read-only: every repository mutation — the ticketing sync pair and
+  the year-metadata rename included — gates on it and refuses.
 - Every create/update/delete of a year, group, category, line item, or projection writes a
-  `BudgetAuditLog` row in the same transaction; the log is append-only (no update/delete
-  surface exists, §12).
+  `BudgetAuditLog` row in the same transaction; the ticketing sync paths write one summary
+  row per run that changed anything (null actor = the nightly job, rendered as "System");
+  the log is append-only (no update/delete surface exists, §12).
 - Coordinators may write line items only in categories whose `TeamId` is a department they
   coordinate (or a child of it), and never in restricted or ticketing groups; the
   resource-based `BudgetAuthorizationHandler` is the single gate for those writes.
@@ -68,22 +68,10 @@ The shapes imply exactly the layered split that exists:
 
 ## Seams
 
-- **The ticketing paths sit outside the section's cross-cutting guarantees.** This is one
-  class, not one-offs: `SyncTicketingActualsAsync` and `RefreshTicketingProjectionsAsync`
-  neither call the closed-year gate (finding 5) nor write `BudgetAuditLog` rows for the
-  line items they mutate (finding 22) — the nightly job and admin refresh can change a
-  closed year's ticketing items invisibly. Bring the pair under the guarantees or exempt
-  them in the invariants — Peter's call (2026-08-30 run, peterdrier/Humans#1565); neither
-  side changed until then.
-- **Closed-year metadata edits are ungated.** `UpdateYearAsync` — the Edit Year rename
-  form, which renders for Closed years too — never calls the closed-year gate, so a Closed
-  year's identifier and name can still change (audited, but ungated; finding 23). Same
-  ruling class as finding 5: gate it or exempt year-metadata edits — Peter's call, neither
-  side changed until then.
-- **Ticketing-group deny vs the handler.** The coordinator invariant's "never in ticketing
-  groups" half is not enforced: `BudgetAuthorizationHandler` has no `IsTicketingGroup`
-  check, masked today by null `TeamId` on scaffolded ticketing categories (finding 6, same
-  run and PR).
+- (The 2026-08-30 run's three seams — ticketing paths outside the closed-year gate and
+  audit trail, ungated closed-year metadata edits, missing ticketing-group deny in the
+  authorization handler — were ruled on by Peter 2026-09-10 and closed: gate, audit, and
+  deny all landed.)
 - (The 2026-08-18 `NoActiveYear.cshtml` missing-links debt was found already
   built — `HoldedAccounts`, `HoldedUnmatched`, `Creditors` links exist — and its
   `Docs/debt.yml` entry removed this run.)

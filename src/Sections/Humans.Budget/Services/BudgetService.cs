@@ -196,15 +196,6 @@ internal sealed class BudgetService(
         logger.LogInformation("Archived budget year {YearId}", yearId);
     }
 
-    public async Task RestoreYearAsync(Guid yearId, Guid actorUserId)
-    {
-        var now = clock.GetCurrentInstant();
-
-        var restored = await repository.RestoreYearAsync(yearId, actorUserId, now);
-        if (restored)
-            logger.LogInformation("Restored budget year {YearId}", yearId);
-    }
-
     public async Task<int> SyncDepartmentsAsync(Guid budgetYearId, Guid actorUserId)
     {
         var now = clock.GetCurrentInstant();
@@ -750,6 +741,7 @@ internal sealed class BudgetService(
     public async Task<int> SyncTicketingActualsAsync(
         Guid budgetYearId,
         IReadOnlyList<TicketingWeeklyActuals> weeklyActuals,
+        Guid? actorUserId,
         CancellationToken ct = default)
     {
         var now = clock.GetCurrentInstant();
@@ -766,7 +758,7 @@ internal sealed class BudgetService(
             .ToList();
 
         var changed = await repository.SyncTicketingActualsAsync(
-            budgetYearId, actualsInputs, today, now, ct);
+            budgetYearId, actualsInputs, today, actorUserId, now, ct);
 
         logger.LogInformation(
             "Ticketing budget sync: {Created} line items created/updated for {Weeks} actual weeks + projections",
@@ -775,12 +767,14 @@ internal sealed class BudgetService(
         return changed;
     }
 
-    public async Task<int> RefreshTicketingProjectionsAsync(Guid budgetYearId, CancellationToken ct = default)
+    public async Task<int> RefreshTicketingProjectionsAsync(
+        Guid budgetYearId, Guid? actorUserId, CancellationToken ct = default)
     {
         var now = clock.GetCurrentInstant();
         var today = now.InUtc().Date;
 
-        var created = await repository.RefreshTicketingProjectionsAsync(budgetYearId, today, now, ct);
+        var created = await repository.RefreshTicketingProjectionsAsync(
+            budgetYearId, today, actorUserId, now, ct);
 
         logger.LogInformation("Ticketing projections refreshed: {Count} line items", created);
         return created;
