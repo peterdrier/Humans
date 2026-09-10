@@ -58,7 +58,7 @@ Haiku struggles with multi-file context and architectural reasoning. Use for par
 
 ### Constraints
 
-- **Hard limit of 3 parallel subagents** (Peter's standing rule, per CLAUDE.md). Sequential dependencies serial; independent files can fan out 3-wide.
+- **Fan out as wide as the work is independent.** Peter lifted the old 3-parallel cap on 2026-09-10. Sequential dependencies still run serially; disjoint files can go as wide as you have briefs for. Width costs tokens, not correctness — the real limit is how many crisp, non-overlapping briefs you can write.
 - **Subagents can't do interactive design.** Don't dispatch a Sonnet to "decide whether to use approach A or B." Decide first, then dispatch the chosen approach.
 - **Subagent summaries describe intent, not always shipped reality.** Verify via `git diff --stat` + spot-check before trusting "done."
 - **Subagent context is separate.** Brief it with everything it needs (file paths, exact methods, the move map). It can't see your chat with Peter.
