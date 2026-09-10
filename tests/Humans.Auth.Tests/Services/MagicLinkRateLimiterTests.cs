@@ -45,6 +45,44 @@ public sealed class MagicLinkRateLimiterTests : IDisposable
     }
 
     [HumansFact]
+    public async Task TryConsumeTokenAsync_ConcurrentRedemptions_ExactlyOneWins()
+    {
+        // Single-use has to hold against two POSTs arriving together, not just against
+        // a replay minutes later. IMemoryCache has no atomic add, so the reservation is
+        // only exclusive because TryReserveAsync takes read and write under one lock —
+        // remove that and several racers can each believe they created the entry.
+        //
+        // Honest about what this catches: measured against the non-atomic implementation
+        // it goes red in roughly two runs out of three, and neither more racers nor more
+        // rounds moved that much — a 4-core box only opens the window so often. So it is
+        // a partial guard, not a proof. It cannot fail the other way (with the lock there
+        // is exactly one winner every round), so it is never flaky, and it states the
+        // invariant next to the code that has to keep it.
+        const int Rounds = 25;
+        const int Racers = 64;
+
+        var winnersPerRound = new List<int>(Rounds);
+
+        for (var round = 0; round < Rounds; round++)
+        {
+            var token = $"token-{round}";
+            using var start = new ManualResetEventSlim(false);
+
+            var racers = Enumerable.Range(0, Racers).Select(_ => Task.Run(() =>
+            {
+                start.Wait();
+                return _limiter.TryConsumeTokenAsync(token, TokenLifetime);
+            })).ToArray();
+
+            start.Set();
+            var outcomes = await Task.WhenAll(racers);
+            winnersPerRound.Add(outcomes.Count(won => won));
+        }
+
+        winnersPerRound.Should().AllSatisfy(winners => winners.Should().Be(1));
+    }
+
+    [HumansFact]
     public async Task TryConsumeTokenAsync_TokensSharingNoPrefix_DoNotCollide()
     {
         // Keys are built from a 32-char prefix, so two tokens are only distinct

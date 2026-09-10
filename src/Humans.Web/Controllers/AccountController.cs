@@ -257,12 +257,24 @@ public class AccountController(
             return View("MagicLinkError");
         }
 
-        var result = await accountProvisioningService.CompleteMagicLinkSignupAsync(
-            redeemedEmail,
-            burnerName,
-            firstName,
-            lastName,
-            HttpContext.RequestAborted);
+        MagicLinkSignupCompletionResult result;
+        try
+        {
+            result = await accountProvisioningService.CompleteMagicLinkSignupAsync(
+                redeemedEmail,
+                burnerName,
+                firstName,
+                lastName,
+                HttpContext.RequestAborted);
+        }
+        catch
+        {
+            // Provisioning threw — a cancelled request, a database failure. Hand the link
+            // back before the exception surfaces: if it created nothing, the retry signs
+            // them up; if it got as far as the account, the retry finds it and signs them in.
+            magicLinkService.ReleaseSignupToken(token);
+            throw;
+        }
 
 #pragma warning disable CS0618 // result.User is a record field on MagicLinkSignupCompletionResult, not a cross-domain nav read; arch test pattern-matches the literal `.User`.
         if (result.User is null)
