@@ -2,9 +2,9 @@
 
   <!--
     Campaigns' cross-section surface (design §15.5b,
-    memory/architecture/section-project-cycle-fix.md). Holds the five members other
-    assemblies actually call: two writes (Tickets marks redeemed codes, Email mirrors
-    grant Sent/Failed) and three reads (Tickets' code-tracking dashboard, Users'
+    memory/architecture/section-project-cycle-fix.md). Holds the members other
+    assemblies actually call: writes (Tickets marks redeemed codes, Email mirrors
+    grant Sent/Failed) and reads (Tickets' code-tracking dashboard, Users'
     profile and admin-detail grant lists). Campaign/code CRUD, wave sending, resend/
     retry, and the admin page surface stay internal to Humans.Campaigns.
 

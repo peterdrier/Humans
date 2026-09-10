@@ -28,7 +28,7 @@ public sealed record CampaignGrantSummary(
     Instant? RedeemedAt);
 
 /// <summary>
-/// Campaigns' full cross-assembly surface: the read side plus the two writes
+/// Campaigns' full cross-assembly surface: the read side plus the writes
 /// other sections drive (Tickets marking codes redeemed, Email recording
 /// delivery state).
 /// </summary>

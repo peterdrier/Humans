@@ -35,7 +35,7 @@ returns) and nothing of the admin app — that split is correct and worth defend
 
 The shapes imply what is already there, and nothing more:
 
-- One controller (admin routes only), one service, one repository, one DbContext over
+- A controller (admin routes only), a service, a repository, and a DbContext over
   `campaigns`, `campaign_codes`, `campaign_grants`.
 - A contracts leaf with `ICampaignService : ICampaignServiceRead` and the cross-assembly
   DTOs; everything else `internal`.
