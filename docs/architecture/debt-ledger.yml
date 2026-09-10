@@ -409,6 +409,3 @@ inbox:
   - added: 2026-08-28
     what: "docs/architecture/freshness-catalog.yml has no Settings entry — add one covering src/Sections/Humans.Settings/** and src/Sections/Humans.Settings.Contracts/** (finding 14, /section-doctor on Settings 2026-08-28)."
     review: light
-  - added: 2026-08-28
-    what: "docs/architecture/dependency-graph.md predates the Monitor carve-out — DriveMon is still styled :::google and there is no Monitor section in the graph (finding 20, /section-doctor on Settings 2026-08-28)."
-    review: light
