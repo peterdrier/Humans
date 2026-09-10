@@ -17,8 +17,11 @@ Both jobs below are about *who you are and what you may do*, neither about who y
 member.
 
 - **It remembers which offices a person holds, and when.** Someone is made a Board member on a
-  date; later they stop being one. The record of that is kept forever, so the association can
-  answer "who was on the Board in March" as well as "who is on it now". Every change is
+  date; later they stop being one. The record of that is kept, so the association can
+  answer "who was on the Board in March" as well as "who is on it now". Nothing in the section's
+  own paths deletes a row — the one exception is the account merge, which drops a source row
+  whose role the surviving account already holds actively, so that lifetime and its creator are
+  lost (`RoleAssignmentRepository.ReassignToUserAsync`). Every change is
   attributed to whoever made it. A single admin assign or end also notifies the affected person
   and can carry a written reason; the bulk revoke on the deletion path deliberately does
   neither (§4, §6).
@@ -67,7 +70,7 @@ Written fresh from the shapes above, not from today's tree.
   caller that does not exist.
 - **The service holds the invariants.** Temporal overlap, the ended/not-yet-active guard, the
   audit row, the notification, the Board team sync, the cache pokes. Nothing else may write.
-- **One caching decorator over the service interface**, holding the whole row set in memory and
+- **The caching decorator wraps the service interface**, holding the whole row set in memory and
   deriving S1–S3 from it at the caller's clock instant. It is a decorator, so it may reach the
   inner service and never the repository; the row set it holds is the *only* thing it needs, so
   the warm path should ask for rows and nothing else — not for a display-stitched admin page it
@@ -80,8 +83,11 @@ Written fresh from the shapes above, not from today's tree.
   the target: the cooldown belongs behind a Users write method or in `IMagicLinkRateLimiter`
   alongside the signup reservation it already owns.
 - **The section ships no controller, no view, no resx.** `AccountController` and
-  `Views/Account/*` stay in Shell because every action they expose writes another section's
-  tables. That is a deliberate boundary, not an unfinished move.
+  `Views/Account/*` stay in Shell because the controller is the app's sign-in surface: it drives
+  ASP.NET Identity's `SignInManager` and the cookie and external-auth handlers the Shell
+  configures in `Program.cs`, and the actions that do more than render or challenge provision
+  users through `Humans.Users`. None of them writes `role_assignments`. That is a deliberate
+  boundary, not an unfinished move.
 - **S6 does not belong on a role-assignment contract.** The cache-flush verbs sit on
   `IRoleAssignmentService` so that one caller — Users' `AccountMergeService` — can poke
   Auth's caches after a merge fold commits. The target shape is that a merge tells Auth *a
@@ -179,4 +185,4 @@ Settled decisions that read as smells. Stop re-litigating these.
 
 | Run | Date | Headline | PR |
 |-----|------|----------|-----|
-| 1 | 2026-09-01 | First pass — dead repository surface, doc drift, mock-shaped cache tests | [#1575](https://github.com/peterdrier/Humans/pull/1575) |
+| 1 | 2026-09-01 | First pass — dead repository surface, doc drift, mock-shaped cache tests | [peterdrier/Humans#1575](https://github.com/peterdrier/Humans/pull/1575) |

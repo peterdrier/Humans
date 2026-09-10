@@ -11,9 +11,10 @@
   src/Sections/**/Authorization/**/*.cs
   src/Humans.Base/Models/AccessMatrixDefinitions.cs
   src/Humans.Base/ViewComponents/AccessMatrixViewComponent.cs
+  src/Sections/Humans.Email/EmailResource*.resx
 -->
 <!-- freshness:flag-on-change
-  Role-assignment temporal invariants, magic-link rate-limit/replay rules, role-name constants, and the access-matrix mechanism (§"Access Matrix UI" — AccessMatrixViewComponent over static AccessMatrixDefinitions data, no DB table) — review when Auth services, role constants, claims transformation, or the access-matrix component/source change.
+  Role-assignment temporal invariants, magic-link rate-limit/replay rules, role-name constants, and the access-matrix mechanism (§"Access Matrix UI" — AccessMatrixViewComponent over static AccessMatrixDefinitions data, no DB table) — review when Auth services, role constants, claims transformation, or the access-matrix component/source change. The Email resx is here for one reason: Email_MagicLinkSignup_Body promises the recipient the link works only once, and this doc asserts the code keeps that promise — reword the copy and this doc goes stale.
 -->
 
 # Auth — Section Invariants
@@ -166,7 +167,7 @@ Each section's landing page exposes an info-icon button (`AccessMatrixViewCompon
 Auth is a **horizontal** section. `peters-hard-rules.md` forbids a horizontal from referencing a vertical *section project*; a vertical's `.Contracts` leaf is legal from anywhere (Peter's Base-floor decision of 2026-08-14). That is what decided the split:
 
 - **In `Humans.Auth`:** the `RoleAssignment` entity, `AuthDbContext` + factory + configuration + `Data/Migrations/`, `RoleAssignmentRepository`, `RoleAssignmentService`, `CachingRoleAssignmentService`, `AdminAuthorizationService`, `RoleAssignmentAuthorizationHandler`, and — since nobodies-collective/Humans#866 G5 lane 4b-2i — the whole magic-link sign-in path: `MagicLinkService`, `IMagicLinkUrlBuilder` + `MagicLinkUrlBuilder`, `IMagicLinkRateLimiter` + `MagicLinkRateLimiter`. Everything except the `Contracts/` folder is `internal`.
-- **On `Humans.Auth.Contracts`** (framework-free leaf; ~30 Base and Shell consumers): `IRoleAssignmentService`, `IAdminAuthorizationService`, `ICurrentUserContext`, `RoleAssignmentRow`, the three snapshots, `RoleAssignmentResult`, and `IMagicLinkService`. The last is on the leaf rather than in the section's `Contracts/` folder because a consumer outside the section names it — `Humans.Users`' `ExternalLoginService` calls `FindUserByVerifiedEmailAsync` on the OAuth callback path. It is also why this leaf, alone among the horizontals', references `Humans.Users.Contracts`: two of that interface's members return `User`.
+- **On `Humans.Auth.Contracts`** (framework-free leaf, consumed throughout Base and the Shell): `IRoleAssignmentService`, `IAdminAuthorizationService`, `ICurrentUserContext`, `RoleAssignmentRow`, `RoleAssignmentSnapshot`, `RoleAssignmentDetailSnapshot`, `RoleAssignmentSummarySnapshot`, `RoleAssignmentResult`, and `IMagicLinkService`. The last is on the leaf rather than in the section's `Contracts/` folder because a consumer outside the section names it — `Humans.Users`' `ExternalLoginService` calls `FindUserByVerifiedEmailAsync` on the OAuth callback path. It is also why this leaf, alone among the horizontals', references `Humans.Users.Contracts`: two of that interface's members return `User`.
 - **In `Humans.Auth/Contracts/`** (folder, needs ASP.NET): `RoleAssignmentOperationRequirement`, which `Humans.Users`' `UsersAdminController` passes to `IAuthorizationService.AuthorizeAsync`.
 - **Stayed in Shell:** `AccountController` and `Views/Account/*` with their `SharedResource` keys, `HttpCurrentUserContext`, and `RoleAssignmentClaimsTransformation`. (`RoleAssignmentClaimsCacheInvalidator` is not Shell's — the class is in `src/Humans.Base/Caching/MemoryCacheInvalidators.cs`; Shell only registers it.) `AccountController` did not follow `MagicLinkService` in: every action it exposes writes Users'/Profiles' tables through their services and none writes `role_assignments`. The section still ships no controller, no view and no `Resources/` folder.
 
