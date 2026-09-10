@@ -203,6 +203,123 @@ public sealed class SurveyControllerTests
     }
 
     [HumansFact]
+    public async Task Asociado_slug_forces_completion_tracking_without_linking_a_draft()
+    {
+        var surveyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var participationId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        var detail = Detail(
+            surveyId,
+            "Thanks!",
+            allowAnonymous: false,
+            publicSlug: "asociado-vote",
+            isAsociadoVote: true);
+        surveys.ResolvePublicContextAsync("asociado-vote", userId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyPublicContext(surveyId, detail));
+        surveys.StartPublicTrackedResponseAsync(
+                surveyId,
+                userId,
+                ResponseAnonymity.CompletionTracked,
+                "en",
+                Arg.Any<CancellationToken>())
+            .Returns(new SurveyPublicStart(participationId, null, []));
+        var sut = CreateController(surveys, out var session, userId);
+
+        var result = await sut.PublicStart(
+            "asociado-vote",
+            "en",
+            ResponseAnonymity.Identified,
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<RedirectToActionResult>().Subject.ActionName
+            .Should().Be("PublicPage");
+        var state = SurveyWizardSession.LoadBySlug(session, "asociado-vote");
+        state.Should().NotBeNull();
+        state!.Anonymity.Should().Be(ResponseAnonymity.CompletionTracked);
+        state.UserId.Should().Be(userId);
+        state.InvitationId.Should().Be(participationId);
+        state.DraftResponseId.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task Asociado_invite_start_forces_completion_tracking_and_does_not_create_a_draft()
+    {
+        var surveyId = Guid.NewGuid();
+        var invitationId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.ResolveAnswerContextAsync(Token, Arg.Any<CancellationToken>())
+            .Returns(new SurveyAnswerContext(
+                surveyId,
+                invitationId,
+                userId,
+                Detail(surveyId, "Thanks!", allowAnonymous: false, isAsociadoVote: true),
+                [],
+                HasResumableDraft: false));
+        var sut = CreateController(surveys, out var session);
+
+        var result = await sut.Start(
+            new SurveyStartViewModel
+            {
+                Token = Token,
+                Culture = "en",
+                Anonymity = ResponseAnonymity.Identified,
+            },
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<RedirectToActionResult>().Subject.ActionName.Should().Be("Page");
+        var state = SurveyWizardSession.Load(session, Token);
+        state.Should().NotBeNull();
+        state!.Anonymity.Should().Be(ResponseAnonymity.CompletionTracked);
+        state.UserId.Should().Be(userId);
+        state.InvitationId.Should().Be(invitationId);
+        state.DraftResponseId.Should().BeNull();
+        await surveys.DidNotReceive().StartIdentifiedDraftAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<SurveyInputMethod>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Asociado_invite_preserves_a_legacy_identified_draft_as_unlinked_wizard_state()
+    {
+        var surveyId = Guid.NewGuid();
+        var invitationId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var questionId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.ResolveAnswerContextAsync(Token, Arg.Any<CancellationToken>())
+            .Returns(new SurveyAnswerContext(
+                surveyId,
+                invitationId,
+                userId,
+                Detail(surveyId, "Thanks!", allowAnonymous: false, isAsociadoVote: true),
+                [new SurveyDraftAnswer(questionId, ["yes"], null, null, null, null)],
+                HasResumableDraft: true));
+        var sut = CreateController(surveys, out var session);
+
+        var result = await sut.Answer(Token, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<RedirectToActionResult>().Subject.ActionName.Should().Be("Page");
+        var state = SurveyWizardSession.Load(session, Token);
+        state.Should().NotBeNull();
+        state!.Anonymity.Should().Be(ResponseAnonymity.CompletionTracked);
+        state.DraftResponseId.Should().BeNull();
+        state.Answers[questionId.ToString()].SelectedOptionValues.Should().ContainSingle("yes");
+        await surveys.DidNotReceive().StartIdentifiedDraftAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<SurveyInputMethod>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task Public_page_rechecks_audience_and_clears_the_wizard_when_access_is_lost()
     {
         var surveyId = Guid.NewGuid();
@@ -288,7 +405,8 @@ public sealed class SurveyControllerTests
         string thankYou,
         string? spanishThankYou = null,
         bool allowAnonymous = true,
-        string? publicSlug = null)
+        string? publicSlug = null,
+        bool isAsociadoVote = false)
         => new(
             surveyId,
             SurveyStatus.Open,
@@ -312,7 +430,10 @@ public sealed class SurveyControllerTests
                 AudienceTeamId: null,
                 AudienceLoggedInSince: null,
                 PublicSlug: publicSlug,
-                Questions: []));
+                Questions: [])
+            {
+                IsAsociadoVote = isAsociadoVote,
+            });
 
     private static LocalizedText Text(string en) =>
         new(new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = en });

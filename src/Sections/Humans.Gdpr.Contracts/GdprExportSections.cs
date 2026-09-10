@@ -64,4 +64,7 @@ public static class GdprExportSections
     /// </summary>
     public const string MailerLiteSubscriber = "MailerLiteSubscriber";
     public const string BackdoorApiKeys = "BackdoorApiKeys";
+    public const string RideshareTrips = "RideshareTrips";
+    public const string RideshareRequests = "RideshareRequests";
+    public const string RideshareInterests = "RideshareInterests";
 }

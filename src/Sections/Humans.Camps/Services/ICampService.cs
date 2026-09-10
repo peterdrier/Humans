@@ -31,10 +31,13 @@ internal interface ICampService : ICampServiceRead, IApplicationService
 
     // Season management
     Task<CampSeason> OptInToSeasonAsync(Guid campId, int year, CancellationToken cancellationToken = default);
-    Task UpdateSeasonAsync(Guid seasonId, CampSeasonData data, CancellationToken cancellationToken = default);
+    /// <summary>Throws if the season does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
+    Task UpdateSeasonAsync(Guid scopedCampId, Guid seasonId, CampSeasonData data, CancellationToken cancellationToken = default);
     Task ApproveSeasonAsync(Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken = default);
     Task RejectSeasonAsync(Guid seasonId, Guid reviewedByUserId, string notes, CancellationToken cancellationToken = default);
-    Task WithdrawSeasonAsync(Guid seasonId, CancellationToken cancellationToken = default);
+    /// <summary>Throws if the season does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
+    Task WithdrawSeasonAsync(Guid scopedCampId, Guid seasonId, CancellationToken cancellationToken = default);
+    /// <summary>CampAdmin-only verb (unscoped by design — the dashboard is cross-camp).</summary>
     Task ReactivateSeasonAsync(Guid seasonId, CancellationToken cancellationToken = default);
     /// <summary>
     /// Camp lead or CampAdmin sets a season's status directly (currently used to toggle
@@ -50,11 +53,13 @@ internal interface ICampService : ICampServiceRead, IApplicationService
 
     // Historical names
     Task AddHistoricalNameAsync(Guid campId, string name, CancellationToken cancellationToken = default);
-    Task RemoveHistoricalNameAsync(Guid historicalNameId, CancellationToken cancellationToken = default);
+    /// <summary>Throws if the name does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
+    Task RemoveHistoricalNameAsync(Guid scopedCampId, Guid historicalNameId, CancellationToken cancellationToken = default);
 
     // Images
     Task<CampImageUploadResult> UploadImageAsync(Guid campId, Stream fileStream, string fileName, string contentType, long length, CancellationToken cancellationToken = default);
-    Task DeleteImageAsync(Guid imageId, CancellationToken cancellationToken = default);
+    /// <summary>Throws if the image does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
+    Task DeleteImageAsync(Guid scopedCampId, Guid imageId, CancellationToken cancellationToken = default);
     Task ReorderImagesAsync(Guid campId, List<Guid> imageIdsInOrder, CancellationToken cancellationToken = default);
 
     // Settings (CampAdmin)
@@ -64,7 +69,8 @@ internal interface ICampService : ICampServiceRead, IApplicationService
     Task SetNameLockDateAsync(int year, LocalDate lockDate, CancellationToken cancellationToken = default);
 
     // Name change (handles historical name logging)
-    Task ChangeSeasonNameAsync(Guid seasonId, string newName, CancellationToken cancellationToken = default);
+    /// <summary>Throws if the season does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
+    Task ChangeSeasonNameAsync(Guid scopedCampId, Guid seasonId, string newName, CancellationToken cancellationToken = default);
 
     // ==========================================================================
     // Camp membership per season (issue nobodies-collective#488)

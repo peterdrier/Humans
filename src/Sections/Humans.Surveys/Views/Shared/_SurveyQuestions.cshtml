@@ -252,7 +252,19 @@
                                             <option value="">@Localizer["Survey_Ranked_Unranked"]</option>
                                             @for (var rank = 1; rank <= q.Options.Count; rank++)
                                             {
-                                                <option value="@rank" selected="@(selectedRank == rank ? "selected" : null)">@rank</option>
+                                                var rankLabel = rank == 1
+                                                    ? $"{rank} - {Localizer["Survey_Ranked_Best"]}"
+                                                    : rank == q.Options.Count
+                                                        ? $"{rank} - {Localizer["Survey_Ranked_Worst"]}"
+                                                        : rank.ToString();
+                                                @if (selectedRank == rank)
+                                                {
+                                                    <option value="@rank" selected>@rankLabel</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="@rank">@rankLabel</option>
+                                                }
                                             }
                                             @if (q.RankedAllowReject)
                                             {

@@ -1857,7 +1857,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task StartPublicTrackedResponseAsync_completion_tracked_creates_ledger_without_draft()
+    public async Task StartPublicTrackedResponseAsync_completion_tracked_preserves_existing_draft_answers_without_linking_the_draft()
     {
         var surveyId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -1873,6 +1873,16 @@ public class SurveyServiceTests
                 Instant.FromUtc(1970, 1, 1, 0, 0),
                 Arg.Any<CancellationToken>())
             .Returns(participation);
+        var questionId = Guid.NewGuid();
+        _repo.GetDraftResponseAsync(surveyId, userId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyResponse
+            {
+                Id = Guid.NewGuid(),
+                SurveyId = surveyId,
+                UserId = userId,
+                Anonymity = ResponseAnonymity.Identified,
+                Answers = [ChoiceAnswer(questionId, "yes")],
+            });
 
         var result = await CreateService().StartPublicTrackedResponseAsync(
             surveyId, userId, ResponseAnonymity.CompletionTracked, "en",
@@ -1881,7 +1891,8 @@ public class SurveyServiceTests
         result.Should().NotBeNull();
         result!.ParticipationId.Should().Be(participation.Id);
         result.DraftResponseId.Should().BeNull();
-        result.DraftAnswers.Should().BeEmpty();
+        result.DraftAnswers.Should().ContainSingle()
+            .Which.SelectedOptionValues.Should().ContainSingle("yes");
         await _repo.DidNotReceive().AddResponseAsync(
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
@@ -2013,6 +2024,31 @@ public class SurveyServiceTests
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(Asociado(userId, MembershipTier.Colaborador));
         var submission = new SurveySubmission(
+            survey.Id, Guid.NewGuid(), userId, null,
+            ResponseAnonymity.CompletionTracked, SurveyInputMethod.UserSpecificLink, "en",
+            [Ans(questionId, "yes")]);
+
+        var act = async () => await CreateService().SubmitResponseAsync(
+            submission, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*active, approved Asociado*");
+        await _repo.DidNotReceive().FinalizeCompletionTrackedResponseAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<SurveyResponse>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SubmitResponseAsync_rejects_an_identified_asociado_ballot()
+    {
+        var survey = SurveyForSubmit(out var questionId, out _);
+        survey.IsAsociadoVote = true;
+        var userId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Asociado(userId));
+        var submission = new SurveySubmission(
             survey.Id, Guid.NewGuid(), userId, Guid.NewGuid(),
             ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink, "en",
             [Ans(questionId, "yes")]);
@@ -2021,7 +2057,7 @@ public class SurveyServiceTests
             submission, TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*active, approved Asociado*");
+            .WithMessage("*completion tracking*");
         await _repo.DidNotReceive().FinalizeIdentifiedResponseAsync(
             Arg.Any<Guid>(),
             Arg.Any<Guid>(),
@@ -3346,10 +3382,15 @@ public class SurveyServiceTests
         var schema = export!.Questions.Should().ContainSingle().Subject;
         schema.RankedSettings.Should().Be(new SurveyRankedSettings(true, true, "RankedPairs"));
         schema.RankedUnavailableOptionValues.Should().ContainSingle().Which.Should().Be("c");
-        var ballot = export.Rows.Single().Answers.Single().RankedBallot!;
+        var row = export.Rows.Single();
+        row.UserId.Should().BeNull();
+        row.UserName.Should().BeNull();
+        var ballot = row.Answers.Single().RankedBallot!;
         ballot.RankGroups.Should().ContainSingle()
             .Which.Should().ContainInOrder("a", "b");
         ballot.Rejected.Should().ContainSingle().Which.Should().Be("c");
+        await _userService.DidNotReceive().GetUserInfosAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -3512,7 +3553,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task CreateAsync_asociado_vote_requires_identified_asociado_configuration_but_allows_a_slug()
+    public async Task CreateAsync_asociado_vote_requires_fixed_asociado_configuration_but_allows_a_slug()
     {
         var ranked = RankedInput();
         var service = CreateService();
@@ -3536,7 +3577,7 @@ public class SurveyServiceTests
             TestContext.Current.CancellationToken);
 
         await anonymousVote.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*identified*");
+            .WithMessage("*completion-tracked*");
         await wrongAudience.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Asociados audience*");
         await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
@@ -3627,9 +3668,54 @@ public class SurveyServiceTests
         scoped.Results.InvitedCount.Should().Be(4);
         scoped.Results.Questions.Should().BeEmpty();
         scoped.Results.IdentifiedRespondents.Should().BeEmpty();
+        scoped.UnattributedBallots.Should().BeEmpty();
         scoped.RankedQuestions.Should().BeEmpty();
         publicResults.Should().BeNull();
         export.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task Closed_asociado_vote_exposes_unattributed_ballots_without_identified_respondents()
+    {
+        var survey = SurveyWith(SurveyStatus.Closed, SurveyAudienceType.Asociados, null);
+        survey.IsAsociadoVote = true;
+        var questionId = Guid.NewGuid();
+        survey.Questions = [TextQuestion(questionId, survey.Id, 1)];
+        var now = _clock.GetCurrentInstant();
+        var responses = new[]
+        {
+            SubmittedResponse(
+                survey.Id,
+                ResponseAnonymity.CompletionTracked,
+                SurveyInputMethod.UserSpecificLink,
+                now,
+                null,
+                TextAnswer(questionId, "unlinkable")),
+            SubmittedResponse(
+                survey.Id,
+                ResponseAnonymity.Identified,
+                SurveyInputMethod.UserSpecificLink,
+                now,
+                Guid.NewGuid(),
+                TextAnswer(questionId, "legacy")),
+        };
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _repo.GetResponsesForResultsAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(responses);
+        _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, int>());
+
+        var scoped = await CreateService().GetScopedResultsAsync(
+            survey.Id, SurveyResultsScope.Combined, TestContext.Current.CancellationToken);
+
+        scoped!.IsAsociadoVote.Should().BeTrue();
+        scoped.Results.IdentifiedRespondents.Should().BeEmpty();
+        scoped.UnattributedBallots.Should().HaveCount(2);
+        scoped.UnattributedBallots!
+            .SelectMany(ballot => ballot.Answers)
+            .Select(answer => answer.TextValue)
+            .Should().BeEquivalentTo("unlinkable", "legacy");
+        await _userService.DidNotReceive().GetUserInfosAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
