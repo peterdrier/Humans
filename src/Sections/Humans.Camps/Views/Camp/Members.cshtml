@@ -27,10 +27,10 @@
                     @if (Model.RolesPanel.Rows.Count == 0)
                     {
                         <p class="text-muted small mb-0">
-                            No camp roles defined yet.
+                            @Localizer["Camp_Members_NoRolesDefined"]
                             @if (Model.RolesPanel.CanManage)
                             {
-                                <text>CampAdmin can add them at <a asp-controller="CampAdmin" asp-action="Roles">Camp roles</a>.</text>
+                                <text>@Localizer["Camp_Members_NoRolesAdminHint"] <a asp-controller="CampAdmin" asp-action="Roles">@Localizer["Camp_Members_NoRolesAdminHintLink"]</a>.</text>
                             }
                         </p>
                     }
@@ -47,12 +47,12 @@
                                     @role.Name
                                     @if (role.MinimumRequired > 0)
                                     {
-                                        <span class="badge bg-secondary">required</span>
+                                        <span class="badge bg-secondary">@Localizer["Camp_Members_RoleRequiredBadge"]</span>
                                     }
-                                    <small class="text-muted">@role.CurrentCount / @role.SlotCount filled</small>
+                                    <small class="text-muted">@Localizer["Camp_Members_RoleSlotsFilled", role.CurrentCount, role.SlotCount]</small>
                                     @if (role.OverCapacity)
                                     {
-                                        <span class="badge bg-warning text-dark" title="More assignments than the configured slot count.">Over capacity</span>
+                                        <span class="badge bg-warning text-dark" title="@Localizer["Camp_Members_RoleOverCapacityTitle"]">@Localizer["Camp_Members_RoleOverCapacityBadge"]</span>
                                     }
                                     @if (!string.IsNullOrWhiteSpace(role.Description))
                                     {
@@ -141,7 +141,7 @@
                             <i class="fa-solid fa-user-plus"></i>
                         </button>
                     </form>
-                    <div class="form-text">Search by name. The human is added to the camp's open season as Active.</div>
+                    <div class="form-text">@Localizer["Camp_Members_AddMemberSearchHelp"]</div>
                 </div>
             </div>
         }
@@ -156,7 +156,7 @@
                 </div>
                 @if (Model.PendingMembers.Count == 0)
                 {
-                    <div class="px-3 pb-2 text-muted small fst-italic">No pending requests.</div>
+                    <div class="px-3 pb-2 text-muted small fst-italic">@Localizer["Camp_Members_NoPendingRequests"]</div>
                 }
                 else
                 {
