@@ -135,6 +135,18 @@ public sealed class BudgetServiceTests
             .WithMessage("*between 0 and 21*");
     }
 
+    [HumansTheory]
+    [InlineData(-1)]
+    [InlineData(22)]
+    public async Task UpdateTicketingProjectionAsync_rejects_vat_rates_outside_0_to_21(int vatRate)
+    {
+        var act = () => _service.UpdateTicketingProjectionAsync(
+            Guid.NewGuid(), null, null, 0, 0m, 0m, vatRate, 0m, 0m, 0m, Guid.NewGuid());
+
+        await act.Should().ThrowAsync<ArgumentOutOfRangeException>()
+            .WithMessage("*between 0 and 21*");
+    }
+
     // ─── CreateYearAsync with scaffold ──────────────────────────────────────
 
     [HumansFact]

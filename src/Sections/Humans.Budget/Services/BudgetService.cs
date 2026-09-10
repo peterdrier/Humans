@@ -490,6 +490,8 @@ internal sealed class BudgetService(
         int initialSalesCount, decimal dailySalesRate, decimal averageTicketPrice, int vatRate,
         decimal stripeFeePercent, decimal stripeFeeFixed, decimal ticketTailorFeePercent, Guid actorUserId)
     {
+        ValidateVatRate(vatRate);
+
         var now = clock.GetCurrentInstant();
 
         var update = new TicketingProjectionUpdate(
