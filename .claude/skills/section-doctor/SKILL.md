@@ -15,6 +15,24 @@ history lives in the run files and the design spec. An issue reference earns its
 naming a live contract or a baseline a phase is bound to — never as provenance for a rule that
 already stands on its own.
 
+## Intention
+
+Humans is run by volunteers and, increasingly, read and changed by agents. Every section
+will be extended, debugged and rewritten many times by people and models who were not there
+when it was written, and each of them pays, in attention and in tokens, for every line,
+comment, doc claim and test still sitting there. This process exists to keep that price
+honest. Once a day one section is read whole, as it stands today, by something with the time
+to read all of it; whatever no longer earns its place is removed, whatever the docs claim is
+checked against what the code does, and any real defect met on the way is fixed. The measure
+is not a score or a diff size: it is that whoever opens the section next finds it smaller,
+truer, and doing exactly what it did — and that Peter can trust what the run says it did
+without re-reading the section himself.
+
+When a call is ambiguous, ask: *does this make the section truer and lighter for its next
+reader without changing what it does for its users, and will Peter be able to see and verify
+it?* Yes to both: do it. Anything that changes behaviour, widens surface, retires a guardrail,
+or cannot be verified is Peter's call, not the run's.
+
 ## Purpose
 
 **Every section converges, run over run, on the smallest and clearest form that still does
@@ -231,7 +249,8 @@ has nothing to report on scores 0, never "unknown, ranked last"), and picks:
 - **never-doctored tier:** the **median** by score — middle-out: the process proves itself on
   mid-sized sections; the biggest and smallest get their turn once the middle has been worked.
 - **re-doctor tier** (only once the never-doctored tier is empty): a section is eligible only
-  if its files changed on `origin/main` since the commit that last wrote its `Docs/health.md`;
+  if its files — guide page included — changed on `origin/main` since the commit that added
+  its newest run file (a doctor run is exactly that; any other edit to `health.md` is not one);
   ranked oldest last run first, ties by lowest score. The pick carries a `BASE: <sha>` line —
   Phase 3 diffs against it instead of re-reading the section cold.
 
@@ -291,7 +310,7 @@ Phase 2's selector script already built the solution on a normal run; only when 
 reforge needs a built solution and 3d's tool threads need the build. Do not look at its output until 3d.
 
 **A re-doctor reads the diff, not the section.** With a `BASE:` from Phase 2 (or, under
-`--section`, the last `origin/main` commit to the section's `health.md`), 3a's inventory is
+`--section`, the `origin/main` commit that added the section's newest run file), 3a's inventory is
 still complete, but 3b–3d read `git diff BASE..HEAD -- <section paths>` in full and skim the
 rest; the previous target and `health.md` history say what was already judged. A full cold
 assess is for a never-doctored section only.

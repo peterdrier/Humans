@@ -44,7 +44,9 @@ def path_section(path):
 
 
 def section_paths(s):
-    return ["src/Sections/Humans." + s, "src/Sections/Humans." + s + ".Contracts", "tests/Humans." + s + ".Tests"]
+    """Everything Phase 3a inventories for the section."""
+    return ["src/Sections/Humans." + s, "src/Sections/Humans." + s + ".Contracts",
+            "tests/Humans." + s + ".Tests", "docs/guide/" + s + ".md"]
 
 
 def run(cmd):
@@ -120,13 +122,20 @@ def branch_blocked(pr_heads, warnings):
 
 
 def last_doctored(s):
-    """(unix-time, sha) of the last origin/main commit to the section's health.md, or None."""
-    rc, out = run(["git", "log", "-1", "--format=%ct %H", "origin/main", "--",
-                   "src/Sections/Humans.%s/Docs/health.md" % s])
-    if rc != 0 or not out.strip():
-        return None
-    t, sha = out.split()
-    return int(t), sha
+    """(unix-time, sha) of the origin/main commit that added the section's newest run file --
+    a doctor run is exactly that; any other edit to health.md is not one. Falls back to the
+    last commit to health.md for a section with no run file."""
+    queries = (
+        ["--diff-filter=A", "origin/main", "--",
+         "docs/health/runs/????-??-??-%s.md" % s, "docs/health/runs/????-??-??-%s-*.md" % s],
+        ["origin/main", "--", "src/Sections/Humans.%s/Docs/health.md" % s],
+    )
+    for q in queries:
+        rc, out = run(["git", "log", "-1", "--format=%ct %H"] + q)
+        if rc == 0 and out.strip():
+            t, sha = out.split()
+            return int(t), sha
+    return None
 
 
 def changed_since(sha, s):
