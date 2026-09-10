@@ -3,7 +3,7 @@
 - Invocation: unattended daily run (cloud), no arguments; Phase 8 skipped per the stored prompt.
 - Anchor commit: `b0622ff2` (origin/main at branch point); branch `section-doctor/2026-09-10T011607Z`.
 - Budget: standard daily.
-- PR: pending
+- PR: peterdrier/Humans#1647
 
 ## Assessment summary
 
