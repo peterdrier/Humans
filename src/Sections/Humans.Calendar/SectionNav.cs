@@ -3,9 +3,8 @@ using Humans.Base.Interfaces;
 namespace Humans.Calendar;
 
 /// <summary>
-/// Member top-nav contribution — was the third link in Shell's <c>_Layout.cshtml</c>. "Calendar"
-/// was a literal string, not a resource key, so it stays literal (a key with no entry renders
-/// as itself).
+/// Member top-nav contribution. "Calendar" is a literal string, not a resource key, and stays
+/// one — a key with no entry renders as itself, so "localizing" it would be invisible.
 /// </summary>
 internal sealed class SectionNav : ISectionNav
 {

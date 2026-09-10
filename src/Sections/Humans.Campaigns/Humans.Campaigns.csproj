@@ -12,10 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!--
-      Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
-      Declaring them keeps the files moved out of Humans.Web byte-identical to their originals.
-    -->
+    <!-- Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not. -->
     <Using Include="Microsoft.AspNetCore.Http" />
     <Using Include="Microsoft.AspNetCore.Routing" />
     <Using Include="Microsoft.Extensions.Logging" />
@@ -31,10 +28,9 @@
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
     <!--
       Tickets' contracts leaf: CampaignService asks Tickets for discount codes
-      (ITicketDiscountCodes) rather than reaching past it into the Base vendor port, which
-      is what it used to do. Acyclic — the pair goes through leaves in both directions
-      (Humans.Tickets -> Humans.Campaigns.Contracts) and Humans.Campaigns.Contracts names
-      no Tickets type.
+      (ITicketDiscountCodes) rather than reaching past it into the Base vendor port.
+      Acyclic — the pair goes through leaves in both directions and
+      Humans.Campaigns.Contracts names no Tickets type.
     -->
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
   </ItemGroup>

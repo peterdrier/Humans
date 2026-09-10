@@ -8,7 +8,10 @@
 > `ICalendarFeedContributor`, `CalendarFeedItem`, `IICalFeedService` and
 > `UserCalendarViewComponent` are public under `Humans.Calendar/Contracts/`;
 > `ICalFeedService` and `ICalFeedApiController` are `internal` under `Services/` and
-> `Controllers/`; the DI lives in `Humans.Calendar/Section.cs`, not a Shell extension.
+> `Controllers/`; the DI lives in `Humans.Calendar/Section.cs`, not a Shell extension
+> (there is no `ICalFeedSectionExtensions`). The `User` entity carrying `ICalToken` is
+> now `src/Sections/Humans.Users.Contracts/User.cs`. No `src/Humans.Application/`,
+> `src/Humans.Web/` or `src/Humans.Domain/` path named below still resolves.
 > Every decision and contract below still holds — only the file locations changed.
 
 ## Summary

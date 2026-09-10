@@ -68,7 +68,7 @@ public class CalendarPageRenderTests(HumansTestDatabase database) : IntegrationT
         var team = (await teams.GetTeamsAsync(ct)).Values
             .First(t => t is { IsActive: true, IsHidden: false });
 
-        var created = await calendar.CreateEventAsync(
+        var created = await calendar.CreateEventWithResultAsync(
             new CreateCalendarEventDto(
                 Title: "Community call",
                 Description: "Monthly sync",
@@ -83,7 +83,8 @@ public class CalendarPageRenderTests(HumansTestDatabase database) : IntegrationT
             createdByUserId: userId,
             ct: ct);
 
-        return (created.Id, team.Id);
+        created.Succeeded.Should().BeTrue(created.ErrorMessage);
+        return (created.Event!.Id, team.Id);
     }
 
     private static string[] PagesFor(Guid eventId, Guid teamId) =>
