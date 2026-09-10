@@ -860,14 +860,14 @@ internal sealed class SurveyService(
             return null;
         }
 
+        var existingDraft = await repo.GetDraftResponseAsync(surveyId, userId, ct);
         Guid? draftResponseId = null;
-        IReadOnlyList<SurveyDraftAnswer> draftAnswers = [];
+        IReadOnlyList<SurveyDraftAnswer> draftAnswers =
+            existingDraft is null ? [] : MapDraftAnswers(existingDraft);
         if (anonymity == ResponseAnonymity.Identified)
         {
-            var existingDraft = await repo.GetDraftResponseAsync(surveyId, userId, ct);
             draftResponseId = await StartIdentifiedDraftAsync(
                 surveyId, participation.Id, userId, SurveyInputMethod.Slug, culture, ct);
-            draftAnswers = existingDraft is null ? [] : MapDraftAnswers(existingDraft);
         }
         return new SurveyPublicStart(participation.Id, draftResponseId, draftAnswers);
     }
@@ -958,10 +958,12 @@ internal sealed class SurveyService(
         }
         if (survey.IsAsociadoVote == true)
         {
-            if (submission.Anonymity != ResponseAnonymity.Identified || submission.UserId is not { } userId)
+            if (submission.Anonymity != ResponseAnonymity.CompletionTracked
+                || submission.UserId is not { } userId
+                || submission.InvitationId is null)
             {
                 throw new InvalidOperationException(
-                    "Asociado votes require an identified eligible Asociado.");
+                    "Asociado votes require an eligible Asociado with completion tracking.");
             }
             if (!await IsEligibleAsociadoAsync(userId, ct))
             {
@@ -1334,9 +1336,12 @@ internal sealed class SurveyService(
             SlugStarted: survey.PublicStartedCount,
             SlugFinished: responses.Count(r => r.InputMethod == SurveyInputMethod.Slug));
 
-        var identified = embargoed
+        var identified = embargoed || survey.IsAsociadoVote == true
             ? []
             : await BuildIdentifiedRespondentsAsync(survey, responses, culture, ct);
+        var unattributedBallots = !embargoed && survey.IsAsociadoVote == true
+            ? BuildUnattributedBallots(survey, selectedResponses, culture)
+            : [];
         var rankedQuestions = embargoed
             ? new Dictionary<Guid, RankedQuestionResult>()
             : survey.Questions
@@ -1359,7 +1364,9 @@ internal sealed class SurveyService(
             embargoed ? 0 : selectedResponses.Count,
             scope,
             embargoed,
-            rankedQuestions);
+            rankedQuestions,
+            survey.IsAsociadoVote == true,
+            unattributedBallots);
     }
 
     private static RankedQuestionResult BuildRankedQuestionResult(
@@ -1509,9 +1516,12 @@ internal sealed class SurveyService(
             q => q.Id,
             q => q.Options.ToDictionary(o => o.Value, o => o.Label.Resolve(culture, culture), StringComparer.Ordinal));
 
-        // Identity is resolved only for Identified rows (no name lookup for tracked/anonymous responses).
+        // Identity is resolved only for Identified rows in ordinary surveys. Asociado exports never
+        // expose a ballot-to-voter link, including for legacy Identified rows.
         var identifiedUserIds = responses
-            .Where(r => r.Anonymity == ResponseAnonymity.Identified && r.UserId.HasValue)
+            .Where(r => survey.IsAsociadoVote != true
+                && r.Anonymity == ResponseAnonymity.Identified
+                && r.UserId.HasValue)
             .Select(r => r.UserId!.Value)
             .Distinct()
             .ToList();
@@ -1525,7 +1535,9 @@ internal sealed class SurveyService(
             {
                 Guid? userId = null;
                 string? userName = null;
-                if (r.Anonymity == ResponseAnonymity.Identified && r.UserId is { } id)
+                if (survey.IsAsociadoVote != true
+                    && r.Anonymity == ResponseAnonymity.Identified
+                    && r.UserId is { } id)
                 {
                     userId = id;
                     userName = users.TryGetValue(id, out var user) ? user.BurnerName : id.ToString();
@@ -1745,33 +1757,57 @@ internal sealed class SurveyService(
         var userIds = identified.Select(r => r.UserId!.Value).Distinct().ToList();
         var users = await userService.GetUserInfosAsync(userIds, ct);
 
-        var optionLabels = survey.Questions.ToDictionary(
-            q => q.Id,
-            q => q.Options.ToDictionary(o => o.Value, o => o.Label.Resolve(culture, culture), StringComparer.Ordinal));
-        var prompts = survey.Questions.ToDictionary(q => q.Id, q => q.Prompt.Resolve(culture, culture));
-        var questionsById = survey.Questions.ToDictionary(q => q.Id);
+        var answerContext = BuildRespondentAnswerContext(survey, culture);
 
         return identified
             .Select(r =>
             {
                 var userId = r.UserId!.Value;
                 var name = users.TryGetValue(userId, out var user) ? user.BurnerName : userId.ToString();
-                var answers = r.Answers
-                    .Select(a => new RespondentAnswer(
-                        a.QuestionId,
-                        prompts.GetValueOrDefault(a.QuestionId, string.Empty),
-                        ResolveSelectedLabels(a, optionLabels),
-                        a.TextValue,
-                        a.RatingValue,
-                         questionsById.TryGetValue(a.QuestionId, out var question)
-                             ? ResolveGridSelections(a, question, culture)
-                             : [],
-                         ResolveRankedBallot(a, optionLabels)))
-                    .ToList();
+                var answers = BuildRespondentAnswers(r, answerContext, culture);
                 return new RespondentDetail(userId, name, r.SubmittedAt, answers);
             })
             .ToList();
     }
+
+    private static IReadOnlyList<UnattributedBallotDetail> BuildUnattributedBallots(
+        Survey survey, IReadOnlyList<SurveyResponse> responses, string culture)
+    {
+        var answerContext = BuildRespondentAnswerContext(survey, culture);
+        return responses
+            .OrderBy(response => response.Id)
+            .Select(response => new UnattributedBallotDetail(
+                BuildRespondentAnswers(response, answerContext, culture)))
+            .ToList();
+    }
+
+    private static RespondentAnswerContext BuildRespondentAnswerContext(Survey survey, string culture) =>
+        new(
+            survey.Questions.ToDictionary(
+                question => question.Id,
+                question => question.Options.ToDictionary(
+                    option => option.Value,
+                    option => option.Label.Resolve(culture, culture),
+                    StringComparer.Ordinal)),
+            survey.Questions.ToDictionary(
+                question => question.Id,
+                question => question.Prompt.Resolve(culture, culture)),
+            survey.Questions.ToDictionary(question => question.Id));
+
+    private static IReadOnlyList<RespondentAnswer> BuildRespondentAnswers(
+        SurveyResponse response, RespondentAnswerContext context, string culture) =>
+        response.Answers
+            .Select(answer => new RespondentAnswer(
+                answer.QuestionId,
+                context.Prompts.GetValueOrDefault(answer.QuestionId, string.Empty),
+                ResolveSelectedLabels(answer, context.OptionLabels),
+                answer.TextValue,
+                answer.RatingValue,
+                context.QuestionsById.TryGetValue(answer.QuestionId, out var question)
+                    ? ResolveGridSelections(answer, question, culture)
+                    : [],
+                ResolveRankedBallot(answer, context.OptionLabels)))
+            .ToList();
 
     private static IReadOnlyList<string> ResolveSelectedLabels(
         SurveyAnswer answer, IReadOnlyDictionary<Guid, Dictionary<string, string>> optionLabels)
@@ -2506,8 +2542,13 @@ internal sealed class SurveyService(
         if (input.AudienceType != SurveyAudienceType.Asociados)
             throw new InvalidOperationException("Asociado votes must target the Asociados audience.");
         if (input.AllowAnonymous)
-            throw new InvalidOperationException("Asociado votes must use identified responses.");
+            throw new InvalidOperationException("Asociado votes use fixed completion-tracked representation.");
     }
+
+    private sealed record RespondentAnswerContext(
+        IReadOnlyDictionary<Guid, Dictionary<string, string>> OptionLabels,
+        IReadOnlyDictionary<Guid, string> Prompts,
+        IReadOnlyDictionary<Guid, SurveyQuestion> QuestionsById);
 
     private static void ValidateRankedDefinitionFrozen(
         IEnumerable<SurveyQuestion> existing,

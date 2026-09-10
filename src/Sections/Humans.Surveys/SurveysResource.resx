@@ -37,8 +37,8 @@
   <!-- ======================== -->
   <data name="Survey_TransparencyNote" xml:space="preserve"><value>Your responses may be reviewed and analysed, including by automated tooling, to improve the collective.</value></data>
   <data name="Survey_AsociadoVote_Heading" xml:space="preserve"><value>Binding Asociado vote</value></data>
-  <data name="Survey_AsociadoVote_Body" xml:space="preserve"><value>This is an identified, binding association vote. Humans verifies that you are currently an active, approved Asociado before allowing you to participate and again when you submit. Results remain sealed until voting closes. Submit only your own considered ballot; a submitted ballot cannot be replaced.</value></data>
-  <data name="Survey_AsociadoVote_PageReminder" xml:space="preserve"><value>Your identified ballot forms part of a binding association decision. Your eligibility will be checked again when you submit.</value></data>
+  <data name="Survey_AsociadoVote_Body" xml:space="preserve"><value>This is a binding association vote. Humans verifies that you are currently an active, approved Asociado before allowing you to participate and again when you submit. Your participation is recorded to prevent a second vote, but your submitted ballot is not linked to your identity. Results remain sealed until voting closes. Submit only your own considered ballot; a submitted ballot cannot be replaced.</value></data>
+  <data name="Survey_AsociadoVote_PageReminder" xml:space="preserve"><value>Your ballot forms part of a binding association decision. Your eligibility will be checked again when you submit, and the submitted ballot will not be linked to your identity.</value></data>
   <data name="Survey_AsociadoIneligible_Heading" xml:space="preserve"><value>You are not eligible to vote</value></data>
   <data name="Survey_AsociadoIneligible_Body" xml:space="preserve"><value>This binding vote is restricted to people who are currently active, approved Asociados. If you believe your membership record is incorrect, please contact the Board before the voting period closes.</value></data>
   <data name="Survey_TitleFallback" xml:space="preserve"><value>Survey</value></data>
@@ -77,4 +77,6 @@
   <data name="Survey_Ranked_Rank" xml:space="preserve"><value>Rank</value></data>
   <data name="Survey_Ranked_Reject" xml:space="preserve"><value>Reject</value></data>
   <data name="Survey_Ranked_Unranked" xml:space="preserve"><value>Unranked</value></data>
+  <data name="Survey_Ranked_Best" xml:space="preserve"><value>Best</value></data>
+  <data name="Survey_Ranked_Worst" xml:space="preserve"><value>Worst</value></data>
 </root>

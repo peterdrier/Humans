@@ -42,8 +42,8 @@
   </resheader>
   <data name="Survey_TransparencyNote" xml:space="preserve"><value>Tus respuestas pueden ser revisadas y analizadas, incluso mediante herramientas automatizadas, para mejorar el colectivo.</value></data>
   <data name="Survey_AsociadoVote_Heading" xml:space="preserve"><value>Votación vinculante de Asociados</value></data>
-  <data name="Survey_AsociadoVote_Body" xml:space="preserve"><value>Esta es una votación identificada y vinculante de la asociación. Humans comprueba que actualmente eres un Asociado activo y aprobado antes de permitirte participar y de nuevo cuando envías tu voto. Los resultados permanecen sellados hasta que cierre la votación. Envía únicamente tu propio voto meditado; un voto enviado no puede sustituirse.</value></data>
-  <data name="Survey_AsociadoVote_PageReminder" xml:space="preserve"><value>Tu voto identificado forma parte de una decisión vinculante de la asociación. Tu elegibilidad volverá a comprobarse cuando lo envíes.</value></data>
+  <data name="Survey_AsociadoVote_Body" xml:space="preserve"><value>Esta es una votación vinculante de la asociación. Humans comprueba que actualmente eres un Asociado activo y aprobado antes de permitirte participar y de nuevo cuando envías tu voto. Tu participación se registra para impedir un segundo voto, pero el voto enviado no queda vinculado a tu identidad. Los resultados permanecen sellados hasta que cierre la votación. Envía únicamente tu propio voto meditado; un voto enviado no puede sustituirse.</value></data>
+  <data name="Survey_AsociadoVote_PageReminder" xml:space="preserve"><value>Tu voto forma parte de una decisión vinculante de la asociación. Tu elegibilidad volverá a comprobarse cuando lo envíes, y el voto enviado no quedará vinculado a tu identidad.</value></data>
   <data name="Survey_AsociadoIneligible_Heading" xml:space="preserve"><value>No tienes derecho a votar</value></data>
   <data name="Survey_AsociadoIneligible_Body" xml:space="preserve"><value>Esta votación vinculante está restringida a quienes actualmente son Asociados activos y aprobados. Si crees que tu registro de membresía es incorrecto, ponte en contacto con la Junta antes de que cierre el periodo de votación.</value></data>
   <data name="Survey_TitleFallback" xml:space="preserve"><value>Encuesta</value></data>
@@ -82,4 +82,6 @@
   <data name="Survey_Ranked_Rank" xml:space="preserve"><value>Posición</value></data>
   <data name="Survey_Ranked_Reject" xml:space="preserve"><value>Rechazar</value></data>
   <data name="Survey_Ranked_Unranked" xml:space="preserve"><value>Sin clasificar</value></data>
+  <data name="Survey_Ranked_Best" xml:space="preserve"><value>Mejor</value></data>
+  <data name="Survey_Ranked_Worst" xml:space="preserve"><value>Peor</value></data>
 </root>

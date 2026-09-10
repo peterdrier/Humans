@@ -14,7 +14,10 @@ tracked by nobodies-collective/Humans#86.
 
 - RankedChoice is available in ordinary surveys as well as surveys marked
   **Asociado vote**.
-- An Asociado vote is Identified-only and may contain mixed question types.
+- An Asociado vote may contain mixed question types. Humans identifies the
+  participant to enforce eligibility and one completed vote per Asociado, then
+  stores the submitted ballot as CompletionTracked with no `UserId` or
+  `InvitationId`.
 - An Asociado vote always targets the current active Asociados audience; current
   eligibility is still rechecked when each invitee answers and submits.
 - Equal ranks are enabled by default.
@@ -78,9 +81,16 @@ pages, exports, Backdoor endpoints, raw-response views, or respondent
 drill-down.
 
 The builder presents Asociado-vote mode as a separate binding-vote section and
-explains the Identified-only, eligibility, whole-definition lock, embargo, and
-no-reopen consequences before opening. Respondents see a binding-vote notice on
-the intro and question pages. RankedChoice requires that mode.
+explains the eligibility, unlinkable-ballot storage, whole-definition lock,
+embargo, and no-reopen consequences before opening. Respondents see a
+binding-vote notice on the intro and question pages. RankedChoice remains
+available in ordinary surveys too.
+
+After close, admins may inspect individual ballots, but the drill-down labels
+them only as Ballot 1, Ballot 2, and so on: no voter name, user id,
+participation id, response id, or submission timestamp is exposed. Result
+exports and the Backdoor API likewise suppress identity for every Asociado
+ballot, including any legacy Identified row.
 
 ## Data model
 

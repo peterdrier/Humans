@@ -42,8 +42,8 @@
   </resheader>
   <data name="Survey_TransparencyNote" xml:space="preserve"><value>Deine Antworten können überprüft und analysiert werden, auch durch automatisierte Tools, um das Kollektiv zu verbessern.</value></data>
   <data name="Survey_AsociadoVote_Heading" xml:space="preserve"><value>Verbindliche Asociado-Abstimmung</value></data>
-  <data name="Survey_AsociadoVote_Body" xml:space="preserve"><value>Dies ist eine identifizierte, verbindliche Abstimmung des Vereins. Humans prüft vor deiner Teilnahme und erneut beim Absenden, ob du derzeit ein aktiver, bestätigter Asociado bist. Die Ergebnisse bleiben bis zum Ende der Abstimmung unter Verschluss. Gib nur deinen eigenen, wohlüberlegten Stimmzettel ab; ein abgegebener Stimmzettel kann nicht ersetzt werden.</value></data>
-  <data name="Survey_AsociadoVote_PageReminder" xml:space="preserve"><value>Dein identifizierter Stimmzettel ist Teil einer verbindlichen Vereinsentscheidung. Deine Stimmberechtigung wird beim Absenden erneut geprüft.</value></data>
+  <data name="Survey_AsociadoVote_Body" xml:space="preserve"><value>Dies ist eine verbindliche Abstimmung des Vereins. Humans prüft vor deiner Teilnahme und erneut beim Absenden, ob du derzeit ein aktiver, bestätigter Asociado bist. Deine Teilnahme wird erfasst, um eine zweite Stimmabgabe zu verhindern, aber dein abgegebener Stimmzettel wird nicht mit deiner Identität verknüpft. Die Ergebnisse bleiben bis zum Ende der Abstimmung unter Verschluss. Gib nur deinen eigenen, wohlüberlegten Stimmzettel ab; ein abgegebener Stimmzettel kann nicht ersetzt werden.</value></data>
+  <data name="Survey_AsociadoVote_PageReminder" xml:space="preserve"><value>Dein Stimmzettel ist Teil einer verbindlichen Vereinsentscheidung. Deine Stimmberechtigung wird beim Absenden erneut geprüft, und der abgegebene Stimmzettel wird nicht mit deiner Identität verknüpft.</value></data>
   <data name="Survey_AsociadoIneligible_Heading" xml:space="preserve"><value>Du bist nicht stimmberechtigt</value></data>
   <data name="Survey_AsociadoIneligible_Body" xml:space="preserve"><value>Diese verbindliche Abstimmung ist Personen vorbehalten, die derzeit aktive, bestätigte Asociados sind. Wenn du glaubst, dass dein Mitgliedsstatus falsch erfasst ist, wende dich bitte vor Ende des Abstimmungszeitraums an den Vorstand.</value></data>
   <data name="Survey_TitleFallback" xml:space="preserve"><value>Umfrage</value></data>
@@ -82,4 +82,6 @@
   <data name="Survey_Ranked_Rank" xml:space="preserve"><value>Rang</value></data>
   <data name="Survey_Ranked_Reject" xml:space="preserve"><value>Ablehnen</value></data>
   <data name="Survey_Ranked_Unranked" xml:space="preserve"><value>Nicht gereiht</value></data>
+  <data name="Survey_Ranked_Best" xml:space="preserve"><value>Am besten</value></data>
+  <data name="Survey_Ranked_Worst" xml:space="preserve"><value>Am schlechtesten</value></data>
 </root>
