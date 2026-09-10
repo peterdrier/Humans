@@ -32,8 +32,9 @@ gate history is exportable and erasable under GDPR; account merges re-point thei
 The reachable shapes imply: one kiosk controller (scan/decide/leaderboard) plus one admin
 surface (settings, backfill), one service holding the decision orchestration, a pure decision
 table (`GateAdmissionRules`) kept separate so precedence is exhaustively testable, one
-repository over three owned tables, two Hangfire jobs, and two in-memory stores (PIN throttle,
-mirror ledger). No caching decorator — verdicts must be live. No resx — the kiosk is
+repository over the owned tables (`gate_scan_events`, `gate_settings`, `gate_staff_pins`),
+the Hangfire jobs (`GateRetentionJob`, `GateVendorCheckInJob`), and the in-memory stores
+(PIN throttle, mirror ledger). No caching decorator — verdicts must be live. No resx — the kiosk is
 single-locale staff UI by design. The personal-PIN subsystem (claim flow, `gate_staff_pins`,
 roster pre-fill from Shifts, supervisor-role reads from Auth) serves no reachable page today;
 its continued presence is a pending ruling (see Seams), not a structural need.
@@ -64,7 +65,7 @@ its continued presence is a pending ruling (see Seams), not a structural need.
   reason; EE source, prior scanner identity, and GUIDs stay server-side.
 - GDPR: export is data-minimized (no barcode, no other person's ids); erasure clears
   `GuestUserId`/`OverrideByUserId` and deletes the PIN row but keeps `ScannedByUserId`
-  (Art. 17(3) operational record); merge re-points all three user columns.
+  (Art. 17(3) operational record); merge re-points every user column.
 
 ### Seams
 
