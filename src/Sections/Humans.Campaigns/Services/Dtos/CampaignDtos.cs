@@ -72,6 +72,12 @@ internal sealed record CampaignUpdateResult(
     bool Success,
     string? ErrorKey = null);
 
+internal sealed record CampaignImportResult(
+    bool Success,
+    int Imported = 0,
+    int Skipped = 0,
+    string? ErrorKey = null);
+
 internal sealed record CampaignSendWaveResult(
     bool Success,
     string? ErrorKey = null,
