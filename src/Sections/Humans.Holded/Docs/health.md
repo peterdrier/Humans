@@ -65,7 +65,7 @@ Humans.Holded/
   Services/HoldedClient         one class per shape group would be smaller, but the retry,
                                 auth, metering and paging machinery is shared by all of them —
                                 so: one class, its private helpers, and nothing else
-  Services/Service              shapes 1–4: sweep, reconcile, and the three read models
+  Services/Service              shapes 1–4: sweep, reconcile, and the read models
   Services/HoldedCallLog        the in-process meter the client fills and Service drains
   Services/HoldedNightlySync    shape 2's body: Finance's doc sync, then this section's sweep
   Jobs/HoldedSyncJob            the Hangfire shim over it — public only because Hangfire needs
@@ -130,10 +130,11 @@ Specified-but-unbuilt. Not to be built by a doctor run; recorded because items t
 callers are shaped by them.
 
 - **The connector wants to be its own section.** It is the whole of shapes 5–12, has no table,
-  no invariant of the mirror's, and three cross-section callers who do not care about the ledger
-  at all. Splitting it would leave `Humans.Holded` a genuinely small mirror. Nothing has decided
-  this; the cost is a project split plus a rename across three sections.
-- **The `/Holded` and `/Finance/Holded` pair.** Two screens over one integration, split by table
+  no invariant of the mirror's, and its cross-section callers (Finance, Expenses, Store) do not
+  care about the ledger at all. Splitting it would leave `Humans.Holded` a genuinely small
+  mirror. Nothing has decided this; the cost is a project split plus a rename across every
+  calling section.
+- **The `/Holded` and `/Finance/Holded` pair.** Both screens cover one integration, split by table
   ownership rather than by what an admin is trying to find out
   (nobodies-collective/Humans#1000). They link to each other today. Whether one page with two
   sections is the honest shape is undecided.
