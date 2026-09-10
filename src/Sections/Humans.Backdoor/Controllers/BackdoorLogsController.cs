@@ -6,8 +6,7 @@ using Serilog.Events;
 namespace Humans.Backdoor.Controllers;
 
 /// <summary>
-/// The in-memory log tail, for an agent triaging QA or production. Was <c>/api/logs</c> in
-/// Debug before the machine surfaces consolidated here (nobodies-collective/Humans#1128).
+/// The in-memory log tail, for an agent triaging QA or production.
 /// </summary>
 [ApiController]
 [Route("api/backdoor/logs")]
