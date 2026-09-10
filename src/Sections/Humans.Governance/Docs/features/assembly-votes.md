@@ -8,7 +8,7 @@
 
 # Assembly Votes
 
-**Status: design, awaiting Peter's sign-off. Nothing below is implemented.**
+**Status: implemented** (peterdrier/Humans#1649). Signed off by Peter 2026-09-10; the decisions at the end of this document are the contract. Section invariants: [`../Governance.md`](../Governance.md).
 
 Binding votes of the association (Asociados voting on motions during or around a General Assembly), with optional indicative participation by the wider community. This is the remaining scope of nobodies-collective/Humans#86 after nobodies-collective/Humans#1157 shipped the Surveys ranked-choice feature.
 
