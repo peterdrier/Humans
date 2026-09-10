@@ -7,8 +7,7 @@ namespace Humans.Consent.Data;
 /// <summary>
 /// EF-backed implementation of <see cref="ILegalDocumentRepository"/>.
 /// The only non-test file that touches <c>DbContext.LegalDocuments</c> or
-/// <c>DbContext.DocumentVersions</c> after the §15 Legal document migration
-/// lands. Uses <see cref="IDbContextFactory{TContext}"/> so the repository
+/// <c>DbContext.DocumentVersions</c>. Uses <see cref="IDbContextFactory{TContext}"/> so the repository
 /// can be registered as Singleton.
 /// </summary>
 internal sealed class LegalDocumentRepository(IDbContextFactory<LegalDbContext> factory) : ILegalDocumentRepository
@@ -177,9 +176,8 @@ internal sealed class LegalDocumentRepository(IDbContextFactory<LegalDbContext> 
         var document = await ctx.LegalDocuments.FindAsync([documentId], ct);
         if (document is null) return false;
 
-        // Caller sets newVersion.LegalDocumentId during construction (init-only
-        // property). Attach via the DbSet so EF picks up the FK and doesn't
-        // try to track the disconnected LegalDocument nav.
+        // Attach via the DbSet so EF picks up the FK and doesn't try to
+        // track the disconnected LegalDocument nav.
         ctx.DocumentVersions.Add(newVersion);
 
         document.CurrentCommitSha = commitSha;
