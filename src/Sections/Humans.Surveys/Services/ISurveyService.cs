@@ -104,10 +104,16 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
     Task MarkInvitationStartedAsync(Guid invitationId, CancellationToken ct = default);
 
     /// <summary>
-    /// Resolves a public slug into the public answering context (survey id + reused definition), or
-    /// null when no survey owns that slug or the slug is blank. The slug is normalised before lookup.
+    /// Resolves a shareable slug into the answering context (survey id + reused definition) and the
+    /// current Human's access outcome, or null when no survey owns that slug or the slug is blank.
+    /// Anonymous-enabled surveys allow everyone; identified surveys require a logged-in Human who
+    /// currently belongs to the configured audience (or any logged-in Human when no audience is set).
+    /// The slug is normalised before lookup.
     /// </summary>
-    Task<SurveyPublicContext?> ResolvePublicContextAsync(string slug, CancellationToken ct = default);
+    Task<SurveyPublicContext?> ResolvePublicContextAsync(
+        string slug,
+        Guid? userId,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Gets or creates the logged-in Human's per-survey participation ledger for a public-link
@@ -176,7 +182,15 @@ internal sealed record SurveyScopedResults(
     int SelectedResponseCount,
     SurveyResultsScope Scope,
     bool IsEmbargoed = false,
-    IReadOnlyDictionary<Guid, RankedQuestionResult>? RankedQuestions = null);
+    IReadOnlyDictionary<Guid, RankedQuestionResult>? RankedQuestions = null,
+    bool IsAsociadoVote = false,
+    IReadOnlyList<UnattributedBallotDetail>? UnattributedBallots = null);
+
+/// <summary>
+/// One ballot whose answers may be inspected after an Asociado vote closes, without exposing
+/// a respondent identity, participation id, response id, or submission timestamp.
+/// </summary>
+internal sealed record UnattributedBallotDetail(IReadOnlyList<RespondentAnswer> Answers);
 
 internal sealed record RankedQuestionResult(
     IReadOnlyList<RankedCandidateResult> Candidates,
@@ -306,7 +320,17 @@ internal sealed record SurveyAnswerContext(
 /// A survey resolved from its public slug: the survey id plus the reused editable definition
 /// (<see cref="SurveyDetail"/>). Representation is selected when the respondent starts.
 /// </summary>
-internal sealed record SurveyPublicContext(Guid SurveyId, SurveyDetail Definition);
+internal sealed record SurveyPublicContext(
+    Guid SurveyId,
+    SurveyDetail Definition,
+    SurveyPublicAccess Access = SurveyPublicAccess.Allowed);
+
+internal enum SurveyPublicAccess
+{
+    Allowed,
+    AuthenticationRequired,
+    Ineligible,
+}
 
 /// <summary>
 /// The logged-in public-link start result. <c>ParticipationId</c> is the existing or newly-created
@@ -391,7 +415,7 @@ internal sealed class SurveyWizardAnswer
     public int? RatingValue { get; set; }
 }
 
-/// <summary>Where one wizard advance landed. <c>ValidationFailed</c> carries the missing required question ids.</summary>
+/// <summary>Where one wizard advance landed. <c>ValidationFailed</c> carries question-level validation details.</summary>
 internal enum SurveyWizardOutcome
 {
     /// <summary>The survey no longer exists (treat as an invalid link).</summary>
@@ -403,7 +427,7 @@ internal enum SurveyWizardOutcome
     /// <summary>The Human no longer holds active, approved Asociado voting rights.</summary>
     Ineligible,
 
-    /// <summary>Required visible questions are unanswered; the state stays on the posted page.</summary>
+    /// <summary>One or more visible answers are missing or invalid; the state stays on the relevant page.</summary>
     ValidationFailed,
 
     /// <summary>Moved to the previous/next visible page (<c>state.CurrentPage</c> updated).</summary>
@@ -413,5 +437,8 @@ internal enum SurveyWizardOutcome
     Submitted,
 }
 
-/// <summary>Outcome of one wizard advance. <see cref="MissingRequired"/> is empty except on <see cref="SurveyWizardOutcome.ValidationFailed"/>.</summary>
-internal sealed record SurveyWizardAdvanceResult(SurveyWizardOutcome Outcome, IReadOnlyList<Guid> MissingRequired);
+/// <summary>Outcome of one wizard advance. Validation collections are empty except on <see cref="SurveyWizardOutcome.ValidationFailed"/>.</summary>
+internal sealed record SurveyWizardAdvanceResult(
+    SurveyWizardOutcome Outcome,
+    IReadOnlyList<Guid> MissingRequired,
+    IReadOnlyList<Guid>? InvalidAnswers = null);

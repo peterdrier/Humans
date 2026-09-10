@@ -30,7 +30,7 @@ public class FeedbackArchitectureTests
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(INavBadgeCacheInvalidator),
-            because: "FeedbackService invalidates the nav-badge count cache after writes that can change it (submit / status change / message post) — the dependency proves the wire is in place");
+            because: "FeedbackService invalidates the nav-badge count cache after writes that can change it (status change / message post) — the dependency proves the wire is in place");
     }
 
     [HumansFact]
