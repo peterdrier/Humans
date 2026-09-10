@@ -54,7 +54,7 @@ Sole writer for both the GitHub-sync surface (`SyncDocumentAsync` /
 `ArchiveLegalDocumentAsync` / `UpdateVersionSummaryAsync`). Calls
 `ILegalDocumentCacheInvalidator.InvalidateAll()` directly after each
 successful write. Cross-section calls via `INotificationEmitter`,
-`ITeamService` (full service — team-name stitching for the admin list and
+`ITeamServiceRead` (team-name stitching for the admin list and
 the active-required-by-team read), `IUserServiceRead` (active-user
 fan-out for re-consent-required notifications), `IGitHubLegalDocumentConnector`,
 plus `IOptions<GitHubSettings>`. The inner service has no `IMemoryCache`;
@@ -118,7 +118,7 @@ Repository: `IConsentRepository`.
 | ConsentRecords | R/W |
 
 Cross-section calls via `ILegalDocumentSyncService`,
-`INotificationInboxService`, `ISystemTeamSync`, `IUserServiceRead`,
+`INotificationAutoResolve`, `IHumanLifecycleService`, `IUserServiceRead`,
 `IHumansMetrics`, plus `IServiceProvider` for cycle-breaking. Implements
 `IUserDataContributor`. The inner service has no `IMemoryCache`; caching
 lives in the decorator.
