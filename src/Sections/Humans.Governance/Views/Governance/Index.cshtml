@@ -166,3 +166,8 @@
         }
     </div>
 </div>
+
+@* Sections contribute their governance-layer tiles here; Governance names none of them.
+   ChromeSlotViewComponent is Shell-resident (Humans.Web) — a section RCL cannot
+   reference it at compile time, so it is invoked by name. *@
+@await Component.InvokeAsync("ChromeSlot", new { name = "governance-dashboard" })

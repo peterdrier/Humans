@@ -15,6 +15,9 @@ public static class ChromeSlots
     /// <summary>The /Admin dashboard body's contributed section area.</summary>
     public const string AdminDashboard = "admin-dashboard";
 
+    /// <summary>The /Governance page's contributed section area, below its own cards.</summary>
+    public const string GovernanceDashboard = "governance-dashboard";
+
     /// <summary>The profileless-account (guest) page's contributed section area.</summary>
     public const string GuestPage = "guest-page";
 
