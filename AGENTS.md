@@ -80,7 +80,7 @@ Terminology matters here — the full ubiquitous language lives in [`CONTEXT.md`
 
 The most common defect here is a change that works on the path you tested and is missing everywhere else. Before calling work done, walk this list and say which entries applied:
 
-- **Every supported culture.** Every user-facing string lives in the section's resx set, in all six supported cultures (en, es, de, it, fr, ca — parity tests enforce it). A hardcoded string or a missing translation is an incomplete change. Exception: admin-side views (`/Admin/*`, `/TeamAdmin/*`, `/Shifts/Dashboard`) don't get new localization keys ([`localization-admin-exempt`](memory/code/localization-admin-exempt.md)).
+- **Every supported culture.** Every user-facing string lives in the section's resx set, in all six supported cultures (en, es, de, it, fr, ca — parity tests enforce it). A hardcoded string or a missing translation is an incomplete change. Exception: a page only admin or operator roles can reach (`/Admin/*`, `/TeamAdmin/*`, `/Shifts/Dashboard`, `/Monitor/*`) doesn't get new localization keys ([`localization-admin-exempt`](memory/code/localization-admin-exempt.md)).
 - **Authorization, including the negative cases.** Each section's invariant doc lists who must *not* see or do a thing. New pages and endpoints need the deny paths verified, not just the happy path.
 - **Audit trail.** Actions taken by automation or admins on members' behalf need their audit entries.
 - **GDPR paths.** New personal data → export contributor, deletion path, consent where it applies.
