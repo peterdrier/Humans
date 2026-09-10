@@ -38,7 +38,6 @@
   <data name="ConsentIndex_Title" xml:space="preserve"><value>Agreements</value></data>
   <data name="ConsentReview_Title" xml:space="preserve"><value>Review: {0}</value><comment>{0} = document name</comment></data>
   <data name="ConsentReview_Progress" xml:space="preserve"><value>Document {0} of {1}</value><comment>{0} = current document index, {1} = total required documents</comment></data>
-  <data name="Consent_RequiredDocuments" xml:space="preserve"><value>Required Documents</value></data>
   <data name="Consent_NoDocumentsRequired" xml:space="preserve"><value>No documents require consent at this time.</value></data>
   <data name="Consent_Version" xml:space="preserve"><value>Version</value></data>
   <data name="Consent_EffectiveFrom" xml:space="preserve"><value>Effective from</value></data>
@@ -54,13 +53,7 @@
   <data name="Consent_AboutDescription" xml:space="preserve"><value>By consenting to these documents, you agree to be bound by their terms. The Spanish version is the legally binding text. Translations are provided for convenience only.</value></data>
   <data name="ConsentReview_AlreadyConsented" xml:space="preserve"><value>Already Consented</value></data>
   <data name="ConsentReview_ChangesInVersion" xml:space="preserve"><value>Changes in this version:</value></data>
-  <data name="ConsentReview_Important" xml:space="preserve"><value>Important:</value></data>
-  <data name="ConsentReview_SpanishIsLegal" xml:space="preserve"><value>The Spanish version below is the legally binding text. The English translation is provided for your convenience only and is not legally binding.</value></data>
-  <data name="ConsentReview_SpanishTab" xml:space="preserve"><value>Spanish (Legal)</value></data>
-  <data name="ConsentReview_EnglishTab" xml:space="preserve"><value>English (Translation)</value></data>
   <data name="ConsentReview_ContentNotAvailable" xml:space="preserve"><value>Content not available.</value></data>
-  <data name="ConsentReview_EnglishNotAvailable" xml:space="preserve"><value>English translation not available.</value></data>
-  <data name="ConsentReview_TranslationDisclaimer" xml:space="preserve"><value>This translation is provided for convenience only. The Spanish version is legally binding.</value></data>
   <data name="ConsentReview_ConsentCheckbox" xml:space="preserve"><value>I have read and understood this document, and I agree to be bound by its terms.</value></data>
   <data name="ConsentReview_SpanishLegalNote" xml:space="preserve"><value>I understand that the Spanish version is the legally binding text.</value></data>
   <data name="ConsentReview_BackToList" xml:space="preserve"><value>Back to List</value></data>
@@ -71,4 +64,5 @@
   <data name="Consent_ThankYou" xml:space="preserve"><value>Thank you for consenting to {0}.</value><comment>{0} = document name</comment></data>
   <data name="Consent_SubmitError" xml:space="preserve"><value>Something went wrong while recording your consent. Please try again.</value></data>
   <data name="Consent_StubProfile_AddName" xml:space="preserve"><value>Add your legal name before signing consents.</value></data>
+  <data name="Consent_AgreedToBy" xml:space="preserve"><value>Agreed to by &lt;strong&gt;{0}&lt;/strong&gt; on {1} at {2} UTC</value><comment>{0} = full name of the person who consented, {1} = date, {2} = time (UTC)</comment></data>
 </root>

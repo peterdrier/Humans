@@ -1,5 +1,7 @@
 using AwesomeAssertions;
+using Humans.Consent.Contracts;
 using Humans.Consent.Services;
+using Humans.Users.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -18,12 +20,14 @@ public sealed class CachingConsentServiceTests
     private readonly IConsentService _inner = Substitute.For<IConsentService>();
     private readonly ILegalDocumentSyncService _legalSync = Substitute.For<ILegalDocumentSyncService>();
     private readonly IClock _clock = Substitute.For<IClock>();
+    private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
 
     private CachingConsentService CreateSut()
     {
         var services = new ServiceCollection();
         services.AddKeyedScoped<IConsentService>(
             CachingConsentService.InnerServiceKey, (_, _) => _inner);
+        services.AddScoped<IUserServiceRead>(_ => _userService);
         var scopeFactory = services.BuildServiceProvider()
             .GetRequiredService<IServiceScopeFactory>();
         return new CachingConsentService(
@@ -149,5 +153,54 @@ public sealed class CachingConsentServiceTests
             Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == missIds.Count
                 && ids.All(missIds.Contains)),
             Arg.Any<CancellationToken>());
+    }
+
+    // ── SubmitConsentAsync — synchronous cache refresh ───────────────────────
+
+    [HumansFact]
+    public async Task SubmitConsentAsync_Success_RefreshesRowBeforeReturning_SoNextReadHitsCache()
+    {
+        var userId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        _userService.GetMergedSourceIdsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlySet<Guid>)new HashSet<Guid>());
+        _inner.SubmitConsentAsync(userId, versionId, true, "1.2.3.4", "agent", Arg.Any<CancellationToken>())
+            .Returns(new ConsentSubmitResult(true, "Privacy"));
+        _inner.GetConsentedVersionIdsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlySet<Guid>)new HashSet<Guid> { versionId });
+
+        var sut = CreateSut();
+        var result = await sut.SubmitConsentAsync(
+            userId, versionId, true, "1.2.3.4", "agent", Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        // The refresh ran inline, through the same loader the lazy path uses.
+        await _inner.Received(1).GetConsentedVersionIdsAsync(userId, Arg.Any<CancellationToken>());
+
+        // And the refreshed row serves the next read from cache — no inner call.
+        var map = await sut.GetConsentMapForUsersAsync([userId], Xunit.TestContext.Current.CancellationToken);
+        map[userId].Should().Contain(versionId);
+        await _inner.DidNotReceive().GetConsentMapForUsersAsync(
+            Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SubmitConsentAsync_Failure_DoesNotRefreshCache()
+    {
+        var userId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        _userService.GetMergedSourceIdsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlySet<Guid>)new HashSet<Guid>());
+        _inner.SubmitConsentAsync(userId, versionId, true, "1.2.3.4", "agent", Arg.Any<CancellationToken>())
+            .Returns(new ConsentSubmitResult(false, ErrorKey: "Consent_AlreadyConsented"));
+
+        var sut = CreateSut();
+        var result = await sut.SubmitConsentAsync(
+            userId, versionId, true, "1.2.3.4", "agent", Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        // A failed submit changed nothing, so the cache row must not be touched.
+        await _inner.DidNotReceive().GetConsentedVersionIdsAsync(
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 }
