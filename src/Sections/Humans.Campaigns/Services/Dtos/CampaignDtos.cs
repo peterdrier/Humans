@@ -71,3 +71,10 @@ internal sealed record CampaignCreateResult(
 internal sealed record CampaignUpdateResult(
     bool Success,
     string? ErrorKey = null);
+
+internal sealed record CampaignSendWaveResult(
+    bool Success,
+    string? ErrorKey = null,
+    int SentCount = 0,
+    int CodesNeeded = 0,
+    int CodesAvailable = 0);

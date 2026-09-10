@@ -18,7 +18,7 @@ namespace Humans.Campaigns.Services;
 /// <summary>
 /// The Campaigns section's service. Implements the cross-assembly
 /// <see cref="ICampaignService"/> contract; the section's own controller injects this
-/// concrete type for the sixteen members that stay inside (design §15 step 5).
+/// concrete type for the members that stay inside (design §15 step 5).
 /// </summary>
 internal sealed class CampaignService(
     ICampaignRepository repository,
@@ -220,10 +220,11 @@ internal sealed class CampaignService(
     public Task<Guid?> GetCampaignIdForGrantAsync(Guid grantId, CancellationToken ct = default) =>
         repository.GetCampaignIdForGrantAsync(grantId, ct);
 
-    public async Task ImportCodesAsync(Guid campaignId, IEnumerable<string> codes, CancellationToken ct = default)
+    public async Task<CampaignUpdateResult> ImportCodesAsync(Guid campaignId, IEnumerable<string> codes, CancellationToken ct = default)
     {
-        var campaign = await repository.FindForMutationWithCodesAsync(campaignId, ct)
-            ?? throw new InvalidOperationException($"Campaign {campaignId} not found.");
+        var campaign = await repository.FindForMutationWithCodesAsync(campaignId, ct);
+        if (campaign is null)
+            return new CampaignUpdateResult(false, "NotFound");
 
         var existingCodes = campaign.Codes
             .Select(c => c.Code)
@@ -265,6 +266,7 @@ internal sealed class CampaignService(
         logger.LogInformation(
             "Campaign {CampaignId}: imported {Imported} codes, skipped {Skipped} duplicates",
             campaignId, imported, skipped);
+        return new CampaignUpdateResult(true);
     }
 
     private async Task ImportGeneratedCodesAsync(Guid campaignId, IReadOnlyList<string> codes,
@@ -318,9 +320,8 @@ internal sealed class CampaignService(
         if (!Enum.TryParse<TicketDiscountKind>(discountType, ignoreCase: true, out var parsedKind))
             return new CampaignGenerateCodesResult(false, "InvalidDiscountType");
 
-        // Through Tickets, not the vendor port: Tickets is the application's only door to
-        // ticketing, so a second consumer (a low-income concession) costs a leaf reference
-        // rather than a design conversation.
+        // Through Tickets' contract leaf, never the Base vendor port — Tickets is the
+        // only door to ticketing.
         var request = new TicketDiscountCodeRequest(count, parsedKind, discountValue, ExpiresAt: null);
         var codes = await ticketDiscountCodes.GenerateAsync(request, ct);
         await ImportGeneratedCodesAsync(campaignId, codes, ct);
@@ -328,18 +329,17 @@ internal sealed class CampaignService(
         return new CampaignGenerateCodesResult(true, GeneratedCount: codes.Count);
     }
 
-    public async Task ActivateAsync(Guid campaignId, CancellationToken ct = default)
+    public async Task<CampaignUpdateResult> ActivateAsync(Guid campaignId, CancellationToken ct = default)
     {
-        var campaign = await repository.FindForMutationWithCodesAsync(campaignId, ct)
-            ?? throw new InvalidOperationException($"Campaign {campaignId} not found.");
+        var campaign = await repository.FindForMutationWithCodesAsync(campaignId, ct);
+        if (campaign is null)
+            return new CampaignUpdateResult(false, "NotFound");
 
         if (campaign.Status != CampaignStatus.Draft)
-            throw new InvalidOperationException(
-                $"Campaign {campaignId} must be in Draft status to activate (current: {campaign.Status}).");
+            return new CampaignUpdateResult(false, "NotDraft");
 
         if (campaign.Codes.Count == 0)
-            throw new InvalidOperationException(
-                $"Campaign {campaignId} must have at least one code before activation.");
+            return new CampaignUpdateResult(false, "NoCodes");
 
         if (!campaign.EmailBodyTemplate.Contains("{{Code}}", StringComparison.Ordinal))
             logger.LogWarning(
@@ -350,21 +350,23 @@ internal sealed class CampaignService(
         await repository.UpdateCampaignAsync(campaign, ct);
 
         logger.LogInformation("Campaign {CampaignId} activated", campaignId);
+        return new CampaignUpdateResult(true);
     }
 
-    public async Task CompleteAsync(Guid campaignId, CancellationToken ct = default)
+    public async Task<CampaignUpdateResult> CompleteAsync(Guid campaignId, CancellationToken ct = default)
     {
-        var campaign = await repository.FindForMutationAsync(campaignId, ct)
-            ?? throw new InvalidOperationException($"Campaign {campaignId} not found.");
+        var campaign = await repository.FindForMutationAsync(campaignId, ct);
+        if (campaign is null)
+            return new CampaignUpdateResult(false, "NotFound");
 
         if (campaign.Status != CampaignStatus.Active)
-            throw new InvalidOperationException(
-                $"Campaign {campaignId} must be in Active status to complete (current: {campaign.Status}).");
+            return new CampaignUpdateResult(false, "NotActive");
 
         campaign.Status = CampaignStatus.Completed;
         await repository.UpdateCampaignAsync(campaign, ct);
 
         logger.LogInformation("Campaign {CampaignId} completed", campaignId);
+        return new CampaignUpdateResult(true);
     }
 
     public async Task<WaveSendPreview> PreviewWaveSendAsync(Guid campaignId, Guid teamId,
@@ -391,14 +393,14 @@ internal sealed class CampaignService(
             CodesRemainingAfterSend: availableCodes - eligibleCount);
     }
 
-    public async Task<int> SendWaveAsync(Guid campaignId, Guid teamId, CancellationToken ct = default)
+    public async Task<CampaignSendWaveResult> SendWaveAsync(Guid campaignId, Guid teamId, CancellationToken ct = default)
     {
-        var campaign = await repository.FindForMutationAsync(campaignId, ct)
-            ?? throw new InvalidOperationException($"Campaign {campaignId} not found.");
+        var campaign = await repository.FindForMutationAsync(campaignId, ct);
+        if (campaign is null)
+            return new CampaignSendWaveResult(false, "NotFound");
 
         if (campaign.Status != CampaignStatus.Active)
-            throw new InvalidOperationException(
-                $"Campaign {campaignId} must be in Active status to send a wave (current: {campaign.Status}).");
+            return new CampaignSendWaveResult(false, "NotActive");
 
         var activeTeamUserIds = await GetActiveTeamUserIdsAsync(teamId, ct);
         var alreadyGrantedSet = await repository.GetAlreadyGrantedUserIdsAsync(campaignId, ct);
@@ -408,7 +410,7 @@ internal sealed class CampaignService(
             .ToList();
 
         if (eligibleUserIds.Count == 0)
-            return 0;
+            return new CampaignSendWaveResult(true, SentCount: 0);
 
         var users = await userService.GetUserInfosAsync(eligibleUserIds, ct);
         var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync(eligibleUserIds, ct);
@@ -417,8 +419,8 @@ internal sealed class CampaignService(
             campaignId, eligibleUserIds.Count, ct);
 
         if (availableCodes.Count < eligibleUserIds.Count)
-            throw new InvalidOperationException(
-                $"Not enough codes available. Need {eligibleUserIds.Count}, have {availableCodes.Count}.");
+            return new CampaignSendWaveResult(false, "NotEnoughCodes",
+                CodesNeeded: eligibleUserIds.Count, CodesAvailable: availableCodes.Count);
 
         var now = clock.GetCurrentInstant();
         var failedCount = 0;
@@ -482,7 +484,7 @@ internal sealed class CampaignService(
             campaignId, teamId, grantedUserIds.Count, failedCount);
 
         if (grantedUserIds.Count == 0)
-            return 0;
+            return new CampaignSendWaveResult(true, SentCount: 0);
 
         try
         {
@@ -500,7 +502,7 @@ internal sealed class CampaignService(
             logger.LogError(ex, "Failed to dispatch CampaignReceived notifications for campaign {CampaignId}", campaignId);
         }
 
-        return grantedUserIds.Count;
+        return new CampaignSendWaveResult(true, SentCount: grantedUserIds.Count);
     }
 
     public async Task ResendToGrantAsync(Guid grantId, CancellationToken ct = default)

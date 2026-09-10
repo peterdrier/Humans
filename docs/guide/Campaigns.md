@@ -7,6 +7,8 @@
   src/Sections/Humans.Users/Views/Unsubscribe/**
   src/Sections/Humans.Users/Controllers/UnsubscribeController.cs
   src/Sections/Humans.Users/Services/UnsubscribeService.cs
+  src/Sections/Humans.Users/Controllers/ProfileController.cs
+  src/Sections/Humans.Tickets/Services/TicketSyncService.cs
 -->
 <!-- freshness:flag-on-change
   Campaign lifecycle (Draft/Active/Completed), code import, wave send, grant assignment, unsubscribe flow, and My Codes profile section. Review when campaign views, services, or entities change.
