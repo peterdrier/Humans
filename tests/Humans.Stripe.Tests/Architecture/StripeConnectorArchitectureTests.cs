@@ -4,39 +4,19 @@ using Humans.Stripe.Contracts;
 namespace Humans.Stripe.Tests.Architecture;
 
 /// <summary>
-/// Architecture tests enforcing the §15i connector (API bridge) pattern for
-/// the Stripe integration (nobodies-collective/Humans#556).
-///
-/// <para>
-/// Stripe is an external vendor connector and, since nobodies-collective/Humans#866
-/// (G5 lane 4b-2a), a section of its own: <c>Humans.Stripe</c>. Consumers depend on the
-/// <see cref="IStripeService"/> abstraction under <c>Contracts/</c> only, never on
-/// <c>Stripe.net</c> SDK types. <c>Humans.Stripe</c> is the only production assembly that
-/// imports the <c>Stripe</c> namespace. Stripe owns no database tables — Stripe fee values
-/// land on <c>TicketOrder</c> (Tickets) and <c>Payment</c> (Store), written through those
-/// sections' own repository paths.
-/// </para>
-/// <para>
-/// Two tests remain: one fails if <c>Stripe.net</c> is pulled into the Application assembly,
-/// the other if an SDK type appears on the <see cref="IStripeService"/> surface. The Web
-/// assembly is no longer checked — see the COVERAGE REDUCED note below.
-/// </para>
+/// Enforces the §15i connector (API bridge) seam for Stripe
+/// (nobodies-collective/Humans#556): consumers depend on <see cref="IStripeService"/> under
+/// <c>Contracts/</c>, never on <c>Stripe.net</c> SDK types. One test, below.
 /// </summary>
 public class StripeConnectorArchitectureTests
 {
-    // COVERAGE REDUCED (nobodies-collective/Humans#866, G5 lane 5c):
-    // HumansApplicationAssembly_HasNoReferenceToStripeNet is gone. It asserted the hub pulled in no
-    // Stripe.net reference; lane 5c emptied Humans.Application of every type, so the assertion had
-    // nothing left to measure. Re-pointing it at Base would be widening a guardrail during a move,
-    // which the batch's ruling 1 forbids. IStripeService_ExposesNoStripeSdkTypes below still holds
-    // the seam that matters.
+    // COVERAGE REDUCED (nobodies-collective/Humans#866): the assertion that the hub carried no
+    // Stripe.net reference is gone — Humans.Application has no types left to measure. Nothing now
+    // enforces "Humans.Stripe is the only production project referencing Stripe.net".
 
-    // COVERAGE REDUCED (nobodies-collective/Humans#866, G5 lane 4b-2a): the sibling
-    // HumansWebAssembly_HasNoReferenceToStripeNet assertion did not come across. It
-    // anchored on typeof(Humans.Web.Controllers.AboutController), and a section test
-    // project taking a ProjectReference to Shell to keep one reflection assertion alive is
-    // a worse trade than the assertion is worth. Restore it from a host-level architecture
-    // test project once Humans.Web becomes Humans.Host (design 2026-08-14, phase 4b-iv).
+    // COVERAGE REDUCED (nobodies-collective/Humans#866): the matching Humans.Web assertion was
+    // dropped rather than have this section's test project take a ProjectReference to Shell to
+    // keep one reflection assertion alive. Restore it from a host-level architecture test project.
 
     [HumansFact]
     public void IStripeService_ExposesNoStripeSdkTypesOnItsPublicSurface()

@@ -28,7 +28,7 @@ internal sealed class StoreWebhookRegistrationService(
     private const string EventCheckoutSessionAsyncPaymentFailed = "checkout.session.async_payment_failed";
     private const string EventCheckoutSessionExpired = "checkout.session.expired";
 
-    // Matches QA/prod registration. Async-payment events log at Warning until #638 ships.
+    // Must match the event list on the dashboard-configured QA/prod webhook.
     private static readonly IReadOnlyList<string> SubscribedEvents =
     [
         EventCheckoutSessionCompleted,
@@ -56,8 +56,8 @@ internal sealed class StoreWebhookRegistrationService(
 
     private async Task RegisterAsync(CancellationToken ct)
     {
-        var settings1 = settings.Value;
-        if (!settings1.IsWebhookRegistrarConfigured)
+        var stripe = settings.Value;
+        if (!stripe.IsWebhookRegistrarConfigured)
         {
             // Quiet — production and QA deliberately don't set the registrar key.
             return;
@@ -95,11 +95,10 @@ internal sealed class StoreWebhookRegistrationService(
 
         try
         {
-            var client = new StripeClient(settings1.WebhookRegistrarKey);
+            var client = new StripeClient(stripe.WebhookRegistrarKey);
             var service = new WebhookEndpointService(client);
 
-            await SweepStaleEndpointsAsync(service, webhookUrl, cts.Token);
-            await DeleteExistingForUrlAsync(service, webhookUrl, cts.Token);
+            await DeleteObsoleteEndpointsAsync(service, webhookUrl, cts.Token);
 
             var created = await service.CreateAsync(new WebhookEndpointCreateOptions
             {
@@ -116,7 +115,7 @@ internal sealed class StoreWebhookRegistrationService(
                 return;
             }
 
-            settings1.StoreWebhookSecret = created.Secret;
+            stripe.StoreWebhookSecret = created.Secret;
             logger.LogWarning(
                 "Auto-registered Stripe webhook {EndpointId} at {Url} (events: {Events}); STRIPE_STORE_WEBHOOK_SECRET stamped in-memory.",
                 created.Id, webhookUrl, string.Join(", ", SubscribedEvents));
@@ -144,69 +143,42 @@ internal sealed class StoreWebhookRegistrationService(
         }
     }
 
-    private async Task DeleteExistingForUrlAsync(
-        WebhookEndpointService service, string webhookUrl, CancellationToken ct)
-    {
-        var listed = await service.ListAsync(new WebhookEndpointListOptions { Limit = 100 }, cancellationToken: ct);
-        var matches = listed.Data
-            .Where(w => string.Equals(w.Url, webhookUrl, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-        foreach (var stale in matches)
-        {
-            await service.DeleteAsync(stale.Id, cancellationToken: ct);
-            logger.LogInformation(
-                "Deleted Stripe webhook {EndpointId} pointing at {Url} (current-PR cleanup).",
-                stale.Id, webhookUrl);
-        }
-    }
-
     /// <summary>
-    /// Cross-PR sweep: deletes endpoints whose URL host matches <c>{N}.n.burn.camp</c>
-    /// where PR <c>{N}</c> is no longer open on the configured fork. Skipped when
-    /// <see cref="StripeSettings.WebhookCleanupGitHubOwner"/>/<c>WebhookCleanupGitHubRepository</c>
-    /// or <see cref="GitHubSettings.AccessToken"/> are unset.
+    /// One listing of the account's endpoints, deleting the kinds that should not survive this
+    /// boot: any <c>{N}.n.burn.camp</c> endpoint whose PR <c>{N}</c> is no longer open, and then
+    /// our own URL, which we are about to recreate with a fresh signing secret. Our own goes
+    /// last so that a failure part-way through leaves the account as this boot found it.
     /// </summary>
-    private async Task SweepStaleEndpointsAsync(
+    /// <remarks>
+    /// The cross-PR half needs the open-PR list; the own-URL half does not, and still runs when
+    /// <see cref="StripeSettings.WebhookCleanupGitHubOwner"/>/<c>WebhookCleanupGitHubRepository</c>
+    /// or <see cref="GitHubSettings.AccessToken"/> are unset, or GitHub cannot be reached.
+    /// </remarks>
+    private async Task DeleteObsoleteEndpointsAsync(
         WebhookEndpointService service, string ownWebhookUrl, CancellationToken ct)
     {
-        var settings1 = settings.Value;
-        var github = githubSettings.Value;
+        var openPrs = await TryListOpenPullRequestsAsync();
 
-        if (!settings1.IsWebhookCleanupConfigured || string.IsNullOrEmpty(github.AccessToken))
-        {
-            logger.LogInformation(
-                "Cross-PR webhook sweep skipped: missing Stripe:WebhookCleanupOwner/Repository or GitHub:AccessToken.");
-            return;
-        }
-
-        ISet<int> openPrs;
-        try
-        {
-            openPrs = await ListOpenPullRequestsAsync(
-                settings1.WebhookCleanupGitHubOwner,
-                settings1.WebhookCleanupGitHubRepository,
-                github.AccessToken);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex,
-                "Cross-PR webhook sweep skipped: failed to list open PRs from {Owner}/{Repo}.",
-                settings1.WebhookCleanupGitHubOwner, settings1.WebhookCleanupGitHubRepository);
-            return;
-        }
+        var ours = new List<WebhookEndpoint>();
 
         var listed = await service.ListAsync(new WebhookEndpointListOptions { Limit = 100 }, cancellationToken: ct);
         foreach (var endpoint in listed.Data)
         {
-            // Only touch endpoints we own (the n.burn.camp suffix). Defense in depth — the
-            // registrar key is account-scoped, but the sweep should never delete an unrelated
+            // Only touch endpoints we own (the n.burn.camp suffix, our path). Defense in depth —
+            // the registrar key is account-scoped, but this should never delete an unrelated
             // integration's webhook even if one ever shared this Stripe account.
             if (!Uri.TryCreate(endpoint.Url, UriKind.Absolute, out var uri)) continue;
             if (!uri.Host.EndsWith(OwnedHostSuffix, StringComparison.OrdinalIgnoreCase)) continue;
             if (!uri.AbsolutePath.Equals(WebhookPath, StringComparison.Ordinal)) continue;
 
-            // Don't sweep our own endpoint here — the per-URL DeleteExistingForUrlAsync handles that.
-            if (string.Equals(endpoint.Url, ownWebhookUrl, StringComparison.OrdinalIgnoreCase)) continue;
+            if (string.Equals(endpoint.Url, ownWebhookUrl, StringComparison.OrdinalIgnoreCase))
+            {
+                // Set aside, not deleted here: see the second pass below.
+                ours.Add(endpoint);
+                continue;
+            }
+
+            if (openPrs is null) continue;
 
             var match = PrIdFromHostPattern.Match(uri.Host);
             if (!match.Success) continue;
@@ -229,6 +201,53 @@ internal sealed class StoreWebhookRegistrationService(
                     "Could not delete webhook {EndpointId} during sweep — likely already gone.",
                     endpoint.Id);
             }
+        }
+
+        // Our own URL goes last, immediately before the caller recreates it. A failure here
+        // aborts registration — deliberately, rather than leave a duplicate endpoint delivering
+        // to this host under a secret we no longer hold — and the sweep above is best-effort per
+        // endpoint but can still abort on a non-Stripe failure such as the timeout expiring. Do
+        // this first and such an abort would leave the host with no endpoint at all; doing it
+        // last means an abort leaves the account exactly as this boot found it.
+        foreach (var endpoint in ours)
+        {
+            await service.DeleteAsync(endpoint.Id, cancellationToken: ct);
+            logger.LogInformation(
+                "Deleted Stripe webhook {EndpointId} pointing at {Url} (current-PR cleanup).",
+                endpoint.Id, endpoint.Url);
+        }
+    }
+
+    /// <summary>
+    /// The open-PR numbers on the configured fork, or <c>null</c> when the cross-PR sweep
+    /// cannot run — unconfigured, or GitHub unreachable. Null means "unknown", never "none":
+    /// treating it as an empty set would delete every other preview's endpoint.
+    /// </summary>
+    private async Task<ISet<int>?> TryListOpenPullRequestsAsync()
+    {
+        var stripe = settings.Value;
+        var github = githubSettings.Value;
+
+        if (!stripe.IsWebhookCleanupConfigured || string.IsNullOrEmpty(github.AccessToken))
+        {
+            logger.LogInformation(
+                "Cross-PR webhook sweep skipped: missing Stripe:WebhookCleanupOwner/Repository or GitHub:AccessToken.");
+            return null;
+        }
+
+        try
+        {
+            return await ListOpenPullRequestsAsync(
+                stripe.WebhookCleanupGitHubOwner,
+                stripe.WebhookCleanupGitHubRepository,
+                github.AccessToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Cross-PR webhook sweep skipped: failed to list open PRs from {Owner}/{Repo}.",
+                stripe.WebhookCleanupGitHubOwner, stripe.WebhookCleanupGitHubRepository);
+            return null;
         }
     }
 
