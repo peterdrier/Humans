@@ -115,4 +115,4 @@ The shapes imply exactly the layered split that exists:
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| section-doctor | 2026-08-30 | First pass: doc truth, one home for the VAT math, three untested invariants pinned | peterdrier/Humans#1565 |
+| section-doctor | 2026-08-30 | First pass: doc truth, one home for the VAT math, untested invariants pinned | peterdrier/Humans#1565 |
