@@ -68,13 +68,7 @@ The shapes imply exactly the layered split that exists:
 
 ## Seams
 
-- (The 2026-08-30 run's three seams — ticketing paths outside the closed-year gate and
-  audit trail, ungated closed-year metadata edits, missing ticketing-group deny in the
-  authorization handler — were ruled on by Peter 2026-09-10 and closed: gate, audit, and
-  deny all landed.)
-- (The 2026-08-18 `NoActiveYear.cshtml` missing-links debt was found already
-  built — `HoldedAccounts`, `HoldedUnmatched`, `Creditors` links exist — and its
-  `Docs/debt.yml` entry removed this run.)
+- None open.
 
 ## Deliberately not done
 
