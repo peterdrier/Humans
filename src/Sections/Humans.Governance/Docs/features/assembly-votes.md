@@ -26,7 +26,7 @@ Sources: Ley Orgánica 1/2002 reguladora del Derecho de Asociación; the associa
 
 | Question | Answer | Consequence for the design |
 |---|---|---|
-| Who may vote? | Statutes Art. 22 grant vote to Asociados; Art. 24 says Colaboradores are not members and may not vote; volunteers are not addressed. | Only Asociados cast **official** ballots. Colaborador / community ballots are **indicative** and are never counted in the official result. |
+| Who may vote? | Statutes Art. 22 grant vote to Asociados; Art. 24 says Colaboradores are not members and may not vote; volunteers are not addressed. Board members are elected from the membership (Art. 11) and are de facto Asociados. | Asociados and Board members cast **official** ballots. Colaborador / community ballots are **indicative** and are never counted in the official result. |
 | Is remote / electronic voting allowed? | Statutes Art. 8.2: yes, "salvo que la mayoría de los asistentes manifieste expresamente su oposición", provided identity and vote validity are guaranteed. Art. 10.7: advance votes count with session votes. | Voter identity comes from the Humans login; every ballot is tied to a user and its history is kept. The Assembly can still reject the system on the day, so the Admin **stop** must exist and be cheap. |
 | Majority? | Statutes Art. 10.2: simple majority (more for than against). Art. 10.4: statute changes need at least half the Asociados attending and 2/3 of those present in favour. Art. 10.5 / Art. 33: dissolution and disposal of assets have their own threshold. LO 1/2002 Art. 12.d adds Board remuneration to the qualified list. | Per-vote `RequiredMajority` (Simple / TwoThirds). Abstentions are neither for nor against. The attendance condition in Art. 10.4 is a quorum matter (below), not computed here. |
 | Ties? | Statutes Art. 10.2: on a tie between opposing options, and only then, the President of the Board (or whoever chairs the Assembly) may cast a deciding vote. Not applicable to Board elections (Art. 11.2). | The system never breaks a tie. It reports the tie and prints the Art. 10.2 rule; the Secretary records the President's casting vote, if used, in the acta. |
@@ -53,7 +53,7 @@ Sources: Ley Orgánica 1/2002 reguladora del Derecho de Asociación; the associa
 
 Admin-only for the first votes because they are live tests; once the process has run once or twice, opening moves to `BoardOrAdmin` (a policy constant change, no redesign).
 
-- Opening snapshots the **roster**: every current Asociado (official) plus the indicative audience (Colaboradores and/or all active Volunteers) as of that instant. The roster is the legal record of who was entitled to vote and the denominator for turnout. It never changes afterwards; members approved, expired, suspended or erased during the vote keep or lose nothing on the roster, only their ability to log in.
+- Opening snapshots the **roster**: every current Asociado and every active Board role holder (official, one row per person, Board members are de facto Asociados whatever their profile tier says) plus the indicative audience (Colaboradores and/or all active Volunteers) as of that instant. The roster is the legal record of who was entitled to vote and the denominator for turnout. It never changes afterwards; members approved, expired, suspended or erased during the vote keep or lose nothing on the roster, only their ability to log in.
 - Each roster member is emailed in their preferred language with the title, the closing time, whether their ballot is official or indicative, and a link to the ballot page. Category `System` (operational, never marketing).
 - Audit entry `AssemblyVoteOpened` with roster counts.
 
@@ -65,7 +65,7 @@ Admin-only for the first votes because they are live tests; once the process has
 - Submitting shows the recorded ballot, its revision number and timestamp. Every cast or change appends a history row and writes an audit entry (`AssemblyBallotCast` / `AssemblyBallotChanged`) that names the voter and vote but **not the choice**.
 - The page shows the member's own ballot history (each revision with its timestamp and content) and the live participation stats (US-V5).
 - A ballot from an indicative voter is visibly labelled "indicative, not counted in the official result" on the page, in the confirmation and in the email.
-- While a vote is Open, a member not on the roster gets 404 on its pages and does not see it in the list. Once Closed, every logged-in member sees it in the list and can open its results (US-V7).
+- Every logged-in member sees every vote, Open or Closed, in the list and can open its page: title, official text, link, closing time and the participation stats (US-V5). Only roster members get the ballot form; everyone else sees a "you are not on the roster for this vote" note in its place. Ballot POSTs from non-roster members are rejected.
 
 ### US-V4: The vote closes
 
@@ -80,9 +80,9 @@ Admin-only for the first votes because they are live tests; once the process has
 
 ### US-V5: Everyone sees participation, nobody sees the tally
 
-**As a** roster member or Board member **I want to** see how the vote is going without seeing how it is going.
+**As a** member **I want to** see how the vote is going without seeing how it is going.
 
-While Open, the vote page shows: roster size (official / indicative), ballots cast (official / indicative), turnout %, number of ballots changed at least once, total revisions, time of the last ballot, closing time. Nothing derived from ballot content is available anywhere: no per-option counts, no partial IRV rounds, no export, no Backdoor read.
+While Open, the vote page shows to every logged-in member: roster size (official / indicative), ballots cast (official / indicative, "56 of 112 have voted"), turnout %, number of ballots changed at least once, total revisions, time of the last ballot, closing time. Nothing derived from ballot content is available anywhere: no per-option counts, no partial IRV rounds, no export, no Backdoor read.
 
 ### US-V6: Admin peeks, and it shows
 
@@ -171,8 +171,9 @@ All tables in `GovernanceDbContext`, one migration, prefix `assembly_`.
 | Id | Guid | PK |
 | VoteId | Guid | FK |
 | UserId | Guid? | bare FK → User, no nav; null after Art. 17 erasure |
-| Tier | MembershipTier | tier at open |
-| IsOfficial | bool | Asociado at open |
+| Tier | MembershipTier | profile tier at open |
+| IsBoardMember | bool | held the Board role at open |
+| IsOfficial | bool | Asociado or Board member at open |
 | NotifiedAt | Instant? | open email queued |
 | ReminderSentAt | Instant? | T-24h reminder queued; idempotency anchor |
 
@@ -254,8 +255,8 @@ All member-facing routes are localized (six cultures). Admin routes are exempt.
 
 | Route | Policy | Purpose |
 |---|---|---|
-| `GET /Governance/Votes` | authenticated | open votes I am on the roster of, then every closed vote |
-| `GET /Governance/Votes/{id}` | roster member | ballot page + own history + stats (mobile-first) |
+| `GET /Governance/Votes` | authenticated | every vote, Open first |
+| `GET /Governance/Votes/{id}` | authenticated | text, link, stats for everyone; ballot form + own history for roster members (mobile-first) |
 | `POST /Governance/Votes/{id}/Ballot` | roster member, vote Open | cast or change |
 | `GET /Governance/Votes/{id}/Results` | any authenticated member, vote Closed | results, rounds, acta block, peek list; own ballot for roster members; names only per `BallotDisclosure` |
 | `GET /Governance/Votes/{id}/Results.csv` | same as results | tallies / rounds export |
@@ -269,7 +270,7 @@ All member-facing routes are localized (six cultures). Admin routes are exempt.
 | `GET /Governance/Votes/Admin/{id}/Peek` | AdminOnly | live tally, audited |
 | `GET /Governance/Votes/Admin/{id}/Ballots` | BoardOrAdmin, vote Closed | per-member ballots, audited |
 
-Navigation: a `SectionNav` entry ("Votes", `Nav_*` SharedResource key, visible only when the member is on any roster); an open vote adds a `ThingsToDo` entry ("Cast your vote", done when a ballot exists) and a member-dashboard card via the existing Governance seams (`SectionThingsToDo`, `SectionMemberDashboard`); admin entry under Governance in `SectionAdminNav`.
+Navigation: a `SectionNav` entry ("Votes", `Nav_*` SharedResource key, visible to every member); an open vote adds a `ThingsToDo` entry ("Cast your vote", done when a ballot exists) and a member-dashboard card via the existing Governance seams (`SectionThingsToDo`, `SectionMemberDashboard`); admin entry under Governance in `SectionAdminNav`.
 
 ## Actors & roles
 
@@ -277,17 +278,17 @@ Navigation: a `SectionNav` entry ("Votes", `Nav_*` SharedResource key, visible o
 |---|---|---|
 | Roster member (official) | see the vote, cast/change until close, see own history, see stats, see results after close | see others' ballots unless `RosterSeesNames`; see tally before close |
 | Roster member (indicative) | same, ballot labelled indicative | count in the official result |
-| Non-roster member | see closed votes and their results (numbers only) | see or find an Open vote; see any ballot |
+| Non-roster member | see every vote, its text and live stats, and closed results (numbers only) | cast a ballot; see any individual ballot |
 | Board | draft, edit, delete drafts, see all votes and stats, see every ballot after close (audited) | open, stop, extend, cancel, peek |
 | Admin | everything Board can, plus open, stop, extend, cancel, peek | see the tally before close without an audit trail |
 | Automation (lapse job) | close a lapsed vote and audit it | anything else |
 
-Board members are usually Asociados and appear on the roster like anyone else; their Board role gives them no extra ballot.
+Board members are de facto Asociados: they are on the official roster whether or not their profile tier says Asociado, with one ballot like anyone else.
 
 ## Invariants
 
 - Only roster rows with `IsOfficial = true` contribute to the official result; indicative ballots are tallied separately and never merged.
-- The roster is written exactly once, at open, from Governance's own `applications` (active Approved Asociado / Colaborador terms) plus the Volunteers team for `AllMembers`; it is never recomputed.
+- The roster is written exactly once, at open, from Governance's own `applications` (active Approved Asociado / Colaborador terms), the active Board role holders via `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` (official), and the Volunteers team for `AllMembers`; it is never recomputed. A person appearing in more than one source gets one row, official if any source is official.
 - A ballot can be cast or changed only while `Status = Open` and `now < ClosesAt`, by the roster member it belongs to. One ballot per roster row; changes bump `Revision` and append history; nothing is ever deleted.
 - Content (`Title`, `OfficialText`, options, `Kind`, `RequiredMajority`, audiences, disclosure) is immutable once Open.
 - No read path returns per-option counts, rankings, or any ballot content for an Open vote except `Peek`, and `Peek` always writes its audit entry and peek row in the same unit of work as the read.
@@ -300,7 +301,7 @@ Board members are usually Asociados and appear on the roster like anyone else; t
 
 ## Negative access rules
 
-- Non-roster users **cannot** see, list or vote on an Open vote, and **cannot** see any individual ballot on a Closed one.
+- Non-roster users **cannot** cast or change a ballot, and **cannot** see any individual ballot.
 - Board **cannot** open, stop, extend, cancel or peek (AdminOnly).
 - Nobody **cannot**-bypass the embargo: no export, no Backdoor endpoint, no Debug page returns ballot content for an Open vote.
 - Indicative ballots **cannot** appear in the official tally, the acta block, or the verdict.
@@ -323,6 +324,7 @@ Board members are usually Asociados and appear on the roster like anyone else; t
 ## Cross-section dependencies
 
 - **Users:** `IUserServiceRead` for names, preferred language, active state; `IUserEmailService` for the notification address.
+- **Auth:** `IRoleAssignmentService.GetActiveUserIdsInRoleAsync(RoleNames.Board)` for the Board members on the official roster (already a Governance dependency).
 - **Teams:** `ITeamServiceRead` for the Volunteers team membership (`AllMembers` indicative audience).
 - **Email:** `IEmailService.SendAsync` + three new `IEmailMessageFactory` messages (opened, reminder, cancelled).
 - **Notifications:** `INotificationEmitter` + `INotificationAutoResolve`; one new `NotificationSource.AssemblyVoteOpened`.
@@ -347,6 +349,8 @@ Proxy/delegated votes; quorum determination; secret ballots (use Surveys Asociad
 5. **No shared localized-text type** with Surveys; Governance owns its own.
 6. **Statutes** reviewed from `nobodies-collective/legal`; no secrecy rule; the Reglamento de Régimen Interno does not exist yet.
 7. **Ties** are reported, never resolved in-system; statutes Art. 10.2 gives the President the casting vote, recorded in the acta.
+8. **Visibility:** every member sees every vote and its live stats; only the roster can cast.
+9. **Board members are de facto Asociados** and sit on the official roster.
 
 Anything not listed is the implementer's call within this spec.
 
