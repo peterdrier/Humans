@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Monitor/Controllers/MonitorController.cs
   src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
-  src/Humans.Base/Constants/RoleGroups.cs
+  src/Sections/Humans.Users/SectionPolicies.cs
 -->
 
 # Monitor — Authorization
