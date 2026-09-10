@@ -171,7 +171,7 @@ Every source today, and what it becomes. Audience is who the entry is published 
 | ShiftCoverageGap | Shifts | one per upcoming shift with confirmed < minimum, same predicate `CheckAndNotifyCoverageGapAsync` uses | `TeamCoordinators:<rota's team>` | shift reaches minimum, is cancelled, or starts |
 | IssueSubmitted | Issues | one per open unassigned issue | one `Role:<name>` recipient set per routed role from `IssueSectionRouting.RolesFor`, plus `Role:Admin`, all on the one entry | assigned or terminal |
 | IssueAssigned | Issues | one per open issue assigned to you | `User` | reassigned or terminal |
-| TermRenewalReminder | Governance | one per term expiring within the job's window | `User` | renewed or expired |
+| TermRenewalReminder | Governance | one per term expiring within the job's window, excluding terms with a pending renewal application for the same tier (the predicate `TermRenewalReminderJob` uses) | `User` | renewed, expired, or a renewal application submitted |
 | Board-vote meter | Governance | one per (application, board member) still to vote, since "awaiting *your* vote" is per person | `Role:Board`, with a single-member recipient set on each entry, so a Board membership refresh attributes to the role | voted or decided |
 | AccessSuspended | Users | one while suspended | `User` | unsuspended |
 | ReConsentRequired, LegalDocumentPublished, consents things-to-do | Governance | one per required consent outstanding | `User` | consent signed |
@@ -181,6 +181,8 @@ Every source today, and what it becomes. Audience is who the entry is published 
 | Ticket-sync meter | Tickets | one while in error state | `Role:Admin` | sync recovers |
 | Camp-lead meter | Camps | one per pending requester on a season you lead | `CampLeads:<seasonId>` | request decided or season closed |
 | Shift-info things-to-do | Shifts | one while a signed-up volunteer's shift profile is empty | `User` | profile filled |
+| Profile things-to-do | Users | one while profile completion is below the contributor's 80% threshold | `User` | threshold reached |
+| Dietary/medical things-to-do | Users | one while `DietaryPreference` is empty; text varies by whether a qualifying cantina signup exists, as today | `User` | preference set |
 | RideshareInterestReceived | Rideshare | one per pending interest awaiting your decision on your trip or request | `User` | accepted, declined, or withdrawn |
 
 Every-active-user fan-out (`LegalDocumentSyncService.TryFanoutAsync`) is deleted; the consents entry covers it per user.
@@ -202,7 +204,7 @@ These have no channel once the in-app row goes. The list is a recommendation Pet
 
 ### Deleted with no replacement
 
-TeamMemberAdded (both branches; the member branch already emails), TeamJoinRequestDecided approve branch (already emails), ApplicationApproved, ApplicationRejected, ProfileRejected, FeedbackResponse, WorkspaceCredentialsReady, CampaignReceived (all already email), IssueComment (assignee sees it on the issue; the admin-comment email to the reporter stays), ShiftSignupChange (a coordinator's news about a signup; the consequence that matters is the coverage-gap entry), CampRoleAssigned, GoogleDriftDetected, FacilitatedMessageReceived (already emails), and the three dead sources ConsentReviewNeeded, ApplicationSubmitted, VolunteerApproved.
+TeamMemberAdded (both branches; the member branch already emails), TeamJoinRequestDecided approve branch (already emails), ApplicationApproved, ApplicationRejected, ProfileRejected, FeedbackResponse, WorkspaceCredentialsReady, CampaignReceived (all already email), IssueComment (assignee sees it on the issue; the admin-comment email to the reporter stays), ShiftSignupChange (a coordinator's news about a signup; the consequence that matters is the coverage-gap entry), CampRoleAssigned, GoogleDriftDetected, FacilitatedMessageReceived (already emails), the three dead sources ConsentReviewNeeded, ApplicationSubmitted, VolunteerApproved, and the Users consent-check things-to-do entry (a status with no action for the member; the coordinator side is the consent-review row above).
 
 Every value of `NotificationSource` at the time of writing (0 to 35, 17 unused) appears in exactly one of the three tables above. A source added between now and phase 4 gets a row before the switch lands.
 
