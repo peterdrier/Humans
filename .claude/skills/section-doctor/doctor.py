@@ -20,8 +20,14 @@ from datetime import datetime, timezone
 
 ORIGIN_RE = re.compile(r"github\.com[:/]peterdrier/Humans(\.git)?$")
 BRANCH_RE = re.compile(r"^section-doctor/(.+)$")
+NUM = r"(?:[0-9]+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)"
 COUNT_RE = re.compile(
-    r"^\+.*\b([0-9]+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+[a-z-]+s\b",
+    r"^\+.*(?:"
+    rf"\b{NUM}\s+(?:[a-z-]+\s+){{0,2}}[a-z-]+s\b"      # "3 routes", "3 active routes", "two branches"
+    r"|\(\s*[0-9]+\s*\)"                               # "Routes (3)"
+    r"|\b(?:total|count|n)\s*[:=]\s*[0-9]+\b"          # "Total: 3", "count = 3"
+    r"|\|\s*(?:total|count)\s*\|\s*[0-9]+\s*\|"      # markdown total row
+    r")",
     re.IGNORECASE,
 )
 
