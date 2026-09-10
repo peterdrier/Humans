@@ -798,7 +798,9 @@ internal sealed class AssemblyVoteService(
     public async Task<AssemblyVoteActionResult> StopAsync(
         Guid voteId, Guid adminUserId, CancellationToken ct = default)
     {
-        var vote = await repository.GetByIdAsync(voteId, ct);
+        // Settle first: past ClosesAt the vote is already closed, and stopping it then would
+        // attribute a lapse to the admin who happened to click.
+        var vote = await SettleAsync(voteId, ct);
         if (vote is null) return AssemblyVoteActionResult.NotFound;
         if (vote.Status != AssemblyVoteStatus.Open) return AssemblyVoteActionResult.WrongState;
 
@@ -837,7 +839,9 @@ internal sealed class AssemblyVoteService(
     {
         if (string.IsNullOrWhiteSpace(reason)) return AssemblyVoteActionResult.Invalid;
 
-        var vote = await repository.GetByIdAsync(voteId, ct);
+        // Settle first: a vote whose deadline has passed is Closed with its result stored,
+        // and cancelling it then would erase that result and the decision it recorded.
+        var vote = await SettleAsync(voteId, ct);
         if (vote is null) return AssemblyVoteActionResult.NotFound;
         if (vote.Status != AssemblyVoteStatus.Open) return AssemblyVoteActionResult.WrongState;
 
@@ -929,7 +933,7 @@ internal sealed class AssemblyVoteService(
     {
         var recipients = await RecipientsAsync(roster, ct);
         var notified = new List<Guid>(roster.Count);
-        var closesAt = FormatClosing(vote.ClosesAt);
+        var closesAt = ClosingLocal(vote.ClosesAt);
 
         foreach (var (rosterRow, info, address) in recipients)
         {
@@ -1027,7 +1031,12 @@ internal sealed class AssemblyVoteService(
     private static string VoteUrl(Guid voteId) =>
         $"/Governance/Votes/{voteId}";
 
-    private static string FormatClosing(Instant closesAt) => closesAt.ToDateTime(MadridZone);
+    /// <summary>
+    /// The closing time in the association's own timezone, still unformatted: Email renders it
+    /// under each recipient's culture, so the zone is decided here and the wording there.
+    /// </summary>
+    private static LocalDateTime ClosingLocal(Instant closesAt) =>
+        closesAt.InZone(MadridZone).LocalDateTime;
 
     /// <summary>
     /// Closing times are announced to the electorate in the association's own timezone; a
@@ -1076,7 +1085,7 @@ internal sealed class AssemblyVoteService(
 
             var recipients = await RecipientsAsync(pending, ct);
             var reminded = new List<Guid>(pending.Count);
-            var closesAt = FormatClosing(vote.ClosesAt);
+            var closesAt = ClosingLocal(vote.ClosesAt);
 
             foreach (var (rosterRow, info, address) in recipients)
             {

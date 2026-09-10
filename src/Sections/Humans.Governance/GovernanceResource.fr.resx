@@ -667,4 +667,7 @@
   <data name="Votes_DownloadCsv" xml:space="preserve">
     <value>Télécharger le CSV</value>
   </data>
+  <data name="Votes_BallotDuplicateRanks" xml:space="preserve">
+    <value>Chaque option doit avoir un rang différent. Deux options ont le même, le vote n’a donc pas été enregistré.</value>
+  </data>
 </root>

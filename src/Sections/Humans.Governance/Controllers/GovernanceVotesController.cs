@@ -67,6 +67,14 @@ internal sealed class GovernanceVotesController(
         if (GetCurrentUserId() is not { } userId) return Challenge();
         if (voteId != model.VoteId) return NotFound();
 
+        // Two options at the same rank is an ambiguous ballot, and it stops here: projecting
+        // to keys would hide it from the service's duplicate-key check.
+        if (model.HasDuplicateRanks())
+        {
+            SetError(localizer["Votes_BallotDuplicateRanks"].Value);
+            return RedirectToAction(nameof(Details), new { voteId });
+        }
+
         var outcome = await voteService.CastBallotAsync(voteId, userId, model.Choice, model.ToRanking(), ct);
 
         switch (outcome)

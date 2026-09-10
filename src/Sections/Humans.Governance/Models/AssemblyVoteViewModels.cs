@@ -52,9 +52,25 @@ internal sealed class AssemblyBallotFormViewModel
     public List<AssemblyRankedBallotOptionRow> RankedOptions { get; set; } = [];
 
     /// <summary>
+    /// True when two options were given the same rank. Projecting to keys would erase that —
+    /// two rows ranked 1 sort into two distinct keys, which the service's duplicate-key check
+    /// cannot see — and the ballot would silently be counted in form-row order. On a binding
+    /// vote an ambiguous ballot is rejected, never guessed at.
+    /// </summary>
+    public bool HasDuplicateRanks()
+    {
+        var ranks = RankedOptions
+            .Where(r => r.Selection is > 0 && !string.IsNullOrWhiteSpace(r.OptionKey))
+            .Select(r => r.Selection!.Value)
+            .ToList();
+
+        return ranks.Count != ranks.Distinct().Count();
+    }
+
+    /// <summary>
     /// The ordered option keys <c>CastBallotAsync</c> expects: rows with a positive rank,
-    /// ascending, blanks dropped. Duplicate ranks are passed through for the service to reject
-    /// as <see cref="BallotSubmissionOutcome.InvalidBallot"/> rather than silently resolved here.
+    /// ascending, blanks dropped. Only meaningful once <see cref="HasDuplicateRanks"/> is
+    /// false — the caller checks that first.
     /// </summary>
     public IReadOnlyList<string>? ToRanking()
     {

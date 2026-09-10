@@ -394,4 +394,78 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         _fx.Service.ErasureDeclaration.Should().ContainKey(
             GdprExportSections.AssemblyVotes);
     }
+
+    // ==========================================================================
+    // An elapsed vote is closed for every purpose, admin actions included
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task CancelAsync_AfterClosesAtPasses_IsRejectedAndTheStoredResultSurvives()
+    {
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromMinutes(5));
+        var userId = Guid.NewGuid();
+        var roster = await _fx.AddRosterRowAsync(vote.Id, userId, isOfficial: true);
+        await _fx.AddBallotAsync(vote.Id, roster.Id, AssemblyBallotChoice.Yes);
+
+        _fx.Clock.AdvanceMinutes(10);
+
+        var result = await _fx.Service.CancelAsync(
+            vote.Id, "changed our minds", Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().Be(AssemblyVoteActionResult.WrongState);
+        var stored = await _fx.Db.AssemblyVotes
+            .AsNoTracking()
+            .FirstAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.Status.Should().Be(AssemblyVoteStatus.Closed);
+        stored.ResultJson.Should().NotBeNull();
+        stored.CancelReason.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task StopAsync_AfterClosesAtPasses_IsRejectedAndTheLapseIsNotAttributedToTheAdmin()
+    {
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromMinutes(5));
+        var adminId = Guid.NewGuid();
+
+        _fx.Clock.AdvanceMinutes(10);
+
+        var result = await _fx.Service.StopAsync(
+            vote.Id, adminId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().Be(AssemblyVoteActionResult.WrongState);
+        var stored = await _fx.Db.AssemblyVotes
+            .AsNoTracking()
+            .FirstAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.Status.Should().Be(AssemblyVoteStatus.Closed);
+        stored.ClosedByUserId.Should().BeNull();
+    }
+
+    // ==========================================================================
+    // A ranked draft can be edited more than once
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task UpdateDraftAsync_OnARankedDraft_ReplacesTheOptions()
+    {
+        var vote = await _fx.AddVoteAsync(
+            status: AssemblyVoteStatus.Draft,
+            kind: AssemblyVoteKind.RankedChoice,
+            options: [("a", 0), ("b", 1)]);
+
+        var result = await _fx.Service.UpdateDraftAsync(
+            vote.Id,
+            _fx.DraftFor(vote, AssemblyVoteKind.RankedChoice, ["c", "d"]),
+            Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().Be(AssemblyVoteActionResult.Ok);
+        var keys = await _fx.Db.AssemblyVoteOptions
+            .AsNoTracking()
+            .Where(o => o.VoteId == vote.Id)
+            .Select(o => o.Key)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        keys.Should().BeEquivalentTo(["c", "d"]);
+    }
 }

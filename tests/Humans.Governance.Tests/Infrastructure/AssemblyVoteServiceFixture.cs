@@ -5,6 +5,7 @@ using Humans.Auth.Contracts;
 using Humans.Governance.Data;
 using Humans.Governance.Domain;
 using Humans.Governance.Services;
+using Humans.Governance.Services.Dtos;
 using Humans.Notifications.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
@@ -161,6 +162,30 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
         Db.ChangeTracker.Clear();
         return vote;
     }
+
+    /// <summary>A minimal valid draft for <paramref name="vote"/>, with the given option keys.</summary>
+    public AssemblyVoteDraft DraftFor(
+        AssemblyVote vote, AssemblyVoteKind kind, IReadOnlyList<string> optionKeys)
+    {
+        ArgumentNullException.ThrowIfNull(vote);
+        ArgumentNullException.ThrowIfNull(optionKeys);
+
+        return new AssemblyVoteDraft(
+            Text("Test vote"),
+            Text("Text"),
+            "en",
+            null,
+            kind,
+            RequiredMajority.Simple,
+            IndicativeAudience.None,
+            BallotDisclosure.BoardOnly,
+            null,
+            vote.ClosesAt,
+            [.. optionKeys.Select((key, order) => new AssemblyVoteDraftOption(key, order, Text(key)))]);
+    }
+
+    private static Dictionary<string, string> Text(string value) =>
+        new(StringComparer.OrdinalIgnoreCase) { ["en"] = value };
 
     public async Task<AssemblyVoteRoster> AddRosterRowAsync(
         Guid voteId, Guid userId, bool isOfficial, MembershipTier tier = MembershipTier.Volunteer,

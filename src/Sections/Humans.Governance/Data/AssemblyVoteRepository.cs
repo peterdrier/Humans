@@ -51,9 +51,14 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
             .Where(o => o.VoteId == vote.Id)
             .ToListAsync(ct);
         ctx.AssemblyVoteOptions.RemoveRange(existing);
-        ctx.AssemblyVoteOptions.AddRange(options);
 
+        // `vote` arrives detached with the options its own load included. Those rows are
+        // already tracked as `existing`, so leaving them on the graph would have Update()
+        // try to track the same keys twice and throw before the save.
+        vote.Options.Clear();
         ctx.AssemblyVotes.Update(vote);
+
+        ctx.AssemblyVoteOptions.AddRange(options);
         await ctx.SaveChangesAsync(ct);
     }
 
