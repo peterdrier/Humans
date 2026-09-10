@@ -403,3 +403,18 @@ inbox:
   - added: 2026-08-27
     what: "docs/architecture/design-rules.md:340 says contributors \"read through their own IDbContextFactory<TContext>\" and names AgentService as an example; AgentRepository takes a scoped AgentDbContext by injection. The conclusion (sequential is no longer a correctness requirement) is right; the stated mechanism is not — the accurate invariant is that no two contributors share a context instance (finding 25, /section-doctor on Gdpr 2026-08-27)."
     review: panel
+  - added: 2026-09-10
+    what: ".claude/skills/test-site/SKILL.md names /Profile/Emails and /Profile/Privacy; the live routes are /Profile/Me/Emails and /Profile/Me/Privacy (finding 19, /section-doctor on Consent 2026-08-31; swept in by /section-doctor on Rideshare 2026-09-10)."
+    review: light
+  - added: 2026-09-10
+    what: "The HUM0028 theme's caller-map note above says the LegalDocument cache invalidation runs via an EF interceptor; it has been direct service-side InvalidateAll() calls since nobodies-collective/Humans#751 (finding 19, /section-doctor on Consent 2026-08-31; swept in by /section-doctor on Rideshare 2026-09-10)."
+    review: light
+  - added: 2026-09-10
+    what: "docs/sections/G5-SECTION-TEMPLATE.md:341 claims the renderer lives at Humans.Infrastructure/Services/EmailRenderer.cs; it lives in the Email section (src/Sections/Humans.Email/Services/EmailRenderer.cs). Found fixing Feedback's copy of the same claim (/section-doctor on Feedback 2026-08-31; swept in by /section-doctor on Rideshare 2026-09-10)."
+    review: light
+  - added: 2026-09-10
+    what: "docs/architecture/dependency-graph.md classes Backdoor as a crosscut and omits its edges to the sections it serves (Agent, Feedback, Issues.Contracts, Surveys). It is a leaf, not a crosscut: nothing references it back (finding 16, /section-doctor on Backdoor 2026-09-03; swept in by /section-doctor on Rideshare 2026-09-10)."
+    review: light
+  - added: 2026-09-10
+    what: "docs/architecture/freshness-catalog.yml has no Backdoor entry; add one covering src/Sections/Humans.Backdoor/** and tests/Humans.Backdoor.Tests/** (finding 17, /section-doctor on Backdoor 2026-09-03; swept in by /section-doctor on Rideshare 2026-09-10)."
+    review: light
