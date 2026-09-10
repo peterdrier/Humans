@@ -404,4 +404,26 @@
   <data name="Email_BoardDigest_TeamJoinRequests" xml:space="preserve"><value>{0} solicitudes de equipo pendientes</value><comment>{0} = count</comment></data>
   <data name="Email_BoardDigest_PendingConsents" xml:space="preserve"><value>{0} con requisitos de consentimiento pendientes</value><comment>{0} = count</comment></data>
   <data name="Email_BoardDigest_PendingDeletions" xml:space="preserve"><value>{0} eliminaciones de cuenta pendientes</value><comment>{0} = count</comment></data>
+  <data name="Email_AssemblyVote_IndicativeNote" xml:space="preserve"><value>&lt;p&gt;&lt;em&gt;Tu voto es indicativo y no se contará en el resultado oficial.&lt;/em&gt;&lt;/p&gt;</value></data>
+  <data name="Email_AssemblyVoteOpened_Subject" xml:space="preserve"><value>Hay una votación abierta: {0}</value><comment>{0} = vote title</comment></data>
+  <data name="Email_AssemblyVoteOpened_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Hay una votación abierta en la Asamblea General. Se cierra el &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;
+{4}
+&lt;p&gt;&lt;a href="{3}"&gt;Emitir tu voto&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Gracias,&lt;br/&gt;Nobodies Collective&lt;/p&gt;</value><comment>{0} = user name, {1} = vote title, {2} = closing time, {3} = vote URL, {4} = indicative-ballot note HTML, empty when official</comment></data>
+  <data name="Email_AssemblyVoteReminder_Subject" xml:space="preserve"><value>La votación se cierra pronto: {0}</value><comment>{0} = vote title</comment></data>
+  <data name="Email_AssemblyVoteReminder_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;La votación &lt;strong&gt;{1}&lt;/strong&gt; se cierra en unas 24 horas y todavía no has votado.&lt;/p&gt;
+&lt;p&gt;Se cierra el &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;
+{4}
+&lt;p&gt;&lt;a href="{3}"&gt;Emitir tu voto&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Gracias,&lt;br/&gt;Nobodies Collective&lt;/p&gt;</value><comment>{0} = user name, {1} = vote title, {2} = closing time, {3} = vote URL, {4} = indicative-ballot note HTML, empty when official</comment></data>
+  <data name="Email_AssemblyVoteCancelled_Subject" xml:space="preserve"><value>Votación cancelada: {0}</value><comment>{0} = vote title</comment></data>
+  <data name="Email_AssemblyVoteCancelled_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;La votación &lt;strong&gt;{1}&lt;/strong&gt; ha sido cancelada.&lt;/p&gt;
+{2}
+&lt;p&gt;El equipo de Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = vote title, {2} = reason line HTML</comment></data>
 </root>

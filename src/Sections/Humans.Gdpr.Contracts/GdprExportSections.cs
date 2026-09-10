@@ -67,4 +67,5 @@ public static class GdprExportSections
     public const string RideshareTrips = "RideshareTrips";
     public const string RideshareRequests = "RideshareRequests";
     public const string RideshareInterests = "RideshareInterests";
+    public const string AssemblyVotes = "AssemblyVotes";
 }

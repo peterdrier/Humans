@@ -40,6 +40,16 @@ public sealed class Section : ISection
 
         services.AddScoped<IGovernanceIndexService, GovernanceIndexService>();
 
+        // Assembly votes. The service is the embargo boundary, so nothing here exposes the
+        // repository outside the section and no caching decorator wraps it — a cached tally
+        // is a leaked tally.
+        services.AddSingleton<IAssemblyVoteRepository, AssemblyVoteRepository>();
+        services.AddScoped<AssemblyVoteService>();
+        services.AddScoped<IAssemblyVoteService>(sp => sp.GetRequiredService<AssemblyVoteService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<AssemblyVoteService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<AssemblyVoteService>());
+        services.AddScoped<AssemblyVoteLapseJob>();
+
         // Query adapter breaks the circular DI graph between IMembershipCalculator
         // and ITeamService / IRoleAssignmentService (both of which inject
         // ISystemTeamSync, whose implementation injects IMembershipCalculatorRead back).
@@ -62,6 +72,11 @@ public sealed class Section : ISection
             [VoteChoice.Maybe] = "bg-warning text-dark",
             [VoteChoice.No] = "bg-danger",
             [VoteChoice.Abstain] = "bg-secondary",
+
+            [AssemblyVoteStatus.Draft] = "bg-secondary",
+            [AssemblyVoteStatus.Open] = "bg-primary",
+            [AssemblyVoteStatus.Closed] = "bg-success",
+            [AssemblyVoteStatus.Cancelled] = "bg-danger",
         });
 
         services.AddScoped<TermRenewalReminderJob>();

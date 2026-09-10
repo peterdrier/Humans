@@ -30,9 +30,9 @@ internal sealed class GovernanceDbContext(DbContextOptions<GovernanceDbContext> 
     public DbSet<BoardVote> BoardVotes => Set<BoardVote>();
     public DbSet<AssemblyVote> AssemblyVotes => Set<AssemblyVote>();
     public DbSet<AssemblyVoteOption> AssemblyVoteOptions => Set<AssemblyVoteOption>();
-    public DbSet<AssemblyVoteRoster> AssemblyVoteRoster => Set<AssemblyVoteRoster>();
+    public DbSet<AssemblyVoteRoster> AssemblyVoteRosterEntries => Set<AssemblyVoteRoster>();
     public DbSet<AssemblyBallot> AssemblyBallots => Set<AssemblyBallot>();
-    public DbSet<AssemblyBallotHistory> AssemblyBallotHistory => Set<AssemblyBallotHistory>();
+    public DbSet<AssemblyBallotHistory> AssemblyBallotHistories => Set<AssemblyBallotHistory>();
     public DbSet<AssemblyVotePeek> AssemblyVotePeeks => Set<AssemblyVotePeek>();
 
     protected override void OnModelCreating(ModelBuilder builder)

@@ -218,4 +218,13 @@ internal interface IEmailRenderer
     EmailContent RenderTicketTransferDecision(
         string toName, bool successful, string ticketLabel, string receiverName,
         string? reason, string? culture = null);
+
+    /// <summary>Assembly vote opened — notifies a roster member; indicative ballots get the "not counted" caveat.</summary>
+    EmailContent RenderAssemblyVoteOpened(string userName, string voteTitle, string closesAt, bool isOfficial, string voteUrl, string? culture = null);
+
+    /// <summary>Assembly vote T-24h reminder for a roster member who has not voted yet.</summary>
+    EmailContent RenderAssemblyVoteReminder(string userName, string voteTitle, string closesAt, bool isOfficial, string voteUrl, string? culture = null);
+
+    /// <summary>Assembly vote cancelled — notifies a roster member with the cancellation reason.</summary>
+    EmailContent RenderAssemblyVoteCancelled(string userName, string voteTitle, string reason, string? culture = null);
 }

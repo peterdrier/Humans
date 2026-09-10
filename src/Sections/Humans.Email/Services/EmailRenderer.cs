@@ -533,4 +533,31 @@ internal sealed class EmailRenderer(
                     """);
         }
     }
+
+    public EmailContent RenderAssemblyVoteOpened(string userName, string voteTitle, string closesAt, bool isOfficial, string voteUrl, string? culture = null)
+        => RenderLocalized(culture, () =>
+        {
+            var indicativeHtml = isOfficial ? "" : L("Email_AssemblyVote_IndicativeNote");
+            return new EmailContent(
+                Lf("Email_AssemblyVoteOpened_Subject", HtmlEncode(voteTitle)),
+                Lf("Email_AssemblyVoteOpened_Body", HtmlEncode(userName), HtmlEncode(voteTitle), HtmlEncode(closesAt), voteUrl, indicativeHtml));
+        });
+
+    public EmailContent RenderAssemblyVoteReminder(string userName, string voteTitle, string closesAt, bool isOfficial, string voteUrl, string? culture = null)
+        => RenderLocalized(culture, () =>
+        {
+            var indicativeHtml = isOfficial ? "" : L("Email_AssemblyVote_IndicativeNote");
+            return new EmailContent(
+                Lf("Email_AssemblyVoteReminder_Subject", HtmlEncode(voteTitle)),
+                Lf("Email_AssemblyVoteReminder_Body", HtmlEncode(userName), HtmlEncode(voteTitle), HtmlEncode(closesAt), voteUrl, indicativeHtml));
+        });
+
+    public EmailContent RenderAssemblyVoteCancelled(string userName, string voteTitle, string reason, string? culture = null)
+        => RenderLocalized(culture, () =>
+        {
+            var reasonHtml = Lf("Email_ReasonLine", HtmlEncode(reason));
+            return new EmailContent(
+                Lf("Email_AssemblyVoteCancelled_Subject", HtmlEncode(voteTitle)),
+                Lf("Email_AssemblyVoteCancelled_Body", HtmlEncode(userName), HtmlEncode(voteTitle), reasonHtml));
+        });
 }
