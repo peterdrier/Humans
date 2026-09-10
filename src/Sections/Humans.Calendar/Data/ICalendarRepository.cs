@@ -21,20 +21,6 @@ namespace Humans.Calendar.Data;
 internal interface ICalendarRepository : IRepository
 {
     /// <summary>
-    /// Returns calendar events whose window overlaps with
-    /// <c>[from, to]</c> — i.e. events that start before <paramref name="to"/>
-    /// and whose recurrence end (or <c>null</c>, meaning open-ended) is on or
-    /// after <paramref name="from"/>. Optionally filtered by team.
-    /// Exceptions are loaded eagerly. Soft-deleted rows are filtered via the
-    /// global query filter. Read-only (<c>AsNoTracking</c>).
-    /// </summary>
-    Task<IReadOnlyList<CalendarEvent>> GetEventsInWindowAsync(
-        Instant from,
-        Instant to,
-        Guid? teamId,
-        CancellationToken ct = default);
-
-    /// <summary>
     /// Loads a single <see cref="CalendarEvent"/> by id, with its
     /// <c>Exceptions</c> collection included. Returns <c>null</c> if not
     /// found or soft-deleted. Read-only (<c>AsNoTracking</c>).

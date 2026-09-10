@@ -347,7 +347,6 @@ public class CalendarServiceValidationTests
     {
         return new CalendarService(
             repo,
-            Substitute.For<ITeamService>(),
             new FakeClock(Instant.FromUtc(2026, 5, 15, 12, 0)),
             audit,
             NullLogger<CalendarService>.Instance);

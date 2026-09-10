@@ -13,44 +13,18 @@ using IcalEvent = Ical.Net.CalendarComponents.CalendarEvent;
 namespace Humans.Calendar.Services;
 
 /// <summary>
-/// Calendar application service. Owns repository-backed calendar reads and
-/// mutations. Owning-team names resolve via <see cref="ITeamServiceRead"/> (§6b).
+/// Calendar application service — the keyed inner behind
+/// <see cref="CachingCalendarService"/>. Owns the section's mutations and the two row loads
+/// the cache warms and refreshes from. The occurrence-window and event-detail reads are the
+/// decorator's alone: it answers both from its snapshot, so an implementation here would be
+/// unreachable code.
 /// </summary>
 internal sealed class CalendarService(
     ICalendarRepository repo,
-    ITeamServiceRead teamService,
     IClock clock,
     IAuditLogService audit,
     ILogger<CalendarService> logger) : ICalendarService
 {
-    public async Task<IReadOnlyList<CalendarOccurrence>> GetOccurrencesInWindowAsync(
-        Instant from, Instant to, Guid? teamId = null, CancellationToken ct = default)
-    {
-        var events = await repo.GetEventsInWindowAsync(from, to, teamId, ct);
-
-        var infos = events.Select(CalendarOccurrenceExpander.ToInfo).ToList();
-        var teamNames = await ResolveTeamNamesAsync(infos, ct);
-
-        return CalendarOccurrenceExpander.Expand(infos, from, to, teamNames, logger);
-    }
-
-    private async Task<IReadOnlyDictionary<Guid, string>> ResolveTeamNamesAsync(
-        IReadOnlyList<CalendarEventInfo> events, CancellationToken ct)
-    {
-        // In-memory join (§6b): team names are never joined in SQL.
-        var teamIds = events.Select(e => e.OwningTeamId).Distinct().ToList();
-        var teamsById = await teamService.GetTeamsAsync(ct);
-        return teamIds
-            .Where(teamsById.ContainsKey)
-            .ToDictionary(id => id, id => teamsById[id].Name);
-    }
-
-    public async Task<CalendarEventDetail?> GetEventByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        var ev = await repo.GetEventByIdAsync(id, ct);
-        return ev is null ? null : ToDetail(ev);
-    }
-
     public async Task<IReadOnlyList<CalendarEventInfo>> GetAllEventInfosAsync(CancellationToken ct = default)
     {
         var events = await repo.GetAllAsync(ct);
@@ -406,19 +380,4 @@ internal sealed class CalendarService(
                 auditAction, eventId, userId);
         }
     }
-
-    private static CalendarEventDetail ToDetail(CalendarEvent ev) => new(
-        ev.Id,
-        ev.Title,
-        ev.Description,
-        ev.Location,
-        ev.LocationUrl,
-        ev.OwningTeamId,
-        ev.StartUtc,
-        ev.EndUtc,
-        ev.IsAllDay,
-        ev.RecurrenceRule,
-        ev.RecurrenceTimezone,
-        ev.CreatedAt,
-        ev.UpdatedAt);
 }

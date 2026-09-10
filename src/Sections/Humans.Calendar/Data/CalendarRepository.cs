@@ -14,28 +14,6 @@ namespace Humans.Calendar.Data;
 /// </summary>
 internal sealed class CalendarRepository(IDbContextFactory<CalendarDbContext> factory) : ICalendarRepository
 {
-    public async Task<IReadOnlyList<CalendarEvent>> GetEventsInWindowAsync(
-        Instant from,
-        Instant to,
-        Guid? teamId,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-
-        var query = ctx.CalendarEvents
-            .AsNoTracking()
-            .Include(e => e.Exceptions)
-            .Where(e => e.StartUtc <= to
-                && (e.RecurrenceUntilUtc == null || e.RecurrenceUntilUtc >= from));
-
-        if (teamId is { } t)
-        {
-            query = query.Where(e => e.OwningTeamId == t);
-        }
-
-        return await query.ToListAsync(ct);
-    }
-
     public async Task<CalendarEvent?> GetEventByIdAsync(Guid id, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

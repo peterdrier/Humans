@@ -36,7 +36,7 @@ Every externally reachable thing, grouped by the question it answers.
 |---|---|---|
 | *What is scheduled between these two instants (optionally for one team)?* | The routes `/Calendar`, `/Calendar/List`, `/Calendar/Agenda`, `/Calendar/Team/{id}`, plus `ICalendarServiceRead.GetOccurrencesInWindowAsync` | They differ in how the window is derived and how it is rendered. Nothing else. |
 | *What is this one entry?* | `/Calendar/Event/{id}` route; `GetEventByIdAsync` (UI projection) and `GetEventInfoAsync` / `GetAllEventInfosAsync` (cache projections) | One question, several projections of it — all but the UI one exist for the cache, not for a caller. |
-| *Change a whole entry* | `Event/Create`, `Event/{id}/Edit`, `Event/{id}/Delete`; `Create`/`Update`/`Delete` on `ICalendarService` | Create and update each ship twice: a throwing form and a result form. |
+| *Change a whole entry* | `Event/Create`, `Event/{id}/Edit`, `Event/{id}/Delete`; `Create`/`Update`/`Delete` on `ICalendarService` | One silhouette each. Create and update are published only in their result-returning form. |
 | *Change one occurrence of a repeating entry* | `Event/{id}/Occurrence/{start}/Edit`, `.../Cancel`; `OverrideOccurrenceAsync`, `CancelOccurrenceAsync` | Both are one upsert against `(event, original start)` with a different field-setter. |
 | *What has this person committed to?* | `GET /api/ical/{userId}/{token}.ics`; `IICalFeedService.GetFeedItemsAsync` (Scanner's ticket card, admin widget); `<vc:user-calendar>` | The only public cross-section surface. Table-free. |
 | *Contribute items to a person's feed* | `ICalendarFeedContributor` + `CalendarFeedItem` | Inbound-only: implementers reference Calendar, never the reverse. |
@@ -139,10 +139,12 @@ Settled decisions. Later runs should stop re-litigating these.
   duplicate insert against the unique index.
 - **All-day ends are stored exclusive and displayed inclusive.** The one-tick subtraction in the
   edit form is the conversion back, not an off-by-one.
-- **The caching decorator answers reads from its snapshot without consulting the inner service.**
-  The inner's window and detail reads therefore do not execute in production; they exist because
-  the interface is shared. That is a consequence of the §15 decorator shape, not dead code
-  someone forgot.
+- **The caching decorator answers the window and detail reads from its snapshot, and it is the
+  only implementation of them.** `ICalendarServiceRead` is deliberately not part of
+  `ICalendarService`: the keyed inner would only be able to implement it with code nothing can
+  reach. Peter ruled on run 1 to retire that path rather than keep it as shared-interface
+  ballast, and the section's SQL window query went with it — `GetAllAsync` is now the only bulk
+  read, and `CalendarOccurrenceExpander.FilterForWindow` the only window prefilter.
 - **`CalendarResource` is public** only so the boot localization diagnostic can find it via
   `GetExportedTypes()`.
 

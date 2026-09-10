@@ -20,6 +20,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, "Test Team A");
@@ -44,7 +45,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
 
         created.Id.Should().NotBe(Guid.Empty);
 
-        var fetched = await svc.GetEventByIdAsync(created.Id, TestContext.Current.CancellationToken);
+        var fetched = await read.GetEventByIdAsync(created.Id, TestContext.Current.CancellationToken);
         fetched.Should().NotBeNull();
         fetched.Title.Should().Be("Community call");
         fetched.OwningTeamId.Should().Be(team.Id);
@@ -57,6 +58,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
@@ -74,7 +76,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
             Instant.FromUtc(2027, 1, 1, 1, 0),
             false, null, null), userId);
 
-        var occ = await svc.GetOccurrencesInWindowAsync(
+        var occ = await read.GetOccurrencesInWindowAsync(
             from: Instant.FromUtc(2026, 6, 1, 0, 0),
             to: Instant.FromUtc(2026, 7, 1, 0, 0),
             teamId: team.Id, ct: TestContext.Current.CancellationToken);
@@ -89,6 +91,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var a = await SeedTeamAsync(db, $"A-{Guid.NewGuid():N}");
@@ -105,7 +108,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
             Instant.FromUtc(2026, 6, 15, 19, 0),
             Instant.FromUtc(2026, 6, 15, 20, 0), false, null, null), uid);
 
-        var occ = await svc.GetOccurrencesInWindowAsync(
+        var occ = await read.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 6, 1, 0, 0),
             Instant.FromUtc(2026, 7, 1, 0, 0),
             teamId: a.Id, ct: TestContext.Current.CancellationToken);
@@ -119,6 +122,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
@@ -131,7 +135,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
 
         await svc.DeleteEventAsync(ev.Id, uid, TestContext.Current.CancellationToken);
 
-        var occ = await svc.GetOccurrencesInWindowAsync(
+        var occ = await read.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 6, 1, 0, 0),
             Instant.FromUtc(2026, 7, 1, 0, 0),
             teamId: team.Id, ct: TestContext.Current.CancellationToken);
@@ -144,6 +148,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
@@ -163,7 +168,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
             RecurrenceRule: "FREQ=WEEKLY;BYDAY=TU;COUNT=4",
             RecurrenceTimezone: "Europe/Madrid"), uid);
 
-        var occ = await svc.GetOccurrencesInWindowAsync(
+        var occ = await read.GetOccurrencesInWindowAsync(
             from: Instant.FromUtc(2026, 3, 1, 0, 0),
             to: Instant.FromUtc(2026, 5, 1, 0, 0),
             teamId: team.Id, ct: TestContext.Current.CancellationToken);
@@ -182,6 +187,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
@@ -195,7 +201,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
             RecurrenceRule: "FREQ=WEEKLY;UNTIL=20240201T000000Z",
             RecurrenceTimezone: "Europe/Madrid"), uid);
 
-        var occ = await svc.GetOccurrencesInWindowAsync(
+        var occ = await read.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 1, 1, 0, 0),
             Instant.FromUtc(2026, 2, 1, 0, 0),
             teamId: team.Id, ct: TestContext.Current.CancellationToken);
@@ -208,6 +214,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
@@ -225,7 +232,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         var cancel = new LocalDateTime(2026, 5, 19, 19, 0).InZoneLeniently(zone).ToInstant();
         await svc.CancelOccurrenceAsync(ev.Id, cancel, uid, TestContext.Current.CancellationToken);
 
-        var occ = await svc.GetOccurrencesInWindowAsync(
+        var occ = await read.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 5, 1, 0, 0),
             Instant.FromUtc(2026, 6, 1, 0, 0),
             teamId: team.Id, ct: TestContext.Current.CancellationToken);
@@ -239,6 +246,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
@@ -264,7 +272,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
             OverrideLocation: null,
             OverrideLocationUrl: null), uid, TestContext.Current.CancellationToken);
 
-        var occ = await svc.GetOccurrencesInWindowAsync(
+        var occ = await read.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 5, 1, 0, 0),
             Instant.FromUtc(2026, 6, 1, 0, 0),
             teamId: team.Id, ct: TestContext.Current.CancellationToken);
@@ -280,6 +288,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
@@ -296,7 +305,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
             Instant.FromUtc(2026, 7, 2, 18, 0), false, null, null), uid, TestContext.Current.CancellationToken);
         updated.Succeeded.Should().BeTrue(updated.ErrorMessage);
 
-        var fetched = await svc.GetEventByIdAsync(ev.Id, TestContext.Current.CancellationToken);
+        var fetched = await read.GetEventByIdAsync(ev.Id, TestContext.Current.CancellationToken);
         fetched.Should().NotBeNull();
         fetched.Title.Should().Be("Updated");
         fetched.Description.Should().Be("new desc");
@@ -357,6 +366,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
@@ -369,7 +379,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
 
         await svc.DeleteEventAsync(ev.Id, uid, TestContext.Current.CancellationToken);
 
-        (await svc.GetEventByIdAsync(ev.Id, TestContext.Current.CancellationToken)).Should().BeNull();
+        (await read.GetEventByIdAsync(ev.Id, TestContext.Current.CancellationToken)).Should().BeNull();
     }
 
     // Create is published only in its result-returning form. These tests want the event,

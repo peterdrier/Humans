@@ -22,7 +22,7 @@ namespace Humans.Calendar.Services.Dtos;
 /// is keyed by the <em>parent</em> event id — these writes evict the parent
 /// <see cref="CalendarEventInfo"/> entry, NOT a separate exception row. The
 /// next read repopulates the parent (with its refreshed <see cref="Exceptions"/>
-/// list) through <see cref="ICalendarServiceRead.GetEventInfoAsync"/>.
+/// list) through <see cref="ICalendarService.GetEventInfoAsync"/>.
 /// </para>
 /// <para>
 /// The projection must stay well under the §15 50 MB-per-projection budget.

@@ -85,54 +85,15 @@ public sealed class CalendarRepositoryTests : IDisposable
     }
 
     // ==========================================================================
-    // GetEventsInWindowAsync
+    // GetAllAsync
     // ==========================================================================
 
-    [HumansFact]
-    public async Task GetEventsInWindowAsync_FiltersByOverlap()
-    {
-        var inside = BuildEvent(
-            start: Instant.FromUtc(2026, 6, 15, 17, 0),
-            end: Instant.FromUtc(2026, 6, 15, 18, 0));
-        var outside = BuildEvent(
-            start: Instant.FromUtc(2027, 1, 1, 0, 0),
-            end: Instant.FromUtc(2027, 1, 1, 1, 0));
-
-        await _repo.AddAsync(inside, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(outside, Xunit.TestContext.Current.CancellationToken);
-
-        var events = await _repo.GetEventsInWindowAsync(
-            from: Instant.FromUtc(2026, 6, 1, 0, 0),
-            to: Instant.FromUtc(2026, 7, 1, 0, 0),
-            teamId: null, ct: Xunit.TestContext.Current.CancellationToken);
-
-        events.Should().ContainSingle(e => e.Id == inside.Id);
-        events.Should().NotContain(e => e.Id == outside.Id);
-    }
+    // GetAllAsync is the section's only bulk read since the SQL window query was retired:
+    // the Singleton cache warms from it and every window read is answered off that snapshot.
+    // These two cases were previously covered only against the window query.
 
     [HumansFact]
-    public async Task GetEventsInWindowAsync_FiltersByTeam()
-    {
-        var teamA = Guid.NewGuid();
-        var teamB = Guid.NewGuid();
-
-        var a = BuildEvent(teamId: teamA);
-        var b = BuildEvent(teamId: teamB);
-
-        await _repo.AddAsync(a, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(b, Xunit.TestContext.Current.CancellationToken);
-
-        var events = await _repo.GetEventsInWindowAsync(
-            from: Instant.FromUtc(2026, 1, 1, 0, 0),
-            to: Instant.FromUtc(2027, 1, 1, 0, 0),
-            teamId: teamA, ct: Xunit.TestContext.Current.CancellationToken);
-
-        events.Should().ContainSingle(e => e.Id == a.Id);
-        events.Should().NotContain(e => e.Id == b.Id);
-    }
-
-    [HumansFact]
-    public async Task GetEventsInWindowAsync_IncludesExceptions()
+    public async Task GetAllAsync_IncludesExceptions()
     {
         var ev = BuildEvent();
         await _repo.AddAsync(ev, Xunit.TestContext.Current.CancellationToken);
@@ -144,13 +105,25 @@ public sealed class CalendarRepositoryTests : IDisposable
             now: Instant.FromUtc(2026, 4, 10, 0, 0),
             apply: x => x.IsCancelled = true, ct: Xunit.TestContext.Current.CancellationToken);
 
-        var events = await _repo.GetEventsInWindowAsync(
-            from: Instant.FromUtc(2026, 1, 1, 0, 0),
-            to: Instant.FromUtc(2027, 1, 1, 0, 0),
-            teamId: null, ct: Xunit.TestContext.Current.CancellationToken);
+        var events = await _repo.GetAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         events.Should().ContainSingle();
         events[0].Exceptions.Should().ContainSingle(x => x.IsCancelled);
+    }
+
+    [HumansFact]
+    public async Task GetAllAsync_HidesSoftDeleted()
+    {
+        var kept = BuildEvent();
+        var deleted = BuildEvent();
+        await _repo.AddAsync(kept, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(deleted, Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.SoftDeleteAsync(deleted.Id, Instant.FromUtc(2026, 4, 10, 0, 0), Xunit.TestContext.Current.CancellationToken);
+
+        var events = await _repo.GetAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        events.Should().ContainSingle(e => e.Id == kept.Id);
     }
 
     // ==========================================================================
