@@ -167,13 +167,21 @@ public sealed class AssemblyVoteRosterTests : IDisposable
         {
             [active] = new User
             {
-                Id = active, DisplayName = "Active", UserName = "a@x.com", Email = "a@x.com",
-                PreferredLanguage = "en", State = UserState.Active
+                Id = active,
+                DisplayName = "Active",
+                UserName = "a@x.com",
+                Email = "a@x.com",
+                PreferredLanguage = "en",
+                State = UserState.Active
             }.ToUserInfo(),
             [suspended] = new User
             {
-                Id = suspended, DisplayName = "Suspended", UserName = "s@x.com", Email = "s@x.com",
-                PreferredLanguage = "en", State = UserState.Suspended
+                Id = suspended,
+                DisplayName = "Suspended",
+                UserName = "s@x.com",
+                Email = "s@x.com",
+                PreferredLanguage = "en",
+                State = UserState.Suspended
             }.ToUserInfo()
         };
         _fx.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
