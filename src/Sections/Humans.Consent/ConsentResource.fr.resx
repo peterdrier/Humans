@@ -51,9 +51,6 @@
     <value>Document {0} sur {1}</value>
     <comment>{0} = current document index, {1} = total required documents</comment>
   </data>
-  <data name="Consent_RequiredDocuments" xml:space="preserve">
-    <value>Documents requis</value>
-  </data>
   <data name="Consent_NoDocumentsRequired" xml:space="preserve">
     <value>Aucun document ne nécessite de consentement pour le moment.</value>
   </data>
@@ -100,26 +97,8 @@
   <data name="ConsentReview_ChangesInVersion" xml:space="preserve">
     <value>Modifications dans cette version :</value>
   </data>
-  <data name="ConsentReview_Important" xml:space="preserve">
-    <value>Important :</value>
-  </data>
-  <data name="ConsentReview_SpanishIsLegal" xml:space="preserve">
-    <value>La version espagnole ci-dessous est le texte juridiquement contraignant. La traduction en anglais est fournie à titre indicatif uniquement et n'a pas de valeur juridique.</value>
-  </data>
-  <data name="ConsentReview_SpanishTab" xml:space="preserve">
-    <value>Espagnol (Légal)</value>
-  </data>
-  <data name="ConsentReview_EnglishTab" xml:space="preserve">
-    <value>Anglais (Traduction)</value>
-  </data>
   <data name="ConsentReview_ContentNotAvailable" xml:space="preserve">
     <value>Contenu non disponible.</value>
-  </data>
-  <data name="ConsentReview_EnglishNotAvailable" xml:space="preserve">
-    <value>Traduction en anglais non disponible.</value>
-  </data>
-  <data name="ConsentReview_TranslationDisclaimer" xml:space="preserve">
-    <value>Cette traduction est fournie à titre indicatif uniquement. La version espagnole est juridiquement contraignante.</value>
   </data>
   <data name="ConsentReview_ConsentCheckbox" xml:space="preserve">
     <value>J'ai lu et compris ce document, et j'accepte d'être lié par ses conditions.</value>
@@ -151,5 +130,8 @@
   </data>
   <data name="Consent_StubProfile_AddName" xml:space="preserve">
     <value>Ajoutez votre nom légal avant de signer les consentements.</value>
+  </data>
+  <data name="Consent_AgreedToBy" xml:space="preserve">
+    <value>Accepté par &lt;strong&gt;{0}&lt;/strong&gt; le {1} à {2} UTC</value>
   </data>
 </root>
