@@ -46,7 +46,7 @@ internal sealed record BudgetAuditLogSnapshot(
     string? OldValue,
     string? NewValue,
     string Description,
-    Guid ActorUserId,
+    Guid? ActorUserId,
     Instant OccurredAt);
 
 internal sealed record CoordinatorBudgetViewData(

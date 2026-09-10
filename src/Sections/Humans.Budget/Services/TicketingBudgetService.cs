@@ -13,7 +13,8 @@ internal sealed class TicketingBudgetService(
     IClock clock,
     ILogger<TicketingBudgetService> logger) : ITicketingBudgetService
 {
-    public async Task<int> SyncActualsAsync(Guid budgetYearId, CancellationToken ct = default)
+    public async Task<int> SyncActualsAsync(
+        Guid budgetYearId, Guid? actorUserId, CancellationToken ct = default)
     {
         try
         {
@@ -44,7 +45,8 @@ internal sealed class TicketingBudgetService(
                 })
                 .ToList();
 
-            return await budgetService.SyncTicketingActualsAsync(budgetYearId, weeklyActuals, ct);
+            return await budgetService.SyncTicketingActualsAsync(
+                budgetYearId, weeklyActuals, actorUserId, ct);
         }
         catch (Exception ex)
         {
@@ -53,11 +55,12 @@ internal sealed class TicketingBudgetService(
         }
     }
 
-    public async Task<int> RefreshProjectionsAsync(Guid budgetYearId, CancellationToken ct = default)
+    public async Task<int> RefreshProjectionsAsync(
+        Guid budgetYearId, Guid? actorUserId, CancellationToken ct = default)
     {
         try
         {
-            return await budgetService.RefreshTicketingProjectionsAsync(budgetYearId, ct);
+            return await budgetService.RefreshTicketingProjectionsAsync(budgetYearId, actorUserId, ct);
         }
         catch (Exception ex)
         {
@@ -84,7 +87,7 @@ internal sealed class TicketingBudgetService(
             command.TicketTailorFeePercent,
             actorUserId);
 
-        return await RefreshProjectionsAsync(command.BudgetYearId, ct);
+        return await RefreshProjectionsAsync(command.BudgetYearId, actorUserId, ct);
     }
 
     public Task<IReadOnlyList<TicketingWeekProjection>> GetProjectionsAsync(Guid budgetGroupId)
