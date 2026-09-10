@@ -117,7 +117,7 @@ Detail row within a category.
 
 ### BudgetAuditLog
 
-Append-only per design-rules §12. `IBudgetRepository` exposes no add/update/delete surface for audit rows — each mutation method writes its own audit rows inside the same `SaveChanges`, except the two ticketing sync paths, currently outside it (see Seams in health.md) — plus the reads: `GetAuditLogAsync`, `GetAuditLogEntriesForUserAsync`, `GetAuditLogEntriesForUserIdsAsync`.
+Append-only per design-rules §12. `IBudgetRepository` exposes no add/update/delete surface for audit rows — each mutation method writes its own audit rows inside the same `SaveChanges` (the ticketing sync paths write one summary row per run that changed anything) — plus the reads: `GetAuditLogAsync`, `GetAuditLogEntriesForUserAsync`, `GetAuditLogEntriesForUserIdsAsync`.
 
 **Table:** `budget_audit_logs`
 
@@ -131,7 +131,7 @@ Append-only per design-rules §12. `IBudgetRepository` exposes no add/update/del
 | OldValue | string? | Serialized old value |
 | NewValue | string? | Serialized new value |
 | Description | string | Human-readable summary |
-| ActorUserId | Guid | Cross-section FK → Users/Identity |
+| ActorUserId | Guid? | Cross-section FK → Users/Identity; null = automation (the nightly ticketing sync job), rendered as "System" |
 | OccurredAt | Instant | |
 
 **Cross-section FKs:** `ActorUserId` → Users/Identity — **FK only**, no navigation property; callers resolve display names via `IUserServiceRead`.
@@ -194,15 +194,16 @@ Stored as string via `HasConversion<string>()`.
 ## Invariants
 
 - A budget year follows the lifecycle: Draft then Active then Closed. Only one year can be Active at a time — activating a Draft auto-closes any currently Active year (`BudgetRepository.UpdateYearStatusAsync`).
+- A Closed year is read-only: every repository mutation — the ticketing sync pair and the year-metadata rename included — refuses with `InvalidOperationException`. Only `UpdateYearStatusAsync` (Reactivate) and `DeleteYearAsync` (archive) act on a Closed year.
 - A coordinator can only create, edit, or delete line items in categories linked to a department they coordinate.
 - Restricted groups are editable only by FinanceAdmin and Admin. Coordinators see the group header and category names in `/Budget` (with a "Restricted" badge in place of the drill-in link) and the group's totals roll up into `/Budget/Summary` aggregates, but `/Budget/Category/{id}` returns `Forbid` for non-finance users.
 - Ticketing groups are hidden from the `/Budget` index for non-finance users (`Index.cshtml` filters `IsTicketingGroup` unless `IsFinanceAdmin`); their aggregates still appear in `/Budget/Summary`, and `/Budget/Category/{id}` returns `Forbid` for non-finance users on any ticketing category.
-- Every create, update, or delete on a group, category, or line item generates a `BudgetAuditLog` entry recording old value, new value, actor, and timestamp.
+- Every create, update, or delete on a group, category, or line item generates a `BudgetAuditLog` entry recording old value, new value, actor, and timestamp; the ticketing sync paths write one summary entry per run that changed anything, with a null actor for the nightly job.
 - "Sync Departments" creates a category for each department that does not already have one in the selected year.
 - `/Finance` index shows a consolidated accordion view: groups, categories with budget vs actual comparison, and inline line items. FinanceAdmin sees all summary data inline.
 - `/Finance/CashFlow` view aggregates line items by time period (weekly/monthly) and shows running net.
 - `budget_audit_logs` is append-only per §12.
-- Resource-based authorization per design-rules §11: `BudgetAuthorizationHandler` + `BudgetOperationRequirement` gate all coordinator writes against a `BudgetCategory` resource.
+- Resource-based authorization per design-rules §11: `BudgetAuthorizationHandler` + `BudgetOperationRequirement` gate all coordinator writes against a `BudgetCategory` resource, denying restricted groups, ticketing groups, and archived years for non-finance users.
 
 ## Negative Access Rules
 
@@ -210,7 +211,7 @@ Stored as string via `HasConversion<string>()`.
 - Coordinators **cannot** edit budget groups or categories, and **cannot** edit any line items inside restricted or ticketing groups. They can only manage line items in non-restricted, non-ticketing categories linked to a department they coordinate.
 - Coordinators **cannot** drill into a restricted-group category (`/Budget/Category/{id}` returns `Forbid`); they only see the group header and category names in `/Budget` plus the rollup in `/Budget/Summary`.
 - Coordinators **cannot** see ticketing groups in `/Budget` and **cannot** open any ticketing category — only the rollup appears in `/Budget/Summary`.
-- Coordinators **cannot** create, activate, close, archive, or restore budget years (all `/Finance/Years/*` actions require `FinanceAdminOrAdmin`).
+- Coordinators **cannot** create, activate, close, reactivate, or archive budget years (all `/Finance/Years/*` actions require `FinanceAdminOrAdmin`).
 
 ## Triggers
 
@@ -237,7 +238,7 @@ Stored as string via `HasConversion<string>()`.
 - **Cross-section calls** route through `ITeamServiceRead.GetTeamsAsync` (team lookups; coordinator scope is computed in-section over the same read model, see Cross-Section Dependencies) and `IUserServiceRead.GetUserInfosAsync` for actor display names. The ticketing-actuals data flows *inbound* via `IBudgetService.SyncTicketingActualsAsync`, called by the Tickets-section `TicketingBudgetService` bridge.
 - **Controller split under `/Finance`.** `BudgetAdminController` (`Humans.Budget.Controllers`) owns Budget's own admin surface — years, groups, categories, line items, ticketing projection, cash flow, audit log — at `[Route("Finance")]`. It shares that route prefix with `Humans.Finance.Controllers.FinanceController`, which owns only the Holded/creditor actions; the two controllers' action templates are disjoint. See [`src/Sections/Humans.Finance/Docs/Finance.md`](../../Humans.Finance/Docs/Finance.md) for the Finance side.
 - **Render test** — `tests/Humans.Integration.Tests/Controllers/BudgetPageRenderTests.cs`: every page renders with no raw `Budget_` key and no unbound `<vc:>` tag, in English and Spanish. General architecture coverage (`HUM0009`, `HUM0034`) applies to Budget code paths. No dedicated `BudgetArchitectureTests.cs` file exists.
-- **Repository shape** — `budget_audit_logs` is append-only (§12); the CRUD mutation methods write their audit rows inside their own `SaveChanges` — the two ticketing sync paths currently write none (see `Docs/health.md` Seams) — and the repository's audit surface is read-only.
+- **Repository shape** — `budget_audit_logs` is append-only (§12); the CRUD mutation methods write their audit rows inside their own `SaveChanges` — the ticketing sync paths write one summary row per run that changed anything — and the repository's audit surface is read-only.
 
 ### Touch-and-clean guidance
 

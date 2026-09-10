@@ -174,6 +174,9 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         if (budgetYear is null)
             return false;
 
+        if (budgetYear.Status == BudgetYearStatus.Closed)
+            throw new InvalidOperationException("Cannot modify a closed budget year.");
+
         if (!string.Equals(budgetYear.Year, year, StringComparison.Ordinal))
         {
             AddFieldAudit(ctx, budgetYear.Id, nameof(BudgetYear), budgetYear.Id,
@@ -263,31 +266,6 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         AddDescriptionAudit(ctx, year.Id, nameof(BudgetYear), year.Id,
             $"Archived budget year '{year.Name}' ({year.Year})",
-            actorUserId, now);
-
-        await ctx.SaveChangesAsync(ct);
-        return true;
-    }
-
-    public async Task<bool> RestoreYearAsync(
-        Guid yearId,
-        Guid actorUserId,
-        Instant now,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-
-        var year = await ctx.BudgetYears.FirstOrDefaultAsync(y => y.Id == yearId, ct);
-        if (year is null || !year.IsDeleted)
-            return false;
-
-        year.IsDeleted = false;
-        year.DeletedAt = null;
-        year.Status = BudgetYearStatus.Draft;
-        year.UpdatedAt = now;
-
-        AddDescriptionAudit(ctx, year.Id, nameof(BudgetYear), year.Id,
-            $"Restored budget year '{year.Name}' ({year.Year})",
             actorUserId, now);
 
         await ctx.SaveChangesAsync(ct);
@@ -884,10 +862,13 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Guid budgetYearId,
         IReadOnlyList<TicketingWeeklyActualsInput> weeklyActuals,
         LocalDate today,
+        Guid? actorUserId,
         Instant now,
         CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
+
+        await EnsureYearNotClosedAsync(ctx, budgetYearId, ct);
 
         var ticketingGroup = await LoadTicketingGroupForMutationAsync(ctx, budgetYearId, ct);
         if (ticketingGroup is null)
@@ -945,7 +926,12 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
             ctx, ticketingGroup.TicketingProjection, revenueCategory, feesCategory, today, now);
 
         if (ctx.ChangeTracker.HasChanges())
+        {
+            AddDescriptionAudit(ctx, budgetYearId, nameof(BudgetGroup), ticketingGroup.Id,
+                $"Ticketing sync: {lineItemsChanged} line item(s) created/updated from ticket sales data",
+                actorUserId, now);
             await ctx.SaveChangesAsync(ct);
+        }
 
         return lineItemsChanged;
     }
@@ -953,10 +939,13 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
     public async Task<int> RefreshTicketingProjectionsAsync(
         Guid budgetYearId,
         LocalDate today,
+        Guid? actorUserId,
         Instant now,
         CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
+
+        await EnsureYearNotClosedAsync(ctx, budgetYearId, ct);
 
         var ticketingGroup = await LoadTicketingGroupForMutationAsync(ctx, budgetYearId, ct);
         if (ticketingGroup is null)
@@ -974,7 +963,12 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
             ctx, ticketingGroup.TicketingProjection, revenueCategory, feesCategory, today, now);
 
         if (ctx.ChangeTracker.HasChanges())
+        {
+            AddDescriptionAudit(ctx, budgetYearId, nameof(BudgetGroup), ticketingGroup.Id,
+                $"Ticketing projections refreshed: {created} projected line item(s) materialized",
+                actorUserId, now);
             await ctx.SaveChangesAsync(ct);
+        }
 
         return created;
     }
@@ -1021,7 +1015,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         return await ctx.BudgetAuditLogs
             .AsNoTracking()
-            .Where(bal => userIds.Contains(bal.ActorUserId))
+            .Where(bal => bal.ActorUserId.HasValue && userIds.Contains(bal.ActorUserId.Value))
             // arch:db-sort-ok budget audit user chronology
             .OrderByDescending(bal => bal.OccurredAt)
             .ToListAsync(ct);
@@ -1266,7 +1260,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         BudgetDbContext ctx,
         Guid budgetYearId, string entityType, Guid entityId,
         string fieldName, string? oldValue, string? newValue,
-        Guid actorUserId, Instant occurredAt)
+        Guid? actorUserId, Instant occurredAt)
     {
         var description = $"Changed {entityType}.{fieldName} from '{oldValue}' to '{newValue}'";
         ctx.BudgetAuditLogs.Add(new BudgetAuditLog
@@ -1293,7 +1287,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         BudgetDbContext ctx,
         Guid budgetYearId, string entityType, Guid entityId,
         string description,
-        Guid actorUserId, Instant occurredAt)
+        Guid? actorUserId, Instant occurredAt)
     {
         ctx.BudgetAuditLogs.Add(new BudgetAuditLog
         {

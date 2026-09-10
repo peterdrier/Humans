@@ -44,7 +44,7 @@ public sealed class TicketingBudgetSyncJob : IRecurringJob
 
         try
         {
-            var count = await _ticketingBudgetService.SyncActualsAsync(activeYear.Id);
+            var count = await _ticketingBudgetService.SyncActualsAsync(activeYear.Id, actorUserId: null);
             _logger.LogInformation("Ticketing budget sync completed: {Count} line items synced", count);
         }
         catch (Exception ex)
