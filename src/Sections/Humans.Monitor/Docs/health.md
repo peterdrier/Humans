@@ -20,20 +20,22 @@ audit log as an anomaly, naming the folder, the person and the change. It rememb
 last looked, and deliberately forgets that only when the look was incomplete, so a bad run
 is re-covered rather than skipped.
 
-Separately it renders two read-only pages that show the sync history of one Drive resource
-or one human. It does not read that history itself.
+Separately it renders read-only pages that show the sync history of one Drive resource or
+one human. It does not read that history itself.
 
 ## The shapes
 
-Two question-shapes; the entry points that ask them are the table's left-hand column.
+The question-shapes this section answers; the entry points that ask them are the table's
+left-hand column.
 
 | Question shape | Entry points | Answer |
 |---|---|---|
 | *Did anyone outside the service account change permissions on our folders?* | `DriveActivityMonitorJob` (hourly), `POST /Monitor/CheckDriveActivity` | audit-log anomaly rows + a count |
 | *What did the Google sync do to this thing?* | `GET /Monitor/Resource/{id}`, `GET /Monitor/Human/{id}` | a page hosting `<vc:google-sync-log>` |
 
-The second shape is two routes because the predicate, the policy and the back-link differ;
-only the page chrome is shared, and it already is — one view, one view model.
+The second shape keeps a route per subject because the predicate, the policy and the
+back-link differ; only the page chrome is shared, and it already is — a single view and
+view model.
 
 The contract surface is one method (`IDriveActivityMonitorService.CheckForAnomalousActivityAsync`),
 consumed only from inside this project.
@@ -41,16 +43,16 @@ consumed only from inside this project.
 ## Structure
 
 - `Contracts/IDriveActivityMonitorService.cs` — the one-method scan contract.
-- `Services/DriveActivityMonitorService.cs` — the scan. Three separable jobs live here: run
-  the scan over the resource set, decide whether the marker advances, and turn a Drive
-  activity event into a sentence. The third is pure string work over the connector's DTOs
-  and depends on nothing but the people-id resolver.
+- `Services/DriveActivityMonitorService.cs` — the scan. Separable jobs live here: run the
+  scan over the resource set, decide whether the marker advances, and turn a Drive activity
+  event into a sentence. That last one is pure string work over the connector's DTOs and
+  depends on nothing but the people-id resolver.
 - `Jobs/DriveActivityMonitorJob.cs` + `SectionJobs.cs` — the hourly trigger and its schedule.
-- `Controllers/MonitorController.cs` — three actions, no logic: one dispatches the scan and
-  redirects, two resolve an id and render `SyncAudit`.
+- `Controllers/MonitorController.cs` — actions with no logic: `CheckDriveActivity` dispatches
+  the scan and redirects; `Resource` and `Human` resolve an id and render `SyncAudit`.
 - `Models/MonitorViewModels.cs`, `Views/Monitor/SyncAudit.cshtml` — the page chrome around
   `<vc:google-sync-log>`.
-- `Section.cs` — two DI lines.
+- `Section.cs` — the section's DI registrations.
 - `Docs/` — this file, `Monitor.md`, `authorization.md`, `data-access.md`.
 
 No `Data/`, no repository, no resource set.
@@ -101,7 +103,7 @@ None. Nothing here is specified-but-unbuilt.
 
 ## Load-bearing weirdness
 
-- **`<vc:google-sync-log>` needs two things, and neither fails loudly.** The
+- **`<vc:google-sync-log>` needs both of these, and neither fails loudly.** The
   `ProjectReference` to `Humans.GoogleIntegration` *and* the `@addTagHelper *,
   Humans.GoogleIntegration` line in `Views/_ViewImports.cshtml`. Drop either and the element
   ships as inert literal markup with a green build.
