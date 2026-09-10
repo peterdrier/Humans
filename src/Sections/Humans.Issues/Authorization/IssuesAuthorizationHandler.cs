@@ -28,7 +28,7 @@ internal sealed class IssuesAuthorizationHandler : AuthorizationHandler<IssuesOp
         IssueDetail resource)
     {
         var roles = context.User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
-        if (IssueSectionRouting.CanHandle(resource.Section, roles, context.User.IsInRole(RoleNames.Admin)))
+        if (IssueSectionRouting.CanHandle(resource.Section, roles))
         {
             context.Succeed(requirement);
         }

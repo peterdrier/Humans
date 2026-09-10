@@ -40,7 +40,7 @@ public sealed class IssuesServiceTests
     /// the cases below still assert what they were written to assert. The scoping rule itself
     /// is pinned by the "Who may reach one issue" cases further down.
     /// </summary>
-    private static readonly IssueViewer Admin = new(Guid.NewGuid(), [RoleNames.Admin], IsAdmin: true);
+    private static readonly IssueViewer Admin = new(Guid.NewGuid(), [RoleNames.Admin]);
 
     private readonly FakeClock Clock = new(Instant.FromUtc(2026, 4, 29, 12, 0));
     private readonly IMemoryCache Cache = new MemoryCache(new MemoryCacheOptions());
@@ -935,7 +935,7 @@ public sealed class IssuesServiceTests
             _issuesBadge, Cache,
             Clock, env, SectionCatalog, NullLogger<IssuesApplicationService>.Instance);
 
-        await svc.GetIssueListAsync(new IssueListFilter(), new IssueViewer(Guid.NewGuid(), [], IsAdmin: true), ct: Xunit.TestContext.Current.CancellationToken);
+        await svc.GetIssueListAsync(new IssueListFilter(), new IssueViewer(Guid.NewGuid(), [RoleNames.Admin]), ct: Xunit.TestContext.Current.CancellationToken);
 
         await repo.Received(1).GetListAsync(
             Arg.Any<IssueListFilter>(),
@@ -964,7 +964,7 @@ public sealed class IssuesServiceTests
             Clock, env, SectionCatalog, NullLogger<IssuesApplicationService>.Instance);
 
         var viewerId = Guid.NewGuid();
-        await svc.GetIssueListAsync(new IssueListFilter(), new IssueViewer(viewerId, [RoleNames.TicketAdmin], IsAdmin: false), ct: Xunit.TestContext.Current.CancellationToken);
+        await svc.GetIssueListAsync(new IssueListFilter(), new IssueViewer(viewerId, [RoleNames.TicketAdmin]), ct: Xunit.TestContext.Current.CancellationToken);
 
         await repo.Received(1).GetListAsync(
             Arg.Any<IssueListFilter>(),
@@ -993,7 +993,7 @@ public sealed class IssuesServiceTests
             Clock, env, SectionCatalog, NullLogger<IssuesApplicationService>.Instance);
 
         var viewerId = Guid.NewGuid();
-        await svc.GetIssueListAsync(new IssueListFilter(), new IssueViewer(viewerId, Roles: [], IsAdmin: false), ct: Xunit.TestContext.Current.CancellationToken);
+        await svc.GetIssueListAsync(new IssueListFilter(), new IssueViewer(viewerId, Roles: []), ct: Xunit.TestContext.Current.CancellationToken);
 
         await repo.Received(1).GetListAsync(
             Arg.Any<IssueListFilter>(),
@@ -1044,7 +1044,7 @@ public sealed class IssuesServiceTests
         await _issuesDb.Issues.AddRangeAsync(older, newer, middle);
         await _issuesDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetIssueListAsync(new IssueListFilter(Limit: 2), new IssueViewer(reporterId, Roles: [], IsAdmin: true), ct: Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetIssueListAsync(new IssueListFilter(Limit: 2), new IssueViewer(reporterId, Roles: [RoleNames.Admin]), ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Select(i => i.Id).Should().Equal(newer.Id, middle.Id);
     }
@@ -1132,7 +1132,7 @@ public sealed class IssuesServiceTests
         var ownReport = await SeedIssueRowAsync(
             viewerId, IssueStatus.Open, "Mine, elsewhere", IssueSectionRouting.Camps);
 
-        var result = await _service.GetIssueListAsync(new IssueListFilter(), new IssueViewer(viewerId, Roles: [RoleNames.TicketAdmin], IsAdmin: false), ct: Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetIssueListAsync(new IssueListFilter(), new IssueViewer(viewerId, Roles: [RoleNames.TicketAdmin]), ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Select(i => i.Id).Should().BeEquivalentTo([inSection, ownReport]);
     }
@@ -1244,10 +1244,10 @@ public sealed class IssuesServiceTests
     private static readonly CancellationToken Ct = Xunit.TestContext.Current.CancellationToken;
 
     /// <summary>Holds a role that owns the Tickets section, so Tickets issues are theirs.</summary>
-    private static IssueViewer Handler() => new(Guid.NewGuid(), [RoleNames.TicketAdmin], IsAdmin: false);
+    private static IssueViewer Handler() => new(Guid.NewGuid(), [RoleNames.TicketAdmin]);
 
     /// <summary>Holds nothing and reported nothing.</summary>
-    private static IssueViewer Stranger() => new(Guid.NewGuid(), [], IsAdmin: false);
+    private static IssueViewer Stranger() => new(Guid.NewGuid(), []);
 
     [HumansFact]
     public async Task An_issue_is_invisible_to_a_viewer_who_neither_handles_nor_reported_it()
@@ -1264,7 +1264,7 @@ public sealed class IssuesServiceTests
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open, section: IssueSectionRouting.Tickets);
 
-        var seen = await _service.GetIssueByIdAsync(issueId, new IssueViewer(reporterId, [], IsAdmin: false), Ct);
+        var seen = await _service.GetIssueByIdAsync(issueId, new IssueViewer(reporterId, []), Ct);
 
         seen.Should().NotBeNull();
     }
@@ -1296,7 +1296,7 @@ public sealed class IssuesServiceTests
 
         // The reporter is the sharper case than a stranger: they may read this issue and
         // comment on it, and still may not move it.
-        var reporter = new IssueViewer(reporterId, [], IsAdmin: false);
+        var reporter = new IssueViewer(reporterId, []);
 
         var mutations = new Func<Task>[]
         {
@@ -1345,7 +1345,7 @@ public sealed class IssuesServiceTests
     public async Task A_reporter_may_comment_on_their_own_issue_but_not_resolve_it()
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open, section: IssueSectionRouting.Tickets);
-        var reporter = new IssueViewer(reporterId, [], IsAdmin: false);
+        var reporter = new IssueViewer(reporterId, []);
 
         await _service.PostCommentAsync(issueId, reporter, reporterId, "Any news?", resolveOnPost: true, ct: Ct);
 

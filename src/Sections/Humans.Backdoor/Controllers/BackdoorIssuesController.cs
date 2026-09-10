@@ -34,16 +34,13 @@ internal sealed class BackdoorIssuesController(
     private Guid ActorUserId => GetCurrentUserId() ?? Guid.Empty;
 
     /// <summary>
-    /// The key owner as Issues scopes them — their id, the active roles
-    /// <see cref="BackdoorApiKeyAuthFilter"/> installed on the principal, and whether they are
-    /// an Admin. Passed on every call, so the key reaches exactly the issues its holder
-    /// reaches in the browser: the queue lists the same rows, and an id outside it is a 404
-    /// to read, to comment on and to patch.
+    /// The key owner as Issues scopes them — their id and the active roles
+    /// <see cref="BackdoorApiKeyAuthFilter"/> installed on the principal. Passed on every call,
+    /// so the key reaches exactly the issues its holder reaches in the browser: the queue lists
+    /// the same rows, and an id outside it is a 404 to read, to comment on and to patch.
     /// </summary>
-    private IssueViewer Viewer => new(
-        ActorUserId,
-        User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList(),
-        User.IsInRole(RoleNames.Admin));
+    private IssueViewer Viewer =>
+        new(ActorUserId, User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList());
 
     [HttpGet]
     public async Task<IActionResult> List(

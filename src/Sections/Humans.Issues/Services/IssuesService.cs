@@ -215,7 +215,7 @@ internal sealed class IssuesService(
     /// someone other than its reporter.
     /// </summary>
     private static bool CanHandle(Issue issue, IssueViewer viewer) =>
-        IssueSectionRouting.CanHandle(issue.Section, viewer.Roles, viewer.IsAdmin);
+        IssueSectionRouting.CanHandle(issue.Section, viewer.Roles);
 
     /// <summary>
     /// Whether <paramref name="viewer"/> may see the issue at all — the same test the queue

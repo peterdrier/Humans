@@ -34,8 +34,7 @@ internal sealed class IssuesController(
     /// their reach on its own; the <see cref="IAuthorizationService"/> checks below stay
     /// because they shape the page and answer 403 where the service would answer 404.
     /// </summary>
-    private IssueViewer ViewerFor(Guid userId) =>
-        new(userId, ClaimsRoles(), User.IsInRole(RoleNames.Admin));
+    private IssueViewer ViewerFor(Guid userId) => new(userId, ClaimsRoles());
 
     [HttpGet("")]
     public async Task<IActionResult> Index(
@@ -75,7 +74,7 @@ internal sealed class IssuesController(
             SearchText: !string.IsNullOrWhiteSpace(search) ? search : null,
             Limit: 200);
 
-        var matches = await issues.GetIssueListAsync(filter, new IssueViewer(user.Id, roles, isAdmin));
+        var matches = await issues.GetIssueListAsync(filter, new IssueViewer(user.Id, roles));
 
         // Section dropdown: Admin sees all known sections; non-admins see the
         // sections their roles own (so they only filter inside their own queue).

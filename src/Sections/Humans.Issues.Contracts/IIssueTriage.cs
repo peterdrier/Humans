@@ -1,3 +1,4 @@
+using Humans.Base.Constants;
 using Humans.Base.Interfaces;
 using NodaTime;
 
@@ -95,10 +96,19 @@ public interface IIssueTriage : IApplicationService
 /// Who is asking, as both doors into <see cref="IIssueTriage"/> see them: the browsing user's
 /// own id and claims, or the human a Backdoor key belongs to and the roles that key resolved.
 /// </summary>
+/// <remarks>
+/// Carries who the caller *is*, never what they are allowed to do: there is no privilege flag
+/// here for a caller to assert, per <c>memory/code/authorization-conventions.md</c>. Admin is
+/// derived from the roles rather than passed alongside them, so the two cannot disagree and a
+/// caller cannot claim admin reach it does not hold a claim for.
+/// </remarks>
 /// <param name="UserId">The person acting. Reaches their own reported issues whatever their roles.</param>
-/// <param name="Roles">Their active role names; an issue is theirs to handle when one of these owns its section.</param>
-/// <param name="IsAdmin">Admin reaches every issue. Kept explicit rather than re-derived from <paramref name="Roles"/>.</param>
-public sealed record IssueViewer(Guid UserId, IReadOnlyList<string> Roles, bool IsAdmin);
+/// <param name="Roles">Their active role names, as they appear in <c>ClaimTypes.Role</c>.</param>
+public sealed record IssueViewer(Guid UserId, IReadOnlyList<string> Roles)
+{
+    /// <summary>Admin reaches every issue — a role like any other, not a separate input.</summary>
+    public bool IsAdmin => Roles.Contains(RoleNames.Admin, StringComparer.Ordinal);
+}
 
 /// <summary>A freshly-posted comment, as much of it as a caller needs to echo back.</summary>
 public sealed record IssueCommentInfo(Guid Id, string Content, Instant CreatedAt);
