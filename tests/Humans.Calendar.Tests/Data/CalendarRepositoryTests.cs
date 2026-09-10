@@ -85,54 +85,15 @@ public sealed class CalendarRepositoryTests : IDisposable
     }
 
     // ==========================================================================
-    // GetEventsInWindowAsync
+    // GetAllAsync
     // ==========================================================================
 
-    [HumansFact]
-    public async Task GetEventsInWindowAsync_FiltersByOverlap()
-    {
-        var inside = BuildEvent(
-            start: Instant.FromUtc(2026, 6, 15, 17, 0),
-            end: Instant.FromUtc(2026, 6, 15, 18, 0));
-        var outside = BuildEvent(
-            start: Instant.FromUtc(2027, 1, 1, 0, 0),
-            end: Instant.FromUtc(2027, 1, 1, 1, 0));
-
-        await _repo.AddAsync(inside, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(outside, Xunit.TestContext.Current.CancellationToken);
-
-        var events = await _repo.GetEventsInWindowAsync(
-            from: Instant.FromUtc(2026, 6, 1, 0, 0),
-            to: Instant.FromUtc(2026, 7, 1, 0, 0),
-            teamId: null, ct: Xunit.TestContext.Current.CancellationToken);
-
-        events.Should().ContainSingle(e => e.Id == inside.Id);
-        events.Should().NotContain(e => e.Id == outside.Id);
-    }
+    // GetAllAsync is the section's only bulk read since the SQL window query was retired:
+    // the Singleton cache warms from it and every window read is answered off that snapshot.
+    // These two cases were previously covered only against the window query.
 
     [HumansFact]
-    public async Task GetEventsInWindowAsync_FiltersByTeam()
-    {
-        var teamA = Guid.NewGuid();
-        var teamB = Guid.NewGuid();
-
-        var a = BuildEvent(teamId: teamA);
-        var b = BuildEvent(teamId: teamB);
-
-        await _repo.AddAsync(a, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(b, Xunit.TestContext.Current.CancellationToken);
-
-        var events = await _repo.GetEventsInWindowAsync(
-            from: Instant.FromUtc(2026, 1, 1, 0, 0),
-            to: Instant.FromUtc(2027, 1, 1, 0, 0),
-            teamId: teamA, ct: Xunit.TestContext.Current.CancellationToken);
-
-        events.Should().ContainSingle(e => e.Id == a.Id);
-        events.Should().NotContain(e => e.Id == b.Id);
-    }
-
-    [HumansFact]
-    public async Task GetEventsInWindowAsync_IncludesExceptions()
+    public async Task GetAllAsync_IncludesExceptions()
     {
         var ev = BuildEvent();
         await _repo.AddAsync(ev, Xunit.TestContext.Current.CancellationToken);
@@ -144,13 +105,25 @@ public sealed class CalendarRepositoryTests : IDisposable
             now: Instant.FromUtc(2026, 4, 10, 0, 0),
             apply: x => x.IsCancelled = true, ct: Xunit.TestContext.Current.CancellationToken);
 
-        var events = await _repo.GetEventsInWindowAsync(
-            from: Instant.FromUtc(2026, 1, 1, 0, 0),
-            to: Instant.FromUtc(2027, 1, 1, 0, 0),
-            teamId: null, ct: Xunit.TestContext.Current.CancellationToken);
+        var events = await _repo.GetAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         events.Should().ContainSingle();
         events[0].Exceptions.Should().ContainSingle(x => x.IsCancelled);
+    }
+
+    [HumansFact]
+    public async Task GetAllAsync_HidesSoftDeleted()
+    {
+        var kept = BuildEvent();
+        var deleted = BuildEvent();
+        await _repo.AddAsync(kept, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(deleted, Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.SoftDeleteAsync(deleted.Id, Instant.FromUtc(2026, 4, 10, 0, 0), Xunit.TestContext.Current.CancellationToken);
+
+        var events = await _repo.GetAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        events.Should().ContainSingle(e => e.Id == kept.Id);
     }
 
     // ==========================================================================
@@ -278,6 +251,72 @@ public sealed class CalendarRepositoryTests : IDisposable
             apply: _ => { }, ct: Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    // ==========================================================================
+    // Soft-delete query filters
+    // ==========================================================================
+
+    // CalendarEventException carries its own filter (ex => ex.Event.DeletedAt == null),
+    // so exception rows hanging off a soft-deleted event are hidden too. Without it a
+    // deleted series' cancellations and overrides keep surfacing.
+    [HumansFact]
+    public async Task Exceptions_OfASoftDeletedEvent_AreHiddenByTheQueryFilter()
+    {
+        var ev = BuildEvent();
+        ev.Exceptions.Add(new CalendarEventException
+        {
+            Id = Guid.NewGuid(),
+            EventId = ev.Id,
+            OriginalOccurrenceStartUtc = Instant.FromUtc(2026, 6, 15, 17, 0),
+            IsCancelled = true,
+            CreatedByUserId = Guid.NewGuid(),
+            CreatedAt = Instant.FromUtc(2026, 4, 1, 12, 0),
+            UpdatedAt = Instant.FromUtc(2026, 4, 1, 12, 0),
+        });
+        await _repo.AddAsync(ev, Xunit.TestContext.Current.CancellationToken);
+
+        (await _dbContext.CalendarEventExceptions.CountAsync(Xunit.TestContext.Current.CancellationToken))
+            .Should().Be(1);
+
+        await _repo.SoftDeleteAsync(ev.Id, Instant.FromUtc(2026, 5, 1, 0, 0), Xunit.TestContext.Current.CancellationToken);
+        _dbContext.ChangeTracker.Clear();
+
+        (await _dbContext.CalendarEventExceptions.CountAsync(Xunit.TestContext.Current.CancellationToken))
+            .Should().Be(0, because: "the exception filter mirrors its parent's soft delete");
+        (await _dbContext.CalendarEventExceptions.IgnoreQueryFilters()
+            .CountAsync(Xunit.TestContext.Current.CancellationToken))
+            .Should().Be(1, because: "the row is filtered, not deleted");
+    }
+
+    // Load-bearing weirdness: UpsertExceptionAsync's existence lookup calls
+    // IgnoreQueryFilters() on purpose. If the parent is soft-deleted between a caller's
+    // pre-check and this write, the filtered lookup would miss the existing row and the
+    // insert would collide with the unique (EventId, OriginalOccurrenceStartUtc) index.
+    [HumansFact]
+    public async Task UpsertExceptionAsync_UpdatesTheExistingRow_EvenWhenTheParentIsSoftDeleted()
+    {
+        var ev = BuildEvent();
+        await _repo.AddAsync(ev, Xunit.TestContext.Current.CancellationToken);
+
+        var occurrence = Instant.FromUtc(2026, 6, 15, 17, 0);
+        await _repo.UpsertExceptionAsync(
+            ev.Id, occurrence, Guid.NewGuid(), Instant.FromUtc(2026, 4, 2, 12, 0),
+            x => x.IsCancelled = true, Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.SoftDeleteAsync(ev.Id, Instant.FromUtc(2026, 5, 1, 0, 0), Xunit.TestContext.Current.CancellationToken);
+        _dbContext.ChangeTracker.Clear();
+
+        var act = async () => await _repo.UpsertExceptionAsync(
+            ev.Id, occurrence, Guid.NewGuid(), Instant.FromUtc(2026, 5, 2, 12, 0),
+            x => x.OverrideTitle = "Moved", Xunit.TestContext.Current.CancellationToken);
+        await act.Should().NotThrowAsync(because: "the lookup ignores query filters, so it updates rather than re-inserting");
+
+        _dbContext.ChangeTracker.Clear();
+        var rows = await _dbContext.CalendarEventExceptions.IgnoreQueryFilters()
+            .Where(x => x.EventId == ev.Id).ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        rows.Should().ContainSingle();
+        rows[0].OverrideTitle.Should().Be("Moved");
     }
 
     // ==========================================================================
