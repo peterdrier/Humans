@@ -501,7 +501,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
     }
 
     public async Task UpdateSeasonAsync(
-        Guid seasonId, CampSeasonData data, CancellationToken cancellationToken = default)
+        Guid scopedCampId, Guid seasonId, CampSeasonData data, CancellationToken cancellationToken = default)
     {
         var now = _clock.GetCurrentInstant();
         var year = 0;
@@ -509,6 +509,11 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
 
         var found = await _repo.UpdateSeasonAsync(seasonId, season =>
         {
+            if (season.CampId != scopedCampId)
+            {
+                throw new InvalidOperationException("Season does not belong to the specified camp.");
+            }
+
             season.BlurbLong = data.BlurbLong;
             season.BlurbShort = data.BlurbShort;
             season.Languages = data.Languages;
@@ -599,7 +604,8 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
 
     }
 
-    public async Task WithdrawSeasonAsync(Guid seasonId, CancellationToken cancellationToken = default)
+    public async Task WithdrawSeasonAsync(
+        Guid scopedCampId, Guid seasonId, CancellationToken cancellationToken = default)
     {
         var now = _clock.GetCurrentInstant();
         var year = 0;
@@ -607,6 +613,11 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
 
         var found = await _repo.UpdateSeasonAsync(seasonId, season =>
         {
+            if (season.CampId != scopedCampId)
+            {
+                throw new InvalidOperationException("Season does not belong to the specified camp.");
+            }
+
             season.Withdraw(now);
             year = season.Year;
             campId = season.CampId;
@@ -727,6 +738,20 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
     {
         try
         {
+            // Prove the season belongs to the camp before the first write: the scoped check
+            // inside UpdateSeasonAsync fires only after the camp-level fields have committed,
+            // which would leave a partial update behind an uninvalidated cache on failure.
+            var scopedSeason = await _repo.GetSeasonByIdAsync(input.SeasonId, cancellationToken);
+            if (scopedSeason is null)
+            {
+                return CampUpdateResult.Failure("Season not found.");
+            }
+
+            if (scopedSeason.CampId != input.CampId)
+            {
+                return CampUpdateResult.Failure("Season does not belong to the specified camp.");
+            }
+
             var updated = await _repo.UpdateCampFieldsAsync(
                 input.CampId,
                 input.ContactEmail,
@@ -749,7 +774,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
                 $"Updated camp {input.CampId}",
                 "CampService");
 
-            await UpdateSeasonAsync(input.SeasonId, input.SeasonData, cancellationToken);
+            await UpdateSeasonAsync(input.CampId, input.SeasonId, input.SeasonData, cancellationToken);
 
             var currentSeason = await _repo.GetSeasonByIdAsync(input.SeasonId, cancellationToken)
                 ?? throw new InvalidOperationException("Season not found.");
@@ -760,7 +785,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
                 var nameLocked = currentSeason.NameLockDate.HasValue && today >= currentSeason.NameLockDate.Value;
                 if (!nameLocked)
                 {
-                    await ChangeSeasonNameAsync(currentSeason.Id, input.SeasonName, cancellationToken);
+                    await ChangeSeasonNameAsync(input.CampId, currentSeason.Id, input.SeasonName, cancellationToken);
                 }
             }
 
@@ -855,8 +880,15 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
     }
 
     public async Task RemoveHistoricalNameAsync(
-        Guid historicalNameId, CancellationToken cancellationToken = default)
+        Guid scopedCampId, Guid historicalNameId, CancellationToken cancellationToken = default)
     {
+        var camp = await _repo.GetByIdAsync(scopedCampId, cancellationToken)
+            ?? throw new InvalidOperationException("Camp not found.");
+        if (camp.HistoricalNames.All(n => n.Id != historicalNameId))
+        {
+            throw new InvalidOperationException("Historical name does not belong to the specified camp.");
+        }
+
         var removed = await _repo.RemoveHistoricalNameAsync(historicalNameId, cancellationToken);
         if (!removed)
         {
@@ -933,8 +965,16 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         return CampImageUploadResult.Success(image);
     }
 
-    public async Task DeleteImageAsync(Guid imageId, CancellationToken cancellationToken = default)
+    public async Task DeleteImageAsync(
+        Guid scopedCampId, Guid imageId, CancellationToken cancellationToken = default)
     {
+        var image = await _repo.GetImageForMutationAsync(imageId, cancellationToken)
+            ?? throw new InvalidOperationException("Image not found.");
+        if (image.CampId != scopedCampId)
+        {
+            throw new InvalidOperationException("Image does not belong to the specified camp.");
+        }
+
         var result = await _repo.DeleteImageAsync(imageId, cancellationToken)
             ?? throw new InvalidOperationException("Image not found.");
 
@@ -985,7 +1025,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
     }
 
     public async Task ChangeSeasonNameAsync(
-        Guid seasonId, string newName, CancellationToken cancellationToken = default)
+        Guid scopedCampId, Guid seasonId, string newName, CancellationToken cancellationToken = default)
     {
         var now = _clock.GetCurrentInstant();
         var today = now.InUtc().Date;
@@ -995,6 +1035,11 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
 
         var found = await _repo.ApplyNameChangeAsync(seasonId, season =>
         {
+            if (season.CampId != scopedCampId)
+            {
+                throw new InvalidOperationException("Season does not belong to the specified camp.");
+            }
+
             if (season.NameLockDate.HasValue && today >= season.NameLockDate.Value)
             {
                 throw new InvalidOperationException("Season name is locked and cannot be changed.");

@@ -83,6 +83,7 @@ public class AuthorizationPolicyTests : IDisposable
         { PolicyNames.AnyAdminRole, RoleNames.CampAdmin, true },
         { PolicyNames.AnyAdminRole, RoleNames.TicketAdmin, true },
         { PolicyNames.AnyAdminRole, RoleNames.FeedbackAdmin, true },
+        { PolicyNames.AnyAdminRole, RoleNames.RideshareAdmin, true },
         { PolicyNames.AnyAdminRole, RoleNames.FinanceAdmin, true },
         { PolicyNames.AnyAdminRole, RoleNames.NoInfoAdmin, true },
         { PolicyNames.AnyAdminRole, RoleNames.VolunteerCoordinator, true },
