@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Budget.Contracts;
-using Humans.Budget.Services;
 using Humans.Base.Constants;
 using Humans.Budget.Authorization;
 using Microsoft.AspNetCore.Authorization;
@@ -12,7 +11,7 @@ namespace Humans.Budget.Tests.Authorization;
 
 public sealed class BudgetAuthorizationHandlerTests
 {
-    private readonly IBudgetService _budgetService = Substitute.For<IBudgetService>();
+    private readonly IBudgetServiceRead _budgetService = Substitute.For<IBudgetServiceRead>();
     private readonly BudgetAuthorizationHandler _handler;
 
     private static readonly Guid CoordinatorTeamId = Guid.NewGuid();
