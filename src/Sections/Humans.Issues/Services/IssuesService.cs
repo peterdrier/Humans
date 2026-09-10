@@ -204,10 +204,37 @@ internal sealed class IssuesService(
 
     // ─── Reads ───
 
-    public async Task<IssueDetail?> GetIssueByIdAsync(Guid id, CancellationToken ct = default)
+    public async Task<IssueDetail?> GetIssueByIdAsync(Guid id, IssueViewer viewer, CancellationToken ct = default)
     {
         var issue = await repo.GetByIdAsync(id, ct);
-        return issue is null ? null : MapDetail(issue);
+        return issue is null || !CanSee(issue, viewer) ? null : MapDetail(issue);
+    }
+
+    /// <summary>
+    /// Whether <paramref name="viewer"/> may handle the issue: mutate it, or comment on it as
+    /// someone other than its reporter.
+    /// </summary>
+    private static bool CanHandle(Issue issue, IssueViewer viewer) =>
+        IssueSectionRouting.CanHandle(issue.Section, viewer.Roles, viewer.IsAdmin);
+
+    /// <summary>
+    /// Whether <paramref name="viewer"/> may see the issue at all — the same test the queue
+    /// applies row by row: a handler, or the person who reported it.
+    /// </summary>
+    private static bool CanSee(Issue issue, IssueViewer viewer) =>
+        CanHandle(issue, viewer) || issue.ReporterUserId == viewer.UserId;
+
+    /// <summary>
+    /// The issue, tracked for mutation, once <paramref name="viewer"/> is established as a
+    /// handler. Out of reach and gone are the same answer, so an id cannot be used to probe
+    /// for issues the caller's queue would never list.
+    /// </summary>
+    private async Task<Issue> FindHandleableAsync(Guid issueId, IssueViewer viewer, CancellationToken ct)
+    {
+        var issue = await repo.FindForMutationAsync(issueId, ct);
+        return issue is not null && CanHandle(issue, viewer)
+            ? issue
+            : throw new InvalidOperationException($"Issue {issueId} not found");
     }
 
     private static IssueDetail MapDetail(Issue issue) => new(
@@ -233,18 +260,16 @@ internal sealed class IssuesService(
 
     public async Task<IReadOnlyList<IssueListSnapshot>> GetIssueListAsync(
         IssueListFilter filter,
-        Guid viewerUserId,
-        IReadOnlyList<string> viewerRoles,
-        bool viewerIsAdmin,
+        IssueViewer viewer,
         CancellationToken ct = default)
     {
         IReadOnlySet<string>? sectionFilter = null;
         Guid? reporterFallback = null;
 
-        if (!viewerIsAdmin)
+        if (!viewer.IsAdmin)
         {
-            sectionFilter = IssueSectionRouting.SectionsForRoles(viewerRoles);
-            reporterFallback = viewerUserId;
+            sectionFilter = IssueSectionRouting.SectionsForRoles(viewer.Roles);
+            reporterFallback = viewer.UserId;
         }
 
         var issues = await repo.GetListAsync(filter, sectionFilter, reporterFallback, ct);
@@ -293,10 +318,11 @@ internal sealed class IssuesService(
     }
 
     public async Task<IReadOnlyList<IssueThreadEvent>> GetThreadAsync(
-        Guid issueId, CancellationToken ct = default)
+        Guid issueId, IssueViewer viewer, CancellationToken ct = default)
     {
-        var issue = await repo.GetByIdAsync(issueId, ct)
-            ?? throw new InvalidOperationException($"Issue {issueId} not found");
+        var issue = await repo.GetByIdAsync(issueId, ct);
+        if (issue is null || !CanSee(issue, viewer))
+            throw new InvalidOperationException($"Issue {issueId} not found");
 
         // Audit entries for the Issue-related actions. IssueCreated is written only by the
         // machine path, where the filer and the reporter can differ, so it is the one place
@@ -356,13 +382,19 @@ internal sealed class IssuesService(
 
     public async Task<IssueCommentInfo> PostCommentAsync(
         Guid issueId,
+        IssueViewer viewer,
         Guid? senderUserId,
         string content,
         bool resolveOnPost = false,
         CancellationToken ct = default)
     {
-        var issue = await repo.FindForMutationAsync(issueId, ct)
-            ?? throw new InvalidOperationException($"Issue {issueId} not found");
+        var issue = await repo.FindForMutationAsync(issueId, ct);
+        if (issue is null || !CanSee(issue, viewer))
+            throw new InvalidOperationException($"Issue {issueId} not found");
+
+        // A reporter may comment on their own issue but not resolve it; resolving is a
+        // handler's move, so the flag is dropped rather than refused.
+        var viewerCanHandle = CanHandle(issue, viewer);
 
         // Derived here, not caller-supplied: reporter status drives auto-reopen and
         // notification routing, and every door must get identical behavior.
@@ -411,9 +443,9 @@ internal sealed class IssuesService(
             "Comment posted on issue {IssueId} by {UserId} (reporter: {Reporter})",
             issueId, senderUserId, senderIsReporter);
 
-        if (resolveOnPost && !issue.Status.IsTerminal())
+        if (resolveOnPost && viewerCanHandle && !issue.Status.IsTerminal())
         {
-            await UpdateStatusAsync(issueId, IssueStatus.Resolved, senderUserId, ct);
+            await UpdateStatusAsync(issueId, viewer, IssueStatus.Resolved, senderUserId, ct);
         }
 
         return new IssueCommentInfo(comment.Id, comment.Content, comment.CreatedAt);
@@ -447,11 +479,10 @@ internal sealed class IssuesService(
     }
 
     public async Task UpdateStatusAsync(
-        Guid issueId, IssueStatus newStatus, Guid? actorUserId,
+        Guid issueId, IssueViewer viewer, IssueStatus newStatus, Guid? actorUserId,
         CancellationToken ct = default)
     {
-        var issue = await repo.FindForMutationAsync(issueId, ct)
-            ?? throw new InvalidOperationException($"Issue {issueId} not found");
+        var issue = await FindHandleableAsync(issueId, viewer, ct);
 
         var oldStatus = issue.Status;
         if (oldStatus == newStatus) return;
@@ -489,13 +520,14 @@ internal sealed class IssuesService(
 
     public async Task<IssueMutationResult> UpdateStatusWithResultAsync(
         Guid issueId,
+        IssueViewer viewer,
         IssueStatus newStatus,
         Guid? actorUserId,
         CancellationToken ct = default)
     {
         try
         {
-            await UpdateStatusAsync(issueId, newStatus, actorUserId, ct);
+            await UpdateStatusAsync(issueId, viewer, newStatus, actorUserId, ct);
             return IssueMutationResult.Success();
         }
         catch (InvalidOperationException ex)
@@ -511,11 +543,10 @@ internal sealed class IssuesService(
     }
 
     public async Task UpdateAssigneeAsync(
-        Guid issueId, Guid? newAssigneeUserId, Guid? actorUserId,
+        Guid issueId, IssueViewer viewer, Guid? newAssigneeUserId, Guid? actorUserId,
         CancellationToken ct = default)
     {
-        var issue = await repo.FindForMutationAsync(issueId, ct)
-            ?? throw new InvalidOperationException($"Issue {issueId} not found");
+        var issue = await FindHandleableAsync(issueId, viewer, ct);
 
         if (issue.AssigneeUserId == newAssigneeUserId) return;
 
@@ -551,13 +582,14 @@ internal sealed class IssuesService(
 
     public async Task<IssueMutationResult> UpdateAssigneeWithResultAsync(
         Guid issueId,
+        IssueViewer viewer,
         Guid? newAssigneeUserId,
         Guid? actorUserId,
         CancellationToken ct = default)
     {
         try
         {
-            await UpdateAssigneeAsync(issueId, newAssigneeUserId, actorUserId, ct);
+            await UpdateAssigneeAsync(issueId, viewer, newAssigneeUserId, actorUserId, ct);
             return IssueMutationResult.Success();
         }
         catch (InvalidOperationException ex)
@@ -573,13 +605,14 @@ internal sealed class IssuesService(
     }
 
     public async Task UpdateSectionAsync(
-        Guid issueId, string? newSection, Guid? actorUserId,
+        Guid issueId, IssueViewer viewer, string? newSection, Guid? actorUserId,
         CancellationToken ct = default)
     {
         newSection = NormalizeSection(newSection);
 
-        var issue = await repo.FindForMutationAsync(issueId, ct)
-            ?? throw new InvalidOperationException($"Issue {issueId} not found");
+        // Authorized against the section the issue is in, not the one it is going to — the
+        // same test the browser applies, where a handler routes an issue out of their queue.
+        var issue = await FindHandleableAsync(issueId, viewer, ct);
 
         if (string.Equals(issue.Section, newSection, StringComparison.Ordinal)) return;
 
@@ -607,13 +640,14 @@ internal sealed class IssuesService(
 
     public async Task<IssueMutationResult> UpdateSectionWithResultAsync(
         Guid issueId,
+        IssueViewer viewer,
         string? newSection,
         Guid? actorUserId,
         CancellationToken ct = default)
     {
         try
         {
-            await UpdateSectionAsync(issueId, newSection, actorUserId, ct);
+            await UpdateSectionAsync(issueId, viewer, newSection, actorUserId, ct);
             return IssueMutationResult.Success();
         }
         catch (InvalidOperationException ex)
@@ -629,11 +663,10 @@ internal sealed class IssuesService(
     }
 
     public async Task SetGitHubIssueNumberAsync(
-        Guid issueId, int? githubIssueNumber, Guid? actorUserId,
+        Guid issueId, IssueViewer viewer, int? githubIssueNumber, Guid? actorUserId,
         CancellationToken ct = default)
     {
-        var issue = await repo.FindForMutationAsync(issueId, ct)
-            ?? throw new InvalidOperationException($"Issue {issueId} not found");
+        var issue = await FindHandleableAsync(issueId, viewer, ct);
 
         if (issue.GitHubIssueNumber == githubIssueNumber) return;
 
@@ -648,13 +681,14 @@ internal sealed class IssuesService(
 
     public async Task<IssueMutationResult> SetGitHubIssueNumberWithResultAsync(
         Guid issueId,
+        IssueViewer viewer,
         int? githubIssueNumber,
         Guid? actorUserId,
         CancellationToken ct = default)
     {
         try
         {
-            await SetGitHubIssueNumberAsync(issueId, githubIssueNumber, actorUserId, ct);
+            await SetGitHubIssueNumberAsync(issueId, viewer, githubIssueNumber, actorUserId, ct);
             return IssueMutationResult.Success();
         }
         catch (InvalidOperationException ex)

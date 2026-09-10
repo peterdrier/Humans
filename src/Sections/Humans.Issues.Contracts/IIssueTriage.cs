@@ -9,22 +9,39 @@ namespace Humans.Issues.Contracts;
 /// or the linked GitHub issue.
 /// </summary>
 /// <remarks>
-/// Every mutation takes the acting user. The Backdoor filter resolves the presented key to
-/// its owner and passes that id, so an agent's status change is attributed to a person in the
-/// audit thread instead of appearing as an anonymous write.
+/// <para>
+/// Every member takes an <see cref="IssueViewer"/>: the queue is filtered to what that person
+/// may see, and every per-item read and mutation is refused unless they may reach that issue.
+/// The rule lives in the service, so both doors — the browser and a Backdoor key — enforce it
+/// identically and a key reaches exactly as far as its holder does in the browser.
+/// </para>
+/// <para>
+/// Authority and attribution are separate on purpose. The viewer says who may act; the
+/// <c>actorUserId</c> / <c>senderUserId</c> arguments say whose name goes on the audit entry.
+/// They are the same person at both doors today, and <see cref="CreateIssueAsync"/> is the
+/// case that shows why the pair exists: an agent may file an issue on someone else's behalf.
+/// </para>
 /// </remarks>
 public interface IIssueTriage : IApplicationService
 {
     Task<IReadOnlyList<IssueListSnapshot>> GetIssueListAsync(
         IssueListFilter filter,
-        Guid viewerUserId,
-        IReadOnlyList<string> viewerRoles,
-        bool viewerIsAdmin,
+        IssueViewer viewer,
         CancellationToken ct = default);
 
-    Task<IssueDetail?> GetIssueByIdAsync(Guid id, CancellationToken ct = default);
+    /// <summary>
+    /// The issue, or null when it does not exist <em>or</em> <paramref name="viewer"/> may not
+    /// see it — deliberately indistinguishable, so an id is not an oracle for issues outside
+    /// the caller's queue.
+    /// </summary>
+    Task<IssueDetail?> GetIssueByIdAsync(Guid id, IssueViewer viewer, CancellationToken ct = default);
 
-    Task<IReadOnlyList<IssueThreadEvent>> GetThreadAsync(Guid issueId, CancellationToken ct = default);
+    /// <summary>
+    /// Throws <see cref="InvalidOperationException"/> when the issue is gone or
+    /// <paramref name="viewer"/> may not see it — again indistinguishable.
+    /// </summary>
+    Task<IReadOnlyList<IssueThreadEvent>> GetThreadAsync(
+        Guid issueId, IssueViewer viewer, CancellationToken ct = default);
 
     /// <summary>
     /// Files an issue on behalf of <paramref name="reporterUserId"/> and returns its id.
@@ -49,24 +66,39 @@ public interface IIssueTriage : IApplicationService
     /// <summary>
     /// Posts a comment. Reporter status is derived from <paramref name="senderUserId"/> —
     /// a reporter's comment on a terminal issue auto-reopens it, whichever door it came
-    /// through. Throws <see cref="InvalidOperationException"/> when the issue is gone.
+    /// through. Open to a handler or the reporter; <paramref name="resolveOnPost"/> is
+    /// honoured for handlers only. Throws <see cref="InvalidOperationException"/> when the
+    /// issue is gone or out of the viewer's reach.
     /// </summary>
     Task<IssueCommentInfo> PostCommentAsync(
-        Guid issueId, Guid? senderUserId, string content,
+        Guid issueId, IssueViewer viewer, Guid? senderUserId, string content,
         bool resolveOnPost = false, CancellationToken ct = default);
 
     Task UpdateStatusAsync(
-        Guid issueId, IssueStatus newStatus, Guid? actorUserId, CancellationToken ct = default);
+        Guid issueId, IssueViewer viewer, IssueStatus newStatus, Guid? actorUserId,
+        CancellationToken ct = default);
 
     Task UpdateAssigneeAsync(
-        Guid issueId, Guid? newAssigneeUserId, Guid? actorUserId, CancellationToken ct = default);
+        Guid issueId, IssueViewer viewer, Guid? newAssigneeUserId, Guid? actorUserId,
+        CancellationToken ct = default);
 
     Task UpdateSectionAsync(
-        Guid issueId, string? newSection, Guid? actorUserId, CancellationToken ct = default);
+        Guid issueId, IssueViewer viewer, string? newSection, Guid? actorUserId,
+        CancellationToken ct = default);
 
     Task SetGitHubIssueNumberAsync(
-        Guid issueId, int? githubIssueNumber, Guid? actorUserId, CancellationToken ct = default);
+        Guid issueId, IssueViewer viewer, int? githubIssueNumber, Guid? actorUserId,
+        CancellationToken ct = default);
 }
+
+/// <summary>
+/// Who is asking, as both doors into <see cref="IIssueTriage"/> see them: the browsing user's
+/// own id and claims, or the human a Backdoor key belongs to and the roles that key resolved.
+/// </summary>
+/// <param name="UserId">The person acting. Reaches their own reported issues whatever their roles.</param>
+/// <param name="Roles">Their active role names; an issue is theirs to handle when one of these owns its section.</param>
+/// <param name="IsAdmin">Admin reaches every issue. Kept explicit rather than re-derived from <paramref name="Roles"/>.</param>
+public sealed record IssueViewer(Guid UserId, IReadOnlyList<string> Roles, bool IsAdmin);
 
 /// <summary>A freshly-posted comment, as much of it as a caller needs to echo back.</summary>
 public sealed record IssueCommentInfo(Guid Id, string Content, Instant CreatedAt);

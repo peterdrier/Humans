@@ -95,8 +95,7 @@ public class BackdoorIssuesControllerTests
         _issues
             .GetIssueListAsync(
                 capture is null ? Arg.Any<IssueListFilter>() : Arg.Do<IssueListFilter>(capture),
-                Arg.Any<Guid>(), Arg.Any<IReadOnlyList<string>>(),
-                Arg.Any<bool>(), Arg.Any<CancellationToken>())
+                Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>([]));
 
     // ==========================================================================
@@ -108,8 +107,7 @@ public class BackdoorIssuesControllerTests
     {
         IReadOnlyList<IssueListSnapshot> issues = [MakeSnapshot(), MakeSnapshot(), MakeSnapshot()];
         _issues
-            .GetIssueListAsync(Arg.Any<IssueListFilter>(), Arg.Any<Guid>(),
-                Arg.Any<IReadOnlyList<string>>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .GetIssueListAsync(Arg.Any<IssueListFilter>(), Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(issues));
 
         var result = await _sut.List(status: null, category: null, section: null, assignee: null);
@@ -187,7 +185,7 @@ public class BackdoorIssuesControllerTests
     public async Task Get_returns_NotFound_for_missing_issue()
     {
         var id = Guid.NewGuid();
-        _issues.GetIssueByIdAsync(id, Arg.Any<CancellationToken>())
+        _issues.GetIssueByIdAsync(id, Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IssueDetail?>(null));
 
         var result = await _sut.Get(id);
@@ -200,7 +198,7 @@ public class BackdoorIssuesControllerTests
     {
         var id = Guid.NewGuid();
         var reporterId = Guid.NewGuid();
-        _issues.GetIssueByIdAsync(id, Arg.Any<CancellationToken>())
+        _issues.GetIssueByIdAsync(id, Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IssueDetail?>(MakeDetail(id, reporterId)));
 
         IReadOnlyList<IssueThreadEvent> thread =
@@ -219,7 +217,7 @@ public class BackdoorIssuesControllerTests
                 Action: AuditAction.IssueStatusChanged,
                 Description: "Status: Triage -> Open"),
         ];
-        _issues.GetThreadAsync(id, Arg.Any<CancellationToken>()).Returns(Task.FromResult(thread));
+        _issues.GetThreadAsync(id, Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult(thread));
 
         var result = await _sut.Get(id);
 
@@ -283,7 +281,7 @@ public class BackdoorIssuesControllerTests
         // Reporter-vs-handler classification (and its auto-reopen) is the service's
         // invariant, derived from senderUserId — the controller only attributes.
         var issueId = Guid.NewGuid();
-        _issues.PostCommentAsync(issueId, KeyOwnerId, "From the triage agent", false, Arg.Any<CancellationToken>())
+        _issues.PostCommentAsync(issueId, Arg.Any<IssueViewer>(), KeyOwnerId, "From the triage agent", false, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new IssueCommentInfo(
                 Guid.NewGuid(), "From the triage agent", Instant.FromUtc(2026, 4, 29, 12, 0))));
 
@@ -291,7 +289,7 @@ public class BackdoorIssuesControllerTests
 
         result.Should().BeOfType<OkObjectResult>();
         await _issues.Received(1).PostCommentAsync(
-            issueId,
+            issueId, Arg.Any<IssueViewer>(),
             senderUserId: KeyOwnerId,
             content: "From the triage agent",
             resolveOnPost: false,
@@ -302,7 +300,7 @@ public class BackdoorIssuesControllerTests
     public async Task PostComment_returns_NotFound_when_issue_missing()
     {
         var issueId = Guid.NewGuid();
-        _issues.PostCommentAsync(issueId, KeyOwnerId, "Hello?", false, Arg.Any<CancellationToken>())
+        _issues.PostCommentAsync(issueId, Arg.Any<IssueViewer>(), KeyOwnerId, "Hello?", false, Arg.Any<CancellationToken>())
             .Returns(Task.FromException<IssueCommentInfo>(
                 new InvalidOperationException($"Issue {issueId} not found")));
 
@@ -315,21 +313,21 @@ public class BackdoorIssuesControllerTests
     public async Task UpdateStatus_records_the_key_owner_as_actor()
     {
         var issueId = Guid.NewGuid();
-        _issues.UpdateStatusAsync(issueId, IssueStatus.Resolved, KeyOwnerId, Arg.Any<CancellationToken>())
+        _issues.UpdateStatusAsync(issueId, Arg.Any<IssueViewer>(), IssueStatus.Resolved, KeyOwnerId, Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
         var result = await _sut.UpdateStatus(issueId, new UpdateIssueStatusModel { Status = IssueStatus.Resolved });
 
         result.Should().BeOfType<OkObjectResult>();
         await _issues.Received(1).UpdateStatusAsync(
-            issueId, IssueStatus.Resolved, actorUserId: KeyOwnerId, ct: Arg.Any<CancellationToken>());
+            issueId, Arg.Any<IssueViewer>(), IssueStatus.Resolved, actorUserId: KeyOwnerId, ct: Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
     public async Task UpdateStatus_returns_NotFound_when_service_throws_invalid_op()
     {
         var issueId = Guid.NewGuid();
-        _issues.UpdateStatusAsync(issueId, Arg.Any<IssueStatus>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+        _issues.UpdateStatusAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<IssueStatus>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new InvalidOperationException("not found")));
 
         var result = await _sut.UpdateStatus(issueId, new UpdateIssueStatusModel { Status = IssueStatus.Resolved });
@@ -345,7 +343,7 @@ public class BackdoorIssuesControllerTests
     public async Task UpdateStatus_returns_422_when_the_service_rejects_the_move()
     {
         var issueId = Guid.NewGuid();
-        _issues.UpdateStatusAsync(issueId, Arg.Any<IssueStatus>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+        _issues.UpdateStatusAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<IssueStatus>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new InvalidOperationException("Cannot reopen a closed issue")));
 
         var result = await _sut.UpdateStatus(issueId, new UpdateIssueStatusModel { Status = IssueStatus.Resolved });
@@ -372,9 +370,10 @@ public class BackdoorIssuesControllerTests
 
         await _issues.Received(1).GetIssueListAsync(
             Arg.Any<IssueListFilter>(),
-            viewerUserId: KeyOwnerId,
-            viewerRoles: Arg.Is<IReadOnlyList<string>>(r => r.SequenceEqual(new[] { "Board" })),
-            viewerIsAdmin: false,
+            Arg.Is<IssueViewer>(v =>
+                v.UserId == KeyOwnerId
+                && v.Roles.SequenceEqual(new[] { "Board" })
+                && !v.IsAdmin),
             Arg.Any<CancellationToken>());
     }
 
@@ -388,11 +387,82 @@ public class BackdoorIssuesControllerTests
 
         await _issues.Received(1).GetIssueListAsync(
             Arg.Any<IssueListFilter>(),
-            viewerUserId: KeyOwnerId,
-            Arg.Any<IReadOnlyList<string>>(),
-            viewerIsAdmin: true,
+            Arg.Is<IssueViewer>(v => v.UserId == KeyOwnerId && v.IsAdmin),
             Arg.Any<CancellationToken>());
     }
+
+    /// <summary>
+    /// The per-item routes used to reach <see cref="IIssueTriage"/> with no viewer at all, so a
+    /// key holding an id read and moved issues its own queue would never have listed. Each
+    /// route now carries the same viewer the queue does; refusing on it is Issues' job, and
+    /// these pin that the controller hands it over.
+    /// </summary>
+    [HumansFact]
+    public async Task Reading_one_issue_carries_the_key_owners_viewer()
+    {
+        WithRoles("Board");
+        var issueId = Guid.NewGuid();
+        _issues.GetIssueByIdAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IssueDetail?>(null));
+
+        await _sut.Get(issueId);
+
+        await _issues.Received(1).GetIssueByIdAsync(issueId, BoardKeyOwner(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Commenting_carries_the_key_owners_viewer()
+    {
+        WithRoles("Board");
+        var issueId = Guid.NewGuid();
+        _issues.PostCommentAsync(
+                issueId, Arg.Any<IssueViewer>(), Arg.Any<Guid?>(), Arg.Any<string>(),
+                Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new IssueCommentInfo(
+                Guid.NewGuid(), "Body", Instant.FromUtc(2026, 4, 29, 12, 0))));
+
+        await _sut.PostComment(issueId, new PostIssueCommentModel { Content = "Body" });
+
+        await _issues.Received(1).PostCommentAsync(
+            issueId, BoardKeyOwner(), KeyOwnerId, "Body",
+            Arg.Any<bool>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Patching_carries_the_key_owners_viewer()
+    {
+        WithRoles("Board");
+        var issueId = Guid.NewGuid();
+
+        await _sut.UpdateStatus(issueId, new UpdateIssueStatusModel { Status = IssueStatus.Resolved });
+
+        await _issues.Received(1).UpdateStatusAsync(
+            issueId, BoardKeyOwner(), IssueStatus.Resolved, KeyOwnerId, Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>
+    /// Refusal is Issues' answer, not the controller's: an issue out of the key's reach comes
+    /// back from the service as "not found", and the patch pipeline turns that into a 404.
+    /// </summary>
+    [HumansFact]
+    public async Task A_patch_on_an_issue_out_of_reach_is_a_404()
+    {
+        WithRoles("Board");
+        var issueId = Guid.NewGuid();
+        _issues.UpdateStatusAsync(
+                issueId, Arg.Any<IssueViewer>(), Arg.Any<IssueStatus>(), Arg.Any<Guid?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException($"Issue {issueId} not found")));
+
+        var result = await _sut.UpdateStatus(issueId, new UpdateIssueStatusModel { Status = IssueStatus.Resolved });
+
+        result.Should().BeOfType<NotFoundResult>();
+    }
+
+    /// <summary>The viewer <see cref="WithRoles"/>("Board") should produce.</summary>
+    private static IssueViewer BoardKeyOwner() =>
+        Arg.Is<IssueViewer>(v =>
+            v.UserId == KeyOwnerId && v.Roles.SequenceEqual(new[] { "Board" }) && !v.IsAdmin);
 
     /// <summary>Re-installs the principal the auth filter would build for an owner in these roles.</summary>
     private void WithRoles(params string[] roleNames) =>

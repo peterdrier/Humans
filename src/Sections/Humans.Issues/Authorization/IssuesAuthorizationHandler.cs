@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Humans.Base.Constants;
 using Humans.Issues.Domain;
 using Humans.Issues.Contracts;
@@ -11,10 +12,10 @@ namespace Humans.Issues.Authorization;
 /// based on Admin membership or holding any role mapped to the issue's <c>Section</c>
 /// via <see cref="IssueSectionRouting"/>.
 ///
-/// Authorization logic for <see cref="IssuesOperationRequirement.Handle"/>:
-/// - Admin: allow any issue
-/// - Holder of any role in <c>IssueSectionRouting.RolesFor(issue.Section)</c>: allow
-/// - Everyone else: deny
+/// The rule itself is <see cref="IssueSectionRouting.CanHandle"/>, which the service also
+/// enforces on every per-item read and mutation. This handler is the browser's copy of the
+/// same answer, used to shape the page (which controls render, whether a comment may resolve)
+/// and to answer 403 before the service would answer 404.
 ///
 /// Reads from claims only (RoleAssignmentClaimsTransformation populates them per-request,
 /// cached 60s) — no DB hit.
@@ -26,14 +27,8 @@ internal sealed class IssuesAuthorizationHandler : AuthorizationHandler<IssuesOp
         IssuesOperationRequirement requirement,
         IssueDetail resource)
     {
-        if (context.User.IsInRole(RoleNames.Admin))
-        {
-            context.Succeed(requirement);
-            return Task.CompletedTask;
-        }
-
-        var sectionRoles = IssueSectionRouting.RolesFor(resource.Section);
-        if (sectionRoles.Any(r => context.User.IsInRole(r)))
+        var roles = context.User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+        if (IssueSectionRouting.CanHandle(resource.Section, roles, context.User.IsInRole(RoleNames.Admin)))
         {
             context.Succeed(requirement);
         }

@@ -49,6 +49,25 @@ internal static class IssueSectionRouting
     };
 
     /// <summary>
+    /// Whether a viewer holding <paramref name="viewerRoles"/> may handle an issue filed
+    /// against <paramref name="section"/> — mutate it, or comment on it as a non-reporter.
+    /// Admin handles everything; otherwise the viewer must hold a role that owns the section.
+    /// </summary>
+    /// <remarks>
+    /// The one statement of the handle rule. Both enforcement points read it: the service,
+    /// which gates every per-item read and mutation whichever door they arrive through, and
+    /// <c>IssuesAuthorizationHandler</c>, which the browser also asks in order to shape the
+    /// page. A second spelling of this rule is how the machine surface came to be unscoped.
+    /// </remarks>
+    public static bool CanHandle(string? section, IReadOnlyCollection<string> viewerRoles, bool viewerIsAdmin)
+    {
+        if (viewerIsAdmin) return true;
+
+        var roleSet = viewerRoles.ToHashSet(StringComparer.Ordinal);
+        return RolesFor(section).Any(roleSet.Contains);
+    }
+
+    /// <summary>
     /// Returns the set of section strings whose role list contains any of
     /// <paramref name="userRoles"/>. Used for queue filtering.
     /// </summary>

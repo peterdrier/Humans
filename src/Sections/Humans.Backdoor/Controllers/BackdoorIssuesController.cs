@@ -34,11 +34,16 @@ internal sealed class BackdoorIssuesController(
     private Guid ActorUserId => GetCurrentUserId() ?? Guid.Empty;
 
     /// <summary>
-    /// The key owner's active roles, as installed by <see cref="BackdoorApiKeyAuthFilter"/>.
-    /// The queue is scoped to these exactly as it is for that person in the browser.
+    /// The key owner as Issues scopes them — their id, the active roles
+    /// <see cref="BackdoorApiKeyAuthFilter"/> installed on the principal, and whether they are
+    /// an Admin. Passed on every call, so the key reaches exactly the issues its holder
+    /// reaches in the browser: the queue lists the same rows, and an id outside it is a 404
+    /// to read, to comment on and to patch.
     /// </summary>
-    private IReadOnlyList<string> ViewerRoles =>
-        User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+    private IssueViewer Viewer => new(
+        ActorUserId,
+        User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList(),
+        User.IsInRole(RoleNames.Admin));
 
     [HttpGet]
     public async Task<IActionResult> List(
@@ -59,11 +64,7 @@ internal sealed class BackdoorIssuesController(
             SearchText: string.IsNullOrWhiteSpace(search) ? null : search,
             Limit: Math.Clamp(limit, 1, MaxLimit));
 
-        var rows = await issues.GetIssueListAsync(
-            filter,
-            viewerUserId: ActorUserId,
-            viewerRoles: ViewerRoles,
-            viewerIsAdmin: User.IsInRole(RoleNames.Admin));
+        var rows = await issues.GetIssueListAsync(filter, Viewer);
 
         return Ok(rows.Select(MapList));
     }
@@ -71,10 +72,11 @@ internal sealed class BackdoorIssuesController(
     [HttpGet("{id}")]
     public async Task<IActionResult> Get(Guid id)
     {
-        var issue = await issues.GetIssueByIdAsync(id);
+        var viewer = Viewer;
+        var issue = await issues.GetIssueByIdAsync(id, viewer);
         if (issue is null) return NotFound();
 
-        var thread = await issues.GetThreadAsync(id);
+        var thread = await issues.GetThreadAsync(id, viewer);
         var displayUsers = await GetIssueDisplayUsersAsync(issue);
         return Ok(MapDetail(issue, thread, displayUsers));
     }
@@ -109,10 +111,11 @@ internal sealed class BackdoorIssuesController(
     [HttpGet("{id}/comments")]
     public async Task<IActionResult> GetComments(Guid id)
     {
-        var issue = await issues.GetIssueByIdAsync(id);
+        var viewer = Viewer;
+        var issue = await issues.GetIssueByIdAsync(id, viewer);
         if (issue is null) return NotFound();
 
-        var thread = await issues.GetThreadAsync(id);
+        var thread = await issues.GetThreadAsync(id, viewer);
         var comments = thread.OfType<IssueCommentEvent>().Select(c => new
         {
             c.CommentId,
@@ -136,6 +139,7 @@ internal sealed class BackdoorIssuesController(
         {
             var comment = await issues.PostCommentAsync(
                 issueId: id,
+                viewer: Viewer,
                 senderUserId: ActorUserId,
                 content: model.Content);
 
@@ -161,19 +165,19 @@ internal sealed class BackdoorIssuesController(
 
     [HttpPatch("{id}/status")]
     public Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateIssueStatusModel model) =>
-        PatchAsync(id, "status", () => issues.UpdateStatusAsync(id, model.Status, ActorUserId));
+        PatchAsync(id, "status", () => issues.UpdateStatusAsync(id, Viewer, model.Status, ActorUserId));
 
     [HttpPatch("{id}/assignee")]
     public Task<IActionResult> UpdateAssignee(Guid id, [FromBody] UpdateIssueAssigneeModel model) =>
-        PatchAsync(id, "assignee", () => issues.UpdateAssigneeAsync(id, model.AssigneeUserId, ActorUserId));
+        PatchAsync(id, "assignee", () => issues.UpdateAssigneeAsync(id, Viewer, model.AssigneeUserId, ActorUserId));
 
     [HttpPatch("{id}/section")]
     public Task<IActionResult> UpdateSection(Guid id, [FromBody] UpdateIssueSectionModel model) =>
-        PatchAsync(id, "section", () => issues.UpdateSectionAsync(id, model.Section, ActorUserId));
+        PatchAsync(id, "section", () => issues.UpdateSectionAsync(id, Viewer, model.Section, ActorUserId));
 
     [HttpPatch("{id}/github-issue")]
     public Task<IActionResult> SetGitHubIssue(Guid id, [FromBody] SetIssueGitHubIssueModel model) =>
-        PatchAsync(id, "github-issue", () => issues.SetGitHubIssueNumberAsync(id, model.GitHubIssueNumber, ActorUserId));
+        PatchAsync(id, "github-issue", () => issues.SetGitHubIssueNumberAsync(id, Viewer, model.GitHubIssueNumber, ActorUserId));
 
     /// <summary>
     /// The one shape every <c>PATCH /api/backdoor/issues/{id}/*</c> endpoint has: apply the
