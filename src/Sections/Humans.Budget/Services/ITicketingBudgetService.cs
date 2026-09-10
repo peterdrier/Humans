@@ -17,6 +17,8 @@ internal interface ITicketingBudgetService : IOrchestrator
     /// <summary>
     /// Sync completed weeks of ticket sales into budget line items from TicketTailor/Stripe data,
     /// then refresh projections for future weeks. Returns the number of line items touched.
+    /// A null <paramref name="actorUserId"/> means the nightly job; the sync audit entry then
+    /// records the actor as automation.
     /// </summary>
-    Task<int> SyncActualsAsync(Guid budgetYearId, CancellationToken ct = default);
+    Task<int> SyncActualsAsync(Guid budgetYearId, Guid? actorUserId, CancellationToken ct = default);
 }

@@ -178,7 +178,9 @@ internal sealed class DevelopmentBudgetSeeder(
             budgetYearId = budgetYearSummary.Id;
             if (budgetYearSummary.IsDeleted)
             {
-                await budgetService.RestoreYearAsync(budgetYearId, actorUserId);
+                // An archived demo year is a deliberate operator state — leave it
+                // archived rather than resurrecting it.
+                return $"Budget demo year '{budgetYearSummary.Name}' is archived; skipped budget seeding.";
             }
         }
 
