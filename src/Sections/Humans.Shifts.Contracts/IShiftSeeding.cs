@@ -8,13 +8,6 @@ namespace Humans.Shifts.Contracts;
 /// stand up a demo burn with rotas, shifts and signups, and tear it back down.
 /// </summary>
 /// <remarks>
-/// Teams' rule rather than Budget's. Budget carves a single method and takes
-/// the seeding into the section when a *Shell* seeder drives the section's
-/// write surface; <c>DevelopmentDashboardSeeder</c> builds a multi-section
-/// fixture (teams, users, camps and shifts in one deterministic pass), so
-/// taking the seeding in would steal another section's fixture. The verbs
-/// come to the leaf instead and the seeder is unchanged.
-///
 /// <para>
 /// Nothing else outside the section calls any of these — every other
 /// <c>CreateAsync</c> / <c>UpdateAsync</c> hit in the repo is a different
@@ -24,13 +17,7 @@ namespace Humans.Shifts.Contracts;
 /// </para>
 ///
 /// <para>
-/// The verbs take input records rather than <c>EventSettings</c> / <c>Rota</c>
-/// rows, and the two reads the seeder used to make through here
-/// (<c>GetActiveAsync</c> / <c>GetByIdAsync</c>) are gone: they duplicated
-/// <see cref="IBurnSettingsService"/> exactly, which the seeder now injects.
-/// Deactivating whatever burn is currently active was a read-modify-write of
-/// the entity across the boundary and is now one verb
-/// (nobodies-collective/Humans#866).
+/// The verbs take input records, never <c>EventSettings</c> / <c>Rota</c> rows.
 /// </para>
 /// </remarks>
 public interface IShiftSeeding

@@ -9,24 +9,12 @@ namespace Humans.Shifts.Domain;
 /// </summary>
 internal sealed class EventSettings : IBurnSettingsInfo
 {
-    /// <summary>
-    /// Unique identifier.
-    /// </summary>
     public Guid Id { get; init; }
 
-    /// <summary>
-    /// Display name for this event (e.g., "Nowhere 2026").
-    /// </summary>
     public string EventName { get; set; } = string.Empty;
 
-    /// <summary>
-    /// The year of this event (e.g., 2026).
-    /// </summary>
     public int Year { get; set; }
 
-    /// <summary>
-    /// IANA timezone ID (e.g., "Europe/Madrid").
-    /// </summary>
     public string TimeZoneId { get; set; } = string.Empty;
 
     /// <summary>
@@ -103,24 +91,12 @@ internal sealed class EventSettings : IBurnSettingsInfo
     /// </summary>
     public int ReminderLeadTimeHours { get; set; } = 24;
 
-    /// <summary>
-    /// Whether this is the active event configuration.
-    /// </summary>
     public bool IsActive { get; set; }
 
-    /// <summary>
-    /// When this record was created.
-    /// </summary>
     public Instant CreatedAt { get; init; }
 
-    /// <summary>
-    /// When this record was last updated.
-    /// </summary>
     public Instant UpdatedAt { get; set; }
 
-    /// <summary>
-    /// Navigation property to rotas associated with this event.
-    /// </summary>
     public ICollection<Rota> Rotas { get; } = new List<Rota>();
 
     /// <summary>

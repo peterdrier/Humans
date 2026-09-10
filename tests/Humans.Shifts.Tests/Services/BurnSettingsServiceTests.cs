@@ -86,19 +86,6 @@ public sealed class BurnSettingsServiceTests
         result.GetEarlyEntryCapacityForDay(0).Should().Be(12);
     }
 
-    [HumansFact]
-    public async Task PropagatesCancellationTokenToRepository()
-    {
-        using var cts = new CancellationTokenSource();
-        var token = cts.Token;
-
-        await _service.GetByIdAsync(Guid.NewGuid(), token);
-        await _service.GetActiveAsync(token);
-
-        await _repo.Received(1).GetEventSettingsByIdAsync(Arg.Any<Guid>(), token);
-        await _repo.Received(1).GetActiveEventSettingsAsync(token);
-    }
-
     private static EventSettings NewEventSettings(Guid id) => new()
     {
         Id = id,

@@ -27,7 +27,6 @@
         <form asp-action="ShiftInfo" method="post" id="wizardForm">
             @Html.AntiForgeryToken()
 
-            @* Step 0: Skills *@
             <div class="step-pane active" id="step-0">
                 <div class="chip-grid">
                     @foreach (var skill in ShiftInfoViewModel.SkillOptions)
@@ -47,7 +46,6 @@
                 </div>
             </div>
 
-            @* Step 1: Work Style *@
             <div class="step-pane" id="step-1">
                 <p class="fw-bold small text-muted mb-2">@Localizer["ShiftInfo_WorkTime"]</p>
                 <div class="radio-card-grid">
@@ -78,7 +76,6 @@
                 }
             </div>
 
-            @* Step 2: Languages *@
             <div class="step-pane" id="step-2">
                 <div class="chip-grid">
                     @foreach (var lang in ShiftInfoViewModel.LanguageOptions)
@@ -98,7 +95,6 @@
                 </div>
             </div>
 
-            @* Navigation *@
             <div class="d-flex justify-content-between align-items-center mt-4">
                 <button type="button" class="btn btn-outline-secondary" id="backBtn" style="display:none">
                     &larr; @SharedLocalizer["Common_Back"]

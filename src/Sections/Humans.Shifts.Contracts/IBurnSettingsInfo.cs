@@ -12,10 +12,7 @@ namespace Humans.Shifts.Contracts;
 /// boundary.
 /// </summary>
 /// <remarks>
-/// Lives in <c>Humans.Interfaces</c> — the bottom of the dependency graph —
-/// precisely so <c>Humans.Domain</c> can reference it. Members are restricted to
-/// BCL and NodaTime types; a Humans type here would drag a project reference
-/// into <c>Humans.Interfaces</c> and invert the graph.
+/// Members use only BCL and NodaTime types.
 /// </remarks>
 public interface IBurnSettingsInfo
 {

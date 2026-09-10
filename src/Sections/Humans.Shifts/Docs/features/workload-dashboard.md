@@ -114,7 +114,7 @@ Gated to `PolicyNames.ShiftDashboardAccess` at the controller — same narrow po
 
 - **Year filter** — there is no multi-year surface on `IShiftManagementService` today. The view uses the active event. Easy follow-up once a year-based lookup lands.
 
-Role-based hours (the original #734 follow-up) are now implemented — see the per-person/per-department hour math above. Role hours only surface when the active event has at least one shift (the report short-circuits to empty for a shift-less event); revisit if year-round role workload needs to show before any shifts exist.
+Role hours only surface when the active event has at least one shift (the report short-circuits to empty for a shift-less event); revisit if year-round role workload needs to show before any shifts exist.
 
 ## Related Features
 
