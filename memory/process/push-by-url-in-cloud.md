@@ -13,7 +13,11 @@ git push https://github.com/peterdrier/Humans.git <branch>
 
 **How to apply:**
 - Push to the URL, never to `origin`, for every push in a cloud run — the first one included.
-- A push to a URL never updates the `origin/<branch>` remote-tracking ref, so any check comparing `HEAD` to it (a stop hook, `git status`) reports the pushed commit as unpushed after every URL push, whether or not `origin` is bound correctly. That is a stale ref, not a failed push: repointing `origin` does not silence it and re-pushing is wasted motion. Confirm with `git ls-remote https://github.com/peterdrier/Humans.git <branch>`, then `git fetch origin <branch>` to bring the tracking ref forward.
+- A push to a URL never updates the `origin/<branch>` remote-tracking ref, so any check comparing `HEAD` to it (a stop hook, `git status`) reports the pushed commit as unpushed after every URL push, whether or not `origin` is bound correctly. That is a stale ref, not a failed push: repointing `origin` does not silence it and re-pushing is wasted motion. Confirm with `git ls-remote https://github.com/peterdrier/Humans.git <branch>`, then bring the tracking ref forward from the same URL — `origin` may be bound to production at that moment too:
+
+```bash
+git fetch https://github.com/peterdrier/Humans.git <branch>:refs/remotes/origin/<branch>
+```
 - On a local machine this does not apply; `origin` there is what `git remote -v` says it is.
 
 Related: [[cross-repo-pr-push-target]], [[always-use-worktree]].

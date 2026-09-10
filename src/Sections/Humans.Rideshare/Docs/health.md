@@ -29,12 +29,12 @@ listed. The grouping is what makes collapse and duplication visible.
 
 | # | Shape | Where it appears | Notes |
 |---|---|---|---|
-| S1 | **Read the board for a date and direction** — joinable trips, active requests, the destination | `/Rideshare` (HTML), `/api/rideshare/board` (GeoJSON) | One question, two renderings of one snapshot; the HTML page is the accessible list under the map the API feeds |
+| S1 | **Read the board for a date and direction** — joinable trips, active requests, the destination | `/Rideshare` (HTML), `/api/rideshare/board` (GeoJSON) | One question, rendered from one snapshot; the HTML page is the accessible list under the map the API feeds |
 | S2 | **Own-posting lifecycle** — show form, save (create or edit), cancel | `/Rideshare/Offer`, `/Rideshare/Request` and their `/{id}/Cancel` | One shape over two posting kinds; create seeds the inverse leg for offers only |
-| S3 | **Interest lifecycle** — express, then accept / decline / withdraw | `/Rideshare/Interest`, `/Rideshare/Interest/{id}/{Accept,Decline,Withdraw}` | Express has two entry paths (rider → offer, driver → pin); the three transitions share one owner-or-party gate |
+| S3 | **Interest lifecycle** — express, then accept / decline / withdraw | `/Rideshare/Interest`, `/Rideshare/Interest/{id}/{Accept,Decline,Withdraw}` | Express has an entry path per side (rider → offer, driver → pin); the transitions share one owner-or-party gate |
 | S4 | **My corner** — own postings with what each received, plus what I sent | `/Rideshare/Mine` | The landing page every write redirects to |
 | S5 | **Season admin** — set destination + windows, read season totals, read a day's rosters | `/Rideshare/Admin`, `/Rideshare/Admin/Day` | RideshareAdmin or Admin only; the only place accepted riders are listed together |
-| R1 | **Resolve a place and draw a road** — geocode a label, route through the destination | the routing provider | Outbound read-only calls; best-effort, never blocks a save |
+| R1 | **Resolve a place and draw a road** — geocode a label, route through the destination | the routing provider | Outbound read-only calls; a label that does not geocode refuses the save, a road that does not route is saved without geometry |
 | F1 | **User-data fan-outs** — export slices, erasure, merge fold | the service, via its decorator | Owed because all three posting tables are user-keyed |
 
 What follows from the table drives everything below:
@@ -45,7 +45,7 @@ What follows from the table drives everything below:
   source of truth.
 - **S2 is one pipeline carried twice.** Offer and Request differ in their form model and
   their save record; the controller flow (GET prefilled form, POST validate-save-redirect,
-  POST cancel) and the error contract are identical. The two copies must stay step for
+  POST cancel) and the error contract are identical. The copies must stay step for
   step the same: a check present in one and missing from the other is the defect.
 - **S3's transitions are one gate plus one status write each.** Accept carries the extra
   capacity and pin-still-valid checks; decline and withdraw carry none. Anything that grows
@@ -65,12 +65,12 @@ Services/           IRideshareService + RideshareService — every rule in the s
                     RideshareRuleException   — a resource key plus args, the only way a rule reaches a user
                     AuditEntityTypes         — the one audit discriminator
                     Routing/                 — IRouteProvider + the OpenRouteService client + its options — R1
-Data/               one repository over four tables, one context, one factory, four configurations, one migration
-Domain/             four entities, six enums
+Data/               one repository over every table, one context, one factory, a configuration per entity, the migrations
+Domain/             an entity per table, the enums they carry
 Models/             one view model per page plus the GeoJSON builder; Build() methods project the snapshot, nothing more
-Views/              Rideshare/ (board, mine, two forms, one interest-row partial), RideshareAdmin/ (settings, day)
+Views/              Rideshare/ (board, mine, the offer and request forms, the interest-row partial), RideshareAdmin/ (settings, day)
 wwwroot/js/rideshare/  board.js (map + popups → modals), pick-point.js (coarse point picker)
-RideshareResource*  one resx set, six cultures, every key Rideshare_-prefixed
+RideshareResource*  one resx set in every supported culture, every key Rideshare_-prefixed
 Docs/               Rideshare.md (invariants), authorization.md, data-access.md, features/, the dated design record
 ```
 
@@ -204,7 +204,7 @@ Essential complexity and settled decisions, so later runs stop re-litigating the
   with no request, which reads as the driver riding with themselves.
 - **Notification text is English and not localized.** The emitter contract takes literal
   strings; the section follows it. The seam above is where that changes, if it does.
-- **`RideshareService.cs` is the section's one large file.** Every rule for five shapes plus
+- **`RideshareService.cs` is the section's one large file.** Every rule for every shape plus
   the export projection lives in it on purpose, so a reader finds all of them in one place.
 
 ## History
