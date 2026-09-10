@@ -38,7 +38,16 @@
 @if (Model.Count > 0)
 {
     Func<BudgetAuditLogSnapshot, IHtmlContent> whoCell =
-        @<text><vc:human user-id="@item.ActorUserId" /></text>;
+        @<text>
+            @if (item.ActorUserId is Guid actorId)
+            {
+                <vc:human user-id="@actorId" />
+            }
+            else
+            {
+                <span class="text-muted">System</span>
+            }
+        </text>;
     Func<BudgetAuditLogSnapshot, IHtmlContent> entityTypeCell =
         @<text><span class="badge bg-secondary">@item.EntityType</span></text>;
     Func<BudgetAuditLogSnapshot, IHtmlContent> oldValueCell = @<text>

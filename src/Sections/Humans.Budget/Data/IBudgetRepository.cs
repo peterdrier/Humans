@@ -26,8 +26,8 @@ namespace Humans.Budget.Data;
 /// <see cref="GetAuditLogEntriesForUserAsync"/>,
 /// <see cref="GetAuditLogEntriesForUserIdsAsync"/>). Each mutation method
 /// writes its own audit entries so they commit in the same <c>SaveChanges</c>
-/// as the business change — except the two ticketing sync paths, currently
-/// outside that guarantee (see <c>Docs/health.md</c> Seams).
+/// as the business change. A null actor on an entry means automation (the
+/// nightly ticketing sync job).
 /// </para>
 /// </remarks>
 internal interface IBudgetRepository : IRepository
@@ -98,18 +98,6 @@ internal interface IBudgetRepository : IRepository
     /// <c>true</c> if the year existed.
     /// </summary>
     Task<bool> SoftDeleteYearAsync(
-        Guid yearId,
-        Guid actorUserId,
-        Instant now,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Reverses a soft-delete: clears <c>IsDeleted</c>/<c>DeletedAt</c>,
-    /// moves status back to Draft, and writes the restore audit entry. No-op
-    /// (returns <c>false</c>) if the year is not soft-deleted. Returns
-    /// <c>true</c> if a restore actually occurred.
-    /// </summary>
-    Task<bool> RestoreYearAsync(
         Guid yearId,
         Guid actorUserId,
         Instant now,
@@ -313,12 +301,14 @@ internal interface IBudgetRepository : IRepository
     /// The repository owns the projected-week schedule computation so it
     /// runs against the post-update projection parameters. <paramref name="today"/>
     /// defines the current ISO-week Monday cut-over (passed in so the
-    /// repository stays <c>IClock</c>-free).
+    /// repository stays <c>IClock</c>-free). A null <paramref name="actorUserId"/>
+    /// records the sync audit entry as automation (the nightly job).
     /// </remarks>
     Task<int> SyncTicketingActualsAsync(
         Guid budgetYearId,
         IReadOnlyList<TicketingWeeklyActualsInput> weeklyActuals,
         LocalDate today,
+        Guid? actorUserId,
         Instant now,
         CancellationToken ct = default);
 
@@ -335,6 +325,7 @@ internal interface IBudgetRepository : IRepository
     Task<int> RefreshTicketingProjectionsAsync(
         Guid budgetYearId,
         LocalDate today,
+        Guid? actorUserId,
         Instant now,
         CancellationToken ct = default);
 

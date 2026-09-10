@@ -55,12 +55,13 @@ public class TicketingBudgetServiceTests
         _budgetService.SyncTicketingActualsAsync(
                 Arg.Any<Guid>(),
                 Arg.Do<IReadOnlyList<TicketingWeeklyActuals>>(a => capturedActuals = a.ToList()),
+                Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>())
             .Returns(1);
 
         var sut = CreateSut();
 
-        var result = await sut.SyncActualsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var result = await sut.SyncActualsAsync(Guid.NewGuid(), actorUserId: null, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Be(1);
         capturedActuals.Should().NotBeNull();
@@ -97,12 +98,13 @@ public class TicketingBudgetServiceTests
         _budgetService.SyncTicketingActualsAsync(
                 Arg.Any<Guid>(),
                 Arg.Do<IReadOnlyList<TicketingWeeklyActuals>>(a => capturedActuals = a.ToList()),
+                Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>())
             .Returns(1);
 
         var sut = CreateSut();
 
-        await sut.SyncActualsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await sut.SyncActualsAsync(Guid.NewGuid(), actorUserId: null, Xunit.TestContext.Current.CancellationToken);
 
         capturedActuals.Should().NotBeNull().And.ContainSingle();
         capturedActuals![0].TicketCount.Should().Be(1);
@@ -126,12 +128,13 @@ public class TicketingBudgetServiceTests
         _budgetService.SyncTicketingActualsAsync(
                 Arg.Any<Guid>(),
                 Arg.Do<IReadOnlyList<TicketingWeeklyActuals>>(a => capturedActuals = a.ToList()),
+                Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>())
             .Returns(2);
 
         var sut = CreateSut();
 
-        await sut.SyncActualsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await sut.SyncActualsAsync(Guid.NewGuid(), actorUserId: null, Xunit.TestContext.Current.CancellationToken);
 
         capturedActuals.Should().NotBeNull().And.ContainSingle();
         capturedActuals![0].StripeFees.Should().Be(1m);
@@ -154,12 +157,13 @@ public class TicketingBudgetServiceTests
         _budgetService.SyncTicketingActualsAsync(
                 Arg.Any<Guid>(),
                 Arg.Do<IReadOnlyList<TicketingWeeklyActuals>>(a => capturedActuals = a.ToList()),
+                Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>())
             .Returns(0);
 
         var sut = CreateSut();
 
-        await sut.SyncActualsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await sut.SyncActualsAsync(Guid.NewGuid(), actorUserId: null, Xunit.TestContext.Current.CancellationToken);
 
         capturedActuals.Should().NotBeNull().And.BeEmpty();
     }
@@ -182,7 +186,7 @@ public class TicketingBudgetServiceTests
             StripeFeePercent: 1.4m,
             StripeFeeFixed: 0.25m,
             TicketTailorFeePercent: 0.5m);
-        _budgetService.RefreshTicketingProjectionsAsync(yearId, Arg.Any<CancellationToken>())
+        _budgetService.RefreshTicketingProjectionsAsync(yearId, actorUserId, Arg.Any<CancellationToken>())
             .Returns(4);
 
         var sut = CreateSut();
@@ -204,7 +208,7 @@ public class TicketingBudgetServiceTests
                 command.StripeFeeFixed,
                 command.TicketTailorFeePercent,
                 actorUserId);
-            _ = _budgetService.RefreshTicketingProjectionsAsync(yearId, Arg.Any<CancellationToken>());
+            _ = _budgetService.RefreshTicketingProjectionsAsync(yearId, actorUserId, Arg.Any<CancellationToken>());
         });
     }
 
