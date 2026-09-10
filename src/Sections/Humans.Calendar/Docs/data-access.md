@@ -10,7 +10,7 @@ directly. Owns `CalendarEvents`, `CalendarEventExceptions`. The inner
 `Humans.Calendar.Services.CachingCalendarService` (Singleton decorator
 inheriting `TrackedCache<Guid, CalendarEventInfo>`, warmed on startup).
 The decorator exposes the cross-section read surface as
-`ICalendarServiceRead` and is its only implementation — it answers both members
+`ICalendarServiceRead` and is its only implementation — it answers them
 from its snapshot, so the inner does not implement that interface at all. Writes
 delegate to the inner service then refresh the affected event row. `CalendarRepository` does not join the `Teams`
 table — the decorator stitches team names via `ITeamServiceRead` at the

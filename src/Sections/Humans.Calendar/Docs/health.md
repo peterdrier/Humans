@@ -84,7 +84,8 @@ Stated so a violation is recognisable.
 7. A malformed RRULE or an unknown IANA zone is rejected at write time, so no read can
    fail expanding a stored row.
 8. `RecurrenceUntilUtc` is the last instant the rule can produce, or null for open-ended
-   rules; the in-memory prefilter and the SQL prefilter agree on it exactly.
+   rules, and `CalendarOccurrenceExpander.FilterForWindow` — the only prefilter — reads it
+   as that.
 9. A timed entry has an end; an all-day entry stores its end as exclusive midnight after
    the last covered day, and the display layer converts back to inclusive. Legacy all-day
    rows with no end are single-day.
