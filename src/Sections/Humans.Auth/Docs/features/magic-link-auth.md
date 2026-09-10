@@ -61,6 +61,7 @@ Magic link authentication is the foundation: a human enters their email, receive
 - On first login, the user is prompted for a burner name and their first and last (legal) name (email is pre-filled); all three are required
 - The new user follows the normal onboarding flow (profile completion, consent, etc.)
 - A `UserEmail` record is created (non-OAuth, verified, notification target)
+- The link is single-use: redeemed on the completion POST, so it cannot be replayed to sign a second holder into the new account
 
 ### US-3: Claim a pre-provisioned account
 
@@ -190,13 +191,25 @@ No `userId` in the URL because the user doesn't exist yet. The encrypted email i
 
 ### Single-Use Enforcement
 
-**Login tokens (existing users):** As shipped, the DataProtection token carries no server-side state, so single-use is enforced separately: on successful verification, `IMagicLinkRateLimiter.TryConsumeLoginTokenAsync` reserves the token (keyed on a prefix of the token string) in `IMemoryCache` for the remainder of its 15-minute lifetime. A second attempt with the same token finds the reservation already held and fails verification.
+The DataProtection token carries no server-side state, so single-use is enforced separately, and both link types enforce it the same way: at the moment of redemption, `IMagicLinkRateLimiter.TryConsumeTokenAsync` reserves the token (keyed on a prefix of the token string) in `IMemoryCache` for the remainder of its 15-minute lifetime. A second attempt with the same token finds the reservation already held and fails. Login and signup tokens come from different protector purposes, so their strings never collide in that cache.
 
-**Signup tokens (new users):** Single-use is enforced by the fact that the callback creates the user. A second click with the same token would find the email already taken and show an appropriate message ("Account already created — use the login link instead").
+**Login tokens (existing users):** consumed inside `VerifyLoginTokenAsync`, on the POST to `/Account/MagicLink`.
+
+**Signup tokens (new users):** consumed inside `VerifyAndConsumeSignupTokenAsync`, called from `AccountController.CompleteSignup`. Two placement rules matter:
+
+- The signup **GET** reads the token through `VerifySignupToken`, which does *not* consume — it only unprotects, to pre-fill the form. Consuming on a GET would let an email-security scanner burn the link, the same hazard `MagicLinkConfirm` exists to avoid on the login side.
+- The **POST** consumes *after* field validation, not before. The validation branch re-renders the form with the same token, so consuming first would lock out anyone who submitted with a field blank.
+- If provisioning then fails **or throws**, the reservation is **released** (`IMagicLinkService.ReleaseSignupToken`). `CompleteMagicLinkSignupAsync` rolls itself back on every returned failure — the Identity user is deleted or was never created — so a transient failure must not cost the person their link for the remaining 15 minutes; and if it throws part-way (a cancelled request, a database failure), the retry either signs them up or finds the account and signs them in. Mirrors `ReleaseSignupReservation` on the send side.
+
+The reservation has to be exclusive under concurrent requests, not just against a later replay, or two POSTs redeeming the same token together could both reach provisioning and the second would follow the existing-user path into an authenticated session. `IMemoryCache` has no atomic add and `GetOrCreateAsync` does not serialize its factory, so `MemoryCacheExtensions.TryReserveAsync` takes the read and the write under one process-wide lock. One lock is the whole of the coordination this needs — one server, and reservations are rare.
+
+A replayed POST therefore fails the reservation and renders `MagicLinkError` — except for a resubmit that carries the cookie the first POST set, which identifies the person that POST just signed in and is redirected onward. The exception is deliberately narrow: a *concurrent* double-click is issued before that cookie exists, so its losing half gets the error page even though the winning half created the account. That is accepted, not overlooked — nothing derived from the request distinguishes it from a replay (a replay carries the same body), and the session the winning half created stands, so the next navigation is signed in. This makes the shipped signup email's promise true: `Email_MagicLinkSignup_Body` says the link "can only be used once" in all six cultures.
+
+Survey and unsubscribe links are a different mechanism (`SurveyPreviewTokenProvider`, `SurveyInviteTokenProvider`, `UnsubscribeTokenProvider`) and are deliberately reusable — nothing outside Auth redeems through `IMagicLinkRateLimiter`.
 
 ### Email Lookup
 
-The magic link request endpoint must search for emails across both tables:
+`MagicLinkService.SendMagicLinkAsync` resolves the address before choosing a link type:
 
 ```csharp
 // 1. Check UserEmails (covers all verified addresses including non-primary)
@@ -219,14 +232,13 @@ The same lookup pattern applies to the Google OAuth account linking in `External
 The decision ladder now lives in `ExternalLoginService.CompleteExternalLoginAsync`; `AccountController.ExternalLoginCallback` only dispatches to it:
 
 ```
-Current: no user by provider key → create new user
-New:     no user by provider key
-           → check UserEmails for verified match (IMagicLinkService.FindUserByVerifiedEmailAsync)
-           → if found: AddLoginAsync + sign in (same user)
-           → else: create new user (existing flow)
+no user by provider key
+  → check UserEmails for verified match (IMagicLinkService.FindUserByVerifiedEmailAsync)
+  → if found: AddLoginAsync + sign in (same user)
+  → else: create new user
 ```
 
-This is a small change (~15 lines) in the existing callback. Wrapped in try-catch so a linking failure doesn't block the OAuth flow — falls through to create new user with a logged warning.
+The link attempt is wrapped in try-catch so a linking failure doesn't block the OAuth flow — it falls through to creating a new user with a logged warning.
 
 ### Email Template
 
@@ -263,7 +275,7 @@ Category: `MessageCategory.System` (not opt-outable).
 ### Rate Limiting
 
 To prevent abuse of the magic link endpoint:
-- Track `MagicLinkSentAt` (new nullable `Instant` on `User`) — reject requests within 60 seconds of the last send
+- Login sends are cooled down off `User.MagicLinkSentAt` (nullable `Instant`) — a request within 60 seconds of the last send is silently skipped. Signup sends use a separate per-address reservation in `IMagicLinkRateLimiter`
 - Always show the same "If that email exists, we've sent a link" message regardless of whether the email exists (prevents account enumeration)
 - Log suspicious patterns (multiple requests for different emails from same IP) but don't block at this scale
 
