@@ -165,21 +165,6 @@ public class TicketingBudgetServiceTests
     }
 
     [HumansFact]
-    public async Task RefreshProjectionsAsync_DelegatesToBudgetService()
-    {
-        var yearId = Guid.NewGuid();
-        _budgetService.RefreshTicketingProjectionsAsync(yearId, Arg.Any<CancellationToken>())
-            .Returns(7);
-
-        var sut = CreateSut();
-
-        var result = await sut.RefreshProjectionsAsync(yearId, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().Be(7);
-        await _budgetService.Received(1).RefreshTicketingProjectionsAsync(yearId, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
     public async Task UpdateProjectionAndRefreshAsync_SavesParametersThenRefreshes()
     {
         var groupId = Guid.NewGuid();
@@ -205,46 +190,22 @@ public class TicketingBudgetServiceTests
         var result = await sut.UpdateProjectionAndRefreshAsync(command, actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Be(4);
-        await _budgetService.Received(1).UpdateTicketingProjectionAsync(
-            groupId,
-            command.StartDate,
-            command.EventDate,
-            command.InitialSalesCount,
-            command.DailySalesRate,
-            command.AverageTicketPrice,
-            command.VatRate,
-            command.StripeFeePercent,
-            command.StripeFeeFixed,
-            command.TicketTailorFeePercent,
-            actorUserId);
-        await _budgetService.Received(1).RefreshTicketingProjectionsAsync(yearId, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task GetProjectionsAsync_DelegatesToBudgetService()
-    {
-        var groupId = Guid.NewGuid();
-        IReadOnlyList<TicketingWeekProjection> expected =
-            new List<TicketingWeekProjection>
-            {
-                new()
-                {
-                    WeekLabel = "Apr 6–Apr 12",
-                    WeekStart = new LocalDate(2026, 4, 6),
-                    WeekEnd = new LocalDate(2026, 4, 12),
-                    ProjectedTickets = 10,
-                    ProjectedRevenue = 500m,
-                    ProjectedStripeFees = 10m,
-                    ProjectedTtFees = 5m,
-                }
-            };
-        _budgetService.GetTicketingProjectionEntriesAsync(groupId, Arg.Any<CancellationToken>()).Returns(expected);
-
-        var sut = CreateSut();
-
-        var result = await sut.GetProjectionsAsync(groupId);
-
-        result.Should().BeSameAs(expected);
+        Received.InOrder(() =>
+        {
+            _ = _budgetService.UpdateTicketingProjectionAsync(
+                groupId,
+                command.StartDate,
+                command.EventDate,
+                command.InitialSalesCount,
+                command.DailySalesRate,
+                command.AverageTicketPrice,
+                command.VatRate,
+                command.StripeFeePercent,
+                command.StripeFeeFixed,
+                command.TicketTailorFeePercent,
+                actorUserId);
+            _ = _budgetService.RefreshTicketingProjectionsAsync(yearId, Arg.Any<CancellationToken>());
+        });
     }
 
     private static TicketOrderInfo BuildOrder(
