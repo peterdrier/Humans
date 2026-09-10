@@ -22,11 +22,10 @@ internal interface ICalendarServiceRead : IApplicationService
 
 internal interface ICalendarService : ICalendarServiceRead
 {
-    Task<CalendarEvent> CreateEventAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default);
-
+    // Create and update are published only in their result-returning form. The throwing pair
+    // they wrap stays private to CalendarService: a caller that has to catch ValidationException
+    // to render a form field is a caller doing the service's job.
     Task<CalendarEventMutationResult> CreateEventWithResultAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default);
-
-    Task<CalendarEvent> UpdateEventAsync(Guid id, UpdateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default);
 
     Task<CalendarEventMutationResult> UpdateEventWithResultAsync(Guid id, UpdateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default);
 

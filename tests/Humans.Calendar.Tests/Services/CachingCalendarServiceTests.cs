@@ -96,7 +96,7 @@ public sealed class CachingCalendarServiceTests
     }
 
     [HumansFact]
-    public async Task CreateEventAsync_DelegatesToInnerAndRefreshesEntry()
+    public async Task CreateEventWithResultAsync_DelegatesToInnerAndRefreshesEntry()
     {
         var created = new CalendarEvent
         {
@@ -114,15 +114,15 @@ public sealed class CachingCalendarServiceTests
             created.StartUtc, created.EndUtc, false, null, null);
         _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>())
             .Returns([]);
-        _inner.CreateEventAsync(dto, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(created);
+        _inner.CreateEventWithResultAsync(dto, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(CalendarEventMutationResult.Success(created));
         _inner.GetEventInfoAsync(created.Id, Arg.Any<CancellationToken>())
             .Returns(CalendarOccurrenceExpander.ToInfo(created));
 
         var sut = CreateSut();
         await WarmAsync(sut);
 
-        await sut.CreateEventAsync(dto, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await sut.CreateEventWithResultAsync(dto, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         sut.ContainsKey(created.Id).Should().BeTrue();
     }

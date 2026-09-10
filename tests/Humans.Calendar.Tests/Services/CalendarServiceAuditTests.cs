@@ -35,21 +35,22 @@ public class CalendarServiceAuditTests
         NullLogger<CalendarService>.Instance);
 
     [HumansFact]
-    public async Task CreateEventAsync_WritesOneAuditEntry_RelatedToTheOwningTeam()
+    public async Task CreateEventWithResultAsync_WritesOneAuditEntry_RelatedToTheOwningTeam()
     {
         var teamId = Guid.NewGuid();
         var actor = Guid.NewGuid();
         var sut = CreateSut();
 
-        var ev = await sut.CreateEventAsync(
+        var result = await sut.CreateEventWithResultAsync(
             new CreateCalendarEventDto(
                 "Planning", null, null, null, teamId,
                 Instant.FromUtc(2026, 6, 1, 10, 0), Instant.FromUtc(2026, 6, 1, 11, 0),
                 false, null, null),
             actor, TestContext.Current.CancellationToken);
 
+        result.Succeeded.Should().BeTrue(result.ErrorMessage);
         await _audit.Received(1).LogAsync(
-            AuditAction.CalendarEventCreated, AuditEntityTypes.CalendarEvent, ev.Id,
+            AuditAction.CalendarEventCreated, AuditEntityTypes.CalendarEvent, result.Event!.Id,
             Arg.Any<string>(), actor,
             teamId, AuditEntityTypes.Team);
     }
@@ -58,7 +59,7 @@ public class CalendarServiceAuditTests
     // deletable with everything else pinned. The team it names is the one the update *sets*,
     // which is what keeps a moved event auditable under its new team rather than its old.
     [HumansFact]
-    public async Task UpdateEventAsync_WritesOneAuditEntry_RelatedToTheOwningTeam()
+    public async Task UpdateEventWithResultAsync_WritesOneAuditEntry_RelatedToTheOwningTeam()
     {
         var id = Guid.NewGuid();
         var newTeamId = Guid.NewGuid();
@@ -75,7 +76,7 @@ public class CalendarServiceAuditTests
                 return true;
             });
 
-        await CreateSut().UpdateEventAsync(
+        var result = await CreateSut().UpdateEventWithResultAsync(
             id,
             new UpdateCalendarEventDto(
                 "Planning moved", null, null, null, newTeamId,
@@ -83,6 +84,7 @@ public class CalendarServiceAuditTests
                 false, null, null),
             actor, TestContext.Current.CancellationToken);
 
+        result.Succeeded.Should().BeTrue(result.ErrorMessage);
         await _audit.Received(1).LogAsync(
             AuditAction.CalendarEventUpdated, AuditEntityTypes.CalendarEvent, id,
             Arg.Any<string>(), actor,
