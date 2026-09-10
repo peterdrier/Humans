@@ -33,6 +33,10 @@
     {
         <div class="small text-muted mt-1">
             @Localizer.EnumDisplay(trip.Direction) · @trip.MemberPlaceLabel · @trip.DepartureDate.ToWeekdayDayMonth()
+            @if (trip.Status != TripStatus.Active)
+            {
+                <span class="badge @EnumBadgeMap.For(trip.Status) ms-1">@Localizer.EnumDisplay(trip.Status)</span>
+            }
         </div>
     }
     @if (!string.IsNullOrWhiteSpace(i.Message))

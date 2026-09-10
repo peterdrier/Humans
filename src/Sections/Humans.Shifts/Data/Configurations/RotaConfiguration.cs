@@ -33,7 +33,5 @@ internal sealed class RotaConfiguration : IEntityTypeConfiguration<Rota>
             .WithMany(e => e.Rotas)
             .HasForeignKey(r => r.EventSettingsId)
             .OnDelete(DeleteBehavior.Restrict);
-
-        // TeamId is a bare cross-section Guid column — no FK constraint, no nav.
     }
 }

@@ -47,7 +47,7 @@ public sealed class Section : ISection
         services.AddScoped<IShiftAuthorizationInvalidator>(sp => sp.GetRequiredService<ShiftManagementService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ShiftManagementService>());
 
-        // Cross-section DTO supplier so Events/Camps/Tickets/Notifications consume BurnSettingsInfo without Shifts-internal EventSettings — see #719.
+        // Cross-section DTO supplier so Events/Camps/Tickets/Notifications consume BurnSettingsInfo without Shifts-internal EventSettings.
         services.AddScoped<IBurnSettingsService, BurnSettingsService>();
 
         services.AddScoped<ShiftSignupService>();
@@ -70,7 +70,7 @@ public sealed class Section : ISection
             sp.GetRequiredService<VolunteerTrackingExportService>());
         services.AddScoped<VolunteerTrackingXlsxBuilder>();
 
-        // ShiftView — see #720. Singleton decorator over keyed-Scoped inner, mirrors CachingUserService/CachingTeamService.
+        // ShiftView — Singleton decorator over keyed-Scoped inner, mirrors CachingUserService/CachingTeamService.
         services.AddKeyedScoped<IShiftRowView, ShiftViewService>(CachingShiftViewService.InnerServiceKey);
         services.AddSingleton<CachingShiftViewService>();
         services.AddSingleton<IShiftRowView>(sp => sp.GetRequiredService<CachingShiftViewService>());
@@ -87,16 +87,14 @@ public sealed class Section : ISection
         services.AddScoped<ShiftDashboardPageBuilder>();
         services.AddScoped<ShiftVolunteerSearchBuilder>();
 
-        // Workload — see #734. No service-level cache; invalidation rides on IShiftViewInvalidator.
+        // Workload — no service-level cache; invalidation rides on IShiftViewInvalidator.
         services.AddScoped<IWorkloadService, WorkloadService>();
 
-        // Rota coordinator "email a rota" — see #732.
+        // Rota coordinator "email a rota".
         services.AddScoped<IRotaCoordinatorMessageService, RotaCoordinatorMessageService>();
 
         // Policy-backing handler. ShiftDepartmentManager's policy is this section's, in
-        // SectionPolicies. CampComplianceAccessHandler moved to Camps — policy, consumers,
-        // requirement and handler are all Camps'; it reads the coordinator lookup through
-        // this section's contracts leaf (nobodies-collective/Humans#1091).
+        // SectionPolicies.
         services.AddScoped<IAuthorizationHandler, IsAnyTeamManagerOrCoordinatorHandler>();
 
         // Base's EnumBadgeMap cannot name ShiftPeriod/SignupStatus — both are this section's

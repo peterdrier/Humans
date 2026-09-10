@@ -13,9 +13,9 @@ similarly-named tables — see `EventGuideDbContext`'s doc comment.
 `VolunteerTagPreferences`. `EventParticipations` lives on `UsersDbContext`
 under the Users section, not here.
 
-`IShiftManagementRepository` and `IShiftSignupRepository` are both backed
-by one concrete partial class `ShiftRepository` (`.Management.cs` +
-`.Signups.cs` partials). `GetEligibleBuildSignupsAsync` and
+`IShiftManagementRepository` (declared across `IShiftManagementRepository.cs` and
+`IShiftManagementRepository.Signups.cs`) is backed by one concrete partial class
+`ShiftRepository` (`.Management.cs` + `.Signups.cs` partials). `GetEligibleBuildSignupsAsync` and
 `GetConfirmedShiftsInRangeAsync` (reading `ShiftSignups` + `EventSettings`)
 live on `ShiftRepository`'s `.Signups.cs` partial, surfaced on
 `IShiftManagementRepository`. `VolunteerTrackingRepository` owns only

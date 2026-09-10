@@ -11,6 +11,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The controller tests need the shared framework; a plain test SDK project does not get it. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
     <PackageReference Include="NodaTime.Testing" />
   </ItemGroup>

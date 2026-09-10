@@ -8,8 +8,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Models;
 
-// === EventSettings ===
-
 internal sealed class EventSettingsViewModel : IValidatableObject
 {
     public Guid? Id { get; set; }
@@ -23,8 +21,6 @@ internal sealed class EventSettingsViewModel : IValidatableObject
     [Required]
     public string GateOpeningDate { get; set; } = string.Empty;
 
-    // Build starts on the first-crew day; -14 sat after SetupWeekStartOffset and
-    // made this form's own two offset rules unsatisfiable.
     public int BuildStartOffset { get; set; } = -25;
     public int EventEndOffset { get; set; } = 6;
     public int StrikeEndOffset { get; set; } = 9;
@@ -77,8 +73,6 @@ internal sealed class EventSettingsViewModel : IValidatableObject
     }
 }
 
-// === Rota ===
-
 internal class CreateRotaModel
 {
     [Required, MaxLength(256)]
@@ -94,9 +88,6 @@ internal class CreateRotaModel
     [MaxLength(2000)]
     public string? PracticalInfo { get; set; }
 
-    /// <summary>
-    /// Comma-separated tag IDs to assign to the rota.
-    /// </summary>
     public string? TagIds { get; set; }
 }
 
@@ -109,8 +100,6 @@ internal sealed class MoveRotaModel
 {
     public Guid TargetTeamId { get; set; }
 }
-
-// === Shift ===
 
 internal class CreateShiftModel
 {
@@ -136,8 +125,6 @@ internal sealed class EditShiftModel : CreateShiftModel
     public Guid ShiftId { get; set; }
 }
 
-// === Staffing Grid (Build/Strike) ===
-
 internal sealed class StaffingGridModel
 {
     public Guid RotaId { get; set; }
@@ -150,8 +137,6 @@ internal sealed class DayStaffingEntry
     public int MinVolunteers { get; set; } = 2;
     public int MaxVolunteers { get; set; } = 5;
 }
-
-// === Generate Event Shifts ===
 
 internal sealed class GenerateEventShiftsModel
 {
@@ -167,8 +152,6 @@ internal sealed class TimeSlotEntry
     public string StartTime { get; set; } = "08:00";
     public double DurationHours { get; set; } = 4;
 }
-
-// === Browse ===
 
 internal sealed class ShiftBrowseViewModel
 {
@@ -187,7 +170,7 @@ internal sealed class ShiftBrowseViewModel
     public List<string> FilterPeriods { get; set; } = [];
 
     /// <summary>
-    /// Selected single-day filter (ISO date string), issue #889. Empty/null means "all days".
+    /// Selected single-day filter (ISO date string). Empty/null means "all days".
     /// </summary>
     public string? FilterDay { get; set; }
 
@@ -235,24 +218,12 @@ internal sealed class ShiftBrowseViewModel
     /// </summary>
     public List<RotaShiftGroup> UrgencyRankedRotas { get; set; } = [];
 
-    /// <summary>
-    /// All available tags for the filter UI.
-    /// </summary>
     public List<ShiftTagSummary> AllTags { get; set; } = [];
 
-    /// <summary>
-    /// Currently selected tag IDs for filtering.
-    /// </summary>
     public List<Guid> FilterTagIds { get; set; } = [];
 
-    /// <summary>
-    /// Tag IDs the current volunteer has selected as preferences (for highlighting).
-    /// </summary>
     public HashSet<Guid> UserPreferredTagIds { get; set; } = [];
 
-    /// <summary>
-    /// Count of the current user's active signups (confirmed + pending), shown as badge on "My Shifts" tab.
-    /// </summary>
     public int MySignupCount { get; set; }
 
     /// <summary>
@@ -288,18 +259,15 @@ internal sealed class RotaShiftGroup
     /// <summary>Department slug for linking, populated for urgency-sorted view.</summary>
     public string? DepartmentSlug { get; set; }
 
-    /// <summary>Highest urgency score among shifts in this rota (for sorting).</summary>
     public double MaxUrgencyScore { get; set; }
 
-    /// <summary>Total confirmed signups across all shifts in this rota.</summary>
     public int TotalConfirmed { get; set; }
 
-    /// <summary>Total max volunteer slots across all shifts in this rota.</summary>
     public int TotalSlots { get; set; }
 }
 
 /// <summary>
-/// One selectable day for the Volunteering page's day-filter dropdown (issue #889).
+/// One selectable day for the Volunteering page's day-filter dropdown.
 /// <see cref="SubPeriod"/> is populated only for <see cref="ShiftPeriod.Build"/> days
 /// that fall within one of the four named sub-windows (<see cref="BuildSubPeriodClassifier"/>);
 /// null for Event/Strike days and for build days outside those windows.
@@ -317,8 +285,6 @@ internal sealed class ShiftDisplayItem
     public double UrgencyScore { get; set; }
     public IReadOnlyList<ShiftSignupInfo> Signups { get; set; } = [];
 }
-
-// === Mine ===
 
 internal sealed class MyShiftsViewModel
 {
@@ -355,8 +321,6 @@ internal sealed class MySignupItem
     public bool BailLocked { get; set; }
 }
 
-// === ShiftAdmin ===
-
 internal sealed class ShiftAdminViewModel
 {
     public TeamInfo Department { get; set; } = null!;
@@ -383,9 +347,6 @@ internal sealed class ShiftAdminViewModel
     public Instant Now { get; set; }
     public List<DepartmentOption> AllDepartments { get; set; } = [];
 
-    /// <summary>
-    /// All available tags for the tag picker UI.
-    /// </summary>
     public List<ShiftTagSummary> AllTags { get; set; } = [];
 
     /// <summary>
@@ -396,31 +357,25 @@ internal sealed class ShiftAdminViewModel
     public bool IncompleteOnboardingFilter { get; set; }
 }
 
-// === Shift Info (user-scoped profile) ===
-
 internal sealed class ShiftInfoViewModel
 {
     public List<string> SelectedSkills { get; set; } = [];
     public string? SkillOtherText { get; set; }
-    public List<string> SelectedQuirks { get; set; } = []; // Toggle quirks only (no time prefs)
-    public string? TimePreference { get; set; } // Mutually exclusive: Early Bird, Night Owl, All Day, No Preference
+    public List<string> SelectedQuirks { get; set; } = [];
+    public string? TimePreference { get; set; } // Mutually exclusive; persisted as a quirk value.
     public List<string> SelectedLanguages { get; set; } = [];
     public string? LanguageOtherText { get; set; }
 
-    // Skill options with emoji prefixes for display
     internal static readonly string[] SkillOptions = ["Bartending", "First Aid", "Driving", "Sound", "Electrical", "Construction", "Cooking", "Art", "DJ", "Other"];
     internal static readonly string[] LanguageOptions = ["English", "Spanish", "German", "French", "Italian", "Portuguese", "Catalan", "Other"];
 
-    // Time preferences — mutually exclusive, stored as quirk value
     internal static readonly string[] TimePreferenceOptions = ["Early Bird", "Night Owl", "All Day", "No Preference"];
 
-    // Toggle quirks — multi-select, separate from time preference
     internal static readonly string[] ToggleQuirkOptions = ["Sober Shift", "Work In Shade", "Quiet Work", "Physical Work OK", "No Heights"];
 
     private static readonly string[] StoredSkillOptions = SkillOptions.Where(s => !string.Equals(s, "Other", StringComparison.Ordinal)).ToArray();
     private static readonly string[] StoredLanguageOptions = LanguageOptions.Where(l => !string.Equals(l, "Other", StringComparison.Ordinal)).ToArray();
 
-    // Emoji maps for view rendering
     internal static readonly Dictionary<string, string> SkillEmoji = new(StringComparer.Ordinal)
     {
         ["Bartending"] = "\U0001f378",
@@ -487,15 +442,12 @@ internal sealed class ShiftInfoViewModel
         return viewModel;
     }
 
-    /// <summary>Extract the time preference value from a flat quirks array.</summary>
     internal static string? ExtractTimePreference(IReadOnlyList<string> quirks)
         => quirks.FirstOrDefault(q => TimePreferenceOptions.Contains(q, StringComparer.Ordinal));
 
-    /// <summary>Extract toggle quirks (excluding time preferences) from a flat quirks array.</summary>
     internal static List<string> ExtractToggleQuirks(IReadOnlyList<string> quirks)
         => quirks.Where(q => !TimePreferenceOptions.Contains(q, StringComparer.Ordinal)).ToList();
 
-    /// <summary>Merge a time preference and toggle quirks back into a flat quirks array.</summary>
     internal static List<string> MergeQuirks(string? timePreference, List<string> toggleQuirks)
     {
         var result = new List<string>(toggleQuirks);
@@ -561,21 +513,15 @@ internal sealed class ShiftInfoViewModel
     }
 }
 
-// === Dashboard ===
-
 internal sealed class ShiftDashboardViewModel
 {
     public List<UrgentShiftInfo> Shifts { get; set; } = [];
     public List<DepartmentOption> Departments { get; set; } = [];
     public Guid? SelectedDepartmentId { get; set; }
     public Guid? SelectedRotaId { get; set; }
-    /// <summary>ISO date string passed via query — round-trips through the form input.</summary>
     public string? SelectedStartDate { get; set; }
-    /// <summary>ISO date string passed via query — round-trips through the form input.</summary>
     public string? SelectedEndDate { get; set; }
-    /// <summary>Parsed start date if <see cref="SelectedStartDate"/> was a valid ISO date.</summary>
     public LocalDate? FilterStartDate { get; set; }
-    /// <summary>Parsed end date if <see cref="SelectedEndDate"/> was a valid ISO date.</summary>
     public LocalDate? FilterEndDate { get; set; }
     public ShiftPeriod? SelectedPeriod { get; set; }
     public BuildSubPeriod? SelectedSubPeriod { get; set; }
@@ -610,9 +556,6 @@ internal sealed class VolunteerSearchResult
     public string? MedicalConditions { get; set; }
 }
 
-// === Shifts Summary Card ===
-
-
 // === Shift Signups ViewComponent ===
 //
 // ShiftSignupsViewMode is public beside the component under Contracts/ — it is a
@@ -646,10 +589,7 @@ internal sealed class ShiftSignupsViewModel
     public string? DisplayName { get; set; }
 }
 
-/// <summary>One row of the signups card: the flat signup plus its department name.</summary>
 internal sealed record ShiftSignupsRow(ShiftSignupSummary Signup, string DepartmentName);
-
-// === Rota Partial View Models ===
 
 internal sealed class RotaHeaderViewModel
 {
@@ -682,7 +622,7 @@ internal sealed class BuildStrikeRotaTableViewModel
     /// The burn this rota belongs to, as the cross-section read DTO. Every consumer
     /// of this partial — browse, onboarding, and the widget gallery — resolves the
     /// active burn through <see cref="IBurnSettingsService"/>, so the EF entity never
-    /// reaches a view model (#809).
+    /// reaches a view model.
     /// </summary>
     public BurnSettingsInfo EventSettings { get; set; } = null!;
     public HashSet<Guid> UserSignupShiftIds { get; set; } = [];
@@ -715,7 +655,6 @@ internal sealed class BuildStrikeRotaTableViewModel
     public string SignUpRangeController { get; set; } = "OnboardingWidget";
     public string SignUpRangeAction { get; set; } = "SignUpRange";
 
-    /// <summary>Signup affordance mode. Defaults to FormPost so OnboardingWidget renders unchanged.</summary>
     public ShiftSignupInteraction Interaction { get; set; } = ShiftSignupInteraction.FormPost;
 }
 
@@ -753,14 +692,8 @@ internal sealed class EventRotaTableViewModel
     public string SignUpController { get; set; } = "OnboardingWidget";
     public string SignUpAction { get; set; } = "SignUp";
 
-    /// <summary>Signup affordance mode. Defaults to FormPost so OnboardingWidget renders unchanged.</summary>
     public ShiftSignupInteraction Interaction { get; set; } = ShiftSignupInteraction.FormPost;
 }
-
-// === No-Show History ===
-
-
-// === Rota Row View Models ===
 
 /// <summary>One Build/Strike all-day day-row. Action cell varies by Interaction.</summary>
 internal sealed class BuildStrikeRotaRowViewModel
