@@ -15,8 +15,9 @@ namespace Humans.Surveys.Controllers;
 /// <summary>
 /// Survey answering wizard. Two entry paths share one page flow: the tokenised invite link
 /// (<c>/Survey/Answer?t=…</c>), where identity comes from the token's invitation (never the current
-/// principal); and the public slug link (<c>/Survey/{slug}</c>), where logged-out visitors are Anonymous
-/// while a logged-in Human chooses Identified, CompletionTracked, or Anonymous. Controllers parse →
+/// principal); and the shareable slug link (<c>/Survey/{slug}</c>). Anonymous-enabled surveys retain
+/// the public representation choice; identified surveys require sign-in and current audience access.
+/// Controllers parse →
 /// call the service → format (hard rule): all flow decisions live in
 /// <see cref="ISurveyService.AdvanceWizardAsync"/>; the controller persists the session per
 /// <see cref="WizardRoute"/> and renders/redirects per the outcome.
@@ -65,12 +66,19 @@ internal sealed class SurveyController(
 
         if (ctx.HasResumableDraft)
         {
-            // Establish the wizard session from the resumable Identified draft and jump into the flow.
-            var resumeState = BuildState(ctx, ResponseAnonymity.Identified, culture);
+            // Preserve answers from a pre-change Identified Asociado draft while switching its
+            // eventual submission to CompletionTracked. Finalisation removes the old linked draft.
+            var resumeAnonymity = editable.IsAsociadoVote
+                ? ResponseAnonymity.CompletionTracked
+                : ResponseAnonymity.Identified;
+            var resumeState = BuildState(ctx, resumeAnonymity, culture);
             resumeState.Started = true;
-            resumeState.DraftResponseId = await surveyService.StartIdentifiedDraftAsync(
-                ctx.SurveyId, ctx.InvitationId, ctx.UserId,
-                SurveyInputMethod.UserSpecificLink, culture, ct);
+            if (resumeAnonymity == ResponseAnonymity.Identified)
+            {
+                resumeState.DraftResponseId = await surveyService.StartIdentifiedDraftAsync(
+                    ctx.SurveyId, ctx.InvitationId, ctx.UserId,
+                    SurveyInputMethod.UserSpecificLink, culture, ct);
+            }
             foreach (var a in ctx.DraftAnswers)
             {
                 resumeState.Answers[a.QuestionId.ToString()] = new SurveyWizardAnswer
@@ -129,8 +137,13 @@ internal sealed class SurveyController(
             return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
         }
 
-        // When the survey forbids anonymity, the only tier is Identified.
-        var anonymity = editable.AllowAnonymous ? model.Anonymity : ResponseAnonymity.Identified;
+        // Asociado votes use the participation ledger to enforce eligibility and one vote per
+        // person, while storing the submitted ballot without a user/invitation link.
+        var anonymity = editable.IsAsociadoVote
+            ? ResponseAnonymity.CompletionTracked
+            : editable.AllowAnonymous
+                ? model.Anonymity
+                : ResponseAnonymity.Identified;
         var culture = SurveyPageViewModelFactory.ResolveCulture(model.Culture, editable.DefaultCulture);
 
         var state = BuildState(ctx, anonymity, culture);
@@ -177,11 +190,10 @@ internal sealed class SurveyController(
         // Reserved words can never be a public slug; let the literal-segment actions own them.
         if (IsReservedSlug(slug)) return NotFound();
 
-        // The service returns null for unknown slugs and for surveys that no longer allow anonymous.
-        var ctx = await surveyService.ResolvePublicContextAsync(slug, ct);
-        if (ctx is null) return NotFound();
+        var (ctx, accessFailure) = await ResolvePublicAccessAsync(slug, ct);
+        if (accessFailure is not null) return accessFailure;
 
-        var editable = ctx.Definition.Editable;
+        var editable = ctx!.Definition.Editable;
 
         if (!IsAnswerable(ctx.Definition))
         {
@@ -195,10 +207,11 @@ internal sealed class SurveyController(
             Title = editable.Title.Resolve(culture, editable.DefaultCulture),
             Intro = editable.Intro.Resolve(culture, editable.DefaultCulture),
             Culture = culture,
-            AllowAnonymous = true,
-            ShowAnonymitySelector = isLoggedIn,
+            AllowAnonymous = editable.AllowAnonymous,
+            ShowAnonymitySelector = editable.AllowAnonymous && isLoggedIn,
             IsPublic = true,
-            Slug = ctx.Definition.Editable.PublicSlug ?? slug,
+            Slug = editable.PublicSlug ?? slug,
+            IsAsociadoVote = editable.IsAsociadoVote,
         };
         return View("Intro", vm);
     }
@@ -213,10 +226,10 @@ internal sealed class SurveyController(
     {
         if (IsReservedSlug(slug)) return NotFound();
 
-        var ctx = await surveyService.ResolvePublicContextAsync(slug, ct);
-        if (ctx is null) return NotFound();
+        var (ctx, accessFailure) = await ResolvePublicAccessAsync(slug, ct);
+        if (accessFailure is not null) return accessFailure;
 
-        var editable = ctx.Definition.Editable;
+        var editable = ctx!.Definition.Editable;
 
         if (!IsAnswerable(ctx.Definition))
         {
@@ -225,11 +238,15 @@ internal sealed class SurveyController(
 
         var resolvedCulture = SurveyPageViewModelFactory.ResolveCulture(culture, editable.DefaultCulture);
         var userId = GetCurrentUserId();
-        var resolvedAnonymity = userId is null
-            ? ResponseAnonymity.Anonymous
-            : Enum.IsDefined(anonymity)
-                ? anonymity
-                : ResponseAnonymity.Identified;
+        var resolvedAnonymity = editable.IsAsociadoVote
+            ? ResponseAnonymity.CompletionTracked
+            : !editable.AllowAnonymous
+                ? ResponseAnonymity.Identified
+                : userId is null
+                    ? ResponseAnonymity.Anonymous
+                    : Enum.IsDefined(anonymity)
+                        ? anonymity
+                        : ResponseAnonymity.Identified;
 
         Guid? participationId = null;
         Guid? draftResponseId = null;
@@ -298,6 +315,19 @@ internal sealed class SurveyController(
             SurveyWizardSession.ClearBySlug(HttpContext.Session, slug);
             return RedirectToAction("Public", new { slug });
         }
+
+        var (ctx, accessFailure) = await ResolvePublicAccessAsync(slug, ct);
+        if (accessFailure is not null)
+        {
+            SurveyWizardSession.ClearBySlug(HttpContext.Session, slug);
+            return accessFailure;
+        }
+        if (ctx!.SurveyId != state.SurveyId)
+        {
+            SurveyWizardSession.ClearBySlug(HttpContext.Session, slug);
+            return NotFound();
+        }
+
         return await RenderPage(state, WizardRoute.Public(slug), ct);
     }
 
@@ -314,6 +344,19 @@ internal sealed class SurveyController(
             SurveyWizardSession.ClearBySlug(HttpContext.Session, slug);
             return RedirectToAction("Public", new { slug });
         }
+
+        var (ctx, accessFailure) = await ResolvePublicAccessAsync(slug, ct);
+        if (accessFailure is not null)
+        {
+            SurveyWizardSession.ClearBySlug(HttpContext.Session, slug);
+            return accessFailure;
+        }
+        if (ctx!.SurveyId != state.SurveyId)
+        {
+            SurveyWizardSession.ClearBySlug(HttpContext.Session, slug);
+            return NotFound();
+        }
+
         return await ProcessPage(state, model, WizardRoute.Public(slug), ct);
     }
 
@@ -327,8 +370,19 @@ internal sealed class SurveyController(
             return View("ThankYou", BuildThankYou(await surveyService.GetForEditAsync(done.SurveyId, ct), done.Culture));
         }
 
-        var ctx = await surveyService.ResolvePublicContextAsync(slug, ct);
-        return View("ThankYou", BuildThankYou(ctx?.Definition));
+        var ctx = await surveyService.ResolvePublicContextAsync(slug, GetCurrentUserId(), ct);
+        if (ctx is null) return View("ThankYou", BuildThankYou(null));
+        if (ctx.Access == SurveyPublicAccess.AuthenticationRequired) return Challenge();
+        if (ctx.Access == SurveyPublicAccess.Ineligible)
+        {
+            return View("Closed", new SurveyClosedViewModel
+            {
+                Reason = ctx.Definition.Editable.IsAsociadoVote
+                    ? "ineligible-asociado"
+                    : "ineligible",
+            });
+        }
+        return View("ThankYou", BuildThankYou(ctx.Definition));
     }
 
     [HttpGet("Answer/ThankYou")]
@@ -388,6 +442,28 @@ internal sealed class SurveyController(
     private static bool IsReservedSlug(string slug)
         => string.Equals(slug, "admin", StringComparison.OrdinalIgnoreCase)
            || string.Equals(slug, "answer", StringComparison.OrdinalIgnoreCase);
+
+    private async Task<(SurveyPublicContext? Context, IActionResult? Failure)> ResolvePublicAccessAsync(
+        string slug,
+        CancellationToken ct)
+    {
+        var ctx = await surveyService.ResolvePublicContextAsync(slug, GetCurrentUserId(), ct);
+        if (ctx is null) return (null, NotFound());
+
+        return ctx.Access switch
+        {
+            SurveyPublicAccess.AuthenticationRequired => (null, Challenge()),
+            SurveyPublicAccess.Ineligible => (
+                null,
+                View("Closed", new SurveyClosedViewModel
+                {
+                    Reason = ctx.Definition.Editable.IsAsociadoVote
+                        ? "ineligible-asociado"
+                        : "ineligible",
+                })),
+            _ => (ctx, null),
+        };
+    }
 
     /// <summary>Entry/page UX gate (the service re-enforces the same rule authoritatively at submit).</summary>
     private bool IsAnswerable(SurveyDetail definition)

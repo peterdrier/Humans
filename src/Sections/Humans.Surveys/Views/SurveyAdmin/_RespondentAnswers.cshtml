@@ -1,0 +1,50 @@
+@model IReadOnlyList<Humans.Surveys.Contracts.RespondentAnswer>
+
+<dl class="row mb-0">
+    @foreach (var answer in Model)
+    {
+        <dt class="col-sm-4">@answer.Prompt</dt>
+        <dd class="col-sm-8">
+            @if (answer.GridSelections?.Count > 0)
+            {
+                <ul class="list-unstyled mb-0">
+                    @foreach (var selection in answer.GridSelections)
+                    {
+                        <li><strong>@selection.RowLabel:</strong> @string.Join(", ", selection.ColumnLabels)</li>
+                    }
+                </ul>
+            }
+            else if (answer.RankedBallot is { } ballot)
+            {
+                <ol class="mb-0 ps-3">
+                    @foreach (var group in ballot.RankGroups)
+                    {
+                        <li>@string.Join(" = ", group)</li>
+                    }
+                </ol>
+                @if (ballot.Rejected.Count > 0)
+                {
+                    <div class="small text-danger mt-1">
+                        <strong>Rejected:</strong> @string.Join(", ", ballot.Rejected)
+                    </div>
+                }
+            }
+            else if (answer.SelectedLabels.Count > 0)
+            {
+                @string.Join(", ", answer.SelectedLabels)
+            }
+            else if (answer.RatingValue is { } rating)
+            {
+                @rating
+            }
+            else if (!string.IsNullOrEmpty(answer.TextValue))
+            {
+                @answer.TextValue
+            }
+            else
+            {
+                <span class="text-muted">—</span>
+            }
+        </dd>
+    }
+</dl>

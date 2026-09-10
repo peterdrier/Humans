@@ -147,6 +147,7 @@ All roles are stored as temporal `RoleAssignment` records. Role claims are added
 | **StoreAdmin** | Store-domain superset: catalog, orders, payments, invoices, treasury sync (FinanceAdmin retains parallel access for accounting workflows) |
 | **EventsAdmin** | Approve, reject, and request edits on event guide submissions |
 | **CantinaAdmin** | Read-only cantina roster for meal planning; dietary preferences only, never medical conditions |
+| **RideshareAdmin** | Rideshare settings, season statistics, and the day roster; confers nothing outside Rideshare |
 | **EETeamAdmin** | Cross-team Early-Entry administrator — grant/edit/revoke early-entry on any team with `EarlyEntryEnabled`; confers nothing else |
 | **NoInfoAdmin** | Approve/voluntell shift signups; access volunteer medical data |
 
