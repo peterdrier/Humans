@@ -72,6 +72,7 @@ Append-only per design-rules §12. Enforced by the Postgres triggers `prevent_au
 - **Tickets (transfers):** `TicketTransferRequested`, `TicketTransferApproved`, `TicketTransferRejected`, `TicketTransferCancelled`, `TicketTransferAutoFailed` (the flag-gated automated TicketTailor void+reissue failed and fell back to manual handling); plus `TicketContactsImported`.
 - **Surveys:** `SurveyCreated`, `SurveyUpdated`, `SurveyOpened`, `SurveyClosed`, `SurveyInvitesSent`, `SurveyReminderSent` — survey lifecycle events written by the Survey section.
 - **Backdoor:** `BackdoorApiKeyIssued`, `BackdoorApiKeyRevoked` — personal machine-API key lifecycle (nobodies-collective/Humans#1128); rotation is recorded as a revoke of the old key followed by an issue of the new one.
+- **Rideshare:** `RideshareSettingsUpdated` — an admin set or changed a burn year's rideshare destination and travel windows, written by `RideshareService.SaveSettingsAsync`; the description carries the destination label and both windows.
 <!-- /freshness:auto -->
 
 Note: `BudgetAuditLog` is a separate per-section append-only log owned by Budget — it is **not** an `AuditAction` value and does not write to `audit_log`.

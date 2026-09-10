@@ -64,6 +64,14 @@ internal sealed class ShiftAdminController(
         return View(model);
     }
 
+    private async Task<IActionResult> RenderInvalidEditAsync(string slug)
+    {
+        var result = await Index(slug);
+        if (result is ViewResult view)
+            view.ViewName = nameof(Index);
+        return result;
+    }
+
     [HttpPost("Rotas")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateRota(string slug, CreateRotaModel model)
@@ -113,7 +121,9 @@ internal sealed class ShiftAdminController(
         if (!ModelState.IsValid)
         {
             SetError("Please fix the errors below.");
-            return RedirectToAction(nameof(Index), new { slug });
+            model.RotaId = rotaId;
+            ViewData["InvalidRotaEdit"] = model;
+            return await RenderInvalidEditAsync(slug);
         }
 
         rota.Name = model.Name;
@@ -254,16 +264,18 @@ internal sealed class ShiftAdminController(
         var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
 
+        var shift = await GetShiftForTeamAsync(shiftId, team.Id);
+        if (shift is null) return NotFound();
+
+        if (!model.StartTime.TryParseInvariantLocalTime(out var parsedTime))
+            ModelState.AddModelError(nameof(model.StartTime), "Invalid start time format.");
+
         if (!ModelState.IsValid)
         {
             SetError("Please fix the errors below.");
-            return RedirectToAction(nameof(Index), new { slug });
-        }
-
-        if (!model.StartTime.TryParseInvariantLocalTime(out var parsedTime))
-        {
-            SetError("Invalid start time format.");
-            return RedirectToAction(nameof(Index), new { slug });
+            model.ShiftId = shiftId;
+            ViewData["InvalidShiftEdit"] = model;
+            return await RenderInvalidEditAsync(slug);
         }
 
         var result = await shiftMgmt.UpdateShiftAsync(new UpdateShiftInput(

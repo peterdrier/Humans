@@ -117,9 +117,16 @@ See [`src/Sections/Humans.Issues/Docs/Issues.md`](../Issues.md) for full field-l
 | `POST /Issues/{id}/Assignee` | `[Authorize]` + handler check |
 | `POST /Issues/{id}/Section` | `[Authorize]` + handler check |
 | `POST /Issues/{id}/GitHubIssue` | `[Authorize]` + handler check |
-| `* /api/backdoor/issues/*` | API key (`X-Api-Key` header) |
+| `* /api/backdoor/issues/*` | API key (`X-Api-Key` header) — scoped to the key's owner, who reaches exactly what they reach in the browser |
 
-**Handler check:** done in the controller via `User.IsInRole(...)` (claims-first per coding-rules), comparing the user's roles against `IssueSectionRouting.RolesFor(issue.Section)` plus implicit Admin. The handler check is per-issue (depends on the issue's `Section`), not a static `[Authorize(Roles = ...)]` attribute.
+**Handler check:** `IssueSectionRouting.CanHandle(section, roles)` — the issue's `Section` against the viewer's role names, Admin passing everything. Per-issue, never a static `[Authorize(Roles = ...)]` attribute.
+
+Two places read it, for different reasons:
+
+- **`IssuesService`** enforces it, on every per-item read and mutation, from the `IssueViewer` the caller passes. That is the only enforcement both doors share, so a Backdoor key reaches no further than its holder does in the browser. Out of reach reads as absent: `GetIssueByIdAsync` returns null, everything else throws the same "not found" a deleted issue throws, so an id is not an oracle.
+- **`IssuesAuthorizationHandler`** answers the same question from claims for the browser only — shaping the page (which controls render, whether a comment may resolve) and returning 403 where the service would return 404.
+
+`UpdateSectionAsync` authorizes against the section the issue is *in*, not the one it is going to, so a handler may route an issue out of their own queue.
 
 ## URL Routes
 

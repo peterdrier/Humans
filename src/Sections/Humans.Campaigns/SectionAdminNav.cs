@@ -10,7 +10,7 @@ internal sealed class SectionAdminNav : ISectionAdminNav
     [
         new("Tickets", [
             // Campaigns distribute ticket-vendor discount codes (email is just the
-            // delivery channel) — Tickets, not Messaging. See docs/sections/Campaigns.md.
+            // delivery channel) — Tickets, not Messaging. See src/Sections/Humans.Campaigns/Docs/Campaigns.md.
             new("Campaigns", "Campaign", "Index", null, null, "fa-solid fa-bullhorn", PolicyNames.AdminOnly, Weight: 40)
         ], Weight: 0)
     ];

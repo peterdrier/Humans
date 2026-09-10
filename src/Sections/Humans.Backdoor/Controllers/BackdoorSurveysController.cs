@@ -11,8 +11,7 @@ using NodaTime.Text;
 namespace Humans.Backdoor.Controllers;
 
 /// <summary>
-/// Read-only survey analysis for agents. Was <c>/api/surveys</c> in the Surveys section before
-/// the machine surfaces consolidated here (nobodies-collective/Humans#1128).
+/// Read-only survey analysis for agents.
 /// </summary>
 /// <remarks>
 /// Every endpoint reuses an <see cref="ISurveyAnalysisRead"/> method; the controller only
@@ -109,7 +108,7 @@ internal sealed class BackdoorSurveysController(ISurveyAnalysisRead surveys, IUs
             sinceInstant = parsed.Value;
         }
 
-        // Filter (rows are already ordered by SubmittedAt in the export).
+        // Rows arrive ordered by SubmittedAt — the cursor below relies on it.
         var filtered = export.Rows
             .Where(r => anonymity is null || r.Anonymity == anonymity)
             .Where(r => sinceInstant is null || (r.SubmittedAt is { } at && at >= sinceInstant))

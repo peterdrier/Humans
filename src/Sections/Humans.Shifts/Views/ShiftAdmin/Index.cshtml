@@ -8,6 +8,22 @@
 }
 
 @{
+    var invalidRotaEdit = ViewData["InvalidRotaEdit"] as EditRotaModel;
+    var invalidShiftEdit = ViewData["InvalidShiftEdit"] as EditShiftModel;
+    string EditInputType(bool invalid, string field, string type)
+    {
+        if (!invalid || !ViewData.ModelState.TryGetValue(field, out var entry) || entry.AttemptedValue is not { } value)
+            return type;
+        var representable = type == "number"
+            ? double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out _)
+            : DateFormattingExtensions.TimeOfDayPattern.Parse(value).Success;
+        return representable ? type : "text";
+    }
+    // Only the failed editor reads ModelState: this page repeats field names across forms.
+    string EditValue(bool invalid, string field, object? fallback) =>
+        invalid && ViewData.ModelState.TryGetValue(field, out var entry) && entry.AttemptedValue is not null
+            ? entry.AttemptedValue
+            : Convert.ToString(fallback, System.Globalization.CultureInfo.InvariantCulture) ?? "";
 }
 
 <div class="container py-4">
@@ -232,28 +248,34 @@
             </div>
             @if (Model.CanManageShifts)
             {
-                <div class="collapse" id="edit-rota-@rota.Id.ToString("N")">
+                var isEditingRota = invalidRotaEdit?.RotaId == rota.Id;
+                var editTags = EditValue(isEditingRota, "TagIds", isEditingRota ? invalidRotaEdit!.TagIds : string.Join(",", rota.Tags.Select(t => t.Id)));
+                <div class="collapse @(isEditingRota ? "show" : null)" id="edit-rota-@rota.Id.ToString("N")">
                     <div class="card-body border-bottom">
                         <form asp-action="EditRota" asp-route-slug="@Model.Department.Slug" asp-route-rotaId="@rota.Id" method="post">
                             @Html.AntiForgeryToken()
+                            @if (isEditingRota)
+                            {
+                                @Html.ValidationSummary(false, "", new { @class = "text-danger" })
+                            }
                             <div class="row g-2 align-items-end">
                                 <div class="col-md-3">
                                     <label class="form-label">Name</label>
-                                    <input type="text" name="Name" value="@rota.Name" class="form-control" required />
+                                    <input type="text" name="Name" value="@EditValue(isEditingRota, "Name", isEditingRota ? invalidRotaEdit!.Name : rota.Name)" class="form-control" required />
                                 </div>
                                 <div class="col-md-2">
                                     <label class="form-label">Priority</label>
                                     <select name="Priority" class="form-select">
-                                        <option value="Normal" selected="@(rota.Priority == ShiftPriority.Normal ? "selected" : null)">Normal</option>
-                                        <option value="Important" selected="@(rota.Priority == ShiftPriority.Important ? "selected" : null)">Important</option>
-                                        <option value="Essential" selected="@(rota.Priority == ShiftPriority.Essential ? "selected" : null)">Essential</option>
+                                        <option value="Normal" selected="@(EditValue(isEditingRota, "Priority", isEditingRota ? invalidRotaEdit!.Priority : rota.Priority) == "Normal" ? "selected" : null)">Normal</option>
+                                        <option value="Important" selected="@(EditValue(isEditingRota, "Priority", isEditingRota ? invalidRotaEdit!.Priority : rota.Priority) == "Important" ? "selected" : null)">Important</option>
+                                        <option value="Essential" selected="@(EditValue(isEditingRota, "Priority", isEditingRota ? invalidRotaEdit!.Priority : rota.Priority) == "Essential" ? "selected" : null)">Essential</option>
                                     </select>
                                 </div>
                                 <div class="col-md-2">
                                     <label class="form-label">Policy</label>
                                     <select name="Policy" class="form-select">
-                                        <option value="Public" selected="@(rota.Policy == SignupPolicy.Public ? "selected" : null)">Public</option>
-                                        <option value="RequireApproval" selected="@(rota.Policy == SignupPolicy.RequireApproval ? "selected" : null)">Require Approval</option>
+                                        <option value="Public" selected="@(EditValue(isEditingRota, "Policy", isEditingRota ? invalidRotaEdit!.Policy : rota.Policy) == "Public" ? "selected" : null)">Public</option>
+                                        <option value="RequireApproval" selected="@(EditValue(isEditingRota, "Policy", isEditingRota ? invalidRotaEdit!.Policy : rota.Policy) == "RequireApproval" ? "selected" : null)">Require Approval</option>
                                     </select>
                                 </div>
                             </div>
@@ -261,15 +283,15 @@
                                 <div class="col-md-2">
                                     <label class="form-label">Period</label>
                                     <select name="Period" class="form-select">
-                                        <option value="Build" selected="@(rota.Period == RotaPeriod.Build ? "selected" : null)">Set-up</option>
-                                        <option value="Event" selected="@(rota.Period == RotaPeriod.Event ? "selected" : null)">Event</option>
-                                        <option value="Strike" selected="@(rota.Period == RotaPeriod.Strike ? "selected" : null)">Strike</option>
-                                        <option value="All" selected="@(rota.Period == RotaPeriod.All ? "selected" : null)">All Phases</option>
+                                        <option value="Build" selected="@(EditValue(isEditingRota, "Period", isEditingRota ? invalidRotaEdit!.Period : rota.Period) == "Build" ? "selected" : null)">Set-up</option>
+                                        <option value="Event" selected="@(EditValue(isEditingRota, "Period", isEditingRota ? invalidRotaEdit!.Period : rota.Period) == "Event" ? "selected" : null)">Event</option>
+                                        <option value="Strike" selected="@(EditValue(isEditingRota, "Period", isEditingRota ? invalidRotaEdit!.Period : rota.Period) == "Strike" ? "selected" : null)">Strike</option>
+                                        <option value="All" selected="@(EditValue(isEditingRota, "Period", isEditingRota ? invalidRotaEdit!.Period : rota.Period) == "All" ? "selected" : null)">All Phases</option>
                                     </select>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Description</label>
-                                    <textarea name="Description" class="form-control" rows="2">@rota.Description</textarea>
+                                    <textarea name="Description" class="form-control" rows="2">@EditValue(isEditingRota, "Description", isEditingRota ? invalidRotaEdit!.Description : rota.Description)</textarea>
                                     <div class="form-text">
                                         <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
                                             <i class="fa-solid fa-circle-info me-1"></i>Markdown
@@ -278,7 +300,7 @@
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Practical Info</label>
-                                    <textarea name="PracticalInfo" class="form-control" rows="2" placeholder="Meeting point, instructions...">@rota.PracticalInfo</textarea>
+                                    <textarea name="PracticalInfo" class="form-control" rows="2" placeholder="Meeting point, instructions...">@EditValue(isEditingRota, "PracticalInfo", isEditingRota ? invalidRotaEdit!.PracticalInfo : rota.PracticalInfo)</textarea>
                                     <div class="form-text">
                                         <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
                                             <i class="fa-solid fa-circle-info me-1"></i>Markdown
@@ -297,7 +319,7 @@
                                         <div class="d-flex flex-wrap gap-2" data-tag-picker="edit-@rota.Id.ToString("N")">
                                             @foreach (var tag in Model.AllTags)
                                             {
-                                                var isSelected = rota.Tags.Any(t => t.Id == tag.Id);
+                                                var isSelected = editTags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Contains(tag.Id.ToString(), StringComparer.OrdinalIgnoreCase);
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input tag-checkbox" type="checkbox"
                                                            data-tag-id="@tag.Id" id="edit-tag-@rota.Id.ToString("N")-@tag.Id.ToString("N")"
@@ -306,7 +328,7 @@
                                                 </div>
                                             }
                                         </div>
-                                        <input type="hidden" name="TagIds" value="@string.Join(",", rota.Tags.Select(t => t.Id))" data-tag-ids="edit-@rota.Id.ToString("N")" />
+                                        <input type="hidden" name="TagIds" value="@editTags" data-tag-ids="edit-@rota.Id.ToString("N")" />
                                         <div class="mt-1">
                                             <div class="input-group input-group-sm" style="max-width: 300px;">
                                                 <input type="text" class="form-control" placeholder="New tag..." data-new-tag-input="edit-@rota.Id.ToString("N")" maxlength="100" />
@@ -493,12 +515,17 @@
                                     </tr>
                                     @if (Model.CanManageShifts)
                                     {
-                                        <tr class="collapse" id="edit-shift-@shift.Id.ToString("N")">
+                                        var isEditingShift = invalidShiftEdit?.ShiftId == shift.Id;
+                                        <tr class="collapse @(isEditingShift ? "show" : null)" id="edit-shift-@shift.Id.ToString("N")">
                                             <td colspan="@(Model.CanApproveSignups ? 7 : 6)">
                                                 <form asp-action="EditShift" asp-route-slug="@Model.Department.Slug" asp-route-shiftId="@shift.Id" method="post">
                                                     @Html.AntiForgeryToken()
+                                                    @if (isEditingShift)
+                                                    {
+                                                        @Html.ValidationSummary(false, "", new { @class = "text-danger" })
+                                                    }
                                                     <div class="mb-2">
-                                                        <textarea name="Description" class="form-control form-control-sm" rows="2" placeholder="Shift duties, notes...">@shift.Description</textarea>
+                                                        <textarea name="Description" class="form-control form-control-sm" rows="2" placeholder="Shift duties, notes...">@EditValue(isEditingShift, "Description", isEditingShift ? invalidShiftEdit!.Description : shift.Description)</textarea>
                                                         <div class="form-text">
                                                             <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
                                                                 <i class="fa-solid fa-circle-info me-1"></i>Markdown
@@ -522,7 +549,7 @@
                                                                 {
                                                                     var editDate = Model.EventSettings.GateOpeningDate.PlusDays(d);
                                                                     var editLabel = editDate.ToWeekdayDayMonth();
-                                                                    <option value="@d" selected="@(d == shift.DayOffset ? "selected" : null)">@editLabel</option>
+                                                                    <option value="@d" selected="@(EditValue(isEditingShift, "DayOffset", isEditingShift ? invalidShiftEdit!.DayOffset : shift.DayOffset) == d.ToString(System.Globalization.CultureInfo.InvariantCulture) ? "selected" : null)">@editLabel</option>
                                                                 }
                                                             </select>
                                                         </div>
@@ -532,31 +559,31 @@
                                                                 <label class="form-label form-label-sm">Time</label>
                                                                 <span class="form-control form-control-sm text-muted bg-light">All day</span>
                                                                 <input type="hidden" name="StartTime" value="00:00" />
-                                                                <input type="hidden" name="DurationHours" value="@shift.Duration.TotalHours" />
+                                                                <input type="hidden" name="DurationHours" value="@EditValue(isEditingShift, "DurationHours", isEditingShift ? invalidShiftEdit!.DurationHours : shift.Duration.TotalHours)" />
                                                             </div>
                                                         }
                                                         else
                                                         {
                                                             <div class="col-md-1">
                                                                 <label class="form-label form-label-sm">Start</label>
-                                                                <input type="time" name="StartTime" value="@DateFormattingExtensions.TimeOfDayPattern.Format(shift.StartTime)" class="form-control form-control-sm" />
+                                                                <input type="@EditInputType(isEditingShift, "StartTime", "time")" name="StartTime" value="@EditValue(isEditingShift, "StartTime", isEditingShift ? invalidShiftEdit!.StartTime : DateFormattingExtensions.TimeOfDayPattern.Format(shift.StartTime))" class="form-control form-control-sm" />
                                                             </div>
                                                             <div class="col-md-1">
                                                                 <label class="form-label form-label-sm">Hours</label>
-                                                                <input type="number" name="DurationHours" value="@shift.Duration.TotalHours" class="form-control form-control-sm" step="0.5" min="0.5" />
+                                                                <input type="@EditInputType(isEditingShift, "DurationHours", "number")" name="DurationHours" value="@EditValue(isEditingShift, "DurationHours", isEditingShift ? invalidShiftEdit!.DurationHours : shift.Duration.TotalHours)" class="form-control form-control-sm" step="0.5" min="0.5" />
                                                             </div>
                                                         }
                                                         <div class="col-md-1">
                                                             <label class="form-label form-label-sm">Need</label>
-                                                            <input type="number" name="MinVolunteers" value="@shift.MinVolunteers" class="form-control form-control-sm" min="0" />
+                                                            <input type="@EditInputType(isEditingShift, "MinVolunteers", "number")" name="MinVolunteers" value="@EditValue(isEditingShift, "MinVolunteers", isEditingShift ? invalidShiftEdit!.MinVolunteers : shift.MinVolunteers)" class="form-control form-control-sm" min="0" />
                                                         </div>
                                                         <div class="col-md-1">
                                                             <label class="form-label form-label-sm">Cap</label>
-                                                            <input type="number" name="MaxVolunteers" value="@shift.MaxVolunteers" class="form-control form-control-sm" min="1" />
+                                                            <input type="@EditInputType(isEditingShift, "MaxVolunteers", "number")" name="MaxVolunteers" value="@EditValue(isEditingShift, "MaxVolunteers", isEditingShift ? invalidShiftEdit!.MaxVolunteers : shift.MaxVolunteers)" class="form-control form-control-sm" min="1" />
                                                         </div>
                                                         <div class="col-md-1">
                                                             <div class="form-check">
-                                                                <input type="checkbox" name="AdminOnly" value="true" class="form-check-input" checked="@(shift.AdminOnly ? "checked" : null)" />
+                                                                <input type="checkbox" name="AdminOnly" value="true" class="form-check-input" checked="@((isEditingShift ? invalidShiftEdit!.AdminOnly : shift.AdminOnly) ? "checked" : null)" />
                                                                 <label class="form-check-label form-label-sm">Admin</label>
                                                             </div>
                                                         </div>

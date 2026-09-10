@@ -16,6 +16,23 @@ namespace Humans.Shifts.Tests.Architecture;
 /// </summary>
 public class ShiftViewArchitectureTests
 {
+    [HumansFact]
+    public void ShiftUserView_IsRecord()
+    {
+        // Record types compile to a sealed class with an EqualityContract property.
+        typeof(ShiftUserView).GetProperty("EqualityContract",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            .Should().NotBeNull(because: "ShiftUserView is declared as a record");
+    }
+
+    [HumansFact]
+    public void ShiftRotaView_IsRecord()
+    {
+        typeof(ShiftRotaView).GetProperty("EqualityContract",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            .Should().NotBeNull(because: "ShiftRotaView is declared as a record");
+    }
+
     public static TheoryData<Type> ShiftsServicesThatInvalidate =>
     [
         typeof(ShiftSignupService),

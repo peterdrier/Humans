@@ -277,6 +277,8 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 - **Browse-page day filter** (`?day=yyyy-MM-dd`, see [feature](features/day-filter.md)): a single-day selection overrides the phase-card and date-range filters and forces the flat rota list to rank by total remaining slots descending instead of urgency score, so fully-booked rotas sink to the bottom rather than being hidden. The dropdown's option list (`ShiftBrowsePageBuilder.BuildDayOptionsAsync`) is built from an unfiltered browse query so it doesn't shrink as other filters narrow the page.
 - **Volunteer-tracking export colours are derived, never stored.** `TeamPalette.ColorFor(teamId)` indexes a fixed 20-entry palette by the first four bytes of `SHA256(teamId.ToString("D"))`; there is deliberately no `Team.HexColor` column and no migration behind it. The `"D"` Guid format is load-bearing — an Id-formatting change would re-colour every team. Changing the palette's length **or** order re-maps existing teams too, so exports taken either side of such a change are not colour-comparable. Two teams landing on the same colour is accepted; row grouping keeps them distinct.
 
+Invalid rota and shift edits redisplay the team shift page without saving. Only the submitted editor opens with its attempted values and validation errors; other editors retain their persisted values.
+
 ## Negative Access Rules
 
 - Regular humans **cannot** manage rotas or shifts. They can only browse and sign up.
@@ -313,7 +315,7 @@ declared `internal`; they serve the section's own call sites by inheriting the l
 | Leaf interface | What it carries |
 |---|---|
 | `IBurnSettingsService` → `BurnSettingsInfo` | **The only way to read the active burn from outside.** `Year`, `TimeZoneId`, `GateOpeningDate` and the build calendar; never the `EventSettings` entity. |
-| `IShiftManagementServiceRead` | The thirteen pure reads with an external caller — coordinator/department lookups, browse + urgent shifts, staffing snapshot, coverage, rota search, and one rota by id. |
+| `IShiftManagementServiceRead` | Pure reads with an external caller — coordinator/department lookups, browse + urgent shifts, staffing snapshot, coverage, rota search, and one rota by id. |
 | `IShiftVolunteerProfiles` | The volunteer's own shift profile and tag preferences (reads *and* writes — hence not a `…Read` name). |
 | `IShiftSignups` | Sign up, sign up a range, no-show history, cancel-all-for-user. |
 | `IShiftView` + `IShiftViewInvalidator` | The cached per-user / per-rota projections (issue #720). |

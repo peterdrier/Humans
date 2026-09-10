@@ -10,7 +10,7 @@ You are one reading thread of a section-doctor run. Your prompt opens with `thre
 carries your lens, your slice of the section's file inventory, and the section's target shape —
 work strictly within them.
 
-Rules, from `.claude/skills/section-doctor/SKILL.md` Phase 3d:
+Rules, from `.claude/skills/section-doctor/threads/CONTRACT.md`:
 
 - Return a **structured findings list plus a disposition for every file you claimed**
   (`reviewed` / `changed` / `generated`) — never prose narrative.
