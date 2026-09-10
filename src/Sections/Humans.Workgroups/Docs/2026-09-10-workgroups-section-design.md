@@ -1,10 +1,10 @@
 # Workgroups — Section Design
 
-**Date:** 2026-09-10
-**Status:** Draft for Peter's review. Implementation follows on this branch; the invariants of record will be `src/Sections/Humans.Workgroups/Docs/Workgroups.md` once built.
+**Date:** 2026-09-10 (revised the same day after Peter's two review rounds)
+**Status:** Approved shape; implementation follows on this branch. The invariants of record will be `src/Sections/Humans.Workgroups/Docs/Workgroups.md` once built.
 **Source of truth:** Board Resolution — Working Groups, adopted 24 August 2026 ([minutes](https://nobodies.team/transparency/2026-08-24-board.html)), plus the Working Group Guidance adopted as Board policy under its clause 6.
 
-> **Open questions for Peter are marked `Q-n`.** Each has a recommendation. Where the answer doesn't change the shape much, the option "implementer decides" is explicit.
+> The few points still marked `Implementer decides` are deliberately left open; everything else is Peter's call and not up for re-litigation.
 
 ---
 
@@ -12,123 +12,153 @@
 
 The register of association-level working groups that the resolution obliges the Secretary to keep, "published to members and collaborators", plus the channel, page and history each group is promised within fourteen days. Humans becomes the register: a group applies here, is registered here, works in the open here (meetings, monthly updates, drafts, a comment period), delivers its output here, and the Board's written disposition is recorded here.
 
-The section is a **register and a record**, not a workflow engine. The resolution is explicit that registration is administrative recognition and nothing more, so the design keeps the Board's decisions as human actions with an audit trail, and lets automation only remind, flag and record.
+The section is a **register and a record**, not a workflow engine. Registration is administrative recognition and nothing more (clause 4), so the Board's decisions stay human actions with an audit trail, and automation only reminds, flags and records.
+
+Workgroups are **intentionally time-bound**, unlike Teams (departments), which run indefinitely. A recurring subject is a new instance per year ("Finance 2027", "Finance 2028"), not a long-lived group. Workgroups is therefore its own section with its own membership and does **not** wrap a Team.
 
 ## 2. Goals
 
 - Apply with exactly what clause 1 asks for: name, purpose, coordinator(s), expected timeline, expected output.
-- Secretary registers, refers to the Board, or refuses with written reasons; the Board withdraws with reasons. Every one of those leaves a log entry and an audit entry.
-- Each registered group gets a Team (roster, join, Drive folder, calendar), a Discord channel link, and a page at `/Workgroups/{slug}`.
-- A per-group **history log**: system entries for every lifecycle step, member entries for meetings (with minutes), monthly updates, scope changes, interest disclosures.
-- Upcoming meetings from the community calendar on the group page.
-- Roster shows each member's association status (Board / Asociado / Colaborador / Volunteer) and who coordinates.
-- Documents in Markdown: Draft (members only) → Published (all signed-in humans) → optional comment period → Delivered → Board disposition recorded.
-- Surveys to the membership, gated: a coordinator drafts, the Board opens and sends.
-- `/Workgroups`: active groups, pending applications, and a completed/closed archive.
-- The reporting rhythm the guidance asks for, surfaced rather than enforced: update due, quiet for two months, annual report due, awaiting Board disposition.
+- Secretary (a Board member) registers, refers to the Board, or refuses with written reasons; the Board withdraws with reasons. Every step leaves a log entry and an audit entry.
+- Each registered group gets a Drive subfolder under the configured Workgroups root, a Discord channel link, and a page at `/Workgroups/{slug}`.
+- A per-group **history log**: system entries for every lifecycle step, member entries for updates, scope changes, disclosures and notes, meetings rendered inline.
+- Meetings owned by the group, fed into the community calendar through Calendar's fan-out: members always see them, public ones everyone sees.
+- Roster with association status (Board / Asociado / Colaborador / Volunteer) and who coordinates. Anyone signed in may join.
+- Documents in Markdown: Draft (members) → Published (all signed-in humans) → comment period with categorised comments and per-comment responses → Delivered → Board disposition.
+- Surveys to the membership through Surveys' own approval gate: the group authors, one Board click approves and sends.
+- `/Workgroups`: active groups, pending applications, dormant archive.
+- The reporting rhythm the guidance asks for, surfaced rather than enforced: update due, quiet for two months, annual report due, awaiting disposition.
+- Reachable from `/Governance` (dashboard tile) and from the member home dashboard ("My workgroups"). No main-nav entry.
 
 ## 3. Non-goals (v1)
 
 - **No decision-making, voting, or delegated authority.** Clause 4. A group proposes; the Board and Assembly decide elsewhere.
-- **No budget.** A group needing money asks the Board separately (two-thirds vote). The Team's `HasBudget` flag stays off; Budget integration is a later decision.
+- **No budget.** A group needing money asks the Board separately (two-thirds vote).
 - **No Discord sync.** Discord is a link field. The reserved `SyncServiceType.Discord` stays unused.
-- **No document versioning or collaborative editing.** One Markdown body, last write wins, no concurrency tokens (`memory/architecture/no-concurrency-tokens.md`). Groups draft long texts in the Drive folder and paste the publishable version.
-- **No document translation.** Documents are authored in one language. UI chrome is localized; content is not.
-- **No anonymous access.** The register is "published to members and collaborators", so signed-in humans only.
-- **No standing operational teams.** Clause 7: event teams are a separate resolution and stay in Teams as they are.
-- **No mass broadcast from a group.** Only the Board sends to the membership (surveys, and nothing else in v1).
-- Global-search contributor and agent knowledge-base entries are follow-ups, not v1.
+- **No document versioning or collaborative editing.** One Markdown body, last write wins, no concurrency tokens (`memory/architecture/no-concurrency-tokens.md`). Groups draft in their Drive folder (Google Docs) and paste the publishable Markdown.
+- **No document translation.** UI chrome is localized; content is not.
+- **No anonymous access.** Signed-in humans with an approved profile only, everywhere.
+- **No standing operational teams.** Clause 7: event teams stay in Teams.
+- **No mass broadcast from a group.** Surveys through the Surveys gate are the one channel to the membership.
+- Global-search contributor and agent knowledge-base entries are follow-ups.
 
 ## 4. Concepts & vocabulary
 
-- A **Workgroup** is one register entry: name, purpose, coordinators, target date, deliverable sentence, audience, status, and the bare Guid of the Team that backs it once registered.
-- The **deliverable sentence** is the guidance's "By [date] we will deliver [artefact] to [audience]", stored as three fields: `TargetDate`, `Deliverable` (one line), `Audience` (Board / Assembly / Community).
-- A **Coordinator** is one of the one or two people named on the register. The Board appoints whoever the group proposes (clause 3). Technically: the holders of the management role on the backing Team.
-- The **Secretary** is whoever holds the `WorkgroupsAdmin` role (see Q-2). Board and Admin can do everything the Secretary can.
-- A **Log entry** is one dated line in the group's history. System-written kinds record lifecycle steps; member-written kinds record meetings, updates, scope changes and disclosures.
-- A **Document** is a Markdown artefact owned by the group with a Draft → Published → Delivered life, an optional comment period, and, once delivered, the Board's disposition.
-- A **Comment** is a signed-in human's remark on a published document during its comment period.
-- **Dormant** is not a status. It is a flag the daily job raises on an Active group with no update or meeting in 60 days, cleared by the next update, acted on by the Secretary.
+- A **Workgroup** is one register entry: name, purpose, coordinators, target date, deliverable, audience, status, Drive folder, Discord link.
+- The **deliverable sentence** is the guidance's "By [date] we will deliver [artefact] to [audience]": `TargetDate`, `Deliverable` (one line), `DeliverableKind`, `Audience` (Board / Assembly / Community).
+- A **Coordinator** is one of the one or two people named on the register; the Board appoints whoever the group proposes (clause 3). Technically: a member row with `Role = Coordinator`.
+- The **Secretary** is a Board member; every Secretary action is available to `BoardOrAdmin`. No new role.
+- A **Member** is any signed-in human who joined. Standing approval (clause 3) means joining is immediate.
+- A **Meeting** is a dated session the group owns, optionally public, with minutes filled in afterwards.
+- A **Log entry** is one dated line in the group's history. System kinds record lifecycle steps; member kinds record updates, scope changes, disclosures, status requests and notes.
+- A **Document** is a Markdown artefact with a Draft → Published → Delivered life, an optional comment period, and, once delivered, the Board's disposition.
+- A **Comment** is a signed-in human's remark on a published document during its comment period, tagged with one of the document's categories, and answered by the group with a disposition and response.
+- **Dormant** is the terminal status: the group delivered, was closed for silence, or was abandoned. Roster and documents remain readable, the Drive folder goes read-only, nothing else changes. The Secretary may reactivate.
 
 ## 5. Actors & roles
 
 | Actor | Capabilities |
 |-------|--------------|
-| Any signed-in human with an approved profile | Browse the register and every group page; read published documents and the log; join or leave a group; comment during a comment period; request a status update; apply to form a group; disclose an interest on a group they belong to |
-| Workgroup member | Additionally read Draft documents; post Meeting, Update and Disclosure log entries |
-| Coordinator (management role on the backing Team) | Additionally edit the register entry (purpose, deliverable, target date, audience, Discord link); create, edit, publish and deliver documents; open and close comment periods; hide a comment with a reason; draft a survey and submit it for approval; mark the group Completed; edit or delete member log entries |
-| `WorkgroupsAdmin` (the Secretary), Board, Admin | Register, refer, refuse, withdraw, close; set coordinators; register on behalf (bootstrapping); record the Board's disposition on a delivered document; open and send a submitted survey (Board/Admin via Surveys, unchanged); view the admin queue |
+| Any signed-in human with an approved profile | Browse the register and every group page; read published documents, meetings and the log; join or leave a group; comment during a comment period; request a status update; apply to form a group |
+| Workgroup member | Additionally read Draft documents; edit the register fields; create and edit meetings and minutes; post Update, Disclosure and Note entries; create, edit, publish and deliver documents; open and close comment periods; define comment categories; respond to and dispose of comments; hide a comment with a reason; author a survey in Surveys and submit it for approval; mark the group done |
+| Coordinator | Everything a member can, plus: named on the register, addressee of notifications, may hand coordination to another member (1–2 coordinators at all times) |
+| Board, Admin (`BoardOrAdmin`) | Register, refer, refuse, withdraw, close, reactivate; set coordinators; register on behalf (bootstrapping); record the Board's disposition; approve-and-send a submitted survey (in Surveys); view the admin queue; edit any group |
+
+Per Peter: **all members can edit for now**; tighten to coordinators later if it proves necessary. The coordinator distinction is register-facing, not permission-facing, in v1.
 
 **Negative rules to verify in tests:**
 
-- A non-member cannot read a Draft document, post a log entry, or reach any coordinator route.
-- A coordinator cannot register, refuse, withdraw or close their own group, set the disposition, or open/send a survey.
+- A non-member cannot read a Draft document, post a log entry, create a meeting, edit register fields, or reach any document-mutation route.
+- A member cannot register, refer, refuse, withdraw, close, reactivate, record a disposition, or approve a survey.
 - Nobody can comment outside an open comment period, or on a Draft.
+- A Dormant group rejects every member mutation (log, meetings, documents, comments, register edits) with a clear message; only `BoardOrAdmin` actions remain.
 - Anonymous requests get the sign-in redirect on every route.
-
-> **Q-1 — Who may apply?** The resolution says a "group" notifies the Secretary. Options: (a) any signed-in human with an approved profile (recommended: registration is meant to be nearly automatic and the refusal grounds are the gate); (b) Colaborador and up; (c) Asociado only. Recommend (a).
-
-> **Q-2 — The Secretary role.** No `Secretary` role exists in `RoleNames`. Options: (a) new Board-grantable `WorkgroupsAdmin` role, following `RideshareAdmin` / `EETeamAdmin` (recommended: the resolution names an officer, not the whole Board, and the pattern exists); (b) Board-only, no new role. Recommend (a).
 
 ## 6. Lifecycle
 
 ```
-Applied ──register──▶ Active ──deliver+disposition / coordinator marks──▶ Completed
-   │                    │
-   ├──refer──▶ Referred ─┤ (Board decides at its next meeting: register or refuse)
+Applied ──register──▶ Active ◀──reactivate── Dormant
+   │                    │                       ▲
+   ├──refer──▶ Referred ─┤ (Board decides at its next meeting)
    │                    │
    ├──refuse──▶ Refused ├──withdraw (Board, reasons)──▶ Withdrawn
-                        └──close (Secretary: dormant, abandoned)──▶ Closed
+                        └──done / close ─────────────────┘
 ```
 
 | Status | Meaning | Who sets it |
 |--------|---------|-------------|
 | Applied | Notified; waiting on the Secretary (14-day clock from `AppliedAt`) | System, on apply |
-| Referred | A refusal ground may apply; Board decides at its next meeting | Secretary / Board / Admin |
-| Active | Registered. Team exists, page and log live | Secretary / Board / Admin |
-| Refused | Registration refused with written reasons | Secretary / Board / Admin |
-| Withdrawn | Registration withdrawn with written reasons | Board / Admin only |
-| Completed | Output delivered and disposed of, or the coordinator declares the work done | Coordinator, or Secretary on disposition |
-| Closed | Ended without delivery: quiet for two months with no answer, or abandoned | Secretary / Board / Admin |
+| Referred | A refusal ground may apply; the Board decides at its next meeting | BoardOrAdmin |
+| Active | Registered. Drive folder created, page and log live | BoardOrAdmin |
+| Refused | Registration refused with written reasons | BoardOrAdmin |
+| Withdrawn | Registration withdrawn with written reasons (clause 2) | BoardOrAdmin |
+| Dormant | Ended. `DormantReason`: Delivered, Abandoned (a member marked it done without delivery), Quiet (closed by the Secretary after the two-month silence) | Member (Delivered/Abandoned), BoardOrAdmin (any) |
 
 Rules:
 
-- Refused and Withdrawn require a non-empty `Reasons` text; it is shown on the group page (the resolution requires written reasons and minuting; the log is the written record, the minutes are the Board's).
-- Registration creates the Team (§8) before the status flips; if Team creation fails, the group stays Applied and the Secretary sees the error.
-- Completed and Closed deactivate nothing automatically in v1: the Team stays, Drive access stays, the page becomes read-only for members and coordinators (log and documents frozen; admins can still act). See Q-3.
-- The 14-day clock is a highlight on the admin queue, not an auto-registration. See Q-4.
-- Every transition writes a system log entry and an `AuditLogEntry` with `relatedEntityId = workgroup.Id`.
-
-> **Q-3 — What happens to the Team on Completed/Closed?** (a) leave it (recommended for v1: the roster and Drive are the group's record, and Teams already supports deactivation by Board if wanted); (b) deactivate the Team on close, keeping the Workgroups page as the record; (c) implementer decides. Recommend (a).
-
-> **Q-4 — Auto-register at day 14?** The resolution says the Secretary *shall* register within 14 days; it doesn't say the register does it alone. Recommend no: the queue turns red at day 14 and the Secretary and Board roles get a notification, but a human registers. Alternative: auto-register with a system log entry and an audit entry.
+- Refused and Withdrawn require non-empty `Reasons`, shown on the group page. The log is the written record; the minutes are the Board's.
+- Registration creates the Drive subfolder (§9) before the status flips; if creation fails, the group stays Applied and the Secretary sees the error and can retry.
+- Dormant flips the Drive folder to read-only through the access source (§9) and freezes the page for members. Reactivation reverses both and writes `Reactivated`. Reactivation is expected to be rare; recurring subjects form a new instance.
+- The 14-day clock is a highlight on the admin queue and a notification, never an auto-registration.
+- Every transition writes a system log entry and an `AuditLogEntry` with `relatedEntityId = workgroup.Id`, `relatedEntityType = "Workgroup"`.
 
 ## 7. Data model
 
-Own project `Humans.Workgroups`, own `WorkgroupsDbContext`, migrations under `Migrations/Workgroups`, context added to `SECTION_DB_CONTEXTS` in `build.yml`. Every cross-section reference is a bare Guid (`memory/architecture/no-cross-section-ef-joins.md`). Instants via NodaTime.
+Own project `Humans.Workgroups`, own `WorkgroupsDbContext`, migrations under `Migrations/Workgroups`, context added to `SECTION_DB_CONTEXTS` in `build.yml`. Every cross-section reference is a bare Guid (`memory/architecture/no-cross-section-ef-joins.md`). Instants and dates via NodaTime. Enums string-converted.
 
 ### Workgroup — `workgroups`
 
 | Property | Type | Notes |
 |----------|------|-------|
 | Id | Guid | PK |
-| Name | string (200) | Register name |
-| Slug | string (100) | Unique; generated from Name, editable by admins; also used as the Team's custom slug |
+| Name | string (200) | Register name; year instances put the year in the name |
+| Slug | string (100) | Unique; generated from Name, admin-editable |
 | Purpose | string (4000) | Markdown, sanitized on render |
 | Deliverable | string (500) | One line: the artefact |
-| Audience | WorkgroupAudience | Board / Assembly / Community (string-converted) |
-| TargetDate | LocalDate? | Expected delivery |
-| Status | WorkgroupStatus | §6 (string-converted) |
-| CoordinatorUserIds | jsonb list of Guid | 1–2 entries; the register value. Mirrored to the Team's management role on registration and on change |
-| TeamId | Guid? | Bare Guid; null until Active |
+| DeliverableKind | WorkgroupDeliverableKind | Recommendation, DraftPolicy, DecisionBrief, Report, AssemblyProposal, ResolutionProposal, DepartmentRegistration, Consultation, Event, Other |
+| Audience | WorkgroupAudience | Board / Assembly / Community |
+| TargetDate | LocalDate? | Expected delivery, or the event date for Event kinds |
+| Status | WorkgroupStatus | §6 |
+| DormantReason | WorkgroupDormantReason? | Delivered / Abandoned / Quiet; null unless Dormant |
+| DriveFolderId | string (100)? | Google file id of the group's subfolder; null until Active |
 | DiscordChannelUrl | string (500)? | |
 | Reasons | string (4000)? | Refusal or withdrawal reasons |
-| AppliedByUserId | Guid | Bare Guid |
-| AppliedAt / RegisteredAt / ResolvedAt | Instant / Instant? / Instant? | ResolvedAt = Refused/Withdrawn/Completed/Closed |
-| DormantSince | Instant? | Set by the job, cleared by the next Update/Meeting entry |
+| AppliedByUserId | Guid? | Bare Guid; nulled on erasure |
+| AppliedAt / RegisteredAt / EndedAt | Instant / Instant? / Instant? | |
+| DormantSince | Instant? | Set by the job on 60 days' silence, cleared by the next Update or Meeting; distinct from the Dormant status |
 | CreatedAt / UpdatedAt | Instant | |
 
-Indexes: `Slug` unique; `Status`; `TeamId` unique filtered non-null.
+Indexes: `Slug` unique; `Status`; `DriveFolderId` unique filtered non-null.
+
+### WorkgroupMember — `workgroup_members`
+
+| Property | Type | Notes |
+|----------|------|-------|
+| Id | Guid | PK |
+| WorkgroupId | Guid | FK → Workgroup, Cascade |
+| UserId | Guid | Bare Guid |
+| Role | WorkgroupMemberRole | Member / Coordinator |
+| JoinedAt | Instant | |
+| LeftAt | Instant? | Soft leave; the roster shows current members, the log keeps history |
+
+Unique filtered `(WorkgroupId, UserId)` where `LeftAt is null`. Invariant: an Active group has 1–2 rows with `Role = Coordinator` and `LeftAt null`; handing over or leaving as the last coordinator requires naming a replacement (Board/Admin can override).
+
+### WorkgroupMeeting — `workgroup_meetings`
+
+| Property | Type | Notes |
+|----------|------|-------|
+| Id | Guid | PK |
+| WorkgroupId | Guid | FK → Workgroup, Cascade |
+| Title | string (200) | |
+| StartUtc / EndUtc | Instant | |
+| Location / LocationUrl | string (500)? / string (2000)? | |
+| IsPublic | bool | Public meetings appear on everyone's community calendar; otherwise members only |
+| Minutes | string? | Markdown, filled in afterwards; "minutes or summarised transcripts" per the guidance |
+| CreatedByUserId | Guid? | Bare Guid |
+| CreatedAt / UpdatedAt | Instant | |
+| DeletedAt | Instant? | Soft delete |
+
+Index `(WorkgroupId, StartUtc)`. Meetings render inline in the log at their date, and as "upcoming" at the top of the group page.
 
 ### WorkgroupLogEntry — `workgroup_log_entries`
 
@@ -136,19 +166,18 @@ Indexes: `Slug` unique; `Status`; `TeamId` unique filtered non-null.
 |----------|------|-------|
 | Id | Guid | PK |
 | WorkgroupId | Guid | FK → Workgroup, Cascade |
-| Kind | WorkgroupLogKind | see below (string-converted) |
+| Kind | WorkgroupLogKind | below |
 | OccurredOn | LocalDate | Editable on member entries (bootstrapping backdates); system entries use the action date |
-| Title | string (200)? | Optional headline (meeting name, update month) |
-| Body | string (16000)? | Markdown, sanitized on render; minutes go here |
-| AuthorUserId | Guid? | Bare Guid; null for system entries |
-| CalendarEventId | Guid? | Bare Guid, Meeting entries only |
-| DocumentId | Guid? | FK → WorkgroupDocument (same section), SetNull |
-| SurveyId | Guid? | Bare Guid, SurveyRequested/SurveySent entries |
+| Title | string (200)? | |
+| Body | string (16000)? | Markdown, sanitized on render |
+| AuthorUserId | Guid? | Bare Guid; null for system entries and after erasure |
+| DocumentId | Guid? | FK → WorkgroupDocument, SetNull |
+| SurveyId | Guid? | Bare Guid |
 | CreatedAt / UpdatedAt | Instant | |
 
-`WorkgroupLogKind`: **system** — Applied, Registered, Referred, Refused, Withdrawn, Closed, Completed, CoordinatorChanged, ScopeChanged, DormancyInquiry, DocumentPublished, CommentPeriodOpened, CommentPeriodClosed, Delivered, DispositionRecorded, SurveyRequested, SurveySent; **member** — Meeting, Update, Disclosure, StatusRequested, Note.
+`WorkgroupLogKind`: **system** — Applied, Registered, Referred, Refused, Withdrawn, Ended, Reactivated, CoordinatorChanged, ScopeChanged, MemberJoined, MemberLeft, DormancyInquiry, DocumentPublished, CommentPeriodOpened, CommentPeriodClosed, Delivered, DispositionRecorded, SurveySubmitted, SurveySent; **member** — Update, Disclosure, StatusRequested, Note.
 
-Not §12 append-only: member entries are editable by their author and the coordinators, deletable by coordinators (audited). System entries are never edited.
+Member entries are editable by any member and deletable by any member (audited); system entries never change. Not §12 append-only by design: the log is a working record, the audit trail is the immutable one.
 
 ### WorkgroupDocument — `workgroup_documents`
 
@@ -157,18 +186,19 @@ Not §12 append-only: member entries are editable by their author and the coordi
 | Id | Guid | PK |
 | WorkgroupId | Guid | FK → Workgroup, Cascade |
 | Title | string (200) | |
-| Kind | WorkgroupDocumentKind | Deliverable / AnnualReport / Other (string-converted) |
-| Body | string | Markdown, sanitized on render; unbounded (text) |
-| Status | WorkgroupDocumentStatus | Draft / Published / Delivered (string-converted) |
-| CommentsOpenAt / CommentsCloseAt | Instant? | Both set = comment period defined; open when now is inside the window |
+| Kind | WorkgroupDocumentKind | Deliverable / AnnualReport / Other |
+| Body | string | Markdown, unbounded |
+| Status | WorkgroupDocumentStatus | Draft / Published / Delivered |
+| CommentCategories | jsonb list of string | Defined by the group before opening comments; e.g. "Scope", "Wording", "Timeline" |
+| CommentsOpenAt / CommentsCloseAt | Instant? | Window; open when now is inside it |
 | DeliveredAt | Instant? | |
 | Disposition | WorkgroupDisposition? | Accepted / Declined / Deferred / Noted |
 | DispositionNote | string (4000)? | The Board's written reply |
 | DispositionAt / DispositionByUserId | Instant? / Guid? | |
-| CreatedByUserId / UpdatedByUserId | Guid | Bare Guids |
+| CreatedByUserId / UpdatedByUserId | Guid? | Bare Guids; nulled on erasure |
 | CreatedAt / UpdatedAt | Instant | |
 
-Rules: Draft is visible to members, coordinators and admins only. Published requires a non-empty body. A comment period may only be set on a Published document and must end before Delivered. Delivered freezes the body. Disposition is recordable only on Delivered.
+Rules: Draft visible to members and admins only. Published requires a non-empty body. A comment window may only be set on a Published document with at least one category, and must end before Delivered. Delivered freezes the body. Disposition only on Delivered. Editing is last-write-wins with "last edited by X at T" shown.
 
 ### WorkgroupDocumentComment — `workgroup_document_comments`
 
@@ -176,113 +206,107 @@ Rules: Draft is visible to members, coordinators and admins only. Published requ
 |----------|------|-------|
 | Id | Guid | PK |
 | DocumentId | Guid | FK → WorkgroupDocument, Cascade |
-| AuthorUserId | Guid? | Bare Guid; null after erasure |
-| Body | string (4000) | Markdown, sanitized on render |
+| Category | string (100) | One of the document's categories at posting time |
+| AuthorUserId | Guid? | Bare Guid; null after erasure, **body kept indefinitely** |
+| Body | string (4000) | Markdown |
 | CreatedAt | Instant | |
-| HiddenAt / HiddenByUserId / HiddenReason | Instant? / Guid? / string (500)? | Coordinator moderation; hidden comments show "hidden by a coordinator" to everyone, full text to admins |
+| Disposition | WorkgroupCommentDisposition | Pending / Accepted / Rejected / Incorporated / Noted |
+| Response | string (4000)? | The group's answer |
+| RespondedByUserId / RespondedAt | Guid? / Instant? | |
+| HiddenAt / HiddenByUserId / HiddenReason | Instant? / Guid? / string (500)? | Moderation; hidden comments show "hidden by the group" to everyone, full text to admins |
 
-> **Q-5 — Comment period: in-app or Discord?** (a) in-app comments as above (recommended: the guidance expects a proposal to show "who was consulted, how, and what came back", and a durable record attached to the document is that); (b) a Discord thread link per document, no comments table, no moderation, no GDPR surface. Recommend (a).
+Comments are grouped by category on the document page. A member responds per comment; a bulk action applies one disposition and response to every Pending comment in a category. Responses are visible to all once set; the resolution's "show what you heard and decided against" is this record.
 
 ### WorkgroupSettings — `workgroup_settings` (singleton row)
 
-`ParentTeamId` (Guid?): the "Working Groups" department every backing Team is created under. Set once on `/Workgroups/Admin/Settings`. Registration is refused with a clear message while it is unset.
+`RootDriveFolderId` (string): the Workgroups root folder every subfolder is created under. Set on `/Workgroups/Admin/Settings`. Registration is refused with a clear message while unset.
 
-> **Q-6 — Settings home.** If `Humans.Settings` already offers a typed per-section key/value store, use it instead of this table. Implementer decides after reading `src/Sections/Humans.Settings/Docs`.
+> **Implementer decides:** if `Humans.Settings` already offers a typed per-section setting, use it instead of this table.
 
-## 8. The backing Team
+## 8. Calendar fan-out
 
-Each Active workgroup has exactly one Team, a **sub-team** of the "Working Groups" department, created by Workgroups through `ITeamService.CreateTeamAsync` (`[CrossSectionWrite]` per `memory/architecture/section-read-write-split.md`) with `requiresApproval = false` (clause 3 standing approval), the workgroup's slug, no Google group prefix, not hidden.
+Calendar's fan-out is extended so sections can feed the **community calendar**, not only the personal iCal feed. Teams will need the same shortly, so the shape is generic:
 
-Why a Team, and why a sub-team:
+- `ICalendarFeedContributor` (existing, `Humans.Calendar/Contracts`) gains a second call: public items for a window (`from`, `to`), alongside the existing per-user call. Existing contributors (Shifts, Events) return nothing for the public call until they want to.
+- Calendar's month grid, day list and agenda merge contributor items with its own `calendar_events`, marked by `Source`. The personal iCal feed is unchanged.
+- Workgroups implements the contributor: per-user items are the meetings of groups the user is a current member of (Active groups only); public items are meetings with `IsPublic = true`.
+- Calendar stays the only owner of `calendar_events`; Workgroups owns `workgroup_meetings`. No shared table, no bare-Guid link.
 
-- Roster, join/leave, Drive folder linking and sync, calendar ownership, team-scoped audit and budget all key off a TeamId today. A standalone membership model would rebuild all of it.
-- A sub-team keeps the Teams directory clean (one "Working Groups" department; sub-teams reachable from it) and makes every workgroup member a member of the department, which is where a shared "Working Groups" Drive root belongs.
-- The coordinator becomes the sub-team's **manager** (the management role definition, two slots, created programmatically on registration and assigned from `CoordinatorUserIds`). Managers are not added to the Coordinators system team and cannot manage Google resources, which matches clause 4: no authority beyond the group.
+> **Implementer decides:** one interface with two methods versus a second interface for the public call. Prefer one unless the merge in Calendar's views gets awkward.
 
-Consequences the implementer must handle:
+## 9. Drive access through a fan-out
 
-- `ITeamService` exposes no public join/leave or add/remove member methods (`AddSeededMemberAsync` is seed-only). v1 join/leave on the group page posts to Teams' own `/Teams/{slug}/Join` and `/Teams/{slug}/Leave` with a return URL, or Teams gains a narrow `JoinAsync/LeaveAsync` on `ITeamService`. **New public surface on Teams needs Peter's approval — see Q-7.**
-- Creating the management role definition and assigning it also needs `ITeamService` methods; check `CreateRoleDefinitionAsync` / `AssignToRoleAsync` exist on the contract, and add them narrowly if not (same Q-7).
-- Drive: the department's coordinator (the Secretary) or TeamsAdmin links each group's folder under the Working Groups shared drive via the existing `/Teams/{slug}/Resources`. No auto-provisioning in v1 (there is no folder-create capability in `IGoogleSyncService`; groups get provisioned). The group page shows the linked resources through `ITeamResourceService.GetTeamResourcesAsync`.
-- The sub-team manager can still reach `/Teams/{slug}/Members` and remove members. Workgroups does not expose removal; standing approval means members may participate, so removal is a Board matter. Accept the Teams-side reach in v1.
+GoogleIntegration gains a Drive access source, mirroring `IGoogleGroupMembershipSource`:
 
-> **Q-7 — Teams surface additions.** Expected: `JoinAsync`, `LeaveAsync`, and whatever role-definition/assignment write Workgroups needs, on `ITeamService`. Alternative: keep join/leave on Teams' routes (no new surface, slightly clunkier UX). Recommend the narrow additions; you approve them here or the implementer falls back to the routes.
+- `IGoogleDriveAccessSource` (in `Humans.GoogleIntegration.Contracts`): a section claims Drive file ids and returns expected access per user, `folderId → (userId → DrivePermissionLevel)`. GoogleIntegration owns email hydration, diffing, mutation, the sync log and reconciliation, exactly as it does for groups. `RequestSyncAsync(folderId)` for on-demand runs; the daily reconciliation covers drift.
+- `IGoogleSyncService.CreateSubfolderAsync(parentFolderId, name)` returns the new folder id. New client capability: the Drive client has permissions only today.
+- Workgroups implements the source. It claims every Active or Dormant group's `DriveFolderId` and the configured root:
+  - group folder, Active: current members → Contributor;
+  - group folder, Dormant: current members → Reader (read-only, per Peter);
+  - root: Board members, approved Asociados, approved Colaboradors → Reader (from `IUserServiceRead` tiers plus `SystemTeamIds.Board` membership through `ITeamServiceRead`).
+- Registration calls `CreateSubfolderAsync(root, workgroup.Name)`, stores the id, then requests a sync. Join, leave and status changes request a sync for the affected folder.
 
-## 9. Calendar
-
-Meetings are `CalendarEvent`s owned by the backing Team. The group page offers "Schedule a meeting" (`/Calendar/Event/Create?teamId=`) and "Full calendar" (`/Calendar/Team/{teamId}`).
-
-"Upcoming meetings" on the group page needs a read Calendar doesn't expose today: `ICalendarServiceRead` is internal and nothing outside the section reads an event. Proposal: promote a DTO-only `ICalendarServiceRead.GetUpcomingForTeamAsync(teamId, from, to)` to `Humans.Calendar/Contracts` (folder, no leaf: Workgroups is the only consumer). Calendar already holds the `CalendarEventInfo` projection and the occurrence expander, so this is exposure, not new logic.
-
-> **Q-8 — Calendar read surface.** (a) add the read above (recommended: you asked for upcoming meetings on the page); (b) v1 links only, upcoming list later. Recommend (a).
-
-A Meeting log entry is posted by a member after the fact, with minutes in the body and the `CalendarEventId` picked from the team's recent events. Nothing is written automatically when an occurrence passes.
+**Teams' own Drive path** (`google_resources` keyed by `TeamId`, reconciled by team membership) is not touched in this work. Migrating it onto the same source fan-out, so GoogleIntegration stops knowing about teams directly, is recorded in `docs/architecture/debt-ledger.yml` as follow-up debt.
 
 ## 10. Roster with association status
 
-Rendered on the group page from `ITeamServiceRead.GetTeamAsync(teamId).Members` stitched in memory with `IUserServiceRead.GetUserInfosAsync` for `MembershipTier`, plus membership of `SystemTeamIds.Board` for the Board badge. Labels: Board, Asociado, Colaborador, Volunteer. Coordinators carry a badge and sort first. Disclosures (§7, Kind = Disclosure) show as a small marker next to the member with the entry linked.
+`workgroup_members` stitched in memory with `IUserServiceRead.GetUserInfosAsync` for `MembershipTier`, plus `SystemTeamIds.Board` membership for the Board badge. Labels: Board, Asociado, Colaborador, Volunteer. Coordinators sort first with a badge. A member's Disclosure entries show as a marker next to their name, linked to the entry. Burner names only.
 
-Visible to signed-in humans only, like everything else here. No burner-name/legal-name split: burner name only, as on the public team page.
+Join is immediate (standing approval). Leave any time, except the last coordinator (§7). Both write a system log entry and request a Drive sync.
 
 ## 11. Surveys, gated
 
-Recommended shape, **Option A — Surveys gains a team owner**:
+Surveys becomes generically self-service with an approval gate; it never references Workgroups:
 
-- `Survey.OwningTeamId` (nullable bare Guid; Surveys already references `Humans.Teams.Contracts`).
-- `/Survey/Admin` authoring (Create, Edit, Preview, Save) additionally allowed for the management-role holders of `OwningTeamId` on surveys with that owner. **Open, Send, Close, Results and exports stay Board/Admin.** That is the gate: a coordinator can build, nobody but the Board can send.
-- A coordinator-owned survey may not be Identified (`AllowAnonymous` forced; anonymity tier restricted to CompletionTracked or Anonymous) so that authoring access never becomes personal-data access.
-- Workgroups adds "Submit for approval": writes a `SurveyRequested` log entry with the `SurveyId`, notifies Board and `WorkgroupsAdmin`. When the Board opens and sends, Workgroups isn't told; the coordinator posts a `SurveySent` entry, or the implementer adds a Surveys-side notification hook later. Results reach the group as a Board-shared export, or via a later "coordinator may read aggregate results" extension.
-
-**Option B — request only**: the coordinator writes the survey request as a document, the Board authors and sends in Surveys, links back by pasting the survey URL into a log entry. Zero Surveys change; the group never "makes" the survey.
-
-> **Q-9 — Survey gating.** You said groups make surveys; A does that with a real gate. B is much smaller. Recommend A, with the Identified restriction. Confirm, and confirm whether coordinators should be able to read aggregate results of their own survey in v1 (recommend no: Board shares results; keeps Surveys authorization change to authoring only).
+- Any signed-in human with an approved profile may create and edit a Draft survey they own (`CreatedByUserId`). They see only their own surveys on `/Survey/Admin`; Board/Admin see all.
+- New `SurveyStatus.PendingApproval`. The author submits; Board/Admin get a queue and one action, **Approve and send**, which opens the survey and sends the invitations in one step (Peter: no manual Board steps beyond the approval). Reject returns it to Draft with a note.
+- Author-owned surveys may be Identified (Peter's call); the author sees results and exports for their own survey after it closes. Board/Admin see everything as today.
+- Workgroups adds a "Surveys" panel on the group page: a member links a survey they authored (by id, from their own list) which writes `SurveySubmitted` when submitted and `SurveySent` when approved. Surveys raises no event to Workgroups in v1; the member posts the link, or the implementer adds a notification hook on approval if it's cheap.
 
 ## 12. Documents and the comment period
 
-- Coordinators create documents; members read drafts; coordinators publish. Publishing writes a `DocumentPublished` log entry and notifies the group's members.
-- A comment period is a window on a Published document. Opening it writes a log entry and notifies group members; the register index badges the group "open for comment". Any signed-in human may comment while it is open. Closing writes a log entry. Comments stay visible afterwards, read-only.
-- Deliver: coordinator marks the document Delivered (body freezes, `Delivered` log entry, Board and Secretary notified). The admin queue lists "awaiting disposition" with days since delivery, since the Board owes a written reply by its second meeting after delivery.
-- Disposition: Secretary/Board record Accepted / Declined / Deferred / Noted with the written note; `DispositionRecorded` log entry; coordinators and members notified. Deferred keeps the item in the queue with the note.
-- Annual report: a document with Kind = AnnualReport published in a given year satisfies clause 5 for that year. The queue flags Active groups whose `RegisteredAt` is more than a year past with no AnnualReport published in the last 12 months.
-
-Editing is last-write-wins with "last edited by X at T" shown; no concurrency tokens. Coordinators are told to draft in Drive.
+- Members create documents; members read drafts; members publish. Publishing writes `DocumentPublished` and notifies members.
+- Opening a comment period requires categories. It writes a log entry, notifies members, and badges the group "open for comment" on the register. Any signed-in human may comment while open. Closing writes a log entry; comments stay visible read-only.
+- Responses: per comment, disposition plus response; bulk by category. Response work may continue after the window closes.
+- Deliver: a member marks the document Delivered (body freezes, `Delivered` entry, Board notified). The admin queue lists "awaiting disposition" with days since delivery; the Board owes a written reply by its second meeting after delivery.
+- Disposition: BoardOrAdmin records Accepted / Declined / Deferred / Noted with the note; `DispositionRecorded` entry; members notified. Deferred stays in the queue.
+- Annual report: a document with Kind = AnnualReport published in a given year satisfies clause 5. The queue flags Active groups registered more than a year ago with no AnnualReport in the last 12 months.
 
 ## 13. Reporting rhythm and the daily job
 
-One Hangfire job (registered through the `SectionJobs` seam), daily, Active groups only. It acts only on what it can derive from the log, and every action it takes writes a log entry, an audit entry, and a notification:
+One Hangfire job (`SectionJobs` seam), daily, Active groups only. Every action it takes writes a log entry, an audit entry, and a notification:
 
 | Condition | Action |
 |-----------|--------|
-| No Update or Meeting entry in 30 days | Notify coordinators "monthly update due" (in-app only, once per 30-day window) |
-| No Update or Meeting entry in 60 days and `DormantSince` null | Set `DormantSince`, write `DormancyInquiry` entry, notify coordinators (email + in-app) and Secretary |
-| `DormantSince` older than 14 days and still no entry | Notify Secretary "close candidate"; the Secretary closes by hand |
-| StatusRequested entry older than 7 days with no later Update | Badge "status overdue" on the page and queue; no further nagging |
-| Applied older than 14 days | Queue row turns red; notify Secretary and Board once |
-| Delivered document with no disposition, older than 60 days | Queue row highlighted (a proxy for "two Board meetings") |
+| No Update or Meeting in 30 days | Notify coordinators "monthly update due" (in-app, once per window) |
+| No Update or Meeting in 60 days and `DormantSince` null | Set `DormantSince`, write `DormancyInquiry`, notify coordinators (email) and Board |
+| `DormantSince` older than 14 days, still silent | Notify Board "close candidate"; a human closes with reason Quiet |
+| StatusRequested older than 7 days with no later Update | Badge "status overdue" on page and queue |
+| Applied older than 14 days | Queue row red; notify Board once |
+| Delivered document with no disposition, older than 60 days | Queue row highlighted |
 
-Any Update or Meeting entry clears `DormantSince`.
+Any Update or Meeting clears `DormantSince`. No automatic closing.
 
-> **Q-10 — Auto-close dormant groups?** The guidance says "closed if no answer comes". Recommend the job flags and a human closes (register hygiene stays a Secretary act, matching how refusal and withdrawal are human acts). Alternative: auto-close at day 74 with system entries.
-
-"Request a status update" is a button any signed-in human can press once per group per 7 days; it writes a StatusRequested entry with an optional one-line question and notifies the coordinators. This is the guidance's "any member may ask" made concrete.
+"Request a status update" is a button any signed-in human may press once per group per 7 days; it writes StatusRequested with an optional one-line question and notifies the coordinators.
 
 ## 14. Notifications and email
 
-Through `INotificationService` (role targets) / `INotificationEmitter` (known recipients) and the Email crosscut; email only where marked.
+`INotificationService` / `INotificationEmitter` plus the Email crosscut; email only where marked.
 
 | Event | Recipients | Email |
 |-------|-----------|-------|
-| Applied | `WorkgroupsAdmin` role | yes |
+| Applied | Board role | yes |
 | Referred | Board role | yes |
-| Registered / Refused / Withdrawn / Closed | coordinators | yes |
+| Registered / Refused / Withdrawn / Ended / Reactivated | coordinators | yes |
 | Coordinators changed | old and new coordinators | yes |
 | Update due (30d) | coordinators | no |
-| Dormancy inquiry (60d) | coordinators, Secretary | yes |
+| Dormancy inquiry (60d) | coordinators, Board | yes |
 | Status requested | coordinators | no |
-| Document published / comment period opened | group members | no |
-| Delivered | Board role, Secretary | yes |
-| Disposition recorded | coordinators, group members | coordinators yes |
-| Survey submitted for approval | Board role, Secretary | yes |
+| Document published / comment period opened | members | no |
+| Comment responded | comment author | no |
+| Delivered | Board role | yes |
+| Disposition recorded | members | coordinators yes |
+| Survey approved and sent (if the Surveys hook lands) | members | no |
 
 ## 15. Routes
 
@@ -290,92 +314,103 @@ Member-facing (`[Authorize]`, approved profile), localized in all six cultures:
 
 | Method | Route | Purpose |
 |--------|-------|---------|
-| GET | `/Workgroups` | Register: Active (with badges: open for comment, dormant, status overdue), Pending (Applied/Referred), Archive (Completed, Closed, Withdrawn, Refused with reasons) |
-| GET/POST | `/Workgroups/Apply` | Clause 1 form: name, purpose, coordinator(s) (self pre-filled, second optional), target date, deliverable, audience, Discord link |
-| GET | `/Workgroups/{slug}` | Group page: header and status; deliverable sentence; coordinators; links (Discord, Drive resources, calendar); upcoming meetings; roster; documents; log (newest first); actions by role |
-| POST | `/Workgroups/{slug}/Join`, `/Leave` | Via Teams (Q-7) |
-| POST | `/Workgroups/{slug}/RequestStatus` | StatusRequested entry |
-| GET/POST | `/Workgroups/{slug}/Edit` | Coordinator: register fields; any change to deliverable/target date/audience writes ScopeChanged |
-| GET/POST | `/Workgroups/{slug}/Log/Add`, `/Log/{id}/Edit`, POST `/Log/{id}/Delete` | Member/coordinator entries |
-| GET | `/Workgroups/{slug}/Documents/{id}` | Read; Draft gated to members |
-| GET/POST | `/Workgroups/{slug}/Documents/Create`, `/{id}/Edit` | Coordinator |
-| POST | `/Workgroups/{slug}/Documents/{id}/Publish`, `/OpenComments`, `/CloseComments`, `/Deliver` | Coordinator |
-| POST | `/Workgroups/{slug}/Documents/{id}/Comments` | Any signed-in human, open period only |
-| POST | `/Workgroups/{slug}/Comments/{id}/Hide` | Coordinator, reason required |
-| POST | `/Workgroups/{slug}/Complete` | Coordinator |
-| POST | `/Workgroups/{slug}/Surveys/{surveyId}/Submit` | Coordinator (Option A) |
+| GET | `/Workgroups` | Register: Active (badges: open for comment, dormant-flag, status overdue), Pending (Applied/Referred), Archive (Dormant with reason, Withdrawn, Refused with reasons) |
+| GET/POST | `/Workgroups/Apply` | Clause 1 form: name, purpose, coordinator(s) (self pre-filled, second optional), target date, deliverable, kind, audience, Discord link |
+| GET | `/Workgroups/{slug}` | Group page: header and status; deliverable sentence; coordinators; links (Discord, Drive folder); upcoming meetings; roster; documents; surveys; log with meetings inline; actions by role |
+| POST | `/Workgroups/{slug}/Join`, `/Leave` | |
+| POST | `/Workgroups/{slug}/RequestStatus` | |
+| GET/POST | `/Workgroups/{slug}/Edit` | Members: register fields; changes to deliverable, kind, target date or audience write ScopeChanged |
+| POST | `/Workgroups/{slug}/Coordinators` | Members: hand over / add second coordinator |
+| GET/POST | `/Workgroups/{slug}/Meetings/Create`, `/{id}/Edit`; POST `/{id}/Delete` | Members; Edit includes minutes |
+| GET/POST | `/Workgroups/{slug}/Log/Add`, `/{id}/Edit`; POST `/{id}/Delete` | Members |
+| GET | `/Workgroups/{slug}/Documents/{id}` | Read; Draft gated to members; comments grouped by category |
+| GET/POST | `/Workgroups/{slug}/Documents/Create`, `/{id}/Edit` | Members |
+| POST | `/Workgroups/{slug}/Documents/{id}/Publish`, `/OpenComments`, `/CloseComments`, `/Deliver` | Members |
+| POST | `/Workgroups/{slug}/Documents/{id}/Comments` | Any signed-in human, open window only |
+| POST | `/Workgroups/{slug}/Comments/{id}/Respond`, `/Hide`; `/Documents/{id}/Comments/RespondCategory` | Members |
+| POST | `/Workgroups/{slug}/Done` | Members: Dormant with reason Delivered or Abandoned |
+| POST | `/Workgroups/{slug}/Surveys/Link` | Members: attach an authored survey |
 
-Admin (`/Workgroups/Admin/*`, policy `WorkgroupsAdminBoardOrAdmin`, localization-exempt):
+Admin (`/Workgroups/Admin/*`, `BoardOrAdmin`, localization-exempt):
 
 | Method | Route | Purpose |
 |--------|-------|---------|
-| GET | `/Workgroups/Admin` | Queue: pending with day counts, awaiting disposition, dormant, annual report due, status overdue |
-| POST | `/Workgroups/Admin/{id}/Register`, `/Refer`, `/Refuse`, `/Withdraw` (Board/Admin), `/Close` | Reasons required on Refuse/Withdraw/Close |
-| POST | `/Workgroups/Admin/{id}/Coordinators` | Set 1–2; mirrors to the Team's management role |
-| GET/POST | `/Workgroups/Admin/RegisterExisting` | Bootstrapping: apply on behalf with a backdated `RegisteredAt`, immediately Active |
-| POST | `/Workgroups/Admin/Documents/{id}/Disposition` | Record the Board's reply |
-| GET/POST | `/Workgroups/Admin/Settings` | Parent department |
+| GET | `/Workgroups/Admin` | Queue: pending with day counts, awaiting disposition, dormancy flags, annual report due, status overdue |
+| POST | `/Workgroups/Admin/{id}/Register`, `/Refer`, `/Refuse`, `/Withdraw`, `/Close`, `/Reactivate` | Reasons required on Refuse/Withdraw/Close |
+| POST | `/Workgroups/Admin/{id}/Coordinators` | Override |
+| GET/POST | `/Workgroups/Admin/RegisterExisting` | Bootstrapping: apply on behalf, backdated `RegisteredAt`, immediately Active |
+| POST | `/Workgroups/Admin/Documents/{id}/Disposition` | The Board's reply |
+| GET/POST | `/Workgroups/Admin/Settings` | Root Drive folder |
 
-Authorization is resource-based per design-rules §11: `WorkgroupAuthorizationHandler` + `WorkgroupOperationRequirement` (Read, Member, Coordinate, Administer), with coordinator resolved from the Team's management-role holders.
+Authorization per design-rules §11: `WorkgroupAuthorizationHandler` + `WorkgroupOperationRequirement` (Read, Member, Administer), member resolved from `workgroup_members`, Dormant denying every Member operation.
 
-## 16. Navigation
+## 16. Navigation and dashboards
 
-- Main nav "Workgroups" (`SectionNav` seam) for signed-in humans.
-- Admin tile "Workgroups" (`SectionAdminTiles` seam or whatever the seam is named) for the admin policy.
-- Group page ↔ Team page ↔ calendar cross-links. Team page of a workgroup-backed team shows "This team backs the workgroup …" only if Teams offers a slot for it; otherwise skip (no Teams edit for a link).
-- Home dashboard widget "your workgroups" is a follow-up.
+- **No main-nav entry.** Entry points are the Governance page and the member home dashboard.
+- New Base seam **`ISectionDashboardTiles`**: sections contribute tiles to a named dashboard (`Governance` for now). `/Governance` renders the slot; Workgroups contributes "Active workgroups" (name, coordinator, deliverable sentence, next meeting, badges). Governance never references Workgroups. If the implementer finds `ISectionChrome`'s slot mechanism already covers this with a new slot name, prefer that over a new interface and say so in the PR.
+- **"My workgroups"** on the member home dashboard through the existing `ISectionMemberDashboard` seam: groups the user belongs to, with update-due and open-comment badges; empty state links to the register.
+- `ISectionThingsToDo`: "monthly update due" and "status update requested" for coordinators.
+- Admin tile "Workgroups" through `ISectionAdminTiles` for `BoardOrAdmin`.
+
+The `governance-scope` memory atom is updated in this PR: Governance is the layer that runs the association itself (statutes, tiers, Board voting, assemblies, working groups), above the event layer everything else serves. Board usage is still audience, not ownership; Workgroups stays its own section and reaches the Governance page only through the seam.
 
 ## 17. Cross-section dependencies
 
 | Section | Interface | Use |
 |---------|-----------|-----|
-| Teams | `ITeamServiceRead`, `ITeamService` (`[CrossSectionWrite]`) | roster, coordinator check, create team, role/assign, join/leave (Q-7) |
 | Users | `IUserServiceRead` | names, `MembershipTier`, approved-profile check |
-| Calendar | new `ICalendarServiceRead` read (Q-8) | upcoming meetings |
-| GoogleIntegration | `ITeamResourceService.GetTeamResourcesAsync` | Drive links on the page |
-| Surveys | none from Workgroups (link by id); Surveys changes are inside Surveys (Q-9) | |
-| Notifications, Email, AuditLog | crosscuts | §13, §14, audit on every admin/job action |
+| Teams | `ITeamServiceRead` | Board membership (`SystemTeamIds.Board`) for badges and root Drive readers |
+| Calendar | `ICalendarFeedContributor` (extended, §8) — inbound | Workgroups implements it; Calendar names nothing |
+| GoogleIntegration | `IGoogleDriveAccessSource` (new, §9) — inbound; `IGoogleSyncService.CreateSubfolderAsync`, `RequestSyncAsync` — outbound | folder creation and sync |
+| Surveys | none (link by id); Surveys' own changes in §11 | |
+| Notifications, Email, AuditLog | crosscuts | §13, §14, audit on every admin and job action |
 | Gdpr | `IUserDataContributor` | §18 |
 
-Workgroups is a Section (owns tables), not an orchestrator. No `.Contracts` leaf until something needs one; don't pre-split.
+Workgroups is a Section (owns tables). No `.Contracts` leaf until a consumer needs one; don't pre-split.
 
 ## 18. GDPR
 
-New personal data: log entry authorship and bodies, document authorship, comments, disclosures, coordinator ids, `AppliedByUserId`.
+New personal data: membership rows, log entry authorship and bodies, meeting authorship, document authorship, comments, coordinator role, `AppliedByUserId`.
 
-- **Export:** one `IUserDataContributor` slice: memberships are Teams' concern; Workgroups exports the user's log entries, documents created/updated, comments (including hidden ones), and groups they applied for or coordinate.
-- **Erasure:** comments by the user are deleted (they are personal opinion, not the association's record); log entries and documents keep their content with `AuthorUserId` / `CreatedByUserId` / `UpdatedByUserId` set to null (the group's record survives, attribution doesn't); the user is removed from `CoordinatorUserIds` and `AppliedByUserId` is nulled, and the Secretary is notified if a group loses its last coordinator.
-- **Merge:** fold all user-id columns from source to target.
-- **Consent:** nothing new is gated; joining a group is a member's own action.
+- **Export:** one `IUserDataContributor` slice: memberships (with role and dates), log entries, meetings created, documents created or updated, comments (including hidden ones, with disposition and response).
+- **Erasure:** attribution is nulled everywhere (`AuthorUserId`, `CreatedByUserId`, `UpdatedByUserId`, `RespondedByUserId`, `AppliedByUserId`); **content stays** — comments, log bodies, minutes and documents are the association's record and remain indefinitely (Peter's call). Membership rows are deleted. If the user was the last coordinator of an Active group, the Board is notified.
+- **Merge:** fold all user-id columns from source to target; collapse duplicate membership rows.
+- **Consent:** nothing new is gated; joining is the member's own action.
 
 ## 19. Localization
 
-All member-facing strings in `Humans.Workgroups` resx in en, es, de, it, fr, ca (parity tests). `/Workgroups/Admin/*` exempt. Document and log content is user-authored and not translated.
+All member-facing strings in `Humans.Workgroups` resx in en, es, de, it, fr, ca (parity tests). `/Workgroups/Admin/*` exempt. User-authored content is not translated.
 
 ## 20. Tests (`tests/Humans.Workgroups.Tests`)
 
-- State machine: every allowed transition and every disallowed one (e.g. Refused → Active is not a path; Withdrawn only by Board/Admin; reasons required).
-- Authorization deny paths from §5, including Draft visibility and comment-period gating.
+- State machine: every allowed transition and every disallowed one; reasons required; Dormant freezes member mutations; Reactivate restores them.
+- Authorization deny paths from §5, including Draft visibility, comment-window gating, last-coordinator leave.
 - Job: each row of §13 fires once and clears correctly; every job action audits.
-- Document rules: publish requires body; comment window only on Published; Delivered freezes; disposition only on Delivered.
-- GDPR contributor: export shape; erasure nulls attribution and deletes comments; merge folds ids.
-- Team creation on registration: failure leaves the group Applied.
+- Document rules: publish requires body; comment window only on Published with categories; Delivered freezes; disposition only on Delivered; bulk category response touches only Pending.
+- Drive source: expected access for Active vs Dormant folders and the root; join/leave/status change request a sync.
+- Calendar contributor: member meetings per user, public meetings in window, Dormant groups excluded from per-user.
+- GDPR contributor: export shape; erasure nulls attribution and keeps content; merge folds ids.
+- Registration: subfolder creation failure leaves the group Applied.
+
+Surveys' and Calendar's own changes are tested in their own projects.
 
 ## 21. Bootstrapping today's groups
 
-`/Workgroups/Admin/RegisterExisting` creates an Active group with a backdated `RegisteredAt`, then coordinators backfill Meeting/Update entries with their real `OccurredOn` dates. No import tooling.
+`/Workgroups/Admin/RegisterExisting` creates an Active group with a backdated `RegisteredAt` and creates its subfolder; members then backfill meetings and Update entries with real dates. No import tooling.
 
-## 22. Decision summary for Peter
+## 22. Decisions taken (for the record)
 
-| Q | Decision needed | Recommendation |
-|---|-----------------|----------------|
-| Q-1 | Who may apply | Any signed-in human with an approved profile |
-| Q-2 | Secretary role | New `WorkgroupsAdmin` role |
-| Q-3 | Team after Completed/Closed | Leave it |
-| Q-4 | Auto-register at day 14 | No; highlight and notify |
-| Q-5 | Comment period | In-app comments |
-| Q-6 | Settings storage | Implementer decides after reading Settings |
-| Q-7 | Teams surface: join/leave, role write | Approve narrow additions |
-| Q-8 | Calendar read surface | Approve `GetUpcomingForTeamAsync` |
-| Q-9 | Survey gating | Option A, no Identified surveys, results stay Board-only |
-| Q-10 | Auto-close dormant | No; flag, human closes |
+| Topic | Decision |
+|-------|----------|
+| Team-backed? | No. Own membership; workgroups are time-bound, teams are not |
+| Who may apply / join | Any signed-in human with an approved profile; joining is immediate |
+| Who edits | All members, for now |
+| Secretary | A Board member; `BoardOrAdmin`, no new role |
+| Auto-register at day 14 / auto-close dormant | No; flag and notify, a human acts |
+| End state | Dormant with reason; Drive read-only; reactivation allowed |
+| Comments | In-app, categorised, per-comment disposition and response, body kept forever, attribution erasable |
+| Calendar | Calendar fan-out extended for public items; Workgroups owns meetings |
+| Drive | Drive access source fan-out in GoogleIntegration plus subfolder creation; Teams path migrates later (ledgered) |
+| Surveys | Generic self-service authoring with PendingApproval and one-click approve-and-send; Identified allowed; author sees results |
+| Navigation | No main nav; Governance dashboard tile via new `ISectionDashboardTiles`; "My workgroups" via `ISectionMemberDashboard` |
+| Anonymous | Never |

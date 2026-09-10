@@ -266,6 +266,9 @@ themes:
     remaining: 10
     notes: Each inbox entry carries its own review tier; drained entries are deleted from the list.
 inbox:
+  - added: 2026-09-10
+    what: "GoogleIntegration's Drive sync knows about Teams directly: google_resources rows are keyed by TeamId and expected Drive access is derived from team membership inside the connector. The Workgroups design (src/Sections/Humans.Workgroups/Docs/2026-09-10-workgroups-section-design.md §9) introduces IGoogleDriveAccessSource, the Drive analogue of IGoogleGroupMembershipSource, with Workgroups as its first source. Migrate Teams' Drive path onto the same fan-out so the connector stops referencing team membership at all (Teams becomes a source that claims its google_resources folder ids); then the connector owns only clients, diffing, mutation and the sync log. Peter's call 2026-09-10: 'should google-drive have a fanout then, instead of knowing about teams directly?' — yes, as follow-up after Workgroups lands."
+    review: panel
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
   - added: 2026-08-28
     what: "docs/architecture/freshness-catalog.yml has no Settings entry — add one covering src/Sections/Humans.Settings/** and src/Sections/Humans.Settings.Contracts/** (finding 14, /section-doctor on Settings 2026-08-28)."
