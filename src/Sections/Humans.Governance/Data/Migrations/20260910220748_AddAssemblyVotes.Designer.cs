@@ -3,6 +3,7 @@ using System;
 using Humans.Governance.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NodaTime;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Governance.Data.Migrations
 {
     [DbContext(typeof(GovernanceDbContext))]
-    partial class GovernanceDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260910220748_AddAssemblyVotes")]
+    partial class AddAssemblyVotes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
