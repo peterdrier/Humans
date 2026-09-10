@@ -55,8 +55,10 @@ its continued presence is a pending ruling (see Seams), not a structural need.
 - An admit with a matched guest writes the Attended participation row for the active year via
   `IUserService.SetParticipationFromTicketSyncAsync`; failure there never fails the admit.
 - Vendor mirror is best-effort, non-retrying (TicketTailor check-ins double-record), gated by
-  `Gate:VendorMirrorEnabled`, and ledger-claimed atomically so live path + backfill never
-  double-post.
+  `Gate:VendorMirrorEnabled`. The backfill claims the ledger atomically before enqueueing, so
+  overlapping backfill sends never double-post; live admits mark the ledger *after* their
+  enqueue, so a backfill click in that instant can still re-send one — accepted, not a
+  guarantee.
 - Write routes carry `GateAdmit`, read routes `ScannerAccess`; the admin pages
   `TicketAdminOrAdmin`; the backfill page `AdminOnly`. The card shows name + verdict + one
   reason; EE source, prior scanner identity, and GUIDs stay server-side.
@@ -66,7 +68,8 @@ its continued presence is a pending ruling (see Seams), not a structural need.
 
 ### Seams
 
-- **Per-person claim flow** (peterdrier#1075 bypassed it; upstream #933 tracks deletion): the
+- **Per-person claim flow** (peterdrier#1075 bypassed it; nobodies-collective/Humans#933
+  tracks deletion): the
   `Claim`/`ClaimPin`/`EndShift`/`Search` actions, `gate_staff_pins` + PIN service methods,
   roster pre-fill (`Gate:RosterTeamId`, Shifts read), and the admin PIN enrolment UI all exist
   for a flow that may or may not return. Until Peter rules, changes here should neither extend

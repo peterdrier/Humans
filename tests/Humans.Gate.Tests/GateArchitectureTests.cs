@@ -78,7 +78,10 @@ public class GateArchitectureTests
                     or nameof(GateController.SetStaffPin) or nameof(GateController.ResetStaffPin)
                 ? PolicyNames.TicketAdminOrAdmin
                 : PolicyNames.GateAdmit;
-            post.GetCustomAttribute<AuthorizeAttribute>()?.Policy.Should().Be(expected,
+            var attribute = post.GetCustomAttribute<AuthorizeAttribute>();
+            attribute.Should().NotBeNull(
+                because: $"POST {post.Name} must not inherit only the class-level read policy");
+            attribute!.Policy.Should().Be(expected,
                 because: $"POST {post.Name} must not inherit only the class-level read policy");
         }
 
