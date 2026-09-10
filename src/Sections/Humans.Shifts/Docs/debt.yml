@@ -1,4 +1,7 @@
 # Section debt ledger for Humans.Shifts. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-inbox: []
+inbox:
+  - added: 2026-09-10
+    what: "Docs/Shifts.md:322, :345 and :354 name ITeamService.GetTeamNamesByIdsAsync, which exists nowhere in the code; the live surface is ITeamServiceRead.GetTeamsAsync / GetTeamAsync. Found fixing the same claim in Feedback (/section-doctor on Feedback 2026-08-31; swept in by /section-doctor on Rideshare 2026-09-10)."
+    review: light
