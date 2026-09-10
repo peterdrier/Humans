@@ -3,12 +3,12 @@
   src/Sections/Humans.Notifications.Contracts/**
 -->
 <!-- freshness:flag-on-change
-  Board contract, entry shape, audience labels, rebuild/reconcile semantics, admin view routes, or the per-source migration table may have shifted. This spec supersedes notification-inbox.md once phase 3 lands.
+  Board contract, entry shape, audience labels, rebuild/reconcile semantics, admin view routes, or the per-source migration table may have shifted. This spec supersedes notification-inbox.md once phase 4 lands.
 -->
 
 # Notification Board
 
-**Status:** Approved design (Peter, 2026-09-09). Supersedes [`notification-inbox.md`](notification-inbox.md) when phase 3 lands; until then that document describes what runs.
+**Status:** Approved design (Peter, 2026-09-09). Supersedes [`notification-inbox.md`](notification-inbox.md) when phase 4 lands; until then that document describes what runs.
 
 ## Business Context
 
@@ -25,7 +25,7 @@ The decisions that reshape it:
 ## Concepts
 
 - A **Notification Entry** is one open item of work for one or more humans, published by the section that owns the underlying state and retracted by that same section when the state changes. It has a section-owned idempotent **Key**.
-- An **Audience** is the label of who an entry was published for: `User`, `Role:<name>`, `Team:<slug>`, `TeamCoordinators:<slug>`, `CampLeads:<seasonId>`. The publishing section resolves the label to user ids itself; the board records both. An entry may be published to several audiences at once. New kinds are a new label, not a change to Notifications.
+- An **Audience** is the label of who an entry was published for: `User`, `Role:<name>`, `Team:<teamId>`, `TeamCoordinators:<teamId>`, `CampLeads:<seasonId>`. Entity audiences carry the entity's Guid, so the admin view can name them through `IEntityNameContributor`; role audiences carry the role name, which is already a label. The publishing section resolves the label to user ids itself; the board records both. An entry may be published to several audiences at once. New kinds are a new label, not a change to Notifications.
 - An **Audience owner** is the section that owns an audience's membership: Auth for `Role`, Teams for `Team` and `TeamCoordinators`, Camps for `CampLeads`. It tells the board when that membership changes; it never touches another section's entries.
 - The **Board** is the process-wide in-memory map of entries, indexed by user, by audience, and by source. It is a materialized view of the sections' live predicates: incremental publish/retract is the fast path, the predicate is the truth, reconcile bounds the drift.
 - A **Publisher** is a section's implementation of the fan-out contract that can enumerate every entry it currently owes, for everyone. Used at startup and by reconcile.
@@ -78,13 +78,16 @@ public sealed record NotificationEntry(
 
 public sealed record NotificationRecipients(NotificationAudience Audience, IReadOnlyCollection<Guid> UserIds);
 
-public sealed record NotificationAudience(NotificationAudienceKind Kind, string? Id = null);
+public sealed record NotificationAudience(
+    NotificationAudienceKind Kind,
+    Guid? EntityId = null,     // Team, TeamCoordinators, CampLeads: the entity's id, resolvable by IEntityNameContributor
+    string? RoleName = null);  // Role: the RoleNames constant
 ```
 
 Rules:
 
 - Entries carry resource keys, not rendered text. The board holds items for every user and users have different cultures; the bell renders each entry in the viewer's culture through `IStringLocalizerFactory.Create(entry.ResourceType)`. Format args stay culture-neutral (names, counts, NodaTime values) and are formatted at render in the viewer's culture; a section never pre-formats a date or number, because a startup or reconcile publish has no viewer and a write-path publish only has the actor's culture.
-- Audience labels carry ids only. The admin view resolves them to names through `IEntityNameContributor`, as it resolves user ids; Camps contributes season names if it does not already.
+- Audience labels carry no display text. Entity audiences carry a Guid the admin view resolves through `IEntityNameContributor.ResolveNamesAsync(IReadOnlyCollection<Guid>)`, the same call that resolves user ids; Camps contributes season names if it does not already. Role audiences render the role name directly.
 - `Publish`, `Retract`, `RetractByPrefix` and `RefreshAudience` are synchronous, in-memory, and never throw to the caller. A malformed entry, an unknown section, or a key outside the section's prefix is logged and dropped.
 - A section calls `Publish` and `Retract` in the write path that changes the state, in the same place it writes audit. The same rule that puts audit after the business save applies.
 - Ownership is the key prefix. The `section` argument names a registered publisher and must match the key prefix, so a typo or collision cannot remove another section's entries by accident. A caller lying about its section is not a threat model inside one process; reconcile re-adds anything wrongly removed and counts it as drift. If it ever bites, an analyzer on the `section` literal is the fix, not a runtime identity scheme.
@@ -100,13 +103,13 @@ Read surface (internal, consumed by the section's own views and by the admin pag
 - `CountForUser(userId)` → the badge.
 - `ByAudience()`, `BySource()`, `Health()` → the admin page.
 
-**Startup.** A hosted service registered by the section's `Section.Register` runs after all sections are registered: it calls every `INotificationPublisher.PublishAllAsync` in parallel, fail-soft per publisher (a throwing publisher is logged; its entries are absent until the next reconcile). The bell renders empty until the rebuild completes; requests are never blocked on it. `Health()` exposes `RebuiltAt`.
+**Startup.** A hosted service registered by the section's `Section.Register` runs after all sections are registered and performs a reconcile against the empty board: the same sequence-aware, per-section diff described below, so a write-path publish or retract that lands while a publisher is still reading wins over that publisher's older snapshot exactly as it does during a scheduled reconcile. Publishers run in parallel and fail soft (a throwing publisher is logged; its entries are absent until the next reconcile). The bell renders empty until the rebuild completes; requests are never blocked on it. `Health()` exposes `RebuiltAt`.
 
 **Reconcile.** A Hangfire job, `notifications-reconcile`, on a fixed interval (implementer's call; start at 15 minutes), also scheduled a few seconds after any `RefreshAudience` call. It never swaps the board. It records the current mutation sequence, runs every publisher into a scratch board, then applies a per-section diff to the live board under the lock:
 
 - A publisher that threw is skipped: its section's live entries are left untouched and it is counted in `publisher_failures`. Only sections whose publisher succeeded are diffed.
 - A key the live path mutated after the recorded sequence (published, re-published, or retracted with a tombstone) is excluded from the diff: the write path is newer than the publisher's snapshot and wins. Tombstones older than the recorded sequence are cleared when the reconcile completes.
-- For the rest: added, removed, and user-set changes are applied, with `PublishedAt` preserved for keys that survive. Each is counted. A user-set change on an entry carrying an audience with a pending `RefreshAudience` is counted as `audience_refresh`; every other count is drift, and drift is a bug in a section's write path, not something to tune away.
+- For the rest: added, removed, and user-set changes are applied, with `PublishedAt` preserved for keys that survive. Each is counted. An addition, removal, or user-set change on an entry carrying an audience with a pending `RefreshAudience` is counted as `audience_refresh` (a new Board member gains per-member vote entries, a departed one loses them); every other count is drift, and drift is a bug in a section's write path, not something to tune away.
 
 **Rebuild now.** Same code as reconcile, triggered from the admin page. Audited as an admin action.
 
@@ -151,7 +154,7 @@ Through `IMeters.Declare`, exported under the existing Humans meter. `IMeters` i
 | `notifications.reconcile.added` | entries the last reconcile added (incremental path missed a publish) |
 | `notifications.reconcile.removed` | entries the last reconcile removed (incremental path missed a retract) |
 | `notifications.reconcile.changed` | user-set corrections not attributable to an audience refresh |
-| `notifications.reconcile.audience_refresh` | user-set corrections attributable to a `RefreshAudience` call |
+| `notifications.reconcile.audience_refresh` | additions, removals and user-set corrections attributable to a `RefreshAudience` call |
 | `notifications.publisher_failures` | publishers that threw on the last rebuild or reconcile |
 
 The three drift gauges (`added`, `removed`, `changed`) are the ones to alert on.
@@ -164,12 +167,12 @@ Every source today, and what it becomes. Audience is who the entry is published 
 
 | Today | Owner | Entry | Audience | Retracted when |
 |-------|-------|-------|----------|----------------|
-| TeamJoinRequestSubmitted, join-requests meter | Teams | one per pending request | `TeamCoordinators:<slug>`; a second entry per team for `Role:Admin` when the team has no coordinator | request decided or withdrawn |
+| TeamJoinRequestSubmitted, join-requests meter | Teams | one per pending request | `TeamCoordinators:<teamId>`; a second entry per team for `Role:Admin` when the team has no coordinator | request decided or withdrawn |
 | ShiftCoverageGap | Shifts | one per upcoming shift with confirmed < minimum, same predicate `CheckAndNotifyCoverageGapAsync` uses | `TeamCoordinators:<rota's team>` | shift reaches minimum, is cancelled, or starts |
 | IssueSubmitted | Issues | one per open unassigned issue | one `Role:<name>` recipient set per routed role from `IssueSectionRouting.RolesFor`, plus `Role:Admin`, all on the one entry | assigned or terminal |
 | IssueAssigned | Issues | one per open issue assigned to you | `User` | reassigned or terminal |
 | TermRenewalReminder | Governance | one per term expiring within the job's window | `User` | renewed or expired |
-| Board-vote meter | Governance | one per application awaiting your vote | `Role:Board`, published per board member as `User` since "awaiting *your* vote" is per person | voted or decided |
+| Board-vote meter | Governance | one per (application, board member) still to vote, since "awaiting *your* vote" is per person | `Role:Board`, with a single-member recipient set on each entry, so a Board membership refresh attributes to the role | voted or decided |
 | AccessSuspended | Users | one while suspended | `User` | unsuspended |
 | ReConsentRequired, LegalDocumentPublished, consents things-to-do | Governance | one per required consent outstanding | `User` | consent signed |
 | Consent-review meter, onboarding-pending meter | Users | one per profile awaiting review | `Role:ConsentCoordinator`, `Role:Board`, `Role:VolunteerCoordinator` | reviewed |
@@ -178,12 +181,13 @@ Every source today, and what it becomes. Audience is who the entry is published 
 | Ticket-sync meter | Tickets | one while in error state | `Role:Admin` | sync recovers |
 | Camp-lead meter | Camps | one per pending requester on a season you lead | `CampLeads:<seasonId>` | request decided or season closed |
 | Shift-info things-to-do | Shifts | one while a signed-up volunteer's shift profile is empty | `User` | profile filled |
+| RideshareInterestReceived | Rideshare | one per pending interest awaiting your decision on your trip or request | `User` | accepted, declined, or withdrawn |
 
 Every-active-user fan-out (`LegalDocumentSyncService.TryFanoutAsync`) is deleted; the consents entry covers it per user.
 
 ### Becomes an email, in the owning section, separate PR each
 
-These have no channel once the in-app row goes. They are not gated on the board work; the in-app rows go first.
+These have no channel once the in-app row goes. The list is a recommendation Peter has not yet ruled on; whichever rows survive land as additive email PRs **before** phase 4, so no deployment leaves an event with no channel at all. A row Peter strikes moves to the deleted list.
 
 | Today | Trigger, recipient | Email category |
 |-------|--------------------|----------------|
@@ -194,10 +198,13 @@ These have no channel once the in-app row goes. They are not gated on the board 
 | CampMembershipSeasonClosed | season withdrawn while your request pends | TeamUpdates |
 | ShiftAssigned | coordinator puts you on a shift you did not pick | VolunteerUpdates |
 | IssueStatusChanged | your issue reaches a terminal status (reporter only; intermediate moves stay silent) | System |
+| RideshareInterestAccepted, RideshareInterestDeclined | the trip owner or requester decides your interest | VolunteerUpdates |
 
 ### Deleted with no replacement
 
-TeamMemberAdded (both branches; the member branch already emails), TeamJoinRequestDecided approve branch (already emails), ApplicationApproved, ApplicationRejected, ProfileRejected, FeedbackResponse, WorkspaceCredentialsReady, CampaignReceived (all already email), IssueComment (assignee sees it on the issue; the admin-comment email to the reporter stays), CampRoleAssigned, GoogleDriftDetected, FacilitatedMessageReceived (already emails), and the three dead sources ConsentReviewNeeded, ApplicationSubmitted, VolunteerApproved.
+TeamMemberAdded (both branches; the member branch already emails), TeamJoinRequestDecided approve branch (already emails), ApplicationApproved, ApplicationRejected, ProfileRejected, FeedbackResponse, WorkspaceCredentialsReady, CampaignReceived (all already email), IssueComment (assignee sees it on the issue; the admin-comment email to the reporter stays), ShiftSignupChange (a coordinator's news about a signup; the consequence that matters is the coverage-gap entry), CampRoleAssigned, GoogleDriftDetected, FacilitatedMessageReceived (already emails), and the three dead sources ConsentReviewNeeded, ApplicationSubmitted, VolunteerApproved.
+
+Every value of `NotificationSource` at the time of writing (0 to 35, 17 unused) appears in exactly one of the three tables above. A source added between now and phase 4 gets a row before the switch lands.
 
 ## What is deleted
 
@@ -206,7 +213,7 @@ TeamMemberAdded (both branches; the member branch already emails), TeamJoinReque
 - `NotificationService`, `NotificationEmitter`, `NotificationInboxService`, `NotificationMeterProvider`, `NotificationRepository`, `CleanupNotificationsJob`, the `IUserMerge` and `IUserDataContributor` participation (the board holds nothing to export; a merged or deleted user's entries go with the owning section's state and the next reconcile).
 - Controller routes Resolve, Dismiss, MarkRead, MarkAllRead, BulkResolve, BulkDismiss, ClickThrough, and the inbox views behind them.
 - `INotificationMeterCacheInvalidator` and its two call sites; `CacheKeys.NotificationBadgeCounts`, `NotificationMeters`, `CampLeadJoinRequestsBadge`.
-- The 32 emitting call sites across Teams, Shifts, Issues, Camps, Auth, Governance, Feedback, Onboarding, Users, Campaigns, GoogleIntegration, Consent; the three auto-resolve call sites.
+- The 35 emitting call sites across Teams, Shifts, Issues, Camps, Auth, Governance, Feedback, Onboarding, Users, Campaigns, GoogleIntegration, Consent, Rideshare; the three auto-resolve call sites.
 - `ISectionThingsToDo` and its three implementations, `ThingsToDoViewComponent` in Shell.
 - Users' `CommunicationPreference.InboxEnabled`: property override first, column drop in the same drop PR as the tables, per [`no-column-drops-for-decoupling`](../../../../../memory/architecture/no-column-drops-for-decoupling.md).
 
@@ -224,9 +231,9 @@ The board holds user ids and entry args (which may include display names) in RAM
 
 1. **Board core** (Notifications only, no user-visible change). Contracts, board, startup rebuild, reconcile job, gauges, `/Notifications/Admin` with Rebuild, `ISectionAdminNav` entry. Tests under `tests/Humans.Notifications.Tests`: publish/retract idempotence, `PublishedAt` survival, multi-audience publish and by-audience index, ownership rejection, reconcile diff, a live mutation during reconcile winning over the snapshot, a failed publisher leaving its entries alone, audience-refresh classification, per-user isolation, admin deny path.
 2. **Publishers**, one PR per section, additive: implement `INotificationPublisher`, add `Publish`/`Retract` at the write sites, keep the old emits. The admin page is the verification surface: after each section lands, its entries appear there and the reconcile gauges stay at zero.
-3. **The switch** (one PR, mostly deletion): bell, popup, `/Notifications` and the dashboard list read from the board; everything under "What is deleted" except the tables and the column goes; `Notifications.md` rewritten to this shape; `notification-inbox.md` deleted.
-4. **Drop PR**: tables, context, migrations, `InboxEnabled` column. Needs Peter's per-case approval with evidence the tables hold nothing in use.
-5. **Emails**, seven, one PR each in the owning section, any time after phase 3.
+3. **Emails**, one additive PR each in the owning section, for whichever rows of the email table Peter keeps. Must be deployed before phase 4 so no event loses its only channel.
+4. **The switch** (one PR, mostly deletion): bell, popup, `/Notifications` and the dashboard list read from the board; everything under "What is deleted" except the tables and the column goes; `Notifications.md` rewritten to this shape; `notification-inbox.md` deleted. Gated on phases 2 and 3 being complete for every section.
+5. **Drop PR**: tables, context, migrations, `InboxEnabled` column. Needs Peter's per-case approval with evidence the tables hold nothing in use.
 
 ## Implementer's calls
 
@@ -234,7 +241,7 @@ The board holds user ids and entry args (which may include display names) in RAM
 - Reconcile interval.
 - Whether `NotificationAudienceKind` is an enum or the label string; the admin view only groups by it.
 - Ordering and grouping on `/Notifications` and in the popup.
-- Whether the Board-vote entry is published once per application with `Role:Board` and the per-member "have I voted" filter applied at read time, or once per (application, member) as `User`. The table above picks the latter because the board never filters; revisit if it makes Governance's write path noisy.
+- The Board-vote entry is one per (application, member) carrying the `Role:Board` audience with a one-member recipient set, because the board never filters at read time and a Board membership change must attribute to the role. Revisit only if it makes Governance's write path noisy.
 
 ## Rules this touches
 
