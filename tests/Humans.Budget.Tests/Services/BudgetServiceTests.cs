@@ -135,6 +135,18 @@ public sealed class BudgetServiceTests
             .WithMessage("*between 0 and 21*");
     }
 
+    [HumansTheory]
+    [InlineData(-1)]
+    [InlineData(22)]
+    public async Task UpdateTicketingProjectionAsync_rejects_vat_rates_outside_0_to_21(int vatRate)
+    {
+        var act = () => _service.UpdateTicketingProjectionAsync(
+            Guid.NewGuid(), null, null, 0, 0m, 0m, vatRate, 0m, 0m, 0m, Guid.NewGuid());
+
+        await act.Should().ThrowAsync<ArgumentOutOfRangeException>()
+            .WithMessage("*between 0 and 21*");
+    }
+
     // ─── CreateYearAsync with scaffold ──────────────────────────────────────
 
     [HumansFact]
@@ -392,7 +404,6 @@ public sealed class BudgetServiceTests
         ticketingGroup.Categories.Select(c => c.Name).Should()
             .BeEquivalentTo("Ticket Revenue", "Processing Fees");
 
-        // Single audit log entry for the year creation.
         var auditEntries = await ctx.BudgetAuditLogs
             .Where(a => a.BudgetYearId == year.Id)
             .ToListAsync(TestContext.Current.CancellationToken);
@@ -434,7 +445,6 @@ public sealed class BudgetServiceTests
         years.Single(y => string.Equals(y.Year, "2026", StringComparison.Ordinal)).Status
             .Should().Be(BudgetYearStatus.Active);
 
-        // Both status transitions audited.
         var auditEntries = await ctx2.BudgetAuditLogs
             .Where(a => a.FieldName == nameof(BudgetYear.Status))
             .ToListAsync(TestContext.Current.CancellationToken);
@@ -566,7 +576,7 @@ public sealed class BudgetServiceTests
                 TicketTailorFees: 5m)
         };
 
-        var changed = await _service.SyncTicketingActualsAsync(_yearId, actuals, TestContext.Current.CancellationToken);
+        var changed = await _service.SyncTicketingActualsAsync(_yearId, actuals, actorUserId: null, TestContext.Current.CancellationToken);
 
         changed.Should().BeGreaterThan(0);
 
@@ -587,6 +597,49 @@ public sealed class BudgetServiceTests
     }
 
     [HumansFact]
+    public async Task SyncTicketingActualsAsync_writes_audit_entry_with_null_actor_for_automation()
+    {
+        await SeedTicketingYearAsync();
+
+        var actuals = new List<TicketingWeeklyActuals>
+        {
+            new(Monday: new LocalDate(2026, 3, 2),
+                Sunday: new LocalDate(2026, 3, 8),
+                WeekLabel: "Mar 2–Mar 8",
+                TicketCount: 10,
+                Revenue: 500m,
+                StripeFees: 15m,
+                TicketTailorFees: 5m)
+        };
+
+        await _service.SyncTicketingActualsAsync(_yearId, actuals, actorUserId: null, TestContext.Current.CancellationToken);
+
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var auditEntry = await ctx.BudgetAuditLogs
+            .SingleAsync(a => a.BudgetYearId == _yearId && a.Description.StartsWith("Ticketing sync:"), TestContext.Current.CancellationToken);
+        auditEntry.ActorUserId.Should().BeNull(because: "a null actor marks the entry as automation");
+    }
+
+    [HumansFact]
+    public async Task RefreshTicketingProjectionsAsync_writes_audit_entry_with_the_acting_user()
+    {
+        var (groupId, _, _, _) = await SeedTicketingYearAsync();
+        await ConfigureProjectionAsync(groupId,
+            startDate: new LocalDate(2026, 3, 15),
+            eventDate: new LocalDate(2026, 4, 15),
+            averageTicketPrice: 100m,
+            dailySalesRate: 5m);
+
+        var actor = Guid.NewGuid();
+        await _service.RefreshTicketingProjectionsAsync(_yearId, actor, TestContext.Current.CancellationToken);
+
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var auditEntry = await ctx.BudgetAuditLogs
+            .SingleAsync(a => a.BudgetYearId == _yearId && a.Description.StartsWith("Ticketing projections refreshed:"), TestContext.Current.CancellationToken);
+        auditEntry.ActorUserId.Should().Be(actor);
+    }
+
+    [HumansFact]
     public async Task SyncTicketingActualsAsync_is_noop_when_no_ticketing_group()
     {
         await using (var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
@@ -603,7 +656,7 @@ public sealed class BudgetServiceTests
 
         var result = await _service.SyncTicketingActualsAsync(
             _yearId,
-            new List<TicketingWeeklyActuals>(), TestContext.Current.CancellationToken);
+            new List<TicketingWeeklyActuals>(), actorUserId: null, TestContext.Current.CancellationToken);
 
         result.Should().Be(0);
     }
@@ -618,7 +671,7 @@ public sealed class BudgetServiceTests
             averageTicketPrice: 100m,
             dailySalesRate: 5m);
 
-        var created = await _service.RefreshTicketingProjectionsAsync(_yearId, TestContext.Current.CancellationToken);
+        var created = await _service.RefreshTicketingProjectionsAsync(_yearId, actorUserId: null, TestContext.Current.CancellationToken);
 
         created.Should().BeGreaterThan(0);
 
@@ -630,12 +683,9 @@ public sealed class BudgetServiceTests
         projectedRevenueItems.Should().NotBeEmpty();
     }
 
-    // Regression test for Codex P1 (PR #298 review): projected line items were
-    // being computed from stale projection parameters because the plan was
-    // pre-built in the service before UpdateProjectionFromActuals ran in the
-    // repo. The fix moves materialization into the repo atomic op AFTER the
-    // projection is updated from actuals, so projected items reflect the
-    // newly-learned average price / fee percentages in the same sync.
+    // Guards the ordering invariant: materialization runs in the repo AFTER
+    // UpdateProjectionFromActuals, so projected items use the newly-learned
+    // average price / fee percentages rather than the pre-sync ones.
     [HumansFact]
     public async Task SyncTicketingActualsAsync_projected_items_use_post_update_avg_price_not_pre_sync_value()
     {
@@ -661,7 +711,7 @@ public sealed class BudgetServiceTests
                 TicketTailorFees: 0m)
         };
 
-        await _service.SyncTicketingActualsAsync(_yearId, actuals, TestContext.Current.CancellationToken);
+        await _service.SyncTicketingActualsAsync(_yearId, actuals, actorUserId: null, TestContext.Current.CancellationToken);
 
         await using var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
 
@@ -671,11 +721,8 @@ public sealed class BudgetServiceTests
 
         // Projected: revenue items must reflect the new AvgPrice of 50.
         // Given 5 tickets/day * 7 days = 35 tickets/week at 50 = 1750/week.
-        // The first projected week includes an initial burst if start date hadn't passed,
-        // but in this setup the projection start (Apr 6) is the current-week Monday
-        // (Apr 6 is after today 2026-03-31), so the initial burst IS included.
-        // To keep the test precise and independent of burst math, just assert that
-        // every projected week's revenue divides evenly by 50 (the new learned price).
+        // Assert divisibility by 50 rather than exact totals: independent of
+        // initial-burst math.
         var projectedItems = await ctx.BudgetLineItems
             .Where(li => li.BudgetCategoryId == revenueCatId
                 && li.Description.StartsWith("Projected:"))
@@ -699,6 +746,164 @@ public sealed class BudgetServiceTests
                 ticketCount * 50m,
                 because: $"projected revenue must use post-sync learned price (50), not pre-sync value (100); item '{item.Description}' had {ticketCount} tickets");
         }
+    }
+
+    // ─── Sync never touches hand-entered items ──────────────────────────────
+
+    [HumansFact]
+    public async Task SyncTicketingActualsAsync_never_touches_hand_entered_line_items()
+    {
+        var (groupId, _, revenueCatId, _) = await SeedTicketingYearAsync();
+        await ConfigureProjectionAsync(groupId,
+            startDate: new LocalDate(2026, 4, 6),
+            eventDate: new LocalDate(2026, 5, 4),
+            averageTicketPrice: 50m,
+            dailySalesRate: 5m);
+
+        var manualId = Guid.NewGuid();
+        var manualProjectedId = Guid.NewGuid();
+        await using (var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
+        {
+            ctx.BudgetLineItems.Add(new BudgetLineItem
+            {
+                Id = manualId,
+                BudgetCategoryId = revenueCatId,
+                Description = "Vendor deposit",
+                Amount = 123.45m,
+                Notes = "hand-entered",
+                IsAutoGenerated = false
+            });
+            // Hand-entered item that happens to carry the sweep prefix: only
+            // IsAutoGenerated items may be removed or upserted by the sync.
+            ctx.BudgetLineItems.Add(new BudgetLineItem
+            {
+                Id = manualProjectedId,
+                BudgetCategoryId = revenueCatId,
+                Description = "Projected: manual note",
+                Amount = -10m,
+                IsAutoGenerated = false
+            });
+            await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var actuals = new List<TicketingWeeklyActuals>
+        {
+            new(Monday: new LocalDate(2026, 3, 16),
+                Sunday: new LocalDate(2026, 3, 22),
+                WeekLabel: "Mar 16-Mar 22",
+                TicketCount: 20,
+                Revenue: 1000m,
+                StripeFees: 15m,
+                TicketTailorFees: 30m)
+        };
+
+        await _service.SyncTicketingActualsAsync(_yearId, actuals, actorUserId: null, TestContext.Current.CancellationToken);
+
+        await using var verify = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var manual = await verify.BudgetLineItems.SingleAsync(li => li.Id == manualId, TestContext.Current.CancellationToken);
+        manual.Description.Should().Be("Vendor deposit");
+        manual.Amount.Should().Be(123.45m);
+        manual.Notes.Should().Be("hand-entered");
+        manual.IsAutoGenerated.Should().BeFalse();
+
+        var manualProjected = await verify.BudgetLineItems.SingleAsync(li => li.Id == manualProjectedId, TestContext.Current.CancellationToken);
+        manualProjected.Amount.Should().Be(-10m);
+        manualProjected.IsAutoGenerated.Should().BeFalse();
+
+        (await verify.BudgetLineItems.AnyAsync(li => li.IsAutoGenerated, TestContext.Current.CancellationToken))
+            .Should().BeTrue(because: "the sync must still materialize its own auto items alongside");
+    }
+
+    // ─── Summary computation ────────────────────────────────────────────────
+
+    [HumansFact]
+    public void ComputeBudgetSummary_excludes_cashflow_only_and_breaks_out_vat()
+    {
+        var groupId = Guid.NewGuid();
+        var catSales = new BudgetCategoryDetail(Guid.NewGuid(), groupId, "Sales", 0m, ExpenditureType.OpEx, null, 0,
+        [
+            new BudgetLineItemDetail(Guid.NewGuid(), Guid.NewGuid(), "Ticket income", 110m, null, null, new LocalDate(2026, 5, 1), 10, false, false, 0)
+        ]);
+        var catOps = new BudgetCategoryDetail(Guid.NewGuid(), groupId, "Ops", 0m, ExpenditureType.OpEx, null, 0,
+        [
+            new BudgetLineItemDetail(Guid.NewGuid(), Guid.NewGuid(), "Equipment", -121m, null, null, new LocalDate(2026, 5, 1), 21, false, false, 0)
+        ]);
+        var catDonations = new BudgetCategoryDetail(Guid.NewGuid(), groupId, "Donations", 0m, ExpenditureType.OpEx, null, 0,
+        [
+            new BudgetLineItemDetail(Guid.NewGuid(), Guid.NewGuid(), "Donations", 999m, null, null, null, 0, false, true, 0)
+        ]);
+        IReadOnlyList<BudgetGroupDetail> groups =
+        [
+            new(groupId, Guid.NewGuid(), "Main", 0, false, false, false, null, [catSales, catOps, catDonations])
+        ];
+
+        var summary = _service.ComputeBudgetSummary(groups);
+
+        // VAT-inclusive amounts: the 110 income at 10% carries 10 of VAT (a liability);
+        // the 121 expense at 21% carries 21 (a credit). The 999 cashflow-only item is out.
+        summary.TotalIncome.Should().Be(131m);
+        summary.TotalExpenses.Should().Be(-131m);
+        summary.NetBalance.Should().Be(0m);
+        summary.IncomeSlices.Select(sl => sl.Name).Should().BeEquivalentTo(["Sales", "VAT Credits"]);
+        summary.ExpenseSlices.Select(sl => sl.Name).Should().BeEquivalentTo(["Ops", "VAT Liability"]);
+    }
+
+    // ─── Closed year gates every tree mutation ──────────────────────────────
+
+    public static TheoryData<string> ClosedYearMutations => new()
+    {
+        "create-group", "update-group", "delete-group",
+        "create-category", "update-category", "delete-category",
+        "create-line-item", "update-line-item", "delete-line-item",
+        "sync-departments", "ensure-ticketing-group", "update-ticketing-projection",
+        "update-year", "sync-ticketing-actuals", "refresh-ticketing-projections"
+    };
+
+    [HumansTheory]
+    [MemberData(nameof(ClosedYearMutations))]
+    public async Task Repository_mutations_refuse_when_year_is_closed(string mutation)
+    {
+        // One closed year carrying a normal group + category + line item and a
+        // ticketing group with a projection row, so every mutation has a target.
+        var groupId = Guid.NewGuid();
+        var categoryId = Guid.NewGuid();
+        var lineItemId = Guid.NewGuid();
+        var ticketingGroupId = Guid.NewGuid();
+        await using (var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
+        {
+            ctx.BudgetYears.Add(new BudgetYear { Id = _yearId, Year = "2026", Name = "Budget 2026", Status = BudgetYearStatus.Closed });
+            ctx.BudgetGroups.Add(new BudgetGroup { Id = groupId, BudgetYearId = _yearId, Name = "Departments" });
+            ctx.BudgetCategories.Add(new BudgetCategory { Id = categoryId, BudgetGroupId = groupId, Name = "Operations" });
+            ctx.BudgetLineItems.Add(new BudgetLineItem { Id = lineItemId, BudgetCategoryId = categoryId, Description = "Rent", Amount = -1m });
+            ctx.BudgetGroups.Add(new BudgetGroup { Id = ticketingGroupId, BudgetYearId = _yearId, Name = "Ticketing", IsTicketingGroup = true });
+            ctx.TicketingProjections.Add(new TicketingProjection { Id = Guid.NewGuid(), BudgetGroupId = ticketingGroupId });
+            await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var actor = Guid.NewGuid();
+        var now = Clock.GetCurrentInstant();
+        var ct = TestContext.Current.CancellationToken;
+        Func<Task> act = mutation switch
+        {
+            "create-group" => () => _repository.CreateGroupAsync(_yearId, "New", false, actor, now, ct),
+            "update-group" => () => _repository.UpdateGroupAsync(groupId, "Renamed", 1, false, actor, now, ct),
+            "delete-group" => () => _repository.DeleteGroupAsync(groupId, actor, now, ct),
+            "create-category" => () => _repository.CreateCategoryAsync(groupId, "New", 0m, ExpenditureType.OpEx, null, actor, now, ct),
+            "update-category" => () => _repository.UpdateCategoryAsync(categoryId, "Renamed", 1m, ExpenditureType.OpEx, actor, now, ct),
+            "delete-category" => () => _repository.DeleteCategoryAsync(categoryId, actor, now, ct),
+            "create-line-item" => () => _repository.CreateLineItemAsync(new BudgetLineItemDraft(categoryId, "New", 1m, null, null, null, 0), actor, now, ct),
+            "update-line-item" => () => _repository.UpdateLineItemAsync(new BudgetLineItemUpdate(lineItemId, "Renamed", 2m, null, null, null, 0), actor, now, ct),
+            "delete-line-item" => () => _repository.DeleteLineItemAsync(lineItemId, actor, now, ct),
+            "sync-departments" => () => _repository.SyncDepartmentCategoriesAsync(_yearId, [new BudgetableTeamRef(Guid.NewGuid(), "Team")], actor, now, ct),
+            "ensure-ticketing-group" => () => _repository.EnsureTicketingGroupAsync(_yearId, actor, now, ct),
+            "update-ticketing-projection" => () => _repository.UpdateTicketingProjectionAsync(new TicketingProjectionUpdate(ticketingGroupId, null, null, 0, 0m, 0m, 10, 0m, 0m, 0m), actor, now, ct),
+            "update-year" => () => _repository.UpdateYearAsync(_yearId, "2027", "Renamed", actor, now, ct),
+            "sync-ticketing-actuals" => () => _repository.SyncTicketingActualsAsync(_yearId, [], Clock.GetCurrentInstant().InUtc().Date, actor, now, ct),
+            "refresh-ticketing-projections" => () => _repository.RefreshTicketingProjectionsAsync(_yearId, Clock.GetCurrentInstant().InUtc().Date, actor, now, ct),
+            _ => throw new ArgumentOutOfRangeException(nameof(mutation), mutation, null)
+        };
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*closed*");
     }
 
     // ─── Seeding helpers ────────────────────────────────────────────────────

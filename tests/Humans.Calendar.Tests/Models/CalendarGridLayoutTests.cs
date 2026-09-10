@@ -2,12 +2,39 @@ using AwesomeAssertions;
 using Humans.Calendar.Models;
 using Humans.Calendar.Services.Dtos;
 using NodaTime;
+using Xunit;
 
 namespace Humans.Calendar.Tests.Models;
 
 public sealed class CalendarGridLayoutTests
 {
     private static readonly LocalDate WeekStart = new(2026, 6, 1);
+
+    // The controller queries this range and Index.cshtml lays it out. While each computed it
+    // separately the query covered only the month's own days, so every leading and trailing
+    // cell was structurally empty — an event on 31 August could not appear in September.
+    [HumansTheory]
+    // September 2026 starts on a Tuesday and ends on a Wednesday.
+    [InlineData(2026, 9, 2026, 8, 31, 2026, 10, 4)]
+    // February 2027 starts on a Monday, so there is no leading pad.
+    [InlineData(2027, 2, 2027, 2, 1, 2027, 2, 28)]
+    // A month ending on a Sunday needs no trailing pad either.
+    [InlineData(2026, 5, 2026, 4, 27, 2026, 5, 31)]
+    public void MonthGridBounds_Covers_every_cell_the_grid_renders(
+        int year, int month,
+        int startYear, int startMonth, int startDay,
+        int endYear, int endMonth, int endDay)
+    {
+        var (gridStart, gridEnd) = CalendarGridLayout.MonthGridBounds(new YearMonth(year, month));
+
+        gridStart.Should().Be(new LocalDate(startYear, startMonth, startDay));
+        gridEnd.Should().Be(new LocalDate(endYear, endMonth, endDay));
+
+        // Monday-first, whole weeks: the grid is always a multiple of seven days.
+        gridStart.DayOfWeek.Should().Be(IsoDayOfWeek.Monday);
+        gridEnd.DayOfWeek.Should().Be(IsoDayOfWeek.Sunday);
+        (Period.Between(gridStart, gridEnd.PlusDays(1), PeriodUnits.Days).Days % 7).Should().Be(0);
+    }
 
     [HumansFact]
     public void BuildWeekLayout_Reuses_the_lowest_non_conflicting_banner_slot()

@@ -178,7 +178,9 @@ internal sealed class DevelopmentBudgetSeeder(
             budgetYearId = budgetYearSummary.Id;
             if (budgetYearSummary.IsDeleted)
             {
-                await budgetService.RestoreYearAsync(budgetYearId, actorUserId);
+                // An archived demo year is a deliberate operator state — leave it
+                // archived rather than resurrecting it.
+                return $"Budget demo year '{budgetYearSummary.Name}' is archived; skipped budget seeding.";
             }
         }
 
@@ -198,7 +200,6 @@ internal sealed class DevelopmentBudgetSeeder(
             activatedBudgetYear = true;
         }
 
-        // Load full year tree — groups, categories, line items — for in-memory lookups
         var currentYear = await budgetService.GetYearByIdAsync(budgetYearId)
             ?? throw new InvalidOperationException($"Budget year {budgetYearId} not found after creation");
 

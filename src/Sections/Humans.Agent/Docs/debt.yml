@@ -7,4 +7,4 @@ inbox:
     review: light
   - added: 2026-08-28
     what: "AgentService.RunTurnAsync is 210 LOC / CC 42 and AnthropicClient.StreamAsync 153 LOC / CC 42 (reforge). Both are the load-bearing streaming loops the target shape blesses (manual enumerator for error-path billing; SSE block assembly); recorded so the score is not mistaken for unexamined debt (/section-doctor on Agent 2026-08-28)."
-    review: panel
+    review: light

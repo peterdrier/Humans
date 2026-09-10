@@ -11,12 +11,10 @@ namespace Humans.Calendar.Services;
 /// current CLR type names.
 /// </para>
 /// <para>
-/// They were written as <c>nameof(CalendarEvent)</c> and <c>nameof(Team)</c>. The first
-/// would silently change what the code writes and queries if the entity were ever renamed;
-/// the second names an entity in a section that has not moved yet, and stops compiling the
-/// day Teams does. Declaring both as literals is what makes those changes schema-inert the
-/// way the EF <c>ToTable</c> calls already are (memory/code/type-name-as-persisted-string.md).
-/// Never regenerate these from <c>nameof</c>.
+/// Never regenerate these from <c>nameof</c>: renaming the CLR type would silently change
+/// what the code writes and queries, and <c>nameof(Team)</c> would additionally stop
+/// compiling the day Teams moves. Literals keep both changes schema-inert, the way the EF
+/// <c>ToTable</c> calls already are (memory/code/type-name-as-persisted-string.md).
 /// </para>
 /// </remarks>
 internal static class AuditEntityTypes

@@ -8,8 +8,8 @@
 
 | Debt | Goes to |
 |---|---|
-| One-off whose fix is inside a single `src/Sections/Humans.<X>/` — **any** section, not only the one you are working in | that section's [`src/Sections/Humans.<X>/Docs/debt.yml`](../../src/Sections) — create it if absent |
-| One-off spanning sections, or in `Humans.Base` / `Humans.Web` / `tests/` / infrastructure | `inbox:` in [`docs/architecture/debt-ledger.yml`](../../docs/architecture/debt-ledger.yml) |
+| One-off whose fix is inside a single `src/Sections/Humans.<X>/` **or its own test project `tests/Humans.<X>.Tests/`** — **any** section, not only the one you are working in | that section's [`src/Sections/Humans.<X>/Docs/debt.yml`](../../src/Sections) — create it if absent |
+| One-off spanning sections, or in `Humans.Base` / `Humans.Web` / shared `tests/` (`Humans.Testing`, `Humans.Integration.Tests`, …) / infrastructure | `inbox:` in [`docs/architecture/debt-ledger.yml`](../../docs/architecture/debt-ledger.yml) |
 | Recurring class (a pattern with multiple sites, usually analyzer- or baseline-backed) | `themes:` in the central ledger |
 
 A section's own test project (`tests/Humans.<X>.Tests`) is section-owned: its gaps go in that section's `debt.yml`. The `tests/` row above means the shared test projects (`Humans.Testing`, `Humans.Web.Tests`, `Humans.Integration.Tests`).

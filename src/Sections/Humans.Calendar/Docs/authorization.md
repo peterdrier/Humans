@@ -1,3 +1,10 @@
+<!-- freshness:triggers
+  src/Sections/Humans.Calendar/Controllers/**
+-->
+<!-- freshness:flag-on-change
+  The section's authorization posture: [Authorize] on CalendarController and the one [AllowAnonymous] feed action.
+-->
+
 # Calendar — Authorization
 
 | Controller | Scope | Roles | Source |
