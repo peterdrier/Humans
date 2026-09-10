@@ -544,9 +544,12 @@ internal sealed class BudgetAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncTicketingBudget(Guid yearId)
     {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
         try
         {
-            var count = await ticketingBudgetService.SyncActualsAsync(yearId);
+            var count = await ticketingBudgetService.SyncActualsAsync(yearId, user.Id);
             if (count > 0)
                 SetSuccess($"Synced {count} ticketing line item(s) from ticket sales data.");
             else
