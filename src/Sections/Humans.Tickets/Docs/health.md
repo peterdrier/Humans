@@ -21,7 +21,7 @@ member's yearly participation record.
 | "Does this human hold a ticket" | `ITicketServiceRead` (`GetTicketOrdersAsync`, `GetUserTicketHoldingsAsync`; no `SurfaceBudget` pinned today) fed by `ITicketRepository.HasEventTicketAsync` and the private `ComputeUserTicketCountAsync` | One question over the match paths (`MatchedUserId`, then verified-email fallback); one projection callers derive from |
 | Member holds & transfers | `/Tickets/Transfers` (Index, Confirm, Submit, Cancel), `<vc:my-ticket-stubs>`, `<vc:ticket-holdings>`, `<vc:ticket-stub>`, `<vc:member-ticket-status>`, `<vc:guest-ticket-orders>` | One wizard + one stub renderer reused by homepage, profile and wizard |
 | Admin transfer processing | `/Tickets/Admin/Transfers` (Index?tab, Detail/{id}, Decide with action ∈ process/retry/marksuccessful/cancel), `ITicketTransferQueue.CountPendingAsync` | One state machine: Pending → Approved / Rejected / Cancelled; vendor void-to-hold + reissue is the automated path, mark-successful the manual one |
-| Reporting | `/Tickets` (dashboard), `/Tickets/Orders`, `/Tickets/Attendees`, `/Tickets/Codes`, `/Tickets/SalesAggregates`, `/Tickets/WhoHasntBought`, the CSV exports, `/Tickets/GateList` (placeholder) | Paged lists (search/sort/filter), aggregates, one "who hasn't" cross-join with Users/Teams/Governance |
+| Reporting | `/Tickets` (dashboard), `/Tickets/Orders`, `/Tickets/Attendees`, `/Tickets/Codes`, `/Tickets/SalesAggregates`, `/Tickets/WhoHasntBought`, the CSV exports, `/Tickets/GateList` (placeholder) | Paged lists (search/sort/filter), aggregates, one "who hasn't" cross-join over Users, Teams, user emails and the Shifts active year |
 | Onsite & gate tooling | `/Tickets/Admin/Onsite`, `/Tickets/Admin/Gate` (set/rotate gate-terminal password); barcode → stub for Scanner/Gate is a projection over `GetTicketOrdersAsync` | One roster join, one credential rotation |
 | Contact import | `/Tickets/Admin/Contacts` (preview → apply) | Plan/apply over unmatched attendees: attach verified / replace unverified / create user |
 | Participation | `IUserParticipationBackfillService` via `/Tickets/Participation/Backfill` (Admin only) | CSV backfill; the reconcile itself lives in the sync pipeline |
@@ -139,4 +139,4 @@ The layout these shapes imply:
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| section-doctor | 2026-09-05 | First doctoring: invariant doc rebuilt against the code, narration purged, two dead resx keys cut, sync-cursor test pinned | peterdrier/Humans#1589 |
+| section-doctor | 2026-09-05 | First doctoring: invariant doc rebuilt against the code, narration purged, dead resx keys cut, sync-cursor test pinned | peterdrier/Humans#1589 |

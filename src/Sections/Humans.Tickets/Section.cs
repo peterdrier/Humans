@@ -20,7 +20,7 @@ namespace Humans.Tickets;
 /// nothing names it, so it needs no section prefix.
 /// </summary>
 /// <remarks>
-/// <c>TicketSyncJob</c> (<c>Jobs/</c>) is the section's only job; its registration and
+/// <c>TicketSyncJob</c> (<c>Jobs/</c>) is the section's sync job; its registration and
 /// schedule are contributed via <c>SectionJobs.cs</c>. <c>TicketVendorHealthCheck</c>
 /// (<c>Health/</c>) is the section's own probe over the vendor port, contributed via
 /// <c>SectionHealthChecks.cs</c>.
