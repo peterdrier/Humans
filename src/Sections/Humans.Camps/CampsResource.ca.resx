@@ -108,9 +108,6 @@
   <data name="Camp_Edit_AddLink" xml:space="preserve">
     <value>Afegeix enllaç</value>
   </data>
-  <data name="Camp_Edit_RemoveLink" xml:space="preserve">
-    <value>Elimina</value>
-  </data>
   <data name="Camp_Edit_WebsiteNudge" xml:space="preserve">
     <value>Recomanem molt afegir un web per al teu barri perquè els visitants et puguin conèixer millor.</value>
   </data>
@@ -202,4 +199,16 @@
   <data name="Enum_CampVibe_Sober" xml:space="preserve"><value>Sobri</value></data>
   <data name="Enum_CampVibe_Wellness" xml:space="preserve"><value>Benestar</value></data>
   <data name="Enum_CampVibe_Workshop" xml:space="preserve"><value>Taller</value></data>
+  <data name="Camp_Details_AlsoKnownAs" xml:space="preserve"><value>També conegut com:</value></data>
+  <data name="Camp_Details_SwissCampBadge" xml:space="preserve"><value>Swiss Camp</value></data>
+  <data name="Camp_Details_RosterEmpty" xml:space="preserve"><value>Encara no hi ha humans registrats per a aquesta temporada.</value></data>
+  <data name="Camp_Members_NoRolesDefined" xml:space="preserve"><value>Encara no hi ha rols de barri definits.</value></data>
+  <data name="Camp_Members_NoRolesAdminHint" xml:space="preserve"><value>CampAdmin pot afegir-los a</value></data>
+  <data name="Camp_Members_NoRolesAdminHintLink" xml:space="preserve"><value>Rols de barri</value></data>
+  <data name="Camp_Members_RoleRequiredBadge" xml:space="preserve"><value>obligatori</value></data>
+  <data name="Camp_Members_RoleSlotsFilled" xml:space="preserve"><value>{0} / {1} coberts</value></data>
+  <data name="Camp_Members_RoleOverCapacityBadge" xml:space="preserve"><value>Capacitat excedida</value></data>
+  <data name="Camp_Members_RoleOverCapacityTitle" xml:space="preserve"><value>Més assignacions que el nombre de places configurat.</value></data>
+  <data name="Camp_Members_AddMemberSearchHelp" xml:space="preserve"><value>Cerca per nom. El human s'afegeix a la temporada oberta del barri com a Actiu.</value></data>
+  <data name="Camp_Members_NoPendingRequests" xml:space="preserve"><value>No hi ha sol·licituds pendents.</value></data>
 </root>
