@@ -198,7 +198,6 @@ internal sealed class DevelopmentBudgetSeeder(
             activatedBudgetYear = true;
         }
 
-        // Load full year tree — groups, categories, line items — for in-memory lookups
         var currentYear = await budgetService.GetYearByIdAsync(budgetYearId)
             ?? throw new InvalidOperationException($"Budget year {budgetYearId} not found after creation");
 

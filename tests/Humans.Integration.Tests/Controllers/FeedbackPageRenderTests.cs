@@ -36,8 +36,8 @@ namespace Humans.Integration.Tests.Controllers;
 /// </list>
 /// <para>
 /// Feedback ships no <c>wwwroot/</c>, so there is no static-asset half here. The
-/// <c>Email_FeedbackResponse_*</c> keys deliberately stayed in <c>SharedResource</c> — Base's
-/// <c>EmailRenderer</c> owns that email — so they are outside this check.
+/// <c>Email_FeedbackResponse_*</c> keys deliberately live with the Email section's
+/// <c>EmailRenderer</c> (its <c>EmailResource</c>) — so they are outside this check.
 /// </para>
 /// </remarks>
 public class FeedbackPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)

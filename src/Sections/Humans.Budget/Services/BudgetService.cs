@@ -579,7 +579,7 @@ internal sealed class BudgetService(
             .Where(li => li.VatRate > 0 && li.ExpectedDate.HasValue)
             .Select(li => new
             {
-                VatAmount = Math.Abs(li.Amount) * li.VatRate / (100m + li.VatRate),
+                VatAmount = ComputeVatPortion(li.Amount, li.VatRate),
                 IsExpense = li.Amount > 0 // Income generates VAT liability (expense).
             })
             .ToList();
@@ -710,7 +710,7 @@ internal sealed class BudgetService(
             .Where(li => li.VatRate > 0 && li.ExpectedDate.HasValue)
             .Select(li =>
             {
-                var vatAmount = Math.Abs(li.Amount) * li.VatRate / (100m + li.VatRate);
+                var vatAmount = ComputeVatPortion(li.Amount, li.VatRate);
                 // Income → VAT liability (expense); expense → VAT credit (income).
                 var cashFlowAmount = li.Amount > 0 ? -vatAmount : vatAmount;
                 var categoryName = li.Amount > 0 ? "VAT Liability" : "VAT Credits";
@@ -724,7 +724,17 @@ internal sealed class BudgetService(
             .ToList();
     }
 
-    private static LocalDate ComputeVatSettlementDate(LocalDate expectedDate)
+    /// <summary>
+    /// The VAT portion of a VAT-inclusive amount: |amount| × rate / (100 + rate).
+    /// </summary>
+    internal static decimal ComputeVatPortion(decimal amount, int vatRate) =>
+        Math.Abs(amount) * vatRate / (100m + vatRate);
+
+    /// <summary>
+    /// Spanish quarterly VAT: settlement lands 45 days after the quarter-end of the
+    /// expected date.
+    /// </summary>
+    internal static LocalDate ComputeVatSettlementDate(LocalDate expectedDate)
     {
         var quarterEnd = expectedDate.Month switch
         {
@@ -733,7 +743,6 @@ internal sealed class BudgetService(
             >= 7 and <= 9 => new LocalDate(expectedDate.Year, 9, 30),
             _ => new LocalDate(expectedDate.Year, 12, 31)
         };
-
         return quarterEnd.PlusDays(45);
     }
 

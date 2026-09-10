@@ -10,15 +10,9 @@ namespace Humans.Budget.Jobs;
 /// Runs daily at 04:30. Finds the active budget year's ticketing group and syncs completed weeks.
 /// </summary>
 /// <remarks>
-/// Moved out of <c>Humans.Infrastructure/Jobs</c> at G5 lane 5b-3
-/// (nobodies-collective/Humans#866). Budget, not Tickets: both collaborators
-/// (<see cref="ITicketingBudgetService"/>, <see cref="IBudgetServiceRead"/>) are Budget's,
-/// the rows it writes are budget line items, and the job id is <c>budget-ticketing-sync</c>.
-/// It sits under <c>Jobs/</c> because Shell names the concrete type at registration and
-/// HUM0034 makes every other public type in a section assembly an error. The constructor is
-/// <c>internal</c> (Peter's ruling 43 made <see cref="ITicketingBudgetService"/> internal too),
-/// so DI registration moved from Shell into <c>Section.Register</c>, which can build it with a
-/// factory from within the assembly; Shell still names the public class for Hangfire scheduling.
+/// Public type with an internal constructor: Shell names the concrete type for Hangfire
+/// scheduling while HUM0034 forbids other public types, so DI registration is a factory in
+/// <c>Section.Register</c> (ruling 43), which can build it from within the assembly.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public sealed class TicketingBudgetSyncJob : IRecurringJob
