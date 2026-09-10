@@ -5,6 +5,7 @@ using Humans.Governance.Data;
 using Humans.Governance.Domain;
 using Humans.Governance.Jobs;
 using Humans.Governance.Services;
+using Humans.Governance.Services.Dtos;
 using Humans.Base.Hosting;
 using Humans.Base.Models.Tables;
 using Microsoft.Extensions.Configuration;
@@ -77,6 +78,15 @@ public sealed class Section : ISection
             [AssemblyVoteStatus.Open] = "bg-primary",
             [AssemblyVoteStatus.Closed] = "bg-success",
             [AssemblyVoteStatus.Cancelled] = "bg-danger",
+
+            [AssemblyVoteVerdict.Passed] = "bg-success",
+            [AssemblyVoteVerdict.Failed] = "bg-danger",
+            [AssemblyVoteVerdict.Tie] = "bg-warning text-dark",
+
+            [AssemblyBallotChoice.Yes] = "bg-success",
+            [AssemblyBallotChoice.No] = "bg-danger",
+            [AssemblyBallotChoice.Abstain] = "bg-secondary",
+            [AssemblyBallotChoice.Ranked] = "bg-primary",
         });
 
         services.AddScoped<TermRenewalReminderJob>();

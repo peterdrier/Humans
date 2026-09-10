@@ -388,4 +388,283 @@
   <data name="Dashboard_AssemblyVotesCardDescription" xml:space="preserve">
     <value>Consulta les votacions obertes de l’associació i emet el teu vot.</value>
   </data>
+  <data name="Votes_Title" xml:space="preserve">
+    <value>Votacions</value>
+  </data>
+  <data name="Votes_NoVotes" xml:space="preserve">
+    <value>Encara no hi ha votacions.</value>
+  </data>
+  <data name="Votes_Status_Draft" xml:space="preserve">
+    <value>Esborrany</value>
+  </data>
+  <data name="Votes_Status_Open" xml:space="preserve">
+    <value>Oberta</value>
+  </data>
+  <data name="Votes_Status_Closed" xml:space="preserve">
+    <value>Tancada</value>
+  </data>
+  <data name="Votes_Status_Cancelled" xml:space="preserve">
+    <value>Cancel·lada</value>
+  </data>
+  <data name="Votes_Kind_YesNo" xml:space="preserve">
+    <value>Sí/No</value>
+  </data>
+  <data name="Votes_Kind_RankedChoice" xml:space="preserve">
+    <value>Vot ordenat</value>
+  </data>
+  <data name="Votes_ClosesAt" xml:space="preserve">
+    <value>Tanca {0}</value>
+  </data>
+  <data name="Votes_ClosedAt" xml:space="preserve">
+    <value>Tancada {0}</value>
+  </data>
+  <data name="Votes_OnRosterOfficial" xml:space="preserve">
+    <value>Ets al cens oficial.</value>
+  </data>
+  <data name="Votes_OnRosterIndicative" xml:space="preserve">
+    <value>Ets al cens indicatiu.</value>
+  </data>
+  <data name="Votes_NotOnRosterShort" xml:space="preserve">
+    <value>No ets al cens</value>
+  </data>
+  <data name="Votes_BallotIn" xml:space="preserve">
+    <value>El teu vot està registrat</value>
+  </data>
+  <data name="Votes_BallotNotIn" xml:space="preserve">
+    <value>Encara no has votat</value>
+  </data>
+  <data name="Votes_Turnout" xml:space="preserve">
+    <value>{0} de {1} han votat</value>
+  </data>
+  <data name="Votes_ViewVote" xml:space="preserve">
+    <value>Veure</value>
+  </data>
+  <data name="Votes_ViewResults" xml:space="preserve">
+    <value>Veure resultats</value>
+  </data>
+  <data name="Votes_MoreInfo" xml:space="preserve">
+    <value>Més informació</value>
+  </data>
+  <data name="Votes_OfficialTextHeading" xml:space="preserve">
+    <value>Text oficial</value>
+  </data>
+  <data name="Votes_TranslationNotice" xml:space="preserve">
+    <value>Això es mostra traduït. El text en {0} és la versió vinculant.</value>
+  </data>
+  <data name="Votes_YourBallotHeading" xml:space="preserve">
+    <value>Emet el teu vot</value>
+  </data>
+  <data name="Votes_Choice_Yes" xml:space="preserve">
+    <value>Sí</value>
+  </data>
+  <data name="Votes_Choice_No" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="Votes_Choice_Abstain" xml:space="preserve">
+    <value>Abstenció</value>
+  </data>
+  <data name="Votes_Choice_Ranked" xml:space="preserve">
+    <value>Ordenat</value>
+  </data>
+  <data name="Votes_RankOptions" xml:space="preserve">
+    <value>Ordena les opcions</value>
+  </data>
+  <data name="Votes_AbstainOption" xml:space="preserve">
+    <value>Abstenir-se</value>
+  </data>
+  <data name="Votes_RankedOptionHeader" xml:space="preserve">
+    <value>Opció</value>
+  </data>
+  <data name="Votes_RankedRankHeader" xml:space="preserve">
+    <value>Posició</value>
+  </data>
+  <data name="Votes_RankedUnranked" xml:space="preserve">
+    <value>Sense ordenar</value>
+  </data>
+  <data name="Votes_Submit" xml:space="preserve">
+    <value>Envia el vot</value>
+  </data>
+  <data name="Votes_IndicativeBallotNotice" xml:space="preserve">
+    <value>Indicatiu — no compta en el resultat oficial.</value>
+  </data>
+  <data name="Votes_CannotVoteClosed" xml:space="preserve">
+    <value>Aquesta votació ja no accepta vots.</value>
+  </data>
+  <data name="Votes_NotOnRosterNotice" xml:space="preserve">
+    <value>No ets al cens d'aquesta votació.</value>
+  </data>
+  <data name="Votes_YourRecordedBallotHeading" xml:space="preserve">
+    <value>El teu vot registrat</value>
+  </data>
+  <data name="Votes_RevisionLabel" xml:space="preserve">
+    <value>Revisió {0}</value>
+  </data>
+  <data name="Votes_UpdatedAtLabel" xml:space="preserve">
+    <value>Últim canvi {0}</value>
+  </data>
+  <data name="Votes_NoRanking" xml:space="preserve">
+    <value>Cap opció ordenada</value>
+  </data>
+  <data name="Votes_HistoryHeading" xml:space="preserve">
+    <value>Historial de revisions</value>
+  </data>
+  <data name="Votes_HistoryRevisionHeader" xml:space="preserve">
+    <value>Revisió</value>
+  </data>
+  <data name="Votes_HistoryChoiceHeader" xml:space="preserve">
+    <value>Vot</value>
+  </data>
+  <data name="Votes_HistoryWhenHeader" xml:space="preserve">
+    <value>Registrat</value>
+  </data>
+  <data name="Votes_ParticipationHeading" xml:space="preserve">
+    <value>Participació</value>
+  </data>
+  <data name="Votes_OfficialRosterLabel" xml:space="preserve">
+    <value>Cens oficial</value>
+  </data>
+  <data name="Votes_IndicativeRosterLabel" xml:space="preserve">
+    <value>Cens indicatiu</value>
+  </data>
+  <data name="Votes_ChangedBallotsLabel" xml:space="preserve">
+    <value>Vots canviats almenys una vegada</value>
+  </data>
+  <data name="Votes_TotalRevisionsLabel" xml:space="preserve">
+    <value>Revisions totals</value>
+  </data>
+  <data name="Votes_LastBallotAtLabel" xml:space="preserve">
+    <value>Últim vot</value>
+  </data>
+  <data name="Votes_NoBallotsYetValue" xml:space="preserve">
+    <value>Encara no hi ha vots</value>
+  </data>
+  <data name="Votes_ClosingTimeLabel" xml:space="preserve">
+    <value>Hora de tancament</value>
+  </data>
+  <data name="Votes_CancelledNotice" xml:space="preserve">
+    <value>Aquesta votació ha estat cancel·lada.</value>
+  </data>
+  <data name="Votes_CancelReasonLabel" xml:space="preserve">
+    <value>Motiu</value>
+  </data>
+  <data name="Votes_BallotRecorded" xml:space="preserve">
+    <value>El teu vot s'ha registrat.</value>
+  </data>
+  <data name="Votes_BallotVoteNotOpen" xml:space="preserve">
+    <value>Aquesta votació no està oberta per votar.</value>
+  </data>
+  <data name="Votes_BallotInvalid" xml:space="preserve">
+    <value>No s'ha pogut registrar aquest vot. Revisa l'ordre i torna-ho a provar.</value>
+  </data>
+  <data name="Votes_ResultsHeading" xml:space="preserve">
+    <value>Resultats</value>
+  </data>
+  <data name="Votes_OfficialTextAdoptedHeading" xml:space="preserve">
+    <value>Text oficial adoptat</value>
+  </data>
+  <data name="Votes_OfficialResultHeading" xml:space="preserve">
+    <value>Resultat oficial</value>
+  </data>
+  <data name="Votes_IndicativeResultHeading" xml:space="preserve">
+    <value>Resultat indicatiu (no compta en el resultat oficial)</value>
+  </data>
+  <data name="Votes_RequiredMajorityLabel" xml:space="preserve">
+    <value>Majoria necessària</value>
+  </data>
+  <data name="Votes_Majority_Simple" xml:space="preserve">
+    <value>Majoria simple</value>
+  </data>
+  <data name="Votes_Majority_TwoThirds" xml:space="preserve">
+    <value>Majoria de dos terços</value>
+  </data>
+  <data name="Votes_VerdictLabel" xml:space="preserve">
+    <value>Veredicte</value>
+  </data>
+  <data name="Votes_Verdict_Passed" xml:space="preserve">
+    <value>Aprovada</value>
+  </data>
+  <data name="Votes_Verdict_Failed" xml:space="preserve">
+    <value>Rebutjada</value>
+  </data>
+  <data name="Votes_Verdict_Tie" xml:space="preserve">
+    <value>Empat</value>
+  </data>
+  <data name="Votes_TieNotice" xml:space="preserve">
+    <value>Segons l'article 10.2 dels estatuts, en cas d'empat la Presidència de la Junta emet el vot de qualitat, i la Secretaria ho recull a l'acta.</value>
+  </data>
+  <data name="Votes_Method_YesNo" xml:space="preserve">
+    <value>Majoria Sí/No</value>
+  </data>
+  <data name="Votes_Method_InstantRunoff" xml:space="preserve">
+    <value>Vot per eliminació instantània</value>
+  </data>
+  <data name="Votes_RoundsHeading" xml:space="preserve">
+    <value>Rondes</value>
+  </data>
+  <data name="Votes_RoundColumnHeader" xml:space="preserve">
+    <value>Ronda</value>
+  </data>
+  <data name="Votes_ExhaustedLabel" xml:space="preserve">
+    <value>Vots exhaurits</value>
+  </data>
+  <data name="Votes_EliminatedLabel" xml:space="preserve">
+    <value>Eliminada: {0}</value>
+  </data>
+  <data name="Votes_WinnerLabel" xml:space="preserve">
+    <value>Guanyadora: {0}</value>
+  </data>
+  <data name="Votes_TieBreakExplanation" xml:space="preserve">
+    <value>Els empats per eliminar es desfan primer pel menor nombre de vots a la ronda anterior i després per l'ordre en què es van redactar les opcions.</value>
+  </data>
+  <data name="Votes_TieBreakNotesHeading" xml:space="preserve">
+    <value>Notes de desempat</value>
+  </data>
+  <data name="Votes_CancelledResultNotice" xml:space="preserve">
+    <value>Aquesta votació ha estat cancel·lada. No s'ha calculat cap resultat.</value>
+  </data>
+  <data name="Votes_ActaHeading" xml:space="preserve">
+    <value>Text per a l'acta</value>
+  </data>
+  <data name="Votes_ActaHint" xml:space="preserve">
+    <value>Selecciona i copia aquest text per a l'acta.</value>
+  </data>
+  <data name="Votes_PeeksHeading" xml:space="preserve">
+    <value>Consultes anticipades</value>
+  </data>
+  <data name="Votes_PeeksEmpty" xml:space="preserve">
+    <value>Ningú ha consultat el recompte abans del tancament.</value>
+  </data>
+  <data name="Votes_PeekedByHeader" xml:space="preserve">
+    <value>Consultat per</value>
+  </data>
+  <data name="Votes_PeekedWhenHeader" xml:space="preserve">
+    <value>Quan</value>
+  </data>
+  <data name="Votes_YourBallotResultHeading" xml:space="preserve">
+    <value>El teu vot</value>
+  </data>
+  <data name="Votes_DisclosedBallotsHeading" xml:space="preserve">
+    <value>Vots individuals</value>
+  </data>
+  <data name="Votes_DisclosedMemberHeader" xml:space="preserve">
+    <value>Membre</value>
+  </data>
+  <data name="Votes_DisclosedAudienceHeader" xml:space="preserve">
+    <value>Cens</value>
+  </data>
+  <data name="Votes_DisclosedChoiceHeader" xml:space="preserve">
+    <value>Vot</value>
+  </data>
+  <data name="Votes_DisclosedRevisionHeader" xml:space="preserve">
+    <value>Revisió</value>
+  </data>
+  <data name="Votes_AudienceOfficial" xml:space="preserve">
+    <value>Oficial</value>
+  </data>
+  <data name="Votes_AudienceIndicative" xml:space="preserve">
+    <value>Indicatiu</value>
+  </data>
+  <data name="Votes_DownloadCsv" xml:space="preserve">
+    <value>Descarrega CSV</value>
+  </data>
 </root>

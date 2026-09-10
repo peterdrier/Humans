@@ -388,4 +388,283 @@
   <data name="Dashboard_AssemblyVotesCardDescription" xml:space="preserve">
     <value>Consulta las votaciones abiertas de la asociación y emite tu voto.</value>
   </data>
+  <data name="Votes_Title" xml:space="preserve">
+    <value>Votaciones</value>
+  </data>
+  <data name="Votes_NoVotes" xml:space="preserve">
+    <value>Todavía no hay votaciones.</value>
+  </data>
+  <data name="Votes_Status_Draft" xml:space="preserve">
+    <value>Borrador</value>
+  </data>
+  <data name="Votes_Status_Open" xml:space="preserve">
+    <value>Abierta</value>
+  </data>
+  <data name="Votes_Status_Closed" xml:space="preserve">
+    <value>Cerrada</value>
+  </data>
+  <data name="Votes_Status_Cancelled" xml:space="preserve">
+    <value>Cancelada</value>
+  </data>
+  <data name="Votes_Kind_YesNo" xml:space="preserve">
+    <value>Sí/No</value>
+  </data>
+  <data name="Votes_Kind_RankedChoice" xml:space="preserve">
+    <value>Voto ordenado</value>
+  </data>
+  <data name="Votes_ClosesAt" xml:space="preserve">
+    <value>Cierra {0}</value>
+  </data>
+  <data name="Votes_ClosedAt" xml:space="preserve">
+    <value>Cerrada {0}</value>
+  </data>
+  <data name="Votes_OnRosterOfficial" xml:space="preserve">
+    <value>Estás en el censo oficial.</value>
+  </data>
+  <data name="Votes_OnRosterIndicative" xml:space="preserve">
+    <value>Estás en el censo indicativo.</value>
+  </data>
+  <data name="Votes_NotOnRosterShort" xml:space="preserve">
+    <value>No estás en el censo</value>
+  </data>
+  <data name="Votes_BallotIn" xml:space="preserve">
+    <value>Tu voto está registrado</value>
+  </data>
+  <data name="Votes_BallotNotIn" xml:space="preserve">
+    <value>Todavía no has votado</value>
+  </data>
+  <data name="Votes_Turnout" xml:space="preserve">
+    <value>{0} de {1} han votado</value>
+  </data>
+  <data name="Votes_ViewVote" xml:space="preserve">
+    <value>Ver</value>
+  </data>
+  <data name="Votes_ViewResults" xml:space="preserve">
+    <value>Ver resultados</value>
+  </data>
+  <data name="Votes_MoreInfo" xml:space="preserve">
+    <value>Más información</value>
+  </data>
+  <data name="Votes_OfficialTextHeading" xml:space="preserve">
+    <value>Texto oficial</value>
+  </data>
+  <data name="Votes_TranslationNotice" xml:space="preserve">
+    <value>Esto se muestra traducido. El texto en {0} es la versión vinculante.</value>
+  </data>
+  <data name="Votes_YourBallotHeading" xml:space="preserve">
+    <value>Emite tu voto</value>
+  </data>
+  <data name="Votes_Choice_Yes" xml:space="preserve">
+    <value>Sí</value>
+  </data>
+  <data name="Votes_Choice_No" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="Votes_Choice_Abstain" xml:space="preserve">
+    <value>Abstención</value>
+  </data>
+  <data name="Votes_Choice_Ranked" xml:space="preserve">
+    <value>Ordenado</value>
+  </data>
+  <data name="Votes_RankOptions" xml:space="preserve">
+    <value>Ordena las opciones</value>
+  </data>
+  <data name="Votes_AbstainOption" xml:space="preserve">
+    <value>Abstenerse</value>
+  </data>
+  <data name="Votes_RankedOptionHeader" xml:space="preserve">
+    <value>Opción</value>
+  </data>
+  <data name="Votes_RankedRankHeader" xml:space="preserve">
+    <value>Posición</value>
+  </data>
+  <data name="Votes_RankedUnranked" xml:space="preserve">
+    <value>Sin ordenar</value>
+  </data>
+  <data name="Votes_Submit" xml:space="preserve">
+    <value>Enviar voto</value>
+  </data>
+  <data name="Votes_IndicativeBallotNotice" xml:space="preserve">
+    <value>Indicativo — no cuenta en el resultado oficial.</value>
+  </data>
+  <data name="Votes_CannotVoteClosed" xml:space="preserve">
+    <value>Esta votación ya no acepta votos.</value>
+  </data>
+  <data name="Votes_NotOnRosterNotice" xml:space="preserve">
+    <value>No estás en el censo de esta votación.</value>
+  </data>
+  <data name="Votes_YourRecordedBallotHeading" xml:space="preserve">
+    <value>Tu voto registrado</value>
+  </data>
+  <data name="Votes_RevisionLabel" xml:space="preserve">
+    <value>Revisión {0}</value>
+  </data>
+  <data name="Votes_UpdatedAtLabel" xml:space="preserve">
+    <value>Último cambio {0}</value>
+  </data>
+  <data name="Votes_NoRanking" xml:space="preserve">
+    <value>Ninguna opción ordenada</value>
+  </data>
+  <data name="Votes_HistoryHeading" xml:space="preserve">
+    <value>Historial de revisiones</value>
+  </data>
+  <data name="Votes_HistoryRevisionHeader" xml:space="preserve">
+    <value>Revisión</value>
+  </data>
+  <data name="Votes_HistoryChoiceHeader" xml:space="preserve">
+    <value>Voto</value>
+  </data>
+  <data name="Votes_HistoryWhenHeader" xml:space="preserve">
+    <value>Registrado</value>
+  </data>
+  <data name="Votes_ParticipationHeading" xml:space="preserve">
+    <value>Participación</value>
+  </data>
+  <data name="Votes_OfficialRosterLabel" xml:space="preserve">
+    <value>Censo oficial</value>
+  </data>
+  <data name="Votes_IndicativeRosterLabel" xml:space="preserve">
+    <value>Censo indicativo</value>
+  </data>
+  <data name="Votes_ChangedBallotsLabel" xml:space="preserve">
+    <value>Votos cambiados al menos una vez</value>
+  </data>
+  <data name="Votes_TotalRevisionsLabel" xml:space="preserve">
+    <value>Revisiones totales</value>
+  </data>
+  <data name="Votes_LastBallotAtLabel" xml:space="preserve">
+    <value>Último voto</value>
+  </data>
+  <data name="Votes_NoBallotsYetValue" xml:space="preserve">
+    <value>Todavía no hay votos</value>
+  </data>
+  <data name="Votes_ClosingTimeLabel" xml:space="preserve">
+    <value>Hora de cierre</value>
+  </data>
+  <data name="Votes_CancelledNotice" xml:space="preserve">
+    <value>Esta votación fue cancelada.</value>
+  </data>
+  <data name="Votes_CancelReasonLabel" xml:space="preserve">
+    <value>Motivo</value>
+  </data>
+  <data name="Votes_BallotRecorded" xml:space="preserve">
+    <value>Tu voto ha sido registrado.</value>
+  </data>
+  <data name="Votes_BallotVoteNotOpen" xml:space="preserve">
+    <value>Esta votación no está abierta para votar.</value>
+  </data>
+  <data name="Votes_BallotInvalid" xml:space="preserve">
+    <value>No se pudo registrar ese voto. Revisa tu orden e inténtalo de nuevo.</value>
+  </data>
+  <data name="Votes_ResultsHeading" xml:space="preserve">
+    <value>Resultados</value>
+  </data>
+  <data name="Votes_OfficialTextAdoptedHeading" xml:space="preserve">
+    <value>Texto oficial adoptado</value>
+  </data>
+  <data name="Votes_OfficialResultHeading" xml:space="preserve">
+    <value>Resultado oficial</value>
+  </data>
+  <data name="Votes_IndicativeResultHeading" xml:space="preserve">
+    <value>Resultado indicativo (no cuenta en el resultado oficial)</value>
+  </data>
+  <data name="Votes_RequiredMajorityLabel" xml:space="preserve">
+    <value>Mayoría necesaria</value>
+  </data>
+  <data name="Votes_Majority_Simple" xml:space="preserve">
+    <value>Mayoría simple</value>
+  </data>
+  <data name="Votes_Majority_TwoThirds" xml:space="preserve">
+    <value>Mayoría de dos tercios</value>
+  </data>
+  <data name="Votes_VerdictLabel" xml:space="preserve">
+    <value>Veredicto</value>
+  </data>
+  <data name="Votes_Verdict_Passed" xml:space="preserve">
+    <value>Aprobada</value>
+  </data>
+  <data name="Votes_Verdict_Failed" xml:space="preserve">
+    <value>Rechazada</value>
+  </data>
+  <data name="Votes_Verdict_Tie" xml:space="preserve">
+    <value>Empate</value>
+  </data>
+  <data name="Votes_TieNotice" xml:space="preserve">
+    <value>Según el artículo 10.2 de los estatutos, la Presidencia de la Junta emite el voto de calidad en caso de empate, y la Secretaría lo recoge en el acta.</value>
+  </data>
+  <data name="Votes_Method_YesNo" xml:space="preserve">
+    <value>Mayoría Sí/No</value>
+  </data>
+  <data name="Votes_Method_InstantRunoff" xml:space="preserve">
+    <value>Voto por eliminación instantánea</value>
+  </data>
+  <data name="Votes_RoundsHeading" xml:space="preserve">
+    <value>Rondas</value>
+  </data>
+  <data name="Votes_RoundColumnHeader" xml:space="preserve">
+    <value>Ronda</value>
+  </data>
+  <data name="Votes_ExhaustedLabel" xml:space="preserve">
+    <value>Votos agotados</value>
+  </data>
+  <data name="Votes_EliminatedLabel" xml:space="preserve">
+    <value>Eliminada: {0}</value>
+  </data>
+  <data name="Votes_WinnerLabel" xml:space="preserve">
+    <value>Ganadora: {0}</value>
+  </data>
+  <data name="Votes_TieBreakExplanation" xml:space="preserve">
+    <value>Los empates para eliminar se deshacen por el menor número de votos en la ronda anterior y, después, por el orden en que se redactaron las opciones.</value>
+  </data>
+  <data name="Votes_TieBreakNotesHeading" xml:space="preserve">
+    <value>Notas de desempate</value>
+  </data>
+  <data name="Votes_CancelledResultNotice" xml:space="preserve">
+    <value>Esta votación fue cancelada. No se calculó ningún resultado.</value>
+  </data>
+  <data name="Votes_ActaHeading" xml:space="preserve">
+    <value>Texto para el acta</value>
+  </data>
+  <data name="Votes_ActaHint" xml:space="preserve">
+    <value>Selecciona y copia este texto para el acta.</value>
+  </data>
+  <data name="Votes_PeeksHeading" xml:space="preserve">
+    <value>Vistas anticipadas</value>
+  </data>
+  <data name="Votes_PeeksEmpty" xml:space="preserve">
+    <value>Nadie consultó el recuento antes del cierre.</value>
+  </data>
+  <data name="Votes_PeekedByHeader" xml:space="preserve">
+    <value>Consultado por</value>
+  </data>
+  <data name="Votes_PeekedWhenHeader" xml:space="preserve">
+    <value>Cuándo</value>
+  </data>
+  <data name="Votes_YourBallotResultHeading" xml:space="preserve">
+    <value>Tu voto</value>
+  </data>
+  <data name="Votes_DisclosedBallotsHeading" xml:space="preserve">
+    <value>Votos individuales</value>
+  </data>
+  <data name="Votes_DisclosedMemberHeader" xml:space="preserve">
+    <value>Miembro</value>
+  </data>
+  <data name="Votes_DisclosedAudienceHeader" xml:space="preserve">
+    <value>Censo</value>
+  </data>
+  <data name="Votes_DisclosedChoiceHeader" xml:space="preserve">
+    <value>Voto</value>
+  </data>
+  <data name="Votes_DisclosedRevisionHeader" xml:space="preserve">
+    <value>Revisión</value>
+  </data>
+  <data name="Votes_AudienceOfficial" xml:space="preserve">
+    <value>Oficial</value>
+  </data>
+  <data name="Votes_AudienceIndicative" xml:space="preserve">
+    <value>Indicativo</value>
+  </data>
+  <data name="Votes_DownloadCsv" xml:space="preserve">
+    <value>Descargar CSV</value>
+  </data>
 </root>
