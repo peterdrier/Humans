@@ -385,4 +385,7 @@
   <data name="Dashboard_GovernanceCardDescription" xml:space="preserve">
     <value>Assemblees, eleccions, i el seriós.</value>
   </data>
+  <data name="Dashboard_AssemblyVotesCardDescription" xml:space="preserve">
+    <value>Consulta les votacions obertes de l’associació i emet el teu vot.</value>
+  </data>
 </root>

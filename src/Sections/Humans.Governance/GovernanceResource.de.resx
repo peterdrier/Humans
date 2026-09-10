@@ -385,4 +385,7 @@
   <data name="Dashboard_GovernanceCardDescription" xml:space="preserve">
     <value>Versammlungen, Wahlen, und das Ernste.</value>
   </data>
+  <data name="Dashboard_AssemblyVotesCardDescription" xml:space="preserve">
+    <value>Offene Abstimmungen des Vereins ansehen und abstimmen.</value>
+  </data>
 </root>

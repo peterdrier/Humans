@@ -385,4 +385,7 @@
   <data name="Dashboard_GovernanceCardDescription" xml:space="preserve">
     <value>Asambleas, elecciones, y lo serio.</value>
   </data>
+  <data name="Dashboard_AssemblyVotesCardDescription" xml:space="preserve">
+    <value>Consulta las votaciones abiertas de la asociación y emite tu voto.</value>
+  </data>
 </root>
