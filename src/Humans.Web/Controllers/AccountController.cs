@@ -272,12 +272,14 @@ public class AccountController(
                 lastName,
                 HttpContext.RequestAborted);
         }
-        catch
+        catch (Exception ex)
         {
             // Provisioning threw — a cancelled request, a database failure. Hand the link
             // back before the exception surfaces: if it created nothing, the retry signs
             // them up; if it got as far as the account, the retry finds it and signs them in.
             magicLinkService.ReleaseSignupToken(token);
+            logger.LogError(ex, "Magic link signup: provisioning threw for {Email}; " +
+                "the signup token reservation was released", redeemedEmail);
             throw;
         }
 
