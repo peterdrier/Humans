@@ -4,11 +4,9 @@ using NodaTime;
 namespace Humans.Consent.Contracts;
 
 /// <summary>
-/// The three legal-document reads, two of which happen outside the section: Governance's
-/// <c>MembershipCalculator</c> asks which versions a team requires and
-/// <c>HumansMetricsService</c> asks how many active+required documents exist.
-/// <c>SendReConsentReminderJob</c>, which asks for the required version set, came home to
-/// this section at G5 lane 5b-5 (nobodies-collective/Humans#866).
+/// The three legal-document reads. The cross-section one is Governance's
+/// <c>MembershipCalculator</c> asking which versions a team requires; the other callers
+/// (<c>SendReConsentReminderJob</c>, <c>ConsentMetricsService</c>) are in-section.
 /// </summary>
 /// <remarks>
 /// Carved from the call sites rather than from the interface (Notifications' rule, design
@@ -32,8 +30,7 @@ public interface ILegalDocumentSyncServiceRead : IApplicationService
         Guid teamId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Count of currently active+required legal documents, for the metrics snapshot
-    /// refresh — so the metrics service never reads <c>legal_documents</c> directly.
+    /// Count of currently active+required legal documents, for the section's metrics gauge.
     /// </summary>
     Task<int> GetActiveRequiredCountAsync(CancellationToken cancellationToken = default);
 }
