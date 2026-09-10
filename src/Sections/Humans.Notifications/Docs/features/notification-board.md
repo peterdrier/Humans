@@ -25,60 +25,74 @@ The decisions that reshape it:
 ## Concepts
 
 - A **Notification Entry** is one open item of work for one or more humans, published by the section that owns the underlying state and retracted by that same section when the state changes. It has a section-owned idempotent **Key**.
-- An **Audience** is the label of who an entry was published for: `User`, `Role:<name>`, `Team:<slug>`, `TeamCoordinators:<slug>`, `CampLeads:<seasonId>`. The publishing section resolves the label to user ids itself; the board records both. New kinds are a new label, not a change to Notifications.
+- An **Audience** is the label of who an entry was published for: `User`, `Role:<name>`, `Team:<slug>`, `TeamCoordinators:<slug>`, `CampLeads:<seasonId>`. The publishing section resolves the label to user ids itself; the board records both. An entry may be published to several audiences at once. New kinds are a new label, not a change to Notifications.
+- An **Audience owner** is the section that owns an audience's membership: Auth for `Role`, Teams for `Team` and `TeamCoordinators`, Camps for `CampLeads`. It tells the board when that membership changes; it never touches another section's entries.
 - The **Board** is the process-wide in-memory map of entries, indexed by user, by audience, and by source. It is a materialized view of the sections' live predicates: incremental publish/retract is the fast path, the predicate is the truth, reconcile bounds the drift.
 - A **Publisher** is a section's implementation of the fan-out contract that can enumerate every entry it currently owes, for everyone. Used at startup and by reconcile.
 - A **Source** is `<section>/<kind>` in lower-kebab (`teams/join-request`, `issues/assigned`), owned by the publisher. It replaces the `NotificationSource` enum.
 
 ## Contract
 
-Lives in `Humans.Notifications.Contracts`. Two inbound calls and one fan-out. Everything else in the section stays internal.
+Lives in `Humans.Notifications.Contracts`. Four inbound calls and one fan-out. Everything else in the section stays internal.
 
 ```csharp
 public interface INotificationBoard
 {
-    /// Publishes or replaces the entry with this key. A re-publish keeps the original PublishedAt.
-    void Publish(NotificationEntry entry, NotificationAudience audience, IReadOnlyCollection<Guid> userIds);
+    /// Publishes or replaces the entry with this key for every listed audience.
+    /// A re-publish keeps the original PublishedAt. Rejected and logged unless
+    /// <paramref name="section"/> is a registered publisher's Section and the key starts with "<section>/".
+    void Publish(string section, NotificationEntry entry, IReadOnlyList<NotificationRecipients> recipients);
 
-    /// Removes the entry with this key for every user. No-op when absent.
-    void Retract(string key);
+    /// Removes the entry with this key for every audience. No-op when absent. Same ownership check.
+    void Retract(string section, string key);
 
-    /// Removes every entry whose key starts with the prefix. For "this team is gone" cases.
-    void RetractByPrefix(string keyPrefix);
+    /// Removes every entry of that section whose key starts with the prefix. For "this team is gone" cases.
+    void RetractByPrefix(string section, string keyPrefix);
+
+    /// Told by an audience owner that the audience's membership changed. The board schedules a
+    /// debounced reconcile; user-set changes on entries carrying this audience are counted as
+    /// audience refresh, not drift.
+    void RefreshAudience(NotificationAudience audience);
 }
 
 public interface INotificationPublisher : IFanout
 {
+    /// The section name this publisher owns keys for; "<Section>/" is the key prefix. One publisher per section.
+    string Section { get; }
+
     /// Publishes every entry this section currently owes, for everyone. Idempotent.
-    /// Called at startup and by the reconcile job; never by the section itself.
+    /// Called at startup and by reconcile; never by the section itself.
     Task PublishAllAsync(INotificationBoard board, CancellationToken ct);
 }
 
 public sealed record NotificationEntry(
-    string Key,               // "<source>:<entity id>"; section-owned, idempotent
+    string Key,               // "<section>/<kind>:<entity id>"; section-owned, idempotent
     string Source,            // "<section>/<kind>"
     Type ResourceType,        // the section's <Section>Resource marker; rendered in the viewer's culture
     string TextKey,           // resx key for the one-line text
-    object[] TextArgs,        // format args; display names, counts, dates already formatted by the section
+    object[] TextArgs,        // culture-neutral values: names, ints, Instant/LocalDate; formatted at render
     string ActionUrl,         // where deciding it happens; required, always local
     TileSeverity Severity = TileSeverity.Normal,
     string? DescriptionKey = null,
     object[]? DescriptionArgs = null);
 
-public sealed record NotificationAudience(NotificationAudienceKind Kind, string? Id = null, string? DisplayName = null);
+public sealed record NotificationRecipients(NotificationAudience Audience, IReadOnlyCollection<Guid> UserIds);
+
+public sealed record NotificationAudience(NotificationAudienceKind Kind, string? Id = null);
 ```
 
 Rules:
 
-- Entries carry resource keys, not rendered text. The board holds items for every user and users have different cultures; the bell renders each entry in the viewer's culture through `IStringLocalizerFactory.Create(entry.ResourceType)`. Format args that are themselves culture-sensitive (dates, counts) are rendered by the section into strings before publishing, since the section knows the context.
-- `Publish` and `Retract` are synchronous, in-memory, and never throw to the caller. A malformed entry is logged and dropped.
+- Entries carry resource keys, not rendered text. The board holds items for every user and users have different cultures; the bell renders each entry in the viewer's culture through `IStringLocalizerFactory.Create(entry.ResourceType)`. Format args stay culture-neutral (names, counts, NodaTime values) and are formatted at render in the viewer's culture; a section never pre-formats a date or number, because a startup or reconcile publish has no viewer and a write-path publish only has the actor's culture.
+- Audience labels carry ids only. The admin view resolves them to names through `IEntityNameContributor`, as it resolves user ids; Camps contributes season names if it does not already.
+- `Publish`, `Retract`, `RetractByPrefix` and `RefreshAudience` are synchronous, in-memory, and never throw to the caller. A malformed entry, an unknown section, or a key outside the section's prefix is logged and dropped.
 - A section calls `Publish` and `Retract` in the write path that changes the state, in the same place it writes audit. The same rule that puts audit after the business save applies.
-- When an audience's membership changes (a coordinator added, a role ended), the section that owns the membership re-publishes the affected entries with the new ids. Teams knows coordinators changed; Auth knows a role holder changed. Reconcile covers whatever a section misses.
-- A section may only publish and retract its own keys. Prefix is `<section>/`; the board rejects and logs a publish whose key prefix does not match the publisher's section (enforced by convention and reconcile diff, not by analyzer, in phase 1).
+- Ownership is the key prefix. The `section` argument names a registered publisher and must match the key prefix, so a typo or collision cannot remove another section's entries by accident. A caller lying about its section is not a threat model inside one process; reconcile re-adds anything wrongly removed and counts it as drift. If it ever bites, an analyzer on the `section` literal is the fix, not a runtime identity scheme.
+- When an audience's membership changes, its owner calls `RefreshAudience`. Auth after a role assignment starts or ends, Teams after a coordinator joins or leaves, Camps after a lead changes. No section re-publishes another section's entries; the board runs the publishers.
 
 ## The board
 
-Singleton in `Humans.Notifications`, internal. `ConcurrentDictionary<string, BoardItem>` keyed by entry key, plus three derived indexes maintained under the same lock: by user id, by audience, by source. `BoardItem` = entry + audience + user ids + `PublishedAt` + `LastPublishedAt`.
+Singleton in `Humans.Notifications`, internal. `ConcurrentDictionary<string, BoardItem>` keyed by entry key, plus three derived indexes maintained under the same lock: by user id, by audience, by source. `BoardItem` = entry + recipients (audience → user ids) + `PublishedAt` + `LastPublishedAt` + `MutationSeq`. The board keeps a monotonic mutation sequence; every publish and retract stamps its key, and a retract leaves a tombstone with its sequence until the next reconcile completes.
 
 Read surface (internal, consumed by the section's own views and by the admin page):
 
@@ -88,7 +102,11 @@ Read surface (internal, consumed by the section's own views and by the admin pag
 
 **Startup.** A hosted service registered by the section's `Section.Register` runs after all sections are registered: it calls every `INotificationPublisher.PublishAllAsync` in parallel, fail-soft per publisher (a throwing publisher is logged; its entries are absent until the next reconcile). The bell renders empty until the rebuild completes; requests are never blocked on it. `Health()` exposes `RebuiltAt`.
 
-**Reconcile.** A Hangfire job, `notifications-reconcile`, on a fixed interval (implementer's call; start at 15 minutes). It builds a fresh board from the publishers and diffs it against the live one: entries added, entries removed, entries whose user set changed. It then swaps the fresh board in, preserving `PublishedAt` for keys that survive. The diff counts are the drift signal (see Metrics). A non-zero diff is a bug in a section's write path, not something to tune away.
+**Reconcile.** A Hangfire job, `notifications-reconcile`, on a fixed interval (implementer's call; start at 15 minutes), also scheduled a few seconds after any `RefreshAudience` call. It never swaps the board. It records the current mutation sequence, runs every publisher into a scratch board, then applies a per-section diff to the live board under the lock:
+
+- A publisher that threw is skipped: its section's live entries are left untouched and it is counted in `publisher_failures`. Only sections whose publisher succeeded are diffed.
+- A key the live path mutated after the recorded sequence (published, re-published, or retracted with a tombstone) is excluded from the diff: the write path is newer than the publisher's snapshot and wins. Tombstones older than the recorded sequence are cleared when the reconcile completes.
+- For the rest: added, removed, and user-set changes are applied, with `PublishedAt` preserved for keys that survive. Each is counted. A user-set change on an entry carrying an audience with a pending `RefreshAudience` is counted as `audience_refresh`; every other count is drift, and drift is a bug in a section's write path, not something to tune away.
 
 **Rebuild now.** Same code as reconcile, triggered from the admin page. Audited as an admin action.
 
@@ -122,20 +140,21 @@ Reachable from the admin navigation via `ISectionAdminNav`.
 
 ## Metrics
 
-Through `IMeters.Declare`, exported under the existing Humans meter. Set on every board mutation and after every reconcile; nothing polls.
+Through `IMeters.Declare`, exported under the existing Humans meter. `IMeters` is name plus `Set(int)` only: no tags, no counters. Per-source series are therefore separate gauges named by source, declared on the first publish of that source (`Declare` is idempotent by name), and there are no rate counters; publish and retract volume is not needed for what these gauges are for. Set on every board mutation and after every reconcile; nothing polls.
 
-| Gauge | Tag | Meaning |
-|-------|-----|---------|
-| `notifications.open` | source | open entries |
-| `notifications.users_open` | source | users with at least one open entry |
-| `notifications.oldest_age_seconds` | source | age of the oldest open entry |
-| `notifications.open_total` | | all open entries |
-| `notifications.reconcile.added` | | entries the last reconcile added (incremental path missed a publish) |
-| `notifications.reconcile.removed` | | entries the last reconcile removed (incremental path missed a retract) |
-| `notifications.reconcile.changed` | | entries whose user set the last reconcile corrected |
-| `notifications.publisher_failures` | | publishers that threw on the last rebuild or reconcile |
+| Gauge | Meaning |
+|-------|---------|
+| `notifications.open.<source>` | open entries for the source |
+| `notifications.users_open.<source>` | users with at least one open entry for the source |
+| `notifications.oldest_age_seconds.<source>` | age of the oldest open entry for the source |
+| `notifications.open_total` | all open entries |
+| `notifications.reconcile.added` | entries the last reconcile added (incremental path missed a publish) |
+| `notifications.reconcile.removed` | entries the last reconcile removed (incremental path missed a retract) |
+| `notifications.reconcile.changed` | user-set corrections not attributable to an audience refresh |
+| `notifications.reconcile.audience_refresh` | user-set corrections attributable to a `RefreshAudience` call |
+| `notifications.publisher_failures` | publishers that threw on the last rebuild or reconcile |
 
-Publish and retract rates per source are counters on the same meter. The three reconcile gauges are the ones to alert on.
+The three drift gauges (`added`, `removed`, `changed`) are the ones to alert on.
 
 ## Per-source migration
 
@@ -147,7 +166,7 @@ Every source today, and what it becomes. Audience is who the entry is published 
 |-------|-------|-------|----------|----------------|
 | TeamJoinRequestSubmitted, join-requests meter | Teams | one per pending request | `TeamCoordinators:<slug>`; a second entry per team for `Role:Admin` when the team has no coordinator | request decided or withdrawn |
 | ShiftCoverageGap | Shifts | one per upcoming shift with confirmed < minimum, same predicate `CheckAndNotifyCoverageGapAsync` uses | `TeamCoordinators:<rota's team>` | shift reaches minimum, is cancelled, or starts |
-| IssueSubmitted | Issues | one per open unassigned issue | `Role:<routed roles>` per `IssueSectionRouting.RolesFor`, plus `Role:Admin` | assigned or terminal |
+| IssueSubmitted | Issues | one per open unassigned issue | one `Role:<name>` recipient set per routed role from `IssueSectionRouting.RolesFor`, plus `Role:Admin`, all on the one entry | assigned or terminal |
 | IssueAssigned | Issues | one per open issue assigned to you | `User` | reassigned or terminal |
 | TermRenewalReminder | Governance | one per term expiring within the job's window | `User` | renewed or expired |
 | Board-vote meter | Governance | one per application awaiting your vote | `Role:Board`, published per board member as `User` since "awaiting *your* vote" is per person | voted or decided |
@@ -203,7 +222,7 @@ The board holds user ids and entry args (which may include display names) in RAM
 
 ## Phases
 
-1. **Board core** (Notifications only, no user-visible change). Contracts, board, startup rebuild, reconcile job, gauges, `/Notifications/Admin` with Rebuild, `ISectionAdminNav` entry. Tests under `tests/Humans.Notifications.Tests`: publish/retract idempotence, `PublishedAt` survival, reconcile diff, per-user isolation, admin deny path.
+1. **Board core** (Notifications only, no user-visible change). Contracts, board, startup rebuild, reconcile job, gauges, `/Notifications/Admin` with Rebuild, `ISectionAdminNav` entry. Tests under `tests/Humans.Notifications.Tests`: publish/retract idempotence, `PublishedAt` survival, multi-audience publish and by-audience index, ownership rejection, reconcile diff, a live mutation during reconcile winning over the snapshot, a failed publisher leaving its entries alone, audience-refresh classification, per-user isolation, admin deny path.
 2. **Publishers**, one PR per section, additive: implement `INotificationPublisher`, add `Publish`/`Retract` at the write sites, keep the old emits. The admin page is the verification surface: after each section lands, its entries appear there and the reconcile gauges stay at zero.
 3. **The switch** (one PR, mostly deletion): bell, popup, `/Notifications` and the dashboard list read from the board; everything under "What is deleted" except the tables and the column goes; `Notifications.md` rewritten to this shape; `notification-inbox.md` deleted.
 4. **Drop PR**: tables, context, migrations, `InboxEnabled` column. Needs Peter's per-case approval with evidence the tables hold nothing in use.
@@ -222,4 +241,5 @@ The board holds user ids and entry args (which may include display names) in RAM
 - [`crosscut-purity`](../../../../../memory/architecture/crosscut-purity.md): the board is inbound only. Notifications calls no section; the audience label is recorded, never resolved here. `SendToRoleAsync` calling Auth goes away with it.
 - [`no-admin-url-section`](../../../../../memory/architecture/no-admin-url-section.md): the admin view lives at `/Notifications/Admin`.
 - [`localization-admin-exempt`](../../../../../memory/code/localization-admin-exempt.md): `/Notifications/Admin` is admin-side; the bell, popup and `/Notifications` are not.
-- [`reuse-first-change-discipline`](../../../../../memory/process/reuse-first-change-discipline.md): `IMeters`, `IEntityNameContributor`, `ISectionAdminNav`, `ISectionChrome`, `IFanout` reused; `ISectionThingsToDo` retired rather than kept beside the board. New public surface is the three contract types above, replacing seven.
+- [`no-new-displayname-fields`](../../../../../memory/code/no-new-displayname-fields.md): no `DisplayName` anywhere on the contract; audiences carry ids and names are resolved at render.
+- [`reuse-first-change-discipline`](../../../../../memory/process/reuse-first-change-discipline.md): `IMeters`, `IEntityNameContributor`, `ISectionAdminNav`, `ISectionChrome`, `IFanout` reused; `ISectionThingsToDo` retired rather than kept beside the board. New public surface is the five contract types above, replacing seven.
