@@ -4,7 +4,7 @@
 **Status:** Approved shape; implementation follows on this branch. The invariants of record will be `src/Sections/Humans.Workgroups/Docs/Workgroups.md` once built.
 **Source of truth:** Board Resolution — Working Groups, adopted 24 August 2026 ([minutes](https://nobodies.team/transparency/2026-08-24-board.html)), plus the Working Group Guidance adopted as Board policy under its clause 6.
 
-> The few points still marked `Implementer decides` are deliberately left open; everything else is Peter's call and not up for re-litigation.
+> One point is still marked `Implementer decides`; everything else is Peter's call and not up for re-litigation.
 
 ---
 
@@ -104,7 +104,7 @@ Rules:
 
 ## 7. Data model
 
-Own project `Humans.Workgroups`, own `WorkgroupsDbContext`, migrations under `Migrations/Workgroups`, context added to `SECTION_DB_CONTEXTS` in `build.yml`. Every cross-section reference is a bare Guid (`memory/architecture/no-cross-section-ef-joins.md`). Instants and dates via NodaTime. Enums string-converted.
+Own project `Humans.Workgroups`, own `WorkgroupsDbContext`, migrations under `Migrations/Workgroups`, context added to `SECTION_DB_CONTEXTS` in `build.yml`. Six tables: `workgroups`, `workgroup_members`, `workgroup_meetings`, `workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments`. Every cross-section reference is a bare Guid (`memory/architecture/no-cross-section-ef-joins.md`). Instants and dates via NodaTime. Enums string-converted.
 
 ### Workgroup — `workgroups`
 
@@ -217,11 +217,9 @@ Rules: Draft visible to members and admins only. Published requires a non-empty 
 
 Comments are grouped by category on the document page. A member responds per comment; a bulk action applies one disposition and response to every Pending comment in a category. Responses are visible to all once set; the resolution's "show what you heard and decided against" is this record.
 
-### WorkgroupSettings — `workgroup_settings` (singleton row)
+### Settings
 
-`RootDriveFolderId` (string): the Workgroups root folder every subfolder is created under. Set on `/Workgroups/Admin/Settings`. Registration is refused with a clear message while unset.
-
-> **Implementer decides:** if `Humans.Settings` already offers a typed per-section setting, use it instead of this table.
+No section table. The Workgroups root folder id is one key, `SettingKeys.WorkgroupsRootDriveFolderId` (`Humans.Settings.Contracts`), read and written through `ISettingsService.GetValueAsync` / `SetValueAsync` like Email, GoogleIntegration and Monitor do. Set on `/Workgroups/Admin/Settings`. Registration is refused with a clear message while unset.
 
 ## 8. Calendar fan-out
 
@@ -232,7 +230,7 @@ Calendar's fan-out is extended so sections can feed the **community calendar**, 
 - Workgroups implements the contributor: per-user items are the meetings of groups the user is a current member of (Active groups only); public items are meetings with `IsPublic = true`.
 - Calendar stays the only owner of `calendar_events`; Workgroups owns `workgroup_meetings`. No shared table, no bare-Guid link.
 
-> **Implementer decides:** one interface with two methods versus a second interface for the public call. Prefer one unless the merge in Calendar's views gets awkward.
+One interface, two methods (Peter's call).
 
 ## 9. Drive access through a fan-out
 
@@ -362,6 +360,7 @@ The `governance-scope` memory atom is updated in this PR: Governance is the laye
 | Teams | `ITeamServiceRead` | Board membership (`SystemTeamIds.Board`) for badges and root Drive readers |
 | Calendar | `ICalendarFeedContributor` (extended, §8) — inbound | Workgroups implements it; Calendar names nothing |
 | GoogleIntegration | `IGoogleDriveAccessSource` (new, §9) — inbound; `IGoogleSyncService.CreateSubfolderAsync`, `RequestSyncAsync` — outbound | folder creation and sync |
+| Settings | `ISettingsService` | root Drive folder id |
 | Surveys | none (link by id); Surveys' own changes in §11 | |
 | Notifications, Email, AuditLog | crosscuts | §13, §14, audit on every admin and job action |
 | Gdpr | `IUserDataContributor` | §18 |
