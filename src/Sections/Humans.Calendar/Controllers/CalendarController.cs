@@ -63,11 +63,12 @@ internal sealed class CalendarController : HumansControllerBase
         var today = _clock.GetCurrentInstant().InZone(zone).Date;
         var ym = new YearMonth(year ?? today.Year, month ?? today.Month);
 
-        var firstOfMonth = ym.OnDayOfMonth(1);
-        var from = firstOfMonth.AtMidnight().InZoneLeniently(zone).ToInstant();
-        var daysInMonth = firstOfMonth.Calendar.GetDaysInMonth(ym.Year, ym.Month);
-        var to = ym.OnDayOfMonth(daysInMonth).AtMidnight().InZoneLeniently(zone).ToInstant()
-                     .Plus(Duration.FromDays(1));
+        // The whole rendered grid, not just the month: Index pads the first and last weeks
+        // with adjacent-month days, and querying only [1st, 1st of next month) left those
+        // cells permanently empty. List and Team clip to the month themselves.
+        var (gridStart, gridEnd) = CalendarGridLayout.MonthGridBounds(ym);
+        var from = gridStart.AtMidnight().InZoneLeniently(zone).ToInstant();
+        var to = gridEnd.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant();
 
         var occ = await _calendarRead.GetOccurrencesInWindowAsync(from, to, teamId, ct);
         var teams = (await _teams.GetTeamsAsync(ct))
