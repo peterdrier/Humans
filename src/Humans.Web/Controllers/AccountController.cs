@@ -249,8 +249,13 @@ public class AccountController(
             token, email, HttpContext.RequestAborted);
         if (redeemedEmail is null)
         {
-            // Already redeemed. A double-submit from the person who just signed up
-            // is harmless — they are signed in, so send them on. Anyone else errors.
+            // Already redeemed. A resubmit that carries the cookie the first POST set
+            // is the person who just signed up, so send them on. Everyone else errors:
+            // a replay, and also the losing half of a double-click, whose request was
+            // issued before that cookie existed. That half sees the error page, but the
+            // account and session the winning half created stand — their next navigation
+            // is signed in. Nothing derived from the request could tell those two apart,
+            // since a replay carries the same body.
             if (User.Identity?.IsAuthenticated == true)
                 return RedirectToLocal(returnUrl);
 
