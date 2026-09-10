@@ -45,6 +45,15 @@ public interface IMagicLinkService : IApplicationService
         string token, string? expectedEmail = null, CancellationToken ct = default);
 
     /// <summary>
+    /// Un-redeems a signup token consumed by <see cref="VerifyAndConsumeSignupTokenAsync"/>
+    /// when the signup it was consumed for failed to create an account. Call it only on
+    /// that path: provisioning rolls itself back on failure, so nothing was accomplished
+    /// and the person must be able to resubmit the same link rather than wait out its
+    /// 15 minutes. No-op if the token was never reserved.
+    /// </summary>
+    void ReleaseSignupToken(string token);
+
+    /// <summary>
     /// Finds a user by verified <see cref="UserEmail"/>. Used
     /// for account linking (OAuth callback) and signup double-click protection.
     /// </summary>

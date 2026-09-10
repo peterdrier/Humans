@@ -199,6 +199,7 @@ The DataProtection token carries no server-side state, so single-use is enforced
 
 - The signup **GET** reads the token through `VerifySignupToken`, which does *not* consume — it only unprotects, to pre-fill the form. Consuming on a GET would let an email-security scanner burn the link, the same hazard `MagicLinkConfirm` exists to avoid on the login side.
 - The **POST** consumes *after* field validation, not before. The validation branch re-renders the form with the same token, so consuming first would lock out anyone who submitted with a field blank.
+- If provisioning then fails, the reservation is **released** (`IMagicLinkService.ReleaseSignupToken`). `CompleteMagicLinkSignupAsync` rolls itself back on every failure path — the Identity user is deleted or was never created — so the redemption accomplished nothing, and a transient failure must not cost the person their link for the remaining 15 minutes. Mirrors `ReleaseSignupReservation` on the send side.
 
 A replayed POST therefore fails the reservation and renders `MagicLinkError` — except for a duplicate submit by the person the first POST just created and signed in, who is already authenticated and is redirected onward, preserving the documented double-click behaviour. This makes the shipped signup email's promise true: `Email_MagicLinkSignup_Body` says the link "can only be used once" in all six cultures.
 

@@ -266,7 +266,13 @@ public class AccountController(
 
 #pragma warning disable CS0618 // result.User is a record field on MagicLinkSignupCompletionResult, not a cross-domain nav read; arch test pattern-matches the literal `.User`.
         if (result.User is null)
+        {
+            // Provisioning failed and rolled itself back, so the redemption
+            // accomplished nothing. Hand the link back rather than making the
+            // person request a new email over a transient failure.
+            magicLinkService.ReleaseSignupToken(token);
             return View("MagicLinkError");
+        }
 
         await signInManager.SignInAsync(result.User, isPersistent: true);
 #pragma warning restore CS0618

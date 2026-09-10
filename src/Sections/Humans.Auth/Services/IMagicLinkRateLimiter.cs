@@ -2,7 +2,7 @@ namespace Humans.Auth.Services;
 
 /// <summary>
 /// Rate-limits magic-link signup sends and tracks single-use consumption of
-/// login tokens. Backed by <c>IMemoryCache</c>. Kept behind an interface so
+/// sign-in tokens. Backed by <c>IMemoryCache</c>. Kept behind an interface so
 /// <see cref="MagicLinkService"/> does not couple directly to the memory-cache
 /// abstraction for cross-cutting auth state. Section-internal: only
 /// <c>MagicLinkService</c> injects it and only <c>Section.Register</c> binds it.
@@ -16,8 +16,18 @@ internal interface IMagicLinkRateLimiter
     /// <c>VerifyLoginTokenAsync</c>, signup tokens on
     /// <c>VerifyAndConsumeSignupTokenAsync</c>. The two token strings come
     /// from different DataProtection purposes, so they never collide.
+    /// On a caller-observed failure after the reservation, it can be released
+    /// via <see cref="ReleaseTokenReservation"/> to allow a retry.
     /// </summary>
     Task<bool> TryConsumeTokenAsync(string token, TimeSpan lifetime);
+
+    /// <summary>
+    /// Releases a token reservation after the redemption it was taken for
+    /// failed to accomplish anything, so the link keeps working for the rest
+    /// of its lifetime. The mirror of <see cref="ReleaseSignupReservation"/>
+    /// on the send side.
+    /// </summary>
+    void ReleaseTokenReservation(string token);
 
     /// <summary>
     /// Attempts to reserve a signup-send for the given email. Returns false

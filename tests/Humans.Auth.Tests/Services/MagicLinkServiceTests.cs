@@ -388,6 +388,16 @@ public sealed class MagicLinkServiceTests : IDisposable
     }
 
     [HumansFact]
+    public void ReleaseSignupToken_HandsTheLinkBackAfterFailedProvisioning()
+    {
+        // Provisioning rolls itself back on failure, so the redemption accomplished
+        // nothing and the person must be able to resubmit the same link.
+        _service.ReleaseSignupToken("good-token");
+
+        _rateLimiter.Received(1).ReleaseTokenReservation("good-token");
+    }
+
+    [HumansFact]
     public async Task FindUserByVerifiedEmailAsync_FindsByUserEmail()
     {
         var userId = Guid.NewGuid();

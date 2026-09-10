@@ -31,7 +31,8 @@ member.
   each is consumed at the moment it is redeemed — the login link on verification, the signup
   link on the form's POST, after validation so a blank field cannot burn it. A replayed signup
   POST is refused, except from the person who just signed up, who is already signed in and is
-  simply sent onward. Survey and unsubscribe links are a different mechanism and stay reusable
+  simply sent onward. A signup that fails to create the account hands the link back rather than
+  burning it. Survey and unsubscribe links are a different mechanism and stay reusable
   by design (F41, answered by Peter 2026-09-10).
 
 Everything else the section holds exists to serve one of those two: caches so the first job
@@ -52,7 +53,7 @@ own shape is a candidate for removal.
 | S4 | *Render the admin list / one row* | `GetFilteredAsync`, `GetByIdAsync` | The only paged, display-stitched shape |
 | S5 | *Change who holds what* | `AssignRoleAsync`, `EndRoleAsync`, `RevokeAllActiveAsync`, `HasOverlappingAssignmentAsync` | The invariant-bearing shape |
 | S6 | *Flush a cache on my behalf* | `InvalidateClaimsCacheForUser`, `InvalidateNavBadgeCache`, `InvalidateRoleAssignmentCache` | Not a question about roles at all — see §3 |
-| S7 | *Sign this person in from an emailed link* | `SendMagicLinkAsync`, `VerifyLoginTokenAsync`, `VerifySignupToken`, `VerifyAndConsumeSignupTokenAsync`, `FindUserByVerifiedEmailAsync` | `IMagicLinkService`; the two signup members split read (form prefill) from redemption |
+| S7 | *Sign this person in from an emailed link* | `SendMagicLinkAsync`, `VerifyLoginTokenAsync`, `VerifySignupToken`, `VerifyAndConsumeSignupTokenAsync`, `ReleaseSignupToken`, `FindUserByVerifiedEmailAsync` | `IMagicLinkService`; the signup members split read (form prefill), redemption, and un-redemption when provisioning fails |
 | S8 | *Stop this request unless it is a full Admin* | `RequireCurrentUserIsAdminAsync` | `IAdminAuthorizationService` |
 | S9 | *May this principal manage this role name?* | `RoleAssignmentOperationRequirement` + its handler | ASP.NET resource-based, Shell-invoked |
 | S10 | *Who is the current user?* | `ICurrentUserContext.UserId` | Declared here, implemented in Shell |

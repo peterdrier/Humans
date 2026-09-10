@@ -15,9 +15,16 @@ internal sealed class MagicLinkRateLimiter(IMemoryCache cache) : IMagicLinkRateL
 {
     public Task<bool> TryConsumeTokenAsync(string token, TimeSpan lifetime)
     {
-        var cacheKey = CacheKeys.MagicLinkUsed(token[..Math.Min(token.Length, 32)]);
-        return cache.TryReserveAsync(cacheKey, lifetime);
+        return cache.TryReserveAsync(TokenKey(token), lifetime);
     }
+
+    public void ReleaseTokenReservation(string token)
+    {
+        cache.Remove(TokenKey(token));
+    }
+
+    private static string TokenKey(string token) =>
+        CacheKeys.MagicLinkUsed(token[..Math.Min(token.Length, 32)]);
 
     public Task<bool> TryReserveSignupSendAsync(string email, TimeSpan cooldown)
     {

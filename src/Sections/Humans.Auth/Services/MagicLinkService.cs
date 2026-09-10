@@ -112,6 +112,8 @@ internal sealed class MagicLinkService(
         return payload;
     }
 
+    public void ReleaseSignupToken(string token) => rateLimiter.ReleaseTokenReservation(token);
+
     public async Task<User?> FindUserByVerifiedEmailAsync(string email, CancellationToken ct = default)
     {
         var userEmail = await userEmailService.FindVerifiedEmailWithUserAsync(email, ct);
