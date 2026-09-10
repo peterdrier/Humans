@@ -1,9 +1,11 @@
 # Dispatched-thread contract
 
 You are one thread of a section-doctor run. Your prompt opens with `thread: <Name>` and carries
-your slice of the section's inventory. Before reading anything else, read:
+your slice of the section's inventory. Every path in it is absolute, rooted at the run's
+worktree; read and grep only under that root — a relative path or your own cwd may be a
+different checkout. Before reading anything else, read the files the prompt names:
 
-1. `.claude/skills/section-doctor/threads/<name>.md` — your lens, named in the prompt.
+1. `threads/<name>.md` — your lens.
 2. `src/Sections/Humans.<X>/Docs/health.md` — the target shape (all six parts plus the
    load-bearing weirdness list). Every judgment is against the target, not the section's own
    description of itself.

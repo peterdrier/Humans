@@ -111,10 +111,13 @@ the wall-clock / token / fragility balance:
 **Dispatch contract.** A dispatched thread's prompt is short: line one `thread: <Name>` (the
 cost report names the row by it), then the section, its slice of the 3a inventory (members,
 routes and keys listed, **never counted** — a count typed from a regex over `public` lines is
-wrong, and every thread inherits it), and its deadline. The thread reads the rest itself:
-`threads/CONTRACT.md` (return format, never-edit, absence-verdict proof), its lens file from
-the table, and the target in `src/Sections/Humans.<X>/Docs/health.md` — so the 3c trace gate
-runs before any dispatch. It returns a **structured findings list plus a disposition for every
+wrong, and every thread inherits it), its deadline, and the **absolute** paths of the files it
+reads itself: `$WORKTREE/.claude/skills/section-doctor/threads/CONTRACT.md` (return format,
+never-edit, absence-verdict proof), its lens file from the table, and the target
+`$WORKTREE/src/Sections/Humans.<X>/Docs/health.md` — so the 3c trace gate runs before any
+dispatch. Every path in the prompt, inventory included, is rooted at `$WORKTREE`: a subagent
+does not inherit the run's cwd, and on a local machine a relative path resolves against the
+main checkout's stale copy, or no copy at all. It returns a **structured findings list plus a disposition for every
 file it claimed**, never prose, and **never edits anything**. At dispatch, log it:
 `doctor.py dispatch-log <Name> <model> [agent-type]` — Phase 5's `## Threads` model column is
 copied from `$RUNDIR/assessment/threads.md`, never recalled.
