@@ -241,7 +241,7 @@ read/write through `ITicketRepository`; neither `TicketQueryService.cs` nor `Tic
 
 - **`ITicketRepository`** (Tickets-owned) — owns reads/writes for `ticket_orders`, `ticket_attendees`, `ticket_sync_states`. Aggregate-local navs kept (`TicketOrder.Attendees`, `TicketAttendee.TicketOrder`). Cross-domain `MatchedUser` nav properties have been stripped from both entities; FK (`MatchedUserId`) is retained and joining to `User` is done in-memory via `IUserService.GetUserInfosAsync` after the read.
 
-The Tickets→Budget bridge owns no repository and is no longer a Tickets class: `Humans.Budget.Services.TicketingBudgetService` reads paid-order data through `ITicketServiceRead` (served by `ITicketRepository` on the read side) and delegates all writes to Budget's `IBudgetService`. Its tests moved with it, to `tests/Humans.Budget.Tests/Architecture/TicketingBudgetArchitectureTests.cs`. (The dedicated `ITicketingBudgetRepository` it once used was removed in #815.)
+The Tickets→Budget bridge owns no repository and is no longer a Tickets class: `Humans.Budget.Services.TicketingBudgetService` reads paid-order data through `ITicketServiceRead` (served by `ITicketRepository` on the read side) and delegates all writes to Budget's `IBudgetService`. Its tests moved with it, to `tests/Humans.Budget.Tests/Services/TicketingBudgetServiceTests.cs`. (The dedicated `ITicketingBudgetRepository` it once used was removed in #815.)
 
 ### Touch-and-clean guidance
 
