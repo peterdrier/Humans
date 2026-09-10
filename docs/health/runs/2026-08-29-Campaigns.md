@@ -68,7 +68,6 @@ plus the target shape, this file, and the sweep commit.
 
 ## Skipped
 
-- 28 — Needs-Peter (behavior change).
 - 30 — see its entry above.
 - 26 remainder — queued to the section's `debt.yml` (sweep queue below).
 - Sections passed over in selection: Camps (blocked — open doctor PR peterdrier/Humans#1561),
