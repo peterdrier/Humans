@@ -192,8 +192,9 @@ Findings raised after 3e:
 
 None — this run's debt items were written directly to their ledgers in this PR (the section's
 `Docs/debt.yml`; the sweep commit applied the Consent, Feedback and Backdoor queues to the
-central ledger, the Email, GoogleIntegration, Calendar and Shifts ledgers, and a new memory
-atom for the push-by-URL rule).
+central ledger, the Email, GoogleIntegration and Shifts ledgers, and a new memory atom for
+the push-by-URL rule; the Calendar item was already fixed on main by the time main was merged
+in, and was dropped).
 
 ## File coverage
 

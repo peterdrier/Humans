@@ -5,6 +5,3 @@ inbox:
   - added: 2026-08-27
     what: "ICalFeedService.cs:11-12 justifies its sequential provider fan-out as \"contributors share the scoped section DbContexts which are not thread-safe (same as GdprExportService)\". That reason is obsolete (design-rules.md §8a); Gdpr's own copy was corrected on peterdrier/Humans#1540. Sequential stays — the reason changes (finding 22, /section-doctor on Gdpr 2026-08-27)."
     review: panel
-  - added: 2026-09-10
-    what: "Docs/Calendar.md:33 names ITeamService.GetTeamNamesByIdsAsync, which exists nowhere in the code; the live surface is ITeamServiceRead.GetTeamsAsync / GetTeamAsync. Found fixing the same claim in Feedback (/section-doctor on Feedback 2026-08-31; swept in by /section-doctor on Rideshare 2026-09-10)."
-    review: light
