@@ -112,7 +112,7 @@
                     else if (!Model.IsPreview)
                     {
                         <input type="hidden" name="Anonymity"
-                               value="@(Model.IsPublic ? nameof(ResponseAnonymity.Anonymous) : nameof(ResponseAnonymity.Identified))" />
+                               value="@(Model.IsPublic && Model.AllowAnonymous ? nameof(ResponseAnonymity.Anonymous) : nameof(ResponseAnonymity.Identified))" />
                     }
 
                     <div class="alert alert-secondary small" role="note">

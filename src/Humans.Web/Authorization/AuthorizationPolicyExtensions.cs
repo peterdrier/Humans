@@ -45,6 +45,7 @@ public static class AuthorizationPolicyExtensions
                     RoleNames.FinanceAdmin,
                     RoleNames.StoreAdmin,
                     RoleNames.CantinaAdmin,
+                    RoleNames.RideshareAdmin,
                     RoleNames.NoInfoAdmin,
                     RoleNames.VolunteerCoordinator,
                     RoleNames.ConsentCoordinator));

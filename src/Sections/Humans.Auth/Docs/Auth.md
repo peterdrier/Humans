@@ -85,6 +85,7 @@ Defined in `src/Humans.Base/Constants/RoleNames.cs`.
 | CantinaAdmin | `"CantinaAdmin"` | Read-only cantina weekly/daily roster (on-site cohort, dietary breakdown, allergy/intolerance rollups); sees dietary preferences but never medical conditions — excluded at the DTO boundary |
 | ConsentCoordinator | `"ConsentCoordinator"` | Safety gate for onboarding consent checks |
 | VolunteerCoordinator | `"VolunteerCoordinator"` | Facilitation contact for onboarding; read-only access to onboarding review queue |
+| RideshareAdmin | `"RideshareAdmin"` | Rideshare settings (year's destination + travel windows), season statistics, and the operational day roster; confers nothing outside Rideshare |
 | EETeamAdmin | `"EETeamAdmin"` | Cross-team Early-Entry administrator — can grant/edit/revoke early-entry grants on ANY team that has `EarlyEntryEnabled`. Confers nothing else. Coordinators manage EE on their own team without this role |
 
 `RoleNames.BoardManageableRoles` (a `HashSet<string>` on the same constants class) enumerates the roles that Board and HumanAdmin are permitted to assign / end; `Admin` is **not** in that set, so only an existing Admin can assign the Admin role (enforced by both `RoleAssignmentAuthorizationHandler` and `RoleChecks.GetAssignableRoles`).
