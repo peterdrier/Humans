@@ -60,7 +60,7 @@ Written fresh from the shapes, not from today's folders.
   section index); view components for the member dashboard and the admin dashboard; one nav
   contribution; one job contribution.
 - **Contracts leaf** — exactly what lives outside the section: the read surface, the write
-  members Shell's profile submit path and the renewal job call, the membership-calculator read
+  members Users' profile submit path and the renewal job call, the membership-calculator read
   surface, the DTOs those signatures name, and `ApplicationStatus`.
 
 Nothing that is only called from inside the section belongs on an interface.

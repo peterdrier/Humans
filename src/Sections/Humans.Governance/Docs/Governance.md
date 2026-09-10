@@ -106,7 +106,7 @@ Colaborador and Asociado memberships have 2-year synchronized terms expiring Dec
 
 ## Routing
 
-Three controllers serve this section.
+These controllers serve this section.
 
 | Controller | Routes | Notes |
 |------------|--------|-------|
@@ -158,7 +158,7 @@ Three controllers serve this section.
 
 ## Cross-Section Dependencies
 
-- **Users:** `IUserService` — membership tier lives on the profile; approval calls `SetMembershipTierAsync`. `GovernanceIndexService` counts the sidebar tiers itself from `IUserServiceRead.GetAllUserInfosAsync`. Account merge: `ApplicationDecisionService` implements `IUserMerge`; `AccountMergeService` (Profiles section) fans out to all `IUserMerge` implementations, which triggers `ApplicationDecisionService.ReassignAsync` → `IApplicationRepository.ReassignApplicationsToUserAsync` to re-FK `Application.UserId` from source to target. `BoardVote.BoardMemberUserId` is not re-FK'd (votes are transient, deleted on finalization).
+- **Users:** `IUserService` — membership tier lives on the profile; approval calls `SetMembershipTierAsync`. `GovernanceIndexService` counts the sidebar tiers itself from `IUserServiceRead.GetAllUserInfosAsync`. Account merge: `ApplicationDecisionService` implements `IUserMerge`; `AccountMergeService` (Users section) fans out to all `IUserMerge` implementations, which triggers `ApplicationDecisionService.ReassignAsync` → `IApplicationRepository.ReassignApplicationsToUserAsync` to re-FK `Application.UserId` from source to target. `BoardVote.BoardMemberUserId` is not re-FK'd (votes are transient, deleted on finalization).
 - **Teams:** `ISystemTeamSync` — tier approval or expiry adds/removes the human from Colaboradors/Asociados system teams.
 - **Onboarding:** Tier applications are a separate, optional path — never block Volunteer onboarding.
 - **Consent:** Consent checks are reviewed alongside (but independently of) tier applications.

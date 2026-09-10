@@ -29,8 +29,9 @@ existed, so the one action link a decided applicant gets is a 404.
 Everything else was surface and truth. Dead surface went — a public cross-section contract
 method dead end to end, an interface nothing injected, a calculator shortcut with no caller.
 Comments said things that were false, and the section's own docs carried a controller, an
-architecture test file and service interfaces that do not exist. `authorization.md` and
-`data-access.md` had no freshness triggers at all.
+architecture test file and service interfaces that do not exist. The missing freshness
+triggers on generated ownership maps were not a defect: the catalog excludes those maps
+from editorial tracking.
 
 Conformance was clean: section-file-layout PASS, `reforge audit-auth` PASS,
 `reforge ownership-violations` 0.
@@ -105,6 +106,9 @@ push (`Humans.Integration.Tests` self-skips, by design);
 
 ## Retro
 
+**What does the target diff say?** This was Governance's first doctor pass; there was no
+previous `Docs/health.md` target to compare. This run establishes the target for the next pass.
+
 **What did the target shape catch that a scan did not?** Both headline bugs and the
 interface deletion. `reforge audit-surface` reported neither view's arithmetic nor the dead
 notification URL — nothing in a call-graph scan can see that a string literal is not a
@@ -144,8 +148,8 @@ state machine or a listener on it.
   halves of one unbuilt flow: the state machine and entity implement a `Submitted →
   Submitted` re-entry carrying reviewer notes, nothing reaches it, and `ReviewStartedAt`
   rides through DTOs to views as a permanent blank. Build the flow, or delete both?
-- [ ] Finding 22 — which rule wins, the threads contract's findings count or
-  [`no-derived-aggregates-in-docs`](../../../memory/process/no-derived-aggregates-in-docs.md)?
+- [x] Finding 22 — mode and model recorded; redundant findings counts omitted under
+  [`no-derived-aggregates-in-docs`](../../../memory/process/no-derived-aggregates-in-docs.md).
 - [ ] Finding 23 — take the Phase 3 amendment (redirect a `reforge` scan to a file, never
   `head` it)?
 - [ ] Finding 24 — take the Phase 4 amendment (check for a near-identical live name before
@@ -309,7 +313,7 @@ Also read, outside the inventory, because a strike made them false:
 | Prose & surface | main (doctor pass + review round 5) | opus | 21, 28, 29 |
 | History | subagent (`doctor-reader`) | opus, effort low | 12 — false narrations, and cuts with trim-to text |
 | Comments | subagent (`doctor-reader`) | opus, effort low | 8 and 12 — the falsehoods, the cuts, and a keeps list the cuts respected |
-| Inbox | subagent (`doctor-reader`) | opus, effort low | none — `peterdrier/Humans` has open issues #1576, #1562 and #1554, none Governance; no Governance rows in `debt-ledger.yml`; the section had no `Docs/debt.yml` |
+| Inbox | subagent (`doctor-reader`) | opus, effort low | none — `peterdrier/Humans#1576`, `peterdrier/Humans#1562` and `peterdrier/Humans#1554` are not Governance issues; no Governance rows in `debt-ledger.yml`; the section had no `Docs/debt.yml` |
 
 **Prose & surface ran in two passes**, the second in review round 5 after the gap below was
 caught. Dead resources and the resource-key prefix check ran in the doctor pass (finding 21).
