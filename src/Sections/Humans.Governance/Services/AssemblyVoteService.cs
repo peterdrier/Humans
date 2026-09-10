@@ -565,8 +565,8 @@ internal sealed class AssemblyVoteService(
         if (vote is null) return null;
 
         return new AssemblyVoteDraft(
-            vote.Title.Values.ToDictionary(kv => kv.Key, kv => kv.Value),
-            vote.OfficialText.Values.ToDictionary(kv => kv.Key, kv => kv.Value),
+            vote.Title.Values.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
+            vote.OfficialText.Values.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
             vote.OfficialCulture,
             vote.InfoUrl,
             vote.Kind,
@@ -578,7 +578,7 @@ internal sealed class AssemblyVoteService(
             vote.Options
                 .OrderBy(o => o.Order)
                 .Select(o => new AssemblyVoteDraftOption(
-                    o.Key, o.Order, o.Label.Values.ToDictionary(kv => kv.Key, kv => kv.Value)))
+                    o.Key, o.Order, o.Label.Values.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase)))
                 .ToList());
     }
 
@@ -655,9 +655,9 @@ internal sealed class AssemblyVoteService(
 
     private static void ApplyDraft(AssemblyVote vote, AssemblyVoteDraft draft, Instant now)
     {
-        vote.Title = new GovernanceLocalizedText(draft.Title.ToDictionary(kv => kv.Key, kv => kv.Value));
+        vote.Title = new GovernanceLocalizedText(draft.Title.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase));
         vote.OfficialText = new GovernanceLocalizedText(
-            draft.OfficialText.ToDictionary(kv => kv.Key, kv => kv.Value));
+            draft.OfficialText.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase));
         vote.OfficialCulture = draft.OfficialCulture;
         vote.InfoUrl = draft.InfoUrl;
         vote.Kind = draft.Kind;
@@ -679,7 +679,7 @@ internal sealed class AssemblyVoteService(
                     VoteId = voteId,
                     Order = o.Order,
                     Key = o.Key,
-                    Label = new GovernanceLocalizedText(o.Label.ToDictionary(kv => kv.Key, kv => kv.Value))
+                    Label = new GovernanceLocalizedText(o.Label.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase))
                 })
                 .ToList();
 
