@@ -45,6 +45,7 @@ internal static class NotificationSourceMapping
         NotificationSource.RideshareInterestReceived => MessageCategory.System,
         NotificationSource.RideshareInterestAccepted => MessageCategory.System,
         NotificationSource.RideshareInterestDeclined => MessageCategory.System,
+        NotificationSource.AssemblyVoteOpened => MessageCategory.Governance,
         _ => MessageCategory.System
     };
 }

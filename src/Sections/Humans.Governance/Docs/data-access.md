@@ -4,9 +4,12 @@
 
 Project: `src/Sections/Humans.Governance`; services under `Services/`,
 repository under `Data/`. **DbContext:**
-`GovernanceDbContext`. `ApplicationRepository` injects
+`GovernanceDbContext`. `ApplicationRepository` and
+`AssemblyVoteRepository` inject
 `IDbContextFactory<GovernanceDbContext>` directly. Owns
-`Applications`, `ApplicationStateHistories`, `BoardVotes`.
+`Applications`, `ApplicationStateHistories`, `BoardVotes`,
+`AssemblyVotes`, `AssemblyVoteOptions`, `AssemblyVoteRosterEntries`,
+`AssemblyBallots`, `AssemblyBallotHistories`, `AssemblyVotePeeks`.
 
 `IApplicationDecisionService` extends `IApplicationServiceRead`; external
 readers (`GovernanceIndexService`, `OnboardingService`,
@@ -45,6 +48,52 @@ contribution, role understanding) and reviewer prose on `Applications` and
 `ApplicationStateHistories`, plus notes on `BoardVotes` the user cast as a
 Board member — the tier/status/date skeleton stays (Ley Orgánica 1/2002
 Art. 14, GDPR Art. 17(3)(b)).
+
+### AssemblyVoteService (Scoped)
+
+Repository: `IAssemblyVoteRepository`.
+
+| Table | R/W |
+|-------|-----|
+| AssemblyVotes | R/W |
+| AssemblyVoteOptions | R/W (draft only — content is immutable once Open) |
+| AssemblyVoteRosterEntries | R/W (written once at open; afterwards only the `NotifiedAt` / `ReminderSentAt` stamps and the erasure tombstone) |
+| AssemblyBallots | R/W |
+| AssemblyBallotHistories | R (append-only — the repository exposes no update or delete) |
+| AssemblyVotePeeks | R/W (insert only) |
+
+No cache, no caching decorator — one vote at a time and ~120 voters.
+
+Cross-section calls via `IUserServiceRead`, `IUserEmailService`,
+`IRoleAssignmentService`, `ITeamServiceRead`, `IEmailService`,
+`IEmailMessageFactory`, `INotificationEmitter`,
+`INotificationAutoResolve`, `IAuditLogService`, `IGoogleTranslationService`,
+`IClock`. Implements
+`IAssemblyVoteService`, `IUserDataContributor`, `IUserMerge`. Nothing on
+`Humans.Governance.Contracts`: no other section reads votes.
+
+`EraseForUserAsync` nulls the member's `AssemblyVoteRosterEntries.UserId`
+and retains the linked ballot and history rows unlinked — the vote is a
+legal record of the association (GDPR Art. 17(3)(b) / (e)), and the
+tombstone keeps the turnout counts and the stored `ResultJson` valid.
+`ReassignAsync` re-FKs roster rows and ballots from source to target; when
+both accounts sit on the same roster the target's row wins and the
+source's ballot is dropped with an audit entry.
+
+**The embargo is a data-access property, not a UI one.** Only
+`GetResultsAsync` (stored result, Closed only), `PeekAsync` (AdminOnly,
+audited, writes its peek row in the same unit of work) and
+`GetBallotsForBoardAsync` (Closed only, audited) return anything derived
+from ballot content. `IAssemblyVoteRepository.GetParticipationAsync`
+aggregates roster and ballot rows without reading `Choice` or `Ranking`,
+which is what makes the live stats safe to show to everyone.
+
+### AssemblyVoteCounting (static)
+
+Not a service and not in the `IApplicationService` inventory: a pure
+static counting function over ballot values with no clock, no repository
+and no DI. `AssemblyVoteService` calls it once per close and stores the
+output.
 
 ### GovernanceMetricsService (Hosted, `PolledGaugeService`)
 

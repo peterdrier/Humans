@@ -421,3 +421,12 @@ inbox:
   - added: 2026-09-10
     what: "docs/architecture/freshness-catalog.yml has no Backdoor entry; add one covering src/Sections/Humans.Backdoor/** and tests/Humans.Backdoor.Tests/** (finding 17, /section-doctor on Backdoor 2026-09-03; swept in by /section-doctor on Rideshare 2026-09-10)."
     review: light
+  - added: 2026-09-11
+    what: "src/Sections/Humans.Email/Services/EmailRenderer.cs HTML-encodes six subject lines (Email_IssueComment_Subject, Email_CoordinatorRotaMessage_Subject, Email_CoordinatorTeamRotasMessage_Subject, Email_GoogleGroupRemoval_LossOfAccess_Subject, Email_GoogleDriveRemoval_LossOfAccess_Subject, Email_GoogleAccessRemoval_SecondaryCleanup_Subject). A Subject header is plain text, so a title containing & or < reaches the recipient as R&amp;D. The three assembly-vote subjects had the same bug and were fixed in peterdrier/Humans#1649; the older six are left alone as out of that PR's scope."
+    review: light
+  - added: 2026-09-11
+    what: "INotificationAutoResolve has ResolveBySourceAsync (user + source, every key) and ResolveBySourceKeyAsync (source + key, every user) but nothing per user AND key, so Governance cannot retract one voter's AssemblyVoteOpened entry when they cast their ballot — the actionable row stands until the vote closes, and clearing it with ResolveBySourceAsync would wipe the member's prompts for every other open vote of the same assembly. Needs a new method on the Notifications contracts leaf, so Peter's call on the surface addition (Codex on peterdrier/Humans#1649)."
+    review: panel
+  - added: 2026-09-11
+    what: "docs/scripts/freshness-checks/dependency-graph.sh uses awk's asorti, which mawk (the container's awk) does not define: the script dies at line 91 and then reports PASS with \"all 0 section/Web service classes appear as Mermaid nodes\" — a vacuous pass that hides every missing node. Found when a Codex finding cited the check's output on peterdrier/Humans#1649 and it could not be reproduced."
+    review: light

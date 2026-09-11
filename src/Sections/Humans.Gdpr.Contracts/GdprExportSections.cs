@@ -67,4 +67,13 @@ public static class GdprExportSections
     public const string RideshareTrips = "RideshareTrips";
     public const string RideshareRequests = "RideshareRequests";
     public const string RideshareInterests = "RideshareInterests";
+    public const string AssemblyVotes = "AssemblyVotes";
+
+    /// <summary>
+    /// The other side of an assembly vote: the votes a Board member drafted, opened or closed
+    /// and the live tallies they peeked at. Separate from <see cref="AssemblyVotes"/> because
+    /// running a vote and voting in one are different records, and an officer usually has one
+    /// without the other.
+    /// </summary>
+    public const string AssemblyVoteActions = "AssemblyVoteActions";
 }

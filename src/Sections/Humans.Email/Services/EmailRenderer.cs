@@ -8,6 +8,8 @@ using Microsoft.Extensions.Options;
 
 using Humans.Events.Contracts;
 
+using NodaTime;
+
 namespace Humans.Email.Services;
 
 /// <summary>
@@ -533,4 +535,39 @@ internal sealed class EmailRenderer(
                     """);
         }
     }
+
+    /// <summary>
+    /// Webmail has no Humans origin, so a root-relative path in an email resolves against the
+    /// reader's own host. Callers pass the in-app path; the absolute link is built here, the
+    /// same way survey and team links are.
+    /// </summary>
+    private string AbsoluteUrl(string path) =>
+        $"{_settings.BaseUrl.TrimEnd('/')}/{path.TrimStart('/')}";
+
+    public EmailContent RenderAssemblyVoteOpened(string userName, string voteTitle, LocalDateTime closesAt, bool isOfficial, string voteUrl, string? culture = null)
+        => RenderLocalized(culture, () =>
+        {
+            var indicativeHtml = isOfficial ? "" : L("Email_AssemblyVote_IndicativeNote");
+            return new EmailContent(
+                Lf("Email_AssemblyVoteOpened_Subject", voteTitle),
+                Lf("Email_AssemblyVoteOpened_Body", HtmlEncode(userName), HtmlEncode(voteTitle), HtmlEncode(closesAt.ToDateTime()), AbsoluteUrl(voteUrl), indicativeHtml));
+        });
+
+    public EmailContent RenderAssemblyVoteReminder(string userName, string voteTitle, LocalDateTime closesAt, bool isOfficial, string voteUrl, string? culture = null)
+        => RenderLocalized(culture, () =>
+        {
+            var indicativeHtml = isOfficial ? "" : L("Email_AssemblyVote_IndicativeNote");
+            return new EmailContent(
+                Lf("Email_AssemblyVoteReminder_Subject", voteTitle),
+                Lf("Email_AssemblyVoteReminder_Body", HtmlEncode(userName), HtmlEncode(voteTitle), HtmlEncode(closesAt.ToDateTime()), AbsoluteUrl(voteUrl), indicativeHtml));
+        });
+
+    public EmailContent RenderAssemblyVoteCancelled(string userName, string voteTitle, string reason, string? culture = null)
+        => RenderLocalized(culture, () =>
+        {
+            var reasonHtml = Lf("Email_ReasonLine", HtmlEncode(reason));
+            return new EmailContent(
+                Lf("Email_AssemblyVoteCancelled_Subject", voteTitle),
+                Lf("Email_AssemblyVoteCancelled_Body", HtmlEncode(userName), HtmlEncode(voteTitle), reasonHtml));
+        });
 }

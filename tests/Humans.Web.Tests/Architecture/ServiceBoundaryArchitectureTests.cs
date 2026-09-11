@@ -46,6 +46,7 @@ public class ServiceBoundaryArchitectureTests
             [HostRepository("Humans.Web.Repositories.Admin.IAdminDatabaseDiagnosticsRepository")] = "Admin",
             [SectionRepository("Humans.Agent.Data.IAgentRepository")] = "Agent",
             [SectionRepository("Humans.Governance.Data.IApplicationRepository")] = "Governance",
+            [SectionRepository("Humans.Governance.Data.IAssemblyVoteRepository")] = "Governance",
             [SectionRepository("Humans.AuditLog.Data.IAuditLogRepository")] = "AuditLog",
             [SectionRepository("Humans.Budget.Data.IBudgetRepository")] = "Budget",
             [SectionRepository("Humans.Calendar.Data.ICalendarRepository")] = "Calendar",

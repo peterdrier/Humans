@@ -1,0 +1,250 @@
+@using NodaTime
+@model Humans.Governance.Models.AssemblyVoteResultsViewModel
+@{
+    var results = Model.Results;
+    var vote = results.Vote;
+    ViewData["Title"] = vote.Title;
+    var madridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var optionLabels = vote.Options.ToDictionary(o => o.Key, o => o.Label, StringComparer.Ordinal);
+
+    string OptionLabel(string? key) => key is null ? string.Empty : (optionLabels.TryGetValue(key, out var label) ? label : key);
+
+    string RankingSummary(IReadOnlyList<string>? ranking)
+    {
+        if (ranking is null || ranking.Count == 0) return Localizer["Votes_NoRanking"].Value;
+        return string.Join(", ", ranking.Select((key, i) => $"{i + 1}. {OptionLabel(key)}"));
+    }
+
+    var audiences = new List<(AssemblyVoteAudienceResult Audience, string HeadingKey)>
+    {
+        (results.Result.Official, "Votes_OfficialResultHeading")
+    };
+    if (results.Result.Indicative is { } indicativeResult)
+    {
+        audiences.Add((indicativeResult, "Votes_IndicativeResultHeading"));
+    }
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Governance" asp-action="Index">@Localizer["Governance_Title"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Votes_Title"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Details" asp-route-voteId="@vote.Id">@vote.Title</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Votes_ResultsHeading"]</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <h1 class="mb-0">@vote.Title</h1>
+    <span class="badge @EnumBadgeMap.For(vote.Status)">@Localizer["Votes_Status_" + vote.Status]</span>
+</div>
+
+<p class="text-muted">@Localizer["Votes_Method_" + results.Result.Method]</p>
+
+@foreach (var (audience, headingKey) in audiences)
+{
+    <div class="card mb-4">
+        <div class="card-header">@Localizer[headingKey]</div>
+        <div class="card-body">
+            <p class="mb-2">@Localizer["Votes_Turnout", audience.BallotsCast, audience.RosterSize]</p>
+
+            @if (audience.YesNo is { } yesNo)
+            {
+                <dl class="row mb-2">
+                    <dt class="col-sm-4">@Localizer["Votes_Choice_Yes"]</dt>
+                    <dd class="col-sm-8">@yesNo.Yes</dd>
+                    <dt class="col-sm-4">@Localizer["Votes_Choice_No"]</dt>
+                    <dd class="col-sm-8">@yesNo.No</dd>
+                    <dt class="col-sm-4">@Localizer["Votes_Choice_Abstain"]</dt>
+                    <dd class="col-sm-8">@yesNo.Abstain</dd>
+                    <dt class="col-sm-4">@Localizer["Votes_RequiredMajorityLabel"]</dt>
+                    <dd class="col-sm-8">@Localizer["Votes_Majority_" + vote.RequiredMajority]</dd>
+                    <dt class="col-sm-4">@Localizer["Votes_VerdictLabel"]</dt>
+                    <dd class="col-sm-8"><span class="badge @EnumBadgeMap.For(audience.Verdict)">@Localizer["Votes_Verdict_" + audience.Verdict]</span></dd>
+                </dl>
+            }
+
+            @if (audience.Rounds is { Count: > 0 } rounds)
+            {
+                @* Authored order, not key order: the authored order is the documented final
+                   elimination tie-break, so a member checking the acta against these columns
+                   has to see the same sequence the tie-break used. *@
+                var optionKeys = vote.Options.OrderBy(o => o.Order).Select(o => o.Key).ToList();
+                <h6>@Localizer["Votes_RoundsHeading"]</h6>
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th scope="col">@Localizer["Votes_RoundColumnHeader"]</th>
+                                @foreach (var key in optionKeys)
+                                {
+                                    <th scope="col">@OptionLabel(key)</th>
+                                }
+                                <th scope="col">@Localizer["Votes_ExhaustedLabel"]</th>
+                                <th scope="col"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var round in rounds)
+                            {
+                                <tr class="@(round.WinnerKey is not null ? "table-success" : "")">
+                                    <td>@round.Number</td>
+                                    @foreach (var key in optionKeys)
+                                    {
+                                        <td>@(round.Counts.TryGetValue(key, out var c) ? c.ToString() : "")</td>
+                                    }
+                                    <td>@round.Exhausted</td>
+                                    <td>
+                                        @if (round.EliminatedKey is not null)
+                                        {
+                                            <span class="text-muted">@Localizer["Votes_EliminatedLabel", OptionLabel(round.EliminatedKey)]</span>
+                                        }
+                                        @if (round.WinnerKey is not null)
+                                        {
+                                            <strong>@Localizer["Votes_WinnerLabel", OptionLabel(round.WinnerKey)]</strong>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <p class="text-muted small mb-1">@Localizer["Votes_TieBreakExplanation"]</p>
+                @if (audience.Notes.Count > 0)
+                {
+                    <p class="fw-semibold mb-1">@Localizer["Votes_TieBreakNotesHeading"]</p>
+                    <ul class="text-muted small">
+                        @foreach (var note in audience.Notes)
+                        {
+                            <li>@Localizer[note.ResourceKey, note.Round, note.TiedCount]</li>
+                        }
+                    </ul>
+                }
+
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">@Localizer["Votes_VerdictLabel"]</dt>
+                    <dd class="col-sm-8"><span class="badge @EnumBadgeMap.For(audience.Verdict)">@Localizer["Votes_Verdict_" + audience.Verdict]</span></dd>
+                </dl>
+            }
+
+            @if (audience.Verdict == AssemblyVoteVerdict.Tie)
+            {
+                <p class="alert alert-warning mt-3 mb-0">@Localizer["Votes_TieNotice"]</p>
+            }
+        </div>
+    </div>
+}
+
+<div class="card mb-4">
+    <div class="card-body">
+        <a asp-action="ResultsCsv" asp-route-voteId="@vote.Id" class="btn btn-outline-secondary">@Localizer["Votes_DownloadCsv"]</a>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">@Localizer["Votes_OfficialTextAdoptedHeading"]</div>
+    <div class="card-body">
+        @if (vote.IsTranslation)
+        {
+            <p class="alert alert-warning">@Localizer["Votes_TranslationNotice", vote.OfficialCulture]</p>
+        }
+        @Html.SanitizedMarkdown(vote.OfficialText)
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">@Localizer["Votes_ActaHeading"]</div>
+    <div class="card-body">
+        <p class="text-muted small">@Localizer["Votes_ActaHint"]</p>
+        <pre class="user-select-all border rounded p-3 bg-body-secondary">@results.ActaText</pre>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">@Localizer["Votes_PeeksHeading"]</div>
+    <div class="card-body">
+        @if (results.Peeks.Count == 0)
+        {
+            <p class="text-muted mb-0">@Localizer["Votes_PeeksEmpty"]</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">@Localizer["Votes_PeekedByHeader"]</th>
+                            <th scope="col">@Localizer["Votes_PeekedWhenHeader"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var peek in results.Peeks)
+                        {
+                            <tr>
+                                <td>@peek.AdminName</td>
+                                <td>@peek.PeekedAt.ToDateTime(madridZone)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@if (vote.IsOnRoster && vote.OwnBallot is { } ownBallot)
+{
+    <div class="card mb-4">
+        <div class="card-header">@Localizer["Votes_YourBallotResultHeading"]</div>
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-4">@Localizer["Votes_Choice_" + ownBallot.Choice]</dt>
+                <dd class="col-sm-8">
+                    @if (vote.Kind == AssemblyVoteKind.RankedChoice && ownBallot.Choice == AssemblyBallotChoice.Ranked)
+                    {
+                        @RankingSummary(ownBallot.Ranking)
+                    }
+                </dd>
+            </dl>
+        </div>
+    </div>
+}
+
+@if (results.DisclosedBallots is { Count: > 0 } disclosed)
+{
+    <div class="card mb-4">
+        <div class="card-header">@Localizer["Votes_DisclosedBallotsHeading"]</div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">@Localizer["Votes_DisclosedMemberHeader"]</th>
+                            <th scope="col">@Localizer["Votes_DisclosedAudienceHeader"]</th>
+                            <th scope="col">@Localizer["Votes_DisclosedChoiceHeader"]</th>
+                            <th scope="col">@Localizer["Votes_DisclosedRevisionHeader"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in disclosed)
+                        {
+                            <tr>
+                                <td>@row.DisplayName</td>
+                                <td>@(row.IsOfficial ? Localizer["Votes_AudienceOfficial"] : Localizer["Votes_AudienceIndicative"])</td>
+                                <td>
+                                    @Localizer["Votes_Choice_" + row.Choice]
+                                    @if (vote.Kind == AssemblyVoteKind.RankedChoice && row.Choice == AssemblyBallotChoice.Ranked)
+                                    {
+                                        <div class="small text-muted">@RankingSummary(row.Ranking)</div>
+                                    }
+                                </td>
+                                <td>@row.Revision</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}

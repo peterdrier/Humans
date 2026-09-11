@@ -1,0 +1,262 @@
+@using NodaTime
+@model Humans.Governance.Models.AssemblyVoteDetailViewModel
+@{
+    ViewData["Title"] = Model.Vote.Title;
+    var madridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var vote = Model.Vote;
+    var optionLabels = vote.Options.ToDictionary(o => o.Key, o => o.Label, StringComparer.Ordinal);
+
+    string RankingSummary(IReadOnlyList<string>? ranking)
+    {
+        if (ranking is null || ranking.Count == 0) return Localizer["Votes_NoRanking"].Value;
+        return string.Join(", ", ranking.Select((key, i) => $"{i + 1}. {(optionLabels.TryGetValue(key, out var label) ? label : key)}"));
+    }
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Governance" asp-action="Index">@Localizer["Governance_Title"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Votes_Title"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@vote.Title</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <h1 class="mb-0">@vote.Title</h1>
+    <div class="d-flex gap-2">
+        <span class="badge bg-secondary">@Localizer["Votes_Kind_" + vote.Kind]</span>
+        <span class="badge @EnumBadgeMap.For(vote.Status)">@Localizer["Votes_Status_" + vote.Status]</span>
+    </div>
+</div>
+
+<p class="text-muted">
+    @if (vote.Status == AssemblyVoteStatus.Open)
+    {
+        @Localizer["Votes_ClosesAt", vote.ClosesAt.ToDateTime(madridZone)]
+    }
+    else if (vote.ClosedAt.HasValue)
+    {
+        @Localizer["Votes_ClosedAt", vote.ClosedAt.Value.ToDateTime(madridZone)]
+    }
+</p>
+
+@if (!string.IsNullOrEmpty(vote.InfoUrl))
+{
+    <p><a href="@vote.InfoUrl" target="_blank" rel="noopener noreferrer">@Localizer["Votes_MoreInfo"]</a></p>
+}
+
+@if (vote.Status == AssemblyVoteStatus.Cancelled)
+{
+    <div class="alert alert-danger">
+        <p class="mb-1">@Localizer["Votes_CancelledNotice"]</p>
+        @if (!string.IsNullOrEmpty(vote.CancelReason))
+        {
+            <p class="mb-0"><strong>@Localizer["Votes_CancelReasonLabel"]:</strong> @vote.CancelReason</p>
+        }
+    </div>
+}
+
+<details class="card mb-4">
+    <summary class="card-header" style="cursor:pointer; min-height:44px; display:flex; align-items:center;">
+        @Localizer["Votes_OfficialTextHeading"]
+    </summary>
+    <div class="card-body">
+        @if (vote.IsTranslation)
+        {
+            <p class="alert alert-warning">@Localizer["Votes_TranslationNotice", vote.OfficialCulture]</p>
+        }
+        @Html.SanitizedMarkdown(vote.OfficialText)
+    </div>
+</details>
+
+@if (vote.CanCastBallot)
+{
+    <div class="card mb-4">
+        <div class="card-header">@Localizer["Votes_YourBallotHeading"]</div>
+        <div class="card-body">
+            @if (vote.IsOnRoster && !vote.IsOfficial)
+            {
+                <p class="alert alert-info">@Localizer["Votes_IndicativeBallotNotice"]</p>
+            }
+
+            <form asp-action="Ballot" asp-route-voteId="@vote.Id" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="VoteId" value="@vote.Id" />
+
+                @if (vote.Kind == AssemblyVoteKind.YesNo)
+                {
+                    var currentChoice = vote.OwnBallot?.Choice;
+                    <div class="d-grid gap-2 mb-3">
+                        @foreach (var choice in new[] { AssemblyBallotChoice.Yes, AssemblyBallotChoice.No, AssemblyBallotChoice.Abstain })
+                        {
+                            var inputId = "choice-" + choice;
+                            var btnClass = choice switch
+                            {
+                                AssemblyBallotChoice.Yes => "btn-outline-success",
+                                AssemblyBallotChoice.No => "btn-outline-danger",
+                                _ => "btn-outline-secondary"
+                            };
+                            <input type="radio" class="btn-check" name="Choice" id="@inputId" value="@choice" required
+                                   @(currentChoice == choice ? "checked" : "") />
+                            <label class="btn @btnClass py-3 fs-5" for="@inputId">@Localizer["Votes_Choice_" + choice]</label>
+                        }
+                    </div>
+                }
+                else
+                {
+                    var isAbstain = vote.OwnBallot?.Choice == AssemblyBallotChoice.Abstain;
+                    <div class="d-flex gap-2 mb-3">
+                        <input type="radio" class="btn-check" name="Choice" id="choice-Ranked" value="Ranked" @(isAbstain ? "" : "checked") />
+                        <label class="btn btn-outline-primary py-2 flex-fill" for="choice-Ranked">@Localizer["Votes_RankOptions"]</label>
+                        <input type="radio" class="btn-check" name="Choice" id="choice-Abstain" value="Abstain" @(isAbstain ? "checked" : "") />
+                        <label class="btn btn-outline-secondary py-2 flex-fill" for="choice-Abstain">@Localizer["Votes_AbstainOption"]</label>
+                    </div>
+
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th scope="col">@Localizer["Votes_RankedOptionHeader"]</th>
+                                    <th scope="col">@Localizer["Votes_RankedRankHeader"]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (var i = 0; i < Model.RankedOptions.Count; i++)
+                                {
+                                    var row = Model.RankedOptions[i];
+                                    <tr>
+                                        <th scope="row">
+                                            @row.Label
+                                            <input type="hidden" name="RankedOptions[@i].OptionKey" value="@row.OptionKey" />
+                                        </th>
+                                        <td>
+                                            <select class="form-select" name="RankedOptions[@i].Selection" style="min-height:44px;">
+                                                <option value="">@Localizer["Votes_RankedUnranked"]</option>
+                                                @for (var rank = 1; rank <= Model.RankedOptions.Count; rank++)
+                                                {
+                                                    if (row.Selection == rank)
+                                                    {
+                                                        <option value="@rank" selected>@rank</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@rank">@rank</option>
+                                                    }
+                                                }
+                                            </select>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+                <button type="submit" class="btn btn-primary w-100 py-2">@Localizer["Votes_Submit"]</button>
+            </form>
+        </div>
+    </div>
+}
+else if (vote.IsOnRoster)
+{
+    <div class="alert alert-secondary">@Localizer["Votes_CannotVoteClosed"]</div>
+}
+else
+{
+    <div class="alert alert-secondary">@Localizer["Votes_NotOnRosterNotice"]</div>
+}
+
+@if (vote.OwnBallot is { } ownBallot)
+{
+    <div class="card mb-4">
+        <div class="card-header">@Localizer["Votes_YourRecordedBallotHeading"]</div>
+        <div class="card-body">
+            @if (vote.IsOnRoster && !vote.IsOfficial)
+            {
+                <p class="badge bg-info text-dark mb-2">@Localizer["Votes_IndicativeBallotNotice"]</p>
+            }
+            <dl class="row mb-0">
+                <dt class="col-sm-4">@Localizer["Votes_Choice_" + ownBallot.Choice.ToString()]</dt>
+                <dd class="col-sm-8">
+                    @if (vote.Kind == AssemblyVoteKind.RankedChoice && ownBallot.Choice == AssemblyBallotChoice.Ranked)
+                    {
+                        @RankingSummary(ownBallot.Ranking)
+                    }
+                </dd>
+
+                <dt class="col-sm-4">@Localizer["Votes_RevisionLabel", ownBallot.Revision]</dt>
+                <dd class="col-sm-8">@Localizer["Votes_UpdatedAtLabel", ownBallot.UpdatedAt.ToDateTime(madridZone)]</dd>
+            </dl>
+
+            @if (ownBallot.History.Count > 0)
+            {
+                <hr />
+                <h6>@Localizer["Votes_HistoryHeading"]</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th scope="col">@Localizer["Votes_HistoryRevisionHeader"]</th>
+                                <th scope="col">@Localizer["Votes_HistoryChoiceHeader"]</th>
+                                <th scope="col">@Localizer["Votes_HistoryWhenHeader"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var rev in ownBallot.History.OrderByDescending(r => r.Revision))
+                            {
+                                <tr>
+                                    <td>@rev.Revision</td>
+                                    <td>
+                                        @Localizer["Votes_Choice_" + rev.Choice.ToString()]
+                                        @if (vote.Kind == AssemblyVoteKind.RankedChoice && rev.Choice == AssemblyBallotChoice.Ranked)
+                                        {
+                                            <div class="small text-muted">@RankingSummary(rev.Ranking)</div>
+                                        }
+                                    </td>
+                                    <td>@rev.RecordedAt.ToDateTime(madridZone)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<div class="card mb-4">
+    <div class="card-header">@Localizer["Votes_ParticipationHeading"]</div>
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-6">@Localizer["Votes_OfficialRosterLabel"]</dt>
+            <dd class="col-sm-6">@Localizer["Votes_Turnout", vote.Participation.OfficialCast, vote.Participation.OfficialRoster]</dd>
+
+            @if (vote.Participation.IndicativeRoster > 0)
+            {
+                <dt class="col-sm-6">@Localizer["Votes_IndicativeRosterLabel"]</dt>
+                <dd class="col-sm-6">@Localizer["Votes_Turnout", vote.Participation.IndicativeCast, vote.Participation.IndicativeRoster]</dd>
+            }
+
+            <dt class="col-sm-6">@Localizer["Votes_ChangedBallotsLabel"]</dt>
+            <dd class="col-sm-6">@vote.Participation.ChangedBallots</dd>
+
+            <dt class="col-sm-6">@Localizer["Votes_TotalRevisionsLabel"]</dt>
+            <dd class="col-sm-6">@vote.Participation.TotalRevisions</dd>
+
+            <dt class="col-sm-6">@Localizer["Votes_LastBallotAtLabel"]</dt>
+            <dd class="col-sm-6">
+                @(vote.Participation.LastBallotAt.HasValue
+                    ? vote.Participation.LastBallotAt.Value.ToDateTime(madridZone)
+                    : Localizer["Votes_NoBallotsYetValue"].Value)
+            </dd>
+
+            <dt class="col-sm-6">@Localizer["Votes_ClosingTimeLabel"]</dt>
+            <dd class="col-sm-6">@vote.ClosesAt.ToDateTime(madridZone)</dd>
+        </dl>
+    </div>
+</div>
+
+@if (vote.Status == AssemblyVoteStatus.Closed)
+{
+    <a asp-action="Results" asp-route-voteId="@vote.Id" class="btn btn-outline-secondary w-100 py-2">@Localizer["Votes_ViewResults"]</a>
+}

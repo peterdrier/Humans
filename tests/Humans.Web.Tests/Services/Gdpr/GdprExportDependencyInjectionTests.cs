@@ -60,6 +60,7 @@ public class GdprExportDependencyInjectionTests
         typeof(UsersUserService),
         typeof(ProfilesAccountMergeService),
         SectionType("Humans.Governance.Services.ApplicationDecisionService"),
+        SectionType("Humans.Governance.Services.AssemblyVoteService"),
         SectionType("Humans.Consent.Services.ConsentService"),
         typeof(TeamService),
         SectionType("Humans.Auth.Services.RoleAssignmentService"),

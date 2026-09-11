@@ -1,0 +1,74 @@
+@model AssemblyVoteBallotsViewModel
+@{
+    ViewData["Title"] = "Vote ballots";
+    Layout = "_AdminLayout";
+}
+
+@* Admin routes are localization-exempt (AGENTS.md) — plain English literals throughout. *@
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">Assembly Votes</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Ballots</li>
+    </ol>
+</nav>
+
+<div class="alert alert-warning" role="alert">
+    Viewing this list has been recorded in the audit log.
+</div>
+
+<h1 class="mb-3">Individual ballots</h1>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Member</th>
+                        <th>Roster</th>
+                        <th>Choice / ranking</th>
+                        <th class="text-end">Revision</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Ballots.Count == 0)
+                    {
+                        <tr><td colspan="4" class="text-center text-muted py-4">No ballots cast.</td></tr>
+                    }
+                    @foreach (var ballot in Model.Ballots)
+                    {
+                        <tr>
+                            <td>@ballot.DisplayName</td>
+                            <td>
+                                @if (ballot.IsOfficial)
+                                {
+                                    <span class="badge bg-primary">Official</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Indicative</span>
+                                }
+                            </td>
+                            <td>
+                                @if (ballot.Choice == AssemblyBallotChoice.Ranked && ballot.Ranking is { Count: > 0 } ranking)
+                                {
+                                    @string.Join(" > ", ranking.Select(Model.LabelFor))
+                                }
+                                else
+                                {
+                                    @ballot.Choice
+                                }
+                            </td>
+                            <td class="text-end">@ballot.Revision</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="mt-3">
+    <a href="/Governance/Votes/@Model.VoteId/Results" class="btn btn-outline-secondary btn-sm">Back to results</a>
+</div>
