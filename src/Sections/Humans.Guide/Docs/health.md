@@ -69,13 +69,17 @@ exactly one home.
    `Services/GuideFiles.cs:61`).
 2. Everything before the first `## As a …` heading, and everything from the next non-`As a`
    `##` heading onward, is an unscoped segment visible to everyone — only role-scoped segments
-   are ever dropped (`GuideSegmenter.Segment`, `Services/GuideSegmenter.cs:95`;
+   are ever dropped (`GuideSegmenter.Segment`, `Services/GuideSegmenter.cs:109`;
    `GuideFilter.IsSegmentVisible`, `Services/GuideFilter.cs:35`).
 3. A `##` line inside a fenced code block is sample text, not a heading: it neither opens a
    segment nor closes the one it sits in. Fence state is an authorization concern here — an
    untracked fenced `##` ends the role block around it and serves the rest of that block to
-   everyone (`GuideSegmenter.FenceDelimiter`, `Services/GuideSegmenter.cs:31`, `:54` and `:74`;
-   `GuideSegmenterTests.Segment_FencedH2InsideRoleBlock_DoesNotEndTheBlock`).
+   everyone. The inverse leaks too: CommonMark forbids a backtick in a backtick fence's info
+   string, so `` ```md`x `` opens nothing, and a segmenter that entered fence state there would
+   swallow the real heading below it and leave *that* block unscoped
+   (`GuideSegmenter.FenceDelimiter`, `Services/GuideSegmenter.cs:31`, `:54` and `:88`;
+   `GuideSegmenterTests.Segment_FencedH2InsideRoleBlock_DoesNotEndTheBlock`,
+   `GuideSegmenterTests.Segment_BacktickOpenerWithABacktickInItsInfoString_IsNotAFence`).
 4. Anonymous sees Volunteer blocks and nothing else
    (`GuideFilter.IsVisible`, `Services/GuideFilter.cs:49`; `GuideRoleContext.Anonymous`,
    `Services/GuideRoleContext.cs:9`).

@@ -55,20 +55,34 @@ internal static class GuideSegmenter
             if (fence.Success)
             {
                 var delimiter = fence.Groups["fence"].Value;
-                if (openFence is null)
+                var info = line.AsSpan(fence.Length);
+
+                if (openFence is not null)
                 {
-                    openFence = delimiter;
-                }
-                else if (delimiter[0] == openFence[0]
-                    && delimiter.Length >= openFence.Length
-                    && line.AsSpan(fence.Length).IsWhiteSpace())
-                {
-                    // A closing fence carries no info string, so anything trailing means this is
-                    // still content — closing early would let the next "##" split the block.
-                    openFence = null;
+                    // A closing fence is a run of the same character, at least as long, with
+                    // nothing after it. Anything trailing means this line is still content —
+                    // closing early would let the next "##" split the block.
+                    if (delimiter[0] == openFence[0]
+                        && delimiter.Length >= openFence.Length
+                        && info.IsWhiteSpace())
+                    {
+                        openFence = null;
+                    }
+
+                    continue;
                 }
 
-                continue;
+                // CommonMark forbids a backtick in a backtick fence's info string, so a line like
+                // ```md`x opens no block at all. Entering fence state there is the leak inverted:
+                // the segmenter would swallow a real "## As a …" heading below it and leave the
+                // block that heading opens unscoped, i.e. visible to everyone.
+                if (delimiter[0] != '`' || !info.Contains('`'))
+                {
+                    openFence = delimiter;
+                    continue;
+                }
+
+                // Not a fence. Fall through and treat the line as ordinary content.
             }
 
             if (openFence is not null)

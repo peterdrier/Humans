@@ -318,6 +318,55 @@ public class GuideSegmenterTests
     }
 
     [HumansFact]
+    public void Segment_BacktickOpenerWithABacktickInItsInfoString_IsNotAFence()
+    {
+        // The leak inverted, raised by Codex on peterdrier/Humans#1655. CommonMark forbids a
+        // backtick inside a backtick fence's info string, so this line opens no block and the
+        // heading below it is a real heading. A segmenter that entered fence state here would
+        // swallow that heading and serve the Board/Admin block to everyone.
+        const string input = """
+            # Page
+
+            ```md`x
+
+            ## As a Board member / Admin (Teams Admin)
+
+            Board-only guidance.
+            """;
+
+        var document = GuideSegmenter.Segment(input);
+
+        document.Segments.Should().HaveCount(2);
+        document.Segments[1].Role.Should().Be(GuideDocument.BoardAdmin);
+
+        GuideFilter.Apply(document, GuideRoleContext.Anonymous)
+            .Should().NotContain("Board-only guidance.");
+    }
+
+    [HumansFact]
+    public void Segment_TildeOpenerWithABacktickInItsInfoString_IsStillAFence()
+    {
+        // The backtick restriction is backtick-fences-only; a tilde fence's info string may
+        // carry one. Rejecting it here would reopen the original leak for tilde blocks.
+        const string input = """
+            ## As a Coordinator
+
+            Coordinator-only guidance.
+
+            ~~~md`x
+            ## Example
+            ~~~
+
+            Still coordinator-only guidance.
+            """;
+
+        var document = GuideSegmenter.Segment(input);
+
+        document.Segments.Should().ContainSingle();
+        document.Segments[0].Role.Should().Be(GuideDocument.Coordinator);
+    }
+
+    [HumansFact]
     public void Segment_EveryShippedFile_RejoinsToTheOriginal()
     {
         // The filter selects segments and joins them; if the join is not lossless, a reader who
