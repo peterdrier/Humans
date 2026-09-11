@@ -355,4 +355,38 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
         detail!.IsTranslation.Should().BeFalse(
             "the viewer is being shown the binding official text, not a translation of it");
     }
+
+    [HumansFact]
+    public async Task Acta_PrintsTheAuthoredOptionLabelsNotTheStorageKeys()
+    {
+        var vote = await _fx.AddVoteAsync(
+            kind: AssemblyVoteKind.RankedChoice,
+            options: [("motion-a", 0), ("motion-b", 1)]);
+        // The fixture labels an option with its own key; a real vote's labels are prose.
+        foreach (var option in await _fx.Db.AssemblyVoteOptions
+                     .Where(o => o.VoteId == vote.Id)
+                     .ToListAsync(Xunit.TestContext.Current.CancellationToken))
+        {
+            option.Label = new GovernanceLocalizedText(
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["en"] = "Move the assembly to " + option.Key
+                });
+        }
+
+        await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _fx.Db.ChangeTracker.Clear();
+
+        var voter = await _fx.AddRosterRowAsync(vote.Id, Guid.NewGuid(), isOfficial: true);
+        await _fx.AddBallotAsync(vote.Id, voter.Id, AssemblyBallotChoice.Ranked, ["motion-a", "motion-b"]);
+        await _fx.Service.StopAsync(vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        var results = await _fx.Service.GetResultsAsync(
+            vote.Id, Guid.NewGuid(), viewerIsBoardOrAdmin: false,
+            Xunit.TestContext.Current.CancellationToken);
+
+        results!.ActaText.Should().Contain(
+            "Move the assembly to motion-a",
+            "the Secretary files this paragraph, and a storage key names nothing to a reader");
+    }
 }

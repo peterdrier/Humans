@@ -303,46 +303,68 @@ internal sealed class AssemblyVoteService(
         var vote = await repository.GetByIdAsync(voteId, ct);
         if (vote is null) return null;
 
+        return await SettleOneAsync(vote, ct);
+    }
+
+    /// <summary>
+    /// Brings one already-loaded vote up to date: closes it if its deadline has passed, and
+    /// finishes a close that was interrupted after its status went down. Returns the vote as
+    /// it now stands — which is not always the one passed in, because a close that loses to
+    /// somebody else's transition leaves this object stamped Closed in memory only.
+    /// </summary>
+    private async Task<AssemblyVote> SettleOneAsync(AssemblyVote vote, CancellationToken ct)
+    {
         var now = clock.GetCurrentInstant();
         if (vote.Status != AssemblyVoteStatus.Open || now < vote.ClosesAt)
         {
-            // Closure writes the status first and everything else second (see CloseAsync). A
-            // process that died in between left a vote that is closed but has no result, no
-            // retired notification and no audit entry; the next read finishes all three. Who
-            // closed it is already persisted, so the replay attributes it exactly as the
-            // original would have.
-            if (vote.Status == AssemblyVoteStatus.Closed && vote.ResultJson is null)
-            {
-                await FinishCloseAsync(
-                    vote,
-                    vote.ClosedByUserId,
-                    vote.ClosedByUserId is null ? AuditAction.AssemblyVoteClosed : AuditAction.AssemblyVoteStopped,
-                    vote.ClosedByUserId is null
-                        ? $"Assembly vote {vote.Id} closed automatically at its announced time."
-                        : $"Stopped assembly vote {vote.Id} before its announced closing time.",
-                    ct);
-            }
-
+            await FinishInterruptedCloseAsync(vote, ct);
             return vote;
         }
 
-        await CloseAsync(vote, closedByUserId: null, AuditAction.AssemblyVoteClosed,
-            $"Assembly vote {vote.Id} closed automatically at its announced time.", ct);
-        return vote;
+        if (await CloseAsync(vote, closedByUserId: null, AuditAction.AssemblyVoteClosed,
+                $"Assembly vote {vote.Id} closed automatically at its announced time.", ct))
+        {
+            return vote;
+        }
+
+        // The close was refused: an Extend moved the deadline, or another close landed first.
+        // CloseAsync has already stamped this object Closed, so handing it back would have the
+        // rest of the request treat a vote that is still open as closed — a ballot refused,
+        // the form hidden. The row is the truth.
+        return await repository.GetByIdAsync(vote.Id, ct) ?? vote;
+    }
+
+    /// <summary>
+    /// Closure writes the status first and everything else second (see <see cref="CloseAsync"/>).
+    /// A process that died in between left a vote that is closed but has no result, no retired
+    /// notification and no audit entry; whoever looks next finishes all three. Who closed it is
+    /// already persisted, so the replay attributes it exactly as the original would have.
+    /// </summary>
+    private async Task FinishInterruptedCloseAsync(AssemblyVote vote, CancellationToken ct)
+    {
+        if (vote.Status != AssemblyVoteStatus.Closed || vote.ResultJson is not null) return;
+
+        await FinishCloseAsync(
+            vote,
+            vote.ClosedByUserId,
+            vote.ClosedByUserId is null ? AuditAction.AssemblyVoteClosed : AuditAction.AssemblyVoteStopped,
+            vote.ClosedByUserId is null
+                ? $"Assembly vote {vote.Id} closed automatically at its announced time."
+                : $"Stopped assembly vote {vote.Id} before its announced closing time.",
+            ct);
     }
 
     private async Task<IReadOnlyList<AssemblyVote>> SettleAllAsync(CancellationToken ct)
     {
         var votes = await repository.GetAllAsync(ct);
-        var now = clock.GetCurrentInstant();
 
-        foreach (var vote in votes.Where(v => v.Status == AssemblyVoteStatus.Open && now >= v.ClosesAt))
+        var settled = new List<AssemblyVote>(votes.Count);
+        foreach (var vote in votes)
         {
-            await CloseAsync(vote, closedByUserId: null, AuditAction.AssemblyVoteClosed,
-                $"Assembly vote {vote.Id} closed automatically at its announced time.", ct);
+            settled.Add(await SettleOneAsync(vote, ct));
         }
 
-        return votes;
+        return settled;
     }
 
     /// <summary>
@@ -447,10 +469,10 @@ internal sealed class AssemblyVoteService(
     /// </para>
     /// </summary>
     private Task ClearOpenNotificationAsync(
-        AssemblyVote vote, Guid? actorUserId, CancellationToken ct) =>
+        AssemblyVote vote, Guid? actorUserId, CancellationToken _) =>
         AfterTransitionAsync(
             "resolving the open-vote notification", vote.Id,
-            () => notificationResolve.ResolveBySourceKeyAsync(
+            ct => notificationResolve.ResolveBySourceKeyAsync(
                 NotificationSource.AssemblyVoteOpened, vote.Id.ToString(), actorUserId, ct));
 
     /// <summary>
@@ -465,11 +487,16 @@ internal sealed class AssemblyVoteService(
     /// the fourth path will forget.
     /// </para>
     /// </summary>
-    private async Task AfterTransitionAsync(string what, Guid voteId, Func<Task> work)
+    private async Task AfterTransitionAsync(
+        string what, Guid voteId, Func<CancellationToken, Task> work)
     {
         try
         {
-            await work();
+            // Deliberately not the request's token. The state change is committed and
+            // irreversible, and the roster's email is part of it being real: an Admin who
+            // closes the tab after clicking Open would otherwise cancel the recipient lookup,
+            // the emails and the notification, and nothing ever retries them.
+            await work(CancellationToken.None);
         }
         catch (Exception ex)
         {
@@ -649,6 +676,15 @@ internal sealed class AssemblyVoteService(
         var acta = new StringBuilder();
         var official = result.Official;
 
+        // The counting result is keyed by the stable option key; the acta is read by people.
+        // Resolved in the vote's official culture, like the title above it — which language
+        // the acta as a whole is written in is a separate, open question.
+        string Label(string key) =>
+            vote.Options.FirstOrDefault(o => string.Equals(o.Key, key, StringComparison.Ordinal))
+                is { } option
+                ? option.Label.Resolve(vote.OfficialCulture, vote.OfficialCulture)
+                : key;
+
         acta.AppendLine(CultureInfo.InvariantCulture,
             $"Assembly vote: {vote.Title.Resolve(vote.OfficialCulture, vote.OfficialCulture)}");
         if (vote.AssemblyDate is { } date)
@@ -670,17 +706,17 @@ internal sealed class AssemblyVoteService(
         {
             foreach (var round in rounds)
             {
-                var counts = string.Join(", ", round.Counts.Select(kv => $"{kv.Key}: {kv.Value}"));
+                var counts = string.Join(", ", round.Counts.Select(kv => $"{Label(kv.Key)}: {kv.Value}"));
                 var eliminated = round.EliminatedKey is null
                     ? string.Empty
-                    : $"; eliminated: {round.EliminatedKey}";
+                    : $"; eliminated: {Label(round.EliminatedKey)}";
                 acta.AppendLine(CultureInfo.InvariantCulture,
                     $"Round {round.Number}: {counts}; exhausted: {round.Exhausted}{eliminated}");
             }
 
             if (official.WinnerKey is { } winnerKey)
             {
-                acta.AppendLine(CultureInfo.InvariantCulture, $"Winning option: {winnerKey}");
+                acta.AppendLine(CultureInfo.InvariantCulture, $"Winning option: {Label(winnerKey)}");
             }
         }
 
@@ -991,7 +1027,7 @@ internal sealed class AssemblyVoteService(
 
         await AfterTransitionAsync(
             "notifying the roster that the vote opened", vote.Id,
-            () => NotifyRosterOpenedAsync(vote, roster, ct));
+            token => NotifyRosterOpenedAsync(vote, roster, token));
         return AssemblyVoteActionResult.Ok;
     }
 
@@ -1156,7 +1192,7 @@ internal sealed class AssemblyVoteService(
 
         await AfterTransitionAsync(
             "notifying the roster that the vote was cancelled", vote.Id,
-            () => NotifyRosterCancelledAsync(vote, ct));
+            token => NotifyRosterCancelledAsync(vote, token));
         return AssemblyVoteActionResult.Ok;
     }
 
@@ -1182,8 +1218,11 @@ internal sealed class AssemblyVoteService(
         var now = clock.GetCurrentInstant();
 
         // The peek row and the audit entry are written before the tally is handed back, so
-        // there is no way to look without leaving the trace that says you did.
-        await repository.AddPeekAsync(
+        // there is no way to look without leaving the trace that says you did. The row goes in
+        // only while the vote is still Open: the peek log is the record of looking *early*,
+        // and a close that commits in this gap turns this request into an ordinary results
+        // read, which is published on that page and must not accuse the Admin of an early look.
+        var recorded = await repository.AddPeekAsync(
             new AssemblyVotePeek
             {
                 Id = Guid.NewGuid(),
@@ -1191,6 +1230,15 @@ internal sealed class AssemblyVoteService(
                 AdminUserId = adminUserId,
                 PeekedAt = now
             }, ct);
+
+        if (!recorded)
+        {
+            var closed = await repository.GetByIdAsync(vote.Id, ct);
+            return (closed?.ResultJson is { } stored
+                ? JsonSerializer.Deserialize<AssemblyVoteResult>(stored, ResultJsonOptions)
+                : null,
+                false);
+        }
 
         await audit.LogAsync(
             AuditAction.AssemblyVotePeeked, AuditEntityTypes.AssemblyVote, vote.Id,
@@ -1377,6 +1425,14 @@ internal sealed class AssemblyVoteService(
         if (lapsed.Count > 0)
         {
             logger.LogInformation("Closed {Count} lapsed assembly vote(s).", lapsed.Count);
+        }
+
+        // A close interrupted after its status write leaves a vote that is Closed with no
+        // result, which no lapse query finds — it is not Open any more. The read paths finish
+        // one when somebody looks; this is so nobody has to. The whole table fits in memory.
+        foreach (var vote in await repository.GetAllAsync(ct))
+        {
+            await FinishInterruptedCloseAsync(vote, ct);
         }
 
         return lapsed.Count;

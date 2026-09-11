@@ -389,11 +389,26 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
     // Peeks
     // ==========================================================================
 
-    public async Task AddPeekAsync(AssemblyVotePeek peek, CancellationToken ct = default)
+    public async Task<bool> AddPeekAsync(AssemblyVotePeek peek, CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(peek);
+
         await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var tx = await BeginLockedWriteAsync(ctx, peek.VoteId, ct);
+
+        // Under the same lock as every other write to this vote: a peek row is published on
+        // the results page as an early look at the tally, so it may only be written while
+        // there is still something to look at early.
+        var status = await ctx.AssemblyVotes.AsNoTracking()
+            .Where(v => v.Id == peek.VoteId)
+            .Select(v => (AssemblyVoteStatus?)v.Status)
+            .FirstOrDefaultAsync(ct);
+        if (status != AssemblyVoteStatus.Open) return false;
+
         ctx.AssemblyVotePeeks.Add(peek);
         await ctx.SaveChangesAsync(ct);
+        if (tx is not null) await tx.CommitAsync(ct);
+        return true;
     }
 
     public async Task<IReadOnlyList<AssemblyVotePeek>> GetPeeksAsync(

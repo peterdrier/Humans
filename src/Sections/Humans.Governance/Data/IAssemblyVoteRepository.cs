@@ -171,9 +171,11 @@ internal interface IAssemblyVoteRepository : IRepository
 
     /// <summary>
     /// Records that an Admin looked at the live tally. Called in the same unit of work as
-    /// the read it permits.
+    /// the read it permits, under the vote row's lock: returns false without writing when the
+    /// vote is no longer Open, because the peek log records looking early and a closed vote
+    /// has nothing to look at early.
     /// </summary>
-    Task AddPeekAsync(AssemblyVotePeek peek, CancellationToken ct = default);
+    Task<bool> AddPeekAsync(AssemblyVotePeek peek, CancellationToken ct = default);
 
     /// <summary>Every peek on a vote, oldest first. Shown on the results page.</summary>
     Task<IReadOnlyList<AssemblyVotePeek>> GetPeeksAsync(Guid voteId, CancellationToken ct = default);

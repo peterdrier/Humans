@@ -1217,4 +1217,106 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .AnyAsync(r => r.VoteId == vote.Id, Xunit.TestContext.Current.CancellationToken))
             .Should().BeFalse();
     }
+
+    [HumansFact]
+    public async Task GetVotesForMemberAsync_FinishesACloseThatNeverStoredItsResult()
+    {
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(2));
+
+        // A close that got its status down and then died: no result, no audit entry.
+        var closing = await _fx.Db.AssemblyVotes
+            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        closing.Status = AssemblyVoteStatus.Closed;
+        closing.ClosedAt = closing.ClosesAt;
+        await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _fx.Db.ChangeTracker.Clear();
+
+        // A list read, not a read of that vote's own page.
+        await _fx.Service.GetVotesForMemberAsync(
+            Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
+            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.ResultJson.Should().NotBeNull(
+            "an interrupted close must not wait for somebody to open that one vote");
+        await _fx.Audit.Received(1).LogAsync(
+            AuditAction.AssemblyVoteClosed, AuditEntityTypes.AssemblyVote, vote.Id,
+            Arg.Any<string>(), AssemblyVoteService.LapseJobName);
+    }
+
+    [HumansFact]
+    public async Task RunLapseAndReminderSweepAsync_FinishesACloseThatNeverStoredItsResult()
+    {
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(2));
+
+        var closing = await _fx.Db.AssemblyVotes
+            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        closing.Status = AssemblyVoteStatus.Closed;
+        closing.ClosedAt = closing.ClosesAt;
+        await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _fx.Db.ChangeTracker.Clear();
+
+        await _fx.Service.RunLapseAndReminderSweepAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
+            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.ResultJson.Should().NotBeNull(
+            "the sweep queries Open votes, and this one is Closed with its tally still owed");
+    }
+
+    [HumansFact]
+    public async Task PeekAsync_OnAVoteThatClosedWhileTheRequestWasRunning_RecordsNoPeek()
+    {
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(6));
+
+        // Straight at the repository: the service settles first, so the only way to reach the
+        // peek write on a closed row is the race this guards.
+        (await _fx.Service.StopAsync(
+                vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken))
+            .Should().Be(AssemblyVoteActionResult.Ok);
+        _fx.Db.ChangeTracker.Clear();
+
+        var recorded = await _fx.Repository.AddPeekAsync(
+            new AssemblyVotePeek
+            {
+                Id = Guid.NewGuid(),
+                VoteId = vote.Id,
+                AdminUserId = Guid.NewGuid(),
+                PeekedAt = _fx.Clock.GetCurrentInstant()
+            },
+            Xunit.TestContext.Current.CancellationToken);
+
+        recorded.Should().BeFalse();
+        (await _fx.Db.AssemblyVotePeeks.AsNoTracking()
+            .AnyAsync(p => p.VoteId == vote.Id, Xunit.TestContext.Current.CancellationToken))
+            .Should().BeFalse("the results page publishes peeks, and nobody looked early");
+    }
+
+    [HumansFact]
+    public async Task Read_WhenTheLapseCloseLosesToAnExtend_ReturnsTheVoteAsStillOpen()
+    {
+        var closesAt = _fx.Clock.GetCurrentInstant() + Duration.FromHours(1);
+        var vote = await _fx.AddVoteAsync(closesAt: closesAt);
+        var member = Guid.NewGuid();
+        await _fx.AddRosterRowAsync(vote.Id, member, isOfficial: true);
+
+        // Past the deadline this read knows about, but an Extend has already moved it.
+        _fx.Clock.AdvanceMinutes(90);
+        var extended = _fx.Clock.GetCurrentInstant() + Duration.FromHours(5);
+        var stored = await _fx.Db.AssemblyVotes
+            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.ClosesAt = extended;
+        await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _fx.Db.ChangeTracker.Clear();
+
+        var outcome = await _fx.Service.CastBallotAsync(
+            vote.Id, member, AssemblyBallotChoice.Yes, null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        outcome.Should().Be(BallotSubmissionOutcome.Recorded,
+            "the vote is open until the extended deadline, whatever this request read first");
+    }
 }
