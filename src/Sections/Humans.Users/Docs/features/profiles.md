@@ -110,7 +110,7 @@ Emergency contact fields are marked `[PersonalData]` and included in the data ex
 
 ## Membership Status
 
-`MembershipStatus` is no longer computed on `Profile` — it moved to Governance's `IMembershipCalculator` (`Humans.Governance.Contracts.MembershipStatus`), computed from RoleAssignments and ConsentRecords:
+`MembershipStatus` is no longer computed on `Profile` — it moved to Governance's `IMembershipCalculatorRead` (`Humans.Governance.Contracts.MembershipStatus`), computed from RoleAssignments and ConsentRecords:
 
 | Status | Description | Visual |
 |--------|-------------|--------|

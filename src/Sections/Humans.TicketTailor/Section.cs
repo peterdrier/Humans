@@ -14,22 +14,18 @@ namespace Humans.TicketTailor;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The port's <c>IOptions&lt;TicketVendorSettings&gt;</c> binding is <em>not</em> here: the
-/// settings belong to the port, not to this adapter — <c>Humans.Tickets</c>' sync service
-/// and Shell's <c>TicketVendorHealthCheck</c> both read them — so Shell keeps that line
-/// (Governance's rule: the section that owns the file is not always the section that owns
-/// the line). Deleting this project in 2027 must not take the port's configuration with it.
+/// The environment name decides, never the presence of a key: only an exactly-Production
+/// host environment binds the HTTP client; every other value, or none, binds the stub. A
+/// developer holding a real <c>TICKET_VENDOR_API_KEY</c> still gets the stub, because pointing
+/// them at the live vendor writes to a real ticketing account. <c>ISection.Register</c> has no
+/// <c>IHostEnvironment</c>, so the name is read from the configuration it is handed
+/// (<c>WebApplicationBuilder.Configuration</c> carries host configuration, and
+/// <c>WebApplicationFactory.UseEnvironment</c> reaches it too).
 /// </para>
 /// <para>
-/// <c>ISection.Register</c> has no <c>IHostEnvironment</c>, so the Production test that used
-/// to live in Shell reads the environment out of the configuration it <em>is</em> handed —
-/// <c>WebApplicationBuilder.Configuration</c> includes host configuration, and
-/// <c>WebApplicationFactory.UseEnvironment</c> reaches it too (Development's rule). The check
-/// is written to fail closed: anything other than a present, exactly-Production environment
-/// name gets the stub. Branching on whether the API key is <em>configured</em> instead would
-/// have been the cheaper-looking copy of Email's shape and a behaviour change — today a
-/// developer holding a real <c>TICKET_VENDOR_API_KEY</c> still gets the stub, and pointing
-/// them at the live vendor writes to a real ticketing account.
+/// The port's <c>IOptions&lt;TicketVendorSettings&gt;</c> binding stays in Shell: the settings
+/// belong to the port (Tickets' sync service and <c>TicketVendorHealthCheck</c> read them), so
+/// deleting this project for the 2027 vendor cannot take them with it.
 /// </para>
 /// </remarks>
 public sealed class Section : ISection

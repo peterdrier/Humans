@@ -33,11 +33,6 @@ namespace Humans.Shifts.Data;
 /// </summary>
 internal partial interface IShiftManagementRepository : IRepository
 {
-    // ==========================================================================
-    // EventSettings
-    // ==========================================================================
-
-    /// <summary>Loads the single active <see cref="EventSettings"/>, or null.</summary>
     Task<EventSettings?> GetActiveEventSettingsAsync(CancellationToken ct = default);
 
     /// <summary>Loads an <see cref="EventSettings"/> by id (read-only).</summary>
@@ -49,7 +44,6 @@ internal partial interface IShiftManagementRepository : IRepository
     /// <summary>Returns true if any other <see cref="EventSettings"/> (excluding <paramref name="excludingId"/>) is active.</summary>
     Task<bool> AnyOtherActiveEventSettingsAsync(Guid? excludingId, CancellationToken ct = default);
 
-    /// <summary>Inserts or updates an <see cref="EventSettings"/>.</summary>
     Task SaveEventSettingsAsync(EventSettings entity, EntityMutationMode mode, CancellationToken ct = default);
 
     /// <summary>
@@ -58,11 +52,6 @@ internal partial interface IShiftManagementRepository : IRepository
     /// </summary>
     Task<int> DeleteEventCascadeAsync(Guid eventSettingsId, CancellationToken ct = default);
 
-    // ==========================================================================
-    // Rota
-    // ==========================================================================
-
-    /// <summary>Inserts or updates a rota.</summary>
     Task SaveRotaAsync(Rota rota, EntityMutationMode mode, CancellationToken ct = default);
 
     /// <summary>
@@ -103,14 +92,8 @@ internal partial interface IShiftManagementRepository : IRepository
     /// </summary>
     Task SetRotaTagsAsync(Guid rotaId, IReadOnlyList<Guid> tagIds, CancellationToken ct = default);
 
-    // ==========================================================================
-    // Shift
-    // ==========================================================================
-
-    /// <summary>Inserts or updates a shift.</summary>
     Task SaveShiftAsync(Shift shift, EntityMutationMode mode, CancellationToken ct = default);
 
-    /// <summary>Bulk-inserts shifts in a single save.</summary>
     Task AddShiftsAsync(IEnumerable<Shift> shifts, CancellationToken ct = default);
 
     /// <summary>
@@ -130,10 +113,6 @@ internal partial interface IShiftManagementRepository : IRepository
     /// by additive bulk-shift generators.
     /// </summary>
     Task<IReadOnlyList<int>> GetShiftDayOffsetsForRotaAsync(Guid rotaId, CancellationToken ct = default);
-
-    // ==========================================================================
-    // Reads for dashboards / urgency / staffing
-    // ==========================================================================
 
     /// <summary>
     /// Loads event-scoped shifts with the same-section rota nav. Optional flags
@@ -237,10 +216,6 @@ internal partial interface IShiftManagementRepository : IRepository
         Guid eventSettingsId,
         CancellationToken ct = default);
 
-    // ==========================================================================
-    // Shift tags
-    // ==========================================================================
-
     Task<IReadOnlyList<ShiftTag>> GetTagsAsync(string? query = null, CancellationToken ct = default);
 
     /// <summary>
@@ -248,27 +223,12 @@ internal partial interface IShiftManagementRepository : IRepository
     /// </summary>
     Task<ShiftTag> GetOrCreateTagAsync(string name, CancellationToken ct = default);
 
-    // ==========================================================================
-    // Volunteer tag preferences
-    // ==========================================================================
-
     /// <summary>
     /// Replaces a volunteer's tag preferences with the given tag ids in a
     /// single save (delete-then-insert).
     /// </summary>
     Task SetVolunteerTagPreferencesAsync(
         Guid userId, IReadOnlyList<Guid> tagIds, CancellationToken ct = default);
-
-    // ==========================================================================
-    // Volunteer event profiles
-    // ==========================================================================
-
-    /// <summary>
-    /// Loads a volunteer event profile for a user (tracked). Returns null
-    /// if none exists.
-    /// </summary>
-    Task<VolunteerEventProfile?> GetVolunteerEventProfileForUpdateAsync(
-        Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Loads a volunteer event profile (read-only). Returns null if none exists.
@@ -279,7 +239,7 @@ internal partial interface IShiftManagementRepository : IRepository
     /// <summary>
     /// Loads <see cref="VolunteerEventProfile"/> rows for the supplied user ids
     /// in one query (read-only). Backs the bulk path on
-    /// <see cref="Application.Services.Shifts.ShiftViewService.GetUsersAsync"/>.
+    /// <see cref="Humans.Shifts.Services.ShiftViewService.GetUsersAsync"/>.
     /// </summary>
     Task<IReadOnlyList<VolunteerEventProfile>> GetVolunteerEventProfilesByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
@@ -298,10 +258,6 @@ internal partial interface IShiftManagementRepository : IRepository
     /// </summary>
     Task<int> DeleteVolunteerEventProfilesForUserAsync(
         Guid userId, CancellationToken ct = default);
-
-    // ==========================================================================
-    // Account-merge fold
-    // ==========================================================================
 
     /// <summary>
     /// Account-merge fold: re-FK <c>VolunteerEventProfile</c> and

@@ -267,6 +267,15 @@ themes:
     notes: Each inbox entry carries its own review tier; drained entries are deleted from the list.
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
+  - added: 2026-09-03
+    what: "The Holded ledger mirror holds member-identifiable data that no GDPR export reaches. Finance binds a member to a 400000xx creditor account (HoldedCreditorContact.UserId -> SupplierAccountNum); Humans.Holded then mirrors that account's HoldedAccount.Name (Holded's contact name, i.e. the member's) and every HoldedLedgerLine on it, free-text Description included, and /Holded/Accounts/{n} renders both. Finance's ContributeForUserAsync exports only the binding itself and SEPA payouts, so an Article 15 export omits the member's mirrored reimbursement history. Deciding the fix means deciding what belongs in the slice, whether Holded gains a contributor (it holds no UserId, so Gdpr or Finance must pass the account number) and the retention basis for refusing erasure — the mirror is re-derivable from Holded, so the Codigo de Comercio Art. 30 argument Finance uses for payout files may not transfer. Spans Holded, Finance and Gdpr and adds public surface whichever way it goes, so it is Peter's call. Found by /section-doctor on Holded 2026-09-03, from a Codex review finding on peterdrier/Humans#1583; the docs there previously asserted 'no user-scoped data -> no GDPR contributor' and have been corrected to state the gap."
+    review: panel
+  - added: 2026-08-28
+    what: "docs/architecture/freshness-catalog.yml has no Settings entry — add one covering src/Sections/Humans.Settings/** and src/Sections/Humans.Settings.Contracts/** (finding 14, /section-doctor on Settings 2026-08-28)."
+    review: light
+  - added: 2026-08-28
+    what: "docs/architecture/dependency-graph.md predates the Monitor carve-out — DriveMon is still styled :::google and there is no Monitor section (finding 20, /section-doctor on Settings 2026-08-28)."
+    review: light
   - added: 2026-08-27
     what: "The GDPR export document's JSON serialization lives twice, byte-identically: GuestDataController (Humans.Gdpr) and ProfileController (Humans.Users) each carry a private ExportJsonOptions and a private BuildExportPayload. Key stability across re-downloads is an invariant Gdpr owns, enforced by copies nothing keeps in step. The fix spans both sections and adds public surface either way — a shared serializer on Humans.Gdpr.Contracts, or a method on IGdprService — so it is Peter's call. Found by /section-doctor on Gdpr 2026-08-27 (finding 2 of docs/health/runs/2026-08-27-Gdpr.md); routed here rather than to Gdpr's section ledger on a review finding on peterdrier/Humans#1540, because no single section owns the fix."
     review: panel
@@ -311,7 +320,7 @@ inbox:
     what: "The app-wide event values now exist in two places: Settings owns settings_event (populated by /Settings/Admin/Carry) and Humans.Shifts.Domain.EventSettings still carries the same columns, which is what every section actually reads via IBurnSettingsService. Two follow-ups are owed and must ship separately: (1) point the readers at ISettingsService.GetActiveEventSettingsAsync, including ShiftManagementService's ~26 internal day-offset/date reads — needs a plan for the window where settings_event is unpopulated; (2) drop the app-wide columns from event_settings, delete the carry screen + EventSettingsCarryService + IBurnSettingsService.GetAllAsync, and remove Humans.Settings' reference to Humans.Shifts.Contracts. Until (1) lands, /Shifts/Admin's event form is still the live editor and /Settings/Admin edits a table nothing reads. Deliberately split out of nobodies-collective/Humans#1104, whose scope is new schema + carry screen only"
     review: panel
   - added: 2026-08-05
-    what: "Extend [ExternalWrite] marking to the Holded surface (ExpenseReportService transitions reaching holdedClient.CreatePurchaseDocumentAsync / UpdatePurchaseDocumentTagsAsync / UploadAttachmentAsync via RunMutationAsync; HoldedFinanceService.EnsureCreditorContactAsync, CreateExpenseAccountAsync) so HUM0033 guards it. No defect exists today — ExpensesController and FinanceController declare no CancellationToken parameter — so this is future-proofing per memory/architecture/cancellation-token-propagation.md (found while auditing nobodies-collective/Humans#950)"
+    what: "Extend [ExternalWrite] marking to the Holded surface (ExpenseReportService transitions reaching holdedClient.CreatePurchaseDocumentAsync / ApprovePurchaseDocumentAsync / UploadAttachmentAsync via RunMutationAsync; HoldedFinanceService.EnsureCreditorContactAsync, CreateExpenseAccountAsync) so HUM0033 guards it. No defect exists today — ExpensesController and FinanceController declare no CancellationToken parameter — so this is future-proofing per memory/architecture/cancellation-token-propagation.md (found while auditing nobodies-collective/Humans#950)"
     review: panel
   - added: 2026-08-05
     what: "GoogleController.SyncExecute / SyncExecuteAll run a full Workspace reconcile inline on the request thread. Moving them to Hangfire (the TicketController.Sync pattern) is blocked on UI: Views/Google/Sync.cshtml:142,163 calls loadTab() in the fetch continuation, so the tab refresh depends on the POST having completed the reconcile — fire-and-forget would re-render stale diffs. Needs a progress/polling affordance (deferred from nobodies-collective/Humans#950)"
@@ -358,9 +367,6 @@ inbox:
   - added: 2026-06-29
     what: "Gate dedupe race has no integration test. The atomic per-barcode admit dedupe relies on a Postgres unique index on GateScanEvent.AdmitDedupeKey (first concurrent admit wins, RecordScanAsync returns DuplicateAdmitRejected on the loser). The EF in-memory test provider can't enforce unique indexes, so GateServiceTests only exercises the sequential pre-check, not the concurrent index collision. Add a Postgres-backed integration test (Testcontainers/Docker) that fires two concurrent admits for one barcode and asserts exactly one Admitted + one RejectedDuplicate. Deferred from the gate-scanner PR (PR 895) — needs a containerized DB not available in that environment."
     review: light
-  - added: 2026-06-29
-    what: "TicketTailor inbound check-in detection is broken against the live API (Tickets section; pre-existing, issue #736). TicketTailorService.GetIssuedTicketsAsync maps check-in time from a nested `check_in` object (TtIssuedTicket.check_in -> TtCheckIn.checked_in_at) at line ~147/399-406, but the live TT API (verified read-only 2026-06-29 against /v1/issued_tickets/{id} and /v1/orders/{id}) returns NO nested `check_in` object — only a top-level string field `checked_in: \"true\"|\"false\"`. So ticket.CheckIn is always null and VendorTicketDto.CheckedInAt is always null; no ticket is ever detected as vendor-checked-in. Consequence for Gate: the secondary CheckedInAtVendor dedupe signal never fires from vendor data (the gate's own gate_scan_events local unique index remains the dedupe authority, so admission correctness is unaffected — only the cross-device/vendor signal is dead). Fix in Tickets (not the Gate PR): map the top-level `checked_in` boolean-string, and if a check-in timestamp is needed, fetch it from the dedicated GET /v1/check_ins collection (whose field is `check_in_at`, epoch seconds — note: different name from the dead nested `checked_in_at`). Found while verifying the Gate vendor-mirror payload for PR 895."
-    review: panel
   - added: 2026-08-14
     what: "SystemTeamSyncJob (src/Sections/Humans.Teams/Services/SystemTeamSyncJob.cs) makes two read-only cross-section calls through full service interfaces instead of a Read interface, contrary to memory/architecture/section-read-write-split.md: RoleAssignmentService.GetActiveUserIdsInRoleAsync (line 273, IRoleAssignmentService — Auth) and TeamResourceService.GetTeamResourcesAsync (line 620, ITeamResourceService — GoogleIntegration). Neither IRoleAssignmentServiceRead nor ITeamResourceServiceRead exists yet, so there is nothing to switch to today; the fix lands when Auth and GoogleIntegration get their Read splits. HUM0032 cannot catch this shape either way — both are resolved lazily via serviceProvider.GetRequiredService<T>() in computed properties (lines 62-66), and the analyzer only inspects constructor parameters. Pre-existing calls, newly reclassified: before peterdrier/Humans#1305 the job lived in Humans.Infrastructure (Base), where calling a full section interface is normal; the move into Humans.Teams makes them cross-section-from-a-section. Found by Claude review on peterdrier/Humans#1305."
     review: panel
@@ -383,9 +389,6 @@ inbox:
     what: "HumansControllerBase.SetError resolves ILoggerFactory from HttpContext.RequestServices while SetSuccess and SetInfo resolve nothing, so a controller unit test passes for those two and throws ArgumentNullException on SetError. Onboarding test files now carry duplicated RequestServices/ActionDescriptor scaffolding to work around it; injecting the logger would delete every copy. Base's, so it has no section ledger. Found by /section-doctor on Onboarding 2026-08-23."
     review: panel
   - added: 2026-08-23
-    what: "/Profile/Edit is stale outside Users in each of these — a comment in Humans.Consent/Controllers/ConsentController.cs, a doc comment in Humans.Consent.Tests/Controllers/ConsentControllerTests.cs, and step 2 of .claude/skills/test-site/SKILL.md. The live route is /Profile/Me/Edit. Spans two sections and a skill, so it sits centrally. Found by /section-doctor on Onboarding 2026-08-23."
-    review: light
-  - added: 2026-08-23
     what: "The Humans.Onboarding.Docs data-access blocks for HumanLifecycleService and NonCompliantMemberSuspension describe Users-owned services and belong in src/Sections/Humans.Users/Docs/data-access.md, which does not carry them. Left in place with a pointer rather than moved, because the run that found them could not write another section's file under the concurrency contract. Found by /section-doctor on Onboarding 2026-08-23."
     review: light
   - added: 2026-08-27
@@ -400,9 +403,21 @@ inbox:
   - added: 2026-08-27
     what: "docs/architecture/design-rules.md:340 says contributors \"read through their own IDbContextFactory<TContext>\" and names AgentService as an example; AgentRepository takes a scoped AgentDbContext by injection. The conclusion (sequential is no longer a correctness requirement) is right; the stated mechanism is not — the accurate invariant is that no two contributors share a context instance (finding 25, /section-doctor on Gdpr 2026-08-27)."
     review: panel
-  - added: 2026-09-06
-    what: "docs/architecture/freshness-catalog.yml has no Settings entry, so the freshness sweep never flags the section's docs; add one covering src/Sections/Humans.Settings/** and src/Sections/Humans.Settings.Contracts/** (finding 14, /section-doctor on Settings 2026-08-28; swept 2026-09-06)."
+  - added: 2026-09-05
+    what: "docs/architecture/dependency-graph.md predates the Monitor carve-out: the DriveMon node (DriveActivityMonitorService) is still styled :::google and the graph has no Monitor section, though src/Sections/Humans.Monitor owns the service now. The freshness-catalog entry for this graph fires on src/Sections/*/Services/**, so the next /freshness-sweep regeneration should carry it; recorded so it is not lost if that pass is skipped (finding 20, /section-doctor on Settings 2026-08-28)."
     review: light
-  - added: 2026-09-06
-    what: "docs/architecture/dependency-graph.md predates the Monitor carve-out: DriveMon (DriveActivityMonitorService) is still styled :::google and no Monitor section exists in the graph (finding 20, /section-doctor on Settings 2026-08-28; swept 2026-09-06)."
+  - added: 2026-09-10
+    what: ".claude/skills/test-site/SKILL.md names /Profile/Emails and /Profile/Privacy; the live routes are /Profile/Me/Emails and /Profile/Me/Privacy (finding 19, /section-doctor on Consent 2026-08-31; swept in by /section-doctor on Rideshare 2026-09-10)."
+    review: light
+  - added: 2026-09-10
+    what: "The HUM0028 theme's caller-map note above says the LegalDocument cache invalidation runs via an EF interceptor; it has been direct service-side InvalidateAll() calls since nobodies-collective/Humans#751 (finding 19, /section-doctor on Consent 2026-08-31; swept in by /section-doctor on Rideshare 2026-09-10)."
+    review: light
+  - added: 2026-09-10
+    what: "docs/sections/G5-SECTION-TEMPLATE.md:341 claims the renderer lives at Humans.Infrastructure/Services/EmailRenderer.cs; it lives in the Email section (src/Sections/Humans.Email/Services/EmailRenderer.cs). Found fixing Feedback's copy of the same claim (/section-doctor on Feedback 2026-08-31; swept in by /section-doctor on Rideshare 2026-09-10)."
+    review: light
+  - added: 2026-09-10
+    what: "docs/architecture/dependency-graph.md classes Backdoor as a crosscut and omits its edges to the sections it serves (Agent, Feedback, Issues.Contracts, Surveys). It is a leaf, not a crosscut: nothing references it back (finding 16, /section-doctor on Backdoor 2026-09-03; swept in by /section-doctor on Rideshare 2026-09-10)."
+    review: light
+  - added: 2026-09-10
+    what: "docs/architecture/freshness-catalog.yml has no Backdoor entry; add one covering src/Sections/Humans.Backdoor/** and tests/Humans.Backdoor.Tests/** (finding 17, /section-doctor on Backdoor 2026-09-03; swept in by /section-doctor on Rideshare 2026-09-10)."
     review: light

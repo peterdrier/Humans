@@ -135,12 +135,10 @@ internal sealed class GateService(
 
     /// <summary>
     /// Project a recorded admit onto the guest's EventParticipation row (Attended,
-    /// permanent). The gate is the system of record for admission: the vendor
-    /// check-in mirror is best-effort and off by default, so without this write the
-    /// ticket sync may never learn of a gate check-in — and the consumed-Early-Entry
-    /// guards (e.g. Camps EE revocation) read participation. Same target year as the
-    /// ticket sync (the active event's), skipped when the guest is unmatched or no
-    /// event is active.
+    /// permanent) — without it the consumed-Early-Entry guards (e.g. Camps EE
+    /// revocation) might never learn of a gate check-in, since the vendor mirror is
+    /// best-effort and off by default. Same target year as the ticket sync (the
+    /// active event's); skipped when the guest is unmatched or no event is active.
     /// </summary>
     private async Task MarkAttendedAsync(Guid? guestUserId)
     {
@@ -382,8 +380,7 @@ internal sealed class GateService(
     // actorUserId/now are intentionally unused: gate_scan_events carries no
     // UpdatedAt/audit column (it's attribution-by-id only), and the merge itself
     // is audited by AccountMergeService. Per-row merge provenance would be a
-    // schema change, not a code change. Cache eviction is the orchestrator's job
-    // (Gate has no cache).
+    // schema change, not a code change.
     public Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) =>
         repository.ReassignUserAsync(mergedFromUserId, mergedToUserId, ct);
 
@@ -438,8 +435,8 @@ internal sealed class GateService(
         GatePreCheckOutcome.TooEarly =>
             input.OverrideByUserId is not null ? GateVerdict.AdmittedEarlyOverride : GateVerdict.RejectedTooEarly,
         GatePreCheckOutcome.NeedsIdCheck or GatePreCheckOutcome.NeedsIdCheckEarly =>
-            // The child-without-ID waiver is itself a supervisor override now (per-PIN), so it
-            // only admits when an authorizing supervisor was recorded.
+            // The child-without-ID waiver is itself a supervisor override, so it only
+            // admits when an authorized override was recorded.
             input.ChildWithAdult
                 ? (input.OverrideByUserId is not null ? GateVerdict.AdmittedChildWithAdult : GateVerdict.RejectedNameMismatch)
             : input.IdConfirmed

@@ -16,7 +16,7 @@ internal sealed class CachingCalendarService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingCalendarService> logger)
     : TrackedCache<Guid, CalendarEventInfo>("Calendar.Event", warmOnStartup: true, logger),
-        ICalendarService
+        ICalendarServiceRead, ICalendarService
 {
     /// <summary>DI key for the undecorated inner <see cref="ICalendarService"/>.</summary>
     public const string InnerServiceKey = "calendar-inner";
@@ -64,28 +64,12 @@ internal sealed class CachingCalendarService(
     public async Task<CalendarEventInfo?> GetEventInfoAsync(Guid id, CancellationToken ct = default) =>
         await GetAsync(id, ct);
 
-    public async Task<CalendarEvent> CreateEventAsync(
-        CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default)
-    {
-        var result = await WithInner(inner => inner.CreateEventAsync(dto, createdByUserId, ct));
-        await ReplaceAsync(result.Id, ct);
-        return result;
-    }
-
     public async Task<CalendarEventMutationResult> CreateEventWithResultAsync(
         CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default)
     {
         var result = await WithInner(inner => inner.CreateEventWithResultAsync(dto, createdByUserId, ct));
         if (result.Succeeded && result.Event is not null)
             await ReplaceAsync(result.Event.Id, ct);
-        return result;
-    }
-
-    public async Task<CalendarEvent> UpdateEventAsync(
-        Guid id, UpdateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)
-    {
-        var result = await WithInner(inner => inner.UpdateEventAsync(id, dto, updatedByUserId, ct));
-        await ReplaceAsync(id, ct);
         return result;
     }
 

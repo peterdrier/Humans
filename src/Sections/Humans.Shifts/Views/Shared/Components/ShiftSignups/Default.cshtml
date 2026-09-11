@@ -43,14 +43,14 @@
         <div class="card-body text-muted">
             @if (es == null)
             {
-                <text>No active event configured.</text>
+                <text>@Localizer["Shifts_NoActiveEventConfigured"]</text>
             }
             else
             {
-                <text>No shift signups yet.</text>
+                <text>@Localizer["Shifts_NoSignups"]</text>
                 @if (!isAdmin)
                 {
-                    <a asp-controller="Shifts" asp-action="Index" class="ms-1">Browse available shifts</a>
+                    <a asp-controller="Shifts" asp-action="Index" class="ms-1">@Localizer["Shifts_BrowseAvailable"]</a>
                 }
             }
         </div>
@@ -135,7 +135,7 @@
         <div class="card-footer">
             @if (!isAdmin)
             {
-                <a asp-controller="Shifts" asp-action="Mine" class="btn btn-sm btn-outline-primary">View All My Shifts</a>
+                <a asp-controller="Shifts" asp-action="Mine" class="btn btn-sm btn-outline-primary">@Localizer["Shifts_ViewAllMyShifts"]</a>
             }
             else
             {

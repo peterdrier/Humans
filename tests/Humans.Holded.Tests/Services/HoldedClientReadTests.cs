@@ -227,6 +227,44 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
+    public async Task ListLedgerEntries_throws_when_has_more_carries_no_cursor()
+    {
+        // The page cannot be followed, and the prefix cannot be returned: the same replace
+        // semantics as the cap case turn a short read into a delete of rows Holded still has.
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, """
+            {"items":[{"entry_number":1,"line":1,"date":"01/01/2026","account":40000004,
+              "debit":"0.00","credit":"10.00"}],"cursor":null,"has_more":true}
+            """));
+
+        var client = Make(handler);
+        var act = async () => await client.ListLedgerEntriesAsync(
+            new LocalDate(2026, 1, 1), new LocalDate(2026, 1, 31),
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        // On the message, not just the type: without the cursor guard the loop still ends in a
+        // HoldedTransientException via the page cap, so the type alone would pass either way.
+        (await act.Should().ThrowAsync<HoldedTransientException>())
+            .WithMessage("*no cursor*");
+    }
+
+    [HumansFact]
+    public async Task ListLedgerEntries_refuses_the_page_when_an_amount_is_absent()
+    {
+        // An absent debit/credit must not read as 0.00: replace semantics would overwrite the
+        // cached line's real amount and still report the sweep as a success.
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, """
+            {"items":[{"entry_number":1,"line":1,"date":"01/01/2026","account":40000004,
+              "debit":"10.00"}],"cursor":null,"has_more":false}
+            """)));
+
+        var act = async () => await client.ListLedgerEntriesAsync(
+            new LocalDate(2026, 1, 1), new LocalDate(2026, 1, 31),
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedPermanentException>();
+    }
+
+    [HumansFact]
     public async Task ListLedgerEntries_passes_account_filter()
     {
         string? capturedQuery = null;
@@ -276,6 +314,23 @@ public class HoldedClientReadTests
         var act = async () => await client.ListLedgerEntriesAsync(
             new LocalDate(2026, 1, 1), new LocalDate(2026, 1, 31),
             ct: Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedPermanentException>();
+    }
+
+    [HumansFact]
+    public async Task ListAccountingAccounts_refuses_an_account_with_no_number()
+    {
+        // The number is the account's identity: it keys the mirror, picks the PGC group and drives
+        // the POV flip. Reading an absent one as 0 put an "Unclassified", sign-flipped phantom on
+        // the chart and reconciled it against Holded nightly.
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, """
+            {"items":[{"id":"a1","name":"Capital","debit":"0.00","credit":"0.00","balance":"0.00"}],
+             "cursor":null,"has_more":false}
+            """)));
+
+        var act = async () => await client.ListAccountingAccountsAsync(
+            Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<HoldedPermanentException>();
     }

@@ -22,7 +22,7 @@ namespace Humans.Shifts.Tests.Models;
 ///
 /// Ported from the deleted
 /// tests/Humans.Application.Tests/Services/Shifts/ShiftSignupServiceFilterIncompleteOnboardingTests.cs
-/// (PR #820 moved the logic from the service into this Web-layer builder).
+/// (PR nobodies-collective/Humans#820 moved the logic from the service into this Web-layer builder).
 /// </summary>
 public sealed class ShiftAdminPageBuilderTests
 {

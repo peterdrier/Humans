@@ -13,8 +13,8 @@ namespace Humans.Holded.Controllers;
 
 /// <summary>
 /// <c>/Holded</c> — the mirror's own admin screen: what the API budget looks like, when each
-/// sync last ran, which accounts reconcile, and where the department actuals stand. The two
-/// sync buttons live here rather than on Finance's pages, because the mirror is this section's.
+/// sync last ran, and which accounts reconcile. The two sync buttons live here rather than on
+/// Finance's pages, because the mirror is this section's.
 /// </summary>
 [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
 [Route("Holded")]
@@ -36,7 +36,8 @@ internal sealed class HoldedController(
     }
 
     /// <summary>The general-ledger page for any account in the chart — a 629x department, a 572x
-    /// bank, a 400x creditor. Native Holded sign throughout, so it always matches Holded's own view.</summary>
+    /// bank, a 400x creditor. Every figure is in the association's own point of view (+ money in,
+    /// − money out), not Holded's raw debit/credit sign — see Holded.md's POV section.</summary>
     [HttpGet("Accounts/{number:int}")]
     public async Task<IActionResult> Account(int number, CancellationToken ct)
     {

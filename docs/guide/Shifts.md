@@ -2,6 +2,8 @@
   src/Sections/Humans.Shifts/Views/Shifts/**
   src/Sections/Humans.Shifts/Views/ShiftAdmin/**
   src/Sections/Humans.Shifts/Views/ShiftDashboard/**
+  src/Sections/Humans.Shifts/Views/VolunteerTracking/**
+  src/Sections/Humans.Shifts/Views/ShiftWorkloadAdmin/**
   src/Sections/Humans.Shifts/Views/ShiftProfile/ShiftInfo.cshtml
   src/Sections/Humans.Shifts/Controllers/ShiftsController.cs
   src/Sections/Humans.Shifts/Controllers/ShiftAdminController.cs

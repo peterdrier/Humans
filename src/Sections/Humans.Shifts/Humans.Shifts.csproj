@@ -36,12 +36,10 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <!--
-      Humans.Interfaces above carries whatever of the section's persisted-string vocabulary
-      is still shared. The separate Humans.Domain reference is gone: lane 4b-2k took
-      SignupStatus, ShiftPriority, SignupPolicy and RotaPeriod onto Humans.Shifts.Contracts,
-      lane 3a-1 moved the rest of the shared enums into the Humans.Interfaces assembly with
-      their namespaces unchanged, and lane 3b deleted the Humans.Domain project. Their
-      EnumStringStabilityTests rows are unaffected (Teams' rule, design §15 step 5).
+      Humans.Base above carries the shared enums whose persisted strings this section reads;
+      the section's own persisted-string enums (SignupStatus, ShiftPriority, SignupPolicy,
+      RotaPeriod, ShiftPeriod, BuildSubPeriod) live on Humans.Shifts.Contracts, with their
+      EnumStringStabilityTests rows in tests/Humans.Shifts.Tests/Enums.
     -->
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
@@ -50,8 +48,12 @@
       Outbound section references, all through leaves and all acyclic — none of these
       leaves names a Humans.Shifts type (they may name Humans.Shifts.Contracts, which is
       below this project).
+        Camps         — ICampServiceRead: camp labels and rosters for the summary-by-camp.
+        Users         — UserInfo snapshots, IUserMerge, and the profile-side reads.
         AuditLog      — every write path records an audit entry.
         Auth          — the coordinator/manager authorization surface.
+        EarlyEntry    — VolunteerTrackingExportService implements IEarlyEntryProvider;
+                        the section project, since EarlyEntry's contracts are a folder.
         Email         — the "email a rota" coordinator message.
         Gdpr          — ShiftSignupService is an Article 15 contributor.
         Governance    — early-entry capacity reads the membership tier.

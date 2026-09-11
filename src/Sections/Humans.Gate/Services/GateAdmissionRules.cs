@@ -66,7 +66,6 @@ internal static class GateAdmissionRules
         if (ctx.GeneralEntryOpensAt is not { } generalEntryOpensAt)
             return GatePreCheckOutcome.CutoffNotConfigured;
 
-        // General entry open: any valid, un-used ticket is admissible; Early Entry is moot.
         if (ctx.Now >= generalEntryOpensAt)
             return GatePreCheckOutcome.NeedsIdCheck;
 

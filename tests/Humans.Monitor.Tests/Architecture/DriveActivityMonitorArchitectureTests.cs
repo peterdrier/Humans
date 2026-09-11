@@ -6,24 +6,18 @@ using Humans.Monitor.Services;
 namespace Humans.Monitor.Tests.Architecture;
 
 /// <summary>
-/// Architecture tests enforcing the §15 pattern for the Google Integration
-/// section's <see cref="DriveActivityMonitorService"/> — migrated under issue
-/// #554 (split-off from the umbrella migration). The service now lives in
-/// <c>Humans.GoogleIntegration.Services</c> and routes all Google
-/// SDK calls through <see cref="IGoogleDriveActivityClient"/>. These tests
-/// are the compile-time guarantee that the connector boundary does not leak
-/// back into the Application project.
+/// Pins the connector boundary: no Google SDK type reaches
+/// <see cref="DriveActivityMonitorService"/> or <see cref="IGoogleDriveActivityClient"/>'s
+/// signatures. Every Google call goes through the connector abstraction.
 /// </summary>
 public class DriveActivityMonitorArchitectureTests
 {
-    // ── Application assembly cleanliness ─────────────────────────────────────
-
     [HumansFact]
     public void DriveActivityMonitorService_DoesNotReferenceGoogleSdkTypes()
     {
-        // Paranoid double-check: the service's module should have no Google.Apis.*
-        // types in its metadata references. Catches cases where a stray `using`
-        // survives a mass-edit even if csproj doesn't add the package reference.
+        // Signature-level only — base types, interfaces, fields and properties across the
+        // Monitor module. A Google.Apis type used inside a method body is invisible here;
+        // the absence of the package reference in the csproj is what rules that out.
         var module = typeof(DriveActivityMonitorService).Module;
         var referencedTypes = module.GetTypes()
             .SelectMany(t => new[] { t.BaseType }
@@ -46,12 +40,10 @@ public class DriveActivityMonitorArchitectureTests
     [HumansFact]
     public void IGoogleDriveActivityClient_LivesOnGoogleIntegrationsLeaf()
     {
-        // It was in Humans.Base.Interfaces.GoogleIntegration until GoogleIntegration's
-        // own G5 move, which turned every other connector abstraction internal to that
-        // section. This one could not follow them: DriveActivityMonitorService is here, and a
-        // section cannot see another section's internals — so the interface and its
-        // DriveActivityEvent projection went onto the contracts leaf instead
-        // (nobodies-collective/Humans#866, G5-SECTION-TEMPLATE.md step 5b).
+        // Public on the contracts leaf, not internal like GoogleIntegration's other
+        // connectors, because Monitor consumes it across an assembly boundary. The compiler
+        // does not catch a move into Humans.GoogleIntegration itself: Monitor references
+        // that project too, for the <vc:google-sync-log> tag helper.
         typeof(IGoogleDriveActivityClient).Namespace
             .Should().Be("Humans.GoogleIntegration.Contracts",
                 because: "Monitor consumes this connector across an assembly boundary, so it must be public surface on GoogleIntegration's leaf");
@@ -60,8 +52,8 @@ public class DriveActivityMonitorArchitectureTests
     [HumansFact]
     public void IGoogleDriveActivityClient_HasNoGoogleSdkTypesInSignatures()
     {
-        // Every method parameter and return type must come from Humans.Application
-        // or the BCL — never Google.Apis.*. Enforces the "shape-neutral" contract.
+        // Parameters and return types must be BCL or GoogleIntegration.Contracts types —
+        // never Google.Apis.*. Enforces the "shape-neutral" contract.
         var methods = typeof(IGoogleDriveActivityClient).GetMethods();
 
         foreach (var method in methods)

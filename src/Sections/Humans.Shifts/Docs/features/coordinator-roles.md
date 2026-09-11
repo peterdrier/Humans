@@ -125,7 +125,7 @@ With action-level restrictions:
 - **Vote on tier applications**: Board only (separate Board Voting dashboard)
 
 ### Role Assignment Authorization
-Role management lives on `UsersAdminController.AddRole`/`EndRole` (moved off `AdminController` in nobodies-collective/Humans#901) and is enforced by the resource-based `RoleAssignmentAuthorizationHandler` (`RoleAssignmentOperationRequirement.Manage`), not a `CanManageRole()` method:
+Role management lives on `UsersAdminController.AddRole`/`EndRole` and is enforced by the resource-based `RoleAssignmentAuthorizationHandler` (`RoleAssignmentOperationRequirement.Manage`), not a `CanManageRole()` method:
 - **Admin** can assign any role
 - **Board** (or HumanAdmin) can assign any role in `RoleNames.BoardManageableRoles`, which includes ConsentCoordinator and VolunteerCoordinator (Admin is not in that set)
 

@@ -63,22 +63,19 @@ Inbound: Expenses (doc push via outbox), Finance (provisioning, contacts, doc sy
 **Owning surface:** `IHoldedClient`, its DTOs, its typed exceptions and `HoldedClientOptions`
 are public on `Humans.Holded.Contracts`; the impl `HoldedClient` and the `IHoldedCallLog`
 singleton are `internal` in `Humans.Holded/Services/`. All of it is registered by this
-section's `Section.cs` (G5 lane 4b-2f, nobodies-collective/Humans#866) — it used to sit in
-Base behind `Humans.Web`'s `AddHoldedConnector`.
+section's `Section.cs`.
 
 **Why the leaf and not a `Contracts/` folder:** two consumers are outside the section —
 Expenses (`ExpenseReportService`, via `IHoldedClient.IsConfigured`) and Finance (`Service`).
 A folder inside `Humans.Holded` would make those sections reach into a section-internal
 folder and cycle.
 
-**The jobs are not in Base.** The "Hangfire serializes the declaring type name" concern that
-used to keep `HoldedSyncJob` and `HoldedExpenseOutboxJob` in Base turned out to be false —
-`AddOrUpdate<T>(id, …)` is keyed on the job id, not the type — so both moved to their own
-section's `Jobs/` folder at G5 (lane 5b-5): `HoldedSyncJob` here, a shim over this section's
-own `IHoldedNightlySync`; `HoldedExpenseOutboxJob` in `Humans.Expenses/Jobs/`, a shim over
-`IExpenseReportBackgroundProcessor`. Neither job references this section's connector types
-directly — Shell's roll-call still names the concrete classes for Hangfire scheduling, and
-each section registers its own job's DI.
+**The jobs live with their sections.** `HoldedSyncJob` is in `Humans.Holded/Jobs/`, a shim over
+this section's own `IHoldedNightlySync`; `HoldedExpenseOutboxJob` is in `Humans.Expenses/Jobs/`,
+a shim over `IExpenseReportBackgroundProcessor`. A job is free to sit in its own section because
+`AddOrUpdate<T>(id, …)` is keyed on the job id, not on the declaring type. Neither job references
+this section's connector types directly — each section names its own concrete job class in its
+`SectionJobs` and registers that job's DI, and Shell schedules whatever the sections yield.
 
 **GDPR** — the connector owns no per-user data. Finance's own `Service` (exposed as
 `IHoldedFinanceService`) is the `IUserDataContributor` that exports the member's
