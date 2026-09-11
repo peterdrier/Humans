@@ -112,12 +112,18 @@ internal sealed class GovernanceVotesController(
     }
 
     /// <summary>The same stored tally as <see cref="Results"/>, as a CSV of the YesNo counts or IRV rounds — the export named in US-V7.</summary>
+    /// <remarks>
+    /// Asks for the results as a plain member even when the caller is Board or Admin: the CSV
+    /// writes tallies and rounds only, so requesting disclosure would load every individual
+    /// ballot and write an <c>AssemblyBallotsViewed</c> audit entry for a download that shows
+    /// nobody's ballot. The numbers below are identical either way.
+    /// </remarks>
     [HttpGet("{voteId:guid}/Results.csv")]
     public async Task<IActionResult> ResultsCsv(Guid voteId, CancellationToken ct)
     {
         if (GetCurrentUserId() is not { } userId) return Challenge();
 
-        var results = await voteService.GetResultsAsync(voteId, userId, IsViewerBoardOrAdmin(), ct);
+        var results = await voteService.GetResultsAsync(voteId, userId, viewerIsBoardOrAdmin: false, ct);
         if (results is null) return NotFound();
 
         var bytes = WriteResultsCsv(results);

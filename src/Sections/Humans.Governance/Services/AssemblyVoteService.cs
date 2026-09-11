@@ -16,6 +16,7 @@ using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using NodaTime.Serialization.SystemTextJson;
 
 namespace Humans.Governance.Services;
 
@@ -47,12 +48,15 @@ internal sealed class AssemblyVoteService(
 
     /// <summary>
     /// Enums serialize as names so a stored result stays readable and survives any later
-    /// reordering of the CLR enums.
+    /// reordering of the CLR enums. NodaTime is configured because
+    /// <see cref="AssemblyVoteResult.ComputedAt"/> is an <see cref="Instant"/>, which the
+    /// default converters do not understand — without this every stored result would read
+    /// back with <c>ComputedAt = Instant.MinValue</c>, the same trap
+    /// <c>VolunteerBuildStatusConfiguration</c> documents.
     /// </summary>
-    private static readonly JsonSerializerOptions ResultJsonOptions = new()
-    {
-        Converters = { new JsonStringEnumConverter() }
-    };
+    private static readonly JsonSerializerOptions ResultJsonOptions =
+        new JsonSerializerOptions { Converters = { new JsonStringEnumConverter() } }
+            .ConfigureForNodaTime(DateTimeZoneProviders.Tzdb);
 
     // ==========================================================================
     // Member-facing reads
@@ -64,7 +68,9 @@ internal sealed class AssemblyVoteService(
         var votes = await SettleAllAsync(ct);
         var items = new List<AssemblyVoteListItem>(votes.Count);
 
-        foreach (var vote in votes)
+        // A draft is the Board's authoring surface: unannounced, still being written, and
+        // deletable. Members see a vote from the moment it opens, never before.
+        foreach (var vote in votes.Where(v => v.Status != AssemblyVoteStatus.Draft))
         {
             var roster = await repository.GetRosterRowAsync(vote.Id, userId, ct);
             var ballot = roster is null
@@ -97,6 +103,8 @@ internal sealed class AssemblyVoteService(
     {
         var vote = await SettleAsync(voteId, ct);
         if (vote is null) return null;
+        // Same rule as the list: a draft's id is not a back door to its official text.
+        if (vote.Status == AssemblyVoteStatus.Draft) return null;
 
         var roster = await repository.GetRosterRowAsync(voteId, userId, ct);
         var ballot = roster is null
@@ -297,7 +305,11 @@ internal sealed class AssemblyVoteService(
         var result = await ComputeResultAsync(vote, ct);
 
         vote.Status = AssemblyVoteStatus.Closed;
-        vote.ClosedAt = now;
+        // A lapsed vote closed at its announced time, whenever the sweep or the next read
+        // happened to notice. BuildActa prints ClosedAt into the legal summary, so stamping
+        // the observation instant would have the acta claim a vote ran late. An Admin Stop
+        // really does close it now.
+        vote.ClosedAt = closedByUserId is null ? vote.ClosesAt : now;
         vote.ClosedByUserId = closedByUserId;
         vote.ResultJson = JsonSerializer.Serialize(result, ResultJsonOptions);
         vote.UpdatedAt = now;
@@ -541,7 +553,9 @@ internal sealed class AssemblyVoteService(
         var votes = await SettleAllAsync(ct);
         var items = new List<AssemblyVoteListItem>(votes.Count);
 
-        foreach (var vote in votes)
+        // A draft is the Board's authoring surface: unannounced, still being written, and
+        // deletable. Members see a vote from the moment it opens, never before.
+        foreach (var vote in votes.Where(v => v.Status != AssemblyVoteStatus.Draft))
         {
             items.Add(new AssemblyVoteListItem(
                 vote.Id,
@@ -634,7 +648,9 @@ internal sealed class AssemblyVoteService(
 
     /// <summary>
     /// A draft is publishable when it has a title and binding text in its official culture,
-    /// a future closing time, and — for a ranked vote — at least two distinctly-keyed options.
+    /// a future closing time, and — for a ranked vote — at least two distinctly-keyed options,
+    /// each labelled in the official culture. The label is what a voter reads on the ballot;
+    /// a keyed-but-unlabelled option would open as a blank line on a binding vote.
     /// </summary>
     private bool IsDraftValid(AssemblyVoteDraft draft)
     {
@@ -649,6 +665,8 @@ internal sealed class AssemblyVoteService(
 
         return draft.Options.Count >= 2
                && draft.Options.All(o => !string.IsNullOrWhiteSpace(o.Key))
+               && draft.Options.All(o => o.Label.TryGetValue(draft.OfficialCulture, out var label)
+                                         && !string.IsNullOrWhiteSpace(label))
                && draft.Options.Select(o => o.Key).Distinct(StringComparer.Ordinal).Count()
                   == draft.Options.Count;
     }
@@ -907,7 +925,10 @@ internal sealed class AssemblyVoteService(
     {
         var vote = await SettleAsync(voteId, ct);
         if (vote is null) return null;
-        if (!vote.IsTerminal) return null;
+        // Closed, not merely terminal. A cancelled vote's ballots are retained as an
+        // abandoned record with no result; disclosing who voted what on a vote that was
+        // called off is not something the Board was ever granted.
+        if (vote.Status != AssemblyVoteStatus.Closed) return null;
 
         await audit.LogAsync(
             AuditAction.AssemblyBallotsViewed, AuditEntityTypes.AssemblyVote, voteId,
@@ -1202,14 +1223,22 @@ internal sealed class AssemblyVoteService(
     {
         var dropped = await repository.ReassignRosterToUserAsync(mergedFromUserId, mergedToUserId, ct);
 
-        foreach (var rosterId in dropped)
+        foreach (var drop in dropped)
         {
+            // The destroyed ballot is the entity when there was one, the vote when the
+            // merged-from account was on the roster but never voted. Logging the roster
+            // row's own id under either discriminator would leave an audit entry that
+            // resolves to nothing.
+            var (entityType, entityId) = drop.BallotId is { } ballotId
+                ? (AuditEntityTypes.AssemblyBallot, ballotId)
+                : (AuditEntityTypes.AssemblyVote, drop.VoteId);
+
             await audit.LogAsync(
-                AuditAction.AssemblyVoteRosterMerged, AuditEntityTypes.AssemblyBallot, rosterId,
+                AuditAction.AssemblyVoteRosterMerged, entityType, entityId,
                 "Account merge: both accounts were on the same assembly-vote roster, so the "
                 + "merged-from account's roster row and ballot were dropped in favour of the "
                 + "surviving account's.",
-                actorUserId, mergedToUserId, AuditEntityTypes.AssemblyVote);
+                actorUserId, drop.VoteId, AuditEntityTypes.AssemblyVote);
         }
     }
 }

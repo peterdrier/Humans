@@ -244,10 +244,10 @@ Draft ──open (Admin)──▶ Open ──ClosesAt reached / Stop (Admin)─�
   └─delete (Board)       └─cancel (Admin, reason)──▶ Cancelled
 ```
 
-- Draft: Board/Admin edit or delete. No roster, no ballots.
+- Draft: Board/Admin edit or delete. No roster, no ballots, and invisible to members.
 - Open: roster frozen, content locked, ballots accepted from roster members, `ClosesAt` extendable, stats visible, tally embargoed except audited peek.
 - Closed: result computed and stored once; ballots read-only; results visible per `BallotDisclosure`.
-- Cancelled: ballots retained for the record, no result, roster emailed.
+- Cancelled: ballots retained for the record, no result, roster emailed. Not disclosable — the Board's per-ballot list is for Closed votes only.
 
 ## Routing
 
@@ -255,7 +255,7 @@ All member-facing routes are localized (six cultures). Admin routes are exempt.
 
 | Route | Policy | Purpose |
 |---|---|---|
-| `GET /Governance/Votes` | authenticated | every vote, Open first |
+| `GET /Governance/Votes` | authenticated | every opened vote (drafts excluded), Open first |
 | `GET /Governance/Votes/{id}` | authenticated | text, link, stats for everyone; ballot form + own history for roster members (mobile-first) |
 | `POST /Governance/Votes/{id}/Ballot` | roster member, vote Open | cast or change |
 | `GET /Governance/Votes/{id}/Results` | any authenticated member, vote Closed | results, rounds, acta block, peek list; own ballot for roster members; names only per `BallotDisclosure` |

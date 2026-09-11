@@ -181,10 +181,11 @@ internal interface IAssemblyVoteRepository : IRepository
     /// <summary>
     /// Account merge: moves the source account's roster rows to the target. Where both
     /// accounts sit on the same vote's roster the target's row wins and the source's row
-    /// and ballot are dropped — one person may hold only one ballot per vote. Returns the
-    /// roster ids that were dropped, so the caller can audit them.
+    /// and ballot are dropped — one person may hold only one ballot per vote. Returns what
+    /// each drop destroyed, so the caller can audit the real entities rather than the
+    /// roster row's own id.
     /// </summary>
-    Task<IReadOnlyList<Guid>> ReassignRosterToUserAsync(
+    Task<IReadOnlyList<AssemblyRosterDrop>> ReassignRosterToUserAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
 }
 
@@ -207,3 +208,10 @@ internal sealed record AssemblyVoteParticipation(
     int ChangedBallots,
     int TotalRevisions,
     Instant? LastBallotAt);
+
+/// <summary>
+/// One roster row dropped by an account merge: the vote it sat on, and the ballot it
+/// destroyed when it carried one. <c>BallotId</c> is null when the merged-from account was
+/// on the roster but never voted.
+/// </summary>
+internal sealed record AssemblyRosterDrop(Guid VoteId, Guid? BallotId);

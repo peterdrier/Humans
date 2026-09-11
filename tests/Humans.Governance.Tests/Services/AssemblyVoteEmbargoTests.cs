@@ -188,4 +188,42 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
             AuditAction.AssemblyBallotsViewed, Arg.Any<string>(), vote.Id, Arg.Any<string>(), actorId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
+
+    [HumansFact]
+    public async Task GetVotesForMemberAsync_NeverListsADraft()
+    {
+        await _fx.AddVoteAsync(AssemblyVoteStatus.Draft);
+        await _fx.AddVoteAsync(AssemblyVoteStatus.Open);
+
+        var list = await _fx.Service.GetVotesForMemberAsync(
+            Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        list.Should().ContainSingle("a draft is the Board's authoring surface, not a vote members can see")
+            .Which.Status.Should().Be(AssemblyVoteStatus.Open);
+    }
+
+    [HumansFact]
+    public async Task GetVoteForMemberAsync_OnADraft_ReturnsNull()
+    {
+        var draft = await _fx.AddVoteAsync(AssemblyVoteStatus.Draft);
+
+        var view = await _fx.Service.GetVoteForMemberAsync(
+            draft.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        view.Should().BeNull("knowing a draft's id must not serve its official text");
+    }
+
+    [HumansFact]
+    public async Task GetBallotsForBoardAsync_OnACancelledVote_ReturnsNull()
+    {
+        var vote = await _fx.AddVoteAsync(AssemblyVoteStatus.Cancelled);
+        var roster = await _fx.AddRosterRowAsync(vote.Id, Guid.NewGuid(), isOfficial: true);
+        await _fx.AddBallotAsync(vote.Id, roster.Id, AssemblyBallotChoice.Yes);
+
+        var result = await _fx.Service.GetBallotsForBoardAsync(
+            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeNull(
+            "a cancelled vote's ballots are an abandoned record with no result — disclosure is for Closed only");
+    }
 }

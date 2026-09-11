@@ -332,7 +332,7 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
         return rows.Count;
     }
 
-    public async Task<IReadOnlyList<Guid>> ReassignRosterToUserAsync(
+    public async Task<IReadOnlyList<AssemblyRosterDrop>> ReassignRosterToUserAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -348,7 +348,14 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
             .ToListAsync(ct);
         var targetVoteIdSet = targetVoteIds.ToHashSet();
 
-        var dropped = new List<Guid>();
+        // Read the ballots before the cascade takes them: the audit entry has to name the
+        // ballot it destroyed, and after SaveChanges the id is gone.
+        var sourceRosterIds = sourceRows.Select(r => r.Id).ToList();
+        var ballotByRosterId = await ctx.AssemblyBallots
+            .Where(b => sourceRosterIds.Contains(b.RosterId))
+            .ToDictionaryAsync(b => b.RosterId, b => b.Id, ct);
+
+        var dropped = new List<AssemblyRosterDrop>();
         foreach (var row in sourceRows)
         {
             if (targetVoteIdSet.Contains(row.VoteId))
@@ -356,7 +363,9 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
                 // The target already holds this vote's roster row; the source's row (and
                 // its ballot/history, via cascade delete) is dropped rather than merged —
                 // one person, one ballot per vote.
-                dropped.Add(row.Id);
+                dropped.Add(new AssemblyRosterDrop(
+                    row.VoteId,
+                    ballotByRosterId.TryGetValue(row.Id, out var ballotId) ? ballotId : null));
                 ctx.AssemblyVoteRosterEntries.Remove(row);
             }
             else

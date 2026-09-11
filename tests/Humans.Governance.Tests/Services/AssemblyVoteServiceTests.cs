@@ -468,4 +468,115 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         keys.Should().BeEquivalentTo(["c", "d"]);
     }
+
+    [HumansFact]
+    public async Task Read_AfterClosesAtPasses_StampsTheAnnouncedClosingTimeNotTheObservation()
+    {
+        var closesAt = _fx.Clock.GetCurrentInstant() + Duration.FromMinutes(5);
+        var vote = await _fx.AddVoteAsync(closesAt: closesAt);
+
+        // Nobody looks for 45 minutes. The acta must still say the vote closed when it said
+        // it would, not when the sweep got round to it.
+        _fx.Clock.AdvanceMinutes(50);
+
+        await _fx.Service.GetVoteForMemberAsync(
+            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        var stored = await _fx.Db.AssemblyVotes
+            .AsNoTracking()
+            .FirstAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.ClosedAt.Should().Be(closesAt);
+    }
+
+    [HumansFact]
+    public async Task StopAsync_StampsTheMomentTheAdminStopped()
+    {
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(6));
+        var adminId = Guid.NewGuid();
+
+        var result = await _fx.Service.StopAsync(
+            vote.Id, adminId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().Be(AssemblyVoteActionResult.Ok);
+        var stored = await _fx.Db.AssemblyVotes
+            .AsNoTracking()
+            .FirstAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.ClosedAt.Should().Be(_fx.Clock.GetCurrentInstant(),
+            "an Admin stop really does close the vote now, unlike a lapse");
+    }
+
+    [HumansFact]
+    public async Task StoredResult_RoundTripsItsComputedAtInstant()
+    {
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromMinutes(5));
+        var userId = Guid.NewGuid();
+        var roster = await _fx.AddRosterRowAsync(vote.Id, userId, isOfficial: true);
+        await _fx.AddBallotAsync(vote.Id, roster.Id, AssemblyBallotChoice.Yes);
+
+        _fx.Clock.AdvanceMinutes(10);
+
+        var results = await _fx.Service.GetResultsAsync(
+            vote.Id, userId, viewerIsBoardOrAdmin: false, Xunit.TestContext.Current.CancellationToken);
+
+        results!.Result.ComputedAt.Should().NotBe(Instant.MinValue,
+            "an Instant needs NodaTime's converters — the default ones silently read back MinValue");
+        results.Result.ComputedAt.Should().Be(_fx.Clock.GetCurrentInstant());
+    }
+
+    [HumansFact]
+    public async Task CreateDraftAsync_OnARankedDraftWithAnUnlabelledOption_IsRejected()
+    {
+        var draft = new AssemblyVoteDraft(
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["en"] = "Test vote" },
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["en"] = "Text" },
+            "en",
+            null,
+            AssemblyVoteKind.RankedChoice,
+            RequiredMajority.Simple,
+            IndicativeAudience.None,
+            BallotDisclosure.BoardOnly,
+            null,
+            _fx.Clock.GetCurrentInstant() + Duration.FromDays(1),
+            [
+                new AssemblyVoteDraftOption("a", 0,
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["en"] = "Option A" }),
+                new AssemblyVoteDraftOption("b", 1,
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase))
+            ]);
+
+        var voteId = await _fx.Service.CreateDraftAsync(
+            draft, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        voteId.Should().BeNull(
+            "an option with a key but no label would open as a blank line on a binding ballot");
+    }
+
+    [HumansFact]
+    public async Task ReassignAsync_AuditsTheDroppedBallotAndItsVote()
+    {
+        var vote = await _fx.AddVoteAsync();
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        var sourceRoster = await _fx.AddRosterRowAsync(vote.Id, source, isOfficial: true);
+        await _fx.AddRosterRowAsync(vote.Id, target, isOfficial: true);
+        var ballot = await _fx.AddBallotAsync(vote.Id, sourceRoster.Id, AssemblyBallotChoice.Yes);
+
+        var actor = Guid.NewGuid();
+        await _fx.Service.ReassignAsync(
+            source, target, actor, _fx.Clock.GetCurrentInstant(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        // The entity is the ballot that was destroyed and the related entity is its vote —
+        // the roster row's own id resolves to nothing once the row is gone.
+        await _fx.Audit.Received(1).LogAsync(
+            AuditAction.AssemblyVoteRosterMerged,
+            "AssemblyBallot",
+            ballot.Id,
+            Arg.Any<string>(),
+            actor,
+            vote.Id,
+            "AssemblyVote");
+    }
 }
