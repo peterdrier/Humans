@@ -84,19 +84,19 @@ src/Sections/Humans.Users/Data/Migrations/20260820215726_DropProfileState.cs:Dro
 # each template type per signup") that was specified and never built.
 # CORRECTION (2026-09-11): the first version of this block claimed the token appeared in "exactly one
 # commit in all of history" (d3bf4010, the G5 move). That was FALSE. It was gathered in a CI container
-# whose clone was SHALLOW — 552 commits back to 2026-06-17 — so `git log --all` silently searched three
-# months, not all history, and the column predates that boundary. Codex caught it (P1 on this PR).
-# Anyone gathering drop evidence in a container: run `git rev-parse --is-shallow-repository` FIRST and
-# `git fetch --unshallow` before believing any `git log -S` result.
-# Evidence: re-gathered over genuinely full history (2482 commits, unshallowed).
+# whose clone was SHALLOW — truncated to 2026-06-17, months after this column was introduced — so
+# `git log --all` silently searched a recent slice rather than all history. Codex caught it (P1 on
+# this PR). Anyone gathering drop evidence in a container: run `git rev-parse --is-shallow-repository`
+# FIRST and `git fetch --unshallow` before believing any `git log -S` result.
+# Evidence: re-gathered over genuinely full history, after unshallowing.
 # The column was introduced by 23b0ec159 (#135, "add shift management system (Slices 1-3)"), which
 # added the property, an FK relationship and the filtered index; the DB column arrives in
-# 20260316210003_AddShiftManagement. 111 commits in all history touch the token. Outside migration
-# folders exactly two do: 23b0ec159 (introduces it) and this PR (removes it) — and every line
+# 20260316210003_AddShiftManagement. Outside migration folders the token is touched only by
+# 23b0ec159, which introduces it, and this PR, which removes it — and every line
 # 23b0ec159 added is a declaration or EF configuration (`public Guid? ShiftSignupId { get; set; }`,
 # `.HasForeignKey(e => e.ShiftSignupId)`, `builder.HasIndex(e => new { e.ShiftSignupId, e.TemplateName })`,
 # `.HasFilter("\"ShiftSignupId\" IS NOT NULL")`). Never a data write.
-# Searched over full history outside migrations, each returning ZERO commits: `ShiftSignupId *=`
+# Searched over full history outside migrations, each returning no commits: `ShiftSignupId *=`
 # (--pickaxe-regex), `ShiftSignupId =`, `ShiftSignupId:`, `ShiftSignupId ==`, `\.ShiftSignupId`. No
 # migration ever backfilled it either: no `migrationBuilder.Sql`, `UPDATE email_outbox` or
 # `INSERT INTO email_outbox` line in any migration mentions the column. The only delete behaviour the
