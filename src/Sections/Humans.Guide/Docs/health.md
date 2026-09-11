@@ -23,13 +23,16 @@ S1 is the section. S2 is S1's cache primed deliberately instead of on demand —
 `PopulateAsync`, differing only in what gets logged. S3 and S4 are one-class seams that carry
 no request.
 
-Inside S1 the content passes through these steps, in order, each a pure function of its input:
-**fetch** (Base's GitHub markdown source) → **wrap** (each `## As a …` block gets a `<div>`
-carrying its role and its parenthetical's privilege tokens) → **render** (Markdig) →
-**rewrite** (sibling `.md` links become `/Guide/<stem>`, app paths in inline code become
-links, everything else opens in a new tab against GitHub) → **cache**. Only the last step, the
-per-request **filter** that drops blocks by role, runs outside the cache — which is why the
-cached unit is rendered HTML and the role model has to survive rendering as an HTML attribute.
+Inside S1 the content passes through these steps, in order, each a pure function of its input.
+Cached, once per file: **fetch** (Base's GitHub markdown source) → **segment** (each
+`## As a …` block becomes a `GuideSegment` carrying its role and its parenthetical's privilege
+tokens; everything else is an unscoped segment) → **cache**. Then per request: **filter** (drop
+the segments this reader can't see and join what's left) → **render** (Markdig) → **rewrite**
+(sibling `.md` links become `/Guide/<stem>`, app paths in inline code become links, everything
+else opens in a new tab against GitHub).
+
+The filter runs *before* Markdig, which is what keeps the role model in one place: a reader's
+render only ever sees content they may read, and no role metadata survives into the HTML.
 
 ## 3. Structure
 
@@ -42,11 +45,12 @@ Humans.Guide/
   Controllers/               S1, S2 — route, resolve stem, pick view
   Services/
     GuideFiles                the stem set: routing, fetching and the sidebar all read it
-    IGuideContentService      fetch + render + cache, the section's only façade
-    IGuideRenderer            wrap → Markdig → rewrite, pure
-    GuideMarkdownPreprocessor wrap
+    IGuideContentService      fetch + segment + cache + per-request filter/render, the façade
+    GuideDocument             the cached unit: a file as ordered role-scoped segments
+    GuideSegmenter            markdown → segments (static — no state to hold)
+    IGuideRenderer            Markdig → rewrite, pure
     GuideHtmlPostprocessor    rewrite
-    GuideFilter               per-request role strip (static — no state to hold)
+    GuideFilter               per-request segment selection (static — no state to hold)
     IGuideRoleResolver        claims + Teams + Camps → GuideRoleContext
     GuideRolePrivilegeMap     parenthetical text → privilege token (static)
   Models/                     sidebar + page view model
@@ -64,40 +68,44 @@ exactly one home.
    (`GuideController.RenderAsync`, `Controllers/GuideController.cs:42`; `GuideFiles.TryCanonical`,
    `Services/GuideFiles.cs:61`).
 2. Everything before the first `## As a …` heading, and everything from the next non-`As a`
-   `##` heading onward, is visible to everyone — only wrapped blocks are ever dropped
-   (`GuideMarkdownPreprocessor.Wrap`, `Services/GuideMarkdownPreprocessor.cs:70`).
+   `##` heading onward, is an unscoped segment visible to everyone — only role-scoped segments
+   are ever dropped (`GuideSegmenter.Segment`, `Services/GuideSegmenter.cs:61`;
+   `GuideFilter.IsSegmentVisible`, `Services/GuideFilter.cs:35`).
 3. Anonymous sees Volunteer blocks and nothing else
-   (`GuideFilter.IsVisible`, `Services/GuideFilter.cs:62`; `GuideRoleContext.Anonymous`,
+   (`GuideFilter.IsVisible`, `Services/GuideFilter.cs:49`; `GuideRoleContext.Anonymous`,
    `Services/GuideRoleContext.cs:9`).
 4. A team coordinator sees every Coordinator block; a camp lead sees only the Coordinator
    blocks whose parenthetical names `Camp Lead`
-   (`GuideFilter.IsCoordinatorVisible`, `Services/GuideFilter.cs:71` and `:75`).
+   (`GuideFilter.IsCoordinatorVisible`, `Services/GuideFilter.cs:58` and `:64`).
 5. Within one file, anyone who can see a Board/Admin block can see every Coordinator block in
    that file — including a domain admin who reached the Board/Admin block through its
-   parenthetical (`GuideFilter.Apply`, `Services/GuideFilter.cs:45`).
+   parenthetical (`GuideFilter.Apply`, `Services/GuideFilter.cs:19`; `Services/GuideFilter.cs:45`).
 6. Refresh is admin-only and reading is anonymous
    (`Controllers/GuideController.cs:14`, `:19`, `:24`).
 7. A fetch failure with anything already cached serves the stale copy; a fetch failure with a
    cold cache is a 503, never an empty page
-   (`GuideContentService.PopulateAsync`, `Services/GuideContentService.cs:76`;
-   `GuideController.RenderAsync`, `Controllers/GuideController.cs:53`).
+   (`GuideContentService.PopulateAsync`, `Services/GuideContentService.cs:85`;
+   `GuideController.RenderAsync`, `Controllers/GuideController.cs:55`).
 8. `guide:<stem>` cache entries are written by `GuideContentService` and nothing else
    (`Services/GuideContentService.cs:16`).
 9. The stem set and the markdown folder match exactly in both directions — a file with no stem
    is unreachable, a stem with no file fails its fetch on every refresh
    (`GuideArchitectureTests.EveryGuideMarkdownFileIsRegistered_AndEveryRegisteredStemExists`).
-10. Every `## As a …` heading in the shipped corpus is one the wrapper recognises, and every
+10. Every `## As a …` heading in the shipped corpus is one the segmenter recognises, and every
     parenthetical in it resolves to a privilege token — the two ways a block fails *open* or
-    fails *silent* (`GuideMarkdownPreprocessorTests.Wrap_EveryRoleHeadingInShippedContent_LandsInsideARoleDiv`,
+    fails *silent* (`GuideSegmenterTests.Segment_EveryRoleHeadingInShippedContent_OpensAScopedSegment`,
     `GuideArchitectureTests.EveryRoleHeadingParentheticalResolvesToAPrivilege`).
+11. Segmenting is lossless: the segments of a file rejoin to that file exactly, so a reader who
+    can see everything gets the file as written
+    (`GuideSegmenterTests.Segment_EveryShippedFile_RejoinsToTheOriginal`,
+    `GuideShippedContentFilterTests.Admin_ReceivesEveryFileWholeAndUnaltered`).
 
 ## 5. Seams
 
-- **Filtering markdown instead of HTML.** Splitting on `##` before rendering would delete the
-  `data-guide-*` round trip, `GuideFilter`'s regex over HTML, and the whole class of defect
-  where the shape of a content file defeats the filter. It is blocked only by the cache holding
-  rendered HTML per file; at this corpus size rendering per request is affordable. Not built;
-  changing the cached unit is Peter's call.
+- ~~**Filtering markdown instead of HTML.**~~ Taken 2026-09-11. The cached unit is now the
+  segmented `GuideDocument`, the filter selects segments before Markdig runs, and the
+  `data-guide-*` round trip and the regex over rendered HTML are gone with it — along with the
+  class of defect where the shape of a content file defeated the filter.
 - ~~**An anonymous way in.**~~ Settled 2026-09-11: the link was missing, not the branch dead.
   `SectionNav.cs` contributes a `Guide` item to the member top nav through `ISectionNav`, with
   no `Visible` predicate, so a signed-out reader can reach the pages the filter's anonymous
@@ -123,16 +131,14 @@ exactly one home.
 
 ## Load-bearing weirdness
 
-- **The role model is restated at every layer it crosses** — as heading prose, as an HTML
-  attribute, as a regex over rendered HTML. That is essential given §5's constraint, not
-  sediment; the corpus-wide pinning tests in §4 exist because of it.
 - **A cache miss on one page fetches every page.** `PopulateAsync` is all-or-nothing by design:
   the guide is small, and a per-page fetch would make a GitHub rate-limit failure look like a
   half-broken guide instead of a stale one.
-- **`GuideFilter` and `GuideRolePrivilegeMap` are static.** They hold no state and take no
-  dependency; making them injectable would buy a seam nothing needs.
-- **`Wrap`'s hand-rolled line scanner with an `inBlock` flag** is larger than the rest of the
-  pipeline put together. It is the price of §5 not being taken; blessed until it is.
+- **`GuideSegmenter`, `GuideFilter` and `GuideRolePrivilegeMap` are static.** They hold no state
+  and take no dependency; making them injectable would buy a seam nothing needs.
+- **The role model lives in the segmenter's heading regex and nowhere else.** Nothing
+  downstream re-derives it: the filter reads the segment's `Role`, and the rendered HTML
+  carries no trace of it. The corpus-wide pinning tests in §4 guard that single point.
 - **The `github` health check probes `GitHubSettings`, which is the *legal-documents* repo**
   (`nobodies-collective/legal`), not the repo the guide is fetched from. It arrived here with
   the `github` monitoring key. Recorded, not blessed — see the run file.
@@ -144,3 +150,4 @@ exactly one home.
 | 2026-08-17 | Feedback.md admin block was leaking to anonymous (unwrapped heading) — fixed + pinned; resolver's probe list derived from the privilege map, restoring Events/Store Admin visibility; three duplicated stem lookups folded into `GuideFiles.TryCanonical`; dead `Humans.Infrastructure` doc paths corrected | peterdrier/Humans#1354 |
 | 2026-08-20 | `(Camp Lead)` parentheticals resolved to no privilege, so camp-lead blocks reached only Board/Admin — `CampLead` token added, `IsCampLead` resolved from `ICampLeadDirectory`, and every parenthetical in the corpus pinned to the privilege map | peterdrier/Humans#1415 |
 | 2026-09-11 | `/api/backdoor/*` was linkified into a dead link — wildcards now excluded from the inline-code rewriter, with a pinning test; target shape re-derived into the current six-part form; dead project names, an invented pinning test and stale consumer claims cut from the section's prose; the domain-admin negative rule corrected against the pinned superset behaviour; file-count claims replaced by the list that owns them; the 503 page given a way back out; an Events feature spec moved out of the section | peterdrier/Humans#1655 |
+| 2026-09-11 | Guide reachable from the member top nav via `ISectionNav`, so the filter's anonymous branch has a way in; §5's markdown-filtering seam taken — the cached unit became the segmented `GuideDocument`, `GuideFilter` selects segments before Markdig, and the `data-guide-*` round trip plus the regex over rendered HTML are gone | peterdrier/Humans#1655 |

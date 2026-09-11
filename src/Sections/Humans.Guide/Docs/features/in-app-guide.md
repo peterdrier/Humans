@@ -23,7 +23,7 @@ inside the guide navigate in-app to the pages they describe.
 GitHub remains the authoring source: guide changes go through pull-request
 review (no in-app CMS). The app pulls the current content from
 `nobodies-collective/Humans:main:docs/guide/` on demand, caches it in
-memory, and re-renders it for each request with role-aware filtering.
+memory as role-scoped segments, and filters then renders it for each request.
 
 ## User stories
 
@@ -51,16 +51,18 @@ cached in-memory from GitHub. No migrations, no new tables.
 1. Human navigates to `/Guide/<Page>`.
 2. `GuideRoleResolver` builds a `GuideRoleContext` from claims,
    `ITeamServiceRead` (team coordinator) and `ICampLeadDirectory` (camp lead).
-3. `GuideContentService` returns the fully rendered HTML for the page,
-   fetching and rendering every stem in `GuideFiles.All` on cache miss.
-4. `GuideFilter` strips role-scoped `<div>` blocks the user can't see.
-5. Filtered HTML rendered inside `_GuideLayout.cshtml` with sidebar.
+3. `GuideContentService` gets the page's cached `GuideDocument` — its ordered
+   role-scoped segments — fetching and segmenting every stem in
+   `GuideFiles.All` on cache miss.
+4. `GuideFilter` drops the segments the user can't see and joins what remains.
+5. `GuideRenderer` renders that markdown through Markdig and rewrites its
+   links; the HTML goes inside `_GuideLayout.cshtml` with the sidebar.
 
 ### Refreshing from GitHub (Admin)
 
 1. Admin submits `POST /Guide/Refresh` (CSRF-protected).
 2. `GuideContentService.RefreshAllAsync` re-fetches every stem in
-   `GuideFiles.All` and re-renders; existing cache entries are overwritten.
+   `GuideFiles.All` and re-segments; existing cache entries are overwritten.
 3. Admin is redirected back to `/Guide` with a status flash.
 
 ## Authorization

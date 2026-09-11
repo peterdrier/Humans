@@ -52,26 +52,26 @@ public class GuideContentServiceTests
     }
 
     [HumansFact]
-    public async Task GetRenderedAsync_FirstCall_FetchesFromSource()
+    public async Task GetPageAsync_FirstCall_FetchesFromSource()
     {
         var source = new FakeSource();
         var service = CreateService(source, out _);
 
-        var html = await service.GetRenderedAsync("Profiles", Xunit.TestContext.Current.CancellationToken);
+        var html = await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
 
         html.Should().Be("[rendered:Profiles]");
         source.Calls.Should().BeGreaterThan(0);
     }
 
     [HumansFact]
-    public async Task GetRenderedAsync_SecondCall_ServedFromCache()
+    public async Task GetPageAsync_SecondCall_ServedFromCache()
     {
         var source = new FakeSource();
         var service = CreateService(source, out _);
 
-        await service.GetRenderedAsync("Profiles", Xunit.TestContext.Current.CancellationToken);
+        await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
         var callsAfterFirst = source.Calls;
-        await service.GetRenderedAsync("Profiles", Xunit.TestContext.Current.CancellationToken);
+        await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
 
         source.Calls.Should().Be(callsAfterFirst);
     }
@@ -81,7 +81,7 @@ public class GuideContentServiceTests
     {
         var source = new FakeSource();
         var service = CreateService(source, out _);
-        await service.GetRenderedAsync("Profiles", Xunit.TestContext.Current.CancellationToken);
+        await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
         var callsBefore = source.Calls;
 
         await service.RefreshAllAsync(Xunit.TestContext.Current.CancellationToken);
@@ -90,33 +90,33 @@ public class GuideContentServiceTests
     }
 
     [HumansFact]
-    public async Task GetRenderedAsync_UnknownFile_Throws()
+    public async Task GetPageAsync_UnknownFile_Throws()
     {
         var source = new FakeSource();
         var service = CreateService(source, out _);
 
-        var act = async () => await service.GetRenderedAsync("DoesNotExist", Xunit.TestContext.Current.CancellationToken);
+        var act = async () => await service.GetPageAsync("DoesNotExist", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<FileNotFoundException>();
     }
 
     [HumansFact]
-    public async Task GetRenderedAsync_ColdCacheGitHubFailure_ThrowsUnavailable()
+    public async Task GetPageAsync_ColdCacheGitHubFailure_ThrowsUnavailable()
     {
         var source = new FakeSource { FailFor = _ => new InvalidOperationException("network down") };
         var service = CreateService(source, out _);
 
-        var act = async () => await service.GetRenderedAsync("Profiles", Xunit.TestContext.Current.CancellationToken);
+        var act = async () => await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<GuideContentUnavailableException>();
     }
 
     [HumansFact]
-    public async Task GetRenderedAsync_WarmCacheThenSourceFails_ServesStale()
+    public async Task GetPageAsync_WarmCacheThenSourceFails_ServesStale()
     {
         var source = new FakeSource();
         var service = CreateService(source, out _);
-        await service.GetRenderedAsync("Profiles", Xunit.TestContext.Current.CancellationToken);
+        await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
 
         // Nothing is evicted before the refetch, so the entries cached above are still present
         // when every fetch below fails — which is what makes the refresh degrade to stale
@@ -124,7 +124,7 @@ public class GuideContentServiceTests
         source.FailFor = _ => new InvalidOperationException("flaky");
         await service.RefreshAllAsync(Xunit.TestContext.Current.CancellationToken); // should NOT throw — stale content present
 
-        var html = await service.GetRenderedAsync("Profiles", Xunit.TestContext.Current.CancellationToken);
+        var html = await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
 
         html.Should().Be("[rendered:Profiles]");
     }

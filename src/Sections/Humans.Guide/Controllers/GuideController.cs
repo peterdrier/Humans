@@ -45,10 +45,12 @@ internal sealed class GuideController(IGuideContentService content, IGuideRoleRe
             return View("NotFound");
         }
 
-        string rendered;
+        var roleContext = await roles.ResolveAsync(User, cancellationToken);
+
+        string html;
         try
         {
-            rendered = await content.GetRenderedAsync(canonical, cancellationToken);
+            html = await content.GetPageAsync(canonical, roleContext, cancellationToken);
         }
         catch (GuideContentUnavailableException)
         {
@@ -56,13 +58,10 @@ internal sealed class GuideController(IGuideContentService content, IGuideRoleRe
             return View("Unavailable");
         }
 
-        var roleContext = await roles.ResolveAsync(User, cancellationToken);
-        var filtered = GuideFilter.Apply(rendered, roleContext);
-
         var viewModel = new GuideViewModel
         {
             Title = DisplayName(canonical),
-            Html = new HtmlString(filtered),
+            Html = new HtmlString(html),
             Sidebar = BuildSidebar(canonical),
             FileStem = canonical
         };

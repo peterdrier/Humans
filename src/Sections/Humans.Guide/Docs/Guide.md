@@ -5,20 +5,22 @@
   docs/guide/**
 -->
 <!-- freshness:flag-on-change
-  Guide page role-scoped block visibility, cache TTL, refresh trigger rules, or file set — review when GuideController/GuideFilter/GuideRolePrivilegeMap/GuideFiles or guide markdown content changes.
+  Guide page role-scoped block visibility, cache TTL, refresh trigger rules, or file set — review when GuideController/GuideSegmenter/GuideFilter/GuideRolePrivilegeMap/GuideFiles or guide markdown content changes.
 -->
 
 # Guide — Section Invariants
 
-<!-- Stateless read section: serves markdown from docs/guide/ via a GitHub content source, cached in-memory, with role-scoped filtering per request. -->
+<!-- Stateless read section: serves markdown from docs/guide/ via a GitHub content source, segmented and cached in-memory, with role-scoped filtering per request before rendering. -->
 
 ## Concepts
 
 - A **guide page** is one markdown file under `docs/guide/` in the Humans
   repo, rendered at `/Guide/<FileStem>`.
 - A **role-scoped block** is a `## As a …` heading and the content under
-  it, wrapped in `<div data-guide-role="…" data-guide-roles="…">` by the
-  renderer and optionally stripped at request time by `GuideFilter`.
+  it, captured by `GuideSegmenter` as a `GuideSegment` carrying its role and
+  its parenthetical's privilege tokens, and dropped at request time by
+  `GuideFilter` before the markdown reaches Markdig. No role metadata
+  survives into the rendered HTML.
 - A **parenthetical** is text in parens after `## As a …` (e.g. `## As a
   Board member / Admin (Teams Admin)`) that specifies which domain admin
   role sees that block. Every parenthetical must be a key in
@@ -61,7 +63,8 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 - Anonymous users see only Volunteer-scoped blocks; never Coordinator or Board/Admin blocks.
 - If a file contains any Board/Admin block visible to the current user, all Coordinator blocks in that file are also shown (within-file superset rule, enforced in `GuideFilter.Apply`).
 - Guide content is `GuideFiles.All`: `README`, `GettingStarted`, `Glossary`, the sections enumerated in `GuideFiles.Sections`, plus the plain-language pages enumerated in `GuideFiles.CommonQuestions` (rendered as the "Common questions" sidebar group). One markdown file under `docs/guide/` per stem, in both directions. Nothing is authored in-app.
-- Cache key is `guide:<FileStem>`. TTL is sliding, configured via `Guide:CacheTtlHours` (default 6 hours, floor 1 hour).
+- Cache key is `guide:<FileStem>`; the cached value is the segmented `GuideDocument`, never rendered HTML — filtering happens before rendering, so rendering is per request. TTL is sliding, configured via `Guide:CacheTtlHours` (default 6 hours, floor 1 hour).
+- Segmenting is lossless: a file's segments rejoin to the file exactly, so a reader who can see every block gets the page as written.
 - Only `GuideContentService` reads or writes `guide:*` cache entries. No other service touches guide content.
 
 ## Negative Access Rules
@@ -74,8 +77,8 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 
 ## Triggers
 
-- First `GET /Guide/*` on cold cache → `GuideContentService` fetches and renders every stem in `GuideFiles.All`; entries populated with sliding TTL.
-- `POST /Guide/Refresh` (Admin) → re-fetches and re-renders every stem in `GuideFiles.All`; existing cache entries overwritten.
+- First `GET /Guide/*` on cold cache → `GuideContentService` fetches and segments every stem in `GuideFiles.All`; entries populated with sliding TTL.
+- `POST /Guide/Refresh` (Admin) → re-fetches and re-segments every stem in `GuideFiles.All`; existing cache entries overwritten.
 - GitHub fetch failure on warm cache → stale content served; warning logged; TTL preserved.
 - GitHub fetch failure on cold cache → `GuideContentUnavailableException` thrown; controller returns 503 `Unavailable.cshtml`.
 
@@ -85,11 +88,12 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 - **Camps**: `GuideRoleResolver` calls `ICampLeadDirectory.IsLeadAnywhereAsync` for `IsCampLead` — camp lead is a role on a camp season, never a claim, so it cannot come from `IsInRole`. Visibility is "leads *some* camp", the same collapse Teams already makes for coordinators; the guide has no per-camp scope. Not `ICampServiceRead.GetCampUserInfoAsync`: that resolves the first camp where the user is an Active *member* and would miss a lead of a second camp.
 - **Auth/Roles**: `GuideRoleResolver` reads `ClaimsPrincipal.IsInRole` against `RoleNames` constants to build `SystemRoles` set.
 - **Base (inward, publishing)**: `SectionAnnotations` (`ISectionAnnotations`) publishes one "Guide page" annotation per `GuideFiles.Sections` stem into `ISectionCatalog`, so `/Debug/Sections` can show which sections have help written for them (nobodies-collective/Humans#1509). Guide names no other section and no other section names Guide. Some stems match no section on purpose — `Profiles` and `LegalAndConsent` are pre-rename spellings the `docs/guide/` corpus still uses, and `Admin` is a nav holder — so they show as unmatched annotations until the guide files are renamed.
+- **Base (inward, publishing)**: `SectionNav` (`ISectionNav`) contributes a single `Guide` item to the member top nav, with no `Visible` predicate — `/Guide` is `[AllowAnonymous]`, so the link is the anonymous reader's way in.
 - **Base (inward)**: `IGuideContentSource` / `GitHubGuideContentSource` / `GuideSettings` stay in `Humans.Base`. Despite the name they are not Guide's: the interface is a GitHub-markdown fetcher whose signatures name only `string`, and its consumers are elsewhere — the Agent section's `AgentSectionDocReader` / `AgentFeatureSpecReader` / `CommunityFaqReader` / `AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`. Shell registers both, and the section consumes the interface inward.
 
 ## Architecture
 
-**Owning services:** `GuideContentService`, `GuideRoleResolver`, `GuideRenderer`, `GuideMarkdownPreprocessor`, `GuideHtmlPostprocessor`, `GuideFilter` (static), `GuideRolePrivilegeMap` (static) — all `internal` in `Humans.Guide.Services`
+**Owning services:** `GuideContentService`, `GuideRoleResolver`, `GuideRenderer`, `GuideHtmlPostprocessor`, `GuideSegmenter` (static), `GuideFilter` (static), `GuideRolePrivilegeMap` (static) — all `internal` in `Humans.Guide.Services`
 **Owned tables:** None — orchestrator over the Base GitHub content source + `IMemoryCache`
 **Status:** (A) Migrated — `src/Sections/Humans.Guide` (nobodies-collective/Humans#866, G5). No repository and no `DbContext` (no tables), no `Resources/` set (no localized copy), and `Contracts/` is an empty folder: nothing outside the section reads a guide page.
 

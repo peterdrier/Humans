@@ -86,9 +86,9 @@ public class GuideArchitectureTests
     [HumansFact]
     public void EveryRoleHeadingParentheticalResolvesToAPrivilege()
     {
-        // An unmapped parenthetical is silent: the block renders with data-guide-roles=""
-        // and reaches nobody it was written for. "(Camp Coordinator)" sat like that on
-        // Camps.md (nobodies-collective/Humans#1035) until someone read the map.
+        // An unmapped parenthetical is silent: the segment carries no privilege and reaches
+        // nobody it was written for. "(Camp Coordinator)" sat like that on Camps.md
+        // (nobodies-collective/Humans#1035) until someone read the map.
         var unmapped = new List<string>();
 
         foreach (var file in Directory.GetFiles(Path.Combine(LocateRepoRoot(), "docs", "guide"), "*.md"))
@@ -96,7 +96,7 @@ public class GuideArchitectureTests
             foreach (var raw in File.ReadLines(file))
             {
                 var line = raw.TrimEnd('\r');
-                var match = GuideMarkdownPreprocessor.RoleHeading.Match(line);
+                var match = GuideSegmenter.RoleHeading.Match(line);
                 if (!match.Success || !match.Groups["paren"].Success)
                 {
                     continue;

@@ -27,7 +27,6 @@ public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
-        services.AddSingleton<GuideMarkdownPreprocessor>();
         services.AddSingleton<GuideHtmlPostprocessor>();
         services.AddSingleton<IGuideRenderer, GuideRenderer>();
         services.AddSingleton<IGuideContentService, GuideContentService>();
