@@ -306,12 +306,21 @@ internal sealed class AssemblyVoteService(
         var now = clock.GetCurrentInstant();
         if (vote.Status != AssemblyVoteStatus.Open || now < vote.ClosesAt)
         {
-            // Closure writes the status first and the tally second (see CloseAsync). A process
-            // that died between the two left a closed vote with no result; the next read
-            // finishes the job rather than leaving the results page permanently empty.
+            // Closure writes the status first and everything else second (see CloseAsync). A
+            // process that died in between left a vote that is closed but has no result, no
+            // retired notification and no audit entry; the next read finishes all three. Who
+            // closed it is already persisted, so the replay attributes it exactly as the
+            // original would have.
             if (vote.Status == AssemblyVoteStatus.Closed && vote.ResultJson is null)
             {
-                await StoreResultAsync(vote, ct);
+                await FinishCloseAsync(
+                    vote,
+                    vote.ClosedByUserId,
+                    vote.ClosedByUserId is null ? AuditAction.AssemblyVoteClosed : AuditAction.AssemblyVoteStopped,
+                    vote.ClosedByUserId is null
+                        ? $"Assembly vote {vote.Id} closed automatically at its announced time."
+                        : $"Stopped assembly vote {vote.Id} before its announced closing time.",
+                    ct);
             }
 
             return vote;
@@ -366,6 +375,23 @@ internal sealed class AssemblyVoteService(
         // and flipping second would leave the whole counting interval open for a submission to
         // slip in behind the snapshot, be told "recorded", and never appear in the result.
         await repository.UpdateAsync(vote, ct);
+        await FinishCloseAsync(vote, closedByUserId, action, description, ct);
+    }
+
+    /// <summary>
+    /// Everything a close owes after its status is down: the stored tally, the retired
+    /// open-vote notification, and the audit entry. Separate from <see cref="CloseAsync"/>
+    /// because the status write commits first, and anything that throws after it leaves a
+    /// closed vote owing all three — <see cref="SettleAsync"/> replays this, not just the
+    /// result, so a half-finished close cannot cost the Board its audit trail.
+    /// </summary>
+    private async Task FinishCloseAsync(
+        AssemblyVote vote,
+        Guid? closedByUserId,
+        AuditAction action,
+        string description,
+        CancellationToken ct)
+    {
         await StoreResultAsync(vote, ct);
 
         await ClearOpenNotificationAsync(vote, closedByUserId, ct);

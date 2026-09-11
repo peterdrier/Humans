@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Governance.Domain;
+using Humans.Governance.Services;
 using Humans.Governance.Services.Dtos;
 using Humans.Governance.Tests.Infrastructure;
 using Humans.Users.Contracts;
@@ -220,6 +221,24 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         results.Should().NotBeNull("a process that died between the two writes must not leave the page blank forever");
         _fx.Db.AssemblyVotes.Single(v => v.Id == vote.Id).ResultJson.Should().NotBeNull();
+    }
+
+    [HumansFact]
+    public async Task GetResultsAsync_AfterACloseThatNeverStoredItsResult_StillAuditsTheStop()
+    {
+        var adminId = Guid.NewGuid();
+        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
+        vote.ClosedByUserId = adminId;
+        _fx.Db.AssemblyVotes.Update(vote);
+        await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _fx.Db.ChangeTracker.Clear();
+
+        await _fx.Service.GetResultsAsync(
+            vote.Id, adminId, viewerIsBoardOrAdmin: false, Xunit.TestContext.Current.CancellationToken);
+
+        await _fx.Audit.Received(1).LogAsync(
+            AuditAction.AssemblyVoteStopped, AuditEntityTypes.AssemblyVote, vote.Id,
+            Arg.Any<string>(), adminId);
     }
 
     // ==========================================================================

@@ -170,12 +170,12 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
     /// accepting ballots.
     /// </summary>
     /// <remarks>
-    /// The vote's state is re-read here, inside the same unit of work as the write, and not
-    /// taken from whatever the caller saw at the top of the request: a Stop or an automatic
-    /// close can land in between, and a ballot accepted after the tally was taken would be
-    /// told "recorded" while never appearing in the stored result. Closure persists the closed
-    /// status before it reads any ballots, so this check and that ordering together mean an
-    /// accepted ballot is always one the count saw.
+    /// The vote's state is re-read here under the row's lock, not taken from whatever the
+    /// caller saw at the top of the request: a Stop or an automatic close can land in between,
+    /// and a ballot accepted after the tally was taken would be told "recorded" while never
+    /// appearing in the stored result. Closure persists the closed status before it reads any
+    /// ballots, so that write contends for this same lock, and an accepted ballot is always
+    /// one the count saw.
     /// </remarks>
     public async Task<AssemblyBallot?> UpsertBallotAsync(
         Guid voteId,
@@ -186,6 +186,20 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
         CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
+
+        // Lock the vote row before deciding, and hold it until the ballot is committed.
+        // Closure persists the closed status first, and that UPDATE needs this same lock:
+        // either it commits before this transaction — and the read below sees Closed and
+        // refuses — or it waits behind this ballot, which is then already in the table when
+        // counting reads it. Checking without the lock leaves the two free to interleave,
+        // and a vote can be counted without a ballot it told the member it had recorded.
+        var relational = ctx.Database.IsRelational();
+        await using var tx = relational ? await ctx.Database.BeginTransactionAsync(ct) : null;
+        if (relational)
+        {
+            await ctx.Database.ExecuteSqlAsync(
+                $"""SELECT 1 FROM assembly_votes WHERE "Id" = {voteId} FOR UPDATE""", ct);
+        }
 
         var vote = await ctx.AssemblyVotes.AsNoTracking()
             .FirstOrDefaultAsync(v => v.Id == voteId, ct);
@@ -228,6 +242,7 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
         });
 
         await ctx.SaveChangesAsync(ct);
+        if (tx is not null) await tx.CommitAsync(ct);
         return ballot;
     }
 

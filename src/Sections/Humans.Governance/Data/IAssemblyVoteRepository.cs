@@ -116,8 +116,9 @@ internal interface IAssemblyVoteRepository : IRepository
     /// Casts or changes a ballot: inserts at revision 1, or bumps the revision and
     /// overwrites the standing choice. Either way a history row is appended in the same
     /// unit of work. Returns the resulting ballot, or null when the vote was no longer
-    /// accepting ballots at <paramref name="now"/> — re-read here rather than trusted from
-    /// the caller, so a close landing mid-request cannot leave an accepted ballot uncounted.
+    /// accepting ballots at <paramref name="now"/> — re-read here under the vote row's lock
+    /// rather than trusted from the caller, so a close landing mid-request cannot leave an
+    /// accepted ballot uncounted.
     /// </summary>
     Task<AssemblyBallot?> UpsertBallotAsync(
         Guid voteId,

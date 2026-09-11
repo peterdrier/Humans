@@ -78,7 +78,7 @@ Admin-only for the first votes because they are live tests; once the process has
 - **Extend** (AdminOnly) moves `ClosesAt` later while Open, audited with old and new values. Shortening is not offered; use Stop.
 - **Cancel** (AdminOnly) while Open: terminal, ballots retained, no result computed, roster notified by email, audit `AssemblyVoteCancelled` with a required reason. This is the "the Assembly refused electronic voting" exit (statutes Art. 8.2).
 - Closed and Cancelled are terminal. A closed vote can never reopen; to redo, create a new vote.
-- On close the closed status is persisted **first** and the result computed and stored (`ResultJson`) **second**: a ballot write re-reads the vote inside its own unit of work, so a submission that arrives while the count is running is refused rather than accepted into a tally that has already been taken. A close interrupted between the two writes is finished by the next read. The result is computed once and stored, so it is stable even if counting code changes later. It can be recomputed by Admin only in Debug tooling, and the stored one wins.
+- On close the closed status is persisted **first** and the result computed and stored (`ResultJson`) **second**: a ballot write takes the vote row's lock and re-reads it, so a submission that arrives while the count is running is refused rather than accepted into a tally that has already been taken. A close interrupted after the status write is finished by the next read — result, notification and audit entry, not just the result. The result is computed once and stored, so it is stable even if counting code changes later. It can be recomputed by Admin only in Debug tooling, and the stored one wins.
 
 ### US-V5: Everyone sees participation, nobody sees the tally
 
