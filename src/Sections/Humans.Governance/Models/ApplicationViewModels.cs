@@ -1,5 +1,6 @@
 using Humans.Users.Contracts;
 using Humans.Governance.Contracts;
+using NodaTime;
 using System.ComponentModel.DataAnnotations;
 
 namespace Humans.Governance.Models;
@@ -18,6 +19,7 @@ internal sealed class ApplicationSummaryViewModel
     public MembershipTier MembershipTier { get; set; }
     public DateTime SubmittedAt { get; set; }
     public DateTime? ResolvedAt { get; set; }
+    public LocalDate? TermExpiresAt { get; set; }
     public string StatusBadgeClass { get; set; } = "bg-secondary";
 }
 
@@ -58,11 +60,9 @@ internal sealed class ApplicationCreateViewModel
 
     [Required]
     [StringLength(2000, MinimumLength = 50)]
-    [Display(Name = "Why do you want to join?")]
     public string Motivation { get; set; } = string.Empty;
 
     [StringLength(1000)]
-    [Display(Name = "Additional Information (optional)")]
     public string? AdditionalInfo { get; set; }
 
     /// <summary>
@@ -78,6 +78,5 @@ internal sealed class ApplicationCreateViewModel
     public string? RoleUnderstanding { get; set; }
 
     [Required]
-    [Display(Name = "I confirm that the information provided is accurate")]
     public bool ConfirmAccuracy { get; set; }
 }

@@ -14,21 +14,16 @@ namespace Humans.Shifts.Controllers;
 /// <c>/Profile/Me/ShiftInfo</c>.
 /// </summary>
 /// <remarks>
-/// Two actions carved off Shell's <c>ProfileController</c> at the section's G5
-/// (nobodies-collective/Humans#866): both read and write <c>volunteer_event_profiles</c>,
-/// a Shifts table, and touch nothing of Profiles'. <c>FinanceController</c>'s case
-/// exactly — one section's actions sitting under another's route prefix.
-/// <c>[Route("Profile")]</c> stays on both halves so neither URL changes.
+/// Both actions read and write <c>volunteer_event_profiles</c>, a Shifts table, but keep
+/// the <c>[Route("Profile")]</c> prefix so the member-facing URLs do not change.
 /// </remarks>
 [Authorize]
 [Route("Profile")]
 internal sealed class ShiftProfileController(
     IShiftManagementService shiftMgmt,
     IUserServiceRead userService,
-    // SharedResource, not ShiftsResource: the one string this controller resolves is
-    // Profile_Updated, which belongs to Shell's profile vocabulary and stayed there. The
-    // page's own 13 ShiftInfo_ keys are the view's, and the view reads ShiftsResource
-    // through _ViewImports. Governance's "a section may bind two markers" case.
+    // SharedResource: the only string this controller resolves is Profile_Updated,
+    // which belongs to Shell's profile vocabulary.
     IStringLocalizer<SharedResource> localizer,
     ILogger<ShiftProfileController> logger) : HumansControllerBase(userService)
 {

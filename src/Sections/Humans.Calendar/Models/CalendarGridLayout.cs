@@ -8,12 +8,33 @@ internal static class CalendarGridLayout
     public const int MaxPerCell = 3;
     public const int MaxBannerSlots = 3;
 
+    /// <summary>
+    /// The inclusive first and last day the Monday-first month grid renders, including the
+    /// adjacent-month cells padding the first and last weeks.
+    ///
+    /// One definition on purpose. The controller queries this range and <c>Index.cshtml</c>
+    /// lays it out; while the two computed it separately the query covered only the month's
+    /// own days, so the grid drew leading and trailing cells that were structurally always
+    /// empty and an event on the 31st of the previous month was invisible.
+    /// </summary>
+    public static (LocalDate GridStart, LocalDate GridEnd) MonthGridBounds(YearMonth month)
+    {
+        var firstOfMonth = month.OnDayOfMonth(1);
+        var lastOfMonth = month.OnDayOfMonth(
+            firstOfMonth.Calendar.GetDaysInMonth(month.Year, month.Month));
+
+        return (firstOfMonth.PlusDays(-LeadOffset(firstOfMonth)),
+                lastOfMonth.PlusDays(6 - LeadOffset(lastOfMonth)));
+    }
+
+    /// <summary>Days from Monday to <paramref name="d"/>. <c>IsoDayOfWeek.Monday</c> is 1, Sunday 7.</summary>
+    private static int LeadOffset(LocalDate d) => ((int)d.DayOfWeek + 6) % 7;
+
     public static WeekLayout BuildWeekLayout(
         LocalDate weekStart,
         IReadOnlyList<CalendarOccurrence> weekOccurrences,
         DateTimeZone zone)
     {
-        // Determine each occurrence's local start/end dates (inclusive end for display).
         var multiDay = new List<BannerPlacement>();
         var singleDayByDow = new List<CalendarOccurrence>[7];
         for (var i = 0; i < 7; i++) singleDayByDow[i] = [];
@@ -29,13 +50,11 @@ internal static class CalendarGridLayout
             var startDate = o.StartLocalDate(zone);
             var endDate = o.EndLocalDate(zone);
 
-            // Determine if this should render as a banner (multi-day covering >1 day in this week,
-            // OR an all-day event that covers the week at all).
+            // Anything spanning more than one local day renders as a banner.
             var coversMultipleDays = endDate > startDate;
 
             if (!coversMultipleDays)
             {
-                // Single-day timed event → regular per-cell render if the day is in this week.
                 var dow = Period.Between(weekStart, startDate, PeriodUnits.Days).Days;
                 if (dow >= 0 && dow < 7)
                 {

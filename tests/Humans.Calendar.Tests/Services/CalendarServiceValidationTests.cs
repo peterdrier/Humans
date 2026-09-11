@@ -157,18 +157,23 @@ public class CalendarServiceValidationTests
     }
 
     [HumansFact]
-    public async Task CreateEventAsync_COUNT_rule_persists_the_last_occurrence_end()
+    public async Task CreateEventWithResultAsync_COUNT_rule_persists_the_last_occurrence_end()
     {
         var repo = Substitute.For<ICalendarRepository>();
         var service = BuildService(repo);
         var start = Instant.FromUtc(2026, 6, 1, 10, 0);
 
-        await service.CreateEventAsync(
+        var result = await service.CreateEventWithResultAsync(
             new CreateCalendarEventDto(
                 "Three daily events", null, null, null, Guid.NewGuid(),
                 start, start + Duration.FromHours(1), false,
                 "FREQ=DAILY;COUNT=3", "UTC"),
             Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        // Assert success explicitly: the result form swallows the exception the throwing
+        // form used to surface, so a rejected create would otherwise reach the AddAsync
+        // assertion below as a silent zero-call.
+        result.Succeeded.Should().BeTrue(result.ErrorMessage);
 
         await repo.Received(1).AddAsync(
             Arg.Is<Humans.Calendar.Domain.CalendarEvent>(e =>
@@ -177,18 +182,20 @@ public class CalendarServiceValidationTests
     }
 
     [HumansFact]
-    public async Task CreateEventAsync_DATE_until_persists_the_end_of_that_local_day()
+    public async Task CreateEventWithResultAsync_DATE_until_persists_the_end_of_that_local_day()
     {
         var repo = Substitute.For<ICalendarRepository>();
         var service = BuildService(repo);
         var start = Instant.FromUtc(2026, 6, 1, 10, 0);
 
-        await service.CreateEventAsync(
+        var result = await service.CreateEventWithResultAsync(
             new CreateCalendarEventDto(
                 "Madrid daily events", null, null, null, Guid.NewGuid(),
                 start, start + Duration.FromHours(1), false,
                 "FREQ=DAILY;UNTIL=20260603", "Europe/Madrid"),
             Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.ErrorMessage);
 
         await repo.Received(1).AddAsync(
             Arg.Is<Humans.Calendar.Domain.CalendarEvent>(e =>
@@ -340,7 +347,6 @@ public class CalendarServiceValidationTests
     {
         return new CalendarService(
             repo,
-            Substitute.For<ITeamService>(),
             new FakeClock(Instant.FromUtc(2026, 5, 15, 12, 0)),
             audit,
             NullLogger<CalendarService>.Instance);

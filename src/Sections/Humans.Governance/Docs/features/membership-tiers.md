@@ -6,7 +6,7 @@
   src/Sections/Humans.Users/Domain/Profile.cs
   src/Humans.Base/Constants/SystemTeamIds.cs
   src/Sections/Humans.Governance.Contracts/MembershipStatusLabels.cs
-  src/Sections/Humans.Governance/Services/TermExpiryCalculator.cs
+  src/Sections/Humans.Governance.Contracts/**
 -->
 <!-- freshness:flag-on-change
   Tier definitions, term expiry rules, system-team mapping per tier, and tier-application flow — review when MembershipTier enum, term calculator, or governance services change.
@@ -152,7 +152,7 @@ Renewal is a new Application entity (same tier). Goes through normal Board votin
 
 ### Lapse
 
-If term expires without renewal, human reverts to Volunteer tier and is removed from the Colaboradors/Asociados system team.
+If term expires without renewal, the human is removed from the Colaboradors/Asociados system team and their profile tier is downgraded — to another tier they still hold an active approval for, otherwise to Volunteer.
 
 ## Application Flow
 
@@ -171,7 +171,7 @@ Both proceed through their respective pipelines:
 
 ### After Onboarding (Dedicated Application Route)
 ```
-Active Volunteer/Colaborador → /Governance/Applications → Fill form → Submit
+Active Volunteer/Colaborador → /Governance/Applications/Create → Fill form → Submit
     │
     ▼
 Application created → Board Voting → Approve/Reject

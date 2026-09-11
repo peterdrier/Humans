@@ -57,7 +57,7 @@
                     </div>
 
                     <div class="mb-4">
-                        <label asp-for="Motivation" class="form-label"></label>
+                        <label asp-for="Motivation" class="form-label">@Localizer["GovernanceCreate_MotivationLabel"]</label>
                         <textarea asp-for="Motivation" class="form-control" rows="6"
                             placeholder="@Localizer["GovernanceCreate_MotivationPlaceholder"].Value"></textarea>
                         <span asp-validation-for="Motivation" class="text-danger"></span>
@@ -65,7 +65,7 @@
                     </div>
 
                     <div class="mb-4">
-                        <label asp-for="AdditionalInfo" class="form-label"></label>
+                        <label asp-for="AdditionalInfo" class="form-label">@Localizer["GovernanceCreate_AdditionalInfoLabel"]</label>
                         <textarea asp-for="AdditionalInfo" class="form-control" rows="3"
                             placeholder="@Localizer["GovernanceCreate_AdditionalInfoPlaceholder"].Value"></textarea>
                         <span asp-validation-for="AdditionalInfo" class="text-danger"></span>

@@ -6,10 +6,8 @@ namespace Humans.Governance.Services.Dtos;
 
 /// <summary>
 /// Detail projection for the Governance Board Voting detail view
-/// (<c>Views/Governance/BoardVoting/Detail.cshtml</c>). Replaces the old <c>Application</c>
-/// return from the pre-migration board-voting flow whose
-/// <c>.User.Profile</c> and <c>.BoardVotes[].BoardMemberUser</c> chains have
-/// been stitched via <c>IUserService</c> + <c>IProfileService</c>.
+/// (<c>Views/Governance/BoardVoting/Detail.cshtml</c>). Applicant and voter
+/// display names are stitched at the service layer — no cross-domain navs.
 /// </summary>
 internal sealed record BoardVotingDetailData(
     Guid ApplicationId,

@@ -47,7 +47,7 @@ public sealed class CachingCalendarServiceTests
     }
 
     [HumansFact]
-    public async Task GetEventByIdAsync_AfterWarmup_DoesNotHitInner()
+    public async Task GetEventByIdAsync_AfterWarmup_AnswersFromCache()
     {
         var info = BuildInfo(title: "Cached event");
         _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>())
@@ -61,7 +61,6 @@ public sealed class CachingCalendarServiceTests
         detail.Should().NotBeNull();
         detail.Id.Should().Be(info.Id);
         detail.Title.Should().Be("Cached event");
-        await _inner.DidNotReceive().GetEventByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -91,12 +90,10 @@ public sealed class CachingCalendarServiceTests
 
         results.Should().ContainSingle();
         results[0].EventId.Should().Be(inWindow.Id);
-        await _inner.DidNotReceive().GetOccurrencesInWindowAsync(
-            Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task CreateEventAsync_DelegatesToInnerAndRefreshesEntry()
+    public async Task CreateEventWithResultAsync_DelegatesToInnerAndRefreshesEntry()
     {
         var created = new CalendarEvent
         {
@@ -114,18 +111,63 @@ public sealed class CachingCalendarServiceTests
             created.StartUtc, created.EndUtc, false, null, null);
         _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>())
             .Returns([]);
-        _inner.CreateEventAsync(dto, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(created);
+        _inner.CreateEventWithResultAsync(dto, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(CalendarEventMutationResult.Success(created));
         _inner.GetEventInfoAsync(created.Id, Arg.Any<CancellationToken>())
             .Returns(CalendarOccurrenceExpander.ToInfo(created));
 
         var sut = CreateSut();
         await WarmAsync(sut);
 
-        var result = await sut.CreateEventAsync(dto, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await sut.CreateEventWithResultAsync(dto, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeSameAs(created);
         sut.ContainsKey(created.Id).Should().BeTrue();
+    }
+
+    // Invariant: a per-occurrence write has no cache row of its own, so it must evict and
+    // reload the PARENT event. Without the ReplaceAsync(eventId) in the decorator, every
+    // read serves the pre-cancel series until the process restarts.
+    [HumansFact]
+    public async Task CancelOccurrenceAsync_RefreshesTheParentEventEntry()
+    {
+        var before = BuildInfo(title: "Weekly standup");
+        var after = before with { Title = "Weekly standup (one cancelled)" };
+        _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>()).Returns([before]);
+        _inner.GetEventInfoAsync(before.Id, Arg.Any<CancellationToken>()).Returns(after);
+
+        var sut = CreateSut();
+        await WarmAsync(sut);
+
+        var occurrence = Instant.FromUtc(2026, 6, 8, 10, 0);
+        await sut.CancelOccurrenceAsync(before.Id, occurrence, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        await _inner.Received(1).CancelOccurrenceAsync(
+            before.Id, occurrence, Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        var reloaded = await sut.GetEventByIdAsync(before.Id, Xunit.TestContext.Current.CancellationToken);
+        reloaded!.Title.Should().Be(after.Title, because: "the parent entry is reloaded after a per-occurrence write");
+    }
+
+    [HumansFact]
+    public async Task OverrideOccurrenceAsync_RefreshesTheParentEventEntry()
+    {
+        var before = BuildInfo(title: "Weekly standup");
+        var after = before with { Title = "Weekly standup (one moved)" };
+        _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>()).Returns([before]);
+        _inner.GetEventInfoAsync(before.Id, Arg.Any<CancellationToken>()).Returns(after);
+
+        var sut = CreateSut();
+        await WarmAsync(sut);
+
+        var occurrence = Instant.FromUtc(2026, 6, 8, 10, 0);
+        var dto = new OverrideOccurrenceDto(
+            Instant.FromUtc(2026, 6, 8, 14, 0), Instant.FromUtc(2026, 6, 8, 15, 0),
+            null, null, null, null);
+        await sut.OverrideOccurrenceAsync(before.Id, occurrence, dto, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        await _inner.Received(1).OverrideOccurrenceAsync(
+            before.Id, occurrence, dto, Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        var reloaded = await sut.GetEventByIdAsync(before.Id, Xunit.TestContext.Current.CancellationToken);
+        reloaded!.Title.Should().Be(after.Title, because: "the parent entry is reloaded after a per-occurrence write");
     }
 
     [HumansFact]

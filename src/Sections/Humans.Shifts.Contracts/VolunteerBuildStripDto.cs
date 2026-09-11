@@ -11,10 +11,7 @@ namespace Humans.Shifts.Contracts;
 /// <remarks>
 /// On the leaf rather than in the section because
 /// <see cref="VolunteerBuildStripDto"/> — the only volunteer-tracking
-/// projection with a consumer outside the section — is built from it. The
-/// admin heatmap models that also use it (<c>VolunteerCohortRow</c>,
-/// <c>VolunteerTrackingViewModel</c>) stay in Base and move into the section
-/// with the rest of the vertical.
+/// projection with a consumer outside the section — is built from it.
 /// </remarks>
 public enum VolunteerCellState
 {
