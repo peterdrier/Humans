@@ -364,9 +364,6 @@
   <data name="BoardVoting_ApplicationNotFound" xml:space="preserve">
     <value>Candidature introuvable.</value>
   </data>
-  <data name="BoardVoting_ConcurrencyConflict" xml:space="preserve">
-    <value>Cette candidature a été modifiée par un autre utilisateur. Veuillez recharger et réessayer.</value>
-  </data>
   <data name="BoardVoting_AdditionalInfo" xml:space="preserve">
     <value>Informations complémentaires</value>
   </data>
@@ -384,5 +381,11 @@
   </data>
   <data name="Dashboard_GovernanceCardDescription" xml:space="preserve">
     <value>Assemblées, élections, et le sérieux.</value>
+  </data>
+  <data name="GovernanceCreate_MotivationLabel" xml:space="preserve">
+    <value>Pourquoi souhaites-tu nous rejoindre ?</value>
+  </data>
+  <data name="GovernanceCreate_AdditionalInfoLabel" xml:space="preserve">
+    <value>Informations complémentaires (facultatif)</value>
   </data>
 </root>

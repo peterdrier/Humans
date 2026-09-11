@@ -7,7 +7,8 @@ namespace Humans.TicketTailor.Tests.Architecture;
 /// Pins that Tickets' <c>ITicketVendorService</c> port exposes no HTTP-client or vendor
 /// types: every parameter and return type is expressible in port terms (the port's own
 /// DTOs, primitives, NodaTime, BCL collections). That is what makes the 2027 vendor swap a
-/// project delete. The companion check — that only Tickets injects the port — is
+/// project delete. The companion check — that only Tickets (its own health check included)
+/// injects the port — is
 /// <c>tests/Humans.Web.Tests/Architecture/TicketVendorPortArchitectureTests.cs</c>, which
 /// needs the whole section graph and so cannot live here.
 /// </summary>

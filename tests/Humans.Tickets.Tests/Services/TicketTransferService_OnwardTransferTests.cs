@@ -26,6 +26,7 @@ public sealed class TicketTransferService_OnwardTransferTests
 
     private readonly ITicketTransferRepository _transferRepo = Substitute.For<ITicketTransferRepository>();
     private readonly ITicketRepository _ticketRepo = Substitute.For<ITicketRepository>();
+    private readonly ITicketServiceRead _holdings = Substitute.For<ITicketServiceRead>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
@@ -37,7 +38,7 @@ public sealed class TicketTransferService_OnwardTransferTests
 
     public TicketTransferService_OnwardTransferTests()
     {
-        _service = new TicketTransferService(_transferRepo, _ticketRepo,
+        _service = new TicketTransferService(_transferRepo, _ticketRepo, _holdings,
             Substitute.For<ITicketVendorService>(),
             _userService, _userEmailService, _emailService, _emailMessages,
             _auditLog, _cacheInvalidator,
@@ -54,21 +55,25 @@ public sealed class TicketTransferService_OnwardTransferTests
             });
     }
 
+    private static UserTicketHoldingRow Held(
+        TicketAttendeeStatus status = TicketAttendeeStatus.Valid,
+        Instant? checkedInAt = null,
+        bool pending = false) =>
+        new(Guid.NewGuid(), "Ada", "ada@example.com", "TKT-1", "GA", status,
+            HasPendingOutgoingTransfer: pending,
+            PendingTransferRequestId: pending ? Guid.NewGuid() : null,
+            CheckedInAt: checkedInAt);
+
+    private void StubHoldings(Guid userId, params UserTicketHoldingRow[] rows) =>
+        _holdings.GetUserTicketHoldingsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new UserTicketHoldings(0, rows));
+
     [HumansFact]
-    public async Task GetMyAttendees_AllowsTransfer_WhenAttendeeMatchedToCaller_EvenIfBuyerIsSomeoneElse()
+    public async Task GetMyAttendees_AllowsTransfer_ForAValidHeldTicket()
     {
-        var attendeeId = Guid.NewGuid();
-        var attendee = new TicketAttendee
-        {
-            Id = attendeeId,
-            Status = TicketAttendeeStatus.Valid,
-            MatchedUserId = UserB,
-            TicketOrder = new TicketOrder { Id = OrderId, MatchedUserId = UserA },
-        };
-        _ticketRepo.GetAttendeesVisibleToUserAsync(UserB, Arg.Any<CancellationToken>())
-            .Returns([attendee]);
-        _transferRepo.GetBySenderAsync(UserB, Arg.Any<CancellationToken>())
-            .Returns([]);
+        // Ownership (attendee match beats buyer) is the holdings read's rule and is pinned
+        // in TicketQueryService_HoldingsTests; the wizard only adds the send rule.
+        StubHoldings(UserB, Held());
 
         var rows = await _service.GetMyAttendeesAsync(UserB, Xunit.TestContext.Current.CancellationToken);
 
@@ -82,70 +87,34 @@ public sealed class TicketTransferService_OnwardTransferTests
         // A gate scan keeps Status = Valid and records CheckedInAt
         // (nobodies-collective/Humans#736); the owner must not be able to send a
         // ticket they've already used at the door.
-        var attendee = new TicketAttendee
-        {
-            Id = Guid.NewGuid(),
-            Status = TicketAttendeeStatus.Valid,
-            CheckedInAt = Now,
-            MatchedUserId = UserB,
-            TicketOrder = new TicketOrder { Id = OrderId, MatchedUserId = UserB },
-        };
-        _ticketRepo.GetAttendeesVisibleToUserAsync(UserB, Arg.Any<CancellationToken>())
-            .Returns([attendee]);
-        _transferRepo.GetBySenderAsync(UserB, Arg.Any<CancellationToken>())
-            .Returns([]);
+        StubHoldings(UserB, Held(checkedInAt: Now));
 
         var rows = await _service.GetMyAttendeesAsync(UserB, Xunit.TestContext.Current.CancellationToken);
 
         rows.Should().HaveCount(1);
-        rows[0].IsCurrentOwner.Should().BeTrue();
         rows[0].CanSendTransfer.Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task GetMyAttendees_DeniesTransfer_WhenAttendeeMatchedToSomeoneElse_EvenIfCallerIsBuyer()
+    public async Task GetMyAttendees_DeniesTransfer_WhenAPendingRequestExists()
     {
-        var attendee = new TicketAttendee
-        {
-            Id = Guid.NewGuid(),
-            Status = TicketAttendeeStatus.Valid,
-            MatchedUserId = UserB,
-            TicketOrder = new TicketOrder { Id = OrderId, MatchedUserId = UserA },
-        };
-        _ticketRepo.GetAttendeesVisibleToUserAsync(UserA, Arg.Any<CancellationToken>())
-            .Returns([attendee]);
-        _transferRepo.GetBySenderAsync(UserA, Arg.Any<CancellationToken>())
-            .Returns([]);
+        StubHoldings(UserB, Held(pending: true));
 
-        var rows = await _service.GetMyAttendeesAsync(UserA, Xunit.TestContext.Current.CancellationToken);
+        var rows = await _service.GetMyAttendeesAsync(UserB, Xunit.TestContext.Current.CancellationToken);
 
         rows.Should().HaveCount(1);
         rows[0].CanSendTransfer.Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task GetMyAttendees_DeniesTransfer_WhenAttendeeUnmatched()
+    public async Task GetMyAttendees_DropsVoidedHoldings()
     {
-        // Buyer-fallback removed in nobodies-collective/Humans#856.
-        // An unmatched attendee (MatchedUserId == null) has no owner, so the buyer
-        // cannot send the ticket — it would be orphaned until matched via AttendeeContactImportService.
-        var attendee = new TicketAttendee
-        {
-            Id = Guid.NewGuid(),
-            Status = TicketAttendeeStatus.Valid,
-            MatchedUserId = null,
-            TicketOrder = new TicketOrder { Id = OrderId, MatchedUserId = UserA },
-        };
-        _ticketRepo.GetAttendeesVisibleToUserAsync(UserA, Arg.Any<CancellationToken>())
-            .Returns([attendee]);
-        _transferRepo.GetBySenderAsync(UserA, Arg.Any<CancellationToken>())
-            .Returns([]);
+        StubHoldings(UserB, Held(status: TicketAttendeeStatus.Void), Held());
 
-        var rows = await _service.GetMyAttendeesAsync(UserA, Xunit.TestContext.Current.CancellationToken);
+        var rows = await _service.GetMyAttendeesAsync(UserB, Xunit.TestContext.Current.CancellationToken);
 
         rows.Should().HaveCount(1);
-        rows[0].IsCurrentOwner.Should().BeFalse();
-        rows[0].CanSendTransfer.Should().BeFalse();
+        rows[0].Ticket.Status.Should().Be(TicketAttendeeStatus.Valid);
     }
 
     [HumansFact]

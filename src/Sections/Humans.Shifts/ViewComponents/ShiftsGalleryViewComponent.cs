@@ -17,15 +17,8 @@ namespace Humans.Shifts.ViewComponents;
 /// construct section-internal types. Invoked by name from
 /// <c>WidgetGallery/Index.cshtml</c> and discovered by Shell's
 /// <c>SectionViewComponentFeatureProvider</c>, so it stays <c>internal</c>
-/// (design §15 step 6; nobodies-collective/Humans#866). Its one parameter is a
+/// (design §15 step 6). Its one parameter is a
 /// <see cref="Guid"/>, which Shell can name — Governance's rider on invoke-by-name.
-///
-/// <para>
-/// It resolves its own samples, which is what took <c>GetRotasByDepartmentAsync</c> — the
-/// last entity-returning member — off the contracts leaf, and what deleted
-/// <c>WidgetGalleryController.MapToDisplayItem</c>, a hand-rolled duplicate of
-/// <see cref="ShiftBrowseMapper.MapToDisplayItem"/>.
-/// </para>
 /// </remarks>
 internal sealed class ShiftsGalleryViewComponent(
     IShiftManagementService shiftMgmt,

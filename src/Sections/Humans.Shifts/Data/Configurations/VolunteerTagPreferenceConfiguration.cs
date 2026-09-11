@@ -17,8 +17,6 @@ internal sealed class VolunteerTagPreferenceConfiguration : IEntityTypeConfigura
 
         builder.HasIndex(v => v.UserId);
 
-        // UserId is a bare cross-section Guid column — no FK constraint, no nav.
-
         builder.HasOne(v => v.ShiftTag)
             .WithMany(t => t.VolunteerPreferences)
             .HasForeignKey(v => v.ShiftTagId)

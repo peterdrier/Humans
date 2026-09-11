@@ -1,5 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Governance/**
+  src/Sections/Humans.Governance.Contracts/**
   src/Sections/Humans.Consent/Services/ConsentService.cs
   src/Sections/Humans.Governance.Contracts/MembershipStatusLabels.cs
   src/Humans.Base/Constants/SystemTeamIds.cs
@@ -14,7 +15,7 @@
 
 ## Overview
 
-Every human in the system falls into exactly one of 6 mutually exclusive status categories. These categories are computed by `IMembershipCalculator.PartitionUsersAsync()` and used by the Admin dashboard. (Neither the Admin /Humans list nor the Volunteers team sync uses this partition any longer — the /Humans list derives its own status buckets directly from `UserInfo`, and after the name-only access switch `SystemTeamSyncJob` computes Volunteers eligibility itself from name + consents; see [Shared Logic](#shared-logic).)
+Every human in the system falls into exactly one of 6 mutually exclusive status categories. These categories are computed by `IMembershipCalculatorRead.PartitionUsersAsync()` and used by the Admin dashboard. (Neither the Admin /Humans list nor the Volunteers team sync uses this partition any longer — the /Humans list derives its own status buckets directly from `UserInfo`, and after the name-only access switch `SystemTeamSyncJob` computes Volunteers eligibility itself from name + consents; see [Shared Logic](#shared-logic).)
 
 ## The 6 Buckets
 
@@ -47,7 +48,7 @@ Pending Deletion → (30 days) → Deleted
 
 ## Shared Logic
 
-`IMembershipCalculator.PartitionUsersAsync(userIds)` is the single source of truth for the consent-aware partition. Consumers:
+`IMembershipCalculatorRead.PartitionUsersAsync(userIds)` is the single source of truth for the consent-aware partition. Consumers:
 
 - **Admin dashboard** (`AdminDashboardService`) — shows count per category
 

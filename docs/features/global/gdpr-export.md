@@ -167,6 +167,9 @@ service has no data for this user are omitted.
 | `GoogleSyncLog` | `GoogleSyncLogService` | Array of `{ Action, OccurredAt, Description, ResourceName, UserEmail, Role, Source, Success, ErrorMessage }` — every Workspace sync row attributed to the human, merge tombstones followed. |
 | `EmailOutbox` | `EmailOutboxService` | Array of `{ RecipientEmail, RecipientName, Subject, HtmlBody, TemplateName, Status, CreatedAt, SentAt }` — the same per-user outbox history the human reads at `/Profile/Me/Outbox`. |
 | `BackdoorApiKeys` | `BackdoorApiKeyService` | Array of `{ Label, DisplayPrefix, CreatedAt, LastUsedAt, RevokedAt }` — the machine-API keys allocated to the human; null when they hold none. The stored hash is never exported: it is the credential itself. |
+| `RideshareTrips` | `RideshareService` | Array of `{ Id, Year, Direction, MemberPlaceLabel, MemberLatitude, MemberLongitude, Waypoints[], DepartureDate, ExpectedDurationDays, OvernightPlan, VehicleType, SeatsOffered, LuggageCapacity, CapacityNote, Restrictions, WillingToDetour, CostSharing, CostNote, LinkedTripId, Status, CreatedAt, UpdatedAt }` — the human's ride offers, oldest first. |
+| `RideshareRequests` | `RideshareService` | Array of `{ Id, Year, Direction, PickupPlaceLabel, PickupLatitude, PickupLongitude, DesiredDate, PartySize, LuggageLoad, CanContributeToFuel, Notes, Status, CreatedAt, UpdatedAt }` — the human's ride requests, oldest first. |
+| `RideshareInterests` | `RideshareService` | Array of `{ Id, TripId, RequestId, Seats, Message, Status, CreatedAt, RespondedAt }` — interests the human expressed (as rider, or as driver answering a request), oldest first. |
 
 All instants are serialized as invariant ISO-8601 strings (e.g.
 `2026-04-15T10:30:00Z`) via `NodaTime` extensions.

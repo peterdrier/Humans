@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Governance;
 
-/// <summary>Governance's admin sidebar contribution — the "Governance" group (nobodies-collective/Humans#1077).</summary>
+/// <summary>Governance's admin sidebar contribution — the "Governance" group.</summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>

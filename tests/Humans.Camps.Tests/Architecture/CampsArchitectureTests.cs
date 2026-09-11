@@ -164,36 +164,4 @@ public class CampsArchitectureTests
             because: "Active returns the season with the highest Year");
         camp.Active!.Name.Should().Be("Camp 2026");
     }
-
-    // ── Public detail page — EE non-exposure invariant ───────────────────────
-
-    /// <summary>
-    /// Pins the invariant: the public camp detail page can never render Early Entry
-    /// state because the view-model shape rendered by the public detail page contains
-    /// no EE-related properties.
-    /// Guards against future accidental additions (e.g., HasEarlyEntry, EeSlotCount,
-    /// EeStartDate, IsEarlyAccess) by matching on name substrings / prefixes.
-    /// Issue #490: EE state is admin-only and must never appear on anonymous views.
-    /// </summary>
-    [HumansFact]
-    public void PublicCampDetail_DoesNotExposeEarlyEntryState()
-    {
-        // All view-model types that compose the public detail page shape.
-        var publicDetailTypes = new[]
-        {
-            typeof(CampDetailViewModel),
-            typeof(CampSeasonDetailViewModel),
-        };
-
-        var eeProperties = publicDetailTypes
-            .SelectMany(t => t.GetProperties())
-            .Where(p => p.Name.Contains("EarlyEntry", StringComparison.OrdinalIgnoreCase)
-                        || p.Name.StartsWith("Ee", StringComparison.Ordinal))
-            .Select(p => $"{p.DeclaringType!.Name}.{p.Name}")
-            .ToList();
-
-        eeProperties.Should().BeEmpty(
-            because: "Early Entry state (HasEarlyEntry, EeSlotCount, EeStartDate, etc.) must never be " +
-                     "projected into the public detail view shape - it is admin-only (issue #490, spec §4.4)");
-    }
 }

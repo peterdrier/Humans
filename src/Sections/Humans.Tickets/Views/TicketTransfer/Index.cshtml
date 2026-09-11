@@ -1,15 +1,14 @@
 @model Humans.Tickets.Models.TicketTransferWizardViewModel
 @{
     ViewData["Title"] = Localizer["TicketTransfer_Title"].Value;
-    // Show every ticket the user currently holds (not the ones they merely bought for others,
-    // and not voided ones); only Valid + no-pending ones are selectable.
-    var held = Model.MyTickets
-        .Where(t => t.IsCurrentOwner && t.Status != TicketAttendeeStatus.Void)
-        .ToList();
+    // Every ticket the user currently holds (the service already drops the ones they merely
+    // bought for others, and voided ones); only Valid + no-pending ones are selectable.
+    var held = Model.MyTickets;
     var sendable = held.Where(t => t.CanSendTransfer).ToList();
     string NotSendableReason(MyAttendeeRowDto t) =>
-        t.HasPendingOutgoingTransfer ? Localizer["TicketTransfer_AlreadyPending"].Value
-        : t.Status == TicketAttendeeStatus.CheckedIn ? Localizer["TicketTransfer_CheckedIn"].Value
+        t.Ticket.HasPendingOutgoingTransfer ? Localizer["TicketTransfer_AlreadyPending"].Value
+        : t.Ticket.Status == TicketAttendeeStatus.CheckedIn || t.Ticket.CheckedInAt is not null
+            ? Localizer["TicketTransfer_CheckedIn"].Value
         : Localizer["TicketTransfer_NotTransferable"].Value;
 }
 
@@ -40,8 +39,8 @@
                     if (t.CanSendTransfer)
                     {
                         <label class="d-flex align-items-center gap-3 m-0" style="cursor:pointer">
-                            <input type="radio" name="attendeeId" value="@t.AttendeeId" required />
-                            <vc:ticket-stub stub="@t.ToStub(Model.HolderEarlyEntry)" />
+                            <input type="radio" name="attendeeId" value="@t.Ticket.AttendeeId" required />
+                            <vc:ticket-stub stub="@TicketStubInfo.From(t.Ticket, Model.HolderEarlyEntry)" />
                         </label>
                     }
                     else
@@ -49,7 +48,7 @@
                         <div class="d-flex align-items-center gap-3" style="opacity:.6">
                             <input type="radio" disabled />
                             <div>
-                                <vc:ticket-stub stub="@t.ToStub(Model.HolderEarlyEntry)" />
+                                <vc:ticket-stub stub="@TicketStubInfo.From(t.Ticket, Model.HolderEarlyEntry)" />
                                 <small class="text-muted d-block mt-1">@NotSendableReason(t)</small>
                             </div>
                         </div>

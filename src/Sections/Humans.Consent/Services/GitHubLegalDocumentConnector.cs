@@ -7,10 +7,8 @@ using Octokit;
 namespace Humans.Consent.Services;
 
 /// <summary>
-/// Octokit-backed implementation of <see cref="IGitHubLegalDocumentConnector"/>.
-/// Keeps the GitHub client surface out of <c>Humans.Application</c> so the
-/// Legal document services can live in the Application layer without an
-/// Octokit dependency.
+/// Octokit-backed implementation of <see cref="IGitHubLegalDocumentConnector"/>;
+/// the one place in the section that names an Octokit type.
 /// </summary>
 internal sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumentConnector
 {
@@ -155,31 +153,6 @@ internal sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumen
         catch (Exception ex)
         {
             _logger.LogDebug(ex, "Could not fetch commit message for {Sha}", sha);
-            return null;
-        }
-    }
-
-    public async Task<string?> GetLatestCommitShaAsync(string path, CancellationToken ct = default)
-    {
-        using var _ = _logger.TimeOperation();
-        try
-        {
-            var commits = await _client.Repository.Commit.GetAll(
-                _settings.Owner,
-                _settings.Repository,
-                new CommitRequest { Path = path, Sha = _settings.Branch },
-                new ApiOptions { PageCount = 1, PageSize = 1 });
-            return commits.FirstOrDefault()?.Sha;
-        }
-        catch (ApiException ex)
-        {
-            // Status code only — ApiException.Message can carry GitHub's raw HTML error body.
-            _logger.LogWarning("GitHub API error getting latest commit SHA for {Path}: {StatusCode}", path, ex.StatusCode);
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error getting latest commit SHA for {Path}", path);
             return null;
         }
     }

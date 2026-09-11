@@ -12,8 +12,7 @@ namespace Humans.Shifts.Contracts;
 /// <c>ShiftUserView</c>); this is the flattened shape of it that crosses the
 /// section boundary, so <c>Shift</c>, <c>ShiftSignup</c>, <c>Rota</c>,
 /// <c>VolunteerEventProfile</c>, <c>GeneralAvailability</c> and
-/// <c>VolunteerBuildStatus</c> stay inside the section
-/// (nobodies-collective/Humans#866, G5).
+/// <c>VolunteerBuildStatus</c> stay inside the section.
 ///
 /// <para>
 /// The volunteer profile, availability and build-status rows the internal
@@ -32,8 +31,7 @@ public sealed record ShiftUserSummary(
     /// (<see cref="SignupStatus.Pending"/> or <see cref="SignupStatus.Confirmed"/>)
     /// in the active event. Refused / Bailed / Cancelled / NoShow signups
     /// don't count — they're no longer commitments. Mirrors the convention
-    /// used by <c>ShiftRepository</c>, <c>ShiftManagementService</c>,
-    /// and the agent snapshot.
+    /// used by <c>ShiftRepository</c> and <c>ShiftManagementService</c>.
     /// </summary>
     public bool HasShift => Signups.Any(s => s.IsActive);
 

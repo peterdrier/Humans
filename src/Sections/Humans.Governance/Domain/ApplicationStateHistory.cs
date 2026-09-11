@@ -8,29 +8,14 @@ namespace Humans.Governance.Domain;
 /// </summary>
 internal sealed class ApplicationStateHistory
 {
-    /// <summary>
-    /// Unique identifier for the history record.
-    /// </summary>
     public Guid Id { get; init; }
 
-    /// <summary>
-    /// Foreign key to the application.
-    /// </summary>
     public Guid ApplicationId { get; init; }
 
-    /// <summary>
-    /// Navigation property to the application.
-    /// </summary>
     public Application Application { get; set; } = null!;
 
-    /// <summary>
-    /// The status after this transition.
-    /// </summary>
     public ApplicationStatus Status { get; init; }
 
-    /// <summary>
-    /// When the state change occurred.
-    /// </summary>
     public Instant ChangedAt { get; init; }
 
     /// <summary>
@@ -40,8 +25,5 @@ internal sealed class ApplicationStateHistory
     /// </summary>
     public Guid ChangedByUserId { get; init; }
 
-    /// <summary>
-    /// Optional notes about the state change.
-    /// </summary>
     public string? Notes { get; init; }
 }

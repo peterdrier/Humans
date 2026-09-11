@@ -38,7 +38,7 @@ namespace Humans.Auth;
 /// <para>
 /// <c>AccountController</c> and <c>Views/Account/*</c> did <em>not</em> follow it. They stay
 /// in Shell: every action they expose writes Users'/Profiles' tables through those sections'
-/// services, and the 35 <c>Login_*</c>/<c>MagicLink*</c>/<c>GateLogin_*</c> resource keys
+/// services, and their <c>Login_*</c>/<c>MagicLink*</c>/<c>GateLogin_*</c> resource keys
 /// stay in <c>SharedResource</c> with them, so the section still ships no
 /// <c>Resources/</c> folder.
 /// </para>
@@ -49,15 +49,16 @@ public sealed class Section : ISection
     {
         services.AddSectionDbContext<AuthDbContext>(sentinelTable: "role_assignments");
 
-        // §15 repository pattern (issue #551): Singleton + IDbContextFactory (§15b) so the
-        // repository owns context lifetime while AuthDbContext itself stays Scoped.
+        // §15 repository pattern (nobodies-collective/Humans#551): Singleton + IDbContextFactory
+        // (§15b) so the repository owns context lifetime while AuthDbContext itself stays Scoped.
         services.AddSingleton<IRoleAssignmentRepository, RoleAssignmentRepository>();
         services.AddScoped<IAdminAuthorizationService, AdminAuthorizationService>();
 
-        // Issue #749: Inner RoleAssignmentService registered keyed under
+        // nobodies-collective/Humans#749: Inner RoleAssignmentService registered keyed under
         // CachingRoleAssignmentService.InnerServiceKey; the unkeyed concrete forwards to the
-        // keyed registration via cast so IUserDataContributor and IUserMerge resolve the same
-        // scoped instance the decorator wraps.
+        // keyed registration via cast so IUserDataContributor and IUserMerge reach the
+        // undecorated inner through that one registration, rather than each getting a private
+        // RoleAssignmentService.
         services.AddKeyedScoped<IRoleAssignmentService, RoleAssignmentService>(
             CachingRoleAssignmentService.InnerServiceKey);
         services.AddScoped<RoleAssignmentService>(sp =>

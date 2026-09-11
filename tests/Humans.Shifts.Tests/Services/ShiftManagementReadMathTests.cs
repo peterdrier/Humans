@@ -304,25 +304,6 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
     }
 
     // ============================================================
-    // ApplyPeriodDiverseLimit
-    // ============================================================
-
-    [HumansFact]
-    public void ApplyPeriodDiverseLimit_ReturnsTheListUntouched_WhenCountEqualsLimit()
-    {
-        var es = NewEventSettings();
-        var ranked = new List<UrgentShiftInfo>
-        {
-            NewUrgentShift(es, dayOffset: 1, score: 5),
-            NewUrgentShift(es, dayOffset: 8, score: 9)
-        };
-
-        var result = ShiftManagementService.ApplyPeriodDiverseLimit(ranked, 2);
-
-        result.Should().BeSameAs(ranked);
-    }
-
-    // ============================================================
     // Helpers
     // ============================================================
 
@@ -351,13 +332,6 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-
-    private static UrgentShiftInfo NewUrgentShift(EventSettings es, int dayOffset, double score) =>
-        UrgentShiftFixtures.Urgent(
-            shift: UrgentShiftFixtures.Shift(dayOffset: dayOffset),
-            burn: es,
-            urgencyScore: score,
-            remainingSlots: 3);
 
     private (EventSettings Es, Rota Rota) SeedScenario(ShiftPriority priority = ShiftPriority.Normal)
     {

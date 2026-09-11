@@ -13,7 +13,7 @@ namespace Humans.Shifts.Contracts;
 /// is unchanged — its constructor takes only the leaf read interface and Base services,
 /// so nothing forces the feature-provider path (design §15 step 6). The
 /// <c>HeatmapPartialModel</c> it builds and the partial it renders stay internal; only
-/// <c>InvokeAsync(Guid)</c> is public (nobodies-collective/Humans#866).
+/// <c>InvokeAsync(Guid)</c> is public.
 /// </remarks>
 public sealed class VolunteerBuildStripViewComponent(
     IVolunteerTrackingServiceRead tracking,

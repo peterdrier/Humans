@@ -1,7 +1,6 @@
 using Humans.Base.Authorization;
 using System.Security.Claims;
 using Humans.Budget.Contracts;
-using Humans.Budget.Services;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Budget.Authorization;
@@ -16,9 +15,10 @@ namespace Humans.Budget.Authorization;
 /// - Department coordinator: allow only categories linked to their department
 /// - Everyone else: deny
 ///
-/// Also denies edits on restricted groups and deleted budget years for non-admin users.
+/// Also denies edits on restricted groups, ticketing groups, and deleted budget
+/// years for non-admin users.
 /// </summary>
-internal sealed class BudgetAuthorizationHandler(IBudgetService budgetService)
+internal sealed class BudgetAuthorizationHandler(IBudgetServiceRead budgetService)
     : AuthorizationHandler<BudgetOperationRequirement, BudgetCategorySnapshot>
 {
     protected override async Task HandleRequirementAsync(
@@ -36,6 +36,9 @@ internal sealed class BudgetAuthorizationHandler(IBudgetService budgetService)
             return;
 
         if (resource.BudgetGroup?.IsRestricted == true)
+            return;
+
+        if (resource.BudgetGroup?.IsTicketingGroup == true)
             return;
 
         if (!resource.TeamId.HasValue)

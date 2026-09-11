@@ -1,19 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Consent's cross-section surface, carved into its own leaf project because most of its
-    consumers are still in Base: Humans.Application's OnboardingService and
-    OnboardingWidgetState read IConsentServiceRead, AccountMergeService evicts through
-    IConsentCacheInvalidator, and Humans.Infrastructure's HumansMetricsService reads
-    ILegalDocumentSyncServiceRead. A Contracts/ *folder* inside Humans.Consent would
-    therefore make Base reference a section and cycle (design §15.5b,
-    memory/architecture/section-project-cycle-fix.md).
+    Consent's cross-section surface as its own leaf project: a Contracts/ *folder* inside
+    Humans.Consent would make consumers reference the section and risk cycles (design §15.5b,
+    memory/architecture/section-project-cycle-fix.md). Consumers today: Onboarding, Users,
+    Governance, Agent, Scanner, and Shell's onboarding widget.
 
-    Two names left that census on their jobs' way home to this section
-    (nobodies-collective/Humans#866): ILegalDocumentSyncRunner's only consumer,
-    SyncLegalDocumentsJob, moved at lane 5b-4, and SendReConsentReminderJob — the second
-    ILegalDocumentSyncServiceRead reader — moved at lane 5b-5. Both interfaces could follow
-    their jobs inward; that is a later pass, and shrinking interface surface needs Peter.
+    ILegalDocumentSyncRunner's consumers are now all in-section and it could fold inward;
+    ILegalDocumentSyncServiceRead cannot yet (Governance's MembershipCalculator injects it).
+    Shrinking contract surface needs Peter.
 
     ConsentReviewFormViewModel is here for the reason step 3b's "move the markup" case
     does not apply: the onboarding widget's Consents step is Onboarding's view over
@@ -24,9 +19,8 @@
     legal-document surface, the GitHub connector, the sync service's write half, the
     consent dashboard, both repositories and all three entities.
 
-    References Humans.Interfaces (IApplicationService, IInvalidator) and NodaTime
-    (Instant on the snapshots). Both sit below Humans.Application, so the graph stays
-    acyclic.
+    References Humans.Base (IApplicationService, IInvalidator) and NodaTime
+    (Instant on the snapshots).
   -->
 
   <ItemGroup>

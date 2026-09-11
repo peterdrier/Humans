@@ -10,21 +10,18 @@ using Humans.Users.Contracts;
 namespace Humans.Governance.Jobs;
 
 /// <summary>
-/// Nightly job that reminds approved members whose Colaborador / Asociado
-/// term expires within 90 days to submit a renewal application.
+/// Reminds approved members whose Colaborador / Asociado term expires within
+/// 90 days to submit a renewal application. The schedule lives in
+/// <c>SectionJobs.cs</c>.
 /// </summary>
 /// <remarks>
 /// Reads Applications and marks <c>RenewalReminderSentAt</c> through
 /// <see cref="IApplicationDecisionService"/>, and stitches applicant display
-/// info via <see cref="IUserService"/>, so the job never touches
-/// a section DbContext directly
-/// (design-rules §2c).
+/// info via <see cref="IUserServiceRead"/>, so the job never touches a section
+/// DbContext directly (design-rules §2c).
 ///
-/// Moved out of <c>Humans.Infrastructure/Jobs</c> at G5 lane 5b-4
-/// (nobodies-collective/Humans#866) — Governance, not Users: the rows it reads and stamps
-/// are Applications, and its job id already said <c>governance-term-renewal-reminder</c>.
-/// It sits under <c>Jobs/</c> because Shell names the concrete type at registration and
-/// HUM0034 makes every other public type in a section assembly an error.
+/// <c>public</c> because Shell names the concrete type at registration; HUM0034
+/// makes every other public type in a section assembly an error.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class TermRenewalReminderJob(

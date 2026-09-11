@@ -30,32 +30,12 @@ public interface IApplicationServiceRead
     Task<IReadOnlySet<Guid>> GetUserIdsWithPendingApplicationAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the single Submitted application for the given user, or null
-    /// if none. Used by the onboarding review detail view.
-    /// </summary>
     Task<SubmittedApplicationSnapshot?> GetSubmittedApplicationForUserAsync(
         Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the distinct Approved-status tier values for a user. Used by
-    /// the consent-check flow to decide which system-team syncs to run after
-    /// a clear-consent-check action.
-    /// </summary>
-    Task<IReadOnlyList<MembershipTier>> GetApprovedTiersForUserAsync(
-        Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the number of Submitted applications that the given board
-    /// member has not yet voted on. Used by the per-board-member voting badge.
-    /// </summary>
     Task<int> GetUnvotedApplicationCountAsync(
         Guid boardMemberUserId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the aggregate statistics for the admin dashboard's tier
-    /// application block. Counts exclude <see cref="Domain.Enums.ApplicationStatus.Withdrawn"/>.
-    /// </summary>
     Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default);
 
     /// <summary>

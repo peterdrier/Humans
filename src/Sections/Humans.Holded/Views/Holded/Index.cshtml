@@ -138,8 +138,7 @@
     </div>
     <div class="card-footer text-muted small">
         <strong>Sync now</strong> pulls purchase docs and sweeps the trailing ledger window;
-        <strong>Full resync</strong> replaces the mirror from inception. Cached ledger lines:
-        @o.LedgerLineCount.ToString("N0", CultureInfo.InvariantCulture).
+        <strong>Full resync</strong> replaces the mirror from inception.
         @if (Model.CreditorBindings is int bindings)
         {
             <text>Creditor bindings: @bindings.</text>
@@ -253,7 +252,7 @@
 </div>
 
 <script>
-    // Most of the 267-account chart has never carried a line; hiding those is the default view.
+    // Most of the chart has never carried a line; hiding those is the default view.
     // A group whose every account is hidden goes with them, header and all.
     //
     // "No lines" alone is not the test — twice over. An account Holded gives a balance for but the

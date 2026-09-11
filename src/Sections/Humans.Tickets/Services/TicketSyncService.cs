@@ -200,26 +200,12 @@ internal sealed class TicketSyncService(
     {
         // Verified emails only (#645); gmail/googlemail-normalized; verified-collision = LogError, unmatched.
         var users = await userServiceRead.GetAllUserInfosAsync(ct);
-        var entries = users.SelectMany(user => user.UserEmails
-            .Where(email => email.IsVerified)
-            .Select(email => (email.Email, user.Id)));
-
-        var lookup = new Dictionary<string, Guid>(NormalizingEmailComparer.Instance);
-        var grouped = entries.GroupBy(e => e.Email, NormalizingEmailComparer.Instance);
-        foreach (var group in grouped)
+        var (lookup, collisions) = VerifiedEmailLookup.Build(users);
+        foreach (var (email, userCount) in collisions)
         {
-            var distinctUserIds = group.Select(e => e.Id).Distinct().ToList();
-
-            if (distinctUserIds.Count == 1)
-            {
-                lookup[group.Key] = distinctUserIds[0];
-            }
-            else
-            {
-                logger.LogError(
-                    "Email {Email} verified by {Count} users, leaving unmatched",
-                    group.Key, distinctUserIds.Count);
-            }
+            logger.LogError(
+                "Email {Email} verified by {Count} users, leaving unmatched",
+                email, userCount);
         }
 
         return lookup;
