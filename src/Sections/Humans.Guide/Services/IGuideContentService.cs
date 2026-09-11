@@ -10,8 +10,8 @@ internal interface IGuideContentService : IApplicationService
     /// <summary>
     /// Returns the HTML for a guide file as this reader may see it: the cached segments are
     /// filtered by role first, and only what survives is rendered. Triggers a full refresh if
-    /// the cache is cold. Throws <see cref="GuideContentUnavailableException"/> when GitHub is
-    /// unreachable and no stale content is available.
+    /// the cache is cold. Throws <see cref="GuideContentUnavailableException"/> when this file
+    /// has no cached copy and its fetch fails — other files being cached does not rescue it.
     /// </summary>
     Task<string> GetPageAsync(
         string fileStem,

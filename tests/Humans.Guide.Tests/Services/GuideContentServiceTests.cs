@@ -128,4 +128,26 @@ public class GuideContentServiceTests
 
         html.Should().Be("[rendered:Profiles]");
     }
+
+    [HumansFact]
+    public async Task GetPageAsync_RequestedStemEvictedAndItsFetchFails_ThrowsEvenThoughOtherStemsAreCached()
+    {
+        // The cache is per stem, so "something is cached" is not the fallback condition — the
+        // requested stem's own copy is. PopulateAsync's hasStale flag only suppresses its own
+        // throw; the caller still finds the key missing and 503s. health.md invariant 7 said
+        // otherwise until peterdrier/Humans#1655.
+        var source = new FakeSource();
+        var service = CreateService(source, out var cache);
+        await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
+
+        cache.Remove("guide:Profiles");
+        source.FailFor = stem => string.Equals(stem, "Profiles", StringComparison.Ordinal)
+            ? new InvalidOperationException("this one file is unreachable")
+            : null;
+
+        var act = async () => await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<GuideContentUnavailableException>(
+            "every other stem is still cached, and none of them is the page the reader asked for");
+    }
 }

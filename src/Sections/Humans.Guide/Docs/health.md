@@ -82,9 +82,13 @@ exactly one home.
    parenthetical (`GuideFilter.Apply`, `Services/GuideFilter.cs:19`; `Services/GuideFilter.cs:45`).
 6. Refresh is admin-only and reading is anonymous
    (`Controllers/GuideController.cs:14`, `:19`, `:24`).
-7. A fetch failure with anything already cached serves the stale copy; a fetch failure with a
-   cold cache is a 503, never an empty page
-   (`GuideContentService.PopulateAsync`, `Services/GuideContentService.cs:85`;
+7. A stem that is cached is served from cache without touching GitHub, so no fetch failure can
+   take it away — on refresh a failed stem keeps the copy it already had, because only successes
+   overwrite. A stem that is *not* cached and whose fetch fails is a 503, never an empty page,
+   however many other stems are cached: `hasStale` only suppresses `PopulateAsync`'s own throw,
+   and the requested stem is still missing when the caller looks again
+   (`GuideContentService.GetDocumentAsync`, `Services/GuideContentService.cs:42` and `:54`;
+   `PopulateAsync`'s overwrite, `Services/GuideContentService.cs:91`;
    `GuideController.RenderAsync`, `Controllers/GuideController.cs:55`).
 8. `guide:<stem>` cache entries are written by `GuideContentService` and nothing else
    (`Services/GuideContentService.cs:16`).

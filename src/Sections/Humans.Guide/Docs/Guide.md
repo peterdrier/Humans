@@ -79,8 +79,8 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 
 - First `GET /Guide/*` on cold cache → `GuideContentService` fetches and segments every stem in `GuideFiles.All`; entries populated with sliding TTL.
 - `POST /Guide/Refresh` (Admin) → re-fetches and re-segments every stem in `GuideFiles.All`; existing cache entries overwritten.
-- GitHub fetch failure on warm cache → stale content served; warning logged; TTL preserved.
-- GitHub fetch failure on cold cache → `GuideContentUnavailableException` thrown; controller returns 503 `Unavailable.cshtml`.
+- GitHub fetch failure for a stem that is still cached → the cached copy is kept (only successful fetches overwrite) and served; warning logged. A cached stem is served without any fetch at all.
+- GitHub fetch failure for the requested stem while it is *not* cached → `GuideContentUnavailableException` thrown; controller returns 503 `Unavailable.cshtml`. Other stems being cached does not rescue it — it only stops `PopulateAsync` throwing first.
 
 ## Cross-Section Dependencies
 
