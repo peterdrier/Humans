@@ -15,40 +15,30 @@ namespace Humans.Shifts.Services;
 /// rotas, shifts, and urgency scoring.
 /// </summary>
 /// <remarks>
-/// The section's own interface. The members something outside the section
-/// calls live on <see cref="IShiftManagementServiceRead"/>,
-/// <see cref="IShiftVolunteerProfiles"/> and <see cref="IShiftSeeding"/> in
-/// <c>Humans.Shifts.Contracts</c>; this inherits all three, so the section's
-/// ~73 own call sites are unchanged. Everything declared here — rota and
-/// shift CRUD, bulk generation, the coordinator dashboard's aggregate reads,
-/// the coverage heatmap and the post-event stats — has no external caller.
+/// The section's own interface; the cross-section members live on
+/// <see cref="IShiftManagementServiceRead"/>, <see cref="IShiftVolunteerProfiles"/>
+/// and <see cref="IShiftSeeding"/>, which this inherits.
 /// </remarks>
 internal interface IShiftManagementService
     : IShiftManagementServiceRead, IShiftVolunteerProfiles, IShiftSeeding, IApplicationService
 {
     // === Event settings ===
-    //
-    // The entity-shaped reads and writes. IShiftSeeding carries the input-record
-    // forms of the two creates for Humans.Development's fixture; these are the
-    // section's own (nobodies-collective/Humans#866).
 
     /// <summary>
-    /// Gets all rotas for a department in an event. Section-internal since the
-    /// section's G5: its only outside caller was Shell's widget gallery, which
-    /// moved in as ShiftsGalleryViewComponent (nobodies-collective/Humans#866).
+    /// Gets all rotas for a department in an event. Section-internal — no
+    /// caller outside the section.
     /// </summary>
     Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId);
 
     /// <summary>
-    /// Gets or creates the user's shift profile (1:1 with User). Section-internal
-    /// since the section's G5: its only outside caller was Shell's
-    /// /Profile/Me/ShiftInfo POST, which moved onto ShiftProfileController.
+    /// Gets or creates the user's shift profile (1:1 with User). Section-internal —
+    /// no caller outside the section.
     /// </summary>
     Task<VolunteerEventProfile> GetOrCreateShiftProfileAsync(Guid userId);
 
     /// <summary>
-    /// Updates a volunteer shift profile. Section-internal for the same reason as
-    /// <see cref="GetOrCreateShiftProfileAsync"/>.
+    /// Updates a volunteer shift profile. Section-internal — no caller outside
+    /// the section.
     /// </summary>
     Task UpdateShiftProfileAsync(VolunteerEventProfile profile);
 

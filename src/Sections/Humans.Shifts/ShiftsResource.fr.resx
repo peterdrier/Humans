@@ -1078,9 +1078,6 @@
   <data name="EmailRota_Send" xml:space="preserve">
     <value>Envoyer &#xE0; {0} destinataire(s)</value>
   </data>
-  <data name="EmailRota_Success" xml:space="preserve">
-    <value>{0} e-mail(s) mis en file d'attente pour les destinataires du roulement &#xAB;&#xA0;{1}&#xA0;&#xBB;.</value>
-  </data>
   <data name="EmailRota_NoActiveSignups" xml:space="preserve">
     <value>Ce roulement n'a aucune inscription active &#xE0; qui envoyer un e-mail.</value>
   </data>
@@ -1173,4 +1170,18 @@
   <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>We need your dietary info</value></data>
   <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>You're signed up for a long shift. The cantina can't plan your meals until you tell us your food preferences.</value></data>
   <data name="DietaryMissingBanner_Cta" xml:space="preserve"><value>Tell us now</value></data>
+  <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>Voir tous mes créneaux</value></data>
+  <data name="Shifts_IcalFeedTitle" xml:space="preserve"><value>Flux iCal</value></data>
+  <data name="Shifts_IcalFeedHelp" xml:space="preserve"><value>Abonne-toi à tes créneaux et événements enregistrés dans ton application de calendrier :</value></data>
+  <data name="Shifts_IcalCopy" xml:space="preserve"><value>Copier</value></data>
+  <data name="Shifts_IcalRegenerateConfirm" xml:space="preserve"><value>Cela invalidera l'URL actuelle. Continuer ?</value></data>
+  <data name="Shifts_IcalRegenerate" xml:space="preserve"><value>Régénérer l'URL</value></data>
+  <data name="Shifts_SortOrder" xml:space="preserve"><value>Ordre de tri</value></data>
+  <data name="Shifts_BailRangeSuccess" xml:space="preserve"><value>Tu t'es retiré de la série de créneaux.</value></data>
+  <data name="Shifts_BailFailed" xml:space="preserve"><value>Le retrait du créneau a échoué.</value></data>
+  <data name="Shifts_BailSuccess" xml:space="preserve"><value>Tu t'es retiré du créneau.</value></data>
+  <data name="Shifts_AvailabilityUpdated" xml:space="preserve"><value>Disponibilité mise à jour.</value></data>
+  <data name="Shifts_IcalRegenerated" xml:space="preserve"><value>URL iCal régénérée.</value></data>
+  <data name="Shifts_TagPreferencesSaved" xml:space="preserve"><value>Préférences de tags enregistrées.</value></data>
+  <data name="VolTrack_Msg_DayOffNotSet" xml:space="preserve"><value>Aucun jour de repos n'était défini pour ce jour.</value></data>
 </root>

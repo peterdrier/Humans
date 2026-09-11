@@ -210,8 +210,7 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
                 DiscountCode: null,
                 PaymentStatus: "completed",
                 VendorDashboardUrl: null,
-                PurchasedAt: Instant.FromUtc(2026, 2, 1, 0, 0),
-                Tickets: [])
+                PurchasedAt: Instant.FromUtc(2026, 2, 1, 0, 0))
         };
 
         var tickets = new List<VendorTicketDto>

@@ -1,3 +1,4 @@
+using Humans.Campaigns.Domain;
 using Humans.Campaigns.Models;
 using Humans.Campaigns.Services;
 using Humans.Base.Authorization;
@@ -149,8 +150,12 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
             return RedirectToAction(nameof(Detail), new { id });
         }
 
-        await campaignService.ImportCodesAsync(id, codes);
-        SetSuccess($"Imported {codes.Count} codes.");
+        var result = await campaignService.ImportCodesAsync(id, codes);
+        if (!result.Success) return NotFound();
+
+        SetSuccess(result.Skipped > 0
+            ? $"Imported {result.Imported} codes; skipped {result.Skipped} duplicates."
+            : $"Imported {result.Imported} codes.");
         return RedirectToAction(nameof(Detail), new { id });
     }
 
@@ -181,8 +186,17 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Activate(Guid id)
     {
-        await campaignService.ActivateAsync(id);
-        SetSuccess("Campaign activated.");
+        var result = await campaignService.ActivateAsync(id);
+        if (string.Equals(result.ErrorKey, "NotFound", StringComparison.Ordinal))
+            return NotFound();
+
+        if (string.Equals(result.ErrorKey, "NotDraft", StringComparison.Ordinal))
+            SetError("Only a Draft campaign can be activated.");
+        else if (string.Equals(result.ErrorKey, "NoCodes", StringComparison.Ordinal))
+            SetError("The campaign needs at least one code before activation.");
+        else
+            SetSuccess("Campaign activated.");
+
         return RedirectToAction(nameof(Detail), new { id });
     }
 
@@ -191,8 +205,15 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Complete(Guid id)
     {
-        await campaignService.CompleteAsync(id);
-        SetSuccess("Campaign completed.");
+        var result = await campaignService.CompleteAsync(id);
+        if (string.Equals(result.ErrorKey, "NotFound", StringComparison.Ordinal))
+            return NotFound();
+
+        if (string.Equals(result.ErrorKey, "NotActive", StringComparison.Ordinal))
+            SetError("Only an Active campaign can be completed.");
+        else
+            SetSuccess("Campaign completed.");
+
         return RedirectToAction(nameof(Detail), new { id });
     }
 
@@ -202,6 +223,12 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
     {
         var page = await campaignService.GetSendWavePageAsync(id, teamId);
         if (page is null) return NotFound();
+
+        if (page.Campaign.Status != CampaignStatus.Active)
+        {
+            SetError("Waves can only be sent while the campaign is Active.");
+            return RedirectToAction(nameof(Detail), new { id });
+        }
 
         return View(new CampaignSendWaveViewModel
         {
@@ -217,8 +244,17 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SendWave(Guid id, Guid teamId)
     {
-        var sentCount = await campaignService.SendWaveAsync(id, teamId);
-        SetSuccess($"Wave sent to {sentCount} humans.");
+        var result = await campaignService.SendWaveAsync(id, teamId);
+        if (string.Equals(result.ErrorKey, "NotFound", StringComparison.Ordinal))
+            return NotFound();
+
+        if (string.Equals(result.ErrorKey, "NotActive", StringComparison.Ordinal))
+            SetError("Waves can only be sent while the campaign is Active.");
+        else if (string.Equals(result.ErrorKey, "NotEnoughCodes", StringComparison.Ordinal))
+            SetError($"Not enough codes available: need {result.CodesNeeded}, have {result.CodesAvailable}.");
+        else
+            SetSuccess($"Wave sent to {result.SentCount} humans.");
+
         return RedirectToAction(nameof(Detail), new { id });
     }
 

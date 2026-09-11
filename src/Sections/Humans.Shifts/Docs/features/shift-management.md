@@ -68,7 +68,7 @@ Nobodies Collective runs multi-day events (e.g., Nowhere) where volunteers are n
 - Only rotas with `IsVisibleToVolunteers = true` appear (privileged users see all)
 - See fill status (confirmed count vs max)
 - Sign up for a shift (auto-confirmed for Public policy, pending for RequireApproval)
-- Per-day instant signup on the browse page: clicking a day's toggle button signs up or bails that single shift via `POST /Shifts/ToggleDay` (AJAX, no page reload), re-rendering just that row. Applies to both timed Event shifts and all-day Build/Strike days. The legacy date-range picker has been removed from `/Shifts`; date-range signup over a shared `SignupBlockId` (via `SignUpRangeAsync`) now lives only in the onboarding-widget shift step
+- Per-day instant signup on the browse page: clicking a day's toggle button signs up or bails that single shift via `POST /Shifts/ToggleDay` (AJAX, no page reload), re-rendering just that row. Applies to both timed Event shifts and all-day Build/Strike days. Date-range signup over a shared `SignupBlockId` (via `SignUpRangeAsync`) lives only in the onboarding-widget shift step
 - Overlap detection prevents signing up for conflicting time slots — a toggle that would overlap an existing confirmed signup is refused with a warning toast and the day stays unsigned
 - AdminOnly shifts hidden from non-privileged users
 - EE freeze blocks non-privileged build shift signups after early entry close
@@ -151,7 +151,7 @@ Nobodies Collective runs multi-day events (e.g., Nowhere) where volunteers are n
 | `Shift` | Single work slot: day offset, time, duration, volunteer min/max; IsAllDay flag for build/strike shifts |
 | `ShiftSignup` | User-to-shift link with state machine; SignupBlockId groups range signups |
 | `GeneralAvailability` | Per-user per-event day availability (general volunteer pool) |
-| `VolunteerEventProfile` | Per-event skills (`Skills[]`), work-style quirks (`Quirks[]`), and languages (`Languages[]`). Dietary and medical fields moved to `Profile` (Users section); VEP columns retained in schema pending a post-prod-soak drop |
+| `VolunteerEventProfile` | Per-event skills (`Skills[]`), work-style quirks (`Quirks[]`), and languages (`Languages[]`). Dietary and medical fields live on `Profile` (Users section); the unused VEP columns await a post-prod-soak drop |
 | `ShiftTag` | Descriptive label for rotas (Id, Name); shared across all teams |
 | `RotaShiftTag` | Join table: Rota ↔ ShiftTag many-to-many |
 | `VolunteerTagPreference` | Links a volunteer to preferred tags for personalized recommendations |
@@ -205,7 +205,7 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 
 **Purpose:** Give Volunteer Coordinators, NoInfoAdmins, and Admins a single cross-department view that answers the weekly coordination questions: is overall staffing tracking toward the event, which departments are behind, which coordinator teams have stale pending signups, and are new signups / ticket sales trending.
 
-**Route:** `/Shifts/Dashboard` (existing) — the four dashboard panels render above the legacy urgent-shifts filter.
+**Route:** `/Shifts/Dashboard` — the four dashboard panels render above the urgent-shifts filter.
 
 **Panels:**
 

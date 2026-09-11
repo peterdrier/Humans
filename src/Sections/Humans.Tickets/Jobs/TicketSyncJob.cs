@@ -10,9 +10,7 @@ namespace Humans.Tickets.Jobs;
 /// Runs every 15 minutes by default. Can also be triggered manually.
 /// </summary>
 /// <remarks>
-/// Moved out of <c>Humans.Infrastructure/Jobs</c> at G5 lane 5b-3
-/// (nobodies-collective/Humans#866), following lane 5b-1's pattern. It sits under
-/// <c>Jobs/</c> because Shell names the concrete type at registration and HUM0034
+/// It sits under <c>Jobs/</c> because Shell names the concrete type at registration and HUM0034
 /// makes every other public type in a section assembly an error.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]

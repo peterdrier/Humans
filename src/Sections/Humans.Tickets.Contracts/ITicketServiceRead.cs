@@ -8,7 +8,7 @@ namespace Humans.Tickets.Contracts;
 /// and collections. It must not expose EF entity types.
 /// </summary>
 /// <remarks>
-/// Every one of the fourteen call sites outside the section uses exactly these two
+/// Every call site outside the section uses only these
 /// methods. A caller wanting a derived aggregate gets a property on
 /// <see cref="TicketOrderInfo"/>, not a third method
 /// (memory/architecture/read-model-enrichment.md); <see cref="SurfaceBudgetAttribute"/>

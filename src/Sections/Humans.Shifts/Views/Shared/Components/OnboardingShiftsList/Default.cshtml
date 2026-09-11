@@ -2,9 +2,7 @@
 @{
     var es = Model.EventSettings!;
 }
-@* Moved verbatim out of the onboarding widget's Shifts.cshtml at Humans.Onboarding's G5:
-   every type below is Shifts' presentation and lives in Shell. The partials post back to
-   OnboardingWidget so success routes via the widget dispatcher to Consents. *@
+@* Posts back to OnboardingWidget so success routes via the widget dispatcher to Consents. *@
 @foreach (var rotaGroup in Model.UrgencyRankedRotas)
 {
     var rotaFillPercent = rotaGroup.TotalSlots > 0

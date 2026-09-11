@@ -24,6 +24,7 @@ public sealed class TicketQueryService_HoldingsTests
 
     private readonly ITicketRepository _ticketRepo = Substitute.For<ITicketRepository>();
     private readonly ITicketTransferRepository _transferRepo = Substitute.For<ITicketTransferRepository>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly TicketQueryService Service;
 
     public TicketQueryService_HoldingsTests()
@@ -38,7 +39,7 @@ public sealed class TicketQueryService_HoldingsTests
             _transferRepo,
             Substitute.For<IBudgetServiceRead>(),
             Substitute.For<ICampaignService>(),
-            Substitute.For<IUserService>(),
+            _users,
             Substitute.For<IUserEmailService>(),
             Substitute.For<ITeamService>(),
             Substitute.For<IBurnSettingsService>(),
@@ -195,5 +196,83 @@ public sealed class TicketQueryService_HoldingsTests
         var cleanRow = result.Tickets.Single(t => t.AttendeeId == untouched.Id);
         cleanRow.HasPendingOutgoingTransfer.Should().BeFalse();
         cleanRow.PendingTransferRequestId.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task ExcludesTicketsTheUserBoughtButDoesNotHold_AndCarriesCheckedInAt()
+    {
+        var orderId = Guid.NewGuid();
+        var order = new TicketOrder { Id = orderId, MatchedUserId = UserA };
+        var scannedAt = Instant.FromUtc(2026, 7, 1, 20, 0);
+        var mine = new TicketAttendee
+        {
+            Id = Guid.NewGuid(),
+            AttendeeName = "Mine",
+            MatchedUserId = UserA,
+            Status = TicketAttendeeStatus.Valid,
+            CheckedInAt = scannedAt,
+            TicketOrder = order,
+            TicketOrderId = orderId,
+        };
+        var someoneElses = new TicketAttendee
+        {
+            Id = Guid.NewGuid(),
+            AttendeeName = "Theirs",
+            MatchedUserId = UserB,
+            TicketOrder = order,
+            TicketOrderId = orderId,
+        };
+        var unmatched = new TicketAttendee
+        {
+            Id = Guid.NewGuid(),
+            AttendeeName = "Nobody's yet",
+            MatchedUserId = null,
+            TicketOrder = order,
+            TicketOrderId = orderId,
+        };
+        _ticketRepo.GetAttendeesVisibleToUserAsync(UserA, Arg.Any<CancellationToken>())
+            .Returns([mine, someoneElses, unmatched]);
+
+        var result = await Service.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
+
+        var row = result.Tickets.Should().ContainSingle().Subject;
+        row.AttendeeId.Should().Be(mine.Id);
+        row.CheckedInAt.Should().Be(scannedAt);
+    }
+
+    private static UserInfo UserWithVerifiedEmail(Guid id, string email) =>
+        new User { Id = id, DisplayName = id.ToString() }.ToUserInfo(
+            [new UserEmail { Id = Guid.NewGuid(), UserId = id, Email = email, IsVerified = true }]);
+
+    [HumansFact]
+    public async Task TicketCountFallback_MatchesEmailsWithTheSyncLookup()
+    {
+        // No matched attendee rows, so the count falls back to attendee emails against the
+        // verified-email index. It must be the sync matcher's (googlemail ↔ gmail, case), not
+        // a plain case-fold, or the count disagrees with what sync would match.
+        _ticketRepo.CountValidAttendeesMatchedToUserAsync(UserA).Returns(0);
+        _users.GetAllUserInfosAsync().Returns([UserWithVerifiedEmail(UserA, "Ada@GoogleMail.com")]);
+        _ticketRepo.GetValidAttendeeEmailsAsync().Returns(["ada@gmail.com", "other@example.com"]);
+
+        var result = await Service.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
+
+        result.TicketCount.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task TicketCountFallback_CountsNothingForAnAliasVerifiedByTwoUsers()
+    {
+        // The sync leaves such an attendee unmatched; the fallback must not hand the ticket
+        // to both users instead.
+        _ticketRepo.CountValidAttendeesMatchedToUserAsync(Arg.Any<Guid>()).Returns(0);
+        _users.GetAllUserInfosAsync().Returns([
+            UserWithVerifiedEmail(UserA, "ada@gmail.com"),
+            UserWithVerifiedEmail(UserB, "ada@googlemail.com"),
+        ]);
+        _ticketRepo.GetValidAttendeeEmailsAsync().Returns(["ada@gmail.com"]);
+
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        (await Service.GetUserTicketHoldingsAsync(UserA, ct)).TicketCount.Should().Be(0);
+        (await Service.GetUserTicketHoldingsAsync(UserB, ct)).TicketCount.Should().Be(0);
     }
 }

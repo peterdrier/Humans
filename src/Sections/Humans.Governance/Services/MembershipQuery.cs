@@ -4,7 +4,7 @@ using Humans.Teams.Contracts;
 namespace Humans.Governance.Services;
 
 // Pass-through to ITeamServiceRead + IRoleAssignmentService. Exists to break the DI cycle
-// MembershipCalculator → ITeamService → ISystemTeamSync → IMembershipCalculator.
+// MembershipCalculator → ITeamServiceRead → ISystemTeamSync → IMembershipCalculatorRead.
 internal sealed class MembershipQuery(ITeamServiceRead teamService, IRoleAssignmentService roleAssignmentService)
     : IMembershipQuery
 {

@@ -1,6 +1,7 @@
 using Humans.Users.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Governance.Contracts;
+using NodaTime;
 
 namespace Humans.Governance.Services;
 
@@ -16,6 +17,7 @@ internal sealed record GovernanceIndexData(
     MembershipTier? ApplicationTier,
     DateTime? ApplicationSubmittedAt,
     DateTime? ApplicationResolvedAt,
+    LocalDate? ApplicationTermExpiresAt,
     bool CanApply,
     bool IsApprovedColaborador,
     int ColaboradorCount,

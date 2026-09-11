@@ -25,9 +25,6 @@ internal sealed class ShiftSignupConfiguration : IEntityTypeConfiguration<ShiftS
         builder.HasIndex(d => d.ShiftId);
         builder.HasIndex(d => new { d.ShiftId, d.Status });
 
-        // UserId / EnrolledByUserId / ReviewedByUserId are bare cross-section Guid
-        // columns — no FK constraint, no nav.
-
         builder.HasOne(d => d.Shift)
             .WithMany(s => s.ShiftSignups)
             .HasForeignKey(d => d.ShiftId)

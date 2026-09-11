@@ -9,9 +9,11 @@ namespace Humans.Tickets.Data;
 
 /// <summary>
 /// Repository for the Tickets section's canonical tables
-/// (<c>ticket_orders</c>, <c>ticket_attendees</c>, <c>ticket_sync_states</c>).
-/// Owned by <see cref="Services.TicketSyncService"/>
-/// — the only non-test code path that writes to these tables.
+/// (<c>ticket_orders</c>, <c>ticket_attendees</c>, <c>ticket_sync_state</c>).
+/// Written by <see cref="Services.TicketSyncService"/> (sync, merge re-FK),
+/// <see cref="Services.TicketTransferService"/> (automated reissue rows),
+/// <see cref="Services.AttendeeContactImportService"/> (attendee matches) and the GDPR
+/// erasure path in <see cref="Services.TicketQueryService"/>; read by every section service.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -228,6 +230,10 @@ internal interface ITicketRepository : IRepository
 
     Task<IReadOnlyList<Guid>> GetAllMatchedOrderUserIdsAsync(CancellationToken ct = default);
 
+    /// <summary>
+    /// True when the user is matched to a <c>Valid</c> or <c>CheckedIn</c> attendee row for the
+    /// event. Orders are not consulted: a buyer-only match is not a holding.
+    /// </summary>
     Task<bool> HasEventTicketAsync(Guid userId, string vendorEventId, CancellationToken ct = default);
 
     Task<IReadOnlyList<string>> GetDistinctTicketTypesAsync(CancellationToken ct = default);

@@ -33,8 +33,6 @@ internal sealed class VolunteerEventProfileConfiguration : IEntityTypeConfigurat
         builder.Property(v => v.IntoleranceOtherText).HasMaxLength(500);
         builder.Property(v => v.DietaryPreference).HasMaxLength(200);
         builder.Property(v => v.MedicalConditions).HasMaxLength(4000);
-
-        // UserId is a bare cross-section Guid column — no FK constraint, no nav.
     }
 
     private static void ConfigureJsonbList(

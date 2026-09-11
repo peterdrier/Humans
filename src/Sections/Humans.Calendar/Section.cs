@@ -14,8 +14,7 @@ namespace Humans.Calendar;
 /// nothing names it, so it needs no section prefix.
 /// </summary>
 /// <remarks>
-/// Verbatim from Shell's former <c>CalendarSectionExtensions</c>: the §15 keyed
-/// inner-service / Singleton-decorator pair moves as a unit (design §15 step 4).
+/// The §15 keyed inner-service / Singleton-decorator pair moves as a unit.
 /// </remarks>
 public sealed class Section : ISection
 {
@@ -37,9 +36,8 @@ public sealed class Section : ISection
         services.AddHostedService(sp => sp.GetRequiredService<CachingCalendarService>());
 
         // iCal feed orchestrator — pure fan-out over every ICalendarFeedContributor.
-        // Verbatim from Shell's former ICalFeedSectionExtensions (G5 lane 4b-2c). The
-        // contributors themselves are registered by the sections that implement the
-        // interface (Shifts, Events), so Calendar never names them.
+        // The contributors themselves are registered by the sections that implement
+        // the interface (Shifts, Events), so Calendar never names them.
         services.AddScoped<IICalFeedService, ICalFeedService>();
     }
 }

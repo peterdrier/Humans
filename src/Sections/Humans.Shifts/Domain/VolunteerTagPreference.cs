@@ -6,9 +6,6 @@ namespace Humans.Shifts.Domain;
 /// </summary>
 internal sealed class VolunteerTagPreference
 {
-    /// <summary>
-    /// Unique identifier.
-    /// </summary>
     public Guid Id { get; init; }
 
     /// <summary>
@@ -18,13 +15,7 @@ internal sealed class VolunteerTagPreference
     /// </summary>
     public Guid UserId { get; set; }
 
-    /// <summary>
-    /// FK to the shift tag.
-    /// </summary>
     public Guid ShiftTagId { get; init; }
 
-    /// <summary>
-    /// Navigation property to the shift tag.
-    /// </summary>
     public ShiftTag ShiftTag { get; set; } = null!;
 }

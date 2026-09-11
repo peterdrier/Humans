@@ -15,10 +15,6 @@ namespace Humans.Shifts.Contracts;
 /// Mirrors <c>IUserInfoInvalidator</c> (Profiles §15i). The decorator
 /// resolves the next read from the inner service; consumers never poke the
 /// underlying <c>ConcurrentDictionary</c> directly.
-///
-/// <para>
-/// Issue #720.
-/// </para>
 /// </remarks>
 [Grandfathered(
     ruleId: "HUM0028",

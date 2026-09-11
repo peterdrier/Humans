@@ -180,11 +180,9 @@ internal sealed class RideshareRepository(IDbContextFactory<RideshareDbContext> 
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        // Every interest the fold can affect: either person's own (the target's existing ones
-        // take part in the duplicate pass), and anyone's on the source's trips or requests
-        // (those become self-interest once the trip/request is the target's). Loaded with
-        // navigations first so the conflict pass below sees the re-pointed graph — the tracked
-        // Trip/Request instances are the same ones mutated just after.
+        // Every interest the fold can affect: either person's own, plus anyone's on the source's
+        // trips or requests (those become self-interest). Navigations loaded so the conflict pass
+        // below sees the re-pointed graph.
         var affected = await ctx.Interests
             .Include(i => i.Trip)
             .Include(i => i.Request)

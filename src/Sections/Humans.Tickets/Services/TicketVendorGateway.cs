@@ -4,7 +4,7 @@ using NodaTime;
 namespace Humans.Tickets.Services;
 
 /// <summary>
-/// The section's forwarding edge onto the Base vendor port: the one place in the
+/// The section's forwarding edge onto its vendor port: the one place in the
 /// codebase that names both the application's ticketing vocabulary
 /// (<see cref="TicketDiscountCodeRequest"/>, <see cref="TicketDiscountKind"/>) and the
 /// port's (<c>DiscountCodeSpec</c>, <c>DiscountType</c>).

@@ -5,10 +5,8 @@ using NodaTime;
 namespace Humans.TicketTailor.Services;
 
 /// <summary>
-/// Development-only ticket vendor stub that returns canned sample data.
-/// The real TicketSyncService processes this through the normal sync pipeline
-/// (upsert, email matching, VAT computation, etc.) so dev environments
-/// exercise the production code path with realistic data.
+/// Non-Production stand-in: a deterministic sample event so every other environment runs
+/// the real sync, transfer and gate code without a vendor account.
 /// </summary>
 internal sealed class StubTicketVendorService : ITicketVendorService
 {
@@ -37,10 +35,9 @@ internal sealed class StubTicketVendorService : ITicketVendorService
     private const string TestUserEmail = "peter@nobodies.team";
     private const string TestUserName = "Peter Drier";
 
-    // Pre-built sample data, generated once and cached for the process lifetime.
     private static readonly Lazy<SampleData> Sample = new(BuildSampleData);
 
-    // Instance-level fixtures for the deterministic dev/preview data set.
+    // Per-instance copies: void/issue mutate _tickets, so nothing persists across requests.
     private readonly List<VendorTicketDto> _tickets = [.. Sample.Value.Tickets];
     private readonly List<VendorCheckInDto> _checkIns = [.. Sample.Value.CheckIns];
 
@@ -102,15 +99,6 @@ internal sealed class StubTicketVendorService : ITicketVendorService
             .Select(i => $"DEMO-{prefix}-{i:0000}")
             .ToList();
         return Task.FromResult(codes);
-    }
-
-    public Task<IReadOnlyList<DiscountCodeStatusDto>> GetDiscountCodeUsageAsync(
-        IEnumerable<string> codes, CancellationToken ct = default)
-    {
-        IReadOnlyList<DiscountCodeStatusDto> result = codes
-            .Select(c => new DiscountCodeStatusDto(Code: c, IsRedeemed: false, TimesUsed: 0))
-            .ToList();
-        return Task.FromResult(result);
     }
 
     // Dev/preview stub: the gate's check-in mirror is a no-op (no vendor to call).
@@ -209,7 +197,6 @@ internal sealed class StubTicketVendorService : ITicketVendorService
             var ticketTotal = orderTickets.Sum(t => t.Price);
             var totalAmount = Math.Round(ticketTotal - (discountAmount ?? 0m) + donation, 2);
 
-            var vendorTickets = new List<VendorTicketDto>();
             for (var t = 0; t < orderTickets.Count; t++)
             {
                 var ticket = orderTickets[t];
@@ -228,14 +215,11 @@ internal sealed class StubTicketVendorService : ITicketVendorService
                     Status: "valid",
                     Barcode: MakeBarcode(vendorTicketId));
 
-                vendorTickets.Add(ticketDto);
                 tickets.Add(ticketDto);
 
-                // Every 5th ticket has been scanned at the gate — recorded as its
-                // own check-in resource (mirrors TicketTailor /check_ins; the issued
-                // ticket itself stays "valid"). Spreads arrivals across the gate-day
-                // window so dev/preview exercises the "Who's onsite" view (#736).
-                if ((orderIndex * 10 + t) % 5 == 0)
+                // The first ticket of every paid order is scanned, recorded as its own
+                // check-in resource (the ticket stays "valid"), spread across the gate day.
+                if (t == 0)
                 {
                     var gateDay = new LocalDate(2026, 7, 8);
                     var hour = 9 + ((orderIndex * 10 + t) % 12); // 09:00–20:00
@@ -257,7 +241,6 @@ internal sealed class StubTicketVendorService : ITicketVendorService
                 PaymentStatus: "completed",
                 VendorDashboardUrl: $"https://demo.tickettailor.local/orders/{vendorOrderId}",
                 PurchasedAt: purchasedAt,
-                Tickets: vendorTickets,
                 StripePaymentIntentId: null,
                 DiscountAmount: discountAmount,
                 DonationAmount: donation));
@@ -296,8 +279,7 @@ internal sealed class StubTicketVendorService : ITicketVendorService
                 DiscountCode: null,
                 PaymentStatus: nonPaidStatuses[i],
                 VendorDashboardUrl: null,
-                PurchasedAt: Instant.FromUtc(2026, 4, 1 + i, 10, 0),
-                Tickets: [ticketDto]));
+                PurchasedAt: Instant.FromUtc(2026, 4, 1 + i, 10, 0)));
         }
 
         return new SampleData(orders, tickets, checkIns);
@@ -305,10 +287,9 @@ internal sealed class StubTicketVendorService : ITicketVendorService
 
     private static Instant BuildPurchaseInstant(LocalDate saleStart, int orderIndex, int totalOrders)
     {
-        // Spread orders across ~3 weeks with front-loading
+        // Spread orders across ~3 weeks, front-loaded.
         var daysSpan = 22;
         var progress = (double)orderIndex / totalOrders;
-        // Front-loaded curve: more orders in the first few days
         var day = (int)(Math.Pow(progress, 0.6) * daysSpan);
         var hour = 9 + (orderIndex % 9);
         var minute = (orderIndex * 11) % 60;

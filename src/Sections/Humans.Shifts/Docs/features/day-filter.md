@@ -8,11 +8,11 @@
   Day-filter query param name/format, the openings-first ranking rule, or how the dropdown labels each day may have changed.
 -->
 
-# Day Filter (issue #889)
+# Day Filter
 
 ## Business Context
 
-Volunteers browsing `/Shifts` had no way to jump straight to a specific calendar day — they had to scroll the full department/rota list to find out whether the day they're free is already fully booked. A community report (nobodies-collective/Humans#889) asked for a day dropdown that filters the shift list and surfaces open shifts first.
+Volunteers browsing `/Shifts` had no way to jump straight to a specific calendar day — they had to scroll the full department/rota list to find out whether the day they're free is already fully booked. The day dropdown filters the shift list and surfaces open shifts first (nobodies-collective/Humans#889).
 
 ## User Stories
 
