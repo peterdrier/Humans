@@ -70,4 +70,19 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
         await Settings.Received(1).SetValueAsync(
             SettingKeys.WorkgroupsRootDriveFolderId, "new-root", Arg.Any<CancellationToken>());
     }
+
+    [HumansFact]
+    public async Task Apply_WithAVeryLongName_TrimsTheSlugToItsColumn()
+    {
+        var name = new string('a', 200);
+
+        var id = await NewService().ApplyAsync(SeedUser(), new WorkgroupApplication(
+            name, "Purpose", "A report", WorkgroupDeliverableKind.Report,
+            WorkgroupAudience.Board, TargetDate: null, DiscordChannelUrl: null,
+            SecondCoordinatorUserId: null), Ct);
+
+        await using var ctx = OpenContext();
+        var saved = await ctx.Workgroups.SingleAsync(w => w.Id == id, Ct);
+        saved.Slug.Length.Should().BeLessThanOrEqualTo(96);
+    }
 }

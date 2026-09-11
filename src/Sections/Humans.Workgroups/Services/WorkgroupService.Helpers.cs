@@ -228,6 +228,11 @@ internal sealed partial class WorkgroupService
         if (string.IsNullOrEmpty(baseSlug))
             throw new WorkgroupRuleException(WorkgroupErrorKeys.NameRequired);
 
+        // Name allows 200 characters, Slug's column holds 100, and the suffix loop below can
+        // add up to "-100" — so trim here rather than let a long name fail on insert.
+        if (baseSlug.Length > SlugBudget)
+            baseSlug = baseSlug[..SlugBudget].TrimEnd('-');
+
         var candidate = baseSlug;
         for (var suffix = 2; ; suffix++)
         {
@@ -244,6 +249,9 @@ internal sealed partial class WorkgroupService
             candidate = $"{baseSlug}-{suffix}";
         }
     }
+
+    /// <summary>The Slug column's 100 characters, less room for the longest "-100" suffix.</summary>
+    private const int SlugBudget = 96;
 
     private static string? Trimmed(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();

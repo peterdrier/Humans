@@ -462,6 +462,12 @@ internal sealed partial class WorkgroupService(
         var workgroup = await RequireAsync(workgroupId, ct);
         RequireAcceptsMemberWork(workgroup);
 
+        // Same gate as delivering a document (design §7): ending the group while a comment
+        // period is still running would cut short a window the group promised publicly.
+        var now = clock.GetCurrentInstant();
+        if (workgroup.Documents.Any(d => d.CommentsCloseAt is { } closes && closes > now))
+            throw new WorkgroupRuleException(WorkgroupErrorKeys.CommentsStillOpen);
+
         await EndAsync(workgroup, actorUserId, reason, reasons: null, ct);
     }
 

@@ -175,6 +175,7 @@ internal sealed class WorkgroupsController(
         if (error is not null) return error;
         if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
         if (!MayDoMemberWork(workgroup, user.Id)) return Forbid();
+        if (model.Id is { } editing && !workgroup.Meetings.Any(m => m.Id == editing)) return NotFound();
         if (!ModelState.IsValid) return View(MeetingForm, model);
 
         return await FormAsync(model, async () =>
@@ -191,7 +192,7 @@ internal sealed class WorkgroupsController(
     [ValidateAntiForgeryToken]
     public Task<IActionResult> DeleteMeeting(string slug, Guid id, CancellationToken ct) =>
         ActAsync(slug, (_, userId) => workgroups.DeleteMeetingAsync(id, userId, ct),
-            "Workgroups_MeetingDeleted", ct);
+            "Workgroups_MeetingDeleted", ct, owns: w => w.Meetings.Any(m => m.Id == id));
 
     // ── The log ───────────────────────────────────────────────────────────
 
@@ -217,6 +218,7 @@ internal sealed class WorkgroupsController(
         if (error is not null) return error;
         if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
         if (!MayDoMemberWork(workgroup, user.Id)) return Forbid();
+        if (model.Id is { } editing && !workgroup.LogEntries.Any(e => e.Id == editing)) return NotFound();
         if (!ModelState.IsValid) return View(LogEntryForm, model);
 
         return await FormAsync(model, async () =>
@@ -233,7 +235,7 @@ internal sealed class WorkgroupsController(
     [ValidateAntiForgeryToken]
     public Task<IActionResult> DeleteLogEntry(string slug, Guid id, CancellationToken ct) =>
         ActAsync(slug, (_, userId) => workgroups.DeleteLogEntryAsync(id, userId, ct),
-            "Workgroups_LogEntryDeleted", ct);
+            "Workgroups_LogEntryDeleted", ct, owns: w => w.LogEntries.Any(e => e.Id == id));
 
     // ── Surveys ───────────────────────────────────────────────────────────
 
@@ -297,6 +299,7 @@ internal sealed class WorkgroupsController(
         if (error is not null) return error;
         if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
         if (!MayDoMemberWork(workgroup, user.Id)) return Forbid();
+        if (model.Id is { } editing && !workgroup.Documents.Any(d => d.Id == editing)) return NotFound();
         if (!ModelState.IsValid) return View(DocumentForm, model);
 
         return await FormAsync(model, async () =>
@@ -314,7 +317,7 @@ internal sealed class WorkgroupsController(
     [ValidateAntiForgeryToken]
     public Task<IActionResult> PublishDocument(string slug, Guid id, CancellationToken ct) =>
         ActAsync(slug, (_, userId) => workgroups.PublishDocumentAsync(id, userId, ct),
-            "Workgroups_DocumentPublished", ct, documentId: id);
+            "Workgroups_DocumentPublished", ct, documentId: id, owns: OwnsDocument(id));
 
     [HttpPost("{slug}/Documents/{id:guid}/OpenComments")]
     [ValidateAntiForgeryToken]
@@ -322,19 +325,19 @@ internal sealed class WorkgroupsController(
         string slug, Guid id, Instant opensAt, Instant closesAt, string categories, CancellationToken ct) =>
         ActAsync(slug, (_, userId) => workgroups.OpenCommentsAsync(id, userId,
                 new WorkgroupCommentWindow(opensAt, closesAt, SplitCategories(categories)), ct),
-            "Workgroups_CommentsOpened", ct, documentId: id);
+            "Workgroups_CommentsOpened", ct, documentId: id, owns: OwnsDocument(id));
 
     [HttpPost("{slug}/Documents/{id:guid}/CloseComments")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> CloseComments(string slug, Guid id, CancellationToken ct) =>
         ActAsync(slug, (_, userId) => workgroups.CloseCommentsAsync(id, userId, ct),
-            "Workgroups_CommentsClosed", ct, documentId: id);
+            "Workgroups_CommentsClosed", ct, documentId: id, owns: OwnsDocument(id));
 
     [HttpPost("{slug}/Documents/{id:guid}/Deliver")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> DeliverDocument(string slug, Guid id, CancellationToken ct) =>
         ActAsync(slug, (_, userId) => workgroups.DeliverDocumentAsync(id, userId, ct),
-            "Workgroups_DocumentDelivered", ct, documentId: id);
+            "Workgroups_DocumentDelivered", ct, documentId: id, owns: OwnsDocument(id));
 
     // ── Comments ──────────────────────────────────────────────────────────
 
@@ -343,7 +346,7 @@ internal sealed class WorkgroupsController(
     public Task<IActionResult> AddComment(
         string slug, Guid id, string category, string body, CancellationToken ct) =>
         ActAsync(slug, (_, userId) => workgroups.AddCommentAsync(id, userId, category, body, ct),
-            "Workgroups_CommentAdded", ct, documentId: id, memberOnly: false);
+            "Workgroups_CommentAdded", ct, documentId: id, memberOnly: false, owns: OwnsDocument(id));
 
     [HttpPost("{slug}/Documents/{id:guid}/Comments/RespondCategory")]
     [ValidateAntiForgeryToken]
@@ -356,7 +359,7 @@ internal sealed class WorkgroupsController(
         CancellationToken ct) =>
         ActAsync(slug,
             (_, userId) => workgroups.RespondToCategoryAsync(id, userId, category, disposition, response, ct),
-            "Workgroups_CommentsAnswered", ct, documentId: id);
+            "Workgroups_CommentsAnswered", ct, documentId: id, owns: OwnsDocument(id));
 
     [HttpPost("{slug}/Comments/{id:guid}/Respond")]
     [ValidateAntiForgeryToken]
@@ -368,14 +371,14 @@ internal sealed class WorkgroupsController(
         string? response,
         CancellationToken ct) =>
         ActAsync(slug, (_, userId) => workgroups.RespondToCommentAsync(id, userId, disposition, response, ct),
-            "Workgroups_CommentAnswered", ct, documentId: documentId);
+            "Workgroups_CommentAnswered", ct, documentId: documentId, owns: OwnsComment(documentId, id));
 
     [HttpPost("{slug}/Comments/{id:guid}/Hide")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> HideComment(
         string slug, Guid id, Guid documentId, string reason, CancellationToken ct) =>
         ActAsync(slug, (_, userId) => workgroups.HideCommentAsync(id, userId, reason, ct),
-            "Workgroups_CommentHidden", ct, documentId: documentId);
+            "Workgroups_CommentHidden", ct, documentId: documentId, owns: OwnsComment(documentId, id));
 
     // ── Plumbing ──────────────────────────────────────────────────────────
 
@@ -398,6 +401,13 @@ internal sealed class WorkgroupsController(
     /// </summary>
     private bool MayDoMemberWork(WorkgroupInfo workgroup, Guid userId) =>
         workgroup.AcceptsMemberWork() && (workgroup.IsMember(userId) || IsBoardOrAdmin());
+
+    /// <summary>The nested-resource route checks: the id has to belong to this group.</summary>
+    private static Func<WorkgroupInfo, bool> OwnsDocument(Guid documentId) =>
+        w => w.Documents.Any(d => d.Id == documentId);
+
+    private static Func<WorkgroupInfo, bool> OwnsComment(Guid documentId, Guid commentId) =>
+        w => w.Documents.Any(d => d.Id == documentId && d.Comments.Any(c => c.Id == commentId));
 
     private static IReadOnlyList<string> SplitCategories(string? categories) =>
         (categories ?? string.Empty)
@@ -440,6 +450,12 @@ internal sealed class WorkgroupsController(
     /// accepts member work, or the Board acting on any group. The four operations design §5
     /// opens to any signed-in human — Join, Leave, RequestStatus, AddComment — pass
     /// <paramref name="memberOnly"/> false and are gated by their own service rules.
+    ///
+    /// Routes that name a nested resource (a meeting, a log entry, a document, a comment)
+    /// pass <paramref name="owns"/>: the membership answer above is about the group the slug
+    /// resolved, so without it a member of one group could post their own slug with another
+    /// group's resource id and the service — which checks the resource's group, not the
+    /// actor — would carry out the mutation.
     /// </summary>
     private async Task<IActionResult> ActAsync(
         string slug,
@@ -447,12 +463,14 @@ internal sealed class WorkgroupsController(
         string successKey,
         CancellationToken ct,
         Guid? documentId = null,
-        bool memberOnly = true)
+        bool memberOnly = true,
+        Func<WorkgroupInfo, bool>? owns = null)
     {
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
         if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
         if (memberOnly && !MayDoMemberWork(workgroup, user.Id)) return Forbid();
+        if (owns is not null && !owns(workgroup)) return NotFound();
 
         try
         {

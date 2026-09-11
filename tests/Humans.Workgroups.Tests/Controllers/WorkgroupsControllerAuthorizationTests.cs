@@ -146,6 +146,66 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         (await OpenContext().Comments.ToListAsync(Ct)).Should().ContainSingle();
     }
 
+    [HumansFact]
+    public async Task Member_DeletingAnotherGroupsMeeting_IsNotFound()
+    {
+        var (controller, mine) = await BuildAsync(asMember: true);
+        var other = await SeedWorkgroupAsync(name: "Other Group");
+        var meeting = await AddMeetingAsync(other.Id, Clock.GetCurrentInstant());
+
+        var result = await controller.DeleteMeeting(mine.Slug, meeting.Id, Ct);
+
+        result.Should().BeOfType<NotFoundResult>();
+        (await OpenContext().Meetings.FindAsync([meeting.Id], Ct))!.DeletedAt.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task Member_PublishingAnotherGroupsDocument_IsNotFound()
+    {
+        var (controller, mine) = await BuildAsync(asMember: true);
+        var other = await SeedWorkgroupAsync(name: "Other Group");
+        var document = await AddDocumentAsync(other.Id);
+
+        var result = await controller.PublishDocument(mine.Slug, document.Id, Ct);
+
+        result.Should().BeOfType<NotFoundResult>();
+        (await OpenContext().Documents.FindAsync([document.Id], Ct))!
+            .Status.Should().Be(WorkgroupDocumentStatus.Draft);
+    }
+
+    [HumansFact]
+    public async Task Member_HidingAnotherGroupsComment_IsNotFound()
+    {
+        var (controller, mine) = await BuildAsync(asMember: true);
+        var other = await SeedWorkgroupAsync(name: "Other Group");
+        var document = await AddDocumentAsync(other.Id);
+        var comment = await AddCommentAsync(document.Id);
+
+        var result = await controller.HideComment(mine.Slug, comment.Id, document.Id, "spam", Ct);
+
+        result.Should().BeOfType<NotFoundResult>();
+        (await OpenContext().Comments.FindAsync([comment.Id], Ct))!.HiddenAt.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task Member_CommentingOnAnotherGroupsDocument_IsNotFound()
+    {
+        var (controller, mine) = await BuildAsync(asMember: true);
+        var other = await SeedWorkgroupAsync(name: "Other Group");
+        var now = Clock.GetCurrentInstant();
+        var document = await AddDocumentAsync(
+            other.Id,
+            status: WorkgroupDocumentStatus.Published,
+            categories: ["Scope"],
+            opensAt: now - Duration.FromHours(1),
+            closesAt: now + Duration.FromHours(1));
+
+        var result = await controller.AddComment(mine.Slug, document.Id, "Scope", "A remark", Ct);
+
+        result.Should().BeOfType<NotFoundResult>();
+        (await OpenContext().Comments.ToListAsync(Ct)).Should().BeEmpty();
+    }
+
     /// <summary>An Active group whose only member is its coordinator, plus a controller for
     /// either that coordinator (<paramref name="asMember"/>) or an outsider.</summary>
     private async Task<(WorkgroupsController Controller, Workgroup Workgroup)> BuildAsync(

@@ -49,6 +49,11 @@ load-bearing.
   pass `memberOnly: false` explicitly and are gated by their own service rules.
   `tests/Humans.Workgroups.Tests/Controllers/WorkgroupsControllerAuthorizationTests.cs`
   covers both directions.
+- A member of one group **cannot** act on another group's meeting, log entry, document or
+  comment by posting their own slug with the other group's resource id. Routes naming a
+  nested resource pass an `owns` predicate to `ActAsync` (and the three form POSTs check
+  `model.Id` against the group) — a mismatch is a 404 before the service is called, because
+  the membership answer only covers the group the slug resolved.
 - A member **cannot** register, refer, refuse, withdraw, close, reactivate, or record a
   disposition — those are `BoardOrAdmin` only, and the service throws
   `WorkgroupRuleException`/`UnauthorizedAccessException` if attempted.

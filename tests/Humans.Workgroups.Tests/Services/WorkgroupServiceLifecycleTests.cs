@@ -4,6 +4,7 @@ using Humans.Workgroups.Domain;
 using Humans.Workgroups.Services;
 using Humans.Workgroups.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
 
 namespace Humans.Workgroups.Tests.Services;
 
@@ -271,6 +272,25 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
 
         (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
             .Should().Be(WorkgroupErrorKeys.DoneReasonInvalid);
+    }
+
+    [HumansFact]
+    public async Task MarkDone_WithACommentWindowStillOpen_Throws()
+    {
+        var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Active);
+        var member = workgroup.Members.Single().UserId;
+        var now = Clock.GetCurrentInstant();
+        await AddDocumentAsync(
+            workgroup.Id,
+            status: WorkgroupDocumentStatus.Published,
+            categories: ["Scope"],
+            opensAt: now - Duration.FromHours(1),
+            closesAt: now + Duration.FromHours(1));
+
+        var act = () => NewService().MarkDoneAsync(workgroup.Id, member, WorkgroupDormantReason.Delivered, Ct);
+
+        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+            .Should().Be(WorkgroupErrorKeys.CommentsStillOpen);
     }
 
     // ── Dormant freezes every member mutation ────────────────────────────────

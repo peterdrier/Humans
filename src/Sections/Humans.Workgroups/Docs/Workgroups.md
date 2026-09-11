@@ -229,6 +229,8 @@ See `authorization.md` for the auth policy per route.
   category, and must end before the document is Delivered (`OpenCommentsAsync`).
 - Delivered freezes a document's body (`UpdateDocumentAsync` refuses further edits); a
   disposition may only be recorded on a Delivered document.
+- Ending the group is gated the same way: `MarkDoneAsync` refuses while any of the group's
+  documents still has a comment window open.
 - A comment window must end before delivery: `DeliverDocumentAsync` refuses while
   `CommentsCloseAt` is still in the future. Closing the window early is one click and keeps
   the comments, so the promised period is never cut short by a delivery.
