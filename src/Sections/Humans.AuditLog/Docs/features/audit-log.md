@@ -156,4 +156,4 @@ The global audit log (`/AuditLog`) and per-resource/per-user views are visible o
 - [F-08: Background Jobs](../../../../../docs/features/global/background-jobs.md) — Jobs are primary audit producers
 - [F-09: Administration](../../../../../docs/features/global/administration.md) — Admin actions produce audit entries
 - [F-06: Teams](../../../Humans.Teams/Docs/features/Teams-feature.md) — Team sync produces audit entries
-- [F-13: Drive Activity Monitoring](../../../Humans.GoogleIntegration/Docs/features/drive-activity-monitoring.md) — Anomalous permission detection
+- [F-13: Drive Activity Monitoring](../../../Humans.Monitor/Docs/features/drive-activity-monitoring.md) — Anomalous permission detection

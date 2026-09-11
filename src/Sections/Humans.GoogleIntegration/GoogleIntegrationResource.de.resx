@@ -37,8 +37,4 @@
   <data name="GoogleAccounts_ResetPassword" xml:space="preserve">
     <value>Passwort zurücksetzen</value>
   </data>
-  <data name="GoogleAccounts_ResetPasswordConfirm" xml:space="preserve">
-    <value>Passwort für {0} zurücksetzen? Ein neues temporäres Passwort wird erzeugt und auf dem Bildschirm angezeigt. Der Human muss es bei der nächsten Anmeldung ändern.</value>
-    <comment>{0} = email</comment>
-  </data>
 </root>

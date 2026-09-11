@@ -6,8 +6,7 @@ namespace Humans.GoogleIntegration.Data;
 
 /// <summary>
 /// Repository for the Google Integration section's <c>sync_service_settings</c>
-/// table. The only non-test file that may touch that DbSet after the Google
-/// Integration §15 migration lands.
+/// table. The only non-test file that may touch that DbSet.
 /// </summary>
 /// <remarks>
 /// Returned entities never include the cross-domain <c>UpdatedByUser</c>

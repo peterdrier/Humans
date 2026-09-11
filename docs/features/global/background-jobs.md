@@ -397,4 +397,4 @@ BackgroundJob.Enqueue<SystemTeamSyncJob>(
 - [Volunteer Status](../../../src/Sections/Humans.Onboarding/Docs/features/volunteer-status.md) - Compliance jobs
 - [Teams](../../../src/Sections/Humans.Teams/Docs/features/Teams-feature.md) - System team sync
 - [Google Integration](../../../src/Sections/Humans.GoogleIntegration/Docs/features/google-integration.md) - Resource provisioning job
-- [Drive Activity Monitoring](../../../src/Sections/Humans.GoogleIntegration/Docs/features/drive-activity-monitoring.md) - Anomalous permission detection
+- [Drive Activity Monitoring](../../../src/Sections/Humans.Monitor/Docs/features/drive-activity-monitoring.md) - Anomalous permission detection

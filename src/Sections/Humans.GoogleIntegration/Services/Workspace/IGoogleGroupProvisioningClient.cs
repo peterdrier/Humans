@@ -3,11 +3,8 @@ namespace Humans.GoogleIntegration.Services.Workspace;
 /// <summary>
 /// Narrow connector over the Google Cloud Identity Groups API and the Groups
 /// Settings API, scoped to the group-lifecycle and configuration operations
-/// performed by <c>GoogleWorkspaceSyncService</c>. Implementations live in
-/// <c>Humans.Infrastructure</c>; the Application-layer sync service (coming
-/// in §15 Part 2b, issue #575) depends only on this interface so that
-/// <c>Humans.Application</c> stays free of <c>Google.Apis.*</c> imports
-/// (design-rules §13).
+/// performed by <c>GoogleWorkspaceSyncService</c>. Shape-neutral so the service layer never
+/// names a <c>Google.Apis.*</c> type (design-rules §13).
 /// </summary>
 internal interface IGoogleGroupProvisioningClient
 {

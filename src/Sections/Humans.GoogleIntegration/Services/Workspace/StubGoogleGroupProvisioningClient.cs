@@ -2,10 +2,9 @@ namespace Humans.GoogleIntegration.Services.Workspace;
 
 /// <summary>
 /// Dev/test <see cref="IGoogleGroupProvisioningClient"/> that keeps an
-/// in-memory map of provisioned groups so the Application-layer sync service
-/// can exercise group lifecycle flows without a Google service account.
-/// Per the §15 connector pattern, the Application-layer service runs
-/// against this stub — there is no "stub service" variant.
+/// in-memory map of provisioned groups so the sync service can exercise group lifecycle
+/// flows without a Google service account. The real service runs against this stub —
+/// there is no separate stub service.
 /// </summary>
 internal sealed class StubGoogleGroupProvisioningClient(ILogger<StubGoogleGroupProvisioningClient> logger)
     : IGoogleGroupProvisioningClient

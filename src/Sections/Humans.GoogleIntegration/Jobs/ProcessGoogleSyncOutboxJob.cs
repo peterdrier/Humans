@@ -11,10 +11,9 @@ namespace Humans.GoogleIntegration.Jobs;
 /// <see cref="IGoogleSyncOutboxProcessor"/>; this job is the scheduler shim around it.
 /// </summary>
 /// <remarks>
-/// Moved out of <c>Humans.Infrastructure/Jobs</c> at the G5 jobs move
-/// (nobodies-collective/Humans#866). Public and under <c>Jobs/</c> because Shell names the
-/// concrete type at two sites (<c>AddScoped</c> and the recurring roll-call) and HUM0034 allows
-/// a section's public types there too.
+/// Public because the concrete type is named at two sites (<c>AddScoped</c> in
+/// <c>Section.cs</c>, the descriptor in <c>SectionJobs.cs</c>); HUM0034 allows a section's
+/// public job types.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class ProcessGoogleSyncOutboxJob(
