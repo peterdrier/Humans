@@ -316,8 +316,20 @@ internal sealed class AssemblyVoteService(
 
         await repository.UpdateAsync(vote, ct);
 
-        await notificationResolve.ResolveBySourceKeyAsync(
-            NotificationSource.AssemblyVoteOpened, vote.Id.ToString(), closedByUserId, ct);
+        // Best-effort, like every other notification dispatch in this section. The vote is
+        // already persisted Closed and Closed is terminal, so nothing re-enters this method:
+        // letting a notification failure escape here would leave the closure unaudited
+        // forever, and an unaudited close is a Board-visibility bug.
+        try
+        {
+            await notificationResolve.ResolveBySourceKeyAsync(
+                NotificationSource.AssemblyVoteOpened, vote.Id.ToString(), closedByUserId, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Failed to resolve the open-vote notification for {VoteId}", vote.Id);
+        }
 
         if (closedByUserId is { } actor)
         {
@@ -533,13 +545,9 @@ internal sealed class AssemblyVoteService(
             ? "Closed automatically at the announced time."
             : "Closed by an administrator.");
 
-        if (result.Indicative is { } indicative)
-        {
-            acta.AppendLine(CultureInfo.InvariantCulture,
-                $"Indicative (not counted): {indicative.BallotsCast} of {indicative.RosterSize} "
-                + $"— {indicative.Verdict}");
-        }
-
+        // No indicative line: the acta is the association's legal record of the binding vote,
+        // and the spec keeps indicative ballots out of it. The results page shows them in
+        // their own block, which is where an advisory number belongs.
         return acta.ToString();
     }
 
@@ -553,9 +561,9 @@ internal sealed class AssemblyVoteService(
         var votes = await SettleAllAsync(ct);
         var items = new List<AssemblyVoteListItem>(votes.Count);
 
-        // A draft is the Board's authoring surface: unannounced, still being written, and
-        // deletable. Members see a vote from the moment it opens, never before.
-        foreach (var vote in votes.Where(v => v.Status != AssemblyVoteStatus.Draft))
+        // Every state, drafts included: this is the page Create redirects to, and its
+        // Edit / Delete / Open controls are the only way a draft is ever progressed.
+        foreach (var vote in votes)
         {
             items.Add(new AssemblyVoteListItem(
                 vote.Id,

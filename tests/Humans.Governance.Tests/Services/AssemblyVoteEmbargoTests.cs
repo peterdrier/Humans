@@ -3,6 +3,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Governance.Domain;
 using Humans.Governance.Services.Dtos;
 using Humans.Governance.Tests.Infrastructure;
+using Humans.Notifications.Contracts;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 
@@ -225,5 +226,56 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
 
         result.Should().BeNull(
             "a cancelled vote's ballots are an abandoned record with no result — disclosure is for Closed only");
+    }
+
+    [HumansFact]
+    public async Task GetAllForAdminAsync_ListsDrafts()
+    {
+        await _fx.AddVoteAsync(AssemblyVoteStatus.Draft);
+
+        var list = await _fx.Service.GetAllForAdminAsync(Xunit.TestContext.Current.CancellationToken);
+
+        list.Should().ContainSingle(
+                "Create redirects here, and the Edit/Delete/Open controls are the only way "
+                + "a draft is ever progressed")
+            .Which.Status.Should().Be(AssemblyVoteStatus.Draft);
+    }
+
+    [HumansFact]
+    public async Task Acta_NeverPrintsTheIndicativeTally()
+    {
+        var vote = await _fx.AddVoteAsync(indicativeAudience: IndicativeAudience.AllMembers);
+        var official = await _fx.AddRosterRowAsync(vote.Id, Guid.NewGuid(), isOfficial: true);
+        var indicative = await _fx.AddRosterRowAsync(vote.Id, Guid.NewGuid(), isOfficial: false);
+        await _fx.AddBallotAsync(vote.Id, official.Id, AssemblyBallotChoice.Yes);
+        await _fx.AddBallotAsync(vote.Id, indicative.Id, AssemblyBallotChoice.No);
+        await _fx.Service.StopAsync(vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        var results = await _fx.Service.GetResultsAsync(
+            vote.Id, Guid.NewGuid(), viewerIsBoardOrAdmin: false,
+            Xunit.TestContext.Current.CancellationToken);
+
+        results!.Result.Indicative.Should().NotBeNull("the results page still shows it separately");
+        results.ActaText.Should().NotContain(
+            "Indicative",
+            "the acta is the association's legal record of the binding vote");
+    }
+
+    [HumansFact]
+    public async Task StopAsync_AuditsTheClosure_EvenWhenNotificationResolutionThrows()
+    {
+        var vote = await _fx.AddVoteAsync();
+        _fx.NotificationResolve
+            .ResolveBySourceKeyAsync(
+                Arg.Any<NotificationSource>(), Arg.Any<string>(), Arg.Any<Guid?>(),
+                Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new InvalidOperationException("notifications are down"));
+        var adminId = Guid.NewGuid();
+
+        await _fx.Service.StopAsync(vote.Id, adminId, Xunit.TestContext.Current.CancellationToken);
+
+        await _fx.Audit.Received(1).LogAsync(
+            AuditAction.AssemblyVoteStopped, Arg.Any<string>(), vote.Id, Arg.Any<string>(), adminId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 }
