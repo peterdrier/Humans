@@ -7,7 +7,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | Document | Description |
 |----------|-------------|
 | [Event Guide Management](../src/Sections/Humans.Events/Docs/features/Events-feature.md) | Submission, moderation, and publication of camp and individual events for the digital and print event guide |
-| [In-App Guide Browser](../src/Sections/Humans.Guide/Docs/features/27-guide-browser.md) | Read-only `/Events/Browse` view letting logged-in humans discover, filter, favourite, and schedule approved events without leaving Humans |
+| [In-App Guide Browser](../src/Sections/Humans.Events/Docs/features/27-guide-browser.md) | Read-only `/Events/Browse` view letting logged-in humans discover, filter, favourite, and schedule approved events without leaving Humans |
 | [Google Group Membership Sync](../src/Sections/Humans.GoogleIntegration/Docs/features/43-google-group-membership-sync.md) | Expected-state reconciliation of Google Group memberships from `IGoogleGroupMembershipSource` plugins, with daily and scoped retry passes |
 | [Volunteer Tracking](../src/Sections/Humans.Shifts/Docs/features/47-volunteer-tracking.md) | `/Shifts/Dashboard/VolunteerTracking` heatmap surfacing build-period gaps and declared-but-unbooked volunteers for the VC |
 | [Active User Metrics](features/global/active-user-metrics.md) | Distinct authenticated users tracked by trailing window (5m / 1h / 24h), surfaced as Prometheus gauges plus three tiles on `/Admin` |

@@ -34,9 +34,10 @@ public class GuideArchitectureTests
     public void ContentSourceStaysABaseAbstraction()
     {
         // IGuideContentSource carries the section's name and is not the section's: its
-        // signatures name only string, and three of its four consumers are elsewhere (the
-        // Agent section's three preload readers, Shell's AgentDocsHealthCheck, and Base's
-        // GitHubCommunityKbContentSource). Pinning the namespace here is what stops a later
+        // signatures name only string, and its consumers are elsewhere (the Agent section's
+        // AgentSectionDocReader, AgentFeatureSpecReader, CommunityFaqReader and
+        // AgentDocsHealthCheck, and Base's GitHubCommunityKbContentSource). Pinning the
+        // namespace here is what stops a later
         // pass "tidying" it into Humans.Guide and forcing Base to reference a section.
         typeof(IGuideContentSource).Assembly.GetName().Name
             .Should().Be("Humans.Base");

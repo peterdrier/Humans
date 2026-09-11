@@ -77,7 +77,7 @@ internal sealed class GuideController(IGuideContentService content, IGuideRoleRe
     {
         var entries = new List<GuideSidebarEntry>
         {
-            new(GuideFiles.GettingStarted, "Getting Started", "Start here")
+            new(GuideFiles.GettingStarted, DisplayName(GuideFiles.GettingStarted), "Start here")
         };
         foreach (var section in GuideFiles.Sections)
         {
@@ -87,7 +87,7 @@ internal sealed class GuideController(IGuideContentService content, IGuideRoleRe
         {
             entries.Add(new GuideSidebarEntry(faq, DisplayName(faq), "Common questions"));
         }
-        entries.Add(new GuideSidebarEntry(GuideFiles.Glossary, "Glossary", "Appendix"));
+        entries.Add(new GuideSidebarEntry(GuideFiles.Glossary, DisplayName(GuideFiles.Glossary), "Appendix"));
         return new GuideSidebarModel { Entries = entries, ActiveStem = activeStem };
     }
 
