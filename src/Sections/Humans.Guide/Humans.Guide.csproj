@@ -26,7 +26,7 @@
       Guide owns no tables, so there is no DbContext, no repository and no AddSectionDbContext
       call (G5-SECTION-TEMPLATE.md step 1 / the Data-and-DbContext steps are skipped wholesale).
       GuideSettings binds Guide:* and is read by GitHubGuideContentSource, which stays in Base
-      as a shared GitHub-markdown connector (three of its four consumers are not Guide's), so
+      as a shared GitHub-markdown connector (its consumers are mostly not Guide's), so
       the settings type stays in Humans.Base/Configuration with it.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />

@@ -116,6 +116,19 @@ public class GuideHtmlPostprocessorTests
     }
 
     [HumansFact]
+    public void Rewrite_InlineCodeWildcardPath_LeftAsIs()
+    {
+        // docs/guide/Admin.md ships `/api/backdoor/*`; linking it would 404 the same way a
+        // route template would.
+        const string html = "<code>/api/backdoor/*</code>";
+
+        var result = Processor.Rewrite(html, Settings);
+
+        result.Should().NotContain("<a href=");
+        result.Should().Contain("<code>/api/backdoor/*</code>");
+    }
+
+    [HumansFact]
     public void Rewrite_InlineCodeNonPath_LeftAsIs()
     {
         // Not a path (doesn't start with "/") — it's a config key or a literal value.

@@ -1,70 +1,59 @@
-using System.Text.RegularExpressions;
 using Humans.Base.Constants;
 
 namespace Humans.Guide.Services;
 
 /// <summary>
-/// Strips role-scoped blocks the current user can't see. Operates on GuideRenderer's
-/// HTML output (with &lt;div data-guide-role&gt; wrappers).
+/// Drops the role-scoped segments the current user can't see and returns the markdown that
+/// remains. Runs before rendering: the reader's Markdig pass only ever sees content they are
+/// allowed to read.
 /// </summary>
 internal static class GuideFilter
 {
-    // Non-greedy: safe because PR-reviewed guide markdown has no nested <div>s.
-    private static readonly Regex BlockPattern = new(
-        """<div\s+data-guide-role="(?<role>[^"]+)"\s+data-guide-roles="(?<roles>[^"]*)"\s*>(?<body>.*?)</div>""",
-        RegexOptions.Compiled | RegexOptions.Singleline,
-        TimeSpan.FromSeconds(1));
-
-    public static string Apply(string html, GuideRoleContext context)
+    public static string Apply(GuideDocument document, GuideRoleContext context)
     {
-        ArgumentNullException.ThrowIfNull(html);
+        ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(context);
 
-        // Two-pass: pass 1 detects boardadmin visibility; pass 2 promotes Coordinator if seen.
-        var fileSeesBoardAdmin = false;
-        var matches = BlockPattern.Matches(html).ToList();
+        // Two-pass: pass 1 detects boardadmin visibility anywhere in the file; pass 2 promotes
+        // Coordinator on the strength of it (the within-file superset rule).
+        var fileSeesBoardAdmin = document.Segments.Any(s =>
+            string.Equals(s.Role, GuideDocument.BoardAdmin, StringComparison.Ordinal) &&
+            IsVisible(s, context));
 
-        foreach (Match match in matches)
+        return string.Join('\n', document.Segments
+            .Where(s => IsSegmentVisible(s, context, fileSeesBoardAdmin))
+            .Select(s => s.Markdown));
+    }
+
+    private static bool IsSegmentVisible(
+        GuideSegment segment,
+        GuideRoleContext context,
+        bool fileSeesBoardAdmin)
+    {
+        // Unscoped text — the prologue and anything past the next plain ## heading — is
+        // everyone's.
+        if (segment.Role is null)
         {
-            var role = match.Groups["role"].Value;
-            var roles = match.Groups["roles"].Value;
-            if (role.Equals("boardadmin", StringComparison.Ordinal) &&
-                IsVisible(role, roles, context))
-            {
-                fileSeesBoardAdmin = true;
-                break;
-            }
+            return true;
         }
 
-        return BlockPattern.Replace(html, match =>
+        if (IsVisible(segment, context))
         {
-            var role = match.Groups["role"].Value;
-            var roles = match.Groups["roles"].Value;
+            return true;
+        }
 
-            var visible = IsVisible(role, roles, context);
-            if (!visible && role.Equals("coordinator", StringComparison.Ordinal) && fileSeesBoardAdmin)
-            {
-                visible = true;
-            }
-
-            return visible ? match.Value : string.Empty;
-        });
+        return fileSeesBoardAdmin &&
+            string.Equals(segment.Role, GuideDocument.Coordinator, StringComparison.Ordinal);
     }
 
-    private static bool IsVisible(string role, string rolesAttr, GuideRoleContext context)
-    {
-        var parenthetical = string.IsNullOrEmpty(rolesAttr)
-            ? []
-            : (IReadOnlyList<string>)rolesAttr.Split(',', StringSplitOptions.RemoveEmptyEntries);
-
-        return role switch
+    private static bool IsVisible(GuideSegment segment, GuideRoleContext context) =>
+        segment.Role switch
         {
-            "volunteer" => true,
-            "coordinator" => IsCoordinatorVisible(parenthetical, context),
-            "boardadmin" => IsBoardAdminVisible(parenthetical, context),
+            GuideDocument.Volunteer => true,
+            GuideDocument.Coordinator => IsCoordinatorVisible(segment.Privileges, context),
+            GuideDocument.BoardAdmin => IsBoardAdminVisible(segment.Privileges, context),
             _ => false
         };
-    }
 
     private static bool IsCoordinatorVisible(IReadOnlyList<string> paren, GuideRoleContext ctx)
     {

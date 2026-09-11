@@ -27,13 +27,15 @@ public class GuideControllerTests
 
         controller.Response.StatusCode.Should().Be(StatusCodes.Status404NotFound);
         result.Should().BeOfType<ViewResult>().Which.ViewName.Should().Be("NotFound");
-        await _content.DidNotReceive().GetRenderedAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _content.DidNotReceive().GetPageAsync(Arg.Any<string>(), Arg.Any<GuideRoleContext>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
     public async Task Document_ContentUnavailable_Returns503AndTheUnavailableView()
     {
-        _content.GetRenderedAsync("Teams", Arg.Any<CancellationToken>())
+        _roles.ResolveAsync(Arg.Any<System.Security.Claims.ClaimsPrincipal>(), Arg.Any<CancellationToken>())
+            .Returns(GuideRoleContext.Anonymous);
+        _content.GetPageAsync("Teams", Arg.Any<GuideRoleContext>(), Arg.Any<CancellationToken>())
             .Throws(new GuideContentUnavailableException("cache is cold and GitHub is unreachable"));
         var controller = CreateController();
 
@@ -46,7 +48,7 @@ public class GuideControllerTests
     [HumansFact]
     public async Task Document_StemInAnyCasing_ResolvesToTheCanonicalSpelling()
     {
-        _content.GetRenderedAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns("<p>x</p>");
+        _content.GetPageAsync(Arg.Any<string>(), Arg.Any<GuideRoleContext>(), Arg.Any<CancellationToken>()).Returns("<p>x</p>");
         _roles.ResolveAsync(Arg.Any<System.Security.Claims.ClaimsPrincipal>(), Arg.Any<CancellationToken>())
             .Returns(GuideRoleContext.Anonymous);
         var controller = CreateController();
@@ -54,6 +56,6 @@ public class GuideControllerTests
         await controller.Document("teAMs", Xunit.TestContext.Current.CancellationToken);
 
         // The canonical spelling is what reaches the cache key and the GitHub path.
-        await _content.Received().GetRenderedAsync("Teams", Arg.Any<CancellationToken>());
+        await _content.Received().GetPageAsync("Teams", Arg.Any<GuideRoleContext>(), Arg.Any<CancellationToken>());
     }
 }

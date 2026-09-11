@@ -21,10 +21,11 @@ internal sealed class GuideHtmlPostprocessor
         TimeSpan.FromMilliseconds(500));
 
     // Matches <code>/route/path</code> spans where the content is a concrete app path:
-    // starts with "/", contains no "{" (so route templates like /Profile/{id} are left
-    // alone), no whitespace, no "#" or "?". These spans get wrapped in an <a href>.
+    // starts with "/", contains no "{" and no "*" (so route templates like /Profile/{id}
+    // and wildcards like /api/backdoor/* are left alone — both would 404 if linked), no
+    // whitespace, no "#" or "?". These spans get wrapped in an <a href>.
     private static readonly Regex AppPathCodePattern = new(
-        """<code>(?<path>/[^\s<>{}#?]+)</code>""",
+        """<code>(?<path>/[^\s<>{}#?*]+)</code>""",
         RegexOptions.Compiled | RegexOptions.ExplicitCapture,
         TimeSpan.FromMilliseconds(500));
 

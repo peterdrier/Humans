@@ -25,24 +25,26 @@ public class GuideArchitectureTests
         var paramTypes = typeof(GuideRoleResolver).GetConstructors().Single()
             .GetParameters().Select(p => p.ParameterType).ToList();
 
+        // The absence half — NotContain(ITeamService) — was retired on Peter's call
+        // (peterdrier/Humans#1655, N1): analyzer HUM0032 (CrossSectionReadRule) enforces it at
+        // the call site, and an analyzer beats a test wherever one fits.
         paramTypes.Should().Contain(typeof(ITeamServiceRead));
-        paramTypes.Should().NotContain(typeof(ITeamService),
-            because: "cross-section team reads must use the read interface (section-read-write-split / HUM0032)");
     }
 
     [HumansFact]
     public void ContentSourceStaysABaseAbstraction()
     {
         // IGuideContentSource carries the section's name and is not the section's: its
-        // signatures name only string, and three of its four consumers are elsewhere (the
-        // Agent section's three preload readers, Shell's AgentDocsHealthCheck, and Base's
-        // GitHubCommunityKbContentSource). Pinning the namespace here is what stops a later
+        // signatures name only string, and its consumers are elsewhere (the Agent section's
+        // AgentSectionDocReader, AgentFeatureSpecReader, CommunityFaqReader and
+        // AgentDocsHealthCheck, and Base's GitHubCommunityKbContentSource). Pinning the
+        // namespace here is what stops a later
         // pass "tidying" it into Humans.Guide and forcing Base to reference a section.
+        // The absence assertion that sat here — the Guide assembly contains no type named
+        // IGuideContentSource — was retired on Peter's call (peterdrier/Humans#1655, N2). The
+        // positive assertion carries it: the type can only live in one assembly.
         typeof(IGuideContentSource).Assembly.GetName().Name
             .Should().Be("Humans.Base");
-
-        typeof(Section).Assembly.GetTypes()
-            .Should().NotContain(t => t.Name == "IGuideContentSource");
     }
 
     [HumansFact]
@@ -84,9 +86,9 @@ public class GuideArchitectureTests
     [HumansFact]
     public void EveryRoleHeadingParentheticalResolvesToAPrivilege()
     {
-        // An unmapped parenthetical is silent: the block renders with data-guide-roles=""
-        // and reaches nobody it was written for. "(Camp Coordinator)" sat like that on
-        // Camps.md (nobodies-collective/Humans#1035) until someone read the map.
+        // An unmapped parenthetical is silent: the segment carries no privilege and reaches
+        // nobody it was written for. "(Camp Coordinator)" sat like that on Camps.md
+        // (nobodies-collective/Humans#1035) until someone read the map.
         var unmapped = new List<string>();
 
         foreach (var file in Directory.GetFiles(Path.Combine(LocateRepoRoot(), "docs", "guide"), "*.md"))
@@ -94,7 +96,7 @@ public class GuideArchitectureTests
             foreach (var raw in File.ReadLines(file))
             {
                 var line = raw.TrimEnd('\r');
-                var match = GuideMarkdownPreprocessor.RoleHeading.Match(line);
+                var match = GuideSegmenter.RoleHeading.Match(line);
                 if (!match.Success || !match.Groups["paren"].Success)
                 {
                     continue;

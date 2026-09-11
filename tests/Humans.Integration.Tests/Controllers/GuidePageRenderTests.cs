@@ -35,11 +35,12 @@ namespace Humans.Integration.Tests.Controllers;
 /// </description></item>
 /// </list>
 /// <para>
-/// The fixture writes rendered HTML straight into the shared <c>IMemoryCache</c> under the
-/// section's <c>guide:&lt;stem&gt;</c> key. <c>GuideContentService.GetRenderedAsync</c> returns
+/// The fixture writes a segmented document straight into the shared <c>IMemoryCache</c> under
+/// the section's <c>guide:&lt;stem&gt;</c> key. <c>GuideContentService.GetPageAsync</c> returns
 /// a cache hit without touching GitHub, so the pages under test never make a network call —
-/// otherwise every run would fetch 28 files from <c>nobodies-collective/Humans@main</c>
-/// anonymously and 503 the moment the rate limit or the network said no.
+/// otherwise every run would fetch every stem in <c>GuideFiles.All</c> from
+/// <c>nobodies-collective/Humans@main</c> anonymously and 503 the moment the rate limit or the
+/// network said no.
 /// </para>
 /// </remarks>
 public class GuidePageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
@@ -64,14 +65,15 @@ public class GuidePageRenderTests(HumansTestDatabase database) : IntegrationTest
 
     private void SeedRenderedPages(params string[] stems)
     {
-        var renderer = Factory.Services.GetRequiredService<IGuideRenderer>();
         var cache = Factory.Services.GetRequiredService<IMemoryCache>();
 
         foreach (var stem in stems)
         {
             // Mirrors GuideContentService.CacheKey — a private const in the section, which the
-            // test project can see the type of but not the value.
-            cache.Set($"guide:{stem}", renderer.Render(Markdown, stem));
+            // test project can see the type of but not the value. The cached unit is the
+            // segmented document, not rendered HTML: the role filter runs before Markdig, so
+            // rendering happens per request and the cache holds what is filtered.
+            cache.Set($"guide:{stem}", GuideSegmenter.Segment(Markdown));
         }
     }
 
