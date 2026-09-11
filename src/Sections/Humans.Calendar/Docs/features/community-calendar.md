@@ -109,8 +109,11 @@ CalendarEvent
 ├── Description: string? (4000)
 ├── Location: string? (500)
 ├── LocationUrl: string? (2000)
-├── StartUtc: Instant (required)
+├── StartUtc: Instant? (required for timed events)
 ├── EndUtc: Instant? (required iff IsAllDay = false)
+├── StartDate: LocalDate? (all-day inclusive start)
+├── EndDateExclusive: LocalDate? (all-day exclusive end)
+├── RecurrenceUntilDate: LocalDate? (all-day recurrence bound)
 ├── IsAllDay: bool (default false)
 ├── RecurrenceRule: string? (RFC 5545 RRULE, e.g., "FREQ=WEEKLY;BYDAY=MO")
 ├── RecurrenceTimezone: string? (IANA timezone, e.g., "Europe/Madrid")
@@ -126,7 +129,10 @@ CalendarEvent
 CalendarEventException
 ├── Id: Guid
 ├── EventId: Guid (FK → CalendarEvent, cascade-delete)
-├── OriginalOccurrenceStartUtc: Instant (the occurrence being modified)
+├── OriginalOccurrenceStartUtc: Instant? (timed occurrence identity)
+├── OriginalOccurrenceDate: LocalDate? (all-day occurrence identity)
+├── OverrideStartDate: LocalDate?
+├── OverrideEndDateExclusive: LocalDate?
 ├── IsCancelled: bool (true = skip this occurrence in calendar view)
 ├── OverrideTitle: string? (200; null = use parent event title)
 ├── OverrideDescription: string? (4000)
@@ -140,7 +146,7 @@ CalendarEventException
 └── Navigation: Event
 ```
 
-Unique on `(EventId, OriginalOccurrenceStartUtc)`. `Validate()` requires the row to either cancel the occurrence or override at least one field. A query filter mirrors the parent event's soft-delete so exceptions of deleted events are never returned.
+Timed identities are unique on `(EventId, OriginalOccurrenceStartUtc)`; date exceptions are upserted by `(EventId, OriginalOccurrenceDate)`. `Validate()` requires the row to either cancel the occurrence or override at least one field. A query filter mirrors the parent event's soft-delete so exceptions of deleted events are never returned.
 
 ## Authorization
 
@@ -154,7 +160,7 @@ No resource-based authorization handler, no `CalendarEditor` policy. If upfront 
 
 ## Timezones & DST
 
-Every recurring event is tied to an IANA timezone (e.g., `"Europe/Madrid"`, `"Europe/Berlin"`). When expanding occurrences (e.g., a weekly 19:00 meeting):
+Every timed recurring event is tied to an IANA timezone (e.g., `"Europe/Madrid"`, `"Europe/Berlin"`). When expanding occurrences (e.g., a weekly 19:00 meeting):
 
 1. Recurrence rule is expanded in the event's configured timezone using `Ical.Net`
 2. Each occurrence start/end is calculated in that timezone, respecting DST transitions
@@ -162,6 +168,8 @@ Every recurring event is tied to an IANA timezone (e.g., `"Europe/Madrid"`, `"Eu
 4. When rendering to the user's browser, occurrences are converted to their local timezone (via JavaScript or `NodaTime` if server-rendered)
 
 This ensures a recurring "19:00 weekly on Monday" stays at 19:00 local time even when daylight saving changes occur.
+
+All-day events carry only `LocalDate` ranges, including their recurrence bounds and override identities. Expansion preserves calendar-day duration across DST; views never convert these dates into viewer timezones. The occurrence editor accepts dates only, and the service rejects times. Existing instant-based all-day rows are projected to dates using their original zone (Madrid for one-off events); ordinary saves write dates. A series with saved exceptions retains its timed/all-day type.
 
 ## Related Features
 

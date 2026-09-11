@@ -32,11 +32,14 @@ A community-calendar event belonging to a team. May be a single event or a recur
 | Location | string (500) | Optional |
 | LocationUrl | string (2000) | Optional |
 | OwningTeamId | Guid | Bare cross-section Guid column — no FK constraint, no nav (all cross-section FK constraints were cut in nobodies-collective/Humans#992; `memory/architecture/no-cross-section-ef-joins.md`). Team display names are stitched in memory via `ITeamServiceRead.GetTeamsAsync` (§6b). |
-| StartUtc | Instant | First (or only) occurrence start in UTC |
-| EndUtc | Instant? | Required iff `IsAllDay = false`. For all-day events, set to half-open exclusive midnight (`EndDate + 1 day` 00:00 in `RecurrenceTimezone`). May be null on legacy single-day all-day rows |
+| StartUtc | Instant? | Required for timed events; null on date-based all-day writes |
+| EndUtc | Instant? | Required for timed events; null on date-based all-day writes |
+| StartDate | LocalDate? | First all-day date, inclusive |
+| EndDateExclusive | LocalDate? | All-day end date, exclusive |
+| RecurrenceUntilDate | LocalDate? | All-day recurrence upper date bound; null for open-ended or legacy rows |
 | IsAllDay | bool | All-day event |
 | RecurrenceRule | string (500)? | RFC 5545 RRULE (no `RRULE:` prefix). Null = single event |
-| RecurrenceTimezone | string (100)? | IANA TZ. Required iff `RecurrenceRule` is set |
+| RecurrenceTimezone | string (100)? | IANA TZ for timed recurrences; all-day recurrence is date-only |
 | RecurrenceUntilUtc | Instant? | Denormalised UNTIL — the "rule reaches window" prefilter reads it |
 | CreatedByUserId | Guid | Bare cross-section Guid column — no FK constraint, no nav |
 | CreatedAt | Instant | |
@@ -57,7 +60,10 @@ Per-occurrence override or cancellation for a recurring `CalendarEvent`. Cascade
 |----------|------|-------|
 | Id | Guid | PK |
 | EventId | Guid | FK → CalendarEvent (`OnDelete: Cascade`) |
-| OriginalOccurrenceStartUtc | Instant | The unmodified start of the occurrence this exception targets |
+| OriginalOccurrenceStartUtc | Instant? | Unmodified timed occurrence start |
+| OriginalOccurrenceDate | LocalDate? | Unmodified all-day occurrence date |
+| OverrideStartDate | LocalDate? | All-day replacement start |
+| OverrideEndDateExclusive | LocalDate? | All-day replacement exclusive end |
 | IsCancelled | bool | If true, occurrence is dropped during expansion |
 | OverrideStartUtc | Instant? | |
 | OverrideEndUtc | Instant? | |
@@ -69,7 +75,7 @@ Per-occurrence override or cancellation for a recurring `CalendarEvent`. Cascade
 | CreatedAt | Instant | |
 | UpdatedAt | Instant | |
 
-**Indexes:** unique `(EventId, OriginalOccurrenceStartUtc)` — one exception per (event, occurrence).
+**Indexes:** unique `(EventId, OriginalOccurrenceStartUtc)` for timed identities. Date identities are upserted by `(EventId, OriginalOccurrenceDate)`.
 
 ## Routing
 
@@ -105,16 +111,18 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 - Only authenticated humans may create, edit, or delete events, or manage exceptions (enforced by `[Authorize]` on `CalendarController`).
 - Every mutating action (create / update / delete / cancel-occurrence / override-occurrence) writes an `AuditLogEntry` with the actor's user ID.
 - Title is required (non-null, non-empty).
-- `StartUtc` is required.
-- `EndUtc` is required for timed events (`IsAllDay = false`). For all-day events created or edited via the calendar form, `EndUtc` is set to half-open exclusive midnight (`StartDate.PlusDays(InclusiveDays).AtMidnight()` in `RecurrenceTimezone`); the display layer recovers the inclusive end date by stepping a nanosecond back off that midnight. Both halves are `CalendarService.AllDayWindow` / `CalendarService.AllDayInclusiveEndDate` — the controller only translates form input and errors. Legacy all-day rows may still have null `EndUtc` (treated as single-day).
-- `StartUtc <= EndUtc` when both are non-null.
-- `RecurrenceRule` and `RecurrenceTimezone` are set together, or neither is set (all-or-nothing invariant).
-- `RecurrenceTimezone` defaults to `"Europe/Madrid"` if not specified on a recurring event.
-- `RecurrenceUntilUtc` is the last instant the recurrence can possibly produce an occurrence (RRULE `UNTIL` if present, else the end of the `COUNT`-th occurrence computed via Ical.Net, else null for open-ended rules); it is what `CalendarOccurrenceExpander.FilterForWindow` prefilters the cached snapshot on.
+- Timed events require `StartUtc <= EndUtc` and have no date fields. All-day writes require `StartDate < EndDateExclusive` and have no start/end instants.
+- Forms display inclusive end dates; `CalendarService.AllDayWindow` / `AllDayInclusiveEndDate` convert between inclusive and exclusive `LocalDate` values without a timezone.
+- Legacy all-day rows are projected to dates in the service using their original recurrence zone, or Madrid for one-off events. A null legacy end means one day. Legacy timed overrides of all-day events become covered dates. Saving the series converts its exceptions to date fields before clearing the old timezone; no bulk backfill is required.
+- Timed recurrence requires an RRULE and IANA timezone together. All-day recurrence uses DATE DTSTART/DTEND and date-only UNTIL; sub-day recurrence rules are rejected on writes.
+- `RecurrenceUntilUtc` bounds timed series; `RecurrenceUntilDate` bounds all-day series. Snapshot prefiltering uses the corresponding type and retains rows with exceptions, which can move outside either series boundary.
+- All-day duration is a calendar-day count across every recurrence, including DST changes. A start-only override retains that count.
+- All-day occurrence URLs carry an ISO date; timed occurrence URLs carry an ISO instant. The editor renders date-only inputs for all-day series, and service validation rejects timed overrides for them.
+- A series with exceptions cannot switch between all-day and timed: its saved occurrence identities must remain meaningful.
 - Soft-delete via `DeletedAt` — a global EF Core query filter hides deleted events from all queries. `CalendarEventException` carries a matching filter (`ex => ex.Event.DeletedAt == null`) so exception rows attached to a soft-deleted event are also hidden; repository writes that need to observe orphaned-by-soft-delete exceptions (e.g. `UpsertExceptionAsync`'s existence lookup, to avoid duplicate-insert against the unique index when the parent is soft-deleted between pre-check and upsert) call `IgnoreQueryFilters()` explicitly.
 - `CalendarEventException` rows cascade-delete with the parent event.
-- Unique index on `(EventId, OriginalOccurrenceStartUtc)` — prevents duplicate exceptions for the same occurrence.
-- Recurrence is expanded in-memory per-request against the event's `RecurrenceTimezone` using `Ical.Net` library (RFC 5545 compliant).
+- Timed exceptions retain the unique `(EventId, OriginalOccurrenceStartUtc)` index; all-day mutations upsert by event and original date.
+- Recurrence expands in-memory through Ical.Net: local times for timed events, floating dates for all-day events.
 
 ## Negative Access Rules
 

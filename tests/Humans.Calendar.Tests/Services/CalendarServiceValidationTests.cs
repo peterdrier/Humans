@@ -323,6 +323,10 @@ public class CalendarServiceValidationTests
     public async Task CancelOccurrenceAsync_AuditThrowsAfterWrite_DoesNotThrow()
     {
         var repo = Substitute.For<ICalendarRepository>();
+        repo.GetEventByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new Humans.Calendar.Domain.CalendarEvent
+        {
+            Id = Guid.NewGuid(), StartUtc = Instant.FromUtc(2026, 6, 1, 10, 0), RecurrenceRule = "FREQ=DAILY", RecurrenceTimezone = "UTC",
+        });
         var audit = Substitute.For<IAuditLogService>();
         audit.LogAsync(
                 Arg.Any<AuditAction>(),

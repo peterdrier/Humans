@@ -116,4 +116,16 @@
   <data name="Calendar_ViewGrid" xml:space="preserve"><value>CuadrÃ­cula</value></data>
   <data name="Calendar_ViewList" xml:space="preserve"><value>Lista</value></data>
   <data name="Calendar_Yes" xml:space="preserve"><value>SÃ­</value></data>
+  <data name="Calendar_InvalidOccurrenceOverride" xml:space="preserve">
+    <value>Introduce un intervalo de fechas u horas válido para esta ocurrencia.</value>
+  </data>
+  <data name="Calendar_InvalidAllDayEvent" xml:space="preserve">
+    <value>Introduce un título y un intervalo de fechas válido sin horas.</value>
+  </data>
+  <data name="Calendar_InvalidAllDayRecurrence" xml:space="preserve">
+    <value>Usa una regla de repetición válida sin horas, con UNTIL en formato YYYYMMDD.</value>
+  </data>
+  <data name="Calendar_CannotChangeEventType" xml:space="preserve">
+    <value>Esta serie tiene cambios en ocurrencias. Conserva su tipo de día completo o con horas, o crea una serie nueva.</value>
+  </data>
 </root>

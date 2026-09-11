@@ -29,7 +29,7 @@ internal sealed class CalendarEventFormViewModel
 
     // Date-only inputs used when IsAllDay is true. EndDateLocal is inclusive (the
     // event covers every day from StartDateLocal through EndDateLocal). The controller
-    // normalizes to half-open [Start 00:00, EndDate+1 00:00) when persisting.
+    // passes dates to the service as [StartDate, EndDate+1), without a time.
     public DateTime? StartDateLocal { get; set; }
 
     public DateTime? EndDateLocal { get; set; }

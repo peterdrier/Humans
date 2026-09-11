@@ -6,10 +6,11 @@ namespace Humans.Calendar.Models;
 internal static class CalendarOccurrenceViewExtensions
 {
     public static LocalDate StartLocalDate(this CalendarOccurrence occ, DateTimeZone zone) =>
-        occ.OccurrenceStartUtc.InZone(zone).Date;
+        occ.StartDate ?? occ.OccurrenceStartUtc!.Value.InZone(zone).Date;
 
     public static LocalDate EndLocalDate(this CalendarOccurrence occ, DateTimeZone zone)
     {
+        if (occ.EndDateExclusive is { } endDateExclusive) return endDateExclusive.PlusDays(-1);
         if (occ.OccurrenceEndUtc is not { } endUtc) return occ.StartLocalDate(zone);
         if (endUtc <= occ.OccurrenceStartUtc) return occ.StartLocalDate(zone);
 

@@ -116,4 +116,16 @@
   <data name="Calendar_ViewGrid" xml:space="preserve"><value>Raster</value></data>
   <data name="Calendar_ViewList" xml:space="preserve"><value>Liste</value></data>
   <data name="Calendar_Yes" xml:space="preserve"><value>Ja</value></data>
+  <data name="Calendar_InvalidOccurrenceOverride" xml:space="preserve">
+    <value>Gib einen gültigen Datums- oder Zeitbereich für diesen Termin ein.</value>
+  </data>
+  <data name="Calendar_InvalidAllDayEvent" xml:space="preserve">
+    <value>Gib einen Titel und einen gültigen Datumsbereich ohne Uhrzeiten ein.</value>
+  </data>
+  <data name="Calendar_InvalidAllDayRecurrence" xml:space="preserve">
+    <value>Verwende eine gültige Wiederholungsregel ohne Uhrzeiten mit UNTIL im Format YYYYMMDD.</value>
+  </data>
+  <data name="Calendar_CannotChangeEventType" xml:space="preserve">
+    <value>Diese Serie enthält geänderte Termine. Behalte den ganztägigen oder zeitgebundenen Typ bei oder erstelle eine neue Serie.</value>
+  </data>
 </root>

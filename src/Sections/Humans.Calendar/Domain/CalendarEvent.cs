@@ -14,8 +14,11 @@ internal sealed class CalendarEvent
     public string? LocationUrl { get; set; }
     public Guid OwningTeamId { get; set; }
 
-    public Instant StartUtc { get; set; }
+    public Instant? StartUtc { get; set; }
     public Instant? EndUtc { get; set; }
+    public LocalDate? StartDate { get; set; }
+    public LocalDate? EndDateExclusive { get; set; }
+    public LocalDate? RecurrenceUntilDate { get; set; }
     public bool IsAllDay { get; set; }
     public string? RecurrenceRule { get; set; }
     public string? RecurrenceTimezone { get; set; }
@@ -30,6 +33,16 @@ internal sealed class CalendarEvent
     {
         var errors = new List<string>();
 
+        if (IsAllDay)
+        {
+            if (StartDate is null || EndDateExclusive is null || EndDateExclusive <= StartDate)
+                errors.Add("An all-day event requires a non-empty date range.");
+            if (StartUtc is not null || EndUtc is not null)
+                errors.Add("An all-day event cannot have a time.");
+        }
+        else if (StartUtc is null || StartDate is not null || EndDateExclusive is not null)
+            errors.Add("A timed event requires StartUtc and cannot have all-day dates.");
+
         if (!IsAllDay && EndUtc is null)
             errors.Add("EndUtc is required for timed events.");
 
@@ -38,7 +51,7 @@ internal sealed class CalendarEvent
 
         var hasRule = !string.IsNullOrWhiteSpace(RecurrenceRule);
         var hasZone = !string.IsNullOrWhiteSpace(RecurrenceTimezone);
-        if (hasRule != hasZone)
+        if (!IsAllDay && hasRule != hasZone)
             errors.Add("RecurrenceRule and RecurrenceTimezone must be set together (both or neither).");
 
         if (string.IsNullOrWhiteSpace(Title))
