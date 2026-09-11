@@ -192,8 +192,17 @@ internal sealed class GovernanceVotesAdminController(
     {
         if (GetCurrentUserId() is not { } adminId) return Challenge();
 
-        var result = await voteService.PeekAsync(voteId, adminId, ct);
+        var (result, recorded) = await voteService.PeekAsync(voteId, adminId, ct);
         if (result is null) return NotFound();
+
+        // The vote closed before the click landed (or the admin typed the URL). Nothing was
+        // logged, so the ordinary results page is both the honest destination and the one
+        // that already shows this tally.
+        if (!recorded)
+        {
+            return RedirectToAction(
+                "Results", "GovernanceVotes", new { voteId });
+        }
 
         // The counting result is keyed by option key; the member-facing read supplies the
         // labels so the rounds table is readable out loud at the assembly. It carries no
@@ -216,7 +225,15 @@ internal sealed class GovernanceVotesAdminController(
         var ballots = await voteService.GetBallotsForBoardAsync(voteId, actorId, ct);
         if (ballots is null) return NotFound();
 
-        return View("~/Views/Governance/Votes/Admin/Ballots.cshtml", new AssemblyVoteBallotsViewModel { VoteId = voteId, Ballots = ballots });
+        // Ballots store option keys; the member-facing read supplies the labels.
+        var vote = await voteService.GetVoteForMemberAsync(voteId, actorId, ct);
+
+        return View("~/Views/Governance/Votes/Admin/Ballots.cshtml", new AssemblyVoteBallotsViewModel
+        {
+            VoteId = voteId,
+            Ballots = ballots,
+            Options = vote?.Options ?? []
+        });
     }
 
     /// <summary>The draft forms' second submit button: save, then fill the empty cultures.</summary>

@@ -79,10 +79,12 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
         await _fx.AddBallotAsync(vote.Id, r2.Id, AssemblyBallotChoice.No);
         var adminId = Guid.NewGuid();
 
-        var tally = await _fx.Service.PeekAsync(vote.Id, adminId, Xunit.TestContext.Current.CancellationToken);
+        var (tally, recorded) = await _fx.Service.PeekAsync(
+            vote.Id, adminId, Xunit.TestContext.Current.CancellationToken);
 
         tally.Should().NotBeNull();
         tally!.Official.YesNo.Should().Be(new YesNoTally(1, 1, 0));
+        recorded.Should().BeTrue();
 
         var peeks = await _fx.Db.AssemblyVotePeeks
             .AsNoTracking()
@@ -101,10 +103,12 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
         var vote = await _fx.AddVoteAsync();
         await _fx.Service.StopAsync(vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
-        var tally = await _fx.Service.PeekAsync(
+        var (tally, recorded) = await _fx.Service.PeekAsync(
             vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         tally.Should().NotBeNull("a peek on a closed vote is just the results page");
+        recorded.Should().BeFalse(
+            "nothing was logged, so the caller must not render a page claiming a peek was recorded");
         (await _fx.Db.AssemblyVotePeeks
             .CountAsync(p => p.VoteId == vote.Id, Xunit.TestContext.Current.CancellationToken))
             .Should().Be(0);

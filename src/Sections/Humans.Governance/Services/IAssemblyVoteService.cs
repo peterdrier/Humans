@@ -148,9 +148,15 @@ internal interface IAssemblyVoteService : IApplicationService
     /// <summary>
     /// The live tally of an open vote, for an Admin who has to make a call at the assembly.
     /// Writes the audit entry and the peek row in the same unit of work as the read, and the
-    /// peek is listed on the results page afterwards. Returns null when there is no such vote.
+    /// peek is listed on the results page afterwards. Returns a null result when there is no
+    /// such vote.
+    /// <para>
+    /// <c>Recorded</c> is false when the vote was already closed — a late look is the ordinary
+    /// results page and logs nothing — so the caller can send the reader there rather than
+    /// render a peek page that claims a peek was recorded.
+    /// </para>
     /// </summary>
-    Task<AssemblyVoteResult?> PeekAsync(
+    Task<(AssemblyVoteResult? Result, bool Recorded)> PeekAsync(
         Guid voteId, Guid adminUserId, CancellationToken ct = default);
 
     /// <summary>

@@ -53,7 +53,7 @@
                             <td>
                                 @if (ballot.Choice == AssemblyBallotChoice.Ranked && ballot.Ranking is { Count: > 0 } ranking)
                                 {
-                                    @string.Join(" > ", ranking)
+                                    @string.Join(" > ", ranking.Select(Model.LabelFor))
                                 }
                                 else
                                 {

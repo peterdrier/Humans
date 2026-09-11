@@ -400,10 +400,19 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
             }
         }
 
-        // The merged account may also have stopped or peeked at votes. Those columns are
-        // this section's own and point at an account Users is about to tombstone, so they
-        // move too — otherwise the acta loses the closer's name and the published peek list
-        // credits "Merged User" instead of the surviving human.
+        // The merged account may also have drafted, opened, stopped or peeked at votes.
+        // Those columns are this section's own and point at an account Users is about to
+        // tombstone, so they move too — otherwise the acta loses the closer's name, the
+        // published peek list credits "Merged User" instead of the surviving human, and the
+        // GDPR export stops finding the votes this person drafted.
+        var authored = await ctx.AssemblyVotes
+            .Where(v => v.CreatedByUserId == sourceUserId)
+            .ToListAsync(ct);
+        foreach (var vote in authored)
+        {
+            vote.CreatedByUserId = targetUserId;
+        }
+
         var closed = await ctx.AssemblyVotes
             .Where(v => v.ClosedByUserId == sourceUserId)
             .ToListAsync(ct);

@@ -857,6 +857,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         var tracked = await _fx.Db.AssemblyVotes.SingleAsync(
             v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        tracked.CreatedByUserId = source;
         tracked.OpenedByUserId = source;
         tracked.ClosedByUserId = source;
         _fx.Db.AssemblyVotePeeks.Add(new AssemblyVotePeek
@@ -878,6 +879,8 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         stored.ClosedByUserId.Should().Be(target,
             "the acta names the closer, and the source account is about to become a tombstone");
         stored.OpenedByUserId.Should().Be(target);
+        stored.CreatedByUserId.Should().Be(target,
+            "otherwise the author's GDPR export loses every vote they drafted");
 
         var peek = await _fx.Db.AssemblyVotePeeks.AsNoTracking()
             .SingleAsync(p => p.VoteId == vote.Id, Xunit.TestContext.Current.CancellationToken);

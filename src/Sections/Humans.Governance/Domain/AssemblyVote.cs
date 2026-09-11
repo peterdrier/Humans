@@ -82,8 +82,12 @@ internal sealed class AssemblyVote
     /// </summary>
     public string? ResultJson { get; set; }
 
-    /// <summary>The Board member or Admin who drafted the vote. Bare reference — no nav.</summary>
-    public Guid CreatedByUserId { get; init; }
+    /// <summary>
+    /// The Board member or Admin who drafted the vote. Bare reference — no nav. Settable for
+    /// the same single reason as the other actor columns: an account merge repoints it at the
+    /// surviving account, since it is the same human. Never reassigned otherwise.
+    /// </summary>
+    public Guid CreatedByUserId { get; set; }
 
     /// <summary>When the draft was created.</summary>
     public Instant CreatedAt { get; init; }

@@ -1050,19 +1050,23 @@ internal sealed class AssemblyVoteService(
         return AssemblyVoteActionResult.Ok;
     }
 
-    public async Task<AssemblyVoteResult?> PeekAsync(
+    public async Task<(AssemblyVoteResult? Result, bool Recorded)> PeekAsync(
         Guid voteId, Guid adminUserId, CancellationToken ct = default)
     {
         var vote = await SettleAsync(voteId, ct);
-        if (vote is null) return null;
+        if (vote is null) return (null, false);
 
         // A peek at a closed vote is just the results page; the peek log exists to record
-        // looking *early*, so only an open vote writes one.
+        // looking *early*, so only an open vote writes one. Recorded = false says so, because
+        // a page that claims "this peek has been recorded" when nothing was is a worse lie
+        // than no page at all. Note the vote can lapse inside SettleAsync, so the caller
+        // cannot decide this for itself from an earlier read.
         if (vote.Status != AssemblyVoteStatus.Open)
         {
-            return vote.ResultJson is null
+            return (vote.ResultJson is null
                 ? null
-                : JsonSerializer.Deserialize<AssemblyVoteResult>(vote.ResultJson, ResultJsonOptions);
+                : JsonSerializer.Deserialize<AssemblyVoteResult>(vote.ResultJson, ResultJsonOptions),
+                false);
         }
 
         var now = clock.GetCurrentInstant();
@@ -1082,7 +1086,7 @@ internal sealed class AssemblyVoteService(
             AuditAction.AssemblyVotePeeked, AuditEntityTypes.AssemblyVote, vote.Id,
             $"Peeked at the live tally of open assembly vote {vote.Id}.", adminUserId);
 
-        return await ComputeResultAsync(vote, ct);
+        return (await ComputeResultAsync(vote, ct), true);
     }
 
     public async Task<IReadOnlyList<AssemblyBallotDisclosureRow>?> GetBallotsForBoardAsync(

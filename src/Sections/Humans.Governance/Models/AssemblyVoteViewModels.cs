@@ -208,6 +208,16 @@ internal sealed class AssemblyVoteBallotsViewModel
 {
     public Guid VoteId { get; init; }
     public IReadOnlyList<AssemblyBallotDisclosureRow> Ballots { get; init; } = [];
+
+    /// <summary>
+    /// The authored options, so a ranking prints the names voters saw rather than the stable
+    /// keys the ballot is stored under — same reason the peek and results views carry them.
+    /// </summary>
+    public IReadOnlyList<AssemblyVoteOptionView> Options { get; init; } = [];
+
+    /// <summary>The option's label, falling back to its key when the option is gone.</summary>
+    public string LabelFor(string key) =>
+        Options.FirstOrDefault(o => string.Equals(o.Key, key, StringComparison.Ordinal))?.Label ?? key;
 }
 
 /// <summary>Posted Extend action: the new closing time, Europe/Madrid local.</summary>
