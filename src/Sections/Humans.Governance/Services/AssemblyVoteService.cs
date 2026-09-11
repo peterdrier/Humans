@@ -1477,6 +1477,10 @@ internal sealed class AssemblyVoteService(
                             info.PreferredLanguage),
                         ct);
 
+                    // Stamped per row, immediately: the stamp is the only thing stopping the
+                    // next sweep re-sending, so the widest window worth having between the
+                    // send and the stamp is one roster row, not the whole batch.
+                    await repository.StampReminderSentAsync([rosterRow.Id], now, ct);
                     reminded.Add(rosterRow.Id);
                 }
                 catch (Exception ex)
@@ -1489,8 +1493,6 @@ internal sealed class AssemblyVoteService(
 
             if (reminded.Count > 0)
             {
-                await repository.StampReminderSentAsync(reminded, now, ct);
-
                 // Automation that emails the electorate says so in the audit log (US-V8).
                 // The count is the one actually delivered, not the one attempted: a send
                 // that threw above is in the log as an error and is not stamped, so the
