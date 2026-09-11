@@ -429,12 +429,14 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
 
         // Under the same lock as every other write to this vote: a peek row is published on
         // the results page as an early look at the tally, so it may only be written while
-        // there is still something to look at early.
-        var status = await ctx.AssemblyVotes.AsNoTracking()
-            .Where(v => v.Id == peek.VoteId)
-            .Select(v => (AssemblyVoteStatus?)v.Status)
-            .FirstOrDefaultAsync(ct);
-        if (status != AssemblyVoteStatus.Open) return false;
+        // there is still something to look at early. Status alone is not that test — a vote
+        // whose deadline has passed is stored Open until something settles it, and a peek
+        // after the deadline is an ordinary results read, not an early look. The deadline is
+        // compared against the peek's own instant, the same AcceptsBallotsAt test a ballot
+        // write takes under this lock.
+        var vote = await ctx.AssemblyVotes.AsNoTracking()
+            .FirstOrDefaultAsync(v => v.Id == peek.VoteId, ct);
+        if (vote is null || !vote.AcceptsBallotsAt(peek.PeekedAt)) return false;
 
         ctx.AssemblyVotePeeks.Add(peek);
         await ctx.SaveChangesAsync(ct);

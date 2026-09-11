@@ -1339,6 +1339,61 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task OpenAsync_WhenTheDeadlinePassesMidSend_StopsMailingTheRoster()
+    {
+        var vote = await _fx.AddVoteAsync(
+            status: AssemblyVoteStatus.Draft,
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(2));
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        _fx.StubActiveUsers(first, second);
+        _fx.Applications.GetActiveApprovedTierUserIdsAsync(
+                MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>([first, second]));
+
+        // The announced time passes during the batch. The row is still stored Open until
+        // something settles it, so a status-only check would mail the rest of the roster a
+        // closing time already gone.
+        var sent = 0;
+        _fx.Email.When(e => e.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()))
+            .Do(_ =>
+            {
+                if (++sent == 1) _fx.Clock.AdvanceHours(3);
+            });
+
+        (await _fx.Service.OpenAsync(
+                vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken))
+            .Should().Be(AssemblyVoteActionResult.Ok);
+
+        sent.Should().Be(1, "a lapsed deadline ends the batch as surely as a cancellation");
+    }
+
+    [HumansFact]
+    public async Task PeekAsync_AfterTheDeadlineHasPassed_RecordsNoPeek()
+    {
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromMinutes(30));
+        var voter = Guid.NewGuid();
+        _fx.StubActiveUsers(voter);
+        var roster = await _fx.AddRosterRowAsync(vote.Id, voter, isOfficial: true);
+        await _fx.AddBallotAsync(vote.Id, roster.Id, AssemblyBallotChoice.Yes);
+
+        // Past the announced deadline the vote is closed for ballots and for the embargo, so
+        // this is an ordinary results read. Recording it would accuse the Admin, on the
+        // published peek list, of a look they did not take early.
+        _fx.Clock.AdvanceHours(1);
+
+        var (_, recorded) = await _fx.Service.PeekAsync(
+            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        recorded.Should().BeFalse();
+        var peeks = await _fx.Db.AssemblyVotePeeks.AsNoTracking()
+            .Where(p => p.VoteId == vote.Id)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        peeks.Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task ExtendAsync_BuiltFromADeadlineSomebodyElseAlreadyExtended_IsRefused()
     {
         var vote = await _fx.AddVoteAsync(

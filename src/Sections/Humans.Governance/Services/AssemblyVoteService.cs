@@ -1360,6 +1360,18 @@ internal sealed class AssemblyVoteService(
                 actionUrl: VoteUrl(vote.Id),
                 sourceKey: vote.Id.ToString(),
                 cancellationToken: ct);
+
+            // The check and the send are two awaits, and a stop or cancel landing between
+            // them resolves a source key with no rows behind it yet — leaving an actionable
+            // "this vote is open" alert nothing will ever clear. There is no transaction
+            // spanning two sections, so the rows are cleaned up after the fact instead: read
+            // once more, and if the vote went terminal in that gap, resolve what was just
+            // written. The resolve is idempotent, so doing it twice costs nothing.
+            if ((await repository.GetByIdAsync(vote.Id, ct))?.Status
+                is AssemblyVoteStatus.Closed or AssemblyVoteStatus.Cancelled)
+            {
+                await ClearOpenNotificationAsync(vote, null, ct);
+            }
         }
 
         await SendOpenedEmailsAsync(vote, roster, ct);
@@ -1386,8 +1398,13 @@ internal sealed class AssemblyVoteService(
             // middle of it, and "this vote is open, here is the deadline" is wrong for
             // everybody left — a cancelled vote's roster would get the opening notice after
             // the cancellation email, and an extended one a deadline it no longer has.
+            // The clock comes per recipient too, and the deadline is part of the test: a vote
+            // whose announced time passes mid-batch is stored Open until something settles
+            // it, so a status-only check would keep mailing "the vote is open, it closes at"
+            // with a time already gone.
+            var sentAt = clock.GetCurrentInstant();
             var current = await repository.GetByIdAsync(vote.Id, ct);
-            if (current is null || current.Status != AssemblyVoteStatus.Open) break;
+            if (current is null || !current.AcceptsBallotsAt(sentAt)) break;
             var closesAt = ClosingLocal(current.ClosesAt);
 
             try
@@ -1804,13 +1821,20 @@ internal sealed class AssemblyVoteService(
                 ? (AuditEntityTypes.AssemblyBallot, ballotId)
                 : (AuditEntityTypes.AssemblyVote, drop.VoteId);
 
-            var what = drop.BallotMoved
-                ? "merged-from account's roster row was dropped in favour of the surviving "
+            var what = drop switch
+            {
+                { BallotId: null } =>
+                    "merged-from account's roster row was dropped in favour of the surviving "
+                    + "account's. No ballot was destroyed: that account never voted.",
+                { BallotMoved: true } =>
+                    "merged-from account's roster row was dropped in favour of the surviving "
                     + "account's, and its ballot moved onto that row — the surviving account "
-                    + "had not voted, so this is the same human's only ballot on the vote."
-                : "merged-from account's roster row was dropped in favour of the surviving "
+                    + "had not voted, so this is the same human's only ballot on the vote.",
+                _ =>
+                    "merged-from account's roster row was dropped in favour of the surviving "
                     + "account's, and its ballot with it: both accounts had voted, and one "
-                    + "person may hold only one ballot per vote.";
+                    + "person may hold only one ballot per vote."
+            };
 
             await audit.LogAsync(
                 AuditAction.AssemblyVoteRosterMerged, entityType, entityId,
