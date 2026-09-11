@@ -12,7 +12,7 @@ Transactional email outbox: queue, render, deliver, retry, pause/resume. Backs c
 
 ## Concepts
 
-- An **Outbox Message** is a single queued email record with recipient, subject, rendered HTML body, status, retry metadata, and optional links to `User` / `CampaignGrant` / `ShiftSignup`.
+- An **Outbox Message** is a single queued email record with recipient, subject, rendered HTML body, status, retry metadata, and optional links to `User` / `CampaignGrant`.
 - The **Outbox Pause Flag** is a `SystemSetting` row keyed `IsEmailSendingPaused` that, when `"true"`, causes `ProcessEmailOutboxJob` to skip all delivery attempts on its next tick. Resuming flips it back to `"false"`.
 - **Email Body Composition** happens entirely inside the section: `IEmailBodyComposer` / `BrandedEmailBodyComposer` are internal, as are `IEmailRenderer` / `EmailRenderer` and the two transports. Business code outside the section builds an `EmailMessage` through `IEmailMessageFactory` and hands it to `IEmailService`. Authorized UI previews can pass an always-send system message to the read-only `IEmailPreviewServiceRead`; it returns the exact canonical branded wrapper without enqueueing it.
 - **Delivery** is performed by `EmailOutboxProcessor` (section) via `IEmailTransport` (`SmtpEmailTransport` in prod, `StubEmailTransport` in dev/test). `ProcessEmailOutboxJob` (`Humans.Email/Jobs/`) is the Hangfire scheduler shim that calls it through `IEmailOutboxProcessor`. `IImmediateOutboxProcessor` (`HangfireImmediateOutboxProcessor`, `Humans.Email/Contracts/`) is the trigger for time-sensitive templates that need to fire the next job run immediately rather than wait for the recurring tick.
@@ -35,7 +35,6 @@ Transactional email outbox: queue, render, deliver, retry, pause/resume. Backs c
 | TemplateName | string | Template identifier used to render this message |
 | UserId | Guid? | Bare cross-section id (optional) — no FK constraint, no nav |
 | CampaignGrantId | Guid? | Bare cross-section id (CampaignGrant, Campaigns) — no FK constraint, no nav; status mirroring writes through `ICampaignService` |
-| ShiftSignupId | Guid? | Bare cross-section id (ShiftSignup, Shifts) — no FK constraint, no nav; dedup query filters on the column directly |
 | ReplyTo | string? | Reply-To header value |
 | ExtraHeaders | string? | JSON-encoded additional headers (e.g., `List-Unsubscribe`) |
 | Status | EmailOutboxStatus | Queued / Sent / Failed |
@@ -50,7 +49,6 @@ Transactional email outbox: queue, render, deliver, retry, pause/resume. Backs c
 - `(SentAt, RetryCount, NextRetryAt, PickedUpAt)` — composite index for the processor's scan (`SentAt IS NULL AND RetryCount < max AND (NextRetryAt IS NULL OR NextRetryAt <= now) AND (PickedUpAt IS NULL OR PickedUpAt < staleThreshold)`).
 - `UserId` — per-human outbox views.
 - `CampaignGrantId` — campaign grant tracking.
-- `(ShiftSignupId, TemplateName)` — filtered (`ShiftSignupId IS NOT NULL`) for shift-notification dedup.
 
 ### EmailOutboxStatus
 
@@ -145,7 +143,7 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 - The section lives at `src/Sections/Humans.Email` with its cross-section surface on the `Humans.Email.Contracts` leaf project (nobodies-collective/Humans#866, G5). Everything else — the entity, the repository, the renderer, the body composer, the SMTP transport, the outbox admin surface — is `internal`.
 - `IEmailOutboxRepository` (impl `src/Sections/Humans.Email/Data/EmailOutboxRepository.cs`) is the only file that touches `DbContext.EmailOutboxMessages`. `TimeSensitiveTemplates` (`Domain/`) holds the four template names that both the factory (`TriggerImmediate`) and the repository (batch priority ordering) key off. The `IsEmailSendingPaused` row in `system_settings` is no longer read or written here — `EmailOutboxService` reaches it through `ISettingsService` (Settings section owns the table). Registered Singleton via `IDbContextFactory<EmailDbContext>` (peeled out of `HumansDbContext` in #858) so it can be injected into Application services and the recurring job alike.
 - **Decorator decision — no caching decorator.** Outbox is a sequential queue drain, not a hot-path read shape.
-- **Cross-domain navs stripped:** `EmailOutboxMessage` carries no navigation properties at all — `UserId`, `CampaignGrantId`, and `ShiftSignupId` are bare Guid columns in `EmailOutboxMessageConfiguration` with no FK constraint and no nav (#992 cut the FK, #996 cut the last navs). A stale id is an accepted orphan on this append-only send log, pruned on age by `DeleteSentOlderThanAsync`. User display data resolves via `IUserService`; grant status mirroring goes through `ICampaignService`; the shift-signup dedup query filters on `ShiftSignupId` directly.
+- **Cross-domain navs stripped:** `EmailOutboxMessage` carries no navigation properties at all — `UserId` and `CampaignGrantId` are bare Guid columns in `EmailOutboxMessageConfiguration` with no FK constraint and no nav (#992 cut the FK, #996 cut the last navs). A stale id is an accepted orphan on this append-only send log, pruned on age by `DeleteSentOlderThanAsync`. User display data resolves via `IUserService`; grant status mirroring goes through `ICampaignService`. A third such column, `ShiftSignupId`, was dropped in `DropEmailOutboxShiftSignupId` (2026-09-11): nothing ever wrote or read it, and the per-signup dedup it was added for was never built.
 - **`Humans.Email.Contracts` — everything consumed from outside the section:**
   - `IEmailService` + `EmailMessage` — the one transport entry point, consumed from the other section projects that send mail (Auth, Camps, Campaigns, Consent, Events, Feedback, GoogleIntegration, Governance, Issues, Onboarding, Shifts, Surveys, Teams, Tickets, Users) plus the `Humans.Web` shell.
   - `IEmailMessageFactory` — the typed builders those callers use to construct an `EmailMessage`.

@@ -75,3 +75,23 @@ src/Sections/Humans.Users/Data/Migrations/20260820170426_DropUserEmailIsOAuth.cs
 # Approval: Peter, 2026-08-20 — "drop the column, but be careful since we already have 2 migrations
 # in user section today."
 src/Sections/Humans.Users/Data/Migrations/20260820215726_DropProfileState.cs:DropColumn(name=State,table=profiles)#1
+
+# Dead email_outbox_messages.ShiftSignupId column and its filtered index (2026-09-11,
+# section-doctor run on Email, finding 3). Removed: the ShiftSignupId column (uuid, nullable) on
+# table email_outbox_messages, and the filtered composite index
+# IX_email_outbox_messages_ShiftSignupId_TemplateName on (ShiftSignupId, TemplateName) with filter
+# "ShiftSignupId" IS NOT NULL. Both were added for a per-signup notification dedup ("one email of
+# each template type per signup") that was specified and never built.
+# Evidence: pickaxe over full history. Outside migration folders the token ShiftSignupId appears in
+# exactly one commit in all of history — d3bf4010 (#1348), the G5 peel that MOVED the entity and its
+# EF configuration into src/Sections/Humans.Email; it introduced no reader or writer. No pre-section
+# path ever contained it (`git log -S ShiftSignupId --all -- src/Humans.Domain/** src/Humans.Infrastructure/**
+# src/Humans.Application/**` returns nothing). Every hit for the assignment form
+# `git log -S 'ShiftSignupId *=' --pickaxe-regex --all` is `ShiftSignupId = table.Column<Guid>(...)`
+# inside migration scaffolding — schema definition, never a data write. No code ever set the property
+# and no query ever filtered on it, so the column holds only NULLs and the filtered index is empty.
+# Down() restores both the column and the index; the column is nullable, so the rollback runs.
+# Approval: Peter, 2026-09-11 — asked whether to drop the dead ShiftSignupId column and its filtered
+# index or build the dedup it was added for, answered "2 drop column".
+src/Sections/Humans.Email/Data/Migrations/20260911025722_DropEmailOutboxShiftSignupId.cs:DropIndex(name=IX_email_outbox_messages_ShiftSignupId_TemplateName,table=email_outbox_messages)#1
+src/Sections/Humans.Email/Data/Migrations/20260911025722_DropEmailOutboxShiftSignupId.cs:DropColumn(name=ShiftSignupId,table=email_outbox_messages)#1

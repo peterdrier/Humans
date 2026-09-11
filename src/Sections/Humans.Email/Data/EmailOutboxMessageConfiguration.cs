@@ -31,13 +31,9 @@ internal sealed class EmailOutboxMessageConfiguration : IEntityTypeConfiguration
         // Campaign grant tracking
         builder.HasIndex(e => e.CampaignGrantId);
 
-        // UserId / CampaignGrantId / ShiftSignupId are bare cross-section Guid
-        // columns — no FK constraint, no nav (memory/architecture/no-cross-section-ef-joins.md).
+        // UserId / CampaignGrantId are bare cross-section Guid columns — no FK
+        // constraint, no nav (memory/architecture/no-cross-section-ef-joins.md).
         // A stale id here is an accepted orphan: this is an append-only send log,
         // pruned on age by DeleteSentOlderThanAsync.
-
-        // Dedup: one email of each template type per signup
-        builder.HasIndex(e => new { e.ShiftSignupId, e.TemplateName })
-            .HasFilter("\"ShiftSignupId\" IS NOT NULL");
     }
 }
