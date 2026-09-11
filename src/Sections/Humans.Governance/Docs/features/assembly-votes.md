@@ -300,6 +300,7 @@ Board members are de facto Asociados: they are on the official roster whether or
 - A vote whose `ClosesAt` has passed is Closed for every purpose, whether or not the lapse job has run yet.
 - YesNo verdict: Simple passes when `Yes > No`, fails when `Yes < No`, and is `Tie` when equal; TwoThirds passes when `Yes >= ceil(2/3 × (Yes + No))`. Abstain is excluded from both. The system never applies the President's casting vote.
 - IRV majority base per round is the number of ballots that still rank a continuing option; ballots that rank none (or Abstain) are exhausted.
+- `TwoThirds` is a YesNo threshold only. A RankedChoice draft carrying it is rejected: instant runoff has no defined 2/3 rule, and accepting the pair would store an acta claiming a threshold the count never applied. The statutes' qualified majorities are asked as YesNo questions; a ranked vote is an election.
 
 ## Negative access rules
 

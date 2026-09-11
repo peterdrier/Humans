@@ -220,6 +220,23 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task CreateDraftAsync_OnARankedDraftRequiringTwoThirds_IsRejected()
+    {
+        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Draft);
+        var draft = _fx.DraftFor(vote, AssemblyVoteKind.RankedChoice, ["a", "b"]) with
+        {
+            RequiredMajority = RequiredMajority.TwoThirds
+        };
+
+        var voteId = await _fx.Service.CreateDraftAsync(
+            draft, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        voteId.Should().BeNull(
+            "instant runoff has no 2/3 rule, so the pair would store an acta claiming a "
+            + "threshold the count never applied");
+    }
+
+    [HumansFact]
     public async Task CreateDraftAsync_WithAnUndefinedKind_IsRejected()
     {
         var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Draft);

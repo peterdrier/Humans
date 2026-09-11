@@ -993,6 +993,13 @@ internal sealed class AssemblyVoteService(
 
         if (draft.Kind != AssemblyVoteKind.RankedChoice) return true;
 
+        // A ranked vote is counted by instant runoff, whose majority base is the ballots
+        // still ranking a continuing option — a 2/3 threshold has no defined meaning there,
+        // and accepting the combination stores a legal record whose acta claims a threshold
+        // the count never applied. The statutes' qualified majorities are asked as YesNo
+        // questions ("approve this amendment"); a ranked vote is an election.
+        if (draft.RequiredMajority != RequiredMajority.Simple) return false;
+
         return draft.Options.Count >= 2
                && draft.Options.All(o => !string.IsNullOrWhiteSpace(o.Key)
                                          && Fits(o.Key, MaxOptionKeyLength))
