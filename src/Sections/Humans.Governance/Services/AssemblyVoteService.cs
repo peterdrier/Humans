@@ -71,6 +71,14 @@ internal sealed class AssemblyVoteService(
     private static readonly Duration ReminderLeadTime = Duration.FromHours(24);
 
     /// <summary>
+    /// How long a Closed vote with no stored tally is left alone before a read treats it as
+    /// interrupted and finishes it. Long enough that a close still running its own tail is
+    /// never mistaken for a dead one; short enough that a real interruption is repaired by
+    /// the next read or the next hourly sweep.
+    /// </summary>
+    private static readonly Duration InterruptedCloseGrace = Duration.FromMinutes(5);
+
+    /// <summary>
     /// Enums serialize as names so a stored result stays readable and survives any later
     /// reordering of the CLR enums. NodaTime is configured because
     /// <see cref="AssemblyVoteResult.ComputedAt"/> is an <see cref="Instant"/>, which the
@@ -345,6 +353,20 @@ internal sealed class AssemblyVoteService(
     private async Task FinishInterruptedCloseAsync(AssemblyVote vote, CancellationToken ct)
     {
         if (vote.Status != AssemblyVoteStatus.Closed || vote.ResultJson is not null) return;
+
+        // A close that committed its status seconds ago is not interrupted, it is running:
+        // its own tail sits between the status write and the stored tally right now. Replaying
+        // that would duplicate the audit entry and the notification retirement of a close
+        // nobody interrupted, so a result-less close is taken over only once it has stood
+        // long enough that no request could still be finishing it.
+        var readAt = vote.UpdatedAt;
+        if (clock.GetCurrentInstant() < readAt + InterruptedCloseGrace) return;
+
+        // And two readers arriving after that are still two. Bumping UpdatedAt from the value
+        // each of them read is the claim: exactly one write lands, and the loser leaves the
+        // tail to the winner.
+        vote.UpdatedAt = clock.GetCurrentInstant();
+        if (!await repository.UpdateAsync(vote, AssemblyVoteStatus.Closed, readAt, ct)) return;
 
         await FinishCloseAsync(
             vote,
@@ -1422,15 +1444,22 @@ internal sealed class AssemblyVoteService(
         await SendRemindersAsync(now, ct);
 
         var lapsed = await repository.GetLapsedOpenVotesAsync(now, ct);
+        var closed = 0;
         foreach (var vote in lapsed)
         {
-            await CloseAsync(vote, closedByUserId: null, AuditAction.AssemblyVoteClosed,
-                $"Assembly vote {vote.Id} closed automatically at its announced time.", ct);
+            // Counted only when the close landed. A vote an Extend rescued between the query
+            // and the write is still open, and a job that reports it as closed is wrong in
+            // the one place anybody looks to see what the automation did.
+            if (await CloseAsync(vote, closedByUserId: null, AuditAction.AssemblyVoteClosed,
+                    $"Assembly vote {vote.Id} closed automatically at its announced time.", ct))
+            {
+                closed++;
+            }
         }
 
-        if (lapsed.Count > 0)
+        if (closed > 0)
         {
-            logger.LogInformation("Closed {Count} lapsed assembly vote(s).", lapsed.Count);
+            logger.LogInformation("Closed {Count} lapsed assembly vote(s).", closed);
         }
 
         // A close interrupted after its status write leaves a vote that is Closed with no
@@ -1441,7 +1470,7 @@ internal sealed class AssemblyVoteService(
             await FinishInterruptedCloseAsync(vote, ct);
         }
 
-        return lapsed.Count;
+        return closed;
     }
 
     /// <summary>
@@ -1464,6 +1493,18 @@ internal sealed class AssemblyVoteService(
 
             foreach (var (rosterRow, info, address) in recipients)
             {
+                // Eligibility is re-read per recipient, not trusted from the list: sending
+                // the whole roster takes long enough for somebody to vote, or for an Admin to
+                // stop or cancel the vote, and "you have not voted and the vote closes soon"
+                // is wrong in both cases — the second one for everybody left in the list.
+                var current = await repository.GetByIdAsync(vote.Id, ct);
+                if (current is null || current.Status != AssemblyVoteStatus.Open) break;
+
+                if (await repository.GetBallotForRosterAsync(vote.Id, rosterRow.Id, ct) is not null)
+                {
+                    continue;
+                }
+
                 try
                 {
                     await email.SendAsync(

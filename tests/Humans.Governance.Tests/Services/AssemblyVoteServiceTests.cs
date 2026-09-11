@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
+using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Governance.Domain;
 using Humans.Governance.Services;
@@ -216,6 +217,9 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var roster = await _fx.AddRosterRowAsync(vote.Id, userId, isOfficial: true);
         await _fx.AddBallotAsync(vote.Id, roster.Id, AssemblyBallotChoice.Yes);
 
+        // Long enough ago that no request could still be finishing this close.
+        _fx.Clock.AdvanceMinutes(10);
+
         var results = await _fx.Service.GetResultsAsync(
             vote.Id, userId, viewerIsBoardOrAdmin: false, Xunit.TestContext.Current.CancellationToken);
 
@@ -232,6 +236,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         _fx.Db.AssemblyVotes.Update(vote);
         await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
+        _fx.Clock.AdvanceMinutes(10);
 
         await _fx.Service.GetResultsAsync(
             vote.Id, adminId, viewerIsBoardOrAdmin: false, Xunit.TestContext.Current.CancellationToken);
@@ -1180,6 +1185,36 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task RunLapseAndReminderSweepAsync_StopsRemindingOnceTheVoteIsNoLongerOpen()
+    {
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(12));
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        _fx.StubActiveUsers(first, second);
+        await _fx.AddRosterRowAsync(vote.Id, first, isOfficial: true);
+        await _fx.AddRosterRowAsync(vote.Id, second, isOfficial: true);
+
+        // An Admin cancels the vote while the first reminder is going out. Nobody after that
+        // may be told it closes soon.
+        var sent = 0;
+        _fx.Email.When(e => e.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()))
+            .Do(_ =>
+            {
+                if (++sent != 1) return;
+
+                var open = _fx.Db.AssemblyVotes.Single(v => v.Id == vote.Id);
+                open.Status = AssemblyVoteStatus.Cancelled;
+                _fx.Db.SaveChanges();
+                _fx.Db.ChangeTracker.Clear();
+            });
+
+        await _fx.Service.RunLapseAndReminderSweepAsync(Xunit.TestContext.Current.CancellationToken);
+
+        sent.Should().Be(1, "eligibility is re-read per recipient, not trusted from the list");
+    }
+
+    [HumansFact]
     public async Task StopAsync_OnAVoteAnotherAdminAlreadyStopped_ChangesNothingAndAuditsOnce()
     {
         var vote = await _fx.AddVoteAsync(
@@ -1268,6 +1303,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         closing.ClosedAt = closing.ClosesAt;
         await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
+        _fx.Clock.AdvanceMinutes(10);
 
         // A list read, not a read of that vote's own page.
         await _fx.Service.GetVotesForMemberAsync(
@@ -1294,6 +1330,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         closing.ClosedAt = closing.ClosesAt;
         await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
+        _fx.Clock.AdvanceMinutes(10);
 
         await _fx.Service.RunLapseAndReminderSweepAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -1301,6 +1338,34 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
         stored.ResultJson.Should().NotBeNull(
             "the sweep queries Open votes, and this one is Closed with its tally still owed");
+    }
+
+    [HumansFact]
+    public async Task Read_WhileACloseIsStillFinishing_DoesNotReplayIt()
+    {
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(2));
+
+        // A close whose status write has just committed: its own tail — the audit entry, the
+        // notification, the tally — is running in another request right now.
+        var closing = await _fx.Db.AssemblyVotes
+            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        closing.Status = AssemblyVoteStatus.Closed;
+        closing.ClosedAt = closing.ClosesAt;
+        closing.UpdatedAt = _fx.Clock.GetCurrentInstant();
+        await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _fx.Db.ChangeTracker.Clear();
+
+        await _fx.Service.GetVotesForMemberAsync(
+            Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
+            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.ResultJson.Should().BeNull(
+            "the close is running, not interrupted; the request that owns it stores the tally");
+        await _fx.Audit.DidNotReceive().LogAsync(
+            AuditAction.AssemblyVoteClosed, AuditEntityTypes.AssemblyVote, vote.Id,
+            Arg.Any<string>(), Arg.Any<string>());
     }
 
     [HumansFact]
