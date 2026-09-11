@@ -240,12 +240,17 @@
   <data name="Votes_PeekedWhenHeader" xml:space="preserve"><value>When</value></data>
   <data name="Votes_YourBallotResultHeading" xml:space="preserve"><value>Your ballot</value></data>
   <data name="Votes_DisclosedBallotsHeading" xml:space="preserve"><value>Individual ballots</value></data>
-  <data name="Votes_DisclosedMemberHeader" xml:space="preserve"><value>Member</value></data>
+  <data name="Votes_DisclosedMemberHeader" xml:space="preserve"><value>Human</value></data>
   <data name="Votes_DisclosedAudienceHeader" xml:space="preserve"><value>Audience</value></data>
   <data name="Votes_DisclosedChoiceHeader" xml:space="preserve"><value>Choice</value></data>
   <data name="Votes_DisclosedRevisionHeader" xml:space="preserve"><value>Revision</value></data>
   <data name="Votes_AudienceOfficial" xml:space="preserve"><value>Official</value></data>
   <data name="Votes_AudienceIndicative" xml:space="preserve"><value>Indicative</value></data>
+  <data name="Votes_CsvVoteLabel" xml:space="preserve"><value>Vote</value></data>
+  <data name="Votes_MethodLabel" xml:space="preserve"><value>Method</value></data>
+  <data name="Votes_BallotsCastLabel" xml:space="preserve"><value>Ballots cast</value></data>
+  <data name="Votes_EliminatedHeader" xml:space="preserve"><value>Eliminated</value></data>
+  <data name="Votes_WinnerHeader" xml:space="preserve"><value>Winner</value></data>
   <data name="Votes_DownloadCsv" xml:space="preserve"><value>Download CSV</value></data>
   <data name="Votes_BallotDuplicateRanks" xml:space="preserve"><value>Each option needs a different rank. Two options were given the same one, so the ballot was not recorded.</value></data>
   <data name="GovernanceCreate_MotivationLabel" xml:space="preserve"><value>Why do you want to join?</value></data>

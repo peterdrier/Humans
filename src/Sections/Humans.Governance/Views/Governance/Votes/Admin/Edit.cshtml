@@ -157,7 +157,7 @@
                             <div class="flex-grow-1">
                                 <div class="input-group input-group-sm mb-2">
                                     <span class="input-group-text">Key</span>
-                                    <input type="text" name="Options[@rowKey].Key" class="form-control" value="@row.Key" placeholder="stable key, e.g. motion-a" />
+                                    <input type="text" name="Options[@rowKey].Key" class="form-control" value="@row.Key" maxlength="100" placeholder="stable key, e.g. motion-a" />
                                 </div>
                                 @foreach (var culture in Model.Cultures)
                                 {
@@ -180,7 +180,7 @@
                         <div class="flex-grow-1">
                             <div class="input-group input-group-sm mb-2">
                                 <span class="input-group-text">Key</span>
-                                <input type="text" name="Options[__ROWKEY__].Key" class="form-control" placeholder="stable key, e.g. motion-a" />
+                                <input type="text" name="Options[__ROWKEY__].Key" class="form-control" maxlength="100" placeholder="stable key, e.g. motion-a" />
                             </div>
                             @foreach (var culture in Model.Cultures)
                             {

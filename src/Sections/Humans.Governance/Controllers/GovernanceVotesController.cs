@@ -154,30 +154,50 @@ internal sealed class GovernanceVotesController(
             .ToList();
     }
 
-    private static byte[] WriteResultsCsv(AssemblyVoteResultsView results)
+    /// <summary>
+    /// The results CSV, in the downloader's culture. It is a member-facing export of the same
+    /// numbers the results page shows, so every label goes through the section's resources and
+    /// option columns carry the authored labels rather than the storage keys.
+    /// </summary>
+    private byte[] WriteResultsCsv(AssemblyVoteResultsView results)
     {
+        var optionLabels = results.Vote.Options.ToDictionary(
+            o => o.Key, o => o.Label, StringComparer.Ordinal);
+
+        string OptionLabel(string? key) =>
+            key is null ? string.Empty
+            : optionLabels.TryGetValue(key, out var label) ? label : key;
+
         return HumansCsv.WriteBytes(csv =>
         {
-            csv.WriteRow("Vote", results.Vote.Title);
-            csv.WriteRow("Method", results.Result.Method);
+            csv.WriteRow(Text("Votes_CsvVoteLabel"), results.Vote.Title);
+            csv.WriteRow(Text("Votes_MethodLabel"), Text("Votes_Method_" + results.Result.Method));
             csv.NextRecord();
 
-            WriteAudienceCsv(csv, "Official", results.Result.Official);
+            WriteAudienceCsv(csv, Text("Votes_OfficialRosterLabel"), results.Result.Official, OptionLabel);
             if (results.Result.Indicative is { } indicative)
             {
                 csv.NextRecord();
-                WriteAudienceCsv(csv, "Indicative", indicative);
+                WriteAudienceCsv(csv, Text("Votes_IndicativeRosterLabel"), indicative, OptionLabel);
             }
         });
     }
 
-    private static void WriteAudienceCsv(CsvWriter csv, string label, AssemblyVoteAudienceResult audience)
+    private void WriteAudienceCsv(
+        CsvWriter csv,
+        string rosterLabel,
+        AssemblyVoteAudienceResult audience,
+        Func<string?, string> optionLabel)
     {
-        csv.WriteRow($"{label} roster", audience.RosterSize, "Ballots cast", audience.BallotsCast, "Verdict", audience.Verdict);
+        csv.WriteRow(
+            rosterLabel, audience.RosterSize,
+            Text("Votes_BallotsCastLabel"), audience.BallotsCast,
+            Text("Votes_VerdictLabel"), Text("Votes_Verdict_" + audience.Verdict));
 
         if (audience.YesNo is { } yesNo)
         {
-            csv.WriteRow("Yes", "No", "Abstain");
+            csv.WriteRow(
+                Text("Votes_Choice_Yes"), Text("Votes_Choice_No"), Text("Votes_Choice_Abstain"));
             csv.WriteRow(yesNo.Yes, yesNo.No, yesNo.Abstain);
             return;
         }
@@ -190,11 +210,20 @@ internal sealed class GovernanceVotesController(
             .OrderBy(k => k, StringComparer.Ordinal)
             .ToList();
 
-        csv.WriteRow(["Round", .. optionKeys, "Exhausted", "Eliminated", "Winner"]);
+        csv.WriteRow([
+            Text("Votes_RoundColumnHeader"),
+            .. optionKeys.Select(optionLabel),
+            Text("Votes_ExhaustedLabel"),
+            Text("Votes_EliminatedHeader"),
+            Text("Votes_WinnerHeader")]);
         foreach (var round in audience.Rounds)
         {
             var counts = optionKeys.Select(k => (object?)(round.Counts.TryGetValue(k, out var c) ? c : 0));
-            csv.WriteRow([round.Number, .. counts, round.Exhausted, round.EliminatedKey, round.WinnerKey]);
+            csv.WriteRow([
+                round.Number, .. counts, round.Exhausted,
+                optionLabel(round.EliminatedKey), optionLabel(round.WinnerKey)]);
         }
     }
+
+    private string Text(string key) => localizer[key].Value;
 }

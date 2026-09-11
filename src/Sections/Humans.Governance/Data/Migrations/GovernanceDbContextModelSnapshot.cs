@@ -328,8 +328,7 @@ namespace Humans.Governance.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("VoteId", "Key")
-                        .IsUnique();
+                    b.HasIndex("VoteId");
 
                     b.ToTable("assembly_vote_options", (string)null);
                 });

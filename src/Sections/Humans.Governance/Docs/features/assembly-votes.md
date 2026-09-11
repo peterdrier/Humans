@@ -160,7 +160,7 @@ All tables in `GovernanceDbContext`, one migration, prefix `assembly_`.
 | Id | Guid | PK |
 | VoteId | Guid | FK |
 | Order | int | authored order; the disclosed final tie-break |
-| Key | string(100) | stable key stored in ballots |
+| Key | string(100) | stable key stored in ballots; length and uniqueness within the vote are service validation, never a DB unique index (`unique-constraints-ids-only`) |
 | Label | jsonb culture → text | |
 
 ### AssemblyVoteRoster
@@ -312,7 +312,7 @@ Board members are de facto Asociados: they are on the official roster whether or
 ## Triggers
 
 - **Open:** roster snapshot; one email per roster member (`IEmailMessageFactory.AssemblyVoteOpened`, `MessageCategory.System`, preferred language, link to `/Governance/Votes/{id}`), per-recipient try/catch as in Surveys' invite send; one in-app notification to the roster via `INotificationEmitter.SendAsync` with `sourceKey = vote id`; audit `AssemblyVoteOpened` (official/indicative counts).
-- **Ballot cast/changed:** history row; audit `AssemblyBallotCast` / `AssemblyBallotChanged` (actor = member, no choice).
+- **Ballot cast/changed:** history row; audit `AssemblyBallotCast` / `AssemblyBallotChanged` (actor = member, entity = the vote, no choice — the ballot id never appears, so an erased member’s retained audit row cannot be joined back to their choice).
 - **Stop / Extend / Cancel:** audit with before/after or reason. Cancel emails the roster.
 - **Close (any path):** stamps `ClosedAt`, computes and stores the result, resolves the open-vote notification via `INotificationAutoResolve.ResolveBySourceKeyAsync`, audits `AssemblyVoteClosed` / `AssemblyVoteStopped` (job actor via the `jobName` overload of `IAuditLogService.LogAsync` when the hourly `governance-assembly-vote-lapse` job in `SectionJobs` does it). Any earlier request that sees the deadline passed closes inline before serving.
 - **Peek:** peek row + audit `AssemblyVotePeeked`.

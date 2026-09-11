@@ -114,6 +114,38 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task CastBallotAsync_AuditEntry_NamesTheVoteNeverTheBallotRow()
+    {
+        var vote = await _fx.AddVoteAsync();
+        var userId = Guid.NewGuid();
+        await _fx.AddRosterRowAsync(vote.Id, userId, isOfficial: true);
+
+        await _fx.Service.CastBallotAsync(
+            vote.Id, userId, AssemblyBallotChoice.Yes, null, Xunit.TestContext.Current.CancellationToken);
+
+        // An audit row keeps its ActorUserId forever, so naming the ballot id would leave a
+        // permanent join from an erased person to the row holding their choice.
+        await _fx.Audit.Received(1).LogAsync(
+            AuditAction.AssemblyBallotCast,
+            "AssemblyVote", vote.Id, Arg.Any<string>(), userId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task CreateDraftAsync_WithAnOverlongOptionKey_IsRejected()
+    {
+        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Draft);
+        var draft = _fx.DraftFor(
+            vote, AssemblyVoteKind.RankedChoice, ["a", new string('k', 101)]);
+
+        var voteId = await _fx.Service.CreateDraftAsync(
+            draft, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        voteId.Should().BeNull(
+            "the key column is varchar(100) — an over-long key is a validation message, not a 500");
+    }
+
+    [HumansFact]
     public async Task CastBallotAsync_VoteNotOpen_IsRejected()
     {
         var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);

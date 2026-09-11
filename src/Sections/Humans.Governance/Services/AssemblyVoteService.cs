@@ -45,6 +45,12 @@ internal sealed class AssemblyVoteService(
     /// <summary>The recurring job that closes lapsed votes and sends the T-24h reminder.</summary>
     internal const string LapseJobName = "governance-assembly-vote-lapse";
 
+    /// <summary>
+    /// Mirrors the <c>assembly_vote_options.key</c> column width. Validated here so an
+    /// over-long key is a rejected draft rather than a 500 from PostgreSQL.
+    /// </summary>
+    internal const int MaxOptionKeyLength = 100;
+
     /// <summary>How far ahead of closing the reminder goes out.</summary>
     private static readonly Duration ReminderLeadTime = Duration.FromHours(24);
 
@@ -207,16 +213,19 @@ internal sealed class AssemblyVoteService(
 
         // The action distinguishes a first cast from a change; neither entry records what
         // was chosen. That is the whole point — the audit log is widely readable.
+        //
+        // The entity is the vote, never the ballot. An audit row keeps its ActorUserId for
+        // good (AuditLogService.EraseForUserAsync is a no-op by design), so naming the ballot
+        // id here would leave a permanent join from an erased person to the row holding their
+        // Choice and Ranking — which is exactly what erasure promises to sever.
         await audit.LogAsync(
             existing is null ? AuditAction.AssemblyBallotCast : AuditAction.AssemblyBallotChanged,
-            AuditEntityTypes.AssemblyBallot,
-            ballot.Id,
+            AuditEntityTypes.AssemblyVote,
+            voteId,
             existing is null
                 ? $"Cast a ballot on assembly vote {voteId} (revision {ballot.Revision})."
                 : $"Changed their ballot on assembly vote {voteId} (revision {ballot.Revision}).",
-            userId,
-            voteId,
-            AuditEntityTypes.AssemblyVote);
+            userId);
 
         return BallotSubmissionOutcome.Recorded;
     }
@@ -776,7 +785,8 @@ internal sealed class AssemblyVoteService(
         if (draft.Kind != AssemblyVoteKind.RankedChoice) return true;
 
         return draft.Options.Count >= 2
-               && draft.Options.All(o => !string.IsNullOrWhiteSpace(o.Key))
+               && draft.Options.All(o => !string.IsNullOrWhiteSpace(o.Key)
+                                         && o.Key.Length <= MaxOptionKeyLength)
                && draft.Options.All(o => o.Label.TryGetValue(draft.OfficialCulture, out var label)
                                          && !string.IsNullOrWhiteSpace(label))
                && draft.Options.Select(o => o.Key).Distinct(StringComparer.Ordinal).Count()

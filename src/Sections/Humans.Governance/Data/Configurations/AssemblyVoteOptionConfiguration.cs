@@ -25,7 +25,9 @@ internal sealed class AssemblyVoteOptionConfiguration : IEntityTypeConfiguration
             .HasForeignKey(o => o.VoteId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Ballots store the option key, so it must be unique within the vote.
-        builder.HasIndex(o => new { o.VoteId, o.Key }).IsUnique();
+        // No unique index on Key: it is Board-editable display-adjacent text, and
+        // memory/architecture/unique-constraints-ids-only.md puts row identity on Id columns
+        // only. Duplicate keys within a vote are rejected by IsDraftValid, which is where a
+        // duplicate becomes a validation message instead of a constraint violation.
     }
 }

@@ -656,7 +656,7 @@
     <value>Votes individuels</value>
   </data>
   <data name="Votes_DisclosedMemberHeader" xml:space="preserve">
-    <value>Membre</value>
+    <value>Human</value>
   </data>
   <data name="Votes_DisclosedAudienceHeader" xml:space="preserve">
     <value>Liste</value>
@@ -672,6 +672,21 @@
   </data>
   <data name="Votes_AudienceIndicative" xml:space="preserve">
     <value>Indicatif</value>
+  </data>
+  <data name="Votes_CsvVoteLabel" xml:space="preserve">
+    <value>Vote</value>
+  </data>
+  <data name="Votes_MethodLabel" xml:space="preserve">
+    <value>Méthode</value>
+  </data>
+  <data name="Votes_BallotsCastLabel" xml:space="preserve">
+    <value>Bulletins exprimés</value>
+  </data>
+  <data name="Votes_EliminatedHeader" xml:space="preserve">
+    <value>Éliminée</value>
+  </data>
+  <data name="Votes_WinnerHeader" xml:space="preserve">
+    <value>Gagnante</value>
   </data>
   <data name="Votes_DownloadCsv" xml:space="preserve">
     <value>Télécharger le CSV</value>

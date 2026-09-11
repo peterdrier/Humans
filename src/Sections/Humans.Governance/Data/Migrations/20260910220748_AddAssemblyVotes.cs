@@ -178,10 +178,9 @@ namespace Humans.Governance.Data.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_assembly_vote_options_VoteId_Key",
+                name: "IX_assembly_vote_options_VoteId",
                 table: "assembly_vote_options",
-                columns: new[] { "VoteId", "Key" },
-                unique: true);
+                column: "VoteId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_assembly_vote_peeks_VoteId",
