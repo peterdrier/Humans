@@ -263,4 +263,5 @@ public enum AuditAction
     AssemblyBallotChanged,
     AssemblyBallotsViewed,
     AssemblyVoteRosterMerged,
+    AssemblyVoteRemindersSent,
 }

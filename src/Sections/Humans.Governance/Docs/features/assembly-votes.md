@@ -107,7 +107,7 @@ Closed results are visible to every logged-in member, roster or not; Volunteers 
 
 ### US-V8: The Board can see what happened
 
-Every state change and every ballot event is in the audit log (crosscut). Automation (auto-close, emails) leaves entries under the job actor.
+Every state change and every ballot event is in the audit log (crosscut). Automation (auto-close, emails) leaves entries under the job actor: the lapse close writes `AssemblyVoteClosed`, and each T-24h reminder batch writes `AssemblyVoteRemindersSent` with the number actually delivered.
 
 ## Why not Surveys
 
@@ -283,7 +283,7 @@ Navigation: a `SectionNav` entry ("Votes", `Nav_*` SharedResource key, visible t
 | Non-roster member | see every vote, its text and live stats, and closed results (numbers only) | cast a ballot; see any individual ballot |
 | Board | draft, edit, delete drafts, see all votes and stats, see every ballot after close (audited) | open, stop, extend, cancel, peek |
 | Admin | everything Board can, plus open, stop, extend, cancel, peek | see the tally before close without an audit trail |
-| Automation (lapse job) | close a lapsed vote and audit it | anything else |
+| Automation (lapse job) | close a lapsed vote and audit it, send the T-24h reminder and audit the batch | anything else |
 
 Board members are de facto Asociados: they are on the official roster whether or not their profile tier says Asociado, with one ballot like anyone else.
 

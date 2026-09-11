@@ -1122,4 +1122,23 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         roster.Should().ContainSingle("the roster is written exactly once, at the open that won")
             .Which.UserId.Should().Be(asociado);
     }
+
+    [HumansFact]
+    public async Task RunLapseAndReminderSweepAsync_AuditsTheRemindersItSent()
+    {
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(12));
+        var member = Guid.NewGuid();
+        _fx.StubActiveUsers(member);
+        await _fx.AddRosterRowAsync(vote.Id, member, isOfficial: true);
+
+        await _fx.Service.RunLapseAndReminderSweepAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _fx.Audit.Received(1).LogAsync(
+            AuditAction.AssemblyVoteRemindersSent,
+            AuditEntityTypes.AssemblyVote,
+            vote.Id,
+            Arg.Any<string>(),
+            AssemblyVoteService.LapseJobName);
+    }
 }

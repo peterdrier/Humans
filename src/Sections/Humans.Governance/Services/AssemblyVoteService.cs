@@ -1376,7 +1376,8 @@ internal sealed class AssemblyVoteService(
 
     /// <summary>
     /// Sends the T-24h reminder to roster members who have not voted, stamping each row so
-    /// the reminder cannot repeat however often the job runs.
+    /// the reminder cannot repeat however often the job runs, and auditing the batch that
+    /// was delivered under the job actor.
     /// </summary>
     private async Task SendRemindersAsync(Instant now, CancellationToken ct)
     {
@@ -1419,6 +1420,15 @@ internal sealed class AssemblyVoteService(
             if (reminded.Count > 0)
             {
                 await repository.StampReminderSentAsync(reminded, now, ct);
+
+                // Automation that emails the electorate says so in the audit log (US-V8).
+                // The count is the one actually delivered, not the one attempted: a send
+                // that threw above is in the log as an error and is not stamped, so the
+                // reminder is retried on the next sweep.
+                await audit.LogAsync(
+                    AuditAction.AssemblyVoteRemindersSent, AuditEntityTypes.AssemblyVote, vote.Id,
+                    $"Sent the closing reminder for assembly vote {vote.Id} to {reminded.Count} roster member(s).",
+                    LapseJobName);
             }
         }
     }
