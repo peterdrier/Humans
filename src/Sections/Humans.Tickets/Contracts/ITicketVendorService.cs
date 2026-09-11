@@ -11,10 +11,10 @@ namespace Humans.Tickets.Contracts;
 /// <remarks>
 /// A deliberate port, not a leftover: it exists so the 2027 vendor swap is one project
 /// deleted and one added. It lives in <c>Humans.Tickets</c> rather than on the
-/// <c>Humans.Tickets.Contracts</c> leaf because no consumer in Base names it — the two
-/// injection sites are this section and Shell's <c>TicketVendorHealthCheck</c>, and the
-/// one adapter section (<c>Humans.TicketTailor</c>) references this project directly
-/// (nobodies-collective/Humans#866, G5 lane 4b-2g). The leaf must keep naming none of the
+/// <c>Humans.Tickets.Contracts</c> leaf because no other section names it — it is injected
+/// only inside this section (its own <c>Health/TicketVendorHealthCheck</c> included), and
+/// the one adapter section (<c>Humans.TicketTailor</c>) references this project directly.
+/// The leaf must keep naming none of the
 /// vocabulary below; sections other than Tickets go through
 /// <see cref="ITicketDiscountCodes"/> / <see cref="ITicketVendorMirror"/> instead.
 /// </remarks>
