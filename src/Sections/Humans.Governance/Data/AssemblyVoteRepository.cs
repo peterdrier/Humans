@@ -89,6 +89,16 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
             return false;
         }
 
+        // An admin Stop or Cancel built its snapshot before an Extend committed, so it carries
+        // the pre-extension deadline on a write every other field of which is correct. The two
+        // guards above cover Open->Open and the automatic close only. The announced deadline is
+        // part of the legal record and the extension is the newer fact, so the locked row's
+        // deadline is kept rather than a legitimate terminal write being refused.
+        if (persisted.Status == AssemblyVoteStatus.Open && vote.ClosesAt < persisted.ClosesAt)
+        {
+            vote.ClosesAt = persisted.ClosesAt;
+        }
+
         ctx.AssemblyVotes.Update(vote);
         await ctx.SaveChangesAsync(ct);
         if (tx is not null) await tx.CommitAsync(ct);
@@ -529,20 +539,23 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
             .ToDictionaryAsync(r => r.VoteId, r => r, ct);
 
         // Read the ballots before the cascade takes them: the audit entry has to name the
-        // ballot it destroyed, and after SaveChanges the id is gone.
-        var sourceRosterIds = sourceRows.Select(r => r.Id).ToList();
+        // ballot it destroyed, and after SaveChanges the id is gone. The target's ballots come
+        // too, because whether the target row already holds one decides between re-parenting
+        // the source's ballot and dropping it.
+        var rosterIds = sourceRows.Select(r => r.Id)
+            .Concat(targetRowByVoteId.Values.Select(r => r.Id))
+            .ToList();
         var ballotByRosterId = await ctx.AssemblyBallots
-            .Where(b => sourceRosterIds.Contains(b.RosterId))
-            .ToDictionaryAsync(b => b.RosterId, b => b.Id, ct);
+            .Where(b => rosterIds.Contains(b.RosterId))
+            .ToDictionaryAsync(b => b.RosterId, b => b, ct);
 
         var dropped = new List<AssemblyRosterDrop>();
         foreach (var row in sourceRows)
         {
             if (targetRowByVoteId.TryGetValue(row.VoteId, out var targetRow))
             {
-                // The target already holds this vote's roster row; the source's row (and
-                // its ballot/history, via cascade delete) is dropped rather than merged —
-                // one person, one ballot per vote. The entitlement is not dropped with it:
+                // The target already holds this vote's roster row, so the source's row goes
+                // — one person, one roster row per vote. The entitlement is not dropped with it:
                 // one human reachable through two sources is official if either source made
                 // them official, so an official source row must not leave the survivor
                 // counted in the indicative result only.
@@ -561,9 +574,22 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
                     entry.Property(r => r.IsBoardMember).CurrentValue = true;
                 }
 
-                dropped.Add(new AssemblyRosterDrop(
-                    row.VoteId,
-                    ballotByRosterId.TryGetValue(row.Id, out var ballotId) ? ballotId : null));
+                // One person, one ballot — but only one of the two rows may actually carry
+                // one. When the merged-from account is the only one that voted, letting the
+                // cascade take its ballot would delete this human's sole ballot: on an open
+                // vote it vanishes from the binding tally, and after close the disclosure
+                // list and the GDPR export stop agreeing with the stored result. The ballot
+                // is tied to the roster row rather than the user (erasure anonymizes the
+                // row and leaves the ballot standing), so the surviving row inherits it.
+                // RosterId is init-only for the same reason the entitlement columns are.
+                var sourceBallot = ballotByRosterId.GetValueOrDefault(row.Id);
+                var moved = sourceBallot is not null && !ballotByRosterId.ContainsKey(targetRow.Id);
+                if (moved)
+                {
+                    ctx.Entry(sourceBallot!).Property(b => b.RosterId).CurrentValue = targetRow.Id;
+                }
+
+                dropped.Add(new AssemblyRosterDrop(row.VoteId, sourceBallot?.Id, moved));
                 ctx.AssemblyVoteRosterEntries.Remove(row);
             }
             else

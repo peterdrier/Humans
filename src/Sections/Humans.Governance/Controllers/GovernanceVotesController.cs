@@ -209,17 +209,21 @@ internal sealed class GovernanceVotesController(
             key is null ? string.Empty
             : optionLabels.TryGetValue(key, out var label) ? label : key;
 
+        // Authored order, matching the results page: the authored order is the documented
+        // final elimination tie-break, so the columns follow it rather than the storage keys.
+        var optionKeys = results.Vote.Options.OrderBy(o => o.Order).Select(o => o.Key).ToList();
+
         return HumansCsv.WriteBytes(csv =>
         {
             csv.WriteRow(Text("Votes_CsvVoteLabel"), results.Vote.Title);
             csv.WriteRow(Text("Votes_MethodLabel"), Text("Votes_Method_" + results.Result.Method));
             csv.NextRecord();
 
-            WriteAudienceCsv(csv, Text("Votes_OfficialRosterLabel"), results.Result.Official, OptionLabel);
+            WriteAudienceCsv(csv, Text("Votes_OfficialRosterLabel"), results.Result.Official, OptionLabel, optionKeys);
             if (results.Result.Indicative is { } indicative)
             {
                 csv.NextRecord();
-                WriteAudienceCsv(csv, Text("Votes_IndicativeRosterLabel"), indicative, OptionLabel);
+                WriteAudienceCsv(csv, Text("Votes_IndicativeRosterLabel"), indicative, OptionLabel, optionKeys);
             }
         });
     }
@@ -228,7 +232,8 @@ internal sealed class GovernanceVotesController(
         CsvWriter csv,
         string rosterLabel,
         AssemblyVoteAudienceResult audience,
-        Func<string?, string> optionLabel)
+        Func<string?, string> optionLabel,
+        IReadOnlyList<string> optionKeys)
     {
         csv.WriteRow(
             rosterLabel, audience.RosterSize,
@@ -244,12 +249,6 @@ internal sealed class GovernanceVotesController(
         }
 
         if (audience.Rounds is null) return;
-
-        var optionKeys = audience.Rounds
-            .SelectMany(r => r.Counts.Keys)
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(k => k, StringComparer.Ordinal)
-            .ToList();
 
         csv.WriteRow([
             Text("Votes_RoundColumnHeader"),

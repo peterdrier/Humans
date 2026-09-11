@@ -1766,9 +1766,10 @@ internal sealed class AssemblyVoteService(
 
     /// <summary>
     /// Folds a merged account's entitlements into the surviving one. Where both accounts sat
-    /// on the same vote's roster the target's row wins and the source's ballot is dropped —
-    /// one person may hold only one ballot per vote — and each drop is audited, because it
-    /// destroys a recorded ballot.
+    /// on the same vote's roster the target's row wins — one person may hold only one ballot
+    /// per vote — and the dropped row's ballot moves to the survivor, or is destroyed when
+    /// the survivor voted too. Either way it is audited: one of them destroys a recorded
+    /// ballot and the other changes which roster row a recorded ballot counts under.
     /// </summary>
     public async Task ReassignAsync(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct)
@@ -1777,19 +1778,26 @@ internal sealed class AssemblyVoteService(
 
         foreach (var drop in dropped)
         {
-            // The destroyed ballot is the entity when there was one, the vote when the
-            // merged-from account was on the roster but never voted. Logging the roster
-            // row's own id under either discriminator would leave an audit entry that
-            // resolves to nothing.
+            // The ballot is the entity when there was one, the vote when the merged-from
+            // account was on the roster but never voted. Logging the roster row's own id
+            // under either discriminator would leave an audit entry that resolves to
+            // nothing — and after a drop the row is gone anyway.
             var (entityType, entityId) = drop.BallotId is { } ballotId
                 ? (AuditEntityTypes.AssemblyBallot, ballotId)
                 : (AuditEntityTypes.AssemblyVote, drop.VoteId);
 
+            var what = drop.BallotMoved
+                ? "merged-from account's roster row was dropped in favour of the surviving "
+                    + "account's, and its ballot moved onto that row — the surviving account "
+                    + "had not voted, so this is the same human's only ballot on the vote."
+                : "merged-from account's roster row was dropped in favour of the surviving "
+                    + "account's, and its ballot with it: both accounts had voted, and one "
+                    + "person may hold only one ballot per vote.";
+
             await audit.LogAsync(
                 AuditAction.AssemblyVoteRosterMerged, entityType, entityId,
                 "Account merge: both accounts were on the same assembly-vote roster, so the "
-                + "merged-from account's roster row and ballot were dropped in favour of the "
-                + "surviving account's.",
+                + what,
                 actorUserId, drop.VoteId, AuditEntityTypes.AssemblyVote);
         }
     }

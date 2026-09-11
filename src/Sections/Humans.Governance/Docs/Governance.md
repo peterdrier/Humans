@@ -132,7 +132,7 @@ A binding vote of the association. Full design in [`features/assembly-votes.md`]
 
 One authored RankedChoice option: a stable `Key`, the authored `Order` (the documented last tie-break), and a per-culture `Label`. YesNo votes author no options — Yes / No / Abstain are fixed.
 
-**Table:** `assembly_vote_options` — unique `(VoteId, Key)`.
+**Table:** `assembly_vote_options` — no unique index on `Key`; duplicate keys within a vote are rejected by `IsDraftValid`, per [`unique-constraints-ids-only`](../../../../memory/architecture/unique-constraints-ids-only.md).
 
 ### AssemblyVoteRoster
 
@@ -326,7 +326,7 @@ These controllers serve this section.
 - `FinalizeAsync(app, ct)` is the atomic approve/reject commit: application update + board-vote bulk delete in one `SaveChangesAsync`.
 - **Decorator decision — no caching decorator.** At this section's traffic level (a handful of Board-driven writes per week and a few admin reads per day) a caching layer isn't worth the complexity. The earlier store/decorator from peterdrier/Humans PR #503 was removed under issue nobodies-collective/Humans#533 once §15 (`CachingProfileService`) established the canonical shape.
 - **Cross-domain navs stripped:** `Application.User`, `Application.ReviewedByUser`, `ApplicationStateHistory.ChangedByUser`, `BoardVote.BoardMemberUser`. Display data resolves via `IUserServiceRead.GetUserInfosAsync` and is stitched into DTOs (`ApplicationAdminDetailDto`, `ApplicationUserDetailDto`, `ApplicationAdminRowDto`, `ApplicationStateHistoryDto`).
-- `AssemblyVoteService` is the only caller of `IAssemblyVoteRepository`, which is the only non-test code that touches the six `assembly_*` DbSets. The counting itself is `AssemblyVoteCounting`, a pure static with no clock and no repository, so the verdict logic is testable in isolation and the stored `ResultJson` is reproducible from ballots alone. `AssemblyVoteLapseJob` calls the service, never the repository. No caching decorator: one vote at a time, ~120 voters.
+- `AssemblyVoteService` is the only caller of `IAssemblyVoteRepository`, which is the only non-test code that touches the `assembly_*` DbSets. The counting itself is `AssemblyVoteCounting`, a pure static with no clock and no repository, so the verdict logic is testable in isolation and the stored `ResultJson` is reproducible from ballots alone. `AssemblyVoteLapseJob` calls the service, never the repository. No caching decorator: one vote at a time, ~120 voters.
 - **Write-side invalidation** is inline in the service. `ApproveAsync` / `RejectAsync` capture voter ids via `IApplicationRepository.GetVoterIdsForApplicationAsync` **before** `FinalizeAsync` (which deletes the `BoardVote` rows), then after the write invalidate `INavBadgeCacheInvalidator`, `INotificationMeterCacheInvalidator`, and every per-voter `IVotingBadgeCacheInvalidator`. `SubmitAsync` / `WithdrawAsync` invalidate nav badge + notification meter only.
 
 ### Touch-and-clean guidance

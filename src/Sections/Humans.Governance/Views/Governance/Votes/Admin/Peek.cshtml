@@ -64,7 +64,8 @@
 
             @if (audience.Rounds is { Count: > 0 } rounds)
             {
-                var optionKeys = rounds.SelectMany(r => r.Counts.Keys).Distinct().OrderBy(k => k, StringComparer.Ordinal).ToList();
+                @* Authored order, matching the results page and the authored-order tie-break. *@
+                var optionKeys = Model.Options.OrderBy(o => o.Order).Select(o => o.Key).ToList();
                 <div class="table-responsive">
                     <table class="table table-sm">
                         <thead>

@@ -218,9 +218,10 @@ internal interface IAssemblyVoteRepository : IRepository
     /// <summary>
     /// Account merge: moves the source account's roster rows to the target. Where both
     /// accounts sit on the same vote's roster the target's row wins and the source's row
-    /// and ballot are dropped — one person may hold only one ballot per vote. Returns what
-    /// each drop destroyed, so the caller can audit the real entities rather than the
-    /// roster row's own id.
+    /// goes — one person may hold only one ballot per vote. A ballot on the dropped row
+    /// moves to the surviving row when that row has none of its own, and is destroyed with
+    /// it only when both rows voted. Returns what happened to each, so the caller can audit
+    /// the real entities rather than the roster row's own id.
     /// <para>
     /// Also moves the section's own actor references — <c>OpenedByUserId</c>,
     /// <c>ClosedByUserId</c> and a peek's <c>AdminUserId</c> — off the source account, so
@@ -254,7 +255,8 @@ internal sealed record AssemblyVoteParticipation(
 
 /// <summary>
 /// One roster row dropped by an account merge: the vote it sat on, and the ballot it
-/// destroyed when it carried one. <c>BallotId</c> is null when the merged-from account was
-/// on the roster but never voted.
+/// carried. <c>BallotId</c> is null when the merged-from account was on the roster but never
+/// voted. <c>BallotMoved</c> distinguishes the two fates of a ballot that did exist —
+/// re-parented onto the surviving row, or destroyed because that row had voted too.
 /// </summary>
-internal sealed record AssemblyRosterDrop(Guid VoteId, Guid? BallotId);
+internal sealed record AssemblyRosterDrop(Guid VoteId, Guid? BallotId, bool BallotMoved);

@@ -1355,6 +1355,87 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task ReassignAsync_WhenOnlyTheMergedAccountVoted_MovesTheBallotToTheSurvivingRow()
+    {
+        var vote = await _fx.AddVoteAsync();
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        _fx.StubActiveUsers(source, target);
+        var sourceRow = await _fx.AddRosterRowAsync(vote.Id, source, isOfficial: true);
+        var targetRow = await _fx.AddRosterRowAsync(vote.Id, target, isOfficial: true);
+        var ballot = await _fx.AddBallotAsync(vote.Id, sourceRow.Id, AssemblyBallotChoice.Yes);
+
+        await _fx.Service.ReassignAsync(
+            source, target, Guid.NewGuid(), _fx.Clock.GetCurrentInstant(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        var ballots = await _fx.Db.AssemblyBallots.AsNoTracking()
+            .Where(b => b.VoteId == vote.Id)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var survivingBallot = ballots.Should().ContainSingle(
+            "the human's only ballot survives the merge — dropping it would remove it from "
+            + "the binding tally").Subject;
+        survivingBallot.Id.Should().Be(ballot.Id);
+        survivingBallot.RosterId.Should().Be(targetRow.Id, "it counts under the surviving row");
+    }
+
+    [HumansFact]
+    public async Task ReassignAsync_WhenBothAccountsVoted_DropsTheMergedAccountsBallot()
+    {
+        var vote = await _fx.AddVoteAsync();
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        _fx.StubActiveUsers(source, target);
+        var sourceRow = await _fx.AddRosterRowAsync(vote.Id, source, isOfficial: true);
+        var targetRow = await _fx.AddRosterRowAsync(vote.Id, target, isOfficial: true);
+        await _fx.AddBallotAsync(vote.Id, sourceRow.Id, AssemblyBallotChoice.Yes);
+        var kept = await _fx.AddBallotAsync(vote.Id, targetRow.Id, AssemblyBallotChoice.No);
+
+        await _fx.Service.ReassignAsync(
+            source, target, Guid.NewGuid(), _fx.Clock.GetCurrentInstant(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        var ballots = await _fx.Db.AssemblyBallots.AsNoTracking()
+            .Where(b => b.VoteId == vote.Id)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        ballots.Should().ContainSingle("one person may hold only one ballot per vote")
+            .Which.Id.Should().Be(kept.Id, "the surviving account's own ballot is the one that stands");
+    }
+
+    [HumansFact]
+    public async Task StopAsync_BuiltBeforeAnExtensionCommitted_KeepsTheExtendedDeadline()
+    {
+        var vote = await _fx.AddVoteAsync(
+            status: AssemblyVoteStatus.Open,
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(2));
+        var extended = _fx.Clock.GetCurrentInstant() + Duration.FromDays(7);
+
+        // The Stop snapshot was read at the old deadline; the extension commits before the
+        // write takes the row's lock. The announced deadline is part of the legal record, so
+        // the newer fact wins and the terminal write still goes through.
+        var stale = await _fx.Db.AssemblyVotes.AsNoTracking()
+            .FirstAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        var live = await _fx.Db.AssemblyVotes.FirstAsync(
+            v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        live.ClosesAt = extended;
+        await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _fx.Db.ChangeTracker.Clear();
+
+        stale.Status = AssemblyVoteStatus.Closed;
+        stale.ClosedAt = _fx.Clock.GetCurrentInstant();
+        stale.ClosedByUserId = Guid.NewGuid();
+
+        var written = await _fx.Repository.UpdateAsync(
+            stale, AssemblyVoteStatus.Open, ct: Xunit.TestContext.Current.CancellationToken);
+
+        written.Should().BeTrue("a Stop is legitimate whatever the deadline did");
+        var persisted = await _fx.Db.AssemblyVotes.AsNoTracking()
+            .FirstAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        persisted.Status.Should().Be(AssemblyVoteStatus.Closed);
+        persisted.ClosesAt.Should().Be(extended, "the extension is the newer fact");
+    }
+
+    [HumansFact]
     public async Task RunLapseAndReminderSweepAsync_StopsRemindingOnceTheDeadlineMoves()
     {
         var vote = await _fx.AddVoteAsync(
