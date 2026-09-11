@@ -142,7 +142,12 @@
                 {
                     <div class="mb-2">
                         <label class="form-label small">@Localizer["Workgroups_Field_ReplacementCoordinator"]</label>
-                        <input name="replacementCoordinatorUserId" class="form-control form-control-sm" placeholder="00000000-0000-0000-0000-000000000000" />
+                        <select name="replacementCoordinatorUserId" class="form-select form-select-sm">
+                            @foreach (var member in w.CurrentMembers().Where(m => m.UserId != Model.CurrentUserId))
+                            {
+                                <option value="@member.UserId">@Model.DisplayName(member.UserId)</option>
+                            }
+                        </select>
                     </div>
                 }
                 <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Workgroups_Leave"]</button>
@@ -155,8 +160,16 @@
             <form method="post" asp-action="Coordinators" asp-route-slug="@w.Slug" class="mb-3">
                 @{ var c = coordinatorIds.ToList(); }
                 <div class="mb-2">
-                    <input name="coordinatorUserIds" class="form-control form-control-sm mb-1" value="@(c.Count > 0 ? c[0] : null)" placeholder="@Localizer["Workgroups_Field_Coordinator1"]" />
-                    <input name="coordinatorUserIds" class="form-control form-control-sm" value="@(c.Count > 1 ? c[1] : null)" placeholder="@Localizer["Workgroups_Field_Coordinator2"]" />
+                    @for (var slot = 0; slot < 2; slot++)
+                    {
+                        <select name="coordinatorUserIds" class="form-select form-select-sm mb-1">
+                            <option value="">—</option>
+                            @foreach (var member in w.CurrentMembers())
+                            {
+                                <option value="@member.UserId" selected="@(c.Count > slot && c[slot] == member.UserId)">@Model.DisplayName(member.UserId)</option>
+                            }
+                        </select>
+                    }
                 </div>
                 <button type="submit" class="btn btn-sm btn-outline-secondary">@Localizer["Workgroups_SaveCoordinators"]</button>
             </form>

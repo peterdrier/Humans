@@ -1,3 +1,5 @@
+using Humans.Workgroups.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
@@ -216,20 +218,24 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
             ? workgroup.Members.Single().UserId
             : SeedUser("Outsider");
 
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddAuthorization();
+        services.AddScoped<IAuthorizationHandler, WorkgroupAuthorizationHandler>();
+        var provider = services.BuildServiceProvider();
         var controller = new WorkgroupsController(
             NewService(), Users, Teams,
             Substitute.For<IStringLocalizer<WorkgroupsResource>>(),
             Clock,
+            provider.GetRequiredService<IAuthorizationService>(),
             NullLogger<WorkgroupsController>.Instance);
 
-        var services = new ServiceCollection();
-        services.AddLogging();
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, actorId.ToString()) };
         if (isBoard) claims.Add(new Claim(ClaimTypes.Role, RoleNames.Board));
 
         var http = new DefaultHttpContext
         {
-            RequestServices = services.BuildServiceProvider(),
+            RequestServices = provider,
             User = new ClaimsPrincipal(new ClaimsIdentity(claims, authenticationType: "test"))
         };
 

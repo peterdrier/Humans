@@ -276,20 +276,21 @@ internal sealed partial class WorkgroupService
 
     private static string PageUrl(WorkgroupInfo w) => $"/Workgroups/{w.Slug}";
 
-    private async Task NotifyAsync(
-        IReadOnlyList<Guid> recipientUserIds,
-        NotificationSource source,
-        string title,
-        WorkgroupInfo w,
-        string body,
-        CancellationToken ct)
-    {
-        if (recipientUserIds.Count == 0)
-            return;
+    private static readonly System.Resources.ResourceManager NoticeResources = new(typeof(WorkgroupsResource));
 
-        await notifications.SendAsync(source, NotificationClass.Informational,
-            NotificationPriority.Normal, title, recipientUserIds, body,
-            actionUrl: PageUrl(w), sourceKey: w.Id.ToString(), cancellationToken: ct);
+    private async Task NotifyAsync(
+        IReadOnlyList<Guid> recipientUserIds, NotificationSource source, string titleKey,
+        WorkgroupInfo w, string? body, CancellationToken ct)
+    {
+        if (recipientUserIds.Count == 0) return;
+        var people = await users.GetUserInfosAsync(recipientUserIds, ct);
+        foreach (var group in recipientUserIds.Distinct().GroupBy(id => people.GetValueOrDefault(id)?.PreferredLanguage ?? "en", StringComparer.OrdinalIgnoreCase))
+        {
+            var culture = System.Globalization.CultureInfo.GetCultureInfo(group.Key);
+            var title = $"{NoticeResources.GetString(titleKey, culture)}: {w.Name}";
+            await notifications.SendAsync(source, NotificationClass.Informational, NotificationPriority.Normal,
+                title, group.ToList(), body, actionUrl: PageUrl(w), sourceKey: w.Id.ToString(), cancellationToken: ct);
+        }
     }
 
     private Task NotifyBoardAsync(
@@ -443,8 +444,7 @@ internal sealed partial class WorkgroupService
         var info = ToInfo(w);
         var coordinators = info.CoordinatorUserIds();
         await NotifyAsync(coordinators, NotificationSource.WorkgroupRegistrationDecided,
-            $"Working group ended: {w.Name}", info,
-            Trimmed(reasons) ?? $"The group is now dormant ({reason}).", ct);
+            "Enum_WorkgroupLogKind_Ended", info, Trimmed(reasons), ct);
         await EmailAsync(coordinators, WorkgroupNoticeKind.Ended, info, Trimmed(reasons), ct);
 
         // Dormant means read-only for the folder: the source now returns Viewer.

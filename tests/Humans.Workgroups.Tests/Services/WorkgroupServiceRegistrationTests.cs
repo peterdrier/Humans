@@ -15,6 +15,40 @@ namespace Humans.Workgroups.Tests.Services;
 /// </summary>
 public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
 {
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Registration_CompletesWhenTheRequestDisconnectsDuringFolderCreation(bool existing)
+    {
+        using var request = new CancellationTokenSource();
+        var actor = SeedUser();
+        var group = await SeedWorkgroupAsync(status: WorkgroupStatus.Applied, driveFolderId: null);
+        GoogleSync.CreateSubfolderAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().CanBeCanceled.Should().BeFalse();
+                request.Cancel();
+                return "created-folder";
+            });
+
+        var service = NewService();
+        var id = group.Id;
+        if (existing)
+            id = await service.RegisterExistingAsync(actor, new WorkgroupBootstrap(
+                new WorkgroupApplication("Existing", "Purpose", "Report", WorkgroupDeliverableKind.Report,
+                    WorkgroupAudience.Board, null, null, null), actor, Clock.GetCurrentInstant()), request.Token);
+        else
+            await service.RegisterAsync(id, actor, request.Token);
+
+        await using var ctx = OpenContext();
+        var saved = await ctx.Workgroups.SingleAsync(w => w.Id == id, Ct);
+        saved.Status.Should().Be(WorkgroupStatus.Active);
+        saved.DriveFolderId.Should().Be("created-folder");
+        (await ctx.LogEntries.AnyAsync(e => e.WorkgroupId == id && e.Kind == WorkgroupLogKind.Registered, Ct))
+            .Should().BeTrue();
+        await GoogleSync.Received().RequestSyncAsync("created-folder", CancellationToken.None);
+    }
+
     [HumansFact]
     public async Task Register_WhenSubfolderCreationFails_LeavesTheGroupApplied()
     {

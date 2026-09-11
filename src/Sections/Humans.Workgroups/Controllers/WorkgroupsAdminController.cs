@@ -75,8 +75,8 @@ internal sealed class WorkgroupsAdminController(
     /// <summary>The Board's override of §5's member-run handover — a coordinatorless group needs one.</summary>
     [HttpPost("{id:guid}/Coordinators")]
     [ValidateAntiForgeryToken]
-    public Task<IActionResult> Coordinators(Guid id, Guid[] coordinatorUserIds, CancellationToken ct) =>
-        ActAsync(actor => workgroups.SetCoordinatorsAsync(id, actor, coordinatorUserIds, asAdmin: true, ct),
+    public Task<IActionResult> Coordinators(Guid id, Guid?[] coordinatorUserIds, CancellationToken ct) =>
+        ActAsync(actor => workgroups.SetCoordinatorsAsync(id, actor, coordinatorUserIds.OfType<Guid>().ToArray(), asAdmin: true, ct),
             "Coordinators set", ct);
 
     // ── Bootstrapping (§21) ───────────────────────────────────────────────

@@ -1,3 +1,4 @@
+using NSubstitute;
 using Xunit;
 using AwesomeAssertions;
 using Humans.Workgroups.Domain;
@@ -14,6 +15,44 @@ namespace Humans.Workgroups.Tests.Services;
 /// </summary>
 public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
 {
+    [HumansTheory]
+    [Xunit.InlineData("en", "Document published")]
+    [Xunit.InlineData("es", "Documento publicado")]
+    [Xunit.InlineData("de", "Dokument veröffentlicht")]
+    [Xunit.InlineData("it", "Documento pubblicato")]
+    [Xunit.InlineData("fr", "Document publié")]
+    [Xunit.InlineData("ca", "Document publicat")]
+    public async Task PublishedNotice_UsesTheRecipientLanguage(string language, string title)
+    {
+        var coordinator = SeedUser(language: language);
+        var group = await SeedWorkgroupAsync(coordinatorUserId: coordinator);
+        var document = await AddDocumentAsync(group.Id);
+
+        await NewService().PublishDocumentAsync(document.Id, coordinator, Ct);
+
+        var call = Notifications.ReceivedCalls().Single(c => string.Equals(c.GetMethodInfo().Name, "SendAsync", StringComparison.Ordinal));
+        call.GetArguments()[3].Should().Be($"{title}: {group.Name}");
+        call.GetArguments()[5].Should().Be(document.Title);
+    }
+
+    [HumansFact]
+    public async Task DeferredDisposition_StaysQueuedUntilAFinalReply()
+    {
+        var group = await SeedWorkgroupAsync();
+        var document = await AddDocumentAsync(group.Id, WorkgroupDocumentStatus.Delivered,
+            deliveredAt: Clock.GetCurrentInstant().Minus(Duration.FromDays(61)));
+        var service = NewService();
+        var actor = SeedUser();
+
+        await service.RecordDispositionAsync(document.Id, actor, WorkgroupDisposition.Deferred, "Next meeting", Ct);
+        var info = (await service.GetByIdAsync(group.Id, Ct))!;
+        info.AwaitingDisposition().Should().ContainSingle(d => d.Id == document.Id);
+        info.HasOverdueDisposition(Clock.GetCurrentInstant()).Should().BeTrue();
+
+        await service.RecordDispositionAsync(document.Id, actor, WorkgroupDisposition.Accepted, "Agreed", Ct);
+        (await service.GetByIdAsync(group.Id, Ct))!.AwaitingDisposition().Should().BeEmpty();
+    }
+
     // ── Publish ───────────────────────────────────────────────────────────
 
     [HumansFact]

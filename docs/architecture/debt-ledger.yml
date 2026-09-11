@@ -428,6 +428,5 @@ inbox:
     what: "WorkgroupService.LinkSurveyAsync (src/Sections/Humans.Workgroups/Services/WorkgroupService.cs) writes a SurveySubmitted log entry for any Guid the member posts, without checking the survey exists or that the group authored it — the log can name a survey nobody can open. Validating it needs a new cross-section read seam (Workgroups has no project reference to Surveys, which exposes only ISurveyAnalysisRead), so it needs Peter's sign-off on the new public surface. Found by Codex review round 3 on peterdrier/Humans#1650."
     review: panel
   - added: 2026-09-11
-    what: "In-app notification titles and bodies are hardcoded English everywhere they are sent to members — Workgroups (WorkgroupService.cs, .Documents.cs, .Lifecycle.cs, .Rhythm.cs), Rideshare (RideshareService.cs) and Issues — while the email for the same event is localized. INotificationService.SendAsync takes one title/body for a list of recipients, so there is no seam that resolves per-recipient culture; localizing member-facing notifications needs that seam first, not a per-caller fix. Found by Codex review round 4 on peterdrier/Humans#1650."
+    what: "Rideshare and Issues still send member notifications in English. Workgroups now groups recipients by PreferredLanguage and uses existing localized labels with INotificationService.SendAsync; no new notification API is required. Apply the same approach to the remaining callers. Found during review of peterdrier/Humans#1650."
     review: panel
-

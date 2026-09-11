@@ -61,8 +61,7 @@ internal sealed partial class WorkgroupService
 
         var coordinators = info.CoordinatorUserIds();
         await NotifyAsync(coordinators, NotificationSource.WorkgroupReportingDue,
-            $"Monthly update due: {workgroup.Name}", info,
-            $"There has been no update or meeting for {days} days.", ct);
+            "Workgroups_Todo_UpdateDue_Title", info, body: null, ct);
         await AuditJobAsync(AuditAction.WorkgroupUpdateDueNotified,
             workgroup, $"Notified the coordinators that an update is due after {days} days of silence");
     }
@@ -91,8 +90,7 @@ internal sealed partial class WorkgroupService
 
         var coordinators = info.CoordinatorUserIds();
         await NotifyAsync(coordinators, NotificationSource.WorkgroupReportingDue,
-            $"Is this group still going? {workgroup.Name}", info,
-            $"There has been no update or meeting for {days} days. Post an update or mark the group done.", ct);
+            "Enum_WorkgroupLogKind_DormancyInquiry", info, body: null, ct);
         await EmailAsync(coordinators, WorkgroupNoticeKind.DormancyInquiry, info, days.ToString(CultureInfo.InvariantCulture), ct);
         await NotifyBoardAsync(NotificationSource.WorkgroupReportingDue,
             $"Dormancy flagged: {workgroup.Name}", info,

@@ -154,7 +154,8 @@ internal static class WorkgroupRhythm
 
     /// <summary>Delivered documents the Board still owes a written reply.</summary>
     public static IEnumerable<WorkgroupDocumentInfo> AwaitingDisposition(this WorkgroupInfo w) =>
-        w.Documents.Where(d => d.Status == WorkgroupDocumentStatus.Delivered && d.Disposition is null);
+        w.Documents.Where(d => d.Status == WorkgroupDocumentStatus.Delivered
+            && d.Disposition is null or WorkgroupDisposition.Deferred);
 
     public static bool HasOverdueDisposition(this WorkgroupInfo w, Instant now) =>
         w.AwaitingDisposition().Any(d => d.DeliveredAt is { } at && now - at >= DispositionOverdueAfter);

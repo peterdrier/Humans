@@ -76,7 +76,7 @@ internal sealed class WorkgroupPageViewModel
     public required bool CanAdminister { get; init; }
 
     /// <summary>Member work is frozen unless the group is Active — see the authorization handler.</summary>
-    public bool CanDoMemberWork => IsMember && Workgroup.AcceptsMemberWork();
+    public required bool CanDoMemberWork { get; init; }
 
     public string DisplayName(Guid? userId) =>
         userId is { } id && People.TryGetValue(id, out var info) ? info.BurnerName : "—";
@@ -251,7 +251,7 @@ internal sealed class DocumentPageViewModel
 
     public required bool CanAdminister { get; init; }
 
-    public bool CanDoMemberWork => IsMember && Workgroup.AcceptsMemberWork();
+    public required bool CanDoMemberWork { get; init; }
 
     public bool IsOpenForComment => Document.IsOpenForComment(Now);
 

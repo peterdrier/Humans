@@ -17,6 +17,8 @@ internal sealed partial class WorkgroupService
 {
     public async Task RegisterAsync(Guid workgroupId, Guid actorUserId, CancellationToken ct = default)
     {
+        // Registration completes even if the initiating request disconnects.
+        ct = CancellationToken.None;
         var workgroup = await RequireAsync(workgroupId, ct);
         RequireStatus(workgroup, WorkgroupStatus.Applied, WorkgroupStatus.Referred);
 
@@ -34,9 +36,7 @@ internal sealed partial class WorkgroupService
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.Registered, now, body: null, ct);
         await AuditAsync(AuditAction.WorkgroupRegistered, workgroup,
             $"Registered '{workgroup.Name}' with Drive folder {workgroup.DriveFolderId}", actorUserId);
-        await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Registered,
-            $"Working group registered: {workgroup.Name}",
-            "The group is on the register. Its Drive folder is ready.", detail: null, ct);
+        await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Registered, detail: null, ct);
         await RequestDriveSyncAsync(workgroup, ct);
     }
 
@@ -79,8 +79,7 @@ internal sealed partial class WorkgroupService
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.Refused, now, reasons.Trim(), ct);
         await AuditAsync(AuditAction.WorkgroupRefused, workgroup,
             $"Refused '{workgroup.Name}': {reasons.Trim()}", actorUserId);
-        await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Refused,
-            $"Registration refused: {workgroup.Name}", reasons.Trim(), reasons.Trim(), ct);
+        await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Refused, reasons.Trim(), ct);
     }
 
     public async Task WithdrawAsync(
@@ -102,8 +101,7 @@ internal sealed partial class WorkgroupService
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.Withdrawn, now, reasons.Trim(), ct);
         await AuditAsync(AuditAction.WorkgroupWithdrawn, workgroup,
             $"Withdrew registration of '{workgroup.Name}': {reasons.Trim()}", actorUserId);
-        await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Withdrawn,
-            $"Registration withdrawn: {workgroup.Name}", reasons.Trim(), reasons.Trim(), ct);
+        await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Withdrawn, reasons.Trim(), ct);
         // Withdrawn is not Active, so the source stops claiming write access.
         await RequestDriveSyncAsync(workgroup, ct);
     }
@@ -137,9 +135,7 @@ internal sealed partial class WorkgroupService
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.Reactivated, now, body: null, ct);
         await AuditAsync(AuditAction.WorkgroupReactivated, workgroup,
             $"Reactivated '{workgroup.Name}'", actorUserId);
-        await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Reactivated,
-            $"Working group reactivated: {workgroup.Name}",
-            "The page is live again and the Drive folder is writable.", detail: null, ct);
+        await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Reactivated, detail: null, ct);
         // Active again: the source claims Contributor for the current members once more.
         await RequestDriveSyncAsync(workgroup, ct);
     }
@@ -147,6 +143,7 @@ internal sealed partial class WorkgroupService
     public async Task<Guid> RegisterExistingAsync(
         Guid actorUserId, WorkgroupBootstrap bootstrap, CancellationToken ct = default)
     {
+        ct = CancellationToken.None;
         ArgumentNullException.ThrowIfNull(bootstrap);
         ValidateApplication(bootstrap.Application);
 
@@ -188,9 +185,7 @@ internal sealed partial class WorkgroupService
             $"Registered the existing group '{workgroup.Name}', backdated to "
                 + $"{bootstrap.RegisteredAt.InUtc().Date.ToInvariantDate()}",
             actorUserId);
-        await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Registered,
-            $"Working group registered: {workgroup.Name}",
-            "The group is on the register. Its Drive folder is ready.", detail: null, ct);
+        await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Registered, detail: null, ct);
         await RequestDriveSyncAsync(workgroup, ct);
 
         return workgroup.Id;
@@ -228,7 +223,7 @@ internal sealed partial class WorkgroupService
 
         var info = ToInfo(workgroup);
         await NotifyAsync(info.CurrentMemberUserIds(), NotificationSource.WorkgroupDispositionRecorded,
-            $"The Board replied: {document.Title}", info, $"{disposition}. {note.Trim()}", ct);
+            $"Enum_WorkgroupDisposition_{disposition}", info, $"{document.Title}: {note.Trim()}", ct);
         // Members see it in-app; the coordinators, who owe the follow-up, also get the email.
         await EmailAsync(info.CoordinatorUserIds(), WorkgroupNoticeKind.DispositionRecorded, info,
             $"{disposition}: {note.Trim()}", ct);
@@ -249,10 +244,7 @@ internal sealed partial class WorkgroupService
 
         try
         {
-            // CancellationToken.None, not ct: the caller is a POST, and a request-scoped token
-            // that fires between Google creating the folder and us persisting its id leaves an
-            // orphan folder a retry cannot find
-            // (memory/architecture/cancellation-token-propagation.md, [ExternalWrite]).
+            // The entire registration uses a non-cancellable token.
             return await googleSync.CreateSubfolderAsync(root, workgroup.Name, CancellationToken.None);
         }
         catch (Exception ex)
@@ -267,14 +259,12 @@ internal sealed partial class WorkgroupService
     private async Task AnnounceDecisionAsync(
         Workgroup workgroup,
         WorkgroupNoticeKind kind,
-        string title,
-        string body,
         string? detail,
         CancellationToken ct)
     {
         var info = ToInfo(workgroup);
         var coordinators = info.CoordinatorUserIds();
-        await NotifyAsync(coordinators, NotificationSource.WorkgroupRegistrationDecided, title, info, body, ct);
+        await NotifyAsync(coordinators, NotificationSource.WorkgroupRegistrationDecided, $"Enum_WorkgroupLogKind_{kind}", info, detail, ct);
         await EmailAsync(coordinators, kind, info, detail, ct);
     }
 }

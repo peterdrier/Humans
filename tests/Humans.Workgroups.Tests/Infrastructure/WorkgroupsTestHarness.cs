@@ -130,10 +130,10 @@ public abstract class WorkgroupsTestHarness : IDisposable
 
     /// <summary>Registers a human the <see cref="IUserServiceRead"/> substitute knows by burner name.</summary>
     protected Guid SeedUser(
-        string burnerName = "Test Human", Guid? id = null, ProfileInfo? profile = null)
+        string burnerName = "Test Human", Guid? id = null, ProfileInfo? profile = null, string language = "en")
     {
         var userId = id ?? Guid.NewGuid();
-        _users[userId] = UserInfoFor(userId, burnerName, profile);
+        _users[userId] = UserInfoFor(userId, burnerName, profile, language);
         return userId;
     }
 
@@ -301,8 +301,8 @@ public abstract class WorkgroupsTestHarness : IDisposable
 
     // ── UserInfo construction ────────────────────────────────────────────
 
-    private static UserInfo UserInfoFor(Guid id, string burnerName, ProfileInfo? profile) => new(
-        id, burnerName, false, "en", null, Instant.FromUtc(2026, 1, 1, 0, 0),
+    private static UserInfo UserInfoFor(Guid id, string burnerName, ProfileInfo? profile, string language) => new(
+        id, burnerName, false, language, null, Instant.FromUtc(2026, 1, 1, 0, 0),
         null, null, null, null, null, false, null, false, null, null, null,
         null, null, null, [], [], [], profile, []);
 

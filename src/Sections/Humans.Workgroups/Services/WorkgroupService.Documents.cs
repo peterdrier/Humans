@@ -83,8 +83,7 @@ internal sealed partial class WorkgroupService
 
         var info = ToInfo(workgroup);
         await NotifyAsync(info.CurrentMemberUserIds(), NotificationSource.WorkgroupDocumentActivity,
-            $"Document published: {document.Title}", info,
-            $"{workgroup.Name} published {document.Title}.", ct);
+            "Enum_WorkgroupLogKind_DocumentPublished", info, document.Title, ct);
     }
 
     public async Task OpenCommentsAsync(
@@ -120,8 +119,7 @@ internal sealed partial class WorkgroupService
 
         var info = ToInfo(workgroup);
         await NotifyAsync(info.CurrentMemberUserIds(), NotificationSource.WorkgroupDocumentActivity,
-            $"Comment period open: {document.Title}", info,
-            $"Comments on {document.Title} are open until {window.ClosesAt.InUtc().Date.ToInvariantLongDate()}.", ct);
+            "Enum_WorkgroupLogKind_CommentPeriodOpened", info, document.Title, ct);
     }
 
     public async Task CloseCommentsAsync(Guid documentId, Guid actorUserId, CancellationToken ct = default)
@@ -231,8 +229,7 @@ internal sealed partial class WorkgroupService
         {
             var info = ToInfo(workgroup);
             await NotifyAsync([author], NotificationSource.WorkgroupDocumentActivity,
-                $"Your comment was answered: {comment.Document.Title}", info,
-                Trimmed(response) ?? $"The group marked your comment {disposition}.", ct);
+                "Workgroups_CommentAnswered", info, $"{comment.Document.Title}: {Trimmed(response)}", ct);
         }
     }
 
@@ -269,8 +266,7 @@ internal sealed partial class WorkgroupService
         var info = ToInfo(workgroup);
         var authors = pending.Select(c => c.AuthorUserId).OfType<Guid>().Distinct().ToList();
         await NotifyAsync(authors, NotificationSource.WorkgroupDocumentActivity,
-            $"Your comment was answered: {document.Title}", info,
-            Trimmed(response) ?? $"The group marked the {matched} comments {disposition}.", ct);
+            "Workgroups_CommentAnswered", info, $"{document.Title}: {Trimmed(response)}", ct);
     }
 
     public async Task HideCommentAsync(

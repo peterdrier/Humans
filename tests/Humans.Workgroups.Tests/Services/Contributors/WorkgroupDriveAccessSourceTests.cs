@@ -24,6 +24,17 @@ public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
     private WorkgroupDriveAccessSource NewSource() => new(NewService(), Users, Teams);
 
     [HumansFact]
+    public async Task WithdrawnGroup_ClaimsAnEmptyRosterToRevokeExistingGrants()
+    {
+        var group = await SeedWorkgroupAsync(driveFolderId: "withdrawn-folder");
+        await NewService().WithdrawAsync(group.Id, SeedUser(), "Closed by the Board", Ct);
+
+        var access = await NewSource().GetExpectedAccessAsync("withdrawn-folder", Ct);
+
+        access.Should().ContainKey("withdrawn-folder").WhoseValue.Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task ActiveGroup_CurrentMembers_GetContributor()
     {
         var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Active, driveFolderId: "folder-1");

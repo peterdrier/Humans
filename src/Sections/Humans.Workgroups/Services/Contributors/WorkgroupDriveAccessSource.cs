@@ -40,10 +40,10 @@ internal sealed class WorkgroupDriveAccessSource(
                 WorkgroupStatus.Dormant => DrivePermissionLevel.Viewer,
                 _ => DrivePermissionLevel.None
             };
-            if (level == DrivePermissionLevel.None)
-                continue;
-
-            claimed[id] = workgroup.CurrentMemberUserIds().ToDictionary(userId => userId, _ => level);
+            // Keep claiming retired folders so reconciliation removes their direct grants.
+            claimed[id] = level == DrivePermissionLevel.None
+                ? []
+                : workgroup.CurrentMemberUserIds().ToDictionary(userId => userId, _ => level);
         }
 
         if (await workgroups.GetRootDriveFolderIdAsync(ct) is { Length: > 0 } root

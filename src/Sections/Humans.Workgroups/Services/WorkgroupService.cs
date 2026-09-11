@@ -70,18 +70,13 @@ internal sealed partial class WorkgroupService(
         return register.Where(w => w.IsMember(userId)).ToList();
     }
 
-    public async Task<bool> IsMemberAsync(Guid workgroupId, Guid userId, CancellationToken ct = default)
-    {
-        var workgroup = await repository.GetWorkgroupAsync(workgroupId, ct);
-        return workgroup is not null
-            && workgroup.Members.Any(m => m.UserId == userId && m.LeftAt is null);
-    }
 
     // ── Applying and joining ──────────────────────────────────────────────
 
     public async Task<Guid> ApplyAsync(
         Guid actorUserId, WorkgroupApplication application, CancellationToken ct = default)
     {
+        ct = CancellationToken.None;
         ArgumentNullException.ThrowIfNull(application);
         ValidateApplication(application);
 
@@ -218,8 +213,7 @@ internal sealed partial class WorkgroupService(
         }, ct);
 
         await NotifyAsync(info.CoordinatorUserIds(), NotificationSource.WorkgroupReportingDue,
-            $"Status update requested: {workgroup.Name}", info,
-            Trimmed(question) ?? "A member asked how the group is getting on.", ct);
+            "Workgroups_Todo_StatusRequested_Title", info, Trimmed(question), ct);
     }
 
     // ── Member work on the group page ─────────────────────────────────────
@@ -305,8 +299,7 @@ internal sealed partial class WorkgroupService(
         var info = ToInfo(workgroup);
         var affected = changed.Select(m => m.UserId).Distinct().ToList();
         await NotifyAsync(affected, NotificationSource.WorkgroupRegistrationDecided,
-            $"Coordination changed: {workgroup.Name}", info,
-            $"The coordinators are now {string.Join(", ", names)}.", ct);
+            "Enum_WorkgroupLogKind_CoordinatorChanged", info, string.Join(", ", names), ct);
         await EmailAsync(affected, WorkgroupNoticeKind.CoordinatorsChanged, info,
             string.Join(", ", names), ct);
     }

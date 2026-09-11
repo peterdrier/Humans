@@ -203,7 +203,6 @@
   <data name="Workgroups_Field_TargetDate" xml:space="preserve"><value>Data prevista</value></data>
   <data name="Workgroups_Field_DiscordChannelUrl" xml:space="preserve"><value>URL del canale Discord</value></data>
   <data name="Workgroups_Field_SecondCoordinator" xml:space="preserve"><value>Secondo coordinatore (opzionale)</value></data>
-  <data name="Workgroups_Field_SecondCoordinatorHelp" xml:space="preserve"><value>L'ID utente dall'URL della sua pagina profilo. Un gruppo può avere uno o due coordinatori.</value></data>
 
   <!-- Group page -->
   <data name="Workgroups_Join" xml:space="preserve"><value>Entra</value></data>

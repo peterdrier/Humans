@@ -169,8 +169,16 @@ else
                                 </form>
                                 @{ var wc = w.CoordinatorUserIds().ToList(); }
                                 <form method="post" asp-action="Coordinators" asp-route-id="@w.Id" class="d-flex gap-1" title="Override coordinators">
-                                    <input name="coordinatorUserIds" class="form-control form-control-sm" value="@(wc.Count > 0 ? wc[0] : null)" placeholder="Coordinator 1" style="min-width: 8rem;" />
-                                    <input name="coordinatorUserIds" class="form-control form-control-sm" value="@(wc.Count > 1 ? wc[1] : null)" placeholder="Coordinator 2" style="min-width: 8rem;" />
+                                    @for (var slot = 0; slot < 2; slot++)
+                                    {
+                                        <select name="coordinatorUserIds" class="form-select form-select-sm">
+                                            <option value="">—</option>
+                                            @foreach (var member in w.CurrentMembers())
+                                            {
+                                                <option value="@member.UserId" selected="@(wc.Count > slot && wc[slot] == member.UserId)">@(Model.People.GetValueOrDefault(member.UserId)?.BurnerName ?? "—")</option>
+                                            }
+                                        </select>
+                                    }
                                     <button type="submit" class="btn btn-sm btn-outline-secondary">Set</button>
                                 </form>
                             </div>

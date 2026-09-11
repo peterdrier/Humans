@@ -1,3 +1,4 @@
+using Humans.Workgroups.Authorization;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Controllers;
@@ -14,9 +15,7 @@ using NodaTime;
 namespace Humans.Workgroups.Controllers;
 
 /// <summary>
-/// Member-facing Workgroups: the register, the group page, and everything a member does on
-/// it. Every rule lives in <see cref="IWorkgroupService"/>; this only resolves the route,
-/// composes the page, and maps the service's error contract onto the response.
+/// Member pages and actions. Authorizes resources, dispatches to the service and maps errors.
 /// </summary>
 [Authorize(Policy = PolicyNames.AppAccess)]
 [Route("Workgroups")]
@@ -26,6 +25,7 @@ internal sealed class WorkgroupsController(
     ITeamServiceRead teams,
     IStringLocalizer<WorkgroupsResource> localizer,
     IClock clock,
+    IAuthorizationService authorization,
     ILogger<WorkgroupsController> logger) : HumansControllerBase(users)
 {
     // ── The register ──────────────────────────────────────────────────────
@@ -87,7 +87,8 @@ internal sealed class WorkgroupsController(
             BoardUserIds = board?.Members.Select(m => m.UserId).ToHashSet() ?? [],
             IsMember = workgroup.IsMember(user.Id),
             IsCoordinator = workgroup.CoordinatorUserIds().Contains(user.Id),
-            CanAdminister = IsBoardOrAdmin()
+            CanAdminister = await MayAdministerAsync(workgroup),
+            CanDoMemberWork = await MayDoMemberWorkAsync(workgroup)
         });
     }
 
@@ -119,7 +120,7 @@ internal sealed class WorkgroupsController(
         if (error is not null) return error;
 
         if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
-        if (!MayDoMemberWork(workgroup, user.Id)) return Forbid();
+        if (!await MayDoMemberWorkAsync(workgroup)) return Forbid();
 
         return View(WorkgroupFormViewModel.FromWorkgroup(workgroup));
     }
@@ -131,7 +132,7 @@ internal sealed class WorkgroupsController(
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
         if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
-        if (!MayDoMemberWork(workgroup, user.Id)) return Forbid();
+        if (!await MayDoMemberWorkAsync(workgroup)) return Forbid();
         if (!ModelState.IsValid) return View(model);
 
         return await FormAsync(model, async () =>
@@ -145,9 +146,9 @@ internal sealed class WorkgroupsController(
 
     [HttpPost("{slug}/Coordinators")]
     [ValidateAntiForgeryToken]
-    public Task<IActionResult> Coordinators(string slug, Guid[] coordinatorUserIds, CancellationToken ct) =>
+    public Task<IActionResult> Coordinators(string slug, Guid?[] coordinatorUserIds, CancellationToken ct) =>
         ActAsync(slug,
-            (id, userId) => workgroups.SetCoordinatorsAsync(id, userId, coordinatorUserIds, asAdmin: false, ct),
+            (id, userId) => workgroups.SetCoordinatorsAsync(id, userId, coordinatorUserIds.OfType<Guid>().ToArray(), asAdmin: false, ct),
             "Workgroups_CoordinatorsSaved", ct);
 
     // ── Meetings ──────────────────────────────────────────────────────────
@@ -174,7 +175,7 @@ internal sealed class WorkgroupsController(
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
         if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
-        if (!MayDoMemberWork(workgroup, user.Id)) return Forbid();
+        if (!await MayDoMemberWorkAsync(workgroup)) return Forbid();
         if (model.Id is { } editing && !workgroup.Meetings.Any(m => m.Id == editing)) return NotFound();
         if (!ModelState.IsValid) return View(MeetingForm, model);
 
@@ -217,7 +218,7 @@ internal sealed class WorkgroupsController(
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
         if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
-        if (!MayDoMemberWork(workgroup, user.Id)) return Forbid();
+        if (!await MayDoMemberWorkAsync(workgroup)) return Forbid();
         if (model.Id is { } editing && !workgroup.LogEntries.Any(e => e.Id == editing)) return NotFound();
         if (!ModelState.IsValid) return View(LogEntryForm, model);
 
@@ -264,7 +265,7 @@ internal sealed class WorkgroupsController(
         if (workgroup.Documents.FirstOrDefault(d => d.Id == id) is not { } document) return NotFound();
 
         var isMember = workgroup.IsMember(user.Id);
-        var canAdminister = IsBoardOrAdmin();
+        var canAdminister = await MayAdministerAsync(workgroup);
         // A draft is the group's working copy; it is not the register's business yet.
         if (document.Status == WorkgroupDocumentStatus.Draft && !isMember && !canAdminister)
             return NotFound();
@@ -277,7 +278,8 @@ internal sealed class WorkgroupsController(
             CurrentUserId = user.Id,
             People = await PeopleAsync([workgroup], ct),
             IsMember = isMember,
-            CanAdminister = canAdminister
+            CanAdminister = canAdminister,
+            CanDoMemberWork = await MayDoMemberWorkAsync(workgroup)
         });
     }
 
@@ -298,7 +300,7 @@ internal sealed class WorkgroupsController(
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
         if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
-        if (!MayDoMemberWork(workgroup, user.Id)) return Forbid();
+        if (!await MayDoMemberWorkAsync(workgroup)) return Forbid();
         if (model.Id is { } editing && !workgroup.Documents.Any(d => d.Id == editing)) return NotFound();
         if (!ModelState.IsValid) return View(DocumentForm, model);
 
@@ -391,16 +393,11 @@ internal sealed class WorkgroupsController(
             ? await workgroups.GetByIdAsync(id, ct)
             : await workgroups.GetBySlugAsync(slug, ct);
 
-    private bool IsBoardOrAdmin() => User.IsInRole(RoleNames.Board) || User.IsInRole(RoleNames.Admin);
+    private async Task<bool> MayAdministerAsync(WorkgroupInfo workgroup) =>
+        (await authorization.AuthorizeAsync(User, workgroup, WorkgroupOperationRequirement.Administer)).Succeeded;
 
-    /// <summary>
-    /// The page's copy of the authorization handler's Member answer: a member of an Active
-    /// group, or the Board acting on any group. This is where membership is enforced — the
-    /// service checks the group's status and its own rules, not who the actor is — so every
-    /// member-only route has to pass through here or through <see cref="ActAsync"/>.
-    /// </summary>
-    private bool MayDoMemberWork(WorkgroupInfo workgroup, Guid userId) =>
-        workgroup.AcceptsMemberWork() && (workgroup.IsMember(userId) || IsBoardOrAdmin());
+    private async Task<bool> MayDoMemberWorkAsync(WorkgroupInfo workgroup) =>
+        (await authorization.AuthorizeAsync(User, workgroup, WorkgroupOperationRequirement.Member)).Succeeded;
 
     /// <summary>The nested-resource route checks: the id has to belong to this group.</summary>
     private static Func<WorkgroupInfo, bool> OwnsDocument(Guid documentId) =>
@@ -439,24 +436,12 @@ internal sealed class WorkgroupsController(
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
         if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
-        if (!MayDoMemberWork(workgroup, user.Id)) return Forbid();
+        if (!await MayDoMemberWorkAsync(workgroup)) return Forbid();
 
         return build(workgroup) is { } model ? View(viewName, model) : NotFound();
     }
 
-    /// <summary>
-    /// POST actions that redirect back to the group page, with the service's errors mapped.
-    /// Member-only by default (design §5): the caller must be a member of a group that
-    /// accepts member work, or the Board acting on any group. The four operations design §5
-    /// opens to any signed-in human — Join, Leave, RequestStatus, AddComment — pass
-    /// <paramref name="memberOnly"/> false and are gated by their own service rules.
-    ///
-    /// Routes that name a nested resource (a meeting, a log entry, a document, a comment)
-    /// pass <paramref name="owns"/>: the membership answer above is about the group the slug
-    /// resolved, so without it a member of one group could post their own slug with another
-    /// group's resource id and the service — which checks the resource's group, not the
-    /// actor — would carry out the mutation.
-    /// </summary>
+    /// <summary>Authorize the group and nested resource before mutating, then redirect with feedback.</summary>
     private async Task<IActionResult> ActAsync(
         string slug,
         Func<Guid, Guid, Task> action,
@@ -469,7 +454,7 @@ internal sealed class WorkgroupsController(
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
         if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
-        if (memberOnly && !MayDoMemberWork(workgroup, user.Id)) return Forbid();
+        if (memberOnly && !await MayDoMemberWorkAsync(workgroup)) return Forbid();
         if (owns is not null && !owns(workgroup)) return NotFound();
 
         try

@@ -31,8 +31,6 @@ internal interface IWorkgroupService : IApplicationService
     /// <summary>Groups this person is a current member of, whatever their role.</summary>
     Task<IReadOnlyList<WorkgroupInfo>> GetForMemberAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>Membership check for the authorization handler; no page composition here.</summary>
-    Task<bool> IsMemberAsync(Guid workgroupId, Guid userId, CancellationToken ct = default);
 
     // ── Applying and joining ──────────────────────────────────────────────
 

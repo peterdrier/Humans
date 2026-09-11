@@ -20,6 +20,17 @@ public sealed class WorkgroupAuthorizationHandlerTests
     private static readonly Guid MemberId = Guid.NewGuid();
     private static readonly Guid StrangerId = Guid.NewGuid();
 
+    [HumansTheory]
+    [Xunit.InlineData(RoleNames.Board)]
+    [Xunit.InlineData(RoleNames.Admin)]
+    public async Task Member_BoardAndAdminMayEditOnlyActiveGroups(string role)
+    {
+        (await EvaluateAsync(SignedInWithRole(role), ActiveWorkgroup(), WorkgroupOperationRequirement.Member))
+            .Should().BeTrue();
+        (await EvaluateAsync(SignedInWithRole(role), DormantWorkgroup(), WorkgroupOperationRequirement.Member))
+            .Should().BeFalse();
+    }
+
     [HumansFact]
     public async Task Read_Anonymous_Fails()
     {

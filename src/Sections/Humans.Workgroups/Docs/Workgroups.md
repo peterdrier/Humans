@@ -215,10 +215,11 @@ See `authorization.md` for the auth policy per route.
 - **A Dormant (or not-yet-Active) group freezes all member mutations.** `RequireAcceptsMemberWork`
   gates every member write on `Status == Active`; only `BoardOrAdmin` actions
   (register, refer, refuse, withdraw, close, reactivate, disposition, coordinator
-  override) remain. The authorization handler denies the same operation client-side.
+  override) remain. Controllers and page controls use the resource authorization handler.
 - Refused and Withdrawn require non-empty `Reasons`.
 - Registration creates the Drive subfolder before the status flips; a folder-creation
-  failure leaves the group Applied so the Secretary can retry.
+  failure leaves the group Applied so the Secretary can retry. Application and both
+  registration paths run to completion independently of request cancellation.
 - Reactivation reverses Dormant fully: status, Drive access (write again), and
   `DormantSince`/`Reasons` cleared.
 - The 14-day application clock and the 60-day/74-day silence clocks are highlights and
@@ -228,7 +229,8 @@ See `authorization.md` for the auth policy per route.
 - A document's comment window may only be set on a Published document with at least one
   category, and must end before the document is Delivered (`OpenCommentsAsync`).
 - Delivered freezes a document's body (`UpdateDocumentAsync` refuses further edits); a
-  disposition may only be recorded on a Delivered document.
+  disposition may only be recorded on a Delivered document. Deferred remains in the
+  awaiting-disposition queue until a final reply is recorded.
 - The nightly dormancy flag is written last: the log entry, the audit record and the notices
   go out first, so a failure in any of them leaves `DormantSince` unset and the next run
   retries the whole step rather than latching the flag with no audit trail.
@@ -251,7 +253,7 @@ See `authorization.md` for the auth policy per route.
   edit register fields, or reach any document-mutation route.
 - A member **cannot** register, refer, refuse, withdraw, close, reactivate, or record a
   document's disposition — those are `BoardOrAdmin` only.
-- Nobody **cannot** comment outside an open comment window, or on a Draft document.
+- Nobody can comment outside an open comment window, or on a Draft document.
 - A Dormant group's members **cannot** perform any member mutation (log, meetings,
   documents, comments, register edits) — only `BoardOrAdmin` actions remain.
 - Anonymous requests **cannot** reach any `/Workgroups*` route — `PolicyNames.AppAccess`
@@ -269,7 +271,7 @@ See `authorization.md` for the auth policy per route.
   notified/emailed; Withdraw and Reactivate also request a Drive sync (write access changes).
 - Join/Leave: system log entry (`MemberJoined`/`MemberLeft`), Drive sync requested; a
   forced coordinator handover on last-coordinator leave also writes `CoordinatorChanged`.
-- An Update log entry or a new/edited meeting clears `DormantSince` — the only two
+- A new Update log entry or a new meeting clears `DormantSince` — the only two
   activity kinds §13 counts as a sign of life.
 - Publish/OpenComments/CloseComments/Deliver: system log entry; Publish and OpenComments
   notify current members; Deliver notifies and emails the Board.
@@ -308,11 +310,13 @@ per 7 days), not part of the job.
   calendar window. Calendar names nothing of Workgroups.
 - **GoogleIntegration**: implements `IGoogleDriveAccessSource` (inbound) — Active group
   folders → Contributor for current members, Dormant → Viewer, root → Board/Asociado/Colaborador
-  readers. Calls `IGoogleSyncService.CreateSubfolderAsync` (registration) and
+  readers. Withdrawn folders remain claimed with an empty roster so existing direct
+  grants are revoked. Calls `IGoogleSyncService.CreateSubfolderAsync` (registration) and
   `RequestSyncAsync` (every access-relevant change) outbound.
 - **Settings**: `ISettingsService` — the root Drive folder id.
 - **Surveys**: none directly — a group links a survey it authored by id; Surveys never references Workgroups.
-- **Notifications, Email, AuditLog**: crosscuts, per Triggers above.
+- **Notifications, Email, AuditLog**: crosscuts, per Triggers above. Member notifications
+  use existing localized labels, grouped by recipient language; authored content is unchanged.
 - **Gdpr**: `IUserDataContributor`, `IUserMerge` — see GDPR below.
 
 ## GDPR

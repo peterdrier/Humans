@@ -69,7 +69,7 @@
             <div class="row g-3 mb-3">
                 <div class="col-md-6">
                     <label asp-for="CoordinatorUserId" class="form-label">Coordinator user id</label>
-                    <input asp-for="CoordinatorUserId" class="form-control" placeholder="00000000-0000-0000-0000-000000000000" />
+                    <vc:human-search field-name="CoordinatorUserId" selected-user-id="Model.CoordinatorUserId" scope="Name" placeholder="Search for a coordinator" />
                     <span asp-validation-for="CoordinatorUserId" class="text-danger"></span>
                 </div>
                 <div class="col-md-6">

@@ -75,6 +75,12 @@
                 <a asp-action="Details" asp-route-slug="@Model.Slug" class="btn btn-outline-secondary">@SharedLocalizer["Common_Cancel"]</a>
             </div>
         </form>
+        @if (Model.Id is { } id)
+        {
+            <form method="post" asp-action="DeleteMeeting" asp-route-slug="@Model.Slug" asp-route-id="@id" class="mt-3">
+                <button type="submit" class="btn btn-outline-danger">@SharedLocalizer["Common_Delete"]</button>
+            </form>
+        }
     </div>
 </div>
 
