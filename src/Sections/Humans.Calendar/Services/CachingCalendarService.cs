@@ -1,5 +1,6 @@
 using Humans.Calendar.Services.Dtos;
 using Humans.Base.Caching;
+using Humans.Calendar.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Calendar.Domain;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,8 +32,66 @@ internal sealed class CachingCalendarService(
             from, to, teamId);
 
         var teamNames = await ResolveTeamNamesAsync(matched, ct);
-        return CalendarOccurrenceExpander.Expand(matched, from, to, teamNames, logger);
+        var occurrences = CalendarOccurrenceExpander.Expand(matched, from, to, teamNames, logger).ToList();
+
+        // Community items have no team of their own (design §8) — only merge them into the
+        // unfiltered, all-teams window. A ?teamId filter has nothing of theirs to show.
+        if (teamId is null)
+            occurrences.AddRange(await FanOutContributorItemsAsync(from, to, ct));
+
+        return occurrences.OrderBy(o => o.OccurrenceStartUtc).ToList();
     }
+
+    /// <summary>
+    /// Fans out over every registered <see cref="ICalendarFeedContributor"/> for its public
+    /// window items. Never cached — recomputed on every call, same as the team-name stitch
+    /// in <see cref="ResolveTeamNamesAsync"/>, since only the underlying event dict is a
+    /// tracked cache row. A throwing contributor is logged and skipped, not allowed to take
+    /// down the rest of the community calendar.
+    /// </summary>
+    private async Task<IReadOnlyList<CalendarOccurrence>> FanOutContributorItemsAsync(
+        Instant from, Instant to, CancellationToken ct)
+    {
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var contributors = scope.ServiceProvider.GetServices<ICalendarFeedContributor>();
+
+        var items = new List<CalendarOccurrence>();
+        foreach (var contributor in contributors)
+        {
+            IReadOnlyList<CalendarFeedItem> contributed;
+            try
+            {
+                contributed = await contributor.GetPublicItemsForWindowAsync(from, to, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(
+                    "Community calendar contributor {Contributor} failed for window [{From}, {To}); its items are skipped: {Reason}",
+                    contributor.GetType().Name, from, to, ex.Message);
+                continue;
+            }
+
+            items.AddRange(contributed.Select(ToOccurrence));
+        }
+
+        return items;
+    }
+
+    private static CalendarOccurrence ToOccurrence(CalendarFeedItem item) => new(
+        EventId: Guid.Empty,
+        OccurrenceStartUtc: item.Start,
+        OccurrenceEndUtc: item.End,
+        IsAllDay: false,
+        Title: item.Summary,
+        Description: item.Description,
+        Location: item.Location,
+        LocationUrl: null,
+        OwningTeamId: Guid.Empty,
+        OwningTeamName: string.Empty,
+        IsRecurring: false,
+        OriginalOccurrenceStartUtc: null,
+        Source: item.Source,
+        Url: item.Url);
 
     public async Task<CalendarEventDetail?> GetEventByIdAsync(Guid id, CancellationToken ct = default)
     {

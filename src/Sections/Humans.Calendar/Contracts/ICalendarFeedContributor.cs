@@ -1,4 +1,5 @@
 using Humans.Base.Interfaces;
+using NodaTime;
 
 namespace Humans.Calendar.Contracts;
 
@@ -28,4 +29,12 @@ public interface ICalendarFeedContributor : IFanout
     /// timezone). Implementations must be read-only.
     /// </summary>
     Task<IReadOnlyList<CalendarFeedItem>> GetCalendarItemsForUserAsync(Guid userId, CancellationToken ct);
+
+    /// <summary>
+    /// Returns every public calendar item this contributor owns that overlaps the
+    /// window [<paramref name="from"/>, <paramref name="to"/>] — items everyone may
+    /// see on the community calendar, not just one user's own. Implementations must
+    /// be read-only, and return an empty list when they have nothing public to add.
+    /// </summary>
+    Task<IReadOnlyList<CalendarFeedItem>> GetPublicItemsForWindowAsync(Instant from, Instant to, CancellationToken ct);
 }

@@ -38,6 +38,11 @@ internal static class CalendarOccurrenceViewExtensions
         occ.StartLocalDate(zone) != day ? OccurrenceTimeLabel.Continues
         : occ.IsAllDay ? OccurrenceTimeLabel.AllDay
         : OccurrenceTimeLabel.StartTime;
+
+    /// <summary>True for an item merged in from an <c>ICalendarFeedContributor</c> rather
+    /// than Calendar's own <c>calendar_events</c>.</summary>
+    public static bool IsCommunityContribution(this CalendarOccurrence occ) =>
+        !string.Equals(occ.Source, CalendarOccurrence.CalendarSource, StringComparison.Ordinal);
 }
 
 internal enum OccurrenceTimeLabel
