@@ -184,6 +184,7 @@ Every source today, and what it becomes. Audience is who the entry is published 
 | Profile things-to-do | Users | one while profile completion is below the contributor's 80% threshold | `User` | threshold reached |
 | Dietary/medical things-to-do | Users | one while `DietaryPreference` is empty; text varies by whether a qualifying cantina signup exists, as today | `User` | preference set |
 | RideshareInterestReceived | Rideshare | one per pending interest awaiting your decision on your trip or request | `User` | accepted, declined, or withdrawn |
+| AssemblyVoteOpened | Governance | one per open assembly vote you are on the roster for and have not voted in | `User` | ballot cast, or the vote closes or is cancelled |
 
 Every-active-user fan-out (`LegalDocumentSyncService.TryFanoutAsync`) is deleted; the consents entry covers it per user.
 
@@ -206,7 +207,7 @@ These have no channel once the in-app row goes. The list is a recommendation Pet
 
 TeamMemberAdded (both branches; the member branch already emails), TeamJoinRequestDecided approve branch (already emails), ApplicationApproved, ApplicationRejected, ProfileRejected, FeedbackResponse, WorkspaceCredentialsReady, CampaignReceived (all already email), IssueComment (assignee sees it on the issue; the admin-comment email to the reporter stays), ShiftSignupChange (a coordinator's news about a signup; the consequence that matters is the coverage-gap entry), CampRoleAssigned, GoogleDriftDetected, FacilitatedMessageReceived (already emails), the three dead sources ConsentReviewNeeded, ApplicationSubmitted, VolunteerApproved, and the Users consent-check things-to-do entry (a status with no action for the member; the coordinator side is the consent-review row above).
 
-Every value of `NotificationSource` at the time of writing (0 to 35, 17 unused) appears in exactly one of the three tables above. A source added between now and phase 4 gets a row before the switch lands.
+Every value of `NotificationSource` at the time of writing (0 to 36, 17 unused) appears in exactly one of the three tables above. A source added between now and phase 4 gets a row before the switch lands.
 
 ## What is deleted
 
