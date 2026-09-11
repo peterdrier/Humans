@@ -82,14 +82,27 @@ src/Sections/Humans.Users/Data/Migrations/20260820215726_DropProfileState.cs:Dro
 # IX_email_outbox_messages_ShiftSignupId_TemplateName on (ShiftSignupId, TemplateName) with filter
 # "ShiftSignupId" IS NOT NULL. Both were added for a per-signup notification dedup ("one email of
 # each template type per signup") that was specified and never built.
-# Evidence: pickaxe over full history. Outside migration folders the token ShiftSignupId appears in
-# exactly one commit in all of history — d3bf4010 (#1348), the G5 peel that MOVED the entity and its
-# EF configuration into src/Sections/Humans.Email; it introduced no reader or writer. No pre-section
-# path ever contained it (`git log -S ShiftSignupId --all -- src/Humans.Domain/** src/Humans.Infrastructure/**
-# src/Humans.Application/**` returns nothing). Every hit for the assignment form
-# `git log -S 'ShiftSignupId *=' --pickaxe-regex --all` is `ShiftSignupId = table.Column<Guid>(...)`
-# inside migration scaffolding — schema definition, never a data write. No code ever set the property
-# and no query ever filtered on it, so the column holds only NULLs and the filtered index is empty.
+# CORRECTION (2026-09-11): the first version of this block claimed the token appeared in "exactly one
+# commit in all of history" (d3bf4010, the G5 move). That was FALSE. It was gathered in a CI container
+# whose clone was SHALLOW — 552 commits back to 2026-06-17 — so `git log --all` silently searched three
+# months, not all history, and the column predates that boundary. Codex caught it (P1 on this PR).
+# Anyone gathering drop evidence in a container: run `git rev-parse --is-shallow-repository` FIRST and
+# `git fetch --unshallow` before believing any `git log -S` result.
+# Evidence: re-gathered over genuinely full history (2482 commits, unshallowed).
+# The column was introduced by 23b0ec159 (#135, "add shift management system (Slices 1-3)"), which
+# added the property, an FK relationship and the filtered index; the DB column arrives in
+# 20260316210003_AddShiftManagement. 111 commits in all history touch the token. Outside migration
+# folders exactly two do: 23b0ec159 (introduces it) and this PR (removes it) — and every line
+# 23b0ec159 added is a declaration or EF configuration (`public Guid? ShiftSignupId { get; set; }`,
+# `.HasForeignKey(e => e.ShiftSignupId)`, `builder.HasIndex(e => new { e.ShiftSignupId, e.TemplateName })`,
+# `.HasFilter("\"ShiftSignupId\" IS NOT NULL")`). Never a data write.
+# Searched over full history outside migrations, each returning ZERO commits: `ShiftSignupId *=`
+# (--pickaxe-regex), `ShiftSignupId =`, `ShiftSignupId:`, `ShiftSignupId ==`, `\.ShiftSignupId`. No
+# migration ever backfilled it either: no `migrationBuilder.Sql`, `UPDATE email_outbox` or
+# `INSERT INTO email_outbox` line in any migration mentions the column. The only delete behaviour the
+# FK ever carried was ON DELETE SET NULL (cut by 48ba18f3, #1233), which can only ever write NULL.
+# So no code path in any release could have populated it: the column holds only NULLs and the filtered
+# index has always been empty.
 # Down() restores both the column and the index; the column is nullable, so the rollback runs.
 # Approval: Peter, 2026-09-11 — asked whether to drop the dead ShiftSignupId column and its filtered
 # index or build the dedup it was added for, answered "2 drop column".
