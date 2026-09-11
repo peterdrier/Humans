@@ -1308,6 +1308,15 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .SingleAsync(r => r.Id == missedRow.Id, Xunit.TestContext.Current.CancellationToken);
         stored.NotifiedAt.Should().NotBeNull(
             "the stamp is what stops the next sweep sending it again");
+
+        // Automation that emails the electorate says so under the job actor: the Admin's own
+        // open entry is about their transition and cannot show this.
+        await _fx.Audit.Received(1).LogAsync(
+            AuditAction.AssemblyVoteOpened,
+            AuditEntityTypes.AssemblyVote,
+            vote.Id,
+            Arg.Any<string>(),
+            AssemblyVoteService.LapseJobName);
     }
 
     [HumansFact]

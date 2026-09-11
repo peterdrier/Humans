@@ -1341,8 +1341,9 @@ internal sealed class AssemblyVoteService(
     /// <summary>
     /// Emails the given roster rows that the vote is open, stamping each row that was sent.
     /// An unstamped row is one the email never reached, and the hourly sweep retries it.
+    /// Returns how many rows the email actually reached.
     /// </summary>
-    private async Task SendOpenedEmailsAsync(
+    private async Task<int> SendOpenedEmailsAsync(
         AssemblyVote vote, IReadOnlyList<AssemblyVoteRoster> rows, CancellationToken ct)
     {
         var recipients = await RecipientsAsync(rows, ct);
@@ -1378,6 +1379,8 @@ internal sealed class AssemblyVoteService(
         {
             await repository.StampNotifiedAsync(notified, clock.GetCurrentInstant(), ct);
         }
+
+        return notified.Count;
     }
 
     /// <summary>
@@ -1526,7 +1529,18 @@ internal sealed class AssemblyVoteService(
             .ToList();
         if (unsent.Count == 0) return;
 
-        await SendOpenedEmailsAsync(vote, unsent, ct);
+        var sent = await SendOpenedEmailsAsync(vote, unsent, ct);
+        if (sent == 0) return;
+
+        // Automation that emails the electorate says so under the job actor, as the reminder
+        // batch does. The Admin's AssemblyVoteOpened entry is about their transition; it
+        // cannot show that the job reached members hours later, which is exactly the thing
+        // the Board would be looking for.
+        await audit.LogAsync(
+            AuditAction.AssemblyVoteOpened, AuditEntityTypes.AssemblyVote, vote.Id,
+            $"Re-sent the opening email for assembly vote {vote.Id} to {sent} roster member(s) "
+            + "the first send never reached.",
+            LapseJobName);
     }
 
     /// <summary>
