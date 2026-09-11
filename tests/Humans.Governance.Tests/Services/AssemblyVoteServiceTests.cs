@@ -972,7 +972,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         _fx.Db.ChangeTracker.Clear();
 
         var written = await _fx.Repository.UpdateAsync(
-            stale!, Xunit.TestContext.Current.CancellationToken);
+            stale!, AssemblyVoteStatus.Open, Xunit.TestContext.Current.CancellationToken);
 
         written.Should().BeFalse();
         var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
@@ -1003,7 +1003,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         stale.ClosedByUserId = null;
 
         var written = await _fx.Repository.UpdateAsync(
-            stale, Xunit.TestContext.Current.CancellationToken);
+            stale, AssemblyVoteStatus.Open, Xunit.TestContext.Current.CancellationToken);
 
         written.Should().BeFalse();
         var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
@@ -1140,5 +1140,81 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             vote.Id,
             Arg.Any<string>(),
             AssemblyVoteService.LapseJobName);
+    }
+
+    [HumansFact]
+    public async Task StopAsync_OnAVoteAnotherAdminAlreadyStopped_ChangesNothingAndAuditsOnce()
+    {
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(6));
+        var first = Guid.NewGuid();
+
+        // Both admins read the vote as Open; the first one's stop commits.
+        var second = await _fx.Repository.GetByIdAsync(
+            vote.Id, Xunit.TestContext.Current.CancellationToken);
+        _fx.Db.ChangeTracker.Clear();
+
+        (await _fx.Service.StopAsync(vote.Id, first, Xunit.TestContext.Current.CancellationToken))
+            .Should().Be(AssemblyVoteActionResult.Ok);
+        _fx.Db.ChangeTracker.Clear();
+
+        // The second request's write, built from that same Open read.
+        second!.Status = AssemblyVoteStatus.Closed;
+        second.ClosedAt = _fx.Clock.GetCurrentInstant() + Duration.FromMinutes(1);
+        second.ClosedByUserId = Guid.NewGuid();
+
+        var written = await _fx.Repository.UpdateAsync(
+            second, AssemblyVoteStatus.Open, Xunit.TestContext.Current.CancellationToken);
+
+        written.Should().BeFalse("the row is Closed, not the Open this write read");
+        var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
+            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.ClosedByUserId.Should().Be(first, "the acta names whoever's close actually landed");
+        stored.ResultJson.Should().NotBeNull();
+    }
+
+    [HumansFact]
+    public async Task OpenWithRosterAsync_WithARosterBuiltBeforeADraftEdit_WritesNothing()
+    {
+        var vote = await _fx.AddVoteAsync(
+            status: AssemblyVoteStatus.Draft, kind: AssemblyVoteKind.YesNo);
+
+        var stale = await _fx.Repository.GetByIdAsync(
+            vote.Id, Xunit.TestContext.Current.CancellationToken);
+        _fx.Db.ChangeTracker.Clear();
+
+        // A Board edit lands while the roster is being built from that read.
+        _fx.Clock.AdvanceMinutes(1);
+        (await _fx.Service.UpdateDraftAsync(
+                vote.Id,
+                _fx.DraftFor(vote, AssemblyVoteKind.YesNo, []),
+                Guid.NewGuid(),
+                Xunit.TestContext.Current.CancellationToken))
+            .Should().Be(AssemblyVoteActionResult.Ok);
+        _fx.Db.ChangeTracker.Clear();
+
+        stale!.Status = AssemblyVoteStatus.Open;
+        stale.OpenedAt = _fx.Clock.GetCurrentInstant();
+        stale.OpenedByUserId = Guid.NewGuid();
+
+        var written = await _fx.Repository.OpenWithRosterAsync(
+            stale,
+            [new AssemblyVoteRoster
+            {
+                Id = Guid.NewGuid(),
+                VoteId = vote.Id,
+                UserId = Guid.NewGuid(),
+                IsOfficial = true
+            }],
+            Xunit.TestContext.Current.CancellationToken);
+
+        written.Should().BeFalse();
+        var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
+            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.Status.Should().Be(AssemblyVoteStatus.Draft,
+            "the electorate would have been computed from content the vote no longer has");
+        (await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
+            .AnyAsync(r => r.VoteId == vote.Id, Xunit.TestContext.Current.CancellationToken))
+            .Should().BeFalse();
     }
 }

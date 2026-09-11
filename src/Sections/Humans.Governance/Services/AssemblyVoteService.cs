@@ -374,10 +374,11 @@ internal sealed class AssemblyVoteService(
         // system accepted is already in the table by the time counting looks. Computing first
         // and flipping second would leave the whole counting interval open for a submission to
         // slip in behind the snapshot, be told "recorded", and never appear in the result.
-        // Refused means somebody else finished this vote first, or an Extend moved the
-        // deadline this lapse was working from. Either way the other actor owns the close
-        // and nothing here should run: the tail belongs to whoever's status write landed.
-        if (!await repository.UpdateAsync(vote, ct)) return false;
+        // Refused means the row is no longer Open — somebody else finished this vote first —
+        // or an Extend moved the deadline this lapse was working from. Either way the other
+        // actor owns the close and nothing here should run, including the audit entry and the
+        // notification: the tail belongs to whoever's status write landed.
+        if (!await repository.UpdateAsync(vote, AssemblyVoteStatus.Open, ct)) return false;
 
         await FinishCloseAsync(vote, closedByUserId, action, description, ct);
         return true;
@@ -427,7 +428,10 @@ internal sealed class AssemblyVoteService(
     {
         var result = await ComputeResultAsync(vote, ct);
         vote.ResultJson = JsonSerializer.Serialize(result, ResultJsonOptions);
-        await repository.UpdateAsync(vote, ct);
+
+        // Closed is the state this write expects and the one it leaves: the tally lands on the
+        // row the close already stamped, and a vote cancelled out from under it gets nothing.
+        await repository.UpdateAsync(vote, AssemblyVoteStatus.Closed, ct);
     }
 
     /// <summary>
@@ -851,7 +855,7 @@ internal sealed class AssemblyVoteService(
 
         // Refused means the vote opened while the translations were being fetched. Nothing was
         // stored, so nothing was filled.
-        if (!await repository.UpdateAsync(vote, ct)) return 0;
+        if (!await repository.UpdateAsync(vote, AssemblyVoteStatus.Draft, ct)) return 0;
 
         // Not audited, like the rest of draft authoring: a draft has no legal effect and the
         // Board can still rewrite every word. Open audits the content the electorate gets.
@@ -969,7 +973,9 @@ internal sealed class AssemblyVoteService(
         vote.Status = AssemblyVoteStatus.Open;
         vote.OpenedAt = now;
         vote.OpenedByUserId = adminUserId;
-        vote.UpdatedAt = now;
+        // UpdatedAt is deliberately left as read: the repository compares it against the
+        // persisted row to tell a draft edit that landed while this roster was being built
+        // from this open, and stamps it once the open is accepted.
 
         // Refused means somebody else opened this vote while its roster was being built.
         // Theirs is the roster that counts, and nothing below should run a second time.
@@ -1103,7 +1109,8 @@ internal sealed class AssemblyVoteService(
 
         // The vote closed between the read above and this write. Nothing was extended, and
         // "only an open vote can be extended" is the honest answer.
-        if (!await repository.UpdateAsync(vote, ct)) return AssemblyVoteActionResult.WrongState;
+        if (!await repository.UpdateAsync(vote, AssemblyVoteStatus.Open, ct))
+            return AssemblyVoteActionResult.WrongState;
 
         await audit.LogAsync(
             AuditAction.AssemblyVoteExtended, AuditEntityTypes.AssemblyVote, vote.Id,
@@ -1137,7 +1144,8 @@ internal sealed class AssemblyVoteService(
         // No result is computed: a cancelled vote decided nothing, and the ballots stay only
         // as a record that it was attempted. A refused write means the vote closed first,
         // and a closed vote is never cancelled out of its result.
-        if (!await repository.UpdateAsync(vote, ct)) return AssemblyVoteActionResult.WrongState;
+        if (!await repository.UpdateAsync(vote, AssemblyVoteStatus.Open, ct))
+            return AssemblyVoteActionResult.WrongState;
 
         await ClearOpenNotificationAsync(vote, adminUserId, ct);
 

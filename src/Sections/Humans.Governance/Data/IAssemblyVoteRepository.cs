@@ -41,13 +41,15 @@ internal interface IAssemblyVoteRepository : IRepository
     Task AddAsync(AssemblyVote vote, CancellationToken ct = default);
 
     /// <summary>
-    /// Writes a vote snapshot back, under the row's lock. Returns false without writing when
-    /// the persisted row has moved on — it is already terminal in a different state, it has
-    /// opened since and this snapshot would put it back to Draft, or an Extend has pushed the
-    /// deadline past the one an automatic close read — so a snapshot taken before somebody
-    /// else's transition cannot undo it.
+    /// Writes a vote snapshot back, under the row's lock, only while the persisted row is
+    /// still in <paramref name="expectedStatus"/> — the state the caller read before building
+    /// this write. Returns false without writing when the row has moved on, so a snapshot
+    /// taken before somebody else's transition cannot undo it, and two requests that both read
+    /// Open cannot both close the vote. An automatic close is refused as well when an Extend
+    /// has pushed the deadline past the one it read.
     /// </summary>
-    Task<bool> UpdateAsync(AssemblyVote vote, CancellationToken ct = default);
+    Task<bool> UpdateAsync(
+        AssemblyVote vote, AssemblyVoteStatus expectedStatus, CancellationToken ct = default);
 
     /// <summary>
     /// Replaces a draft's authored options wholesale, then persists the vote, under the row's
@@ -84,9 +86,9 @@ internal interface IAssemblyVoteRepository : IRepository
     /// <summary>
     /// Opens the vote and writes its roster in one unit of work, so a vote can never be
     /// Open without the roster that defines its electorate. Under the row's lock: returns
-    /// false without writing when the persisted row is no longer a draft, and writes only the
-    /// lifecycle fields, so a draft edit that committed while the roster was being built is
-    /// what opens.
+    /// false without writing when the persisted row is no longer a draft, or when it has been
+    /// edited since the caller read it — the roster is built from the draft and frozen, so a
+    /// vote must never open with new content and an electorate computed from the old.
     /// </summary>
     Task<bool> OpenWithRosterAsync(
         AssemblyVote vote, IReadOnlyList<AssemblyVoteRoster> roster, CancellationToken ct = default);

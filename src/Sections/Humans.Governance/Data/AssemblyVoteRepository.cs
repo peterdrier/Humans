@@ -36,7 +36,8 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<bool> UpdateAsync(AssemblyVote vote, CancellationToken ct = default)
+    public async Task<bool> UpdateAsync(
+        AssemblyVote vote, AssemblyVoteStatus expectedStatus, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(vote);
 
@@ -51,23 +52,11 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
 
         // Every lifecycle write arrives as a snapshot the caller read earlier, with every
         // property marked modified, so a write built before somebody else's transition would
-        // silently undo it. Under the row's lock, two rules keep the state machine honest:
-
-        // Terminal is terminal. A stale snapshot must not put a closed vote back to Open,
-        // swap one terminal state for the other, or blank the stored result. Writing the
-        // terminal state the row already holds is how a close stores its own tally, so that
-        // one is allowed through.
-        var persistedIsTerminal =
-            persisted.Status is AssemblyVoteStatus.Closed or AssemblyVoteStatus.Cancelled;
-        if (persistedIsTerminal && persisted.Status != vote.Status) return false;
-
-        // Nothing goes back to Draft. Draft authoring — an edit, a translation pre-fill —
-        // reads the vote, works on it, and writes it back; if it opened in between, that
-        // write would un-open it and change what the electorate is already reading.
-        if (vote.Status == AssemblyVoteStatus.Draft && persisted.Status != AssemblyVoteStatus.Draft)
-        {
-            return false;
-        }
+        // silently undo it. The caller says which state it read; if the row has moved on —
+        // including from Open to the very state this write is trying to set, which is how two
+        // Stops or a Stop racing the lapse both think they closed the vote — the write does
+        // not happen and the caller is told so.
+        if (persisted.Status != expectedStatus) return false;
 
         // An automatic close decided from the deadline it read. If the deadline has moved
         // later since, an Extend committed in between and is the newer fact: the vote is
@@ -186,15 +175,21 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
         var persisted = await ctx.AssemblyVotes.FirstOrDefaultAsync(v => v.Id == vote.Id, ct);
         if (persisted is null || persisted.Status != AssemblyVoteStatus.Draft) return false;
 
-        // Only the four lifecycle fields are written, onto the row as it stands. Opening is
-        // the one transition that races with draft authoring, and writing the caller's whole
-        // snapshot back would undo a Board edit that committed while the roster was being
-        // built. What opens is the content the row holds now — which is also what the vote
-        // page shows, even when the opening announcement was composed one edit earlier.
+        // The roster was built from the caller's snapshot, and which members are on it comes
+        // out of the draft — IndicativeAudience above all. A Board edit that committed while
+        // those cross-section reads were running would open the vote with the new content and
+        // the old electorate, which is the one mismatch a frozen roster can never be corrected
+        // for. UpdatedAt moving means exactly that, so the open is refused and the caller
+        // rebuilds the roster from the draft as it now stands.
+        if (persisted.UpdatedAt != vote.UpdatedAt) return false;
+
+        // Only the lifecycle fields are written, onto the row as it stands: the content is
+        // identical to the caller's by the check above, and writing the whole snapshot back
+        // would put this section one careless edit away from the bug that check prevents.
         persisted.Status = vote.Status;
         persisted.OpenedAt = vote.OpenedAt;
         persisted.OpenedByUserId = vote.OpenedByUserId;
-        persisted.UpdatedAt = vote.UpdatedAt;
+        persisted.UpdatedAt = vote.OpenedAt ?? persisted.UpdatedAt;
 
         ctx.AssemblyVoteRosterEntries.AddRange(roster);
         await ctx.SaveChangesAsync(ct);
