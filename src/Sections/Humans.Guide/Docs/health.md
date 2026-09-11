@@ -98,10 +98,10 @@ exactly one home.
   where the shape of a content file defeats the filter. It is blocked only by the cache holding
   rendered HTML per file; at this corpus size rendering per request is affordable. Not built;
   changing the cached unit is Peter's call.
-- **An anonymous way in.** The section serves anonymous readers deliberately — the filter's
-  anonymous branch is real code with real tests — but the app's only link to `/Guide` sits
-  inside the signed-in user menu. Either the anonymous branch is dead in practice or the link
-  is missing; the section cannot settle that on its own.
+- ~~**An anonymous way in.**~~ Settled 2026-09-11: the link was missing, not the branch dead.
+  `SectionNav.cs` contributes a `Guide` item to the member top nav through `ISectionNav`, with
+  no `Visible` predicate, so a signed-out reader can reach the pages the filter's anonymous
+  branch was always written to serve.
 
 ## 6. Deliberately not done
 

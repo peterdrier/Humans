@@ -16,8 +16,9 @@ The Humans app has a comprehensive end-user guide under `docs/guide/` — one
 file per stem in `GuideFiles.All`, covering the sections of the app plus
 plain-language common-question pages. Before this feature, humans read it on
 GitHub — one click away from the app itself. Embedding the guide at `/Guide`
-makes it available from the signed-in user menu and lets links inside the
-guide navigate in-app to the pages they describe.
+makes it available from the signed-in user menu and — since 2026-09-11 — from
+the member top nav, where a signed-out visitor can reach it too, and lets links
+inside the guide navigate in-app to the pages they describe.
 
 GitHub remains the authoring source: guide changes go through pull-request
 review (no in-app CMS). The app pulls the current content from
@@ -26,9 +27,11 @@ memory, and re-renders it for each request with role-aware filtering.
 
 ## User stories
 
-- As a volunteer, I can open the Guide from the user menu and read a
-  human-friendly explanation of the parts of the app I use, with in-app
+- As a volunteer, I can open the Guide from the user menu or the top nav and
+  read a human-friendly explanation of the parts of the app I use, with in-app
   links that take me directly to the right page.
+- As a signed-out visitor, I can open the Guide from the top nav and read the
+  Volunteer-facing pages without an account.
 - As a team coordinator, I see coordinator-specific sections in the guide
   that explain the management features I have access to.
 - As a domain admin (e.g. TeamsAdmin), I see admin guidance for my domain

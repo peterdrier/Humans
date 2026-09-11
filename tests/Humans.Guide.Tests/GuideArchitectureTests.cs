@@ -25,9 +25,10 @@ public class GuideArchitectureTests
         var paramTypes = typeof(GuideRoleResolver).GetConstructors().Single()
             .GetParameters().Select(p => p.ParameterType).ToList();
 
+        // The absence half — NotContain(ITeamService) — was retired on Peter's call
+        // (peterdrier/Humans#1655, N1): analyzer HUM0032 (CrossSectionReadRule) enforces it at
+        // the call site, and an analyzer beats a test wherever one fits.
         paramTypes.Should().Contain(typeof(ITeamServiceRead));
-        paramTypes.Should().NotContain(typeof(ITeamService),
-            because: "cross-section team reads must use the read interface (section-read-write-split / HUM0032)");
     }
 
     [HumansFact]
@@ -39,11 +40,11 @@ public class GuideArchitectureTests
         // AgentDocsHealthCheck, and Base's GitHubCommunityKbContentSource). Pinning the
         // namespace here is what stops a later
         // pass "tidying" it into Humans.Guide and forcing Base to reference a section.
+        // The absence assertion that sat here — the Guide assembly contains no type named
+        // IGuideContentSource — was retired on Peter's call (peterdrier/Humans#1655, N2). The
+        // positive assertion carries it: the type can only live in one assembly.
         typeof(IGuideContentSource).Assembly.GetName().Name
             .Should().Be("Humans.Base");
-
-        typeof(Section).Assembly.GetTypes()
-            .Should().NotContain(t => t.Name == "IGuideContentSource");
     }
 
     [HumansFact]
