@@ -430,3 +430,6 @@ inbox:
   - added: 2026-09-11
     what: "INotificationAutoResolve has ResolveBySourceAsync (user + source, every key) and ResolveBySourceKeyAsync (source + key, every user) but nothing per user AND key, so Governance cannot retract one voter's AssemblyVoteOpened entry when they cast their ballot — the actionable row stands until the vote closes, and clearing it with ResolveBySourceAsync would wipe the member's prompts for every other open vote of the same assembly. Needs a new method on the Notifications contracts leaf, so Peter's call on the surface addition (Codex on peterdrier/Humans#1649)."
     review: panel
+  - added: 2026-09-11
+    what: "docs/scripts/freshness-checks/dependency-graph.sh uses awk's asorti, which mawk (the container's awk) does not define: the script dies at line 91 and then reports PASS with \"all 0 section/Web service classes appear as Mermaid nodes\" — a vacuous pass that hides every missing node. Found when a Codex finding cited the check's output on peterdrier/Humans#1649 and it could not be reproduced."
+    review: light
