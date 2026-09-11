@@ -122,7 +122,7 @@ A binding vote of the association. Full design in [`features/assembly-votes.md`]
 | ClosesAt | Instant | Announced closing time; extendable while Open |
 | OpenedAt / OpenedByUserId | Instant? / Guid? | Who opened it and when — **FK only**, no nav |
 | ClosedAt / ClosedByUserId | Instant? / Guid? | Null `ClosedByUserId` on a lapse means the job closed it |
-| CancelReason | string? (2000) | Required when Cancelled |
+| CancelReason | string? (4000) | Required when Cancelled |
 | ResultJson | string? | The result computed once at close; the results page renders this, never a recount |
 | CreatedByUserId / CreatedAt / UpdatedAt | Guid / Instant / Instant | |
 
@@ -300,7 +300,7 @@ These controllers serve this section.
 - **T-24h reminder:** one email to roster members with no ballot (`IEmailMessageFactory.AssemblyVoteReminder`), stamped on the roster row (`ReminderSentAt`) so it never repeats. Sent by the same hourly job as the lapse sweep (`SectionJobs`, cron `0 * * * *`).
 - **GDPR export:** `IUserDataContributor` contributes the member's roster rows, standing ballots and history under `GdprExportSections.AssemblyVotes`. A second slice, `GdprExportSections.AssemblyVoteActions`, carries the other side of the feature: the votes the person drafted, opened or closed, and the live tallies they peeked at — an officer who runs a vote without being on its roster has no rows in the first slice at all.
 - **Art. 17 erasure:** the roster row's `UserId` is set to null (a tombstone that keeps counts and the stored result valid); ballot and history rows are retained unlinked, because the vote is a legal record of the association (GDPR Art. 17(3)(b) / (e)). Declared as partial retention in the section's `ErasureDeclaration`.
-- **Account merge (`IUserMerge`):** roster rows and ballots re-FK from source to target; when both accounts are on the same roster the target's row wins and the source's ballot is dropped with an audit entry. The vote actor columns (`CreatedByUserId`, `OpenedByUserId`, `ClosedByUserId`, `AssemblyVotePeek.AdminUserId`) are re-FK'd as well.
+- **Account merge (`IUserMerge`):** roster rows and ballots re-FK from source to target; when both accounts are on the same roster the target's row wins; the source row's ballot moves onto it when it holds none, and is dropped with the row only when both accounts voted. Either outcome is audited. The vote actor columns (`CreatedByUserId`, `OpenedByUserId`, `ClosedByUserId`, `AssemblyVotePeek.AdminUserId`) are re-FK'd as well.
 - `UpdateDraftApplicationAsync` silently updates a Submitted application's tier, motivation, and Asociado fields. Allowed only while Status = Submitted; no cache invalidation, no state history append, no notifications.
 
 ## Cross-Section Dependencies

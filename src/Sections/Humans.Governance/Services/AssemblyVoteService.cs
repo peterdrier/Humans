@@ -1331,8 +1331,8 @@ internal sealed class AssemblyVoteService(
     // ==========================================================================
 
     /// <summary>
-    /// Emails everyone on the roster that the vote is open and raises one in-app
-    /// notification keyed to the vote, which closing later resolves.
+    /// Raises one in-app notification keyed to the vote, which closing later resolves, and
+    /// emails everyone on the roster that the vote is open.
     /// </summary>
     /// <remarks>
     /// Per-recipient try/catch, as in Surveys' invite send: one bad address must not leave
@@ -1341,10 +1341,15 @@ internal sealed class AssemblyVoteService(
     private async Task NotifyRosterOpenedAsync(
         AssemblyVote vote, IReadOnlyList<AssemblyVoteRoster> roster, CancellationToken ct)
     {
-        await SendOpenedEmailsAsync(vote, roster, ct);
-
+        // The notification goes out before the emails, not after. A stop or cancel that
+        // commits mid-send resolves this vote's notification by source key, and a row that
+        // does not exist yet cannot be resolved — so emitting after a roster-long email loop
+        // leaves an actionable "vote is open" alert on a vote that is already closed, with
+        // nothing left to clear it. Emitted first, the window is one round trip, and the
+        // status re-read closes what is left of it.
         var userIds = roster.Where(r => r.UserId is not null).Select(r => r.UserId!.Value).ToList();
-        if (userIds.Count > 0)
+        if (userIds.Count > 0
+            && (await repository.GetByIdAsync(vote.Id, ct))?.Status == AssemblyVoteStatus.Open)
         {
             await notifications.SendAsync(
                 NotificationSource.AssemblyVoteOpened,
@@ -1356,6 +1361,8 @@ internal sealed class AssemblyVoteService(
                 sourceKey: vote.Id.ToString(),
                 cancellationToken: ct);
         }
+
+        await SendOpenedEmailsAsync(vote, roster, ct);
     }
 
     /// <summary>

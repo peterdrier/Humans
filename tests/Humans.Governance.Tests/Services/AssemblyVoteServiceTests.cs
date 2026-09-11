@@ -6,6 +6,7 @@ using Humans.Governance.Domain;
 using Humans.Governance.Services;
 using Humans.Governance.Services.Dtos;
 using Humans.Governance.Tests.Infrastructure;
+using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -1271,6 +1272,37 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         stored.Status.Should().Be(AssemblyVoteStatus.Draft);
         await _fx.Email.DidNotReceive()
             .SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task OpenAsync_RaisesTheInAppNotificationBeforeTheRosterEmails()
+    {
+        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Draft);
+        var asociado = Guid.NewGuid();
+        _fx.StubActiveUsers(asociado);
+        _fx.Applications.GetActiveApprovedTierUserIdsAsync(
+                MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>([asociado]));
+
+        // A stop or cancel mid-send resolves this vote's notification by source key, and a
+        // row that does not exist yet cannot be resolved — so the notification must not wait
+        // behind a roster-long email loop.
+        var order = new List<string>();
+        _fx.Notifications.When(n => n.SendAsync(
+                Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(),
+                Arg.Any<NotificationPriority>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<CancellationToken>()))
+            .Do(_ => order.Add("notification"));
+        _fx.Email.When(e => e.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()))
+            .Do(_ => order.Add("email"));
+
+        (await _fx.Service.OpenAsync(
+                vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken))
+            .Should().Be(AssemblyVoteActionResult.Ok);
+
+        order.Should().StartWith(["notification"], "the notification is emitted first");
+        order.Should().Contain("email");
     }
 
     [HumansFact]
