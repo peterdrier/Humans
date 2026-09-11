@@ -424,3 +424,12 @@ inbox:
   - added: 2026-09-10
     what: "docs/architecture/freshness-catalog.yml has no Backdoor entry; add one covering src/Sections/Humans.Backdoor/** and tests/Humans.Backdoor.Tests/** (finding 17, /section-doctor on Backdoor 2026-09-03; swept in by /section-doctor on Rideshare 2026-09-10)."
     review: light
+  - added: 2026-09-11
+    what: "GenerateDocumentationFile is set in no project in this repo, so CS1574 never fires and a broken <see cref> target never fails a build; Calendar alone was carrying a batch of them. Repo-wide (finding 5, /section-doctor on Calendar 2026-09-01; swept in by /section-doctor on Guide 2026-09-11)."
+    review: light
+  - added: 2026-09-11
+    what: "Calendar's authorization posture ([Authorize] on the controller, one anonymous feed action) is enforced by nothing. It cannot be a per-section test (memory/architecture/no-tests-for-absences.md) and the behavioural alternative needs a WebApplicationFactory, which lives only in the never-CI integration project. Wants a repo-wide reflection rule under tests/Humans.Web.Tests/Architecture/Rules/, or an analyzer (finding 17, /section-doctor on Calendar 2026-09-01; swept in by /section-doctor on Guide 2026-09-11)."
+    review: panel
+  - added: 2026-09-11
+    what: "No CI-gated view-render harness for section .cshtml files: every *PageRenderTests lives in tests/Humans.Integration.Tests, which build.yml excludes by filter, so a Razor fix has no test that fails on revert (/section-doctor on Calendar 2026-09-01; swept in by /section-doctor on Guide 2026-09-11)."
+    review: panel
