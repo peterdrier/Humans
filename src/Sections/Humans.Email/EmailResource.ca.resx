@@ -390,4 +390,32 @@
 &lt;p&gt;&lt;a href="{2}"&gt;Obre l'enquesta&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Gràcies,&lt;br/&gt;El Nobodies Collective&lt;/p&gt;</value></data>
   <data name="Email_SurveyReminder_Subject" xml:space="preserve"><value>Recordatori: {0}</value></data>
+
+  <!-- ======================== -->
+  <!-- Workgroup notice         -->
+  <!-- ======================== -->
+  <data name="Email_WorkgroupNotice_Greeting_Named" xml:space="preserve"><value>&lt;p&gt;Hola {0},&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Greeting_Generic" xml:space="preserve"><value>&lt;p&gt;Hola,&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Applied_Subject" xml:space="preserve"><value>Nova sol·licitud de grup de treball: {0}</value></data>
+  <data name="Email_WorkgroupNotice_Applied_Body" xml:space="preserve"><value>&lt;h2&gt;Nova sol·licitud de grup de treball&lt;/h2&gt;{0}&lt;p&gt;S'ha presentat una nova sol·licitud de grup de treball per a &lt;strong&gt;{1}&lt;/strong&gt;, pendent de revisió per part de la Junta.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Veure grup de treball&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Referred_Subject" xml:space="preserve"><value>Sol·licitud de grup de treball remesa: {0}</value></data>
+  <data name="Email_WorkgroupNotice_Referred_Body" xml:space="preserve"><value>&lt;h2&gt;Sol·licitud de grup de treball remesa&lt;/h2&gt;{0}&lt;p&gt;La sol·licitud de grup de treball per a &lt;strong&gt;{1}&lt;/strong&gt; ha estat remesa a la Junta.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Veure grup de treball&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Registered_Subject" xml:space="preserve"><value>Grup de treball registrat: {0}</value></data>
+  <data name="Email_WorkgroupNotice_Registered_Body" xml:space="preserve"><value>&lt;h2&gt;Grup de treball registrat&lt;/h2&gt;{0}&lt;p&gt;El grup de treball &lt;strong&gt;{1}&lt;/strong&gt; ha estat registrat.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Veure grup de treball&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Refused_Subject" xml:space="preserve"><value>Sol·licitud de grup de treball no aprovada: {0}</value></data>
+  <data name="Email_WorkgroupNotice_Refused_Body" xml:space="preserve"><value>&lt;h2&gt;Sol·licitud de grup de treball no aprovada&lt;/h2&gt;{0}&lt;p&gt;La sol·licitud per a &lt;strong&gt;{1}&lt;/strong&gt; no ha estat aprovada.&lt;/p&gt;{2}&lt;p&gt;&lt;a href="{3}"&gt;Veure grup de treball&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Withdrawn_Subject" xml:space="preserve"><value>Grup de treball retirat: {0}</value></data>
+  <data name="Email_WorkgroupNotice_Withdrawn_Body" xml:space="preserve"><value>&lt;h2&gt;Grup de treball retirat&lt;/h2&gt;{0}&lt;p&gt;El grup de treball &lt;strong&gt;{1}&lt;/strong&gt; ha estat retirat.&lt;/p&gt;{2}&lt;p&gt;&lt;a href="{3}"&gt;Veure grup de treball&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Ended_Subject" xml:space="preserve"><value>Grup de treball finalitzat: {0}</value></data>
+  <data name="Email_WorkgroupNotice_Ended_Body" xml:space="preserve"><value>&lt;h2&gt;Grup de treball finalitzat&lt;/h2&gt;{0}&lt;p&gt;El grup de treball &lt;strong&gt;{1}&lt;/strong&gt; ha finalitzat.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Veure grup de treball&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Reactivated_Subject" xml:space="preserve"><value>Grup de treball reactivat: {0}</value></data>
+  <data name="Email_WorkgroupNotice_Reactivated_Body" xml:space="preserve"><value>&lt;h2&gt;Grup de treball reactivat&lt;/h2&gt;{0}&lt;p&gt;El grup de treball &lt;strong&gt;{1}&lt;/strong&gt; ha estat reactivat.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Veure grup de treball&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_CoordinatorsChanged_Subject" xml:space="preserve"><value>Coordinadors canviats: {0}</value></data>
+  <data name="Email_WorkgroupNotice_CoordinatorsChanged_Body" xml:space="preserve"><value>&lt;h2&gt;Coordinadors canviats&lt;/h2&gt;{0}&lt;p&gt;Els coordinadors de &lt;strong&gt;{1}&lt;/strong&gt; han canviat.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Veure grup de treball&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_DormancyInquiry_Subject" xml:space="preserve"><value>Grup de treball inactiu: {0}</value></data>
+  <data name="Email_WorkgroupNotice_DormancyInquiry_Body" xml:space="preserve"><value>&lt;h2&gt;Grup de treball inactiu&lt;/h2&gt;{0}&lt;p&gt;El grup de treball &lt;strong&gt;{1}&lt;/strong&gt; no ha tingut activitat durant {2} dies. Publica una actualització o podria marcar-se com a inactiu.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Veure grup de treball&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Delivered_Subject" xml:space="preserve"><value>Grup de treball lliurat: {0}</value></data>
+  <data name="Email_WorkgroupNotice_Delivered_Body" xml:space="preserve"><value>&lt;h2&gt;Grup de treball lliurat&lt;/h2&gt;{0}&lt;p&gt;El grup de treball &lt;strong&gt;{1}&lt;/strong&gt; ha lliurat el seu resultat: &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Veure grup de treball&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_DispositionRecorded_Subject" xml:space="preserve"><value>Resolució de la Junta registrada: {0}</value></data>
+  <data name="Email_WorkgroupNotice_DispositionRecorded_Body" xml:space="preserve"><value>&lt;h2&gt;Resolució de la Junta registrada&lt;/h2&gt;{0}&lt;p&gt;La Junta ha registrat la seva resolució per a &lt;strong&gt;{1}&lt;/strong&gt;: {2}.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Veure grup de treball&lt;/a&gt;&lt;/p&gt;</value></data>
 </root>

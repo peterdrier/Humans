@@ -152,6 +152,12 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
     `SurveyInvitation` accepts optional plain-text custom subject/message values from Surveys; the
     internal renderer trims and safely encodes them while retaining the existing template, generated
     answer link, System category, and localized standard-copy fallback.
+    `WorkgroupNotice(WorkgroupNoticeRequest)` is one method covering all eleven working-group
+    register events (`WorkgroupNoticeKind`): Governance category, one `workgroup_notice_<kind>`
+    template name per kind (matching `EventLifecycleNotification`'s per-status naming, since each
+    kind carries materially different copy worth its own metric), and the working-group link built
+    from `WorkgroupSlug` inside the renderer the same way `RenderAddedToTeam` builds its team
+    link from a slug.
   - `IEmailPreviewServiceRead` + `RenderedEmailPreview` — read-only final-body rendering for
     authorized cross-section preview pages. It applies the same internal branded composer as the
     outbox, creates no outbox row, and deliberately rejects opt-outable categories whose exact

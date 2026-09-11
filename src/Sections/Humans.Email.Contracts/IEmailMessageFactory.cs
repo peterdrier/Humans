@@ -112,4 +112,7 @@ public interface IEmailMessageFactory
 
     /// <summary>Ticket-transfer decision (completed or cancelled) to sender or receiver (System).</summary>
     EmailMessage TicketTransferDecision(string toEmail, string toName, bool successful, string ticketLabel, string receiverName, string? reason, string? culture = null);
+
+    /// <summary>Working-group register notice (Governance category) — one method, the kind picks the copy.</summary>
+    EmailMessage WorkgroupNotice(WorkgroupNoticeRequest request);
 }

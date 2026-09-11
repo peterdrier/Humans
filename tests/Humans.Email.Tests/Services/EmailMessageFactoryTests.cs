@@ -226,4 +226,53 @@ public sealed class EmailMessageFactoryTests
         msg.TemplateName.Should().Be("google_group_removal_loss_of_access");
         msg.Category.Should().Be(MessageCategory.System);
     }
+
+    [HumansFact]
+    public void WorkgroupNotice_StampsGovernanceAndRecipient()
+    {
+        var request = new WorkgroupNoticeRequest(
+            RecipientEmail: "coord@x.com",
+            RecipientName: "Coord",
+            Kind: WorkgroupNoticeKind.Registered,
+            WorkgroupName: "Safety",
+            WorkgroupSlug: "safety",
+            Culture: "en");
+
+        var msg = _factory.WorkgroupNotice(request);
+
+        msg.RecipientEmail.Should().Be("coord@x.com");
+        msg.RecipientName.Should().Be("Coord");
+        msg.Subject.Should().Be("Subj");
+        msg.HtmlBody.Should().Be("<p>Body</p>");
+        msg.TemplateName.Should().Be("workgroup_notice_registered");
+        msg.Category.Should().Be(MessageCategory.Governance);
+        _renderer.Received(1).RenderWorkgroupNotice(request);
+    }
+
+    [HumansFact]
+    public void WorkgroupNotice_TemplateNamePerKind()
+    {
+        var expected = new Dictionary<WorkgroupNoticeKind, string>
+        {
+            [WorkgroupNoticeKind.Applied] = "workgroup_notice_applied",
+            [WorkgroupNoticeKind.Referred] = "workgroup_notice_referred",
+            [WorkgroupNoticeKind.Registered] = "workgroup_notice_registered",
+            [WorkgroupNoticeKind.Refused] = "workgroup_notice_refused",
+            [WorkgroupNoticeKind.Withdrawn] = "workgroup_notice_withdrawn",
+            [WorkgroupNoticeKind.Ended] = "workgroup_notice_ended",
+            [WorkgroupNoticeKind.Reactivated] = "workgroup_notice_reactivated",
+            [WorkgroupNoticeKind.CoordinatorsChanged] = "workgroup_notice_coordinators_changed",
+            [WorkgroupNoticeKind.DormancyInquiry] = "workgroup_notice_dormancy_inquiry",
+            [WorkgroupNoticeKind.Delivered] = "workgroup_notice_delivered",
+            [WorkgroupNoticeKind.DispositionRecorded] = "workgroup_notice_disposition_recorded",
+        };
+
+        foreach (var (kind, templateName) in expected)
+        {
+            var msg = _factory.WorkgroupNotice(new WorkgroupNoticeRequest(
+                "a@x.com", "A", kind, "Safety", "safety", Culture: "en"));
+
+            msg.TemplateName.Should().Be(templateName, because: $"{kind} keys its own metric");
+        }
+    }
 }

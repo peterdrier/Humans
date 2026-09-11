@@ -404,4 +404,32 @@
   <data name="Email_BoardDigest_TeamJoinRequests" xml:space="preserve"><value>{0} solicitudes de equipo pendientes</value><comment>{0} = count</comment></data>
   <data name="Email_BoardDigest_PendingConsents" xml:space="preserve"><value>{0} con requisitos de consentimiento pendientes</value><comment>{0} = count</comment></data>
   <data name="Email_BoardDigest_PendingDeletions" xml:space="preserve"><value>{0} eliminaciones de cuenta pendientes</value><comment>{0} = count</comment></data>
+
+  <!-- ======================== -->
+  <!-- Workgroup notice         -->
+  <!-- ======================== -->
+  <data name="Email_WorkgroupNotice_Greeting_Named" xml:space="preserve"><value>&lt;p&gt;Hola {0},&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Greeting_Generic" xml:space="preserve"><value>&lt;p&gt;Hola,&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Applied_Subject" xml:space="preserve"><value>Nueva solicitud de grupo de trabajo: {0}</value></data>
+  <data name="Email_WorkgroupNotice_Applied_Body" xml:space="preserve"><value>&lt;h2&gt;Nueva solicitud de grupo de trabajo&lt;/h2&gt;{0}&lt;p&gt;Se ha presentado una nueva solicitud de grupo de trabajo para &lt;strong&gt;{1}&lt;/strong&gt;, pendiente de revisión por la Junta.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Ver grupo de trabajo&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Referred_Subject" xml:space="preserve"><value>Solicitud de grupo de trabajo remitida: {0}</value></data>
+  <data name="Email_WorkgroupNotice_Referred_Body" xml:space="preserve"><value>&lt;h2&gt;Solicitud de grupo de trabajo remitida&lt;/h2&gt;{0}&lt;p&gt;La solicitud de grupo de trabajo para &lt;strong&gt;{1}&lt;/strong&gt; ha sido remitida a la Junta.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Ver grupo de trabajo&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Registered_Subject" xml:space="preserve"><value>Grupo de trabajo registrado: {0}</value></data>
+  <data name="Email_WorkgroupNotice_Registered_Body" xml:space="preserve"><value>&lt;h2&gt;Grupo de trabajo registrado&lt;/h2&gt;{0}&lt;p&gt;El grupo de trabajo &lt;strong&gt;{1}&lt;/strong&gt; ha sido registrado.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Ver grupo de trabajo&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Refused_Subject" xml:space="preserve"><value>Solicitud de grupo de trabajo no aprobada: {0}</value></data>
+  <data name="Email_WorkgroupNotice_Refused_Body" xml:space="preserve"><value>&lt;h2&gt;Solicitud de grupo de trabajo no aprobada&lt;/h2&gt;{0}&lt;p&gt;La solicitud para &lt;strong&gt;{1}&lt;/strong&gt; no ha sido aprobada.&lt;/p&gt;{2}&lt;p&gt;&lt;a href="{3}"&gt;Ver grupo de trabajo&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Withdrawn_Subject" xml:space="preserve"><value>Grupo de trabajo retirado: {0}</value></data>
+  <data name="Email_WorkgroupNotice_Withdrawn_Body" xml:space="preserve"><value>&lt;h2&gt;Grupo de trabajo retirado&lt;/h2&gt;{0}&lt;p&gt;El grupo de trabajo &lt;strong&gt;{1}&lt;/strong&gt; ha sido retirado.&lt;/p&gt;{2}&lt;p&gt;&lt;a href="{3}"&gt;Ver grupo de trabajo&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Ended_Subject" xml:space="preserve"><value>Grupo de trabajo finalizado: {0}</value></data>
+  <data name="Email_WorkgroupNotice_Ended_Body" xml:space="preserve"><value>&lt;h2&gt;Grupo de trabajo finalizado&lt;/h2&gt;{0}&lt;p&gt;El grupo de trabajo &lt;strong&gt;{1}&lt;/strong&gt; ha finalizado.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Ver grupo de trabajo&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Reactivated_Subject" xml:space="preserve"><value>Grupo de trabajo reactivado: {0}</value></data>
+  <data name="Email_WorkgroupNotice_Reactivated_Body" xml:space="preserve"><value>&lt;h2&gt;Grupo de trabajo reactivado&lt;/h2&gt;{0}&lt;p&gt;El grupo de trabajo &lt;strong&gt;{1}&lt;/strong&gt; ha sido reactivado.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Ver grupo de trabajo&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_CoordinatorsChanged_Subject" xml:space="preserve"><value>Coordinadores cambiados: {0}</value></data>
+  <data name="Email_WorkgroupNotice_CoordinatorsChanged_Body" xml:space="preserve"><value>&lt;h2&gt;Coordinadores cambiados&lt;/h2&gt;{0}&lt;p&gt;Los coordinadores de &lt;strong&gt;{1}&lt;/strong&gt; han cambiado.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Ver grupo de trabajo&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_DormancyInquiry_Subject" xml:space="preserve"><value>Grupo de trabajo inactivo: {0}</value></data>
+  <data name="Email_WorkgroupNotice_DormancyInquiry_Body" xml:space="preserve"><value>&lt;h2&gt;Grupo de trabajo inactivo&lt;/h2&gt;{0}&lt;p&gt;El grupo de trabajo &lt;strong&gt;{1}&lt;/strong&gt; no ha tenido actividad durante {2} días. Publica una actualización o podría marcarse como inactivo.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Ver grupo de trabajo&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Delivered_Subject" xml:space="preserve"><value>Grupo de trabajo entregado: {0}</value></data>
+  <data name="Email_WorkgroupNotice_Delivered_Body" xml:space="preserve"><value>&lt;h2&gt;Grupo de trabajo entregado&lt;/h2&gt;{0}&lt;p&gt;El grupo de trabajo &lt;strong&gt;{1}&lt;/strong&gt; ha entregado su resultado: &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Ver grupo de trabajo&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_DispositionRecorded_Subject" xml:space="preserve"><value>Resolución de la Junta registrada: {0}</value></data>
+  <data name="Email_WorkgroupNotice_DispositionRecorded_Body" xml:space="preserve"><value>&lt;h2&gt;Resolución de la Junta registrada&lt;/h2&gt;{0}&lt;p&gt;La Junta ha registrado su resolución para &lt;strong&gt;{1}&lt;/strong&gt;: {2}.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Ver grupo de trabajo&lt;/a&gt;&lt;/p&gt;</value></data>
 </root>
