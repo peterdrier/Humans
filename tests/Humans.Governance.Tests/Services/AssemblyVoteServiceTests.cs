@@ -836,6 +836,43 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         stored.Title.HasCulture("es").Should().BeFalse();
     }
 
+    [HumansFact]
+    public async Task PreFillTranslationsAsync_WhenTheDraftIsEditedWhileTranslating_WritesNothing()
+    {
+        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Draft);
+
+        // The Board rewrites the motion while the translator is waiting on Google. The draft
+        // is still a draft, so only the revision it was read at can catch this.
+        _fx.Translation.TranslateAsync(
+                Arg.Any<IReadOnlyList<string>>(), "en", "es", Arg.Any<CancellationToken>())
+            .Returns(async ci =>
+            {
+                var tracked = await _fx.Db.AssemblyVotes.SingleAsync(
+                    v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+                tracked.Title = new GovernanceLocalizedText(
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["en"] = "The motion the Board actually wants"
+                    });
+                tracked.UpdatedAt = _fx.Clock.GetCurrentInstant() + Duration.FromMinutes(5);
+                await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+                _fx.Db.ChangeTracker.Clear();
+
+                return (IReadOnlyList<string>)[.. ci.Arg<IReadOnlyList<string>>().Select(t => "ES:" + t)];
+            });
+
+        var filled = await _fx.Service.PreFillTranslationsAsync(
+            vote.Id, ["en", "es"], Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        filled.Should().Be(0, "nothing was stored, so nothing was filled");
+
+        var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
+            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.Title.Resolve("en", "en").Should().Be("The motion the Board actually wants",
+            "the Board's own wording outranks a machine translation of the wording it replaced");
+        stored.Title.HasCulture("es").Should().BeFalse();
+    }
+
     /// <summary>Echoes each source string back prefixed, so a filled blank is recognisable.</summary>
     private void StubTranslation(string target)
     {
@@ -972,7 +1009,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         _fx.Db.ChangeTracker.Clear();
 
         var written = await _fx.Repository.UpdateAsync(
-            stale!, AssemblyVoteStatus.Open, Xunit.TestContext.Current.CancellationToken);
+            stale!, AssemblyVoteStatus.Open, ct: Xunit.TestContext.Current.CancellationToken);
 
         written.Should().BeFalse();
         var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
@@ -1003,7 +1040,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         stale.ClosedByUserId = null;
 
         var written = await _fx.Repository.UpdateAsync(
-            stale, AssemblyVoteStatus.Open, Xunit.TestContext.Current.CancellationToken);
+            stale, AssemblyVoteStatus.Open, ct: Xunit.TestContext.Current.CancellationToken);
 
         written.Should().BeFalse();
         var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
@@ -1164,7 +1201,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         second.ClosedByUserId = Guid.NewGuid();
 
         var written = await _fx.Repository.UpdateAsync(
-            second, AssemblyVoteStatus.Open, Xunit.TestContext.Current.CancellationToken);
+            second, AssemblyVoteStatus.Open, ct: Xunit.TestContext.Current.CancellationToken);
 
         written.Should().BeFalse("the row is Closed, not the Open this write read");
         var stored = await _fx.Db.AssemblyVotes.AsNoTracking()

@@ -37,7 +37,10 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
     }
 
     public async Task<bool> UpdateAsync(
-        AssemblyVote vote, AssemblyVoteStatus expectedStatus, CancellationToken ct = default)
+        AssemblyVote vote,
+        AssemblyVoteStatus expectedStatus,
+        Instant? expectedUpdatedAt = null,
+        CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(vote);
 
@@ -46,9 +49,15 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
 
         var persisted = await ctx.AssemblyVotes.AsNoTracking()
             .Where(v => v.Id == vote.Id)
-            .Select(v => new { v.Status, v.ClosesAt })
+            .Select(v => new { v.Status, v.ClosesAt, v.UpdatedAt })
             .FirstOrDefaultAsync(ct);
         if (persisted is null) return false;
+
+        // A caller that spent time outside the transaction building this write — the
+        // translator waiting on Google — says which revision of the row it read. The status
+        // alone does not catch an edit that left the draft a draft, and this write carries
+        // every authored field, so a newer edit would be overwritten.
+        if (expectedUpdatedAt is { } since && persisted.UpdatedAt != since) return false;
 
         // Every lifecycle write arrives as a snapshot the caller read earlier, with every
         // property marked modified, so a write built before somebody else's transition would

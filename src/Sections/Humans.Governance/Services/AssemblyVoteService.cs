@@ -223,7 +223,6 @@ internal sealed class AssemblyVoteService(
             return BallotSubmissionOutcome.InvalidBallot;
         }
 
-        var existing = await repository.GetBallotForRosterAsync(voteId, roster.Id, ct);
         var ballot = await repository.UpsertBallotAsync(
             voteId, roster.Id, choice, normalizedRanking, now, ct);
 
@@ -232,18 +231,21 @@ internal sealed class AssemblyVoteService(
         // published result.
         if (ballot is null) return BallotSubmissionOutcome.VoteNotOpen;
 
-        // The action distinguishes a first cast from a change; neither entry records what
-        // was chosen. That is the whole point — the audit log is widely readable.
+        // The action distinguishes a first cast from a change, read from the revision the
+        // locked upsert assigned rather than from a ballot read before it: two first ballots
+        // for the same roster row can both see none, and the second one is a change.
+        // Neither entry records what was chosen. That is the whole point — the audit log is
+        // widely readable.
         //
         // The entity is the vote, never the ballot. An audit row keeps its ActorUserId for
         // good (AuditLogService.EraseForUserAsync is a no-op by design), so naming the ballot
         // id here would leave a permanent join from an erased person to the row holding their
         // Choice and Ranking — which is exactly what erasure promises to sever.
         await audit.LogAsync(
-            existing is null ? AuditAction.AssemblyBallotCast : AuditAction.AssemblyBallotChanged,
+            ballot.Revision == 1 ? AuditAction.AssemblyBallotCast : AuditAction.AssemblyBallotChanged,
             AuditEntityTypes.AssemblyVote,
             voteId,
-            existing is null
+            ballot.Revision == 1
                 ? $"Cast a ballot on assembly vote {voteId} (revision {ballot.Revision})."
                 : $"Changed their ballot on assembly vote {voteId} (revision {ballot.Revision}).",
             userId);
@@ -400,7 +402,7 @@ internal sealed class AssemblyVoteService(
         // or an Extend moved the deadline this lapse was working from. Either way the other
         // actor owns the close and nothing here should run, including the audit entry and the
         // notification: the tail belongs to whoever's status write landed.
-        if (!await repository.UpdateAsync(vote, AssemblyVoteStatus.Open, ct)) return false;
+        if (!await repository.UpdateAsync(vote, AssemblyVoteStatus.Open, ct: ct)) return false;
 
         await FinishCloseAsync(vote, closedByUserId, action, description, ct);
         return true;
@@ -453,7 +455,7 @@ internal sealed class AssemblyVoteService(
 
         // Closed is the state this write expects and the one it leaves: the tally lands on the
         // row the close already stamped, and a vote cancelled out from under it gets nothing.
-        await repository.UpdateAsync(vote, AssemblyVoteStatus.Closed, ct);
+        await repository.UpdateAsync(vote, AssemblyVoteStatus.Closed, ct: ct);
     }
 
     /// <summary>
@@ -850,6 +852,10 @@ internal sealed class AssemblyVoteService(
         // voting on would change what some members read mid-vote.
         if (vote.Status != AssemblyVoteStatus.Draft) return 0;
 
+        // The revision being translated. Google's round-trip is long enough for the Board to
+        // edit the draft in between, and this write carries every authored field.
+        var readAt = vote.UpdatedAt;
+
         var source = vote.OfficialCulture;
 
         // Every authored text as a mutable bag, so one batched call per culture fills them all.
@@ -889,9 +895,9 @@ internal sealed class AssemblyVoteService(
 
         vote.UpdatedAt = clock.GetCurrentInstant();
 
-        // Refused means the vote opened while the translations were being fetched. Nothing was
-        // stored, so nothing was filled.
-        if (!await repository.UpdateAsync(vote, AssemblyVoteStatus.Draft, ct)) return 0;
+        // Refused means the draft moved on while the translations were being fetched — it
+        // opened, or somebody edited it. Nothing was stored, so nothing was filled.
+        if (!await repository.UpdateAsync(vote, AssemblyVoteStatus.Draft, readAt, ct)) return 0;
 
         // Not audited, like the rest of draft authoring: a draft has no legal effect and the
         // Board can still rewrite every word. Open audits the content the electorate gets.
@@ -1145,7 +1151,7 @@ internal sealed class AssemblyVoteService(
 
         // The vote closed between the read above and this write. Nothing was extended, and
         // "only an open vote can be extended" is the honest answer.
-        if (!await repository.UpdateAsync(vote, AssemblyVoteStatus.Open, ct))
+        if (!await repository.UpdateAsync(vote, AssemblyVoteStatus.Open, ct: ct))
             return AssemblyVoteActionResult.WrongState;
 
         await audit.LogAsync(
@@ -1180,7 +1186,7 @@ internal sealed class AssemblyVoteService(
         // No result is computed: a cancelled vote decided nothing, and the ballots stay only
         // as a record that it was attempted. A refused write means the vote closed first,
         // and a closed vote is never cancelled out of its result.
-        if (!await repository.UpdateAsync(vote, AssemblyVoteStatus.Open, ct))
+        if (!await repository.UpdateAsync(vote, AssemblyVoteStatus.Open, ct: ct))
             return AssemblyVoteActionResult.WrongState;
 
         await ClearOpenNotificationAsync(vote, adminUserId, ct);

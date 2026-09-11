@@ -47,9 +47,17 @@ internal interface IAssemblyVoteRepository : IRepository
     /// taken before somebody else's transition cannot undo it, and two requests that both read
     /// Open cannot both close the vote. An automatic close is refused as well when an Extend
     /// has pushed the deadline past the one it read.
+    /// <para>
+    /// <paramref name="expectedUpdatedAt"/> narrows that further to the exact revision the
+    /// caller read: for a write built while an external call was in flight, status alone does
+    /// not catch an edit that left a draft a draft.
+    /// </para>
     /// </summary>
     Task<bool> UpdateAsync(
-        AssemblyVote vote, AssemblyVoteStatus expectedStatus, CancellationToken ct = default);
+        AssemblyVote vote,
+        AssemblyVoteStatus expectedStatus,
+        Instant? expectedUpdatedAt = null,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Replaces a draft's authored options wholesale, then persists the vote, under the row's
