@@ -317,6 +317,32 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
             .ToList();
     }
 
+    public async Task<(IReadOnlyList<AssemblyVote> Acted, IReadOnlyList<(AssemblyVotePeek Peek, AssemblyVote Vote)> Peeks)>
+        GetActorRecordForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+
+        var acted = await ctx.AssemblyVotes
+            .AsNoTracking()
+            .Where(v => v.CreatedByUserId == userId
+                        || v.OpenedByUserId == userId
+                        || v.ClosedByUserId == userId)
+            .ToListAsync(ct);
+
+        var peeks = await ctx.AssemblyVotePeeks
+            .AsNoTracking()
+            .Where(p => p.AdminUserId == userId)
+            .ToListAsync(ct);
+
+        var peekVoteIds = peeks.Select(p => p.VoteId).ToList();
+        var peekVotes = await ctx.AssemblyVotes
+            .AsNoTracking()
+            .Where(v => peekVoteIds.Contains(v.Id))
+            .ToDictionaryAsync(v => v.Id, ct);
+
+        return (acted, peeks.Select(p => (p, peekVotes[p.VoteId])).ToList());
+    }
+
     public async Task<int> AnonymizeRosterForUserAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

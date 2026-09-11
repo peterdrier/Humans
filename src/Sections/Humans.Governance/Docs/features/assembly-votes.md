@@ -319,7 +319,7 @@ Board members are de facto Asociados: they are on the official roster whether or
 - **Peek:** peek row + audit `AssemblyVotePeeked`.
 - **Ballots list (post-close):** audit `AssemblyBallotsViewed`.
 - **Reminder:** 24h before `ClosesAt`, one email to roster members with no ballot (`IEmailMessageFactory.AssemblyVoteReminder`), stamped on the roster row (`ReminderSentAt`) so it never repeats; sent by the same hourly job as the lapse sweep. Decided 2026-09-10: keep.
-- **GDPR export:** `IUserDataContributor` contributes the member's roster rows, current ballots and history under a new `GdprExportSections.AssemblyVotes`.
+- **GDPR export:** `IUserDataContributor` contributes the member's roster rows, current ballots and history under a new `GdprExportSections.AssemblyVotes`. Actor-side data (drafted/opened/closed votes, peeks) goes in a second slice, `GdprExportSections.AssemblyVoteActions`, and is declared as retained: the acta names the closer and the results page publishes the early-view list.
 - **Art. 17 erasure:** roster `UserId` → null (tombstone keeps counts and the stored result valid); ballot and history rows are retained unlinked, because the vote is a legal record of the association (Art. 17(3)(b) / (e)). Declared as partial retention in the section's `ErasureDeclaration`.
 - **Account merge (`IUserMerge`):** roster and ballots re-FK from source to target; if both accounts are on the same roster, the target's row wins and the source's ballot is dropped with an audit entry. The vote's own actor columns (`OpenedByUserId`, `ClosedByUserId`) and `assembly_vote_peeks.AdminUserId` move too, so the acta and the published peek list keep naming the surviving human instead of a tombstone.
 

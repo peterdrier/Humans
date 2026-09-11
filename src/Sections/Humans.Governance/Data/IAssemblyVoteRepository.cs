@@ -171,6 +171,14 @@ internal interface IAssemblyVoteRepository : IRepository
         GetVotingRecordForUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
+    /// The votes a user acted on as an author or officer (drafted, opened, closed) and every
+    /// tally they peeked at — the other half of their personal data here, which the roster
+    /// query misses entirely for a Board member who runs a vote without being on its roster.
+    /// </summary>
+    Task<(IReadOnlyList<AssemblyVote> Acted, IReadOnlyList<(AssemblyVotePeek Peek, AssemblyVote Vote)> Peeks)>
+        GetActorRecordForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
     /// Art. 17 erasure: nulls <c>UserId</c> on every roster row for the user, leaving the
     /// rows as anonymous tombstones so turnout counts and stored results stay valid.
     /// Ballots and history are retained unlinked — the vote is the association's legal

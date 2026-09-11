@@ -70,7 +70,7 @@
                 </div>
                 <div class="col-md-8">
                     <label asp-for="InfoUrl" class="form-label small">Information link (optional)</label>
-                    <input asp-for="InfoUrl" type="url" class="form-control form-control-sm" placeholder="https://…" />
+                    <input asp-for="InfoUrl" type="url" class="form-control form-control-sm" maxlength="2000" placeholder="https://…" />
                     <span asp-validation-for="InfoUrl" class="text-danger small"></span>
                 </div>
             </div>

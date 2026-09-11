@@ -45,14 +45,18 @@ internal sealed class AssemblyVoteService(
     /// <summary>The recurring job that closes lapsed votes and sends the T-24h reminder.</summary>
     internal const string LapseJobName = "governance-assembly-vote-lapse";
 
-    /// <summary>
-    /// Mirrors the <c>assembly_vote_options.key</c> column width. Validated here so an
-    /// over-long key is a rejected draft rather than a 500 from PostgreSQL.
-    /// </summary>
-    internal const int MaxOptionKeyLength = 100;
+    // Every bounded text column this section writes, mirrored from the EF configurations, in
+    // one place. Text arriving from a form is checked with Fits before it reaches the
+    // DbContext, so an over-long value is a rejected draft or action rather than a 500 from
+    // PostgreSQL. A new bounded column belongs in this block and in the check that guards it;
+    // the localized JSON columns (Title, OfficialText, option Label) are unbounded by design.
+    internal const int MaxOptionKeyLength = 100;     // assembly_vote_options.Key
+    internal const int MaxCancelReasonLength = 4000; // assembly_votes.CancelReason
+    internal const int MaxInfoUrlLength = 2000;      // assembly_votes.InfoUrl
+    internal const int MaxCultureLength = 10;        // assembly_votes.OfficialCulture
 
-    /// <summary>Mirrors the <c>assembly_votes.cancel_reason</c> column width.</summary>
-    internal const int MaxCancelReasonLength = 4000;
+    /// <summary>Whether a value fits the column that will store it. Blank always fits.</summary>
+    private static bool Fits(string? value, int max) => (value?.Length ?? 0) <= max;
 
     /// <summary>
     /// Mirrors <c>audit_log.description</c>. A near-maximum cancellation reason still fits
@@ -806,6 +810,8 @@ internal sealed class AssemblyVoteService(
     private bool IsDraftValid(AssemblyVoteDraft draft)
     {
         if (string.IsNullOrWhiteSpace(draft.OfficialCulture)) return false;
+        if (!Fits(draft.OfficialCulture, MaxCultureLength)) return false;
+        if (!Fits(draft.InfoUrl, MaxInfoUrlLength)) return false;
         if (!draft.Title.TryGetValue(draft.OfficialCulture, out var title)
             || string.IsNullOrWhiteSpace(title)) return false;
         if (!draft.OfficialText.TryGetValue(draft.OfficialCulture, out var text)
@@ -816,7 +822,7 @@ internal sealed class AssemblyVoteService(
 
         return draft.Options.Count >= 2
                && draft.Options.All(o => !string.IsNullOrWhiteSpace(o.Key)
-                                         && o.Key.Length <= MaxOptionKeyLength)
+                                         && Fits(o.Key, MaxOptionKeyLength))
                && draft.Options.All(o => o.Label.TryGetValue(draft.OfficialCulture, out var label)
                                          && !string.IsNullOrWhiteSpace(label))
                && draft.Options.Select(o => o.Key).Distinct(StringComparer.Ordinal).Count()
@@ -1012,7 +1018,7 @@ internal sealed class AssemblyVoteService(
         if (string.IsNullOrWhiteSpace(reason)) return AssemblyVoteActionResult.Invalid;
         // Its own column is varchar(4000); over that the update dies on the insert, which is
         // a 500 where "that cancellation was rejected" is the honest answer.
-        if (reason.Length > MaxCancelReasonLength) return AssemblyVoteActionResult.Invalid;
+        if (!Fits(reason, MaxCancelReasonLength)) return AssemblyVoteActionResult.Invalid;
 
         // Settle first: a vote whose deadline has passed is Closed with its result stored,
         // and cancelling it then would erase that result and the decision it recorded.
@@ -1323,7 +1329,6 @@ internal sealed class AssemblyVoteService(
         Guid userId, CancellationToken ct)
     {
         var record = await repository.GetVotingRecordForUserAsync(userId, ct);
-        if (record.Count == 0) return [];
 
         var rows = record
             .Select(x => new
@@ -1351,7 +1356,41 @@ internal sealed class AssemblyVoteService(
             })
             .ToList();
 
-        return [new UserDataSlice(GdprExportSections.AssemblyVotes, rows)];
+        var (acted, peeks) = await repository.GetActorRecordForUserAsync(userId, ct);
+
+        var actions = acted
+            .Select(v => new
+            {
+                Vote = v.Title.Resolve(v.OfficialCulture, v.OfficialCulture),
+                v.Status,
+                Roles = new[]
+                    {
+                        v.CreatedByUserId == userId ? "Drafted" : null,
+                        v.OpenedByUserId == userId ? "Opened" : null,
+                        v.ClosedByUserId == userId ? "Closed" : null
+                    }
+                    .OfType<string>()
+                    .ToList(),
+                v.CreatedAt,
+                v.OpenedAt,
+                v.ClosedAt
+            })
+            .ToList();
+
+        var peekRows = peeks
+            .Select(x => new
+            {
+                Vote = x.Vote.Title.Resolve(x.Vote.OfficialCulture, x.Vote.OfficialCulture),
+                x.Peek.PeekedAt
+            })
+            .ToList();
+
+        return
+        [
+            new UserDataSlice(GdprExportSections.AssemblyVotes, rows),
+            new UserDataSlice(GdprExportSections.AssemblyVoteActions,
+                new { RanVotes = actions, Peeks = peekRows })
+        ];
     }
 
     /// <summary>
@@ -1368,7 +1407,13 @@ internal sealed class AssemblyVoteService(
                 + "is the association's legal record of an agreement it adopted and the "
                 + "turnout and stored result must stay arithmetically valid "
                 + "(Ley Organica 1/2002 Art. 14; GDPR Art. 17(3)(b) and (e)). After erasure "
-                + "the ballot can no longer be attributed to the person."
+                + "the ballot can no longer be attributed to the person.",
+
+            [GdprExportSections.AssemblyVoteActions] =
+                "Retained: who drafted, opened or closed a vote, and who looked at a live "
+                + "tally before it closed, are part of the association's record of how the "
+                + "decision was taken — the acta names the closer and the results page "
+                + "publishes the early-view list (GDPR Art. 17(3)(b) and (e))."
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;

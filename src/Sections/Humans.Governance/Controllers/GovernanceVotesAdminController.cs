@@ -124,7 +124,7 @@ internal sealed class GovernanceVotesAdminController(
         var result = await voteService.OpenAsync(voteId, adminId, ct);
         return result switch
         {
-            AssemblyVoteActionResult.Ok => Success("Vote opened — the roster has been notified.", nameof(Index)),
+            AssemblyVoteActionResult.Ok => Success("Vote opened.", nameof(Index)),
             AssemblyVoteActionResult.NotFound => NotFound(),
             AssemblyVoteActionResult.WrongState => Error("Only a draft can be opened.", nameof(Index)),
             _ => Error("That draft could not be opened.", nameof(Index))
@@ -178,7 +178,7 @@ internal sealed class GovernanceVotesAdminController(
         var result = await voteService.CancelAsync(voteId, model.Reason, adminId, ct);
         return result switch
         {
-            AssemblyVoteActionResult.Ok => Success("Vote cancelled — the roster has been notified.", nameof(Index)),
+            AssemblyVoteActionResult.Ok => Success("Vote cancelled.", nameof(Index)),
             AssemblyVoteActionResult.NotFound => NotFound(),
             AssemblyVoteActionResult.WrongState => Error("Only an open vote can be cancelled.", nameof(Index)),
             _ => Error("A cancellation reason is required.", nameof(Index))

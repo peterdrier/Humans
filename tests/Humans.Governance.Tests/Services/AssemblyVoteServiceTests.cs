@@ -147,6 +147,68 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task CreateDraftAsync_WithAnOverlongInfoUrl_IsRejected()
+    {
+        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Draft);
+        var draft = _fx.DraftFor(vote, AssemblyVoteKind.YesNo, [])
+            with { InfoUrl = "https://example.org/" + new string('u', 2000) };
+
+        var voteId = await _fx.Service.CreateDraftAsync(
+            draft, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        voteId.Should().BeNull(
+            "the InfoUrl column is varchar(2000) — an over-long link is a validation message, not a 500");
+    }
+
+    [HumansFact]
+    public async Task CreateDraftAsync_WithAnOverlongOfficialCulture_IsRejected()
+    {
+        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Draft);
+        var draft = _fx.DraftFor(vote, AssemblyVoteKind.YesNo, [])
+            with { OfficialCulture = new string('x', 11) };
+
+        var voteId = await _fx.Service.CreateDraftAsync(
+            draft, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        voteId.Should().BeNull("the OfficialCulture column is varchar(10)");
+    }
+
+    // ==========================================================================
+    // GDPR export
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task ContributeForUserAsync_IncludesTheVotesAnOfficerRanAndPeekedAt()
+    {
+        var officer = Guid.NewGuid();
+        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
+
+        var tracked = await _fx.Db.AssemblyVotes.SingleAsync(
+            v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        tracked.OpenedByUserId = officer;
+        tracked.ClosedByUserId = officer;
+        _fx.Db.AssemblyVotePeeks.Add(new AssemblyVotePeek
+        {
+            Id = Guid.NewGuid(),
+            VoteId = vote.Id,
+            AdminUserId = officer,
+            PeekedAt = _fx.Clock.GetCurrentInstant()
+        });
+        await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var slices = await _fx.Service.ContributeForUserAsync(
+            officer, Xunit.TestContext.Current.CancellationToken);
+
+        // The officer is on no roster, so the voting-record slice is empty — without the
+        // actor slice their activity would be missing from the export entirely.
+        var actions = slices.Should()
+            .ContainSingle(s => s.SectionName == GdprExportSections.AssemblyVoteActions)
+            .Which.Data;
+        var json = System.Text.Json.JsonSerializer.Serialize(actions);
+        json.Should().Contain("Opened").And.Contain("Closed").And.Contain("PeekedAt");
+    }
+
+    [HumansFact]
     public async Task CastBallotAsync_VoteNotOpen_IsRejected()
     {
         var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
