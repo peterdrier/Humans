@@ -150,8 +150,10 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     public async Task CreateDraftAsync_WithAnOverlongInfoUrl_IsRejected()
     {
         var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Draft);
-        var draft = _fx.DraftFor(vote, AssemblyVoteKind.YesNo, [])
-            with { InfoUrl = "https://example.org/" + new string('u', 2000) };
+        var draft = _fx.DraftFor(vote, AssemblyVoteKind.YesNo, []) with
+        {
+            InfoUrl = "https://example.org/" + new string('u', 2000)
+        };
 
         var voteId = await _fx.Service.CreateDraftAsync(
             draft, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
@@ -164,8 +166,10 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     public async Task CreateDraftAsync_WithAnOverlongOfficialCulture_IsRejected()
     {
         var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Draft);
-        var draft = _fx.DraftFor(vote, AssemblyVoteKind.YesNo, [])
-            with { OfficialCulture = new string('x', 11) };
+        var draft = _fx.DraftFor(vote, AssemblyVoteKind.YesNo, []) with
+        {
+            OfficialCulture = new string('x', 11)
+        };
 
         var voteId = await _fx.Service.CreateDraftAsync(
             draft, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
