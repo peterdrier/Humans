@@ -182,7 +182,9 @@ public class GateControllerOverridePinTests
         jobsOff.ReceivedCalls().Should().NotBeEmpty();
         ledgerOff.WasSent("vt-1").Should().BeFalse();
 
-        // Flag on: enqueued AND ledger-claimed, so live path + backfill never double-post.
+        // Flag on: enqueued AND ledger-claimed, so a backfill after this mark won't re-send.
+        // The mark lands after the enqueue, so a backfill in that instant can still double-post
+        // one — accepted, not a guarantee (health.md, "Vendor mirror").
         var ledgerOn = new GateVendorMirrorLedger(new MemoryCache(new MemoryCacheOptions()));
         var jobsOn = Substitute.For<IBackgroundJobClient>();
         await Decide(BuildController(Pin, mirrorEnabled: true, ledgerOn, jobsOn));
