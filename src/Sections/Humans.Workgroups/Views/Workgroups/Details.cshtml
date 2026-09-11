@@ -1,0 +1,300 @@
+@model WorkgroupPageViewModel
+@{
+    var w = Model.Workgroup;
+    ViewData["Title"] = w.Name;
+
+    var coordinatorIds = w.CoordinatorUserIds();
+    var isDormant = w.Status == WorkgroupStatus.Dormant;
+
+    IEnumerable<(LocalDate Date, WorkgroupLogEntryInfo? Log, WorkgroupMeetingInfo? Meeting)> Timeline()
+    {
+        foreach (var e in w.LogEntries)
+        {
+            yield return (e.OccurredOn, e, null);
+        }
+        foreach (var m in w.Meetings)
+        {
+            yield return (m.StartUtc.InUtc().Date, null, m);
+        }
+    }
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Workgroups_Title"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@w.Name</li>
+    </ol>
+</nav>
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+    <div>
+        <h1 class="mb-1">@w.Name</h1>
+        <span class="badge @EnumBadgeMap.For(w.Status)">@Localizer.EnumDisplay(w.Status)</span>
+        @if (isDormant && w.DormantReason is { } dr)
+        {
+            <span class="badge bg-secondary">@Localizer.EnumDisplay(dr)</span>
+        }
+        @if (w.IsOpenForComment(Model.Now))
+        {
+            <span class="badge bg-primary">@Localizer["Workgroups_OpenForComment"]</span>
+        }
+        @if (w.IsUpdateDue(Model.Now))
+        {
+            <span class="badge bg-warning text-dark">@Localizer["Workgroups_UpdateDue"]</span>
+        }
+        @if (w.IsStatusOverdue(Model.Now))
+        {
+            <span class="badge bg-danger">@Localizer["Workgroups_StatusOverdue"]</span>
+        }
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        @if (Model.CanDoMemberWork)
+        {
+            <a asp-action="Edit" asp-route-slug="@w.Slug" class="btn btn-sm btn-outline-secondary">
+                <i class="fa-solid fa-pen me-1"></i>@SharedLocalizer["Common_Edit"]
+            </a>
+        }
+        @if (!Model.IsMember)
+        {
+            <form method="post" asp-action="Join" asp-route-slug="@w.Slug">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fa-solid fa-user-plus me-1"></i>@Localizer["Workgroups_Join"]
+                </button>
+            </form>
+        }
+    </div>
+</div>
+
+@if (w.Status is WorkgroupStatus.Refused or WorkgroupStatus.Withdrawn && !string.IsNullOrWhiteSpace(w.Reasons))
+{
+    <div class="alert alert-secondary">@Html.SanitizedMarkdown(w.Reasons)</div>
+}
+
+<div class="card mb-3">
+    <div class="card-body">
+        <p>@Html.SanitizedMarkdown(w.Purpose)</p>
+        <p class="mb-2">
+            @Localizer["Workgroups_DeliverableSentence", w.TargetDate?.ToDate() ?? Localizer["Workgroups_NoTargetDate"].Value, w.Deliverable, Localizer.EnumDisplay(w.Audience)]
+            <span class="badge bg-light text-dark border">@Localizer.EnumDisplay(w.DeliverableKind)</span>
+        </p>
+        <div class="d-flex flex-wrap gap-3 small">
+            @if (!string.IsNullOrWhiteSpace(w.DiscordChannelUrl))
+            {
+                <a href="@w.DiscordChannelUrl" target="_blank" rel="noopener"><i class="fa-brands fa-discord me-1"></i>@Localizer["Workgroups_DiscordChannel"]</a>
+            }
+            @if (!string.IsNullOrWhiteSpace(w.DriveFolderId))
+            {
+                <a href="https://drive.google.com/drive/folders/@w.DriveFolderId" target="_blank" rel="noopener"><i class="fa-brands fa-google-drive me-1"></i>@Localizer["Workgroups_DriveFolder"]</a>
+            }
+        </div>
+    </div>
+</div>
+
+@{ var nextMeeting = w.NextMeeting(Model.Now); }
+@if (nextMeeting is not null)
+{
+    <div class="card mb-3 border-primary">
+        <div class="card-body">
+            <h2 class="h6 text-uppercase text-muted mb-1">@Localizer["Workgroups_NextMeeting"]</h2>
+            <div class="fw-semibold">@nextMeeting.Title</div>
+            <div class="small text-muted">
+                @nextMeeting.StartUtc.ToWeekdayDayMonth() · @nextMeeting.StartUtc.ToTime()–@nextMeeting.EndUtc.ToTime()
+                @if (!string.IsNullOrWhiteSpace(nextMeeting.Location)) { <span> · @nextMeeting.Location</span> }
+                @if (nextMeeting.IsPublic) { <span class="badge bg-info text-dark ms-1">@Localizer["Workgroups_PublicMeeting"]</span> }
+            </div>
+        </div>
+    </div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <h2 class="h5">@Localizer["Workgroups_Roster"]</h2>
+        <ul class="list-group mb-3">
+            @foreach (var m in w.CurrentMembers().OrderByDescending(m => m.Role))
+            {
+                var info = Model.People.TryGetValue(m.UserId, out var i) ? i : null;
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>
+                        <vc:human user-id="@m.UserId" layout="AvatarName" size="28" />
+                    </span>
+                    <span class="d-flex gap-1">
+                        @if (m.Role == WorkgroupMemberRole.Coordinator)
+                        {
+                            <span class="badge bg-primary">@Localizer.EnumDisplay(WorkgroupMemberRole.Coordinator)</span>
+                        }
+                        @if (Model.BoardUserIds.Contains(m.UserId))
+                        {
+                            <span class="badge bg-dark">@Localizer["Workgroups_Board"]</span>
+                        }
+                        else if (info?.Profile?.MembershipTier is { } tier)
+                        {
+                            <span class="badge bg-light text-dark border">@tier</span>
+                        }
+                    </span>
+                </li>
+            }
+        </ul>
+
+        @if (Model.IsMember)
+        {
+            <form method="post" asp-action="Leave" asp-route-slug="@w.Slug" class="mb-3">
+                @if (coordinatorIds.Count == 1 && coordinatorIds.Contains(Model.CurrentUserId))
+                {
+                    <div class="mb-2">
+                        <label class="form-label small">@Localizer["Workgroups_Field_ReplacementCoordinator"]</label>
+                        <input name="replacementCoordinatorUserId" class="form-control form-control-sm" placeholder="00000000-0000-0000-0000-000000000000" />
+                    </div>
+                }
+                <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Workgroups_Leave"]</button>
+            </form>
+        }
+
+        @if (Model.CanDoMemberWork)
+        {
+            <h3 class="h6">@Localizer["Workgroups_Coordinators"]</h3>
+            <form method="post" asp-action="Coordinators" asp-route-slug="@w.Slug" class="mb-3">
+                @{ var c = coordinatorIds.ToList(); }
+                <div class="mb-2">
+                    <input name="coordinatorUserIds" class="form-control form-control-sm mb-1" value="@(c.Count > 0 ? c[0] : null)" placeholder="@Localizer["Workgroups_Field_Coordinator1"]" />
+                    <input name="coordinatorUserIds" class="form-control form-control-sm" value="@(c.Count > 1 ? c[1] : null)" placeholder="@Localizer["Workgroups_Field_Coordinator2"]" />
+                </div>
+                <button type="submit" class="btn btn-sm btn-outline-secondary">@Localizer["Workgroups_SaveCoordinators"]</button>
+            </form>
+        }
+
+        <h3 class="h6">@Localizer["Workgroups_RequestStatus"]</h3>
+        <form method="post" asp-action="RequestStatus" asp-route-slug="@w.Slug" class="mb-3">
+            <input type="text" name="question" class="form-control form-control-sm mb-2" maxlength="500" placeholder="@Localizer["Workgroups_RequestStatusPlaceholder"]" />
+            <button type="submit" class="btn btn-sm btn-outline-secondary">@Localizer["Workgroups_RequestStatus"]</button>
+        </form>
+
+        @if (Model.CanDoMemberWork)
+        {
+            <h3 class="h6">@Localizer["Workgroups_MarkDone"]</h3>
+            <form method="post" asp-action="Done" asp-route-slug="@w.Slug" class="mb-3" data-confirm="@Localizer["Workgroups_MarkDoneConfirm"]">
+                <select name="reason" class="form-select form-select-sm mb-2">
+                    <option value="@WorkgroupDormantReason.Delivered">@Localizer.EnumDisplay(WorkgroupDormantReason.Delivered)</option>
+                    <option value="@WorkgroupDormantReason.Abandoned">@Localizer.EnumDisplay(WorkgroupDormantReason.Abandoned)</option>
+                </select>
+                <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Workgroups_MarkDone"]</button>
+            </form>
+        }
+    </div>
+
+    <div class="col-lg-8">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2 class="h5">@Localizer["Workgroups_Documents"]</h2>
+            @if (Model.CanDoMemberWork)
+            {
+                <a asp-action="CreateDocument" asp-route-slug="@w.Slug" class="btn btn-sm btn-outline-primary">
+                    <i class="fa-solid fa-plus me-1"></i>@Localizer["Workgroups_NewDocument"]
+                </a>
+            }
+        </div>
+        @{ var visibleDocs = w.Documents.Where(d => d.Status != WorkgroupDocumentStatus.Draft || Model.IsMember || Model.CanAdminister).OrderByDescending(d => d.CreatedAt).ToList(); }
+        @if (visibleDocs.Count == 0)
+        {
+            <p class="text-muted">@Localizer["Workgroups_NoDocuments"]</p>
+        }
+        else
+        {
+            <div class="list-group mb-4">
+                @foreach (var d in visibleDocs)
+                {
+                    <a asp-action="Document" asp-route-slug="@w.Slug" asp-route-id="@d.Id" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <span>
+                            @d.Title
+                            <span class="text-muted small">· @Localizer.EnumDisplay(d.Kind)</span>
+                        </span>
+                        <span class="d-flex gap-1">
+                            @if (d.IsOpenForComment(Model.Now))
+                            {
+                                <span class="badge bg-primary">@Localizer["Workgroups_OpenForComment"]</span>
+                            }
+                            <span class="badge @EnumBadgeMap.For(d.Status)">@Localizer.EnumDisplay(d.Status)</span>
+                        </span>
+                    </a>
+                }
+            </div>
+        }
+
+        @if (Model.IsMember)
+        {
+            <h2 class="h5">@Localizer["Workgroups_Surveys"]</h2>
+            <form method="post" asp-action="LinkSurvey" asp-route-slug="@w.Slug" class="d-flex gap-2 mb-4">
+                <input name="surveyId" class="form-control form-control-sm" placeholder="@Localizer["Workgroups_SurveyIdPlaceholder"]" />
+                <button type="submit" class="btn btn-sm btn-outline-secondary text-nowrap">@Localizer["Workgroups_LinkSurvey"]</button>
+                <a href="/Survey/Admin" class="btn btn-sm btn-link text-nowrap">@Localizer["Workgroups_MySurveys"]</a>
+            </form>
+        }
+
+        <div class="d-flex justify-content-between align-items-center">
+            <h2 class="h5">@Localizer["Workgroups_History"]</h2>
+            @if (Model.CanDoMemberWork)
+            {
+                <div class="d-flex gap-2">
+                    <a asp-action="CreateMeeting" asp-route-slug="@w.Slug" class="btn btn-sm btn-outline-primary">
+                        <i class="fa-solid fa-calendar-plus me-1"></i>@Localizer["Workgroups_NewMeeting"]
+                    </a>
+                    <a asp-action="AddLogEntry" asp-route-slug="@w.Slug" class="btn btn-sm btn-outline-primary">
+                        <i class="fa-solid fa-plus me-1"></i>@Localizer["Workgroups_NewLogEntry"]
+                    </a>
+                </div>
+            }
+        </div>
+
+        @{ var timeline = Timeline().OrderByDescending(t => t.Date).ToList(); }
+        @if (timeline.Count == 0)
+        {
+            <p class="text-muted">@Localizer["Workgroups_NoHistory"]</p>
+        }
+        else
+        {
+            <ul class="list-group">
+                @foreach (var entry in timeline)
+                {
+                    var isMemberKind = entry.Log is not null && entry.Log.Kind is WorkgroupLogKind.Update
+                        or WorkgroupLogKind.Disclosure or WorkgroupLogKind.Note;
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                            <div>
+                                <span class="badge bg-light text-dark border">@entry.Date.ToDate()</span>
+                                @if (entry.Meeting is not null)
+                                {
+                                    <span class="badge bg-info text-dark">@Localizer["Workgroups_Meeting"]</span>
+                                    <strong class="ms-1">@entry.Meeting.Title</strong>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">@Localizer.EnumDisplay(entry.Log!.Kind)</span>
+                                    @if (entry.Log.Title is { Length: > 0 })
+                                    {
+                                        <strong class="ms-1">@entry.Log.Title</strong>
+                                    }
+                                }
+                                @{ var authorId = entry.Meeting?.CreatedByUserId ?? entry.Log?.AuthorUserId; }
+                                @if (authorId is { } id)
+                                {
+                                    <span class="text-muted small ms-1">— @Model.DisplayName(id)</span>
+                                }
+                            </div>
+                            @if (Model.CanDoMemberWork && entry.Meeting is not null)
+                            {
+                                <a asp-action="EditMeeting" asp-route-slug="@w.Slug" asp-route-id="@entry.Meeting.Id" class="btn btn-sm btn-link">@SharedLocalizer["Common_Edit"]</a>
+                            }
+                            else if (Model.CanDoMemberWork && isMemberKind && entry.Log is not null)
+                            {
+                                <a asp-action="EditLogEntry" asp-route-slug="@w.Slug" asp-route-id="@entry.Log.Id" class="btn btn-sm btn-link">@SharedLocalizer["Common_Edit"]</a>
+                            }
+                        </div>
+                        @{ var body = entry.Meeting?.Minutes ?? entry.Log?.Body; }
+                        @if (!string.IsNullOrWhiteSpace(body))
+                        {
+                            <div class="mt-1">@Html.SanitizedMarkdown(body)</div>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+</div>

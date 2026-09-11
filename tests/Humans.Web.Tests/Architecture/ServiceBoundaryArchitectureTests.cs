@@ -77,6 +77,7 @@ public class ServiceBoundaryArchitectureTests
             [SectionRepository("Humans.Teams.Data.ITeamRepository")] = "Teams",
             [SectionRepository("Humans.Tickets.Data.ITicketRepository")] = "Tickets",
             [SectionRepository("Humans.Tickets.Data.ITicketTransferRepository")] = "Tickets",
+            [SectionRepository("Humans.Workgroups.Data.IWorkgroupRepository")] = "Workgroups",
             [typeof(IUserRepository)] = "Humans",
             [SectionRepository("Humans.Shifts.Data.IVolunteerTrackingRepository")] = "Shifts",
         };

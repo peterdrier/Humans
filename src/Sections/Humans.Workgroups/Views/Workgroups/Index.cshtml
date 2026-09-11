@@ -1,0 +1,138 @@
+@model RegisterViewModel
+@{
+    ViewData["Title"] = Localizer["Workgroups_Title"];
+
+    string DisplayName(Guid? userId) =>
+        userId is { } id && Model.People.TryGetValue(id, out var info) ? info.BurnerName : "—";
+
+    string Coordinators(WorkgroupInfo w) =>
+        string.Join(", ", w.Coordinators().Select(m => DisplayName(m.UserId)));
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="mb-0"><i class="fa-solid fa-people-group me-2"></i>@Localizer["Workgroups_Title"]</h1>
+    <a asp-action="Apply" class="btn btn-primary">
+        <i class="fa-solid fa-plus me-1"></i>@Localizer["Workgroups_Apply"]
+    </a>
+</div>
+
+<p class="text-muted">@Localizer["Workgroups_Intro"]</p>
+
+<h2 class="h4 mt-4">@Localizer["Workgroups_Active"] <span class="badge bg-secondary">@Model.Active.Count</span></h2>
+@if (Model.Active.Count == 0)
+{
+    <p class="text-muted">@Localizer["Workgroups_NoActive"]</p>
+}
+else
+{
+    <div class="d-grid gap-3 mb-4">
+        @foreach (var w in Model.Active)
+        {
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                        <div>
+                            <a asp-action="Details" asp-route-slug="@w.Slug" class="h5 text-decoration-none">@w.Name</a>
+                            <div class="small text-muted">@Localizer["Workgroups_CoordinatedBy"] @Coordinators(w)</div>
+                        </div>
+                        <div class="text-end">
+                            @if (w.IsOpenForComment(Model.Now))
+                            {
+                                <span class="badge bg-primary">@Localizer["Workgroups_OpenForComment"]</span>
+                            }
+                            @if (w.IsUpdateDue(Model.Now))
+                            {
+                                <span class="badge bg-warning text-dark">@Localizer["Workgroups_UpdateDue"]</span>
+                            }
+                            @if (w.IsStatusOverdue(Model.Now))
+                            {
+                                <span class="badge bg-danger">@Localizer["Workgroups_StatusOverdue"]</span>
+                            }
+                            @if (w.DormantSince is not null)
+                            {
+                                <span class="badge bg-secondary">@Localizer["Workgroups_Quiet"]</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="mt-2">@Localizer["Workgroups_DeliverableSentence", w.TargetDate?.ToDate() ?? Localizer["Workgroups_NoTargetDate"].Value, w.Deliverable, Localizer.EnumDisplay(w.Audience)]</div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<h2 class="h4 mt-4">@Localizer["Workgroups_Pending"] <span class="badge bg-secondary">@Model.Pending.Count</span></h2>
+@if (Model.Pending.Count == 0)
+{
+    <p class="text-muted">@Localizer["Workgroups_NoPending"]</p>
+}
+else
+{
+    <div class="table-responsive mb-4">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>@SharedLocalizer["Common_General"]</th>
+                    <th>@Localizer["Workgroups_Coordinators"]</th>
+                    <th>@SharedLocalizer["Common_Status"]</th>
+                    <th>@Localizer["Workgroups_AppliedOn"]</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var w in Model.Pending)
+                {
+                    <tr>
+                        <td><a asp-action="Details" asp-route-slug="@w.Slug">@w.Name</a></td>
+                        <td>@Coordinators(w)</td>
+                        <td>
+                            <span class="badge @EnumBadgeMap.For(w.Status)">@Localizer.EnumDisplay(w.Status)</span>
+                            @if (w.IsRegistrationOverdue(Model.Now))
+                            {
+                                <span class="badge bg-danger ms-1">@Localizer["Workgroups_RegistrationOverdue"]</span>
+                            }
+                        </td>
+                        <td>@w.AppliedAt.ToDate()</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<h2 class="h4 mt-4">@Localizer["Workgroups_Archive"] <span class="badge bg-secondary">@Model.Archive.Count</span></h2>
+@if (Model.Archive.Count == 0)
+{
+    <p class="text-muted">@Localizer["Workgroups_NoArchive"]</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>@SharedLocalizer["Common_General"]</th>
+                    <th>@SharedLocalizer["Common_Status"]</th>
+                    <th>@Localizer["Workgroups_Reasons"]</th>
+                    <th>@Localizer["Workgroups_Ended"]</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var w in Model.Archive)
+                {
+                    <tr>
+                        <td><a asp-action="Details" asp-route-slug="@w.Slug">@w.Name</a></td>
+                        <td>
+                            <span class="badge @EnumBadgeMap.For(w.Status)">@Localizer.EnumDisplay(w.Status)</span>
+                            @if (w.Status == WorkgroupStatus.Dormant && w.DormantReason is { } reason)
+                            {
+                                <span class="text-muted small ms-1">(@Localizer.EnumDisplay(reason))</span>
+                            }
+                        </td>
+                        <td class="small text-muted">@w.Reasons</td>
+                        <td>@w.EndedAt?.ToDate()</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

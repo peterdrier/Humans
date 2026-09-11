@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- Enums -->
+  <data name="Enum_WorkgroupStatus_Applied" xml:space="preserve"><value>Sol·licitat</value></data>
+  <data name="Enum_WorkgroupStatus_Referred" xml:space="preserve"><value>Remès a la Junta</value></data>
+  <data name="Enum_WorkgroupStatus_Active" xml:space="preserve"><value>Actiu</value></data>
+  <data name="Enum_WorkgroupStatus_Refused" xml:space="preserve"><value>Rebutjat</value></data>
+  <data name="Enum_WorkgroupStatus_Withdrawn" xml:space="preserve"><value>Retirat</value></data>
+  <data name="Enum_WorkgroupStatus_Dormant" xml:space="preserve"><value>Inactiu</value></data>
+
+  <data name="Enum_WorkgroupDormantReason_Delivered" xml:space="preserve"><value>Entregat</value></data>
+  <data name="Enum_WorkgroupDormantReason_Abandoned" xml:space="preserve"><value>Abandonat</value></data>
+  <data name="Enum_WorkgroupDormantReason_Quiet" xml:space="preserve"><value>Tancat per inactivitat</value></data>
+
+  <data name="Enum_WorkgroupDeliverableKind_Recommendation" xml:space="preserve"><value>Recomanació</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_DraftPolicy" xml:space="preserve"><value>Esborrany de política</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_DecisionBrief" xml:space="preserve"><value>Informe per a decisió</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_Report" xml:space="preserve"><value>Informe</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_AssemblyProposal" xml:space="preserve"><value>Proposta per a l'Assemblea</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_ResolutionProposal" xml:space="preserve"><value>Proposta de resolució</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_DepartmentRegistration" xml:space="preserve"><value>Registre de departament</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_Consultation" xml:space="preserve"><value>Consulta</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_Event" xml:space="preserve"><value>Esdeveniment</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_Other" xml:space="preserve"><value>Altre</value></data>
+
+  <data name="Enum_WorkgroupAudience_Board" xml:space="preserve"><value>la Junta</value></data>
+  <data name="Enum_WorkgroupAudience_Assembly" xml:space="preserve"><value>l'Assemblea</value></data>
+  <data name="Enum_WorkgroupAudience_Community" xml:space="preserve"><value>la comunitat</value></data>
+
+  <data name="Enum_WorkgroupMemberRole_Member" xml:space="preserve"><value>Membre</value></data>
+  <data name="Enum_WorkgroupMemberRole_Coordinator" xml:space="preserve"><value>Coordinador/a</value></data>
+
+  <data name="Enum_WorkgroupLogKind_Applied" xml:space="preserve"><value>Sol·licitat</value></data>
+  <data name="Enum_WorkgroupLogKind_Registered" xml:space="preserve"><value>Registrat</value></data>
+  <data name="Enum_WorkgroupLogKind_Referred" xml:space="preserve"><value>Remès a la Junta</value></data>
+  <data name="Enum_WorkgroupLogKind_Refused" xml:space="preserve"><value>Rebutjat</value></data>
+  <data name="Enum_WorkgroupLogKind_Withdrawn" xml:space="preserve"><value>Retirat</value></data>
+  <data name="Enum_WorkgroupLogKind_Ended" xml:space="preserve"><value>Finalitzat</value></data>
+  <data name="Enum_WorkgroupLogKind_Reactivated" xml:space="preserve"><value>Reactivat</value></data>
+  <data name="Enum_WorkgroupLogKind_CoordinatorChanged" xml:space="preserve"><value>Canvi de coordinadors</value></data>
+  <data name="Enum_WorkgroupLogKind_ScopeChanged" xml:space="preserve"><value>Canvi d'abast</value></data>
+  <data name="Enum_WorkgroupLogKind_MemberJoined" xml:space="preserve"><value>Membre incorporat</value></data>
+  <data name="Enum_WorkgroupLogKind_MemberLeft" xml:space="preserve"><value>Membre sortit</value></data>
+  <data name="Enum_WorkgroupLogKind_DormancyInquiry" xml:space="preserve"><value>Consulta per inactivitat</value></data>
+  <data name="Enum_WorkgroupLogKind_DocumentPublished" xml:space="preserve"><value>Document publicat</value></data>
+  <data name="Enum_WorkgroupLogKind_CommentPeriodOpened" xml:space="preserve"><value>Període de comentaris obert</value></data>
+  <data name="Enum_WorkgroupLogKind_CommentPeriodClosed" xml:space="preserve"><value>Període de comentaris tancat</value></data>
+  <data name="Enum_WorkgroupLogKind_Delivered" xml:space="preserve"><value>Entregat</value></data>
+  <data name="Enum_WorkgroupLogKind_DispositionRecorded" xml:space="preserve"><value>Resolució registrada</value></data>
+  <data name="Enum_WorkgroupLogKind_SurveySubmitted" xml:space="preserve"><value>Enquesta enviada</value></data>
+  <data name="Enum_WorkgroupLogKind_SurveySent" xml:space="preserve"><value>Enquesta trametuda</value></data>
+  <data name="Enum_WorkgroupLogKind_Update" xml:space="preserve"><value>Actualització</value></data>
+  <data name="Enum_WorkgroupLogKind_Disclosure" xml:space="preserve"><value>Divulgació</value></data>
+  <data name="Enum_WorkgroupLogKind_StatusRequested" xml:space="preserve"><value>Estat sol·licitat</value></data>
+  <data name="Enum_WorkgroupLogKind_Note" xml:space="preserve"><value>Nota</value></data>
+
+  <data name="Enum_WorkgroupDocumentKind_Deliverable" xml:space="preserve"><value>Entregable</value></data>
+  <data name="Enum_WorkgroupDocumentKind_AnnualReport" xml:space="preserve"><value>Memòria anual</value></data>
+  <data name="Enum_WorkgroupDocumentKind_Other" xml:space="preserve"><value>Altre</value></data>
+
+  <data name="Enum_WorkgroupDocumentStatus_Draft" xml:space="preserve"><value>Esborrany</value></data>
+  <data name="Enum_WorkgroupDocumentStatus_Published" xml:space="preserve"><value>Publicat</value></data>
+  <data name="Enum_WorkgroupDocumentStatus_Delivered" xml:space="preserve"><value>Entregat</value></data>
+
+  <data name="Enum_WorkgroupDisposition_Accepted" xml:space="preserve"><value>Acceptat</value></data>
+  <data name="Enum_WorkgroupDisposition_Declined" xml:space="preserve"><value>Rebutjat</value></data>
+  <data name="Enum_WorkgroupDisposition_Deferred" xml:space="preserve"><value>Ajornat</value></data>
+  <data name="Enum_WorkgroupDisposition_Noted" xml:space="preserve"><value>Pres nota</value></data>
+
+  <data name="Enum_WorkgroupCommentDisposition_Pending" xml:space="preserve"><value>Pendent</value></data>
+  <data name="Enum_WorkgroupCommentDisposition_Accepted" xml:space="preserve"><value>Acceptat</value></data>
+  <data name="Enum_WorkgroupCommentDisposition_Rejected" xml:space="preserve"><value>Rebutjat</value></data>
+  <data name="Enum_WorkgroupCommentDisposition_Incorporated" xml:space="preserve"><value>Incorporat</value></data>
+  <data name="Enum_WorkgroupCommentDisposition_Noted" xml:space="preserve"><value>Pres nota</value></data>
+
+  <!-- Rule errors (WorkgroupErrorKeys) -->
+  <data name="Workgroups_Error_NotFound" xml:space="preserve"><value>No s'ha trobat.</value></data>
+  <data name="Workgroups_Error_NotAMember" xml:space="preserve"><value>No ets membre d'aquest grup.</value></data>
+  <data name="Workgroups_Error_AlreadyAMember" xml:space="preserve"><value>Ja ets membre d'aquest grup.</value></data>
+  <data name="Workgroups_Error_Frozen" xml:space="preserve"><value>Aquest grup és inactiu; les accions dels membres estan congelades.</value></data>
+  <data name="Workgroups_Error_NameRequired" xml:space="preserve"><value>Cal un nom.</value></data>
+  <data name="Workgroups_Error_PurposeRequired" xml:space="preserve"><value>Cal un propòsit.</value></data>
+  <data name="Workgroups_Error_DeliverableRequired" xml:space="preserve"><value>Cal un entregable.</value></data>
+  <data name="Workgroups_Error_ReasonsRequired" xml:space="preserve"><value>Calen els motius.</value></data>
+  <data name="Workgroups_Error_NameTaken" xml:space="preserve"><value>Aquest nom ja està en ús.</value></data>
+  <data name="Workgroups_Error_CoordinatorCount" xml:space="preserve"><value>Un grup necessita un o dos coordinadors.</value></data>
+  <data name="Workgroups_Error_CoordinatorsMustBeMembers" xml:space="preserve"><value>Els coordinadors ja han de ser membres.</value></data>
+  <data name="Workgroups_Error_LastCoordinatorNeedsReplacement" xml:space="preserve"><value>Ets l'últim coordinador; anomena un substitut abans de marxar.</value></data>
+  <data name="Workgroups_Error_StatusRequestOnCooldown" xml:space="preserve"><value>Ja has demanat una actualització d'estat recentment; espera abans de tornar-ho a demanar.</value></data>
+  <data name="Workgroups_Error_RootFolderNotConfigured" xml:space="preserve"><value>La carpeta arrel de Drive de Grups de treball encara no està configurada.</value></data>
+  <data name="Workgroups_Error_DriveFolderCreationFailed" xml:space="preserve"><value>No s'ha pogut crear la carpeta de Drive del grup; torna-ho a provar.</value></data>
+  <data name="Workgroups_Error_WrongStatus" xml:space="preserve"><value>Això no és possible en l'estat actual del grup o del document.</value></data>
+  <data name="Workgroups_Error_SystemLogEntry" xml:space="preserve"><value>Les entrades de l'historial del sistema no es poden editar ni eliminar.</value></data>
+  <data name="Workgroups_Error_BodyRequired" xml:space="preserve"><value>Cal un contingut.</value></data>
+  <data name="Workgroups_Error_DocumentFrozen" xml:space="preserve"><value>Aquest document està entregat; el seu contingut està congelat.</value></data>
+  <data name="Workgroups_Error_NotPublished" xml:space="preserve"><value>Aquest document encara no s'ha publicat.</value></data>
+  <data name="Workgroups_Error_CategoriesRequired" xml:space="preserve"><value>Cal com a mínim una categoria de comentaris.</value></data>
+  <data name="Workgroups_Error_WindowInvalid" xml:space="preserve"><value>El període de comentaris no és vàlid.</value></data>
+  <data name="Workgroups_Error_CommentsClosed" xml:space="preserve"><value>El període de comentaris no està obert.</value></data>
+  <data name="Workgroups_Error_UnknownCategory" xml:space="preserve"><value>Aquesta no és una de les categories de comentaris d'aquest document.</value></data>
+  <data name="Workgroups_Error_NotDelivered" xml:space="preserve"><value>Aquest document encara no s'ha entregat.</value></data>
+  <data name="Workgroups_Error_HideReasonRequired" xml:space="preserve"><value>Cal un motiu per ocultar un comentari.</value></data>
+  <data name="Workgroups_Error_DoneReasonInvalid" xml:space="preserve"><value>Aquest motiu no és vàlid aquí.</value></data>
+
+  <!-- Things-to-do (SectionThingsToDo) -->
+  <data name="Workgroups_Todo_UpdateDue_Title" xml:space="preserve"><value>Actualització mensual pendent</value></data>
+  <data name="Workgroups_Todo_UpdateDue_Description" xml:space="preserve"><value>{0} no ha publicat cap actualització en 30 dies.</value></data>
+  <data name="Workgroups_Todo_UpdateDue_Action" xml:space="preserve"><value>Publica una actualització</value></data>
+  <data name="Workgroups_Todo_StatusRequested_Title" xml:space="preserve"><value>Actualització d'estat sol·licitada</value></data>
+  <data name="Workgroups_Todo_StatusRequested_Description" xml:space="preserve"><value>Algú ha demanat a {0} una actualització d'estat.</value></data>
+  <data name="Workgroups_Todo_StatusRequested_Action" xml:space="preserve"><value>Respon</value></data>
+
+  <!-- Controller success messages -->
+  <data name="Workgroups_Applied" xml:space="preserve"><value>Sol·licitud enviada. La Secretaria la revisarà.</value></data>
+  <data name="Workgroups_Joined" xml:space="preserve"><value>T'has unit al grup.</value></data>
+  <data name="Workgroups_Left" xml:space="preserve"><value>Has sortit del grup.</value></data>
+  <data name="Workgroups_StatusRequested" xml:space="preserve"><value>Actualització d'estat sol·licitada.</value></data>
+  <data name="Workgroups_Saved" xml:space="preserve"><value>Desat.</value></data>
+  <data name="Workgroups_CoordinatorsSaved" xml:space="preserve"><value>Coordinadors desats.</value></data>
+  <data name="Workgroups_MeetingSaved" xml:space="preserve"><value>Reunió desada.</value></data>
+  <data name="Workgroups_MeetingDeleted" xml:space="preserve"><value>Reunió eliminada.</value></data>
+  <data name="Workgroups_LogEntrySaved" xml:space="preserve"><value>Entrada de l'historial desada.</value></data>
+  <data name="Workgroups_LogEntryDeleted" xml:space="preserve"><value>Entrada de l'historial eliminada.</value></data>
+  <data name="Workgroups_SurveyLinked" xml:space="preserve"><value>Enquesta vinculada.</value></data>
+  <data name="Workgroups_MarkedDone" xml:space="preserve"><value>Grup marcat com a finalitzat.</value></data>
+  <data name="Workgroups_DocumentSaved" xml:space="preserve"><value>Document desat.</value></data>
+  <data name="Workgroups_DocumentPublished" xml:space="preserve"><value>Document publicat.</value></data>
+  <data name="Workgroups_CommentsOpened" xml:space="preserve"><value>Període de comentaris obert.</value></data>
+  <data name="Workgroups_CommentsClosed" xml:space="preserve"><value>Període de comentaris tancat.</value></data>
+  <data name="Workgroups_DocumentDelivered" xml:space="preserve"><value>Document entregat.</value></data>
+  <data name="Workgroups_CommentAdded" xml:space="preserve"><value>Comentari afegit.</value></data>
+  <data name="Workgroups_CommentsAnswered" xml:space="preserve"><value>Categoria responguda.</value></data>
+  <data name="Workgroups_CommentAnswered" xml:space="preserve"><value>Comentari respost.</value></data>
+  <data name="Workgroups_CommentHidden" xml:space="preserve"><value>Comentari ocultat.</value></data>
+
+  <!-- Register (Index) -->
+  <data name="Workgroups_Title" xml:space="preserve"><value>Grups de treball</value></data>
+  <data name="Workgroups_Intro" xml:space="preserve"><value>Grups de treball de l'associació: què entreguen, quan i a qui.</value></data>
+  <data name="Workgroups_Active" xml:space="preserve"><value>Actius</value></data>
+  <data name="Workgroups_NoActive" xml:space="preserve"><value>Encara no hi ha grups actius.</value></data>
+  <data name="Workgroups_Pending" xml:space="preserve"><value>Pendents</value></data>
+  <data name="Workgroups_NoPending" xml:space="preserve"><value>No hi ha res pendent de la Secretaria.</value></data>
+  <data name="Workgroups_Archive" xml:space="preserve"><value>Arxiu</value></data>
+  <data name="Workgroups_NoArchive" xml:space="preserve"><value>Encara no hi ha res arxivat.</value></data>
+  <data name="Workgroups_AppliedOn" xml:space="preserve"><value>Sol·licitat</value></data>
+  <data name="Workgroups_Ended" xml:space="preserve"><value>Finalitzat</value></data>
+  <data name="Workgroups_Reasons" xml:space="preserve"><value>Motius</value></data>
+  <data name="Workgroups_Coordinators" xml:space="preserve"><value>Coordinadors</value></data>
+  <data name="Workgroups_CoordinatedBy" xml:space="preserve"><value>Coordinat per</value></data>
+  <data name="Workgroups_DeliverableSentence" xml:space="preserve"><value>Per {0} entregarem {1} a {2}.</value></data>
+  <data name="Workgroups_NoTargetDate" xml:space="preserve"><value>una data per determinar</value></data>
+  <data name="Workgroups_OpenForComment" xml:space="preserve"><value>Obert a comentaris</value></data>
+  <data name="Workgroups_UpdateDue" xml:space="preserve"><value>Actualització pendent</value></data>
+  <data name="Workgroups_StatusOverdue" xml:space="preserve"><value>Estat endarrerit</value></data>
+  <data name="Workgroups_Quiet" xml:space="preserve"><value>Inactiu</value></data>
+  <data name="Workgroups_RegistrationOverdue" xml:space="preserve"><value>Endarrerit</value></data>
+
+  <!-- Apply / Edit -->
+  <data name="Workgroups_Apply" xml:space="preserve"><value>Sol·licita formar un grup</value></data>
+  <data name="Workgroups_ApplyTitle" xml:space="preserve"><value>Sol·licitud per formar un grup de treball</value></data>
+  <data name="Workgroups_ApplyIntro" xml:space="preserve"><value>Digues-nos el nom, el propòsit, el(s) coordinador(s), el termini previst i el resultat esperat. La Secretaria revisa les sol·licituds en un termini de catorze dies.</value></data>
+  <data name="Workgroups_EditTitle" xml:space="preserve"><value>Edita {0}</value></data>
+  <data name="Workgroups_ScopeChangeNote" xml:space="preserve"><value>Canviar l'entregable, el tipus, la data objectiu o el destinatari es registra com un canvi d'abast a l'historial del grup.</value></data>
+  <data name="Workgroups_Field_Name" xml:space="preserve"><value>Nom</value></data>
+  <data name="Workgroups_Field_Purpose" xml:space="preserve"><value>Propòsit</value></data>
+  <data name="Workgroups_Field_Deliverable" xml:space="preserve"><value>Entregable (una línia)</value></data>
+  <data name="Workgroups_Field_DeliverableHelp" xml:space="preserve"><value>Allò que el grup promet, en una frase — la part de «entregarem…».</value></data>
+  <data name="Workgroups_Field_DeliverableKind" xml:space="preserve"><value>Tipus d'entregable</value></data>
+  <data name="Workgroups_Field_Audience" xml:space="preserve"><value>Destinatari</value></data>
+  <data name="Workgroups_Field_TargetDate" xml:space="preserve"><value>Data objectiu</value></data>
+  <data name="Workgroups_Field_DiscordChannelUrl" xml:space="preserve"><value>URL del canal de Discord</value></data>
+  <data name="Workgroups_Field_SecondCoordinator" xml:space="preserve"><value>Segon coordinador (opcional)</value></data>
+  <data name="Workgroups_Field_SecondCoordinatorHelp" xml:space="preserve"><value>L'id d'usuari de la URL de la seva pàgina de perfil. Un grup pot tenir un o dos coordinadors.</value></data>
+
+  <!-- Group page -->
+  <data name="Workgroups_Join" xml:space="preserve"><value>Uneix-t'hi</value></data>
+  <data name="Workgroups_Leave" xml:space="preserve"><value>Surt</value></data>
+  <data name="Workgroups_DiscordChannel" xml:space="preserve"><value>Canal de Discord</value></data>
+  <data name="Workgroups_DriveFolder" xml:space="preserve"><value>Carpeta de Drive</value></data>
+  <data name="Workgroups_NextMeeting" xml:space="preserve"><value>Pròxima reunió</value></data>
+  <data name="Workgroups_PublicMeeting" xml:space="preserve"><value>Pública</value></data>
+  <data name="Workgroups_Roster" xml:space="preserve"><value>Membres</value></data>
+  <data name="Workgroups_Board" xml:space="preserve"><value>Junta</value></data>
+  <data name="Workgroups_Field_ReplacementCoordinator" xml:space="preserve"><value>Coordinador de substitució (ets l'últim)</value></data>
+  <data name="Workgroups_SaveCoordinators" xml:space="preserve"><value>Desa els coordinadors</value></data>
+  <data name="Workgroups_Field_Coordinator1" xml:space="preserve"><value>Id d'usuari del coordinador 1</value></data>
+  <data name="Workgroups_Field_Coordinator2" xml:space="preserve"><value>Id d'usuari del coordinador 2 (opcional)</value></data>
+  <data name="Workgroups_RequestStatus" xml:space="preserve"><value>Demana una actualització d'estat</value></data>
+  <data name="Workgroups_RequestStatusPlaceholder" xml:space="preserve"><value>Una pregunta d'una línia (opcional)</value></data>
+  <data name="Workgroups_MarkDone" xml:space="preserve"><value>Marca com a finalitzat</value></data>
+  <data name="Workgroups_MarkDoneConfirm" xml:space="preserve"><value>Vols marcar aquest grup com a finalitzat? Passarà a estar inactiu i les accions dels membres es congelaran.</value></data>
+  <data name="Workgroups_Documents" xml:space="preserve"><value>Documents</value></data>
+  <data name="Workgroups_NewDocument" xml:space="preserve"><value>Nou document</value></data>
+  <data name="Workgroups_NoDocuments" xml:space="preserve"><value>Encara no hi ha documents.</value></data>
+  <data name="Workgroups_Surveys" xml:space="preserve"><value>Enquestes</value></data>
+  <data name="Workgroups_SurveyIdPlaceholder" xml:space="preserve"><value>Id de l'enquesta</value></data>
+  <data name="Workgroups_LinkSurvey" xml:space="preserve"><value>Vincula l'enquesta</value></data>
+  <data name="Workgroups_MySurveys" xml:space="preserve"><value>Les meves enquestes</value></data>
+  <data name="Workgroups_History" xml:space="preserve"><value>Historial</value></data>
+  <data name="Workgroups_NewMeeting" xml:space="preserve"><value>Nova reunió</value></data>
+  <data name="Workgroups_NewLogEntry" xml:space="preserve"><value>Nova entrada de l'historial</value></data>
+  <data name="Workgroups_NoHistory" xml:space="preserve"><value>Encara no hi ha historial.</value></data>
+  <data name="Workgroups_Meeting" xml:space="preserve"><value>Reunió</value></data>
+
+  <!-- Meeting form -->
+  <data name="Workgroups_MeetingNewTitle" xml:space="preserve"><value>Nova reunió</value></data>
+  <data name="Workgroups_MeetingEditTitle" xml:space="preserve"><value>Edita la reunió</value></data>
+  <data name="Workgroups_Field_MeetingTitle" xml:space="preserve"><value>Títol</value></data>
+  <data name="Workgroups_Field_StartDate" xml:space="preserve"><value>Data d'inici</value></data>
+  <data name="Workgroups_Field_StartTime" xml:space="preserve"><value>Hora d'inici</value></data>
+  <data name="Workgroups_Field_EndDate" xml:space="preserve"><value>Data de fi</value></data>
+  <data name="Workgroups_Field_EndTime" xml:space="preserve"><value>Hora de fi</value></data>
+  <data name="Workgroups_Field_TimesAreUtc" xml:space="preserve"><value>Les hores són en UTC.</value></data>
+  <data name="Workgroups_Field_Location" xml:space="preserve"><value>Ubicació</value></data>
+  <data name="Workgroups_Field_LocationUrl" xml:space="preserve"><value>URL de la ubicació</value></data>
+  <data name="Workgroups_Field_IsPublic" xml:space="preserve"><value>Reunió pública</value></data>
+  <data name="Workgroups_Field_IsPublicHelp" xml:space="preserve"><value>Les reunions públiques apareixen al calendari comunitari de tothom; en cas contrari, només les veuen els membres.</value></data>
+  <data name="Workgroups_Field_Minutes" xml:space="preserve"><value>Acta</value></data>
+
+  <!-- Log entry form -->
+  <data name="Workgroups_LogEntryNewTitle" xml:space="preserve"><value>Nova entrada de l'historial</value></data>
+  <data name="Workgroups_LogEntryEditTitle" xml:space="preserve"><value>Edita l'entrada de l'historial</value></data>
+  <data name="Workgroups_Field_LogKind" xml:space="preserve"><value>Tipus</value></data>
+  <data name="Workgroups_Field_OccurredOn" xml:space="preserve"><value>Data</value></data>
+  <data name="Workgroups_Field_LogTitle" xml:space="preserve"><value>Títol (opcional)</value></data>
+  <data name="Workgroups_Field_LogBody" xml:space="preserve"><value>Contingut</value></data>
+
+  <!-- Document form / page -->
+  <data name="Workgroups_DocumentNewTitle" xml:space="preserve"><value>Nou document</value></data>
+  <data name="Workgroups_DocumentEditTitle" xml:space="preserve"><value>Edita el document</value></data>
+  <data name="Workgroups_Field_DocumentTitle" xml:space="preserve"><value>Títol</value></data>
+  <data name="Workgroups_Field_DocumentKind" xml:space="preserve"><value>Tipus</value></data>
+  <data name="Workgroups_Field_DocumentBody" xml:space="preserve"><value>Contingut</value></data>
+  <data name="Workgroups_Field_DocumentBodyHelp" xml:space="preserve"><value>Markdown. Redacta l'esborrany a la teva carpeta de Drive i enganxa aquí el text a punt per publicar.</value></data>
+  <data name="Workgroups_LastEditedBy" xml:space="preserve"><value>Última edició de {0} el {1}.</value></data>
+  <data name="Workgroups_Publish" xml:space="preserve"><value>Publica</value></data>
+  <data name="Workgroups_OpenComments" xml:space="preserve"><value>Obre els comentaris</value></data>
+  <data name="Workgroups_CloseComments" xml:space="preserve"><value>Tanca els comentaris</value></data>
+  <data name="Workgroups_Deliver" xml:space="preserve"><value>Entrega</value></data>
+  <data name="Workgroups_DeliverConfirm" xml:space="preserve"><value>Vols entregar aquest document? El seu contingut es congelarà i s'avisarà la Junta.</value></data>
+  <data name="Workgroups_RecordDisposition" xml:space="preserve"><value>Registra la resolució</value></data>
+  <data name="Workgroups_DispositionNotePlaceholder" xml:space="preserve"><value>La resposta escrita de la Junta</value></data>
+  <data name="Workgroups_Field_OpensAt" xml:space="preserve"><value>S'obre</value></data>
+  <data name="Workgroups_Field_ClosesAt" xml:space="preserve"><value>Es tanca</value></data>
+  <data name="Workgroups_Field_Categories" xml:space="preserve"><value>Categories de comentaris</value></data>
+  <data name="Workgroups_CategoriesPlaceholder" xml:space="preserve"><value>Una per línia, p. ex. Abast, Redacció, Termini</value></data>
+  <data name="Workgroups_BackToGroup" xml:space="preserve"><value>Torna al grup</value></data>
+
+  <!-- Comments -->
+  <data name="Workgroups_Comments" xml:space="preserve"><value>Comentaris</value></data>
+  <data name="Workgroups_NoComments" xml:space="preserve"><value>Encara no hi ha comentaris.</value></data>
+  <data name="Workgroups_AddComment" xml:space="preserve"><value>Afegeix un comentari</value></data>
+  <data name="Workgroups_HiddenByGroup" xml:space="preserve"><value>Ocultat pel grup</value></data>
+  <data name="Workgroups_HiddenReason" xml:space="preserve"><value>Motiu</value></data>
+  <data name="Workgroups_GroupResponse" xml:space="preserve"><value>Resposta del grup</value></data>
+  <data name="Workgroups_Respond" xml:space="preserve"><value>Respon</value></data>
+  <data name="Workgroups_HideComment" xml:space="preserve"><value>Oculta</value></data>
+  <data name="Workgroups_HideReasonPlaceholder" xml:space="preserve"><value>Motiu per ocultar (obligatori)</value></data>
+  <data name="Workgroups_RespondToCategory" xml:space="preserve"><value>Respon tots els pendents d'aquesta categoria</value></data>
+  <data name="Workgroups_BulkResponsePlaceholder" xml:space="preserve"><value>Resposta per a cada comentari pendent d'aquesta categoria</value></data>
+
+  <!-- Governance card and member dashboard -->
+  <data name="Workgroups_GovernanceCardTitle" xml:space="preserve"><value>Grups de treball</value></data>
+  <data name="Workgroups_ViewRegister" xml:space="preserve"><value>Veure el registre</value></data>
+  <data name="Workgroups_MyWorkgroups" xml:space="preserve"><value>Els meus grups de treball</value></data>
+  <data name="Workgroups_MyWorkgroupsEmpty" xml:space="preserve"><value>Encara no t'has unit a cap grup de treball.</value></data>
+</root>

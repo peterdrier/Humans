@@ -201,6 +201,12 @@ public enum AuditAction
     SurveyClosed,
     SurveyInvitesSent,
     SurveyReminderSent,
+    // Self-service approval gate (nobodies-collective/Humans Workgroups §11): an author submits a
+    // Draft for Board/Admin review; Board/Admin approve (opens + sends in one step) or reject it
+    // back to Draft with a note.
+    SurveySubmittedForApproval,
+    SurveyApproved,
+    SurveyRejected,
     // Holded expense push outcomes (nobodies-collective/Humans#1045). Written by the outbox
     // drain so the per-report history survives outbox-row cleanup, which the outbox columns
     // themselves do not.
@@ -250,4 +256,33 @@ public enum AuditAction
     ExpensePayeeIbanUpdated,
     // An admin set or changed a burn year's rideshare destination point and travel windows.
     RideshareSettingsUpdated,
+
+    // Workgroups. Registration is administrative recognition (Board Resolution clause 4), so
+    // every lifecycle step is a human action the Board must be able to see; the daily job's
+    // flags and notices are audited too, because automation acting invisibly is a bug.
+    WorkgroupRegistered,
+    WorkgroupReferred,
+    WorkgroupRefused,
+    WorkgroupWithdrawn,
+    WorkgroupClosed,
+    WorkgroupReactivated,
+    WorkgroupCoordinatorsChanged,
+    WorkgroupDispositionRecorded,
+    // Bootstrapping: the Secretary registered a group that already existed, backdated.
+    WorkgroupRegisteredExisting,
+    // The daily job set DormantSince after sixty days' silence.
+    WorkgroupDormancyFlagged,
+    // The daily job notified the Board that a flagged group is a close candidate.
+    WorkgroupCloseCandidateFlagged,
+    // The daily job notified the Board that an application passed its fourteenth day.
+    WorkgroupApplicationOverdue,
+    // The daily job nudged the coordinators that the monthly update is due.
+    WorkgroupUpdateDueNotified,
+    // A member deleted a log entry — the log is a working record, so the audit trail is
+    // where the deletion stays visible.
+    WorkgroupLogEntryDeleted,
+    // A member hid a comment on a published document, with a reason.
+    WorkgroupCommentHidden,
+    // An admin set the root Drive folder every group's subfolder is created under.
+    WorkgroupsRootFolderUpdated,
 }

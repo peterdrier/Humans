@@ -1,0 +1,14 @@
+namespace Humans.Workgroups;
+
+/// <summary>
+/// Marker type for Workgroups' resource set. The <c>.resx</c> files sit beside this file
+/// on purpose: the SDK derives the manifest name from the adjacent same-named
+/// <c>.cs</c> file's namespace, not from the folder path, so this must stay
+/// <c>namespace Humans.Workgroups</c> — <c>Humans.Workgroups.Resources</c> would make
+/// every Workgroups string fall back to its raw key at runtime.
+/// </summary>
+/// <remarks>
+/// Public because the boot localization diagnostic discovers section resource markers
+/// via <c>GetExportedTypes()</c>; an internal marker is skipped in silence.
+/// </remarks>
+public class WorkgroupsResource;

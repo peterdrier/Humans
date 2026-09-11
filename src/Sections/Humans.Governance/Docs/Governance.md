@@ -117,6 +117,8 @@ Three controllers serve this section directly. `BoardController` composes Govern
 
 `OnboardingReviewController` also owns the Consent Coordinator review queue (`GET /OnboardingReview`, `POST /OnboardingReview/{id}/Clear`, etc.) — those routes belong to the Onboarding section, not Governance.
 
+`/Governance` renders the `ChromeSlots.GovernanceDashboard` chrome slot (`src/Humans.Base/Interfaces/ISectionChrome.cs`) — other sections contribute tiles by implementing `ISectionChrome` against that slot name; Governance names none of them and renders whatever components register. Workgroups is the first contributor (its "Active workgroups" tile). The alternative considered was a dedicated `ISectionDashboardTiles` seam; the existing chrome-slot mechanism already covered the need, so a new slot name was used instead of a new interface.
+
 ## Actors & Roles
 
 | Actor | Capabilities |

@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- Enums -->
+  <data name="Enum_WorkgroupStatus_Applied" xml:space="preserve"><value>Richiesto</value></data>
+  <data name="Enum_WorkgroupStatus_Referred" xml:space="preserve"><value>Inoltrato al Consiglio</value></data>
+  <data name="Enum_WorkgroupStatus_Active" xml:space="preserve"><value>Attivo</value></data>
+  <data name="Enum_WorkgroupStatus_Refused" xml:space="preserve"><value>Rifiutato</value></data>
+  <data name="Enum_WorkgroupStatus_Withdrawn" xml:space="preserve"><value>Ritirato</value></data>
+  <data name="Enum_WorkgroupStatus_Dormant" xml:space="preserve"><value>Dormiente</value></data>
+
+  <data name="Enum_WorkgroupDormantReason_Delivered" xml:space="preserve"><value>Consegnato</value></data>
+  <data name="Enum_WorkgroupDormantReason_Abandoned" xml:space="preserve"><value>Abbandonato</value></data>
+  <data name="Enum_WorkgroupDormantReason_Quiet" xml:space="preserve"><value>Chiuso per inattività</value></data>
+
+  <data name="Enum_WorkgroupDeliverableKind_Recommendation" xml:space="preserve"><value>Raccomandazione</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_DraftPolicy" xml:space="preserve"><value>Bozza di policy</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_DecisionBrief" xml:space="preserve"><value>Documento decisionale</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_Report" xml:space="preserve"><value>Rapporto</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_AssemblyProposal" xml:space="preserve"><value>Proposta per l'Assemblea</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_ResolutionProposal" xml:space="preserve"><value>Proposta di delibera</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_DepartmentRegistration" xml:space="preserve"><value>Registrazione come dipartimento</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_Consultation" xml:space="preserve"><value>Consultazione</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_Event" xml:space="preserve"><value>Evento</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_Other" xml:space="preserve"><value>Altro</value></data>
+
+  <data name="Enum_WorkgroupAudience_Board" xml:space="preserve"><value>il Consiglio</value></data>
+  <data name="Enum_WorkgroupAudience_Assembly" xml:space="preserve"><value>l'Assemblea</value></data>
+  <data name="Enum_WorkgroupAudience_Community" xml:space="preserve"><value>la comunità</value></data>
+
+  <data name="Enum_WorkgroupMemberRole_Member" xml:space="preserve"><value>Membro</value></data>
+  <data name="Enum_WorkgroupMemberRole_Coordinator" xml:space="preserve"><value>Coordinatore</value></data>
+
+  <data name="Enum_WorkgroupLogKind_Applied" xml:space="preserve"><value>Richiesto</value></data>
+  <data name="Enum_WorkgroupLogKind_Registered" xml:space="preserve"><value>Registrato</value></data>
+  <data name="Enum_WorkgroupLogKind_Referred" xml:space="preserve"><value>Inoltrato al Consiglio</value></data>
+  <data name="Enum_WorkgroupLogKind_Refused" xml:space="preserve"><value>Rifiutato</value></data>
+  <data name="Enum_WorkgroupLogKind_Withdrawn" xml:space="preserve"><value>Ritirato</value></data>
+  <data name="Enum_WorkgroupLogKind_Ended" xml:space="preserve"><value>Concluso</value></data>
+  <data name="Enum_WorkgroupLogKind_Reactivated" xml:space="preserve"><value>Riattivato</value></data>
+  <data name="Enum_WorkgroupLogKind_CoordinatorChanged" xml:space="preserve"><value>Coordinatori modificati</value></data>
+  <data name="Enum_WorkgroupLogKind_ScopeChanged" xml:space="preserve"><value>Ambito modificato</value></data>
+  <data name="Enum_WorkgroupLogKind_MemberJoined" xml:space="preserve"><value>Membro entrato</value></data>
+  <data name="Enum_WorkgroupLogKind_MemberLeft" xml:space="preserve"><value>Membro uscito</value></data>
+  <data name="Enum_WorkgroupLogKind_DormancyInquiry" xml:space="preserve"><value>Richiesta di stato per inattività</value></data>
+  <data name="Enum_WorkgroupLogKind_DocumentPublished" xml:space="preserve"><value>Documento pubblicato</value></data>
+  <data name="Enum_WorkgroupLogKind_CommentPeriodOpened" xml:space="preserve"><value>Periodo di commento aperto</value></data>
+  <data name="Enum_WorkgroupLogKind_CommentPeriodClosed" xml:space="preserve"><value>Periodo di commento chiuso</value></data>
+  <data name="Enum_WorkgroupLogKind_Delivered" xml:space="preserve"><value>Consegnato</value></data>
+  <data name="Enum_WorkgroupLogKind_DispositionRecorded" xml:space="preserve"><value>Esito registrato</value></data>
+  <data name="Enum_WorkgroupLogKind_SurveySubmitted" xml:space="preserve"><value>Sondaggio inviato</value></data>
+  <data name="Enum_WorkgroupLogKind_SurveySent" xml:space="preserve"><value>Sondaggio inviato</value></data>
+  <data name="Enum_WorkgroupLogKind_Update" xml:space="preserve"><value>Aggiornamento</value></data>
+  <data name="Enum_WorkgroupLogKind_Disclosure" xml:space="preserve"><value>Divulgazione</value></data>
+  <data name="Enum_WorkgroupLogKind_StatusRequested" xml:space="preserve"><value>Stato richiesto</value></data>
+  <data name="Enum_WorkgroupLogKind_Note" xml:space="preserve"><value>Nota</value></data>
+
+  <data name="Enum_WorkgroupDocumentKind_Deliverable" xml:space="preserve"><value>Deliverable</value></data>
+  <data name="Enum_WorkgroupDocumentKind_AnnualReport" xml:space="preserve"><value>Rapporto annuale</value></data>
+  <data name="Enum_WorkgroupDocumentKind_Other" xml:space="preserve"><value>Altro</value></data>
+
+  <data name="Enum_WorkgroupDocumentStatus_Draft" xml:space="preserve"><value>Bozza</value></data>
+  <data name="Enum_WorkgroupDocumentStatus_Published" xml:space="preserve"><value>Pubblicato</value></data>
+  <data name="Enum_WorkgroupDocumentStatus_Delivered" xml:space="preserve"><value>Consegnato</value></data>
+
+  <data name="Enum_WorkgroupDisposition_Accepted" xml:space="preserve"><value>Accettato</value></data>
+  <data name="Enum_WorkgroupDisposition_Declined" xml:space="preserve"><value>Respinto</value></data>
+  <data name="Enum_WorkgroupDisposition_Deferred" xml:space="preserve"><value>Rinviato</value></data>
+  <data name="Enum_WorkgroupDisposition_Noted" xml:space="preserve"><value>Preso atto</value></data>
+
+  <data name="Enum_WorkgroupCommentDisposition_Pending" xml:space="preserve"><value>In attesa</value></data>
+  <data name="Enum_WorkgroupCommentDisposition_Accepted" xml:space="preserve"><value>Accettato</value></data>
+  <data name="Enum_WorkgroupCommentDisposition_Rejected" xml:space="preserve"><value>Respinto</value></data>
+  <data name="Enum_WorkgroupCommentDisposition_Incorporated" xml:space="preserve"><value>Incorporato</value></data>
+  <data name="Enum_WorkgroupCommentDisposition_Noted" xml:space="preserve"><value>Preso atto</value></data>
+
+  <!-- Rule errors (WorkgroupErrorKeys) -->
+  <data name="Workgroups_Error_NotFound" xml:space="preserve"><value>Non è stato trovato.</value></data>
+  <data name="Workgroups_Error_NotAMember" xml:space="preserve"><value>Non sei membro di questo gruppo.</value></data>
+  <data name="Workgroups_Error_AlreadyAMember" xml:space="preserve"><value>Sei già membro di questo gruppo.</value></data>
+  <data name="Workgroups_Error_Frozen" xml:space="preserve"><value>Questo gruppo è dormiente; le azioni dei membri sono bloccate.</value></data>
+  <data name="Workgroups_Error_NameRequired" xml:space="preserve"><value>È richiesto un nome.</value></data>
+  <data name="Workgroups_Error_PurposeRequired" xml:space="preserve"><value>È richiesto uno scopo.</value></data>
+  <data name="Workgroups_Error_DeliverableRequired" xml:space="preserve"><value>È richiesto un deliverable.</value></data>
+  <data name="Workgroups_Error_ReasonsRequired" xml:space="preserve"><value>Sono richieste delle motivazioni.</value></data>
+  <data name="Workgroups_Error_NameTaken" xml:space="preserve"><value>Quel nome è già in uso.</value></data>
+  <data name="Workgroups_Error_CoordinatorCount" xml:space="preserve"><value>Un gruppo necessita di uno o due coordinatori.</value></data>
+  <data name="Workgroups_Error_CoordinatorsMustBeMembers" xml:space="preserve"><value>I coordinatori devono già essere membri.</value></data>
+  <data name="Workgroups_Error_LastCoordinatorNeedsReplacement" xml:space="preserve"><value>Sei l'ultimo coordinatore; indica un sostituto prima di uscire.</value></data>
+  <data name="Workgroups_Error_StatusRequestOnCooldown" xml:space="preserve"><value>Hai già richiesto un aggiornamento di stato di recente; attendi prima di richiederlo di nuovo.</value></data>
+  <data name="Workgroups_Error_RootFolderNotConfigured" xml:space="preserve"><value>La cartella Drive principale dei Gruppi di lavoro non è ancora configurata.</value></data>
+  <data name="Workgroups_Error_DriveFolderCreationFailed" xml:space="preserve"><value>Creazione della cartella Drive del gruppo non riuscita; riprova.</value></data>
+  <data name="Workgroups_Error_WrongStatus" xml:space="preserve"><value>Non è possibile nello stato attuale del gruppo o del documento.</value></data>
+  <data name="Workgroups_Error_SystemLogEntry" xml:space="preserve"><value>Le voci di registro di sistema non possono essere modificate o eliminate.</value></data>
+  <data name="Workgroups_Error_BodyRequired" xml:space="preserve"><value>È richiesto un contenuto.</value></data>
+  <data name="Workgroups_Error_DocumentFrozen" xml:space="preserve"><value>Questo documento è stato consegnato; il suo contenuto è bloccato.</value></data>
+  <data name="Workgroups_Error_NotPublished" xml:space="preserve"><value>Questo documento non è ancora stato pubblicato.</value></data>
+  <data name="Workgroups_Error_CategoriesRequired" xml:space="preserve"><value>È richiesta almeno una categoria di commento.</value></data>
+  <data name="Workgroups_Error_WindowInvalid" xml:space="preserve"><value>Il periodo di commento non è valido.</value></data>
+  <data name="Workgroups_Error_CommentsClosed" xml:space="preserve"><value>Il periodo di commento non è aperto.</value></data>
+  <data name="Workgroups_Error_UnknownCategory" xml:space="preserve"><value>Non è una delle categorie di commento di questo documento.</value></data>
+  <data name="Workgroups_Error_NotDelivered" xml:space="preserve"><value>Questo documento non è ancora stato consegnato.</value></data>
+  <data name="Workgroups_Error_HideReasonRequired" xml:space="preserve"><value>Per nascondere un commento è richiesta una motivazione.</value></data>
+  <data name="Workgroups_Error_DoneReasonInvalid" xml:space="preserve"><value>Questa motivazione non è valida qui.</value></data>
+
+  <!-- Things-to-do (SectionThingsToDo) -->
+  <data name="Workgroups_Todo_UpdateDue_Title" xml:space="preserve"><value>Aggiornamento mensile in scadenza</value></data>
+  <data name="Workgroups_Todo_UpdateDue_Description" xml:space="preserve"><value>{0} non pubblica un aggiornamento da 30 giorni.</value></data>
+  <data name="Workgroups_Todo_UpdateDue_Action" xml:space="preserve"><value>Pubblica un aggiornamento</value></data>
+  <data name="Workgroups_Todo_StatusRequested_Title" xml:space="preserve"><value>Aggiornamento di stato richiesto</value></data>
+  <data name="Workgroups_Todo_StatusRequested_Description" xml:space="preserve"><value>Qualcuno ha chiesto a {0} un aggiornamento di stato.</value></data>
+  <data name="Workgroups_Todo_StatusRequested_Action" xml:space="preserve"><value>Rispondi</value></data>
+
+  <!-- Controller success messages -->
+  <data name="Workgroups_Applied" xml:space="preserve"><value>Richiesta inviata. Il Segretario la esaminerà.</value></data>
+  <data name="Workgroups_Joined" xml:space="preserve"><value>Sei entrato nel gruppo.</value></data>
+  <data name="Workgroups_Left" xml:space="preserve"><value>Hai lasciato il gruppo.</value></data>
+  <data name="Workgroups_StatusRequested" xml:space="preserve"><value>Aggiornamento di stato richiesto.</value></data>
+  <data name="Workgroups_Saved" xml:space="preserve"><value>Salvato.</value></data>
+  <data name="Workgroups_CoordinatorsSaved" xml:space="preserve"><value>Coordinatori salvati.</value></data>
+  <data name="Workgroups_MeetingSaved" xml:space="preserve"><value>Riunione salvata.</value></data>
+  <data name="Workgroups_MeetingDeleted" xml:space="preserve"><value>Riunione eliminata.</value></data>
+  <data name="Workgroups_LogEntrySaved" xml:space="preserve"><value>Voce di registro salvata.</value></data>
+  <data name="Workgroups_LogEntryDeleted" xml:space="preserve"><value>Voce di registro eliminata.</value></data>
+  <data name="Workgroups_SurveyLinked" xml:space="preserve"><value>Sondaggio collegato.</value></data>
+  <data name="Workgroups_MarkedDone" xml:space="preserve"><value>Gruppo contrassegnato come concluso.</value></data>
+  <data name="Workgroups_DocumentSaved" xml:space="preserve"><value>Documento salvato.</value></data>
+  <data name="Workgroups_DocumentPublished" xml:space="preserve"><value>Documento pubblicato.</value></data>
+  <data name="Workgroups_CommentsOpened" xml:space="preserve"><value>Periodo di commento aperto.</value></data>
+  <data name="Workgroups_CommentsClosed" xml:space="preserve"><value>Periodo di commento chiuso.</value></data>
+  <data name="Workgroups_DocumentDelivered" xml:space="preserve"><value>Documento consegnato.</value></data>
+  <data name="Workgroups_CommentAdded" xml:space="preserve"><value>Commento aggiunto.</value></data>
+  <data name="Workgroups_CommentsAnswered" xml:space="preserve"><value>Categoria risolta.</value></data>
+  <data name="Workgroups_CommentAnswered" xml:space="preserve"><value>Commento risolto.</value></data>
+  <data name="Workgroups_CommentHidden" xml:space="preserve"><value>Commento nascosto.</value></data>
+
+  <!-- Register (Index) -->
+  <data name="Workgroups_Title" xml:space="preserve"><value>Gruppi di lavoro</value></data>
+  <data name="Workgroups_Intro" xml:space="preserve"><value>Gruppi di lavoro a livello associativo: cosa consegnano, quando e a chi.</value></data>
+  <data name="Workgroups_Active" xml:space="preserve"><value>Attivo</value></data>
+  <data name="Workgroups_NoActive" xml:space="preserve"><value>Nessun gruppo attivo per ora.</value></data>
+  <data name="Workgroups_Pending" xml:space="preserve"><value>In attesa</value></data>
+  <data name="Workgroups_NoPending" xml:space="preserve"><value>Nulla in attesa del Segretario.</value></data>
+  <data name="Workgroups_Archive" xml:space="preserve"><value>Archivio</value></data>
+  <data name="Workgroups_NoArchive" xml:space="preserve"><value>Nulla archiviato per ora.</value></data>
+  <data name="Workgroups_AppliedOn" xml:space="preserve"><value>Richiesto</value></data>
+  <data name="Workgroups_Ended" xml:space="preserve"><value>Concluso</value></data>
+  <data name="Workgroups_Reasons" xml:space="preserve"><value>Motivazioni</value></data>
+  <data name="Workgroups_Coordinators" xml:space="preserve"><value>Coordinatori</value></data>
+  <data name="Workgroups_CoordinatedBy" xml:space="preserve"><value>Coordinato da</value></data>
+  <data name="Workgroups_DeliverableSentence" xml:space="preserve"><value>Entro {0} consegneremo {1} a {2}.</value></data>
+  <data name="Workgroups_NoTargetDate" xml:space="preserve"><value>una data da definire</value></data>
+  <data name="Workgroups_OpenForComment" xml:space="preserve"><value>Aperto ai commenti</value></data>
+  <data name="Workgroups_UpdateDue" xml:space="preserve"><value>Aggiornamento in scadenza</value></data>
+  <data name="Workgroups_StatusOverdue" xml:space="preserve"><value>Stato scaduto</value></data>
+  <data name="Workgroups_Quiet" xml:space="preserve"><value>Inattivo</value></data>
+  <data name="Workgroups_RegistrationOverdue" xml:space="preserve"><value>Scaduto</value></data>
+
+  <!-- Apply / Edit -->
+  <data name="Workgroups_Apply" xml:space="preserve"><value>Richiedi un gruppo</value></data>
+  <data name="Workgroups_ApplyTitle" xml:space="preserve"><value>Richiedi un gruppo di lavoro</value></data>
+  <data name="Workgroups_ApplyIntro" xml:space="preserve"><value>Indicaci nome, scopo, coordinatore/i, tempistiche previste e risultato atteso. Il Segretario esamina le richieste entro quattordici giorni.</value></data>
+  <data name="Workgroups_EditTitle" xml:space="preserve"><value>Modifica {0}</value></data>
+  <data name="Workgroups_ScopeChangeNote" xml:space="preserve"><value>La modifica del deliverable, del tipo, della data prevista o del destinatario viene registrata come cambio di ambito nella storia del gruppo.</value></data>
+  <data name="Workgroups_Field_Name" xml:space="preserve"><value>Nome</value></data>
+  <data name="Workgroups_Field_Purpose" xml:space="preserve"><value>Scopo</value></data>
+  <data name="Workgroups_Field_Deliverable" xml:space="preserve"><value>Deliverable (una riga)</value></data>
+  <data name="Workgroups_Field_DeliverableHelp" xml:space="preserve"><value>Cosa promette il gruppo, in una frase — la parte "consegneremo…".</value></data>
+  <data name="Workgroups_Field_DeliverableKind" xml:space="preserve"><value>Tipo di deliverable</value></data>
+  <data name="Workgroups_Field_Audience" xml:space="preserve"><value>Destinatario</value></data>
+  <data name="Workgroups_Field_TargetDate" xml:space="preserve"><value>Data prevista</value></data>
+  <data name="Workgroups_Field_DiscordChannelUrl" xml:space="preserve"><value>URL del canale Discord</value></data>
+  <data name="Workgroups_Field_SecondCoordinator" xml:space="preserve"><value>Secondo coordinatore (opzionale)</value></data>
+  <data name="Workgroups_Field_SecondCoordinatorHelp" xml:space="preserve"><value>L'ID utente dall'URL della sua pagina profilo. Un gruppo può avere uno o due coordinatori.</value></data>
+
+  <!-- Group page -->
+  <data name="Workgroups_Join" xml:space="preserve"><value>Entra</value></data>
+  <data name="Workgroups_Leave" xml:space="preserve"><value>Esci</value></data>
+  <data name="Workgroups_DiscordChannel" xml:space="preserve"><value>Canale Discord</value></data>
+  <data name="Workgroups_DriveFolder" xml:space="preserve"><value>Cartella Drive</value></data>
+  <data name="Workgroups_NextMeeting" xml:space="preserve"><value>Prossima riunione</value></data>
+  <data name="Workgroups_PublicMeeting" xml:space="preserve"><value>Pubblica</value></data>
+  <data name="Workgroups_Roster" xml:space="preserve"><value>Elenco membri</value></data>
+  <data name="Workgroups_Board" xml:space="preserve"><value>Consiglio</value></data>
+  <data name="Workgroups_Field_ReplacementCoordinator" xml:space="preserve"><value>Coordinatore sostitutivo (sei l'ultimo)</value></data>
+  <data name="Workgroups_SaveCoordinators" xml:space="preserve"><value>Salva coordinatori</value></data>
+  <data name="Workgroups_Field_Coordinator1" xml:space="preserve"><value>ID utente coordinatore 1</value></data>
+  <data name="Workgroups_Field_Coordinator2" xml:space="preserve"><value>ID utente coordinatore 2 (opzionale)</value></data>
+  <data name="Workgroups_RequestStatus" xml:space="preserve"><value>Richiedi un aggiornamento di stato</value></data>
+  <data name="Workgroups_RequestStatusPlaceholder" xml:space="preserve"><value>Una domanda in una riga (opzionale)</value></data>
+  <data name="Workgroups_MarkDone" xml:space="preserve"><value>Contrassegna come concluso</value></data>
+  <data name="Workgroups_MarkDoneConfirm" xml:space="preserve"><value>Contrassegnare questo gruppo come concluso? Diventerà dormiente e le azioni dei membri saranno bloccate.</value></data>
+  <data name="Workgroups_Documents" xml:space="preserve"><value>Documenti</value></data>
+  <data name="Workgroups_NewDocument" xml:space="preserve"><value>Nuovo documento</value></data>
+  <data name="Workgroups_NoDocuments" xml:space="preserve"><value>Nessun documento per ora.</value></data>
+  <data name="Workgroups_Surveys" xml:space="preserve"><value>Sondaggi</value></data>
+  <data name="Workgroups_SurveyIdPlaceholder" xml:space="preserve"><value>ID sondaggio</value></data>
+  <data name="Workgroups_LinkSurvey" xml:space="preserve"><value>Collega sondaggio</value></data>
+  <data name="Workgroups_MySurveys" xml:space="preserve"><value>I miei sondaggi</value></data>
+  <data name="Workgroups_History" xml:space="preserve"><value>Storico</value></data>
+  <data name="Workgroups_NewMeeting" xml:space="preserve"><value>Nuova riunione</value></data>
+  <data name="Workgroups_NewLogEntry" xml:space="preserve"><value>Nuova voce di registro</value></data>
+  <data name="Workgroups_NoHistory" xml:space="preserve"><value>Nessuno storico per ora.</value></data>
+  <data name="Workgroups_Meeting" xml:space="preserve"><value>Riunione</value></data>
+
+  <!-- Meeting form -->
+  <data name="Workgroups_MeetingNewTitle" xml:space="preserve"><value>Nuova riunione</value></data>
+  <data name="Workgroups_MeetingEditTitle" xml:space="preserve"><value>Modifica riunione</value></data>
+  <data name="Workgroups_Field_MeetingTitle" xml:space="preserve"><value>Titolo</value></data>
+  <data name="Workgroups_Field_StartDate" xml:space="preserve"><value>Data di inizio</value></data>
+  <data name="Workgroups_Field_StartTime" xml:space="preserve"><value>Ora di inizio</value></data>
+  <data name="Workgroups_Field_EndDate" xml:space="preserve"><value>Data di fine</value></data>
+  <data name="Workgroups_Field_EndTime" xml:space="preserve"><value>Ora di fine</value></data>
+  <data name="Workgroups_Field_TimesAreUtc" xml:space="preserve"><value>Gli orari sono in UTC.</value></data>
+  <data name="Workgroups_Field_Location" xml:space="preserve"><value>Luogo</value></data>
+  <data name="Workgroups_Field_LocationUrl" xml:space="preserve"><value>URL del luogo</value></data>
+  <data name="Workgroups_Field_IsPublic" xml:space="preserve"><value>Riunione pubblica</value></data>
+  <data name="Workgroups_Field_IsPublicHelp" xml:space="preserve"><value>Le riunioni pubbliche compaiono nel calendario della comunità per tutti; altrimenti le vedono solo i membri.</value></data>
+  <data name="Workgroups_Field_Minutes" xml:space="preserve"><value>Verbale</value></data>
+
+  <!-- Log entry form -->
+  <data name="Workgroups_LogEntryNewTitle" xml:space="preserve"><value>Nuova voce di registro</value></data>
+  <data name="Workgroups_LogEntryEditTitle" xml:space="preserve"><value>Modifica voce di registro</value></data>
+  <data name="Workgroups_Field_LogKind" xml:space="preserve"><value>Tipo</value></data>
+  <data name="Workgroups_Field_OccurredOn" xml:space="preserve"><value>Data</value></data>
+  <data name="Workgroups_Field_LogTitle" xml:space="preserve"><value>Titolo (opzionale)</value></data>
+  <data name="Workgroups_Field_LogBody" xml:space="preserve"><value>Contenuto</value></data>
+
+  <!-- Document form / page -->
+  <data name="Workgroups_DocumentNewTitle" xml:space="preserve"><value>Nuovo documento</value></data>
+  <data name="Workgroups_DocumentEditTitle" xml:space="preserve"><value>Modifica documento</value></data>
+  <data name="Workgroups_Field_DocumentTitle" xml:space="preserve"><value>Titolo</value></data>
+  <data name="Workgroups_Field_DocumentKind" xml:space="preserve"><value>Tipo</value></data>
+  <data name="Workgroups_Field_DocumentBody" xml:space="preserve"><value>Contenuto</value></data>
+  <data name="Workgroups_Field_DocumentBodyHelp" xml:space="preserve"><value>Markdown. Scrivi la bozza nella tua cartella Drive e incolla qui il testo pubblicabile.</value></data>
+  <data name="Workgroups_LastEditedBy" xml:space="preserve"><value>Ultima modifica di {0} alle {1}.</value></data>
+  <data name="Workgroups_Publish" xml:space="preserve"><value>Pubblica</value></data>
+  <data name="Workgroups_OpenComments" xml:space="preserve"><value>Apri i commenti</value></data>
+  <data name="Workgroups_CloseComments" xml:space="preserve"><value>Chiudi i commenti</value></data>
+  <data name="Workgroups_Deliver" xml:space="preserve"><value>Consegna</value></data>
+  <data name="Workgroups_DeliverConfirm" xml:space="preserve"><value>Consegnare questo documento? Il suo contenuto verrà bloccato e il Consiglio sarà notificato.</value></data>
+  <data name="Workgroups_RecordDisposition" xml:space="preserve"><value>Registra l'esito</value></data>
+  <data name="Workgroups_DispositionNotePlaceholder" xml:space="preserve"><value>La risposta scritta del Consiglio</value></data>
+  <data name="Workgroups_Field_OpensAt" xml:space="preserve"><value>Apre</value></data>
+  <data name="Workgroups_Field_ClosesAt" xml:space="preserve"><value>Chiude</value></data>
+  <data name="Workgroups_Field_Categories" xml:space="preserve"><value>Categorie di commento</value></data>
+  <data name="Workgroups_CategoriesPlaceholder" xml:space="preserve"><value>Una per riga, es. Ambito, Formulazione, Tempistiche</value></data>
+  <data name="Workgroups_BackToGroup" xml:space="preserve"><value>Torna al gruppo</value></data>
+
+  <!-- Comments -->
+  <data name="Workgroups_Comments" xml:space="preserve"><value>Commenti</value></data>
+  <data name="Workgroups_NoComments" xml:space="preserve"><value>Nessun commento per ora.</value></data>
+  <data name="Workgroups_AddComment" xml:space="preserve"><value>Aggiungi commento</value></data>
+  <data name="Workgroups_HiddenByGroup" xml:space="preserve"><value>Nascosto dal gruppo</value></data>
+  <data name="Workgroups_HiddenReason" xml:space="preserve"><value>Motivazione</value></data>
+  <data name="Workgroups_GroupResponse" xml:space="preserve"><value>Risposta del gruppo</value></data>
+  <data name="Workgroups_Respond" xml:space="preserve"><value>Rispondi</value></data>
+  <data name="Workgroups_HideComment" xml:space="preserve"><value>Nascondi</value></data>
+  <data name="Workgroups_HideReasonPlaceholder" xml:space="preserve"><value>Motivazione per nascondere (obbligatoria)</value></data>
+  <data name="Workgroups_RespondToCategory" xml:space="preserve"><value>Rispondi a tutti i commenti in attesa in questa categoria</value></data>
+  <data name="Workgroups_BulkResponsePlaceholder" xml:space="preserve"><value>Risposta per ogni commento in attesa in questa categoria</value></data>
+
+  <!-- Governance card and member dashboard -->
+  <data name="Workgroups_GovernanceCardTitle" xml:space="preserve"><value>Gruppi di lavoro</value></data>
+  <data name="Workgroups_ViewRegister" xml:space="preserve"><value>Vedi il registro</value></data>
+  <data name="Workgroups_MyWorkgroups" xml:space="preserve"><value>I miei gruppi di lavoro</value></data>
+  <data name="Workgroups_MyWorkgroupsEmpty" xml:space="preserve"><value>Non hai ancora aderito a un gruppo di lavoro.</value></data>
+</root>

@@ -1,0 +1,50 @@
+@using Humans.Workgroups.ViewComponents
+@model GovernanceWorkgroupsViewModel
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h2 class="h5 mb-0"><i class="fa-solid fa-people-group me-2"></i>@Localizer["Workgroups_GovernanceCardTitle"]</h2>
+            <a asp-controller="Workgroups" asp-action="Index" class="small">@Localizer["Workgroups_ViewRegister"]</a>
+        </div>
+        <div class="d-grid gap-2">
+            @foreach (var w in Model.Active)
+            {
+                var next = w.NextMeeting(Model.Now);
+                <div class="border rounded p-2">
+                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                        <div>
+                            <a asp-controller="Workgroups" asp-action="Details" asp-route-slug="@w.Slug" class="fw-semibold text-decoration-none">@w.Name</a>
+                            <div class="small text-muted">
+                                @Localizer["Workgroups_CoordinatedBy"] @string.Join(", ", w.CoordinatorUserIds().Select(Model.DisplayName))
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            @if (w.IsOpenForComment(Model.Now))
+                            {
+                                <span class="badge bg-primary">@Localizer["Workgroups_OpenForComment"]</span>
+                            }
+                            @if (w.IsUpdateDue(Model.Now))
+                            {
+                                <span class="badge bg-warning text-dark">@Localizer["Workgroups_UpdateDue"]</span>
+                            }
+                            @if (w.IsStatusOverdue(Model.Now))
+                            {
+                                <span class="badge bg-danger">@Localizer["Workgroups_StatusOverdue"]</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="small mt-1">
+                        @Localizer["Workgroups_DeliverableSentence", w.TargetDate?.ToDate() ?? Localizer["Workgroups_NoTargetDate"].Value, w.Deliverable, Localizer.EnumDisplay(w.Audience)]
+                    </div>
+                    @if (next is not null)
+                    {
+                        <div class="small text-muted mt-1">
+                            <i class="fa-regular fa-calendar me-1"></i>@Localizer["Workgroups_NextMeeting"]: @next.StartUtc.ToWeekdayDayMonth() @next.StartUtc.ToTime()
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
