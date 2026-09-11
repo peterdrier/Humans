@@ -67,8 +67,9 @@ registration moves into the section, policy registration does not).
   Monitor now couples to — documentation, not a pinned assertion
   ([`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md)).
 - **No section depends on Monitor.** Its whole outward surface is `IDriveActivityMonitorService`
-  in `Contracts/` — one method, returning `int` — and its only consumer is
-  `DriveActivityMonitorJob` in `Jobs/`, inside this project. The Shell's
+  in `Contracts/` — one method, returning `int` — and nothing outside this project consumes
+  it: `DriveActivityMonitorJob` in `Jobs/` on the hourly schedule, and
+  `MonitorController.CheckDriveActivity` on the manual trigger. The Shell's
   `ProjectReference` is the exception and is required: `Humans.Web` references every section
   so the dependency context can discover this one's `ISection`, controllers and recurring job. The job is `public` because
   `Section.cs` and `SectionJobs.cs` name the concrete type; HUM0034 allows a section's public
