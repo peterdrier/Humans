@@ -72,7 +72,7 @@ internal sealed class GovernanceVotesController(
         if (model.HasDuplicateRanks())
         {
             SetError(localizer["Votes_BallotDuplicateRanks"].Value);
-            return RedirectToAction(nameof(Details), new { voteId });
+            return await RedisplayBallotAsync(voteId, userId, model, ct);
         }
 
         // No choice posted at all is an empty ballot, not an affirmative one.
@@ -138,6 +138,40 @@ internal sealed class GovernanceVotesController(
     }
 
     private bool IsViewerBoardOrAdmin() => RoleChecks.IsAdminOrBoard(User);
+
+    /// <summary>
+    /// Re-renders the vote page carrying the ranks that were actually posted, rather than
+    /// redirecting to a GET that rebuilds the form from the stored ballot (or from nothing, on
+    /// a first ballot). A voter correcting one duplicated rank should not have to re-enter the
+    /// whole order.
+    /// </summary>
+    private async Task<IActionResult> RedisplayBallotAsync(
+        Guid voteId, Guid userId, AssemblyBallotFormViewModel model, CancellationToken ct)
+    {
+        var vote = await voteService.GetVoteForMemberAsync(voteId, userId, ct);
+        if (vote is null) return NotFound();
+
+        var rows = BuildRankedOptionRows(vote);
+
+        // Last row wins for a key posted twice: the form never does that, and a hand-built
+        // POST that does gets one of its own answers back rather than an exception.
+        var posted = new Dictionary<string, int?>(StringComparer.Ordinal);
+        foreach (var row in model.RankedOptions)
+        {
+            posted[row.OptionKey] = row.Selection;
+        }
+
+        foreach (var row in rows)
+        {
+            if (posted.TryGetValue(row.OptionKey, out var selection)) row.Selection = selection;
+        }
+
+        return View("~/Views/Governance/Votes/Details.cshtml", new AssemblyVoteDetailViewModel
+        {
+            Vote = vote,
+            RankedOptions = rows
+        });
+    }
 
     private static IReadOnlyList<AssemblyRankedBallotOptionRow> BuildRankedOptionRows(AssemblyVoteDetail vote)
     {

@@ -549,7 +549,7 @@ internal sealed class EmailRenderer(
         {
             var indicativeHtml = isOfficial ? "" : L("Email_AssemblyVote_IndicativeNote");
             return new EmailContent(
-                Lf("Email_AssemblyVoteOpened_Subject", HtmlEncode(voteTitle)),
+                Lf("Email_AssemblyVoteOpened_Subject", voteTitle),
                 Lf("Email_AssemblyVoteOpened_Body", HtmlEncode(userName), HtmlEncode(voteTitle), HtmlEncode(closesAt.ToDateTime()), AbsoluteUrl(voteUrl), indicativeHtml));
         });
 
@@ -558,7 +558,7 @@ internal sealed class EmailRenderer(
         {
             var indicativeHtml = isOfficial ? "" : L("Email_AssemblyVote_IndicativeNote");
             return new EmailContent(
-                Lf("Email_AssemblyVoteReminder_Subject", HtmlEncode(voteTitle)),
+                Lf("Email_AssemblyVoteReminder_Subject", voteTitle),
                 Lf("Email_AssemblyVoteReminder_Body", HtmlEncode(userName), HtmlEncode(voteTitle), HtmlEncode(closesAt.ToDateTime()), AbsoluteUrl(voteUrl), indicativeHtml));
         });
 
@@ -567,7 +567,7 @@ internal sealed class EmailRenderer(
         {
             var reasonHtml = Lf("Email_ReasonLine", HtmlEncode(reason));
             return new EmailContent(
-                Lf("Email_AssemblyVoteCancelled_Subject", HtmlEncode(voteTitle)),
+                Lf("Email_AssemblyVoteCancelled_Subject", voteTitle),
                 Lf("Email_AssemblyVoteCancelled_Body", HtmlEncode(userName), HtmlEncode(voteTitle), reasonHtml));
         });
 }

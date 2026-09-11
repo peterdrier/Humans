@@ -424,3 +424,6 @@ inbox:
   - added: 2026-09-10
     what: "docs/architecture/freshness-catalog.yml has no Backdoor entry; add one covering src/Sections/Humans.Backdoor/** and tests/Humans.Backdoor.Tests/** (finding 17, /section-doctor on Backdoor 2026-09-03; swept in by /section-doctor on Rideshare 2026-09-10)."
     review: light
+  - added: 2026-09-11
+    what: "src/Sections/Humans.Email/Services/EmailRenderer.cs HTML-encodes six subject lines (Email_IssueComment_Subject, Email_CoordinatorRotaMessage_Subject, Email_CoordinatorTeamRotasMessage_Subject, Email_GoogleGroupRemoval_LossOfAccess_Subject, Email_GoogleDriveRemoval_LossOfAccess_Subject, Email_GoogleAccessRemoval_SecondaryCleanup_Subject). A Subject header is plain text, so a title containing & or < reaches the recipient as R&amp;D. The three assembly-vote subjects had the same bug and were fixed in peterdrier/Humans#1649; the older six are left alone as out of that PR's scope."
+    review: light
