@@ -38,7 +38,7 @@ None. Guide owns no database tables. All content is fetched from GitHub and cach
 |--------|-------|---------|------|
 | GET | `/Guide` | `GuideController.Index` → renders `README` | `[AllowAnonymous]` |
 | GET | `/Guide/{name}` | `GuideController.Document` → renders named stem | `[AllowAnonymous]` |
-| POST | `/Guide/Refresh` | `GuideController.Refresh` → re-fetches all 28 files | `[Authorize(AdminOnly)]` |
+| POST | `/Guide/Refresh` | `GuideController.Refresh` → re-fetches every stem in `GuideFiles.All` | `[Authorize(AdminOnly)]` |
 
 Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cache returns 503 (`Unavailable.cshtml`).
 
@@ -60,7 +60,7 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 - All content at or below a non-`As a …` `##` heading (e.g. `## Related sections`) is always visible.
 - Anonymous users see only Volunteer-scoped blocks; never Coordinator or Board/Admin blocks.
 - If a file contains any Board/Admin block visible to the current user, all Coordinator blocks in that file are also shown (within-file superset rule, enforced in `GuideFilter.Apply`).
-- Guide content is the 28 files in `docs/guide/`: `README`, `GettingStarted`, `Glossary`, the 19 sections enumerated in `GuideFiles.Sections`, plus the 6 plain-language pages enumerated in `GuideFiles.CommonQuestions` (rendered as the "Common questions" sidebar group). Nothing is authored in-app.
+- Guide content is `GuideFiles.All`: `README`, `GettingStarted`, `Glossary`, the sections enumerated in `GuideFiles.Sections`, plus the plain-language pages enumerated in `GuideFiles.CommonQuestions` (rendered as the "Common questions" sidebar group). One markdown file under `docs/guide/` per stem, in both directions. Nothing is authored in-app.
 - Cache key is `guide:<FileStem>`. TTL is sliding, configured via `Guide:CacheTtlHours` (default 6 hours, floor 1 hour).
 - Only `GuideContentService` reads or writes `guide:*` cache entries. No other service touches guide content.
 
@@ -68,14 +68,14 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 
 - Non-Admin users **cannot** trigger `POST /Guide/Refresh`.
 - Anonymous users **cannot** see Coordinator-scoped or Board/Admin-scoped blocks.
-- A domain admin **cannot** see blocks for parentheticals that do not name their role.
+- A domain admin **cannot** see a Board/Admin block whose parenthetical does not name their role. Coordinator blocks are the exception: reaching any Board/Admin block on a page opens every Coordinator block on that page, by the within-file superset rule above (pinned by `GuideFilterTests.Apply_TeamsAdmin_SeesCoordinatorAndBoardOnTeamsFile`).
 - A camp lead **cannot** see Coordinator blocks that do not name `Camp Lead` — leading a camp is not a general coordinator grant.
 - No user **can** author or edit guide content in-app; GitHub PR is the only authoring path.
 
 ## Triggers
 
-- First `GET /Guide/*` on cold cache → `GuideContentService` fetches and renders all 28 files; entries populated with sliding TTL.
-- `POST /Guide/Refresh` (Admin) → re-fetches and re-renders all 28 files; existing cache entries overwritten.
+- First `GET /Guide/*` on cold cache → `GuideContentService` fetches and renders every stem in `GuideFiles.All`; entries populated with sliding TTL.
+- `POST /Guide/Refresh` (Admin) → re-fetches and re-renders every stem in `GuideFiles.All`; existing cache entries overwritten.
 - GitHub fetch failure on warm cache → stale content served; warning logged; TTL preserved.
 - GitHub fetch failure on cold cache → `GuideContentUnavailableException` thrown; controller returns 503 `Unavailable.cshtml`.
 
@@ -96,4 +96,4 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 #### Accepted deviations
 
 - `GuideContentService` injects `IMemoryCache` directly rather than using §15's repository/decorator options. Content is not an entity read and the section owns no tables to decorate — the service *is* the cache. Allowlisted with that rationale in `ApplicationServicesTakeNoMemoryCacheRule`, which the section entered at its G5 move.
-- `docs/guide/**` stayed in the repo root rather than moving into `Docs/`. `GitHubGuideContentSource` fetches `{GuideSettings.FolderPath}/{stem}.md` from `nobodies-collective/Humans@main` **at runtime**, so the path is a live API with no fallback: moving the folder 404s all 28 files on every deployed instance until the change reaches production `main`.
+- `docs/guide/**` stayed in the repo root rather than moving into `Docs/`. `GitHubGuideContentSource` fetches `{GuideSettings.FolderPath}/{stem}.md` from `nobodies-collective/Humans@main` **at runtime**, so the path is a live API with no fallback: moving the folder 404s every guide page on every deployed instance until the change reaches production `main`.
