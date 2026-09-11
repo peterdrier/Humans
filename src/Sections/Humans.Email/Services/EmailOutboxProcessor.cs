@@ -19,7 +19,7 @@ namespace Humans.Email.Services;
 /// <c>ProcessEmailOutboxJob</c> at the section's G5 move — the job kept
 /// <see cref="IEmailOutboxRepository"/> and <see cref="IEmailTransport"/> in Base, which
 /// is a job reaching past the service layer, and neither type is nameable from Base now.
-/// The job is the scheduler shim; the queue semantics are here (design §15 step 6b).
+/// The job is the scheduler shim; the queue semantics are here (the G5 playbook, step 6b).
 /// </summary>
 /// <remarks>
 /// The grant mirror goes through <see cref="ICampaignService"/> so Campaigns owns
