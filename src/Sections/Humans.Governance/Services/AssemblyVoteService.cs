@@ -875,7 +875,10 @@ internal sealed class AssemblyVoteService(
         if (vote is null) return AssemblyVoteActionResult.NotFound;
         if (vote.Status != AssemblyVoteStatus.Draft) return AssemblyVoteActionResult.WrongState;
 
-        await repository.DeleteAsync(voteId, ct);
+        // Refused means the vote opened between the read above and this delete, and an open
+        // vote is never deleted — the same answer the status check above would have given.
+        if (!await repository.DeleteAsync(voteId, ct)) return AssemblyVoteActionResult.WrongState;
+
         return AssemblyVoteActionResult.Ok;
     }
 
@@ -968,7 +971,10 @@ internal sealed class AssemblyVoteService(
         vote.OpenedByUserId = adminUserId;
         vote.UpdatedAt = now;
 
-        await repository.OpenWithRosterAsync(vote, roster, ct);
+        // Refused means somebody else opened this vote while its roster was being built.
+        // Theirs is the roster that counts, and nothing below should run a second time.
+        if (!await repository.OpenWithRosterAsync(vote, roster, ct))
+            return AssemblyVoteActionResult.WrongState;
 
         var officialCount = roster.Count(r => r.IsOfficial);
         await audit.LogAsync(

@@ -57,8 +57,12 @@ internal interface IAssemblyVoteRepository : IRepository
     Task<bool> ReplaceOptionsAsync(
         AssemblyVote vote, IReadOnlyList<AssemblyVoteOption> options, CancellationToken ct = default);
 
-    /// <summary>Deletes a draft and its options. Never called for a vote that has opened.</summary>
-    Task DeleteAsync(Guid voteId, CancellationToken ct = default);
+    /// <summary>
+    /// Deletes a draft and its options, under the row's lock. Returns false without deleting
+    /// when the persisted row is no longer a draft — an opened vote has an electorate and a
+    /// frozen roster, and is never deleted.
+    /// </summary>
+    Task<bool> DeleteAsync(Guid voteId, CancellationToken ct = default);
 
     /// <summary>
     /// Every Open vote whose <c>ClosesAt</c> is at or before <paramref name="now"/> — the
@@ -79,9 +83,12 @@ internal interface IAssemblyVoteRepository : IRepository
 
     /// <summary>
     /// Opens the vote and writes its roster in one unit of work, so a vote can never be
-    /// Open without the roster that defines its electorate.
+    /// Open without the roster that defines its electorate. Under the row's lock: returns
+    /// false without writing when the persisted row is no longer a draft, and writes only the
+    /// lifecycle fields, so a draft edit that committed while the roster was being built is
+    /// what opens.
     /// </summary>
-    Task OpenWithRosterAsync(
+    Task<bool> OpenWithRosterAsync(
         AssemblyVote vote, IReadOnlyList<AssemblyVoteRoster> roster, CancellationToken ct = default);
 
     /// <summary>The whole roster for a vote.</summary>

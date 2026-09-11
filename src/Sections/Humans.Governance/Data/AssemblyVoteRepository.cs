@@ -1,5 +1,6 @@
 using Humans.Governance.Domain;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using NodaTime;
 
 namespace Humans.Governance.Data;
@@ -40,9 +41,7 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
         ArgumentNullException.ThrowIfNull(vote);
 
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var relational = ctx.Database.IsRelational();
-        await using var tx = relational ? await ctx.Database.BeginTransactionAsync(ct) : null;
-        if (relational) await LockVoteAsync(ctx, vote.Id, ct);
+        await using var tx = await BeginLockedWriteAsync(ctx, vote.Id, ct);
 
         var persisted = await ctx.AssemblyVotes.AsNoTracking()
             .Where(v => v.Id == vote.Id)
@@ -87,12 +86,22 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
     }
 
     /// <summary>
-    /// Takes the vote row's lock for the rest of the current transaction. Relational only:
-    /// the in-memory provider this section's tests run on supports neither transactions nor
-    /// raw SQL, and a single-process store has nothing to serialize against.
+    /// Opens the transaction every write path to a vote row runs in, and takes that row's
+    /// lock for its duration, so the state the write re-reads afterwards cannot change under
+    /// it. Relational only: the in-memory provider this section's tests run on supports
+    /// neither transactions nor raw SQL, and a single-process store has nothing to serialize
+    /// against — there the write proceeds on the state check alone.
     /// </summary>
-    private static Task LockVoteAsync(GovernanceDbContext ctx, Guid voteId, CancellationToken ct) =>
-        ctx.Database.ExecuteSqlAsync($"""SELECT 1 FROM assembly_votes WHERE "Id" = {voteId} FOR UPDATE""", ct);
+    private static async Task<IDbContextTransaction?> BeginLockedWriteAsync(
+        GovernanceDbContext ctx, Guid voteId, CancellationToken ct)
+    {
+        if (!ctx.Database.IsRelational()) return null;
+
+        var tx = await ctx.Database.BeginTransactionAsync(ct);
+        await ctx.Database.ExecuteSqlAsync(
+            $"""SELECT 1 FROM assembly_votes WHERE "Id" = {voteId} FOR UPDATE""", ct);
+        return tx;
+    }
 
     public async Task<bool> ReplaceOptionsAsync(
         AssemblyVote vote, IReadOnlyList<AssemblyVoteOption> options, CancellationToken ct = default)
@@ -100,9 +109,7 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
         ArgumentNullException.ThrowIfNull(vote);
 
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var relational = ctx.Database.IsRelational();
-        await using var tx = relational ? await ctx.Database.BeginTransactionAsync(ct) : null;
-        if (relational) await LockVoteAsync(ctx, vote.Id, ct);
+        await using var tx = await BeginLockedWriteAsync(ctx, vote.Id, ct);
 
         // Read under the lock, not from the caller's snapshot: an Open that committed since
         // the edit form was loaded makes this edit illegal, and the option rows are the part
@@ -130,15 +137,22 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
         return true;
     }
 
-    public async Task DeleteAsync(Guid voteId, CancellationToken ct = default)
+    public async Task<bool> DeleteAsync(Guid voteId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var vote = await ctx.AssemblyVotes.FindAsync([voteId], ct);
-        if (vote is null)
-            return;
+        await using var tx = await BeginLockedWriteAsync(ctx, voteId, ct);
+
+        // Status re-read under the lock, for the same reason every other write re-reads it:
+        // a vote opened between the caller's check and here has a frozen roster and an
+        // electorate that has been told to vote, and deleting it would take the vote away
+        // from them with nothing left to show it existed.
+        var vote = await ctx.AssemblyVotes.FirstOrDefaultAsync(v => v.Id == voteId, ct);
+        if (vote is null || vote.Status != AssemblyVoteStatus.Draft) return false;
 
         ctx.AssemblyVotes.Remove(vote);
         await ctx.SaveChangesAsync(ct);
+        if (tx is not null) await tx.CommitAsync(ct);
+        return true;
     }
 
     public async Task<IReadOnlyList<AssemblyVote>> GetLapsedOpenVotesAsync(
@@ -161,13 +175,31 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
     // Roster
     // ==========================================================================
 
-    public async Task OpenWithRosterAsync(
+    public async Task<bool> OpenWithRosterAsync(
         AssemblyVote vote, IReadOnlyList<AssemblyVoteRoster> roster, CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(vote);
+
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.AssemblyVotes.Update(vote);
+        await using var tx = await BeginLockedWriteAsync(ctx, vote.Id, ct);
+
+        var persisted = await ctx.AssemblyVotes.FirstOrDefaultAsync(v => v.Id == vote.Id, ct);
+        if (persisted is null || persisted.Status != AssemblyVoteStatus.Draft) return false;
+
+        // Only the four lifecycle fields are written, onto the row as it stands. Opening is
+        // the one transition that races with draft authoring, and writing the caller's whole
+        // snapshot back would undo a Board edit that committed while the roster was being
+        // built. What opens is the content the row holds now — which is also what the vote
+        // page shows, even when the opening announcement was composed one edit earlier.
+        persisted.Status = vote.Status;
+        persisted.OpenedAt = vote.OpenedAt;
+        persisted.OpenedByUserId = vote.OpenedByUserId;
+        persisted.UpdatedAt = vote.UpdatedAt;
+
         ctx.AssemblyVoteRosterEntries.AddRange(roster);
         await ctx.SaveChangesAsync(ct);
+        if (tx is not null) await tx.CommitAsync(ct);
+        return true;
     }
 
     public async Task<IReadOnlyList<AssemblyVoteRoster>> GetRosterAsync(
@@ -261,9 +293,7 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
         // refuses — or it waits behind this ballot, which is then already in the table when
         // counting reads it. Checking without the lock leaves the two free to interleave,
         // and a vote can be counted without a ballot it told the member it had recorded.
-        var relational = ctx.Database.IsRelational();
-        await using var tx = relational ? await ctx.Database.BeginTransactionAsync(ct) : null;
-        if (relational) await LockVoteAsync(ctx, voteId, ct);
+        await using var tx = await BeginLockedWriteAsync(ctx, voteId, ct);
 
         var vote = await ctx.AssemblyVotes.AsNoTracking()
             .FirstOrDefaultAsync(v => v.Id == voteId, ct);

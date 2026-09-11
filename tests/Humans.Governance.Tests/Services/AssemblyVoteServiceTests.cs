@@ -1059,4 +1059,67 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         keys.Should().BeEquivalentTo(["a", "b"],
             "the electorate is already reading these options");
     }
+
+    [HumansFact]
+    public async Task DeleteAsync_OnAVoteThatOpenedSinceItWasRead_DeletesNothing()
+    {
+        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Draft);
+        var asociado = Guid.NewGuid();
+        _fx.StubActiveUsers(asociado);
+        _fx.Applications.GetActiveApprovedTierUserIdsAsync(
+                MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>([asociado]));
+
+        var opened = await _fx.Service.OpenAsync(
+            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        opened.Should().Be(AssemblyVoteActionResult.Ok);
+        _fx.Db.ChangeTracker.Clear();
+
+        var deleted = await _fx.Repository.DeleteAsync(
+            vote.Id, Xunit.TestContext.Current.CancellationToken);
+
+        deleted.Should().BeFalse();
+        (await _fx.Db.AssemblyVotes.AsNoTracking()
+            .AnyAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken))
+            .Should().BeTrue("the roster is frozen and the electorate has been told to vote");
+    }
+
+    [HumansFact]
+    public async Task OpenWithRosterAsync_OnAVoteSomebodyElseOpenedFirst_WritesNoSecondRoster()
+    {
+        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Draft);
+        var asociado = Guid.NewGuid();
+        _fx.StubActiveUsers(asociado);
+        _fx.Applications.GetActiveApprovedTierUserIdsAsync(
+                MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>([asociado]));
+
+        var opened = await _fx.Service.OpenAsync(
+            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        opened.Should().Be(AssemblyVoteActionResult.Ok);
+        _fx.Db.ChangeTracker.Clear();
+
+        // A second Open that was building its roster while the first one committed.
+        var stored = await _fx.Repository.GetByIdAsync(
+            vote.Id, Xunit.TestContext.Current.CancellationToken);
+        _fx.Db.ChangeTracker.Clear();
+
+        var written = await _fx.Repository.OpenWithRosterAsync(
+            stored!,
+            [new AssemblyVoteRoster
+            {
+                Id = Guid.NewGuid(),
+                VoteId = vote.Id,
+                UserId = Guid.NewGuid(),
+                IsOfficial = true
+            }],
+            Xunit.TestContext.Current.CancellationToken);
+
+        written.Should().BeFalse();
+        var roster = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
+            .Where(r => r.VoteId == vote.Id)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        roster.Should().ContainSingle("the roster is written exactly once, at the open that won")
+            .Which.UserId.Should().Be(asociado);
+    }
 }
