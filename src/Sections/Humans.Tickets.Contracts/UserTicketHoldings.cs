@@ -33,7 +33,10 @@ public record UserTicketHoldings(
 }
 
 /// <summary>
-/// One ticket held by a user, with enough info for the holdings widget to render.
+/// One ticket held by a user, with enough info for the holdings widget and the transfer
+/// wizard to render. <paramref name="CheckedInAt"/> is the gate scan, which keeps
+/// <paramref name="Status"/> at <c>Valid</c>; the wizard reads it to refuse sending a
+/// ticket already used at the door.
 /// </summary>
 public record UserTicketHoldingRow(
     Guid AttendeeId,
@@ -43,4 +46,5 @@ public record UserTicketHoldingRow(
     string TicketTypeName,
     TicketAttendeeStatus Status,
     bool HasPendingOutgoingTransfer = false,
-    Guid? PendingTransferRequestId = null);
+    Guid? PendingTransferRequestId = null,
+    Instant? CheckedInAt = null);

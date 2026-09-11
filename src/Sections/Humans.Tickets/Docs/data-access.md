@@ -13,8 +13,8 @@ Project: `src/Sections/Humans.Tickets` is split across **two projects
 plus a contracts leaf**: `src/Sections/Humans.Tickets` (orders, attendees,
 transfers, sync orchestration, the admin surface — everything `internal
 sealed`), `src/Sections/Humans.Tickets.Contracts` (the leaf:
-`ITicketServiceRead`, `ITicketSync`, `ITicketTransferQueue`,
-`ITicketDiscountCodes`, `ITicketVendorMirror`), and
+`ITicketServiceRead`, `ITicketSync`, `ITicketDiscountCodes`,
+`ITicketVendorMirror`), and
 `src/Sections/Humans.TicketTailor` (the vendor adapter — the sole
 implementation of the vendor port; owns no tables, publishes nothing, and
 references `Humans.Tickets` directly to name the port).
@@ -25,10 +25,10 @@ references `Humans.Tickets` directly to name the port).
 `TicketAttendees`, `TicketSyncStates`, `TicketTransferRequests`.
 
 The section's public surface is small: `ITicketServiceRead` (2 members,
-no `SurfaceBudget` pinned), `ITicketSync` (2), `ITicketTransferQueue` (1),
-`ITicketDiscountCodes` (1), `ITicketVendorMirror` (1). `TicketDashboardDtos`
-(24 public types), the transfer wizard, and the admin decision DTOs are
-`internal`. Campaigns' grant waves call `ITicketDiscountCodes.GenerateAsync`
+no `SurfaceBudget` pinned), `ITicketSync` (2), `ITicketDiscountCodes` (1),
+`ITicketVendorMirror` (1). `TicketDashboardDtos` (24 public types), the
+transfer wizard (including the `ITicketTransferQueue` badge count), and the
+admin decision DTOs are `internal`. Campaigns' grant waves call `ITicketDiscountCodes.GenerateAsync`
 (in the application's own `TicketDiscountCodeRequest`/`TicketDiscountKind`
 vocabulary — `TicketVendorGateway` in `Humans.Tickets` maps that to the
 port's `DiscountCodeSpec`/`DiscountType` at the edge), and
@@ -80,8 +80,8 @@ projection carries the now-stale names/emails.
 `ComputeUserTicketCountAsync` matches a user's tickets by fetching the
 user's verified emails (`IUserEmailService.GetVerifiedEmailsForUserAsync`)
 and the valid attendee emails (`ITicketRepository.GetValidAttendeeEmailsAsync`),
-then intersecting them **in-memory** for case-consistent comparison — no
-extra repository round-trip.
+then intersecting them **in-memory** with `NormalizingEmailComparer` (the
+sync matcher's comparer) — no extra repository round-trip.
 
 Email-to-user matching for ticket sync routes through
 `IUserServiceRead.GetAllUserInfosAsync` (see

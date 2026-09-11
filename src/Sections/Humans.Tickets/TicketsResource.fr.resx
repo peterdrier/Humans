@@ -43,10 +43,6 @@
   <data name="TicketTransfer_Pending" xml:space="preserve">
     <value>En attente de validation</value>
   </data>
-  <data name="Enum_TicketTransferStatus_Approved" xml:space="preserve"><value>Terminé</value></data>
-  <data name="Enum_TicketTransferStatus_Cancelled" xml:space="preserve"><value>Annulé</value></data>
-  <data name="Enum_TicketTransferStatus_Pending" xml:space="preserve"><value>En attente de révision</value></data>
-  <data name="Enum_TicketTransferStatus_Rejected" xml:space="preserve"><value>Annulé par l'équipe</value></data>
   <data name="TicketTransfer_AlreadyPending" xml:space="preserve"><value>Transfert déjà en attente</value></data>
   <data name="TicketTransfer_CancelRequest" xml:space="preserve"><value>Annuler la demande</value></data>
   <data name="TicketTransfer_CheckedIn" xml:space="preserve"><value>Déjà enregistré — ne peut pas être transféré</value></data>

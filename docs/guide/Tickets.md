@@ -30,7 +30,6 @@ Ticket data syncs automatically. Attendees are auto-matched to humans by email, 
 - **Orders** (`/Tickets/Orders`) — paginated orders with donation/VAT columns
 - **Attendees** (`/Tickets/Attendees`) — paginated attendees with VIP badges and taxable/donation split
 - **Codes** (`/Tickets/Codes`) — discount-code redemption tied to campaigns (read-only here; codes are *generated* on the Campaign detail page)
-- **Gate List** (`/Tickets/GateList`) — placeholder; door lookup lives at `/Scanner/Tickets`
 - **Who Hasn't Bought** (`/Tickets/WhoHasntBought`) — active Volunteers without matched tickets
 - **Sales Aggregates** (`/Tickets/SalesAggregates`) — weekly and quarterly reports
 

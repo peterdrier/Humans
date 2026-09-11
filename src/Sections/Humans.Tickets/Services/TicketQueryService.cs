@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using NodaTime;
 using Humans.Base.Extensions;
+using Humans.Base.Helpers;
 using Humans.Gdpr.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
@@ -39,7 +40,8 @@ internal sealed class TicketQueryService(
         if (matchedCount > 0)
             return matchedCount;
 
-        // Fallback: verified-emails ↔ attendee-emails, compared in-memory for consistent casing.
+        // Fallback: verified-emails ↔ attendee-emails, compared in-memory with the same
+        // comparer the sync's matcher uses, so the count agrees with what sync would match.
         var verifiedEmails = await userEmailService.GetVerifiedEmailsForUserAsync(userId);
         if (verifiedEmails.Count == 0)
             return 0;
@@ -48,7 +50,7 @@ internal sealed class TicketQueryService(
         if (attendeeEmails.Count == 0)
             return 0;
 
-        var verifiedSet = verifiedEmails.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var verifiedSet = verifiedEmails.ToHashSet(NormalizingEmailComparer.Instance);
         return attendeeEmails.Count(verifiedSet.Contains);
     }
 
@@ -774,7 +776,8 @@ internal sealed class TicketQueryService(
                 HasPendingOutgoingTransfer: pendingByAttendee.ContainsKey(a.Id),
                 PendingTransferRequestId: pendingByAttendee.TryGetValue(a.Id, out var transferId)
                     ? transferId
-                    : null))
+                    : null,
+                CheckedInAt: a.CheckedInAt))
             .ToList();
 
         var ticketCount = await ComputeUserTicketCountAsync(userId);

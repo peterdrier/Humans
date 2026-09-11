@@ -43,10 +43,6 @@
   <data name="TicketTransfer_Pending" xml:space="preserve">
     <value>Pendent de revisió</value>
   </data>
-  <data name="Enum_TicketTransferStatus_Approved" xml:space="preserve"><value>Completada</value></data>
-  <data name="Enum_TicketTransferStatus_Cancelled" xml:space="preserve"><value>Cancel·lada</value></data>
-  <data name="Enum_TicketTransferStatus_Pending" xml:space="preserve"><value>Pendent de revisió</value></data>
-  <data name="Enum_TicketTransferStatus_Rejected" xml:space="preserve"><value>Cancel·lada per l'equip</value></data>
   <data name="TicketTransfer_AlreadyPending" xml:space="preserve"><value>Transferència ja pendent</value></data>
   <data name="TicketTransfer_CancelRequest" xml:space="preserve"><value>Cancel·la la sol·licitud</value></data>
   <data name="TicketTransfer_CheckedIn" xml:space="preserve"><value>Ja ha fet el check-in — no es pot transferir</value></data>

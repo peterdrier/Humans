@@ -1,6 +1,6 @@
 using Humans.Base.Authorization;
 using Humans.Base.Interfaces;
-using Humans.Tickets.Contracts;
+using Humans.Tickets.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Tickets;

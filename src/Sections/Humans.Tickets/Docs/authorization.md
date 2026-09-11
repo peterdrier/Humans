@@ -7,7 +7,7 @@
 
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
-| `TicketController` | Class | `TicketAdmin, Admin, Board` | `PolicyNames.TicketAdminBoardOrAdmin` (`Orders`, `Attendees`, `Codes`, `GateList`, `WhoHasntBought`, `SalesAggregates` all inherit) |
+| `TicketController` | Class | `TicketAdmin, Admin, Board` | `PolicyNames.TicketAdminBoardOrAdmin` (`Orders`, `Attendees`, `Codes`, `WhoHasntBought`, `SalesAggregates` all inherit) |
 | `TicketController.Sync` | Action | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` |
 | `TicketController.FullResync` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `TicketController.ParticipationBackfill` (GET/POST) | Action | `Admin` | `PolicyNames.AdminOnly` |

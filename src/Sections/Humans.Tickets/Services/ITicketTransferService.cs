@@ -9,10 +9,9 @@ namespace Humans.Tickets.Services;
 internal interface ITicketTransferService : ITicketTransferQueue, IApplicationService
 {
     /// <summary>
-    /// Build the "My tickets" rows for a user, with send-eligibility flags
-    /// pre-computed: only `Valid`, not-checked-in attendees the user currently
-    /// owns (`TicketAttendeeOwnership.IsCurrentOwner`), with no existing Pending
-    /// transfer, can be sent.
+    /// Build the "My tickets" rows for a user from the holdings read, with the send rule
+    /// pre-computed: only `Valid`, not-checked-in tickets with no existing Pending transfer
+    /// can be sent. Voided holdings are dropped.
     /// </summary>
     Task<IReadOnlyList<MyAttendeeRowDto>> GetMyAttendeesAsync(
         Guid userId, CancellationToken ct = default);

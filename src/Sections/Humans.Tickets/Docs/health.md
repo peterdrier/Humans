@@ -21,7 +21,7 @@ member's yearly participation record.
 | "Does this human hold a ticket" | `ITicketServiceRead` (`GetTicketOrdersAsync`, `GetUserTicketHoldingsAsync`; no `SurfaceBudget` pinned today) fed by `ITicketRepository.HasEventTicketAsync` and the private `ComputeUserTicketCountAsync` | One question over the match paths (`MatchedUserId`, then verified-email fallback); one projection callers derive from |
 | Member holds & transfers | `/Tickets/Transfers` (Index, Confirm, Submit, Cancel), `<vc:my-ticket-stubs>`, `<vc:ticket-holdings>`, `<vc:ticket-stub>`, `<vc:member-ticket-status>`, `<vc:guest-ticket-orders>` | One wizard + one stub renderer reused by homepage, profile and wizard |
 | Admin transfer processing | `/Tickets/Admin/Transfers` (Index?tab, Detail/{id}, Decide with action ∈ process/retry/marksuccessful/cancel), `ITicketTransferQueue.CountPendingAsync` | One state machine: Pending → Approved / Rejected / Cancelled; vendor void-to-hold + reissue is the automated path, mark-successful the manual one |
-| Reporting | `/Tickets` (dashboard), `/Tickets/Orders`, `/Tickets/Attendees`, `/Tickets/Codes`, `/Tickets/SalesAggregates`, `/Tickets/WhoHasntBought`, the CSV exports, `/Tickets/GateList` (placeholder) | Paged lists (search/sort/filter), aggregates, one "who hasn't" cross-join over Users, Teams, user emails and the Shifts active year |
+| Reporting | `/Tickets` (dashboard), `/Tickets/Orders`, `/Tickets/Attendees`, `/Tickets/Codes`, `/Tickets/SalesAggregates`, `/Tickets/WhoHasntBought`, the CSV exports | Paged lists (search/sort/filter), aggregates, one "who hasn't" cross-join over Users, Teams, user emails and the Shifts active year |
 | Onsite & gate tooling | `/Tickets/Admin/Onsite`, `/Tickets/Admin/Gate` (set/rotate gate-terminal password); barcode → stub for Scanner/Gate is a projection over `GetTicketOrdersAsync` | One roster join, one credential rotation |
 | Contact import | `/Tickets/Admin/Contacts` (preview → apply) | Plan/apply over unmatched attendees: attach verified / replace unverified / create user |
 | Participation | `IUserParticipationBackfillService` via `/Tickets/Participation/Backfill` (Admin only) | CSV backfill; the reconcile itself lives in the sync pipeline |
@@ -54,9 +54,9 @@ The layout these shapes imply:
 
 - Buyer-only matches never count as holding a ticket: `MatchedUserId` on an attendee row, or an
   attendee email equal to one of the user's verified emails, is the only way a person "has a
-  ticket". A paid order in someone's name with no attendee for them does not. The holdings list
-  and `TicketCount` already hold to this; `HasCurrentEventTicket` does not yet, because
-  `HasEventTicketAsync` still answers true for a buyer-only paid order on the current event.
+  ticket". A paid order in someone's name with no attendee for them does not. The holdings list,
+  `TicketCount` and `HasCurrentEventTicket` (`HasEventTicketAsync`, attendee rows only) all hold
+  to this.
 - A gate scan stamps `CheckedInAt` and leaves `Status = Valid`; transferability requires both
   `Status == Valid` and `CheckedInAt == null`, and is enforced in the row flags, the confirm step
   and `CreateRequestAsync`, not only in the view.
@@ -86,8 +86,6 @@ The layout these shapes imply:
   view); the design reserves sourcing it from the active event. Not built.
 - **`VendorStepsJson`** column is dormant by design until prod soak; the drop is a scheduled
   follow-up, not this section's to do ad hoc.
-- **`/Tickets/GateList`** is a placeholder page whose function moved to `/Scanner/Tickets`; its
-  removal is a nav decision for Peter.
 - **`CacheKeys.TicketDashboardStats`** is a reserved key for a dashboard cache that was never
   added; nothing reads, writes or evicts it.
 
@@ -113,7 +111,8 @@ The layout these shapes imply:
   raw string would silently split one person into two.
 - **`ComputeUserTicketCountAsync` falls back to verified emails** when `MatchedUserId` is null,
   because the sync only writes `MatchedUserId` on its own cadence and a member who just verified
-  an email expects the homepage to update now. `HasEventTicketAsync` has no such fallback, so
+  an email expects the homepage to update now. The fallback compares with the sync's
+  `NormalizingEmailComparer` so the two agree. `HasEventTicketAsync` has no such fallback, so
   `HasCurrentEventTicket` waits for the next sync.
 - **The caching decorator is a Singleton wrapping a Scoped inner** via `WithInner`, because
   `TrackedCache` slices must outlive a request while the repository must not.
@@ -123,7 +122,9 @@ The layout these shapes imply:
   Email sends are wrapped so a mail failure never rolls back a recorded decision.
 - **The query service reads the transfer repository** to stamp the pending-transfer flag on a
   member's holdings; the transfer table has its own repository so the state machine's writes
-  stay in one place, and the holdings read is a projection over it, not a second writer.
+  stay in one place, and the holdings read is a projection over it, not a second writer. The
+  transfer wizard reads that same projection (`ITicketServiceRead.GetUserTicketHoldingsAsync`)
+  and adds only the send rule, so "what do I hold" is computed once.
 - **The gate-terminal account is a real user with no roles** and a rotating password, created
   lazily the first time a ticket admin sets its password from `/Tickets/Admin/Gate`; the
   password lives on the Identity row and rotation bumps the security stamp, so live gate

@@ -405,15 +405,8 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        var hasPaidOrder = await ctx.TicketOrders
-            .AsNoTracking()
-            .AnyAsync(
-                o => o.MatchedUserId == userId &&
-                     o.VendorEventId == vendorEventId &&
-                     o.PaymentStatus == TicketPaymentStatus.Paid, ct);
-        if (hasPaidOrder)
-            return true;
-
+        // Attendee rows only: buying an order for someone else is not holding a ticket
+        // (Tickets.md, "buyer-only is not a holding").
         return await ctx.TicketAttendees
             .AsNoTracking()
             .AnyAsync(

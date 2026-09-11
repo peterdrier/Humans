@@ -230,6 +230,10 @@ internal interface ITicketRepository : IRepository
 
     Task<IReadOnlyList<Guid>> GetAllMatchedOrderUserIdsAsync(CancellationToken ct = default);
 
+    /// <summary>
+    /// True when the user is matched to a <c>Valid</c> or <c>CheckedIn</c> attendee row for the
+    /// event. Orders are not consulted: a buyer-only match is not a holding.
+    /// </summary>
     Task<bool> HasEventTicketAsync(Guid userId, string vendorEventId, CancellationToken ct = default);
 
     Task<IReadOnlyList<string>> GetDistinctTicketTypesAsync(CancellationToken ct = default);

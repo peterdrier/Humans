@@ -117,7 +117,6 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 | `/Tickets/Orders` | GET | `TicketAdminBoardOrAdmin` | Paginated order list |
 | `/Tickets/Attendees` | GET | `TicketAdminBoardOrAdmin` | Paginated attendee list |
 | `/Tickets/Codes` | GET | `TicketAdminBoardOrAdmin` | Discount code redemption tracking |
-| `/Tickets/GateList` | GET | `TicketAdminBoardOrAdmin` | Placeholder page (gate lookup is handled via `/Scanner/Tickets`) |
 | `/Tickets/WhoHasntBought` | GET | `TicketAdminBoardOrAdmin` | Active Volunteers without a ticket |
 | `/Tickets/SalesAggregates` | GET | `TicketAdminBoardOrAdmin` | Weekly + quarterly aggregate reports, by ticket type, discount codes by campaign |
 | `/Tickets/Sync` | POST | `TicketAdminOrAdmin` | Trigger incremental sync |
@@ -182,7 +181,7 @@ Outbound (what Tickets injects; the project references are the authority — `Hu
 Inbound (who injects `Humans.Tickets.Contracts`):
 
 - **`ITicketServiceRead`** (`GetTicketOrdersAsync`, `GetUserTicketHoldingsAsync`; no `SurfaceBudget` pinned) — Users (profile, guest orders, account deletion hold, audiences), MailerLite audiences, Shifts, Surveys, Teams admin, Budget, Gate (`GateService` barcode admits), Scanner (`/Scanner/Tickets` lookup card), Agent. Read-only; nobody writes back.
-- **`ITicketDiscountCodes`** — Campaigns' grant waves. **`ITicketVendorMirror`** — Gate's `GateVendorCheckInJob` mirrors admits to the vendor (best-effort, behind `Gate:VendorMirrorEnabled`, default off; Gate's own `gate_scan_events` remains the dedupe authority). **`ITicketSync`** — Notifications' `NotificationMeterProvider`. **`ITicketTransferQueue.CountPendingAsync`** — consumed only by this section's own `SectionAdminNav` badge; no cross-section caller today.
+- **`ITicketDiscountCodes`** — Campaigns' grant waves. **`ITicketVendorMirror`** — Gate's `GateVendorCheckInJob` mirrors admits to the vendor (best-effort, behind `Gate:VendorMirrorEnabled`, default off; Gate's own `gate_scan_events` remains the dedupe authority). **`ITicketSync`** — Notifications' `NotificationMeterProvider`. The transfer-queue count behind the admin nav badge (`ITicketTransferQueue`) is internal: no cross-section caller.
 
 ## Architecture
 
@@ -232,7 +231,7 @@ because ticket admins are who rotate that credential. Whether it eventually land
 **Stripe connector:** `IStripeService` (`Humans.Stripe`) wraps the Stripe SDK and is consumed by `TicketSyncService` for fee enrichment.
 
 **Public surface:** the `Humans.Tickets.Contracts` leaf publishes `ITicketServiceRead`, `ITicketSync`,
-`ITicketTransferQueue`, `ITicketDiscountCodes` and `ITicketVendorMirror`. The `TicketDashboardDtos` surface, the transfer wizard and the admin decision DTOs are internal.
+`ITicketDiscountCodes` and `ITicketVendorMirror`. The `TicketDashboardDtos` surface, the transfer wizard (including `ITicketTransferQueue`) and the admin decision DTOs are internal.
 Tickets ships both a `.Contracts` leaf *and* a `Contracts/` folder: the
 leaf carries what cross-section consumers need, the folder carries public surface that is ASP.NET plumbing
 (`TicketStubViewComponent`) or the vendor port. The split is a judgement about what cross-section consumers should
