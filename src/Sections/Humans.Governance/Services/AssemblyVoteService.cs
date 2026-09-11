@@ -1335,7 +1335,7 @@ internal sealed class AssemblyVoteService(
             {
                 Vote = x.Vote.Title.Resolve(x.Vote.OfficialCulture, x.Vote.OfficialCulture),
                 x.Vote.Status,
-                x.Vote.ClosesAt,
+                ClosesAt = x.Vote.ClosesAt.ToIso8601(),
                 Entitlement = x.Roster.IsOfficial ? "Official" : "Indicative",
                 x.Roster.Tier,
                 x.Roster.IsBoardMember,
@@ -1346,11 +1346,17 @@ internal sealed class AssemblyVoteService(
                         x.Ballot.Choice,
                         x.Ballot.Ranking,
                         x.Ballot.Revision,
-                        x.Ballot.CastAt,
-                        x.Ballot.UpdatedAt,
+                        CastAt = x.Ballot.CastAt.ToIso8601(),
+                        UpdatedAt = x.Ballot.UpdatedAt.ToIso8601(),
                         History = x.Ballot.History
                             .OrderBy(h => h.Revision)
-                            .Select(h => new { h.Revision, h.Choice, h.Ranking, h.RecordedAt })
+                            .Select(h => new
+                            {
+                                h.Revision,
+                                h.Choice,
+                                h.Ranking,
+                                RecordedAt = h.RecordedAt.ToIso8601()
+                            })
                             .ToList()
                     }
             })
@@ -1371,9 +1377,9 @@ internal sealed class AssemblyVoteService(
                     }
                     .OfType<string>()
                     .ToList(),
-                v.CreatedAt,
-                v.OpenedAt,
-                v.ClosedAt
+                CreatedAt = v.CreatedAt.ToIso8601(),
+                OpenedAt = v.OpenedAt.ToIso8601(),
+                ClosedAt = v.ClosedAt.ToIso8601()
             })
             .ToList();
 
@@ -1381,7 +1387,7 @@ internal sealed class AssemblyVoteService(
             .Select(x => new
             {
                 Vote = x.Vote.Title.Resolve(x.Vote.OfficialCulture, x.Vote.OfficialCulture),
-                x.Peek.PeekedAt
+                PeekedAt = x.Peek.PeekedAt.ToIso8601()
             })
             .ToList();
 

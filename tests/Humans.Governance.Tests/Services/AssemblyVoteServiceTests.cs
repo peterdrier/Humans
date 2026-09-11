@@ -209,7 +209,34 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .ContainSingle(s => s.SectionName == GdprExportSections.AssemblyVoteActions)
             .Which.Data;
         var json = System.Text.Json.JsonSerializer.Serialize(actions);
-        json.Should().Contain("Opened").And.Contain("Closed").And.Contain("PeekedAt");
+        json.Should().Contain("Opened").And.Contain("Closed");
+
+        // Instants are serialized by the export's plain System.Text.Json options, which know
+        // nothing about NodaTime: an unformatted Instant lands in the file as "{}". Seen for
+        // real on the PR preview before this was fixed.
+        json.Should().MatchRegex("\"PeekedAt\":\"[0-9]{4}-");
+        json.Should().MatchRegex("\"ClosedAt\":\"[0-9]{4}-");
+    }
+
+    [HumansFact]
+    public async Task ContributeForUserAsync_WritesBallotTimestampsAsText()
+    {
+        var vote = await _fx.AddVoteAsync();
+        var userId = Guid.NewGuid();
+        await _fx.AddRosterRowAsync(vote.Id, userId, isOfficial: true);
+        await _fx.Service.CastBallotAsync(
+            vote.Id, userId, AssemblyBallotChoice.Yes, null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        var slices = await _fx.Service.ContributeForUserAsync(
+            userId, Xunit.TestContext.Current.CancellationToken);
+
+        var json = System.Text.Json.JsonSerializer.Serialize(
+            slices.Single(x => string.Equals(
+                x.SectionName, GdprExportSections.AssemblyVotes, StringComparison.Ordinal)).Data);
+        json.Should().MatchRegex("\"CastAt\":\"[0-9]{4}-");
+        json.Should().MatchRegex("\"ClosesAt\":\"[0-9]{4}-");
+        json.Should().MatchRegex("\"RecordedAt\":\"[0-9]{4}-");
     }
 
     [HumansFact]
