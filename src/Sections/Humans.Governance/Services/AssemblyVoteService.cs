@@ -379,11 +379,18 @@ internal sealed class AssemblyVoteService(
     }
 
     /// <summary>
-    /// Everything a close owes after its status is down: the stored tally, the retired
-    /// open-vote notification, and the audit entry. Separate from <see cref="CloseAsync"/>
-    /// because the status write commits first, and anything that throws after it leaves a
-    /// closed vote owing all three — <see cref="SettleAsync"/> replays this, not just the
-    /// result, so a half-finished close cannot cost the Board its audit trail.
+    /// Everything a close owes after its status is down: the retired open-vote notification,
+    /// the audit entry, and the stored tally. Separate from <see cref="CloseAsync"/> because
+    /// the status write commits first, and anything that throws after it leaves a closed vote
+    /// owing all three — <see cref="SettleAsync"/> replays this, not just the result.
+    /// <para>
+    /// The stored result is written <em>last</em> because its absence is what the replay
+    /// looks for. Storing it first would mark the close complete while the notification and
+    /// the audit entry were still owed, and a process that stopped there would leave a
+    /// permanently unaudited close, which the terminal-state check then refuses to redo. In
+    /// this order the worst a crash can cost is a repeated close entry on the next read —
+    /// a duplicate in the audit log is visible and explicable; a missing one is neither.
+    /// </para>
     /// </summary>
     private async Task FinishCloseAsync(
         AssemblyVote vote,
@@ -392,8 +399,6 @@ internal sealed class AssemblyVoteService(
         string description,
         CancellationToken ct)
     {
-        await StoreResultAsync(vote, ct);
-
         await ClearOpenNotificationAsync(vote, closedByUserId, ct);
 
         if (closedByUserId is { } actor)
@@ -404,6 +409,8 @@ internal sealed class AssemblyVoteService(
         {
             await audit.LogAsync(action, AuditEntityTypes.AssemblyVote, vote.Id, description, LapseJobName);
         }
+
+        await StoreResultAsync(vote, ct);
     }
 
     /// <summary>
