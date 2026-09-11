@@ -350,7 +350,7 @@ internal sealed class AssemblyVoteService(
     /// open-vote notification, and audits. Every way a vote can close funnels through here
     /// so a closed vote always has exactly one stored result.
     /// </summary>
-    private async Task CloseAsync(
+    private async Task<bool> CloseAsync(
         AssemblyVote vote,
         Guid? closedByUserId,
         AuditAction action,
@@ -374,8 +374,13 @@ internal sealed class AssemblyVoteService(
         // system accepted is already in the table by the time counting looks. Computing first
         // and flipping second would leave the whole counting interval open for a submission to
         // slip in behind the snapshot, be told "recorded", and never appear in the result.
-        await repository.UpdateAsync(vote, ct);
+        // Refused means somebody else finished this vote first, or an Extend moved the
+        // deadline this lapse was working from. Either way the other actor owns the close
+        // and nothing here should run: the tail belongs to whoever's status write landed.
+        if (!await repository.UpdateAsync(vote, ct)) return false;
+
         await FinishCloseAsync(vote, closedByUserId, action, description, ct);
+        return true;
     }
 
     /// <summary>
@@ -784,7 +789,11 @@ internal sealed class AssemblyVoteService(
         if (!IsDraftValid(draft)) return AssemblyVoteActionResult.Invalid;
 
         ApplyDraft(vote, draft, clock.GetCurrentInstant());
-        await repository.ReplaceOptionsAsync(vote, OptionsFor(vote.Id, draft), ct);
+
+        // Refused means the vote opened between the read above and this write, and content is
+        // immutable from that moment — the same answer the status check above would have given.
+        if (!await repository.ReplaceOptionsAsync(vote, OptionsFor(vote.Id, draft), ct))
+            return AssemblyVoteActionResult.WrongState;
 
         return AssemblyVoteActionResult.Ok;
     }
@@ -839,7 +848,10 @@ internal sealed class AssemblyVoteService(
         }
 
         vote.UpdatedAt = clock.GetCurrentInstant();
-        await repository.UpdateAsync(vote, ct);
+
+        // Refused means the vote opened while the translations were being fetched. Nothing was
+        // stored, so nothing was filled.
+        if (!await repository.UpdateAsync(vote, ct)) return 0;
 
         // Not audited, like the rest of draft authoring: a draft has no legal effect and the
         // Board can still rewrite every word. Open audits the content the electorate gets.
@@ -1057,8 +1069,13 @@ internal sealed class AssemblyVoteService(
         if (vote is null) return AssemblyVoteActionResult.NotFound;
         if (vote.Status != AssemblyVoteStatus.Open) return AssemblyVoteActionResult.WrongState;
 
-        await CloseAsync(vote, adminUserId, AuditAction.AssemblyVoteStopped,
-            $"Stopped assembly vote {vote.Id} before its announced closing time.", ct);
+        // Refused means the vote reached a terminal state first — its own lapse, or another
+        // admin's stop. The vote is closed either way, but not by this request.
+        if (!await CloseAsync(vote, adminUserId, AuditAction.AssemblyVoteStopped,
+                $"Stopped assembly vote {vote.Id} before its announced closing time.", ct))
+        {
+            return AssemblyVoteActionResult.WrongState;
+        }
 
         return AssemblyVoteActionResult.Ok;
     }
@@ -1077,7 +1094,10 @@ internal sealed class AssemblyVoteService(
         var previous = vote.ClosesAt;
         vote.ClosesAt = newClosesAt;
         vote.UpdatedAt = clock.GetCurrentInstant();
-        await repository.UpdateAsync(vote, ct);
+
+        // The vote closed between the read above and this write. Nothing was extended, and
+        // "only an open vote can be extended" is the honest answer.
+        if (!await repository.UpdateAsync(vote, ct)) return AssemblyVoteActionResult.WrongState;
 
         await audit.LogAsync(
             AuditAction.AssemblyVoteExtended, AuditEntityTypes.AssemblyVote, vote.Id,
@@ -1109,8 +1129,9 @@ internal sealed class AssemblyVoteService(
         vote.UpdatedAt = now;
 
         // No result is computed: a cancelled vote decided nothing, and the ballots stay only
-        // as a record that it was attempted.
-        await repository.UpdateAsync(vote, ct);
+        // as a record that it was attempted. A refused write means the vote closed first,
+        // and a closed vote is never cancelled out of its result.
+        if (!await repository.UpdateAsync(vote, ct)) return AssemblyVoteActionResult.WrongState;
 
         await ClearOpenNotificationAsync(vote, adminUserId, ct);
 

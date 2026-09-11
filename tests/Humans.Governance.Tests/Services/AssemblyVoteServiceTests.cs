@@ -951,4 +951,112 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         peek.AdminUserId.Should().Be(target,
             "the peek list is published on the results page and must name the surviving human");
     }
+
+    // ==========================================================================
+    // A snapshot taken before somebody else's transition never undoes it
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task UpdateAsync_WithASnapshotTakenBeforeTheVoteClosed_WritesNothing()
+    {
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(6));
+
+        // What an Admin's Extend or Cancel form would be holding: the vote as it was Open.
+        var stale = await _fx.Repository.GetByIdAsync(
+            vote.Id, Xunit.TestContext.Current.CancellationToken);
+        _fx.Db.ChangeTracker.Clear();
+
+        await _fx.Service.StopAsync(
+            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        _fx.Db.ChangeTracker.Clear();
+
+        var written = await _fx.Repository.UpdateAsync(
+            stale!, Xunit.TestContext.Current.CancellationToken);
+
+        written.Should().BeFalse();
+        var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
+            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.Status.Should().Be(AssemblyVoteStatus.Closed,
+            "a closed vote never reopens, whatever an earlier read was holding");
+        stored.ResultJson.Should().NotBeNull("and its stored tally is not blanked either");
+    }
+
+    [HumansFact]
+    public async Task UpdateAsync_WithALapseCloseReadBeforeAnExtend_WritesNothing()
+    {
+        var closesAt = _fx.Clock.GetCurrentInstant() + Duration.FromHours(1);
+        var vote = await _fx.AddVoteAsync(closesAt: closesAt);
+
+        var stale = await _fx.Repository.GetByIdAsync(
+            vote.Id, Xunit.TestContext.Current.CancellationToken);
+        _fx.Db.ChangeTracker.Clear();
+
+        await _fx.Service.ExtendAsync(
+            vote.Id, closesAt + Duration.FromHours(4), Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+        _fx.Db.ChangeTracker.Clear();
+
+        // The lapse sweep decided from the deadline it read, which the Extend has since moved.
+        stale!.Status = AssemblyVoteStatus.Closed;
+        stale.ClosedAt = closesAt;
+        stale.ClosedByUserId = null;
+
+        var written = await _fx.Repository.UpdateAsync(
+            stale, Xunit.TestContext.Current.CancellationToken);
+
+        written.Should().BeFalse();
+        var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
+            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.Status.Should().Be(AssemblyVoteStatus.Open,
+            "the extension is the newer fact, and the electorate was told the vote is still open");
+    }
+
+    [HumansFact]
+    public async Task ReplaceOptionsAsync_WithADraftEditReadBeforeTheVoteOpened_WritesNothing()
+    {
+        var vote = await _fx.AddVoteAsync(
+            status: AssemblyVoteStatus.Draft,
+            kind: AssemblyVoteKind.RankedChoice,
+            options: [("a", 0), ("b", 1)]);
+
+        var asociado = Guid.NewGuid();
+        _fx.StubActiveUsers(asociado);
+        _fx.Applications.GetActiveApprovedTierUserIdsAsync(
+                MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>([asociado]));
+
+        var stale = await _fx.Repository.GetByIdAsync(
+            vote.Id, Xunit.TestContext.Current.CancellationToken);
+        _fx.Db.ChangeTracker.Clear();
+
+        var opened = await _fx.Service.OpenAsync(
+            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        opened.Should().Be(AssemblyVoteActionResult.Ok);
+        _fx.Db.ChangeTracker.Clear();
+
+        var written = await _fx.Repository.ReplaceOptionsAsync(
+            stale!,
+            [new AssemblyVoteOption
+            {
+                Id = Guid.NewGuid(),
+                VoteId = vote.Id,
+                Key = "c",
+                Order = 0,
+                Label = new GovernanceLocalizedText(
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["en"] = "C" })
+            }],
+            Xunit.TestContext.Current.CancellationToken);
+
+        written.Should().BeFalse();
+        var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
+            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.Status.Should().Be(AssemblyVoteStatus.Open, "an edit never un-opens a vote");
+        var keys = await _fx.Db.AssemblyVoteOptions.AsNoTracking()
+            .Where(o => o.VoteId == vote.Id)
+            .Select(o => o.Key)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        keys.Should().BeEquivalentTo(["a", "b"],
+            "the electorate is already reading these options");
+    }
 }

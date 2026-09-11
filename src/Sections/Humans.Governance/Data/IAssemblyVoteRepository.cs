@@ -40,14 +40,21 @@ internal interface IAssemblyVoteRepository : IRepository
     /// <summary>Persists a new draft, including its authored options.</summary>
     Task AddAsync(AssemblyVote vote, CancellationToken ct = default);
 
-    /// <summary>Persists changes to an existing vote.</summary>
-    Task UpdateAsync(AssemblyVote vote, CancellationToken ct = default);
+    /// <summary>
+    /// Writes a vote snapshot back, under the row's lock. Returns false without writing when
+    /// the persisted row has moved on — it is already terminal in a different state, it has
+    /// opened since and this snapshot would put it back to Draft, or an Extend has pushed the
+    /// deadline past the one an automatic close read — so a snapshot taken before somebody
+    /// else's transition cannot undo it.
+    /// </summary>
+    Task<bool> UpdateAsync(AssemblyVote vote, CancellationToken ct = default);
 
     /// <summary>
-    /// Replaces a draft's authored options wholesale, then persists the vote. Draft-only;
-    /// options are immutable once the vote opens.
+    /// Replaces a draft's authored options wholesale, then persists the vote, under the row's
+    /// lock. Draft-only; options are immutable once the vote opens, so an edit that arrives
+    /// after the vote has opened returns false and writes nothing.
     /// </summary>
-    Task ReplaceOptionsAsync(
+    Task<bool> ReplaceOptionsAsync(
         AssemblyVote vote, IReadOnlyList<AssemblyVoteOption> options, CancellationToken ct = default);
 
     /// <summary>Deletes a draft and its options. Never called for a vote that has opened.</summary>
