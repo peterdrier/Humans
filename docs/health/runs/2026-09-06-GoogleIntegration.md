@@ -13,18 +13,18 @@ loc=12389, cogP95=9, cogMax=27 in `GoogleResourceReconciliationJob.ExecuteAsync`
 maxClassLoc=1778 in `GoogleWorkspaceSyncService`). The target shape
 ([`health.md`](../../../src/Sections/Humans.GoogleIntegration/Docs/health.md), written this run
 before any scan) finds the structure right as built — outbox + drain, one reconciler per
-resource kind, a workspace-admin facade, connector interfaces with stubs — and names two
-things it should not be: three public interfaces carrying methods no outside caller asks
+resource kind, a workspace-admin facade, connector interfaces with stubs — and names what it
+should not be: public interfaces carrying methods no outside caller asks
 (finding 13), and a facade that is also the Drive reconciler (load-bearing, noted).
 
-One behavior bug (finding 1: both drift notifications linked admins to a route deleted when
-the sync screens moved under `/Google`). Two small shape defects (findings 2, 3) and one dead
+A behavior bug (finding 1: both drift notifications linked admins to a route deleted when
+the sync screens moved under `/Google`). Small shape defects (findings 2, 3) and a dead
 resx key (finding 4). Everything else the section carried was prose written *during* the
 G5/§15 migration and never rewritten for the code as it stands: project names that no longer
 exist, "coming in Part 2b" on connectors that shipped, a 63-line lane chronicle in the
-Contracts csproj, a Status paragraph false in three places (findings 8, 9, 10). The
-second-opinion reviewer approved the three non-mechanical strikes (5, 7, 12) with conditions,
-all applied. The target's own §4 was wrong twice on first writing (finding 11) — caught by the
+Contracts csproj, a Status paragraph contradicted by the code (findings 8, 9, 10). The
+second-opinion reviewer approved the non-mechanical strikes (5, 7, 12) with conditions,
+all applied. The target's own §4 was wrong on first writing (finding 11) — caught by the
 Tests thread, corrected.
 
 ## Ranked findings
@@ -36,24 +36,24 @@ Value = bug surface removed, then concepts removed, then words removed.
 | 1 | **`GoogleResourceReconciliationJob` sent both Admin drift notifications with `actionUrl: "/Admin/GoogleSync"`**, a route the section's own feature doc records as removed; the live page is `/Google/Sync`. Fixed with a test; `Humans.Users/Docs/features/profiles.md` narrated the same dead route and was corrected. | high | **worked** |
 | 2 | **`TeamSyncViewModel` was an empty class** passed to `Sync.cshtml`, which never reads `Model`. Deleted. | low | **worked** |
 | 3 | **`GoogleController.SyncSettings` / `SyncOutbox` re-injected `[FromServices] IUserServiceRead`**, shadowing the base controller's `UserService`. Dropped. | low | **worked** |
-| 4 | **`GoogleAccounts_ResetPasswordConfirm` had no renderer** in any view; two comments counted "three keys". Removed from all six cultures; comments say two. | low | **worked** |
+| 4 | **`GoogleAccounts_ResetPasswordConfirm` had no renderer** in any view; the comments that tallied the section's keys were stale. Removed from all six cultures, and those comments corrected. | low | **worked** |
 | 5 | **`ITeamResourceService.LinkDriveFolderAsync` / `LinkDriveFileAsync` had no caller outside `TeamResourceService`** (`LinkDriveResourceAsync` dispatches on URL shape). Made private; feature doc names the dispatcher. Reviewer: approve with condition (doc sweep) — applied. | med | **worked** |
 | 6 | **`tests/.../Infrastructure/UserInfoProjection.cs` reported as zero-reference.** False: its `ToUserInfo` extension is called by name from `GoogleAdminServiceTests`. The deletion broke the build and was reverted before push. | — | **not a defect** |
 | 7 | **Two per-type SDK-containment tests are subsumed** by `GoogleWorkspaceSyncBridgeArchitectureTests.SectionServiceLayer_NamesNoGoogleSdkType`, which sweeps the same namespace and guards against an empty sweep. Deleted in-run on the second-opinion reviewer's approval, then restored in review round 3: `brief-before-retiring-guardrails` requires Peter's go before any architecture test retires, and the reviewer's approval is not that. Peter gave the go on the brief (2026-09-11): both deleted, the sweep is the only containment assertion now, and the invariant doc's architecture-tests bullet names the real files. | med | **worked** |
-| 8 | **Stale doc claims:** a `/Google/FixEmailRename` route row with no action; `google_sync_outbox_events` as the table name (three sites); `IGoogleSyncOutboxProcessor` remarks placing the job "in Contracts/"; connectors "in Humans.Infrastructure"; `GoogleWorkspaceOptions` "lives in Humans.Base.Configuration"; `EmailProvisioningService` "used by HumanController"; `/Teams/Sync` as current; `FailedPermanently` doc missing 403; provisioning doc triggered on `AdminController.cs`, which names nothing of it; the invariant doc's triggers missing four cross-section files it asserts about. All fixed. | med | **worked** |
-| 9 | **Migration history in comments and docs:** the Contracts csproj lane chronicle, the `SyncAction` reverted-lane saga, job remarks "moved out of Humans.Infrastructure", "§15 Part 2b" / "Humans.Application" across the seven connector interfaces, their implementations and stubs, the invariant doc's Status paragraph and "pending targets" subsection, the feature docs' "formerly at" lines, test-file "old assertion" comments. Cut; the Hangfire serialization landmine, the Directory-API-adds-external-addresses note, `SupportsAllDrives`, and the leaf's two load-bearing absences stay. | med | **worked** |
-| 10 | **Restating comments:** ten `GoogleResource` property docs repeating the property name, `// ====` region banners in two repositories and `IGoogleSyncService`, six `// Phase N` labels beside self-describing calls, a numbered step list, two Razor region markers. Cut. | low | **worked** |
+| 8 | **Stale doc claims:** a `/Google/FixEmailRename` route row with no action; `google_sync_outbox_events` as the table name, wherever it appeared; `IGoogleSyncOutboxProcessor` remarks placing the job "in Contracts/"; connectors "in Humans.Infrastructure"; `GoogleWorkspaceOptions` "lives in Humans.Base.Configuration"; `EmailProvisioningService` "used by HumanController"; `/Teams/Sync` as current; `FailedPermanently` doc missing 403; provisioning doc triggered on `AdminController.cs`, which names nothing of it; the invariant doc's triggers missing the cross-section files it asserts about. All fixed. | med | **worked** |
+| 9 | **Migration history in comments and docs:** the Contracts csproj lane chronicle, the `SyncAction` reverted-lane saga, job remarks "moved out of Humans.Infrastructure", "§15 Part 2b" / "Humans.Application" across the connector interfaces, their implementations and stubs, the invariant doc's Status paragraph and "pending targets" subsection, the feature docs' "formerly at" lines, test-file "old assertion" comments. Cut; the Hangfire serialization landmine, the Directory-API-adds-external-addresses note, `SupportsAllDrives`, and the leaf's load-bearing absences stay. | med | **worked** |
+| 10 | **Restating comments:** `GoogleResource` property docs repeating the property name, `// ====` region banners in the repositories and `IGoogleSyncService`, `// Phase N` labels beside self-describing calls, a numbered step list, Razor region markers. Cut. | low | **worked** |
 | 11 | **The target shape's §4 was wrong twice:** it said admin-triggered actions bypass sync mode (the invariant doc and a passing test say mode gates every Execute) and that all `/Google/*` deny non-Admin (Sync/Preview admit TeamsAdmin and Board; ProvisionEmail admits HumanAdmin). Corrected, plus the run-derivation subtitle dropped per peterdrier/Humans#1590. | med | **worked** |
-| 12 | **`GoogleWorkspaceUserServiceTests`: six of seven tests asserted the substitute they arranged.** Collapsed to the blank-last-name guard plus the `ProvisionAccountAsync` forwarding smoke (five same-typed strings, where a swap compiles). Reviewer: approve with condition — applied. | low | **worked** |
+| 12 | **`GoogleWorkspaceUserServiceTests`: all but one test asserted the substitute they arranged.** Collapsed to the blank-last-name guard plus the `ProvisionAccountAsync` forwarding smoke (same-typed string parameters, where a swap compiles). Reviewer: approve with condition — applied. | low | **worked** |
 | 13 | **Over-exposed public interfaces:** most of `IGoogleSyncService` and `ITeamResourceService`, and part of `IGoogleGroupSync`, have no caller outside the section. The shapes table wants one internal interface per reconciler and a leaf carrying only what Teams, Users, Monitor, Surveys and Notifications ask. Rearch, its own PR — Peter (2026-09-11): filed as nobodies-collective/Humans#1180. | high | **filed** |
-| 14 | **Conformance `section-file-layout` flags `Health/`** at the project root; five sections carry it (Agent, Email, Guide, Tickets, GoogleIntegration). The allow-set is behind, not the sections; conformance rows change only at Peter's direction. Peter (2026-09-11): add it. Already added by /section-doctor on Tickets (peterdrier/Humans#1589) and carried in on this branch's base merge — no edit needed here. | low | **worked elsewhere** |
-| 15 | **`resource-key-prefix`:** the section's two keys use `GoogleAccounts_`, not `GoogleIntegration_`. Backlog, count only. | low | **no change** |
-| 16 | **`Docs/features/drive-activity-monitoring.md` documents a feature Monitor owns end to end** (service, job, schedule); its home is Monitor's `Docs/features/`. Cross-section move — Peter (2026-09-11): move it. Moved, with the four inbound links repointed (`docs/README.md`, `docs/features/global/background-jobs.md`, AuditLog's and GoogleIntegration's feature docs). | low | **worked** |
+| 14 | **Conformance `section-file-layout` flags `Health/`** at the project root; Agent, Email, Guide, Tickets and GoogleIntegration carry it. The allow-set is behind, not the sections; conformance rows change only at Peter's direction. Peter (2026-09-11): add it. Already added by /section-doctor on Tickets (peterdrier/Humans#1589) and carried in on this branch's base merge — no edit needed here. | low | **worked elsewhere** |
+| 15 | **`resource-key-prefix`:** the section's keys use `GoogleAccounts_`, not `GoogleIntegration_`. Backlog, count only. | low | **no change** |
+| 16 | **`Docs/features/drive-activity-monitoring.md` documents a feature Monitor owns end to end** (service, job, schedule); its home is Monitor's `Docs/features/`. Cross-section move — Peter (2026-09-11): move it. Moved, with its inbound links repointed (`docs/README.md`, `docs/features/global/background-jobs.md`, AuditLog's and GoogleIntegration's feature docs) and its own sibling link to `google-integration.md` made relative to GoogleIntegration. | low | **worked** |
 | 17 | **Test gaps with a positive pin available:** the processor's permanent-failure path (400/403/404 parks without retry and marks the address Rejected), per-event requeue, valid-after-real-add on the drain path, the provisioning audit entry, `Section.ConfigureServices` real-vs-stub by credentials, a per-action `[Authorize]` table for `GoogleController`. `GoogleWorkspaceSyncBridgeDependencyInjectionTests` asserts its own registrations, not `Section.cs`. | med | **queued** |
-| 18 | **`Humans.Base/Resources/SharedResource*.resx` carries ten dead `GoogleSync_*` / `AdminGoogleSync_*` keys** (nothing renders them). Base's set — sweep queue. | low | **queued** |
+| 18 | **`Humans.Base/Resources/SharedResource*.resx` carries dead `GoogleSync_*` / `AdminGoogleSync_*` keys** (nothing renders them). Base's set — sweep queue. | low | **queued** |
 | 19 | **`Views/Google/Index.cshtml` renders `<vc:access-matrix section="Google" />` to nothing:** `AccessMatrixDefinitions` has no "Google" entry. Content gap — Peter (2026-09-11): remove for now. Tag and its explanatory comment dropped from the view. | low | **worked** |
 | 20 | **Ledger seams confirmed still open:** `SyncExecute` reconciles inline on the request thread; `GoogleWorkspaceHealthCheck` calls `Google.Apis` directly; no `ITeamResourceServiceRead` for the Teams and Monitor reads. Already in `debt-ledger.yml`; recorded as seams in `health.md` §5. | — | **no change** |
-| 21 | **Inbox:** seven open issues on peterdrier/Humans, none section-tagged (six section-doctor skill issues, one repo-wide localization sweep report). No verdicts to give. In-app issues not reachable from the cloud container. | — | **no change** |
+| 21 | **Inbox:** the open issues on peterdrier/Humans are section-doctor skill issues plus a repo-wide localization sweep report; none section-tagged. No verdicts to give. In-app issues not reachable from the cloud container. | — | **no change** |
 | 22 | **Lesson (Phase 3, Tests thread — proposed edit):** a "zero references" claim on a file must grep its public member names as well as its type names; extension methods are called by method name and the type never appears at a call site (finding 6 shipped as "dead" on a type-name grep). Peter (2026-09-11): no — the build caught it, and atoms like this are a bad use of context. | — | **declined** |
 
 ## Worked
@@ -74,7 +74,7 @@ Findings 1–5, 7–12, one commit per strike, after the target shape:
 - `doctor(GoogleIntegration): collapse GoogleWorkspaceUserService forwarding tests` — finding 12.
 - `doctor(GoogleIntegration): correct the target shape` — finding 11.
 
-Surfaces hit: **localization** — one key removed from all six cultures by exact-string
+Surfaces hit: **localization** — the dead key removed from every culture by exact-string
 replacement ([`resx-value-edits`](../../../memory/process/resx-value-edits.md)); parity tests
 pass. **Authorization** — no behavior change; the contract narrowing (finding 5) leaves
 `LinkDriveResourceAsync`, the only entry `TeamAdminController` uses, in place.
@@ -82,9 +82,11 @@ pass. **Authorization** — no behavior change; the contract narrowing (finding 
 **Invariant doc** — `GoogleIntegration.md` corrected (route table, triggers, architecture-tests
 bullet, history cut) and consistent with the struck code. **Migrations** — none; no schema
 change. **Navigation** — the drift notification now reaches a live page (finding 1).
-**Tests** — one added (finding 1), eight deleted (findings 7, 12); the section project passes
+**Tests** — the dead-route regression added (finding 1); the subsumed SDK-containment tests
+and the `GoogleWorkspaceUserServiceTests` substitute-asserting tests deleted (findings 7, 12);
+the section project passes
 (`dotnet test tests/Humans.GoogleIntegration.Tests`), and `tests/Humans.Teams.Tests` builds
-against the narrowed contract. View changes are a dropped `@model` line and two Razor
+against the narrowed contract. View changes are a dropped `@model` line and Razor
 comments; render tests for these pages live in `Humans.Integration.Tests`, local-only.
 
 ## Skipped
@@ -117,7 +119,7 @@ Independence check: pass.
 ## Retro
 
 **What the selector/rubric got wrong:** nothing wrong, one thing worth knowing. The
-"median never-doctored by reforge score" pick landed on a section eleven times the size of the
+"median never-doctored by reforge score" pick landed on a section far larger than the
 previous pick (Settings, loc=1096). The budget held only because the strikes were
 comment- and doc-heavy; a section this size with real behavior debt would not fit 2.5h.
 
@@ -135,12 +137,12 @@ inside the files — `IGoogleSyncOutboxRepository`'s remarks and `IGoogleSyncSer
 `GetPending` doc carried Part 1 / Part 2c / #554 narration the History thread had not
 listed. On a 110-file section a single History thread saturates around twenty items; the
 striker has to read the whole file it is in, not just the flagged lines. And the target shape
-written before the scan absorbed two wrong invariants from the section's own older prose
+written before the scan absorbed wrong invariants from the section's own older prose
 (finding 11) — the thread cross-check is what caught them.
 
 **Target diff:** none possible — first doctor pass; `health.md` was written this run.
 
-Two auto-compactions occurred (mid-Phase 3 assessment, mid-Phase 4); Phase 5's mandatory
+Auto-compaction hit mid-Phase 3 assessment and mid-Phase 4; Phase 5's mandatory
 re-read of Phases 5–7 was applied after the second.
 
 ## Needs Peter
@@ -149,17 +151,17 @@ All answered by Peter on 2026-09-11.
 
 - [x] 13 — split `IGoogleSyncService` / `ITeamResourceService` / `IGoogleGroupSync` into internal reconciler interfaces plus a narrowed leaf. **File an issue to fix** → nobodies-collective/Humans#1180.
 - [x] 14 — add `Health/` to `section-file-layout`'s allow-set. **Add.** Already added by /section-doctor on Tickets (peterdrier/Humans#1589); carried in on this branch's base merge.
-- [x] 16 — move `drive-activity-monitoring.md` to Monitor's `Docs/features/`. **Move.** Done, four inbound links repointed.
+- [x] 16 — move `drive-activity-monitoring.md` to Monitor's `Docs/features/`. **Move.** Done, inbound links repointed and the spec's own sibling link to `google-integration.md` corrected for its new depth.
 - [x] 19 — a "Google" entry in `AccessMatrixDefinitions`, or drop the tag from `/Google`. **Remove for now.** Tag dropped from `Views/Google/Index.cshtml`.
 - [x] 22 — make the "zero references must grep member names too" lesson a `memory/` atom. **No** — the build caught it, and atoms like this are a bad use of context.
-- [x] 7 — retire the two subsumed per-type SDK-containment tests. **Go.** `GoogleIntegrationArchitectureTests.cs` deleted and `GoogleWorkspaceUserService_DoesNotReferenceGoogleSdkTypes` removed; `GoogleWorkspaceSyncBridgeArchitectureTests.SectionServiceLayer_NamesNoGoogleSdkType` is the containment assertion, and the invariant doc's architecture-tests bullet names the real files.
+- [x] 7 — retire the subsumed per-type SDK-containment tests. **Go.** `GoogleIntegrationArchitectureTests.cs` deleted and `GoogleWorkspaceUserService_DoesNotReferenceGoogleSdkTypes` removed; `GoogleWorkspaceSyncBridgeArchitectureTests.SectionServiceLayer_NamesNoGoogleSdkType` is the containment assertion, and the invariant doc's architecture-tests bullet names the real files.
 - [x] Skill gap behind 7: the section-doctor reviewer gate never routes a guardrail retirement through `brief-before-retiring-guardrails` — peterdrier/Humans#1600.
 - [x] `Section.cs` throws in Production without Google credentials, against the hard rule `no-startup-guards`. **File an issue to fix** → nobodies-collective/Humans#1179.
 
 ## Sweep queue
 
 - debt: GoogleIntegration — test gaps with a positive pin available: the processor's permanent-failure path (400/403/404 parks without retry and marks the address Rejected), per-event requeue, valid-after-real-add on the drain path, the provisioning audit entry, `Section.ConfigureServices` real-vs-stub by credentials, a per-action `[Authorize]` table for `GoogleController` (finding 17, 2026-09-06-GoogleIntegration)
-- debt: Base — `src/Humans.Base/Resources/SharedResource*.resx` carries ten dead `GoogleSync_*` / `AdminGoogleSync_*` keys that nothing renders; deletable under `localization-admin-exempt` (finding 18, 2026-09-06-GoogleIntegration)
+- debt: Base — `src/Humans.Base/Resources/SharedResource*.resx` carries dead `GoogleSync_*` / `AdminGoogleSync_*` keys that nothing renders; deletable under `localization-admin-exempt` (finding 18, 2026-09-06-GoogleIntegration)
 
 ## File coverage
 
