@@ -2,6 +2,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Base.Constants;
 using Humans.Email.Contracts;
 using Humans.Auth.Contracts;
+using Humans.GoogleIntegration.Contracts;
 using Humans.Governance.Data;
 using Humans.Governance.Domain;
 using Humans.Governance.Services;
@@ -41,6 +42,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
     public readonly IEmailMessageFactory Messages = Substitute.For<IEmailMessageFactory>();
     public readonly INotificationEmitter Notifications = Substitute.For<INotificationEmitter>();
     public readonly INotificationAutoResolve NotificationResolve = Substitute.For<INotificationAutoResolve>();
+    public readonly IGoogleTranslationService Translation = Substitute.For<IGoogleTranslationService>();
 
     private readonly TestDbContextFactory<GovernanceDbContext> _factory =
         new(new DbContextOptionsBuilder<GovernanceDbContext>()
@@ -82,6 +84,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
             Notifications,
             NotificationResolve,
             Audit,
+            Translation,
             Clock,
             NullLogger<AssemblyVoteService>.Instance);
     }

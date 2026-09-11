@@ -8,6 +8,7 @@ using Humans.Base.Constants;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
+using Humans.GoogleIntegration.Contracts;
 using Humans.Governance.Data;
 using Humans.Governance.Domain;
 using Humans.Governance.Services.Dtos;
@@ -36,6 +37,7 @@ internal sealed class AssemblyVoteService(
     INotificationEmitter notifications,
     INotificationAutoResolve notificationResolve,
     IAuditLogService audit,
+    IGoogleTranslationService translation,
     IClock clock,
     ILogger<AssemblyVoteService> logger)
     : IAssemblyVoteService, IUserDataContributor, IUserMerge
@@ -676,6 +678,73 @@ internal sealed class AssemblyVoteService(
         await repository.ReplaceOptionsAsync(vote, OptionsFor(vote.Id, draft), ct);
 
         return AssemblyVoteActionResult.Ok;
+    }
+
+    public async Task<int> PreFillTranslationsAsync(
+        Guid voteId, IReadOnlyList<string> targetCultures, Guid actorUserId,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(targetCultures);
+
+        var vote = await repository.GetByIdAsync(voteId, ct);
+        if (vote is null) return 0;
+        // Draft-only, same reason content is: translating a motion the electorate is already
+        // voting on would change what some members read mid-vote.
+        if (vote.Status != AssemblyVoteStatus.Draft) return 0;
+
+        var source = vote.OfficialCulture;
+
+        // Every authored text as a mutable bag, so one batched call per culture fills them all.
+        var title = Copy(vote.Title);
+        var officialText = Copy(vote.OfficialText);
+        var options = vote.Options.Select(o => new { Option = o, Label = Copy(o.Label) }).ToList();
+
+        List<Dictionary<string, string>> all = [title, officialText, .. options.Select(o => o.Label)];
+
+        var filled = 0;
+        foreach (var target in targetCultures.Where(
+                     t => !string.Equals(t, source, StringComparison.OrdinalIgnoreCase)))
+        {
+            // Blanks only. Authored text is never overwritten — the Board's own wording in any
+            // culture outranks a machine's, and the official culture stays the binding version.
+            var pending = all.Where(d => HasText(d, source) && !HasText(d, target)).ToList();
+            if (pending.Count == 0) continue;
+
+            var translated = await translation.TranslateAsync(
+                [.. pending.Select(d => d[source])], source, target, ct);
+            for (var i = 0; i < pending.Count; i++)
+            {
+                pending[i][target] = translated[i];
+            }
+
+            filled += pending.Count;
+        }
+
+        if (filled == 0) return 0;
+
+        vote.Title = new GovernanceLocalizedText(title);
+        vote.OfficialText = new GovernanceLocalizedText(officialText);
+        foreach (var o in options)
+        {
+            o.Option.Label = new GovernanceLocalizedText(o.Label);
+        }
+
+        vote.UpdatedAt = clock.GetCurrentInstant();
+        await repository.UpdateAsync(vote, ct);
+
+        // Not audited, like the rest of draft authoring: a draft has no legal effect and the
+        // Board can still rewrite every word. Open audits the content the electorate gets.
+        logger.LogInformation(
+            "Assembly vote {VoteId}: pre-filled {Count} missing translations from {Source} for {ActorUserId}",
+            vote.Id, filled, source, actorUserId);
+
+        return filled;
+
+        static Dictionary<string, string> Copy(GovernanceLocalizedText text) =>
+            new(text.Values, StringComparer.OrdinalIgnoreCase);
+
+        static bool HasText(Dictionary<string, string> values, string culture) =>
+            values.TryGetValue(culture, out var v) && !string.IsNullOrWhiteSpace(v);
     }
 
     public async Task<AssemblyVoteActionResult> DeleteDraftAsync(

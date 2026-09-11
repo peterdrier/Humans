@@ -613,6 +613,18 @@
   <data name="Votes_TieBreakExplanation" xml:space="preserve">
     <value>Gleichstände beim Ausscheiden werden zuerst durch die wenigsten Stimmen in der Vorrunde, dann durch die Reihenfolge der Optionen bei der Erstellung entschieden.</value>
   </data>
+  <data name="Votes_Note_NoMajority" xml:space="preserve">
+    <value>Keine Option erreichte eine Mehrheit der verbliebenen Stimmzettel.</value>
+  </data>
+  <data name="Votes_Note_DecidingRoundLevel" xml:space="preserve">
+    <value>Die entscheidende Runde endete gleichauf; nach Art. 10.2 der Satzung entscheidet die Stimme des Präsidenten, die im Protokoll festgehalten wird.</value>
+  </data>
+  <data name="Votes_Note_TieBrokenByPreviousRound" xml:space="preserve">
+    <value>Runde {0}: {1} Optionen gleichauf für das Ausscheiden; entschieden nach den wenigsten Stimmen in der Vorrunde.</value>
+  </data>
+  <data name="Votes_Note_TieBrokenByAuthoredOrder" xml:space="preserve">
+    <value>Runde {0}: {1} Optionen gleichauf für das Ausscheiden; entschieden nach der angelegten Reihenfolge der Optionen.</value>
+  </data>
   <data name="Votes_TieBreakNotesHeading" xml:space="preserve">
     <value>Hinweise zum Stichentscheid</value>
   </data>

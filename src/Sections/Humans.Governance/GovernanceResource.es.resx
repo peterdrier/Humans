@@ -613,6 +613,18 @@
   <data name="Votes_TieBreakExplanation" xml:space="preserve">
     <value>Los empates para eliminar se deshacen por el menor número de votos en la ronda anterior y, después, por el orden en que se redactaron las opciones.</value>
   </data>
+  <data name="Votes_Note_NoMajority" xml:space="preserve">
+    <value>Ninguna opción obtuvo la mayoría de los votos que seguían en juego.</value>
+  </data>
+  <data name="Votes_Note_DecidingRoundLevel" xml:space="preserve">
+    <value>La ronda decisiva quedó empatada; conforme al art. 10.2 de los estatutos, el empate lo resuelve el voto de calidad del Presidente, que se recoge en el acta.</value>
+  </data>
+  <data name="Votes_Note_TieBrokenByPreviousRound" xml:space="preserve">
+    <value>Ronda {0}: {1} opciones empatadas para la eliminación; se deshizo por el menor número de votos en la ronda anterior.</value>
+  </data>
+  <data name="Votes_Note_TieBrokenByAuthoredOrder" xml:space="preserve">
+    <value>Ronda {0}: {1} opciones empatadas para la eliminación; se deshizo por el orden en que se redactaron las opciones.</value>
+  </data>
   <data name="Votes_TieBreakNotesHeading" xml:space="preserve">
     <value>Notas de desempate</value>
   </data>

@@ -613,6 +613,18 @@
   <data name="Votes_TieBreakExplanation" xml:space="preserve">
     <value>La parità per l'eliminazione viene risolta prima in base al minor numero di voti nel turno precedente, poi in base all'ordine in cui le opzioni sono state redatte.</value>
   </data>
+  <data name="Votes_Note_NoMajority" xml:space="preserve">
+    <value>Nessuna opzione ha ottenuto la maggioranza delle schede ancora in gioco.</value>
+  </data>
+  <data name="Votes_Note_DecidingRoundLevel" xml:space="preserve">
+    <value>Il turno decisivo è finito in parità; ai sensi dell'art. 10.2 dello statuto la parità è risolta dal voto di qualità del Presidente, riportato nel verbale.</value>
+  </data>
+  <data name="Votes_Note_TieBrokenByPreviousRound" xml:space="preserve">
+    <value>Turno {0}: {1} opzioni a pari merito per l'eliminazione; risolto con il minor numero di voti nel turno precedente.</value>
+  </data>
+  <data name="Votes_Note_TieBrokenByAuthoredOrder" xml:space="preserve">
+    <value>Turno {0}: {1} opzioni a pari merito per l'eliminazione; risolto con l'ordine in cui le opzioni sono state redatte.</value>
+  </data>
   <data name="Votes_TieBreakNotesHeading" xml:space="preserve">
     <value>Note sullo spareggio</value>
   </data>

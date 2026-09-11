@@ -613,6 +613,18 @@
   <data name="Votes_TieBreakExplanation" xml:space="preserve">
     <value>Els empats per eliminar es desfan primer pel menor nombre de vots a la ronda anterior i després per l'ordre en què es van redactar les opcions.</value>
   </data>
+  <data name="Votes_Note_NoMajority" xml:space="preserve">
+    <value>Cap opció no va obtenir la majoria dels vots que continuaven en joc.</value>
+  </data>
+  <data name="Votes_Note_DecidingRoundLevel" xml:space="preserve">
+    <value>La ronda decisiva va quedar empatada; d'acord amb l'art. 10.2 dels estatuts, l'empat el resol el vot de qualitat del President, que es recull a l'acta.</value>
+  </data>
+  <data name="Votes_Note_TieBrokenByPreviousRound" xml:space="preserve">
+    <value>Ronda {0}: {1} opcions empatades per a l'eliminació; es va desfer pel menor nombre de vots a la ronda anterior.</value>
+  </data>
+  <data name="Votes_Note_TieBrokenByAuthoredOrder" xml:space="preserve">
+    <value>Ronda {0}: {1} opcions empatades per a l'eliminació; es va desfer per l'ordre en què es van redactar les opcions.</value>
+  </data>
   <data name="Votes_TieBreakNotesHeading" xml:space="preserve">
     <value>Notes de desempat</value>
   </data>

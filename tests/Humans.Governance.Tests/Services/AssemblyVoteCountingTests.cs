@@ -168,7 +168,8 @@ public sealed class AssemblyVoteCountingTests
         rounds.Should().HaveCount(3);
         rounds[0].EliminatedKey.Should().Be("d");
         rounds[1].EliminatedKey.Should().Be("c");
-        notes.Should().ContainSingle(n => n.Contains("previous round", StringComparison.Ordinal));
+        notes.Should().ContainSingle()
+            .Which.Should().Be(new AssemblyVoteNote(AssemblyVoteNoteKind.TieBrokenByPreviousRound, 2, 2));
         winner.Should().Be("b");
         verdict.Should().Be(AssemblyVoteVerdict.Passed);
     }
@@ -185,7 +186,8 @@ public sealed class AssemblyVoteCountingTests
         var (rounds, _, _, notes) = AssemblyVoteCounting.CountInstantRunoff(ballots, options);
 
         rounds[0].EliminatedKey.Should().Be("b");
-        notes.Should().ContainSingle(n => n.Contains("authored option order", StringComparison.Ordinal));
+        notes.Should().ContainSingle()
+            .Which.Should().Be(new AssemblyVoteNote(AssemblyVoteNoteKind.TieBrokenByAuthoredOrder, 1, 2));
     }
 
     [HumansFact]
@@ -201,7 +203,8 @@ public sealed class AssemblyVoteCountingTests
         rounds[0].WinnerKey.Should().BeNull();
         winner.Should().BeNull();
         verdict.Should().Be(AssemblyVoteVerdict.Tie);
-        notes.Should().ContainSingle(n => n.Contains("level", StringComparison.Ordinal));
+        notes.Should().ContainSingle()
+            .Which.Should().Be(new AssemblyVoteNote(AssemblyVoteNoteKind.DecidingRoundLevel, 1, 2));
     }
 
     [HumansFact]

@@ -82,7 +82,7 @@ internal static class AssemblyVoteCounting
     /// winner is exactly what Art. 10.2 reserves for the President.
     /// </remarks>
     public static (IReadOnlyList<InstantRunoffRound> Rounds, string? WinnerKey,
-        AssemblyVoteVerdict Verdict, IReadOnlyList<string> Notes) CountInstantRunoff(
+        AssemblyVoteVerdict Verdict, IReadOnlyList<AssemblyVoteNote> Notes) CountInstantRunoff(
         IReadOnlyCollection<CountableBallot> ballots,
         IReadOnlyList<AssemblyVoteOption> options)
     {
@@ -101,7 +101,7 @@ internal static class AssemblyVoteCounting
             .ToList();
 
         var rounds = new List<InstantRunoffRound>();
-        var notes = new List<string>();
+        var notes = new List<AssemblyVoteNote>();
         var previousCounts = new Dictionary<string, int>(StringComparer.Ordinal);
         var totalBallots = ballots.Count;
 
@@ -140,7 +140,7 @@ internal static class AssemblyVoteCounting
                 // One option left and it still holds no majority: every ballot that ranked
                 // it is gone, so there is nothing to declare.
                 rounds.Add(new InstantRunoffRound(roundNumber, counts, exhausted, null, null));
-                notes.Add("No option held a majority of continuing ballots.");
+                notes.Add(new AssemblyVoteNote(AssemblyVoteNoteKind.NoMajority, 0, 0));
                 return (rounds, null, AssemblyVoteVerdict.Tie, notes);
             }
 
@@ -152,8 +152,7 @@ internal static class AssemblyVoteCounting
             if (continuing.Count == 2 && tiedForElimination.Count == 2)
             {
                 rounds.Add(new InstantRunoffRound(roundNumber, counts, exhausted, null, null));
-                notes.Add("The deciding round was level; under statutes Art. 10.2 the tie is "
-                          + "resolved by the President's casting vote, recorded in the acta.");
+                notes.Add(new AssemblyVoteNote(AssemblyVoteNoteKind.DecidingRoundLevel, roundNumber, 2));
                 return (rounds, null, AssemblyVoteVerdict.Tie, notes);
             }
 
@@ -175,7 +174,7 @@ internal static class AssemblyVoteCounting
         Dictionary<string, int> previousCounts,
         Dictionary<string, int> authoredOrder,
         int roundNumber,
-        List<string> notes)
+        List<AssemblyVoteNote> notes)
     {
         if (tied.Count == 1) return tied[0];
 
@@ -185,16 +184,16 @@ internal static class AssemblyVoteCounting
             var stillTied = tied.Where(k => previousCounts.GetValueOrDefault(k) == fewestBefore).ToList();
             if (stillTied.Count == 1)
             {
-                notes.Add($"Round {roundNumber}: {tied.Count} options tied for elimination; "
-                          + "broken by fewest votes in the previous round.");
+                notes.Add(new AssemblyVoteNote(
+                    AssemblyVoteNoteKind.TieBrokenByPreviousRound, roundNumber, tied.Count));
                 return stillTied[0];
             }
 
             tied = stillTied;
         }
 
-        notes.Add($"Round {roundNumber}: {tied.Count} options tied for elimination; "
-                  + "broken by authored option order.");
+        notes.Add(new AssemblyVoteNote(
+            AssemblyVoteNoteKind.TieBrokenByAuthoredOrder, roundNumber, tied.Count));
         return tied.OrderBy(k => authoredOrder.GetValueOrDefault(k, int.MaxValue), Comparer<int>.Default)
             .First();
     }

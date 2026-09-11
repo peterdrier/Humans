@@ -46,6 +46,7 @@ Sources: Ley Orgánica 1/2002 reguladora del Derecho de Asociación; the associa
 - Fields: title and official text per culture (Markdown, sanitized), a required `OfficialCulture` whose text is the binding one (others are labelled as translations), optional information link, `Kind` (YesNo or RankedChoice), options for RankedChoice (stable key + per-culture label, authored order), `RequiredMajority`, `IndicativeAudience` (None / Colaboradores / AllMembers), `BallotDisclosure`, `ClosesAt` (Instant, shown in Europe/Madrid), optional `AssemblyDate` (LocalDate, for the acta).
 - YesNo votes have fixed options Yes / No / Abstain. RankedChoice votes have at least two authored options and an Abstain flag on the ballot.
 - Draft is editable and deletable. Opening locks everything except `ClosesAt`.
+- **Save & translate blanks** machine-fills the cultures the author left empty from the vote's `OfficialCulture`, via `IGoogleTranslationService` (the same assist Surveys authoring uses). Blanks only — authored text in any culture is never overwritten — and draft-only, because translating a motion the electorate is already reading would change what some members see mid-vote. The official-culture text stays the binding one; the fills are an authoring aid the Board reviews before opening.
 
 ### US-V2: Admin opens the vote
 

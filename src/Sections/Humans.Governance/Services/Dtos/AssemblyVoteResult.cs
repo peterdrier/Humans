@@ -32,7 +32,8 @@ internal sealed record AssemblyVoteResult(
 /// <param name="Verdict">The outcome. A tie is reported, never resolved.</param>
 /// <param name="Notes">
 /// Tie-break steps actually applied, in the order applied, so the page can disclose how a
-/// close elimination was decided.
+/// close elimination was decided. Structured, not prose: the results page is member-facing
+/// and renders these in the viewer's culture.
 /// </param>
 [method: JsonConstructor]
 internal sealed record AssemblyVoteAudienceResult(
@@ -42,7 +43,7 @@ internal sealed record AssemblyVoteAudienceResult(
     IReadOnlyList<InstantRunoffRound>? Rounds,
     string? WinnerKey,
     AssemblyVoteVerdict Verdict,
-    IReadOnlyList<string> Notes);
+    IReadOnlyList<AssemblyVoteNote> Notes);
 
 /// <summary>
 /// A YesNo tally. Abstentions are counted and shown but are neither for nor against
@@ -66,6 +67,48 @@ internal sealed record InstantRunoffRound(
     int Exhausted,
     string? EliminatedKey,
     string? WinnerKey);
+
+
+/// <summary>
+/// One counting note, stored structurally so the members' results page can render it in the
+/// viewer's culture. Storing the English sentence instead would freeze it into
+/// <c>ResultJson</c> for the life of the record and show English to the five other cultures.
+/// </summary>
+/// <param name="Kind">Which note this is; the rendered sentence comes from the resx.</param>
+/// <param name="Round">The round it applies to; 0 when the note is not about one round.</param>
+/// <param name="TiedCount">How many options were tied; 0 when the note is not about a tie.</param>
+[method: JsonConstructor]
+internal sealed record AssemblyVoteNote(AssemblyVoteNoteKind Kind, int Round, int TiedCount)
+{
+    /// <summary>
+    /// The <c>GovernanceResource</c> key that renders this note. Every key is a literal here
+    /// so a rename or a missing culture is caught by the resx parity tests rather than
+    /// surfacing as a raw key on a results page.
+    /// </summary>
+    public string ResourceKey => Kind switch
+    {
+        AssemblyVoteNoteKind.NoMajority => "Votes_Note_NoMajority",
+        AssemblyVoteNoteKind.DecidingRoundLevel => "Votes_Note_DecidingRoundLevel",
+        AssemblyVoteNoteKind.TieBrokenByPreviousRound => "Votes_Note_TieBrokenByPreviousRound",
+        _ => "Votes_Note_TieBrokenByAuthoredOrder"
+    };
+}
+
+/// <summary>The counting notes the instant-runoff pass can record.</summary>
+internal enum AssemblyVoteNoteKind
+{
+    /// <summary>One option was left and it still held no majority: nothing to declare.</summary>
+    NoMajority = 0,
+
+    /// <summary>Two options, equal counts: a tie, not an elimination (statutes Art. 10.2).</summary>
+    DecidingRoundLevel = 1,
+
+    /// <summary>An elimination tie broken by fewest votes in the previous round.</summary>
+    TieBrokenByPreviousRound = 2,
+
+    /// <summary>An elimination tie broken by authored option order.</summary>
+    TieBrokenByAuthoredOrder = 3
+}
 
 /// <summary>How the ballots were counted.</summary>
 internal enum AssemblyVoteMethod

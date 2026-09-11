@@ -226,6 +226,10 @@
   <data name="Votes_EliminatedLabel" xml:space="preserve"><value>Eliminated: {0}</value><comment>{0} = option label</comment></data>
   <data name="Votes_WinnerLabel" xml:space="preserve"><value>Winner: {0}</value><comment>{0} = option label</comment></data>
   <data name="Votes_TieBreakExplanation" xml:space="preserve"><value>Ties for elimination are broken by fewest votes in the previous round, then by the order the options were authored.</value></data>
+  <data name="Votes_Note_NoMajority" xml:space="preserve"><value>No option held a majority of continuing ballots.</value></data>
+  <data name="Votes_Note_DecidingRoundLevel" xml:space="preserve"><value>The deciding round was level; under statutes Art. 10.2 the tie is resolved by the President's casting vote, recorded in the acta.</value></data>
+  <data name="Votes_Note_TieBrokenByPreviousRound" xml:space="preserve"><value>Round {0}: {1} options tied for elimination; broken by fewest votes in the previous round.</value><comment>{0} = round number, {1} = how many options were tied</comment></data>
+  <data name="Votes_Note_TieBrokenByAuthoredOrder" xml:space="preserve"><value>Round {0}: {1} options tied for elimination; broken by authored option order.</value><comment>{0} = round number, {1} = how many options were tied</comment></data>
   <data name="Votes_TieBreakNotesHeading" xml:space="preserve"><value>Tie-break notes</value></data>
   <data name="Votes_CancelledResultNotice" xml:space="preserve"><value>This vote was cancelled. No result was computed.</value></data>
   <data name="Votes_ActaHeading" xml:space="preserve"><value>Minutes text (acta)</value></data>

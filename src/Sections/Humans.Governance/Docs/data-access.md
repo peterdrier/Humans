@@ -67,7 +67,8 @@ No cache, no caching decorator — one vote at a time and ~120 voters.
 Cross-section calls via `IUserServiceRead`, `IUserEmailService`,
 `IRoleAssignmentService`, `ITeamServiceRead`, `IEmailService`,
 `IEmailMessageFactory`, `INotificationEmitter`,
-`INotificationAutoResolve`, `IAuditLogService`, `IClock`. Implements
+`INotificationAutoResolve`, `IAuditLogService`, `IGoogleTranslationService`,
+`IClock`. Implements
 `IAssemblyVoteService`, `IUserDataContributor`, `IUserMerge`. Nothing on
 `Humans.Governance.Contracts`: no other section reads votes.
 

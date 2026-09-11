@@ -579,4 +579,80 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             vote.Id,
             "AssemblyVote");
     }
+
+    // ==========================================================================
+    // Translation pre-fill
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task PreFillTranslationsAsync_FillsBlanksAndLeavesAuthoredTextAlone()
+    {
+        var vote = await _fx.AddVoteAsync(
+            status: AssemblyVoteStatus.Draft,
+            kind: AssemblyVoteKind.RankedChoice,
+            options: [("a", 0), ("b", 1)]);
+
+        // The author already wrote the Spanish title themselves; only the blanks may be filled.
+        var tracked = await _fx.Db.AssemblyVotes.SingleAsync(
+            v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        tracked.Title = new GovernanceLocalizedText(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["en"] = "Test vote",
+            ["es"] = "Mi propio título"
+        });
+        await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _fx.Db.ChangeTracker.Clear();
+
+        StubTranslation("es");
+
+        var filled = await _fx.Service.PreFillTranslationsAsync(
+            vote.Id, ["en", "es"], Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        // Official text and the two option labels — the authored Spanish title is not one of them.
+        filled.Should().Be(3);
+
+        var stored = await _fx.Db.AssemblyVotes
+            .Include(v => v.Options)
+            .AsNoTracking()
+            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+
+        stored.Title.Resolve("es", "en").Should().Be("Mi propio título",
+            "a machine translation never overwrites what the Board wrote");
+        stored.Title.Resolve("en", "en").Should().Be("Test vote");
+        stored.OfficialText.Resolve("es", "en").Should().Be("ES:Text");
+        stored.Options.Single(o => string.Equals(o.Key, "a", StringComparison.Ordinal))
+            .Label.Resolve("es", "en").Should().Be("ES:a");
+        stored.Options.Single(o => string.Equals(o.Key, "b", StringComparison.Ordinal))
+            .Label.Resolve("es", "en").Should().Be("ES:b");
+    }
+
+    [HumansFact]
+    public async Task PreFillTranslationsAsync_OnAnOpenVote_ChangesNothing()
+    {
+        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Open);
+        StubTranslation("es");
+
+        var filled = await _fx.Service.PreFillTranslationsAsync(
+            vote.Id, ["en", "es"], Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        filled.Should().Be(0,
+            "translating a motion the electorate is already voting on would change what some members read");
+        await _fx.Translation.DidNotReceive().TranslateAsync(
+            Arg.Any<IReadOnlyList<string>>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+
+        var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
+            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.Title.HasCulture("es").Should().BeFalse();
+    }
+
+    /// <summary>Echoes each source string back prefixed, so a filled blank is recognisable.</summary>
+    private void StubTranslation(string target)
+    {
+        var prefix = target.ToUpperInvariant() + ":";
+        _fx.Translation.TranslateAsync(
+                Arg.Any<IReadOnlyList<string>>(), "en", target, Arg.Any<CancellationToken>())
+            .Returns(ci => Task.FromResult<IReadOnlyList<string>>(
+                [.. ci.Arg<IReadOnlyList<string>>().Select(t => prefix + t)]));
+    }
 }

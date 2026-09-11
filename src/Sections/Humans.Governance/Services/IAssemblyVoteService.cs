@@ -94,6 +94,22 @@ internal interface IAssemblyVoteService : IApplicationService
     Task<AssemblyVoteActionResult> UpdateDraftAsync(
         Guid voteId, AssemblyVoteDraft draft, Guid actorUserId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Machine-translates the draft's authored text — title, official text and every option
+    /// label — from its <c>OfficialCulture</c> into the target cultures, filling only what is
+    /// blank. Authored text is never overwritten, so this is an authoring assist and not a
+    /// source of truth: the official-culture text stays the binding version.
+    /// <para>
+    /// Draft-only. A vote's content is immutable once Open, and a machine translation of a
+    /// motion the electorate is already voting on would change what some members are reading
+    /// mid-vote.
+    /// </para>
+    /// </summary>
+    /// <returns>How many blanks were filled; 0 when there was nothing to fill.</returns>
+    Task<int> PreFillTranslationsAsync(
+        Guid voteId, IReadOnlyList<string> targetCultures, Guid actorUserId,
+        CancellationToken ct = default);
+
     /// <summary>Deletes a draft. Never permitted once the vote has opened.</summary>
     Task<AssemblyVoteActionResult> DeleteDraftAsync(
         Guid voteId, Guid actorUserId, CancellationToken ct = default);

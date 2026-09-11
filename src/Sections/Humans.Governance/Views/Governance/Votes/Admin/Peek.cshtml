@@ -108,7 +108,7 @@
                 <ul class="text-muted small mb-0">
                     @foreach (var note in audience.Notes)
                     {
-                        <li>@note</li>
+                        <li>@Localizer[note.ResourceKey, note.Round, note.TiedCount]</li>
                     }
                 </ul>
             }

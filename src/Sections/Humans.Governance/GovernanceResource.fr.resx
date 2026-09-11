@@ -613,6 +613,18 @@
   <data name="Votes_TieBreakExplanation" xml:space="preserve">
     <value>Les égalités pour l'élimination sont départagées d'abord par le moins de voix au tour précédent, puis par l'ordre de rédaction des options.</value>
   </data>
+  <data name="Votes_Note_NoMajority" xml:space="preserve">
+    <value>Aucune option n'a obtenu la majorité des bulletins encore en lice.</value>
+  </data>
+  <data name="Votes_Note_DecidingRoundLevel" xml:space="preserve">
+    <value>Le tour décisif s'est terminé à égalité ; en vertu de l'art. 10.2 des statuts, l'égalité est tranchée par la voix prépondérante du Président, consignée au procès-verbal.</value>
+  </data>
+  <data name="Votes_Note_TieBrokenByPreviousRound" xml:space="preserve">
+    <value>Tour {0} : {1} options à égalité pour l'élimination ; départagées par le plus faible nombre de voix au tour précédent.</value>
+  </data>
+  <data name="Votes_Note_TieBrokenByAuthoredOrder" xml:space="preserve">
+    <value>Tour {0} : {1} options à égalité pour l'élimination ; départagées par l'ordre de rédaction des options.</value>
+  </data>
   <data name="Votes_TieBreakNotesHeading" xml:space="preserve">
     <value>Notes de départage</value>
   </data>

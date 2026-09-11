@@ -1,11 +1,13 @@
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
+using Humans.Base.Extensions;
 using Humans.Governance.Models;
 using Humans.Governance.Services;
 using Humans.Governance.Services.Dtos;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace Humans.Governance.Controllers;
 
@@ -21,7 +23,8 @@ namespace Humans.Governance.Controllers;
 [Route("Governance/Votes/Admin")]
 internal sealed class GovernanceVotesAdminController(
     IUserServiceRead userService,
-    IAssemblyVoteService voteService) : HumansControllerBase(userService)
+    IAssemblyVoteService voteService,
+    ILogger<GovernanceVotesAdminController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
@@ -38,7 +41,8 @@ internal sealed class GovernanceVotesAdminController(
 
     [HttpPost("Create")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(AssemblyVoteDraftFormViewModel model, CancellationToken ct)
+    public async Task<IActionResult> Create(
+        AssemblyVoteDraftFormViewModel model, string? submitAction, CancellationToken ct)
     {
         if (GetCurrentUserId() is not { } actorId) return Challenge();
 
@@ -47,6 +51,14 @@ internal sealed class GovernanceVotesAdminController(
         {
             SetError("That draft was rejected — check the required fields and options.");
             return View("~/Views/Governance/Votes/Admin/Create.cshtml", model);
+        }
+
+        // The draft is saved at this point — a translation failure must not re-render the form
+        // as unsaved, or a re-submit would create a second draft. It reports and redirects.
+        if (IsTranslate(submitAction))
+        {
+            await TranslateAsync(voteId.Value, actorId, "Draft created", ct);
+            return RedirectToAction(nameof(Edit), new { voteId = voteId.Value });
         }
 
         SetSuccess("Draft created.");
@@ -64,11 +76,19 @@ internal sealed class GovernanceVotesAdminController(
 
     [HttpPost("{voteId:guid}/Edit")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(Guid voteId, AssemblyVoteDraftFormViewModel model, CancellationToken ct)
+    public async Task<IActionResult> Edit(
+        Guid voteId, AssemblyVoteDraftFormViewModel model, string? submitAction, CancellationToken ct)
     {
         if (GetCurrentUserId() is not { } actorId) return Challenge();
 
         var result = await voteService.UpdateDraftAsync(voteId, model.ToDraft(), actorId, ct);
+        if (result == AssemblyVoteActionResult.Ok && IsTranslate(submitAction))
+        {
+            // Saved already, so a translation failure reports rather than re-rendering.
+            await TranslateAsync(voteId, actorId, "Draft updated", ct);
+            return RedirectToAction(nameof(Edit), new { voteId });
+        }
+
         return result switch
         {
             AssemblyVoteActionResult.Ok => Success("Draft updated.", nameof(Index)),
@@ -197,6 +217,33 @@ internal sealed class GovernanceVotesAdminController(
         if (ballots is null) return NotFound();
 
         return View("~/Views/Governance/Votes/Admin/Ballots.cshtml", new AssemblyVoteBallotsViewModel { VoteId = voteId, Ballots = ballots });
+    }
+
+    /// <summary>The draft forms' second submit button: save, then fill the empty cultures.</summary>
+    private const string TranslateAction = "save-translate";
+
+    private static bool IsTranslate(string? submitAction) =>
+        string.Equals(submitAction, TranslateAction, StringComparison.Ordinal);
+
+    /// <summary>
+    /// Machine-fills the cultures the author left blank from the vote's official culture, and
+    /// flashes what happened. Never throws: the draft is already saved by the time it runs.
+    /// </summary>
+    private async Task TranslateAsync(Guid voteId, Guid actorId, string saved, CancellationToken ct)
+    {
+        try
+        {
+            var filled = await voteService.PreFillTranslationsAsync(
+                voteId, CultureCatalog.SupportedCultureCodes, actorId, ct);
+            SetSuccess(filled > 0
+                ? $"{saved}; {filled} missing translation(s) pre-filled from the official culture — review them before opening."
+                : $"{saved} — no missing translations to fill.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Assembly vote {VoteId}: translation pre-fill failed", voteId);
+            SetError($"{saved}, but translation failed: {ex.Message}");
+        }
     }
 
     private IActionResult Success(string message, string action)

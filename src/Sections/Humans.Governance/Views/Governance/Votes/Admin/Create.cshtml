@@ -198,7 +198,14 @@
 
     <div class="d-flex justify-content-between mb-5">
         <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
-        <button type="submit" class="btn btn-primary">Save draft</button>
+        <div class="d-flex gap-2">
+            @* Fills only the cultures left blank, from the official culture. Authored text is
+               never overwritten, so translating twice is safe. *@
+            <button type="submit" name="submitAction" value="save-translate" class="btn btn-outline-primary">
+                Save &amp; translate blanks
+            </button>
+            <button type="submit" class="btn btn-primary">Save draft</button>
+        </div>
     </div>
 </form>
 

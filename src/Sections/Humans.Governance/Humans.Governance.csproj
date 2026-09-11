@@ -37,6 +37,7 @@
          Acyclic: Humans.Onboarding names only Humans.Governance.Contracts. -->
     <ProjectReference Include="..\Humans.Onboarding\Humans.Onboarding.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
