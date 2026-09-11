@@ -176,7 +176,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         occ.Should().HaveCount(4);
         foreach (var o in occ)
         {
-            var localStart = o.OccurrenceStartUtc.InZone(zone).LocalDateTime;
+            var localStart = o.OccurrenceStartUtc!.Value.InZone(zone).LocalDateTime;
             localStart.Hour.Should().Be(19);
             localStart.Minute.Should().Be(0);
         }

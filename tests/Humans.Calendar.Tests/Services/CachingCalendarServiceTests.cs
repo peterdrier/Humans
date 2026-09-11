@@ -32,6 +32,37 @@ public sealed class CachingCalendarServiceTests
         ((IHostedService)sut).StartAsync(Xunit.TestContext.Current.CancellationToken);
 
     [HumansFact]
+    public async Task DateOccurrenceCancellation_RefreshesDatesAndForwardsDateIdentity()
+    {
+        var day = new LocalDate(2026, 3, 29);
+        var before = BuildInfo() with
+        {
+            IsAllDay = true, StartUtc = null, EndUtc = null,
+            StartDate = day, EndDateExclusive = day.PlusDays(1),
+            RecurrenceRule = "FREQ=DAILY;COUNT=1", RecurrenceTimezone = null,
+        };
+        var after = before with
+        {
+            Exceptions = [new CalendarEventExceptionInfo(Guid.NewGuid(), null, true, null, null,
+                null, null, null, null, day)],
+        };
+        _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>()).Returns([before]);
+        _inner.GetEventInfoAsync(before.Id, Arg.Any<CancellationToken>()).Returns(after);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        var sut = CreateSut();
+        await WarmAsync(sut);
+        var detail = await sut.GetEventByIdAsync(before.Id, Xunit.TestContext.Current.CancellationToken);
+        detail!.StartDate.Should().Be(day);
+        detail.EndDateExclusive.Should().Be(day.PlusDays(1));
+        detail.StartUtc.Should().BeNull();
+        await sut.CancelOccurrenceAsync(before.Id, null, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken, day);
+        await _inner.Received(1).CancelOccurrenceAsync(before.Id, null, Arg.Any<Guid>(), Arg.Any<CancellationToken>(), day);
+        var occurrences = await sut.GetOccurrencesInWindowAsync(Instant.FromUtc(2026, 3, 28, 0, 0),
+            Instant.FromUtc(2026, 3, 30, 0, 0), ct: Xunit.TestContext.Current.CancellationToken);
+        occurrences.Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task WarmAllAsync_LoadsCalendarEventInfosFromInnerReadSurface()
     {
         var info = BuildInfo(title: "Cached");

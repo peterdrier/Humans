@@ -116,4 +116,16 @@
   <data name="Calendar_ViewGrid" xml:space="preserve"><value>Grid</value></data>
   <data name="Calendar_ViewList" xml:space="preserve"><value>List</value></data>
   <data name="Calendar_Yes" xml:space="preserve"><value>Yes</value></data>
+  <data name="Calendar_InvalidOccurrenceOverride" xml:space="preserve">
+    <value>Enter a valid date or time range for this occurrence.</value>
+  </data>
+  <data name="Calendar_InvalidAllDayEvent" xml:space="preserve">
+    <value>Enter a title and a valid date range without times.</value>
+  </data>
+  <data name="Calendar_InvalidAllDayRecurrence" xml:space="preserve">
+    <value>Use a valid date-only recurrence rule, with UNTIL as YYYYMMDD.</value>
+  </data>
+  <data name="Calendar_CannotChangeEventType" xml:space="preserve">
+    <value>This series has occurrence changes. Keep its all-day or timed type, or create a new series.</value>
+  </data>
 </root>

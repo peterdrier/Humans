@@ -37,7 +37,8 @@ public class CalendarEventTests
         {
             Id = Guid.NewGuid(),
             Title = "Test",
-            StartUtc = Jan1,
+            StartDate = new LocalDate(2026, 1, 1),
+            EndDateExclusive = new LocalDate(2026, 1, 2),
             EndUtc = null,
             IsAllDay = true,
             OwningTeamId = Guid.NewGuid(),

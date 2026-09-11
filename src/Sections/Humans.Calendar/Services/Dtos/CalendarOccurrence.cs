@@ -4,7 +4,7 @@ namespace Humans.Calendar.Services.Dtos;
 
 internal sealed record CalendarOccurrence(
     Guid EventId,
-    Instant OccurrenceStartUtc,
+    Instant? OccurrenceStartUtc,
     Instant? OccurrenceEndUtc,
     bool IsAllDay,
     string Title,
@@ -14,4 +14,7 @@ internal sealed record CalendarOccurrence(
     Guid OwningTeamId,
     string OwningTeamName,
     bool IsRecurring,
-    Instant? OriginalOccurrenceStartUtc);
+    Instant? OriginalOccurrenceStartUtc,
+    LocalDate? StartDate = null,
+    LocalDate? EndDateExclusive = null,
+    LocalDate? OriginalOccurrenceDate = null);

@@ -52,7 +52,9 @@ internal sealed class CachingCalendarService(
             info.RecurrenceRule,
             info.RecurrenceTimezone,
             info.CreatedAt,
-            info.UpdatedAt);
+            info.UpdatedAt,
+            info.StartDate,
+            info.EndDateExclusive);
     }
 
     public async Task<IReadOnlyList<CalendarEventInfo>> GetAllEventInfosAsync(CancellationToken ct = default)
@@ -89,17 +91,17 @@ internal sealed class CachingCalendarService(
     }
 
     public async Task CancelOccurrenceAsync(
-        Guid eventId, Instant originalOccurrenceStartUtc, Guid userId, CancellationToken ct = default)
+        Guid eventId, Instant? originalOccurrenceStartUtc, Guid userId, CancellationToken ct = default, LocalDate? originalDate = null)
     {
-        await WithInner(inner => inner.CancelOccurrenceAsync(eventId, originalOccurrenceStartUtc, userId, ct));
+        await WithInner(inner => inner.CancelOccurrenceAsync(eventId, originalOccurrenceStartUtc, userId, ct, originalDate));
         await ReplaceAsync(eventId, ct);
     }
 
     public async Task OverrideOccurrenceAsync(
-        Guid eventId, Instant originalOccurrenceStartUtc, OverrideOccurrenceDto dto,
-        Guid userId, CancellationToken ct = default)
+        Guid eventId, Instant? originalOccurrenceStartUtc, OverrideOccurrenceDto dto,
+        Guid userId, CancellationToken ct = default, LocalDate? originalDate = null)
     {
-        await WithInner(inner => inner.OverrideOccurrenceAsync(eventId, originalOccurrenceStartUtc, dto, userId, ct));
+        await WithInner(inner => inner.OverrideOccurrenceAsync(eventId, originalOccurrenceStartUtc, dto, userId, ct, originalDate));
         await ReplaceAsync(eventId, ct);
     }
 

@@ -5,15 +5,9 @@ using Xunit;
 
 namespace Humans.Calendar.Tests.Services;
 
-/// <summary>
-/// All-day events are stored half-open — [start local midnight, the day after the last covered
-/// day) — while the create/edit form and every view speak in the inclusive last day. The
-/// conversion used to be written out by hand at each call site inside `CalendarController`,
-/// which is why only its display half had a test.
-/// </summary>
+/// <summary>All-day forms round-trip an inclusive last day through an exclusive date.</summary>
 public sealed class CalendarServiceAllDayWindowTests
 {
-    private static readonly DateTimeZone Madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
     [HumansTheory]
     // A one-day event: the stored end is the following midnight, not the same one.
@@ -31,22 +25,22 @@ public sealed class CalendarServiceAllDayWindowTests
         var start = new LocalDate(startYear, startMonth, startDay);
         var inclusiveEnd = new LocalDate(endYear, endMonth, endDay);
 
-        var (startUtc, endUtc) = CalendarService.AllDayWindow(start, inclusiveEnd, Madrid);
+        var (startUtc, endUtc) = CalendarService.AllDayWindow(start, inclusiveEnd);
 
-        // Both ends sit on local midnight whatever the day's length.
-        startUtc.InZone(Madrid).LocalDateTime.Should().Be(start.AtMidnight());
-        endUtc.InZone(Madrid).LocalDateTime.Should().Be(inclusiveEnd.PlusDays(1).AtMidnight());
+        // Both ends remain dates whatever the day's length.
+        startUtc.Should().Be(start);
+        endUtc.Should().Be(inclusiveEnd.PlusDays(1));
 
-        CalendarService.AllDayInclusiveEndDate(endUtc, Madrid).Should().Be(inclusiveEnd);
+        CalendarService.AllDayInclusiveEndDate(endUtc).Should().Be(inclusiveEnd);
     }
 
     [HumansFact]
     public void AllDayInclusiveEndDate_collapses_an_exclusive_midnight_to_the_previous_day()
     {
         // The off-by-one this guards: 11 June 00:00 stored means the event's last day is the 10th.
-        var exclusiveEnd = new LocalDate(2026, 6, 11).AtMidnight().InZoneLeniently(Madrid).ToInstant();
+        var exclusiveEnd = new LocalDate(2026, 6, 11);
 
-        CalendarService.AllDayInclusiveEndDate(exclusiveEnd, Madrid)
+        CalendarService.AllDayInclusiveEndDate(exclusiveEnd)
             .Should().Be(new LocalDate(2026, 6, 10));
     }
 }

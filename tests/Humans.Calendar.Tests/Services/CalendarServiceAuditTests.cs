@@ -126,6 +126,10 @@ public class CalendarServiceAuditTests
     {
         var eventId = Guid.NewGuid();
         var actor = Guid.NewGuid();
+        _repo.GetEventByIdAsync(eventId, Arg.Any<CancellationToken>()).Returns(new CalendarEvent
+        {
+            Id = eventId, StartUtc = Instant.FromUtc(2026, 6, 8, 10, 0), RecurrenceRule = "FREQ=DAILY", RecurrenceTimezone = "UTC",
+        });
 
         await CreateSut().CancelOccurrenceAsync(
             eventId, Instant.FromUtc(2026, 6, 8, 10, 0), actor, TestContext.Current.CancellationToken);
@@ -141,6 +145,10 @@ public class CalendarServiceAuditTests
     {
         var eventId = Guid.NewGuid();
         var actor = Guid.NewGuid();
+        _repo.GetEventByIdAsync(eventId, Arg.Any<CancellationToken>()).Returns(new CalendarEvent
+        {
+            Id = eventId, StartUtc = Instant.FromUtc(2026, 6, 8, 10, 0), RecurrenceRule = "FREQ=DAILY", RecurrenceTimezone = "UTC",
+        });
 
         await CreateSut().OverrideOccurrenceAsync(
             eventId, Instant.FromUtc(2026, 6, 8, 10, 0),

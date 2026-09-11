@@ -116,4 +116,16 @@
   <data name="Calendar_ViewGrid" xml:space="preserve"><value>Graella</value></data>
   <data name="Calendar_ViewList" xml:space="preserve"><value>Llista</value></data>
   <data name="Calendar_Yes" xml:space="preserve"><value>SÃ­</value></data>
+  <data name="Calendar_InvalidOccurrenceOverride" xml:space="preserve">
+    <value>Introdueix un interval de dates o hores vàlid per a aquesta ocurrència.</value>
+  </data>
+  <data name="Calendar_InvalidAllDayEvent" xml:space="preserve">
+    <value>Introdueix un títol i un interval de dates vàlid sense hores.</value>
+  </data>
+  <data name="Calendar_InvalidAllDayRecurrence" xml:space="preserve">
+    <value>Fes servir una regla de repetició vàlida sense hores, amb UNTIL en format YYYYMMDD.</value>
+  </data>
+  <data name="Calendar_CannotChangeEventType" xml:space="preserve">
+    <value>Aquesta sèrie té ocurrències modificades. Conserva el tipus de dia complet o amb hores, o crea una sèrie nova.</value>
+  </data>
 </root>
