@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using AwesomeAssertions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -39,13 +40,24 @@ public class GuideContentServiceTests
         public string Render(string markdown, string fileStem) => $"[rendered:{fileStem}]";
     }
 
-    private static GuideContentService CreateService(FakeSource source, out IMemoryCache cache)
+    private sealed class ThrowingRenderer(Exception toThrow) : IGuideRenderer
+    {
+        public string Render(string markdown, string fileStem) => throw toThrow;
+    }
+
+    private static GuideContentService CreateService(FakeSource source, out IMemoryCache cache) =>
+        CreateService(source, new StubRenderer(), out cache);
+
+    private static GuideContentService CreateService(
+        FakeSource source,
+        IGuideRenderer renderer,
+        out IMemoryCache cache)
     {
         cache = new MemoryCache(new MemoryCacheOptions());
         var settings = Options.Create(new GuideSettings { CacheTtlHours = 6 });
         return new GuideContentService(
             source,
-            new StubRenderer(),
+            renderer,
             cache,
             settings,
             NullLogger<GuideContentService>.Instance);
@@ -149,5 +161,42 @@ public class GuideContentServiceTests
 
         await act.Should().ThrowAsync<GuideContentUnavailableException>(
             "every other stem is still cached, and none of them is the page the reader asked for");
+    }
+
+    [HumansFact]
+    public async Task GetPageAsync_RenderTimesOut_SurfacesAsUnavailableNotAnUnhandledThrow()
+    {
+        // Raised by Codex on peterdrier/Humans#1655. Before the markdown-filtering change,
+        // rendering happened inside PopulateAsync's per-file catch; moving it onto the request
+        // path put GuideHtmlPostprocessor's timeout-bounded regexes outside any handler, where
+        // they would have reached the user as a raw 500 instead of the section's 503 view.
+        var source = new FakeSource();
+        var service = CreateService(
+            source,
+            new ThrowingRenderer(new RegexMatchTimeoutException("input", "pattern", TimeSpan.FromMilliseconds(500))),
+            out _);
+
+        var act = async () => await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<GuideContentUnavailableException>(
+            "GuideController only translates GuideContentUnavailableException into the 503 view");
+    }
+
+    [HumansFact]
+    public async Task GetPageAsync_RenderTimesOut_LeavesTheCachedSegmentsInPlace()
+    {
+        // The document is fine; one reader's filtered slice of it was not. Evicting here would
+        // punish every other reader for that, and re-fetching the whole corpus on the next GET.
+        var source = new FakeSource();
+        var service = CreateService(
+            source,
+            new ThrowingRenderer(new RegexMatchTimeoutException("input", "pattern", TimeSpan.FromMilliseconds(500))),
+            out var cache);
+
+        var act = async () => await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<GuideContentUnavailableException>();
+
+        cache.TryGetValue("guide:Profiles", out GuideDocument? cached).Should().BeTrue();
+        cached.Should().NotBeNull();
     }
 }

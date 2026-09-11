@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Humans.Base.Interfaces;
@@ -31,7 +32,25 @@ internal sealed class GuideContentService(
         }
 
         var document = await GetDocumentAsync(canonical, cancellationToken);
-        return renderer.Render(GuideFilter.Apply(document, roleContext), canonical);
+
+        try
+        {
+            return renderer.Render(GuideFilter.Apply(document, roleContext), canonical);
+        }
+        catch (RegexMatchTimeoutException ex)
+        {
+            // Rendering runs per request now, outside PopulateAsync's per-file catch, so the
+            // postprocessor's timeout-bounded regexes would otherwise surface as a raw 500.
+            // A page we cannot render is a page we cannot serve: say so in the terms the
+            // controller already handles, and leave the cached segments alone — the next
+            // reader's filter may produce markdown that renders fine.
+            logger.LogError(ex,
+                "Rendering guide file {FileStem} timed out; serving the unavailable page.",
+                canonical);
+
+            throw new GuideContentUnavailableException(
+                $"Guide content '{canonical}' could not be rendered.", ex);
+        }
     }
 
     public Task RefreshAllAsync(CancellationToken cancellationToken = default) =>

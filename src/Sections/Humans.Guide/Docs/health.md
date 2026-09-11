@@ -92,19 +92,25 @@ exactly one home.
    overwrite. A stem that is *not* cached and whose fetch fails is a 503, never an empty page,
    however many other stems are cached: `hasStale` only suppresses `PopulateAsync`'s own throw,
    and the requested stem is still missing when the caller looks again
-   (`GuideContentService.GetDocumentAsync`, `Services/GuideContentService.cs:42` and `:54`;
-   `PopulateAsync`'s overwrite, `Services/GuideContentService.cs:91`;
+   (`GuideContentService.GetDocumentAsync`, `Services/GuideContentService.cs:61` and `:73`;
+   `PopulateAsync`'s overwrite, `Services/GuideContentService.cs:110`;
    `GuideController.RenderAsync`, `Controllers/GuideController.cs:55`).
-9. `guide:<stem>` cache entries are written by `GuideContentService` and nothing else
-   (`Services/GuideContentService.cs:16`).
-10. The stem set and the markdown folder match exactly in both directions — a file with no stem
+9. A page that cannot be *rendered* fails the same way as one that cannot be fetched — the 503
+   view, never a raw 500. Rendering runs per request, outside `PopulateAsync`'s per-file catch,
+   so `GuideHtmlPostprocessor`'s timeout-bounded regexes are translated at the call site; the
+   cached segments stay put, because the document is fine and only one reader's filtered slice
+   of it was not (`GuideContentService.GetPageAsync`, `Services/GuideContentService.cs:44`;
+   `GuideContentServiceTests.GetPageAsync_RenderTimesOut_SurfacesAsUnavailableNotAnUnhandledThrow`).
+10. `guide:<stem>` cache entries are written by `GuideContentService` and nothing else
+    (`Services/GuideContentService.cs:17`).
+11. The stem set and the markdown folder match exactly in both directions — a file with no stem
     is unreachable, a stem with no file fails its fetch on every refresh
     (`GuideArchitectureTests.EveryGuideMarkdownFileIsRegistered_AndEveryRegisteredStemExists`).
-11. Every `## As a …` heading in the shipped corpus is one the segmenter recognises, and every
+12. Every `## As a …` heading in the shipped corpus is one the segmenter recognises, and every
     parenthetical in it resolves to a privilege token — the two ways a block fails *open* or
     fails *silent* (`GuideSegmenterTests.Segment_EveryRoleHeadingInShippedContent_OpensAScopedSegment`,
     `GuideArchitectureTests.EveryRoleHeadingParentheticalResolvesToAPrivilege`).
-12. Segmenting is lossless: the segments of a file rejoin to that file exactly, so a reader who
+13. Segmenting is lossless: the segments of a file rejoin to that file exactly, so a reader who
     can see everything gets the file as written
     (`GuideSegmenterTests.Segment_EveryShippedFile_RejoinsToTheOriginal`,
     `GuideShippedContentFilterTests.Admin_ReceivesEveryFileWholeAndUnaltered`).
@@ -159,4 +165,4 @@ exactly one home.
 | 2026-08-17 | Feedback.md admin block was leaking to anonymous (unwrapped heading) — fixed + pinned; resolver's probe list derived from the privilege map, restoring Events/Store Admin visibility; three duplicated stem lookups folded into `GuideFiles.TryCanonical`; dead `Humans.Infrastructure` doc paths corrected | peterdrier/Humans#1354 |
 | 2026-08-20 | `(Camp Lead)` parentheticals resolved to no privilege, so camp-lead blocks reached only Board/Admin — `CampLead` token added, `IsCampLead` resolved from `ICampLeadDirectory`, and every parenthetical in the corpus pinned to the privilege map | peterdrier/Humans#1415 |
 | 2026-09-11 | `/api/backdoor/*` was linkified into a dead link — wildcards now excluded from the inline-code rewriter, with a pinning test; target shape re-derived into the current six-part form; dead project names, an invented pinning test and stale consumer claims cut from the section's prose; the domain-admin negative rule corrected against the pinned superset behaviour; file-count claims replaced by the list that owns them; the 503 page given a way back out; an Events feature spec moved out of the section | peterdrier/Humans#1655 |
-| 2026-09-11 | Guide reachable from the member top nav via `ISectionNav`, so the filter's anonymous branch has a way in; §5's markdown-filtering seam taken — the cached unit became the segmented `GuideDocument`, `GuideFilter` selects segments before Markdig, and the `data-guide-*` round trip plus the regex over rendered HTML are gone; a `##` inside a fenced code block was ending the role block around it and serving the rest of that block to anonymous readers (present in the old `Wrap` too, carried over verbatim) — fence state now tracked and pinned; the stale-cache invariant corrected (the cache is per stem, so another stem being cached never rescues the requested one); the 503 page's "way back out" pointed at the Guide home, which re-entered the same failing load | peterdrier/Humans#1655 |
+| 2026-09-11 | Guide reachable from the member top nav via `ISectionNav`, so the filter's anonymous branch has a way in; §5's markdown-filtering seam taken — the cached unit became the segmented `GuideDocument`, `GuideFilter` selects segments before Markdig, and the `data-guide-*` round trip plus the regex over rendered HTML are gone; a `##` inside a fenced code block was ending the role block around it and serving the rest of that block to anonymous readers (present in the old `Wrap` too, carried over verbatim) — fence state now tracked and pinned; the stale-cache invariant corrected (the cache is per stem, so another stem being cached never rescues the requested one); the 503 page's "way back out" pointed at the Guide home, which re-entered the same failing load; moving rendering onto the request path had taken it outside `PopulateAsync`'s per-file catch, so a render failure would have reached the reader as a raw 500 — now translated to the section's 503 | peterdrier/Humans#1655 |

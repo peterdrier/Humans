@@ -11,7 +11,9 @@ internal interface IGuideContentService : IApplicationService
     /// Returns the HTML for a guide file as this reader may see it: the cached segments are
     /// filtered by role first, and only what survives is rendered. Triggers a full refresh if
     /// the cache is cold. Throws <see cref="GuideContentUnavailableException"/> when this file
-    /// has no cached copy and its fetch fails — other files being cached does not rescue it.
+    /// has no cached copy and its fetch fails — other files being cached does not rescue it —
+    /// and also when the surviving markdown cannot be rendered, so that a render failure reaches
+    /// the reader as the section's 503 view rather than an unhandled 500.
     /// </summary>
     Task<string> GetPageAsync(
         string fileStem,
