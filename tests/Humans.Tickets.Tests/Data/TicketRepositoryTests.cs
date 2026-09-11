@@ -570,4 +570,55 @@ public sealed class TicketRepositoryTests : IDisposable
         totalCount.Should().Be(1);
         rows.Should().ContainSingle(r => r.Id == barcodeId);
     }
+
+    // ── HasEventTicketAsync ──────────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task HasEventTicketAsync_IsAttendeeOnly_PaidOrderWithoutAttendeeRowIsNotAHolding()
+    {
+        var buyerId = Guid.NewGuid();
+        var holderId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+        _dbContext.TicketOrders.Add(new TicketOrder
+        {
+            Id = orderId,
+            VendorOrderId = "ord_buyer",
+            VendorEventId = "ev_a",
+            BuyerEmail = "buyer@e.com",
+            BuyerName = "Buyer",
+            Currency = "EUR",
+            PaymentStatus = TicketPaymentStatus.Paid,
+            MatchedUserId = buyerId,
+            PurchasedAt = _clock.GetCurrentInstant(),
+            SyncedAt = _clock.GetCurrentInstant(),
+        });
+        _dbContext.TicketAttendees.Add(new TicketAttendee
+        {
+            Id = Guid.NewGuid(),
+            VendorTicketId = "tk_holder",
+            TicketOrderId = orderId,
+            AttendeeName = "Holder",
+            VendorEventId = "ev_a",
+            Status = TicketAttendeeStatus.CheckedIn,
+            MatchedUserId = holderId,
+            SyncedAt = _clock.GetCurrentInstant(),
+        });
+        _dbContext.TicketAttendees.Add(new TicketAttendee
+        {
+            Id = Guid.NewGuid(),
+            VendorTicketId = "tk_void",
+            TicketOrderId = orderId,
+            AttendeeName = "Voided",
+            VendorEventId = "ev_a",
+            Status = TicketAttendeeStatus.Void,
+            MatchedUserId = buyerId,
+            SyncedAt = _clock.GetCurrentInstant(),
+        });
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        (await _repo.HasEventTicketAsync(buyerId, "ev_a", ct)).Should().BeFalse("a paid order plus a voided attendee row is not a holding");
+        (await _repo.HasEventTicketAsync(holderId, "ev_a", ct)).Should().BeTrue();
+        (await _repo.HasEventTicketAsync(holderId, "ev_b", ct)).Should().BeFalse();
+    }
 }
