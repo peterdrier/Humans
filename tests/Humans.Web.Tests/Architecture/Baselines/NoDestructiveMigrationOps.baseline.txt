@@ -82,25 +82,16 @@ src/Sections/Humans.Users/Data/Migrations/20260820215726_DropProfileState.cs:Dro
 # IX_email_outbox_messages_ShiftSignupId_TemplateName on (ShiftSignupId, TemplateName) with filter
 # "ShiftSignupId" IS NOT NULL. Both were added for a per-signup notification dedup ("one email of
 # each template type per signup") that was specified and never built.
-# CORRECTIONS (2026-09-11). This block was wrong twice before it was right; both are recorded
-# because the failure mode is instructive, and because a ledger that hides its own retractions is
-# not an audit trail.
-#   (1) It first claimed the token appeared in "exactly one commit in all of history" (d3bf4010,
-#       the G5 move). FALSE. Gathered in a container whose clone was SHALLOW — truncated to
-#       2026-06-17, months after this column was introduced — so `git log --all` silently searched
-#       a recent slice. ALWAYS run `git rev-parse --is-shallow-repository` before believing any
-#       `git log -S` result in a container, and `git fetch --unshallow` first.
-#   (2) The correction then claimed five search predicates each returned no commits outside
-#       migrations, among them `\.ShiftSignupId`. FALSE, and self-contradictory: that regex matches
-#       the `.HasForeignKey(e => e.ShiftSignupId)` line the same block quotes. It returns five
-#       commits. Both errors were Codex P1s on this PR.
-# The lesson, since it outlived two rewrites: an over-specific claim is not stronger evidence, it
-# is more surface to be wrong on. What follows is stated so that it can be checked, not counted.
-# Evidence: gathered over full (unshallowed) history.
+# Evidence: gathered over full (unshallowed) history. Earlier revisions of this block overstated
+# it — first from a container whose clone was SHALLOW, so `git log -S` silently searched a recent
+# slice; then from a search claim the block's own quoted code contradicted. Run
+# `git rev-parse --is-shallow-repository` before believing any pickaxe result in a container, and
+# `git fetch --unshallow` first. An over-specific claim is not stronger evidence, it is more
+# surface to be wrong on; what follows is stated so that it can be checked.
 # The column was introduced by 23b0ec159 (#135, "add shift management system (Slices 1-3)"), which
 # added the property, an FK relationship and the filtered index; the DB column arrives in
-# 20260316210003_AddShiftManagement. Outside migration folders, every commit touching the token
-# falls into exactly three kinds, and none of them is a read or a write of the value:
+# 20260316210003_AddShiftManagement. Outside migration folders, every commit touching the token is
+# one of the following, and none of them reads or writes the value:
 #   - declaration and EF configuration — 23b0ec159 (`public Guid? ShiftSignupId { get; set; }`,
 #     `.HasForeignKey(e => e.ShiftSignupId)`,
 #     `builder.HasIndex(e => new { e.ShiftSignupId, e.TemplateName })`,
@@ -116,7 +107,6 @@ src/Sections/Humans.Users/Data/Migrations/20260820215726_DropProfileState.cs:Dro
 # Corroboration, independent of this run: the FK-cut inventory (deddd7b1f, #992/#1206,
 # docs/plans/2026-08-07-fk-cut-inventory.md) audited this column in 2026-08 and recorded that
 # ShiftSignupId "appears only in the dedup index", classing a stale id as an acceptable orphan.
-# A separate audit, months earlier, found the same absence of readers and writers.
 # So no code path in any release could have populated it: the column holds only NULLs and the
 # filtered index has always been empty.
 # Down() restores both the column and the index; the column is nullable, so the rollback runs.
