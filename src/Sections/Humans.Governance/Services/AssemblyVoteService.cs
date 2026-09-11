@@ -51,6 +51,18 @@ internal sealed class AssemblyVoteService(
     /// </summary>
     internal const int MaxOptionKeyLength = 100;
 
+    /// <summary>Mirrors the <c>assembly_votes.cancel_reason</c> column width.</summary>
+    internal const int MaxCancelReasonLength = 4000;
+
+    /// <summary>
+    /// Mirrors <c>audit_log.description</c>. A near-maximum cancellation reason still fits
+    /// its own column while the audit description, which prefixes it, would not — and
+    /// AuditLogService swallows that failure, so the cancellation would go unaudited.
+    /// Trimmed here for the same reason the notification title is: a neighbouring section's
+    /// column width does not belong in Governance's validation rules.
+    /// </summary>
+    private const int MaxAuditDescriptionLength = 4000;
+
     /// <summary>How far ahead of closing the reminder goes out.</summary>
     private static readonly Duration ReminderLeadTime = Duration.FromHours(24);
 
@@ -355,18 +367,36 @@ internal sealed class AssemblyVoteService(
     /// cannot lose it again.
     /// </para>
     /// </summary>
-    private async Task ClearOpenNotificationAsync(
-        AssemblyVote vote, Guid? actorUserId, CancellationToken ct)
+    private Task ClearOpenNotificationAsync(
+        AssemblyVote vote, Guid? actorUserId, CancellationToken ct) =>
+        AfterTransitionAsync(
+            "resolving the open-vote notification", vote.Id,
+            () => notificationResolve.ResolveBySourceKeyAsync(
+                NotificationSource.AssemblyVoteOpened, vote.Id.ToString(), actorUserId, ct));
+
+    /// <summary>
+    /// Runs a side effect that happens <em>after</em> a committed state change, without
+    /// letting it undo one. Open / Stop / Cancel are irreversible and have no retry path, so
+    /// a throw from notification or email work leaves the vote in its new state with the
+    /// audit entry, the roster email or the notification permanently missing.
+    /// <para>
+    /// Every such call goes through here. Three separate paths lost this one at a time —
+    /// the close audit, the cancel audit and roster email, then recipient resolution on both
+    /// — so the guarantee lives in one place rather than in a try/catch per call site that
+    /// the fourth path will forget.
+    /// </para>
+    /// </summary>
+    private async Task AfterTransitionAsync(string what, Guid voteId, Func<Task> work)
     {
         try
         {
-            await notificationResolve.ResolveBySourceKeyAsync(
-                NotificationSource.AssemblyVoteOpened, vote.Id.ToString(), actorUserId, ct);
+            await work();
         }
         catch (Exception ex)
         {
             logger.LogError(ex,
-                "Failed to resolve the open-vote notification for {VoteId}", vote.Id);
+                "Assembly vote {VoteId}: {What} failed after the state change was committed.",
+                voteId, what);
         }
     }
 
@@ -854,7 +884,9 @@ internal sealed class AssemblyVoteService(
             + $"{roster.Count - officialCount} indicative roster members.",
             adminUserId);
 
-        await NotifyRosterOpenedAsync(vote, roster, ct);
+        await AfterTransitionAsync(
+            "notifying the roster that the vote opened", vote.Id,
+            () => NotifyRosterOpenedAsync(vote, roster, ct));
         return AssemblyVoteActionResult.Ok;
     }
 
@@ -978,6 +1010,9 @@ internal sealed class AssemblyVoteService(
         Guid voteId, string reason, Guid adminUserId, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(reason)) return AssemblyVoteActionResult.Invalid;
+        // Its own column is varchar(4000); over that the update dies on the insert, which is
+        // a 500 where "that cancellation was rejected" is the honest answer.
+        if (reason.Length > MaxCancelReasonLength) return AssemblyVoteActionResult.Invalid;
 
         // Settle first: a vote whose deadline has passed is Closed with its result stored,
         // and cancelling it then would erase that result and the decision it recorded.
@@ -1000,9 +1035,12 @@ internal sealed class AssemblyVoteService(
 
         await audit.LogAsync(
             AuditAction.AssemblyVoteCancelled, AuditEntityTypes.AssemblyVote, vote.Id,
-            $"Cancelled assembly vote {vote.Id}: {reason}", adminUserId);
+            Truncate($"Cancelled assembly vote {vote.Id}: {reason}", MaxAuditDescriptionLength),
+            adminUserId);
 
-        await NotifyRosterCancelledAsync(vote, ct);
+        await AfterTransitionAsync(
+            "notifying the roster that the vote was cancelled", vote.Id,
+            () => NotifyRosterCancelledAsync(vote, ct));
         return AssemblyVoteActionResult.Ok;
     }
 
@@ -1127,12 +1165,12 @@ internal sealed class AssemblyVoteService(
     /// The title is jsonb and uncapped, so a long motion title would otherwise throw on
     /// insert — after the vote is already irreversibly Open.
     /// </summary>
-    private static string NotificationTitle(AssemblyVote vote)
-    {
-        const int max = 200;
-        var title = vote.Title.Resolve(vote.OfficialCulture, vote.OfficialCulture);
-        return title.Length <= max ? title : string.Concat(title.AsSpan(0, max - 1), "\u2026");
-    }
+    private static string NotificationTitle(AssemblyVote vote) =>
+        Truncate(vote.Title.Resolve(vote.OfficialCulture, vote.OfficialCulture), 200);
+
+    /// <summary>Trims to <paramref name="max"/> characters, ellipsis included in the count.</summary>
+    private static string Truncate(string text, int max) =>
+        text.Length <= max ? text : string.Concat(text.AsSpan(0, max - 1), "\u2026");
 
     private async Task NotifyRosterCancelledAsync(AssemblyVote vote, CancellationToken ct)
     {

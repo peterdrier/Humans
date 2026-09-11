@@ -184,6 +184,12 @@ internal interface IAssemblyVoteRepository : IRepository
     /// and ballot are dropped — one person may hold only one ballot per vote. Returns what
     /// each drop destroyed, so the caller can audit the real entities rather than the
     /// roster row's own id.
+    /// <para>
+    /// Also moves the section's own actor references — <c>OpenedByUserId</c>,
+    /// <c>ClosedByUserId</c> and a peek's <c>AdminUserId</c> — off the source account, so
+    /// the acta and the published peek list keep naming the surviving human rather than the
+    /// tombstone Users leaves behind.
+    /// </para>
     /// </summary>
     Task<IReadOnlyList<AssemblyRosterDrop>> ReassignRosterToUserAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);

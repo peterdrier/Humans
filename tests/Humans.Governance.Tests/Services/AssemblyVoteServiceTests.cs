@@ -4,6 +4,7 @@ using Humans.Gdpr.Contracts;
 using Humans.Governance.Domain;
 using Humans.Governance.Services.Dtos;
 using Humans.Governance.Tests.Infrastructure;
+using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NSubstitute;
@@ -686,5 +687,108 @@ public sealed class AssemblyVoteServiceTests : IDisposable
                 Arg.Any<IReadOnlyList<string>>(), "en", target, Arg.Any<CancellationToken>())
             .Returns(ci => Task.FromResult<IReadOnlyList<string>>(
                 [.. ci.Arg<IReadOnlyList<string>>().Select(t => prefix + t)]));
+    }
+
+    // ==========================================================================
+    // Post-transition side effects are never allowed to undo the transition
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task OpenAsync_Succeeds_EvenWhenRecipientLookupThrows()
+    {
+        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Draft);
+        var asociado = Guid.NewGuid();
+        _fx.StubActiveUsers(asociado);
+        _fx.Applications.GetActiveApprovedTierUserIdsAsync(
+                MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>([asociado]));
+
+        // Resolving recipients happens after the vote is already persisted Open, and Open is
+        // irreversible with no retry path.
+        _fx.UserEmails.GetNotificationTargetEmailsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns<Task<IReadOnlyDictionary<Guid, string>>>(
+                _ => throw new InvalidOperationException("email lookup is down"));
+
+        var result = await _fx.Service.OpenAsync(
+            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().Be(AssemblyVoteActionResult.Ok);
+
+        var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
+            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.Status.Should().Be(AssemblyVoteStatus.Open,
+            "the roster is snapshotted and the vote is open — a failed lookup cannot unwind that");
+    }
+
+    [HumansFact]
+    public async Task CancelAsync_WithAnOverlongReason_IsRejected()
+    {
+        var vote = await _fx.AddVoteAsync();
+
+        var result = await _fx.Service.CancelAsync(
+            vote.Id, new string('x', 4001), Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().Be(AssemblyVoteActionResult.Invalid,
+            "the column is varchar(4000) — an over-long reason is a rejection, not a 500");
+
+        var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
+            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.Status.Should().Be(AssemblyVoteStatus.Open);
+    }
+
+    [HumansFact]
+    public async Task CancelAsync_WithANearMaximumReason_StillAuditsWithinTheColumn()
+    {
+        var vote = await _fx.AddVoteAsync();
+        var reason = new string('x', 4000);
+
+        await _fx.Service.CancelAsync(
+            vote.Id, reason, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        // The audit description prefixes the reason, so the untrimmed string would overrun
+        // audit_log.description — and AuditLogService swallows that, losing the entry.
+        await _fx.Audit.Received(1).LogAsync(
+            AuditAction.AssemblyVoteCancelled, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Is<string>(d => d.Length <= 4000), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task ReassignAsync_MovesTheVoteActorReferencesToTheSurvivingAccount()
+    {
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
+
+        var tracked = await _fx.Db.AssemblyVotes.SingleAsync(
+            v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        tracked.OpenedByUserId = source;
+        tracked.ClosedByUserId = source;
+        _fx.Db.AssemblyVotePeeks.Add(new AssemblyVotePeek
+        {
+            Id = Guid.NewGuid(),
+            VoteId = vote.Id,
+            AdminUserId = source,
+            PeekedAt = _fx.Clock.GetCurrentInstant()
+        });
+        await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _fx.Db.ChangeTracker.Clear();
+
+        await _fx.Service.ReassignAsync(
+            source, target, Guid.NewGuid(), _fx.Clock.GetCurrentInstant(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
+            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.ClosedByUserId.Should().Be(target,
+            "the acta names the closer, and the source account is about to become a tombstone");
+        stored.OpenedByUserId.Should().Be(target);
+
+        var peek = await _fx.Db.AssemblyVotePeeks.AsNoTracking()
+            .SingleAsync(p => p.VoteId == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        peek.AdminUserId.Should().Be(target,
+            "the peek list is published on the results page and must name the surviving human");
     }
 }

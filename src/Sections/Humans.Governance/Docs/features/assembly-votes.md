@@ -314,13 +314,14 @@ Board members are de facto Asociados: they are on the official roster whether or
 - **Open:** roster snapshot; one email per roster member (`IEmailMessageFactory.AssemblyVoteOpened`, `MessageCategory.System`, preferred language, link to `/Governance/Votes/{id}`), per-recipient try/catch as in Surveys' invite send; one in-app notification to the roster via `INotificationEmitter.SendAsync` with `sourceKey = vote id`; audit `AssemblyVoteOpened` (official/indicative counts).
 - **Ballot cast/changed:** history row; audit `AssemblyBallotCast` / `AssemblyBallotChanged` (actor = member, entity = the vote, no choice — the ballot id never appears, so an erased member’s retained audit row cannot be joined back to their choice).
 - **Stop / Extend / Cancel:** audit with before/after or reason. Cancel emails the roster.
+- **After any transition:** the side effects that follow a committed state change (roster email, in-app notification, notification resolve) are best-effort — a failure is logged and the transition stands, since Open/Cancel/Close are irreversible and have no retry path.
 - **Close (any path):** stamps `ClosedAt`, computes and stores the result, resolves the open-vote notification via `INotificationAutoResolve.ResolveBySourceKeyAsync`, audits `AssemblyVoteClosed` / `AssemblyVoteStopped` (job actor via the `jobName` overload of `IAuditLogService.LogAsync` when the hourly `governance-assembly-vote-lapse` job in `SectionJobs` does it). Any earlier request that sees the deadline passed closes inline before serving.
 - **Peek:** peek row + audit `AssemblyVotePeeked`.
 - **Ballots list (post-close):** audit `AssemblyBallotsViewed`.
 - **Reminder:** 24h before `ClosesAt`, one email to roster members with no ballot (`IEmailMessageFactory.AssemblyVoteReminder`), stamped on the roster row (`ReminderSentAt`) so it never repeats; sent by the same hourly job as the lapse sweep. Decided 2026-09-10: keep.
 - **GDPR export:** `IUserDataContributor` contributes the member's roster rows, current ballots and history under a new `GdprExportSections.AssemblyVotes`.
 - **Art. 17 erasure:** roster `UserId` → null (tombstone keeps counts and the stored result valid); ballot and history rows are retained unlinked, because the vote is a legal record of the association (Art. 17(3)(b) / (e)). Declared as partial retention in the section's `ErasureDeclaration`.
-- **Account merge (`IUserMerge`):** roster and ballots re-FK from source to target; if both accounts are on the same roster, the target's row wins and the source's ballot is dropped with an audit entry.
+- **Account merge (`IUserMerge`):** roster and ballots re-FK from source to target; if both accounts are on the same roster, the target's row wins and the source's ballot is dropped with an audit entry. The vote's own actor columns (`OpenedByUserId`, `ClosedByUserId`) and `assembly_vote_peeks.AdminUserId` move too, so the acta and the published peek list keep naming the surviving human instead of a tombstone.
 
 ## Cross-section dependencies
 

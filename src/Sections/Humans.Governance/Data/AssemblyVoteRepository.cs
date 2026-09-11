@@ -374,6 +374,34 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
             }
         }
 
+        // The merged account may also have stopped or peeked at votes. Those columns are
+        // this section's own and point at an account Users is about to tombstone, so they
+        // move too — otherwise the acta loses the closer's name and the published peek list
+        // credits "Merged User" instead of the surviving human.
+        var closed = await ctx.AssemblyVotes
+            .Where(v => v.ClosedByUserId == sourceUserId)
+            .ToListAsync(ct);
+        foreach (var vote in closed)
+        {
+            vote.ClosedByUserId = targetUserId;
+        }
+
+        var opened = await ctx.AssemblyVotes
+            .Where(v => v.OpenedByUserId == sourceUserId)
+            .ToListAsync(ct);
+        foreach (var vote in opened)
+        {
+            vote.OpenedByUserId = targetUserId;
+        }
+
+        var peeks = await ctx.AssemblyVotePeeks
+            .Where(p => p.AdminUserId == sourceUserId)
+            .ToListAsync(ct);
+        foreach (var peek in peeks)
+        {
+            peek.AdminUserId = targetUserId;
+        }
+
         await ctx.SaveChangesAsync(ct);
         return dropped;
     }

@@ -300,7 +300,7 @@ These controllers serve this section.
 - **T-24h reminder:** one email to roster members with no ballot (`IEmailMessageFactory.AssemblyVoteReminder`), stamped on the roster row (`ReminderSentAt`) so it never repeats. Sent by the same hourly job as the lapse sweep (`SectionJobs`, cron `0 * * * *`).
 - **GDPR export:** `IUserDataContributor` contributes the member's roster rows, standing ballots and history under `GdprExportSections.AssemblyVotes`.
 - **Art. 17 erasure:** the roster row's `UserId` is set to null (a tombstone that keeps counts and the stored result valid); ballot and history rows are retained unlinked, because the vote is a legal record of the association (GDPR Art. 17(3)(b) / (e)). Declared as partial retention in the section's `ErasureDeclaration`.
-- **Account merge (`IUserMerge`):** roster rows and ballots re-FK from source to target; when both accounts are on the same roster the target's row wins and the source's ballot is dropped with an audit entry.
+- **Account merge (`IUserMerge`):** roster rows and ballots re-FK from source to target; when both accounts are on the same roster the target's row wins and the source's ballot is dropped with an audit entry. The vote actor columns (`OpenedByUserId`, `ClosedByUserId`, `AssemblyVotePeek.AdminUserId`) are re-FK'd as well.
 - `UpdateDraftApplicationAsync` silently updates a Submitted application's tier, motivation, and Asociado fields. Allowed only while Status = Submitted; no cache invalidation, no state history append, no notifications.
 
 ## Cross-Section Dependencies
