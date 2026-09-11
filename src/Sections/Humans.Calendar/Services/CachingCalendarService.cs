@@ -65,9 +65,9 @@ internal sealed class CachingCalendarService(
             }
             catch (Exception ex)
             {
-                logger.LogWarning(
-                    "Community calendar contributor {Contributor} failed for window [{From}, {To}); its items are skipped: {Reason}",
-                    contributor.GetType().Name, from, to, ex.Message);
+                logger.LogWarning(ex,
+                    "Community calendar contributor {Contributor} failed for window [{From}, {To}); its items are skipped",
+                    contributor.GetType().Name, from, to);
                 continue;
             }
 

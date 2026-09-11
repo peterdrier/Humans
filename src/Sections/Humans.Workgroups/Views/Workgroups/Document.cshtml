@@ -186,7 +186,7 @@ else
                                     <select name="disposition" class="form-select form-select-sm">
                                         @foreach (WorkgroupCommentDisposition value in Enum.GetValues<WorkgroupCommentDisposition>())
                                         {
-                                            <option value="@value" selected="@(value == c.Disposition)">@Localizer.EnumDisplay(value)</option>
+                                            <option value="@value" selected="@(value == c.Disposition ? "selected" : null)">@Localizer.EnumDisplay(value)</option>
                                         }
                                     </select>
                                 </div>

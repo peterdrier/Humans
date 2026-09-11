@@ -94,20 +94,21 @@ internal sealed class WorkgroupsController(
     [HttpPost("{slug}/Join")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Join(string slug, CancellationToken ct) =>
-        ActAsync(slug, (id, userId) => workgroups.JoinAsync(id, userId, ct), "Workgroups_Joined", ct);
+        ActAsync(slug, (id, userId) => workgroups.JoinAsync(id, userId, ct), "Workgroups_Joined", ct,
+            memberOnly: false);
 
     [HttpPost("{slug}/Leave")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Leave(string slug, Guid? replacementCoordinatorUserId, CancellationToken ct) =>
         ActAsync(slug,
             (id, userId) => workgroups.LeaveAsync(id, userId, replacementCoordinatorUserId, asAdmin: false, ct),
-            "Workgroups_Left", ct);
+            "Workgroups_Left", ct, memberOnly: false);
 
     [HttpPost("{slug}/RequestStatus")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> RequestStatus(string slug, string? question, CancellationToken ct) =>
         ActAsync(slug, (id, userId) => workgroups.RequestStatusAsync(id, userId, question, ct),
-            "Workgroups_StatusRequested", ct);
+            "Workgroups_StatusRequested", ct, memberOnly: false);
 
     // ── Register fields and coordinators ──────────────────────────────────
 
@@ -342,7 +343,7 @@ internal sealed class WorkgroupsController(
     public Task<IActionResult> AddComment(
         string slug, Guid id, string category, string body, CancellationToken ct) =>
         ActAsync(slug, (_, userId) => workgroups.AddCommentAsync(id, userId, category, body, ct),
-            "Workgroups_CommentAdded", ct, documentId: id);
+            "Workgroups_CommentAdded", ct, documentId: id, memberOnly: false);
 
     [HttpPost("{slug}/Documents/{id:guid}/Comments/RespondCategory")]
     [ValidateAntiForgeryToken]
@@ -391,7 +392,9 @@ internal sealed class WorkgroupsController(
 
     /// <summary>
     /// The page's copy of the authorization handler's Member answer: a member of an Active
-    /// group, or the Board acting on any group. The service refuses anything this lets slip.
+    /// group, or the Board acting on any group. This is where membership is enforced — the
+    /// service checks the group's status and its own rules, not who the actor is — so every
+    /// member-only route has to pass through here or through <see cref="ActAsync"/>.
     /// </summary>
     private bool MayDoMemberWork(WorkgroupInfo workgroup, Guid userId) =>
         workgroup.AcceptsMemberWork() && (workgroup.IsMember(userId) || IsBoardOrAdmin());
@@ -431,17 +434,25 @@ internal sealed class WorkgroupsController(
         return build(workgroup) is { } model ? View(viewName, model) : NotFound();
     }
 
-    /// <summary>POST actions that redirect back to the group page, with the service's errors mapped.</summary>
+    /// <summary>
+    /// POST actions that redirect back to the group page, with the service's errors mapped.
+    /// Member-only by default (design §5): the caller must be a member of a group that
+    /// accepts member work, or the Board acting on any group. The four operations design §5
+    /// opens to any signed-in human — Join, Leave, RequestStatus, AddComment — pass
+    /// <paramref name="memberOnly"/> false and are gated by their own service rules.
+    /// </summary>
     private async Task<IActionResult> ActAsync(
         string slug,
         Func<Guid, Guid, Task> action,
         string successKey,
         CancellationToken ct,
-        Guid? documentId = null)
+        Guid? documentId = null,
+        bool memberOnly = true)
     {
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
         if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
+        if (memberOnly && !MayDoMemberWork(workgroup, user.Id)) return Forbid();
 
         try
         {

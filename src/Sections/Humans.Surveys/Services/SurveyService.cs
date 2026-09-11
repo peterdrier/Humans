@@ -613,6 +613,12 @@ internal sealed class SurveyService(
         if (survey.Status != SurveyStatus.PendingApproval)
             throw new InvalidOperationException("Only a survey pending approval can be approved.");
 
+        // Send validates the audience, and Open is not a state the author can edit out of — so a
+        // misconfigured audience has to fail here, before approval is persisted, leaving the
+        // survey in the queue where the Board can reject it back to the author.
+        ValidateAudienceConfiguration(
+            survey.AudienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, requireAudience: true);
+
         var now = clock.GetCurrentInstant();
         await repo.ApproveAsync(surveyId, now, ct);
         await auditLog.LogAsync(AuditAction.SurveyApproved, AuditEntityTypes.Survey, surveyId,

@@ -216,6 +216,61 @@ public sealed class GoogleDriveAccessSyncServiceTests
     }
 
     [HumansFact]
+    public async Task ReconcileOneAsync_InheritedBelowExpectedLevel_GrantsADirectPermission()
+    {
+        // Workgroup folders sit under a root that hands every Colaborador an inherited Viewer;
+        // a member who is one must still be raised to Contributor on the group's own folder.
+        var alice = Guid.NewGuid();
+        var service = CreateService(new StaticSource("folder-1", (alice, DrivePermissionLevel.Contributor)));
+        StubUsers((alice, "Alice", "alice@nobodies.team"));
+        StubFolder("folder-1", new DrivePermission(
+            "perm-root", "user", "reader", "alice@nobodies.team", HasInheritedComponent: true));
+        _drivePermissions.CreatePermissionAsync("folder-1", "alice@nobodies.team", "writer", Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Created, null));
+
+        await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        await _drivePermissions.Received(1)
+            .CreatePermissionAsync("folder-1", "alice@nobodies.team", "writer", Arg.Any<CancellationToken>());
+        // The inherited permission is untouchable at this level (#945) — only the grant happens.
+        await _drivePermissions.DidNotReceiveWithAnyArgs()
+            .DeletePermissionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ReconcileOneAsync_InheritedAtOrAboveExpectedLevel_IsLeftAlone()
+    {
+        var alice = Guid.NewGuid();
+        var service = CreateService(new StaticSource("folder-1", (alice, DrivePermissionLevel.Viewer)));
+        StubUsers((alice, "Alice", "alice@nobodies.team"));
+        StubFolder("folder-1", new DrivePermission(
+            "perm-root", "user", "writer", "alice@nobodies.team", HasInheritedComponent: true));
+
+        await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        await _drivePermissions.DidNotReceiveWithAnyArgs()
+            .CreatePermissionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _drivePermissions.DidNotReceiveWithAnyArgs()
+            .DeletePermissionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ReconcileOneAsync_FailedRemoval_DoesNotNotifyTheFormerMember()
+    {
+        var service = CreateService(new StaticSource("folder-1"));
+        StubFolder("folder-1", new DrivePermission("perm-1", "user", "reader", "old@nobodies.team", HasInheritedComponent: false));
+        _drivePermissions.DeletePermissionAsync("folder-1", "perm-1", Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionDeleteResult(
+                DrivePermissionDeleteOutcome.Failed, new GoogleClientError(500, "boom")));
+
+        await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        await _removalNotifications.DidNotReceiveWithAnyArgs().NotifyRemovalAsync(
+            Arg.Any<string>(), Arg.Any<GoogleResourceType>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<SyncRemovalReason>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ReconcileOneAsync_UnclaimedFolder_ReturnsError()
     {
         var service = CreateService();

@@ -3957,6 +3957,23 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task ApproveAndSendAsync_leaves_the_survey_pending_when_it_has_no_audience()
+    {
+        // Open is not a state the author can edit out of, so a misconfigured audience has to
+        // fail before approval is persisted — otherwise the survey is stranded Open and out
+        // of the Board's queue.
+        var survey = SurveyWith(SurveyStatus.PendingApproval, null, null);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var act = async () => await CreateService().ApproveAndSendAsync(
+            survey.Id, new SurveyViewer(Guid.NewGuid(), IsBoardOrAdmin: true), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.DidNotReceive().ApproveAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        survey.Status.Should().Be(SurveyStatus.PendingApproval);
+    }
+
+    [HumansFact]
     public async Task RejectAsync_returns_a_pending_survey_to_draft_with_the_note()
     {
         var authorId = Guid.NewGuid();

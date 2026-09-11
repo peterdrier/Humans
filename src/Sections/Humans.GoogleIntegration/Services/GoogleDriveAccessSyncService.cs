@@ -227,7 +227,15 @@ internal sealed class GoogleDriveAccessSyncService(
             if (!allEmails.Contains(member.Email))
                 state = MemberSyncState.Missing;
             else if (!directEmails.Contains(member.Email))
-                state = MemberSyncState.Inherited;
+                // An inherited permission cannot be edited or deleted at this level (#945), but
+                // it can be *out-ranked* by a direct grant. Workgroup folders live under a root
+                // that hands every Colaborador/Asociado an inherited Viewer, so a member who is
+                // one would otherwise never be raised to Contributor. Below the expected level
+                // the folder still needs a direct permission created, so classify it Missing;
+                // at or above it, inheritance already satisfies the claim.
+                state = ParseApiRole(currentRole) is { } inherited && inherited < member.Level
+                    ? MemberSyncState.Missing
+                    : MemberSyncState.Inherited;
             else
                 state = string.Equals(currentRole, expectedRole, StringComparison.Ordinal)
                     ? MemberSyncState.Correct
@@ -295,12 +303,15 @@ internal sealed class GoogleDriveAccessSyncService(
             if (!plan.PermissionIdByEmail.TryGetValue(member.Email, out var permissionId))
                 continue;
 
-            await DeleteAndLogAsync(claim, member.Email, member.UserId, permissionId, ct);
-            await NotifyRemovalAsync(member.Email, claim.FolderId, ct);
+            // Telling someone their access was removed when the delete failed (or the
+            // permission turned out to be inherited and untouchable) is a false notice.
+            if (await DeleteAndLogAsync(claim, member.Email, member.UserId, permissionId, ct))
+                await NotifyRemovalAsync(member.Email, claim.FolderId, ct);
         }
     }
 
-    private async Task DeleteAndLogAsync(FolderClaim claim, string email, Guid? userId, string permissionId, CancellationToken ct)
+    /// <summary>Deletes one permission and logs the outcome. True only when Drive actually removed it.</summary>
+    private async Task<bool> DeleteAndLogAsync(FolderClaim claim, string email, Guid? userId, string permissionId, CancellationToken ct)
     {
         var result = await drivePermissions.DeletePermissionAsync(claim.FolderId, permissionId, ct);
         switch (result.Outcome)
@@ -312,7 +323,7 @@ internal sealed class GoogleDriveAccessSyncService(
                     nameof(GoogleDriveAccessSyncService),
                     email, "MEMBER", GoogleSyncSource.ScheduledSync, success: true,
                     userId: userId, ct: ct);
-                break;
+                return true;
             case DrivePermissionDeleteOutcome.InheritedPermission:
                 logger.LogWarning(
                     "Skipping removal of {Email} from {FolderId} — permission is inherited, not direct",
@@ -328,6 +339,8 @@ internal sealed class GoogleDriveAccessSyncService(
                     errorMessage: error, userId: userId, ct: ct);
                 break;
         }
+
+        return false;
     }
 
     private async Task NotifyRemovalAsync(string email, string folderId, CancellationToken ct)
@@ -366,6 +379,16 @@ internal sealed class GoogleDriveAccessSyncService(
         ResourceType = GoogleResourceType.DriveFolder.ToString(),
         GoogleId = folderId,
         ErrorMessage = error
+    };
+
+    private static DrivePermissionLevel? ParseApiRole(string? role) => role switch
+    {
+        "reader" => DrivePermissionLevel.Viewer,
+        "commenter" => DrivePermissionLevel.Commenter,
+        "writer" => DrivePermissionLevel.Contributor,
+        "fileOrganizer" => DrivePermissionLevel.ContentManager,
+        "organizer" => DrivePermissionLevel.Manager,
+        _ => null
     };
 
     private static bool IsAnyUserPermission(DrivePermission perm)

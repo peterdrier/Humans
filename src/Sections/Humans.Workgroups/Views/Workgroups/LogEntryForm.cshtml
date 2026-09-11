@@ -26,7 +26,7 @@
                 <select asp-for="Kind" class="form-select">
                     @foreach (var kind in kinds)
                     {
-                        <option value="@kind" selected="@(kind == Model.Kind)">@Localizer.EnumDisplay(kind)</option>
+                        <option value="@kind" selected="@(kind == Model.Kind ? "selected" : null)">@Localizer.EnumDisplay(kind)</option>
                     }
                 </select>
             </div>
