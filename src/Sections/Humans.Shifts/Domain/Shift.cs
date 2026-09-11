@@ -10,19 +10,10 @@ namespace Humans.Shifts.Domain;
 /// </summary>
 internal sealed class Shift
 {
-    /// <summary>
-    /// Unique identifier.
-    /// </summary>
     public Guid Id { get; init; }
 
-    /// <summary>
-    /// FK to the parent rota.
-    /// </summary>
     public Guid RotaId { get; set; }
 
-    /// <summary>
-    /// Optional description of shift duties.
-    /// </summary>
     [MarkdownContent]
     public string? Description { get; set; }
 
@@ -31,14 +22,8 @@ internal sealed class Shift
     /// </summary>
     public int DayOffset { get; set; }
 
-    /// <summary>
-    /// Start time of the shift (wall clock in event timezone).
-    /// </summary>
     public LocalTime StartTime { get; set; }
 
-    /// <summary>
-    /// Duration of the shift.
-    /// </summary>
     public Duration Duration { get; set; }
 
     /// <summary>
@@ -51,9 +36,6 @@ internal sealed class Shift
     /// </summary>
     public int MaxVolunteers { get; set; }
 
-    /// <summary>
-    /// Whether this shift is restricted to coordinators/admins only.
-    /// </summary>
     public bool AdminOnly { get; set; }
 
     /// <summary>
@@ -91,24 +73,12 @@ internal sealed class Shift
     /// </summary>
     public bool IsAllDay { get; set; }
 
-    /// <summary>
-    /// When this shift was created.
-    /// </summary>
     public Instant CreatedAt { get; init; }
 
-    /// <summary>
-    /// When this shift was last updated.
-    /// </summary>
     public Instant UpdatedAt { get; set; }
 
-    /// <summary>
-    /// Navigation property to the parent rota.
-    /// </summary>
     public Rota Rota { get; set; } = null!;
 
-    /// <summary>
-    /// Navigation property to signups for this shift.
-    /// </summary>
     public ICollection<ShiftSignup> ShiftSignups { get; } = new List<ShiftSignup>();
 
     /// <summary>

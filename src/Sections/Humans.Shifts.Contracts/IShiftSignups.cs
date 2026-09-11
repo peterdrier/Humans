@@ -65,10 +65,7 @@ public interface IShiftSignups
 /// data a realistic status spread, and a bulk delete for the reset path.
 /// </summary>
 /// <remarks>
-/// Same call as <see cref="IShiftSeeding"/> — the seeder builds a
-/// multi-section fixture, so the verbs come to the leaf rather than the
-/// seeding going into the section (Teams' rule). Inherits
-/// <see cref="IShiftSignups"/> so the seeder injects one interface.
+/// Inherits <see cref="IShiftSignups"/> so the seeder injects one interface.
 /// </remarks>
 public interface IShiftSignupSeeding : IShiftSignups
 {
@@ -116,12 +113,8 @@ public record NoShowHistoryEntry(
 /// Result of a signup operation.
 /// </summary>
 /// <remarks>
-/// <see cref="SignupId"/> used to be the <c>ShiftSignup</c> row itself. Nothing
-/// outside the section read anything but its id — the dev seeder marks the
-/// created signup as reviewed — so the boundary carries the id, matching
-/// <see cref="ShiftMutationResult.ShiftId"/> (nobodies-collective/Humans#866).
-/// For a block signup it is the last row created, which is what the entity
-/// return was.
+/// <see cref="SignupId"/> matches <see cref="ShiftMutationResult.ShiftId"/>.
+/// For a block signup it is the last row created.
 /// </remarks>
 public record SignupResult
 {

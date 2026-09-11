@@ -135,9 +135,7 @@ internal sealed class RotaCoordinatorMessageService(
 
         await auditLogService.LogAsync(
             AuditAction.CoordinatorTeamRotasMessageSent,
-            // "Team" is a persisted audit discriminator, matched by exact equality when the log is
-            // read back, so it stays a literal now that the entity lives in Humans.Teams and Base
-            // cannot name it (memory/code/type-name-as-persisted-string.md).
+            // "Team" persisted literal — see memory/code/type-name-as-persisted-string.md.
             "Team", teamId,
             $"Sent team-wide rota message '{Truncate(messageText, 120)}' to {summary.Queued} recipient(s) "
                 + $"across {groups.Count} rota(s) in '{team.Name}'"

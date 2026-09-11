@@ -139,8 +139,10 @@ public sealed class CampaignServiceTests
     {
         var campaign = await SeedCampaignAsync();
 
-        await _service.ImportCodesAsync(campaign.Id, ["CODE1", "CODE2", "CODE1", "CODE3"], Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.ImportCodesAsync(campaign.Id, ["CODE1", "CODE2", "CODE1", "CODE3"], Xunit.TestContext.Current.CancellationToken);
 
+        result.Imported.Should().Be(3);
+        result.Skipped.Should().Be(1);
         var codes = await CampaignsDb.CampaignCodes
             .Where(c => c.CampaignId == campaign.Id)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
@@ -156,8 +158,10 @@ public sealed class CampaignServiceTests
         // First import
         await _service.ImportCodesAsync(campaign.Id, ["CODE1", "CODE2"], Xunit.TestContext.Current.CancellationToken);
         // Second import with overlap
-        await _service.ImportCodesAsync(campaign.Id, ["CODE2", "CODE3"], Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.ImportCodesAsync(campaign.Id, ["CODE2", "CODE3"], Xunit.TestContext.Current.CancellationToken);
 
+        result.Imported.Should().Be(1);
+        result.Skipped.Should().Be(1);
         var codes = await CampaignsDb.CampaignCodes
             .Where(c => c.CampaignId == campaign.Id)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
@@ -583,6 +587,44 @@ public sealed class CampaignServiceTests
         var retriedGrant = await CampaignsDb.CampaignGrants.FindAsync(grants[0].Id, Xunit.TestContext.Current.CancellationToken);
         retriedGrant!.LatestEmailStatus.Should().Be(EmailOutboxStatus.Queued);
     }
+
+    [HumansFact]
+    public async Task RetryAllFailedAsync_ReEnqueueFailure_LeavesThatGrantFailedOnly()
+    {
+        var campaign = await SeedActiveCampaignWithCodesAsync(["RE-1", "RE-2"]);
+
+        var user1 = SeedUser(displayName: "RetryUser1");
+        var user2 = SeedUser(displayName: "RetryUser2");
+        var team = SeedTeam("Lambda");
+        SeedTeamMember(team.Id, user1.Id);
+        SeedTeamMember(team.Id, user2.Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+
+        var grants = await CampaignsDb.CampaignGrants.ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        grants[0].LatestEmailStatus = EmailOutboxStatus.Failed;
+        grants[1].LatestEmailStatus = EmailOutboxStatus.Failed;
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(
+                Task.FromException(new InvalidOperationException("enqueue down")),
+                Task.CompletedTask);
+
+        await _service.RetryAllFailedAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
+
+        // One re-enqueue threw and flipped its grant back to Failed; the other
+        // grant's retry still went through.
+        ClearAllTrackers();
+        var refreshed = await CampaignsDb.CampaignGrants.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        refreshed.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Failed).Should().Be(1);
+        refreshed.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Queued).Should().Be(1);
+    }
+
+    // ==========================================================================
+    // PreviewWaveSendAsync
+    // ==========================================================================
 
     [HumansFact]
     public async Task PreviewWaveSendAsync_ReturnsCorrectCounts()

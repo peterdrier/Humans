@@ -170,10 +170,9 @@ public class VolunteerTrackingServiceTests
     public async Task MainCohort_future_unfilled_day_renders_as_gap_for_planning()
     {
         // Today (offset -1 in this fixture) is one day before gate-open. Volunteer
-        // has confirmed -5 only; -4..-1 are all unfilled. The cap on lastExpectedDay
-        // used to render -1 as "Expected" (today is not in the past), but coordinators
-        // need to see future unfilled commitments as gaps so they can voluntell
-        // ahead of time. Locks in spec src/Sections/Humans.Shifts/Docs/features/47-volunteer-tracking.md step 3.
+        // has confirmed -5 only; -4..-1 are all unfilled and must render as gaps
+        // (not "Expected") so coordinators can voluntell ahead of time.
+        // Locks in spec src/Sections/Humans.Shifts/Docs/features/47-volunteer-tracking.md step 3.
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
         var signups = new List<EligibleBuildSignup>

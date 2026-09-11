@@ -222,10 +222,8 @@
         </div>
     </div>
 
-    @* Staffing chart *@
     @await Html.PartialAsync("_StaffingChart", (Model.StaffingData, "dashboardStaffingChart"))
 
-    @* Staffing hours chart *@
     @await Html.PartialAsync("_StaffingHoursChart", (Model.StaffingHours, "dashboardStaffingHoursChart"))
 
     @* Grouped urgency accordion: one card per (Rota, Department); expand for per-day shifts + voluntell forms. *@
@@ -297,7 +295,7 @@
                                         <span class="@(rowUnderstaffed ? "text-danger fw-bold" : "")">@item.ConfirmedCount</span>
                                         <small class="text-muted">/ @shift.MinVolunteers–@shift.MaxVolunteers</small>
                                     </td>
-                                    @* Voluntell gated by ShiftDashboardAccess (#401). *@
+                                    @* Voluntell gated by ShiftDashboardAccess. *@
                                     <td class="text-end pe-3" authorize-policy="ShiftDashboardAccess">
                                         <button class="btn btn-sm btn-outline-primary"
                                                 type="button"

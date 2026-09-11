@@ -5,8 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Shifts.ViewComponents;
 
 /// <summary>
-/// One rota-search result row, keyed by rota id
-/// (nobodies-collective/Humans#1062). Callers hold the id their own search
+/// One rota-search result row, keyed by rota id. Callers hold the id their own search
 /// produced; Shifts owns what a rota row looks like, including the owning
 /// team's name and the department-filtered link the row points at.
 /// </summary>

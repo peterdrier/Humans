@@ -7,7 +7,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Controllers;
 
-/// <summary>Site-wide workload dashboard (read-only). see #734.</summary>
+/// <summary>Site-wide workload dashboard (read-only).</summary>
 [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
 [Route("Shifts/Admin/Workload")]
 internal sealed class ShiftWorkloadAdminController(IUserServiceRead userService, IWorkloadService workloadService)

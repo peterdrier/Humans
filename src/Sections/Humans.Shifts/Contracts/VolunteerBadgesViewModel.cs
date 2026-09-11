@@ -7,9 +7,7 @@ namespace Humans.Shifts.Contracts;
 /// <para><see cref="MedicalConditions"/> is GDPR Art. 9 — it is populated only when
 /// the building code has confirmed the viewer holds the MedicalDataViewer policy.
 /// The partial additionally guards on <see cref="ShowMedical"/>.</para>
-/// <para>Under <c>Contracts/</c> rather than <c>Models/</c> because Shell's widget gallery
-/// binds it (HUM0034 — a section type is internal by default). Moved out of
-/// <c>Humans.UI</c> at G5 lane 4b-i, nobodies-collective/Humans#866.</para>
+/// <para>Public under <c>Contracts/</c> because Debug's widget gallery constructs it.</para>
 /// </summary>
 public sealed record VolunteerBadgesViewModel(
     IReadOnlyList<string> Skills,

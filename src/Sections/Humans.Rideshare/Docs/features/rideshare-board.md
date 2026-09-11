@@ -73,18 +73,18 @@ humans look at the map and reach out.
 
 ### US-5: Admin Configures the Season
 
-**As an** Admin
+**As a** RideshareAdmin (or Admin)
 **I want to** set the year's destination and travel windows
 **So that** routing has a burn endpoint to compute against and the board scopes to the right dates
 
 **Acceptance Criteria:**
-- `/Rideshare/Admin` lets an Admin set `DestinationLabel`/coordinates and the inbound/outbound travel windows for the active year
+- `/Rideshare/Admin` lets a RideshareAdmin or Admin set `DestinationLabel`/coordinates and the inbound/outbound travel windows for the active year
 - Saving writes an audit log entry
 - The same page shows season statistics: offers posted, requests posted, seats offered and seats filled (both on active trips only), riders still looking
 
 ### US-6: Admin Views the Operational Day Roster
 
-**As an** Admin
+**As a** RideshareAdmin (or Admin)
 **I want to** see every ride happening on a given day, including full and cancelled ones, with its accepted riders
 **So that** I have safety/incident visibility and a retrospective view of what actually ran
 

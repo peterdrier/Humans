@@ -9,19 +9,10 @@ namespace Humans.Governance.Domain;
 /// </summary>
 internal sealed class BoardVote
 {
-    /// <summary>
-    /// Unique identifier for the vote.
-    /// </summary>
     public Guid Id { get; init; }
 
-    /// <summary>
-    /// Foreign key to the application being voted on.
-    /// </summary>
     public Guid ApplicationId { get; init; }
 
-    /// <summary>
-    /// Navigation property to the application.
-    /// </summary>
     public Application Application { get; set; } = null!;
 
     /// <summary>
@@ -31,23 +22,11 @@ internal sealed class BoardVote
     /// </summary>
     public Guid BoardMemberUserId { get; init; }
 
-    /// <summary>
-    /// The vote choice.
-    /// </summary>
     public VoteChoice Vote { get; set; }
 
-    /// <summary>
-    /// Optional note explaining the vote.
-    /// </summary>
     public string? Note { get; set; }
 
-    /// <summary>
-    /// When the vote was first cast.
-    /// </summary>
     public Instant VotedAt { get; init; }
 
-    /// <summary>
-    /// When the vote was last updated (null if never changed).
-    /// </summary>
     public Instant? UpdatedAt { get; set; }
 }
