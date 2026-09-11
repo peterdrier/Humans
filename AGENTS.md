@@ -12,7 +12,7 @@
 
 # Humans
 
-Humans is the membership management system for Nobodies Collective, a Spanish nonprofit. It runs the full membership lifecycle: volunteer signup, profile and consent, Colaborador/Asociado applications voted on by the Board, provisioning members into teams and Google Workspace, governance roles, shifts, tickets, and finance — with audit trails so the Board can see what automation did, and GDPR compliance throughout.
+Humans is the membership management system for Nobodies Collective, a Spanish nonprofit. It runs the full membership lifecycle: volunteer signup, profile and consent, Colaborador/Asociado applications voted on by the Board, provisioning members into teams and Google Workspace, governance roles, the association's binding assembly votes, shifts, tickets, and finance — with audit trails so the Board can see what automation did, and GDPR compliance throughout.
 
 ## What makes Humans special?
 
@@ -66,7 +66,11 @@ Terminology matters here — the full ubiquitous language lives in [`CONTEXT.md`
 - **Orchestrator** means a service that owns no tables and coordinates two or more sections through their interfaces only. The moment it owns a table, it's a Section.
 - **Base** means `src/Humans.Base`, the bottom of the dependency graph and the only project every section may reference.
 - **Shell** means `src/Humans.Web`: chrome, page composition, platform context. Nothing references the Shell.
-- **Board** means the governance body that reviews and votes on tier applications.
+- **Board** means the governance body that reviews and votes on tier applications, and that runs the
+  association's assembly votes.
+- **Assembly vote** means a binding recorded vote of the Asociados on a motion — Governance's third lane
+  beside tier applications and Board voting: the electorate is frozen at open, the tally is embargoed
+  until close, and the result is stored once. Not the Surveys secret ballot.
 
 ## The ways to hurt yourself
 

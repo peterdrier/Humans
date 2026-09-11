@@ -101,6 +101,7 @@ graph LR
     MembershipCalc[MembershipCalculator]:::governance
     MemQuery[MembershipQuery]:::governance
     GovIndex[GovernanceIndexService]:::governance
+    AssemblyVote[AssemblyVoteService]:::governance
 
     LegalDoc[LegalDocumentService]:::legal
     LegalSync[LegalDocumentSyncService]:::legal
@@ -271,6 +272,15 @@ graph LR
     MemQuery --> Role
     GovIndex --> LegalDoc
     GovIndex --> User
+    AssemblyVote --> Role
+    AssemblyVote --> Team
+    AssemblyVote --> User
+    AssemblyVote --> UEmail
+    AssemblyVote --> Email
+    AssemblyVote --> NotifEmitter
+    AssemblyVote --> NotifInbox
+    AssemblyVote --> Audit
+    AssemblyVote --> GTrans
 
     %% Legal + Consent
     LegalSync --> User

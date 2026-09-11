@@ -1306,6 +1306,39 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task OpenAsync_WhenTheVoteIsCancelledMidSend_StopsMailingTheRoster()
+    {
+        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Draft);
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        _fx.StubActiveUsers(first, second);
+        _fx.Applications.GetActiveApprovedTierUserIdsAsync(
+                MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>([first, second]));
+
+        // An Admin cancels while the opening batch is going out. Everybody left would
+        // otherwise be told the vote is open — after the cancellation email, no less.
+        var sent = 0;
+        _fx.Email.When(e => e.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()))
+            .Do(_ =>
+            {
+                if (++sent != 1) return;
+
+                var open = _fx.Db.AssemblyVotes.Single(v => v.Id == vote.Id);
+                open.Status = AssemblyVoteStatus.Cancelled;
+                open.CancelReason = "called off";
+                _fx.Db.SaveChanges();
+                _fx.Db.ChangeTracker.Clear();
+            });
+
+        (await _fx.Service.OpenAsync(
+                vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken))
+            .Should().Be(AssemblyVoteActionResult.Ok);
+
+        sent.Should().Be(1, "the batch ends at the cancellation instead of mailing the rest");
+    }
+
+    [HumansFact]
     public async Task ExtendAsync_BuiltFromADeadlineSomebodyElseAlreadyExtended_IsRefused()
     {
         var vote = await _fx.AddVoteAsync(

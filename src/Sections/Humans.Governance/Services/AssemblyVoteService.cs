@@ -1368,24 +1368,35 @@ internal sealed class AssemblyVoteService(
     /// <summary>
     /// Emails the given roster rows that the vote is open, stamping each row that was sent.
     /// An unstamped row is one the email never reached, and the hourly sweep retries it.
-    /// Returns how many rows the email actually reached.
+    /// Returns how many rows the email actually reached. The vote is re-read per recipient,
+    /// so a stop, cancel or extend mid-batch ends it rather than mailing the rest a deadline
+    /// — or a vote — that no longer stands; the unstamped rows are then left for the sweep,
+    /// which only retries while the vote is Open.
     /// </summary>
     private async Task<int> SendOpenedEmailsAsync(
         AssemblyVote vote, IReadOnlyList<AssemblyVoteRoster> rows, CancellationToken ct)
     {
         var recipients = await RecipientsAsync(rows, ct);
         var notified = 0;
-        var closesAt = ClosingLocal(vote.ClosesAt);
 
         foreach (var (rosterRow, info, address) in recipients)
         {
+            // Re-read per recipient, as the reminder loop does: mailing a whole electorate
+            // takes long enough for an Admin to stop, cancel or extend the vote in the
+            // middle of it, and "this vote is open, here is the deadline" is wrong for
+            // everybody left — a cancelled vote's roster would get the opening notice after
+            // the cancellation email, and an extended one a deadline it no longer has.
+            var current = await repository.GetByIdAsync(vote.Id, ct);
+            if (current is null || current.Status != AssemblyVoteStatus.Open) break;
+            var closesAt = ClosingLocal(current.ClosesAt);
+
             try
             {
                 await email.SendAsync(
                     messages.AssemblyVoteOpened(
                         address,
                         info.BurnerName,
-                        EmailTitle(vote, info.PreferredLanguage),
+                        EmailTitle(current, info.PreferredLanguage),
                         closesAt,
                         rosterRow.IsOfficial,
                         VoteUrl(vote.Id),
