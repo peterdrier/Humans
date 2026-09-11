@@ -192,6 +192,22 @@ internal sealed class StubGoogleDrivePermissionsClient(ILogger<StubGoogleDrivePe
         }
     }
 
+    public Task<DriveFolderCreateResult> CreateFolderAsync(
+        string parentFolderId,
+        string name,
+        CancellationToken ct = default)
+    {
+        logger.LogInformation("[STUB] Create folder '{Name}' under {ParentFolderId}", name, parentFolderId);
+
+        lock (_gate)
+        {
+            var id = $"stubfolder-{_nextFileId++}";
+            _filesById[id] = new StubFile(id, name, parentFolderId, DriveId: null, InheritedPermissionsDisabled: null);
+            _permissionsByFile[id] = [];
+            return Task.FromResult(new DriveFolderCreateResult(id, Error: null));
+        }
+    }
+
     public Task<SharedDriveMetadataResult> GetSharedDriveAsync(
         string driveId,
         CancellationToken ct = default)

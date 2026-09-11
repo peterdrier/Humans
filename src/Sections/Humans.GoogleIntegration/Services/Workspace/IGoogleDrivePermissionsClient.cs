@@ -88,6 +88,17 @@ internal interface IGoogleDrivePermissionsClient
     Task<SharedDriveMetadataResult> GetSharedDriveAsync(
         string driveId,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Creates a new folder named <paramref name="name"/> directly under
+    /// <paramref name="parentFolderId"/>. Used by
+    /// <c>IGoogleSyncService.CreateSubfolderAsync</c> when a section
+    /// provisions a new Drive folder (e.g. a Workgroups group folder).
+    /// </summary>
+    Task<DriveFolderCreateResult> CreateFolderAsync(
+        string parentFolderId,
+        string name,
+        CancellationToken ct = default);
 }
 
 /// <summary>
@@ -216,3 +227,9 @@ internal sealed record SharedDriveMetadataResult(SharedDriveMetadata? Drive, Goo
 /// its display name.
 /// </summary>
 internal sealed record SharedDriveMetadata(string Id, string Name);
+
+/// <summary>
+/// Outcome of <see cref="IGoogleDrivePermissionsClient.CreateFolderAsync"/>.
+/// Exactly one of <see cref="FolderId"/> or <see cref="Error"/> is non-null.
+/// </summary>
+internal sealed record DriveFolderCreateResult(string? FolderId, GoogleClientError? Error);

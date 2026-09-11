@@ -16,6 +16,7 @@ public class GoogleResourceReconciliationJobTests : IDisposable
 {
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IGoogleGroupSync _googleGroupSync;
+    private readonly IGoogleDriveSync _googleDriveSync;
     private readonly FakeClock _clock;
     private readonly IHumansMetrics _metrics;
     private readonly GoogleResourceReconciliationJob _job;
@@ -24,12 +25,14 @@ public class GoogleResourceReconciliationJobTests : IDisposable
     {
         _googleSyncService = Substitute.For<IGoogleSyncService>();
         _googleGroupSync = Substitute.For<IGoogleGroupSync>();
+        _googleDriveSync = Substitute.For<IGoogleDriveSync>();
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 9, 2, 0));
         _metrics = TestMetrics.Create();
 
         _job = new GoogleResourceReconciliationJob(
             _googleSyncService,
             _googleGroupSync,
+            _googleDriveSync,
             Substitute.For<INotificationService>(),
             _metrics,
             NullLogger<GoogleResourceReconciliationJob>.Instance,
@@ -57,6 +60,8 @@ public class GoogleResourceReconciliationJobTests : IDisposable
             .SyncResourcesByTypeAsync(GoogleResourceType.Group, Arg.Any<SyncAction>(), Arg.Any<CancellationToken>());
         await _googleGroupSync.Received(1)
             .ReconcileAllAsync(SyncAction.Execute, Arg.Any<CancellationToken>());
+        await _googleDriveSync.Received(1)
+            .ReconcileAllAsync(SyncAction.Execute, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -69,6 +74,8 @@ public class GoogleResourceReconciliationJobTests : IDisposable
         await act.Should().ThrowAsync<OperationCanceledException>();
 
         await _googleGroupSync.DidNotReceive()
+            .ReconcileAllAsync(Arg.Any<SyncAction>(), Arg.Any<CancellationToken>());
+        await _googleDriveSync.DidNotReceive()
             .ReconcileAllAsync(Arg.Any<SyncAction>(), Arg.Any<CancellationToken>());
     }
 }

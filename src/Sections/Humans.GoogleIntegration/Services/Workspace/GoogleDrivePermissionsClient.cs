@@ -252,6 +252,39 @@ internal sealed class GoogleDrivePermissionsClient(
         }
     }
 
+    public async Task<DriveFolderCreateResult> CreateFolderAsync(
+        string parentFolderId,
+        string name,
+        CancellationToken ct = default)
+    {
+        using var _ = logger.TimeOperation();
+        try
+        {
+            var drive = await GetDriveServiceAsync(ct);
+            var metadata = new SdkFile
+            {
+                Name = name,
+                MimeType = "application/vnd.google-apps.folder",
+                Parents = [parentFolderId]
+            };
+
+            var request = drive.Files.Create(metadata);
+            request.SupportsAllDrives = true;
+            request.Fields = "id";
+            var file = await request.ExecuteAsync(ct);
+            return new DriveFolderCreateResult(file.Id, Error: null);
+        }
+        catch (Google.GoogleApiException ex)
+        {
+            logger.LogWarning(ex,
+                "Google API error creating folder '{Name}' under {ParentFolderId}: Code={Code} Message={Message}",
+                name, parentFolderId, ex.Error?.Code, ex.Error?.Message);
+            return new DriveFolderCreateResult(
+                FolderId: null,
+                Error: new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
+        }
+    }
+
     /// <summary>
     /// Classifies an HTTP 400 error as a duplicate-permission case (safe to
     /// treat as idempotent success) vs. any other bad-request failure

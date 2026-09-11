@@ -33,6 +33,7 @@ internal sealed class GoogleWorkspaceSyncService(
     IGoogleSyncLogService googleSyncLog,
     ISyncSettingsService syncSettingsService,
     IGoogleRemovalNotificationService removalNotifications,
+    IGoogleDriveAccessSyncScheduler driveAccessSyncScheduler,
     IOptions<GoogleWorkspaceOptions> options,
     IClock clock,
     IServiceProvider serviceProvider,
@@ -978,6 +979,47 @@ internal sealed class GoogleWorkspaceSyncService(
         HashSet<string> AllEmails,
         HashSet<string> DirectEmails,
         Dictionary<string, string> RoleByEmail);
+
+    /// <inheritdoc />
+    public async Task<string> CreateSubfolderAsync(
+        string parentFolderId,
+        string name,
+        CancellationToken cancellationToken = default)
+    {
+        var mode = await syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, cancellationToken);
+        if (mode == SyncMode.None)
+        {
+            throw new InvalidOperationException(
+                $"Cannot create Drive subfolder '{name}' — Google Drive sync mode is set to None.");
+        }
+
+        var result = await drivePermissions.CreateFolderAsync(parentFolderId, name, cancellationToken);
+        if (result.FolderId is null)
+        {
+            var message =
+                $"Failed to create Drive subfolder '{name}' under {parentFolderId} " +
+                $"(HTTP {result.Error?.StatusCode}): {result.Error?.RawMessage}";
+            logger.LogWarning("{Message}", message);
+            throw new InvalidOperationException(message);
+        }
+
+        logger.LogInformation(
+            "Created Drive subfolder '{Name}' ({FolderId}) under {ParentFolderId}",
+            name, result.FolderId, parentFolderId);
+        return result.FolderId;
+    }
+
+    /// <inheritdoc />
+    public Task RequestSyncAsync(string folderId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(folderId))
+        {
+            throw new ArgumentException("Folder id is required.", nameof(folderId));
+        }
+
+        driveAccessSyncScheduler.Enqueue(folderId.Trim());
+        return Task.CompletedTask;
+    }
 
     /// <inheritdoc />
     public async Task<GroupLinkResult> EnsureTeamGroupAsync(
