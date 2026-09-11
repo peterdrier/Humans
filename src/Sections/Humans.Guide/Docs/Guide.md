@@ -21,6 +21,10 @@
   its parenthetical's privilege tokens, and dropped at request time by
   `GuideFilter` before the markdown reaches Markdig. No role metadata
   survives into the rendered HTML.
+- A `##` line **inside a fenced code block** is sample text, not a heading: it neither opens a
+  role-scoped block nor closes the one it sits in. `GuideSegmenter` tracks fence state for that
+  reason — an untracked fenced `##` ends the block around it and serves its remainder to
+  everyone.
 - A **parenthetical** is text in parens after `## As a …` (e.g. `## As a
   Board member / Admin (Teams Admin)`) that specifies which domain admin
   role sees that block. Every parenthetical must be a key in

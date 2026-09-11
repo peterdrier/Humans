@@ -217,6 +217,107 @@ public class GuideSegmenterTests
     }
 
     [HumansFact]
+    public void Segment_FencedH2InsideRoleBlock_DoesNotEndTheBlock()
+    {
+        // Raised by Codex on peterdrier/Humans#1655 and reproduced before the fix: an untracked
+        // "## …" inside a fence closed the Board/Admin block, and everything after it went out
+        // as unscoped — to anonymous readers included. The old HTML preprocessor had the same
+        // hole; N7 carried it over verbatim until this.
+        const string input = """
+            ## As a Board member / Admin (Teams Admin)
+
+            Board-only guidance.
+
+            ```markdown
+            ## Example
+            ```
+
+            Still board-only guidance.
+            """;
+
+        var document = GuideSegmenter.Segment(input);
+
+        document.Segments.Should().ContainSingle();
+        document.Segments[0].Role.Should().Be(GuideDocument.BoardAdmin);
+
+        GuideFilter.Apply(document, GuideRoleContext.Anonymous)
+            .Should().BeEmpty("every line of the file belongs to a block anonymous cannot see");
+    }
+
+    [HumansFact]
+    public void Segment_FencedRoleHeading_DoesNotOpenABlock()
+    {
+        // The other half: a role heading quoted inside a fence is documentation about the
+        // grammar, not an instance of it. Opening a block there would scope prose that follows
+        // it to a role nobody wrote it for.
+        const string input = """
+            # Writing guide pages
+
+            Scope a section to a role by opening it with a heading like this:
+
+            ```markdown
+            ## As a Coordinator (Consent Coordinator)
+            ```
+
+            The parenthetical must name a mapped privilege.
+            """;
+
+        var document = GuideSegmenter.Segment(input);
+
+        document.Segments.Should().ContainSingle();
+        document.Segments[0].Role.Should().BeNull();
+        document.Segments[0].Markdown.Should().Be(input);
+    }
+
+    [HumansFact]
+    public void Segment_TildeFence_IsTrackedToo()
+    {
+        const string input = """
+            ## As a Coordinator
+
+            Coordinator-only guidance.
+
+            ~~~
+            ## Example
+            ~~~
+
+            Still coordinator-only guidance.
+            """;
+
+        var document = GuideSegmenter.Segment(input);
+
+        document.Segments.Should().ContainSingle();
+        document.Segments[0].Role.Should().Be(GuideDocument.Coordinator);
+    }
+
+    [HumansFact]
+    public void Segment_FenceClosedByALongerRun_ResumesHeadingTracking()
+    {
+        // Fence bookkeeping must actually reopen, or everything after the first fence in a file
+        // becomes one unscoped segment and the role model quietly stops applying.
+        const string input = """
+            ## As a Volunteer
+
+            Volunteer guidance.
+
+            ```
+            ## Not a heading
+            ````
+
+            ## Related sections
+
+            Everyone sees this.
+            """;
+
+        var document = GuideSegmenter.Segment(input);
+
+        document.Segments.Should().HaveCount(2);
+        document.Segments[0].Role.Should().Be(GuideDocument.Volunteer);
+        document.Segments[0].Markdown.Should().NotContain("Everyone sees this.");
+        document.Segments[1].Role.Should().BeNull();
+    }
+
+    [HumansFact]
     public void Segment_EveryShippedFile_RejoinsToTheOriginal()
     {
         // The filter selects segments and joins them; if the join is not lossless, a reader who

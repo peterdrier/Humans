@@ -25,6 +25,14 @@ internal static class GuideSegmenter
         RegexOptions.Compiled,
         TimeSpan.FromMilliseconds(100));
 
+    // A "## …" line inside a fenced code block is sample text, not a heading. Untracked, it ends
+    // the role block it sits in and serves the rest of that block to everyone — so fence state is
+    // an authorization concern here, not a rendering nicety.
+    private static readonly Regex FenceDelimiter = new(
+        @"^ {0,3}(?<fence>`{3,}|~{3,})",
+        RegexOptions.Compiled,
+        TimeSpan.FromMilliseconds(100));
+
     private static readonly string[] NoPrivileges = [];
 
     public static GuideDocument Segment(string markdown)
@@ -36,11 +44,37 @@ internal static class GuideSegmenter
 
         var start = 0;
         string? role = null;
+        string? openFence = null;
         IReadOnlyList<string> privileges = NoPrivileges;
 
         for (var i = 0; i < lines.Length; i++)
         {
             var line = lines[i].EndsWith('\r') ? lines[i][..^1] : lines[i];
+
+            var fence = FenceDelimiter.Match(line);
+            if (fence.Success)
+            {
+                var delimiter = fence.Groups["fence"].Value;
+                if (openFence is null)
+                {
+                    openFence = delimiter;
+                }
+                else if (delimiter[0] == openFence[0]
+                    && delimiter.Length >= openFence.Length
+                    && line.AsSpan(fence.Length).IsWhiteSpace())
+                {
+                    // A closing fence carries no info string, so anything trailing means this is
+                    // still content — closing early would let the next "##" split the block.
+                    openFence = null;
+                }
+
+                continue;
+            }
+
+            if (openFence is not null)
+            {
+                continue;
+            }
 
             var roleMatch = RoleHeading.Match(line);
             if (roleMatch.Success)
