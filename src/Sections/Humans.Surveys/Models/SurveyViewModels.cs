@@ -8,10 +8,17 @@ using NodaTime.Text;
 
 namespace Humans.Surveys.Models;
 
-/// <summary>Admin index: the survey list (sorting done in the controller).</summary>
+/// <summary>Admin index: the survey list, scoped to the viewer (sorting done in the controller).</summary>
 internal sealed class SurveyAdminIndexViewModel
 {
-    public IReadOnlyList<SurveySummary> Surveys { get; init; } = [];
+    public IReadOnlyList<SurveyAdminSummary> Surveys { get; init; } = [];
+    public bool IsBoardOrAdmin { get; init; }
+}
+
+/// <summary>The Board/Admin approval queue: surveys awaiting approve-and-send or reject.</summary>
+internal sealed class SurveyPendingApprovalViewModel
+{
+    public IReadOnlyList<SurveyPendingApprovalItem> Items { get; init; } = [];
 }
 
 /// <summary>Side-effect-free preview of the current user's survey invitation email.</summary>
@@ -150,6 +157,7 @@ internal sealed class SurveyBuilderViewModel
 {
     public Guid? Id { get; set; }
     public SurveyStatus Status { get; set; } = SurveyStatus.Draft;
+    public string? RejectionNote { get; set; }
 
     public Dictionary<string, string> Title { get; set; } = new(StringComparer.Ordinal);
     public Dictionary<string, string> Intro { get; set; } = new(StringComparer.Ordinal);
@@ -225,6 +233,7 @@ internal sealed class SurveyBuilderViewModel
         {
             Id = detail.Id,
             Status = detail.Status,
+            RejectionNote = detail.RejectionNote,
             Title = ToDict(e.Title),
             Intro = ToDict(e.Intro),
             ThankYou = ToDict(e.ThankYou),

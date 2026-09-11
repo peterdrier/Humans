@@ -84,4 +84,34 @@
   <data name="Survey_Ranked_Unranked" xml:space="preserve"><value>Sense classificar</value></data>
   <data name="Survey_Ranked_Best" xml:space="preserve"><value>Millor</value></data>
   <data name="Survey_Ranked_Worst" xml:space="preserve"><value>Pitjor</value></data>
+  <data name="Survey_Admin_Index_Title" xml:space="preserve"><value>Enquestes</value></data>
+  <data name="Survey_Admin_Index_New" xml:space="preserve"><value>Nova enquesta</value></data>
+  <data name="Survey_Admin_Index_ColumnTitle" xml:space="preserve"><value>Títol</value></data>
+  <data name="Survey_Admin_Index_ColumnAuthor" xml:space="preserve"><value>Autor</value></data>
+  <data name="Survey_Admin_Index_ColumnStatus" xml:space="preserve"><value>Estat</value></data>
+  <data name="Survey_Admin_Index_ColumnInvited" xml:space="preserve"><value>Convidats</value></data>
+  <data name="Survey_Admin_Index_ColumnResponses" xml:space="preserve"><value>Respostes</value></data>
+  <data name="Survey_Admin_Index_ColumnRate" xml:space="preserve"><value>Taxa</value></data>
+  <data name="Survey_Admin_Index_Empty" xml:space="preserve"><value>Encara no hi ha enquestes.</value></data>
+  <data name="Survey_Admin_Index_Untitled" xml:space="preserve"><value>Enquesta sense títol</value></data>
+  <data name="Survey_Admin_Index_RejectionNote" xml:space="preserve"><value>Rebutjada: {0}</value></data>
+  <data name="Survey_Admin_Index_Edit" xml:space="preserve"><value>Edita</value></data>
+  <data name="Survey_Admin_Index_SubmitForApproval" xml:space="preserve"><value>Envia per aprovació</value></data>
+  <data name="Survey_Admin_Index_Send" xml:space="preserve"><value>Envia</value></data>
+  <data name="Survey_Admin_Index_Results" xml:space="preserve"><value>Resultats</value></data>
+  <data name="Enum_SurveyStatus_Draft" xml:space="preserve"><value>Esborrany</value></data>
+  <data name="Enum_SurveyStatus_Open" xml:space="preserve"><value>Oberta</value></data>
+  <data name="Enum_SurveyStatus_Closed" xml:space="preserve"><value>Tancada</value></data>
+  <data name="Enum_SurveyStatus_PendingApproval" xml:space="preserve"><value>Pendent d'aprovació</value></data>
+  <data name="Survey_Admin_Queue_Title" xml:space="preserve"><value>Aprovacions d'enquestes</value></data>
+  <data name="Survey_Admin_Queue_Empty" xml:space="preserve"><value>No hi ha res pendent d'aprovació.</value></data>
+  <data name="Survey_Admin_Queue_Author" xml:space="preserve"><value>Autor</value></data>
+  <data name="Survey_Admin_Queue_Submitted" xml:space="preserve"><value>Enviada</value></data>
+  <data name="Survey_Admin_Queue_ApproveAndSend" xml:space="preserve"><value>Aprova i envia</value></data>
+  <data name="Survey_Admin_Queue_Reject" xml:space="preserve"><value>Rebutja</value></data>
+  <data name="Survey_Admin_Queue_RejectNoteLabel" xml:space="preserve"><value>Nota per a l'autor</value></data>
+  <data name="Survey_Admin_Queue_RejectNoteRequired" xml:space="preserve"><value>Cal una nota per rebutjar un enviament.</value></data>
+  <data name="Survey_Admin_Queue_Approved" xml:space="preserve"><value>Enquesta aprovada i oberta; {0} invitació/ns en cua, {1} fallida/es.</value></data>
+  <data name="Survey_Admin_Queue_Rejected" xml:space="preserve"><value>Enquesta rebutjada i retornada a l'autor com a esborrany.</value></data>
+  <data name="Survey_Admin_Index_Submitted" xml:space="preserve"><value>Enquesta enviada per a l'aprovació de la Junta/Admin.</value></data>
 </root>

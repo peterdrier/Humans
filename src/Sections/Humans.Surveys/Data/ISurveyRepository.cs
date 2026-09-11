@@ -41,6 +41,15 @@ internal partial interface ISurveyRepository : IRepository
     /// <summary>Sets a survey's status and stamps <c>UpdatedAt</c>. No-op if the survey does not exist.</summary>
     Task SetStatusAsync(Guid id, SurveyStatus status, Instant updatedAt, CancellationToken ct = default);
 
+    /// <summary>Draft → PendingApproval: stamps <c>SubmittedAt</c> and clears any prior rejection note. No-op if the survey does not exist.</summary>
+    Task SubmitForApprovalAsync(Guid id, Instant submittedAt, CancellationToken ct = default);
+
+    /// <summary>PendingApproval → Open: clears <c>SubmittedAt</c>/<c>RejectionNote</c>. No-op if the survey does not exist.</summary>
+    Task ApproveAsync(Guid id, Instant approvedAt, CancellationToken ct = default);
+
+    /// <summary>PendingApproval → Draft: records the Board's rejection note and clears <c>SubmittedAt</c>. No-op if the survey does not exist.</summary>
+    Task RejectAsync(Guid id, string note, Instant rejectedAt, CancellationToken ct = default);
+
     /// <summary>Invitation count per survey id (for the admin index). Surveys with no invitations are absent. Read-only.</summary>
     Task<IReadOnlyDictionary<Guid, int>> GetInvitedCountsBySurveyAsync(CancellationToken ct = default);
 

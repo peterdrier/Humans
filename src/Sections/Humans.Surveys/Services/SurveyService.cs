@@ -157,7 +157,7 @@ internal sealed class SurveyService(
             ToQuestionInputs(s),
             s.IsAsociadoVote == true);
 
-        return new SurveyDetail(s.Id, s.Status, input);
+        return new SurveyDetail(s.Id, s.Status, input, s.CreatedByUserId, s.RejectionNote);
     }
 
     public Task<bool> HasSavedAnswersAsync(Guid surveyId, CancellationToken ct = default)
@@ -520,6 +520,10 @@ internal sealed class SurveyService(
         var status = await repo.GetStatusAsync(surveyId, ct)
             ?? throw new InvalidOperationException("Survey not found.");
         if (status == SurveyStatus.Open) return;
+        // A submission pending approval can only become Open via ApproveAndSendAsync — that is
+        // the one step that also sends invitations and records the approval (Workgroups §11).
+        if (status == SurveyStatus.PendingApproval)
+            throw new InvalidOperationException("A survey pending approval must be approved or rejected, not opened directly.");
         if (status == SurveyStatus.Closed)
         {
             var survey = await repo.GetByIdAsync(surveyId, ct)
@@ -540,6 +544,101 @@ internal sealed class SurveyService(
 
         await repo.SetStatusAsync(surveyId, SurveyStatus.Closed, clock.GetCurrentInstant(), ct);
         await auditLog.LogAsync(AuditAction.SurveyClosed, AuditEntityTypes.Survey, surveyId, "Closed survey", actorUserId);
+    }
+
+    public async Task<IReadOnlyList<SurveyAdminSummary>> GetAdminSummariesAsync(SurveyViewer viewer, CancellationToken ct = default)
+    {
+        var surveys = await repo.GetAllSummariesAsync(ct);
+        var scoped = viewer.IsBoardOrAdmin
+            ? surveys
+            : surveys.Where(s => s.CreatedByUserId == viewer.UserId).ToList();
+        if (scoped.Count == 0) return [];
+
+        var invited = await repo.GetInvitedCountsBySurveyAsync(ct);
+        var responses = await repo.GetResponseCountsBySurveyAsync(ct);
+
+        return scoped.Select(s => new SurveyAdminSummary(
+            s.Id,
+            s.Title.Resolve(s.DefaultCulture, s.DefaultCulture),
+            s.Status,
+            invited.GetValueOrDefault(s.Id),
+            responses.GetValueOrDefault(s.Id),
+            s.CreatedByUserId,
+            s.SubmittedAt,
+            s.RejectionNote)).ToList();
+    }
+
+    public async Task<IReadOnlyList<SurveyPendingApprovalItem>> GetPendingApprovalQueueAsync(CancellationToken ct = default)
+    {
+        var pending = (await repo.GetAllSummariesAsync(ct))
+            .Where(s => s.Status == SurveyStatus.PendingApproval)
+            .ToList();
+        if (pending.Count == 0) return [];
+
+        var authorIds = pending.Select(s => s.CreatedByUserId).Distinct().ToList();
+        var authors = await userService.GetUserInfosAsync(authorIds, ct);
+
+        return pending
+            .OrderBy(s => s.SubmittedAt)
+            .Select(s => new SurveyPendingApprovalItem(
+                s.Id,
+                s.Title.Resolve(s.DefaultCulture, s.DefaultCulture),
+                s.CreatedByUserId,
+                authors.TryGetValue(s.CreatedByUserId, out var author) ? author.BurnerName : s.CreatedByUserId.ToString(),
+                s.SubmittedAt))
+            .ToList();
+    }
+
+    public async Task SubmitForApprovalAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default)
+    {
+        var survey = await repo.GetByIdAsync(surveyId, ct)
+            ?? throw new InvalidOperationException("Survey not found.");
+        if (survey.CreatedByUserId != actorUserId)
+            throw new InvalidOperationException("Only the survey's author may submit it for approval.");
+        if (survey.Status != SurveyStatus.Draft)
+            throw new InvalidOperationException("Only a Draft survey can be submitted for approval.");
+
+        var now = clock.GetCurrentInstant();
+        await repo.SubmitForApprovalAsync(surveyId, now, ct);
+        await auditLog.LogAsync(AuditAction.SurveySubmittedForApproval, AuditEntityTypes.Survey, surveyId,
+            $"Submitted survey '{survey.Title.Resolve(survey.DefaultCulture, survey.DefaultCulture)}' for approval", actorUserId);
+    }
+
+    public async Task<SendResult> ApproveAndSendAsync(Guid surveyId, SurveyViewer viewer, CancellationToken ct = default)
+    {
+        if (!viewer.IsBoardOrAdmin)
+            throw new InvalidOperationException("Only Board/Admin may approve a survey.");
+        var survey = await repo.GetByIdAsync(surveyId, ct)
+            ?? throw new InvalidOperationException("Survey not found.");
+        if (survey.Status != SurveyStatus.PendingApproval)
+            throw new InvalidOperationException("Only a survey pending approval can be approved.");
+
+        var now = clock.GetCurrentInstant();
+        await repo.ApproveAsync(surveyId, now, ct);
+        await auditLog.LogAsync(AuditAction.SurveyApproved, AuditEntityTypes.Survey, surveyId,
+            $"Approved survey '{survey.Title.Resolve(survey.DefaultCulture, survey.DefaultCulture)}'; sending invitations",
+            viewer.UserId, relatedEntityId: survey.CreatedByUserId, relatedEntityType: AuditEntityTypes.User);
+
+        return await SendInvitesAsync(surveyId, viewer.UserId, ct);
+    }
+
+    public async Task RejectAsync(Guid surveyId, SurveyViewer viewer, string note, CancellationToken ct = default)
+    {
+        if (!viewer.IsBoardOrAdmin)
+            throw new InvalidOperationException("Only Board/Admin may reject a survey.");
+        if (string.IsNullOrWhiteSpace(note))
+            throw new InvalidOperationException("A rejection note is required.");
+        var survey = await repo.GetByIdAsync(surveyId, ct)
+            ?? throw new InvalidOperationException("Survey not found.");
+        if (survey.Status != SurveyStatus.PendingApproval)
+            throw new InvalidOperationException("Only a survey pending approval can be rejected.");
+
+        var now = clock.GetCurrentInstant();
+        var trimmedNote = note.Trim();
+        await repo.RejectAsync(surveyId, trimmedNote, now, ct);
+        await auditLog.LogAsync(AuditAction.SurveyRejected, AuditEntityTypes.Survey, surveyId,
+            $"Rejected survey '{survey.Title.Resolve(survey.DefaultCulture, survey.DefaultCulture)}': {trimmedNote}",
+            viewer.UserId, relatedEntityId: survey.CreatedByUserId, relatedEntityType: AuditEntityTypes.User);
     }
 
     public async Task<int> PreviewAudienceCountAsync(Guid surveyId, CancellationToken ct = default)

@@ -84,4 +84,34 @@
   <data name="Survey_Ranked_Unranked" xml:space="preserve"><value>Non classé</value></data>
   <data name="Survey_Ranked_Best" xml:space="preserve"><value>Meilleur</value></data>
   <data name="Survey_Ranked_Worst" xml:space="preserve"><value>Pire</value></data>
+  <data name="Survey_Admin_Index_Title" xml:space="preserve"><value>Sondages</value></data>
+  <data name="Survey_Admin_Index_New" xml:space="preserve"><value>Nouveau sondage</value></data>
+  <data name="Survey_Admin_Index_ColumnTitle" xml:space="preserve"><value>Titre</value></data>
+  <data name="Survey_Admin_Index_ColumnAuthor" xml:space="preserve"><value>Auteur</value></data>
+  <data name="Survey_Admin_Index_ColumnStatus" xml:space="preserve"><value>Statut</value></data>
+  <data name="Survey_Admin_Index_ColumnInvited" xml:space="preserve"><value>Invités</value></data>
+  <data name="Survey_Admin_Index_ColumnResponses" xml:space="preserve"><value>Réponses</value></data>
+  <data name="Survey_Admin_Index_ColumnRate" xml:space="preserve"><value>Taux</value></data>
+  <data name="Survey_Admin_Index_Empty" xml:space="preserve"><value>Aucun sondage pour l'instant.</value></data>
+  <data name="Survey_Admin_Index_Untitled" xml:space="preserve"><value>Sondage sans titre</value></data>
+  <data name="Survey_Admin_Index_RejectionNote" xml:space="preserve"><value>Rejeté : {0}</value></data>
+  <data name="Survey_Admin_Index_Edit" xml:space="preserve"><value>Modifier</value></data>
+  <data name="Survey_Admin_Index_SubmitForApproval" xml:space="preserve"><value>Soumettre pour approbation</value></data>
+  <data name="Survey_Admin_Index_Send" xml:space="preserve"><value>Envoyer</value></data>
+  <data name="Survey_Admin_Index_Results" xml:space="preserve"><value>Résultats</value></data>
+  <data name="Enum_SurveyStatus_Draft" xml:space="preserve"><value>Brouillon</value></data>
+  <data name="Enum_SurveyStatus_Open" xml:space="preserve"><value>Ouvert</value></data>
+  <data name="Enum_SurveyStatus_Closed" xml:space="preserve"><value>Fermé</value></data>
+  <data name="Enum_SurveyStatus_PendingApproval" xml:space="preserve"><value>En attente d'approbation</value></data>
+  <data name="Survey_Admin_Queue_Title" xml:space="preserve"><value>Approbations de sondages</value></data>
+  <data name="Survey_Admin_Queue_Empty" xml:space="preserve"><value>Rien n'attend d'approbation.</value></data>
+  <data name="Survey_Admin_Queue_Author" xml:space="preserve"><value>Auteur</value></data>
+  <data name="Survey_Admin_Queue_Submitted" xml:space="preserve"><value>Soumis</value></data>
+  <data name="Survey_Admin_Queue_ApproveAndSend" xml:space="preserve"><value>Approuver et envoyer</value></data>
+  <data name="Survey_Admin_Queue_Reject" xml:space="preserve"><value>Rejeter</value></data>
+  <data name="Survey_Admin_Queue_RejectNoteLabel" xml:space="preserve"><value>Note à l'auteur</value></data>
+  <data name="Survey_Admin_Queue_RejectNoteRequired" xml:space="preserve"><value>Une note est requise pour rejeter une soumission.</value></data>
+  <data name="Survey_Admin_Queue_Approved" xml:space="preserve"><value>Sondage approuvé et ouvert ; {0} invitation(s) en file, {1} échouée(s).</value></data>
+  <data name="Survey_Admin_Queue_Rejected" xml:space="preserve"><value>Sondage rejeté et renvoyé à l'auteur comme brouillon.</value></data>
+  <data name="Survey_Admin_Index_Submitted" xml:space="preserve"><value>Sondage soumis pour approbation au Conseil/Admin.</value></data>
 </root>

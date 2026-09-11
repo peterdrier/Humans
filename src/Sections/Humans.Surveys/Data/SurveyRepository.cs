@@ -96,6 +96,42 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task SubmitForApprovalAsync(Guid id, Instant submittedAt, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var survey = await ctx.Surveys.FirstOrDefaultAsync(s => s.Id == id, ct);
+        if (survey is null) return;
+        survey.Status = SurveyStatus.PendingApproval;
+        survey.SubmittedAt = submittedAt;
+        survey.RejectionNote = null;
+        survey.UpdatedAt = submittedAt;
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task ApproveAsync(Guid id, Instant approvedAt, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var survey = await ctx.Surveys.FirstOrDefaultAsync(s => s.Id == id, ct);
+        if (survey is null) return;
+        survey.Status = SurveyStatus.Open;
+        survey.SubmittedAt = null;
+        survey.RejectionNote = null;
+        survey.UpdatedAt = approvedAt;
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task RejectAsync(Guid id, string note, Instant rejectedAt, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var survey = await ctx.Surveys.FirstOrDefaultAsync(s => s.Id == id, ct);
+        if (survey is null) return;
+        survey.Status = SurveyStatus.Draft;
+        survey.SubmittedAt = null;
+        survey.RejectionNote = note;
+        survey.UpdatedAt = rejectedAt;
+        await ctx.SaveChangesAsync(ct);
+    }
+
     public async Task<IReadOnlyDictionary<Guid, int>> GetInvitedCountsBySurveyAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

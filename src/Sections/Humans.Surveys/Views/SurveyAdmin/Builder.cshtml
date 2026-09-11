@@ -31,8 +31,15 @@
     {
         <div class="d-flex align-items-center gap-2">
             <partial name="_SurveyPreviewMenu" model="@Model.Id!.Value" />
-            <span class="badge @(Model.Status == SurveyStatus.Open ? "bg-success" : Model.Status == SurveyStatus.Closed ? "bg-secondary" : "bg-warning text-dark")">@Model.Status</span>
-            @if (Model.Status != SurveyStatus.Open
+            <span class="badge @(Model.Status == SurveyStatus.Open ? "bg-success" : Model.Status == SurveyStatus.Closed ? "bg-secondary" : Model.Status == SurveyStatus.PendingApproval ? "bg-info text-dark" : "bg-warning text-dark")">@Model.Status</span>
+            @if (Model.Status == SurveyStatus.Draft)
+            {
+                <form asp-controller="SurveyAdmin" asp-action="Submit" asp-route-id="@Model.Id" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-success btn-sm">@Localizer["Survey_Admin_Index_SubmitForApproval"]</button>
+                </form>
+            }
+            @if (Model.Status != SurveyStatus.Open && Model.Status != SurveyStatus.PendingApproval
                 && !(Model.Status == SurveyStatus.Closed && Model.IsAsociadoVote))
             {
                 <form asp-controller="SurveyAdmin" asp-action="Open" asp-route-id="@Model.Id" method="post" class="d-inline">
@@ -53,6 +60,13 @@
         </div>
     }
 </div>
+
+@if (Model.Status == SurveyStatus.Draft && !string.IsNullOrWhiteSpace(Model.RejectionNote))
+{
+    <div class="alert alert-danger" role="alert">
+        @string.Format(Localizer["Survey_Admin_Index_RejectionNote"].Value, Model.RejectionNote)
+    </div>
+}
 
 <div asp-validation-summary="All" class="alert alert-danger" role="alert" style="@(ViewData.ModelState.IsValid ? "display:none" : "")"></div>
 

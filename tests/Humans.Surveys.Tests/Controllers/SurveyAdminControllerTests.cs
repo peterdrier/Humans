@@ -1,14 +1,19 @@
 using AwesomeAssertions;
+using Humans.Base.Authorization;
+using Humans.Base.Constants;
 using Humans.Base.Enums;
+using Humans.Surveys.Authorization;
 using Humans.Surveys.Controllers;
 using Humans.Surveys.Domain;
 using Humans.Surveys.Models;
 using Humans.Surveys.Services;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -138,6 +143,8 @@ public sealed class SurveyAdminControllerTests
             surveys,
             teams,
             Substitute.For<IUserServiceRead>(),
+            Substitute.For<IAuthorizationService>(),
+            Substitute.For<IStringLocalizer<SurveysResource>>(),
             NullLogger<SurveyAdminController>.Instance);
 
         var result = await sut.Send(surveyId, Xunit.TestContext.Current.CancellationToken);
@@ -174,6 +181,8 @@ public sealed class SurveyAdminControllerTests
             surveys,
             Substitute.For<ITeamServiceRead>(),
             Substitute.For<IUserServiceRead>(),
+            Substitute.For<IAuthorizationService>(),
+            Substitute.For<IStringLocalizer<SurveysResource>>(),
             logger)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -196,12 +205,26 @@ public sealed class SurveyAdminControllerTests
 
     private static SurveyAdminController CreateController(
         ISurveyService surveys,
-        ITeamServiceRead? teams = null) =>
-        new(
+        ITeamServiceRead? teams = null,
+        IAuthorizationService? authorizationService = null,
+        Guid? userId = null,
+        bool isBoardOrAdmin = false)
+    {
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, (userId ?? Guid.NewGuid()).ToString()) };
+        if (isBoardOrAdmin) claims.Add(new Claim(ClaimTypes.Role, RoleNames.Board));
+        var http = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(claims, "test")) };
+        return new(
             surveys,
             teams ?? Substitute.For<ITeamServiceRead>(),
             Substitute.For<IUserServiceRead>(),
-            NullLogger<SurveyAdminController>.Instance);
+            authorizationService ?? Substitute.For<IAuthorizationService>(),
+            Substitute.For<IStringLocalizer<SurveysResource>>(),
+            NullLogger<SurveyAdminController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+        };
+    }
 
     private static SurveyEditInput Editable(
         string title,
@@ -247,4 +270,163 @@ public sealed class SurveyAdminControllerTests
 
     private static LocalizedText Text(string en) =>
         new(new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = en });
+
+    // ── Self-service approval gate (Workgroups §11): author-scoped visibility, per-id denial ──
+
+    [HumansFact]
+    public async Task Index_scopes_to_the_callers_own_surveys_for_a_plain_author()
+    {
+        var authorId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.GetAdminSummariesAsync(Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
+            .Returns(new List<SurveyAdminSummary>
+            {
+                new(Guid.NewGuid(), "Mine", SurveyStatus.Draft, 0, 0, authorId, null, null),
+            });
+        var sut = CreateController(surveys, userId: authorId, isBoardOrAdmin: false);
+
+        var result = await sut.Index(Xunit.TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>().Subject.Model
+            .Should().BeOfType<SurveyAdminIndexViewModel>().Subject;
+        model.IsBoardOrAdmin.Should().BeFalse();
+        await surveys.Received(1).GetAdminSummariesAsync(
+            Arg.Is<SurveyViewer>(v => v.UserId == authorId && !v.IsBoardOrAdmin), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Edit_denies_a_non_owner_non_boardOrAdmin_human_by_id()
+    {
+        var authorId = Guid.NewGuid();
+        var strangerId = Guid.NewGuid();
+        var surveyId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Someone else's survey"), authorId));
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: strangerId, isBoardOrAdmin: false);
+
+        var result = await sut.Edit(surveyId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ForbidResult>();
+    }
+
+    [HumansFact]
+    public async Task Edit_allows_the_owner_to_edit_their_own_draft()
+    {
+        var authorId = Guid.NewGuid();
+        var surveyId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Mine"), authorId));
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId, isBoardOrAdmin: false);
+
+        var result = await sut.Edit(surveyId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ViewResult>();
+    }
+
+    [HumansFact]
+    public async Task Submit_denies_a_non_owner_by_id()
+    {
+        var authorId = Guid.NewGuid();
+        var strangerId = Guid.NewGuid();
+        var surveyId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Someone else's survey"), authorId));
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: strangerId, isBoardOrAdmin: false);
+
+        var result = await sut.Submit(surveyId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ForbidResult>();
+        await surveys.DidNotReceive().SubmitForApprovalAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Submit_lets_the_owner_submit_their_own_draft()
+    {
+        var authorId = Guid.NewGuid();
+        var surveyId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Mine"), authorId));
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId, isBoardOrAdmin: false);
+
+        var result = await sut.Submit(surveyId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        await surveys.Received(1).SubmitForApprovalAsync(surveyId, authorId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Results_denies_a_non_owner_non_boardOrAdmin_human_by_id()
+    {
+        var authorId = Guid.NewGuid();
+        var strangerId = Guid.NewGuid();
+        var surveyId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Closed, Editable("Someone else's survey"), authorId));
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: strangerId, isBoardOrAdmin: false);
+
+        var result = await sut.Results(surveyId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ForbidResult>();
+    }
+
+    [HumansFact]
+    public async Task Results_denies_the_owner_before_their_own_survey_closes()
+    {
+        var authorId = Guid.NewGuid();
+        var surveyId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Open, Editable("Mine"), authorId));
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId, isBoardOrAdmin: false);
+
+        var result = await sut.Results(surveyId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ForbidResult>();
+    }
+
+    [HumansFact]
+    public async Task Results_allows_the_owner_after_their_own_survey_closes()
+    {
+        var authorId = Guid.NewGuid();
+        var surveyId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Closed, Editable("Mine"), authorId));
+        surveys.GetScopedResultsAsync(surveyId, Arg.Any<SurveyResultsScope>(), Arg.Any<CancellationToken>())
+            .Returns((SurveyScopedResults?)null);
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId, isBoardOrAdmin: false);
+
+        var result = await sut.Results(surveyId, scope: SurveyResultsScope.Combined, ct: Xunit.TestContext.Current.CancellationToken);
+
+        // Not a Forbid: it proceeds to the (stubbed-null) results lookup and 404s instead.
+        result.Should().BeOfType<NotFoundResult>();
+    }
+
+    /// <summary>
+    /// A real, unmocked <see cref="IAuthorizationService"/> that runs the actual
+    /// <see cref="SurveyAuthorizationHandler"/> — these tests exercise the production
+    /// authorization decision, not a stand-in.
+    /// </summary>
+    private static IAuthorizationService RealAuthorizationService() => new FakeSurveyAuthorizationService();
+
+    private sealed class FakeSurveyAuthorizationService : IAuthorizationService
+    {
+        private readonly SurveyAuthorizationHandler _handler = new();
+
+        public async Task<AuthorizationResult> AuthorizeAsync(
+            ClaimsPrincipal user, object? resource, IEnumerable<IAuthorizationRequirement> requirements)
+        {
+            var context = new AuthorizationHandlerContext(requirements, user, resource);
+            await _handler.HandleAsync(context);
+            return context.HasSucceeded ? AuthorizationResult.Success() : AuthorizationResult.Failed();
+        }
+
+        public Task<AuthorizationResult> AuthorizeAsync(ClaimsPrincipal user, object? resource, string policyName) =>
+            throw new NotSupportedException("Policy-name authorization is not used by SurveyAdminController's resource checks.");
+    }
 }
