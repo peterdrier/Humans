@@ -628,9 +628,6 @@
   <data name="Votes_TieBreakNotesHeading" xml:space="preserve">
     <value>Hinweise zum Stichentscheid</value>
   </data>
-  <data name="Votes_CancelledResultNotice" xml:space="preserve">
-    <value>Diese Abstimmung wurde abgebrochen. Es wurde kein Ergebnis berechnet.</value>
-  </data>
   <data name="Votes_ActaHeading" xml:space="preserve">
     <value>Protokolltext</value>
   </data>

@@ -628,9 +628,6 @@
   <data name="Votes_TieBreakNotesHeading" xml:space="preserve">
     <value>Notas de desempate</value>
   </data>
-  <data name="Votes_CancelledResultNotice" xml:space="preserve">
-    <value>Esta votación fue cancelada. No se calculó ningún resultado.</value>
-  </data>
   <data name="Votes_ActaHeading" xml:space="preserve">
     <value>Texto para el acta</value>
   </data>

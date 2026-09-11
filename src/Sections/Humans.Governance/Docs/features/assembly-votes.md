@@ -249,7 +249,7 @@ Draft ──open (Admin)──▶ Open ──ClosesAt reached / Stop (Admin)─�
 - Draft: Board/Admin edit or delete. No roster, no ballots, and invisible to members.
 - Open: roster frozen, content locked, ballots accepted from roster members, `ClosesAt` extendable, stats visible, tally embargoed except audited peek.
 - Closed: result computed and stored once; ballots read-only; results visible per `BallotDisclosure`.
-- Cancelled: ballots retained for the record, no result, roster emailed. Not disclosable — the Board's per-ballot list is for Closed votes only.
+- Cancelled: ballots retained for the record, no result, roster emailed. Not disclosable — the Board's per-ballot list is for Closed votes only. The results page 404s for a cancelled vote (results exist only for a Closed vote with a stored result); the cancellation and its reason are shown on the vote's own page.
 
 ## Routing
 

@@ -628,9 +628,6 @@
   <data name="Votes_TieBreakNotesHeading" xml:space="preserve">
     <value>Notes de desempat</value>
   </data>
-  <data name="Votes_CancelledResultNotice" xml:space="preserve">
-    <value>Aquesta votació ha estat cancel·lada. No s'ha calculat cap resultat.</value>
-  </data>
   <data name="Votes_ActaHeading" xml:space="preserve">
     <value>Text per a l'acta</value>
   </data>

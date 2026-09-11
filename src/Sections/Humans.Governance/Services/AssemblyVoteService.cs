@@ -1347,7 +1347,7 @@ internal sealed class AssemblyVoteService(
         AssemblyVote vote, IReadOnlyList<AssemblyVoteRoster> rows, CancellationToken ct)
     {
         var recipients = await RecipientsAsync(rows, ct);
-        var notified = new List<Guid>(rows.Count);
+        var notified = 0;
         var closesAt = ClosingLocal(vote.ClosesAt);
 
         foreach (var (rosterRow, info, address) in recipients)
@@ -1365,7 +1365,12 @@ internal sealed class AssemblyVoteService(
                         info.PreferredLanguage),
                     ct);
 
-                notified.Add(rosterRow.Id);
+                // Stamped per row, immediately, as the reminder path does: the stamp is what
+                // tells the retry sweep this row was reached, so a batch that dies halfway —
+                // or a stamp write that fails after the enqueues — must not leave every
+                // delivered row looking unsent and earn the whole roster a duplicate notice.
+                await repository.StampNotifiedAsync([rosterRow.Id], clock.GetCurrentInstant(), ct);
+                notified++;
             }
             catch (Exception ex)
             {
@@ -1375,12 +1380,7 @@ internal sealed class AssemblyVoteService(
             }
         }
 
-        if (notified.Count > 0)
-        {
-            await repository.StampNotifiedAsync(notified, clock.GetCurrentInstant(), ct);
-        }
-
-        return notified.Count;
+        return notified;
     }
 
     /// <summary>

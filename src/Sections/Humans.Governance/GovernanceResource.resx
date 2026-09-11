@@ -231,7 +231,6 @@
   <data name="Votes_Note_TieBrokenByPreviousRound" xml:space="preserve"><value>Round {0}: {1} options tied for elimination; broken by fewest votes in the previous round.</value><comment>{0} = round number, {1} = how many options were tied</comment></data>
   <data name="Votes_Note_TieBrokenByAuthoredOrder" xml:space="preserve"><value>Round {0}: {1} options tied for elimination; broken by authored option order.</value><comment>{0} = round number, {1} = how many options were tied</comment></data>
   <data name="Votes_TieBreakNotesHeading" xml:space="preserve"><value>Tie-break notes</value></data>
-  <data name="Votes_CancelledResultNotice" xml:space="preserve"><value>This vote was cancelled. No result was computed.</value></data>
   <data name="Votes_ActaHeading" xml:space="preserve"><value>Minutes text (acta)</value></data>
   <data name="Votes_ActaHint" xml:space="preserve"><value>Select and copy this text for the minutes.</value></data>
   <data name="Votes_PeeksHeading" xml:space="preserve"><value>Early views</value></data>

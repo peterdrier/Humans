@@ -628,9 +628,6 @@
   <data name="Votes_TieBreakNotesHeading" xml:space="preserve">
     <value>Notes de départage</value>
   </data>
-  <data name="Votes_CancelledResultNotice" xml:space="preserve">
-    <value>Ce vote a été annulé. Aucun résultat n'a été calculé.</value>
-  </data>
   <data name="Votes_ActaHeading" xml:space="preserve">
     <value>Texte pour le procès-verbal</value>
   </data>

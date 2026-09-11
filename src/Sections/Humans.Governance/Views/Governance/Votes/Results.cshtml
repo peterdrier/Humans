@@ -39,118 +39,105 @@
     <span class="badge @EnumBadgeMap.For(vote.Status)">@Localizer["Votes_Status_" + vote.Status]</span>
 </div>
 
-@if (vote.Status == AssemblyVoteStatus.Cancelled)
+<p class="text-muted">@Localizer["Votes_Method_" + results.Result.Method]</p>
+
+@foreach (var (audience, headingKey) in audiences)
 {
-    <div class="alert alert-danger">
-        <p class="mb-1">@Localizer["Votes_CancelledResultNotice"]</p>
-        @if (!string.IsNullOrEmpty(vote.CancelReason))
-        {
-            <p class="mb-0"><strong>@Localizer["Votes_CancelReasonLabel"]:</strong> @vote.CancelReason</p>
-        }
-    </div>
-}
-else
-{
-    <p class="text-muted">@Localizer["Votes_Method_" + results.Result.Method]</p>
+    <div class="card mb-4">
+        <div class="card-header">@Localizer[headingKey]</div>
+        <div class="card-body">
+            <p class="mb-2">@Localizer["Votes_Turnout", audience.BallotsCast, audience.RosterSize]</p>
 
-    @foreach (var (audience, headingKey) in audiences)
-    {
-        <div class="card mb-4">
-            <div class="card-header">@Localizer[headingKey]</div>
-            <div class="card-body">
-                <p class="mb-2">@Localizer["Votes_Turnout", audience.BallotsCast, audience.RosterSize]</p>
+            @if (audience.YesNo is { } yesNo)
+            {
+                <dl class="row mb-2">
+                    <dt class="col-sm-4">@Localizer["Votes_Choice_Yes"]</dt>
+                    <dd class="col-sm-8">@yesNo.Yes</dd>
+                    <dt class="col-sm-4">@Localizer["Votes_Choice_No"]</dt>
+                    <dd class="col-sm-8">@yesNo.No</dd>
+                    <dt class="col-sm-4">@Localizer["Votes_Choice_Abstain"]</dt>
+                    <dd class="col-sm-8">@yesNo.Abstain</dd>
+                    <dt class="col-sm-4">@Localizer["Votes_RequiredMajorityLabel"]</dt>
+                    <dd class="col-sm-8">@Localizer["Votes_Majority_" + vote.RequiredMajority]</dd>
+                    <dt class="col-sm-4">@Localizer["Votes_VerdictLabel"]</dt>
+                    <dd class="col-sm-8"><span class="badge @EnumBadgeMap.For(audience.Verdict)">@Localizer["Votes_Verdict_" + audience.Verdict]</span></dd>
+                </dl>
+            }
 
-                @if (audience.YesNo is { } yesNo)
-                {
-                    <dl class="row mb-2">
-                        <dt class="col-sm-4">@Localizer["Votes_Choice_Yes"]</dt>
-                        <dd class="col-sm-8">@yesNo.Yes</dd>
-                        <dt class="col-sm-4">@Localizer["Votes_Choice_No"]</dt>
-                        <dd class="col-sm-8">@yesNo.No</dd>
-                        <dt class="col-sm-4">@Localizer["Votes_Choice_Abstain"]</dt>
-                        <dd class="col-sm-8">@yesNo.Abstain</dd>
-                        <dt class="col-sm-4">@Localizer["Votes_RequiredMajorityLabel"]</dt>
-                        <dd class="col-sm-8">@Localizer["Votes_Majority_" + vote.RequiredMajority]</dd>
-                        <dt class="col-sm-4">@Localizer["Votes_VerdictLabel"]</dt>
-                        <dd class="col-sm-8"><span class="badge @EnumBadgeMap.For(audience.Verdict)">@Localizer["Votes_Verdict_" + audience.Verdict]</span></dd>
-                    </dl>
-                }
-
-                @if (audience.Rounds is { Count: > 0 } rounds)
-                {
-                    var optionKeys = rounds.SelectMany(r => r.Counts.Keys).Distinct(StringComparer.Ordinal).OrderBy(k => k, StringComparer.Ordinal).ToList();
-                    <h6>@Localizer["Votes_RoundsHeading"]</h6>
-                    <div class="table-responsive mb-3">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th scope="col">@Localizer["Votes_RoundColumnHeader"]</th>
+            @if (audience.Rounds is { Count: > 0 } rounds)
+            {
+                var optionKeys = rounds.SelectMany(r => r.Counts.Keys).Distinct(StringComparer.Ordinal).OrderBy(k => k, StringComparer.Ordinal).ToList();
+                <h6>@Localizer["Votes_RoundsHeading"]</h6>
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th scope="col">@Localizer["Votes_RoundColumnHeader"]</th>
+                                @foreach (var key in optionKeys)
+                                {
+                                    <th scope="col">@OptionLabel(key)</th>
+                                }
+                                <th scope="col">@Localizer["Votes_ExhaustedLabel"]</th>
+                                <th scope="col"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var round in rounds)
+                            {
+                                <tr class="@(round.WinnerKey is not null ? "table-success" : "")">
+                                    <td>@round.Number</td>
                                     @foreach (var key in optionKeys)
                                     {
-                                        <th scope="col">@OptionLabel(key)</th>
+                                        <td>@(round.Counts.TryGetValue(key, out var c) ? c.ToString() : "")</td>
                                     }
-                                    <th scope="col">@Localizer["Votes_ExhaustedLabel"]</th>
-                                    <th scope="col"></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var round in rounds)
-                                {
-                                    <tr class="@(round.WinnerKey is not null ? "table-success" : "")">
-                                        <td>@round.Number</td>
-                                        @foreach (var key in optionKeys)
+                                    <td>@round.Exhausted</td>
+                                    <td>
+                                        @if (round.EliminatedKey is not null)
                                         {
-                                            <td>@(round.Counts.TryGetValue(key, out var c) ? c.ToString() : "")</td>
+                                            <span class="text-muted">@Localizer["Votes_EliminatedLabel", OptionLabel(round.EliminatedKey)]</span>
                                         }
-                                        <td>@round.Exhausted</td>
-                                        <td>
-                                            @if (round.EliminatedKey is not null)
-                                            {
-                                                <span class="text-muted">@Localizer["Votes_EliminatedLabel", OptionLabel(round.EliminatedKey)]</span>
-                                            }
-                                            @if (round.WinnerKey is not null)
-                                            {
-                                                <strong>@Localizer["Votes_WinnerLabel", OptionLabel(round.WinnerKey)]</strong>
-                                            }
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <p class="text-muted small mb-1">@Localizer["Votes_TieBreakExplanation"]</p>
-                    @if (audience.Notes.Count > 0)
-                    {
-                        <p class="fw-semibold mb-1">@Localizer["Votes_TieBreakNotesHeading"]</p>
-                        <ul class="text-muted small">
-                            @foreach (var note in audience.Notes)
-                            {
-                                <li>@Localizer[note.ResourceKey, note.Round, note.TiedCount]</li>
+                                        @if (round.WinnerKey is not null)
+                                        {
+                                            <strong>@Localizer["Votes_WinnerLabel", OptionLabel(round.WinnerKey)]</strong>
+                                        }
+                                    </td>
+                                </tr>
                             }
-                        </ul>
-                    }
+                        </tbody>
+                    </table>
+                </div>
 
-                    <dl class="row mb-0">
-                        <dt class="col-sm-4">@Localizer["Votes_VerdictLabel"]</dt>
-                        <dd class="col-sm-8"><span class="badge @EnumBadgeMap.For(audience.Verdict)">@Localizer["Votes_Verdict_" + audience.Verdict]</span></dd>
-                    </dl>
-                }
-
-                @if (audience.Verdict == AssemblyVoteVerdict.Tie)
+                <p class="text-muted small mb-1">@Localizer["Votes_TieBreakExplanation"]</p>
+                @if (audience.Notes.Count > 0)
                 {
-                    <p class="alert alert-warning mt-3 mb-0">@Localizer["Votes_TieNotice"]</p>
+                    <p class="fw-semibold mb-1">@Localizer["Votes_TieBreakNotesHeading"]</p>
+                    <ul class="text-muted small">
+                        @foreach (var note in audience.Notes)
+                        {
+                            <li>@Localizer[note.ResourceKey, note.Round, note.TiedCount]</li>
+                        }
+                    </ul>
                 }
-            </div>
-        </div>
-    }
 
-    <div class="card mb-4">
-        <div class="card-body">
-            <a asp-action="ResultsCsv" asp-route-voteId="@vote.Id" class="btn btn-outline-secondary">@Localizer["Votes_DownloadCsv"]</a>
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">@Localizer["Votes_VerdictLabel"]</dt>
+                    <dd class="col-sm-8"><span class="badge @EnumBadgeMap.For(audience.Verdict)">@Localizer["Votes_Verdict_" + audience.Verdict]</span></dd>
+                </dl>
+            }
+
+            @if (audience.Verdict == AssemblyVoteVerdict.Tie)
+            {
+                <p class="alert alert-warning mt-3 mb-0">@Localizer["Votes_TieNotice"]</p>
+            }
         </div>
     </div>
 }
+
+<div class="card mb-4">
+    <div class="card-body">
+        <a asp-action="ResultsCsv" asp-route-voteId="@vote.Id" class="btn btn-outline-secondary">@Localizer["Votes_DownloadCsv"]</a>
+    </div>
+</div>
 
 <div class="card mb-4">
     <div class="card-header">@Localizer["Votes_OfficialTextAdoptedHeading"]</div>
@@ -163,16 +150,13 @@ else
     </div>
 </div>
 
-@if (vote.Status != AssemblyVoteStatus.Cancelled)
-{
-    <div class="card mb-4">
-        <div class="card-header">@Localizer["Votes_ActaHeading"]</div>
-        <div class="card-body">
-            <p class="text-muted small">@Localizer["Votes_ActaHint"]</p>
-            <pre class="user-select-all border rounded p-3 bg-body-secondary">@results.ActaText</pre>
-        </div>
+<div class="card mb-4">
+    <div class="card-header">@Localizer["Votes_ActaHeading"]</div>
+    <div class="card-body">
+        <p class="text-muted small">@Localizer["Votes_ActaHint"]</p>
+        <pre class="user-select-all border rounded p-3 bg-body-secondary">@results.ActaText</pre>
     </div>
-}
+</div>
 
 <div class="card mb-4">
     <div class="card-header">@Localizer["Votes_PeeksHeading"]</div>

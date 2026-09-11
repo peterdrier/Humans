@@ -628,9 +628,6 @@
   <data name="Votes_TieBreakNotesHeading" xml:space="preserve">
     <value>Note sullo spareggio</value>
   </data>
-  <data name="Votes_CancelledResultNotice" xml:space="preserve">
-    <value>Questa votazione è stata annullata. Non è stato calcolato alcun risultato.</value>
-  </data>
   <data name="Votes_ActaHeading" xml:space="preserve">
     <value>Testo per il verbale</value>
   </data>
