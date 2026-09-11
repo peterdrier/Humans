@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 using NodaTime;
 
 namespace Humans.Governance.Services.Dtos;
@@ -14,6 +16,7 @@ namespace Humans.Governance.Services.Dtos;
 /// </param>
 /// <param name="Method">The counting method, named on the page so members can check it by hand.</param>
 /// <param name="ComputedAt">When the result was computed.</param>
+[method: JsonConstructor]
 internal sealed record AssemblyVoteResult(
     AssemblyVoteAudienceResult Official,
     AssemblyVoteAudienceResult? Indicative,
@@ -31,6 +34,7 @@ internal sealed record AssemblyVoteResult(
 /// Tie-break steps actually applied, in the order applied, so the page can disclose how a
 /// close elimination was decided.
 /// </param>
+[method: JsonConstructor]
 internal sealed record AssemblyVoteAudienceResult(
     int RosterSize,
     int BallotsCast,
@@ -44,6 +48,7 @@ internal sealed record AssemblyVoteAudienceResult(
 /// A YesNo tally. Abstentions are counted and shown but are neither for nor against
 /// (statutes Art. 10.2).
 /// </summary>
+[method: JsonConstructor]
 internal sealed record YesNoTally(int Yes, int No, int Abstain);
 
 /// <summary>
@@ -54,6 +59,7 @@ internal sealed record YesNoTally(int Yes, int No, int Abstain);
 /// <param name="Exhausted">Ballots that no longer rank any continuing option, plus abstentions.</param>
 /// <param name="EliminatedKey">The option eliminated at the end of this round; null in the deciding round.</param>
 /// <param name="WinnerKey">The option that reached a majority in this round, if any.</param>
+[method: JsonConstructor]
 internal sealed record InstantRunoffRound(
     int Number,
     IReadOnlyDictionary<string, int> Counts,

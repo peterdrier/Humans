@@ -278,4 +278,77 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
             AuditAction.AssemblyVoteStopped, Arg.Any<string>(), vote.Id, Arg.Any<string>(), adminId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
+
+    [HumansFact]
+    public async Task CancelAsync_AuditsAndEmails_EvenWhenNotificationResolutionThrows()
+    {
+        var vote = await _fx.AddVoteAsync();
+        _fx.NotificationResolve
+            .ResolveBySourceKeyAsync(
+                Arg.Any<NotificationSource>(), Arg.Any<string>(), Arg.Any<Guid?>(),
+                Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new InvalidOperationException("notifications are down"));
+        var adminId = Guid.NewGuid();
+
+        var result = await _fx.Service.CancelAsync(
+            vote.Id, "Called off", adminId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().Be(AssemblyVoteActionResult.Ok);
+        await _fx.Audit.Received(1).LogAsync(
+            AuditAction.AssemblyVoteCancelled, Arg.Any<string>(), vote.Id, Arg.Any<string>(), adminId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task StoredResult_RoundTripsEveryNestedRecord()
+    {
+        var vote = await _fx.AddVoteAsync();
+        var r1 = await _fx.AddRosterRowAsync(vote.Id, Guid.NewGuid(), isOfficial: true);
+        var r2 = await _fx.AddRosterRowAsync(vote.Id, Guid.NewGuid(), isOfficial: true);
+        await _fx.AddBallotAsync(vote.Id, r1.Id, AssemblyBallotChoice.Yes);
+        await _fx.AddBallotAsync(vote.Id, r2.Id, AssemblyBallotChoice.Abstain);
+
+        await _fx.Service.StopAsync(vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var results = await _fx.Service.GetResultsAsync(
+            vote.Id, Guid.NewGuid(), viewerIsBoardOrAdmin: false,
+            Xunit.TestContext.Current.CancellationToken);
+
+        // Read back out of ResultJson, so every nested record bound through its constructor
+        // rather than being materialised with default fields.
+        results!.Result.Official.RosterSize.Should().Be(2);
+        results.Result.Official.BallotsCast.Should().Be(2);
+        results.Result.Official.YesNo.Should().Be(new YesNoTally(1, 0, 1));
+        results.Result.Method.Should().Be(AssemblyVoteMethod.YesNo);
+    }
+
+    [HumansFact]
+    public async Task Acta_NamesTheAdminWhoStoppedTheVote()
+    {
+        var vote = await _fx.AddVoteAsync();
+        await _fx.AddRosterRowAsync(vote.Id, Guid.NewGuid(), isOfficial: true);
+        var adminId = Guid.NewGuid();
+        _fx.StubActiveUsers(adminId);
+
+        await _fx.Service.StopAsync(vote.Id, adminId, Xunit.TestContext.Current.CancellationToken);
+        var results = await _fx.Service.GetResultsAsync(
+            vote.Id, Guid.NewGuid(), viewerIsBoardOrAdmin: false,
+            Xunit.TestContext.Current.CancellationToken);
+
+        results!.ActaText.Should().Contain(
+            "Member " + adminId,
+            "the spec lists who closed the vote among the acta's contents");
+    }
+
+    [HumansFact]
+    public async Task Detail_InAnUnauthoredCulture_IsNotLabelledATranslation()
+    {
+        // The fixture authors "en" only, and "en" is the official culture.
+        var vote = await _fx.AddVoteAsync();
+
+        var detail = await _fx.Service.GetVoteForMemberAsync(
+            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        detail!.IsTranslation.Should().BeFalse(
+            "the viewer is being shown the binding official text, not a translation of it");
+    }
 }

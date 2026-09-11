@@ -132,8 +132,12 @@ internal sealed class AssemblyVoteService(
             Resolve(vote.Title, vote.OfficialCulture),
             Resolve(vote.OfficialText, vote.OfficialCulture),
             vote.OfficialCulture,
-            IsTranslation: !vote.OfficialText.HasCulture(culture)
-                           || !culture.Equals(vote.OfficialCulture, StringComparison.OrdinalIgnoreCase),
+            // Only when a culture-specific text actually exists and is not the binding one.
+            // `Resolve` falls back to the official text when the viewer's culture was never
+            // authored, and warning a member that the binding text is "a translation" is the
+            // opposite of what this flag is for.
+            IsTranslation: vote.OfficialText.HasCulture(culture)
+                           && !culture.Equals(vote.OfficialCulture, StringComparison.OrdinalIgnoreCase),
             vote.InfoUrl,
             vote.Kind,
             vote.RequiredMajority,
@@ -316,20 +320,7 @@ internal sealed class AssemblyVoteService(
 
         await repository.UpdateAsync(vote, ct);
 
-        // Best-effort, like every other notification dispatch in this section. The vote is
-        // already persisted Closed and Closed is terminal, so nothing re-enters this method:
-        // letting a notification failure escape here would leave the closure unaudited
-        // forever, and an unaudited close is a Board-visibility bug.
-        try
-        {
-            await notificationResolve.ResolveBySourceKeyAsync(
-                NotificationSource.AssemblyVoteOpened, vote.Id.ToString(), closedByUserId, ct);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex,
-                "Failed to resolve the open-vote notification for {VoteId}", vote.Id);
-        }
+        await ClearOpenNotificationAsync(vote, closedByUserId, ct);
 
         if (closedByUserId is { } actor)
         {
@@ -338,6 +329,33 @@ internal sealed class AssemblyVoteService(
         else
         {
             await audit.LogAsync(action, AuditEntityTypes.AssemblyVote, vote.Id, description, LapseJobName);
+        }
+    }
+
+    /// <summary>
+    /// Retires the open-vote notification for a vote that has just ended, best-effort.
+    /// <para>
+    /// Every caller reaches this <em>after</em> persisting a terminal status, and terminal
+    /// means nothing re-enters that path — so a throw from here would strand whatever the
+    /// caller still had to do (the closure audit, the cancellation audit and its roster
+    /// email) with no retry, permanently. That is worth more than a tidy notification
+    /// meter, so the failure is logged and swallowed. Both `CloseAsync` and `CancelAsync`
+    /// lost exactly this, one round apart; it lives here now so a third end-of-vote path
+    /// cannot lose it again.
+    /// </para>
+    /// </summary>
+    private async Task ClearOpenNotificationAsync(
+        AssemblyVote vote, Guid? actorUserId, CancellationToken ct)
+    {
+        try
+        {
+            await notificationResolve.ResolveBySourceKeyAsync(
+                NotificationSource.AssemblyVoteOpened, vote.Id.ToString(), actorUserId, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Failed to resolve the open-vote notification for {VoteId}", vote.Id);
         }
     }
 
@@ -438,7 +456,7 @@ internal sealed class AssemblyVoteService(
             result,
             await PeekViewsAsync(voteId, ct),
             disclosed,
-            BuildActa(vote, result));
+            BuildActa(vote, result, await ClosedByNameAsync(vote, ct)));
     }
 
     /// <summary>Every standing ballot with its voter's name, for a disclosed results view.</summary>
@@ -493,7 +511,20 @@ internal sealed class AssemblyVoteService(
     /// unlocalized and unstyled — it goes into a Spanish legal document, and the numbers are
     /// what statutes Art. 8.6 requires.
     /// </summary>
-    private static string BuildActa(AssemblyVote vote, AssemblyVoteResult result)
+    /// <summary>
+    /// The name of the admin who stopped the vote, for the acta. Null when the vote lapsed
+    /// at its announced time (nobody closed it) or when the account no longer resolves —
+    /// the acta says "an administrator" then rather than inventing a name.
+    /// </summary>
+    private async Task<string?> ClosedByNameAsync(AssemblyVote vote, CancellationToken ct)
+    {
+        if (vote.ClosedByUserId is not { } closerId) return null;
+        var infos = await users.GetUserInfosAsync([closerId], ct);
+        return infos.TryGetValue(closerId, out var info) ? info.BurnerName : null;
+    }
+
+    private static string BuildActa(
+        AssemblyVote vote, AssemblyVoteResult result, string? closedByName)
     {
         var acta = new StringBuilder();
         var official = result.Official;
@@ -541,9 +572,13 @@ internal sealed class AssemblyVoteService(
         }
 
         acta.AppendLine(CultureInfo.InvariantCulture, $"Closed at: {vote.ClosedAt}");
+        // The spec lists "who closed it" among the acta's contents, and this is the summary
+        // the Secretary files: "an administrator" names nobody.
         acta.AppendLine(vote.ClosedByUserId is null
             ? "Closed automatically at the announced time."
-            : "Closed by an administrator.");
+            : closedByName is null
+                ? "Closed by an administrator."
+                : $"Closed by {closedByName}.");
 
         // No indicative line: the acta is the association's legal record of the binding vote,
         // and the spec keeps indicative ballots out of it. The results page shows them in
@@ -882,8 +917,7 @@ internal sealed class AssemblyVoteService(
         // as a record that it was attempted.
         await repository.UpdateAsync(vote, ct);
 
-        await notificationResolve.ResolveBySourceKeyAsync(
-            NotificationSource.AssemblyVoteOpened, vote.Id.ToString(), adminUserId, ct);
+        await ClearOpenNotificationAsync(vote, adminUserId, ct);
 
         await audit.LogAsync(
             AuditAction.AssemblyVoteCancelled, AuditEntityTypes.AssemblyVote, vote.Id,
@@ -1001,12 +1035,24 @@ internal sealed class AssemblyVoteService(
                 NotificationSource.AssemblyVoteOpened,
                 NotificationClass.Actionable,
                 NotificationPriority.Normal,
-                vote.Title.Resolve(vote.OfficialCulture, vote.OfficialCulture),
+                NotificationTitle(vote),
                 userIds,
                 actionUrl: VoteUrl(vote.Id),
                 sourceKey: vote.Id.ToString(),
                 cancellationToken: ct);
         }
+    }
+
+    /// <summary>
+    /// The vote's title, trimmed to what <c>Notification.Title</c> holds (varchar(200)).
+    /// The title is jsonb and uncapped, so a long motion title would otherwise throw on
+    /// insert — after the vote is already irreversibly Open.
+    /// </summary>
+    private static string NotificationTitle(AssemblyVote vote)
+    {
+        const int max = 200;
+        var title = vote.Title.Resolve(vote.OfficialCulture, vote.OfficialCulture);
+        return title.Length <= max ? title : string.Concat(title.AsSpan(0, max - 1), "\u2026");
     }
 
     private async Task NotifyRosterCancelledAsync(AssemblyVote vote, CancellationToken ct)
