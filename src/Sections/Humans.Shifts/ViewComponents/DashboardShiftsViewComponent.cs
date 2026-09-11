@@ -10,7 +10,7 @@ namespace Humans.Shifts.ViewComponents;
 /// <summary>
 /// The member dashboard's shift block: confirmed signups, urgent open shifts, the
 /// "no shifts yet" guided-discovery callout, and the volunteer "Get involved" tri-card
-/// row. Absorbed from Shell's DashboardService (nobodies-collective/Humans#1091).
+/// row.
 /// </summary>
 public sealed class DashboardShiftsViewComponent(
     IShiftManagementServiceRead shiftMgmt,

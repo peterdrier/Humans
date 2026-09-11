@@ -364,9 +364,6 @@
   <data name="BoardVoting_ApplicationNotFound" xml:space="preserve">
     <value>Sol·licitud no trobada.</value>
   </data>
-  <data name="BoardVoting_ConcurrencyConflict" xml:space="preserve">
-    <value>Aquesta sol·licitud ha estat modificada per un altre usuari. Recarrega i torna-ho a provar.</value>
-  </data>
   <data name="BoardVoting_AdditionalInfo" xml:space="preserve">
     <value>Informació addicional</value>
   </data>
@@ -669,5 +666,11 @@
   </data>
   <data name="Votes_BallotDuplicateRanks" xml:space="preserve">
     <value>Cada opció necessita un número diferent. Dues opcions tenen el mateix, així que el vot no s’ha registrat.</value>
+  </data>
+  <data name="GovernanceCreate_MotivationLabel" xml:space="preserve">
+    <value>Per què vols unir-te?</value>
+  </data>
+  <data name="GovernanceCreate_AdditionalInfoLabel" xml:space="preserve">
+    <value>Informació addicional (opcional)</value>
   </data>
 </root>

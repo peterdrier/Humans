@@ -15,7 +15,6 @@ repository under `Data/`. **DbContext:**
 readers (`GovernanceIndexService`, `OnboardingService`,
 `NotificationMeterProvider`, `AdminDashboardService`)
 inject the narrow `IApplicationServiceRead` rather than the full decision
-service. `IMembershipCalculator` extends `IMembershipCalculatorRead`.
 Cross-section reads inside the section go through the read surfaces
 (`IUserServiceRead`, `ITeamServiceRead`, `IConsentServiceRead`).
 
@@ -107,10 +106,9 @@ Polls `IMembershipCalculatorRead`, `IApplicationServiceRead`,
 ### MembershipCalculator (Scoped)
 
 No repository. Pure read computation over `IMembershipQuery`,
-`IUserServiceRead`, `ILegalDocumentSyncService`, `IConsentServiceRead`
+`IUserServiceRead`, `ILegalDocumentSyncServiceRead`, `IConsentServiceRead`
 (resolved lazily via `IServiceProvider` to break a DI cycle), and
-`IClock`. Implements `IMembershipCalculator` (which extends
-`IMembershipCalculatorRead`). No DB access, no cache.
+`IClock`. Implements `IMembershipCalculatorRead`. No DB access, no cache.
 
 ### MembershipQuery (Scoped)
 

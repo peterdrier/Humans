@@ -1,5 +1,10 @@
 <!-- freshness:triggers
   src/Sections/Humans.Rideshare/**
+  tests/Humans.Rideshare.Tests/RideshareArchitectureTests.cs
+  src/Humans.Base/Constants/RoleNames.cs
+  src/Humans.Base/Authorization/PolicyNames.cs
+  src/Sections/Humans.Notifications.Contracts/NotificationSource.cs
+  src/Sections/Humans.AuditLog.Contracts/AuditAction.cs
 -->
 <!-- freshness:flag-on-change
   The interest-always-anchors-to-a-trip rule, seats/matched derivation, the route-frozen-at-save
@@ -65,6 +70,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 | CreatedAt | Instant | required |
 | UpdatedAt | Instant | required |
 
+**Indexes / constraints:** non-unique on `UserId` and `Year`; no database FK to users.
+
 **Derived (not stored):** `SeatsRemaining`, `IsFull`, `LastTravelDate`, `IsJoinable`.
 
 ### RideshareRequest
@@ -89,6 +96,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 | CreatedAt | Instant | required |
 | UpdatedAt | Instant | required |
 
+**Indexes / constraints:** non-unique on `UserId` and `Year`; no database FK to users.
+
 **Derived (not stored):** `IsMatched`.
 
 ### RideshareInterest
@@ -106,6 +115,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 | Status | InterestStatus | string(50) |
 | CreatedAt | Instant | required |
 | RespondedAt | Instant? | set on accept/decline |
+
+**Indexes / constraints:** non-unique on `FromUserId`, `TripId`, `RequestId`; FK `TripId` → `rideshare_trips` (cascade), FK `RequestId` → `rideshare_requests` (set null).
 
 **Cross-section FKs:** `UserId`/`FromUserId` → User (Users section) — bare Guid, no navigation.
 
@@ -125,6 +136,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 | OutboundWindowStart | LocalDate | required |
 | OutboundWindowEnd | LocalDate | required |
 | UpdatedAt | Instant | required |
+
+**Indexes / constraints:** non-unique on `Year`; one row per year is the repository upsert rule, not a constraint.
 
 ### RideshareDirection
 

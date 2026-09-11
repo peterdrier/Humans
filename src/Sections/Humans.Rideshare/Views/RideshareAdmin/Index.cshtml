@@ -49,10 +49,12 @@
         <div class="col-6">
             <label class="form-label" asp-for="InboundWindowStart">Inbound window start</label>
             <input class="form-control" asp-for="InboundWindowStart" type="date" />
+            <span asp-validation-for="InboundWindowStart" class="text-danger"></span>
         </div>
         <div class="col-6">
             <label class="form-label" asp-for="InboundWindowEnd">Inbound window end</label>
             <input class="form-control" asp-for="InboundWindowEnd" type="date" />
+            <span asp-validation-for="InboundWindowEnd" class="text-danger"></span>
         </div>
     </div>
 
@@ -60,10 +62,12 @@
         <div class="col-6">
             <label class="form-label" asp-for="OutboundWindowStart">Outbound window start</label>
             <input class="form-control" asp-for="OutboundWindowStart" type="date" />
+            <span asp-validation-for="OutboundWindowStart" class="text-danger"></span>
         </div>
         <div class="col-6">
             <label class="form-label" asp-for="OutboundWindowEnd">Outbound window end</label>
             <input class="form-control" asp-for="OutboundWindowEnd" type="date" />
+            <span asp-validation-for="OutboundWindowEnd" class="text-danger"></span>
         </div>
     </div>
 

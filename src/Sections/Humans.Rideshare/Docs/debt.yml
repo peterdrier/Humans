@@ -1,0 +1,7 @@
+# Section debt ledger for Humans.Rideshare. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+inbox:
+  - added: 2026-09-10
+    what: "Service rules still unpinned after the tests strike: ExpressInterestAsync's capacity check (Rideshare_Error_NotEnoughSeats), its refusal on a non-Active trip (Rideshare_Error_RideUnavailable) and on seats below one (Rideshare_Error_SeatsMinimum); Accept and Decline on a non-pending interest (Rideshare_Error_InterestNotPending); UpdateRequestAsync by a non-owner. Each is a RideshareTestHarness test in RideshareServiceTests asserting the rule key (finding 18, /section-doctor on Rideshare 2026-09-10)."
+    review: light

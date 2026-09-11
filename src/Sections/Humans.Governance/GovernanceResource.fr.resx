@@ -364,9 +364,6 @@
   <data name="BoardVoting_ApplicationNotFound" xml:space="preserve">
     <value>Candidature introuvable.</value>
   </data>
-  <data name="BoardVoting_ConcurrencyConflict" xml:space="preserve">
-    <value>Cette candidature a été modifiée par un autre utilisateur. Veuillez recharger et réessayer.</value>
-  </data>
   <data name="BoardVoting_AdditionalInfo" xml:space="preserve">
     <value>Informations complémentaires</value>
   </data>
@@ -669,5 +666,11 @@
   </data>
   <data name="Votes_BallotDuplicateRanks" xml:space="preserve">
     <value>Chaque option doit avoir un rang différent. Deux options ont le même, le vote n’a donc pas été enregistré.</value>
+  </data>
+  <data name="GovernanceCreate_MotivationLabel" xml:space="preserve">
+    <value>Pourquoi souhaites-tu nous rejoindre ?</value>
+  </data>
+  <data name="GovernanceCreate_AdditionalInfoLabel" xml:space="preserve">
+    <value>Informations complémentaires (facultatif)</value>
   </data>
 </root>

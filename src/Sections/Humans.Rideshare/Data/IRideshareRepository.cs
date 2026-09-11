@@ -53,8 +53,8 @@ internal interface IRideshareRepository : IRepository
     Task<IReadOnlyList<RideshareInterest>> GetInterestsForUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// GDPR Art. 17: deletes the person's interests, trips (their interests cascade) and
-    /// requests (referencing interests keep the trip, lose the request pointer). Idempotent.
+    /// GDPR Art. 17: deletes the person's interests, their trips (interests cascade), and other
+    /// drivers' answers to their requests before the requests themselves. Idempotent.
     /// </summary>
     Task DeleteUserRowsAsync(Guid userId, CancellationToken ct = default);
 

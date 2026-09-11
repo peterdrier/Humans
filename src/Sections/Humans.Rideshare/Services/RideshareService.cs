@@ -26,7 +26,7 @@ internal sealed class RideshareService(
     INotificationEmitter notifications,
     IAuditLogService auditLog,
     IClock clock,
-    ILogger<RideshareService> logger) : IRideshareService, IUserMerge
+    ILogger<RideshareService> logger) : IRideshareService
 {
     private const string MineUrl = "/Rideshare/Mine";
     private const string MineLabel = "Open Rideshare";
@@ -439,9 +439,9 @@ internal sealed class RideshareService(
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         repository.DeleteUserRowsAsync(userId, ct);
 
-    // ── IUserMerge — account merge fold ───────────────────────────────────
+    // ── Account merge fold ────────────────────────────────────────────────
 
-    /// <summary>Called from <c>AccountMergeService</c>'s ordered fan-out; stays idempotent.</summary>
+    /// <summary>Reached through the decorator's <c>IUserMerge</c>; stays idempotent.</summary>
     public Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) =>
         repository.ReassignToUserAsync(mergedFromUserId, mergedToUserId, now, ct);
 

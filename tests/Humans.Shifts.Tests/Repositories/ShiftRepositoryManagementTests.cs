@@ -10,7 +10,7 @@ namespace Humans.Shifts.Tests.Repositories;
 
 /// <summary>
 /// Smoke tests for <see cref="ShiftRepository"/>, the EF-backed
-/// repository introduced in issue #541a. Covers the repository primitives
+/// repository introduced in issue nobodies-collective/Humans#541a. Covers the repository primitives
 /// most likely to regress: the narrow-field pending-signup count, the
 /// active-event lookup, and the tag reconcile.
 /// </summary>
@@ -127,6 +127,38 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
             .Select(v => v.ShiftTagId)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         preferences.Should().ContainSingle().Which.Should().Be(tag.Id);
+    }
+
+    [HumansFact]
+    public async Task ReassignProfilesAndTagPrefsToUserAsync_BothHoldSameTagPreference_TargetWinsNoDuplicate()
+    {
+        // Both source and target already prefer the same tag — the fold must
+        // drop the source's row rather than insert a second (UserId, ShiftTagId)
+        // row and violate IX_volunteer_tag_preferences_user_tag_unique.
+        var sourceUserId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+        var tag = new ShiftTag { Id = Guid.NewGuid(), Name = "A" };
+        await _shiftsDbContext.ShiftTags.AddAsync(tag);
+        await _shiftsDbContext.VolunteerTagPreferences.AddRangeAsync(
+            new VolunteerTagPreference { Id = Guid.NewGuid(), UserId = sourceUserId, ShiftTagId = tag.Id },
+            new VolunteerTagPreference { Id = Guid.NewGuid(), UserId = targetUserId, ShiftTagId = tag.Id });
+        await _shiftsDbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.ReassignProfilesAndTagPrefsToUserAsync(
+            sourceUserId, targetUserId, TestNow, Xunit.TestContext.Current.CancellationToken);
+
+        _shiftsDbContext.ChangeTracker.Clear();
+        var targetPrefs = await _shiftsDbContext.VolunteerTagPreferences
+            .AsNoTracking()
+            .Where(v => v.UserId == targetUserId)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        targetPrefs.Should().ContainSingle("the duplicate on the source must be dropped, not merged");
+
+        var sourcePrefs = await _shiftsDbContext.VolunteerTagPreferences
+            .AsNoTracking()
+            .Where(v => v.UserId == sourceUserId)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        sourcePrefs.Should().BeEmpty("the source row was folded away, not left orphaned");
     }
 
     // ─────────────────────────────────────────────────────────
