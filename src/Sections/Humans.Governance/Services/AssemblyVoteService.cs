@@ -758,7 +758,14 @@ internal sealed class AssemblyVoteService(
                             + "deciding vote; record it here.");
         }
 
-        acta.AppendLine(CultureInfo.InvariantCulture, $"Closed at: {vote.ClosedAt}");
+        // In the association's own timezone, like every closing time the electorate was
+        // shown. A UTC instant here reads two hours early in summer, and the acta is the
+        // document the Secretary files.
+        acta.AppendLine(vote.ClosedAt is { } closedAt
+            ? string.Create(
+                CultureInfo.InvariantCulture,
+                $"Closed at: {ClosingLocal(closedAt)} (Europe/Madrid)")
+            : "Closed at: not recorded.");
         // The spec lists "who closed it" among the acta's contents, and this is the summary
         // the Secretary files: "an administrator" names nobody.
         acta.AppendLine(vote.ClosedByUserId is null
@@ -1182,12 +1189,18 @@ internal sealed class AssemblyVoteService(
         if (newClosesAt <= vote.ClosesAt) return AssemblyVoteActionResult.Invalid;
 
         var previous = vote.ClosesAt;
+        // The revision this extension was built from. Two admins extending at once both
+        // validate against the deadline they read, so without this the shorter extension
+        // commits second and moves the deadline the electorate was just given backwards —
+        // and its audit entry names a previous value that was never the persisted one.
+        var readAt = vote.UpdatedAt;
         vote.ClosesAt = newClosesAt;
         vote.UpdatedAt = clock.GetCurrentInstant();
 
-        // The vote closed between the read above and this write. Nothing was extended, and
-        // "only an open vote can be extended" is the honest answer.
-        if (!await repository.UpdateAsync(vote, AssemblyVoteStatus.Open, ct: ct))
+        // The vote closed, or was extended by somebody else, between the read above and this
+        // write. Nothing was extended, and "only an open vote can be extended" is the honest
+        // answer: the admin re-reads the new deadline and extends from that.
+        if (!await repository.UpdateAsync(vote, AssemblyVoteStatus.Open, readAt, ct))
             return AssemblyVoteActionResult.WrongState;
 
         await audit.LogAsync(
@@ -1562,6 +1575,11 @@ internal sealed class AssemblyVoteService(
 
             foreach (var (rosterRow, info, address) in recipients)
             {
+                // And the clock per recipient too: a vote whose deadline passes mid-batch is
+                // still persisted Open until the close pass below runs, so comparing against
+                // the sweep-start instant would keep mailing "closing soon" after it closed.
+                var sentAt = clock.GetCurrentInstant();
+
                 // Eligibility is re-read per recipient, not trusted from the list: sending
                 // the whole roster takes long enough for somebody to vote, or for an Admin to
                 // stop, cancel or extend the vote, and "you have not voted and the vote closes
@@ -1573,7 +1591,7 @@ internal sealed class AssemblyVoteService(
                 // mid-batch moves it, and half an electorate holding an email that announces a
                 // deadline the vote no longer has is worse than no reminder: the rest of the
                 // roster is reminded on the sweep after the new deadline comes into range.
-                if (current.ClosesAt <= now || current.ClosesAt > now + ReminderLeadTime) break;
+                if (current.ClosesAt <= sentAt || current.ClosesAt > sentAt + ReminderLeadTime) break;
                 var closesAt = ClosingLocal(current.ClosesAt);
 
                 if (await repository.GetBallotForRosterAsync(vote.Id, rosterRow.Id, ct) is not null)
@@ -1597,7 +1615,7 @@ internal sealed class AssemblyVoteService(
                     // Stamped per row, immediately: the stamp is the only thing stopping the
                     // next sweep re-sending, so the widest window worth having between the
                     // send and the stamp is one roster row, not the whole batch.
-                    await repository.StampReminderSentAsync([rosterRow.Id], now, ct);
+                    await repository.StampReminderSentAsync([rosterRow.Id], sentAt, ct);
                     reminded.Add(rosterRow.Id);
                 }
                 catch (Exception ex)

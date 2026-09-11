@@ -67,6 +67,18 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
         // not happen and the caller is told so.
         if (persisted.Status != expectedStatus) return false;
 
+        // The deadline of an open vote only ever moves later. Two admins extending at once
+        // both validate against the deadline they read, so the shorter extension can arrive
+        // second and take the electorate's deadline back — the one guarantee Extend makes
+        // (shortening is Stop's job) broken by ordering alone. Checked here because here is
+        // where the row is locked and the persisted deadline is known.
+        if (persisted.Status == AssemblyVoteStatus.Open
+            && vote.Status == AssemblyVoteStatus.Open
+            && vote.ClosesAt < persisted.ClosesAt)
+        {
+            return false;
+        }
+
         // An automatic close decided from the deadline it read. If the deadline has moved
         // later since, an Extend committed in between and is the newer fact: the vote is
         // still open, and this close is working from a deadline that no longer exists.
@@ -512,11 +524,9 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
             .ToListAsync(ct);
         var voteIds = sourceRows.Select(r => r.VoteId).ToList();
 
-        var targetVoteIds = await ctx.AssemblyVoteRosterEntries
+        var targetRowByVoteId = await ctx.AssemblyVoteRosterEntries
             .Where(r => r.UserId == targetUserId && voteIds.Contains(r.VoteId))
-            .Select(r => r.VoteId)
-            .ToListAsync(ct);
-        var targetVoteIdSet = targetVoteIds.ToHashSet();
+            .ToDictionaryAsync(r => r.VoteId, r => r, ct);
 
         // Read the ballots before the cascade takes them: the audit entry has to name the
         // ballot it destroyed, and after SaveChanges the id is gone.
@@ -528,11 +538,29 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
         var dropped = new List<AssemblyRosterDrop>();
         foreach (var row in sourceRows)
         {
-            if (targetVoteIdSet.Contains(row.VoteId))
+            if (targetRowByVoteId.TryGetValue(row.VoteId, out var targetRow))
             {
                 // The target already holds this vote's roster row; the source's row (and
                 // its ballot/history, via cascade delete) is dropped rather than merged —
-                // one person, one ballot per vote.
+                // one person, one ballot per vote. The entitlement is not dropped with it:
+                // one human reachable through two sources is official if either source made
+                // them official, so an official source row must not leave the survivor
+                // counted in the indicative result only.
+                // Written through EF rather than the properties: the snapshot's entitlement
+                // columns are init-only on purpose — a roster is frozen at open and never
+                // recomputed — and a merge is the one thing that legitimately corrects them.
+                var entry = ctx.Entry(targetRow);
+                if (row.IsOfficial && !targetRow.IsOfficial)
+                {
+                    entry.Property(r => r.IsOfficial).CurrentValue = true;
+                    entry.Property(r => r.Tier).CurrentValue = row.Tier;
+                }
+
+                if (row.IsBoardMember && !targetRow.IsBoardMember)
+                {
+                    entry.Property(r => r.IsBoardMember).CurrentValue = true;
+                }
+
                 dropped.Add(new AssemblyRosterDrop(
                     row.VoteId,
                     ballotByRosterId.TryGetValue(row.Id, out var ballotId) ? ballotId : null));

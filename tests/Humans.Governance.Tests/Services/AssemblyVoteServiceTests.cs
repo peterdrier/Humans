@@ -1257,6 +1257,87 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task ExtendAsync_BuiltFromADeadlineSomebodyElseAlreadyExtended_IsRefused()
+    {
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(6));
+        var longer = _fx.Clock.GetCurrentInstant() + Duration.FromDays(7);
+        var shorter = _fx.Clock.GetCurrentInstant() + Duration.FromDays(1);
+
+        // Both admins read the vote at its original deadline; the longer extension commits.
+        (await _fx.Service.ExtendAsync(
+                vote.Id, longer, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken))
+            .Should().Be(AssemblyVoteActionResult.Ok);
+        _fx.Db.ChangeTracker.Clear();
+
+        var result = await _fx.Service.ExtendAsync(
+            vote.Id, shorter, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().Be(AssemblyVoteActionResult.Invalid,
+            "the second admin's extension is shorter than the deadline now in force");
+
+        var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
+            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.ClosesAt.Should().Be(longer, "an extension never moves the deadline backwards");
+    }
+
+    [HumansFact]
+    public async Task UpdateAsync_WithADeadlineEarlierThanThePersistedOne_WritesNothing()
+    {
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(6));
+        var stale = await _fx.Repository.GetByIdAsync(
+            vote.Id, Xunit.TestContext.Current.CancellationToken);
+        _fx.Db.ChangeTracker.Clear();
+
+        var longer = _fx.Clock.GetCurrentInstant() + Duration.FromDays(7);
+        (await _fx.Service.ExtendAsync(
+                vote.Id, longer, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken))
+            .Should().Be(AssemblyVoteActionResult.Ok);
+        _fx.Db.ChangeTracker.Clear();
+
+        // The second admin's write was built before that landed and is still longer than the
+        // deadline it read, so the service validated it: only the persisted comparison under
+        // the row lock stops it taking the deadline back.
+        stale!.ClosesAt = _fx.Clock.GetCurrentInstant() + Duration.FromDays(3);
+        var written = await _fx.Repository.UpdateAsync(
+            stale,
+            AssemblyVoteStatus.Open,
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        written.Should().BeFalse();
+        var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
+            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.ClosesAt.Should().Be(longer);
+    }
+
+    [HumansFact]
+    public async Task ReassignAsync_WhenTheMergedAccountHeldTheOfficialRow_KeepsTheEntitlement()
+    {
+        var vote = await _fx.AddVoteAsync();
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        _fx.StubActiveUsers(source, target);
+        await _fx.AddRosterRowAsync(
+            vote.Id, source, isOfficial: true, tier: MembershipTier.Asociado, isBoardMember: true);
+        var targetRow = await _fx.AddRosterRowAsync(vote.Id, target, isOfficial: false);
+
+        await _fx.Service.ReassignAsync(
+            source, target, Guid.NewGuid(), _fx.Clock.GetCurrentInstant(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        var rows = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
+            .Where(r => r.VoteId == vote.Id)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var survivor = rows.Should().ContainSingle("one human holds one roster row per vote").Subject;
+        survivor.Id.Should().Be(targetRow.Id, "the target's row wins, with its ballot");
+        survivor.IsOfficial.Should().BeTrue(
+            "a human reachable through two sources is official if either source made them official");
+        survivor.Tier.Should().Be(MembershipTier.Asociado);
+        survivor.IsBoardMember.Should().BeTrue();
+    }
+
+    [HumansFact]
     public async Task RunLapseAndReminderSweepAsync_StopsRemindingOnceTheDeadlineMoves()
     {
         var vote = await _fx.AddVoteAsync(
