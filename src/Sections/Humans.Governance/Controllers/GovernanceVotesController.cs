@@ -75,7 +75,14 @@ internal sealed class GovernanceVotesController(
             return RedirectToAction(nameof(Details), new { voteId });
         }
 
-        var outcome = await voteService.CastBallotAsync(voteId, userId, model.Choice, model.ToRanking(), ct);
+        // No choice posted at all is an empty ballot, not an affirmative one.
+        if (model.Choice is not { } choice)
+        {
+            SetError(localizer["Votes_BallotInvalid"].Value);
+            return RedirectToAction(nameof(Details), new { voteId });
+        }
+
+        var outcome = await voteService.CastBallotAsync(voteId, userId, choice, model.ToRanking(), ct);
 
         switch (outcome)
         {

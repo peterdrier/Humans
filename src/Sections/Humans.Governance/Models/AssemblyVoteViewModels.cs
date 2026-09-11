@@ -48,7 +48,15 @@ internal sealed class AssemblyRankedBallotOptionRow
 internal sealed class AssemblyBallotFormViewModel
 {
     public Guid VoteId { get; set; }
-    public AssemblyBallotChoice Choice { get; set; }
+
+    /// <summary>
+    /// Nullable on purpose. The enum's zero value is <see cref="AssemblyBallotChoice.Yes"/>, so a
+    /// non-nullable property would bind a POST that carries no <c>Choice</c> at all — browser
+    /// validation bypassed, a stale form, a hand-rolled request — into a ballot in favour. On a
+    /// binding vote a missing choice is a rejected submission, never a guessed one.
+    /// </summary>
+    public AssemblyBallotChoice? Choice { get; set; }
+
     public List<AssemblyRankedBallotOptionRow> RankedOptions { get; set; } = [];
 
     /// <summary>

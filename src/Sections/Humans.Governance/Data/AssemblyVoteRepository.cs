@@ -165,7 +165,19 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
     // Ballots
     // ==========================================================================
 
-    public async Task<AssemblyBallot> UpsertBallotAsync(
+    /// <summary>
+    /// Writes a member's ballot and its history row. Returns null when the vote is no longer
+    /// accepting ballots.
+    /// </summary>
+    /// <remarks>
+    /// The vote's state is re-read here, inside the same unit of work as the write, and not
+    /// taken from whatever the caller saw at the top of the request: a Stop or an automatic
+    /// close can land in between, and a ballot accepted after the tally was taken would be
+    /// told "recorded" while never appearing in the stored result. Closure persists the closed
+    /// status before it reads any ballots, so this check and that ordering together mean an
+    /// accepted ballot is always one the count saw.
+    /// </remarks>
+    public async Task<AssemblyBallot?> UpsertBallotAsync(
         Guid voteId,
         Guid rosterId,
         AssemblyBallotChoice choice,
@@ -174,6 +186,10 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
         CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
+
+        var vote = await ctx.AssemblyVotes.AsNoTracking()
+            .FirstOrDefaultAsync(v => v.Id == voteId, ct);
+        if (vote is null || !vote.AcceptsBallotsAt(now)) return null;
 
         var ballot = await ctx.AssemblyBallots
             .FirstOrDefaultAsync(b => b.VoteId == voteId && b.RosterId == rosterId, ct);

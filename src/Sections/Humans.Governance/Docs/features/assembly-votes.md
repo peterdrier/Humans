@@ -46,6 +46,7 @@ Sources: Ley Orgánica 1/2002 reguladora del Derecho de Asociación; the associa
 - Fields: title and official text per culture (Markdown, sanitized), a required `OfficialCulture` whose text is the binding one (others are labelled as translations), optional information link, `Kind` (YesNo or RankedChoice), options for RankedChoice (stable key + per-culture label, authored order), `RequiredMajority`, `IndicativeAudience` (None / Colaboradores / AllMembers), `BallotDisclosure`, `ClosesAt` (Instant, shown in Europe/Madrid), optional `AssemblyDate` (LocalDate, for the acta).
 - YesNo votes have fixed options Yes / No / Abstain. RankedChoice votes have at least two authored options and an Abstain flag on the ballot.
 - Draft is editable and deletable. Opening locks everything except `ClosesAt`.
+- A draft is rejected unless every posted enum (`Kind`, `RequiredMajority`, `IndicativeAudience`, `BallotDisclosure`) is a defined value, and a ballot POST that carries no choice at all is rejected rather than read as the enum's zero value.
 - **Save & translate blanks** machine-fills the cultures the author left empty from the vote's `OfficialCulture`, via `IGoogleTranslationService` (the same assist Surveys authoring uses). Blanks only — authored text in any culture is never overwritten — and draft-only, because translating a motion the electorate is already reading would change what some members see mid-vote. The official-culture text stays the binding one; the fills are an authoring aid the Board reviews before opening.
 
 ### US-V2: Admin opens the vote
@@ -77,7 +78,7 @@ Admin-only for the first votes because they are live tests; once the process has
 - **Extend** (AdminOnly) moves `ClosesAt` later while Open, audited with old and new values. Shortening is not offered; use Stop.
 - **Cancel** (AdminOnly) while Open: terminal, ballots retained, no result computed, roster notified by email, audit `AssemblyVoteCancelled` with a required reason. This is the "the Assembly refused electronic voting" exit (statutes Art. 8.2).
 - Closed and Cancelled are terminal. A closed vote can never reopen; to redo, create a new vote.
-- On close the result is computed once and stored (`ResultJson`), so it is stable even if counting code changes later. It can be recomputed by Admin only in Debug tooling, and the stored one wins.
+- On close the closed status is persisted **first** and the result computed and stored (`ResultJson`) **second**: a ballot write re-reads the vote inside its own unit of work, so a submission that arrives while the count is running is refused rather than accepted into a tally that has already been taken. A close interrupted between the two writes is finished by the next read. The result is computed once and stored, so it is stable even if counting code changes later. It can be recomputed by Admin only in Debug tooling, and the stored one wins.
 
 ### US-V5: Everyone sees participation, nobody sees the tally
 

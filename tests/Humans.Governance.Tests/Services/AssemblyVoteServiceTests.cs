@@ -177,6 +177,51 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         voteId.Should().BeNull("the OfficialCulture column is varchar(10)");
     }
 
+    [HumansFact]
+    public async Task CreateDraftAsync_WithAnUndefinedKind_IsRejected()
+    {
+        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Draft);
+        var draft = _fx.DraftFor(vote, AssemblyVoteKind.YesNo, []) with
+        {
+            Kind = (AssemblyVoteKind)99
+        };
+
+        var voteId = await _fx.Service.CreateDraftAsync(
+            draft, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        voteId.Should().BeNull(
+            "an undefined kind stores no options but counts as instant-runoff, which opens a vote nobody can win");
+    }
+
+    [HumansFact]
+    public async Task UpsertBallotAsync_OnAVoteThatHasClosed_WritesNothing()
+    {
+        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
+        var roster = await _fx.AddRosterRowAsync(vote.Id, Guid.NewGuid(), isOfficial: true);
+
+        var ballot = await _fx.Repository.UpsertBallotAsync(
+            vote.Id, roster.Id, AssemblyBallotChoice.Yes, null, _fx.Clock.GetCurrentInstant(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        ballot.Should().BeNull("closure persists the closed status before it counts the ballots");
+        _fx.Db.AssemblyBallots.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetResultsAsync_AfterACloseThatNeverStoredItsResult_FinishesTheClose()
+    {
+        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
+        var userId = Guid.NewGuid();
+        var roster = await _fx.AddRosterRowAsync(vote.Id, userId, isOfficial: true);
+        await _fx.AddBallotAsync(vote.Id, roster.Id, AssemblyBallotChoice.Yes);
+
+        var results = await _fx.Service.GetResultsAsync(
+            vote.Id, userId, viewerIsBoardOrAdmin: false, Xunit.TestContext.Current.CancellationToken);
+
+        results.Should().NotBeNull("a process that died between the two writes must not leave the page blank forever");
+        _fx.Db.AssemblyVotes.Single(v => v.Id == vote.Id).ResultJson.Should().NotBeNull();
+    }
+
     // ==========================================================================
     // GDPR export
     // ==========================================================================

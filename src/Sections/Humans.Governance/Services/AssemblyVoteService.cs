@@ -227,6 +227,11 @@ internal sealed class AssemblyVoteService(
         var ballot = await repository.UpsertBallotAsync(
             voteId, roster.Id, choice, normalizedRanking, now, ct);
 
+        // The vote closed while this submission was in flight. Nothing was written, and the
+        // member is told so rather than being shown a "recorded" they would not find in the
+        // published result.
+        if (ballot is null) return BallotSubmissionOutcome.VoteNotOpen;
+
         // The action distinguishes a first cast from a change; neither entry records what
         // was chosen. That is the whole point — the audit log is widely readable.
         //
@@ -299,7 +304,18 @@ internal sealed class AssemblyVoteService(
         if (vote is null) return null;
 
         var now = clock.GetCurrentInstant();
-        if (vote.Status != AssemblyVoteStatus.Open || now < vote.ClosesAt) return vote;
+        if (vote.Status != AssemblyVoteStatus.Open || now < vote.ClosesAt)
+        {
+            // Closure writes the status first and the tally second (see CloseAsync). A process
+            // that died between the two left a closed vote with no result; the next read
+            // finishes the job rather than leaving the results page permanently empty.
+            if (vote.Status == AssemblyVoteStatus.Closed && vote.ResultJson is null)
+            {
+                await StoreResultAsync(vote, ct);
+            }
+
+            return vote;
+        }
 
         await CloseAsync(vote, closedByUserId: null, AuditAction.AssemblyVoteClosed,
             $"Assembly vote {vote.Id} closed automatically at its announced time.", ct);
@@ -333,7 +349,6 @@ internal sealed class AssemblyVoteService(
         CancellationToken ct)
     {
         var now = clock.GetCurrentInstant();
-        var result = await ComputeResultAsync(vote, ct);
 
         vote.Status = AssemblyVoteStatus.Closed;
         // A lapsed vote closed at its announced time, whenever the sweep or the next read
@@ -342,10 +357,16 @@ internal sealed class AssemblyVoteService(
         // really does close it now.
         vote.ClosedAt = closedByUserId is null ? vote.ClosesAt : now;
         vote.ClosedByUserId = closedByUserId;
-        vote.ResultJson = JsonSerializer.Serialize(result, ResultJsonOptions);
         vote.UpdatedAt = now;
 
+        // Order matters, and it is the only thing standing between a late ballot and a tally
+        // that silently omits it. The status is persisted *before* the ballots are read: from
+        // that commit on, UpsertBallotAsync re-reads the vote and refuses, so every ballot the
+        // system accepted is already in the table by the time counting looks. Computing first
+        // and flipping second would leave the whole counting interval open for a submission to
+        // slip in behind the snapshot, be told "recorded", and never appear in the result.
         await repository.UpdateAsync(vote, ct);
+        await StoreResultAsync(vote, ct);
 
         await ClearOpenNotificationAsync(vote, closedByUserId, ct);
 
@@ -357,6 +378,18 @@ internal sealed class AssemblyVoteService(
         {
             await audit.LogAsync(action, AuditEntityTypes.AssemblyVote, vote.Id, description, LapseJobName);
         }
+    }
+
+    /// <summary>
+    /// Computes the vote's tally and stores it on the already-closed vote. Split out of
+    /// <see cref="CloseAsync"/> so the status can be persisted first, and reused by the
+    /// settle path to finish a close that was interrupted after the status went down.
+    /// </summary>
+    private async Task StoreResultAsync(AssemblyVote vote, CancellationToken ct)
+    {
+        var result = await ComputeResultAsync(vote, ct);
+        vote.ResultJson = JsonSerializer.Serialize(result, ResultJsonOptions);
+        await repository.UpdateAsync(vote, ct);
     }
 
     /// <summary>
@@ -809,6 +842,15 @@ internal sealed class AssemblyVoteService(
     /// </summary>
     private bool IsDraftValid(AssemblyVoteDraft draft)
     {
+        // Every posted enum is checked against its definition. A numeric value outside the enum
+        // binds silently, and each one then falls through to the wrong default: an undefined
+        // Kind is not RankedChoice, so it stores no options, yet counting treats everything
+        // that is not YesNo as instant-runoff — a vote that opens with no options and results
+        // in nothing. A draft is the last place to catch that, since content locks at open.
+        if (!Enum.IsDefined(draft.Kind)) return false;
+        if (!Enum.IsDefined(draft.RequiredMajority)) return false;
+        if (!Enum.IsDefined(draft.IndicativeAudience)) return false;
+        if (!Enum.IsDefined(draft.BallotDisclosure)) return false;
         if (string.IsNullOrWhiteSpace(draft.OfficialCulture)) return false;
         if (!Fits(draft.OfficialCulture, MaxCultureLength)) return false;
         if (!Fits(draft.InfoUrl, MaxInfoUrlLength)) return false;
