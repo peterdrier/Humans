@@ -9,9 +9,11 @@ answers its audiences. Members see whether they hold a ticket, who is on it, and
 ticket they hold to another member — the ticket team completes the swap with the vendor and
 both people are emailed. The ticket team sees sales, revenue, fees, VAT and donations, who has
 not bought yet, which discount codes were redeemed, a live roster of who is on site, and can
-provision accounts for buyers who are not yet members. The rest of the app asks it one thing:
-does this person hold a ticket, and what are they holding. Holding a ticket also becomes the
-member's yearly participation record.
+provision accounts for buyers who are not yet members. The rest of the app asks it: does this
+person hold a ticket and what are they holding (`ITicketServiceRead`); mint discount codes for a
+campaign wave (`ITicketDiscountCodes`); mirror a Humans gate admit to the vendor
+(`ITicketVendorMirror`); run a sync, or is the sync in error (`ITicketSync`). Holding a ticket
+also becomes the member's yearly participation record.
 
 ## The shapes
 
@@ -96,8 +98,9 @@ The layout these shapes imply:
 - No read-through cache on the dashboard stats; on-demand staleness during sync is accepted.
 - No pagination-free admin lists: orders, attendees and who-hasn't-bought are the one place the
   dataset is large enough that paging buys something.
-- No concurrency tokens on the transfer request; the state machine tolerates a double click by
-  re-checking status.
+- No concurrency tokens on the transfer request (`no-concurrency-tokens`). The state machine
+  re-checks status on entry, which rejects a stale second submit but not two overlapping `Decide`
+  POSTs that both read Pending; that gap is recorded in `Docs/debt.yml`, not closed here.
 - No per-environment toggle for the automated transfer path; it is always offered.
 - No separate Attendee aggregate root: `TicketTransferRequest` references the attendee with no
   inverse collection on purpose.

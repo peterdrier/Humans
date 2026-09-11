@@ -11,3 +11,6 @@ inbox:
   - added: 2026-09-05
     what: "CachingTicketQueryService carries WithInner twice — once on the outer class and once on the nested UserHoldingsCache. One resolver would do; touch when the file is next open for a behavior change (finding S4, /section-doctor on Tickets 2026-09-05)."
     review: light
+  - added: 2026-09-11
+    what: "TicketTransferService.ProcessTransferAsync / ApproveAsync / RejectAsync guard on request.Status == Pending with a plain read-then-write, so two overlapping Decide POSTs on the same request both pass the check and can both enter the vendor void/reissue flow (the Decide form has no submit guard either). no-concurrency-tokens rules out a row version; the fix is an idempotent guard in the service (e.g. a Processing status written before the vendor call) or a disabled-on-submit form. Raised by Codex on peterdrier/Humans#1589; health.md records it as a gap."
+    review: panel
