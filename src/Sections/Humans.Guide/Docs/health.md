@@ -23,7 +23,7 @@ S1 is the section. S2 is S1's cache primed deliberately instead of on demand —
 `PopulateAsync`, differing only in what gets logged. S3 and S4 are one-class seams that carry
 no request.
 
-Inside S1 the content passes through five steps, in order, each a pure function of its input:
+Inside S1 the content passes through these steps, in order, each a pure function of its input:
 **fetch** (Base's GitHub markdown source) → **wrap** (each `## As a …` block gets a `<div>`
 carrying its role and its parenthetical's privilege tokens) → **render** (Markdig) →
 **rewrite** (sibling `.md` links become `/Guide/<stem>`, app paths in inline code become
@@ -50,7 +50,7 @@ Humans.Guide/
     IGuideRoleResolver        claims + Teams + Camps → GuideRoleContext
     GuideRolePrivilegeMap     parenthetical text → privilege token (static)
   Models/                     sidebar + page view model
-  Views/                      four pages and one layout partial
+  Views/                      the section's pages and its layout partial
   Contracts/                  empty by design
 ```
 
@@ -123,9 +123,9 @@ exactly one home.
 
 ## Load-bearing weirdness
 
-- **The role model is written three times** — as heading prose, as an HTML attribute, as a
-  regex over rendered HTML. That is essential given §5's constraint, not sediment; the two
-  corpus-wide pinning tests exist because of it.
+- **The role model is restated at every layer it crosses** — as heading prose, as an HTML
+  attribute, as a regex over rendered HTML. That is essential given §5's constraint, not
+  sediment; the corpus-wide pinning tests in §4 exist because of it.
 - **A cache miss on one page fetches every page.** `PopulateAsync` is all-or-nothing by design:
   the guide is small, and a per-page fetch would make a GitHub rate-limit failure look like a
   half-broken guide instead of a stale one.
