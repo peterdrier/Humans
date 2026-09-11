@@ -92,20 +92,24 @@ structure, not an exception within it.
   within each of the two classes.
 - A message that fails is retried with exponential backoff until a fixed attempt
   count, then stops being picked up and waits for an admin.
-- A message that succeeds is never sent twice.
+- Delivery is at-least-once, not exactly-once. A transport that hands the message to
+  the SMTP server and *then* observes cancellation leaves the row unmarked, and the
+  stale-pickup window re-claims it — so that message goes out twice. Accepted
+  deliberately: at this scale a rare duplicate is cheaper than the `Sending` status or
+  idempotency key that would close it.
 - A row's `Status` and its campaign-grant mirror agree with each other. They record what
   the section did with the message, which is not always a send: an address at `@localhost`
   or `@ticketstub.local` is marked `Sent` deliberately, without a transport call.
 - Only `AdminOnly` reaches the outbox dashboard and the preview gallery. A human sees
   their own outbox and nobody else's.
 - Every value interpolated into an email body is either HTML-encoded or passed through
-  the canonical sanitizing markdown renderer. No text authored by a member reaches a body
-  as raw HTML. The one body that is not a template with values interpolated into it — a
-  campaign's `EmailBodyTemplate`, which *is* the copy — is `AdminOnly`-authored and
-  rendered as markdown with raw HTML intact, on purpose; the codes and names substituted
-  into it are encoded.
-- Every user-facing string in an email body resolves through `EmailResource`, in all
-  six cultures.
+  the canonical sanitizing markdown renderer, and every markdown body — including a
+  campaign's `AdminOnly`-authored `EmailBodyTemplate` — goes through that renderer with
+  `allowImages: false`. No text reaches a body as raw HTML, whoever authored it.
+- Every string that *does* resolve through `EmailResource` is present in all six
+  cultures. Coverage is not yet complete: the templates rendered from string literals
+  in `EmailRenderer` are hardcoded English and sit outside the resx set (§3), tracked
+  in peterdrier/Humans#1657.
 - An outbox row is personal data: it is exported under Article 15 and destroyed under
   Article 17, whatever its status.
 - Only the repository touches `EmailDbContext`; the entity never leaves the section.
@@ -120,7 +124,9 @@ their future callers are shaped by them.
   wants real delivery outcomes needs a new inbound seam, not a new status value.
 - **Per-signup notification dedup.** The schema carries a `ShiftSignupId` column and a
   filtered index for "one email of each template per signup". Nothing writes the column
-  and nothing queries the index; the dedup was specified and never built.
+  and nothing queries the index; the dedup was specified and never built. Peter's ruling
+  (2026-09-11) is to drop both rather than build it — the destructive migration ships in
+  its own PR, per `memory/architecture/no-drops-until-prod-verified.md`.
 - **A moved-inward job contract.** `IEmailOutboxProcessor` and `IEmailOutboxRetention`
   sit on the public leaf but have no consumer outside the section since the jobs came in —
   Shell names neither. They can move inward whenever someone wants the churn.

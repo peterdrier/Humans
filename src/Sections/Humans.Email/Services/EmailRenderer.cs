@@ -395,7 +395,7 @@ internal sealed class EmailRenderer(
         var markdown = markdownBody
             .Replace("{{Code}}", encodedCode, StringComparison.Ordinal)
             .Replace("{{Name}}", encodedName, StringComparison.Ordinal);
-        var renderedBody = Markdig.Markdown.ToHtml(markdown);
+        var renderedBody = SanitizedMarkdownRenderer.Render(markdown, allowImages: false);
 
         // Subject is a plain-text field; no HTML encoding required.
         var renderedSubject = subject
