@@ -25,6 +25,11 @@ namespace Humans.Surveys.Tests.Services;
 public class SurveyServiceTests
 {
     private readonly ISurveyRepository _repo = Substitute.For<ISurveyRepository>();
+
+    /// <summary>The authored-surveys export query answers empty unless a test says otherwise.</summary>
+    private void NoAuthoredSurveys(Guid userId) =>
+        _repo.GetSurveysAuthoredByAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<Survey>());
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 6, 4, 12, 0));
     private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
@@ -3480,11 +3485,12 @@ public class SurveyServiceTests
             GridAnswer(gridId, ("removed-row", ["removed-column"])));
         _repo.GetIdentifiedResponsesForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<SurveyResponse> { response });
+        NoAuthoredSurveys(userId);
 
         var slices = await CreateService().ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
 
-        var slice = slices.Should().ContainSingle().Subject;
-        slice.SectionName.Should().Be(GdprExportSections.SurveyResponses);
+        var slice = slices.Single(s => string.Equals(
+            s.SectionName, GdprExportSections.SurveyResponses, StringComparison.Ordinal));
         slice.Data.Should().NotBeNull();
 
         // The payload serialises the user's response (title + answers). Round-trip through JSON to assert shape.
@@ -3503,11 +3509,12 @@ public class SurveyServiceTests
         var userId = Guid.NewGuid();
         _repo.GetIdentifiedResponsesForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<SurveyResponse>());
+        NoAuthoredSurveys(userId);
 
         var slices = await CreateService().ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
 
-        var slice = slices.Should().ContainSingle().Subject;
-        slice.SectionName.Should().Be(GdprExportSections.SurveyResponses);
+        var slice = slices.Single(s => string.Equals(
+            s.SectionName, GdprExportSections.SurveyResponses, StringComparison.Ordinal));
         // Collection sections emit [] (not null) when the user has no records.
         var json = System.Text.Json.JsonSerializer.Serialize(slice.Data);
         json.Should().Be("[]");
@@ -3529,13 +3536,49 @@ public class SurveyServiceTests
             _clock.GetCurrentInstant(), userId);
         _repo.GetIdentifiedResponsesForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<SurveyResponse> { one });
+        NoAuthoredSurveys(userId);
 
         var slices = await CreateService().ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
 
-        // Exactly one slice, and it carries exactly the single response the repo surfaced.
-        slices.Should().ContainSingle();
+        // The responses slice carries exactly the single response the repo surfaced.
+        slices.Single(s => string.Equals(
+            s.SectionName, GdprExportSections.SurveyResponses, StringComparison.Ordinal))
+            .Should().NotBeNull();
         await _repo.Received(1).GetIdentifiedResponsesForUserAsync(userId, Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().GetResponsesForResultsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ContributeForUserAsync_exports_the_surveys_this_person_authored()
+    {
+        var userId = Guid.NewGuid();
+        _repo.GetIdentifiedResponsesForUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<SurveyResponse>());
+
+        var mine = SurveyWith(SurveyStatus.Draft, null, null);
+        mine.Title = L("My Draft");
+        mine.RejectionNote = "Needs a clearer audience";
+        _repo.GetSurveysAuthoredByAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<Survey> { mine });
+
+        var slices = await CreateService().ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
+
+        var slice = slices.Single(s => string.Equals(
+            s.SectionName, GdprExportSections.AuthoredSurveys, StringComparison.Ordinal));
+        var json = System.Text.Json.JsonSerializer.Serialize(slice.Data);
+        json.Should().Contain("My Draft");
+        json.Should().Contain("Needs a clearer audience");
+    }
+
+    [HumansFact]
+    public async Task EraseForUserAsync_drops_authorship_as_well_as_responses()
+    {
+        var userId = Guid.NewGuid();
+
+        await CreateService().EraseForUserAsync(userId, TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).AnonymizeResponsesForUserAsync(userId, Arg.Any<CancellationToken>());
+        await _repo.Received(1).ClearAuthorshipForUserAsync(userId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

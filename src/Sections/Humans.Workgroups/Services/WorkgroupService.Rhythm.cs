@@ -79,10 +79,11 @@ internal sealed partial class WorkgroupService
             return;
 
         var days = (int)(info.SilenceFor(now)?.TotalDays ?? 0);
-        workgroup.DormantSince = now;
-        workgroup.UpdatedAt = now;
-        await repository.UpdateWorkgroupAsync(workgroup, ct);
 
+        // DormantSince is both the flag and the once-only latch, so it is written last: a
+        // failure in the log entry, the audit record or the notices leaves the flag unset and
+        // the next nightly run retries the whole step. Persisting it first would make
+        // NeedsDormancyInquiry false forever with the audit trail missing.
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.DormancyInquiry, now,
             $"No update or meeting for {days} days.", ct);
         await AuditJobAsync(AuditAction.WorkgroupDormancyFlagged,
@@ -96,6 +97,10 @@ internal sealed partial class WorkgroupService
         await NotifyBoardAsync(NotificationSource.WorkgroupReportingDue,
             $"Dormancy flagged: {workgroup.Name}", info,
             $"No update or meeting for {days} days; the coordinators have been asked.", ct);
+
+        workgroup.DormantSince = now;
+        workgroup.UpdatedAt = now;
+        await repository.UpdateWorkgroupAsync(workgroup, ct);
     }
 
     /// <summary>

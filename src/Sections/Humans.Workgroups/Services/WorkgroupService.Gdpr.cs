@@ -72,6 +72,7 @@ internal sealed partial class WorkgroupService
                     Status = d.Status.ToString(),
                     Authored = d.CreatedByUserId == userId,
                     Edited = d.UpdatedByUserId == userId,
+                    DispositionRecorded = d.DispositionByUserId == userId,
                     d.CreatedAt,
                     d.UpdatedAt
                 })

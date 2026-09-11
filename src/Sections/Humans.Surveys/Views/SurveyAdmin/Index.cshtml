@@ -87,7 +87,12 @@
                             {
                                 <partial name="_SurveyPreviewMenu" model="@s.Id" />
                             }
-                            <a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@s.Id" class="btn btn-outline-primary btn-sm">@Localizer["Survey_Admin_Index_Edit"]</a>
+                            @if (Model.IsBoardOrAdmin || s.Status == SurveyStatus.Draft)
+                            {
+                                @* An author may edit only their own Draft, so past Submitted this
+                                   link would be a 403 for them (SurveyAuthorizationHandler). *@
+                                <a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@s.Id" class="btn btn-outline-primary btn-sm">@Localizer["Survey_Admin_Index_Edit"]</a>
+                            }
                             @if (s.Status == SurveyStatus.Draft)
                             {
                                 <form asp-controller="SurveyAdmin" asp-action="Submit" asp-route-id="@s.Id" method="post" class="d-inline">

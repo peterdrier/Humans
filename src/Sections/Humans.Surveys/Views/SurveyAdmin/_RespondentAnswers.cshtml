@@ -25,7 +25,7 @@
                 @if (ballot.Rejected.Count > 0)
                 {
                     <div class="small text-danger mt-1">
-                        <strong>Rejected:</strong> @string.Join(", ", ballot.Rejected)
+                        <strong>@Localizer["Survey_Admin_Results_RespondentRejectedLabel"]</strong> @string.Join(", ", ballot.Rejected)
                     </div>
                 }
             }

@@ -114,4 +114,187 @@
   <data name="Survey_Admin_Queue_Approved" xml:space="preserve"><value>Enquesta aprovada i oberta; {0} invitació/ns en cua, {1} fallida/es.</value></data>
   <data name="Survey_Admin_Queue_Rejected" xml:space="preserve"><value>Enquesta rebutjada i retornada a l'autor com a esborrany.</value></data>
   <data name="Survey_Admin_Index_Submitted" xml:space="preserve"><value>Enquesta enviada per a l'aprovació de la Junta/Admin.</value></data>
+  <data name="Survey_Admin_Common_AdminBreadcrumb" xml:space="preserve"><value>Administrador</value></data>
+  <data name="Survey_Admin_Builder_TitleNew" xml:space="preserve"><value>Nova enquesta</value></data>
+  <data name="Survey_Admin_Builder_TitleEdit" xml:space="preserve"><value>Edita l'enquesta</value></data>
+  <data name="Survey_Admin_Builder_Audience_Team" xml:space="preserve"><value>Un equip</value></data>
+  <data name="Survey_Admin_Builder_Audience_AllActiveMembers" xml:space="preserve"><value>Tots els humans actius</value></data>
+  <data name="Survey_Admin_Builder_Audience_TicketHolders" xml:space="preserve"><value>Titulars d'entrada actuals</value></data>
+  <data name="Survey_Admin_Builder_Audience_ShiftParticipants" xml:space="preserve"><value>Humans amb torns</value></data>
+  <data name="Survey_Admin_Builder_Audience_LoggedInSince" xml:space="preserve"><value>Humans connectats des d'una data</value></data>
+  <data name="Survey_Admin_Builder_Audience_Asociados" xml:space="preserve"><value>Tots els Asociats actius</value></data>
+  <data name="Survey_Admin_Builder_ConfirmOpenVote" xml:space="preserve"><value>Vols obrir aquesta votació vinculant d'Asociats? Un cop oberta, les seves preguntes, redacció, configuració, dates, audiència i text d'invitació no es podran editar; un cop tancada, no es podrà tornar a obrir.</value></data>
+  <data name="Survey_Admin_Builder_ConfirmOpenSurvey" xml:space="preserve"><value>Vols obrir aquesta enquesta perquè pugui rebre respostes?</value></data>
+  <data name="Survey_Admin_Builder_Open" xml:space="preserve"><value>Obre</value></data>
+  <data name="Survey_Admin_Builder_ConfirmClose" xml:space="preserve"><value>Vols tancar aquesta enquesta a noves respostes?</value></data>
+  <data name="Survey_Admin_Builder_Close" xml:space="preserve"><value>Tanca</value></data>
+  <data name="Survey_Admin_Builder_LockedTitle" xml:space="preserve"><value>Aquesta votació vinculant d'Asociats està bloquejada.</value></data>
+  <data name="Survey_Admin_Builder_LockedBody" xml:space="preserve"><value>Un cop oberta, les seves preguntes, redacció, configuració, dates, audiència i text d'invitació van passar a ser de només lectura. Encara pots previsualitzar-la, tancar-la, revisar la participació i, després de tancar-la, marcar opcions classificades com a no disponibles per al recompte.</value></data>
+  <data name="Survey_Admin_Builder_EditingLanguage" xml:space="preserve"><value>Idioma d'edició:</value></data>
+  <data name="Survey_Admin_Builder_SurveySectionHeader" xml:space="preserve"><value>Enquesta</value></data>
+  <data name="Survey_Admin_Builder_Field_Title" xml:space="preserve"><value>Títol</value></data>
+  <data name="Survey_Admin_Builder_Field_Intro" xml:space="preserve"><value>Introducció</value></data>
+  <data name="Survey_Admin_Builder_Field_ThankYou" xml:space="preserve"><value>Agraïment</value></data>
+  <data name="Survey_Admin_Builder_DefaultLanguage" xml:space="preserve"><value>Idioma predeterminat</value></data>
+  <data name="Survey_Admin_Builder_OpensAt" xml:space="preserve"><value>S'obre el</value></data>
+  <data name="Survey_Admin_Builder_ClosesAt" xml:space="preserve"><value>Es tanca el</value></data>
+  <data name="Survey_Admin_Builder_AllowAnonymous" xml:space="preserve"><value>Permet respostes anònimes</value></data>
+  <data name="Survey_Admin_Builder_AsociadoVoteHeading" xml:space="preserve"><value>Votació d'Asociats</value></data>
+  <data name="Survey_Admin_Builder_AsociadoVoteWarning" xml:space="preserve"><value>Utilitza això només per a una decisió vinculant de l'associació. Revisa amb cura cada pregunta, opció, data, traducció, configuració d'audiència i invitació abans d'obrir-la. Obrir-la és irreversible: tota l'enquesta passa a ser de només lectura, i un cop tancada no es podrà tornar a obrir.</value></data>
+  <data name="Survey_Admin_Builder_IsAsociadoVoteLabel" xml:space="preserve"><value>Aquesta és una votació vinculant d'Asociats</value></data>
+  <data name="Survey_Admin_Builder_IsAsociadoVoteHelp" xml:space="preserve"><value>Només poden respondre els Asociats actius i aprovats. Humans registra qui ha votat per garantir l'elegibilitat i evitar el vot duplicat, però desa les paperetes enviades sense identitat del votant. Mentre estigui oberta, només són visibles les estadístiques de participació; tots els resultats derivats de les respostes queden precintats fins al tancament. Un cop oberta, l'enquesta no es pot editar. Un cop tancada, no es pot tornar a obrir.</value></data>
+  <data name="Survey_Admin_Builder_AudienceLabel" xml:space="preserve"><value>Audiència</value></data>
+  <data name="Survey_Admin_Builder_NoAudienceSelected" xml:space="preserve"><value>Cap audiència seleccionada</value></data>
+  <data name="Survey_Admin_Builder_AudienceHelp" xml:space="preserve"><value>Les invitacions es revisen i s'envien per separat després de desar.</value></data>
+  <data name="Survey_Admin_Builder_TeamLabel" xml:space="preserve"><value>Equip</value></data>
+  <data name="Survey_Admin_Builder_ChooseTeam" xml:space="preserve"><value>Tria un equip</value></data>
+  <data name="Survey_Admin_Builder_LoggedInSinceLabel" xml:space="preserve"><value>Connectat des de</value></data>
+  <data name="Survey_Admin_Builder_SlugLabel" xml:space="preserve"><value>Identificador de l'enllaç per compartir (opcional)</value></data>
+  <data name="Survey_Admin_Builder_SlugPlaceholder" xml:space="preserve"><value>p. ex. feedback-2026</value></data>
+  <data name="Survey_Admin_Builder_SlugHelp" xml:space="preserve"><value>Les enquestes anònimes permeten l'accés a qualsevol persona amb l'enllaç. Les enquestes identificades requereixen iniciar sessió i, si està configurat, complir els requisits d'audiència actuals.</value></data>
+  <data name="Survey_Admin_Builder_InvitationEmailHeader" xml:space="preserve"><value>Correu d'invitació</value></data>
+  <data name="Survey_Admin_Builder_InvitationEmailIntro" xml:space="preserve"><value>Personalitza la invitació inicial. Humans afegeix la salutació, el títol de l'enquesta, el botó amb l'enllaç i l'acomiadament. El missatge admet format Markdown, però no imatges. Deixa qualsevol dels camps en blanc per utilitzar el text estàndard.</value></data>
+  <data name="Survey_Admin_Builder_Field_EmailSubject" xml:space="preserve"><value>Assumpte del correu</value></data>
+  <data name="Survey_Admin_Builder_Field_EmailMessage" xml:space="preserve"><value>Missatge del correu</value></data>
+  <data name="Survey_Admin_Builder_QuestionsHeader" xml:space="preserve"><value>Preguntes</value></data>
+  <data name="Survey_Admin_Builder_AddQuestion" xml:space="preserve"><value>+ Afegeix pregunta</value></data>
+  <data name="Survey_Admin_Builder_SaveTranslateTitle" xml:space="preserve"><value>Desa i després tradueix automàticament, des de l'idioma predeterminat, els camps que encara falten en altres idiomes. El text existent mai se sobreescriu: revisa'l abans d'obrir.</value></data>
+  <data name="Survey_Admin_Builder_SaveTranslate" xml:space="preserve"><value>Desa i tradueix el que falta</value></data>
+  <data name="Survey_Admin_Builder_SaveReview" xml:space="preserve"><value>Desa i revisa els destinataris</value></data>
+  <data name="Survey_Admin_Builder_SaveSurvey" xml:space="preserve"><value>Desa l'enquesta</value></data>
+  <data name="Survey_Admin_Builder_JS_Columns" xml:space="preserve"><value>Columnes</value></data>
+  <data name="Survey_Admin_Builder_JS_Options" xml:space="preserve"><value>Opcions</value></data>
+  <data name="Survey_Admin_Builder_QuestionLabel" xml:space="preserve"><value>Pregunta</value></data>
+  <data name="Survey_Admin_Builder_JS_ChooseQuestion" xml:space="preserve"><value>— tria una pregunta —</value></data>
+  <data name="Survey_Admin_Builder_JS_Untitled" xml:space="preserve"><value>(sense títol)</value></data>
+  <data name="Survey_Admin_Builder_MoveQuestionUp" xml:space="preserve"><value>Mou la pregunta amunt</value></data>
+  <data name="Survey_Admin_Builder_MoveQuestionDown" xml:space="preserve"><value>Mou la pregunta avall</value></data>
+  <data name="Survey_Admin_Builder_QuestionOrderAriaLabel" xml:space="preserve"><value>Ordre de la pregunta</value></data>
+  <data name="Survey_Admin_Builder_AddBelow" xml:space="preserve"><value>+ Afegeix a sota</value></data>
+  <data name="Survey_Admin_Builder_RemoveQuestion" xml:space="preserve"><value>Elimina</value></data>
+  <data name="Survey_Admin_Builder_PageLabel" xml:space="preserve"><value>Pàgina</value></data>
+  <data name="Survey_Admin_Builder_TypeLabel" xml:space="preserve"><value>Tipus</value></data>
+  <data name="Survey_Admin_Builder_RequiredLabel" xml:space="preserve"><value>Obligatòria</value></data>
+  <data name="Survey_Admin_Builder_Field_Prompt" xml:space="preserve"><value>Enunciat / títol d'informació opcional</value></data>
+  <data name="Survey_Admin_Builder_Field_HelpText" xml:space="preserve"><value>Text d'ajuda / Markdown informatiu</value></data>
+  <data name="Survey_Admin_Builder_ImagesLabel" xml:space="preserve"><value>Imatges</value></data>
+  <data name="Survey_Admin_Builder_ImagesHelp" xml:space="preserve"><value>Fins a cinc, mostrades com a pestanyes etiquetades.</value></data>
+  <data name="Survey_Admin_Builder_ImagesPublicWarning" xml:space="preserve"><value>Els URL de les imatges pujades són públics i es podrien compartir fora d'aquesta enquesta.</value></data>
+  <data name="Survey_Admin_Builder_AddImage" xml:space="preserve"><value>+ Afegeix imatge</value></data>
+  <data name="Survey_Admin_Builder_RatingMinLabel" xml:space="preserve"><value>Valoració mín.</value></data>
+  <data name="Survey_Admin_Builder_RatingMaxLabel" xml:space="preserve"><value>Valoració màx.</value></data>
+  <data name="Survey_Admin_Builder_Field_MinLabel" xml:space="preserve"><value>Etiqueta mínima</value></data>
+  <data name="Survey_Admin_Builder_Field_MaxLabel" xml:space="preserve"><value>Etiqueta màxima</value></data>
+  <data name="Survey_Admin_Builder_OptionsLabel" xml:space="preserve"><value>Opcions</value></data>
+  <data name="Survey_Admin_Builder_AddOption" xml:space="preserve"><value>+ Afegeix opció</value></data>
+  <data name="Survey_Admin_Builder_GridColumnHelp" xml:space="preserve"><value>Les preguntes de graella admeten com a màxim cinc columnes.</value></data>
+  <data name="Survey_Admin_Builder_RankedMethodNote" xml:space="preserve"><value>El vot classificat utilitza Ranked Pairs (Tideman) com a mètode oficial. Si dos resultats queden empatats, guanya l'opció llistada abans.</value></data>
+  <data name="Survey_Admin_Builder_AllowEqualRanks" xml:space="preserve"><value>Permet rangs iguals</value></data>
+  <data name="Survey_Admin_Builder_IncludeReject" xml:space="preserve"><value>Inclou una opció de rebuig</value></data>
+  <data name="Survey_Admin_Builder_RankedLockedHelp" xml:space="preserve"><value>Els candidats classificats, l'ordre i la configuració estan bloquejats perquè ja s'ha desat una resposta.</value></data>
+  <data name="Survey_Admin_Builder_SelectionsPerRow" xml:space="preserve"><value>Seleccions per fila</value></data>
+  <data name="Survey_Admin_Builder_OneChoice" xml:space="preserve"><value>Una opció</value></data>
+  <data name="Survey_Admin_Builder_MultipleChoices" xml:space="preserve"><value>Diverses opcions</value></data>
+  <data name="Survey_Admin_Builder_RowsLabel" xml:space="preserve"><value>Files</value></data>
+  <data name="Survey_Admin_Builder_AddRow" xml:space="preserve"><value>+ Afegeix fila</value></data>
+  <data name="Survey_Admin_Builder_VisibilityLabel" xml:space="preserve"><value>Visibilitat</value></data>
+  <data name="Survey_Admin_Builder_AlwaysShown" xml:space="preserve"><value>Sempre visible</value></data>
+  <data name="Survey_Admin_Builder_ConditionalShown" xml:space="preserve"><value>Només visible quan…</value></data>
+  <data name="Survey_Admin_Builder_CombineAll" xml:space="preserve"><value>coincideixin totes les condicions</value></data>
+  <data name="Survey_Admin_Builder_CombineAny" xml:space="preserve"><value>coincideixi qualsevol condició</value></data>
+  <data name="Survey_Admin_Builder_AddCondition" xml:space="preserve"><value>+ Afegeix condició</value></data>
+  <data name="Survey_Admin_Builder_ConditionsHelp" xml:space="preserve"><value>Les condicions només poden fer referència a preguntes anteriors (es comprova en desar).</value></data>
+  <data name="Survey_Admin_Builder_ValueLabel" xml:space="preserve"><value>Valor</value></data>
+  <data name="Survey_Admin_Builder_ValuePlaceholder_Option" xml:space="preserve"><value>clau estable, p. ex. si</value></data>
+  <data name="Survey_Admin_Builder_Field_OptionLabel" xml:space="preserve"><value>Etiqueta</value></data>
+  <data name="Survey_Admin_Builder_OptionActionsAriaLabel" xml:space="preserve"><value>Accions de l'opció</value></data>
+  <data name="Survey_Admin_Builder_MoveOptionUp" xml:space="preserve"><value>Mou l'opció amunt</value></data>
+  <data name="Survey_Admin_Builder_MoveOptionDown" xml:space="preserve"><value>Mou l'opció avall</value></data>
+  <data name="Survey_Admin_Builder_RemoveOption" xml:space="preserve"><value>Elimina l'opció</value></data>
+  <data name="Survey_Admin_Builder_Field_RowLabel" xml:space="preserve"><value>Etiqueta de la fila</value></data>
+  <data name="Survey_Admin_Builder_ValuePlaceholder_GridRow" xml:space="preserve"><value>clau estable, p. ex. may-03-09</value></data>
+  <data name="Survey_Admin_Builder_GridRowActionsAriaLabel" xml:space="preserve"><value>Accions de la fila de graella</value></data>
+  <data name="Survey_Admin_Builder_MoveRowUp" xml:space="preserve"><value>Mou la fila amunt</value></data>
+  <data name="Survey_Admin_Builder_MoveRowDown" xml:space="preserve"><value>Mou la fila avall</value></data>
+  <data name="Survey_Admin_Builder_RemoveRow" xml:space="preserve"><value>Elimina la fila</value></data>
+  <data name="Survey_Admin_Builder_ViewCurrentImage" xml:space="preserve"><value>Veure la imatge actual</value></data>
+  <data name="Survey_Admin_Builder_ReplaceImageHelp" xml:space="preserve"><value>Tria un fitxer nou a sota per substituir-la.</value></data>
+  <data name="Survey_Admin_Builder_ImageOrderAriaLabel" xml:space="preserve"><value>Ordre i eliminació de la imatge</value></data>
+  <data name="Survey_Admin_Builder_MoveImageUp" xml:space="preserve"><value>Mou la imatge amunt</value></data>
+  <data name="Survey_Admin_Builder_MoveImageDown" xml:space="preserve"><value>Mou la imatge avall</value></data>
+  <data name="Survey_Admin_Builder_RemoveImage" xml:space="preserve"><value>Elimina</value></data>
+  <data name="Survey_Admin_Builder_Field_TabLabel" xml:space="preserve"><value>Etiqueta de la pestanya</value></data>
+  <data name="Survey_Admin_Builder_Field_ImageAltText" xml:space="preserve"><value>Text alternatiu de la imatge</value></data>
+  <data name="Survey_Admin_Builder_OperatorIsAnyOf" xml:space="preserve"><value>és una de</value></data>
+  <data name="Survey_Admin_Builder_OperatorIsNoneOf" xml:space="preserve"><value>no és cap de</value></data>
+  <data name="Survey_Admin_Builder_OperatorHasAnswer" xml:space="preserve"><value>té resposta</value></data>
+  <data name="Survey_Admin_Builder_OperatorHasNoAnswer" xml:space="preserve"><value>no té resposta</value></data>
+  <data name="Survey_Admin_Builder_RemoveCondition" xml:space="preserve"><value>Elimina la condició</value></data>
+  <data name="Survey_Admin_PreviewMenu_Preview" xml:space="preserve"><value>Vista prèvia</value></data>
+  <data name="Survey_Admin_PreviewMenu_PreviewSurvey" xml:space="preserve"><value>Vista prèvia de l'enquesta</value></data>
+  <data name="Survey_Admin_PreviewMenu_PreviewEmail" xml:space="preserve"><value>Vista prèvia del correu</value></data>
+  <data name="Survey_Admin_Results_Title" xml:space="preserve"><value>Resultats de l'enquesta</value></data>
+  <data name="Survey_Admin_Results_Untitled" xml:space="preserve"><value>(sense títol)</value></data>
+  <data name="Survey_Admin_Results_Breadcrumb" xml:space="preserve"><value>Resultats</value></data>
+  <data name="Survey_Admin_Results_DownloadCsv" xml:space="preserve"><value>Descarrega CSV</value></data>
+  <data name="Survey_Admin_Results_DownloadJson" xml:space="preserve"><value>Descarrega JSON</value></data>
+  <data name="Survey_Admin_Results_EmbargoNotice" xml:space="preserve"><value>Aquesta és una votació d'Asociats. Els resultats derivats de les respostes, les exportacions i les dades dels enquestats només estaran disponibles després que es tanqui la votació.</value></data>
+  <data name="Survey_Admin_Results_QuestionResultsLabel" xml:space="preserve"><value>Resultats de les preguntes:</value></data>
+  <data name="Survey_Admin_Results_ResponseCount" xml:space="preserve"><value>{0} resposta/es</value></data>
+  <data name="Survey_Admin_Results_FilterAriaLabel" xml:space="preserve"><value>Filtra els resultats de les preguntes</value></data>
+  <data name="Survey_Admin_Results_ScopeUnique" xml:space="preserve"><value>Identificades / úniques</value></data>
+  <data name="Survey_Admin_Results_ScopeAnonymous" xml:space="preserve"><value>Anònimes</value></data>
+  <data name="Survey_Admin_Results_ScopeCombined" xml:space="preserve"><value>Combinades</value></data>
+  <data name="Survey_Admin_Results_StatResponses" xml:space="preserve"><value>Respostes</value></data>
+  <data name="Survey_Admin_Results_StatInvited" xml:space="preserve"><value>Convidats</value></data>
+  <data name="Survey_Admin_Results_StatResponseRate" xml:space="preserve"><value>Taxa de resposta</value></data>
+  <data name="Survey_Admin_Results_FunnelHeader" xml:space="preserve"><value>Embut de participació</value></data>
+  <data name="Survey_Admin_Results_FunnelAllResponses" xml:space="preserve"><value>(totes les respostes)</value></data>
+  <data name="Survey_Admin_Results_InviteLink" xml:space="preserve"><value>Enllaç d'invitació</value></data>
+  <data name="Survey_Admin_Results_PublicLink" xml:space="preserve"><value>Enllaç públic</value></data>
+  <data name="Survey_Admin_Results_Started" xml:space="preserve"><value>Iniciat:</value></data>
+  <data name="Survey_Admin_Results_Finished" xml:space="preserve"><value>Finalitzat:</value></data>
+  <data name="Survey_Admin_Results_QuestionsHeader" xml:space="preserve"><value>Preguntes</value></data>
+  <data name="Survey_Admin_Results_NoQuestions" xml:space="preserve"><value>Aquesta enquesta no té preguntes.</value></data>
+  <data name="Survey_Admin_Results_NoRankedBallots" xml:space="preserve"><value>No hi ha paperetes classificades.</value></data>
+  <data name="Survey_Admin_Results_OriginalOfficialResult" xml:space="preserve"><value>Resultat oficial original — totes les opcions creades</value></data>
+  <data name="Survey_Admin_Results_CurrentOfficialResult" xml:space="preserve"><value>Resultat oficial actual — opcions disponibles</value></data>
+  <data name="Survey_Admin_Results_NoWinner" xml:space="preserve"><value>Sense guanyador</value></data>
+  <data name="Survey_Admin_Results_CycleDetectedAvailable" xml:space="preserve"><value>S'ha detectat un cicle de preferències en el recompte d'opcions disponibles:</value></data>
+  <data name="Survey_Admin_Results_CycleDetectedAll" xml:space="preserve"><value>S'ha detectat un cicle de preferències en el recompte de totes les opcions:</value></data>
+  <data name="Survey_Admin_Results_CycleExplanationCurrent" xml:space="preserve"><value>Com a pedra, paper o tisora, cada opció en venç una altra però és vençuda per una tercera. Cap opció venç totes les altres cara a cara, així que Ranked Pairs resol el cicle bloquejant les victòries més fortes sense crear un bucle.</value></data>
+  <data name="Survey_Admin_Results_CycleExplanationOriginal" xml:space="preserve"><value>Com a pedra, paper o tisora, cada opció en vencia una altra però era vençuda per una tercera. En eliminar una opció no disponible es trenca aquest cicle. Les opcions restants es comparen llavors directament, de manera que el guanyador pot canviar encara que el guanyador anterior segueixi disponible.</value></data>
+  <data name="Survey_Admin_Results_CycleLinkText" xml:space="preserve"><value>Per què els canvis de disponibilitat poden semblar contraintuïtius</value></data>
+  <data name="Survey_Admin_Results_WinnerChanged" xml:space="preserve"><value>Excloure les opcions no disponibles canvia el guanyador oficial.</value></data>
+  <data name="Survey_Admin_Results_SensitivityHeader" xml:space="preserve"><value>Anàlisi de sensibilitat — opcions disponibles actuals</value></data>
+  <data name="Survey_Admin_Results_ColumnMethod" xml:space="preserve"><value>Mètode</value></data>
+  <data name="Survey_Admin_Results_ColumnWinner" xml:space="preserve"><value>Guanyador</value></data>
+  <data name="Survey_Admin_Results_ColumnNotes" xml:space="preserve"><value>Notes</value></data>
+  <data name="Survey_Admin_Results_NoUniqueWinner" xml:space="preserve"><value>Sense guanyador únic</value></data>
+  <data name="Survey_Admin_Results_TieBreakApplied" xml:space="preserve"><value>S'ha aplicat el desempat per ordre de creació</value></data>
+  <data name="Survey_Admin_Results_PairwiseSummary" xml:space="preserve"><value>Comparacions per parells</value></data>
+  <data name="Survey_Admin_Results_ColumnPair" xml:space="preserve"><value>Parell</value></data>
+  <data name="Survey_Admin_Results_ColumnVotes" xml:space="preserve"><value>Vots</value></data>
+  <data name="Survey_Admin_Results_VsSeparator" xml:space="preserve"><value>contra</value></data>
+  <data name="Survey_Admin_Results_RejectionsHeader" xml:space="preserve"><value>Rebutjos</value></data>
+  <data name="Survey_Admin_Results_ColumnOption" xml:space="preserve"><value>Opció</value></data>
+  <data name="Survey_Admin_Results_ColumnRejected" xml:space="preserve"><value>Rebutjada</value></data>
+  <data name="Survey_Admin_Results_ColumnStatus" xml:space="preserve"><value>Estat</value></data>
+  <data name="Survey_Admin_Results_NoLongerAvailable" xml:space="preserve"><value>Ja no disponible</value></data>
+  <data name="Survey_Admin_Results_UnavailableOptionsLegend" xml:space="preserve"><value>Opcions no disponibles</value></data>
+  <data name="Survey_Admin_Results_UnavailableOptionsHelp" xml:space="preserve"><value>Exclou dates o opcions que ja no estiguin disponibles, sense modificar les paperetes desades.</value></data>
+  <data name="Survey_Admin_Results_Recalculate" xml:space="preserve"><value>Recalcula</value></data>
+  <data name="Survey_Admin_Results_NoOptions" xml:space="preserve"><value>Sense opcions.</value></data>
+  <data name="Survey_Admin_Results_AverageLabel" xml:space="preserve"><value>Mitjana:</value></data>
+  <data name="Survey_Admin_Results_GridNoRowsColumns" xml:space="preserve"><value>Sense files ni columnes de graella.</value></data>
+  <data name="Survey_Admin_Results_ColumnRow" xml:space="preserve"><value>Fila</value></data>
+  <data name="Survey_Admin_Results_NoFreeTextAnswers" xml:space="preserve"><value>Sense respostes de text lliure.</value></data>
+  <data name="Survey_Admin_Results_IdentifiedRespondentsHeader" xml:space="preserve"><value>Enquestats identificats</value></data>
+  <data name="Survey_Admin_Results_NoIdentifiedRespondents" xml:space="preserve"><value>No hi ha enquestats identificats.</value></data>
+  <data name="Survey_Admin_Results_IndividualBallotsHeader" xml:space="preserve"><value>Paperetes individuals</value></data>
+  <data name="Survey_Admin_Results_BallotsPrivacyNote" xml:space="preserve"><value>Humans va registrar qui va completar la votació per garantir l'elegibilitat i evitar el vot duplicat, però aquestes paperetes enviades no estan vinculades a la identitat del votant.</value></data>
+  <data name="Survey_Admin_Results_NoBallotsInView" xml:space="preserve"><value>No hi ha paperetes en aquesta vista.</value></data>
+  <data name="Survey_Admin_Results_BallotLabel" xml:space="preserve"><value>Papereta {0}</value></data>
+  <data name="Survey_Admin_Results_BackToSurveys" xml:space="preserve"><value>Torna a les enquestes</value></data>
+  <data name="Survey_Admin_Results_RespondentRejectedLabel" xml:space="preserve"><value>Rebutjat:</value></data>
 </root>

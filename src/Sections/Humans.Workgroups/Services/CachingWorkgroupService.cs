@@ -71,15 +71,13 @@ internal sealed class CachingWorkgroupService(
     public async Task<Guid> ApplyAsync(
         Guid actorUserId, WorkgroupApplication application, CancellationToken ct = default)
     {
-        var id = await WithInner(inner => inner.ApplyAsync(actorUserId, application, ct));
-        _cache.Clear();
+        var id = await MutateAsync(inner => inner.ApplyAsync(actorUserId, application, ct));
         return id;
     }
 
     public async Task JoinAsync(Guid workgroupId, Guid userId, CancellationToken ct = default)
     {
-        await WithInner(inner => inner.JoinAsync(workgroupId, userId, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.JoinAsync(workgroupId, userId, ct));
     }
 
     public async Task LeaveAsync(
@@ -89,15 +87,13 @@ internal sealed class CachingWorkgroupService(
         bool asAdmin = false,
         CancellationToken ct = default)
     {
-        await WithInner(inner => inner.LeaveAsync(workgroupId, userId, replacementCoordinatorUserId, asAdmin, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.LeaveAsync(workgroupId, userId, replacementCoordinatorUserId, asAdmin, ct));
     }
 
     public async Task RequestStatusAsync(
         Guid workgroupId, Guid actorUserId, string? question, CancellationToken ct = default)
     {
-        await WithInner(inner => inner.RequestStatusAsync(workgroupId, actorUserId, question, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.RequestStatusAsync(workgroupId, actorUserId, question, ct));
     }
 
     // ── Member work ───────────────────────────────────────────────────────
@@ -105,8 +101,7 @@ internal sealed class CachingWorkgroupService(
     public async Task EditRegisterAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupRegisterEdit edit, CancellationToken ct = default)
     {
-        await WithInner(inner => inner.EditRegisterAsync(workgroupId, actorUserId, edit, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.EditRegisterAsync(workgroupId, actorUserId, edit, ct));
     }
 
     public async Task SetCoordinatorsAsync(
@@ -116,64 +111,55 @@ internal sealed class CachingWorkgroupService(
         bool asAdmin = false,
         CancellationToken ct = default)
     {
-        await WithInner(inner => inner.SetCoordinatorsAsync(workgroupId, actorUserId, coordinatorUserIds, asAdmin, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.SetCoordinatorsAsync(workgroupId, actorUserId, coordinatorUserIds, asAdmin, ct));
     }
 
     public async Task<Guid> CreateMeetingAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupMeetingSave save, CancellationToken ct = default)
     {
-        var id = await WithInner(inner => inner.CreateMeetingAsync(workgroupId, actorUserId, save, ct));
-        _cache.Clear();
+        var id = await MutateAsync(inner => inner.CreateMeetingAsync(workgroupId, actorUserId, save, ct));
         return id;
     }
 
     public async Task UpdateMeetingAsync(
         Guid meetingId, Guid actorUserId, WorkgroupMeetingSave save, CancellationToken ct = default)
     {
-        await WithInner(inner => inner.UpdateMeetingAsync(meetingId, actorUserId, save, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.UpdateMeetingAsync(meetingId, actorUserId, save, ct));
     }
 
     public async Task DeleteMeetingAsync(Guid meetingId, Guid actorUserId, CancellationToken ct = default)
     {
-        await WithInner(inner => inner.DeleteMeetingAsync(meetingId, actorUserId, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.DeleteMeetingAsync(meetingId, actorUserId, ct));
     }
 
     public async Task<Guid> AddLogEntryAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupLogEntrySave save, CancellationToken ct = default)
     {
-        var id = await WithInner(inner => inner.AddLogEntryAsync(workgroupId, actorUserId, save, ct));
-        _cache.Clear();
+        var id = await MutateAsync(inner => inner.AddLogEntryAsync(workgroupId, actorUserId, save, ct));
         return id;
     }
 
     public async Task UpdateLogEntryAsync(
         Guid entryId, Guid actorUserId, WorkgroupLogEntrySave save, CancellationToken ct = default)
     {
-        await WithInner(inner => inner.UpdateLogEntryAsync(entryId, actorUserId, save, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.UpdateLogEntryAsync(entryId, actorUserId, save, ct));
     }
 
     public async Task DeleteLogEntryAsync(Guid entryId, Guid actorUserId, CancellationToken ct = default)
     {
-        await WithInner(inner => inner.DeleteLogEntryAsync(entryId, actorUserId, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.DeleteLogEntryAsync(entryId, actorUserId, ct));
     }
 
     public async Task LinkSurveyAsync(
         Guid workgroupId, Guid actorUserId, Guid surveyId, CancellationToken ct = default)
     {
-        await WithInner(inner => inner.LinkSurveyAsync(workgroupId, actorUserId, surveyId, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.LinkSurveyAsync(workgroupId, actorUserId, surveyId, ct));
     }
 
     public async Task MarkDoneAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupDormantReason reason, CancellationToken ct = default)
     {
-        await WithInner(inner => inner.MarkDoneAsync(workgroupId, actorUserId, reason, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.MarkDoneAsync(workgroupId, actorUserId, reason, ct));
     }
 
     // ── Documents ─────────────────────────────────────────────────────────
@@ -181,41 +167,35 @@ internal sealed class CachingWorkgroupService(
     public async Task<Guid> CreateDocumentAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupDocumentSave save, CancellationToken ct = default)
     {
-        var id = await WithInner(inner => inner.CreateDocumentAsync(workgroupId, actorUserId, save, ct));
-        _cache.Clear();
+        var id = await MutateAsync(inner => inner.CreateDocumentAsync(workgroupId, actorUserId, save, ct));
         return id;
     }
 
     public async Task UpdateDocumentAsync(
         Guid documentId, Guid actorUserId, WorkgroupDocumentSave save, CancellationToken ct = default)
     {
-        await WithInner(inner => inner.UpdateDocumentAsync(documentId, actorUserId, save, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.UpdateDocumentAsync(documentId, actorUserId, save, ct));
     }
 
     public async Task PublishDocumentAsync(Guid documentId, Guid actorUserId, CancellationToken ct = default)
     {
-        await WithInner(inner => inner.PublishDocumentAsync(documentId, actorUserId, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.PublishDocumentAsync(documentId, actorUserId, ct));
     }
 
     public async Task OpenCommentsAsync(
         Guid documentId, Guid actorUserId, WorkgroupCommentWindow window, CancellationToken ct = default)
     {
-        await WithInner(inner => inner.OpenCommentsAsync(documentId, actorUserId, window, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.OpenCommentsAsync(documentId, actorUserId, window, ct));
     }
 
     public async Task CloseCommentsAsync(Guid documentId, Guid actorUserId, CancellationToken ct = default)
     {
-        await WithInner(inner => inner.CloseCommentsAsync(documentId, actorUserId, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.CloseCommentsAsync(documentId, actorUserId, ct));
     }
 
     public async Task DeliverDocumentAsync(Guid documentId, Guid actorUserId, CancellationToken ct = default)
     {
-        await WithInner(inner => inner.DeliverDocumentAsync(documentId, actorUserId, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.DeliverDocumentAsync(documentId, actorUserId, ct));
     }
 
     // ── Comments ──────────────────────────────────────────────────────────
@@ -223,8 +203,7 @@ internal sealed class CachingWorkgroupService(
     public async Task<Guid> AddCommentAsync(
         Guid documentId, Guid actorUserId, string category, string body, CancellationToken ct = default)
     {
-        var id = await WithInner(inner => inner.AddCommentAsync(documentId, actorUserId, category, body, ct));
-        _cache.Clear();
+        var id = await MutateAsync(inner => inner.AddCommentAsync(documentId, actorUserId, category, body, ct));
         return id;
     }
 
@@ -235,8 +214,7 @@ internal sealed class CachingWorkgroupService(
         string? response,
         CancellationToken ct = default)
     {
-        await WithInner(inner => inner.RespondToCommentAsync(commentId, actorUserId, disposition, response, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.RespondToCommentAsync(commentId, actorUserId, disposition, response, ct));
     }
 
     public async Task RespondToCategoryAsync(
@@ -247,65 +225,56 @@ internal sealed class CachingWorkgroupService(
         string? response,
         CancellationToken ct = default)
     {
-        await WithInner(inner =>
+        await MutateAsync(inner =>
             inner.RespondToCategoryAsync(documentId, actorUserId, category, disposition, response, ct));
-        _cache.Clear();
     }
 
     public async Task HideCommentAsync(
         Guid commentId, Guid actorUserId, string reason, CancellationToken ct = default)
     {
-        await WithInner(inner => inner.HideCommentAsync(commentId, actorUserId, reason, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.HideCommentAsync(commentId, actorUserId, reason, ct));
     }
 
     // ── The Secretary and the Board ───────────────────────────────────────
 
     public async Task RegisterAsync(Guid workgroupId, Guid actorUserId, CancellationToken ct = default)
     {
-        await WithInner(inner => inner.RegisterAsync(workgroupId, actorUserId, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.RegisterAsync(workgroupId, actorUserId, ct));
     }
 
     public async Task ReferAsync(
         Guid workgroupId, Guid actorUserId, string? note, CancellationToken ct = default)
     {
-        await WithInner(inner => inner.ReferAsync(workgroupId, actorUserId, note, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.ReferAsync(workgroupId, actorUserId, note, ct));
     }
 
     public async Task RefuseAsync(
         Guid workgroupId, Guid actorUserId, string reasons, CancellationToken ct = default)
     {
-        await WithInner(inner => inner.RefuseAsync(workgroupId, actorUserId, reasons, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.RefuseAsync(workgroupId, actorUserId, reasons, ct));
     }
 
     public async Task WithdrawAsync(
         Guid workgroupId, Guid actorUserId, string reasons, CancellationToken ct = default)
     {
-        await WithInner(inner => inner.WithdrawAsync(workgroupId, actorUserId, reasons, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.WithdrawAsync(workgroupId, actorUserId, reasons, ct));
     }
 
     public async Task CloseAsync(
         Guid workgroupId, Guid actorUserId, string reasons, CancellationToken ct = default)
     {
-        await WithInner(inner => inner.CloseAsync(workgroupId, actorUserId, reasons, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.CloseAsync(workgroupId, actorUserId, reasons, ct));
     }
 
     public async Task ReactivateAsync(Guid workgroupId, Guid actorUserId, CancellationToken ct = default)
     {
-        await WithInner(inner => inner.ReactivateAsync(workgroupId, actorUserId, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.ReactivateAsync(workgroupId, actorUserId, ct));
     }
 
     public async Task<Guid> RegisterExistingAsync(
         Guid actorUserId, WorkgroupBootstrap bootstrap, CancellationToken ct = default)
     {
-        var id = await WithInner(inner => inner.RegisterExistingAsync(actorUserId, bootstrap, ct));
-        _cache.Clear();
+        var id = await MutateAsync(inner => inner.RegisterExistingAsync(actorUserId, bootstrap, ct));
         return id;
     }
 
@@ -316,8 +285,7 @@ internal sealed class CachingWorkgroupService(
         string note,
         CancellationToken ct = default)
     {
-        await WithInner(inner => inner.RecordDispositionAsync(documentId, actorUserId, disposition, note, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.RecordDispositionAsync(documentId, actorUserId, disposition, note, ct));
     }
 
     // ── Settings ──────────────────────────────────────────────────────────
@@ -334,8 +302,7 @@ internal sealed class CachingWorkgroupService(
 
     public async Task RunDailyRhythmAsync(CancellationToken ct = default)
     {
-        await WithInner(inner => inner.RunDailyRhythmAsync(ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.RunDailyRhythmAsync(ct));
     }
 
     // ── IUserDataContributor — GDPR export + erasure ──────────────────────
@@ -370,8 +337,7 @@ internal sealed class CachingWorkgroupService(
 
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
-        await WithInner(inner => inner.EraseForUserAsync(userId, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.EraseForUserAsync(userId, ct));
     }
 
     // ── IUserMerge — account merge fold ───────────────────────────────────
@@ -379,11 +345,40 @@ internal sealed class CachingWorkgroupService(
     public async Task ReassignAsync(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct)
     {
-        await WithInner(inner => inner.ReassignAsync(mergedFromUserId, mergedToUserId, actorUserId, now, ct));
-        _cache.Clear();
+        await MutateAsync(inner => inner.ReassignAsync(mergedFromUserId, mergedToUserId, actorUserId, now, ct));
     }
 
     // ── Inner-service plumbing ────────────────────────────────────────────
+
+    /// <summary>
+    /// A write, followed by a cache clear that happens even when the write throws. A
+    /// workflow can persist its row and then fail in a later step (a notification, an audit
+    /// entry), and a cache left holding the pre-write register would serve that stale
+    /// snapshot until the next successful write.
+    /// </summary>
+    private async Task MutateAsync(Func<IWorkgroupService, Task> work)
+    {
+        try
+        {
+            await WithInner(work);
+        }
+        finally
+        {
+            _cache.Clear();
+        }
+    }
+
+    private async Task<T> MutateAsync<T>(Func<IWorkgroupService, Task<T>> work)
+    {
+        try
+        {
+            return await WithInner(work);
+        }
+        finally
+        {
+            _cache.Clear();
+        }
+    }
 
     private async Task<T> WithInner<T>(Func<IWorkgroupService, Task<T>> work)
     {

@@ -470,6 +470,32 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
         return await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Survey>> GetSurveysAuthoredByAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.Surveys
+            .AsNoTracking()
+            .Where(s => s.CreatedByUserId == userId)
+            .ToListAsync(ct);
+    }
+
+    public async Task<int> ClearAuthorshipForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+
+        var surveys = await ctx.Surveys.Where(s => s.CreatedByUserId == userId).ToListAsync(ct);
+        foreach (var survey in surveys)
+        {
+            // CreatedByUserId is init-only and non-nullable — Guid.Empty is this section's
+            // "nobody", the same value an unattributed survey carries.
+            ctx.Entry(survey).Property(nameof(Survey.CreatedByUserId)).CurrentValue = Guid.Empty;
+            survey.RejectionNote = null;
+        }
+
+        return await ctx.SaveChangesAsync(ct);
+    }
+
     /// <summary>Reconciles the persisted question/option graph against the incoming survey by id — removes dropped, updates kept, inserts new.</summary>
     private static void ReconcileQuestions(SurveysDbContext ctx, Survey existing, Survey incoming)
     {

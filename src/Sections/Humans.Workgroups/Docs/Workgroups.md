@@ -229,6 +229,9 @@ See `authorization.md` for the auth policy per route.
   category, and must end before the document is Delivered (`OpenCommentsAsync`).
 - Delivered freezes a document's body (`UpdateDocumentAsync` refuses further edits); a
   disposition may only be recorded on a Delivered document.
+- The nightly dormancy flag is written last: the log entry, the audit record and the notices
+  go out first, so a failure in any of them leaves `DormantSince` unset and the next run
+  retries the whole step rather than latching the flag with no audit trail.
 - Ending the group is gated the same way: `MarkDoneAsync` refuses while any of the group's
   documents still has a comment window open.
 - A comment window must end before delivery: `DeliverDocumentAsync` refuses while
@@ -315,8 +318,10 @@ per 7 days), not part of the job.
 ## GDPR
 
 - **Export** (`ContributeForUserAsync`): five slices — memberships (role, dates), log
-  entries, meetings created, documents created/updated, comments (including hidden ones,
-  with disposition and response).
+  entries, meetings created, documents (created, updated, or with a disposition this person
+  recorded — each labelled), comments (including hidden ones, with disposition and response).
+  Every attribution column the erasure nulls is also an export predicate, so nothing is
+  erasable but unexportable.
 - **Erasure** (`EraseForUserAsync`): nulls attribution everywhere (`AuthorUserId`,
   `CreatedByUserId`, `UpdatedByUserId`, `RespondedByUserId`, `AppliedByUserId`,
   `HiddenByUserId`, `DispositionByUserId`). **Content stays** — comments, log bodies,

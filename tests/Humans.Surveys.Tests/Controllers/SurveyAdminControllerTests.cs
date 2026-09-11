@@ -326,6 +326,23 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansFact]
+    public async Task Edit_hides_the_run_controls_from_an_author_who_is_not_on_the_Board()
+    {
+        var authorId = Guid.NewGuid();
+        var surveyId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Mine"), authorId));
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId, isBoardOrAdmin: false);
+
+        var result = await sut.Edit(surveyId, Xunit.TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>().Which.Model
+            .Should().BeOfType<SurveyBuilderViewModel>().Which;
+        model.IsBoardOrAdmin.Should().BeFalse("Open, Close, preview and recipient review are BoardOrAdmin");
+    }
+
+    [HumansFact]
     public async Task Submit_denies_a_non_owner_by_id()
     {
         var authorId = Guid.NewGuid();

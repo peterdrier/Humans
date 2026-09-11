@@ -109,4 +109,187 @@
   <data name="Survey_Admin_Queue_Approved" xml:space="preserve"><value>Survey approved and opened; {0} invitation(s) queued, {1} failed.</value></data>
   <data name="Survey_Admin_Queue_Rejected" xml:space="preserve"><value>Survey rejected and returned to the author as a Draft.</value></data>
   <data name="Survey_Admin_Index_Submitted" xml:space="preserve"><value>Survey submitted for Board/Admin approval.</value></data>
+  <data name="Survey_Admin_Common_AdminBreadcrumb" xml:space="preserve"><value>Admin</value></data>
+  <data name="Survey_Admin_Builder_TitleNew" xml:space="preserve"><value>New survey</value></data>
+  <data name="Survey_Admin_Builder_TitleEdit" xml:space="preserve"><value>Edit survey</value></data>
+  <data name="Survey_Admin_Builder_Audience_Team" xml:space="preserve"><value>A team</value></data>
+  <data name="Survey_Admin_Builder_Audience_AllActiveMembers" xml:space="preserve"><value>All active humans</value></data>
+  <data name="Survey_Admin_Builder_Audience_TicketHolders" xml:space="preserve"><value>Current ticket holders</value></data>
+  <data name="Survey_Admin_Builder_Audience_ShiftParticipants" xml:space="preserve"><value>Humans with shifts</value></data>
+  <data name="Survey_Admin_Builder_Audience_LoggedInSince" xml:space="preserve"><value>Humans logged in since a date</value></data>
+  <data name="Survey_Admin_Builder_Audience_Asociados" xml:space="preserve"><value>All active Asociados</value></data>
+  <data name="Survey_Admin_Builder_ConfirmOpenVote" xml:space="preserve"><value>Open this binding Asociado vote? Once opened, its questions, wording, settings, dates, audience and invitation copy cannot be edited; once closed, it cannot be reopened.</value></data>
+  <data name="Survey_Admin_Builder_ConfirmOpenSurvey" xml:space="preserve"><value>Open this survey so it can receive responses?</value></data>
+  <data name="Survey_Admin_Builder_Open" xml:space="preserve"><value>Open</value></data>
+  <data name="Survey_Admin_Builder_ConfirmClose" xml:space="preserve"><value>Close this survey to new responses?</value></data>
+  <data name="Survey_Admin_Builder_Close" xml:space="preserve"><value>Close</value></data>
+  <data name="Survey_Admin_Builder_LockedTitle" xml:space="preserve"><value>This binding Asociado vote is locked.</value></data>
+  <data name="Survey_Admin_Builder_LockedBody" xml:space="preserve"><value>Once it opened, its questions, wording, settings, dates, audience and invitation copy became read-only. You may still preview it, close it, inspect participation, and—after close—mark ranked options unavailable for recounting.</value></data>
+  <data name="Survey_Admin_Builder_EditingLanguage" xml:space="preserve"><value>Editing language:</value></data>
+  <data name="Survey_Admin_Builder_SurveySectionHeader" xml:space="preserve"><value>Survey</value></data>
+  <data name="Survey_Admin_Builder_Field_Title" xml:space="preserve"><value>Title</value></data>
+  <data name="Survey_Admin_Builder_Field_Intro" xml:space="preserve"><value>Intro</value></data>
+  <data name="Survey_Admin_Builder_Field_ThankYou" xml:space="preserve"><value>Thank-you</value></data>
+  <data name="Survey_Admin_Builder_DefaultLanguage" xml:space="preserve"><value>Default language</value></data>
+  <data name="Survey_Admin_Builder_OpensAt" xml:space="preserve"><value>Opens at</value></data>
+  <data name="Survey_Admin_Builder_ClosesAt" xml:space="preserve"><value>Closes at</value></data>
+  <data name="Survey_Admin_Builder_AllowAnonymous" xml:space="preserve"><value>Allow anonymous responses</value></data>
+  <data name="Survey_Admin_Builder_AsociadoVoteHeading" xml:space="preserve"><value>Asociado vote</value></data>
+  <data name="Survey_Admin_Builder_AsociadoVoteWarning" xml:space="preserve"><value>Use this only for a binding association decision. Review every question, option, date, translation, audience setting and invitation carefully before opening. Opening is irreversible: the complete survey becomes read-only, and after it closes it cannot be reopened.</value></data>
+  <data name="Survey_Admin_Builder_IsAsociadoVoteLabel" xml:space="preserve"><value>This is a binding Asociado vote</value></data>
+  <data name="Survey_Admin_Builder_IsAsociadoVoteHelp" xml:space="preserve"><value>Only active, approved Asociados may answer. Humans records who has voted to enforce eligibility and prevent double-voting, but stores submitted ballots without a voter identity. While open, only participation statistics are visible; all answer-derived results are sealed until close. Once opened, the survey cannot be edited. Once closed, it cannot be reopened.</value></data>
+  <data name="Survey_Admin_Builder_AudienceLabel" xml:space="preserve"><value>Audience</value></data>
+  <data name="Survey_Admin_Builder_NoAudienceSelected" xml:space="preserve"><value>No audience selected</value></data>
+  <data name="Survey_Admin_Builder_AudienceHelp" xml:space="preserve"><value>Invitations are reviewed and sent separately after saving.</value></data>
+  <data name="Survey_Admin_Builder_TeamLabel" xml:space="preserve"><value>Team</value></data>
+  <data name="Survey_Admin_Builder_ChooseTeam" xml:space="preserve"><value>Choose a team</value></data>
+  <data name="Survey_Admin_Builder_LoggedInSinceLabel" xml:space="preserve"><value>Logged in since</value></data>
+  <data name="Survey_Admin_Builder_SlugLabel" xml:space="preserve"><value>Shareable link slug (optional)</value></data>
+  <data name="Survey_Admin_Builder_SlugPlaceholder" xml:space="preserve"><value>e.g. feedback-2026</value></data>
+  <data name="Survey_Admin_Builder_SlugHelp" xml:space="preserve"><value>Anonymous surveys allow anyone with the link. Identified surveys require sign-in and, when configured, current audience eligibility.</value></data>
+  <data name="Survey_Admin_Builder_InvitationEmailHeader" xml:space="preserve"><value>Invitation email</value></data>
+  <data name="Survey_Admin_Builder_InvitationEmailIntro" xml:space="preserve"><value>Customize the initial invitation. Humans adds the greeting, survey title, survey-link button, and sign-off. The message supports Markdown formatting, but not images. Leave either field blank to use the standard wording.</value></data>
+  <data name="Survey_Admin_Builder_Field_EmailSubject" xml:space="preserve"><value>Email subject</value></data>
+  <data name="Survey_Admin_Builder_Field_EmailMessage" xml:space="preserve"><value>Email message</value></data>
+  <data name="Survey_Admin_Builder_QuestionsHeader" xml:space="preserve"><value>Questions</value></data>
+  <data name="Survey_Admin_Builder_AddQuestion" xml:space="preserve"><value>+ Add question</value></data>
+  <data name="Survey_Admin_Builder_SaveTranslateTitle" xml:space="preserve"><value>Saves, then machine-translates fields still missing in other languages from the default language. Existing text is never overwritten — review before opening.</value></data>
+  <data name="Survey_Admin_Builder_SaveTranslate" xml:space="preserve"><value>Save + translate missing</value></data>
+  <data name="Survey_Admin_Builder_SaveReview" xml:space="preserve"><value>Save and review recipients</value></data>
+  <data name="Survey_Admin_Builder_SaveSurvey" xml:space="preserve"><value>Save survey</value></data>
+  <data name="Survey_Admin_Builder_JS_Columns" xml:space="preserve"><value>Columns</value></data>
+  <data name="Survey_Admin_Builder_JS_Options" xml:space="preserve"><value>Options</value></data>
+  <data name="Survey_Admin_Builder_QuestionLabel" xml:space="preserve"><value>Question</value></data>
+  <data name="Survey_Admin_Builder_JS_ChooseQuestion" xml:space="preserve"><value>— choose a question —</value></data>
+  <data name="Survey_Admin_Builder_JS_Untitled" xml:space="preserve"><value>(untitled)</value></data>
+  <data name="Survey_Admin_Builder_MoveQuestionUp" xml:space="preserve"><value>Move question up</value></data>
+  <data name="Survey_Admin_Builder_MoveQuestionDown" xml:space="preserve"><value>Move question down</value></data>
+  <data name="Survey_Admin_Builder_QuestionOrderAriaLabel" xml:space="preserve"><value>Question order</value></data>
+  <data name="Survey_Admin_Builder_AddBelow" xml:space="preserve"><value>+ Add below</value></data>
+  <data name="Survey_Admin_Builder_RemoveQuestion" xml:space="preserve"><value>Remove</value></data>
+  <data name="Survey_Admin_Builder_PageLabel" xml:space="preserve"><value>Page</value></data>
+  <data name="Survey_Admin_Builder_TypeLabel" xml:space="preserve"><value>Type</value></data>
+  <data name="Survey_Admin_Builder_RequiredLabel" xml:space="preserve"><value>Required</value></data>
+  <data name="Survey_Admin_Builder_Field_Prompt" xml:space="preserve"><value>Prompt / optional information heading</value></data>
+  <data name="Survey_Admin_Builder_Field_HelpText" xml:space="preserve"><value>Help text / information Markdown</value></data>
+  <data name="Survey_Admin_Builder_ImagesLabel" xml:space="preserve"><value>Images</value></data>
+  <data name="Survey_Admin_Builder_ImagesHelp" xml:space="preserve"><value>Up to five, shown as labelled tabs.</value></data>
+  <data name="Survey_Admin_Builder_ImagesPublicWarning" xml:space="preserve"><value>Uploaded image URLs are public and may be shared outside this survey.</value></data>
+  <data name="Survey_Admin_Builder_AddImage" xml:space="preserve"><value>+ Add image</value></data>
+  <data name="Survey_Admin_Builder_RatingMinLabel" xml:space="preserve"><value>Rating min</value></data>
+  <data name="Survey_Admin_Builder_RatingMaxLabel" xml:space="preserve"><value>Rating max</value></data>
+  <data name="Survey_Admin_Builder_Field_MinLabel" xml:space="preserve"><value>Min label</value></data>
+  <data name="Survey_Admin_Builder_Field_MaxLabel" xml:space="preserve"><value>Max label</value></data>
+  <data name="Survey_Admin_Builder_OptionsLabel" xml:space="preserve"><value>Options</value></data>
+  <data name="Survey_Admin_Builder_AddOption" xml:space="preserve"><value>+ Add option</value></data>
+  <data name="Survey_Admin_Builder_GridColumnHelp" xml:space="preserve"><value>Grid questions support at most five columns.</value></data>
+  <data name="Survey_Admin_Builder_RankedMethodNote" xml:space="preserve"><value>Ranked choice uses Ranked Pairs (Tideman) as the official method. If two outcomes remain tied, the option listed earlier wins.</value></data>
+  <data name="Survey_Admin_Builder_AllowEqualRanks" xml:space="preserve"><value>Allow equal ranks</value></data>
+  <data name="Survey_Admin_Builder_IncludeReject" xml:space="preserve"><value>Include a Reject option</value></data>
+  <data name="Survey_Admin_Builder_RankedLockedHelp" xml:space="preserve"><value>Ranked candidates, order, and settings are locked because an answer has been saved.</value></data>
+  <data name="Survey_Admin_Builder_SelectionsPerRow" xml:space="preserve"><value>Selections per row</value></data>
+  <data name="Survey_Admin_Builder_OneChoice" xml:space="preserve"><value>One choice</value></data>
+  <data name="Survey_Admin_Builder_MultipleChoices" xml:space="preserve"><value>Multiple choices</value></data>
+  <data name="Survey_Admin_Builder_RowsLabel" xml:space="preserve"><value>Rows</value></data>
+  <data name="Survey_Admin_Builder_AddRow" xml:space="preserve"><value>+ Add row</value></data>
+  <data name="Survey_Admin_Builder_VisibilityLabel" xml:space="preserve"><value>Visibility</value></data>
+  <data name="Survey_Admin_Builder_AlwaysShown" xml:space="preserve"><value>Always shown</value></data>
+  <data name="Survey_Admin_Builder_ConditionalShown" xml:space="preserve"><value>Only shown when…</value></data>
+  <data name="Survey_Admin_Builder_CombineAll" xml:space="preserve"><value>all conditions match</value></data>
+  <data name="Survey_Admin_Builder_CombineAny" xml:space="preserve"><value>any condition matches</value></data>
+  <data name="Survey_Admin_Builder_AddCondition" xml:space="preserve"><value>+ Add condition</value></data>
+  <data name="Survey_Admin_Builder_ConditionsHelp" xml:space="preserve"><value>Conditions may only reference earlier questions (checked on save).</value></data>
+  <data name="Survey_Admin_Builder_ValueLabel" xml:space="preserve"><value>Value</value></data>
+  <data name="Survey_Admin_Builder_ValuePlaceholder_Option" xml:space="preserve"><value>stable key, e.g. yes</value></data>
+  <data name="Survey_Admin_Builder_Field_OptionLabel" xml:space="preserve"><value>Label</value></data>
+  <data name="Survey_Admin_Builder_OptionActionsAriaLabel" xml:space="preserve"><value>Option actions</value></data>
+  <data name="Survey_Admin_Builder_MoveOptionUp" xml:space="preserve"><value>Move option up</value></data>
+  <data name="Survey_Admin_Builder_MoveOptionDown" xml:space="preserve"><value>Move option down</value></data>
+  <data name="Survey_Admin_Builder_RemoveOption" xml:space="preserve"><value>Remove option</value></data>
+  <data name="Survey_Admin_Builder_Field_RowLabel" xml:space="preserve"><value>Row label</value></data>
+  <data name="Survey_Admin_Builder_ValuePlaceholder_GridRow" xml:space="preserve"><value>stable key, e.g. may-03-09</value></data>
+  <data name="Survey_Admin_Builder_GridRowActionsAriaLabel" xml:space="preserve"><value>Grid row actions</value></data>
+  <data name="Survey_Admin_Builder_MoveRowUp" xml:space="preserve"><value>Move row up</value></data>
+  <data name="Survey_Admin_Builder_MoveRowDown" xml:space="preserve"><value>Move row down</value></data>
+  <data name="Survey_Admin_Builder_RemoveRow" xml:space="preserve"><value>Remove row</value></data>
+  <data name="Survey_Admin_Builder_ViewCurrentImage" xml:space="preserve"><value>View current image</value></data>
+  <data name="Survey_Admin_Builder_ReplaceImageHelp" xml:space="preserve"><value>Choose a new file below to replace it.</value></data>
+  <data name="Survey_Admin_Builder_ImageOrderAriaLabel" xml:space="preserve"><value>Image order and removal</value></data>
+  <data name="Survey_Admin_Builder_MoveImageUp" xml:space="preserve"><value>Move image up</value></data>
+  <data name="Survey_Admin_Builder_MoveImageDown" xml:space="preserve"><value>Move image down</value></data>
+  <data name="Survey_Admin_Builder_RemoveImage" xml:space="preserve"><value>Remove</value></data>
+  <data name="Survey_Admin_Builder_Field_TabLabel" xml:space="preserve"><value>Tab label</value></data>
+  <data name="Survey_Admin_Builder_Field_ImageAltText" xml:space="preserve"><value>Image alt text</value></data>
+  <data name="Survey_Admin_Builder_OperatorIsAnyOf" xml:space="preserve"><value>is any of</value></data>
+  <data name="Survey_Admin_Builder_OperatorIsNoneOf" xml:space="preserve"><value>is none of</value></data>
+  <data name="Survey_Admin_Builder_OperatorHasAnswer" xml:space="preserve"><value>has an answer</value></data>
+  <data name="Survey_Admin_Builder_OperatorHasNoAnswer" xml:space="preserve"><value>has no answer</value></data>
+  <data name="Survey_Admin_Builder_RemoveCondition" xml:space="preserve"><value>Remove condition</value></data>
+  <data name="Survey_Admin_PreviewMenu_Preview" xml:space="preserve"><value>Preview</value></data>
+  <data name="Survey_Admin_PreviewMenu_PreviewSurvey" xml:space="preserve"><value>Preview survey</value></data>
+  <data name="Survey_Admin_PreviewMenu_PreviewEmail" xml:space="preserve"><value>Preview email</value></data>
+  <data name="Survey_Admin_Results_Title" xml:space="preserve"><value>Survey results</value></data>
+  <data name="Survey_Admin_Results_Untitled" xml:space="preserve"><value>(untitled)</value></data>
+  <data name="Survey_Admin_Results_Breadcrumb" xml:space="preserve"><value>Results</value></data>
+  <data name="Survey_Admin_Results_DownloadCsv" xml:space="preserve"><value>Download CSV</value></data>
+  <data name="Survey_Admin_Results_DownloadJson" xml:space="preserve"><value>Download JSON</value></data>
+  <data name="Survey_Admin_Results_EmbargoNotice" xml:space="preserve"><value>This is an Asociado vote. Answer-derived results, exports, and respondent details become available only after the vote closes.</value></data>
+  <data name="Survey_Admin_Results_QuestionResultsLabel" xml:space="preserve"><value>Question results:</value></data>
+  <data name="Survey_Admin_Results_ResponseCount" xml:space="preserve"><value>{0} response(s)</value></data>
+  <data name="Survey_Admin_Results_FilterAriaLabel" xml:space="preserve"><value>Filter question results</value></data>
+  <data name="Survey_Admin_Results_ScopeUnique" xml:space="preserve"><value>Identified / unique</value></data>
+  <data name="Survey_Admin_Results_ScopeAnonymous" xml:space="preserve"><value>Anonymous</value></data>
+  <data name="Survey_Admin_Results_ScopeCombined" xml:space="preserve"><value>Combined</value></data>
+  <data name="Survey_Admin_Results_StatResponses" xml:space="preserve"><value>Responses</value></data>
+  <data name="Survey_Admin_Results_StatInvited" xml:space="preserve"><value>Invited</value></data>
+  <data name="Survey_Admin_Results_StatResponseRate" xml:space="preserve"><value>Response rate</value></data>
+  <data name="Survey_Admin_Results_FunnelHeader" xml:space="preserve"><value>Participation funnel</value></data>
+  <data name="Survey_Admin_Results_FunnelAllResponses" xml:space="preserve"><value>(all responses)</value></data>
+  <data name="Survey_Admin_Results_InviteLink" xml:space="preserve"><value>Invite link</value></data>
+  <data name="Survey_Admin_Results_PublicLink" xml:space="preserve"><value>Public link</value></data>
+  <data name="Survey_Admin_Results_Started" xml:space="preserve"><value>Started:</value></data>
+  <data name="Survey_Admin_Results_Finished" xml:space="preserve"><value>Finished:</value></data>
+  <data name="Survey_Admin_Results_QuestionsHeader" xml:space="preserve"><value>Questions</value></data>
+  <data name="Survey_Admin_Results_NoQuestions" xml:space="preserve"><value>This survey has no questions.</value></data>
+  <data name="Survey_Admin_Results_NoRankedBallots" xml:space="preserve"><value>No ranked ballots.</value></data>
+  <data name="Survey_Admin_Results_OriginalOfficialResult" xml:space="preserve"><value>Original official result — all authored options</value></data>
+  <data name="Survey_Admin_Results_CurrentOfficialResult" xml:space="preserve"><value>Current official result — available options</value></data>
+  <data name="Survey_Admin_Results_NoWinner" xml:space="preserve"><value>No winner</value></data>
+  <data name="Survey_Admin_Results_CycleDetectedAvailable" xml:space="preserve"><value>Preference cycle detected in the available-options count:</value></data>
+  <data name="Survey_Admin_Results_CycleDetectedAll" xml:space="preserve"><value>Preference cycle detected in the all-options count:</value></data>
+  <data name="Survey_Admin_Results_CycleExplanationCurrent" xml:space="preserve"><value>Like rock–paper–scissors, each option beats another but is beaten by a third. No option beats every other option head-to-head, so Ranked Pairs resolves the cycle by locking the strongest victories without creating a loop.</value></data>
+  <data name="Survey_Admin_Results_CycleExplanationOriginal" xml:space="preserve"><value>Like rock–paper–scissors, each option beat another but was beaten by a third. Removing an unavailable option breaks this cycle. The remaining options are then compared directly, so the winner can change even when the previous winner is still available.</value></data>
+  <data name="Survey_Admin_Results_CycleLinkText" xml:space="preserve"><value>Why availability changes can look counter-intuitive</value></data>
+  <data name="Survey_Admin_Results_WinnerChanged" xml:space="preserve"><value>Excluding unavailable options changes the official winner.</value></data>
+  <data name="Survey_Admin_Results_SensitivityHeader" xml:space="preserve"><value>Sensitivity analysis — current available options</value></data>
+  <data name="Survey_Admin_Results_ColumnMethod" xml:space="preserve"><value>Method</value></data>
+  <data name="Survey_Admin_Results_ColumnWinner" xml:space="preserve"><value>Winner</value></data>
+  <data name="Survey_Admin_Results_ColumnNotes" xml:space="preserve"><value>Notes</value></data>
+  <data name="Survey_Admin_Results_NoUniqueWinner" xml:space="preserve"><value>No unique winner</value></data>
+  <data name="Survey_Admin_Results_TieBreakApplied" xml:space="preserve"><value>Authored-order tie-break applied</value></data>
+  <data name="Survey_Admin_Results_PairwiseSummary" xml:space="preserve"><value>Pairwise comparisons</value></data>
+  <data name="Survey_Admin_Results_ColumnPair" xml:space="preserve"><value>Pair</value></data>
+  <data name="Survey_Admin_Results_ColumnVotes" xml:space="preserve"><value>Votes</value></data>
+  <data name="Survey_Admin_Results_VsSeparator" xml:space="preserve"><value>vs</value></data>
+  <data name="Survey_Admin_Results_RejectionsHeader" xml:space="preserve"><value>Rejections</value></data>
+  <data name="Survey_Admin_Results_ColumnOption" xml:space="preserve"><value>Option</value></data>
+  <data name="Survey_Admin_Results_ColumnRejected" xml:space="preserve"><value>Rejected</value></data>
+  <data name="Survey_Admin_Results_ColumnStatus" xml:space="preserve"><value>Status</value></data>
+  <data name="Survey_Admin_Results_NoLongerAvailable" xml:space="preserve"><value>No longer available</value></data>
+  <data name="Survey_Admin_Results_UnavailableOptionsLegend" xml:space="preserve"><value>Unavailable options</value></data>
+  <data name="Survey_Admin_Results_UnavailableOptionsHelp" xml:space="preserve"><value>Exclude dates or choices that are no longer available, without changing saved ballots.</value></data>
+  <data name="Survey_Admin_Results_Recalculate" xml:space="preserve"><value>Recalculate</value></data>
+  <data name="Survey_Admin_Results_NoOptions" xml:space="preserve"><value>No options.</value></data>
+  <data name="Survey_Admin_Results_AverageLabel" xml:space="preserve"><value>Average:</value></data>
+  <data name="Survey_Admin_Results_GridNoRowsColumns" xml:space="preserve"><value>No Grid rows or columns.</value></data>
+  <data name="Survey_Admin_Results_ColumnRow" xml:space="preserve"><value>Row</value></data>
+  <data name="Survey_Admin_Results_NoFreeTextAnswers" xml:space="preserve"><value>No free-text answers.</value></data>
+  <data name="Survey_Admin_Results_IdentifiedRespondentsHeader" xml:space="preserve"><value>Identified respondents</value></data>
+  <data name="Survey_Admin_Results_NoIdentifiedRespondents" xml:space="preserve"><value>No identified respondents.</value></data>
+  <data name="Survey_Admin_Results_IndividualBallotsHeader" xml:space="preserve"><value>Individual ballots</value></data>
+  <data name="Survey_Admin_Results_BallotsPrivacyNote" xml:space="preserve"><value>Humans recorded who completed the vote to enforce eligibility and prevent double-voting, but these submitted ballots are not linked to voter identities.</value></data>
+  <data name="Survey_Admin_Results_NoBallotsInView" xml:space="preserve"><value>No ballots in this view.</value></data>
+  <data name="Survey_Admin_Results_BallotLabel" xml:space="preserve"><value>Ballot {0}</value></data>
+  <data name="Survey_Admin_Results_BackToSurveys" xml:space="preserve"><value>Back to surveys</value></data>
+  <data name="Survey_Admin_Results_RespondentRejectedLabel" xml:space="preserve"><value>Rejected:</value></data>
 </root>

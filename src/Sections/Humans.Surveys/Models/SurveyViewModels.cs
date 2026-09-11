@@ -182,6 +182,13 @@ internal sealed class SurveyBuilderViewModel
     public IReadOnlyList<SurveyTeamOption> Teams { get; set; } = [];
     public bool HasSavedAnswers { get; set; }
 
+    /// <summary>
+    /// Whether the viewer may run the survey, not just author it. The builder is open to any
+    /// approved human now, but opening, closing, previewing and reviewing recipients are all
+    /// <c>BoardOrAdmin</c> actions — showing an author a button that ends in 403 is a bug.
+    /// </summary>
+    public bool IsBoardOrAdmin { get; set; }
+
     public bool IsNew => Id is null;
     public bool IsDefinitionLocked => !IsNew && IsAsociadoVote && Status != SurveyStatus.Draft;
 

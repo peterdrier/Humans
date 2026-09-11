@@ -51,6 +51,7 @@ public static class GdprExportSections
     public const string SepaPayouts = "SepaPayouts";
     public const string TeamEarlyEntry = "TeamEarlyEntry";
     public const string SurveyResponses = "SurveyResponses";
+    public const string AuthoredSurveys = "AuthoredSurveys";
     public const string GateScans = "GateScans";
     public const string GoogleSyncLog = "GoogleSyncLog";
     public const string EmailOutbox = "EmailOutbox";

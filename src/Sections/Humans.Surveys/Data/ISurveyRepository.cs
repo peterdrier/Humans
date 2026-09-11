@@ -168,4 +168,17 @@ internal partial interface ISurveyRepository : IRepository
     /// — and deletes their invitations. The answers stay as anonymous research data.
     /// </summary>
     Task<int> AnonymizeResponsesForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// The surveys this person authored (<c>CreatedByUserId</c>), for the Article 15 export.
+    /// Any status: a Draft nobody else can see is still their personal data. No answer graph.
+    /// </summary>
+    Task<IReadOnlyList<Survey>> GetSurveysAuthoredByAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// GDPR Art. 17: drops the authorship link on the person's surveys (<c>CreatedByUserId</c>
+    /// to <see cref="Guid.Empty"/>) and clears any Board rejection note, which is prose about
+    /// them. The survey and its questions stay — they are the association's own record.
+    /// </summary>
+    Task<int> ClearAuthorshipForUserAsync(Guid userId, CancellationToken ct = default);
 }

@@ -14,26 +14,26 @@
             @if (!string.IsNullOrWhiteSpace(image.ExistingStoragePath))
             {
                 <a href="/@image.ExistingStoragePath.TrimStart('/')" target="_blank" rel="noopener">
-                    @(string.IsNullOrWhiteSpace(image.ExistingFileName) ? "View current image" : image.ExistingFileName)
+                    @(string.IsNullOrWhiteSpace(image.ExistingFileName) ? Localizer["Survey_Admin_Builder_ViewCurrentImage"].Value : image.ExistingFileName)
                 </a>
-                <div class="form-text">Choose a new file below to replace it.</div>
+                <div class="form-text">@Localizer["Survey_Admin_Builder_ReplaceImageHelp"]</div>
             }
             <input type="file" name="@(prefix).Upload" class="form-control form-control-sm mt-1"
                    accept="image/jpeg,image/png,image/webp" />
         </div>
-        <div class="btn-group btn-group-sm align-self-start" role="group" aria-label="Image order and removal">
-            <button type="button" class="btn btn-outline-secondary move-information-image-up" aria-label="Move image up">
+        <div class="btn-group btn-group-sm align-self-start" role="group" aria-label="@Localizer["Survey_Admin_Builder_ImageOrderAriaLabel"]">
+            <button type="button" class="btn btn-outline-secondary move-information-image-up" aria-label="@Localizer["Survey_Admin_Builder_MoveImageUp"]">
                 <i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
             </button>
-            <button type="button" class="btn btn-outline-secondary move-information-image-down" aria-label="Move image down">
+            <button type="button" class="btn btn-outline-secondary move-information-image-down" aria-label="@Localizer["Survey_Admin_Builder_MoveImageDown"]">
                 <i class="fa-solid fa-arrow-down" aria-hidden="true"></i>
             </button>
-            <button type="button" class="btn btn-outline-danger remove-information-image">Remove</button>
+            <button type="button" class="btn btn-outline-danger remove-information-image">@Localizer["Survey_Admin_Builder_RemoveImage"]</button>
         </div>
     </div>
 
     <partial name="_SurveyLocalizedField"
-             model="@(new SurveyLocalizedFieldModel($"{prefix}.Label", "Tab label", image.Label))" />
+             model="@(new SurveyLocalizedFieldModel($"{prefix}.Label", Localizer["Survey_Admin_Builder_Field_TabLabel"], image.Label))" />
     <partial name="_SurveyLocalizedField"
-             model="@(new SurveyLocalizedFieldModel($"{prefix}.AltText", "Image alt text", image.AltText))" />
+             model="@(new SurveyLocalizedFieldModel($"{prefix}.AltText", Localizer["Survey_Admin_Builder_Field_ImageAltText"], image.AltText))" />
 </div>

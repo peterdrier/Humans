@@ -196,8 +196,13 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
             .Where(e => e.AuthorUserId == userId).ToListAsync(ct);
         var meetings = await ctx.Meetings.AsNoTracking()
             .Where(m => m.CreatedByUserId == userId).ToListAsync(ct);
+        // DispositionByUserId too: a Board member who records a disposition on someone else's
+        // document carries attribution on that row, and the erasure nulls that column as well.
         var documents = await ctx.Documents.AsNoTracking()
-            .Where(d => d.CreatedByUserId == userId || d.UpdatedByUserId == userId).ToListAsync(ct);
+            .Where(d => d.CreatedByUserId == userId
+                || d.UpdatedByUserId == userId
+                || d.DispositionByUserId == userId)
+            .ToListAsync(ct);
         // Hidden comments are included: the export is what we hold, not what we show. All three
         // attribution columns are matched, so a responder or moderator sees the rows that carry
         // their id even when someone else wrote the comment — the same three the erasure nulls.

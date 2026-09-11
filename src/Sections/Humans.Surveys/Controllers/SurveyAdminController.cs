@@ -155,7 +155,11 @@ internal sealed class SurveyAdminController(
     [HttpGet("Create")]
     public async Task<IActionResult> Create(CancellationToken ct)
     {
-        var vm = new SurveyBuilderViewModel { Teams = await LoadTeamsAsync(ct) };
+        var vm = new SurveyBuilderViewModel
+        {
+            Teams = await LoadTeamsAsync(ct),
+            IsBoardOrAdmin = RoleChecks.IsAdminOrBoard(User)
+        };
         return View("Builder", vm);
     }
 
@@ -170,6 +174,7 @@ internal sealed class SurveyAdminController(
 
         var vm = SurveyBuilderViewModel.FromDetail(detail, await LoadTeamsAsync(ct), Zone);
         vm.HasSavedAnswers = await surveyService.HasSavedAnswersAsync(id, ct);
+        vm.IsBoardOrAdmin = RoleChecks.IsAdminOrBoard(User);
         return View("Builder", vm);
     }
 
@@ -362,7 +367,10 @@ internal sealed class SurveyAdminController(
             SetSuccess(model.Id is null ? "Survey created." : "Survey saved.");
         }
 
+        // Send is BoardOrAdmin: an author who posts save-review anyway lands back on the
+        // builder rather than on a 403.
         return string.Equals(submitAction, "save-review", StringComparison.Ordinal)
+                && RoleChecks.IsAdminOrBoard(User)
             ? RedirectToAction(nameof(Send), new { id })
             : RedirectToAction(nameof(Edit), new { id });
     }
@@ -595,6 +603,7 @@ internal sealed class SurveyAdminController(
         model.Teams = await LoadTeamsAsync(ct);
         model.HasSavedAnswers = model.Id is { } id
             && await surveyService.HasSavedAnswersAsync(id, ct);
+        model.IsBoardOrAdmin = RoleChecks.IsAdminOrBoard(User);
     }
 
 }
