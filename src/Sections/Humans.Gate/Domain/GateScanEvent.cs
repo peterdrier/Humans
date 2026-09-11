@@ -5,8 +5,8 @@ namespace Humans.Gate.Domain;
 /// <summary>
 /// One append-only record per gate scan, owned by the Gate section
 /// (<c>gate_scan_events</c>). It is both the audit trail ("who admitted which
-/// ticket, when") and the source for leaderboards, and — via a partial unique
-/// index on <see cref="Barcode"/> for admit verdicts — the authoritative,
+/// ticket, when") and the source for leaderboards, and — via a unique index on
+/// <see cref="AdmitDedupeKey"/> (set only for admit verdicts) — the authoritative,
 /// instant duplicate guard that does not depend on the next vendor sync.
 ///
 /// Cross-section links (<see cref="ScannedByUserId"/>, <see cref="GuestUserId"/>,
@@ -45,11 +45,12 @@ internal sealed class GateScanEvent
     public string? Note { get; init; }
 
     /// <summary>
-    /// The supervisor who authorized an override admit (their personal-PIN identity),
-    /// for <see cref="GateVerdict.AdmittedEarlyOverride"/> and the child-with-adult
-    /// waiver. <c>null</c> for ordinary scans. A bare user-id FK (no navigation), per
-    /// the cross-section linkage rule — the supervisor is a Humans user, stitched via
-    /// services. This is the audit trail for "who let this person in early".
+    /// The user recorded as authorizing an override admit, for
+    /// <see cref="GateVerdict.AdmittedEarlyOverride"/> and the child-with-adult
+    /// waiver; <c>null</c> for ordinary scans. The shared supervisor PIN authorizes but
+    /// cannot attribute, so the controller records the scanning gate account here.
+    /// A bare user-id FK (no navigation), per the cross-section linkage rule.
+    /// This is the audit trail for "an override let this person in early".
     /// <c>set</c> (not <c>init</c>) so account-merge reassignment can re-point it, like <see cref="GuestUserId"/>.
     /// </summary>
     public Guid? OverrideByUserId { get; set; }

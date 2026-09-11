@@ -8,7 +8,7 @@ namespace Humans.Gate.Data;
 /// <summary>
 /// EF-backed <see cref="IGateRepository"/>. Singleton registration with a
 /// short-lived <c>GateDbContext</c> via <see cref="IDbContextFactory{TContext}"/>
-/// (design-rules §15b), mirroring the other section repositories.
+/// (design-rules §15b).
 /// </summary>
 internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) : IGateRepository
 {
@@ -79,8 +79,8 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
             if (row.OverrideByUserId == userId) row.OverrideByUserId = null;
         }
 
-        var pins = await ctx.GateStaffPins.Where(p => p.UserId == userId).ToListAsync(ct);
-        ctx.GateStaffPins.RemoveRange(pins);
+        var pins = await ctx.Set<GateStaffPin>().Where(p => p.UserId == userId).ToListAsync(ct);
+        ctx.Set<GateStaffPin>().RemoveRange(pins);
 
         return await ctx.SaveChangesAsync(ct);
     }
@@ -119,7 +119,7 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
                     PinHash = fromPin.PinHash,
                     CreatedAt = fromPin.CreatedAt,
                     UpdatedAt = fromPin.UpdatedAt,
-                    AdminEnrolled = fromPin.AdminEnrolled, // keep the survivor's override authority
+                    AdminEnrolled = fromPin.AdminEnrolled, // the enrolment provenance travels with the PIN
                 });
             }
             ctx.Set<GateStaffPin>().Remove(fromPin);

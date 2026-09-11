@@ -13,10 +13,8 @@ namespace Humans.Gate.Jobs;
 /// 0 or below to disable the purge.
 /// </summary>
 /// <remarks>
-/// Moved out of <c>Humans.Infrastructure/Jobs</c> at G5 lane 5b-3
-/// (nobodies-collective/Humans#866). It sits under <c>Jobs/</c> because Shell names the
-/// concrete type at registration and HUM0034 makes every other public type in a section
-/// assembly an error.
+/// It sits under <c>Jobs/</c> because <c>SectionJobs</c> registers the concrete type for
+/// Hangfire and HUM0034 makes every other public type in a section assembly an error.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public sealed class GateRetentionJob(

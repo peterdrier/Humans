@@ -56,15 +56,18 @@ internal interface IGateService : IApplicationService
 
     // ── Personal device PINs ─────────────────────────────────────────────────
     // Each gate staffer sets a 4-digit PIN once and reuses it to claim the shared
-    // scanner (real attribution) and to authorize supervisor overrides. Hashes only.
+    // scanner (real attribution). Hashes only. Kiosk overrides are authorized by the
+    // shared Gate:SupervisorPin at the controller; the claim flow (and with it the
+    // per-PIN override path) has no reachable page since peterdrier#1075 — deletion
+    // is tracked in nobodies-collective/Humans#933.
 
     /// <summary>Whether <paramref name="userId"/> has set a PIN, and whether they hold a gate-supervisor role.</summary>
     Task<GatePinStatus> GetPinStatusAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Kiosk self-enrolment: a staffer sets their own PIN. Refuses to enrol anyone holding a
-    /// supervisor role (their PIN carries override authority — those are admin-enrolled out of
-    /// band, never cold at the anonymous kiosk) and rejects weak/trivial PINs.
+    /// Kiosk self-enrolment: a staffer — supervisors included — sets their own claim PIN.
+    /// Stores <c>AdminEnrolled = false</c>, so the PIN attributes scans but can never authorize
+    /// a per-PIN override. Rejects weak/trivial PINs.
     /// </summary>
     Task<GatePinSetResult> SetOwnPinAsync(Guid userId, string pin, CancellationToken ct = default);
 
@@ -86,10 +89,9 @@ internal interface IGateService : IApplicationService
 
     /// <summary>
     /// The user-ids of every gate-supervisor (Admin/Board/TicketAdmin) who has a PIN enrolled —
-    /// i.e. the people who can actually authorize an override. Drives the kiosk override picker
-    /// (a tap-list, since the locked-down terminal can't reach free-text people search). Names are
-    /// resolved by the caller for display; the authority itself is always re-checked by
-    /// <see cref="AuthorizeOverrideAsync"/> at submit time.
+    /// i.e. the people who could authorize a per-PIN override. Drove the kiosk override picker
+    /// (a tap-list, since the locked-down terminal can't reach free-text people search); the
+    /// authority itself is re-checked by <see cref="AuthorizeOverrideAsync"/> at submit time.
     /// </summary>
     Task<IReadOnlyList<Guid>> GetEnrolledSupervisorIdsAsync(CancellationToken ct = default);
 }
@@ -134,10 +136,11 @@ internal sealed record GateScanResult(
 /// The agent's decision for a scan, recorded server-side after re-evaluation.
 /// Deliberately carries no scanner identity — that is supplied separately by the
 /// controller from the authenticated session so it cannot be forged on the wire.
-/// <paramref name="OverrideByUserId"/> is the supervisor who authorized an override
-/// (too-early or child-without-ID): the controller sets it ONLY after
-/// <see cref="IGateService.AuthorizeOverrideAsync"/> has verified that supervisor's PIN
-/// and role, so the service treats a non-null value as proof the override was authorized.
+/// A non-null <paramref name="OverrideByUserId"/> marks an authorized override
+/// (too-early or child-without-ID): the controller sets it ONLY after server-verifying
+/// the shared supervisor PIN (<c>Gate:SupervisorPin</c>), so the service treats it as
+/// proof the override was authorized. The shared PIN authorizes but cannot attribute,
+/// so the value recorded is the scanning gate account.
 /// </summary>
 internal sealed record GateDecisionInput(
     string Barcode,

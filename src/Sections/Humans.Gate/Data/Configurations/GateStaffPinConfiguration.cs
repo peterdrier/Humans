@@ -22,8 +22,7 @@ internal sealed class GateStaffPinConfiguration : IEntityTypeConfiguration<GateS
         builder.Property(x => x.UpdatedAt).IsRequired();
 
         // Override-authority flag. Plain IsRequired (no HasDefaultValue — that bool-sentinel makes EF
-        // omit a `false` from writes). Every write sets the value explicitly from the entity; the
-        // original AddColumn's one-time backfill default was dropped by RealignScaffoldedPhysicalDefaults.
+        // omit a `false` from writes). Every write sets the value explicitly from the entity.
         builder.Property(x => x.AdminEnrolled).IsRequired();
     }
 }
