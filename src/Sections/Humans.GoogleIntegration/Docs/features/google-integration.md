@@ -668,4 +668,4 @@ Failed Google sync health surfaces to Admins as a notification meter (`Notificat
 - [Teams](../../../Humans.Teams/Docs/features/Teams-feature.md) - Triggers Google Group provisioning and access sync
 - [Background Jobs](../../../../../docs/features/global/background-jobs.md) - Resource sync job
 - [Authentication](../../../Humans.Auth/Docs/features/authentication.md) - User Google identity
-- [Drive Activity Monitoring](drive-activity-monitoring.md) - Anomalous permission detection
+- [Drive Activity Monitoring](../../../Humans.Monitor/Docs/features/drive-activity-monitoring.md) - Anomalous permission detection

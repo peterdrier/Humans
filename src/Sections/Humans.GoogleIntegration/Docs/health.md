@@ -55,7 +55,8 @@ The shapes imply:
 - **A contracts leaf** carrying the cross-section interfaces above and the DTO/enum
   vocabulary, and nothing else. Each interface names one shape; the wide ones
   (`IGoogleSyncService`, `ITeamResourceService`) should carry only the methods an outside
-  caller actually asks — the rest belong to internal interfaces.
+  caller actually asks — the rest belong to internal interfaces
+  (nobodies-collective/Humans#1180).
 - **One outbox service + one processor**: remember, then drain. The processor owns the
   retry and permanent-failure rules and marks the person's Google email valid or rejected.
 - **One reconciler per resource kind**: groups (with the Hangfire-scheduled single-group
@@ -115,7 +116,8 @@ The shapes imply:
   queued shape is "enqueue and return".
 - **`Section.cs` throws in Production without Google credentials** (moved there under
   nobodies-collective/Humans#1091). That is a startup guard, against `no-startup-guards`;
-  the target is to boot stubbed and let the health check report it.
+  the target is to boot stubbed and let the health check report it
+  (nobodies-collective/Humans#1179).
 - **Manual sync and group-settings remediation carry no actor**: `SyncExecute`,
   `SyncExecuteAll` and `RemediateGroupSettings` pass no acting user, `IGoogleSyncLogService`
   has no actor parameter, and the remediation audit names the service. Propagating the
