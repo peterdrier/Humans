@@ -660,8 +660,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             DiscountCode: discountCode,
             PaymentStatus: paymentStatus,
             VendorDashboardUrl: null,
-            PurchasedAt: Instant.FromUtc(2026, 2, 15, 10, 0),
-            Tickets: []);
+            PurchasedAt: Instant.FromUtc(2026, 2, 15, 10, 0));
     }
 
     private static VendorTicketDto MakeTicketDto(

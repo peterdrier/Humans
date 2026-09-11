@@ -4,52 +4,19 @@ using Humans.Tickets.Contracts;
 namespace Humans.TicketTailor.Tests.Architecture;
 
 /// <summary>
-/// Architecture tests enforcing the connector boundary for the Ticket Tailor
-/// integration (issue #555 — §15 Part 1). <c>ITicketVendorService</c> is the port and
-/// lives under <c>Humans.Tickets/Contracts/</c>, the section that owns ticketing; the two
-/// adapters live in this section, which references <c>Humans.Tickets</c> directly
-/// (nobodies-collective/Humans#866, G5 lane 4b-2g — it used to sit in
-/// <c>Humans.Application</c>). The interface must never leak HTTP-client or vendor-SDK types across
-/// the boundary — its entire signature set (parameters, return types) must be expressible
-/// in port terms (the port's own DTOs, primitives, NodaTime, BCL collections).
-///
-/// <para>
-/// This is what makes the 2027 vendor swap a project delete: keep the port free of
-/// vendor vocabulary and <c>Humans.&lt;NewVendor&gt;</c> drops in behind it. The companion
-/// check on the other side — that only <c>Humans.Tickets</c> and Shell's health check
-/// <em>inject</em> the port — is
-/// <c>Humans.Application.Tests/Architecture/TicketVendorPortArchitectureTests</c>, which
+/// Pins that Tickets' <c>ITicketVendorService</c> port exposes no HTTP-client or vendor
+/// types: every parameter and return type is expressible in port terms (the port's own
+/// DTOs, primitives, NodaTime, BCL collections). That is what makes the 2027 vendor swap a
+/// project delete. The companion check — that only Tickets injects the port — is
+/// <c>tests/Humans.Web.Tests/Architecture/TicketVendorPortArchitectureTests.cs</c>, which
 /// needs the whole section graph and so cannot live here.
-/// </para>
 /// </summary>
 public class TicketVendorArchitectureTests
 {
-    // Namespaces that indicate an HTTP-client or vendor-SDK type leaking into
-    // the Application-layer interface. Matching is prefix-based; add more
-    // here if a new vendor library shows up.
     private const string PortNamespace = "Humans.Tickets.Contracts";
 
-    private static readonly string[] ForbiddenNamespacePrefixes =
-    [
-        "System.Net.Http",
-        "TicketTailor",
-        "Humans.Infrastructure",
-    ];
-
-    [HumansFact]
-    public void ThePortsAssemblyDoesNotReferenceTheAdapterSection()
-    {
-        // The second half of this test asserted that Humans.Application does not reference
-        // Humans.Infrastructure. G5 lane 5b-6 deleted that assembly, so the claim became
-        // unfalsifiable and came out with it (retirement-first for subsumed guardrails).
-        var portAssembly = typeof(ITicketVendorService).Assembly;
-
-        portAssembly.GetReferencedAssemblies()
-            .Select(a => a.Name ?? string.Empty)
-            .Should().NotContain(
-                name => name.StartsWith("Humans.TicketTailor", StringComparison.Ordinal),
-                because: "the port's owning section must not reference the adapter section; the dependency runs the other way, which is what lets the adapter be deleted for the 2027 vendor");
-    }
+    // Prefix-matched; add a vendor SDK's root namespace here if one ever shows up.
+    private static readonly string[] ForbiddenNamespacePrefixes = ["System.Net.Http"];
 
     [HumansFact]
     public void ITicketVendorService_ExposesNoForbiddenTypesInSignatures()
@@ -67,7 +34,7 @@ public class TicketVendorArchitectureTests
         }
 
         offenders.Should().BeEmpty(
-            because: "ITicketVendorService must expose only Application-layer DTOs, primitives, NodaTime, and BCL collection types in its signatures (design-rules §15 connector pattern); offenders: "
+            because: "ITicketVendorService must expose only the port's DTOs, primitives, NodaTime, and BCL collection types in its signatures; offenders: "
                      + string.Join(", ", offenders));
 
         void CheckType(Type type, string location)
@@ -104,10 +71,10 @@ public class TicketVendorArchitectureTests
         // Strict allowlist: every type surfaced by the interface must be a
         // primitive, void/string, System.*, NodaTime.*, or live beside the port —
         // namespace Humans.Tickets.Contracts *and* declared in the port's own assembly.
-        // The assembly clause matters since the move: the Humans.Tickets.Contracts leaf
-        // shares that namespace, and re-exporting a leaf type here would put Tickets'
-        // boundary vocabulary in front of every future vendor adapter. Anything else —
-        // Humans.Domain entities, a section's types, vendor SDKs — is a boundary leak.
+        // The assembly clause matters: the Humans.Tickets.Contracts leaf shares that
+        // namespace, and re-exporting a leaf type here would put Tickets' boundary
+        // vocabulary in front of every future vendor adapter. Anything else — a
+        // section's types, vendor SDKs — is a boundary leak.
         var portAssembly = typeof(ITicketVendorService).Assembly;
         var offenders = new List<string>();
 

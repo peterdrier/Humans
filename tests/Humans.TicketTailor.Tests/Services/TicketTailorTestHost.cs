@@ -37,7 +37,7 @@ internal sealed class RecordingHttpHandler : HttpMessageHandler
 
     public int RequestCount => Requests.Count;
 
-    public void EnqueueResponse(HttpStatusCode status, object body) =>
+    public void EnqueueResponse(HttpStatusCode status, object? body) =>
         _responses.Enqueue(() => new HttpResponseMessage(status)
         {
             Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json")

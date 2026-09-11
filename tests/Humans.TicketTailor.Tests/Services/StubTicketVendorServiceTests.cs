@@ -12,10 +12,14 @@ public class StubTicketVendorServiceTests
     [HumansFact]
     public async Task FirstOrder_IsTheRecognizableTestUser()
     {
-        var orders = await new StubTicketVendorService().GetOrdersAsync(null, "stub-event", Ct);
+        var stub = new StubTicketVendorService();
+        var orders = await stub.GetOrdersAsync(null, "stub-event", Ct);
+        var tickets = await stub.GetIssuedTicketsAsync(null, "stub-event", Ct);
 
         orders[0].BuyerEmail.Should().Be("peter@nobodies.team");
-        orders[0].Tickets.Should().OnlyContain(t => string.Equals(t.AttendeeEmail, "peter@nobodies.team", StringComparison.Ordinal));
+        tickets.Where(t => string.Equals(t.VendorOrderId, orders[0].VendorOrderId, StringComparison.Ordinal))
+            .Should().NotBeEmpty()
+            .And.OnlyContain(t => string.Equals(t.AttendeeEmail, "peter@nobodies.team", StringComparison.Ordinal));
     }
 
     [HumansFact]

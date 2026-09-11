@@ -101,15 +101,6 @@ internal sealed class StubTicketVendorService : ITicketVendorService
         return Task.FromResult(codes);
     }
 
-    public Task<IReadOnlyList<DiscountCodeStatusDto>> GetDiscountCodeUsageAsync(
-        IEnumerable<string> codes, CancellationToken ct = default)
-    {
-        IReadOnlyList<DiscountCodeStatusDto> result = codes
-            .Select(c => new DiscountCodeStatusDto(Code: c, IsRedeemed: false, TimesUsed: 0))
-            .ToList();
-        return Task.FromResult(result);
-    }
-
     // Dev/preview stub: the gate's check-in mirror is a no-op (no vendor to call).
     public Task CreateCheckInAsync(string vendorTicketId, Instant occurredAt, CancellationToken ct = default) =>
         Task.CompletedTask;
@@ -206,7 +197,6 @@ internal sealed class StubTicketVendorService : ITicketVendorService
             var ticketTotal = orderTickets.Sum(t => t.Price);
             var totalAmount = Math.Round(ticketTotal - (discountAmount ?? 0m) + donation, 2);
 
-            var vendorTickets = new List<VendorTicketDto>();
             for (var t = 0; t < orderTickets.Count; t++)
             {
                 var ticket = orderTickets[t];
@@ -225,12 +215,11 @@ internal sealed class StubTicketVendorService : ITicketVendorService
                     Status: "valid",
                     Barcode: MakeBarcode(vendorTicketId));
 
-                vendorTickets.Add(ticketDto);
                 tickets.Add(ticketDto);
 
-                // Every 5th ticket is scanned, recorded as its own check-in resource (the
-                // ticket stays "valid"), spread across the gate day.
-                if ((orderIndex * 10 + t) % 5 == 0)
+                // The first ticket of every paid order is scanned, recorded as its own
+                // check-in resource (the ticket stays "valid"), spread across the gate day.
+                if (t == 0)
                 {
                     var gateDay = new LocalDate(2026, 7, 8);
                     var hour = 9 + ((orderIndex * 10 + t) % 12); // 09:00–20:00
@@ -252,7 +241,6 @@ internal sealed class StubTicketVendorService : ITicketVendorService
                 PaymentStatus: "completed",
                 VendorDashboardUrl: $"https://demo.tickettailor.local/orders/{vendorOrderId}",
                 PurchasedAt: purchasedAt,
-                Tickets: vendorTickets,
                 StripePaymentIntentId: null,
                 DiscountAmount: discountAmount,
                 DonationAmount: donation));
@@ -291,8 +279,7 @@ internal sealed class StubTicketVendorService : ITicketVendorService
                 DiscountCode: null,
                 PaymentStatus: nonPaidStatuses[i],
                 VendorDashboardUrl: null,
-                PurchasedAt: Instant.FromUtc(2026, 4, 1 + i, 10, 0),
-                Tickets: [ticketDto]));
+                PurchasedAt: Instant.FromUtc(2026, 4, 1 + i, 10, 0)));
         }
 
         return new SampleData(orders, tickets, checkIns);

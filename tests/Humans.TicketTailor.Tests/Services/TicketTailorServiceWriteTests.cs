@@ -311,6 +311,21 @@ public class TicketTailorServiceWriteTests
     }
 
     [HumansFact]
+    public async Task IssueTicketAsync_EmptyBody_ThrowsTransient()
+    {
+        var handler = new RecordingHttpHandler();
+        handler.EnqueueResponse(HttpStatusCode.OK, null);
+
+        var service = TicketTailorTestHost.CreateService(handler);
+        var act = () => service.IssueTicketAsync(new IssueTicketRequest(
+            EventId: "ev_test", TicketTypeId: "tt_1", HoldId: null,
+            FullName: "Test User", Email: null, SendEmail: false, ExternalReference: null));
+
+        var ex = await act.Should().ThrowAsync<TicketVendorWriteException>();
+        ex.Which.Kind.Should().Be(TicketVendorFailureKind.Transient);
+    }
+
+    [HumansFact]
     public async Task CreateCheckInAsync_PostsFormEncodedRequiredFields()
     {
         var handler = new RecordingHttpHandler();

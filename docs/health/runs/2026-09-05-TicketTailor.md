@@ -45,21 +45,21 @@ Value = bug surface removed, then concepts removed, then words removed.
 | 11 | **`VoidIssuedTicketAsync` / `IssueTicketAsync` opened no `TimeOperation()` scope** unlike every other port method. Added. | low | **worked** |
 | 12 | **`StubTicketVendorService.BuildSampleData` is reforge's one longMethod hit** — the single fixture the target blesses. Recorded in the section's `Docs/debt.yml`, not split. | low | **debt.yml** |
 | 13 | **Freshness catalog's `data-access.md` entry never triggers on `src/Sections/*/Section.cs`**, so a registration-only change cannot dirty the map — exactly how finding 2's claim went stale. Shared file → sweep queue. | med | **queued** |
-| 14 | **`tests/Humans.TicketTailor.Tests/Architecture/TicketVendorArchitectureTests.cs`:** bare `#555`, "Shell's health check", a `Humans.Application.Tests` path, a comment on the wrong const, deleted-assertion narration, dead `Humans.Infrastructure` and never-matching `TicketTailor` prefixes, and `ThePortsAssemblyDoesNotReferenceTheAdapterSection` asserting a build-cycle impossibility ([`no-tests-for-absences`](../../../memory/architecture/no-tests-for-absences.md)). peterdrier/Humans#1589 writes lines 7–24 of this file. | med | **Needs Peter** |
-| 15 | **`ITicketVendorService.GetDiscountCodeUsageAsync` / `DiscountCodeStatusDto` have no caller** outside the port and its two adapters, and the live implementation swallows a non-2xx as "not redeemed", unlike every other read. Port is Tickets' (`src/Sections/Humans.Tickets/Contracts/`, peterdrier/Humans#1589 writes it). | med | **Needs Peter** |
-| 16 | **`VendorOrderDto.Tickets`** is `[]` from the live client, populated by the stub, never read by Tickets. Tickets-owned DTO. | low | **Needs Peter** |
-| 17 | **`docs/architecture/debt-ledger.yml` 2026-06-29 entry** (nested `check_in` mapping, nobodies-collective/Humans#736) describes code that no longer exists — its own prescribed fix (read `/check_ins`, `check_in_at` epoch seconds) is implemented. Runs never mutate existing entries. | med | **Needs Peter** |
+| 14 | **`tests/Humans.TicketTailor.Tests/Architecture/TicketVendorArchitectureTests.cs`:** bare `#555`, "Shell's health check", a `Humans.Application.Tests` path, a comment on the wrong const, deleted-assertion narration, dead `Humans.Infrastructure` and never-matching `TicketTailor` prefixes, and `ThePortsAssemblyDoesNotReferenceTheAdapterSection` asserting a build-cycle impossibility ([`no-tests-for-absences`](../../../memory/architecture/no-tests-for-absences.md)). peterdrier/Humans#1589 writes lines 7–24 of this file. | med | Peter: strike — rewritten after peterdrier/Humans#1589 merged; the build-cycle test and dead prefixes are gone |
+| 15 | **`ITicketVendorService.GetDiscountCodeUsageAsync` / `DiscountCodeStatusDto` have no caller** outside the port and its two adapters, and the live implementation swallows a non-2xx as "not redeemed", unlike every other read. Port is Tickets' (`src/Sections/Humans.Tickets/Contracts/`, peterdrier/Humans#1589 writes it). | med | Peter: delete — cut from the port, both adapters and `TtVoucherCode.TimesUsed`; the debt.yml entry that waited on this ruling is closed by `IssueTicketAsync_EmptyBody_ThrowsTransient` |
+| 16 | **`VendorOrderDto.Tickets`** is `[]` from the live client, populated by the stub, never read by Tickets. Tickets-owned DTO. | low | Peter: drop — removed from the DTO, both adapters and the Tickets test helpers |
+| 17 | **`docs/architecture/debt-ledger.yml` 2026-06-29 entry** (nested `check_in` mapping, nobodies-collective/Humans#736) describes code that no longer exists — its own prescribed fix (read `/check_ins`, `check_in_at` epoch seconds) is implemented. Runs never mutate existing entries. | med | Peter: retire — entry deleted |
 | 18 | **Gate's docs assert TicketTailor facts** (form-encoded `POST /v1/check_ins`, required fields, non-idempotency: `Gate.md:67-77`) but trigger only on `src/Sections/Humans.Gate/**`; `gate-admissions.md:65` names `ITicketVendorService.CreateCheckInAsync`, the port Gate is banned from injecting (it calls `ITicketVendorMirror`). Gate is blocked (peterdrier/Humans#1574). | med | **queued** |
 | 19 | **Tickets' `ticket-transfer.md` triggers omit `src/Sections/Humans.TicketTailor/**`** while asserting the vendor void+reissue writeback; `Tickets.md:237` credits `TicketVendorArchitectureTests` with pinning "the two adapters" (that is `TicketVendorPortArchitectureTests`). Tickets is blocked (peterdrier/Humans#1589). | low | **queued** |
 | 20 | **Inbox:** no open peterdrier/Humans issue names TicketTailor; the ledger's 2026-08-21 re-sync entry is Tickets' and stays; in-app issues unreachable from this container. | — | **no change** |
-| 21 | **`StubTicketVendorService.cs` says "Every 5th ticket is scanned" but `(orderIndex * 10 + t) % 5 == 0` reduces to `t == 0`** (orders hold one or two tickets), so the first ticket of every paid order is checked in — one per order, not one in five. Comment and code disagree and the code looks wrong; changed neither ([`when doc and code disagree`](2026-08-22-Cantina.md)). The new stub test and both docs pin the gate day, not the fraction. | med | **Needs Peter** |
+| 21 | **`StubTicketVendorService.cs` says "Every 5th ticket is scanned" but `(orderIndex * 10 + t) % 5 == 0` reduces to `t == 0`** (orders hold one or two tickets), so the first ticket of every paid order is checked in — one per order, not one in five. Comment and code disagree and the code looks wrong; changed neither ([`when doc and code disagree`](2026-08-22-Cantina.md)). The new stub test and both docs pin the gate day, not the fraction. | med | Peter: fix the comment — it now says the first ticket of every paid order, and the condition is written as `t == 0` |
 | 22 | **`ITicketVendorService.cs:81` documents `CreateCheckInAsync` as "Safe to retry"**; the vendor call is not idempotent (each POST creates a record) and Gate's job runs with `Attempts = 0` for that reason. Raised by the cut-cluster reviewer. Tickets-owned, peterdrier/Humans#1589 writes the file. | med | **queued** |
 | 23 | **The stale "Shell's `TicketVendorHealthCheck`" claim also stands at `src/Sections/Humans.Tickets/Contracts/ITicketVendorService.cs:15` and `src/Sections/Humans.Tickets/Section.cs:29`.** Found sweeping finding 3; peterdrier/Humans#1589 writes both. | low | **queued** |
-| 24 | **`GetEventSummaryAsync` caches inline through `IMemoryCache`** rather than behind a caching decorator over the port. One key, one adapter, a vendor-facing boundary — the target records "no decorator" as the decision, but two implementers would differ. | low | **Needs Peter** |
+| 24 | **`GetEventSummaryAsync` caches inline through `IMemoryCache`** rather than behind a caching decorator over the port. One key, one adapter, a vendor-facing boundary — the target records "no decorator" as the decision, but two implementers would differ. | low | Peter: decorator over the port — peterdrier/Humans#1653 |
 | 25 | **`docs/architecture/section-conformance.yml:67` records "no Docs/ in Settings or TicketTailor"** as a pre-existing hit; both now carry `Docs/`. Read-only to a run. | low | **queued** |
 | 26 | **`docs/architecture/dependency-graph.md` lists `TicketVendorService` among services with no cross-section edges**; no such type exists — the adapter's services are `TicketTailorService` and `StubTicketVendorService`. Shared file. | low | **queued** |
-| 27 | **Sweep: two queued items in merged run files cannot be applied mechanically.** Settings' finding 14 asks for a per-section `freshness-catalog.yml` entry, and the catalog has no per-section entries for any section (its entries are per-target with wildcard triggers). Agent's `memory: process/debt-ledger-additions` item asks which routing is intended for section test projects — a ruling, not an edit. Both left in place. | — | **Needs Peter** |
-| 28 | **Phase 3d lesson:** the combined Conformance+Prose thread returned no detector output; the main thread re-ran the three shell detectors itself (D2 hit, D1 and D3 clean). Proposed edit: run the detectors in the main thread before dispatch and hand their output to the thread in its prompt. | — | **Needs Peter** |
+| 27 | **Sweep: two queued items in merged run files cannot be applied mechanically.** Settings' finding 14 asks for a per-section `freshness-catalog.yml` entry, and the catalog has no per-section entries for any section (its entries are per-target with wildcard triggers). Agent's `memory: process/debt-ledger-additions` item asks which routing is intended for section test projects — a ruling, not an edit. Both left in place. | — | Peter: drop the Settings item; the Agent item waits on his routing ruling. Both edits land in a follow-up PR off main (merged run files) |
+| 28 | **Phase 3d lesson:** the combined Conformance+Prose thread returned no detector output; the main thread re-ran the three shell detectors itself (D2 hit, D1 and D3 clean). Proposed edit: run the detectors in the main thread before dispatch and hand their output to the thread in its prompt. | — | Peter: file it — peterdrier/Humans#1654 |
 
 Independence check: pass — findings 1, 4, 5 and 6 came from the target's Structure section
 before any scan; 2, 3 and 15 are spec-vs-reality deltas from the behavior read; the scans
@@ -146,14 +146,14 @@ is the one place the target was wrong on the first write.
 
 ## Needs Peter
 
-- [ ] 14 — strike `TicketVendorArchitectureTests.cs` (bare ref, dead prefixes, the build-cycle test) in a follow-up once peterdrier/Humans#1589 merges, or leave it?
-- [ ] 15 — `GetDiscountCodeUsageAsync` / `DiscountCodeStatusDto`: delete from the port, or keep — and if kept, should it throw like every other read?
-- [ ] 16 — `VendorOrderDto.Tickets`: drop the field, or keep?
-- [ ] 17 — retire the 2026-06-29 debt-ledger entry (its fix shipped)?
-- [ ] 21 — stub check-ins: fix the modulus (every 5th ticket, ~120 check-ins) or fix the comment (first ticket of every paid order)?
-- [ ] 24 — `GetEventSummaryAsync`: keep the inline `IMemoryCache`, or a caching decorator over the port?
-- [ ] 27 — sweep: rule on or drop the two unapplicable queued items (Settings' catalog entry; Agent's `debt-ledger-additions` routing)?
-- [ ] 28 — Phase 3d: run the conformance detectors in the main thread and pass their output into the Conformance/Prose prompt?
+- [x] 14 — strike `TicketVendorArchitectureTests.cs` (bare ref, dead prefixes, the build-cycle test) in a follow-up once peterdrier/Humans#1589 merges, or leave it? — **strike**
+- [x] 15 — `GetDiscountCodeUsageAsync` / `DiscountCodeStatusDto`: delete from the port, or keep — and if kept, should it throw like every other read? — **delete**
+- [x] 16 — `VendorOrderDto.Tickets`: drop the field, or keep? — **drop**
+- [x] 17 — retire the 2026-06-29 debt-ledger entry (its fix shipped)? — **retire**
+- [x] 21 — stub check-ins: fix the modulus (every 5th ticket, ~120 check-ins) or fix the comment (first ticket of every paid order)? — **fix the comment**
+- [x] 24 — `GetEventSummaryAsync`: keep the inline `IMemoryCache`, or a caching decorator over the port? — **decorator, peterdrier/Humans#1653**
+- [ ] 27 — sweep: Settings' catalog item is dropped; Agent's `debt-ledger-additions` item asks whether a section test project's debt routes to that section's `Docs/debt.yml` or the central ledger — which?
+- [x] 28 — Phase 3d: run the conformance detectors in the main thread and pass their output into the Conformance/Prose prompt? — **filed, peterdrier/Humans#1654**
 
 ## Sweep queue
 
@@ -179,6 +179,7 @@ is the one place the target was wrong on the first write.
 `src/Sections/Humans.TicketTailor/Section.cs` ·
 `src/Sections/Humans.TicketTailor/Services/StubTicketVendorService.cs` ·
 `src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs` ·
+`tests/Humans.TicketTailor.Tests/Architecture/TicketVendorArchitectureTests.cs` (rulings) ·
 `tests/Humans.TicketTailor.Tests/Humans.TicketTailor.Tests.csproj` ·
 `tests/Humans.TicketTailor.Tests/SectionRegistrationTests.cs` (new) ·
 `tests/Humans.TicketTailor.Tests/Services/StubTicketVendorServiceTests.cs` (new) ·
@@ -188,10 +189,14 @@ is the one place the target was wrong on the first write.
 `tests/Humans.TicketTailor.Tests/Services/TicketTailorTestHost.cs` (new) ·
 outside the section: `docs/README.md` ·
 `src/Humans.Web/Extensions/Infrastructure/TicketVendorInfrastructureExtensions.cs` ·
-`docs/architecture/dependency-graph.md` (sweep commit, Settings' finding 20)
+`docs/architecture/dependency-graph.md` (sweep commit, Settings' finding 20) ·
+rulings: `src/Sections/Humans.Tickets/Contracts/ITicketVendorService.cs` ·
+`src/Sections/Humans.Tickets/Contracts/TicketVendorDtos.cs` ·
+`tests/Humans.Tickets.Tests/Services/TicketSyncServiceTests.cs` ·
+`tests/Humans.Tickets.Tests/Services/TicketSyncServiceNullOrderTests.cs` ·
+`docs/architecture/debt-ledger.yml`
 
 **Reviewed:**
-`src/Sections/Humans.TicketTailor/Properties/AssemblyInfo.cs` ·
-`tests/Humans.TicketTailor.Tests/Architecture/TicketVendorArchitectureTests.cs` (off-limits: peterdrier/Humans#1589)
+`src/Sections/Humans.TicketTailor/Properties/AssemblyInfo.cs`
 
 **Generated:** none.

@@ -18,13 +18,12 @@ but Tickets and Ticket Tailor.
 |---|---|---|---|
 | Changed-since list | `GetOrdersAsync`, `GetIssuedTicketsAsync`, `GetCheckInsAsync` | `GET /orders`, `/issued_tickets`, `/check_ins` — cursor-paged | Follows `links.next` by `starting_after=<last id>`; maps cents to euros; orders: discount code, discount and donation amounts from line items; tickets: attendee email from the "Email" custom question; check-ins: net quantity per ticket, earliest positive scan |
 | Snapshot read | `GetEventSummaryAsync` | `GET /events/{id}` | Capacity from `ticket_groups.max_quantity` (fallback `ticket_types.quantity_total`); held 15 min under `CacheKeys.TicketEventSummary`; failures never cached |
-| Discount codes | `GenerateDiscountCodesAsync`, `GetDiscountCodeUsageAsync` | `POST` / `GET /voucher_codes` | `NOBO-` prefixed codes; percentage vs monetary (cents) |
+| Discount codes | `GenerateDiscountCodesAsync` | `POST /voucher_codes` | `NOBO-` prefixed codes; percentage vs monetary (cents) |
 | Ticket writes | `VoidIssuedTicketAsync`, `IssueTicketAsync`, `CreateCheckInAsync` | form-encoded `POST /issued_tickets/{id}/void`, `/issued_tickets`, `/check_ins` | Void and issue classify failures into `TicketVendorWriteException.Kind`; check-in throws the raw `HttpRequestException` |
 
 Error contract by shape: list and snapshot reads throw `HttpRequestException`
 (`EnsureSuccessStatusCode`); void and issue throw `TicketVendorWriteException` with a
-`TicketVendorFailureKind`; check-in throws `HttpRequestException`; the usage read reports a
-non-2xx as "not redeemed".
+`TicketVendorFailureKind`; check-in throws `HttpRequestException`.
 
 ## Structure
 
@@ -91,7 +90,7 @@ non-2xx as "not redeemed".
 - No `IOptions<TicketVendorSettings>` binding here: Shell binds the port's settings, so
   deleting the adapter cannot take them with it.
 - No vendor SDK: the client is `HttpClient` plus `System.Text.Json`.
-- No pagination or caching of the discount-code endpoints: they are called a handful of
+- No pagination or caching of the discount-code endpoint: it is called a handful of
   times a year.
 
 ## Load-bearing weirdness
@@ -108,10 +107,6 @@ non-2xx as "not redeemed".
 - Reads throw `HttpRequestException` while void/issue wrap into
   `TicketVendorWriteException`. Tickets' health check and Gate's mirror job catch on the
   read contract; unifying it is a port change, not an adapter change.
-- `VendorOrderDto.Tickets` is `[]` from the live client and populated by the stub; Tickets'
-  sync reads attendees from `GetIssuedTicketsAsync` and never reads the field.
-- `GetDiscountCodeUsageAsync` has no caller anywhere; both implementations exist because
-  the port declares it.
 - The nested wire records are `internal`, not `private`, because `System.Text.Json`
   cannot bind private nested types.
 - `InternalsVisibleTo("DynamicProxyGenAssembly2")` is the universal per-section

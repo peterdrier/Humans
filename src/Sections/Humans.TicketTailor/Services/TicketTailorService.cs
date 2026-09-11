@@ -16,8 +16,7 @@ namespace Humans.TicketTailor.Services;
 
 /// <summary>
 /// Ticket Tailor v1 client: one method per <see cref="ITicketVendorService"/> port method.
-/// List and event reads throw <see cref="HttpRequestException"/> (discount-code usage
-/// reports a failed lookup as unredeemed); void and issue throw
+/// List and event reads throw <see cref="HttpRequestException"/>; void and issue throw
 /// <see cref="TicketVendorWriteException"/>.
 /// </summary>
 internal sealed class TicketTailorService : ITicketVendorService
@@ -95,7 +94,6 @@ internal sealed class TicketTailorService : ITicketVendorService
                     PaymentStatus: order.Status ?? "completed",
                     VendorDashboardUrl: null, // TT doesn't expose dashboard URLs via API
                     PurchasedAt: purchasedAt,
-                    Tickets: [],
                     StripePaymentIntentId: order.TxnId,
                     DiscountAmount: discountAmount,
                     DonationAmount: donationAmount));
@@ -293,34 +291,6 @@ internal sealed class TicketTailorService : ITicketVendorService
         return codes;
     }
 
-    public async Task<IReadOnlyList<DiscountCodeStatusDto>> GetDiscountCodeUsageAsync(
-        IEnumerable<string> codes, CancellationToken ct = default)
-    {
-        using var _ = _logger.TimeOperation();
-        var results = new List<DiscountCodeStatusDto>();
-
-        foreach (var code in codes)
-        {
-            var response = await _httpClient.GetAsync(
-                $"{BaseUrl}/voucher_codes?code={Uri.EscapeDataString(code)}", ct);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                results.Add(new DiscountCodeStatusDto(code, false, 0));
-                continue;
-            }
-
-            var body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<TtVoucherCode>>(JsonOptions, ct);
-            var vc = body?.Data?.FirstOrDefault();
-            results.Add(new DiscountCodeStatusDto(
-                code,
-                (vc?.TimesUsed ?? 0) > 0,
-                vc?.TimesUsed ?? 0));
-        }
-
-        return results;
-    }
-
     public async Task CreateCheckInAsync(
         string vendorTicketId, Instant occurredAt, CancellationToken ct = default)
     {
@@ -483,8 +453,7 @@ internal sealed class TicketTailorService : ITicketVendorService
         int? MaxQuantity);
 
     internal sealed record TtVoucherCode(
-        string? Code,
-        int? TimesUsed);
+        string? Code);
 
     public async Task<VoidIssuedTicketResult> VoidIssuedTicketAsync(
         string vendorTicketId, bool voidToHold, CancellationToken ct = default)
