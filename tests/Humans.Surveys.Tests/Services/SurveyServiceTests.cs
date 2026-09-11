@@ -814,16 +814,16 @@ public class SurveyServiceTests
         Guid? teamId,
         Instant? loggedInSince = null,
         Guid? createdByUserId = null) => new()
-    {
-        Id = Guid.NewGuid(),
-        Title = L("My Survey"),
-        DefaultCulture = "en",
-        Status = status,
-        AudienceType = audience,
-        AudienceTeamId = teamId,
-        AudienceLoggedInSince = loggedInSince,
-        CreatedByUserId = createdByUserId ?? Guid.Empty,
-    };
+        {
+            Id = Guid.NewGuid(),
+            Title = L("My Survey"),
+            DefaultCulture = "en",
+            Status = status,
+            AudienceType = audience,
+            AudienceTeamId = teamId,
+            AudienceLoggedInSince = loggedInSince,
+            CreatedByUserId = createdByUserId ?? Guid.Empty,
+        };
 
     private static UserInfo UserWithLastLogin(Guid id, Instant? lastLogin, UserState state = UserState.Active) =>
         UserInfo.Create(
