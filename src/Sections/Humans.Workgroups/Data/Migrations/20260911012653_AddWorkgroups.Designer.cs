@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Workgroups.Data.Migrations
 {
     [DbContext(typeof(WorkgroupsDbContext))]
-    [Migration("20260911002551_AddWorkgroups")]
+    [Migration("20260911012653_AddWorkgroups")]
     partial class AddWorkgroups
     {
         /// <inheritdoc />
@@ -113,8 +113,7 @@ namespace Humans.Workgroups.Data.Migrations
                         .IsUnique()
                         .HasFilter("\"DriveFolderId\" IS NOT NULL");
 
-                    b.HasIndex("Slug")
-                        .IsUnique();
+                    b.HasIndex("Slug");
 
                     b.HasIndex("Status");
 

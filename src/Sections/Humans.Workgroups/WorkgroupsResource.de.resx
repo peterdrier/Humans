@@ -129,6 +129,7 @@
   <data name="Workgroups_Error_CategoriesRequired" xml:space="preserve"><value>Mindestens eine Kommentarkategorie ist erforderlich.</value></data>
   <data name="Workgroups_Error_WindowInvalid" xml:space="preserve"><value>Der Kommentierungszeitraum ist ungültig.</value></data>
   <data name="Workgroups_Error_CommentsClosed" xml:space="preserve"><value>Die Kommentierungsphase ist nicht geöffnet.</value></data>
+  <data name="Workgroups_Error_CommentsStillOpen" xml:space="preserve"><value>Beende die Kommentierungsphase, bevor du dieses Dokument einreichst.</value></data>
   <data name="Workgroups_Error_UnknownCategory" xml:space="preserve"><value>Das ist keine der Kommentarkategorien dieses Dokuments.</value></data>
   <data name="Workgroups_Error_NotDelivered" xml:space="preserve"><value>Dieses Dokument wurde noch nicht geliefert.</value></data>
   <data name="Workgroups_Error_HideReasonRequired" xml:space="preserve"><value>Um einen Kommentar auszublenden, ist ein Grund erforderlich.</value></data>

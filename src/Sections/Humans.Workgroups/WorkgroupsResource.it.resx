@@ -129,6 +129,7 @@
   <data name="Workgroups_Error_CategoriesRequired" xml:space="preserve"><value>È richiesta almeno una categoria di commento.</value></data>
   <data name="Workgroups_Error_WindowInvalid" xml:space="preserve"><value>Il periodo di commento non è valido.</value></data>
   <data name="Workgroups_Error_CommentsClosed" xml:space="preserve"><value>Il periodo di commento non è aperto.</value></data>
+  <data name="Workgroups_Error_CommentsStillOpen" xml:space="preserve"><value>Chiudi il periodo di commento prima di consegnare questo documento.</value></data>
   <data name="Workgroups_Error_UnknownCategory" xml:space="preserve"><value>Non è una delle categorie di commento di questo documento.</value></data>
   <data name="Workgroups_Error_NotDelivered" xml:space="preserve"><value>Questo documento non è ancora stato consegnato.</value></data>
   <data name="Workgroups_Error_HideReasonRequired" xml:space="preserve"><value>Per nascondere un commento è richiesta una motivazione.</value></data>

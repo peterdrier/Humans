@@ -260,8 +260,7 @@ namespace Humans.Workgroups.Data.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_workgroups_Slug",
                 table: "workgroups",
-                column: "Slug",
-                unique: true);
+                column: "Slug");
 
             migrationBuilder.CreateIndex(
                 name: "IX_workgroups_Status",

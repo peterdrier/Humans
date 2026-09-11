@@ -198,9 +198,14 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
             .Where(m => m.CreatedByUserId == userId).ToListAsync(ct);
         var documents = await ctx.Documents.AsNoTracking()
             .Where(d => d.CreatedByUserId == userId || d.UpdatedByUserId == userId).ToListAsync(ct);
-        // Hidden comments are included: the export is what we hold, not what we show.
+        // Hidden comments are included: the export is what we hold, not what we show. All three
+        // attribution columns are matched, so a responder or moderator sees the rows that carry
+        // their id even when someone else wrote the comment — the same three the erasure nulls.
         var comments = await ctx.Comments.AsNoTracking()
-            .Where(c => c.AuthorUserId == userId).ToListAsync(ct);
+            .Where(c => c.AuthorUserId == userId
+                || c.RespondedByUserId == userId
+                || c.HiddenByUserId == userId)
+            .ToListAsync(ct);
 
         return new WorkgroupUserRows(memberships, logEntries, meetings, documents, comments);
     }

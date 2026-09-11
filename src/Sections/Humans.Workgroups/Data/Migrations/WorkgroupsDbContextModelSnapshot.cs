@@ -110,8 +110,7 @@ namespace Humans.Workgroups.Data.Migrations
                         .IsUnique()
                         .HasFilter("\"DriveFolderId\" IS NOT NULL");
 
-                    b.HasIndex("Slug")
-                        .IsUnique();
+                    b.HasIndex("Slug");
 
                     b.HasIndex("Status");
 

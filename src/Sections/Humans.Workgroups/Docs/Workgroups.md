@@ -47,7 +47,7 @@ administrative recognition, and every decision is a human's.
 |----------|------|-------|
 | Id | Guid | PK |
 | Name | string(200) | |
-| Slug | string(100) | Unique; admin-editable; re-slugs when Name changes |
+| Slug | string(100) | Admin-editable; re-slugs when Name changes. Plain index, not unique — uniqueness is the service's job (`ReserveSlugAsync`), never a DB constraint on an editable string |
 | Purpose | string(4000) | Markdown, sanitized on render |
 | Deliverable | string(500) | One line |
 | DeliverableKind | WorkgroupDeliverableKind | |
@@ -63,7 +63,7 @@ administrative recognition, and every decision is a human's.
 | DormantSince | Instant? | Set by the job at 60 days' silence; cleared by the next Update/Meeting. Distinct from Dormant status — it is the inquiry flag |
 | CreatedAt / UpdatedAt | Instant | |
 
-Indexes: `Slug` unique; `Status`; `DriveFolderId` unique filtered non-null (one group per folder).
+Indexes: `Slug`; `Status`; `DriveFolderId` unique filtered non-null (one group per folder — a Google-assigned opaque id, not editable display data).
 
 ### WorkgroupMember — `workgroup_members`
 
@@ -229,6 +229,9 @@ See `authorization.md` for the auth policy per route.
   category, and must end before the document is Delivered (`OpenCommentsAsync`).
 - Delivered freezes a document's body (`UpdateDocumentAsync` refuses further edits); a
   disposition may only be recorded on a Delivered document.
+- A comment window must end before delivery: `DeliverDocumentAsync` refuses while
+  `CommentsCloseAt` is still in the future. Closing the window early is one click and keeps
+  the comments, so the promised period is never cut short by a delivery.
 - Comments: the window is the only gate on `AddCommentAsync` — any signed-in human, group
   membership irrelevant, while `IsOpenForComment(now)` is true. A bulk category response
   (`RespondToCategoryAsync`) touches only still-Pending, non-hidden comments in that

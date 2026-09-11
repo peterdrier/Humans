@@ -85,6 +85,11 @@ internal sealed partial class WorkgroupService
                     Document = doc.Title ?? "(unknown)",
                     c.Category,
                     c.Body,
+                    // Which of the three attributions this row carries for this person: they may
+                    // appear as the responder or the moderator on somebody else's comment.
+                    Authored = c.AuthorUserId == userId,
+                    Responded = c.RespondedByUserId == userId,
+                    HiddenByThisPerson = c.HiddenByUserId == userId,
                     Disposition = c.Disposition.ToString(),
                     c.Response,
                     Hidden = c.HiddenAt is not null,

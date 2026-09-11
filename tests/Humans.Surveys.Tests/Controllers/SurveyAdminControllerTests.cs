@@ -354,7 +354,10 @@ public sealed class SurveyAdminControllerTests
 
         var result = await sut.Submit(surveyId, Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeOfType<RedirectToActionResult>();
+        // Index, not Edit: the submit leaves the survey PendingApproval, which the authorization
+        // handler no longer lets an ordinary author edit — an Edit redirect would land on a 403.
+        result.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be(nameof(SurveyAdminController.Index));
         await surveys.Received(1).SubmitForApprovalAsync(surveyId, authorId, Arg.Any<CancellationToken>());
     }
 

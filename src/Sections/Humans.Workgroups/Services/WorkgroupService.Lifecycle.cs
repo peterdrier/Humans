@@ -249,7 +249,11 @@ internal sealed partial class WorkgroupService
 
         try
         {
-            return await googleSync.CreateSubfolderAsync(root, workgroup.Name, ct);
+            // CancellationToken.None, not ct: the caller is a POST, and a request-scoped token
+            // that fires between Google creating the folder and us persisting its id leaves an
+            // orphan folder a retry cannot find
+            // (memory/architecture/cancellation-token-propagation.md, [ExternalWrite]).
+            return await googleSync.CreateSubfolderAsync(root, workgroup.Name, CancellationToken.None);
         }
         catch (Exception ex)
         {

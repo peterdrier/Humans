@@ -29,6 +29,7 @@ internal static class WorkgroupErrorKeys
     public const string CategoriesRequired = "Workgroups_Error_CategoriesRequired";
     public const string WindowInvalid = "Workgroups_Error_WindowInvalid";
     public const string CommentsClosed = "Workgroups_Error_CommentsClosed";
+    public const string CommentsStillOpen = "Workgroups_Error_CommentsStillOpen";
     public const string UnknownCategory = "Workgroups_Error_UnknownCategory";
     public const string NotDelivered = "Workgroups_Error_NotDelivered";
     public const string HideReasonRequired = "Workgroups_Error_HideReasonRequired";

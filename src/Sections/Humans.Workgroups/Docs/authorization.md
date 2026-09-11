@@ -41,7 +41,14 @@ load-bearing.
 
 - Anonymous requests **cannot** reach any `/Workgroups*` route — no public access.
 - A non-member **cannot** read a Draft document, post a log entry, create a meeting, edit
-  register fields, or reach any document-mutation route (design §5).
+  register fields, or reach any document-mutation route (design §5). Every member-only POST
+  on `WorkgroupsController` runs through one private helper, `ActAsync`, which applies
+  `MayDoMemberWork` before invoking the service — the service checks the group's status, not
+  who the actor is, so this controller guard is the membership enforcement point. The four
+  routes design §5 opens to any signed-in human — Join, Leave, RequestStatus, AddComment —
+  pass `memberOnly: false` explicitly and are gated by their own service rules.
+  `tests/Humans.Workgroups.Tests/Controllers/WorkgroupsControllerAuthorizationTests.cs`
+  covers both directions.
 - A member **cannot** register, refer, refuse, withdraw, close, reactivate, or record a
   disposition — those are `BoardOrAdmin` only, and the service throws
   `WorkgroupRuleException`/`UnauthorizedAccessException` if attempted.

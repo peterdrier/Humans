@@ -27,7 +27,10 @@ internal sealed class WorkgroupConfiguration : IEntityTypeConfiguration<Workgrou
         b.Property(w => w.CreatedAt).IsRequired();
         b.Property(w => w.UpdatedAt).IsRequired();
 
-        b.HasIndex(w => w.Slug).IsUnique();
+        // Plain, not unique: uniqueness on a user-editable string is forbidden
+        // (memory/architecture/unique-constraints-ids-only.md). ReserveSlugAsync in the
+        // service is where slug collisions are resolved, on apply and on rename.
+        b.HasIndex(w => w.Slug);
         b.HasIndex(w => w.Status);
         // One group per folder: a second claim on the same folder would make two sections'
         // expected access fight each other in the Drive fan-out.

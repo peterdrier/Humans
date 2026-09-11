@@ -145,6 +145,7 @@ internal sealed class WorkgroupsAdminController(
         }
         catch (WorkgroupRuleException ex)
         {
+            logger.LogInformation(ex, "Workgroups root Drive folder rejected: rule {Rule}", ex.Key);
             ModelState.AddModelError(nameof(model.RootDriveFolderId), localizer[ex.Key, ex.Args]);
             return View(model);
         }

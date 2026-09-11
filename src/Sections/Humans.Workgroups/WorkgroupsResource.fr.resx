@@ -129,6 +129,7 @@
   <data name="Workgroups_Error_CategoriesRequired" xml:space="preserve"><value>Au moins une catégorie de commentaire est requise.</value></data>
   <data name="Workgroups_Error_WindowInvalid" xml:space="preserve"><value>La période de commentaires est invalide.</value></data>
   <data name="Workgroups_Error_CommentsClosed" xml:space="preserve"><value>La période de commentaires n'est pas ouverte.</value></data>
+  <data name="Workgroups_Error_CommentsStillOpen" xml:space="preserve"><value>Fermez la période de commentaires avant de livrer ce document.</value></data>
   <data name="Workgroups_Error_UnknownCategory" xml:space="preserve"><value>Ce n'est pas l'une des catégories de commentaires de ce document.</value></data>
   <data name="Workgroups_Error_NotDelivered" xml:space="preserve"><value>Ce document n'a pas encore été livré.</value></data>
   <data name="Workgroups_Error_HideReasonRequired" xml:space="preserve"><value>Une raison est requise pour masquer un commentaire.</value></data>

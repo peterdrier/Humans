@@ -150,6 +150,12 @@ internal sealed partial class WorkgroupService
             throw new WorkgroupRuleException(WorkgroupErrorKeys.NotPublished);
 
         var now = clock.GetCurrentInstant();
+        // "A comment window ... must end before Delivered" (design §7). Delivering mid-window
+        // would freeze the body and cut short a comment period the group promised publicly —
+        // Close the window first, which is one click and leaves the comments in place.
+        if (document.CommentsCloseAt is { } closes && closes > now)
+            throw new WorkgroupRuleException(WorkgroupErrorKeys.CommentsStillOpen);
+
         document.Status = WorkgroupDocumentStatus.Delivered;
         document.DeliveredAt = now;
         document.UpdatedByUserId = actorUserId;

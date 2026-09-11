@@ -126,7 +126,9 @@ internal sealed class SurveyAdminController(
             logger.LogWarning("Survey submit-for-approval rejected for {SurveyId}: {Reason}", id, ex.Message);
             SetError(ex.Message);
         }
-        return RedirectToAction(nameof(Edit), new { id });
+        // Index, not Edit: a successful submit leaves the survey PendingApproval, which the
+        // authorization handler no longer lets an ordinary author edit.
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpGet("Official/{id:guid}")]

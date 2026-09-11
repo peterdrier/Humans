@@ -40,6 +40,33 @@ public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
+    public async Task Export_IncludesCommentsThisPersonRespondedToOrHid_NotOnlyTheirOwn()
+    {
+        // The erasure nulls all three attribution columns, so the export has to show all three:
+        // a responder or moderator's id is stored on somebody else's comment.
+        var workgroup = await SeedWorkgroupAsync();
+        var moderator = workgroup.Members.Single().UserId;
+        var stranger = SeedUser("Stranger");
+        var document = await AddDocumentAsync(workgroup.Id, WorkgroupDocumentStatus.Published, body: "Body");
+        var theirs = await AddCommentAsync(document.Id, authorUserId: stranger);
+
+        await using (var ctx = OpenContext())
+        {
+            var row = await ctx.Comments.SingleAsync(c => c.Id == theirs.Id, Ct);
+            row.RespondedByUserId = moderator;
+            row.HiddenByUserId = moderator;
+            await ctx.SaveChangesAsync(Ct);
+        }
+
+        var slices = await NewService().ContributeForUserAsync(moderator, Ct);
+
+        var comments = slices.Single(s =>
+            string.Equals(s.SectionName, GdprExportSections.WorkgroupComments, StringComparison.Ordinal)).Data;
+        comments.Should().NotBeNull();
+        ((System.Collections.IEnumerable)comments!).Cast<object>().Should().ContainSingle();
+    }
+
+    [HumansFact]
     public async Task Erase_NullsAttribution_ButKeepsCommentAndLogBodies()
     {
         var workgroup = await SeedWorkgroupAsync();

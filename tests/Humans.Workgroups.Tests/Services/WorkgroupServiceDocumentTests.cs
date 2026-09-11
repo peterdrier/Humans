@@ -151,6 +151,41 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
             .Should().Be(WorkgroupErrorKeys.NotPublished);
     }
 
+    [HumansFact]
+    public async Task Deliver_WhileTheCommentWindowIsStillOpen_Throws()
+    {
+        // "A comment window ... must end before Delivered" (design §7): delivering mid-window
+        // would freeze the body and cut a promised public comment period short.
+        var workgroup = await SeedWorkgroupAsync();
+        var member = workgroup.Members.Single().UserId;
+        var now = Clock.GetCurrentInstant();
+        var document = await AddDocumentAsync(
+            workgroup.Id, WorkgroupDocumentStatus.Published, body: "Body",
+            categories: ["Scope"], opensAt: now, closesAt: now + Duration.FromDays(7));
+
+        var act = () => NewService().DeliverDocumentAsync(document.Id, member, Ct);
+
+        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+            .Should().Be(WorkgroupErrorKeys.CommentsStillOpen);
+    }
+
+    [HumansFact]
+    public async Task Deliver_AfterTheCommentWindowHasClosed_Succeeds()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var member = workgroup.Members.Single().UserId;
+        var now = Clock.GetCurrentInstant();
+        var document = await AddDocumentAsync(
+            workgroup.Id, WorkgroupDocumentStatus.Published, body: "Body",
+            categories: ["Scope"], opensAt: now - Duration.FromDays(7), closesAt: now - Duration.FromHours(1));
+
+        await NewService().DeliverDocumentAsync(document.Id, member, Ct);
+
+        await using var ctx = OpenContext();
+        (await ctx.Documents.SingleAsync(d => d.Id == document.Id, Ct))
+            .Status.Should().Be(WorkgroupDocumentStatus.Delivered);
+    }
+
     // ── Disposition only on Delivered ────────────────────────────────────
 
     [HumansFact]

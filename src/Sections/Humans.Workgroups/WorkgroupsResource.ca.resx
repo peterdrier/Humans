@@ -129,6 +129,7 @@
   <data name="Workgroups_Error_CategoriesRequired" xml:space="preserve"><value>Cal com a mínim una categoria de comentaris.</value></data>
   <data name="Workgroups_Error_WindowInvalid" xml:space="preserve"><value>El període de comentaris no és vàlid.</value></data>
   <data name="Workgroups_Error_CommentsClosed" xml:space="preserve"><value>El període de comentaris no està obert.</value></data>
+  <data name="Workgroups_Error_CommentsStillOpen" xml:space="preserve"><value>Tanca el període de comentaris abans d'entregar aquest document.</value></data>
   <data name="Workgroups_Error_UnknownCategory" xml:space="preserve"><value>Aquesta no és una de les categories de comentaris d'aquest document.</value></data>
   <data name="Workgroups_Error_NotDelivered" xml:space="preserve"><value>Aquest document encara no s'ha entregat.</value></data>
   <data name="Workgroups_Error_HideReasonRequired" xml:space="preserve"><value>Cal un motiu per ocultar un comentari.</value></data>

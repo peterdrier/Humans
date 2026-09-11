@@ -129,6 +129,7 @@
   <data name="Workgroups_Error_CategoriesRequired" xml:space="preserve"><value>At least one comment category is required.</value></data>
   <data name="Workgroups_Error_WindowInvalid" xml:space="preserve"><value>The comment window is invalid.</value></data>
   <data name="Workgroups_Error_CommentsClosed" xml:space="preserve"><value>The comment period is not open.</value></data>
+  <data name="Workgroups_Error_CommentsStillOpen" xml:space="preserve"><value>Close the comment period before delivering this document.</value></data>
   <data name="Workgroups_Error_UnknownCategory" xml:space="preserve"><value>That is not one of this document's comment categories.</value></data>
   <data name="Workgroups_Error_NotDelivered" xml:space="preserve"><value>This document has not been delivered yet.</value></data>
   <data name="Workgroups_Error_HideReasonRequired" xml:space="preserve"><value>A reason is required to hide a comment.</value></data>
