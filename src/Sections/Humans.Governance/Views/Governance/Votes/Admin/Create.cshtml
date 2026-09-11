@@ -37,7 +37,7 @@
                 Model.Title.TryGetValue(culture, out var value);
                 <div class="input-group input-group-sm mb-2">
                     <span class="input-group-text" style="min-width:6rem;">@culture.ToDisplayLanguageName()</span>
-                    <input type="text" name="Title[@culture]" class="form-control" value="@value" />
+                    <input type="text" name="Title[@culture]" class="form-control" value="@value" maxlength="200" />
                 </div>
             }
         </div>

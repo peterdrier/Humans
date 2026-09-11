@@ -190,9 +190,13 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
     private static Dictionary<string, string> Text(string value) =>
         new(StringComparer.OrdinalIgnoreCase) { ["en"] = value };
 
+    /// <param name="notified">
+    /// Whether the row already got its vote-opened email, as every row of a real open vote
+    /// has. Pass false for a row the send never reached — what the sweep retries.
+    /// </param>
     public async Task<AssemblyVoteRoster> AddRosterRowAsync(
         Guid voteId, Guid userId, bool isOfficial, MembershipTier tier = MembershipTier.Volunteer,
-        bool isBoardMember = false)
+        bool isBoardMember = false, bool notified = true)
     {
         var roster = new AssemblyVoteRoster
         {
@@ -201,7 +205,8 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
             UserId = userId,
             Tier = tier,
             IsBoardMember = isBoardMember,
-            IsOfficial = isOfficial
+            IsOfficial = isOfficial,
+            NotifiedAt = notified ? Clock.GetCurrentInstant() : null
         };
         Db.AssemblyVoteRosterEntries.Add(roster);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);

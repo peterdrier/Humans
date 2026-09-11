@@ -149,6 +149,46 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task CreateDraftAsync_WithAnOverlongTitle_IsRejected()
+    {
+        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Draft);
+        var draft = _fx.DraftFor(vote, AssemblyVoteKind.YesNo, []) with
+        {
+            Title = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["en"] = new string('t', 201)
+            }
+        };
+
+        var voteId = await _fx.Service.CreateDraftAsync(
+            draft, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        voteId.Should().BeNull(
+            "the title is copied into the email subject and the notification title, both bounded, "
+            + "and those writes happen after the vote is irreversibly Open");
+    }
+
+    [HumansFact]
+    public async Task CreateDraftAsync_WithAnOverlongTranslatedTitle_IsRejected()
+    {
+        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Draft);
+        var draft = _fx.DraftFor(vote, AssemblyVoteKind.YesNo, []) with
+        {
+            Title = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["en"] = "Test vote",
+                ["es"] = new string('t', 201)
+            }
+        };
+
+        var voteId = await _fx.Service.CreateDraftAsync(
+            draft, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        voteId.Should().BeNull(
+            "every culture's title is a subject line — the official one is not the only one sent");
+    }
+
+    [HumansFact]
     public async Task CreateDraftAsync_WithAnOverlongInfoUrl_IsRejected()
     {
         var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Draft);
@@ -1182,6 +1222,92 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             vote.Id,
             Arg.Any<string>(),
             AssemblyVoteService.LapseJobName);
+    }
+
+    [HumansFact]
+    public async Task OpenAsync_WhenTheDeadlinePassesWhileTheRosterIsBuilt_IsRejected()
+    {
+        var vote = await _fx.AddVoteAsync(
+            status: AssemblyVoteStatus.Draft,
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromMinutes(2));
+        var asociado = Guid.NewGuid();
+        _fx.StubActiveUsers(asociado);
+
+        // Building the roster reads three other sections; here that takes long enough for the
+        // announced deadline to pass.
+        _fx.Applications.GetActiveApprovedTierUserIdsAsync(
+                MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                _fx.Clock.AdvanceMinutes(5);
+                return Task.FromResult<IReadOnlyList<Guid>>([asociado]);
+            });
+
+        var result = await _fx.Service.OpenAsync(
+            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().Be(AssemblyVoteActionResult.Invalid,
+            "a vote that opens already lapsed gives its electorate no chance to vote");
+
+        var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
+            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.Status.Should().Be(AssemblyVoteStatus.Draft);
+        await _fx.Email.DidNotReceive()
+            .SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RunLapseAndReminderSweepAsync_StopsRemindingOnceTheDeadlineMoves()
+    {
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(12));
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        _fx.StubActiveUsers(first, second);
+        await _fx.AddRosterRowAsync(vote.Id, first, isOfficial: true);
+        await _fx.AddRosterRowAsync(vote.Id, second, isOfficial: true);
+
+        // An Admin extends the vote by a week while the first reminder is going out. Nobody
+        // after that may be handed a deadline the vote no longer has.
+        var sent = 0;
+        _fx.Email.When(e => e.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()))
+            .Do(_ =>
+            {
+                if (++sent != 1) return;
+
+                var open = _fx.Db.AssemblyVotes.Single(v => v.Id == vote.Id);
+                open.ClosesAt = _fx.Clock.GetCurrentInstant() + Duration.FromDays(7);
+                _fx.Db.SaveChanges();
+                _fx.Db.ChangeTracker.Clear();
+            });
+
+        await _fx.Service.RunLapseAndReminderSweepAsync(Xunit.TestContext.Current.CancellationToken);
+
+        sent.Should().Be(1,
+            "the deadline is re-read per recipient — an extended vote is out of reminder range");
+    }
+
+    [HumansFact]
+    public async Task RunLapseAndReminderSweepAsync_ResendsTheOpenedEmailToARowItNeverReached()
+    {
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromDays(5));
+        var reached = Guid.NewGuid();
+        var missed = Guid.NewGuid();
+        _fx.StubActiveUsers(reached, missed);
+        await _fx.AddRosterRowAsync(vote.Id, reached, isOfficial: true);
+        var missedRow = await _fx.AddRosterRowAsync(
+            vote.Id, missed, isOfficial: true, notified: false);
+
+        await _fx.Service.RunLapseAndReminderSweepAsync(Xunit.TestContext.Current.CancellationToken);
+
+        // Closing is five days out, so no reminder is due: every send here is the retry.
+        await _fx.Email.Received(1)
+            .SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        var stored = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
+            .SingleAsync(r => r.Id == missedRow.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.NotifiedAt.Should().NotBeNull(
+            "the stamp is what stops the next sweep sending it again");
     }
 
     [HumansFact]

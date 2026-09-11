@@ -49,7 +49,14 @@ internal sealed class AssemblyVoteService(
     // one place. Text arriving from a form is checked with Fits before it reaches the
     // DbContext, so an over-long value is a rejected draft or action rather than a 500 from
     // PostgreSQL. A new bounded column belongs in this block and in the check that guards it;
-    // the localized JSON columns (Title, OfficialText, option Label) are unbounded by design.
+    // the localized JSON columns (OfficialText, option Label) are unbounded by design.
+    //
+    // Title is the exception: the column is jsonb and uncapped, but the title is copied into
+    // bounded columns elsewhere — the email outbox Subject (varchar(1000)) and Notification
+    // Title (varchar(200)) — and those writes happen after a transition that cannot be undone.
+    // A title is bounded at the draft so the Board hears about it while the vote is still
+    // editable; the sends below still trim, for drafts written before this bound existed.
+    internal const int MaxTitleLength = 200;         // assembly_votes.Title, per culture
     internal const int MaxOptionKeyLength = 100;     // assembly_vote_options.Key
     internal const int MaxCancelReasonLength = 4000; // assembly_votes.CancelReason
     internal const int MaxInfoUrlLength = 2000;      // assembly_votes.InfoUrl
@@ -972,6 +979,7 @@ internal sealed class AssemblyVoteService(
         if (!Fits(draft.InfoUrl, MaxInfoUrlLength)) return false;
         if (!draft.Title.TryGetValue(draft.OfficialCulture, out var title)
             || string.IsNullOrWhiteSpace(title)) return false;
+        if (draft.Title.Values.Any(t => !Fits(t, MaxTitleLength))) return false;
         if (!draft.OfficialText.TryGetValue(draft.OfficialCulture, out var text)
             || string.IsNullOrWhiteSpace(text)) return false;
         if (draft.ClosesAt <= clock.GetCurrentInstant()) return false;
@@ -1033,6 +1041,12 @@ internal sealed class AssemblyVoteService(
 
         var roster = await BuildRosterAsync(vote, ct);
         if (roster.Count == 0) return AssemblyVoteActionResult.Invalid;
+
+        // Building the roster reads three other sections, so the announced deadline can pass
+        // while it runs. A vote that opens already lapsed is open for no time at all: the next
+        // sweep closes it, having given its electorate no chance to vote.
+        now = clock.GetCurrentInstant();
+        if (vote.ClosesAt <= now) return AssemblyVoteActionResult.Invalid;
 
         vote.Status = AssemblyVoteStatus.Open;
         vote.OpenedAt = now;
@@ -1307,8 +1321,32 @@ internal sealed class AssemblyVoteService(
     private async Task NotifyRosterOpenedAsync(
         AssemblyVote vote, IReadOnlyList<AssemblyVoteRoster> roster, CancellationToken ct)
     {
-        var recipients = await RecipientsAsync(roster, ct);
-        var notified = new List<Guid>(roster.Count);
+        await SendOpenedEmailsAsync(vote, roster, ct);
+
+        var userIds = roster.Where(r => r.UserId is not null).Select(r => r.UserId!.Value).ToList();
+        if (userIds.Count > 0)
+        {
+            await notifications.SendAsync(
+                NotificationSource.AssemblyVoteOpened,
+                NotificationClass.Actionable,
+                NotificationPriority.Normal,
+                NotificationTitle(vote),
+                userIds,
+                actionUrl: VoteUrl(vote.Id),
+                sourceKey: vote.Id.ToString(),
+                cancellationToken: ct);
+        }
+    }
+
+    /// <summary>
+    /// Emails the given roster rows that the vote is open, stamping each row that was sent.
+    /// An unstamped row is one the email never reached, and the hourly sweep retries it.
+    /// </summary>
+    private async Task SendOpenedEmailsAsync(
+        AssemblyVote vote, IReadOnlyList<AssemblyVoteRoster> rows, CancellationToken ct)
+    {
+        var recipients = await RecipientsAsync(rows, ct);
+        var notified = new List<Guid>(rows.Count);
         var closesAt = ClosingLocal(vote.ClosesAt);
 
         foreach (var (rosterRow, info, address) in recipients)
@@ -1319,7 +1357,7 @@ internal sealed class AssemblyVoteService(
                     messages.AssemblyVoteOpened(
                         address,
                         info.BurnerName,
-                        vote.Title.Resolve(info.PreferredLanguage, vote.OfficialCulture),
+                        EmailTitle(vote, info.PreferredLanguage),
                         closesAt,
                         rosterRow.IsOfficial,
                         VoteUrl(vote.Id),
@@ -1340,20 +1378,6 @@ internal sealed class AssemblyVoteService(
         {
             await repository.StampNotifiedAsync(notified, clock.GetCurrentInstant(), ct);
         }
-
-        var userIds = roster.Where(r => r.UserId is not null).Select(r => r.UserId!.Value).ToList();
-        if (userIds.Count > 0)
-        {
-            await notifications.SendAsync(
-                NotificationSource.AssemblyVoteOpened,
-                NotificationClass.Actionable,
-                NotificationPriority.Normal,
-                NotificationTitle(vote),
-                userIds,
-                actionUrl: VoteUrl(vote.Id),
-                sourceKey: vote.Id.ToString(),
-                cancellationToken: ct);
-        }
     }
 
     /// <summary>
@@ -1363,6 +1387,15 @@ internal sealed class AssemblyVoteService(
     /// </summary>
     private static string NotificationTitle(AssemblyVote vote) =>
         Truncate(vote.Title.Resolve(vote.OfficialCulture, vote.OfficialCulture), 200);
+
+    /// <summary>
+    /// The vote's title in the reader's language, bounded for the email subject that carries
+    /// it (varchar(1000)). Drafts are bounded at <see cref="MaxTitleLength"/>, so this only
+    /// bites on one written before that check existed — where the alternative is an enqueue
+    /// that throws for every recipient after the vote is already Open.
+    /// </summary>
+    private static string EmailTitle(AssemblyVote vote, string language) =>
+        Truncate(vote.Title.Resolve(language, vote.OfficialCulture), MaxTitleLength);
 
     /// <summary>Trims to <paramref name="max"/> characters, ellipsis included in the count.</summary>
     private static string Truncate(string text, int max) =>
@@ -1381,7 +1414,7 @@ internal sealed class AssemblyVoteService(
                     messages.AssemblyVoteCancelled(
                         address,
                         info.BurnerName,
-                        vote.Title.Resolve(info.PreferredLanguage, vote.OfficialCulture),
+                        EmailTitle(vote, info.PreferredLanguage),
                         vote.CancelReason ?? string.Empty,
                         info.PreferredLanguage),
                     ct);
@@ -1468,9 +1501,32 @@ internal sealed class AssemblyVoteService(
         foreach (var vote in await repository.GetAllAsync(ct))
         {
             await FinishInterruptedCloseAsync(vote, ct);
+            await RetryOpenedEmailsAsync(vote, ct);
         }
 
         return closed;
+    }
+
+    /// <summary>
+    /// Re-sends the vote-opened email to roster rows it never reached. The Open transition is
+    /// committed before the emails go out, so a send that threw informs nobody and nothing
+    /// else ever looks at the unstamped row — an electorate that does not know the vote exists.
+    /// </summary>
+    /// <remarks>
+    /// A row with no reachable address — anonymized, or no notification email — is never
+    /// stamped and so is retried every sweep. That costs one in-memory roster read while the
+    /// vote is open, and a row that becomes reachable gets the email it missed.
+    /// </remarks>
+    private async Task RetryOpenedEmailsAsync(AssemblyVote vote, CancellationToken ct)
+    {
+        if (vote.Status != AssemblyVoteStatus.Open) return;
+
+        var unsent = (await repository.GetRosterAsync(vote.Id, ct))
+            .Where(r => r.NotifiedAt is null)
+            .ToList();
+        if (unsent.Count == 0) return;
+
+        await SendOpenedEmailsAsync(vote, unsent, ct);
     }
 
     /// <summary>
@@ -1489,16 +1545,22 @@ internal sealed class AssemblyVoteService(
 
             var recipients = await RecipientsAsync(pending, ct);
             var reminded = new List<Guid>(pending.Count);
-            var closesAt = ClosingLocal(vote.ClosesAt);
 
             foreach (var (rosterRow, info, address) in recipients)
             {
                 // Eligibility is re-read per recipient, not trusted from the list: sending
                 // the whole roster takes long enough for somebody to vote, or for an Admin to
-                // stop or cancel the vote, and "you have not voted and the vote closes soon"
-                // is wrong in both cases — the second one for everybody left in the list.
+                // stop, cancel or extend the vote, and "you have not voted and the vote closes
+                // soon" is wrong in each case — all but the first for everybody left.
                 var current = await repository.GetByIdAsync(vote.Id, ct);
                 if (current is null || current.Status != AssemblyVoteStatus.Open) break;
+
+                // The deadline comes from that same read, not from the queried row. An Extend
+                // mid-batch moves it, and half an electorate holding an email that announces a
+                // deadline the vote no longer has is worse than no reminder: the rest of the
+                // roster is reminded on the sweep after the new deadline comes into range.
+                if (current.ClosesAt <= now || current.ClosesAt > now + ReminderLeadTime) break;
+                var closesAt = ClosingLocal(current.ClosesAt);
 
                 if (await repository.GetBallotForRosterAsync(vote.Id, rosterRow.Id, ct) is not null)
                 {
@@ -1511,7 +1573,7 @@ internal sealed class AssemblyVoteService(
                         messages.AssemblyVoteReminder(
                             address,
                             info.BurnerName,
-                            vote.Title.Resolve(info.PreferredLanguage, vote.OfficialCulture),
+                            EmailTitle(current, info.PreferredLanguage),
                             closesAt,
                             rosterRow.IsOfficial,
                             VoteUrl(vote.Id),

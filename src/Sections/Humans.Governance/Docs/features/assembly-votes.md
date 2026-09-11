@@ -107,7 +107,7 @@ Closed results are visible to every logged-in member, roster or not; Volunteers 
 
 ### US-V8: The Board can see what happened
 
-Every state change and every ballot event is in the audit log (crosscut). Automation (auto-close, emails) leaves entries under the job actor: the lapse close writes `AssemblyVoteClosed`, and each T-24h reminder batch writes `AssemblyVoteRemindersSent` with the number actually delivered. Eligibility is re-read per recipient as the batch goes out — the roster row's ballot and the vote's own status — so nobody is told they have not voted after they have, and a stop or cancel mid-batch ends it instead of mailing the rest.
+Every state change and every ballot event is in the audit log (crosscut). Automation (auto-close, emails) leaves entries under the job actor: the lapse close writes `AssemblyVoteClosed`, and each T-24h reminder batch writes `AssemblyVoteRemindersSent` with the number actually delivered. Eligibility is re-read per recipient as the batch goes out — the roster row's ballot, the vote's own status and its current deadline — so nobody is told they have not voted after they have, and a stop, cancel or extend mid-batch ends it instead of mailing the rest a deadline the vote no longer has (an extended vote is reminded again once the new deadline comes into range).
 
 ## Why not Surveys
 
@@ -133,7 +133,7 @@ All tables in `GovernanceDbContext`, one migration, prefix `assembly_`.
 | Property | Type | Notes |
 |---|---|---|
 | Id | Guid | PK |
-| Title | jsonb culture → text | |
+| Title | jsonb culture → text | max 200 chars per culture: it is copied into the email subject and the notification title, both bounded columns written after an irreversible transition |
 | OfficialText | jsonb culture → text | Markdown; rendered through the shared sanitizer |
 | OfficialCulture | string(10) | the culture whose text is binding; others are translations |
 | InfoUrl | string? (2000) | |
@@ -312,10 +312,10 @@ Board members are de facto Asociados: they are on the official roster whether or
 
 ## Triggers
 
-- **Open:** roster snapshot; one email per roster member (`IEmailMessageFactory.AssemblyVoteOpened`, `MessageCategory.System`, preferred language, link to `/Governance/Votes/{id}`), per-recipient try/catch as in Surveys' invite send; one in-app notification to the roster via `INotificationEmitter.SendAsync` with `sourceKey = vote id`; audit `AssemblyVoteOpened` (official/indicative counts).
+- **Open:** roster snapshot — the deadline is checked again once the roster is built, since building it reads three other sections and a vote that opens already lapsed is open for no time at all; one email per roster member (`IEmailMessageFactory.AssemblyVoteOpened`, `MessageCategory.System`, preferred language, link to `/Governance/Votes/{id}`), per-recipient try/catch as in Surveys' invite send, each sent row stamped with `NotifiedAt`; one in-app notification to the roster via `INotificationEmitter.SendAsync` with `sourceKey = vote id`; audit `AssemblyVoteOpened` (official/indicative counts).
 - **Ballot cast/changed:** history row; audit `AssemblyBallotCast` / `AssemblyBallotChanged` (actor = member, entity = the vote, no choice — the ballot id never appears, so an erased member’s retained audit row cannot be joined back to their choice).
 - **Stop / Extend / Cancel:** audit with before/after or reason. Cancel emails the roster.
-- **After any transition:** the side effects that follow a committed state change (roster email, in-app notification, notification resolve) are best-effort — a failure is logged and the transition stands, since Open/Cancel/Close are irreversible and have no retry path.
+- **After any transition:** the side effects that follow a committed state change (roster email, in-app notification, notification resolve) are best-effort — a failure is logged and the transition stands, since Open/Cancel/Close are irreversible. The one exception is the vote-opened email: an unstamped `NotifiedAt` is a roster member who does not know the vote exists, so the hourly sweep re-sends it to the rows the send never reached.
 - **Close (any path):** stamps `ClosedAt`, computes and stores the result, resolves the open-vote notification via `INotificationAutoResolve.ResolveBySourceKeyAsync`, audits `AssemblyVoteClosed` / `AssemblyVoteStopped` (job actor via the `jobName` overload of `IAuditLogService.LogAsync` when the hourly `governance-assembly-vote-lapse` job in `SectionJobs` does it). Any earlier request that sees the deadline passed closes inline before serving.
 - **Peek:** peek row + audit `AssemblyVotePeeked`, on an open vote only. A peek request that arrives once the vote is closed writes nothing and redirects to the ordinary results page, so the page's "this peek has been recorded" notice is never shown over an unlogged read.
 - **Ballots list (post-close):** audit `AssemblyBallotsViewed`.
