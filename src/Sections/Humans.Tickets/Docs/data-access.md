@@ -78,10 +78,10 @@ calls `ITicketCacheInvalidator.InvalidateAll()` since the warmed `Tickets.Orders
 projection carries the now-stale names/emails.
 
 `ComputeUserTicketCountAsync` matches a user's tickets by fetching the
-user's verified emails (`IUserEmailService.GetVerifiedEmailsForUserAsync`)
-and the valid attendee emails (`ITicketRepository.GetValidAttendeeEmailsAsync`),
-then intersecting them **in-memory** with `NormalizingEmailComparer` (the
-sync matcher's comparer) — no extra repository round-trip.
+valid attendee emails (`ITicketRepository.GetValidAttendeeEmailsAsync`) and
+looking each up **in-memory** in the same verified-email → user index the
+sync builds (`VerifiedEmailLookup` over `IUserServiceRead.GetAllUserInfosAsync`;
+an email verified by two users maps to nobody) — no extra repository round-trip.
 
 Email-to-user matching for ticket sync routes through
 `IUserServiceRead.GetAllUserInfosAsync` (see

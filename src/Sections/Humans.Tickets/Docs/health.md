@@ -114,8 +114,9 @@ The layout these shapes imply:
   raw string would silently split one person into two.
 - **`ComputeUserTicketCountAsync` falls back to verified emails** when `MatchedUserId` is null,
   because the sync only writes `MatchedUserId` on its own cadence and a member who just verified
-  an email expects the homepage to update now. The fallback compares with the sync's
-  `NormalizingEmailComparer` so the two agree. `HasEventTicketAsync` has no such fallback, so
+  an email expects the homepage to update now. The fallback reads the same verified-email →
+  user index the sync matches with (`VerifiedEmailLookup`: aliases folded, an email verified by
+  two users maps to nobody), so the two agree. `HasEventTicketAsync` has no such fallback, so
   `HasCurrentEventTicket` waits for the next sync.
 - **The caching decorator is a Singleton wrapping a Scoped inner** via `WithInner`, because
   `TrackedCache` slices must outlive a request while the repository must not.

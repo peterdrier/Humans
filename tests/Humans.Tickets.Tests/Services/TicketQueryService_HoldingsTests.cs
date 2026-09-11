@@ -24,7 +24,7 @@ public sealed class TicketQueryService_HoldingsTests
 
     private readonly ITicketRepository _ticketRepo = Substitute.For<ITicketRepository>();
     private readonly ITicketTransferRepository _transferRepo = Substitute.For<ITicketTransferRepository>();
-    private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly TicketQueryService Service;
 
     public TicketQueryService_HoldingsTests()
@@ -39,8 +39,8 @@ public sealed class TicketQueryService_HoldingsTests
             _transferRepo,
             Substitute.For<IBudgetServiceRead>(),
             Substitute.For<ICampaignService>(),
-            Substitute.For<IUserService>(),
-            _userEmails,
+            _users,
+            Substitute.For<IUserEmailService>(),
             Substitute.For<ITeamService>(),
             Substitute.For<IBurnSettingsService>(),
             Substitute.For<ITicketCacheInvalidator>(),
@@ -240,18 +240,39 @@ public sealed class TicketQueryService_HoldingsTests
         row.CheckedInAt.Should().Be(scannedAt);
     }
 
+    private static UserInfo UserWithVerifiedEmail(Guid id, string email) =>
+        new User { Id = id, DisplayName = id.ToString() }.ToUserInfo(
+            [new UserEmail { Id = Guid.NewGuid(), UserId = id, Email = email, IsVerified = true }]);
+
     [HumansFact]
-    public async Task TicketCountFallback_MatchesEmailsWithTheSyncComparer()
+    public async Task TicketCountFallback_MatchesEmailsWithTheSyncLookup()
     {
-        // No matched attendee rows, so the count falls back to verified-emails ↔ attendee
-        // emails. The comparer must be the sync matcher's (googlemail ↔ gmail, case), not a
-        // plain case-fold, or the count disagrees with what sync would match.
+        // No matched attendee rows, so the count falls back to attendee emails against the
+        // verified-email index. It must be the sync matcher's (googlemail ↔ gmail, case), not
+        // a plain case-fold, or the count disagrees with what sync would match.
         _ticketRepo.CountValidAttendeesMatchedToUserAsync(UserA).Returns(0);
-        _userEmails.GetVerifiedEmailsForUserAsync(UserA).Returns(["Ada@GoogleMail.com"]);
+        _users.GetAllUserInfosAsync().Returns([UserWithVerifiedEmail(UserA, "Ada@GoogleMail.com")]);
         _ticketRepo.GetValidAttendeeEmailsAsync().Returns(["ada@gmail.com", "other@example.com"]);
 
         var result = await Service.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
 
         result.TicketCount.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task TicketCountFallback_CountsNothingForAnAliasVerifiedByTwoUsers()
+    {
+        // The sync leaves such an attendee unmatched; the fallback must not hand the ticket
+        // to both users instead.
+        _ticketRepo.CountValidAttendeesMatchedToUserAsync(Arg.Any<Guid>()).Returns(0);
+        _users.GetAllUserInfosAsync().Returns([
+            UserWithVerifiedEmail(UserA, "ada@gmail.com"),
+            UserWithVerifiedEmail(UserB, "ada@googlemail.com"),
+        ]);
+        _ticketRepo.GetValidAttendeeEmailsAsync().Returns(["ada@gmail.com"]);
+
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        (await Service.GetUserTicketHoldingsAsync(UserA, ct)).TicketCount.Should().Be(0);
+        (await Service.GetUserTicketHoldingsAsync(UserB, ct)).TicketCount.Should().Be(0);
     }
 }

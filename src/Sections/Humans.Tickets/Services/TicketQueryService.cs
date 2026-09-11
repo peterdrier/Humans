@@ -1,7 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using NodaTime;
 using Humans.Base.Extensions;
-using Humans.Base.Helpers;
 using Humans.Gdpr.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
@@ -40,18 +39,14 @@ internal sealed class TicketQueryService(
         if (matchedCount > 0)
             return matchedCount;
 
-        // Fallback: verified-emails ↔ attendee-emails, compared in-memory with the same
-        // comparer the sync's matcher uses, so the count agrees with what sync would match.
-        var verifiedEmails = await userEmailService.GetVerifiedEmailsForUserAsync(userId);
-        if (verifiedEmails.Count == 0)
-            return 0;
-
+        // Fallback: attendee emails against the same verified-email → user index the sync
+        // matches with, so an alias verified by two users counts for neither, as in sync.
         var attendeeEmails = await ticketRepository.GetValidAttendeeEmailsAsync();
         if (attendeeEmails.Count == 0)
             return 0;
 
-        var verifiedSet = verifiedEmails.ToHashSet(NormalizingEmailComparer.Instance);
-        return attendeeEmails.Count(verifiedSet.Contains);
+        var (lookup, _) = VerifiedEmailLookup.Build(await userService.GetAllUserInfosAsync());
+        return attendeeEmails.Count(email => lookup.TryGetValue(email, out var owner) && owner == userId);
     }
 
     public async Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrdersAsync(CancellationToken ct = default)
