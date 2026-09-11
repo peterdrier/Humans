@@ -109,5 +109,20 @@ public enum NotificationSource
     RideshareInterestAccepted = 34,
 
     /// <summary>The posting owner declined a rideshare interest (neutral wording, no reason).</summary>
-    RideshareInterestDeclined = 35
+    RideshareInterestDeclined = 35,
+
+    /// <summary>A working group applied, was referred, or the Board owes it a decision.</summary>
+    WorkgroupRegistrationPending = 36,
+
+    /// <summary>A working group's registration was decided: registered, refused, withdrawn, ended or reactivated.</summary>
+    WorkgroupRegistrationDecided = 37,
+
+    /// <summary>The reporting rhythm: monthly update due, dormancy inquiry, or a status update requested.</summary>
+    WorkgroupReportingDue = 38,
+
+    /// <summary>A working group published a document, opened comments, answered a comment, or delivered.</summary>
+    WorkgroupDocumentActivity = 39,
+
+    /// <summary>The Board recorded its written disposition on a delivered document.</summary>
+    WorkgroupDispositionRecorded = 40
 }

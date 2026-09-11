@@ -119,6 +119,30 @@ public interface IGoogleSyncService : IGoogleSyncServiceRead, IApplicationServic
     Task<int> RequeueAllFailedOutboxEventsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Creates a new Drive subfolder named <paramref name="name"/> directly
+    /// under <paramref name="parentFolderId"/> and returns its Google file
+    /// id. Used by sections provisioning a Drive folder outside the
+    /// Teams-keyed <c>google_resources</c> path (e.g. Workgroups registering
+    /// a group). Respects the <c>GoogleDrive</c> <c>SyncMode</c> — throws
+    /// when sync is disabled or the Google API call fails, so a failed
+    /// creation is visible to the caller rather than returning a bogus id.
+    /// </summary>
+    [ExternalWrite]
+    Task<string> CreateSubfolderAsync(
+        string parentFolderId,
+        string name,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Requests an on-demand Drive access reconcile for one folder claimed
+    /// through the <see cref="IGoogleDriveAccessSource"/> fan-out (e.g.
+    /// Workgroups, after a membership or status change) — not the
+    /// Teams-keyed <c>google_resources</c> Drive path. Deferred: returns
+    /// once the reconcile is scheduled, not once it has run.
+    /// </summary>
+    Task RequestSyncAsync(string folderId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Enqueues <see cref="GoogleSyncOutboxEventTypes.AddUserToTeamResources"/> events
     /// for all teams the given user currently belongs to, bypassing the
     /// <c>GoogleEmailStatus.Rejected</c> (Humans.Users.Contracts) guard so an admin can force a

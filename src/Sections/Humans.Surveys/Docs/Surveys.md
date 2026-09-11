@@ -32,7 +32,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 | InvitationEmailSubject / InvitationEmailMessage | LocalizedText | optional custom initial-invitation copy; jsonb default `'{}'::jsonb` means use standard localized wording |
 | DefaultCulture | string | max 10; fallback culture for resolution |
 | AllowAnonymous | bool | gates the anonymity selector and the public slug |
-| Status | SurveyStatus | string-converted; Draft / Open / Closed |
+| Status | SurveyStatus | string-converted; Draft / PendingApproval / Open / Closed |
 | OpensAt / ClosesAt | Instant? | optional open/close window |
 | AudienceType | SurveyAudienceType? | string-converted; null = no audience |
 | AudienceTeamId | Guid? | bare FK → Team (when `AudienceType = Team`) — **FK only**, no nav, no cross-section EF FK constraint |
@@ -40,6 +40,8 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 | PublicSlug | string? | max 80; shareable answering link; identified surveys require sign-in and current audience access; null = invite-only |
 | PublicStartedCount | int | slug-path "started" funnel counter (no per-person anchor) |
 | CreatedByUserId | Guid | bare FK → User — **FK only**, no nav, resolved via `IUserServiceRead` |
+| SubmittedAt | Instant? | stamped entering PendingApproval; cleared on approve/reject |
+| RejectionNote | string? | max 4000; Board/Admin's note when a submission is rejected back to Draft; cleared on resubmit/approve |
 | CreatedAt / UpdatedAt | Instant | |
 
 **Indexes:** `Status`; `PublicSlug` unique (filtered to non-null).
@@ -131,7 +133,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 | Enum | Values |
 |------|--------|
-| SurveyStatus | Draft, Open, Closed |
+| SurveyStatus | Draft, PendingApproval, Open, Closed |
 | SurveyQuestionType | SingleChoice, MultiChoice, ShortText, LongText, Rating, Grid, Information |
 | GridSelectionMode | Single, Multiple |
 | ResponseAnonymity | Identified, CompletionTracked, Anonymous |
@@ -144,8 +146,13 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 ## Routing
 
-- **`/Survey/Admin/*`** — `SurveyAdminController` (BoardOrAdmin): index, builder, read-only preview,
-  preview-email-to-self, send, results, CSV/JSON export.
+- **`/Survey/Admin/*`** — `SurveyAdminController` (any Human with an approved profile, `PolicyNames.AppAccess`):
+  index (author-scoped: an author sees only their own surveys; Board/Admin see all), builder (create/edit
+  a Draft they own; submit for approval), preview, preview-email-to-self, send, results, CSV/JSON export.
+  Board/Admin only: open/close, send invitations, preview/send/results/export on surveys they don't own,
+  and the approval queue at `/Survey/Admin/Queue` (approve-and-send or reject-with-note a `PendingApproval`
+  submission). Per-survey ownership and the approval gate are enforced by `SurveyAuthorizationHandler`
+  (design-rules §11), never by view filtering.
   The builder's **Save and review recipients** action continues to the Send page; a Draft with
   net-new recipients can be opened there before the separate invitation confirmation.
 - **`/Survey/Answer?t={token}`** — `SurveyController` invited wizard (token carries identity; never the current principal).
@@ -156,7 +163,8 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 | Actor | Capabilities |
 |-------|--------------|
-| BoardOrAdmin (`PolicyNames.BoardOrAdmin`) | Author surveys (builder), open/close, send invitations, view results + Identified drill-down, export CSV/JSON. |
+| Author (any Human with an approved profile, `PolicyNames.AppAccess`) | Create/edit a Draft survey they own (may be Identified — not forced anonymous), submit it for Board/Admin approval, view their own results/export only after that survey closes. Cannot see or act on anyone else's survey; cannot see their own results before closing. |
+| BoardOrAdmin (`PolicyNames.BoardOrAdmin`) | Everything an author can do on every survey, plus: open/close directly, send invitations, the approval queue (approve-and-send or reject-with-note any `PendingApproval` submission), view results + Identified drill-down, export CSV/JSON, for every survey regardless of author. |
 | Invited member | Answer their invited survey via the tokenised link; choose anonymity tier when `AllowAnonymous`; resume an unfinished Identified draft. Reachable even for non-members (`Survey` is in `MembershipRequiredFilter.ExemptControllers`; answer actions are `[AllowAnonymous]`). |
 | Public visitor | Logged out: always Anonymous. Logged in: choose Identified, CompletionTracked, or Anonymous. All public-link responses use `InputMethod=Slug`. |
 | API (key auth) | List surveys, get a definition, read responses (`?format=md`/json) and aggregates via `/api/backdoor/surveys` — read-only. The controller lives in `Humans.Backdoor` and reads this section through `ISurveyAnalysisRead` (nobodies-collective/Humans#1128); the key is the caller's personal one, 401 when missing, unknown or revoked. |
@@ -209,6 +217,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 - **A choice option's `Value` must be non-empty.** `AnswerState.IsAnswered` (`SurveyWizardFlow.cs`) counts an answer only when the option value is non-empty, and `SurveyQuestionOption.Value` defaults to `string.Empty` — an option saved with a blank `Value` makes a required question unsubmittable and cannot be named by a `ShowIf` clause.
 - **Options carry no free-text flag.** `SurveyQuestionOption` is `Order` + `Value` + `Label` only, so "Other — please specify" is authored as a separate optional `ShortText` question gated by `ShowIf` on the `other` option value.
 - **The anonymity chooser pre-selects Identified.** The answer view model defaults `Anonymity` to `ResponseAnonymity.Identified` and `Survey/Intro.cshtml` marks that radio `checked`; the unlinked tiers are opt-in per respondent.
+- **Self-service authoring runs behind an approval gate (Workgroups §11 — Surveys never references Workgroups).** Any Human with an approved profile may create/edit a Draft survey they own. The status machine is exactly: Draft → PendingApproval (author, their own Draft only); PendingApproval → Open (Board/Admin only, via **Approve and send** — opens the survey and sends invitations in one step); PendingApproval → Draft (Board/Admin only, reject, requires a non-empty note stamped into `RejectionNote`). Board/Admin retain the pre-existing direct Draft → Open path (unaffected by this gate). `OpenAsync` refuses a `PendingApproval` survey — the only way out of that status is approve or reject, never the generic Open action. Every transition writes an audit entry (`AuditAction.SurveySubmittedForApproval` / `SurveyApproved` / `SurveyRejected`).
 - **Single-repo ownership.** Only `SurveyRepository` touches the six `survey_*` tables; a `survey_*` table appears in no other repository.
 - **Cross-domain refs are bare `Guid` FK columns** — no navigation properties, no `[Obsolete]` navs, and no cross-section EF FK constraints. Display data (creator/respondent names, recipient languages/emails) is stitched into DTOs by the service via `I…ServiceRead` interfaces.
 
@@ -221,16 +230,18 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 - Individual response submissions **cannot** be audit-logged (would re-link an anonymous answer to a time/actor).
 - Logged-out public-slug requests **cannot** carry identity or a non-Anonymous tier. Logged-in public requests cannot attach identity without the respondent's explicit tier choice; CompletionTracked/Anonymous response rows cannot carry identity. `/Survey/Admin` and `/Survey/Answer` **cannot** be claimed as a public slug.
 - The `LoggedInSince` audience **cannot** include GDPR-anonymized, deletion-pending, or merged users, or users in `Rejected`/`Suspended`/`AdminSuspended` state — status-walled accounts that can't reach the survey are never invited, even if they logged in after the cutoff (nobodies-collective/Humans#1099).
+- A non-owner, non-Board/Admin Human **cannot** view, edit, submit, view results/export, or discover in the index any survey they didn't author — enforced by `SurveyAuthorizationHandler` on direct GET/POST by id, not by view filtering. An author **cannot** see their own results/export before their survey closes, and **cannot** see anyone else's survey at all.
 
 ## Triggers
 
 - When a survey is created / updated / opened / closed, an audit entry is written via `IAuditLogService.LogAsync` (`AuditAction.SurveyCreated` / `SurveyUpdated` / `SurveyOpened` / `SurveyClosed`). `SurveyUpdated` descriptions name the changed fields (audience and slug transitions spelled out; question edits collapsed to counts).
+- When an author submits a Draft for approval, Board/Admin approve-and-send, or Board/Admin reject with a note, an audit entry is written (`AuditAction.SurveySubmittedForApproval` / `SurveyApproved` / `SurveyRejected`); the approve/reject entries carry the author as `relatedEntityId`/`AuditEntityTypes.User`.
 - When invitations are sent, net-new `SurveyInvitation` rows are created, each email is queued via `IEmailService.SendAsync` with `IEmailMessageFactory.SurveyInvitation` in the recipient's preferred language (`SentAt`+`LatestEmailStatus=Queued`; `Failed` on a synchronous throw), and one `AuditAction.SurveyInvitesSent` entry is logged.
 - When the daily `surveys-reminder` recurring job (`SendSurveyReminderJob`, cron `0 9 * * *`) runs, `SurveyService.SendDueRemindersAsync` queues one `IEmailMessageFactory.SurveyReminder` per due invitee, stamps `ReminderSentAt`, and logs `AuditAction.SurveyReminderSent` (job actor). The job touches no repository.
 - When a response is submitted, the response + answers and `Invitation.Completed` are written in one save for Identified/CompletionTracked. **No audit entry** is written for the submission.
 - When the invited wizard advances past the intro, `Invitation.Started` is set; on the public path, `Survey.PublicStartedCount` is incremented.
-- When the GDPR export runs, `SurveyService` (as `IUserDataContributor`) contributes the user's **Identified** responses under `GdprExportSections.SurveyResponses`.
-- When Article 17 erasure runs, `EraseForUserAsync` deletes the user's `SurveyInvitation` rows and severs their Identified responses from the person (`UserId`/`InvitationId` dropped, `Anonymity` forced to `Anonymous`) — the answers themselves survive as an anonymous data point in the survey's results (Art. 17(3)(b)), which is what `ErasureDeclaration` names as partial retention for `GdprExportSections.SurveyResponses`.
+- When the GDPR export runs, `SurveyService` (as `IUserDataContributor`) contributes the user's **Identified** responses under `GdprExportSections.SurveyResponses`, plus the surveys they authored (`CreatedByUserId`, any status, Drafts included) under `GdprExportSections.AuthoredSurveys` — authoring is open to every approved Human, so a member's own surveys and any Board rejection note are their personal data.
+- When Article 17 erasure runs, `EraseForUserAsync` deletes the user's `SurveyInvitation` rows and severs their Identified responses from the person (`UserId`/`InvitationId` dropped, `Anonymity` forced to `Anonymous`) — the answers themselves survive as an anonymous data point in the survey's results (Art. 17(3)(b)), which is what `ErasureDeclaration` names as partial retention for `GdprExportSections.SurveyResponses`. It also drops authorship on the surveys they wrote (`CreatedByUserId` to `Guid.Empty`, `RejectionNote` cleared) while the survey and its questions survive as the association's own record — partial retention for `GdprExportSections.AuthoredSurveys`.
 
 ## Cross-Section Dependencies
 

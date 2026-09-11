@@ -181,5 +181,8 @@ public class ICalFeedServiceTests
             if (_throw is not null) throw _throw;
             return Task.FromResult<IReadOnlyList<CalendarFeedItem>>(_items);
         }
+
+        public Task<IReadOnlyList<CalendarFeedItem>> GetPublicItemsForWindowAsync(Instant from, Instant to, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<CalendarFeedItem>>([]);
     }
 }

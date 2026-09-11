@@ -87,10 +87,17 @@ namespace Humans.Surveys.Data.Migrations
                     b.Property<int>("PublicStartedCount")
                         .HasColumnType("integer");
 
+                    b.Property<string>("RejectionNote")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
+
+                    b.Property<Instant?>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("ThankYou")
                         .IsRequired()

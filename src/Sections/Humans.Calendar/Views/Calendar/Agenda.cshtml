@@ -53,6 +53,7 @@
                 @foreach (var (day, o) in dayGroup.OrderBy(x => x.Occ.OccurrenceStartUtc))
                 {
                     var localStart = o.OccurrenceStartUtc.InZone(zone).LocalDateTime;
+                    var isCommunityItem = o.IsCommunityContribution();
                     <li class="mb-2">
                         <span class="badge bg-light text-dark me-2">
                             @switch (o.TimeLabelFor(day, zone))
@@ -68,8 +69,23 @@
                                     break;
                             }
                         </span>
-                        <a asp-action="Event" asp-route-id="@o.EventId">@o.Title</a>
-                        <small class="text-muted">— @o.OwningTeamName</small>
+                        @if (isCommunityItem)
+                        {
+                            if (o.Url is { } occUrl)
+                            {
+                                <a href="@occUrl" target="_blank" rel="noopener">@o.Title</a>
+                            }
+                            else
+                            {
+                                @o.Title
+                            }
+                            <small class="text-muted">— @o.Source</small>
+                        }
+                        else
+                        {
+                            <a asp-action="Event" asp-route-id="@o.EventId">@o.Title</a>
+                            <small class="text-muted">— @o.OwningTeamName</small>
+                        }
                         @if (!string.IsNullOrWhiteSpace(o.Location))
                         {
                             <div class="small text-muted ms-5">@o.Location</div>

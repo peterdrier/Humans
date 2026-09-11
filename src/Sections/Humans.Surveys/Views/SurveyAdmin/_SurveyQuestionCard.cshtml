@@ -10,34 +10,34 @@
        reference them before the first save — the service honours supplied ids. *@
     <input type="hidden" name="@(prefix).Id" value="@q.Id" class="question-id" />
     <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 py-2">
-        <strong class="small text-muted question-position-label">Question</strong>
+        <strong class="small text-muted question-position-label">@Localizer["Survey_Admin_Builder_QuestionLabel"]</strong>
         <div class="d-flex flex-wrap gap-1">
-            <div class="btn-group btn-group-sm" role="group" aria-label="Question order">
+            <div class="btn-group btn-group-sm" role="group" aria-label="@Localizer["Survey_Admin_Builder_QuestionOrderAriaLabel"]">
                 <button type="button" class="btn btn-outline-secondary move-question-up"
-                        title="Move question up" aria-label="Move question up">
+                        title="@Localizer["Survey_Admin_Builder_MoveQuestionUp"]" aria-label="@Localizer["Survey_Admin_Builder_MoveQuestionUp"]">
                     <i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
                 </button>
                 <button type="button" class="btn btn-outline-secondary move-question-down"
-                        title="Move question down" aria-label="Move question down">
+                        title="@Localizer["Survey_Admin_Builder_MoveQuestionDown"]" aria-label="@Localizer["Survey_Admin_Builder_MoveQuestionDown"]">
                     <i class="fa-solid fa-arrow-down" aria-hidden="true"></i>
                 </button>
             </div>
             <button type="button" class="btn btn-outline-secondary btn-sm add-question-after">
-                + Add below
+                @Localizer["Survey_Admin_Builder_AddBelow"]
             </button>
-            <button type="button" class="btn btn-outline-danger btn-sm remove-question">Remove</button>
+            <button type="button" class="btn btn-outline-danger btn-sm remove-question">@Localizer["Survey_Admin_Builder_RemoveQuestion"]</button>
         </div>
     </div>
     <div class="card-body">
         <div class="row g-2 mb-2">
             <div class="col-auto">
-                <label class="form-label small mb-0">Page</label>
+                <label class="form-label small mb-0">@Localizer["Survey_Admin_Builder_PageLabel"]</label>
                 <input type="number" min="1" name="@(prefix).PageNumber"
                        class="form-control form-control-sm question-page-number"
                        style="width:5rem;" value="@(q.PageNumber <= 0 ? 1 : q.PageNumber)" />
             </div>
             <div class="col-auto">
-                <label class="form-label small mb-0">Type</label>
+                <label class="form-label small mb-0">@Localizer["Survey_Admin_Builder_TypeLabel"]</label>
                 <select name="@(prefix).Type" class="form-select form-select-sm question-type">
                     @foreach (var t in Enum.GetValues<SurveyQuestionType>())
                     {
@@ -48,21 +48,21 @@
             <div class="col-auto align-self-end required-section">
                 <div class="form-check">
                     <input type="checkbox" class="form-check-input" id="req-@key" name="@(prefix).IsRequired" value="true" @(q.IsRequired ? "checked" : null) />
-                    <label class="form-check-label small" for="req-@key">Required</label>
+                    <label class="form-check-label small" for="req-@key">@Localizer["Survey_Admin_Builder_RequiredLabel"]</label>
                 </div>
             </div>
         </div>
 
-        <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.Prompt", "Prompt / optional information heading", q.Prompt))" />
-        <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.HelpText", "Help text / information Markdown", q.HelpText, Multiline: true, Markdown: true))" />
+        <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.Prompt", Localizer["Survey_Admin_Builder_Field_Prompt"], q.Prompt))" />
+        <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.HelpText", Localizer["Survey_Admin_Builder_Field_HelpText"], q.HelpText, Multiline: true, Markdown: true))" />
 
         <div class="information-section border-top pt-2 mt-2">
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <label class="form-label small fw-semibold mb-0">Images</label>
-                <span class="small text-muted">Up to five, shown as labelled tabs.</span>
+                <label class="form-label small fw-semibold mb-0">@Localizer["Survey_Admin_Builder_ImagesLabel"]</label>
+                <span class="small text-muted">@Localizer["Survey_Admin_Builder_ImagesHelp"]</span>
             </div>
             <div class="alert alert-warning small py-2">
-                Uploaded image URLs are public and may be shared outside this survey.
+                @Localizer["Survey_Admin_Builder_ImagesPublicWarning"]
             </div>
             <div class="information-images-container">
                 @foreach (var (image, i) in q.InformationImages.Select((image, i) => (image, i)))
@@ -76,27 +76,27 @@
                          model="@(new SurveyInformationImageRowModel(key, "__IKEY__", new SurveyInformationImageBuilderViewModel()))" />
             </template>
             <button type="button" class="btn btn-outline-secondary btn-sm add-information-image">
-                + Add image
+                @Localizer["Survey_Admin_Builder_AddImage"]
             </button>
         </div>
 
         <div class="rating-section border-top pt-2 mt-2">
             <div class="row g-2">
                 <div class="col-auto">
-                    <label class="form-label small mb-0">Rating min</label>
+                    <label class="form-label small mb-0">@Localizer["Survey_Admin_Builder_RatingMinLabel"]</label>
                     <input type="number" name="@(prefix).RatingMin" class="form-control form-control-sm" style="width:6rem;" value="@(q.RatingMin)" />
                 </div>
                 <div class="col-auto">
-                    <label class="form-label small mb-0">Rating max</label>
+                    <label class="form-label small mb-0">@Localizer["Survey_Admin_Builder_RatingMaxLabel"]</label>
                     <input type="number" name="@(prefix).RatingMax" class="form-control form-control-sm" style="width:6rem;" value="@(q.RatingMax)" />
                 </div>
             </div>
-            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.RatingMinLabel", "Min label", q.RatingMinLabel))" />
-            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.RatingMaxLabel", "Max label", q.RatingMaxLabel))" />
+            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.RatingMinLabel", Localizer["Survey_Admin_Builder_Field_MinLabel"], q.RatingMinLabel))" />
+            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.RatingMaxLabel", Localizer["Survey_Admin_Builder_Field_MaxLabel"], q.RatingMaxLabel))" />
         </div>
 
         <div class="options-section border-top pt-2 mt-2">
-            <label class="form-label small fw-semibold options-label">Options</label>
+            <label class="form-label small fw-semibold options-label">@Localizer["Survey_Admin_Builder_OptionsLabel"]</label>
             <div class="options-container">
                 @foreach (var (opt, i) in q.Options.Select((o, i) => (o, i)))
                 {
@@ -106,14 +106,13 @@
             <template class="option-template">
                 <partial name="_SurveyOptionRow" model="@(new SurveyOptionRowModel(key, "__OKEY__", new SurveyOptionBuilderViewModel()))" />
             </template>
-            <button type="button" class="btn btn-outline-secondary btn-sm add-option">+ Add option</button>
-            <div class="form-text grid-column-help">Grid questions support at most five columns.</div>
+            <button type="button" class="btn btn-outline-secondary btn-sm add-option">@Localizer["Survey_Admin_Builder_AddOption"]</button>
+            <div class="form-text grid-column-help">@Localizer["Survey_Admin_Builder_GridColumnHelp"]</div>
         </div>
 
         <div class="ranked-section border-top pt-2 mt-2">
             <div class="alert alert-info small py-2">
-                Ranked choice uses Ranked Pairs (Tideman) as the official method.
-                If two outcomes remain tied, the option listed earlier wins.
+                @Localizer["Survey_Admin_Builder_RankedMethodNote"]
             </div>
             @if (Model.RankedDefinitionLocked)
             {
@@ -124,15 +123,15 @@
                 <div class="form-check">
                     <input type="checkbox" class="form-check-input" id="ranked-equal-@key"
                            checked="@(q.RankedAllowEqualRanks ? "checked" : null)" disabled />
-                    <label class="form-check-label small" for="ranked-equal-@key">Allow equal ranks</label>
+                    <label class="form-check-label small" for="ranked-equal-@key">@Localizer["Survey_Admin_Builder_AllowEqualRanks"]</label>
                 </div>
                 <div class="form-check">
                     <input type="checkbox" class="form-check-input" id="ranked-reject-@key"
                            checked="@(q.RankedAllowReject ? "checked" : null)" disabled />
-                    <label class="form-check-label small" for="ranked-reject-@key">Include a Reject option</label>
+                    <label class="form-check-label small" for="ranked-reject-@key">@Localizer["Survey_Admin_Builder_IncludeReject"]</label>
                 </div>
                 <div class="form-text">
-                    Ranked candidates, order, and settings are locked because an answer has been saved.
+                    @Localizer["Survey_Admin_Builder_RankedLockedHelp"]
                 </div>
             }
             else
@@ -142,41 +141,41 @@
                            name="@(prefix).RankedAllowEqualRanks" value="true"
                            checked="@(q.RankedAllowEqualRanks ? "checked" : null)" />
                     <input type="hidden" name="@(prefix).RankedAllowEqualRanks" value="false" />
-                    <label class="form-check-label small" for="ranked-equal-@key">Allow equal ranks</label>
+                    <label class="form-check-label small" for="ranked-equal-@key">@Localizer["Survey_Admin_Builder_AllowEqualRanks"]</label>
                 </div>
                 <div class="form-check">
                     <input type="checkbox" class="form-check-input" id="ranked-reject-@key"
                            name="@(prefix).RankedAllowReject" value="true"
                            checked="@(q.RankedAllowReject ? "checked" : null)" />
                     <input type="hidden" name="@(prefix).RankedAllowReject" value="false" />
-                    <label class="form-check-label small" for="ranked-reject-@key">Include a Reject option</label>
+                    <label class="form-check-label small" for="ranked-reject-@key">@Localizer["Survey_Admin_Builder_IncludeReject"]</label>
                 </div>
             }
         </div>
 
         <div class="grid-section border-top pt-2 mt-2">
             <div class="mb-2">
-                <label class="form-label small fw-semibold" for="grid-mode-@key">Selections per row</label>
+                <label class="form-label small fw-semibold" for="grid-mode-@key">@Localizer["Survey_Admin_Builder_SelectionsPerRow"]</label>
                 <select id="grid-mode-@key" name="@(prefix).GridSelectionMode" class="form-select form-select-sm w-auto">
                     @if ((q.GridSelectionMode ?? GridSelectionMode.Single) == GridSelectionMode.Single)
                     {
-                        <option value="@GridSelectionMode.Single" selected>One choice</option>
+                        <option value="@GridSelectionMode.Single" selected>@Localizer["Survey_Admin_Builder_OneChoice"]</option>
                     }
                     else
                     {
-                        <option value="@GridSelectionMode.Single">One choice</option>
+                        <option value="@GridSelectionMode.Single">@Localizer["Survey_Admin_Builder_OneChoice"]</option>
                     }
                     @if (q.GridSelectionMode == GridSelectionMode.Multiple)
                     {
-                        <option value="@GridSelectionMode.Multiple" selected>Multiple choices</option>
+                        <option value="@GridSelectionMode.Multiple" selected>@Localizer["Survey_Admin_Builder_MultipleChoices"]</option>
                     }
                     else
                     {
-                        <option value="@GridSelectionMode.Multiple">Multiple choices</option>
+                        <option value="@GridSelectionMode.Multiple">@Localizer["Survey_Admin_Builder_MultipleChoices"]</option>
                     }
                 </select>
             </div>
-            <label class="form-label small fw-semibold">Rows</label>
+            <label class="form-label small fw-semibold">@Localizer["Survey_Admin_Builder_RowsLabel"]</label>
             <div class="grid-rows-container">
                 @foreach (var (row, i) in q.GridRows.Select((row, i) => (row, i)))
                 {
@@ -186,20 +185,20 @@
             <template class="grid-row-template">
                 <partial name="_SurveyGridRow" model="@(new SurveyGridRowModel(key, "__RKEY__", new SurveyGridRowBuilderViewModel()))" />
             </template>
-            <button type="button" class="btn btn-outline-secondary btn-sm add-grid-row">+ Add row</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm add-grid-row">@Localizer["Survey_Admin_Builder_AddRow"]</button>
         </div>
 
         <div class="border-top pt-2 mt-2 showif-section">
             <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-                <label class="form-label small fw-semibold mb-0">Visibility</label>
+                <label class="form-label small fw-semibold mb-0">@Localizer["Survey_Admin_Builder_VisibilityLabel"]</label>
                 <select class="form-select form-select-sm w-auto showif-mode">
-                    <option value="always" selected="@(q.ShowIfClauses.Count == 0 ? "selected" : null)">Always shown</option>
-                    <option value="conditional" selected="@(q.ShowIfClauses.Count > 0 ? "selected" : null)">Only shown when&hellip;</option>
+                    <option value="always" selected="@(q.ShowIfClauses.Count == 0 ? "selected" : null)">@Localizer["Survey_Admin_Builder_AlwaysShown"]</option>
+                    <option value="conditional" selected="@(q.ShowIfClauses.Count > 0 ? "selected" : null)">@Localizer["Survey_Admin_Builder_ConditionalShown"]</option>
                 </select>
                 <select name="@(prefix).ShowIfCombine" class="form-select form-select-sm w-auto showif-combine"
                         style="@(q.ShowIfClauses.Count > 1 ? "" : "display:none")">
-                    <option value="@BranchCombine.All" selected="@(q.ShowIfCombine == BranchCombine.All ? "selected" : null)">all conditions match</option>
-                    <option value="@BranchCombine.Any" selected="@(q.ShowIfCombine == BranchCombine.Any ? "selected" : null)">any condition matches</option>
+                    <option value="@BranchCombine.All" selected="@(q.ShowIfCombine == BranchCombine.All ? "selected" : null)">@Localizer["Survey_Admin_Builder_CombineAll"]</option>
+                    <option value="@BranchCombine.Any" selected="@(q.ShowIfCombine == BranchCombine.Any ? "selected" : null)">@Localizer["Survey_Admin_Builder_CombineAny"]</option>
                 </select>
             </div>
             <div class="showif-clauses" style="@(q.ShowIfClauses.Count == 0 ? "display:none" : "")">
@@ -212,8 +211,8 @@
                 <template class="clause-template">
                     <partial name="_SurveyBranchClauseRow" model="@(new SurveyBranchClauseRowModel(key, "__CKEY__", new SurveyBranchClauseBuilderViewModel()))" />
                 </template>
-                <button type="button" class="btn btn-outline-secondary btn-sm add-clause">+ Add condition</button>
-                <div class="form-text">Conditions may only reference earlier questions (checked on save).</div>
+                <button type="button" class="btn btn-outline-secondary btn-sm add-clause">@Localizer["Survey_Admin_Builder_AddCondition"]</button>
+                <div class="form-text">@Localizer["Survey_Admin_Builder_ConditionsHelp"]</div>
             </div>
         </div>
     </div>

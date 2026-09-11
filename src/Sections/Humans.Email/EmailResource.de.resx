@@ -390,4 +390,32 @@
 &lt;p&gt;&lt;a href="{2}"&gt;Umfrage öffnen&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Vielen Dank,&lt;br/&gt;Das Nobodies Collective&lt;/p&gt;</value></data>
   <data name="Email_SurveyReminder_Subject" xml:space="preserve"><value>Erinnerung: {0}</value></data>
+
+  <!-- ======================== -->
+  <!-- Workgroup notice         -->
+  <!-- ======================== -->
+  <data name="Email_WorkgroupNotice_Greeting_Named" xml:space="preserve"><value>&lt;p&gt;Hallo {0},&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Greeting_Generic" xml:space="preserve"><value>&lt;p&gt;Hallo,&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Applied_Subject" xml:space="preserve"><value>Neuer Antrag für Arbeitsgruppe: {0}</value></data>
+  <data name="Email_WorkgroupNotice_Applied_Body" xml:space="preserve"><value>&lt;h2&gt;Neuer Antrag für Arbeitsgruppe&lt;/h2&gt;{0}&lt;p&gt;Für &lt;strong&gt;{1}&lt;/strong&gt; wurde ein neuer Antrag für eine Arbeitsgruppe eingereicht und wartet auf die Prüfung durch den Vorstand.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Arbeitsgruppe ansehen&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Referred_Subject" xml:space="preserve"><value>Antrag für Arbeitsgruppe weitergeleitet: {0}</value></data>
+  <data name="Email_WorkgroupNotice_Referred_Body" xml:space="preserve"><value>&lt;h2&gt;Antrag für Arbeitsgruppe weitergeleitet&lt;/h2&gt;{0}&lt;p&gt;Der Antrag für die Arbeitsgruppe &lt;strong&gt;{1}&lt;/strong&gt; wurde an den Vorstand weitergeleitet.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Arbeitsgruppe ansehen&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Registered_Subject" xml:space="preserve"><value>Arbeitsgruppe registriert: {0}</value></data>
+  <data name="Email_WorkgroupNotice_Registered_Body" xml:space="preserve"><value>&lt;h2&gt;Arbeitsgruppe registriert&lt;/h2&gt;{0}&lt;p&gt;Die Arbeitsgruppe &lt;strong&gt;{1}&lt;/strong&gt; wurde registriert.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Arbeitsgruppe ansehen&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Refused_Subject" xml:space="preserve"><value>Antrag für Arbeitsgruppe nicht genehmigt: {0}</value></data>
+  <data name="Email_WorkgroupNotice_Refused_Body" xml:space="preserve"><value>&lt;h2&gt;Antrag für Arbeitsgruppe nicht genehmigt&lt;/h2&gt;{0}&lt;p&gt;Der Antrag für &lt;strong&gt;{1}&lt;/strong&gt; wurde nicht genehmigt.&lt;/p&gt;{2}&lt;p&gt;&lt;a href="{3}"&gt;Arbeitsgruppe ansehen&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Withdrawn_Subject" xml:space="preserve"><value>Arbeitsgruppe zurückgezogen: {0}</value></data>
+  <data name="Email_WorkgroupNotice_Withdrawn_Body" xml:space="preserve"><value>&lt;h2&gt;Arbeitsgruppe zurückgezogen&lt;/h2&gt;{0}&lt;p&gt;Die Arbeitsgruppe &lt;strong&gt;{1}&lt;/strong&gt; wurde zurückgezogen.&lt;/p&gt;{2}&lt;p&gt;&lt;a href="{3}"&gt;Arbeitsgruppe ansehen&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Ended_Subject" xml:space="preserve"><value>Arbeitsgruppe beendet: {0}</value></data>
+  <data name="Email_WorkgroupNotice_Ended_Body" xml:space="preserve"><value>&lt;h2&gt;Arbeitsgruppe beendet&lt;/h2&gt;{0}&lt;p&gt;Die Arbeitsgruppe &lt;strong&gt;{1}&lt;/strong&gt; wurde beendet.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Arbeitsgruppe ansehen&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Reactivated_Subject" xml:space="preserve"><value>Arbeitsgruppe reaktiviert: {0}</value></data>
+  <data name="Email_WorkgroupNotice_Reactivated_Body" xml:space="preserve"><value>&lt;h2&gt;Arbeitsgruppe reaktiviert&lt;/h2&gt;{0}&lt;p&gt;Die Arbeitsgruppe &lt;strong&gt;{1}&lt;/strong&gt; wurde reaktiviert.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Arbeitsgruppe ansehen&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_CoordinatorsChanged_Subject" xml:space="preserve"><value>Koordinatoren geändert: {0}</value></data>
+  <data name="Email_WorkgroupNotice_CoordinatorsChanged_Body" xml:space="preserve"><value>&lt;h2&gt;Koordinatoren geändert&lt;/h2&gt;{0}&lt;p&gt;Die Koordinatoren von &lt;strong&gt;{1}&lt;/strong&gt; haben sich geändert.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Arbeitsgruppe ansehen&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_DormancyInquiry_Subject" xml:space="preserve"><value>Arbeitsgruppe ruhig: {0}</value></data>
+  <data name="Email_WorkgroupNotice_DormancyInquiry_Body" xml:space="preserve"><value>&lt;h2&gt;Arbeitsgruppe ruhig&lt;/h2&gt;{0}&lt;p&gt;Die Arbeitsgruppe &lt;strong&gt;{1}&lt;/strong&gt; hatte seit {2} Tagen keine Aktivität. Bitte veröffentlichen Sie ein Update, sonst könnte sie als inaktiv markiert werden.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Arbeitsgruppe ansehen&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Delivered_Subject" xml:space="preserve"><value>Arbeitsgruppe hat geliefert: {0}</value></data>
+  <data name="Email_WorkgroupNotice_Delivered_Body" xml:space="preserve"><value>&lt;h2&gt;Arbeitsgruppe hat geliefert&lt;/h2&gt;{0}&lt;p&gt;Die Arbeitsgruppe &lt;strong&gt;{1}&lt;/strong&gt; hat ihr Ergebnis geliefert: &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Arbeitsgruppe ansehen&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_DispositionRecorded_Subject" xml:space="preserve"><value>Vorstandsentscheidung erfasst: {0}</value></data>
+  <data name="Email_WorkgroupNotice_DispositionRecorded_Body" xml:space="preserve"><value>&lt;h2&gt;Vorstandsentscheidung erfasst&lt;/h2&gt;{0}&lt;p&gt;Der Vorstand hat seine Entscheidung für &lt;strong&gt;{1}&lt;/strong&gt; erfasst: {2}.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Arbeitsgruppe ansehen&lt;/a&gt;&lt;/p&gt;</value></data>
 </root>

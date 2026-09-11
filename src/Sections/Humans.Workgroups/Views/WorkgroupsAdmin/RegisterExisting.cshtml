@@ -1,0 +1,87 @@
+@model RegisterExistingViewModel
+@{
+    ViewData["Title"] = "Register an existing group";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">Workgroups</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@ViewData["Title"]</li>
+    </ol>
+</nav>
+
+<h1>@ViewData["Title"]</h1>
+<p class="text-muted">Bootstraps a group that already exists: applies on its behalf and registers it Active immediately, backdated to when it really started.</p>
+
+<div class="card" style="max-width: 760px;">
+    <div class="card-body">
+        <form method="post" asp-action="RegisterExisting">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="Application.Name" class="form-label">Name</label>
+                <input asp-for="Application.Name" class="form-control" maxlength="200" />
+                <span asp-validation-for="Application.Name" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Application.Purpose" class="form-label">Purpose</label>
+                <markdown-editor asp-for="Application.Purpose" rows="6" />
+                <span asp-validation-for="Application.Purpose" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Application.Deliverable" class="form-label">Deliverable (one line)</label>
+                <input asp-for="Application.Deliverable" class="form-control" maxlength="500" />
+                <span asp-validation-for="Application.Deliverable" class="text-danger"></span>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label asp-for="Application.DeliverableKind" class="form-label">Deliverable kind</label>
+                    <select asp-for="Application.DeliverableKind" class="form-select">
+                        @foreach (var value in Enum.GetValues<WorkgroupDeliverableKind>())
+                        {
+                            <option value="@value">@value</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="Application.Audience" class="form-label">Audience</label>
+                    <select asp-for="Application.Audience" class="form-select">
+                        @foreach (var value in Enum.GetValues<WorkgroupAudience>())
+                        {
+                            <option value="@value">@value</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="Application.TargetDate" class="form-label">Target date</label>
+                    <input asp-for="Application.TargetDate" type="date" class="form-control" />
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Application.DiscordChannelUrl" class="form-label">Discord channel URL</label>
+                <input asp-for="Application.DiscordChannelUrl" class="form-control" maxlength="500" />
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label asp-for="CoordinatorUserId" class="form-label">Coordinator user id</label>
+                    <vc:human-search field-name="CoordinatorUserId" selected-user-id="Model.CoordinatorUserId" scope="Name" placeholder="Search for a coordinator" />
+                    <span asp-validation-for="CoordinatorUserId" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="RegisteredOn" class="form-label">Registered on (backdated)</label>
+                    <input asp-for="RegisteredOn" type="date" class="form-control" />
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Register</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>

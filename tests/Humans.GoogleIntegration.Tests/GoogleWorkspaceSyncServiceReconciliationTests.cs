@@ -113,6 +113,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
             Substitute.For<IGoogleSyncLogService>(),
             _syncSettingsService,
             _removalNotifications,
+            Substitute.For<IGoogleDriveAccessSyncScheduler>(),
             options,
             Clock,
             serviceProvider,

@@ -390,4 +390,32 @@
 &lt;p&gt;&lt;a href="{2}"&gt;Ouvrir le sondage&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Merci,&lt;br/&gt;Nobodies Collective&lt;/p&gt;</value></data>
   <data name="Email_SurveyReminder_Subject" xml:space="preserve"><value>Rappel : {0}</value></data>
+
+  <!-- ======================== -->
+  <!-- Workgroup notice         -->
+  <!-- ======================== -->
+  <data name="Email_WorkgroupNotice_Greeting_Named" xml:space="preserve"><value>&lt;p&gt;Bonjour {0},&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Greeting_Generic" xml:space="preserve"><value>&lt;p&gt;Bonjour,&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Applied_Subject" xml:space="preserve"><value>Nouvelle demande de groupe de travail : {0}</value></data>
+  <data name="Email_WorkgroupNotice_Applied_Body" xml:space="preserve"><value>&lt;h2&gt;Nouvelle demande de groupe de travail&lt;/h2&gt;{0}&lt;p&gt;Une nouvelle demande de groupe de travail pour &lt;strong&gt;{1}&lt;/strong&gt; a été soumise et attend l'examen du Conseil.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Voir le groupe de travail&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Referred_Subject" xml:space="preserve"><value>Demande de groupe de travail renvoyée : {0}</value></data>
+  <data name="Email_WorkgroupNotice_Referred_Body" xml:space="preserve"><value>&lt;h2&gt;Demande de groupe de travail renvoyée&lt;/h2&gt;{0}&lt;p&gt;La demande de groupe de travail pour &lt;strong&gt;{1}&lt;/strong&gt; a été renvoyée au Conseil.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Voir le groupe de travail&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Registered_Subject" xml:space="preserve"><value>Groupe de travail enregistré : {0}</value></data>
+  <data name="Email_WorkgroupNotice_Registered_Body" xml:space="preserve"><value>&lt;h2&gt;Groupe de travail enregistré&lt;/h2&gt;{0}&lt;p&gt;Le groupe de travail &lt;strong&gt;{1}&lt;/strong&gt; a été enregistré.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Voir le groupe de travail&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Refused_Subject" xml:space="preserve"><value>Demande de groupe de travail refusée : {0}</value></data>
+  <data name="Email_WorkgroupNotice_Refused_Body" xml:space="preserve"><value>&lt;h2&gt;Demande de groupe de travail refusée&lt;/h2&gt;{0}&lt;p&gt;La demande pour &lt;strong&gt;{1}&lt;/strong&gt; n'a pas été approuvée.&lt;/p&gt;{2}&lt;p&gt;&lt;a href="{3}"&gt;Voir le groupe de travail&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Withdrawn_Subject" xml:space="preserve"><value>Groupe de travail retiré : {0}</value></data>
+  <data name="Email_WorkgroupNotice_Withdrawn_Body" xml:space="preserve"><value>&lt;h2&gt;Groupe de travail retiré&lt;/h2&gt;{0}&lt;p&gt;Le groupe de travail &lt;strong&gt;{1}&lt;/strong&gt; a été retiré.&lt;/p&gt;{2}&lt;p&gt;&lt;a href="{3}"&gt;Voir le groupe de travail&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Ended_Subject" xml:space="preserve"><value>Groupe de travail terminé : {0}</value></data>
+  <data name="Email_WorkgroupNotice_Ended_Body" xml:space="preserve"><value>&lt;h2&gt;Groupe de travail terminé&lt;/h2&gt;{0}&lt;p&gt;Le groupe de travail &lt;strong&gt;{1}&lt;/strong&gt; est terminé.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Voir le groupe de travail&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Reactivated_Subject" xml:space="preserve"><value>Groupe de travail réactivé : {0}</value></data>
+  <data name="Email_WorkgroupNotice_Reactivated_Body" xml:space="preserve"><value>&lt;h2&gt;Groupe de travail réactivé&lt;/h2&gt;{0}&lt;p&gt;Le groupe de travail &lt;strong&gt;{1}&lt;/strong&gt; a été réactivé.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Voir le groupe de travail&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_CoordinatorsChanged_Subject" xml:space="preserve"><value>Coordinateurs modifiés : {0}</value></data>
+  <data name="Email_WorkgroupNotice_CoordinatorsChanged_Body" xml:space="preserve"><value>&lt;h2&gt;Coordinateurs modifiés&lt;/h2&gt;{0}&lt;p&gt;Les coordinateurs de &lt;strong&gt;{1}&lt;/strong&gt; ont changé.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Voir le groupe de travail&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_DormancyInquiry_Subject" xml:space="preserve"><value>Groupe de travail inactif : {0}</value></data>
+  <data name="Email_WorkgroupNotice_DormancyInquiry_Body" xml:space="preserve"><value>&lt;h2&gt;Groupe de travail inactif&lt;/h2&gt;{0}&lt;p&gt;Le groupe de travail &lt;strong&gt;{1}&lt;/strong&gt; n'a eu aucune activité depuis {2} jours. Merci de publier une mise à jour, sinon il pourrait être marqué comme inactif.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Voir le groupe de travail&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_Delivered_Subject" xml:space="preserve"><value>Groupe de travail livré : {0}</value></data>
+  <data name="Email_WorkgroupNotice_Delivered_Body" xml:space="preserve"><value>&lt;h2&gt;Groupe de travail livré&lt;/h2&gt;{0}&lt;p&gt;Le groupe de travail &lt;strong&gt;{1}&lt;/strong&gt; a livré son résultat : &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Voir le groupe de travail&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Email_WorkgroupNotice_DispositionRecorded_Subject" xml:space="preserve"><value>Décision du Conseil enregistrée : {0}</value></data>
+  <data name="Email_WorkgroupNotice_DispositionRecorded_Body" xml:space="preserve"><value>&lt;h2&gt;Décision du Conseil enregistrée&lt;/h2&gt;{0}&lt;p&gt;Le Conseil a enregistré sa décision pour &lt;strong&gt;{1}&lt;/strong&gt; : {2}.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Voir le groupe de travail&lt;/a&gt;&lt;/p&gt;</value></data>
 </root>

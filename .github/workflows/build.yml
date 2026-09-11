@@ -66,6 +66,7 @@ env:
     MailerLiteDbContext:src/Sections/Humans.MailerLite
     BackdoorDbContext:src/Sections/Humans.Backdoor
     RideshareDbContext:src/Sections/Humans.Rideshare
+    WorkgroupsDbContext:src/Sections/Humans.Workgroups
 
 jobs:
   build:

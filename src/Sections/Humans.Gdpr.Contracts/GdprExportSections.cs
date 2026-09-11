@@ -51,6 +51,7 @@ public static class GdprExportSections
     public const string SepaPayouts = "SepaPayouts";
     public const string TeamEarlyEntry = "TeamEarlyEntry";
     public const string SurveyResponses = "SurveyResponses";
+    public const string AuthoredSurveys = "AuthoredSurveys";
     public const string GateScans = "GateScans";
     public const string GoogleSyncLog = "GoogleSyncLog";
     public const string EmailOutbox = "EmailOutbox";
@@ -67,4 +68,9 @@ public static class GdprExportSections
     public const string RideshareTrips = "RideshareTrips";
     public const string RideshareRequests = "RideshareRequests";
     public const string RideshareInterests = "RideshareInterests";
+    public const string WorkgroupMemberships = "WorkgroupMemberships";
+    public const string WorkgroupLogEntries = "WorkgroupLogEntries";
+    public const string WorkgroupMeetings = "WorkgroupMeetings";
+    public const string WorkgroupDocuments = "WorkgroupDocuments";
+    public const string WorkgroupComments = "WorkgroupComments";
 }

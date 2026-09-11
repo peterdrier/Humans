@@ -1,0 +1,5 @@
+version: 1
+inbox:
+  - added: 2026-09-11
+    what: "SetRootDriveFolderIdAsync (src/Sections/Humans.Workgroups/Services/WorkgroupService.cs) replaces SettingKeys.WorkgroupsRootDriveFolderId without reconciling the folder it replaces: WorkgroupDriveAccessSource stops claiming the old root, and both targeted and nightly reconciliation enumerate current claims only, so the direct Viewer permissions already granted on the old root are never revoked. A fix needs the previous id kept long enough to reconcile one empty claim for it. Found by Codex review round 4 on peterdrier/Humans#1650."
+    review: panel

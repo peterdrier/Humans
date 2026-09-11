@@ -47,6 +47,22 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
     /// <summary>Transitions Open → Closed.</summary>
     Task CloseAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default);
 
+    // ── Self-service approval gate (Workgroups design §11) ───────────────────
+    /// <summary>Survey list scoped to the viewer: Board/Admin see every survey; anyone else sees only their own.</summary>
+    Task<IReadOnlyList<SurveyAdminSummary>> GetAdminSummariesAsync(SurveyViewer viewer, CancellationToken ct = default);
+
+    /// <summary>Surveys awaiting Board/Admin approval, oldest submission first, with the author's display name.</summary>
+    Task<IReadOnlyList<SurveyPendingApprovalItem>> GetPendingApprovalQueueAsync(CancellationToken ct = default);
+
+    /// <summary>Transitions Draft → PendingApproval. Author-only — enforced here as the state machine's source of truth.</summary>
+    Task SubmitForApprovalAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>Transitions PendingApproval → Open and sends the invitation wave in the same step. Board/Admin only — enforced here.</summary>
+    Task<SendResult> ApproveAndSendAsync(Guid surveyId, SurveyViewer viewer, CancellationToken ct = default);
+
+    /// <summary>Transitions PendingApproval → Draft, recording the Board's note. Board/Admin only — enforced here.</summary>
+    Task RejectAsync(Guid surveyId, SurveyViewer viewer, string note, CancellationToken ct = default);
+
     // ── Invitations ────────────────────────────────────────────────────────
     /// <summary>
     /// Resolves the survey's audience and returns the number of net-new recipients who would receive
@@ -219,8 +235,35 @@ internal enum SurveyResultsScope
 
 // ── Authoring DTOs (co-located) ─────────────────────────────────────────────
 
-/// <summary>A survey loaded for editing: identity + status + the editable graph.</summary>
-internal sealed record SurveyDetail(Guid Id, SurveyStatus Status, SurveyEditInput Editable);
+/// <summary>A survey loaded for editing: identity + status + owner + the editable graph.</summary>
+internal sealed record SurveyDetail(
+    Guid Id,
+    SurveyStatus Status,
+    SurveyEditInput Editable,
+    Guid CreatedByUserId = default,
+    string? RejectionNote = null);
+
+/// <summary>The current viewer for author-scoped survey visibility: Board/Admin see every survey.</summary>
+internal readonly record struct SurveyViewer(Guid UserId, bool IsBoardOrAdmin);
+
+/// <summary>One row on the (author-scoped) admin index.</summary>
+internal sealed record SurveyAdminSummary(
+    Guid Id,
+    string Title,
+    SurveyStatus Status,
+    int InvitedCount,
+    int ResponseCount,
+    Guid CreatedByUserId,
+    Instant? SubmittedAt,
+    string? RejectionNote);
+
+/// <summary>One row on the Board/Admin approval queue.</summary>
+internal sealed record SurveyPendingApprovalItem(
+    Guid Id,
+    string Title,
+    Guid CreatedByUserId,
+    string CreatedByName,
+    Instant? SubmittedAt);
 
 /// <summary>Everything the builder edits. Question/option <c>Id</c> null = new (assigned on save).</summary>
 internal sealed record SurveyEditInput(

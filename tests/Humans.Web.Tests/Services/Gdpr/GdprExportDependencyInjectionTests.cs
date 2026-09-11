@@ -84,7 +84,9 @@ public class GdprExportDependencyInjectionTests
         SectionType("Humans.Email.Services.EmailOutboxService"),
         SectionType("Humans.Backdoor.Services.BackdoorApiKeyService"),
         // The caching decorator, not RideshareService: erasure empties cached rows.
-        SectionType("Humans.Rideshare.Services.CachingRideshareService")
+        SectionType("Humans.Rideshare.Services.CachingRideshareService"),
+        // Likewise the decorator, not WorkgroupService: erasure and the merge fold change cached rows.
+        SectionType("Humans.Workgroups.Services.CachingWorkgroupService")
     ];
 
     /// <summary>

@@ -1,0 +1,72 @@
+@model WorkgroupFormViewModel
+@{
+    ViewData["Title"] = Localizer["Workgroups_ApplyTitle"];
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Workgroups_Title"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@ViewData["Title"]</li>
+    </ol>
+</nav>
+
+<h1>@ViewData["Title"]</h1>
+<p class="text-muted">@Localizer["Workgroups_ApplyIntro"]</p>
+
+<div class="card" style="max-width: 760px;">
+    <div class="card-body">
+        <form method="post" asp-action="Apply">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="Name" class="form-label">@Localizer["Workgroups_Field_Name"]</label>
+                <input asp-for="Name" class="form-control" maxlength="200" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Purpose" class="form-label">@Localizer["Workgroups_Field_Purpose"]</label>
+                <markdown-editor asp-for="Purpose" rows="6" />
+                <span asp-validation-for="Purpose" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Deliverable" class="form-label">@Localizer["Workgroups_Field_Deliverable"]</label>
+                <input asp-for="Deliverable" class="form-control" maxlength="500" />
+                <div class="form-text">@Localizer["Workgroups_Field_DeliverableHelp"]</div>
+                <span asp-validation-for="Deliverable" class="text-danger"></span>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label asp-for="DeliverableKind" class="form-label">@Localizer["Workgroups_Field_DeliverableKind"]</label>
+                    <select asp-for="DeliverableKind" class="form-select" asp-items="@Localizer.EnumSelectItems<WorkgroupDeliverableKind>()"></select>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="Audience" class="form-label">@Localizer["Workgroups_Field_Audience"]</label>
+                    <select asp-for="Audience" class="form-select" asp-items="@Localizer.EnumSelectItems<WorkgroupAudience>()"></select>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="TargetDate" class="form-label">@Localizer["Workgroups_Field_TargetDate"]</label>
+                    <input asp-for="TargetDate" type="date" class="form-control" />
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="DiscordChannelUrl" class="form-label">@Localizer["Workgroups_Field_DiscordChannelUrl"]</label>
+                <input asp-for="DiscordChannelUrl" class="form-control" maxlength="500" placeholder="https://discord.com/channels/…" />
+                <span asp-validation-for="DiscordChannelUrl" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="SecondCoordinatorUserId" class="form-label">@Localizer["Workgroups_Field_SecondCoordinator"]</label>
+                <vc:human-search field-name="SecondCoordinatorUserId" selected-user-id="Model.SecondCoordinatorUserId" scope="Name" placeholder="@Localizer["Workgroups_Field_SecondCoordinator"].Value" />
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">@Localizer["Workgroups_Apply"]</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">@SharedLocalizer["Common_Cancel"]</a>
+            </div>
+        </form>
+    </div>
+</div>

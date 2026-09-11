@@ -25,6 +25,11 @@ namespace Humans.Surveys.Tests.Services;
 public class SurveyServiceTests
 {
     private readonly ISurveyRepository _repo = Substitute.For<ISurveyRepository>();
+
+    /// <summary>The authored-surveys export query answers empty unless a test says otherwise.</summary>
+    private void NoAuthoredSurveys(Guid userId) =>
+        _repo.GetSurveysAuthoredByAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<Survey>());
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 6, 4, 12, 0));
     private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
@@ -808,16 +813,22 @@ public class SurveyServiceTests
 
     // ── Invitations ──────────────────────────────────────────────────────────
 
-    private static Survey SurveyWith(SurveyStatus status, SurveyAudienceType? audience, Guid? teamId, Instant? loggedInSince = null) => new()
-    {
-        Id = Guid.NewGuid(),
-        Title = L("My Survey"),
-        DefaultCulture = "en",
-        Status = status,
-        AudienceType = audience,
-        AudienceTeamId = teamId,
-        AudienceLoggedInSince = loggedInSince,
-    };
+    private static Survey SurveyWith(
+        SurveyStatus status,
+        SurveyAudienceType? audience,
+        Guid? teamId,
+        Instant? loggedInSince = null,
+        Guid? createdByUserId = null) => new()
+        {
+            Id = Guid.NewGuid(),
+            Title = L("My Survey"),
+            DefaultCulture = "en",
+            Status = status,
+            AudienceType = audience,
+            AudienceTeamId = teamId,
+            AudienceLoggedInSince = loggedInSince,
+            CreatedByUserId = createdByUserId ?? Guid.Empty,
+        };
 
     private static UserInfo UserWithLastLogin(Guid id, Instant? lastLogin, UserState state = UserState.Active) =>
         UserInfo.Create(
@@ -3474,11 +3485,12 @@ public class SurveyServiceTests
             GridAnswer(gridId, ("removed-row", ["removed-column"])));
         _repo.GetIdentifiedResponsesForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<SurveyResponse> { response });
+        NoAuthoredSurveys(userId);
 
         var slices = await CreateService().ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
 
-        var slice = slices.Should().ContainSingle().Subject;
-        slice.SectionName.Should().Be(GdprExportSections.SurveyResponses);
+        var slice = slices.Single(s => string.Equals(
+            s.SectionName, GdprExportSections.SurveyResponses, StringComparison.Ordinal));
         slice.Data.Should().NotBeNull();
 
         // The payload serialises the user's response (title + answers). Round-trip through JSON to assert shape.
@@ -3497,11 +3509,12 @@ public class SurveyServiceTests
         var userId = Guid.NewGuid();
         _repo.GetIdentifiedResponsesForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<SurveyResponse>());
+        NoAuthoredSurveys(userId);
 
         var slices = await CreateService().ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
 
-        var slice = slices.Should().ContainSingle().Subject;
-        slice.SectionName.Should().Be(GdprExportSections.SurveyResponses);
+        var slice = slices.Single(s => string.Equals(
+            s.SectionName, GdprExportSections.SurveyResponses, StringComparison.Ordinal));
         // Collection sections emit [] (not null) when the user has no records.
         var json = System.Text.Json.JsonSerializer.Serialize(slice.Data);
         json.Should().Be("[]");
@@ -3523,13 +3536,49 @@ public class SurveyServiceTests
             _clock.GetCurrentInstant(), userId);
         _repo.GetIdentifiedResponsesForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<SurveyResponse> { one });
+        NoAuthoredSurveys(userId);
 
         var slices = await CreateService().ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
 
-        // Exactly one slice, and it carries exactly the single response the repo surfaced.
-        slices.Should().ContainSingle();
+        // The responses slice carries exactly the single response the repo surfaced.
+        slices.Single(s => string.Equals(
+            s.SectionName, GdprExportSections.SurveyResponses, StringComparison.Ordinal))
+            .Should().NotBeNull();
         await _repo.Received(1).GetIdentifiedResponsesForUserAsync(userId, Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().GetResponsesForResultsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ContributeForUserAsync_exports_the_surveys_this_person_authored()
+    {
+        var userId = Guid.NewGuid();
+        _repo.GetIdentifiedResponsesForUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<SurveyResponse>());
+
+        var mine = SurveyWith(SurveyStatus.Draft, null, null);
+        mine.Title = L("My Draft");
+        mine.RejectionNote = "Needs a clearer audience";
+        _repo.GetSurveysAuthoredByAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<Survey> { mine });
+
+        var slices = await CreateService().ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
+
+        var slice = slices.Single(s => string.Equals(
+            s.SectionName, GdprExportSections.AuthoredSurveys, StringComparison.Ordinal));
+        var json = System.Text.Json.JsonSerializer.Serialize(slice.Data);
+        json.Should().Contain("My Draft");
+        json.Should().Contain("Needs a clearer audience");
+    }
+
+    [HumansFact]
+    public async Task EraseForUserAsync_drops_authorship_as_well_as_responses()
+    {
+        var userId = Guid.NewGuid();
+
+        await CreateService().EraseForUserAsync(userId, TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).AnonymizeResponsesForUserAsync(userId, Arg.Any<CancellationToken>());
+        await _repo.Received(1).ClearAuthorshipForUserAsync(userId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -3830,5 +3879,273 @@ public class SurveyServiceTests
             .RejectionCount.Should().Be(1);
         ranked.Candidates.Single(candidate => string.Equals(candidate.Value, "b", StringComparison.Ordinal))
             .IsAvailable.Should().BeFalse();
+    }
+
+    // ── Self-service approval gate (Workgroups §11) ──────────────────────────
+
+    [HumansFact]
+    public async Task SubmitForApprovalAsync_moves_authors_own_draft_to_pending_approval()
+    {
+        var authorId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Draft, null, null, createdByUserId: authorId);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        await CreateService().SubmitForApprovalAsync(survey.Id, authorId, TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).SubmitForApprovalAsync(survey.Id, _clock.GetCurrentInstant(), Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            AuditAction.SurveySubmittedForApproval, "Survey", survey.Id, Arg.Any<string>(), authorId);
+    }
+
+    [HumansFact]
+    public async Task SubmitForApprovalAsync_throws_for_a_non_author()
+    {
+        var authorId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Draft, null, null, createdByUserId: authorId);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var act = async () => await CreateService().SubmitForApprovalAsync(
+            survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.DidNotReceive().SubmitForApprovalAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(SurveyStatus.PendingApproval)]
+    [InlineData(SurveyStatus.Open)]
+    [InlineData(SurveyStatus.Closed)]
+    public async Task SubmitForApprovalAsync_throws_when_survey_is_not_a_draft(SurveyStatus status)
+    {
+        var authorId = Guid.NewGuid();
+        var survey = SurveyWith(status, null, null, createdByUserId: authorId);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var act = async () => await CreateService().SubmitForApprovalAsync(
+            survey.Id, authorId, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.DidNotReceive().SubmitForApprovalAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SubmitForApprovalAsync_throws_when_survey_missing()
+    {
+        _repo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Survey?)null);
+
+        var act = async () => await CreateService().SubmitForApprovalAsync(
+            Guid.NewGuid(), Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [HumansFact]
+    public async Task ApproveAndSendAsync_opens_the_survey_and_sends_invitations_in_one_step()
+    {
+        var authorId = Guid.NewGuid();
+        var teamId = Guid.NewGuid();
+        var recipient = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.PendingApproval, SurveyAudienceType.Team, teamId, createdByUserId: authorId);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _repo.When(x => x.ApproveAsync(survey.Id, Arg.Any<Instant>(), Arg.Any<CancellationToken>()))
+            .Do(_ => survey.Status = SurveyStatus.Open); // mirrors the real repo persisting before the send re-reads
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns(TeamWith(teamId, recipient));
+        _repo.GetInvitedUserIdsAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
+        _userEmailService.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [recipient] = "recipient@example.org" });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+
+        var boardUserId = Guid.NewGuid();
+        var result = await CreateService().ApproveAndSendAsync(
+            survey.Id, new SurveyViewer(boardUserId, IsBoardOrAdmin: true), TestContext.Current.CancellationToken);
+
+        result.InvitationsCreated.Should().Be(1);
+        result.EmailsQueued.Should().Be(1);
+        await _repo.Received(1).ApproveAsync(survey.Id, _clock.GetCurrentInstant(), Arg.Any<CancellationToken>());
+        await _repo.Received(1).AddInvitationAndSaveAsync(
+            Arg.Is<SurveyInvitation>(i => i.UserId == recipient), Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            AuditAction.SurveyApproved, "Survey", survey.Id, Arg.Any<string>(), boardUserId, authorId, AuditEntityTypes.User);
+        await _audit.Received(1).LogAsync(AuditAction.SurveyInvitesSent, "Survey", survey.Id, Arg.Any<string>(), boardUserId);
+    }
+
+    [HumansFact]
+    public async Task ApproveAndSendAsync_throws_for_a_non_boardOrAdmin_viewer()
+    {
+        var survey = SurveyWith(SurveyStatus.PendingApproval, null, null);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var act = async () => await CreateService().ApproveAndSendAsync(
+            survey.Id, new SurveyViewer(Guid.NewGuid(), IsBoardOrAdmin: false), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.DidNotReceive().ApproveAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(SurveyStatus.Draft)]
+    [InlineData(SurveyStatus.Open)]
+    [InlineData(SurveyStatus.Closed)]
+    public async Task ApproveAndSendAsync_throws_when_survey_is_not_pending_approval(SurveyStatus status)
+    {
+        var survey = SurveyWith(status, null, null);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var act = async () => await CreateService().ApproveAndSendAsync(
+            survey.Id, new SurveyViewer(Guid.NewGuid(), IsBoardOrAdmin: true), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.DidNotReceive().ApproveAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ApproveAndSendAsync_leaves_the_survey_pending_when_it_has_no_audience()
+    {
+        // Open is not a state the author can edit out of, so a misconfigured audience has to
+        // fail before approval is persisted — otherwise the survey is stranded Open and out
+        // of the Board's queue.
+        var survey = SurveyWith(SurveyStatus.PendingApproval, null, null);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var act = async () => await CreateService().ApproveAndSendAsync(
+            survey.Id, new SurveyViewer(Guid.NewGuid(), IsBoardOrAdmin: true), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.DidNotReceive().ApproveAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        survey.Status.Should().Be(SurveyStatus.PendingApproval);
+    }
+
+    [HumansFact]
+    public async Task RejectAsync_returns_a_pending_survey_to_draft_with_the_note()
+    {
+        var authorId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.PendingApproval, null, null, createdByUserId: authorId);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var boardUserId = Guid.NewGuid();
+        await CreateService().RejectAsync(
+            survey.Id, new SurveyViewer(boardUserId, IsBoardOrAdmin: true), "  Please clarify Q3.  ",
+            TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).RejectAsync(survey.Id, "Please clarify Q3.", _clock.GetCurrentInstant(), Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            AuditAction.SurveyRejected, "Survey", survey.Id, Arg.Any<string>(), boardUserId, authorId, AuditEntityTypes.User);
+    }
+
+    [HumansFact]
+    public async Task RejectAsync_throws_for_a_non_boardOrAdmin_viewer()
+    {
+        var survey = SurveyWith(SurveyStatus.PendingApproval, null, null);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var act = async () => await CreateService().RejectAsync(
+            survey.Id, new SurveyViewer(Guid.NewGuid(), IsBoardOrAdmin: false), "note",
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.DidNotReceive().RejectAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public async Task RejectAsync_throws_when_the_note_is_blank(string? note)
+    {
+        var survey = SurveyWith(SurveyStatus.PendingApproval, null, null);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var act = async () => await CreateService().RejectAsync(
+            survey.Id, new SurveyViewer(Guid.NewGuid(), IsBoardOrAdmin: true), note!,
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.DidNotReceive().RejectAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(SurveyStatus.Draft)]
+    [InlineData(SurveyStatus.Open)]
+    [InlineData(SurveyStatus.Closed)]
+    public async Task RejectAsync_throws_when_survey_is_not_pending_approval(SurveyStatus status)
+    {
+        var survey = SurveyWith(status, null, null);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var act = async () => await CreateService().RejectAsync(
+            survey.Id, new SurveyViewer(Guid.NewGuid(), IsBoardOrAdmin: true), "note",
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.DidNotReceive().RejectAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task OpenAsync_throws_for_a_survey_pending_approval()
+    {
+        var id = Guid.NewGuid();
+        _repo.GetStatusAsync(id, Arg.Any<CancellationToken>()).Returns(SurveyStatus.PendingApproval);
+
+        var act = async () => await CreateService().OpenAsync(id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.DidNotReceive().SetStatusAsync(Arg.Any<Guid>(), Arg.Any<SurveyStatus>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetAdminSummariesAsync_scopes_to_the_authors_own_surveys()
+    {
+        var authorId = Guid.NewGuid();
+        var mine = SurveyWith(SurveyStatus.Draft, null, null, createdByUserId: authorId);
+        var someoneElses = SurveyWith(SurveyStatus.Open, null, null, createdByUserId: Guid.NewGuid());
+        _repo.GetAllSummariesAsync(Arg.Any<CancellationToken>()).Returns(new List<Survey> { mine, someoneElses });
+        _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, int>());
+        _repo.GetResponseCountsBySurveyAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, int>());
+
+        var result = await CreateService().GetAdminSummariesAsync(
+            new SurveyViewer(authorId, IsBoardOrAdmin: false), TestContext.Current.CancellationToken);
+
+        result.Should().ContainSingle(s => s.Id == mine.Id);
+        result.Should().NotContain(s => s.Id == someoneElses.Id);
+    }
+
+    [HumansFact]
+    public async Task GetAdminSummariesAsync_boardOrAdmin_sees_every_survey()
+    {
+        var mine = SurveyWith(SurveyStatus.Draft, null, null, createdByUserId: Guid.NewGuid());
+        var someoneElses = SurveyWith(SurveyStatus.Open, null, null, createdByUserId: Guid.NewGuid());
+        _repo.GetAllSummariesAsync(Arg.Any<CancellationToken>()).Returns(new List<Survey> { mine, someoneElses });
+        _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, int>());
+        _repo.GetResponseCountsBySurveyAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, int>());
+
+        var result = await CreateService().GetAdminSummariesAsync(
+            new SurveyViewer(Guid.NewGuid(), IsBoardOrAdmin: true), TestContext.Current.CancellationToken);
+
+        result.Should().Contain(s => s.Id == mine.Id);
+        result.Should().Contain(s => s.Id == someoneElses.Id);
+    }
+
+    [HumansFact]
+    public async Task GetPendingApprovalQueueAsync_returns_only_pending_surveys_oldest_first_with_author_names()
+    {
+        var authorA = Guid.NewGuid();
+        var authorB = Guid.NewGuid();
+        var older = SurveyWith(SurveyStatus.PendingApproval, null, null, createdByUserId: authorA);
+        older.SubmittedAt = _clock.GetCurrentInstant() - Duration.FromDays(2);
+        var newer = SurveyWith(SurveyStatus.PendingApproval, null, null, createdByUserId: authorB);
+        newer.SubmittedAt = _clock.GetCurrentInstant() - Duration.FromDays(1);
+        var draft = SurveyWith(SurveyStatus.Draft, null, null);
+        _repo.GetAllSummariesAsync(Arg.Any<CancellationToken>()).Returns(new List<Survey> { newer, older, draft });
+        var authorAInfo = UserWithLastLogin(authorA, null);
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [authorA] = authorAInfo }));
+
+        var result = await CreateService().GetPendingApprovalQueueAsync(TestContext.Current.CancellationToken);
+
+        result.Select(r => r.Id).Should().Equal(older.Id, newer.Id);
+        result.Should().NotContain(r => r.Id == draft.Id);
+        result.Single(r => r.Id == older.Id).CreatedByName.Should().Be(authorAInfo.BurnerName);
     }
 }

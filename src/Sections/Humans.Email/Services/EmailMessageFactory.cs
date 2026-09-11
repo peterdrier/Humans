@@ -239,4 +239,27 @@ internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessa
         return new EmailMessage(toEmail, toName, content.Subject, content.HtmlBody,
             successful ? "ticket_transfer_completed" : "ticket_transfer_cancelled", MessageCategory.System);
     }
+
+    public EmailMessage WorkgroupNotice(WorkgroupNoticeRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var content = renderer.RenderWorkgroupNotice(request);
+        var templateName = request.Kind switch
+        {
+            WorkgroupNoticeKind.Applied => "workgroup_notice_applied",
+            WorkgroupNoticeKind.Referred => "workgroup_notice_referred",
+            WorkgroupNoticeKind.Registered => "workgroup_notice_registered",
+            WorkgroupNoticeKind.Refused => "workgroup_notice_refused",
+            WorkgroupNoticeKind.Withdrawn => "workgroup_notice_withdrawn",
+            WorkgroupNoticeKind.Ended => "workgroup_notice_ended",
+            WorkgroupNoticeKind.Reactivated => "workgroup_notice_reactivated",
+            WorkgroupNoticeKind.CoordinatorsChanged => "workgroup_notice_coordinators_changed",
+            WorkgroupNoticeKind.DormancyInquiry => "workgroup_notice_dormancy_inquiry",
+            WorkgroupNoticeKind.Delivered => "workgroup_notice_delivered",
+            WorkgroupNoticeKind.DispositionRecorded => "workgroup_notice_disposition_recorded",
+            _ => throw new InvalidOperationException($"WorkgroupNotice does not support kind {request.Kind}")
+        };
+        return new EmailMessage(request.RecipientEmail, request.RecipientName, content.Subject, content.HtmlBody,
+            templateName, MessageCategory.Governance);
+    }
 }

@@ -759,6 +759,10 @@ internal sealed class EventService(
     private static DateTime ToLocalDateTime(Instant instant, DateTimeZone? tz)
         => tz == null ? instant.ToDateTimeUtc() : instant.InZone(tz).ToDateTimeUnspecified();
 
+    // Nothing public to contribute to the community calendar yet.
+    public Task<IReadOnlyList<CalendarFeedItem>> GetPublicItemsForWindowAsync(Instant from, Instant to, CancellationToken ct) =>
+        Task.FromResult<IReadOnlyList<CalendarFeedItem>>([]);
+
     public async Task<IReadOnlyList<CalendarFeedItem>> GetCalendarItemsForUserAsync(Guid userId, CancellationToken ct)
     {
         // Favourited events that are still Approved — moderation changes drop

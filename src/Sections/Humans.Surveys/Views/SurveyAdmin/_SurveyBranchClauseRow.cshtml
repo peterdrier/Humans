@@ -16,14 +16,14 @@
         }
         else
         {
-            <option value="">— choose a question —</option>
+            <option value="">@Localizer["Survey_Admin_Builder_JS_ChooseQuestion"]</option>
         }
     </select>
     <select name="@(prefix)[@Model.ClauseKey].Operator" class="form-select form-select-sm w-auto clause-operator">
-        <option value="@BranchOperator.Is" selected="@(c.Operator == BranchOperator.Is ? "selected" : null)">is any of</option>
-        <option value="@BranchOperator.IsNot" selected="@(c.Operator == BranchOperator.IsNot ? "selected" : null)">is none of</option>
-        <option value="@BranchOperator.Answered" selected="@(c.Operator == BranchOperator.Answered ? "selected" : null)">has an answer</option>
-        <option value="@BranchOperator.NotAnswered" selected="@(c.Operator == BranchOperator.NotAnswered ? "selected" : null)">has no answer</option>
+        <option value="@BranchOperator.Is" selected="@(c.Operator == BranchOperator.Is ? "selected" : null)">@Localizer["Survey_Admin_Builder_OperatorIsAnyOf"]</option>
+        <option value="@BranchOperator.IsNot" selected="@(c.Operator == BranchOperator.IsNot ? "selected" : null)">@Localizer["Survey_Admin_Builder_OperatorIsNoneOf"]</option>
+        <option value="@BranchOperator.Answered" selected="@(c.Operator == BranchOperator.Answered ? "selected" : null)">@Localizer["Survey_Admin_Builder_OperatorHasAnswer"]</option>
+        <option value="@BranchOperator.NotAnswered" selected="@(c.Operator == BranchOperator.NotAnswered ? "selected" : null)">@Localizer["Survey_Admin_Builder_OperatorHasNoAnswer"]</option>
     </select>
     <select name="@(prefix)[@Model.ClauseKey].OptionValues" multiple size="3"
             class="form-select form-select-sm w-auto clause-options" style="@(needsValues ? "" : "display:none")">
@@ -32,5 +32,5 @@
             <option value="@v" selected>@v</option>
         }
     </select>
-    <button type="button" class="btn btn-outline-danger btn-sm remove-clause" title="Remove condition">&times;</button>
+    <button type="button" class="btn btn-outline-danger btn-sm remove-clause" title="@Localizer["Survey_Admin_Builder_RemoveCondition"]">&times;</button>
 </div>

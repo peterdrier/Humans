@@ -1,10 +1,13 @@
 using AwesomeAssertions;
+using Humans.Calendar.Contracts;
+using Humans.Calendar.Models;
 using Humans.Calendar.Services.Dtos;
 using Humans.Calendar.Services;
 using Humans.Teams.Contracts;
 using Humans.Calendar.Domain;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
@@ -15,17 +18,20 @@ public sealed class CachingCalendarServiceTests
 {
     private readonly ICalendarService _inner = Substitute.For<ICalendarService>();
     private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
+    private readonly ILogger<CachingCalendarService> _logger = Substitute.For<ILogger<CachingCalendarService>>();
 
-    private CachingCalendarService CreateSut()
+    private CachingCalendarService CreateSut(params ICalendarFeedContributor[] contributors)
     {
         var services = new ServiceCollection();
         services.AddKeyedScoped<ICalendarService>(
             CachingCalendarService.InnerServiceKey, (_, _) => _inner);
         services.AddScoped(_ => _teamService);
+        foreach (var contributor in contributors)
+            services.AddScoped(_ => contributor);
 
         return new CachingCalendarService(
             services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<CachingCalendarService>.Instance);
+            _logger);
     }
 
     private static Task WarmAsync(CachingCalendarService sut) =>
@@ -90,6 +96,115 @@ public sealed class CachingCalendarServiceTests
 
         results.Should().ContainSingle();
         results[0].EventId.Should().Be(inWindow.Id);
+    }
+
+    [HumansFact]
+    public async Task GetOccurrencesInWindowAsync_MergesCommunityContributorItemsWithOwnEvents()
+    {
+        var ownEvent = BuildInfo(title: "Own event", start: Instant.FromUtc(2026, 6, 5, 9, 0), end: Instant.FromUtc(2026, 6, 5, 10, 0));
+        _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>()).Returns([ownEvent]);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        var item = MakeItem("Workgroups", Instant.FromUtc(2026, 6, 5, 14, 0));
+        var sut = CreateSut(new FakeContributor(item));
+
+        var results = await sut.GetOccurrencesInWindowAsync(
+            Instant.FromUtc(2026, 6, 1, 0, 0), Instant.FromUtc(2026, 6, 30, 0, 0),
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        results.Should().HaveCount(2);
+        var contributed = results.Single(r => r.IsCommunityContribution());
+        contributed.Title.Should().Be(item.Summary);
+        contributed.Source.Should().Be("Workgroups");
+        contributed.Url.Should().Be(item.Url);
+        results.Should().Contain(r => r.EventId == ownEvent.Id && !r.IsCommunityContribution());
+    }
+
+    [HumansFact]
+    public async Task GetOccurrencesInWindowAsync_PassesRequestedWindowToContributor()
+    {
+        _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>()).Returns([]);
+        var contributor = Substitute.For<ICalendarFeedContributor>();
+        contributor.GetPublicItemsForWindowAsync(Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<CalendarFeedItem>)[]);
+        var sut = CreateSut(contributor);
+
+        var from = Instant.FromUtc(2026, 6, 1, 0, 0);
+        var to = Instant.FromUtc(2026, 6, 30, 0, 0);
+        await sut.GetOccurrencesInWindowAsync(from, to, ct: Xunit.TestContext.Current.CancellationToken);
+
+        await contributor.Received(1).GetPublicItemsForWindowAsync(from, to, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetOccurrencesInWindowAsync_SkipsThrowingContributorAndKeepsOwnEvents()
+    {
+        var ownEvent = BuildInfo(title: "Own event", start: Instant.FromUtc(2026, 6, 5, 9, 0), end: Instant.FromUtc(2026, 6, 5, 10, 0));
+        _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>()).Returns([ownEvent]);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        var sut = CreateSut(new FakeContributor(new InvalidOperationException("boom")));
+
+        var results = await sut.GetOccurrencesInWindowAsync(
+            Instant.FromUtc(2026, 6, 1, 0, 0), Instant.FromUtc(2026, 6, 30, 0, 0),
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        results.Should().ContainSingle();
+        results[0].EventId.Should().Be(ownEvent.Id);
+        _logger.Received(1).Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("FakeContributor")),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [HumansFact]
+    public async Task GetOccurrencesInWindowAsync_TeamFilterExcludesContributorItems()
+    {
+        var teamId = Guid.NewGuid();
+        _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>()).Returns([]);
+        var contributor = Substitute.For<ICalendarFeedContributor>();
+        var sut = CreateSut(contributor);
+
+        var results = await sut.GetOccurrencesInWindowAsync(
+            Instant.FromUtc(2026, 6, 1, 0, 0), Instant.FromUtc(2026, 6, 30, 0, 0), teamId,
+            Xunit.TestContext.Current.CancellationToken);
+
+        results.Should().BeEmpty();
+        await contributor.DidNotReceive().GetPublicItemsForWindowAsync(
+            Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    private static CalendarFeedItem MakeItem(string source, Instant start) => new(
+        Uid: $"{source}-1@humans.nobodies.team",
+        Source: source,
+        Summary: $"{source} meeting",
+        Description: null,
+        Start: start,
+        End: start.Plus(Duration.FromHours(1)),
+        Location: null,
+        Url: $"{CalendarFeedItem.BaseUrl}/Workgroups/Mine");
+
+    private sealed class FakeContributor : ICalendarFeedContributor
+    {
+        private readonly CalendarFeedItem[] _items;
+        private readonly Exception? _throw;
+
+        public FakeContributor(params CalendarFeedItem[] items) => _items = items;
+
+        public FakeContributor(Exception throwOnCall)
+        {
+            _items = [];
+            _throw = throwOnCall;
+        }
+
+        public Task<IReadOnlyList<CalendarFeedItem>> GetCalendarItemsForUserAsync(Guid userId, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<CalendarFeedItem>>(_items);
+
+        public Task<IReadOnlyList<CalendarFeedItem>> GetPublicItemsForWindowAsync(Instant from, Instant to, CancellationToken ct)
+        {
+            if (_throw is not null) throw _throw;
+            return Task.FromResult<IReadOnlyList<CalendarFeedItem>>(_items);
+        }
     }
 
     [HumansFact]

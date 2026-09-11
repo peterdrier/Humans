@@ -1,10 +1,12 @@
 using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
 using Humans.Base.Hosting;
+using Humans.Surveys.Authorization;
 using Humans.Surveys.Contracts;
 using Humans.Surveys.Data;
 using Humans.Surveys.Jobs;
 using Humans.Surveys.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -38,5 +40,7 @@ public sealed class Section : ISection
         services.AddScoped<ISurveyPreviewEmailService, SurveyPreviewEmailService>();
 
         services.AddScoped<SendSurveyReminderJob>();
+
+        services.AddSingleton<IAuthorizationHandler, SurveyAuthorizationHandler>();
     }
 }

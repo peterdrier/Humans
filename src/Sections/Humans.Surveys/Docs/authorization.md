@@ -3,5 +3,15 @@
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
 | `SurveyController` | Class | `AllowAnonymous` | — (survey answering wizard — invited token path `/Survey/Answer?t=…` takes identity from the invitation; on public slug path `/Survey/{slug}`, logged-out visitors remain Anonymous while a logged-in Human explicitly chooses Identified, CompletionTracked, or Anonymous; a distinct preview token only redirects to the protected admin preview and grants no access itself; all actions inherit `[AllowAnonymous]`) |
-| `SurveyAdminController` | Class | `Board, Admin` | `PolicyNames.BoardOrAdmin` (survey authoring at `/Survey/Admin` — `Index`, `Create`, `Edit`, `Preview`, `PreviewPage`, `PreviewThankYou`, `SendPreviewEmail`, `Save`, `Open`, `Close`, `Send` GET/POST, `Results`, `ExportCsv`, `ExportJson` all inherit) |
+| `SurveyAdminController` | Class | Any signed-in Human with an approved profile | `PolicyNames.AppAccess` (survey authoring at `/Survey/Admin` — widened from BoardOrAdmin so any author can create/edit/submit a Draft they own; author-scoped index, `Create`, `Edit`, `Save`, `Submit` inherit the class policy, then `SurveyOperationRequirement` (`SurveyAuthorizationHandler`) enforces per-survey ownership: `Edit`/`Save` (edit an existing survey), `Submit` (author-owned Draft only), `Results`/`ExportCsv`/`ExportJson` (Board/Admin, or the author once Closed) — never by view filtering) |
+| `SurveyAdminController` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` (`Official`, `Preview`, `PreviewPage`, `PreviewThankYou`, `SendPreviewEmail`, `PreviewEmail`, `Open`, `Close`, `Send` GET/POST, `RankedAvailability`, `Queue`, `Approve`, `Reject` — the approval queue and every action a plain author cannot reach) |
 | `BackdoorSurveysController` (in `Humans.Backdoor`) | Class | `[ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]` (personal-key auth) | `BackdoorApiKeyAuthFilter` (key-authed agent read API at `/api/backdoor/surveys` — `List`, `Definition`, `Responses`, `Aggregates`; reads this section through `ISurveyAnalysisRead`) |
+
+## Negative cases
+
+- A non-Board author **cannot** see the builder's run controls — Open, Close, the preview
+  menu and "Save and review recipients" all lead to `BoardOrAdmin` actions, so
+  `SurveyBuilderViewModel.IsBoardOrAdmin` hides them. A `save-review` post from such an
+  author redirects back to the builder instead of to `Send`. Authoring, submitting for
+  approval and reading the rejection note stay open.
+

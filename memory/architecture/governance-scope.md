@@ -1,10 +1,10 @@
 ---
-name: Governance is tier applications + board voting only
-description: The Governance section owns Colaborador/Asociado applications and Board voting — nothing else. Do not file features (nav groups, docs, code) under Governance because Board members happen to use them; audience is not ownership.
+name: Governance is the association layer, not everything the Board touches
+description: The Governance section owns what runs the association itself — tier applications, Board voting, and the association-level machinery above the event layer (assemblies, working-group entry points). Board usage of a feature is audience, never ownership; other sections reach the Governance page only through seams.
 ---
 
-The Governance section is exactly: **tier applications** (Colaborador/Asociado, the `Application` entity) and **Board voting** on them. Its tables are `applications`, `application_state_history`, `board_votes`.
+The Governance section is the **association layer**: the machinery that runs the asociación itself, as opposed to the event layer that every other section serves. Today that is **tier applications** (Colaborador/Asociado, the `Application` entity) and **Board voting** on them; its tables are `applications`, `application_state_history`, `board_votes`. Association-level things that live in their own sections — Working Groups, Surveys — do not move into Governance; they surface on `/Governance` through the Shell chrome slot `ChromeSlots.GovernanceDashboard`, so Governance references none of them. Scope widened by Peter 2026-09-10 during the Workgroups design.
 
 Repeated failure mode: filing something under Governance because its users are the Board or it feels "governance-y". **The Board uses every feature in the app** — Board usage carries ZERO filing signal, and a `BoardOrAdmin` policy describes the *audience*, never the owning section. Past wrong examples: the **Audit log** (a Crosscut — see [[crosscut-purity]] — owned by no vertical) and **Surveys** (its own section; Board is merely its main user today).
 
-**How to apply:** before filing anything under Governance — in `AdminNavTree`, section docs, or code — find the real owner by grepping the generated per-section maps, `src/Sections/*/Docs/data-access.md`, for the service, repository or table in question. If the owner isn't the Governance section, it doesn't go under Governance, even presentationally.
+**How to apply:** before filing anything under Governance — in `AdminNavTree`, section docs, or code — ask two questions: is it association-level rather than event-level, and does Governance actually own its tables? Grep the generated per-section maps, `src/Sections/*/Docs/data-access.md`, for the service, repository or table. Association-level but owned elsewhere → own section, tile on the Governance page via the seam. Event-level → never Governance, even presentationally.

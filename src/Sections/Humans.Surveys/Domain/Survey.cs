@@ -23,6 +23,8 @@ internal sealed class Survey
     public string? PublicSlug { get; set; }                   // shareable answering link; identified surveys require sign-in; null = invite-only
     public int PublicStartedCount { get; set; }               // all slug-path starts; tracked users also have a per-person ledger row
     public Guid CreatedByUserId { get; init; }                // bare FK: no nav, no cross-section EF FK constraint; resolve via IUserServiceRead
+    public Instant? SubmittedAt { get; set; }                  // stamped entering PendingApproval; cleared on approve/reject
+    public string? RejectionNote { get; set; }                 // Board's note when a submission is rejected back to Draft; cleared on resubmit/approve
     public Instant CreatedAt { get; init; }
     public Instant UpdatedAt { get; set; }
     public ICollection<SurveyQuestion> Questions { get; set; } = new List<SurveyQuestion>();
