@@ -228,6 +228,8 @@ One row per unique human. Otherwise the same RFC 4180 quoting rules, UTF-8 BOM, 
 
 Filename: `cantina-roster-week-of-<yyyy-MM-dd>.csv`, where `<yyyy-MM-dd>` is the ISO date of the week's Monday.
 
+The day matrix has its own export at `GET /Cantina/Roster/Day/Csv`, filename `cantina-day-<yyyy-MM-dd>-matrix.csv`, where `<yyyy-MM-dd>` is the ISO date of the day. Both filenames fall back to `unknown` in place of the date when there is no active event.
+
 ## Cross-section dependencies
 
 This feature lives in the `Cantina/` section and reads **only through section services** — it never touches a repository.

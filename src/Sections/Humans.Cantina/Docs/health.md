@@ -26,7 +26,7 @@ Nobody's medical history appears anywhere in this, on purpose, for anybody.
 
 ## 2. The shapes
 
-Everything the section exposes answers one of four questions.
+Everything the section exposes answers one of three questions.
 
 | Shape | The question | Surfaces |
 |---|---|---|
