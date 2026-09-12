@@ -26,7 +26,7 @@ Nobody's medical history appears anywhere in this, on purpose, for anybody.
 
 ## 2. The shapes
 
-Everything the section exposes answers one of three questions.
+Everything the section exposes answers one of these questions.
 
 | Shape | The question | Surfaces |
 |---|---|---|
@@ -96,9 +96,10 @@ through and owns nothing but sorting and file naming.
   the food preferences into Cantina end-to-end — its own table, `DbContext`, repository and
   cache — with Users and Shifts no longer reading food data, and `MedicalConditions` staying in
   Users as Art. 9 data. It is a data-ownership move, not an erasure fix — right-to-erasure
-  already clears the food fields (nobodies-collective/Humans#1446); what #1113 changes is which
+  already clears the food fields (nobodies-collective/Humans#1446); what that issue changes is which
   section's contributor does the clearing. Everything below about owning no
-  tables describes today, not the destination: **do not defend it against #1113.**
+  tables describes today, not the destination: **do not defend it against
+  nobodies-collective/Humans#1113.**
   **nobodies-collective/Humans#1112** (`IUserPart` fanout) is the seam that makes it possible.
 
 ## 6. Deliberately not done
@@ -157,4 +158,4 @@ through and owns nothing but sorting and file naming.
 | Date | Run | Headline |
 |---|---|---|
 | 2026-08-22 | [run](../../../../docs/health/runs/2026-08-22-Cantina.md) | First doctor pass — docs described the inverse of the shipped UI; 72 dead resx entries removed; two behavior defects found and queued. PR [#1453](https://github.com/peterdrier/Humans/pull/1453) |
-| 2026-09-12 | [run](../../../../docs/health/runs/2026-09-12-Cantina.md) | Re-doctor. Cantina's own code had not changed; every finding was drift from Users. Coordinators were seeing `"(unknown)"` instead of names (#1097) — fixed and pinned. A false GDPR retention claim (closed by #1446) removed. Dead sort on the weekly page cut; comment truth across nine files. PR [#1661](https://github.com/peterdrier/Humans/pull/1661) |
+| 2026-09-12 | [run](../../../../docs/health/runs/2026-09-12-Cantina.md) | Re-doctor. Cantina's own code had not changed; every finding was drift from Users. Coordinators were seeing `"(unknown)"` instead of names (nobodies-collective/Humans#1097) — fixed and pinned. A false GDPR retention claim (closed by nobodies-collective/Humans#1446) removed. Dead sort on the weekly page cut; comment truth across nine files. PR [#1661](https://github.com/peterdrier/Humans/pull/1661) |

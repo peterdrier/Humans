@@ -225,10 +225,11 @@ public class CantinaDailyRosterServiceTests
     [HumansFact]
     public async Task GetDailyRoster_BurnerName_ComesFromTheResolvedUserName()
     {
-        // #1097 moved the burner name onto the user row and made UserInfo.BurnerName
-        // the resolved value (User.BurnerName → Profile.BurnerName → legacy display
-        // name). Reading ProfileInfo.BurnerName instead renders "(unknown)" for a
-        // human whose name only ever landed on the user row.
+        // nobodies-collective/Humans#1097 moved the burner name onto the user row and
+        // made UserInfo.BurnerName the resolved value (User.BurnerName →
+        // Profile.BurnerName → legacy display name). Reading ProfileInfo.BurnerName
+        // instead renders "(unknown)" for a human whose name only ever landed on the
+        // user row.
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ActiveEvent());
 
         var userId = Guid.NewGuid();
