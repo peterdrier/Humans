@@ -11,7 +11,7 @@
 
 # Cantina — Health
 
-Last assessed: 2026-08-22 (section-doctor).
+Last assessed: 2026-09-12 (section-doctor).
 
 ## 1. What the section does
 
@@ -72,13 +72,20 @@ through and owns nothing but sorting and file naming.
   section's, behind `IUserServiceRead`.
 - **Access is `Admin` or `CantinaAdmin`, by policy.** An authenticated human without either is
   redirected to `/Account/AccessDenied` — not a bare 403. Team membership grants nothing.
+  That gate is also what makes these pages localization-exempt
+  ([`localization-admin-exempt`](../../../../memory/code/localization-admin-exempt.md) exempts a
+  view by the roles that can open it, not by membership of its illustrative route list). The
+  2026-09-12 run read that list as the gate and queued a localization finding that does not
+  exist; the reasoning is recorded here so the next run does not re-derive it.
 
 ## 5. Seams
 
 - **Unknown dietary values have no defined home.** The breakdown buckets the four canonical
   preferences and an "Unanswered" pseudo-bucket; a stored value outside that set is currently
-  counted as neither. The intended rule — treat unknown as Unanswered — is stated in a code
-  comment but not implemented. `DietaryPreference` is an unvalidated `string?` and the write
+  counted as neither, so the breakdown sums to less than the on-site total whenever one
+  exists. The code comment used to claim the opposite (that unknowns are folded into
+  Unanswered) and now states the actual behaviour; what remains undecided is which bucket
+  they *should* land in. `DietaryPreference` is an unvalidated `string?` and the write
   path does not filter it, so the fix is a value-model change, not a count fix. Tracked in
   **nobodies-collective/Humans#1113** along with the missing "Other" preference and write
   validation; deliberately not patched here.
@@ -134,10 +141,20 @@ through and owns nothing but sorting and file naming.
 - **`Views/_ViewImports.cshtml` is not inherited from the Shell.** A missing `@using` there ships
   broken markup with a green build and no runtime error.
 - **The weekly page is overview-only.** Per-person detail lives on the day drill-down. The weekly
-  multi-key sort therefore now shapes only the CSV, not any on-screen table.
+  multi-key sort therefore shapes only the CSV, not any on-screen table — and since 2026-09-12
+  the HTML action no longer runs it at all.
+- **The burner name comes off `UserInfo`, never off `ProfileInfo`.**
+  nobodies-collective/Humans#1097 moved the name onto the user row and made
+  `UserInfo.BurnerName` the resolved value (`User.BurnerName` → `Profile.BurnerName` → legacy
+  display name). Reading `ProfileInfo.BurnerName` renders `"(unknown)"` for a human whose name
+  only ever landed on the user row. This section is a pure read-side consumer of Users'
+  read-model, so a change on that side lands here silently — the 2026-09-12 run found exactly
+  this, three weeks after Cantina's own code last changed. Pinned by
+  `GetDailyRoster_BurnerName_ComesFromTheResolvedUserName`.
 
 ## History
 
 | Date | Run | Headline |
 |---|---|---|
 | 2026-08-22 | [run](../../../../docs/health/runs/2026-08-22-Cantina.md) | First doctor pass — docs described the inverse of the shipped UI; 72 dead resx entries removed; two behavior defects found and queued. PR [#1453](https://github.com/peterdrier/Humans/pull/1453) |
+| 2026-09-12 | [run](../../../../docs/health/runs/2026-09-12-Cantina.md) | Re-doctor. Cantina's own code had not changed; every finding was drift from Users. Coordinators were seeing `"(unknown)"` instead of names (#1097) — fixed and pinned. A false GDPR retention claim (closed by #1446) removed. Dead sort on the weekly page cut; comment truth across nine files. PR TBD |

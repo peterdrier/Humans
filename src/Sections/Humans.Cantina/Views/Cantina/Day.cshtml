@@ -11,9 +11,10 @@
     // Full name in the title= attribute keeps the header accessible.
     //
     // Only the five chips whose hand-picked abbreviation differs from their
-    // first three letters are named. The other six canonical chips (Dairy,
-    // Egg, Soy, Sesame, Lactose, Histamine) fall through to the default,
-    // which returns exactly what their arms used to.
+    // first three letters are named. The other six chips that reach this
+    // function (Dairy, Egg, Soy, Sesame, Lactose, Histamine — "Other" is
+    // filtered out below) fall through to the default and take their first
+    // three letters.
     private static string AbbrevChip(string name) => name switch
     {
         "Peanut" => "Pnt",
