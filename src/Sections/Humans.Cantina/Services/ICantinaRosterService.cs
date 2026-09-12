@@ -7,14 +7,14 @@ namespace Humans.Cantina.Services;
 /// Cross-section read service that powers the Cantina Weekly Roster page
 /// (feature #36 — src/Sections/Humans.Cantina/Docs/features/daily-roster.md). The controller
 /// gets the entire page payload — headers, weekly aggregates, per-day
-/// mini-summary, per-human rows — in one call so the view stays free of
-/// further service look-ups.
+/// mini-summary, and the per-human rows the CSV export writes — in one call
+/// so the view stays free of further service look-ups.
 ///
 /// <para>
 /// The service stitches two sources together: the on-site cohort from
 /// <c>IShiftManagementServiceRead</c> (queried per day and unioned by user
-/// id), and dietary fields plus burner names from <c>IUserServiceRead</c>'s
-/// cached profile read-model. Both are section services — Cantina never
+/// id), and burner names plus dietary fields from <c>IUserServiceRead</c>'s
+/// cached read-model. Both are section services — Cantina never
 /// touches another section's repository.
 /// </para>
 /// <para>
@@ -46,8 +46,9 @@ internal interface ICantinaRosterService : IApplicationService
     /// timezone, and zero without an active event. Returns a fully-populated
     /// DTO with zero counts and empty lists when there is no active event or
     /// no on-site humans for the day. People are returned in unspecified
-    /// order; display sort is the Web layer's responsibility
-    /// (<c>CantinaRosterAssembler.WithSortedPeople</c>).
+    /// order; display sort belongs to the controller
+    /// (<c>CantinaRosterAssembler.WithSortedPeople</c>, in this section's
+    /// <c>Models/</c>).
     /// </summary>
     Task<DailyMatrixDto> GetDailyRosterAsync(int? dayOffset = null, CancellationToken ct = default);
 }

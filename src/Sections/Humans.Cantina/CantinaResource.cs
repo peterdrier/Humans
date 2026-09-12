@@ -5,7 +5,8 @@ namespace Humans.Cantina;
 /// purpose: the SDK derives the manifest name from the adjacent same-named <c>.cs</c> file's
 /// namespace, not from the folder path, so this must stay <c>namespace Humans.Cantina</c> —
 /// <c>Humans.Cantina.Resources</c> would make every Cantina string fall back to its raw key
-/// at runtime (design §3).
+/// at runtime (G5-SECTION-TEMPLATE.md step 3b, from the split design's §3 Localization —
+/// not <c>design-rules.md</c>, whose §3 is the repository layer).
 /// </summary>
 /// <remarks>
 /// Public because the boot localization diagnostic discovers section resource markers via

@@ -16,7 +16,7 @@ namespace Humans.Cantina.Models;
 /// <para>
 /// Output layout (top to bottom):
 /// <list type="number">
-///   <item>3-line header: title (with long-format date), total on site,
+///   <item>3-line header: title (with the ISO date), total on site,
 ///         unanswered count.</item>
 ///   <item>Blank separator row.</item>
 ///   <item>Column-header row: <c>Burner</c>, dietary columns, allergy
@@ -40,7 +40,7 @@ internal static class CantinaDailyMatrixCsvWriter
         return HumansCsv.WriteBytes(csv =>
         {
             // ---- Header section (3 lines + blank separator) -----------------
-            csv.WriteRow(string.Format(CultureInfo.InvariantCulture, "Cantina — {0}", FormatLongDate(dto.CalendarDate)));
+            csv.WriteRow(string.Format(CultureInfo.InvariantCulture, "Cantina — {0}", FormatIsoDate(dto.CalendarDate)));
             csv.WriteRow(string.Format(CultureInfo.InvariantCulture, "Total on site: {0}", dto.TotalOnSite));
             csv.WriteRow(string.Format(CultureInfo.InvariantCulture, "Unanswered: {0}", dto.UnansweredCount));
             csv.NextRecord();
@@ -114,6 +114,9 @@ internal static class CantinaDailyMatrixCsvWriter
 
     private static string CountAsString(int n) => n.ToString(CultureInfo.InvariantCulture);
 
-    private static string FormatLongDate(LocalDate? d) =>
+    // yyyy-MM-dd, invariant: a CSV cell is machine-read as often as it is
+    // eyeballed. The on-screen matrix uses a culture-ordered abbreviated date
+    // instead (Day.cshtml's FormatLong).
+    private static string FormatIsoDate(LocalDate? d) =>
         d.HasValue ? d.Value.ToInvariantDate() : "(no active event)";
 }

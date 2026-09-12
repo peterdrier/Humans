@@ -14,9 +14,9 @@ namespace Humans.Cantina.Services.Dtos;
 /// </summary>
 /// <param name="UserId">The human's user id.</param>
 /// <param name="BurnerName">
-/// Display label, sourced from the human's profile <c>BurnerName</c>.
-/// <c>"(unknown)"</c> is a defensive default for a missing profile row, not
-/// a case the matrix is expected to render — every on-site human has one.
+/// Display label, sourced from <c>UserInfo.BurnerName</c> — the name Users has
+/// already resolved. <c>"(unknown)"</c> covers a user id the cohort read did not
+/// return, not a case the matrix is expected to render.
 /// </param>
 /// <param name="DietaryPreference">
 /// One of the canonical preferences in
