@@ -7,14 +7,9 @@
     private static string FormatLong(LocalDate? d) =>
         d.HasValue ? d.Value.ToDate() : "";
 
-    // Short abbreviations for column headers so the matrix stays narrow.
-    // Full name in the title= attribute keeps the header accessible.
-    //
-    // Only the five chips whose hand-picked abbreviation differs from their
-    // first three letters are named. The other six chips that reach this
-    // function (Dairy, Egg, Soy, Sesame, Lactose, Histamine — "Other" is
-    // filtered out below) fall through to the default and take their first
-    // three letters.
+    // Short abbreviations for column headers so the matrix stays narrow; the full
+    // name in title= keeps the header accessible. Only chips whose abbreviation
+    // differs from their first three letters are named here.
     private static string AbbrevChip(string name) => name switch
     {
         "Peanut" => "Pnt",

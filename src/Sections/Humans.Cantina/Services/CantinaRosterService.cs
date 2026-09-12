@@ -25,14 +25,8 @@ internal sealed class CantinaRosterService : ICantinaRosterService
     private readonly IUserServiceRead _userRead;
     private readonly IClock _clock;
 
-    // The pseudo-bucket the dietary breakdown adds alongside DietaryOptions'
-    // canonical preference labels. Its one lookup is Roster.cshtml, which reads
-    // DietaryBreakdown by the literals in its own dietaryOrder array — so this
-    // string and that array's last entry must stay in step. Nothing else in src/
-    // keys off it: the assembler's sort tests for an empty preference, and the CSV
-    // writers spell "Unanswered" out over an int (a column header in the weekly
-    // writer, a header line in the daily one). The service tests pin the literal,
-    // which is the rename tripwire.
+    // Must stay in step with the last entry of Roster.cshtml's dietaryOrder array,
+    // its only lookup; the service tests pin the literal as the rename tripwire.
     private static readonly string UnansweredKey = "Unanswered";
 
     public CantinaRosterService(
@@ -604,12 +598,9 @@ internal sealed class CantinaRosterService : ICantinaRosterService
                 continue;
 
             answered++;
-            // Only bucket known preferences — an unknown/legacy value would otherwise
-            // invent a column. It counts as answered (so it is not folded into
-            // Unanswered below) but lands in no bucket, so the returned counts sum to
-            // less than totalUniqueOnSite by the number of such values. Nothing writes
-            // DietaryPreference through DietaryOptions.DietaryPreferences, so the case
-            // is reachable; which bucket it belongs in is nobody's decision yet.
+            // An unknown value counts as answered but matches no bucket, so the returned
+            // counts sum to less than totalUniqueOnSite. Which bucket it belongs in is
+            // undecided — nobodies-collective/Humans#1113.
             if (dict.ContainsKey(profile.DietaryPreference))
                 dict[profile.DietaryPreference]++;
         }
