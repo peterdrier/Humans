@@ -157,4 +157,4 @@ through and owns nothing but sorting and file naming.
 | Date | Run | Headline |
 |---|---|---|
 | 2026-08-22 | [run](../../../../docs/health/runs/2026-08-22-Cantina.md) | First doctor pass — docs described the inverse of the shipped UI; 72 dead resx entries removed; two behavior defects found and queued. PR [#1453](https://github.com/peterdrier/Humans/pull/1453) |
-| 2026-09-12 | [run](../../../../docs/health/runs/2026-09-12-Cantina.md) | Re-doctor. Cantina's own code had not changed; every finding was drift from Users. Coordinators were seeing `"(unknown)"` instead of names (#1097) — fixed and pinned. A false GDPR retention claim (closed by #1446) removed. Dead sort on the weekly page cut; comment truth across nine files. PR TBD |
+| 2026-09-12 | [run](../../../../docs/health/runs/2026-09-12-Cantina.md) | Re-doctor. Cantina's own code had not changed; every finding was drift from Users. Coordinators were seeing `"(unknown)"` instead of names (#1097) — fixed and pinned. A false GDPR retention claim (closed by #1446) removed. Dead sort on the weekly page cut; comment truth across nine files. PR [#1661](https://github.com/peterdrier/Humans/pull/1661) |
