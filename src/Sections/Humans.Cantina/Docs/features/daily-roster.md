@@ -178,7 +178,7 @@ Reads:
 | `Profile.AllergyOtherText` | "Other (N): …" list, deduped across the week | Same read path |
 | `Profile.Intolerances` (`List<string>`) | Intolerance chips + roll-up | Same read path |
 | `Profile.IntoleranceOtherText` | "Other (N): …" list, deduped across the week | Same read path |
-| `Profile.BurnerName` | Row label on the drill-down matrix and in both CSVs | `"(unknown)"` is a defensive default; every on-site human has a profile row |
+| `UserInfo.BurnerName` | Row label on the drill-down matrix and in both CSVs | Already resolved by Users (`User.BurnerName` → `Profile.BurnerName` → legacy display name, nobodies-collective/Humans#1097); `"(unknown)"` covers a user id the cohort read did not return |
 | `BurnSettingsInfo.GateOpeningDate`, `BurnSettingsInfo.TimeZoneId` | Compute calendar dates for each day in the week + default week | Existing, via `IBurnSettingsService` |
 
 At our small scale, the service issues 7 sequential per-day cohort queries (`GetOnSiteUserIdsForDayAsync`, one per day) plus a single batched `IUserServiceRead.GetUserInfosAsync` for the week's unique cohort (dietary + names from the cached `UserInfo`). For the arrival-day rule it additionally scans per-day cohorts from build start up to the window's end (capped at strike end) to find each human's first confirmed shift.

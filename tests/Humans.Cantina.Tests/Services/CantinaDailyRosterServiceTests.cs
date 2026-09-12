@@ -223,6 +223,42 @@ public class CantinaDailyRosterServiceTests
     }
 
     [HumansFact]
+    public async Task GetDailyRoster_BurnerName_ComesFromTheResolvedUserName()
+    {
+        // #1097 moved the burner name onto the user row and made UserInfo.BurnerName
+        // the resolved value (User.BurnerName → Profile.BurnerName → legacy display
+        // name). Reading ProfileInfo.BurnerName instead renders "(unknown)" for a
+        // human whose name only ever landed on the user row.
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ActiveEvent());
+
+        var userId = Guid.NewGuid();
+        SetupDay(0, userId);
+        _userRead.GetUserInfosAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo>
+                {
+                    [userId] = UserInfo.Create(
+                        user: new User
+                        {
+                            Id = userId,
+                            BurnerName = "Nombre",
+                            DisplayName = "",
+                            PreferredLanguage = "en",
+                        },
+                        userEmails: [],
+                        eventParticipations: [],
+                        externalLogins: [],
+                        profile: UserFixtures.Profile(burnerName: "", dietaryPreference: "Vegan"),
+                        communicationPreferences: []),
+                }));
+
+        var result = await _service.GetDailyRosterAsync(dayOffset: 0, ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.People.Single().BurnerName.Should().Be("Nombre");
+    }
+
+    [HumansFact]
     public async Task GetDailyRoster_MedicalConditionsNeverInDto()
     {
         // The cantina output DTO must not expose MedicalConditions, even though

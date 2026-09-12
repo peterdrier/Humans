@@ -61,7 +61,7 @@ The current sources:
 - The section is **read-only** — no writes to any table, no audit entries, no notifications.
 - The roster is rendered live on every request — no cached aggregates. CSV exports the same in-memory aggregate produced for the HTML view.
 - Every `RosterPersonDto` in the cohort has at least one on-site day in the window by construction; `ArrivesOn` is therefore non-nullable. The arrival day is a real on-site day, so the `ArrivesOn`-is-non-nullable invariant holds for all roster humans including arrival-day humans.
-- Burner-name stitching reads `ProfileInfo.BurnerName` off the cached `UserInfo` from `IUserServiceRead`. Every on-site human has a profile row, so the `"(unknown)"` fall-through is a defensive default, not a case the roster is expected to render.
+- Burner-name stitching reads `UserInfo.BurnerName` — the value Users already resolved (`User.BurnerName` → `Profile.BurnerName` → legacy display name, nobodies-collective/Humans#1097) — off the cached `UserInfo` from `IUserServiceRead`. The `"(unknown)"` fall-through covers a user id the cohort read did not return, not a case the roster is expected to render.
 
 ## Negative Access Rules
 

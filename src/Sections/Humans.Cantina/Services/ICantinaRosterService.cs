@@ -13,8 +13,8 @@ namespace Humans.Cantina.Services;
 /// <para>
 /// The service stitches two sources together: the on-site cohort from
 /// <c>IShiftManagementServiceRead</c> (queried per day and unioned by user
-/// id), and dietary fields plus burner names from <c>IUserServiceRead</c>'s
-/// cached profile read-model. Both are section services — Cantina never
+/// id), and burner names plus dietary fields from <c>IUserServiceRead</c>'s
+/// cached read-model. Both are section services — Cantina never
 /// touches another section's repository.
 /// </para>
 /// <para>
