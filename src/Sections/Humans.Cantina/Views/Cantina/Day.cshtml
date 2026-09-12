@@ -9,19 +9,18 @@
 
     // Short abbreviations for column headers so the matrix stays narrow.
     // Full name in the title= attribute keeps the header accessible.
+    //
+    // Only the five chips whose hand-picked abbreviation differs from their
+    // first three letters are named. The other six canonical chips (Dairy,
+    // Egg, Soy, Sesame, Lactose, Histamine) fall through to the default,
+    // which returns exactly what their arms used to.
     private static string AbbrevChip(string name) => name switch
     {
         "Peanut" => "Pnt",
         "Tree nut" => "TNt",
-        "Dairy" => "Dai",
-        "Egg" => "Egg",
         "Shellfish" => "Shl",
         "Wheat/Gluten" => "Wht",
-        "Soy" => "Soy",
-        "Sesame" => "Ses",
-        "Lactose" => "Lac",
         "Gluten" => "Glt",
-        "Histamine" => "His",
         _ => name.Length > 3 ? name.Substring(0, 3) : name,
     };
 }
