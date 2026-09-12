@@ -88,7 +88,9 @@ through and owns nothing but sorting and file naming.
 - **The section is expected to stop being table-less.** **nobodies-collective/Humans#1113** moves
   the food preferences into Cantina end-to-end — its own table, `DbContext`, repository and
   cache — with Users and Shifts no longer reading food data, and `MedicalConditions` staying in
-  Users as Art. 9 data. It also carries the GDPR erasure gap. Everything below about owning no
+  Users as Art. 9 data. It is a data-ownership move, not an erasure fix — right-to-erasure
+  already clears the food fields (nobodies-collective/Humans#1446); what #1113 changes is which
+  section's contributor does the clearing. Everything below about owning no
   tables describes today, not the destination: **do not defend it against #1113.**
   **nobodies-collective/Humans#1112** (`IUserPart` fanout) is the seam that makes it possible.
 
