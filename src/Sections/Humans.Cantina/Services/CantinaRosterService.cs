@@ -25,7 +25,14 @@ internal sealed class CantinaRosterService : ICantinaRosterService
     private readonly IUserServiceRead _userRead;
     private readonly IClock _clock;
 
-    // Canonical preference labels, with the "Unanswered" pseudo-bucket.
+    // The pseudo-bucket the dietary breakdown adds alongside DietaryOptions'
+    // canonical preference labels. Its one lookup is Roster.cshtml, which reads
+    // DietaryBreakdown by the literals in its own dietaryOrder array — so this
+    // string and that array's last entry must stay in step. Nothing else in src/
+    // keys off it: the assembler's sort tests for an empty preference, and the CSV
+    // writers spell "Unanswered" out over an int (a column header in the weekly
+    // writer, a header line in the daily one). The service tests pin the literal,
+    // which is the rename tripwire.
     private static readonly string UnansweredKey = "Unanswered";
 
     public CantinaRosterService(
@@ -68,7 +75,8 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         var onSiteByOffset = new Dictionary<int, IReadOnlyList<Guid>>();
 
         // Per-day cohort: 7 sequential queries for the on-site user ids. At ~500
-        // users this is fine (see CLAUDE.md scale notes).
+        // users this is fine — one server, dataset in RAM, no query cleverness
+        // bought by an imagined scale (AGENTS.md, "Small scale, simple systems").
         var perDay = await LoadWeeklyOnSiteUsersAsync(burn, weekStartOffset, onSiteByOffset, ct).ConfigureAwait(false);
 
         // Build the union of unique on-site user IDs across the week, and
@@ -147,13 +155,11 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         var uniqueProfiles = BuildUniqueProfiles(uniqueUserIds, userInfoById);
 
         // The 7 calendar dates of the week, used to compute NoShift as the
-        // complement of each person's on-site days. Empty when the week
-        // has no anchor date (no active event) — in that branch we don't
-        // reach this code path anyway since uniqueUserIds.Count == 0.
+        // complement of each person's on-site days.
         var weekDays = BuildWeekDays(weekStartDate);
 
-        // People are returned in unspecified order. Display sort happens at
-        // the Web layer in CantinaRosterAssembler (see
+        // People are returned in unspecified order. The controller sorts, via
+        // CantinaRosterAssembler in this section's Models/ (see
         // memory/architecture/display-sort-in-controllers.md).
         var people = BuildWeeklyPeople(uniqueUserIds, userInfoById, daysOnSiteByUserId, weekDays);
 
@@ -598,8 +604,12 @@ internal sealed class CantinaRosterService : ICantinaRosterService
                 continue;
 
             answered++;
-            // Only bucket known preferences — unknown/legacy values would otherwise
-            // distort the breakdown. Treat them as Unanswered for display purposes.
+            // Only bucket known preferences — an unknown/legacy value would otherwise
+            // invent a column. It counts as answered (so it is not folded into
+            // Unanswered below) but lands in no bucket, so the returned counts sum to
+            // less than totalUniqueOnSite by the number of such values. Nothing writes
+            // DietaryPreference through DietaryOptions.DietaryPreferences, so the case
+            // is reachable; which bucket it belongs in is nobody's decision yet.
             if (dict.ContainsKey(profile.DietaryPreference))
                 dict[profile.DietaryPreference]++;
         }

@@ -46,8 +46,8 @@ namespace Humans.Cantina.Services.Dtos;
 /// </param>
 /// <param name="People">
 /// One row per unique on-site human on this day. Returned in unspecified
-/// order — the web layer's <c>CantinaRosterAssembler.WithSortedPeople</c>
-/// alphabetizes for display. The service builds rows for the whole on-site
+/// order — the controller alphabetizes for display through
+/// <c>CantinaRosterAssembler.WithSortedPeople</c>, in this section's <c>Models/</c>. The service builds rows for the whole on-site
 /// cohort regardless of profile state; in practice every on-site human has a
 /// profile row, so the empty-field path is defensive rather than a case the
 /// page is expected to render.
