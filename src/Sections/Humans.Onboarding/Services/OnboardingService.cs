@@ -141,9 +141,11 @@ internal sealed class OnboardingService(
         return new BulkOnboardingResult(approved);
     }
 
-    // Annotation-only after the name-only access switch: Flag records the consent-check status for
-    // the CC audit track. It no longer deprovisions any team — the Flagged flag is a record nothing
-    // acts on; RejectSignupAsync (which sets RejectedAt) remains the CC's kick-out lever.
+    // Flag records the consent-check status for the CC audit track. Inert for a Volunteer —
+    // admission ignores IsApproved — but NOT inert generally: RecordConsentCheck sets
+    // Profile.IsApproved = (status == Cleared), and SystemTeamSyncJob gates the Colaborador and
+    // Asociado teams on that flag, so Cleared -> Flagged drops a tier member from their tier team
+    // on the next hourly sync. RejectSignupAsync (which sets RejectedAt) is the CC's kick-out lever.
     public Task<OnboardingResult> FlagConsentCheckAsync(
         Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default) =>
         RecordConsentCheckAsync(userId, reviewerId, ConsentCheckStatus.Flagged, notes, ct);

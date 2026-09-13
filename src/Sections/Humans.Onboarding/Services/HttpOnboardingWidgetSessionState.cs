@@ -9,7 +9,6 @@ namespace Humans.Onboarding.Services;
 /// </summary>
 internal sealed class HttpOnboardingWidgetSessionState(IHttpContextAccessor http) : IOnboardingWidgetSessionState
 {
-    /// <summary>Session key set by <c>/OnboardingWidget/Skip</c> and read here.</summary>
     public const string ShiftSkipSessionKey = "OnboardingShiftSkip";
 
     public bool ShiftSkipActive => string.Equals(
