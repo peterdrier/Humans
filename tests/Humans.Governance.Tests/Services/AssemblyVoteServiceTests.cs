@@ -1394,6 +1394,31 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task ExtendAsync_OnAVoteAlreadyRemindedOnce_ArmsTheReminderAgain()
+    {
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(6));
+        var roster = await _fx.AddRosterRowAsync(vote.Id, Guid.NewGuid(), isOfficial: true);
+        await _fx.Repository.StampReminderSentAsync(
+            [roster.Id], _fx.Clock.GetCurrentInstant(),
+            Xunit.TestContext.Current.CancellationToken);
+        _fx.Db.ChangeTracker.Clear();
+
+        (await _fx.Service.ExtendAsync(
+                vote.Id, _fx.Clock.GetCurrentInstant() + Duration.FromDays(7), Guid.NewGuid(),
+                Xunit.TestContext.Current.CancellationToken))
+            .Should().Be(AssemblyVoteActionResult.Ok);
+        _fx.Db.ChangeTracker.Clear();
+
+        var pending = await _fx.Repository.GetRosterNeedingReminderAsync(
+            vote.Id, Xunit.TestContext.Current.CancellationToken);
+
+        pending.Select(r => r.Id).Should().Equal([roster.Id],
+            "the stamp meant 'told about the old deadline', and the new one decides whether "
+            + "their ballot counts");
+    }
+
+    [HumansFact]
     public async Task ExtendAsync_BuiltFromADeadlineSomebodyElseAlreadyExtended_IsRefused()
     {
         var vote = await _fx.AddVoteAsync(

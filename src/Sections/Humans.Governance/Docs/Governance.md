@@ -148,7 +148,7 @@ The frozen electorate, written exactly once at open.
 | Tier | MembershipTier | The tier as of the snapshot |
 | IsBoardMember | bool | Board role holder at the snapshot |
 | IsOfficial | bool | Only official rows contribute to the official result |
-| NotifiedAt / ReminderSentAt | Instant? / Instant? | Stamped so the open email and the T-24h reminder never repeat |
+| NotifiedAt / ReminderSentAt | Instant? / Instant? | Stamped so the open email and the T-24h reminder never repeat; an extension clears `ReminderSentAt` |
 
 **Constraint:** Unique `(VoteId, UserId)` filtered on `"UserId" IS NOT NULL` — one row per person per vote, while any number of erasure tombstones can coexist.
 
@@ -297,7 +297,7 @@ These controllers serve this section.
 - **Close (any path):** stamps `ClosedAt`, computes and stores the result once, resolves the open-vote notification via `INotificationAutoResolve.ResolveBySourceKeyAsync`, and audits `AssemblyVoteClosed` / `AssemblyVoteStopped` — under the job actor (the `jobName` overload of `IAuditLogService.LogAsync`) when the hourly `governance-assembly-vote-lapse` job did it. Any earlier request that observes the deadline passed closes inline before serving.
 - **Peek:** an `assembly_vote_peeks` row plus audit `AssemblyVotePeeked`, in the same unit of work as the read.
 - **Ballots list after close:** audit `AssemblyBallotsViewed` on every call.
-- **T-24h reminder:** one email to roster members with no ballot (`IEmailMessageFactory.AssemblyVoteReminder`), stamped on the roster row (`ReminderSentAt`) so it never repeats. Sent by the same hourly job as the lapse sweep (`SectionJobs`, cron `0 * * * *`).
+- **T-24h reminder:** one email to roster members with no ballot (`IEmailMessageFactory.AssemblyVoteReminder`), stamped on the roster row (`ReminderSentAt`) so it never repeats for one deadline. An accepted extension clears the stamps and the roster is reminded again when the new deadline comes into range. Sent by the same hourly job as the lapse sweep (`SectionJobs`, cron `0 * * * *`).
 - **GDPR export:** `IUserDataContributor` contributes the member's roster rows, standing ballots and history under `GdprExportSections.AssemblyVotes`. A second slice, `GdprExportSections.AssemblyVoteActions`, carries the other side of the feature: the votes the person drafted, opened or closed, and the live tallies they peeked at — an officer who runs a vote without being on its roster has no rows in the first slice at all.
 - **Art. 17 erasure:** the roster row's `UserId` is set to null (a tombstone that keeps counts and the stored result valid); ballot and history rows are retained unlinked, because the vote is a legal record of the association (GDPR Art. 17(3)(b) / (e)). Declared as partial retention in the section's `ErasureDeclaration`.
 - **Account merge (`IUserMerge`):** roster rows and ballots re-FK from source to target; when both accounts are on the same roster the target's row wins; the source row's ballot moves onto it when it holds none, and is dropped with the row only when both accounts voted. Each of the three outcomes — moved, dropped, or no ballot to begin with — is audited in those terms. The vote actor columns (`CreatedByUserId`, `OpenedByUserId`, `ClosedByUserId`, `AssemblyVotePeek.AdminUserId`) are re-FK'd as well.

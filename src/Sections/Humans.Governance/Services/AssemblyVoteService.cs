@@ -1210,6 +1210,12 @@ internal sealed class AssemblyVoteService(
         if (!await repository.UpdateAsync(vote, AssemblyVoteStatus.Open, readAt, ct))
             return AssemblyVoteActionResult.WrongState;
 
+        // Re-arm the T-24h reminder. A vote already inside the reminder window has stamped
+        // rows, and the stamp means "told about the old deadline" — left alone, everyone
+        // reminded before the extension is never told the new one, which is the deadline
+        // that decides whether their ballot counts.
+        await repository.ClearReminderStampsAsync(vote.Id, ct);
+
         await audit.LogAsync(
             AuditAction.AssemblyVoteExtended, AuditEntityTypes.AssemblyVote, vote.Id,
             $"Extended assembly vote {vote.Id} from {previous} to {newClosesAt}.",

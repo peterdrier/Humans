@@ -57,7 +57,7 @@ Repository: `IAssemblyVoteRepository`.
 |-------|-----|
 | AssemblyVotes | R/W |
 | AssemblyVoteOptions | R/W (draft only — content is immutable once Open) |
-| AssemblyVoteRosterEntries | R/W (written once at open; afterwards only the `NotifiedAt` / `ReminderSentAt` stamps and the erasure tombstone) |
+| AssemblyVoteRosterEntries | R/W (written once at open; afterwards only the `NotifiedAt` / `ReminderSentAt` stamps, cleared on extension, and the erasure tombstone) |
 | AssemblyBallots | R/W |
 | AssemblyBallotHistories | R (append-only — the repository exposes no update or delete) |
 | AssemblyVotePeeks | R/W (insert only) |
