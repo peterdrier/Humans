@@ -178,4 +178,4 @@ Presentation the section does *not* own: the rota tables on the shifts step are 
 | Run | Date | PR | Headline |
 |---|---|---|---|
 | 1 | 2026-08-23 | #1458 | Two silently-misbound resource sets fixed; consent-step redirect loop closed; section docs re-derived from code |
-| 2 | 2026-09-13 | pending | `/Guest` found unreachable by the audience it exists for; false notification and Flag-is-inert claims struck from docs and comments; bulk clear stopped building the review page it never reads |
+| 2 | 2026-09-13 | peterdrier/Humans#1663 | `/Guest` found unreachable by the audience it exists for; false notification and Flag-is-inert claims struck from docs and comments; bulk clear stopped building the review page it never reads |

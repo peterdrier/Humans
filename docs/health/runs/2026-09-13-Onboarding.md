@@ -4,7 +4,7 @@
 - Anchor commit: `4b43e6f2` (origin/main at branch point); branch `section-doctor/2026-09-13T011559Z`.
 - Re-doctor tier; `BASE: 3ed83626a64ca9cdca6992795aacac2072202195` (commit that added the last run file).
 - Budget: standard daily (~2.5 h).
-- PR: pending
+- PR: peterdrier/Humans#1663
 
 ## Assessment summary
 
