@@ -15,7 +15,6 @@ using NodaTime.Testing;
 using NSubstitute;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
-using Humans.Users.Services;
 
 using Humans.Teams.Contracts;
 namespace Humans.Shifts.Tests.Infrastructure;
@@ -167,9 +166,7 @@ public abstract class ShiftsTestHarness : IDisposable
     /// An <see cref="IUserServiceRead"/> substitute whose batch read projects this
     /// harness's in-memory users. The section's only consumer is
     /// <c>WorkloadService</c>, which calls <c>GetUserInfosAsync</c> and reads display
-    /// names off the result — Governance's "copy the projection" rather than sharing
-    /// <c>UserInfoStubHelpers</c>, whose other half is built around a DbContext this
-    /// project cannot see.
+    /// names off the result — mapped via <see cref="UserInfoStubHelpers.ToUserInfo"/>.
     /// </summary>
     private protected IUserServiceRead NewDbBackedUserService()
     {
@@ -182,7 +179,7 @@ public abstract class ShiftsTestHarness : IDisposable
                 IReadOnlyDictionary<Guid, UserInfo> dict = Db.Users
                     .Where(u => ids.Contains(u.Id))
                     .ToList()
-                    .ToDictionary(u => u.Id, ToUserInfo);
+                    .ToDictionary(u => u.Id, u => u.ToUserInfo());
                 return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
             });
 
@@ -191,14 +188,11 @@ public abstract class ShiftsTestHarness : IDisposable
             {
                 var id = callInfo.Arg<Guid>();
                 var user = Db.Users.FirstOrDefault(u => u.Id == id);
-                return new ValueTask<UserInfo?>(user is null ? null : ToUserInfo(user));
+                return new ValueTask<UserInfo?>(user?.ToUserInfo());
             });
 
         return svc;
     }
-
-    private static UserInfo ToUserInfo(User user) =>
-        UserInfoFactory.Create(user, [], [], [], null, [], [], [], []);
 
     // ----- Common entity seeders ------------------------------------------------
     // Add to the context but do not SaveChanges — callers stage multiple seeds, then

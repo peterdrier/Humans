@@ -113,7 +113,7 @@ For the active event the service builds a `VolunteerTrackingViewModel` containin
 
 **Cohort B — declared-but-unbooked:**
 
-1. Collect every user where `EventParticipation.Status = Attending` for the active event AND `GeneralAvailability.AvailableDayOffsets` is non-empty AND they have **zero** Confirmed/Pending signups on any Build rota.
+1. Collect every user whose `EventParticipation.Status` for the active event is `Ticketed` or `Attended` AND `GeneralAvailability.AvailableDayOffsets` is non-empty AND they have **zero** Confirmed/Pending signups on any Build rota.
 2. Each cell renders `AvailableUnbooked` (yellow), `AvailableExpected` (light yellow), `CampSetup` (blue), or `NotAvailable` (grey) per `AvailableDayOffsets ∩ build window`.
 3. As soon as a user from this cohort confirms a signup, they migrate to Cohort A on the next page load.
 
@@ -150,6 +150,6 @@ An "Export" card above the heatmap (`_ExportCard.cshtml`) lets the coordinator d
 - [`src/Sections/Humans.Shifts/Docs/Shifts.md`](../Shifts.md) — section invariant doc; the `VolunteerBuildStatus` sub-section under § Data Model is the canonical entity reference.
 - [`src/Sections/Humans.Shifts/Docs/features/shift-management.md`](shift-management.md) — base rotas / shifts / signups model; the gap algorithm reads `ShiftSignup` rows it produces.
 - [`src/Sections/Humans.Shifts/Docs/features/shift-signup-visibility.md`](shift-signup-visibility.md) — site-wide signup-visibility policy; the tracking page does not reuse that policy (its access is the new `VolunteerTrackingWrite` gate, not the public-signup-list gate).
-- [`src/Sections/Humans.Tickets/Docs/features/event-participation.md`](../../../Humans.Tickets/Docs/features/event-participation.md) — `EventParticipation.Status = Attending` is the pre-filter for the declared-but-unbooked cohort.
+- [`src/Sections/Humans.Tickets/Docs/features/event-participation.md`](../../../Humans.Tickets/Docs/features/event-participation.md) — `EventParticipation.Status` of `Ticketed` / `Attended` is the pre-filter for the declared-but-unbooked cohort; `NotAttending` also drops a user from Cohort A.
 - [`memory/architecture/display-sort-in-controllers.md`](../../../../../memory/architecture/display-sort-in-controllers.md) — why the row sort lives in `VolunteerTrackingController`, not the service or repo.
 - [`memory/architecture/no-cross-section-ef-joins.md`](../../../../../memory/architecture/no-cross-section-ef-joins.md) — why `VolunteerBuildStatus.UserId` is a bare `Guid` with no nav.

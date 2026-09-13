@@ -4,7 +4,7 @@
 |---|---|---|---|
 | `IssuesController` | Class | `[Authorize]` (authenticated) | — |
 | `IssuesController` runtime guards | In-method | `authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)` on every mutating endpoint | Resource-based (see handler below) |
-| `BackdoorIssuesController` (in `Humans.Backdoor`) | Class | `[ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]` (personal-key auth) | `BackdoorApiKeyAuthFilter` (key-authed agent API at `/api/backdoor/issues` — list, get, create, comment, status, assignee, section, GitHub link; reaches this section through `IIssueTriage`) |
+| `BackdoorIssuesController` (in `Humans.Backdoor`) | Class | `[ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]` (personal-key auth) | `BackdoorApiKeyAuthFilter` (key-authed agent API at `/api/backdoor/issues` — list, get, create, comment, status, assignee, section, GitHub link; reaches this section through `IIssueTriage`, passing an `IssueViewer` built from the key owner's own claims, so the service applies the same handle/reporter rule it applies to a browsing session) |
 
 ## Resource-Based Authorization Handler
 

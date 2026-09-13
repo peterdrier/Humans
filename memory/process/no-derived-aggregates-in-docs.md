@@ -40,6 +40,13 @@ carry *judgment* ("the Users/Onboarding conflation is the headline structural pr
 arithmetic. Qualitative characterizations are fine and welcome; it is specifically the numbers
 that must not be duplicated.
 
+**The fix is deletion, never a refresh.** When a change invalidates a count — yours or a
+pre-existing one your change touches anyway — remove the number; never update it to the new
+value. A refreshed count is the same defect re-shipped with a shorter fuse, and it reads as
+done, so it survives review after review until the set changes again. On
+peterdrier/Humans#1572 a "36 keys" claim refreshed to "30" instead of deleted cost a third
+review round on a class two rounds had already paid for.
+
 **Review scope — pre-existing counts are not findings.** This rule binds the *author* of new
 prose: don't write derived numbers. In code review it applies only to counts the PR under
 review **added or modified**. A derived count that already existed on main is documented debt,

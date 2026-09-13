@@ -36,7 +36,7 @@ rules:
       - kind: shell
         what: top-level entries outside the allowed set
         run: |
-          ALLOWED='Contracts|Interfaces|Domain|Data|Services|Controllers|Models|Views|ViewComponents|Authorization|Filters|Jobs|Docs|Properties|wwwroot'
+          ALLOWED='Contracts|Interfaces|Domain|Data|Services|Controllers|Models|Views|ViewComponents|Authorization|Filters|Jobs|Health|Docs|Properties|wwwroot'
           for d in src/Sections/Humans.*/; do
             case "$d" in *.Contracts/) continue;; esac
             git ls-files -- "$d" | sed "s|^$d||" \
@@ -73,6 +73,10 @@ rules:
       violation. Widened to Section[A-Za-z]*\.cs. Note the intended direction is the other
       way: those classes are to be merged back into Section.cs implementing several
       interfaces, at which point the wider regex costs nothing and matches anyway.
+      2026-09-11 (Peter, via /section-doctor on Tickets): Health/ added to the allowed set —
+      a section's own health-check probes (Agent, Tickets), contributed via
+      SectionHealthChecks.cs. Agent's was blessed in its run file on 2026-08-28; the
+      template's own list needs the same addition.
 
   - id: resource-key-prefix
     title: >-

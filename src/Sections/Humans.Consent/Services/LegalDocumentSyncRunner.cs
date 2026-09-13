@@ -8,10 +8,10 @@ using Humans.Users.Contracts;
 namespace Humans.Consent.Services;
 
 /// <summary>
-/// The body of <c>SyncLegalDocumentsJob</c>, moved inside the section at G5. It named
-/// <see cref="LegalDocument"/> and <see cref="IConsentRepository"/> to decide who still
-/// owes a signature, and both are internal here — so what crosses the boundary is the
-/// call, not the rows (design §15 step 6b).
+/// The body of <c>SyncLegalDocumentsJob</c>. It names <see cref="LegalDocument"/> and
+/// <see cref="IConsentRepository"/> to decide who still owes a signature, and both are
+/// internal here — so what crosses the boundary is the call, not the rows
+/// (design §15 step 6b).
 /// </summary>
 internal sealed class LegalDocumentSyncRunner(
     ILegalDocumentSyncService syncService,
@@ -48,7 +48,6 @@ internal sealed class LegalDocumentSyncRunner(
         IReadOnlyList<LegalDocument> updatedDocs,
         CancellationToken cancellationToken)
     {
-        // Get unique team IDs for updated docs
         var teamIds = updatedDocs.Select(d => d.TeamId).Distinct().ToList();
 
         // Get active team members for affected teams (union across teams, de-duped).
@@ -71,8 +70,7 @@ internal sealed class LegalDocumentSyncRunner(
             return;
         }
 
-        // Filter to users who actually need to sign THESE updated documents
-        // We check if they have consented to the LATEST version of each updated doc
+        // Consent check runs against the LATEST version of each updated doc.
         var updatedDocVersionIds = updatedDocs
             .Select(d => d.Versions.OrderByDescending(v => v.EffectiveFrom).First().Id)
             .ToList();

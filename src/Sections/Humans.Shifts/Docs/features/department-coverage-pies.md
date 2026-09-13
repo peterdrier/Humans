@@ -102,7 +102,7 @@ No new routes. Pies submit GET to the existing `/Shifts` action with the same `d
 
 ## Authorization
 
-No new gates. Pies inherit `/Shifts`'s existing `[Authorize]` + `CanBrowseShifts` check. A pie's filtered view shows the same shifts a non-pie filter (the dropdown) would.
+No new gates. Pies inherit `/Shifts`'s existing `[Authorize]` and the runtime browsing-open check on `EventSettings`. A pie's filtered view shows the same shifts a non-pie filter (the dropdown) would.
 
 ## Related Features
 

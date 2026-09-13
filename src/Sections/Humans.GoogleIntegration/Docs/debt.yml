@@ -1,0 +1,7 @@
+# Section debt ledger for Humans.GoogleIntegration. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+inbox:
+  - added: 2026-09-10
+    what: "Docs/features/workspace-account-provisioning.md:47 lists the supported cultures as en/es/de/fr/it, omitting ca. Found fixing the same list in Feedback's spec (/section-doctor on Feedback 2026-08-31; swept in by /section-doctor on Rideshare 2026-09-10)."
+    review: light

@@ -153,5 +153,5 @@ Failure paths
 
 - [Shift Management](shift-management.md) — broader shift/rota admin context.
 - [Coordinator Roles](coordinator-roles.md) — Volunteer Coordinator role that gates many shift-admin actions.
-- [Shift Signup Visibility](shift-signup-visibility.md) — signup statuses used to scope the recipient set.
+- [Shift Signup Visibility](shift-signup-visibility.md) — the signup statuses that scope the recipient set.
 - [`docs/sections/shifts.md`](../Shifts.md) — section invariants for Shifts.

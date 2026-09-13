@@ -4,13 +4,13 @@ namespace Humans.Tickets.Domain;
 
 /// <summary>
 /// A user-initiated request to transfer a TicketAttendee (issued ticket) from
-/// the Sender (current ticket holder, must be the order's MatchedUserId) to
+/// the Sender (the attendee's current owner per <c>TicketAttendeeOwnership</c>) to
 /// a target Humans user (the Receiver). Pending until a TicketAdmin decides;
-/// the Sender may also cancel while still Pending. The ticket team processes
-/// the actual void+reissue manually in the TicketTailor dashboard, then marks
-/// the request Approved ("transfer successful") or Rejected ("cancel with a
-/// reason"). The next ticket sync reconciles the local attendee rows — this
-/// app never calls the vendor for a transfer.
+/// the Sender may also cancel while still Pending. The ticket team either runs
+/// the automated void(-to-hold)+reissue at the vendor (<c>ProcessTransferAsync</c>,
+/// outcome in the <c>Vendor*</c> columns) or does it by hand and marks the request
+/// Approved ("transfer successful"); "cancel with a reason" sets Rejected. The
+/// next ticket sync reconciles the local attendee rows.
 /// </summary>
 internal sealed class TicketTransferRequest
 {

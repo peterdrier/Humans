@@ -10,11 +10,9 @@ namespace Humans.Tickets.Contracts;
 /// </summary>
 /// <remarks>
 /// The component itself is <c>Humans.Tickets/Contracts/TicketStubViewComponent</c>;
-/// this model is on the leaf because Shell's <c>MyTicketStubs</c> /
-/// <c>TicketHoldings</c> view components project into it from
-/// <see cref="UserTicketHoldingRow"/>. The transfer wizard's own
-/// <c>MyAttendeeRowDto</c> projection is an internal mapper in the section — a
-/// public method cannot take an internal parameter type (CS0051).
+/// this model is on the leaf because the section's <c>MyTicketStubs</c> /
+/// <c>TicketHoldings</c> view components, the transfer wizard and Scanner's ticket card
+/// all project into it from <see cref="UserTicketHoldingRow"/>.
 /// </remarks>
 public sealed record TicketStubInfo(
     string AttendeeName,

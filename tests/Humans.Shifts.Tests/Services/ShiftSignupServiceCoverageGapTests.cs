@@ -139,6 +139,39 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
             Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task RemoveAsync_DropsConfirmedBelowMinVolunteers_SendsShiftCoverageGapNotification()
+    {
+        // Arrange: shift with MinVolunteers=2, exactly 2 Confirmed signups; removing
+        // either drops it to 1 (below min).
+        var (_, rota, _, userA, _) = await SeedScenarioAsync(
+            minVolunteers: 2, maxVolunteers: 5);
+        var coordinatorId = Guid.NewGuid();
+        _teamService.GetTeamAsync(rota.TeamId, Arg.Any<CancellationToken>())
+            .Returns(BuildTeamInfoWithCoordinator(rota.TeamId, coordinatorId));
+
+        var signupA = await ShiftsDb.ShiftSignups.FirstAsync(s => s.UserId == userA, Xunit.TestContext.Current.CancellationToken);
+
+        // Act
+        var result = await _service.RemoveSignupAsync(signupA.Id, Guid.NewGuid(), reason: null);
+        result.Success.Should().BeTrue();
+
+        // Assert: an actionable High-priority ShiftCoverageGap notification was
+        // sent to the department coordinators.
+        await _notificationService.Received(1).SendAsync(
+            NotificationSource.ShiftCoverageGap,
+            NotificationClass.Actionable,
+            NotificationPriority.High,
+            Arg.Any<string>(),
+            Arg.Is<IReadOnlyList<Guid>>(c => c.Contains(coordinatorId)),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
     private async Task<(EventSettings es, Rota rota, Shift shift, Guid userA, Guid userB)>
         SeedScenarioAsync(int minVolunteers, int maxVolunteers)
     {

@@ -110,7 +110,7 @@ Two controllers serve this section:
 | Any authenticated human | Submit an issue (with optional screenshot). View, comment on, and reopen by commenting on issues they reported. Cannot triage or change status. |
 | Section role-holder (e.g., `TicketAdmin`, `CampAdmin`, `TeamsAdmin`, `Board`, …) | All reporter capabilities. Additionally: list, view, comment on, change status, assign, change section, link GitHub issue **on issues whose `Section` maps to their role** (per `IssueSectionRouting.RolesFor`). |
 | Admin | All section-role-holder capabilities, on every section including null-section issues. |
-| API (key auth) | List, get, create, post comments, update status, update assignee, set GitHub issue, change section via `/api/backdoor/issues/*`. The controller lives in `Humans.Backdoor` and calls this section through `IIssueTriage`; the key resolves to a human, who is recorded as the actor on every write. |
+| API (key auth) | List, get, create, post comments, update status, update assignee, set GitHub issue, change section via `/api/backdoor/issues/*`. The controller lives in `Humans.Backdoor` and calls this section through `IIssueTriage`; the key resolves to a human, who is recorded as the actor on every write **and whose capabilities the key inherits exactly** — a key held by a `TicketAdmin` is a `TicketAdmin`, not an admin. |
 
 ## Invariants
 
@@ -120,11 +120,13 @@ Two controllers serve this section:
 - A handler may post a comment and atomically mark the issue resolved in the same request ("Comment & mark resolved"). The status change is audit-logged after the comment is persisted.
 - Visibility: a regular human sees only the issues they reported. A section role-holder sees all issues whose `Section` maps to one of their roles. Admin sees every issue.
 - Mutation: only handlers (Admin or section role-holders) may change status, assignee, section, or GitHub link, or post a comment as a non-reporter. The reporter may post a comment but cannot change other fields.
+- Both rules above are enforced in `IssuesService`, not in a controller, and every `IIssueTriage` member takes an `IssueViewer` to make that possible. The handle test itself is `IssueSectionRouting.CanHandle`, which `IssuesAuthorizationHandler` also reads, so the browser and a Backdoor key cannot drift apart. Out of reach and gone are the same answer: a read returns null, a thread read or a mutation throws the "not found" it would throw for a deleted issue, so an id is not an oracle for issues outside the caller's queue.
+- A mutation is authorized against the section the issue is **in**, not the one it is moving to, so a handler may route an issue out of their own queue.
 - `Section` is editable in any non-terminal state (handlers may re-route at any time before the issue closes).
 - Screenshots are validated for allowed file types (JPEG, PNG, WebP) and a max size of 10 MB before storage.
 - All issue mutations are audit-logged via `IAuditLogService.LogAsync` (`AuditAction.IssueStatusChanged`, `AuditAction.IssueAssigneeChanged`, `AuditAction.IssueSectionChanged`, `AuditAction.IssueGitHubLinked`). Audit writes happen **after** the business save, never before — see `coding-rules.md` "audit-after-save".
 - Creation is audited only on the machine path (`CreateIssueAsync`, `AuditAction.IssueCreated`), where the filer and the reporter can differ and the entry is the filer's only durable record. The in-app reporter is their own filer, so `Issue.ReporterUserId` says it all and `SubmitIssueAsync` writes no creation audit.
-- API-initiated changes are audit-logged with actor `null` (the API-key path has no user identity); the audit row's metadata records that the change came from the API.
+- API-initiated changes are audit-logged with the key's owner as actor — the key resolves to a human before any handler runs, so nothing on this path writes as nobody.
 
 ## Negative Access Rules
 
@@ -132,6 +134,7 @@ Two controllers serve this section:
 - A section role-holder **cannot** see, comment on, or mutate issues whose `Section` does not map to one of their roles. (Their elevated access is scoped to their section; null-section issues are Admin-only.)
 - A regular human **cannot** change an issue's status, assignee, section, or GitHub link — even on issues they reported. (They may comment, and that comment may auto-reopen a terminal issue, but the status field itself is handler-only.)
 - An API client **cannot** call `/Issues/*` (the cookie-authenticated controller) — and a cookie-authenticated user **cannot** call `/api/backdoor/issues/*` without an API key.
+- A key holder **cannot** reach an issue by id that their own queue would not have listed: `GET {id}`, its comments, `POST {id}/comments` and every `PATCH` all answer 404, the same as the browser shows them nothing.
 
 ## Triggers
 

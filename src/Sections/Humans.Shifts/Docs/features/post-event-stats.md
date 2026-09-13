@@ -71,7 +71,7 @@ A shift's period bucket is computed from its day offset via `Shift.GetShiftPerio
 
 ### Signup inclusion
 
-Only `ShiftSignupStatus.Confirmed` and `ShiftSignupStatus.NoShow` are counted. All other statuses (Pending, Refused, Bailed, Cancelled) are excluded from rates. A shift with zero Confirmed + NoShow signups is counted in TotalShifts but not in ShiftsWithData or rate calculations.
+Only `SignupStatus.Confirmed` and `SignupStatus.NoShow` are counted. All other statuses (Pending, Refused, Bailed, Cancelled) are excluded from rates. A shift with zero Confirmed + NoShow signups is counted in TotalShifts but not in ShiftsWithData or rate calculations.
 
 ### Department roll-up
 
