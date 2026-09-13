@@ -124,8 +124,12 @@ Presentation the section does *not* own: the rota tables on the shifts step are 
 - **Guest dashboard cards are other sections' contributions.** Comms preferences, GDPR export
   and deletion are rendered here but owned by Users; Tickets contributes through the
   `guest-page` chrome slot. Anything added to that page belongs to the section that owns the
-  data, not here. The page itself is reachable only by typing `/Guest`, and only by a user who
-  already has a name — `NameRequiredFilter` does not exempt `Guest`.
+  data, not here. **Every inbound path to the page dead-ends for the audience it is built for.**
+  `NameRequiredFilter` does not exempt `Guest`, so a profileless account asking for `/Guest` is
+  sent to the name form. It can still reach Users' `Guest/CommunicationPreferences`, which is
+  `[AllowAnonymous]` — and that page's breadcrumb and back button, `GuestAccountController`'s
+  error and success redirects, and Gdpr's `Guest/DownloadData` all send it to `/Guest`, which
+  bounces it again. Finding 1; the fix is Needs Peter.
 - **A cleared human can still be rejected; Flag stays withheld until a cross-section fix.**
   Settled by Peter on 2026-08-23: cause can surface after the fact, so the coordinator needs
   somewhere to act on it, and Reject is the verb he named. The service was always permissive —

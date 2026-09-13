@@ -32,7 +32,7 @@ sort key. Findings 1–24 are 3e's ranked list; 25–27 were raised after it, ea
 
 | # | Finding | Source | Play | Effort |
 |---|---|---|---|---|
-| 1 | **`/Guest` is unreachable by its stated audience and nothing links to it.** `NameRequiredFilter` exempts only {Account, Language} + (OnboardingWidget,Names)/(Home,Error)/(Home,Privacy); a profileless account has `Profile is null` so `HasRequiredNameFields` is false and it is redirected to the name form. `MembershipRequiredFilter` still exempts `Guest` for that audience, and `Program.cs:458-461` says the ordering is deliberate (#812: name gate before "MembershipRequiredFilter bounces it to Guest/Home"). Repo-wide grep: nothing links or redirects to `/Guest`. So the page renders only for a named, fully-onboarded member who types the URL — and shows them a "Create your profile" CTA. | **target** (shape 1's split authority) | docs tell the truth this run; the page's fate is **Needs Peter 1** | S (docs) |
+| 1 | **`/Guest` is unreachable by its stated audience, and every path into it bounces that audience straight back out.** `NameRequiredFilter` exempts only {Account, Language} + (OnboardingWidget,Names)/(Home,Error)/(Home,Privacy); a profileless account has `Profile is null` so `HasRequiredNameFields` is false and it is redirected to the name form. `MembershipRequiredFilter` still exempts `Guest` for that audience, and `Program.cs:458-461` says the ordering is deliberate (#812: name gate before "MembershipRequiredFilter bounces it to Guest/Home"). So the page renders only for a named, fully-onboarded member — and shows them a "Create your profile" CTA. **Corrected in review (2026-09-13):** the original wrote "nothing links or redirects to `/Guest`", which is false — it grepped the literal route and missed tag helpers and `RedirectToAction`. `CommunicationPreferences.cshtml:12`/`:113` link there, and `GuestAccountController:51,103,108,114,132,136` and `GuestDataController:56` redirect there. That makes the defect worse, not smaller: `Guest/CommunicationPreferences` is `[AllowAnonymous]`, so a profileless account does reach it, and its breadcrumb and error path then bounce it off the name gate. Not an orphan page — a live loop. | **target** (shape 1's split authority) | docs tell the truth this run; the page's fate is **Needs Peter 1** | S (docs) |
 | 2 | `OnboardingService.cs:144-146` — Flag comment says "the Flagged flag is a record nothing acts on". FALSE: `RecordConsentCheck` → `UserService.cs:367` `profile.IsApproved = cleared`, and `SystemTeamSyncJob` gates the tier teams on it. `health.md` §4/§5 and `Detail.cshtml:128-137` say the opposite. An editor trusting this comment would expose Flag and silently kick tier members out of their team. | Comments C1 | fix comment | S |
 | 3 | `Onboarding.md:27,123` present `IAdminDashboardService` / `AdminDashboardService` / `GetAdminDashboardAsync` as current siblings. Repo-wide untruncated grep over `src`+`tests`: no code at all; `Users/Section.cs:32` says both are "gone entirely". | History H3 | cut | S |
 | 4 | A Consent-Coordinator notification on the review threshold is claimed at `Onboarding.md:41`, `:101`, `:117`, `onboarding-pipeline.md:157` and in `IOnboardingIntake.cs`'s XML doc. `ConsentReviewNeeded` is a retired source; the only emitter call in the section is `ProfileRejected`. | main + Freshness F-5, F-8 | cut, and record the true rule in the target | S |
@@ -161,9 +161,10 @@ list before opening the PR, not after a reviewer asks.
 
 ## Needs Peter
 
-- [ ] 1 — `/Guest` is unreachable by profileless accounts and nothing links to it; delete the page,
-      exempt `Guest` from `NameRequiredFilter`, or leave it as a typed-URL relic? Docs now tell the
-      truth either way; the fix changes business behaviour and touches the Shell.
+- [ ] 1 — a profileless account reaches `Guest/CommunicationPreferences` (it is `[AllowAnonymous]`)
+      and every way out of that page points at `/Guest`, where the name gate bounces it. Exempt
+      `Guest` from `NameRequiredFilter`, retarget those links and redirects, or delete the page?
+      Docs now tell the truth either way; the fix changes business behaviour and touches the Shell.
 - [ ] 18 — reviewer-approved surface reduction, deferred unverifiable; re-run it on a machine that
       can compile.
 - [ ] 21 — worth a test on a machine that can compile, or leave the success path unasserted?
