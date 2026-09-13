@@ -1419,6 +1419,63 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task ClearReminderStampsAsync_LeavesAStampWrittenAfterTheExtension()
+    {
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(6));
+        var roster = await _fx.AddRosterRowAsync(vote.Id, Guid.NewGuid(), isOfficial: true);
+        var extendedAt = _fx.Clock.GetCurrentInstant();
+
+        // A sweep still running when the extension commits reads the new deadline per
+        // recipient and announces that one. Re-arming its stamp would mail the same member
+        // the same deadline twice.
+        _fx.Clock.AdvanceMinutes(1);
+        await _fx.Repository.StampReminderSentAsync(
+            [roster.Id], _fx.Clock.GetCurrentInstant(),
+            Xunit.TestContext.Current.CancellationToken);
+        _fx.Db.ChangeTracker.Clear();
+
+        await _fx.Repository.ClearReminderStampsAsync(
+            vote.Id, extendedAt, Xunit.TestContext.Current.CancellationToken);
+        _fx.Db.ChangeTracker.Clear();
+
+        (await _fx.Repository.GetRosterNeedingReminderAsync(
+                vote.Id, Xunit.TestContext.Current.CancellationToken))
+            .Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task OpenAsync_WhenTheDeadlinePassesRightAfterTheAlert_ResolvesIt()
+    {
+        var vote = await _fx.AddVoteAsync(
+            status: AssemblyVoteStatus.Draft,
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(2));
+        var member = Guid.NewGuid();
+        _fx.StubActiveUsers(member);
+        _fx.Applications.GetActiveApprovedTierUserIdsAsync(
+                MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>([member]));
+
+        // Opening a vote that closes in two hours is allowed, and nothing settles a lapsed
+        // vote until the hourly sweep runs — so the status alone still says Open.
+        _fx.Notifications.When(n => n.SendAsync(
+                Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(),
+                Arg.Any<NotificationPriority>(), Arg.Any<string>(),
+                Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>()))
+            .Do(_ => _fx.Clock.AdvanceHours(3));
+
+        (await _fx.Service.OpenAsync(
+                vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken))
+            .Should().Be(AssemblyVoteActionResult.Ok);
+
+        await _fx.NotificationResolve.Received().ResolveBySourceKeyAsync(
+            NotificationSource.AssemblyVoteOpened, vote.Id.ToString(), null,
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ExtendAsync_BuiltFromADeadlineSomebodyElseAlreadyExtended_IsRefused()
     {
         var vote = await _fx.AddVoteAsync(

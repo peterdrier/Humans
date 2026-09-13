@@ -1201,8 +1201,9 @@ internal sealed class AssemblyVoteService(
         // commits second and moves the deadline the electorate was just given backwards —
         // and its audit entry names a previous value that was never the persisted one.
         var readAt = vote.UpdatedAt;
+        var extendedAt = clock.GetCurrentInstant();
         vote.ClosesAt = newClosesAt;
-        vote.UpdatedAt = clock.GetCurrentInstant();
+        vote.UpdatedAt = extendedAt;
 
         // The vote closed, or was extended by somebody else, between the read above and this
         // write. Nothing was extended, and "only an open vote can be extended" is the honest
@@ -1213,8 +1214,10 @@ internal sealed class AssemblyVoteService(
         // Re-arm the T-24h reminder. A vote already inside the reminder window has stamped
         // rows, and the stamp means "told about the old deadline" — left alone, everyone
         // reminded before the extension is never told the new one, which is the deadline
-        // that decides whether their ballot counts.
-        await repository.ClearReminderStampsAsync(vote.Id, ct);
+        // that decides whether their ballot counts. Only stamps up to the extension are
+        // cleared: an extension that leaves the vote inside the window does not stop a sweep
+        // already running, and that sweep is announcing the new deadline already.
+        await repository.ClearReminderStampsAsync(vote.Id, extendedAt, ct);
 
         await audit.LogAsync(
             AuditAction.AssemblyVoteExtended, AuditEntityTypes.AssemblyVote, vote.Id,
@@ -1352,10 +1355,16 @@ internal sealed class AssemblyVoteService(
         // does not exist yet cannot be resolved — so emitting after a roster-long email loop
         // leaves an actionable "vote is open" alert on a vote that is already closed, with
         // nothing left to clear it. Emitted first, the window is one round trip, and the
-        // status re-read closes what is left of it.
+        // re-read closes what is left of it.
+        //
+        // That re-read tests the deadline, not just the status: opening a vote that closes
+        // minutes from now is allowed, a lapsed vote stays persisted Open until something
+        // settles it, and an actionable "cast your ballot" alert on a vote that no longer
+        // accepts one is a prompt the member cannot act on.
         var userIds = roster.Where(r => r.UserId is not null).Select(r => r.UserId!.Value).ToList();
         if (userIds.Count > 0
-            && (await repository.GetByIdAsync(vote.Id, ct))?.Status == AssemblyVoteStatus.Open)
+            && await repository.GetByIdAsync(vote.Id, ct) is { } open
+            && open.AcceptsBallotsAt(clock.GetCurrentInstant()))
         {
             await notifications.SendAsync(
                 NotificationSource.AssemblyVoteOpened,
@@ -1371,10 +1380,11 @@ internal sealed class AssemblyVoteService(
             // them resolves a source key with no rows behind it yet — leaving an actionable
             // "this vote is open" alert nothing will ever clear. There is no transaction
             // spanning two sections, so the rows are cleaned up after the fact instead: read
-            // once more, and if the vote went terminal in that gap, resolve what was just
-            // written. The resolve is idempotent, so doing it twice costs nothing.
-            if ((await repository.GetByIdAsync(vote.Id, ct))?.Status
-                is AssemblyVoteStatus.Closed or AssemblyVoteStatus.Cancelled)
+            // once more, and if the vote stopped accepting ballots in that gap, resolve what
+            // was just written. The resolve is idempotent, so doing it twice costs nothing,
+            // and the lapse sweep resolving a vote this already cleared is one of those times.
+            if (await repository.GetByIdAsync(vote.Id, ct) is not { } after
+                || !after.AcceptsBallotsAt(clock.GetCurrentInstant()))
             {
                 await ClearOpenNotificationAsync(vote, null, ct);
             }

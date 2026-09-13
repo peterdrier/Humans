@@ -275,11 +275,14 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task ClearReminderStampsAsync(Guid voteId, CancellationToken ct = default)
+    public async Task ClearReminderStampsAsync(
+        Guid voteId, Instant stampedBy, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var rows = await ctx.AssemblyVoteRosterEntries
-            .Where(r => r.VoteId == voteId && r.ReminderSentAt != null)
+            .Where(r => r.VoteId == voteId
+                && r.ReminderSentAt != null
+                && r.ReminderSentAt <= stampedBy)
             .ToListAsync(ct);
 
         foreach (var row in rows)

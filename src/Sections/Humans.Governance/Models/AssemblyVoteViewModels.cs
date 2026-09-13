@@ -60,13 +60,19 @@ internal sealed class AssemblyBallotFormViewModel
     public List<AssemblyRankedBallotOptionRow> RankedOptions { get; set; } = [];
 
     /// <summary>
-    /// True when two options were given the same rank. Projecting to keys would erase that —
-    /// two rows ranked 1 sort into two distinct keys, which the service's duplicate-key check
-    /// cannot see — and the ballot would silently be counted in form-row order. On a binding
-    /// vote an ambiguous ballot is rejected, never guessed at.
+    /// True when a ranked submission gave two options the same rank. Projecting to keys would
+    /// erase that — two rows ranked 1 sort into two distinct keys, which the service's
+    /// duplicate-key check cannot see — and the ballot would silently be counted in form-row
+    /// order. On a binding vote an ambiguous ballot is rejected, never guessed at.
     /// </summary>
     public bool HasDuplicateRanks()
     {
+        // Only a ranked submission can be ambiguous. The form posts its rank selectors
+        // whichever radio is chosen, so a half-finished ranking left behind an Abstain is
+        // not the voter contradicting themselves — it is the ranking they have just said
+        // they are not casting, and <see cref="ToRanking"/> drops it for the same reason.
+        if (Choice != AssemblyBallotChoice.Ranked) return false;
+
         var ranks = RankedOptions
             .Where(r => r.Selection is > 0 && !string.IsNullOrWhiteSpace(r.OptionKey))
             .Select(r => r.Selection!.Value)

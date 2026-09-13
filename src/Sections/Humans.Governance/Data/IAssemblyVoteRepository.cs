@@ -126,11 +126,14 @@ internal interface IAssemblyVoteRepository : IRepository
         IReadOnlyCollection<Guid> rosterIds, Instant at, CancellationToken ct = default);
 
     /// <summary>
-    /// Clears <c>ReminderSentAt</c> on every roster row of a vote, so the T-24h reminder is
-    /// armed again. Called when an extension moves the deadline: the stamp means "already
-    /// told about the old deadline", and the new one has to be announced too.
+    /// Clears <c>ReminderSentAt</c> on the roster rows of a vote stamped at or before
+    /// <paramref name="stampedBy"/>, so the T-24h reminder is armed again. Called when an
+    /// extension moves the deadline: the stamp means "already told about the old deadline",
+    /// and the new one has to be announced too. Later stamps are left alone — a sweep still
+    /// running when the extension commits reads the new deadline per recipient and announces
+    /// that one, and re-arming it would mail the same member twice.
     /// </summary>
-    Task ClearReminderStampsAsync(Guid voteId, CancellationToken ct = default);
+    Task ClearReminderStampsAsync(Guid voteId, Instant stampedBy, CancellationToken ct = default);
 
     /// <summary>
     /// Roster rows for a vote that have no ballot and no reminder yet — who the T-24h
