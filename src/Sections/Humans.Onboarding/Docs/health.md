@@ -35,7 +35,7 @@ Six questions. Everything in the section is one of these.
 | 5 | Who is waiting for a coordinator, and what do I do about them? | review queue, review detail, clear / bulk clear / flag | `/OnboardingReview` |
 | 6 | This person is out | `IOnboardingIntake.RejectSignupAsync` | the review detail page and Users' admin screen |
 
-Two notes the table hides:
+Notes the table hides:
 
 - **Shape 1 has a second answer.** `/Welcome` routes on the `UserState` claim
   (`RoleChecks.IsActiveMember`), not on the widget step, so a person who has a name but no
@@ -43,19 +43,23 @@ Two notes the table hides:
   widget. That is deliberate — `UserState.Active` is the access gate and the banner picks them
   up on arrival — but it means "where is this person" has one authority for access and another
   for the funnel, and the two must not be conflated.
-- **Shape 2 always ends at the dispatcher.** No step page knows what follows it. That is the
-  property that lets steps be reordered, and it is worth protecting.
+- **Shape 2's steps hand forward directly (Names → Shifts → Consents).** Only `SignConsent`
+  returns to the dispatcher. The dispatcher remains shape 1's sole answer and the only thing
+  that resolves a step from data.
+- **Only shapes 3 and 6 are asked from outside the section.** Shape 1's answer is asked from
+  inside this section and nowhere else; shapes 4 and 5 have no outside caller at all. That is
+  what decides which types belong on the leaf — see §3.
 
 ## 3. Structure
 
-- **`Contracts/` (leaf project)** — the two writes other sections make (`IOnboardingIntake`),
-  the step resolver other sections read (`IOnboardingWidgetState` + `OnboardingWidgetStep`),
-  and `OnboardingResult`. Nothing else. The leaf is a project, not a folder, because Consent
-  calls into Onboarding and Onboarding renders Consent's copy; a folder would close a cycle.
-  It has zero project references and that is load-bearing.
+- **`Contracts/` (leaf project)** — exactly the members other sections call:
+  `IOnboardingIntake` (the writes Users and Consent make) and `OnboardingResult` (the
+  funnel's result vocabulary, returned by Users' own surfaces). Nothing else. The leaf is a
+  project, not a folder, because Consent calls into Onboarding and Onboarding renders Consent's
+  copy; a folder would close a cycle. It has zero project references and that is load-bearing.
 - **`Services/`** — `OnboardingService` (shapes 3–6, an orchestrator over other sections'
-  service interfaces), `OnboardingWidgetState` (shape 1), and the session seam the step
-  resolver needs to see the "not right now" click.
+  service interfaces), `OnboardingWidgetState` (shape 1) with the step enum it returns, and the
+  session seam the step resolver needs to see the "not right now" click.
 - **`Controllers/`** — one per audience: the widget for the person onboarding, the review
   queue for the coordinator, Guest for the profileless, Welcome for the anonymous visitor.
 - **`Models/`** — view models and the one builder that keeps the shifts action thin.
@@ -66,40 +70,57 @@ Two notes the table hides:
 
 Presentation the section does *not* own: the rota tables on the shifts step are Shifts'
 (`OnboardingShiftsListViewComponent`, invoked by name), the consent body is Consent's
-(`_ConsentReviewBody`), and the person/profile/access-matrix widgets are Base's and Users'.
+(`_ConsentReviewBody`), and the person and access-matrix widgets are Base's.
 
 ## 4. Invariants
 
 - **Admission is name + consents.** `HasRequiredNameFields && !IsSuspended && RejectedAt is
   null && HasAllRequiredConsentsForTeam(Volunteers)`, reconciled by `SystemTeamSyncJob`.
   `ConsentCheckStatus` and `IsApproved` are never consulted.
+  (`src/Sections/Humans.Users.Contracts/UserInfo.cs:323`, `:331`.)
 - **Clear and Flag change nothing but the record *for a Volunteer*.** No team sync, no email,
   no access change — admission ignores `IsApproved` (above). They are *not* inert for a
   Colaborador/Asociado: `RecordConsentCheck` sets `Profile.IsApproved = (status == Cleared)`
   (`Humans.Users` `UserService`) and `SystemTeamSyncJob` gates the two tier teams on that flag,
   so `Cleared → Flagged` drops a tier member from their tier team on the next hourly sync.
   That is why the detail view still withholds Flag from a cleared human — see §5.
+  (`Services/OnboardingService.cs:279`.)
 - **Reject is the only coordinator action with consequences.** It sets `RejectedAt`,
   de-provisions the three approval-gated system teams, and notifies the person.
+  (`Services/OnboardingService.cs:153`, `:314`.)
+- **Nothing in the funnel notifies a coordinator.** The threshold check writes the status and
+  logs; the only notification the section raises is `ProfileRejected`, to the rejected person.
+  `ConsentReviewNeeded` is a retired source — the coordinator finds the queue through the
+  `Review` pill in the admin sidebar (`SectionAdminNav.cs:15`), not through an inbox row.
+  (`Services/OnboardingService.cs:217`; `Humans.Notifications/Services/NotificationInboxService.cs:202`.)
 - **A flagged, unresolved person stays in the queue** even if an override set `IsApproved`.
   A rejected person leaves it — Clear is refused on them, so the row would be unresolvable.
-- **A merged tombstone never appears in the queue.**
+  (`UserInfo.cs:341`; `Services/OnboardingService.cs:44`.)
+- **A merged tombstone never appears in the queue.** (`UserInfo.cs:331`, `:341`.)
 - **The name save is never gated on cross-section state.** Gating it on a step or consent
   computation loops a bare account on the Names form forever.
-- **Every step page redirects to the dispatcher, never to a named next step.**
+  (`Controllers/OnboardingWidgetController.cs:87`.)
+- **The dispatcher is the canonical entry point and the only thing that resolves a step from
+  data; step pages hand forward to the next page directly.** Only `SignConsent` returns to it.
+  (`Controllers/OnboardingWidgetController.cs:99`, `:158`, `:172`, `:180`, `:257`.)
 - **No leaf-to-director callback.** `ProfileService` and `ConsentService` do not depend on
   Onboarding; the threshold check is a peer call from the controller after the leaf write.
-- **The section touches no `DbContext`, no repository, no cache.**
+  (`Humans.Users/Controllers/ProfileController.cs:453`;
+  `Humans.Consent/Controllers/ConsentController.cs:125`.)
+- **The section touches no `DbContext`, no repository, no cache.** (`Section.cs:35`;
+  `Humans.Onboarding.csproj` has no data-access reference.)
 - **Every rendered key resolves in the resource set the call site is bound to.** A section RCL
   binds `SharedResource`, `OnboardingResource` and `ConsentResource`; a key rendered against
   the wrong one is silently its own name, in all six languages.
+  (`tests/Humans.Onboarding.Tests/Architecture/OnboardingLocalizerBindingTests.cs`.)
 
 ## 5. Seams
 
 - **Guest dashboard cards are other sections' contributions.** Comms preferences, GDPR export
   and deletion are rendered here but owned by Users; Tickets contributes through the
   `guest-page` chrome slot. Anything added to that page belongs to the section that owns the
-  data, not here.
+  data, not here. The page itself is reachable only by typing `/Guest`, and only by a user who
+  already has a name — `NameRequiredFilter` does not exempt `Guest`.
 - **A cleared human can still be rejected; Flag stays withheld until a cross-section fix.**
   Settled by Peter on 2026-08-23: cause can surface after the fact, so the coordinator needs
   somewhere to act on it, and Reject is the verb he named. The service was always permissive —
@@ -122,7 +143,7 @@ Presentation the section does *not* own: the rota tables on the shifts step are 
   owns the write.
 - **No `IOnboardingService` on the leaf.** The review queue, its DTOs, the clear/flag pair and
   the next-document resolver have no consumer outside the section and must stay internal —
-  the leaf is two methods and two types wide on purpose.
+  the leaf is what other sections actually call, and nothing more.
 - **No narrow `IOnboardingEligibilityQuery`-style interface for the threshold check.** That
   was a band-aid for an inverted dependency; the peer call from the controller replaced it and
   must not come back.
@@ -131,6 +152,9 @@ Presentation the section does *not* own: the rota tables on the shifts step are 
 - **No shared name-save helper between the widget and Profile edit.** `SaveProfileAsync` is a
   full-field overwrite and the widget's job is precisely to preserve the fields its form does
   not carry; folding that into a shared helper hides the reason it exists.
+- **No coordinator notification on the review threshold.** The pill count is the surfacing;
+  `ConsentReviewNeeded` was retired deliberately (Notifications' own target, §"retired
+  sources") and must not be reinstated from this side.
 
 ## Load-bearing weirdness
 

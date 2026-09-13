@@ -104,9 +104,9 @@ signed all required documents.
 
 ### 4. Become an active Volunteer
 
-When you enter your legal name, your stored `UserState` becomes `Active` and the app opens. When you have a legal name and all required documents are signed, the scheduled system-team sync adds you to the Volunteers Google Workspace provisioning group. Only a rejected signup (which records a rejection timestamp and reason) removes you from the Volunteers team.
+When you enter your legal name, your stored `UserState` becomes `Active` and the app opens. When you have a legal name and all required documents are signed, the scheduled system-team sync adds you to the Volunteers Google Workspace provisioning group. A rejected signup, a suspension, or letting a required document's grace period lapse removes you from the Volunteers team.
 
-While you are still onboarding, you can reach your profile, consents, issue filing, legal documents, public camp pages, calendar, and the home dashboard — most of the app is gated until you are active.
+While you are still onboarding, you can still reach your account pages, profile, consents, issue filing, notifications, tier applications, and any survey you're invited to — but camp pages, the calendar, and most of the app stay gated until you are active.
 
 ## As a [Coordinator](Glossary.md#coordinator)
 
