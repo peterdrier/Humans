@@ -9,7 +9,6 @@ using Humans.Base.Constants;
 using Humans.Onboarding.Controllers;
 using Humans.Onboarding.Models;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Localization;
@@ -30,7 +29,6 @@ namespace Humans.Onboarding.Tests.Controllers;
 /// </summary>
 public class OnboardingWidgetControllerConsentsTests
 {
-    private readonly UserManager<User> _userManager;
     private readonly IOnboardingWidgetState _state = Substitute.For<IOnboardingWidgetState>();
     private readonly IProfileEditorService _profileEditor = Substitute.For<IProfileEditorService>();
     private readonly IShiftSignups _signups = Substitute.For<IShiftSignups>();
@@ -49,9 +47,6 @@ public class OnboardingWidgetControllerConsentsTests
 
     public OnboardingWidgetControllerConsentsTests()
     {
-        var userStore = Substitute.For<IUserStore<User>>();
-        _userManager = Substitute.For<UserManager<User>>(
-            userStore, null, null, null, null, null, null, null, null);
         _localizer[Arg.Any<string>()].Returns(ci =>
             new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
         _consentLocalizer[Arg.Any<string>()].Returns(ci =>
@@ -60,8 +55,6 @@ public class OnboardingWidgetControllerConsentsTests
 
     private OnboardingWidgetController BuildSut(Guid userId, bool isStub = false)
     {
-        var user = new User { Id = userId };
-        _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(user);
         _http.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())],
             "test"));
         // Default: user has a non-Stub profile so the new pre-flight gate

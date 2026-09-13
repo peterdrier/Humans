@@ -12,8 +12,10 @@ using Humans.Users.Contracts;
 namespace Humans.Onboarding.Controllers;
 
 /// <summary>
-/// Review queue for Consent Coordinators and Volunteer Coordinators.
-/// Manages the consent check gate for new humans during onboarding.
+/// The consent-check review desk. <c>ReviewQueueAccess</c> opens the list to Consent
+/// Coordinators, Volunteer Coordinators, Board and Admin; every action that changes a
+/// record carries <c>ConsentCoordinatorBoardOrAdmin</c>, so a Volunteer Coordinator reads
+/// the queue but cannot act on it.
 /// </summary>
 [Authorize(Policy = PolicyNames.ReviewQueueAccess)]
 [Route("[controller]")]

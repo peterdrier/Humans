@@ -8,16 +8,14 @@ using Humans.Users.Contracts;
 namespace Humans.Onboarding.Controllers;
 
 /// <summary>
-/// Dashboard for profileless accounts (authenticated users without a Profile).
-/// Moved from Shell with the rest of the onboarding entry points
-/// (nobodies-collective/Humans#1091). Comms preferences, GDPR tools and ticket
-/// status are contributed by their own sections into this page's cards / chrome slot.
+/// Dashboard for profileless accounts (authenticated users without a Profile). Comms
+/// preferences, GDPR tools and ticket status are contributed by their own sections into
+/// this page's cards / chrome slot.
 /// </summary>
 [Authorize]
 internal sealed class GuestController(
     IUserServiceRead userService,
-    IOnboardingWidgetState widgetState,
-    ILogger<GuestController> logger) : HumansControllerBase(userService)
+    IOnboardingWidgetState widgetState) : HumansControllerBase(userService)
 {
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
@@ -33,16 +31,7 @@ internal sealed class GuestController(
             return RedirectToAction("Index", "OnboardingWidget");
         }
 
-        try
-        {
-            var viewModel = BuildDashboardViewModel(user);
-            return View(viewModel);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to load Guest dashboard for user {UserId}", user.Id);
-            return View(new GuestDashboardViewModel { DisplayName = user.BurnerName });
-        }
+        return View(BuildDashboardViewModel(user));
     }
 
     private static GuestDashboardViewModel BuildDashboardViewModel(UserInfo user)

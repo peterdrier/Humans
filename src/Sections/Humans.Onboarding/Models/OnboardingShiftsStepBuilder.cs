@@ -11,13 +11,6 @@ namespace Humans.Onboarding.Models;
 /// Lives outside the controller so the action stays under the
 /// no-business-logic-in-controllers ratchet thresholds.
 /// </summary>
-/// <remarks>
-/// This is the half of Shell's former <c>OnboardingShiftsBrowseModelBuilder</c> that names
-/// only <c>Humans.Shifts.Contracts</c> types. The other half — grouping the filtered shifts
-/// into <c>RotaShiftGroup</c>s through <c>ShiftBrowseMapper</c> — went to
-/// <c>Humans.Shifts</c> with the rest of that section's presentation layer and is now
-/// <c>OnboardingShiftsListViewComponent</c>.
-/// </remarks>
 internal static class OnboardingShiftsStepBuilder
 {
     internal const string PriorityCritical = "critical";

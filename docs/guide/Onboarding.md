@@ -49,7 +49,7 @@ If you are brand new, start with [GettingStarted.md](GettingStarted.md).
 - `/Profile/Me/ShiftInfo` — skills, work-style preferences, and languages used to staff shifts.
 - `/Consent` — the legal documents to read and sign.
 - `/Account/Login` — Google sign-in and the "Send me a login link" magic-link option.
-- `/Guest` — where you land if your account has no profile yet.
+- `/Guest` — a dashboard for accounts that never get a profile. The name gate turns those accounts away today, so in practice only a named member sees it.
 
 ## As a Volunteer
 
@@ -104,9 +104,9 @@ signed all required documents.
 
 ### 4. Become an active Volunteer
 
-When you enter your legal name, your stored `UserState` becomes `Active` and the app opens. When you have a legal name and all required documents are signed, the scheduled system-team sync adds you to the Volunteers Google Workspace provisioning group. Only a rejected signup (which records a rejection timestamp and reason) removes you from the Volunteers team.
+When you enter your legal name, your stored `UserState` becomes `Active` and the app opens. When you have a legal name and all required documents are signed, the scheduled system-team sync adds you to the Volunteers Google Workspace provisioning group. A rejected signup, a suspension, or letting a required document's grace period lapse removes you from the Volunteers team.
 
-While you are still onboarding, you can reach your profile, consents, issue filing, legal documents, public camp pages, calendar, and the home dashboard — most of the app is gated until you are active.
+Until you enter that name the app stays shut: every page sends you back to the name form. After it, nothing is gated on your signatures — but if you let a required document's grace period lapse you are suspended to the account-status page, where your account and profile pages, consents, issue filing, notifications, tier applications and any survey you're invited to still work.
 
 ## As a [Coordinator](Glossary.md#coordinator)
 

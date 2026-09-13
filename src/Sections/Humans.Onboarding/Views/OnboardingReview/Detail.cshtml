@@ -94,11 +94,10 @@
             <div class="card-body">
                 @* Clearing a cleared human is the no-op; Reject stays available afterwards,
                    because cause can surface after the fact and the coordinator needs somewhere
-                   to act on it. The service never refused it — until this change the rule lived
-                   only in this view, so any other caller already had what the page withheld.
-                   Reject carries ConsentCoordinatorBoardOrAdmin on the action itself; that
-                   policy is the gate, not the markup. Flag is the one action still withheld
-                   here, for the reason given above its own block. *@
+                   to act on it. Reject carries ConsentCoordinatorBoardOrAdmin on the action
+                   itself; that policy is the gate, not the markup, so do not add a
+                   service-side refusal. Flag is the one action still withheld here, for the
+                   reason given above its own block. *@
                 @if (Model.ConsentCheckStatus == ConsentCheckStatus.Cleared)
                 {
                     <div class="text-success text-center mb-3">
@@ -131,11 +130,10 @@
                    SystemTeamSyncJob gates Colaborador/Asociado team membership on
                    Profile.IsApproved. So flagging a cleared tier member silently drops them from
                    their tier team on the next hourly sync — a kick-out dressed as an annotation.
-                   Volunteers admission already ignores IsApproved for exactly this reason
-                   ("the Flagged consent-check is an audit annotation that no longer gates
-                   admission"); the tier path never got the same treatment. Reject below is the
-                   intended kick-out and is available. Remove this condition once Cleared →
-                   Flagged stops clearing approval — see the run file's Needs Peter item 2. *@
+                   Volunteers admission already ignores IsApproved for exactly this reason; the
+                   tier path never got the same treatment. Reject below is the intended kick-out
+                   and is available. Remove this condition once Cleared → Flagged stops clearing
+                   approval — see Docs/health.md §5. *@
                 @if (Model.ConsentCheckStatus is not ConsentCheckStatus.Flagged
                      and not ConsentCheckStatus.Cleared)
                 {

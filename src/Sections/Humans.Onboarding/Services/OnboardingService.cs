@@ -40,16 +40,7 @@ internal sealed class OnboardingService(
         // profiles are excluded (see UserInfo.IsConsentCheckFlagged): Clear is blocked on them and
         // the row would otherwise be unresolvable. Pending list keeps the NeedsConsentReview gate.
         var all = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
-
-        var flagged = all
-            .Where(u => u.IsConsentCheckFlagged)
-            .OrderBy(u => u.Profile!.CreatedAt)
-            .ToList();
-
-        var pending = all
-            .Where(u => u.NeedsConsentReview && !u.IsConsentCheckFlagged)
-            .OrderBy(u => u.Profile!.CreatedAt)
-            .ToList();
+        var (pending, flagged) = PartitionReviewQueue(all);
 
         var allUserIds = flagged.Concat(pending).Select(u => u.Id).ToList();
         var pendingAppUserIds = await applicationDecisionService
@@ -68,6 +59,25 @@ internal sealed class OnboardingService(
         var pendingAppHashSet = pendingAppUserIds.ToHashSet();
 
         return new ReviewQueueData(pending, flagged, pendingAppHashSet, consentProgress);
+    }
+
+    // Who is in the queue, in one place. Bulk clear's eligibility is *defined* as "a row in the
+    // queue", so it partitions here too rather than restating the predicate — the two cannot
+    // drift apart. Ordering is the queue's display order and both callers depend on it.
+    private static (List<UserInfo> Pending, List<UserInfo> Flagged) PartitionReviewQueue(
+        IEnumerable<UserInfo> all)
+    {
+        var flagged = all
+            .Where(u => u.IsConsentCheckFlagged)
+            .OrderBy(u => u.Profile!.CreatedAt)
+            .ToList();
+
+        var pending = all
+            .Where(u => u.NeedsConsentReview && !u.IsConsentCheckFlagged)
+            .OrderBy(u => u.Profile!.CreatedAt)
+            .ToList();
+
+        return (pending, flagged);
     }
 
     public async Task<ReviewDetailData> GetReviewDetailAsync(Guid userId, CancellationToken ct = default)
@@ -113,10 +123,15 @@ internal sealed class OnboardingService(
         if (userIds.Count == 0)
             return new BulkOnboardingResult(0);
 
+        // Eligibility is queue membership and nothing else, so partition directly instead of
+        // calling GetReviewQueueAsync: that builds the page's render payload — a membership
+        // snapshot await per queued user plus a pending-application lookup — all of which this
+        // discards to reach the ids.
         var selected = userIds.ToHashSet();
-        var data = await GetReviewQueueAsync(ct);
-        var eligibleUserIds = data.Pending
-            .Concat(data.Flagged)
+        var all = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
+        var (pending, flagged) = PartitionReviewQueue(all);
+        var eligibleUserIds = pending
+            .Concat(flagged)
             .Where(u => selected.Contains(u.Id))
             .Select(u => u.Id)
             .ToList();
@@ -141,9 +156,10 @@ internal sealed class OnboardingService(
         return new BulkOnboardingResult(approved);
     }
 
-    // Annotation-only after the name-only access switch: Flag records the consent-check status for
-    // the CC audit track. It no longer deprovisions any team — the Flagged flag is a record nothing
-    // acts on; RejectSignupAsync (which sets RejectedAt) remains the CC's kick-out lever.
+    // Flag records the consent-check status for the CC audit track. Inert for a Volunteer, NOT for
+    // a Colaborador/Asociado: it clears Profile.IsApproved, which gates their tier team on the next
+    // sync (Docs/health.md §4, and §5 for why the detail view withholds it). Reject is the CC's
+    // kick-out lever.
     public Task<OnboardingResult> FlagConsentCheckAsync(
         Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default) =>
         RecordConsentCheckAsync(userId, reviewerId, ConsentCheckStatus.Flagged, notes, ct);
