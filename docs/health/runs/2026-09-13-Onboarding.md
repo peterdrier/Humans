@@ -21,14 +21,57 @@ promised a notification that is never sent (finding 4).
 
 Headline: finding 1. `/Guest` cannot be reached by the audience it exists for.
 
-Resource set: every key in `OnboardingResource` resolves from a live call site and all six
-cultures are at parity, verified on the main thread after both haiku threads returned all-clean
+Resource set: every key in `OnboardingResource` resolves from a live call site and every supported
+culture is at parity, verified on the main thread after both haiku threads returned all-clean
 with no per-key proof and disagreed with each other on the key total (finding 26).
 
 ## Ranked findings
 
-The full ranked list, with sources and plays, is `$RUNDIR/assessment/ranked-list.md` for findings
-1–24; each description below is the one prose description of findings raised after 3e.
+Value = bug surface removed, concepts removed, reader cost removed. Effort is a column, not the
+sort key. Findings 1–24 are 3e's ranked list; 25–27 were raised after it, each where it was raised.
+
+| # | Finding | Source | Play | Effort |
+|---|---|---|---|---|
+| 1 | **`/Guest` is unreachable by its stated audience and nothing links to it.** `NameRequiredFilter` exempts only {Account, Language} + (OnboardingWidget,Names)/(Home,Error)/(Home,Privacy); a profileless account has `Profile is null` so `HasRequiredNameFields` is false and it is redirected to the name form. `MembershipRequiredFilter` still exempts `Guest` for that audience, and `Program.cs:458-461` says the ordering is deliberate (#812: name gate before "MembershipRequiredFilter bounces it to Guest/Home"). Repo-wide grep: nothing links or redirects to `/Guest`. So the page renders only for a named, fully-onboarded member who types the URL — and shows them a "Create your profile" CTA. | **target** (shape 1's split authority) | docs tell the truth this run; the page's fate is **Needs Peter 1** | S (docs) |
+| 2 | `OnboardingService.cs:144-146` — Flag comment says "the Flagged flag is a record nothing acts on". FALSE: `RecordConsentCheck` → `UserService.cs:367` `profile.IsApproved = cleared`, and `SystemTeamSyncJob` gates the tier teams on it. `health.md` §4/§5 and `Detail.cshtml:128-137` say the opposite. An editor trusting this comment would expose Flag and silently kick tier members out of their team. | Comments C1 | fix comment | S |
+| 3 | `Onboarding.md:27,123` present `IAdminDashboardService` / `AdminDashboardService` / `GetAdminDashboardAsync` as current siblings. Repo-wide untruncated grep over `src`+`tests`: no code at all; `Users/Section.cs:32` says both are "gone entirely". | History H3 | cut | S |
+| 4 | A Consent-Coordinator notification on the review threshold is claimed at `Onboarding.md:41`, `:101`, `:117`, `onboarding-pipeline.md:157` and in `IOnboardingIntake.cs`'s XML doc. `ConsentReviewNeeded` is a retired source; the only emitter call in the section is `ProfileRejected`. | main + Freshness F-5, F-8 | cut, and record the true rule in the target | S |
+| 5 | **Target §4 "every step page redirects to the dispatcher, never to a named next step" is false against the code.** `:99` → Shifts, `:158`/`:172`/`:180` → Consents; only `SignConsent` → Index. The tests pin the code. Inherited unchallenged from run 1's target. | **target** (regenerated vs previous) | correct the target | S |
+| 6 | `onboarding-pipeline.md:37` "Key Change" and `volunteer-status.md:165`'s diagram both still put CC clearance on the admission path, contradicting `:103`/`:166`/`:170`, `:168`/`:171` and §4. This is the Volunteer-vs-approval conflation AGENTS.md names as the first way to hurt yourself. | Freshness F-9, F-11 | cut | S |
+| 7 | `onboarding-pipeline.md:193` ("signups auto-promoted on admission") contradicts `:208` ("no post-admission promotion step"). No promotion code exists. | Freshness F-7 | cut `:193` | S |
+| 8 | `Onboarding.md` self-contradictions: `:102`/`:88` attribute the peer call to `OnboardingWidgetController.Consents` (the GET step page) — it is in `SignConsent` POST, and `:60` says so; `:88` vs `:139` disagree on `IOnboardingIntake` vs `IOnboardingService`. | Freshness F-1, F-6 | fix | S |
+| 9 | `Onboarding.md:123` — "both ProfileController and GuestController deletion actions call through it". This `GuestController` has no deletion action; deletion is Users' `GuestAccountController.cs:98`/`:126`. | Freshness F-2 / History H4 | fix | S |
+| 10 | `Onboarding.md:142` — "see each repository's XML docs for the onboarding-support block": no such block in `IUserRepository` or `IApplicationRepository`. | Freshness F-3 | cut | S |
+| 11 | "legacy linear flow (Profile → Consents) **or** the widget" narrated as a live alternative at `Onboarding.md:89` and `onboarding-pipeline.md:147`. Run 1 struck the same claim from `docs/guide`; the in-section copies were missed. | History H5 | cut | S |
+| 12 | `docs/guide/Onboarding.md:102`/`:107` understate the removal levers (suspension and grace-period expiry also remove); `:109` describes an access split that never holds. | Freshness F-14, F-15 | fix | S |
+| 13 | `volunteer-status.md:113` "Rejected … by Admin" — reject is `ConsentCoordinatorBoardOrAdmin`. | Freshness F-12 | fix | XS |
+| 14 | `OnboardingReviewController.cs:14-17` — "Review queue for Consent Coordinators and Volunteer Coordinators": every mutating action is `ConsentCoordinatorBoardOrAdmin`, so the summary names a role that cannot act and omits roles that can. | Comments C3 | fix | XS |
+| 15 | `Detail.cshtml:138` points at "the run file's Needs Peter item 2" — no such artifact in the tree. Live home is `health.md` §5. | Comments C2 | repoint | XS |
+| 16 | `_ViewImports.cshtml:14-18` names the review pages' `<vc:>` elements wrongly — the file binds `<vc:human>` and `<vc:access-matrix>`; ProfileCard is `Component.InvokeAsync("ProfileCard")`. And it cites `OnboardingPageRenderTests` as the guard — that lives in `Humans.Integration.Tests`, which self-skips in CI. | main + Comments | fix | XS |
+| 17 | **`BulkClearConsentChecksAsync` calls `GetReviewQueueAsync`** — building the full render payload (a `GetMembershipSnapshotAsync` await per queued user, plus a Governance pending-application lookup) purely to `.Select(u => u.Id)` for an eligibility filter. Pending ∪ Flagged is exactly `NeedsConsentReview \|\| IsConsentCheckFlagged`, both predicates on `UserInfo`. | **target** (shape 5 leaking into shape 3) | collapse; reviewer-gated | M |
+| 18 | **`IOnboardingWidgetState` + `OnboardingWidgetStep` are public leaf surface with no consumer outside the section.** All references are in `Humans.Onboarding` / `.Contracts`. The leaf's own csproj comment states the rule: "Everything with no consumer outside the section stays internal". Its remarks justify the placement by "Shell's GuestController", which moved into this section in #1091. | **target** (§2 note 3, §3) | move internal; reviewer-gated | M |
+| 19 | `GuestController.cs:36-45` — try/catch wraps a pure property copy off an already-materialised `UserInfo` plus `View()`; nothing in it can throw, and `logger` is injected only for the catch. In the Shell it served other catches, all of which left in #1091/#1406. | History H1 | delete; reviewer-gated | S |
+| 20 | Comment sediment: #1091 move-narration in `GuestController:12-13` and `WelcomeController:10-11`, `SectionChrome.cs:5`, the byte-identical clause at `csproj:15-18`, `OnboardingShiftsStepBuilder`'s whole `<remarks>` (narrates a type that no longer exists), `Detail.cshtml:95-101` "until this change", `Index.cshtml:141-148` trimmed to the rule, `GuestDashboardViewModel`'s name-restating summaries, `HttpOnboardingWidgetSessionState.cs:12`, `IOnboardingService.cs:42-45` duplicating `IOnboardingIntake.cs:4-7`. | Comments C4-C13 / History H6 | one sweep | M |
+| 21 | **Reject's success path is untested.** The `SyncMembershipForUserAsync` calls (Volunteers, Colaboradors, Asociados) and the `ProfileRejected` notification have no positive assertion — dropping a team passes today. Only the storage-failure negative exists. This is the section's only action with real consequences. | Tests T2 | add test | M |
+| 22 | Dead `UserManager<User>` fixture built in the ctors of the widget-controller test files; the controller ctor takes no `UserManager` and no assertion reads it. | Tests T9 | cut | S |
+| 23 | Dead `CancellationToken` parameters on `Skip`, `SignUp`, `SignUpRange` — `IShiftSignups.SignUpAsync`/`SignUpRangeAsync` take no ct at all and `Skip` is synchronous. | History H2 | cut if budget | S |
+| 24 | Debt ledger: the inbox rows naming Onboarding for Razor boolean attributes, dead `Nav_*` keys, and the misfiled `HumanLifecycleService`/`NonCompliantMemberSuspension` data-access blocks are already fixed → strike. Needing correction: the `SetError` row's symptom is no longer true, and the `docs/guide` dead-glob row's Onboarding portion is false (its `freshness:triggers` globs all resolve). | Inbox I6-I11 | sweep commit | S |
+
+Not struck, recorded only: T1/T3/T4 (further untested invariants — queued, below the budget line),
+T6-T8 (asserting-the-mock), I10 (`design-rules.md` omits `/Guest/DownloadData` — Gdpr's route, not
+Onboarding's), C13, T11.
+
+**Independence check: pass.** Findings 1, 5, 17 and 18 came from the target rather than from any
+scan: 1 from §2's note that access and the funnel answer shape 1 separately, 5 from regenerating §4 and diffing it against run
+1's, 17 from shape 5 leaking into shape 3, 18 from §2's new third note (only shapes 3 and 6 are
+asked from outside). The headline is finding 1, which no tool in the set reports. Neither
+failure symptom applies: the list is not all tool findings, and it does cite shape mismatches and
+spec-vs-reality deltas.
+
+**Ruling on finding 12** (2026-09-13, review round): its own reading of the gates was wrong in the
+same way the prose it was fixing was. `NameRequiredFilter` runs first and exempts far less, and
+`UserStateClassifier.Classify` returns `Active` the moment names land, so no onboarding state has a
+partial access split at all. Corrected in the review round, not in the strike.
 
 - **25** — The container cannot build this repo's Razor views from cold. A pristine worktree at
   the anchor commit `4b43e6f2` fails in `Humans.Base/Views/Shared/_Pager.cshtml` and
@@ -80,9 +123,7 @@ The full ranked list, with sources and plays, is `$RUNDIR/assessment/ranked-list
   sweep first — the reviewer found the original blast-radius grep had missed
   `tests/Humans.Onboarding.Tests` (harmless, IVT covers it) and mis-cited where the stale
   "Shell's `GuestController`" justification lives.
-- **Finding 21** (reject's success path has no positive assertion — dropping one of the three
-  de-provisioned teams passes today) — same reason. This is the section's one action with real
-  consequences and the test is worth writing; it needs a machine that can run it.
+- **Finding 21** — same reason. The test is worth writing; it needs a machine that can run it.
 - **T1/T3/T4, T6–T8, C13, T11** — recorded during assessment, below the budget line, not struck.
 - No section was passed over as blocked.
 
@@ -108,8 +149,9 @@ verification.
 **What the target diff says:** the earlier target was wrong, repeatedly, and the section did
 not move. §4's step-redirect invariant was false when written (finding 5). §3 called
 `IOnboardingWidgetState` "the step resolver other sections read" when no other section reads it
-(finding 18). §4 had no line about notifications at all, which is precisely where the four-place
-doc error hid (finding 4). A target that is never diffed against its predecessor launders last
+(finding 18). §4 had no line about notifications at all, which is precisely where the doc error
+spread across docs and XML comments hid (finding 4). A target never diffed against its predecessor
+launders last
 run's mistakes into this run's authority.
 
 ## Needs Peter
@@ -119,8 +161,7 @@ run's mistakes into this run's authority.
       truth either way; the fix changes business behaviour and touches the Shell.
 - [ ] 18 — reviewer-approved surface reduction, deferred unverifiable; re-run it on a machine that
       can compile.
-- [ ] 21 — reject's three-team de-provision and `ProfileRejected` notification still have no
-      positive assertion.
+- [ ] 21 — worth a test on a machine that can compile, or leave the success path unasserted?
 - [ ] 25 — the cloud container cannot cold-build Razor views. Should Phase 7's gate detect this and
       declare itself unmeasured rather than a run discovering it by accident? Separately: is
       `rollForward: latestFeature` in `global.json` doing what you want, given CI resolves

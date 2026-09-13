@@ -49,7 +49,7 @@ If you are brand new, start with [GettingStarted.md](GettingStarted.md).
 - `/Profile/Me/ShiftInfo` — skills, work-style preferences, and languages used to staff shifts.
 - `/Consent` — the legal documents to read and sign.
 - `/Account/Login` — Google sign-in and the "Send me a login link" magic-link option.
-- `/Guest` — where you land if your account has no profile yet.
+- `/Guest` — a dashboard for accounts that never get a profile. Nothing links to it, and the name gate turns away the profileless accounts it was built for, so today only a named member typing the URL reaches it.
 
 ## As a Volunteer
 
