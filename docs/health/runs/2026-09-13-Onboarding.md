@@ -131,9 +131,8 @@ run's mistakes into this run's authority.
 
 ## Sweep queue
 
-- debt: `docs/architecture/debt-ledger.yml` — the dead-glob row's per-page counts are stale beyond
-  the Onboarding entry this run corrected; the whole row wants re-measuring before anyone runs the
-  scripted pass it proposes.
+- none. The dead-glob row this run touched carries its own scripted pass; a queue entry restating
+  what that row already says would be a second copy of the same record.
 
 ## File coverage
 

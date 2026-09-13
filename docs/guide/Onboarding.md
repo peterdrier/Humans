@@ -106,7 +106,7 @@ signed all required documents.
 
 When you enter your legal name, your stored `UserState` becomes `Active` and the app opens. When you have a legal name and all required documents are signed, the scheduled system-team sync adds you to the Volunteers Google Workspace provisioning group. A rejected signup, a suspension, or letting a required document's grace period lapse removes you from the Volunteers team.
 
-While you are still onboarding, you can still reach your account pages, profile, consents, issue filing, notifications, tier applications, and any survey you're invited to — but camp pages, the calendar, and most of the app stay gated until you are active.
+Until you enter that name the app stays shut: every page sends you back to the name form. After it, nothing is gated on your signatures — but if you let a required document's grace period lapse you are suspended to the account-status page, where your account and profile pages, consents, issue filing, notifications, tier applications and any survey you're invited to still work.
 
 ## As a [Coordinator](Glossary.md#coordinator)
 

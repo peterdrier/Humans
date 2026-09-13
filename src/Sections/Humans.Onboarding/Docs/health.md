@@ -87,18 +87,20 @@ Presentation the section does *not* own: the rota tables on the shifts step are 
   (`Humans.Users` `UserService`) and `SystemTeamSyncJob` gates the two tier teams on that flag,
   so `Cleared → Flagged` drops a tier member from their tier team on the next hourly sync.
   That is why the detail view still withholds Flag from a cleared human — see §5.
-  (`Services/OnboardingService.cs:279`.)
+  (`Services/OnboardingService.cs` `RecordConsentCheckAsync`.)
 - **Reject is the only coordinator action with consequences.** It sets `RejectedAt`,
-  de-provisions the three approval-gated system teams, and notifies the person.
-  (`Services/OnboardingService.cs:153`, `:314`.)
+  de-provisions the approval-gated system teams (Volunteers, Colaboradors, Asociados), and
+  notifies the person. (`Services/OnboardingService.cs` `RejectSignupAsync`,
+  `DeprovisionApprovalGatedSystemTeamsAsync`.)
 - **Nothing in the funnel notifies a coordinator.** The threshold check writes the status and
   logs; the only notification the section raises is `ProfileRejected`, to the rejected person.
   `ConsentReviewNeeded` is a retired source — the coordinator finds the queue through the
   `Review` pill in the admin sidebar (`SectionAdminNav.cs:15`), not through an inbox row.
-  (`Services/OnboardingService.cs:217`; `Humans.Notifications/Services/NotificationInboxService.cs:202`.)
+  (`Services/OnboardingService.cs` `SetConsentCheckPendingIfEligibleAsync`;
+  `Humans.Notifications/Services/NotificationInboxService.cs:202`.)
 - **A flagged, unresolved person stays in the queue** even if an override set `IsApproved`.
   A rejected person leaves it — Clear is refused on them, so the row would be unresolvable.
-  (`UserInfo.cs:341`; `Services/OnboardingService.cs:44`.)
+  (`UserInfo.cs:341`; `Services/OnboardingService.cs` `GetReviewQueueAsync`.)
 - **A merged tombstone never appears in the queue.** (`UserInfo.cs:331`, `:341`.)
 - **The name save is never gated on cross-section state.** Gating it on a step or consent
   computation loops a bare account on the Names form forever.
