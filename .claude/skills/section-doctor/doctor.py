@@ -111,11 +111,16 @@ def _rows_under(lines, i):
     return 0
 
 
-def prose_gate_hits(diff):
+HUNK_RE = re.compile(r"^@@ -\S+ \+([0-9]+)")
+
+
+def prose_gate_hits(diff, read_file):
     """(must_fix, advisory) lists of `path: line`. Prose files only; in .cs only comment
-    lines; nothing under tests/ (assertion literals are the thing pinned, not a count)."""
+    lines; nothing under tests/ (assertion literals are the thing pinned, not a count).
+    The rows under a count are read from the resulting file (`read_file(path)`), never from
+    the diff — a -U0 diff drops the unchanged rows a newly typed count sits above."""
     must, advisory = [], []
-    path, added = None, []
+    path, added = None, []  # added: (new-file line number, text)
 
     def flush():
         if path is None:
@@ -123,8 +128,10 @@ def prose_gate_hits(diff):
         cs = path.endswith(".cs")
         if not (cs or path.endswith(PROSE_SUFFIXES)) or path.startswith("tests/"):
             return
-        lines = [l for l in added if not cs or COMMENT_RE.match(l)]
-        for i, l in enumerate(lines):
+        file_lines = None
+        for lineno, l in added:
+            if cs and not COMMENT_RE.match(l):
+                continue
             tag = f"{path}: {l}"
             if STRUCTURAL_RE.search(l):
                 must.append(tag)
@@ -132,22 +139,39 @@ def prose_gate_hits(diff):
             m = LOOSE_RE.search(l)
             if not m:
                 continue
-            rows = _rows_under(lines, i)
+            if file_lines is None:
+                file_lines = read_file(path).splitlines()
+            rows = _rows_under(file_lines, lineno - 1)
             counted = (rows and _num(m.group(1)) == rows) or HEADING_RE.match(l)
             (must if counted else advisory).append(tag)
 
+    lineno = 0
     for l in diff.splitlines():
         if l.startswith("+++ "):
             flush()
             path, added = l[4:].removeprefix("b/"), []
+        elif l.startswith("@@"):
+            lineno = int(HUNK_RE.match(l).group(1))
         elif l.startswith("+") and not l.startswith("+++"):
-            added.append(l[1:])
+            added.append((lineno, l[1:]))
+            lineno += 1
+        elif not l.startswith("-"):
+            lineno += 1
     flush()
     return must, advisory
 
 
-def prose_gate(diff_args):
-    must, advisory = prose_gate_hits(git("diff", "-U0", *diff_args))
+def staged_file(path):
+    return git("show", f":{path}")
+
+
+def worktree_file(path):
+    with open(path, encoding="utf-8", errors="ignore") as f:
+        return f.read()
+
+
+def prose_gate(diff_args, read_file):
+    must, advisory = prose_gate_hits(git("diff", "-U0", *diff_args), read_file)
     if advisory:
         print("advisory (a numeral near a plural — read once, no action required):")
         for h in advisory:
@@ -160,16 +184,19 @@ def prose_gate(diff_args):
 
 
 def cmd_prose_gate(a):
-    prose_gate(["--cached"] if a.base is None else [a.base])
+    if a.base is None:
+        prose_gate(["--cached"], staged_file)
+    else:
+        prose_gate([a.base], worktree_file)
 
 
 def cmd_commit(a):
     """The gate runs inside the commit so a run cannot skip it; gates.log records each run
     (its own file — a line in the phase log would become a cost-report row)."""
-    must, advisory = prose_gate_hits(git("diff", "-U0", "--cached"))
+    must, advisory = prose_gate_hits(git("diff", "-U0", "--cached"), staged_file)
     with open(os.path.join(rundir(), "gates.log"), "a", encoding="utf-8") as f:
         f.write(f"{now()} prose-gate must-fix={len(must)} advisory={len(advisory)}\n")
-    prose_gate(["--cached"])
+    prose_gate(["--cached"], staged_file)
     msg = ["-F", a.file] if a.file else ["-m", a.message]
     subprocess.run(["git", "commit", *msg], check=True)
 
