@@ -151,8 +151,13 @@ not move. §4's step-redirect invariant was false when written (finding 5). §3 
 `IOnboardingWidgetState` "the step resolver other sections read" when no other section reads it
 (finding 18). §4 had no line about notifications at all, which is precisely where the doc error
 spread across docs and XML comments hid (finding 4). A target never diffed against its predecessor
-launders last
-run's mistakes into this run's authority.
+launders last run's mistakes into this run's authority.
+
+**Caught in review, not by me:** the ranked list was left in `$RUNDIR` with the run file merely
+pointing at it, so the committed artifact cited finding numbers that nothing in the repo defined —
+`phases/bookkeeping.md` says plainly that the ranked list is where a 3e finding's one description
+lives. Scratch dies with the container; a run file that points into it ships empty. Transcribe the
+list before opening the PR, not after a reviewer asks.
 
 ## Needs Peter
 
