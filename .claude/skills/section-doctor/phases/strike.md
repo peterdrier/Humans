@@ -86,6 +86,15 @@ Per item (one item or tight cluster per commit):
    unavailable) — score-blind, default-reject: "name the concept that improved in
    one sentence." **It reads the uncommitted working-tree diff**, so a reject shrinks the diff
    rather than adding a fixup commit. Reject → rework once; second reject → revert, record.
+
+   **APPROVE-with-correction is its own outcome, not a pass.** When the verdict carries a
+   material correction, the correction is applied before the commit and named in the retro
+   alongside the finding it gated — an APPROVE whose correction was never applied is a reject
+   that got filed wrong. Record what the gate actually checked, too: an approval covers the
+   claims the reviewer tested and nothing else, so a collapse blessed as behaviour-preserving
+   on its success path is still unreviewed on its failure path (Peter, 2026-09-11, on the
+   Stripe registrar, which passed the gate and shipped an ordering regression the gate never
+   looked at).
 5. **Doc fixes sweep the claim — by literal string, repo-wide**: when a strike removes or
    renames a route, type, method or path, or fixes a claim naming one, grep the whole repo for
    the exact string and fix or enumerate every hit in the run file. Sweep the abbreviations too —
