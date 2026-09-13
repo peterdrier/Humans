@@ -92,8 +92,10 @@ def _num(tok):
 
 
 def _rows_under(lines, i):
-    """Rows of the table or list that starts on the added line after i, else 0."""
+    """Rows of the table or list that follows line i (blank lines between skipped), else 0."""
     j = i + 1
+    while j < len(lines) and not lines[j].strip():
+        j += 1
     if j >= len(lines):
         return 0
     if lines[j].startswith("|"):

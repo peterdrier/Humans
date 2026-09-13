@@ -53,7 +53,8 @@ never queries GitHub itself. Main builds that file before dispatch:
    about the cause, and don't infer one repo's reach from the other's.
 2. **List the section's open issues** in every repo that proved reachable, into the file:
    one status line per repo at the head (`peterdrier/Humans: covered` /
-   `nobodies-collective/Humans: not covered: <reason>`), then each issue's ref, title and body.
+   `nobodies-collective/Humans: not covered: <reason>`), then each issue's ref, title, labels
+   and body — the labels are what the spec-quality lens's section-label check reads.
 
 Both repos are in scope whenever they are readable; the environment decides, not a flag. The
 thread's return names the repos it reviewed exactly as the status lines say, and `## Threads`
