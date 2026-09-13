@@ -4,6 +4,7 @@
     doctor.py rundir [--ts TS]          print the run's scratch dir (created); TS from the branch by default
     doctor.py mark <phase-id> <label…>  append a timestamped phase-log line for cost-report.py
     doctor.py push                      origin gate, then push the current branch
+    doctor.py commit -F FILE | -m MSG   prose gate over the staged diff, logged to gates.log, then git commit
     doctor.py prose-gate [--base REF]   count-in-prose gate over the staged diff (or REF..HEAD)
     doctor.py dispatch-log <thread> <model> [agent-type]   record a subagent dispatch
     doctor.py resolve-check <sha>       the commit exists and is on origin/<current branch>
@@ -20,16 +21,25 @@ from datetime import datetime, timezone
 
 ORIGIN_RE = re.compile(r"github\.com[:/]peterdrier/Humans(\.git)?$")
 BRANCH_RE = re.compile(r"^section-doctor/(.+)$")
-NUM = r"(?:[0-9]+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)"
-COUNT_RE = re.compile(
-    r"^\+.*(?:"
-    rf"\b{NUM}\s+(?:[a-z-]+\s+){{0,2}}[a-z-]+s\b"      # "3 routes", "3 active routes", "two branches"
-    r"|\(\s*[0-9]+\s*\)"                               # "Routes (3)"
+WORDS = {w: i + 1 for i, w in enumerate(
+    "one two three four five six seven eight nine ten eleven twelve".split())}
+NUM = r"(?:[0-9]+|" + "|".join(WORDS) + ")"
+# Must-fix: a count with a structural tell — it names the rows under it, or it is a total.
+STRUCTURAL_RE = re.compile(
+    r"(?:"
+    r"\(\s*[0-9]+\s*\)"                               # "Routes (3)"
     r"|\b(?:total|count|n)\s*[:=]\s*[0-9]+\b"          # "Total: 3", "count = 3"
     r"|\|\s*(?:total|count)\s*\|\s*[0-9]+\s*\|"      # markdown total row
     r")",
     re.IGNORECASE,
 )
+HEADING_RE = re.compile(r"^#+\s")
+# Advisory: any numeral followed by a plural within three words — most prose about code.
+LOOSE_RE = re.compile(rf"\b({NUM})\s+(?:[a-z-]+\s+){{0,2}}[a-z-]+s\b", re.IGNORECASE)
+TABLE_ROW_RE = re.compile(r"^\|(?!\s*-)")     # a table row that is not the |---| separator
+BULLET_RE = re.compile(r"^\s*(?:[-*+]|[0-9]+[.)])\s")
+PROSE_SUFFIXES = (".md", ".yml", ".yaml", ".txt", ".cshtml", ".resx")
+COMMENT_RE = re.compile(r"^\s*(?://|/\*|\*)")
 
 
 def git(*args, check=True):
@@ -77,14 +87,91 @@ def cmd_push(a):
     subprocess.run(["git", "push", "-u", "origin", b], check=True)
 
 
-def cmd_prose_gate(a):
-    diff_args = ["diff", "-U0"] + (["--cached"] if a.base is None else [a.base])
-    hits = [l for l in git(*diff_args).splitlines() if COUNT_RE.search(l) and not l.startswith("+++")]
-    for h in hits:
+def _num(tok):
+    return int(tok) if tok.isdigit() else WORDS[tok.lower()]
+
+
+def _rows_under(lines, i):
+    """Rows of the table or list that starts on the added line after i, else 0."""
+    j = i + 1
+    if j >= len(lines):
+        return 0
+    if lines[j].startswith("|"):
+        n = 0
+        while j < len(lines) and lines[j].startswith("|"):
+            n += TABLE_ROW_RE.match(lines[j]) is not None
+            j += 1
+        return max(n - 1, 0)  # minus the header row
+    if BULLET_RE.match(lines[j]):
+        n = 0
+        while j < len(lines) and BULLET_RE.match(lines[j]):
+            n += 1
+            j += 1
+        return n
+    return 0
+
+
+def prose_gate_hits(diff):
+    """(must_fix, advisory) lists of `path: line`. Prose files only; in .cs only comment
+    lines; nothing under tests/ (assertion literals are the thing pinned, not a count)."""
+    must, advisory = [], []
+    path, added = None, []
+
+    def flush():
+        if path is None:
+            return
+        cs = path.endswith(".cs")
+        if not (cs or path.endswith(PROSE_SUFFIXES)) or path.startswith("tests/"):
+            return
+        lines = [l for l in added if not cs or COMMENT_RE.match(l)]
+        for i, l in enumerate(lines):
+            tag = f"{path}: {l}"
+            if STRUCTURAL_RE.search(l):
+                must.append(tag)
+                continue
+            m = LOOSE_RE.search(l)
+            if not m:
+                continue
+            rows = _rows_under(lines, i)
+            counted = (rows and _num(m.group(1)) == rows) or HEADING_RE.match(l)
+            (must if counted else advisory).append(tag)
+
+    for l in diff.splitlines():
+        if l.startswith("+++ "):
+            flush()
+            path, added = l[4:].removeprefix("b/"), []
+        elif l.startswith("+") and not l.startswith("+++"):
+            added.append(l[1:])
+    flush()
+    return must, advisory
+
+
+def prose_gate(diff_args):
+    must, advisory = prose_gate_hits(git("diff", "-U0", *diff_args))
+    if advisory:
+        print("advisory (a numeral near a plural — read once, no action required):")
+        for h in advisory:
+            print("  " + h)
+    for h in must:
         print(h)
-    if hits:
-        sys.exit(f"prose gate: {len(hits)} line(s) carry a typed count — delete, list, or justify each")
+    if must:
+        sys.exit(f"prose gate: {len(must)} line(s) type a count of the list under them or a total — delete or list")
     print("prose gate: clean")
+
+
+def cmd_prose_gate(a):
+    prose_gate(["--cached"] if a.base is None else [a.base])
+
+
+def cmd_commit(a):
+    """The gate runs inside the commit so a run cannot skip it; gates.log records each run
+    (its own file — a line in the phase log would become a cost-report row)."""
+    must, advisory = prose_gate_hits(git("diff", "-U0", "--cached"))
+    with open(os.path.join(rundir(), "gates.log"), "a", encoding="utf-8") as f:
+        f.write(f"{now()} prose-gate must-fix={len(must)} advisory={len(advisory)}\n")
+    prose_gate(["--cached"])
+    msg = ["-F", a.file] if a.file else ["-m", a.message]
+    subprocess.run(["git", "commit", *msg], check=True)
 
 
 def cmd_dispatch_log(a):
@@ -113,6 +200,8 @@ def main():
     s = sub.add_parser("mark"); s.add_argument("phase"); s.add_argument("label", nargs="+"); s.set_defaults(fn=cmd_mark)
     s = sub.add_parser("push"); s.set_defaults(fn=cmd_push)
     s = sub.add_parser("prose-gate"); s.add_argument("--base"); s.set_defaults(fn=cmd_prose_gate)
+    s = sub.add_parser("commit"); g = s.add_mutually_exclusive_group(required=True)
+    g.add_argument("-F", dest="file"); g.add_argument("-m", dest="message"); s.set_defaults(fn=cmd_commit)
     s = sub.add_parser("dispatch-log"); s.add_argument("thread"); s.add_argument("model")
     s.add_argument("agent_type", nargs="?"); s.set_defaults(fn=cmd_dispatch_log)
     s = sub.add_parser("resolve-check"); s.add_argument("sha"); s.set_defaults(fn=cmd_resolve_check)
