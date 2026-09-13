@@ -15,8 +15,7 @@ namespace Humans.Onboarding.Controllers;
 [Authorize]
 internal sealed class GuestController(
     IUserServiceRead userService,
-    IOnboardingWidgetState widgetState,
-    ILogger<GuestController> logger) : HumansControllerBase(userService)
+    IOnboardingWidgetState widgetState) : HumansControllerBase(userService)
 {
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
@@ -32,16 +31,7 @@ internal sealed class GuestController(
             return RedirectToAction("Index", "OnboardingWidget");
         }
 
-        try
-        {
-            var viewModel = BuildDashboardViewModel(user);
-            return View(viewModel);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to load Guest dashboard for user {UserId}", user.Id);
-            return View(new GuestDashboardViewModel { DisplayName = user.BurnerName });
-        }
+        return View(BuildDashboardViewModel(user));
     }
 
     private static GuestDashboardViewModel BuildDashboardViewModel(UserInfo user)

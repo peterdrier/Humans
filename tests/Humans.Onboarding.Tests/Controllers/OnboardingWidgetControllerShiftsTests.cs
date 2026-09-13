@@ -8,7 +8,6 @@ using Humans.Base.Constants;
 using Humans.Onboarding.Controllers;
 using Humans.Onboarding.Services;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
@@ -26,7 +25,6 @@ namespace Humans.Onboarding.Tests.Controllers;
 /// </summary>
 public class OnboardingWidgetControllerShiftsTests
 {
-    private readonly UserManager<User> _userManager;
     private readonly IOnboardingWidgetState _state = Substitute.For<IOnboardingWidgetState>();
     private readonly IProfileEditorService _profileEditor = Substitute.For<IProfileEditorService>();
     private readonly IShiftSignups _signups = Substitute.For<IShiftSignups>();
@@ -45,9 +43,6 @@ public class OnboardingWidgetControllerShiftsTests
 
     public OnboardingWidgetControllerShiftsTests()
     {
-        var userStore = Substitute.For<IUserStore<User>>();
-        _userManager = Substitute.For<UserManager<User>>(
-            userStore, null, null, null, null, null, null, null, null);
         _localizer[Arg.Any<string>()].Returns(ci =>
             new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
         _consentLocalizer[Arg.Any<string>()].Returns(ci =>
@@ -56,8 +51,6 @@ public class OnboardingWidgetControllerShiftsTests
 
     private OnboardingWidgetController BuildSut(Guid userId)
     {
-        var user = new User { Id = userId };
-        _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(user);
         _http.Session = new TestSession();
         _http.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())],
             "test"));
@@ -80,7 +73,7 @@ public class OnboardingWidgetControllerShiftsTests
             .Returns(SignupResult.Ok(Guid.NewGuid()));
         var ctrl = BuildSut(userId);
 
-        var result = await ctrl.SignUp(shiftId, TestContext.Current.CancellationToken);
+        var result = await ctrl.SignUp(shiftId);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Consents), redirect.ActionName);
@@ -99,7 +92,7 @@ public class OnboardingWidgetControllerShiftsTests
             _http,
             Substitute.For<Microsoft.AspNetCore.Mvc.ViewFeatures.ITempDataProvider>());
 
-        var result = await ctrl.SignUp(shiftId, TestContext.Current.CancellationToken);
+        var result = await ctrl.SignUp(shiftId);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Shifts), redirect.ActionName);
@@ -113,7 +106,7 @@ public class OnboardingWidgetControllerShiftsTests
         var userId = Guid.NewGuid();
         var ctrl = BuildSut(userId);
 
-        var result = ctrl.Skip(TestContext.Current.CancellationToken);
+        var result = ctrl.Skip();
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Consents), redirect.ActionName);
