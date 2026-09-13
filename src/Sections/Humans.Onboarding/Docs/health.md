@@ -57,6 +57,9 @@ Notes the table hides:
   funnel's result vocabulary, returned by Users' own surfaces). Nothing else. The leaf is a
   project, not a folder, because Consent calls into Onboarding and Onboarding renders Consent's
   copy; a folder would close a cycle. It has zero project references and that is load-bearing.
+  *Deviation, not yet fixed:* `IOnboardingWidgetState` and `OnboardingWidgetStep` still sit on
+  the leaf (`Contracts/IOnboardingWidgetState.cs`) though no other section asks the funnel-step
+  question. Moving them next to `OnboardingWidgetState` is run 2's deferred finding 18.
 - **`Services/`** — `OnboardingService` (shapes 3–6, an orchestrator over other sections'
   service interfaces), `OnboardingWidgetState` (shape 1) with the step enum it returns, and the
   session seam the step resolver needs to see the "not right now" click.
