@@ -60,8 +60,8 @@ violation, never edit a baseline the code still triggers.
   slower suite is not a fix.
 - **New public/interface surface needs Peter** — `memory/process/reuse-first-change-discipline.md`.
   Queue it under *Needs Peter* instead of adding it.
-- **No schema, migration, entity-shape, or JSON-serialization changes.** Per-section
-  `Migrations/**` are immutable history.
+- **Section-owned persistence and generated migrations are allowed when the task needs them.** Follow [section-migrations-in-maintenance](../memory/process/section-migrations-in-maintenance.md); shipped migrations remain immutable. Substantial architecture transitions get explicitly scoped tasks and dedicated PRs.
+- **Do not change JSON serialization contracts** unless the task authorizes it.
 - **Fix at the source or file an issue** — no symptom patches
   (`docs/architecture/peters-hard-rules.md`).
 
