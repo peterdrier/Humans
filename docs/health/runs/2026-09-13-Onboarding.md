@@ -73,17 +73,16 @@ same way the prose it was fixing was. `NameRequiredFilter` runs first and exempt
 `UserStateClassifier.Classify` returns `Active` the moment names land, so no onboarding state has a
 partial access split at all. Corrected in the review round, not in the strike.
 
-- **25** — The container cannot build this repo's Razor views from cold. A pristine worktree at
-  the anchor commit `4b43e6f2` fails in `Humans.Base/Views/Shared/_Pager.cshtml` and
-  `_Table.cshtml`; a clean solution build fails in `Humans.EarlyEntry`, a section this run never
-  touched. Projects declare `<AddRazorSupportForMvc>true</AddRazorSupportForMvc>` and the
-  generated `*_cshtml.g.cs` is nonetheless emitted as though the view were a Blazor component
-  (`CS9348: A compilation unit cannot directly contain members`, `@model` type unresolved). The
-  SDK here is 10.0.400; `global.json` pins `10.0.100` with `rollForward: latestFeature`, which
-  permits the feature-band drift, so the pin does not protect the build. `dotnet restore` is clean
-  and does not change it. Not caused by this run's changes, but this run made it visible by
-  deleting a project's `obj/`: the image ships warm build artifacts, and every build before that
-  point was reading them. Governs Phase 7's gate.
+- **25** — This container could not build the repo's Razor views from cold: a pristine worktree
+  at the anchor commit `4b43e6f2` failed in `Humans.Base/Views/Shared/_Pager.cshtml` and
+  `_Table.cshtml`, with the generated `*_cshtml.g.cs` emitted as though the view were a Blazor
+  component (`CS9348`, `@model` unresolved). This run first blamed the SDK band (10.0.400 here
+  against `global.json`'s `10.0.100` + `rollForward: latestFeature`). **That was wrong, and was
+  disproved after the run:** on a fresh container both 10.0.400 and 10.0.401 cold-build the full
+  solution with zero errors from a checkout with no `obj/`, and CI on this PR resolved 10.0.401
+  and went green. The failure was environmental to this one container, most plausibly the mixed
+  build state left by deleting a project's `obj/` by hand mid-chase (`dotnet-clean-not-rm`). Do not
+  inherit the SDK-band explanation into later runs. Governs Phase 7's gate.
 - **26** — `doctor.py prose-gate` fires on test assertion literals — `Received(1)`,
   `Should().Be(2)`, `Instant.FromUnixTimeSeconds(1)`. These are code, not prose that types a count
   over a list, so the gate's own remedy ("delete, list, or justify") does not apply to them.
@@ -134,7 +133,7 @@ re-doctor tier and was a good pick — a section whose code is stable but whose 
 badly is exactly the case re-doctoring exists for.
 
 **Wasted motion:** deleting a project's `obj/` while chasing a build error. It looked like
-ordinary cleanup, it destroyed prebuilt state the container cannot regenerate (finding 25), and it
+ordinary cleanup, it left the container in a state that could not build Razor views (finding 25), and it
 cost this run the ability to verify findings 18 and 21. Before that, time went into
 bisecting my own commits for a breakage that was never mine — the honest tell was there early
 (errors in `Humans.Base` views nobody had touched) and I chased my own diff first anyway.
@@ -168,10 +167,11 @@ list before opening the PR, not after a reviewer asks.
 - [ ] 18 — reviewer-approved surface reduction, deferred unverifiable; re-run it on a machine that
       can compile.
 - [ ] 21 — worth a test on a machine that can compile, or leave the success path unasserted?
-- [ ] 25 — the cloud container cannot cold-build Razor views. Should Phase 7's gate detect this and
-      declare itself unmeasured rather than a run discovering it by accident? Separately: is
-      `rollForward: latestFeature` in `global.json` doing what you want, given CI resolves
-      `10.0.x`?
+- [x] 25 — the SDK-band explanation for the cold-build failure was disproved (both 10.0.400 and
+      10.0.401 cold-build the solution; CI runs 10.0.401). `global.json`'s floor was raised to
+      `10.0.400` for a different reason: the 1xx band lacks the Roslyn 5.3 the analyzers need and
+      fails with `CS9057`. Whether Phase 7's gate should detect a broken container and declare
+      itself unmeasured remains open.
 - [ ] 26 — should `prose-gate` skip `tests/**`, or is an assertion literal genuinely in scope?
 - [ ] 27 — should the Phase 4 executor brief say "fix these findings **and any instance of the same
       error class in the same files**, listing what you added"?
