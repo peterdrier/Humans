@@ -12,8 +12,7 @@ using Humans.Users.Services;
 namespace Humans.Users.Tests.Services;
 
 /// <summary>
-/// Unit tests for the lifecycle state-machine surface extracted from
-/// <c>OnboardingService</c> in nobodies-collective#583. Verifies that
+/// Unit tests for the lifecycle state-machine surface. Verifies that
 /// suspend/unsuspend produce the same writes, notifications, and metric
 /// emissions as the original onboarding-bundled implementation.
 /// </summary>

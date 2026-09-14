@@ -1,6 +1,6 @@
 ---
 name: Edit resx values by exact string replacement
-description: Changing a .resx <value> — use a targeted exact-string replacement with an occurrence assert. Never ElementTree.write(), never line-based sed. Triggers on any edit to a Resources/*.resx file.
+description: Editing a `.resx` `<value>` — use targeted exact-string replacement with an occurrence assert. Never `ElementTree.write()`, never line-based `sed`.
 ---
 
 Editing the text inside a `.resx` `<value>` is a **targeted exact string replacement**, asserting the occurrence count before and after.

@@ -1,6 +1,6 @@
 ---
 name: Every dotnet ef command needs --context
-description: More than one DbContext is in play — one per section, plus the platform context. Every `dotnet ef` invocation MUST pass `--context <C>`, and `--project` is per-context since each section owns its own project.
+description: Every `dotnet ef` invocation must pass `--context <C>` — one DbContext per section plus the platform context — and `--project` is per-context.
 ---
 
 More than one DbContext is in play — one per section. `dotnet ef` errors out ("More than one

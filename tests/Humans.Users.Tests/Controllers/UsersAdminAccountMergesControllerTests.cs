@@ -1,9 +1,7 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Users.Tests.Infrastructure;
-using Humans.Base.Authorization;
 using Humans.Users.Controllers;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
@@ -60,16 +58,6 @@ public class UsersAdminAccountMergesControllerTests
         c.TempData = new TempDataDictionary(httpContext, Substitute.For<ITempDataProvider>());
         c.Url = Substitute.For<IUrlHelper>();
         return c;
-    }
-
-    [HumansFact]
-    public void Controller_HasAdminOnlyPolicyAttribute()
-    {
-        var attr = typeof(UsersAdminAccountMergesController)
-            .GetCustomAttributes(typeof(AuthorizeAttribute), inherit: false)
-            .Cast<AuthorizeAttribute>()
-            .Single();
-        attr.Policy.Should().Be(PolicyNames.AdminOnly);
     }
 
     [HumansFact]

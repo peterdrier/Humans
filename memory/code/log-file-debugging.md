@@ -1,6 +1,6 @@
 ---
 name: Debug runtime errors via the log file first — don't speculate
-description: When debugging runtime errors, Grep the log output before reasoning about causes. Serilog console sink is always on. Write diagnostic logs that include entity IDs and actual values, not just "operation failed".
+description: When debugging runtime errors, grep the log file first — don't speculate. Write diagnostic logs with entity IDs and actual values, not just "operation failed".
 ---
 
 When debugging runtime errors, **always check the log file first** before speculating about causes. Serilog console sink is always enabled via `WriteTo.Console()`.

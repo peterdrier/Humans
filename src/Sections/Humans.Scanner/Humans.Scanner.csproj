@@ -7,65 +7,50 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Scanner.Tests" />
-    <!-- The one assembly allowed to see many sections (design §5). -->
+    <!-- The one test assembly allowed to see many sections. -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 
   <ItemGroup>
-    <!--
-      Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
-      Declaring them keeps the files moved out of Humans.Web byte-identical to their originals.
-    -->
+    <!-- Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not. -->
     <Using Include="Microsoft.AspNetCore.Http" />
     <Using Include="Microsoft.AspNetCore.Routing" />
     <Using Include="Microsoft.Extensions.Logging" />
   </ItemGroup>
 
   <ItemGroup>
-    <!--
-      No Humans.Infrastructure reference, unlike every section moved before this one: Scanner
-      owns no tables, so there is no DbContext, no repository and no AddSectionDbContext call
-      (G5-SECTION-TEMPLATE.md step 1 / the Data-and-DbContext steps are skipped wholesale).
-      ScannerController's IEventServiceRead comes from Humans.Events.Contracts, declared
-      below — it arrived transitively through Humans.Application until G5 lane 5c.
-    -->
+    <!-- No Humans.Infrastructure reference: Scanner owns no tables, so no DbContext and no repository. -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Events.Contracts\Humans.Events.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--
-      Tickets: the leaf for TicketStubInfo, and the section project for the
-      <vc:ticket-stub> tag helper — the component is public under Humans.Tickets/Contracts/
-      and the tag helper is generated from public types in referenced assemblies, so a
-      leaf reference alone would render the element as inert literal markup.
-      Section -> section is CityPlanning's blessed pattern and acyclic: Humans.Tickets
+      Tickets: the leaf for TicketStubInfo, and the section project for the <vc:ticket-stub>
+      tag helper — it is generated from the component type, which lives in Humans.Tickets;
+      a leaf-only reference renders the element as inert literal markup. Acyclic: Tickets
       names nothing in Scanner.
     -->
     <ProjectReference Include="..\Humans.Tickets\Humans.Tickets.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
     <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
     <!--
-      Calendar: the ticket card reads the Human's shift commitments through
-      IICalFeedService. Calendar's Contracts/ is a folder, not a leaf, so the reference is
-      to the section project — acyclic, Calendar names nothing in Scanner
-      (nobodies-collective/Humans#866, G5 lane 4b-2c).
+      Calendar: IICalFeedService for the member's shift commitments. Calendar's Contracts/
+      is a folder, not a leaf, so the reference is to the section project (acyclic).
     -->
     <ProjectReference Include="..\Humans.Calendar\Humans.Calendar.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <!--
-      No AspNetCore package here: those ship with no PackageVersion on purpose and would fail
-      the build with NU1010 under Central Package Management. Everything the controller needs
-      arrives through the framework reference Sdk.Razor already adds (design §15 step 1).
-      No EF Core either — the section owns no tables.
+      No AspNetCore package: it would fail NU1010 under Central Package Management, and the
+      framework reference Sdk.Razor adds covers the controller. No EF Core — no tables.
     -->
     <PackageReference Include="NodaTime" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
+    <!-- Keep the section's docs visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

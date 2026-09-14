@@ -1,6 +1,6 @@
 ---
 name: Peter's assertions are inputs, not claims to verify — and no padding
-description: HARD RULE. When Peter states how something works or says a point is settled, take it and act. No doc check, no "worth verifying", no hedged caveat. Verify bot findings, docs and your own inferences — never him. Replies use the concise output style: the answer only, no preamble, no unrequested caveats or alternatives.
+description: HARD RULE. Peter's stated facts/settled calls are inputs — act, don't verify or re-raise. Verify bots/docs/inferences instead. Reply with the answer only, no preamble.
 ---
 
 Two rules about how to respond to Peter. Both exist because violating them wastes his tokens and his patience.

@@ -42,7 +42,8 @@ internal sealed class EmailProvisioningService(
             // DB conflict check BEFORE Workspace check — prevents stale Workspace accounts from silently re-binding identity.
             // user_emails is the single source of truth (#687).
             var conflictingEmailUserId =
-                await userEmailService.GetOtherUserIdHavingEmailAsync(fullEmail, userId);
+                (await userEmailService.FindByAddressAsync(fullEmail, aliased: false, verifiedOnly: false))
+                .FirstOrDefault(r => r.UserId != userId)?.UserId;
             if (conflictingEmailUserId is not null)
             {
                 logger.LogWarning(

@@ -1,6 +1,6 @@
 ---
 name: Migration regen is unsafe after a rebase that interleaves main's migrations
-description: HARD RULE. Once your branch's migrations are mid-chain (main raced ahead with later-timestamped migrations), `dotnet ef migrations remove` is broken for your migrations. STOP and ask Peter. Don't hand-edit the snapshot. Don't reset+redo without explicit permission.
+description: HARD RULE. Once main's migrations interleave with yours (mid-chain), `dotnet ef migrations remove` is broken — stop and ask Peter; never hand-edit the snapshot or reset+redo.
 ---
 
 `dotnet ef migrations remove` only walks back the **most recent** migration by timestamp, and reverts the snapshot using the **previous-by-timestamp Designer file** as the source of truth.

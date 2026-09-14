@@ -1,12 +1,10 @@
 using System.Security.Claims;
-using Humans.Onboarding.Contracts;
+using Humans.Onboarding.Services;
 using Humans.Onboarding.Controllers;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
 
@@ -36,8 +34,7 @@ public class GuestControllerTests
 
         var ctrl = new GuestController(
             _userService,
-            _widgetState,
-            NullLogger<GuestController>.Instance);
+            _widgetState);
 
         var http = new DefaultHttpContext
         {

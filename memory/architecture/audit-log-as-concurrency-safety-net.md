@@ -1,6 +1,6 @@
 ---
 name: Audit log is the concurrency safety net (not optimistic concurrency)
-description: At our small scale, the audit log makes lost-update races tolerable. Don't reach for `IsConcurrencyToken`, row versioning, or repo-redesign-around-races. Service-level audit is the architectural defense.
+description: When a reviewer flags a lost-update race on an audited entity, the audit log is the safety net — don't add `IsConcurrencyToken`/row versioning or redesign the repo.
 ---
 
 At Humans' scale (small user base, single-server, admin-heavy writes), the audit log is the architectural defense against concurrent-write races — **not** optimistic concurrency, not property-level change tracking, not lock primitives.

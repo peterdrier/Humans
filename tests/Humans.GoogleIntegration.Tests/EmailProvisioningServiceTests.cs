@@ -145,9 +145,9 @@ public class EmailProvisioningServiceTests
         var targetId = Guid.NewGuid();
 
         StubTargetUser(f, targetId);
-        f.UserEmailService.GetOtherUserIdHavingEmailAsync(
-                "alice@nobodies.team", targetId, Arg.Any<CancellationToken>())
-            .Returns(ownerId);
+        f.UserEmailService.FindByAddressAsync(
+                "alice@nobodies.team", false, false, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(ownerId, "alice@nobodies.team")]);
 
         var result = await f.Service.ProvisionNobodiesEmailAsync(targetId, "alice", targetId);
 

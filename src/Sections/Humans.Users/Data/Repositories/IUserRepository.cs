@@ -13,7 +13,7 @@ namespace Humans.Users.Data.Repositories;
 /// Read methods are <c>AsNoTracking</c>. Narrow-field updates commit atomically
 /// in a single <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{UsersDbContext}"/>-owned
 /// context. Event-participation mutations expose load-then-save primitives so
-/// <see cref="Humans.Application.Services.Users.UserService"/> can apply the
+/// <c>UserService</c> can apply the
 /// status/source business rules before persisting.
 /// </remarks>
 internal partial interface IUserRepository : IRepository
@@ -79,7 +79,7 @@ internal partial interface IUserRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Applies a suspension transition directly to <see cref="Domain.Entities.User.State"/>.
+    /// Applies a suspension transition directly to <c>User.State</c>.
     /// Unsuspending re-classifies from the remaining fields (rejected/deletion/name/merge).
     /// Writes <c>users.State</c> only — the suspension reason belongs to the audit log and the
     /// notification, not to a second copy on the profile.

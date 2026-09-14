@@ -1,3 +1,5 @@
+using Humans.Users.Services;
+using Humans.Users.Models;
 using Humans.Users.Controllers;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -36,25 +38,23 @@ using Humans.GoogleIntegration.Contracts;
 namespace Humans.Users.Tests.Controllers;
 
 /// <summary>
-/// Unit tests for the self-route controller actions on
-/// <see cref="ProfileController"/> that wrap the new UserEmailService grid
-/// methods (SetGoogle, Link, Unlink) and the SetPrimary rename. Covers PR 4
-/// tasks 13/14/15 of the email/OAuth decoupling plan.
+/// Self-route <c>ProfileEmailsController</c> actions over the UserEmailService grid:
+/// SetGoogle, Link, Unlink, SetPrimary.
 /// </summary>
-public class ProfileControllerEmailGridTests
+public class ProfileEmailsControllerGridTests
 {
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
     private readonly IAuthorizationService _authorizationService = Substitute.For<IAuthorizationService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
-    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
-    private readonly ProfileController _controller;
+    private readonly ProfileEmailsController _controller;
     private readonly Guid _userId = Guid.NewGuid();
 
-    public ProfileControllerEmailGridTests()
+    public ProfileEmailsControllerGridTests()
     {
         var userStore = Substitute.For<IUserStore<User>>();
         _userManager = Substitute.For<UserManager<User>>(
@@ -76,39 +76,17 @@ public class ProfileControllerEmailGridTests
         var sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
         sharedLocalizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
-        _controller = new ProfileController(
+        _controller = new ProfileEmailsController(
             _userService,
             _userManager,
-            Substitute.For<IProfilePictureService>(),
-            Substitute.For<IProfileEditorService>(),
-            Substitute.For<IContactFieldService>(),
             _emailService,
             _emailMessages,
             _userEmailService,
-            Substitute.For<ICommunicationPreferenceService>(),
             _auditLogService,
-            Substitute.For<IOnboardingIntake>(),
-            Substitute.For<IShiftSignups>(),
-            Substitute.For<IBurnSettingsService>(),
-            Substitute.For<IShiftManagementServiceRead>(),
-            Substitute.For<IShiftVolunteerProfiles>(),
-            Substitute.For<IShiftView>(),
-            Substitute.For<IGdprService>(),
-            Substitute.For<IConfiguration>(),
-            new ConfigurationRegistry(),
-            NullLogger<ProfileController>.Instance,
+            NullLogger<ProfileEmailsController>.Instance,
             localizer,
-            sharedLocalizer,
             Substitute.For<ITicketServiceRead>(),
-            Substitute.For<ITeamService>(),
-            Substitute.For<ICampaignService>(),
-            Substitute.For<ICampServiceRead>(),
-            Substitute.For<IEmailOutboxServiceRead>(),
-            new FakeClock(Instant.FromUtc(2026, 4, 30, 12, 0)),
             _authorizationService,
-            Substitute.For<IApplicationDecisionService>(),
-            Substitute.For<IAccountDeletionService>(),
-            Substitute.For<IMembershipCalculatorRead>(),
             _signInManager,
             Options.Create(new GoogleWorkspaceOptions()));
 
@@ -138,7 +116,7 @@ public class ProfileControllerEmailGridTests
             .Returns(new User { Id = _userId });
         _userManager.GetUserId(Arg.Any<ClaimsPrincipal>()).Returns(_userId.ToString());
 
-        // GetCurrentUserInfoAsync helper reads through IUserService; default
+        // GetCurrentUserInfoAsync helper reads through IUserServiceInternal; default
         // stub returns a minimal UserInfo for the test user so the actions
         // continue past the null-guard. Per-test overrides can replace this.
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
@@ -353,7 +331,7 @@ public class ProfileControllerEmailGridTests
 
         // Stub Url.Action to embed the encoded token in the returned URL so the
         // test can verify the verification URL is built from the AddEmailAsync token.
-        _controller.Url.Action(Arg.Is<UrlActionContext>(ctx => ctx.Action == "VerifyEmail"))
+        _controller.Url.Action(Arg.Is<UrlActionContext>(ctx => ctx.Action == "VerifyEmail" && ctx.Controller == "ProfileEmails"))
             .Returns(ci =>
             {
                 var ctx = ci.Arg<UrlActionContext>();
@@ -382,6 +360,35 @@ public class ProfileControllerEmailGridTests
             "es");
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be("AdminEmails");
+    }
+
+    [HumansFact]
+    public async Task AddEmail_SendsVerificationLink_RoutedToThisController()
+    {
+        const string newEmail = "mine@example.com";
+        const string token = "verification-token-self";
+
+        // Only a link asked for this controller carries the token; VerifyEmail
+        // no longer lives on ProfileController, so "Profile" would not route.
+        _controller.Url.Action(Arg.Is<UrlActionContext>(ctx => ctx.Action == "VerifyEmail" && ctx.Controller == "ProfileEmails"))
+            .Returns(ci =>
+            {
+                var routeValues = new Microsoft.AspNetCore.Routing.RouteValueDictionary(ci.Arg<UrlActionContext>().Values);
+                return $"/Profile/Me/Emails/Verify?userId={routeValues["userId"]}&token={routeValues["token"]}";
+            });
+        _userEmailService.AddEmailAsync(_userId, newEmail, Arg.Any<CancellationToken>())
+            .Returns(new AddEmailResult(Guid.NewGuid(), token, IsConflict: false));
+
+        var result = await _controller.AddEmail(new EmailsViewModel { NewEmail = newEmail });
+
+        _emailMessages.Received(1).EmailVerification(
+            newEmail,
+            Arg.Any<string>(),
+            Arg.Is<string>(url => url.Contains(token, StringComparison.Ordinal)),
+            false,
+            Arg.Any<string?>());
+        result.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be("Emails");
     }
 
     [HumansFact]

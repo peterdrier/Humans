@@ -36,8 +36,8 @@ public sealed class GoogleRemovalNotificationServiceTests
     public async Task NotifyRemovalAsync_OrphanAddress_DoesNotSendEmail()
     {
         // No UserEmail row matches the address — orphan / deleted-user / self-unlink case.
-        _userEmailService.GetUserIdByVerifiedEmailAsync("ghost@example.com", Arg.Any<CancellationToken>())
-            .Returns((Guid?)null);
+        _userEmailService.FindByAddressAsync("ghost@example.com", false, true, Arg.Any<CancellationToken>())
+            .Returns([]);
 
         await _service.NotifyRemovalAsync(
             "ghost@example.com",
@@ -73,8 +73,8 @@ public sealed class GoogleRemovalNotificationServiceTests
             ("old@nobodies.team", verified: true, isGoogle: false),
             ("new@nobodies.team", verified: true, isGoogle: true));
 
-        _userEmailService.GetUserIdByVerifiedEmailAsync("old@nobodies.team", Arg.Any<CancellationToken>())
-            .Returns(userId);
+        _userEmailService.FindByAddressAsync("old@nobodies.team", false, true, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(userId, "old@nobodies.team")]);
         _userService.GetUserInfosAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
             Arg.Any<CancellationToken>())
@@ -112,8 +112,8 @@ public sealed class GoogleRemovalNotificationServiceTests
             ("old@nobodies.team", verified: true, isGoogle: true),
             ("new@nobodies.team", verified: true, isGoogle: true));
 
-        _userEmailService.GetUserIdByVerifiedEmailAsync("old@nobodies.team", Arg.Any<CancellationToken>())
-            .Returns(userId);
+        _userEmailService.FindByAddressAsync("old@nobodies.team", false, true, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(userId, "old@nobodies.team")]);
         _userService.GetUserInfosAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
             Arg.Any<CancellationToken>())
@@ -152,8 +152,8 @@ public sealed class GoogleRemovalNotificationServiceTests
             "es",
             ("primary@nobodies.team", verified: true, isGoogle: true));
 
-        _userEmailService.GetUserIdByVerifiedEmailAsync("primary@nobodies.team", Arg.Any<CancellationToken>())
-            .Returns(userId);
+        _userEmailService.FindByAddressAsync("primary@nobodies.team", false, true, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(userId, "primary@nobodies.team")]);
         _userService.GetUserInfosAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
             Arg.Any<CancellationToken>())
@@ -188,8 +188,8 @@ public sealed class GoogleRemovalNotificationServiceTests
             "ca",
             ("only@nobodies.team", verified: true, isGoogle: true));
 
-        _userEmailService.GetUserIdByVerifiedEmailAsync("only@nobodies.team", Arg.Any<CancellationToken>())
-            .Returns(userId);
+        _userEmailService.FindByAddressAsync("only@nobodies.team", false, true, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(userId, "only@nobodies.team")]);
         _userService.GetUserInfosAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
             Arg.Any<CancellationToken>())
@@ -223,8 +223,8 @@ public sealed class GoogleRemovalNotificationServiceTests
             "en",
             ("dee@nobodies.team", verified: true, isGoogle: true));
 
-        _userEmailService.GetUserIdByVerifiedEmailAsync("dee@nobodies.team", Arg.Any<CancellationToken>())
-            .Returns(userId);
+        _userEmailService.FindByAddressAsync("dee@nobodies.team", false, true, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(userId, "dee@nobodies.team")]);
         _userService.GetUserInfosAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
             Arg.Any<CancellationToken>())
@@ -257,7 +257,7 @@ public sealed class GoogleRemovalNotificationServiceTests
             SyncRemovalReason.Reconciliation, Xunit.TestContext.Current.CancellationToken);
 
         await _userEmailService.DidNotReceiveWithAnyArgs()
-            .GetUserIdByVerifiedEmailAsync(null!, Arg.Any<CancellationToken>());
+            .FindByAddressAsync(null!, false, false, Arg.Any<CancellationToken>());
     }
 
     /// <summary>

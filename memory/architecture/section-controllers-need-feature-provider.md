@@ -1,6 +1,6 @@
 ---
 name: internal section controllers need SectionControllerFeatureProvider
-description: MVC's ControllerFeatureProvider requires IsPublic, so an `internal` controller in a section project is never discovered — green build, zero warnings, 404 at runtime. Read when making a controller internal, or debugging a route that 404s with the controller clearly present.
+description: An `internal` section controller 404s silently — MVC's `ControllerFeatureProvider` requires `IsPublic`. `SectionControllerFeatureProvider` in Shell relaxes that check for sections.
 ---
 
 MVC's `ControllerFeatureProvider.IsController` requires `typeInfo.IsPublic`. A controller that is

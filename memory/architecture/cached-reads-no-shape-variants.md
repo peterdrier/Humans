@@ -1,6 +1,6 @@
 ---
 name: cached-reads-no-shape-variants
-description: When a read surface is served from an in-memory cache that holds the fully-populated payload, do not offer "lighter" shape variants (`WithEmails`, `IncludeFoo`, `withChildren=false`). The cache only knows one shape — variants split the contract for no benefit and reintroduce EF-shaped thinking into a cache-first surface.
+description: When a read serves from a fully-populated in-memory cache, don't add shape variants (`WithEmails`, `IncludeFoo`) — the cache holds one shape; that's EF-shaped thinking leaking in.
 ---
 
 When a read method serves from an in-memory cache of a fully-populated DTO (e.g. `UserInfo`, `TeamInfo`, `FullProfile`), the surface returns one shape: whatever the cache holds. **Do not** add `WithEmails` / `WithChildren` / `includeFoo` variants or boolean flags that gate which navigations are populated.

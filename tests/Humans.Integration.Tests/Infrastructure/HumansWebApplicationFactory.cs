@@ -4,7 +4,7 @@ using Humans.Consent.Contracts;
 using Humans.Consent.Domain;
 using Humans.Consent.Data;
 using Humans.Consent.Services;
-using Humans.Onboarding.Contracts;
+using Humans.Onboarding.Services;
 using System.Security.Cryptography;
 using System.Text;
 using Hangfire;
@@ -254,7 +254,8 @@ public class HumansWebApplicationFactory(string connectionString)
 
         var email = $"dev-{slug}@localhost";
         var userEmailService = scope.ServiceProvider.GetRequiredService<IUserEmailService>();
-        var userId = await userEmailService.GetUserIdByVerifiedEmailAsync(email, TestContext.Current.CancellationToken)
+        var userId = (await userEmailService.FindByAddressAsync(email, aliased: false, verifiedOnly: true, TestContext.Current.CancellationToken))
+                .FirstOrDefault()?.UserId
             ?? throw new InvalidOperationException(
                 $"Persona '{slug}' was not found after dev login (email {email}).");
         var user = await db.Users
@@ -370,9 +371,10 @@ public class HumansWebApplicationFactory(string connectionString)
 
         using var idScope = Services.CreateScope();
         var email = $"dev-{slug}@localhost";
-        var userId = await idScope.ServiceProvider
-            .GetRequiredService<IUserEmailService>()
-            .GetUserIdByVerifiedEmailAsync(email, TestContext.Current.CancellationToken)
+        var userId = (await idScope.ServiceProvider
+                .GetRequiredService<IUserEmailService>()
+                .FindByAddressAsync(email, aliased: false, verifiedOnly: true, TestContext.Current.CancellationToken))
+                .FirstOrDefault()?.UserId
             ?? throw new InvalidOperationException(
                 $"Persona '{slug}' was not found after dev login (email {email}).");
 

@@ -1,6 +1,6 @@
 ---
 name: Controllers inherit shared bases for user resolution and TempData messaging
-description: MVC controllers extend `HumansControllerBase`; JSON API controllers extend `ApiControllerBase`. Don't write direct `_userManager.GetUserAsync` or `TempData["..."]` calls in either.
+description: MVC controllers extend `HumansControllerBase`; API controllers extend `ApiControllerBase` — never direct `_userManager.GetUserAsync` or `TempData[...]` calls.
 ---
 
 Controllers that resolve the current human or set TempData messages must use the shared base classes instead of duplicating those patterns. The base is split by controller flavor so an API controller doesn't drag in view-rendering / TempData machinery it never uses.

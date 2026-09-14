@@ -275,10 +275,8 @@ IUserEmailService
 │   → Sets which verified email receives notifications
 ├── SetVisibilityAsync(userId, emailId, visibility)
 │   → Updates profile visibility for an email
-├── DeleteEmailAsync(userId, emailId)
-│   → Removes a non-OAuth email
-└── RemoveAllEmailsAsync(userId)
-    → Removes all emails (account deletion)
+└── DeleteEmailAsync(userId, emailId)
+    → Removes a non-OAuth email
 ```
 
 ## Related Features

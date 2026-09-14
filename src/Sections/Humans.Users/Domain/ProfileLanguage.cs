@@ -9,19 +9,10 @@ namespace Humans.Users.Domain;
 /// </summary>
 internal sealed class ProfileLanguage
 {
-    /// <summary>
-    /// Unique identifier.
-    /// </summary>
     public Guid Id { get; init; }
 
-    /// <summary>
-    /// Foreign key to the profile.
-    /// </summary>
     public Guid ProfileId { get; init; }
 
-    /// <summary>
-    /// Navigation property to the profile.
-    /// </summary>
     public Profile Profile { get; set; } = null!;
 
     /// <summary>
@@ -29,8 +20,5 @@ internal sealed class ProfileLanguage
     /// </summary>
     public string LanguageCode { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Self-assessed proficiency level.
-    /// </summary>
     public LanguageProficiency Proficiency { get; set; }
 }

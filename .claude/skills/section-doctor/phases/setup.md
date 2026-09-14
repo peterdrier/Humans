@@ -73,8 +73,8 @@ if [ "$CLAUDE_CODE_REMOTE" = "true" ]; then  # ephemeral single-session containe
   git checkout -b section-doctor/$TS origin/main
   WORKTREE=$REPO_ROOT
 else
-  git worktree add $REPO_ROOT/.worktrees/section-doctor-$TS -b section-doctor/$TS origin/main
-  WORKTREE=$REPO_ROOT/.worktrees/section-doctor-$TS  # EnterWorktree here; all commands run inside
+  git worktree add $REPO_ROOT/.claude/worktrees/section-doctor-$TS -b section-doctor/$TS origin/main
+  WORKTREE=$REPO_ROOT/.claude/worktrees/section-doctor-$TS  # EnterWorktree here; all commands run inside
 fi
 ```
 

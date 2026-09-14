@@ -1,6 +1,6 @@
 ---
 name: CSV — CsvHelper via HumansCsv, never hand-rolled
-description: ALL CSV reading and writing goes through the CsvHelper package using the shared `HumansCsv` config factories. Hand-rolled splitting, quoting, escaping, or `string.Split(',')` parsing is not allowed.
+description: ALL CSV reads/writes go through CsvHelper via the shared `HumansCsv` config — never hand-rolled splitting/quoting/escaping or `string.Split(',')`.
 ---
 
 Every CSV read or write uses **CsvHelper** built from the shared factories in `Humans.Base.Csv.HumansCsv`:

@@ -14,18 +14,16 @@ namespace Humans.Users.Data;
 /// Issue #703. Singleton caching decorator for <see cref="IUserService"/>.
 /// Inherits <see cref="TrackedCache{TKey, TValue}"/> for a hit/miss-tracked cache of
 /// <see cref="UserInfo"/> entries keyed by userId — the canonical
-/// "everything-about-a-person" cache spanning the User and Profile sections
-/// (8 contributing tables).
+/// "everything-about-a-person" cache.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Pattern mirrors <c>CachingUserService</c>: dict hits served
-/// synchronously, cache miss refills via the inner Scoped
-/// <see cref="IUserService"/>, every write through this surface delegates and
-/// then refreshes the affected entry. Identity-machinery write paths
+/// Dict hits served synchronously; a cache miss refills via the inner Scoped
+/// <see cref="IUserService"/>, and every write through this surface delegates
+/// and then refreshes the affected entry. Identity-machinery write paths
 /// (<c>UserManager.UpdateAsync</c>, sign-in <c>LastLoginAt</c> bumps) are
-/// caught by <c>UserInfoSaveChangesInterceptor</c> in Infrastructure, which
-/// invokes <see cref="IUserInfoInvalidator.InvalidateAsync"/> for every
+/// caught by <c>UserInfoSaveChangesInterceptor</c>, which invokes
+/// <see cref="IUserInfoInvalidator.InvalidateAsync"/> for every
 /// touched userId.
 /// </para>
 /// <para>
@@ -40,7 +38,7 @@ namespace Humans.Users.Data;
 internal sealed class CachingUserService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingUserService> logger) : TrackedCache<Guid, UserInfo>("User.UserInfo", warmOnStartup: true, logger),
-    IUserService, IUserInfoInvalidator, IUserInfoSliceRefresher, IEntityNameContributor
+    IUserServiceInternal, IUserInfoInvalidator, IUserInfoSliceRefresher, IEntityNameContributor
 {
     /// <summary>
     /// DI service key under which the undecorated (inner) <see cref="IUserService"/>
@@ -65,7 +63,7 @@ internal sealed class CachingUserService(
     protected override async ValueTask<UserInfo?> LoadRowAsync(Guid userId, CancellationToken ct)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserService>(InnerServiceKey);
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserServiceInternal>(InnerServiceKey);
         return await inner.GetUserInfoAsync(userId, ct);
     }
 
@@ -209,7 +207,7 @@ internal sealed class CachingUserService(
 
     /// <summary>
     /// Populates the inherited cache with a <see cref="UserInfo"/> for every
-    /// existing user at startup. Bulk-loads each of the 8 contributing tables
+    /// existing user at startup. Bulk-loads each of the contributing tables
     /// once and indexes by userId so per-user materialization is allocation-only.
     /// Trivial at our small scale.
     /// </summary>
@@ -394,17 +392,17 @@ internal sealed class CachingUserService(
     // refreshes the affected entry on writes.
     // ==========================================================================
 
-    private async Task<T> WithInnerAsync<T>(Func<IUserService, Task<T>> work)
+    private async Task<T> WithInnerAsync<T>(Func<IUserServiceInternal, Task<T>> work)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserService>(InnerServiceKey);
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserServiceInternal>(InnerServiceKey);
         return await work(inner);
     }
 
-    private async Task WithInnerAsync(Func<IUserService, Task> work)
+    private async Task WithInnerAsync(Func<IUserServiceInternal, Task> work)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserService>(InnerServiceKey);
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserServiceInternal>(InnerServiceKey);
         await work(inner);
     }
 

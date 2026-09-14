@@ -1,6 +1,6 @@
 ---
 name: section-read-write-split
-description: Sections consumed by other sections expose a *Read interface containing only DTO/Info-returning methods used cross-section; writes, cache hooks, and section-internal reads stay on the full interface
+description: A section consumed cross-section exposes `I<Section>ServiceRead` (DTO-only reads); writes, cache hooks, and section-internal reads stay on the full `I<Section>Service`.
 metadata:
   type: project
 ---

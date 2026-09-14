@@ -1,6 +1,6 @@
 ---
 name: No business logic in controllers — controllers are HTTP adapters
-description: Controllers parse input, authorize, dispatch to services, return responses. Branching on domain state, computing derived values, or coordinating multi-step domain operations belongs in a service. Enforced by analyzer HUM0031 — any controller method (action or private helper) with > 40 statements or cyclomatic complexity > 15 is a build error.
+description: Controllers parse input, authorize, dispatch, and return — no domain branching or orchestration. HUM0031 errors on any controller method over 40 statements or complexity 15.
 ---
 
 Controllers parse input, authorize, dispatch to a service, and return a response. They do **not** contain business logic — branching on domain state, computing derived values, or coordinating multi-step domain operations.

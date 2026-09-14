@@ -5,8 +5,7 @@ namespace Humans.Users.Contracts;
 /// <summary>
 /// Service for managing user email addresses.
 /// </summary>
-// COVERAGE REDUCED (G5 lane 3b, nobodies-collective/Humans#866): dropped ": IApplicationService".
-// Lost on the implementing class: HUM0027 (role-axis exclusivity). See Humans.Users.Contracts.csproj.
+// No marker interface — see Humans.Users.Contracts.csproj.
 public interface IUserEmailService
 {
     /// <summary>
@@ -124,13 +123,6 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Removes all email records for a user (used during account anonymization).
-    /// </summary>
-    Task RemoveAllEmailsAsync(
-        Guid userId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Adds a verified email directly (admin provisioning/linking — no verification flow needed).
     /// If the email is @nobodies.team, it's automatically set as the notification target.
     /// Idempotent: if the email already exists for this user, skips the insert
@@ -156,85 +148,26 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Looks up the owning userId for any UserEmail row matching the given
-    /// address (case-insensitive normalized, including the gmail/googlemail
-    /// alternate). Returns the userId of any matching row regardless of
-    /// verification state — used by import-flow account provisioning to
-    /// detect existing accounts before creating a new one. Returns null when
-    /// no row matches. Orphan detection (matched row pointing at a missing
-    /// user) is the caller's responsibility — see
-    /// <see cref="Humans.Application.Services.Users.AccountProvisioningService"/>.
+    /// The one address→rows lookup: every <c>UserEmail</c> row, across all users, whose
+    /// address matches <paramref name="email"/>. <paramref name="aliased"/> widens the
+    /// match to the gmail/googlemail twin (<c>EmailNormalization.EmailsMatch</c>);
+    /// otherwise it is an exact, case-insensitive comparison. <paramref name="verifiedOnly"/>
+    /// drops unverified rows. Callers pick the cardinality they need (first owner, distinct
+    /// owners, "exactly one", "any other user"); a caller that mutates state must treat
+    /// more than one distinct owner as ambiguous, since verified-address uniqueness is a
+    /// service invariant that can drift. Read from the cached UserInfo snapshot.
     /// </summary>
-    Task<Guid?> FindAnyUserIdByEmailAsync(
+    Task<IReadOnlyList<UserEmailRowSnapshot>> FindByAddressAsync(
         string email,
+        bool aliased,
+        bool verifiedOnly,
         CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns (userId, userEmailId) for any UserEmail row matching the address,
-    /// or null if no row matches. Used by MailerLite import to identify the specific
-    /// unverified row to delete before creating a contact.
-    /// </summary>
-    Task<(Guid UserId, Guid EmailId)?> FindAnyEmailRowByAddressAsync(
-        string email, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the verified @nobodies.team email for a user, or null if none exists.
     /// </summary>
     Task<string?> GetNobodiesTeamEmailAsync(
         Guid userId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Checks if a user has a verified @nobodies.team email.
-    /// </summary>
-    Task<bool> HasNobodiesTeamEmailAsync(
-        Guid userId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets the email address for a verified email record owned by the user.
-    /// Returns null if not found, not owned by the user, or not verified.
-    /// </summary>
-    Task<string?> GetVerifiedEmailAddressAsync(
-        Guid userId,
-        Guid emailId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Finds a verified UserEmail matching the given address (or gmail/googlemail alternate).
-    /// Includes the owning User for contact-creation conflict checks.
-    /// Returns null if no match.
-    /// </summary>
-    Task<UserEmailWithUser?> FindVerifiedEmailWithUserAsync(
-        string email,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns the distinct UserIds whose verified UserEmail matches the given
-    /// address (including gmail/googlemail alternate). Same matching semantics
-    /// as <see cref="FindVerifiedEmailWithUserAsync"/> but exposes the full
-    /// set. Callers that mutate user state (e.g. the MailerLite import classifier)
-    /// must treat count &gt; 1 as ambiguous and skip — service-enforced
-    /// verified-email uniqueness can drift.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetDistinctVerifiedUserIdsAsync(
-        string email,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets @nobodies.team email status for all users who have one.
-    /// Returns a dictionary of userId → isNotificationTarget (i.e., is it their primary email).
-    /// Used for admin listing pages.
-    /// </summary>
-    Task<Dictionary<Guid, bool>> GetNobodiesTeamEmailStatusByUserAsync(
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets the verified @nobodies.team email for each of the given users (batch query).
-    /// Returns a dictionary of userId → email address. Users without a @nobodies.team email are omitted.
-    /// </summary>
-    Task<Dictionary<Guid, string>> GetNobodiesTeamEmailsByUserIdsAsync(
-        IEnumerable<Guid> userIds,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -251,17 +184,6 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Looks up the owning user for a verified email address. Exact match on
-    /// <see cref="UserEmail.Email"/> — no gmail/googlemail aliasing. Returns
-    /// <c>null</c> if no verified row matches. Used by the email-outbox
-    /// enqueue path to stamp <see cref="Domain.Entities.EmailOutboxMessage.UserId"/>
-    /// so admin views and unsubscribe flows can tie the row back to the human.
-    /// </summary>
-    Task<Guid?> GetUserIdByVerifiedEmailAsync(
-        string email,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Returns distinct user ids whose email rows match the supplied prefix
     /// and suffix. Used by Admin-only maintenance flows that resolve marked
     /// account sets through the Profile-owned email table.
@@ -270,9 +192,6 @@ public interface IUserEmailService
         string prefix,
         string suffix,
         CancellationToken cancellationToken = default);
-
-    /// <summary>Resolve a user by exact, case-insensitive email match against UserEmails. Returns null if zero or ambiguous matches.</summary>
-    Task<Guid?> GetUserIdByExactEmailAsync(string email, CancellationToken ct = default);
 
     /// <summary>
     /// Returns the notification-target (IsPrimary=true, verified) email address for the user,
@@ -328,27 +247,6 @@ public interface IUserEmailService
     Task<IReadOnlyDictionary<Guid, string>> GetNotificationEmailsByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns the id of any user, other than <paramref name="excludeUserId"/>,
-    /// whose user_emails rows contain the given address (case-insensitive), or
-    /// null if no other user owns it. Used by @nobodies.team provisioning so
-    /// the Application-layer service can detect cross-user conflicts without
-    /// touching the database directly.
-    /// </summary>
-    Task<Guid?> GetOtherUserIdHavingEmailAsync(
-        string email,
-        Guid excludeUserId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns true when any <see cref="Domain.Entities.UserEmail"/> row
-    /// exists whose <c>Email</c> matches <paramref name="email"/> case-insensitively,
-    /// irrespective of user. Used by admin account-linking flows to reject duplicate
-    /// links before mutating state.
-    /// </summary>
-    Task<bool> IsEmailLinkedToAnyUserAsync(
-        string email, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Returns every <see cref="UserEmailMatch"/> whose address matches one of

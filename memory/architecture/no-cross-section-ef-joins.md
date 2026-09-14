@@ -1,6 +1,6 @@
 ---
 name: no cross-section EF joins or nav properties
-description: HARD RULE. A section's EF model joins only to its own tables. No `HasOne<X>()` to another section, no nav properties across sections, no FK constraints to non-owned tables. Cross-section linkage is a bare Guid column only.
+description: HARD RULE. A section's EF model joins only its own tables — no `HasOne`/nav properties/FK constraints across sections. Cross-section linkage is a bare Guid column.
 ---
 
 A new section's EF configurations may only reference that section's own tables. Cross-section linkage is by FK *column* (a bare `Guid`), never by FK *constraint*, navigation property, or `HasOne()/HasMany()` mapping. Lookups across sections happen at the service layer via the other section's repository — never via EF traversal.

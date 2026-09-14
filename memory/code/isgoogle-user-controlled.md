@@ -1,6 +1,6 @@
 ---
 name: isgoogle-user-controlled
-description: UserEmail.IsGoogle is a user-set preference — never auto-set it during merges/syncs/duplicate resolution; the sanctioned auto-pick only applies when adding a brand-new row.
+description: "`UserEmail.IsGoogle` is user-set — never auto-set it in merges/syncs/dedup; the sanctioned auto-pick only runs when adding a brand-new row."
 ---
 
 `UserEmail.IsGoogle` is user-controlled whenever there's a user choice to preserve — the user toggles it themselves to indicate "this is my Google identity email." The rule has nuance: it applies to merges/syncs, not to add-row flows.

@@ -1,6 +1,6 @@
 ---
 name: Append ratchet baselines by hand — never re-run the seeder to absorb new entries
-description: The architecture ratchet baselines under tests/Humans.Application.Tests/Architecture/Baselines/ carry hand-written per-incident justification comments. BaselineSeeder regenerates them from scratch and discards those comments, so absorbing an intentional new violation means appending the locator lines by hand, with a justification block.
+description: Absorb an intentional ratchet violation by appending locator lines + a justification block by hand — never re-run `BaselineSeeder` (wipes hand-written approvals).
 ---
 
 When a ratchet test reports new violations that are genuinely intentional, add the locator lines to that rule's `.baseline.txt` **by hand**, preceded by a comment block saying why. Do not run `HUMANS_SEED_RATCHET_BASELINES=1 dotnet test --filter Seed_all_baselines`.

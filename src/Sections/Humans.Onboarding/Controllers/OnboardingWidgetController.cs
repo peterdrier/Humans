@@ -4,7 +4,6 @@ using Humans.Consent;
 using Humans.Consent.Contracts;
 using Humans.Users.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.Onboarding.Contracts;
 using Humans.Onboarding.Models;
 using Humans.Onboarding.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -146,7 +145,7 @@ internal sealed class OnboardingWidgetController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SignUp(Guid shiftId, CancellationToken ct)
+    public async Task<IActionResult> SignUp(Guid shiftId)
     {
         var userId = CurrentUserId();
         var result = await signupService.SignUpAsync(userId, shiftId, actorUserId: userId);
@@ -160,7 +159,7 @@ internal sealed class OnboardingWidgetController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SignUpRange(Guid rotaId, int startDayOffset, int endDayOffset, CancellationToken ct)
+    public async Task<IActionResult> SignUpRange(Guid rotaId, int startDayOffset, int endDayOffset)
     {
         // Multi-day Build/Strike signup. Mirrors ShiftsController but routes back through widget dispatcher.
         var result = await signupService.SignUpRangeAsync(CurrentUserId(), rotaId, startDayOffset, endDayOffset);
@@ -174,7 +173,7 @@ internal sealed class OnboardingWidgetController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Skip(CancellationToken ct)
+    public IActionResult Skip()
     {
         HttpContext.Session.SetString(HttpOnboardingWidgetSessionState.ShiftSkipSessionKey, "true");
         return RedirectToAction(nameof(Consents));

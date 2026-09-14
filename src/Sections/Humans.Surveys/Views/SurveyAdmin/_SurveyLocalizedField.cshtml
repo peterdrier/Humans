@@ -1,7 +1,7 @@
 @model SurveyLocalizedFieldModel
 
 @{
-    // The builder edits one culture at a time (spec §6): every culture's input is in the DOM so the
+    // The builder edits one culture at a time: every culture's input is in the DOM so the
     // whole survey posts in one form, but only the active culture (the culture-tab switcher in
     // Builder.cshtml) is visible. Server renders the initial state so there is no flash before JS.
     var active = ViewData["SurveyActiveCulture"] as string ?? CultureCatalog.DefaultCultureCode;

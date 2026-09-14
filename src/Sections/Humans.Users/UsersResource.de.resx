@@ -102,9 +102,6 @@
   <data name="Profile_NotificationTargetShort" xml:space="preserve">
     <value>Benachrichtigungen</value>
   </data>
-  <data name="Profile_Teams" xml:space="preserve">
-    <value>Teams</value>
-  </data>
   <data name="Profile_Motivation" xml:space="preserve">
     <value>Motivation</value>
   </data>
@@ -126,21 +123,8 @@
   <data name="Profile_Languages" xml:space="preserve">
     <value>Gesprochene Sprachen</value>
   </data>
-  <data name="Profile_Pronouns" xml:space="preserve">
-    <value>Pronomen</value>
-  </data>
   <data name="Profile_EnterEmail" xml:space="preserve">
     <value>Bitte geben Sie eine E-Mail-Adresse ein.</value>
-  </data>
-  <data name="Profile_AlreadySignInEmail" xml:space="preserve">
-    <value>Dies ist bereits Ihre Anmelde-E-Mail. Sie müssen sie nicht als bevorzugt festlegen.</value>
-  </data>
-  <data name="Profile_VerificationCooldown" xml:space="preserve">
-    <value>Bitte warten Sie {0} Minute(n), bevor Sie eine weitere Bestätigungs-E-Mail anfordern.</value>
-    <comment>{0} = minutes remaining</comment>
-  </data>
-  <data name="Profile_EmailInUse" xml:space="preserve">
-    <value>Diese E-Mail-Adresse wird bereits von einem anderen Konto verwendet.</value>
   </data>
   <data name="Profile_VerificationSent" xml:space="preserve">
     <value>Bestätigungs-E-Mail an {0} gesendet. Bitte überprüfen Sie Ihren Posteingang.</value>
@@ -148,15 +132,6 @@
   </data>
   <data name="Profile_InvalidVerificationLink" xml:space="preserve">
     <value>Ungültiger Bestätigungslink.</value>
-  </data>
-  <data name="Profile_NoEmailPending" xml:space="preserve">
-    <value>Keine E-Mail-Adresse zur Verifizierung ausstehend.</value>
-  </data>
-  <data name="Profile_VerificationExpired" xml:space="preserve">
-    <value>Der Bestätigungslink ist ungültig oder abgelaufen.</value>
-  </data>
-  <data name="Profile_EmailClaimed" xml:space="preserve">
-    <value>Diese E-Mail-Adresse wurde von einem anderen Konto beansprucht.</value>
   </data>
   <data name="Profile_EmailVerified" xml:space="preserve">
     <value>E-Mail-Adresse {0} wurde verifiziert.</value>
@@ -170,9 +145,6 @@
   </data>
   <data name="Profile_NotificationTargetUpdated" xml:space="preserve">
     <value>Benachrichtigungs-E-Mail-Adresse aktualisiert.</value>
-  </data>
-  <data name="Profile_PreferredEmailCleared" xml:space="preserve">
-    <value>Bevorzugte E-Mail wurde entfernt. System-E-Mails werden jetzt an Ihre Anmelde-E-Mail gesendet.</value>
   </data>
   <data name="Profile_DeletionAlreadyPending" xml:space="preserve">
     <value>Ein Löschantrag ist bereits ausstehend.</value>
@@ -217,9 +189,6 @@
   <data name="Profile_EmergencyContactRelationship" xml:space="preserve">
     <value>Beziehung</value>
   </data>
-  <data name="Profile_EmergencyContactBoardOnly" xml:space="preserve">
-    <value>Nur für Sie und den Vorstand sichtbar.</value>
-  </data>
   <data name="Profile_NoPriorBurnExperience" xml:space="preserve">
     <value>Ich habe keine vorherige Burn-Erfahrung</value>
   </data>
@@ -244,13 +213,6 @@
   <data name="Profile_WhatsApp" xml:space="preserve">
     <value>WhatsApp</value>
   </data>
-  <data name="Profile_ImportGooglePhoto_Success" xml:space="preserve"><value>Dein Google-Foto wurde als Profilbild importiert.</value></data>
-  <data name="Profile_ImportGooglePhoto_Unavailable" xml:space="preserve"><value>Google-Foto kann nicht importiert werden: Dein Konto ist nicht mit Google verkn&#xFC;pft oder es wurde kein Avatar bei der Anmeldung erfasst.</value></data>
-  <data name="Profile_ImportGooglePhoto_NoProfile" xml:space="preserve"><value>Schlie&#xDF;e zuerst die Einrichtung deines Profils ab, dann kannst du dein Google-Foto importieren.</value></data>
-  <data name="Profile_ImportGooglePhoto_AlreadyHasCustom" xml:space="preserve"><value>Du hast bereits ein benutzerdefiniertes Profilbild. Entferne es zuerst, um dein Google-Foto zu importieren.</value></data>
-  <data name="Profile_ImportGooglePhoto_FetchFailed" xml:space="preserve"><value>Dein Google-Foto konnte nicht abgerufen werden. Versuche es sp&#xE4;ter erneut oder lade direkt eines hoch.</value></data>
-  <data name="Profile_ImportGooglePhoto_InvalidFormat" xml:space="preserve"><value>Dein Google-Foto konnte nicht verarbeitet werden: Nicht unterst&#xFC;tztes Format oder fehlerhafte Antwort von Google.</value></data>
-  <data name="Profile_ImportGooglePhoto_NotGoogleUrl" xml:space="preserve"><value>Dein Google-Foto konnte nicht importiert werden: Die gespeicherte Avatar-URL sieht nicht nach einer Google-Adresse aus. Bitte lade direkt ein Foto hoch.</value></data>
   <data name="Profile_DietaryMedical_PageTitle" xml:space="preserve"><value>Dietary &amp; medical info</value></data>
   <data name="Profile_DietaryMedical_DietaryPreference_Label" xml:space="preserve"><value>Dietary preference</value></data>
   <data name="Profile_DietaryMedical_DietaryPreference_Omnivore" xml:space="preserve"><value>Omnivore</value></data>
@@ -376,20 +338,11 @@
   <data name="ProfileEdit_AddEntry" xml:space="preserve">
     <value>Eintrag hinzufügen</value>
   </data>
-  <data name="ProfileEdit_ManageEmails" xml:space="preserve">
-    <value>E-Mail-Adressen</value>
-  </data>
-  <data name="ProfileEdit_ManageEmailsHelp" xml:space="preserve">
-    <value>E-Mail-Adressen hinzufügen, Benachrichtigungseinstellungen festlegen und Profilsichtbarkeit steuern.</value>
-  </data>
   <data name="ProfileEdit_PictureHelp" xml:space="preserve">
     <value>Laden Sie ein JPEG-, PNG-, WebP- oder HEIC-Bild hoch (max. 20MB). Große Bilder werden automatisch verkleinert.</value>
   </data>
   <data name="ProfileEdit_RemovePicture" xml:space="preserve">
     <value>Benutzerdefiniertes Bild entfernen</value>
-  </data>
-  <data name="ProfileEdit_DateOfBirthHelp" xml:space="preserve">
-    <value>Nur für Sie und den Vorstand sichtbar. Wird für den Geburtstagskalender verwendet.</value>
   </data>
   <data name="ProfileEdit_EmergencyContactHelp" xml:space="preserve">
     <value>Geben Sie eine Kontaktperson für Notfälle bei Veranstaltungen an.</value>
@@ -400,17 +353,12 @@
   <data name="ProfileEdit_SectionContributor" xml:space="preserve">
     <value>Beitragsinformationen</value>
   </data>
-  <data name="ProfileEdit_ContributorNote" xml:space="preserve">
-    <value>Kann bei Colaborador- oder Asociado-Anträgen berücksichtigt werden.</value>
-  </data>
   <data name="ProfileEdit_ContributionInterestsHelp" xml:space="preserve">
     <value>Teile deine Fähigkeiten, Interessen und wie du dich einbringen möchtest. Für alle humans sichtbar.</value>
   </data>
   <data name="ProfileEdit_BoardNotesHelp" xml:space="preserve">
     <value>Private Notizen für den Vorstand.</value>
   </data>
-  <data name="ProfileEdit_ImportGooglePhoto" xml:space="preserve"><value>Mein Google-Foto importieren</value></data>
-  <data name="ProfileEdit_ImportGooglePhotoHelp" xml:space="preserve"><value>Kopiert das Foto aus deinem Google-Konto als Profilbild. Du kannst es sp&#xE4;ter durch ein neues Bild ersetzen.</value></data>
   <data name="ProfileEdit_CityPlaceholder" xml:space="preserve"><value>Beginne, deine Stadt einzutippen…</value></data>
   <data name="ProfileEdit_ContactType" xml:space="preserve"><value>Typ</value></data>
   <data name="ProfileEdit_ContactValue" xml:space="preserve"><value>Wert</value></data>
@@ -634,35 +582,8 @@
   <data name="Emails_ManageLater" xml:space="preserve">
     <value>Du kannst nach Abschluss der Einrichtung weitere E-Mail-Adressen in deinem Profil hinzufügen und verwalten.</value>
   </data>
-  <data name="Emails_Header_Email" xml:space="preserve">
-    <value>E-Mail</value>
-  </data>
-  <data name="Emails_Header_Status" xml:space="preserve">
-    <value>Status</value>
-  </data>
-  <data name="Emails_Header_Notifications" xml:space="preserve">
-    <value>Benachrichtigungen</value>
-  </data>
-  <data name="Emails_Header_Visibility" xml:space="preserve">
-    <value>Profil-Sichtbarkeit</value>
-  </data>
-  <data name="Emails_MergePending" xml:space="preserve">
-    <value>Zusammenführung ausstehend</value>
-  </data>
-  <data name="Emails_Verified" xml:space="preserve">
-    <value>Verifiziert</value>
-  </data>
-  <data name="Emails_StatusPending" xml:space="preserve">
-    <value>Ausstehend</value>
-  </data>
   <data name="Emails_Unverified" xml:space="preserve">
     <value>Nicht verifiziert</value>
-  </data>
-  <data name="Emails_NotifActive" xml:space="preserve">
-    <value>Aktiv</value>
-  </data>
-  <data name="Emails_SetAsTarget" xml:space="preserve">
-    <value>Als Ziel setzen</value>
   </data>
   <data name="Emails_VerifyFirst" xml:space="preserve">
     <value>Zuerst verifizieren</value>
@@ -685,33 +606,6 @@
   <data name="Emails_ConfirmRemove" xml:space="preserve">
     <value>Bist du sicher, dass du diese E-Mail entfernen möchtest?</value>
   </data>
-  <data name="Emails_GoogleTitle" xml:space="preserve">
-    <value>Google-Dienste-E-Mail</value>
-  </data>
-  <data name="Emails_GoogleDescription" xml:space="preserve">
-    <value>Diese E-Mail wird für Google Groups und freigegebene Laufwerke verwendet.</value>
-  </data>
-  <data name="Emails_GoogleAutoNobodies" xml:space="preserve">
-    <value>Deine @nobodies.team E-Mail wird automatisch verwendet.</value>
-  </data>
-  <data name="Emails_GoogleRejected" xml:space="preserve">
-    <value>Google-Synchronisierung fehlgeschlagen. Die aktuelle E-Mail wurde von Google abgelehnt. Wähle eine andere E-Mail.</value>
-  </data>
-  <data name="Emails_GoogleValid" xml:space="preserve">
-    <value>Google-Synchronisierung funktioniert mit der aktuellen E-Mail.</value>
-  </data>
-  <data name="Emails_AutoSelected" xml:space="preserve">
-    <value>Automatisch ausgewählt</value>
-  </data>
-  <data name="Emails_GoogleRejectedBadge" xml:space="preserve">
-    <value>Abgelehnt</value>
-  </data>
-  <data name="Emails_UseThis" xml:space="preserve">
-    <value>Verwenden</value>
-  </data>
-  <data name="Emails_AdminUnknownTarget" xml:space="preserve">
-    <value>einem anderen Benutzer</value>
-  </data>
 
   <!-- ======================== -->
   <!-- Email grid               -->
@@ -722,9 +616,6 @@
   <data name="EmailGrid_AdminContextBannerNamed" xml:space="preserve">
     <value>E-Mails von {0} verwalten</value>
     <comment>{0} = target user display name</comment>
-  </data>
-  <data name="EmailGrid_AdminUnknownTarget" xml:space="preserve">
-    <value>einem anderen Benutzer</value>
   </data>
   <data name="EmailGrid_Email" xml:space="preserve">
     <value>E-Mail</value>
@@ -779,9 +670,6 @@
   </data>
   <data name="EmailGrid_StatusPending" xml:space="preserve">
     <value>Ausstehend</value>
-  </data>
-  <data name="EmailGrid_PrimarySelected" xml:space="preserve">
-    <value>Primär</value>
   </data>
   <data name="EmailGrid_LinkGoogleAccount" xml:space="preserve">
     <value>Google-Konto verknüpfen</value>
@@ -1041,20 +929,12 @@
   <data name="AdminHumans_Deleted" xml:space="preserve">
     <value>Gelöscht</value>
   </data>
-  <data name="AdminHumans_MissingConsents" xml:space="preserve"><value>Fehlende Einwilligungen</value></data>
-  <data name="AdminHumans_IncompleteSignup" xml:space="preserve"><value>Registrierung unvollst&#xE4;ndig</value></data>
 
   <!-- ======================== -->
   <!-- Admin: member detail     -->
   <!-- ======================== -->
   <data name="AdminHuman_Information" xml:space="preserve">
     <value>Mitgliederinformationen</value>
-  </data>
-  <data name="AdminHuman_Suspended" xml:space="preserve">
-    <value>Gesperrt</value>
-  </data>
-  <data name="AdminHuman_PendingApproval" xml:space="preserve">
-    <value>Genehmigung ausstehend</value>
   </data>
   <data name="AdminHuman_ConsentCheck" xml:space="preserve">
     <value>Einwilligungsprüfung</value>
@@ -1064,9 +944,6 @@
   </data>
   <data name="AdminHuman_UserId" xml:space="preserve">
     <value>Benutzer-ID</value>
-  </data>
-  <data name="AdminHuman_FullName" xml:space="preserve">
-    <value>Vollständiger Name</value>
   </data>
   <data name="AdminHuman_AdminNotes" xml:space="preserve">
     <value>Vorstandsnotizen</value>
@@ -1103,9 +980,6 @@
   </data>
   <data name="AdminHuman_AuditHistory" xml:space="preserve">
     <value>Prüfverlauf</value>
-  </data>
-  <data name="AdminHuman_NoAuditHistory" xml:space="preserve">
-    <value>Kein Prüfverlauf vorhanden.</value>
   </data>
   <data name="AdminHuman_Statistics" xml:space="preserve">
     <value>Statistiken</value>
@@ -1166,10 +1040,6 @@
   <!-- ======================== -->
   <data name="AdminAddRole_Title" xml:space="preserve">
     <value>Rolle hinzufügen</value>
-  </data>
-  <data name="AdminAddRole_Heading" xml:space="preserve">
-    <value>Rolle hinzufügen für {0}</value>
-    <comment>{0} = display name</comment>
   </data>
   <data name="AdminAddRole_SelectRole" xml:space="preserve">
     <value>Rolle auswählen...</value>

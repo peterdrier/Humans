@@ -4,8 +4,7 @@ using Humans.Base.Interfaces;
 namespace Humans.Users;
 
 /// <summary>
-/// Users' contribution to the "Members" (shared with Onboarding), "Diagnostics" (shared with
-/// Debug) and "Temp" admin groups (nobodies-collective/Humans#1077).
+/// Users' contribution to the Members, Diagnostics and Temp admin groups.
 /// </summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {

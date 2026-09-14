@@ -1,6 +1,6 @@
 ---
 name: NSubstitute — capture substitute factories to a local before passing into .Returns(...)
-description: A method that creates and configures an NSubstitute mock must not be called inline as the argument to another .Returns(...) — NSubstitute can't tell which "last call" the outer Returns attaches to. Capture to a local first.
+description: Don't call a substitute-creating helper inline inside another `.Returns(...)` — NSubstitute can't tell which 'last call' it attaches to. Capture to a local first.
 ---
 
 If a helper method internally creates a substitute and configures `.Returns(...)` on it, calling that helper inline as the argument of another `.Returns(...)` produces `CouldNotSetReturnDueToNoLastCallException` at runtime.

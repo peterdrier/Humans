@@ -34,7 +34,7 @@ require_command() {
 
 into_branch="main"
 branch_prefix="codex/weekly-bug-hunt/"
-worktrees_dir=".worktrees"
+worktrees_dir=".claude/worktrees"
 apply=0
 
 while (($# > 0)); do

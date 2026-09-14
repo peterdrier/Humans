@@ -11,7 +11,7 @@ namespace Humans.Web.Extensions.Infrastructure;
 /// </summary>
 /// <remarks>
 /// <c>GoogleWorkspaceOptions</c> is Base-owned and read from outside the section — Camps'
-/// <c>CampRoleService</c> and Users' <c>ProfileController</c> both take it — so the section
+/// <c>CampRoleService</c> and Users' <c>ProfileEmailsController</c> both take it — so the section
 /// that owns the connectors does not own this binding (Governance's rule).
 /// </remarks>
 internal static class GoogleWorkspaceInfrastructureExtensions

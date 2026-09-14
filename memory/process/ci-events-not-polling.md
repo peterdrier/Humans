@@ -1,6 +1,6 @@
 ---
 name: Wait for CI with a watcher, never by polling in-context
-description: Never call `gh pr checks` repeatedly to find out whether CI finished. Each poll costs a whole conversation turn at full context. Use Bash `run_in_background` for one PR, or a `Monitor` loop for several.
+description: Never call `gh pr checks` repeatedly to check CI status — each poll costs a full context turn. Use Bash `run_in_background` for one PR, `Monitor` for several.
 ---
 
 Asking "is CI done yet" must not cost a conversation turn. Arm a watcher that runs outside the context and notifies on a state change.

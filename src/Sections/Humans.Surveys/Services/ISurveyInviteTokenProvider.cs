@@ -2,7 +2,7 @@ namespace Humans.Surveys.Services;
 
 /// <summary>
 /// Mints and resolves tokenised survey-invitation links via ASP.NET Data Protection. The token
-/// carries only the invitation id (time-limited). Implementation lives in Infrastructure.
+/// carries only the invitation id (time-limited).
 /// </summary>
 internal interface ISurveyInviteTokenProvider
 {

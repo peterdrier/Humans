@@ -1,6 +1,6 @@
 ---
 name: No schema-changing deploy during a live event
-description: HARD RULE. During a live-event period (build week through strike), deploys with pending EF migrations are frozen. If one truly cannot wait it needs a confirmed pre-deploy snapshot plus an admin awake at a keyboard. Code-only deploys stay allowed.
+description: "HARD RULE. Build week through strike: no deploy with a pending EF migration. An unavoidable one needs a confirmed pre-deploy snapshot, an awake admin, and Peter's go."
 ---
 
 During a live-event period — build week through the end of strike — **do not deploy anything with a

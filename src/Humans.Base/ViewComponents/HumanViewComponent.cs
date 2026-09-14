@@ -51,7 +51,7 @@ public class HumanViewComponent(IUserServiceRead userService, IUrlHelperFactory 
             var urlHelper = urlHelperFactory.GetUrlHelper(ViewContext);
             href = link == HumanLink.Admin
                 ? urlHelper.Action("AdminDetail", "UsersAdmin", new { id = userId })
-                : urlHelper.Action("ViewProfile", "Profile", new { id = userId });
+                : urlHelper.Action("ViewProfile", "ProfileView", new { id = userId });
         }
 
         var fontRem = Math.Round(size / 100.0 * 2.0, 1);

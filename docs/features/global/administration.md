@@ -2,7 +2,7 @@
   src/Humans.Web/Controllers/AdminController.cs
   src/Sections/Humans.Users/Controllers/UsersAdminAccountMergesController.cs
   src/Sections/Humans.Users/Controllers/UsersAdminController.cs
-  src/Sections/Humans.Users/Controllers/ProfileController.cs
+  src/Sections/Humans.Users/Controllers/ProfileEmailsController.cs
   src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs

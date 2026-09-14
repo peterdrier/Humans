@@ -3,9 +3,6 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Users.Authorization;
 
-/// <summary>
-/// Succeeds when the user has HumanAdmin role but is NOT Admin or Board.
-/// </summary>
 internal sealed class HumanAdminOnlyHandler : AuthorizationHandler<HumanAdminOnlyRequirement>
 {
     protected override Task HandleRequirementAsync(

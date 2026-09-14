@@ -84,7 +84,7 @@ else
         else if (item.Kind == EmailProblemKind.GhostExternalLogins)
         {
             <a class="btn btn-sm btn-outline-secondary"
-               asp-controller="Profile"
+               asp-controller="ProfileEmails"
                asp-action="AdminEmails"
                asp-route-id="@item.UserId"
                asp-fragment="external-logins">Investigate ▸</a>

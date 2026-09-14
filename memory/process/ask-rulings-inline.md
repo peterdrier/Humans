@@ -1,6 +1,6 @@
 ---
 name: /ask puts every ruling inline — never a doc reference
-description: HARD RULE. When asking Peter for rulings (/ask, Needs-Peter queues, any decision list), state every item fully inline in the message; NEVER refer him to a PR body, run file, or doc to read the question.
+description: HARD RULE. When asking Peter for rulings (/ask, Needs-Peter queues), state every item fully inline; never refer him to a PR body, run file, or doc to read it.
 ---
 
 Every question put to Peter — /ask reports, Needs-Peter rulings, any decision list — is stated fully inline in the message itself, numbered and answerable cold. Never "findings by number in the run file", never "see the PR body", never a link in place of the question.

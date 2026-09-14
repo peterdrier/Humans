@@ -1,6 +1,6 @@
 ---
 name: The freshness sweep owns and may repair its own verifier
-description: `/freshness-sweep` may fix `docs/scripts/freshness-checks/**` in-run without asking, even though those files sit outside the catalog and editorial trees.
+description: "`/freshness-sweep` may fix `docs/scripts/freshness-checks/**` in-run without asking, even though those files sit outside the catalog and editorial trees."
 ---
 
 `/freshness-sweep` **owns** `docs/scripts/freshness-checks/**` and `docs/scripts/generate-*.sh`. When a run finds its own verifier broken, it repairs the script in the same PR and reports the fix — it does not stop to ask permission first.

@@ -1,6 +1,6 @@
 ---
 name: Cross-repo PRs push to the contributor's fork, not origin
-description: When fixing a PR opened from a contributor's fork, `git push origin HEAD:<branch>` lands on peterdrier/Humans and never reaches the PR. Push to the contributor's fork remote instead.
+description: When fixing a PR opened from a contributor's fork, `git push origin HEAD:<branch>` lands on peterdrier/Humans, not the PR — push to the fork's remote instead.
 ---
 
 Before pushing fixes to any PR, check whether it's cross-repository:

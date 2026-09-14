@@ -60,7 +60,7 @@ public sealed class HumanSummaryViewComponent(IUserServiceRead userService, ITea
         var hiddenTeams = memberships.Where(m => m.TeamInfo.IsHidden).Select(m => m.TeamInfo.Name).ToList();
 
         var effectivePictureUrl = profile.HasCustomPicture
-            ? Url.Action(nameof(ProfileController.Picture), "Profile",
+            ? Url.Action(nameof(ProfileViewController.Picture), "ProfileView",
                 new { id = profile.Id, v = profile.UpdatedAt.ToUnixTimeTicks() })
             : info.ProfilePictureUrl;
 

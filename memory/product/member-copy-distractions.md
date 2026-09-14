@@ -1,6 +1,6 @@
 ---
 name: Member-facing copy — no Google avatars, no Consent Coordinator narrative
-description: Two distractions banned from member-facing guide/UI copy — (1) Google-provided avatars are not used; never mention them. (2) The Consent Coordinator review is invisible to the member journey (it gates nothing; only rejection matters) — don't mention it in volunteer-facing onboarding copy. Role-facing docs for the coordinators themselves are fine.
+description: Member-facing copy (guide/UI) must not mention Google-provided avatars (unused) or the Consent Coordinator review (gates nothing in the member journey).
 ---
 
 Two things must stay out of **member-facing** copy (guide docs, onboarding views, emails):

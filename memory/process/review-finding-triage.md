@@ -1,6 +1,6 @@
 ---
 name: Review-finding triage — judge before fixing, close out every finding
-description: Any review finding (Codex, Claude bot, Gemini, human) is a hypothesis, not a work item. Verify it against the code and judge whether it deserves a fix before changing anything; every finding ends with a visible disposition (fixed / not fixing / issue opened).
+description: Any review finding (Codex, Claude, Gemini, human) is a hypothesis, not a work item — verify against the code and judge before fixing; every finding gets a disposition.
 ---
 
 Review findings are hypotheses, not a work list. Verify each one against the actual code and judge whether it deserves a fix **before** changing anything — never work through reviewer output as a checklist.

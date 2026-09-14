@@ -23,7 +23,7 @@ Repo `memory/` is the source of truth for durable project rules (syncs via git).
 
 - **Never hardcode the external memory path.** Derive at runtime (see below).
 - **Never delete a file before confirming the rule survives somewhere.** Diff content; don't match by filename alone.
-- **Always work in the workspace `memory/process/always-use-worktree.md` selects.** Locally that is a worktree at `.worktrees/cleanup-memory-<date>` and the main checkout is never edited; in a cloud run it is the repo root on the branch.
+- **Always work in the workspace `memory/process/always-use-worktree.md` selects.** Locally that is a worktree at `.claude/worktrees/cleanup-memory-<date>` and the main checkout is never edited; in a cloud run it is the repo root on the branch.
 - **Migration PRs never modify the same file twice.** Add atom (PR A), merge, then consolidate (PR B).
 
 ## Discovering the External Memory Directory

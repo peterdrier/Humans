@@ -1,6 +1,6 @@
 ---
 name: Triage protocol — full history, verbatim text, spec changes need Peter's review
-description: When running `/triage` (or any feedback-handling work), fetch the full message thread for every report, show the reporter's verbatim Description text alongside any analysis, and stop the autonomous pipeline on any feedback-originated request that proposes a behavioral/policy/capability/spec change beyond a mechanical fix.
+description: When running `/triage`, fetch full message history, show the reporter's verbatim Description, and stop the pipeline on any feedback proposing a spec/behavior change.
 ---
 
 `/triage` and any other feedback-handling work follow three coupled rules. They fire together because each individually fails without the others — full history without verbatim hides reporter nuance; verbatim without classification ships spec changes Peter never sanctioned; classification without history misses Peter's manual replies.

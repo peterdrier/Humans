@@ -1,6 +1,6 @@
 ---
 name: prefer-base-class-for-cross-cutting
-description: When adding a cross-cutting concern (diagnostics, telemetry, lifecycle hooks) to ≥2 already-similar classes, propose a shared base class first — fall back to a new interface only if base-class extraction genuinely can't work.
+description: Adding a cross-cutting concern (diagnostics, telemetry, lifecycle hooks) to ≥2 similar classes? Propose a shared base class first — an interface only if that can't work.
 ---
 
 When adding cross-cutting concerns (diagnostics, telemetry, common lifecycle behavior) across multiple classes that already share a shape, default to a shared base class — not a new interface.

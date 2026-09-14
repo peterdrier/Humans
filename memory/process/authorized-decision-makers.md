@@ -1,6 +1,6 @@
 ---
 name: Authorized decision-makers — Peter (peterdrier) and Daniel (swombat)
-description: Daniel (`swombat`) is an authorized contributor with full decision authority — issues, decisions, PRs, prod promotion — no Peter sign-off needed. Calibration, not gating — his directions come with less architectural guidance and less reuse awareness than Peter's, so agents proactively check arch rules and existing surface and raise findings with Daniel himself.
+description: Daniel (`swombat`) has full decision authority alongside Peter — no sign-off needed — but agents must check arch/reuse rules themselves before acting on his direction.
 ---
 
 Two people are authorized to file implementable issues and make decisions on this project:

@@ -84,7 +84,7 @@ The send target in both variants is the address that was removed — the mailbox
 
 | Case | Detection | Behavior |
 |------|-----------|----------|
-| Orphan address | `UserEmail.GetUserIdByVerifiedEmailAsync` → null | No email |
+| Orphan address | `IUserEmailService.FindByAddressAsync` (exact, verified only) → no rows | No email |
 | Deleted / anonymized user | Same as orphan (rows removed) | No email |
 | User-initiated email unlink via Profile UI | Same as orphan (row deleted before sync) | No email |
 | OAuth-rename-in-place | Same as orphan (`EmailRenameDetectionResult` rewrites the row) | No email |
