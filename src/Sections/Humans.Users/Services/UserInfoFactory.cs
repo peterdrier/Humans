@@ -9,7 +9,7 @@ namespace Humans.Users.Services;
 /// </summary>
 internal static class UserInfoFactory
 {
-    /// <summary>Builds <see cref="UserInfo"/> from the 8 contributing tables.</summary>
+    /// <summary>Builds <see cref="UserInfo"/> from the contributing tables.</summary>
     public static UserInfo Create(
         User user,
         IReadOnlyList<UserEmail> userEmails,

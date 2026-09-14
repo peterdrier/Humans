@@ -1,3 +1,4 @@
+using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Base.Helpers;
 using Humans.Teams.Contracts;
@@ -10,8 +11,15 @@ namespace Humans.Users.Services;
 internal sealed class DuplicateAccountService(
     IUserService userService,
     ITeamServiceRead teamService,
-    IRoleAssignmentService roleAssignmentService) : IDuplicateAccountService
+    IRoleAssignmentService roleAssignmentService,
+    IAuditLogService auditLogService) : IDuplicateAccountService
 {
+    /// <summary>
+    /// Job name on the flagging audit entries: the scan runs for whoever opens the admin
+    /// queue, so no single human is its actor.
+    /// </summary>
+    internal const string ScanJobName = "DuplicateAccountScan";
+
     public async Task<IReadOnlyList<DuplicateAccountGroup>> DetectDuplicatesAsync(CancellationToken ct = default)
     {
         // Load all into memory — small user base; avoids complex SQL for gmail/googlemail equivalence.
@@ -96,7 +104,6 @@ internal sealed class DuplicateAccountService(
                     if (pairGroups.ContainsKey(pairKey))
                         continue;
 
-                    // Raw email for display from first source.
                     var firstSource = entries.First().Source;
                     var emailStart = firstSource.IndexOf('(');
                     var emailEnd = firstSource.IndexOfAny([',', ')'], emailStart + 1);
@@ -121,7 +128,33 @@ internal sealed class DuplicateAccountService(
             }
         }
 
-        return pairGroups.Values.ToList();
+        var groups = pairGroups.Values.ToList();
+        await FlagNewPairsAsync(groups, ct);
+        return groups;
+    }
+
+    // Flagging is an automated act the Board must be able to see. One entry per pair, written
+    // the first time the scan surfaces it: the entity is the pair's lower id so the dedupe read
+    // has one key to look under, and the related entity is the higher one.
+    private async Task FlagNewPairsAsync(IReadOnlyList<DuplicateAccountGroup> groups, CancellationToken ct)
+    {
+        foreach (var group in groups)
+        {
+            var ids = group.Accounts.Select(a => a.UserId).OrderBy(id => id.ToString(), StringComparer.Ordinal).ToList();
+            var low = ids[0];
+            var high = ids[1];
+            var flagged = await auditLogService.GetFilteredEntriesAsync(
+                entityType: nameof(User), entityId: low,
+                actions: [AuditAction.DuplicateAccountFlagged], limit: 100, ct: ct);
+            if (flagged.Any(e => e.RelatedEntityId == high))
+                continue;
+
+            await auditLogService.LogAsync(
+                AuditAction.DuplicateAccountFlagged, nameof(User), low,
+                $"Flagged as a duplicate-account candidate: shares an email address with {high}.",
+                ScanJobName,
+                relatedEntityId: high, relatedEntityType: nameof(User));
+        }
     }
 
     public async Task<DuplicateAccountGroup?> GetDuplicateGroupAsync(

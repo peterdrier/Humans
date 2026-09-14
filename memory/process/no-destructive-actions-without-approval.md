@@ -1,6 +1,6 @@
 ---
 name: No destructive or irreversible actions without explicit per-instance approval
-description: HARD RULE. Never take a destructive/irreversible action — git history rewrites, branch deletions, force-pushes, DB writes outside migrations, file deletions, runtime state edits — without Peter's explicit, per-instance instruction. "Cleanup" implications, "cruft" descriptions, and prior approvals on similar actions don't carry over. The only standing flatten is the squash-merge GitHub button on a fork PR landing on `peterdrier/main`.
+description: HARD RULE. Never take a destructive/irreversible action (history rewrite, force-push, branch/file deletion, DB write, runtime edit) without Peter's explicit per-instance approval.
 ---
 
 Never take a destructive or irreversible action without Peter's explicit, per-instance instruction. The class includes (non-exhaustive):

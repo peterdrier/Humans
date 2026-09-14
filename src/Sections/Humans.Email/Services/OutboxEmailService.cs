@@ -41,7 +41,9 @@ internal sealed class OutboxEmailService(
         // Explicit UserId wins (the campaign-code path supplies the grant's user);
         // otherwise resolve from the verified recipient address (Profile §2c).
         var userId = message.UserId
-            ?? await userEmailService.GetUserIdByVerifiedEmailAsync(message.RecipientEmail, cancellationToken);
+            ?? (await userEmailService.FindByAddressAsync(
+                    message.RecipientEmail, aliased: false, verifiedOnly: true, cancellationToken))
+                .FirstOrDefault()?.UserId;
 
         var category = message.Category;
 

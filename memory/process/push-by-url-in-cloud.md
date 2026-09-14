@@ -1,6 +1,6 @@
 ---
 name: push-by-url-in-cloud
-description: In a Claude Code cloud container, push to the repository URL, never to a remote name — `origin` is re-bound to nobodies-collective/Humans (production) behind the agent, mid-session and more than once.
+description: In a Claude Code cloud container, push by URL, never by remote name — `origin` gets silently re-bound to production (`nobodies-collective/Humans`) mid-session.
 ---
 
 In a Claude Code cloud run (`CLAUDE_CODE_REMOTE=true`), push with the URL:

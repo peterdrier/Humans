@@ -1,6 +1,6 @@
 ---
 name: No manual DB writes — any environment, any reason
-description: HARD RULE. Never modify a database row by hand — no INSERT/UPDATE/DELETE via psql/admin UI, no `__EFMigrationsHistory` patching, no fix-up migrations to paper over regen mismatches. Code + EF migrations are the only ways state changes.
+description: HARD RULE. Never modify a DB row by hand in any env — no psql/admin-UI writes, no `__EFMigrationsHistory` patching, no fix-up migrations. Drop and recreate the env DB instead.
 ---
 
 **HARD RULE.** Direct database writes are never allowed in any environment — production, QA, preview, or local-dev. This includes:

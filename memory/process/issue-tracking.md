@@ -1,6 +1,6 @@
 ---
 name: Close GitHub issues after committing resolving work
-description: After commit: close resolved GitHub issues with `gh issue close <N> -c "comment"` including a brief summary and commit hash.
+description: "After commit: close resolved GitHub issues with `gh issue close <N> -c \"comment\"` including a brief summary and commit hash."
 ---
 
 After committing work that resolves a GitHub issue, close it:

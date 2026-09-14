@@ -1,3 +1,4 @@
+using Humans.Users.Services;
 using Humans.Auth.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Identity;
@@ -16,7 +17,7 @@ namespace Humans.Application.Services.Users;
 // the OAuth callback, so nothing else can reach the reconcile primitive.
 internal sealed class ExternalLoginService(
     UserManager<User> userManager,
-    IUserService userService,
+    IUserServiceInternal userService,
     IUserEmailService userEmailService,
     IMagicLinkService magicLinkService,
     IClock clock,

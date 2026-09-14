@@ -12,7 +12,7 @@
 
 # Humans
 
-Humans is the membership management system for Nobodies Collective, a Spanish nonprofit. It runs the full membership lifecycle: volunteer signup, profile and consent, Colaborador/Asociado applications voted on by the Board, provisioning members into teams and Google Workspace, governance roles, shifts, tickets, and finance — with audit trails so the Board can see what automation did, and GDPR compliance throughout.
+Humans is the membership management system for Nobodies Collective, a Spanish nonprofit. It runs the full membership lifecycle: volunteer signup, profile and consent, Colaborador/Asociado applications voted on by the Board, provisioning members into teams and Google Workspace, governance roles, the association's binding assembly votes, shifts, tickets, and finance — with audit trails so the Board can see what automation did, and GDPR compliance throughout.
 
 ## What makes Humans special?
 
@@ -66,14 +66,18 @@ Terminology matters here — the full ubiquitous language lives in [`CONTEXT.md`
 - **Orchestrator** means a service that owns no tables and coordinates two or more sections through their interfaces only. The moment it owns a table, it's a Section.
 - **Base** means `src/Humans.Base`, the bottom of the dependency graph and the only project every section may reference.
 - **Shell** means `src/Humans.Web`: chrome, page composition, platform context. Nothing references the Shell.
-- **Board** means the governance body that reviews and votes on tier applications.
+- **Board** means the governance body that reviews and votes on tier applications, and that runs the
+  association's assembly votes.
+- **Assembly vote** means a binding recorded vote of the Asociados on a motion — Governance's third lane
+  beside tier applications and Board voting: the electorate is frozen at open, the tally is embargoed
+  until close, and the result is stored once. Not the Surveys secret ballot.
 
 ## The ways to hurt yourself
 
 1. **Conflating Volunteer with Application.** These are separate concepts and the most common conceptual mistake in this codebase. Volunteers are ~100% of users and never touch the `Application` entity; tier applications are the exception, not the model.
 2. **Hand-editing state to make a red light go away.** No `--no-verify`, no suppressing errors, no deleting "stuck" state, no editing the database or deployed config by hand. The fix lives in code, configuration, or re-provisioning. If the only path you can see goes through a manual state edit or a bypass flag, stop and ask — offering the shortcut as one option among several is itself the violation. "Broken" is sometimes the correct state to leave something in.
 3. **Mid-chain migration surgery.** Migrations are per-section and shipped ones are immutable. After your branch merges main, `dotnet ef migrations remove` on your in-flight migrations is unsafe — regenerate the branch's migrations as one consolidated migration instead ([`migration-regen-after-rebase`](memory/architecture/migration-regen-after-rebase.md)).
-4. **Trampling parallel sessions.** On a local machine several agent sessions share one clone: work only in your own worktree (`.worktrees/<name>`), never assume the main checkout is idle or yours, and never clean up state — worktrees, branches, stashes — you didn't create. A Claude Code cloud run (`CLAUDE_CODE_REMOTE=true`) is a single-session ephemeral container with nobody to trample, so it works in the repo root and skips the worktree — [`always-use-worktree`](memory/process/always-use-worktree.md) carries both cases.
+4. **Trampling parallel sessions.** On a local machine several agent sessions share one clone: work only in your own worktree (`.claude/worktrees/<name>`), never assume the main checkout is idle or yours, and never clean up state — worktrees, branches, stashes — you didn't create. A Claude Code cloud run (`CLAUDE_CODE_REMOTE=true`) is a single-session ephemeral container with nobody to trample, so it works in the repo root and skips the worktree — [`always-use-worktree`](memory/process/always-use-worktree.md) carries both cases.
 5. **Committing straight to main.** Every change goes on a feature branch, then a PR ([`no-direct-to-main`](memory/process/no-direct-to-main.md)). `origin/main` auto-deploys to QA; there is no such thing as a commit too small for a PR. One carve-out: a change confined to `memory/**` may go straight to `origin/main` — the atom has the details.
 
 ## Hit every surface

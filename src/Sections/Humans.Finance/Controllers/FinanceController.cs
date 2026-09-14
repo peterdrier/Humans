@@ -12,17 +12,10 @@ using Humans.Users.Contracts;
 namespace Humans.Finance.Controllers;
 
 /// <summary>
-/// Finance's own pages: Holded account provisioning, the unmatched-document queue and the
-/// creditor-account admin (<c>/Finance/HoldedAccounts</c>, <c>/Finance/HoldedUnmatched</c>,
-/// <c>/Finance/Creditors*</c>, <c>/Finance/HoldedSync/Run</c>).
+/// Finance's own pages: the Holded connector, account provisioning, the unmatched-document queue,
+/// creditor accounts and SEPA payouts. Budget's admin surface shares the <c>Finance</c> route
+/// prefix from its own <c>BudgetAdminController</c>.
 /// </summary>
-/// <remarks>
-/// The other 23 actions that used to share this class are Budget CRUD — years, groups,
-/// categories, line items, cash flow, audit log — and are now
-/// <c>Humans.Budget</c>'s <c>BudgetAdminController</c>, keeping the same <c>[Route("Finance")]</c>
-/// prefix so no URL moved. Dragging them in here would have put Budget's whole admin surface
-/// inside the Finance section (nobodies-collective/Humans#866, G5).
-/// </remarks>
 [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
 [Route("Finance")]
 internal sealed class FinanceController(

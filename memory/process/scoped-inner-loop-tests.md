@@ -1,3 +1,8 @@
+---
+name: Scope testing to what the change can actually break
+description: "Scope tests to the diff's blast radius: docs-only → none; single section → that section's test project; cross-section or unclear → Application.Tests + full gate."
+---
+
 # Scope testing to what the change can actually break
 
 Pick the test scope by what the diff can affect — the full suite is 4+ minutes and running it every step slows everything down. Use discretion (Peter, 2026-08-26):

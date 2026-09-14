@@ -1,6 +1,6 @@
 ---
 name: no-speccing-from-thin-probe
-description: When designing an external-API integration, do broad endpoint exploration and read full real-record JSON before drafting entities — never pattern-match from one endpoint's field names.
+description: Before drafting entities for an external-API integration, do broad endpoint exploration and read full real-record JSON — never pattern-match from one endpoint's field names.
 ---
 
 When designing an integration with an external API (Holded, Stripe, Google, anything), don't produce an entity model from a single endpoint's field-name list. That's pattern-matching, not investigation.

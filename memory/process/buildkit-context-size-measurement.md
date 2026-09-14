@@ -1,6 +1,6 @@
 ---
 name: buildkit-context-size-measurement
-description: BuildKit's `transferring context: NNN` progress line is not the build context size — it collapses under cache reuse. Measure honestly with a throwaway image + du.
+description: "BuildKit's `transferring context: NNN` progress line is not the build context size — it collapses under cache reuse. Measure honestly with a throwaway image + du."
 ---
 
 Never quote BuildKit's `transferring context: NNN` line as the Docker build context size. It reports incremental/metadata transfer and collapses to a few hundred bytes once the builder already holds the files, so two readings taken under different cache states aren't comparable — the small one looks like a spectacular win when it isn't. Measured on this repo, same tree, same `.dockerignore`: the line reported 532 B on one run and 312 kB on the next, for a context that actually delivered 60.3 MB.

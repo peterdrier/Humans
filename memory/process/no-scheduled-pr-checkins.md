@@ -1,6 +1,6 @@
 ---
 name: No scheduled PR check-ins when subscribed to PR events
-description: When a session is subscribed to a PR's GitHub events, never schedule a periodic self check-in (`send_later`, cron, wakeup) to re-check it. Each firing is a full uncached context load to learn nothing changed. Rely on the event subscription; stop when the PR merges or closes.
+description: When subscribed to a PR's events, never schedule a periodic self check-in (`send_later`/cron/wakeup) — each firing reloads full context for nothing.
 ---
 
 A session subscribed to a PR's events does not also schedule an hourly (or any periodic) check-in on that PR.

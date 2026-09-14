@@ -3,6 +3,7 @@
 **Date:** 2026-06-03
 **Status:** Decisions resolved (2026-06-04 design dialogue) — v1 scope locked (§15). Implementation plan to be produced and reviewed by Peter **before** any code is written; build is one chunk / one branch / one PR (no incremental sub-releases).
 **Owner:** Peter Drier
+**Record:** frozen as a dated design record (Peter, 2026-09-14) — not amended past 2026-09-03, so names and paths below may no longer match the code. The live description of the section is [`Surveys.md`](Surveys.md) and its target shape [`health.md`](health.md).
 **Context:** Captured from a design dialogue (this repo has no GitHub Issues tracker, so the spec lands here in `docs/superpowers/specs/` to be picked up later). Grounded in a codebase audit of the Email outbox, Campaigns, MailerLite audiences, Hangfire jobs, i18n, anonymous-token flows, and the section/authorization patterns.
 
 ## 1. Problem / goal

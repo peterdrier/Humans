@@ -46,48 +46,21 @@ internal sealed partial class UserRepository
             .FirstOrDefaultAsync(e => e.Id == emailId, ct);
     }
 
-    public async Task<bool> UserEmailExistsForUserAsync(
-        Guid userId, string normalizedEmail, string? alternateEmail,
-        CancellationToken ct = default)
+    public async Task<IReadOnlyList<UserEmail>> GetUserEmailsByAddressAsync(
+        string normalizedEmail, string? alternateEmail, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return alternateEmail is null
-            ? await ctx.UserEmails.AnyAsync(
-                e => e.UserId == userId && EF.Functions.ILike(e.Email, normalizedEmail), ct)
-            : await ctx.UserEmails.AnyAsync(
-                e => e.UserId == userId &&
-                    (EF.Functions.ILike(e.Email, normalizedEmail) ||
-                     EF.Functions.ILike(e.Email, alternateEmail)), ct);
-    }
+        // ILIKE treats '_' and '%' as wildcards, so alex_smith@example.com would match
+        // alexXsmith@example.com unescaped. Escape the pattern and use '\' as the escape.
+        var escaped = EscapeLikePattern(normalizedEmail);
+        var escapedAlternate = alternateEmail is null ? null : EscapeLikePattern(alternateEmail);
 
-    public async Task<bool> VerifiedUserEmailExistsForOtherUserAsync(
-        Guid userId, string normalizedEmail, string? alternateEmail,
-        CancellationToken ct = default)
-    {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return alternateEmail is null
-            ? await ctx.UserEmails.AnyAsync(
-                e => e.UserId != userId && e.IsVerified &&
-                    EF.Functions.ILike(e.Email, normalizedEmail), ct)
-            : await ctx.UserEmails.AnyAsync(
-                e => e.UserId != userId && e.IsVerified &&
-                    (EF.Functions.ILike(e.Email, normalizedEmail) ||
-                     EF.Functions.ILike(e.Email, alternateEmail)), ct);
-    }
-
-    public async Task<UserEmail?> GetConflictingVerifiedUserEmailAsync(
-        Guid excludeEmailId, string normalizedEmail, string? alternateEmail,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return alternateEmail is null
-            ? await ctx.UserEmails.FirstOrDefaultAsync(
-                e => e.Id != excludeEmailId && e.IsVerified &&
-                    EF.Functions.ILike(e.Email, normalizedEmail), ct)
-            : await ctx.UserEmails.FirstOrDefaultAsync(
-                e => e.Id != excludeEmailId && e.IsVerified &&
-                    (EF.Functions.ILike(e.Email, normalizedEmail) ||
-                     EF.Functions.ILike(e.Email, alternateEmail)), ct);
+        var rows = ctx.UserEmails.AsNoTracking();
+        rows = escapedAlternate is null
+            ? rows.Where(e => EF.Functions.ILike(e.Email, escaped, "\\"))
+            : rows.Where(e => EF.Functions.ILike(e.Email, escaped, "\\") ||
+                              EF.Functions.ILike(e.Email, escapedAlternate, "\\"));
+        return await rows.ToListAsync(ct);
     }
 
     public async Task<IReadOnlyList<UserEmail>> GetAllUserEmailsAsync(CancellationToken ct = default)
@@ -254,17 +227,6 @@ internal sealed partial class UserRepository
         return exact.Concat(aliasMatches).ToList();
     }
 
-    public async Task<bool> AnyUserEmailWithEmailAsync(string email, CancellationToken ct = default)
-    {
-        // Escape '_' and '%' in the input so ILIKE treats them as literals,
-        // otherwise the collision check can report false positives
-        // (e.g. john_doe@... matching johnXdoe@...).
-        var escaped = EscapeLikePattern(email);
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.UserEmails
-            .AnyAsync(ue => EF.Functions.ILike(ue.Email, escaped, "\\"), ct);
-    }
-
     public async Task<Dictionary<Guid, string>> GetAllNotificationTargetUserEmailsAsync(
         CancellationToken ct = default)
     {
@@ -281,17 +243,6 @@ internal sealed partial class UserRepository
             .ToDictionaryAsync(x => x.UserId, x => x.Email, ct);
     }
 
-    public async Task<string?> GetVerifiedUserEmailAddressAsync(
-        Guid userId, Guid emailId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.UserEmails
-            .AsNoTracking()
-            .Where(ue => ue.Id == emailId && ue.UserId == userId && ue.IsVerified)
-            .Select(ue => ue.Email)
-            .FirstOrDefaultAsync(ct);
-    }
-
     public async Task<IReadOnlyList<Guid>> GetUserIdsByUserEmailPrefixAndSuffixAsync(
         string prefix,
         string suffix,
@@ -304,22 +255,6 @@ internal sealed partial class UserRepository
             .Select(ue => ue.UserId)
             .Distinct()
             .ToListAsync(ct);
-    }
-
-    public async Task<Guid?> GetOtherUserIdHavingUserEmailAsync(
-        string email, Guid excludeUserId, CancellationToken ct = default)
-    {
-        // Filter UserId != excludeUserId inside the query (not after FirstOrDefault)
-        // so duplicate rows with mixed case or historical drift can't mask a real
-        // cross-user conflict. Escape ILIKE wildcards so '_' and '%' in the address
-        // are treated as literals, matching the prior exact-comparison semantics.
-        var escaped = EscapeLikePattern(email);
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.UserEmails
-            .AsNoTracking()
-            .Where(ue => EF.Functions.ILike(ue.Email, escaped, "\\") && ue.UserId != excludeUserId)
-            .Select(ue => (Guid?)ue.UserId)
-            .FirstOrDefaultAsync(ct);
     }
 
     public async Task SetUserEmailGoogleExclusiveAsync(
@@ -378,79 +313,6 @@ internal sealed partial class UserRepository
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task RemoveAllUserEmailsForUserAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var emails = await ctx.UserEmails
-            .Where(e => e.UserId == userId)
-            .ToListAsync(ct);
-
-        ctx.UserEmails.RemoveRange(emails);
-        await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task<UserEmailWithUser?> FindVerifiedUserEmailWithUserAsync(
-        string normalizedEmail, string? alternateEmail,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var query = ctx.UserEmails
-            .AsNoTracking()
-            .Where(ue => ue.IsVerified);
-
-        UserEmail? match;
-        if (alternateEmail is null)
-        {
-            match = await query.FirstOrDefaultAsync(
-                ue => EF.Functions.ILike(ue.Email, normalizedEmail), ct);
-        }
-        else
-        {
-            match = await query.FirstOrDefaultAsync(
-                ue => EF.Functions.ILike(ue.Email, normalizedEmail) ||
-                      EF.Functions.ILike(ue.Email, alternateEmail), ct);
-        }
-
-        if (match is null)
-            return null;
-
-        var user = await ctx.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == match.UserId, ct);
-
-        if (user is null)
-            return null;
-
-        return new UserEmailWithUser(
-            user.Id,
-            match.Email,
-            user.ContactSource,
-            user.LastLoginAt);
-    }
-
-    public async Task<UserEmail?> FindUserEmailByNormalizedEmailAsync(
-        string normalizedEmail, string? alternateEmail,
-        CancellationToken ct = default)
-    {
-        // ILIKE treats '_' and '%' as wildcards, so an email like
-        // alex_smith@example.com would match alexXsmith@example.com without
-        // escaping. Escape the pattern and pass '\' as the escape character.
-        var escapedEmail = EscapeLikePattern(normalizedEmail);
-        var escapedAlternate = alternateEmail is null ? null : EscapeLikePattern(alternateEmail);
-
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return escapedAlternate is null
-            ? await ctx.UserEmails
-                .AsNoTracking()
-                .FirstOrDefaultAsync(
-                    e => EF.Functions.ILike(e.Email, escapedEmail, "\\"), ct)
-            : await ctx.UserEmails
-                .AsNoTracking()
-                .FirstOrDefaultAsync(
-                    e => EF.Functions.ILike(e.Email, escapedEmail, "\\") ||
-                         EF.Functions.ILike(e.Email, escapedAlternate, "\\"), ct);
-    }
-
     public async Task UpdateUserEmailAsync(UserEmail email, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -468,25 +330,6 @@ internal sealed partial class UserRepository
             ctx.Entry(email).State = EntityState.Modified;
         }
         await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task<UserEmail?> FindOtherUsersVerifiedUserEmailRowAsync(
-        string normalizedEmail, string? alternateEmail, Guid excludeUserId,
-        CancellationToken ct = default)
-    {
-        var escaped = EscapeLikePattern(normalizedEmail);
-        var escapedAlternate = alternateEmail is null ? null : EscapeLikePattern(alternateEmail);
-
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var query = ctx.UserEmails
-            .Where(e => e.IsVerified && e.UserId != excludeUserId);
-
-        return escapedAlternate is null
-            ? await query.FirstOrDefaultAsync(
-                e => EF.Functions.ILike(e.Email, escaped, "\\"), ct)
-            : await query.FirstOrDefaultAsync(
-                e => EF.Functions.ILike(e.Email, escaped, "\\") ||
-                     EF.Functions.ILike(e.Email, escapedAlternate, "\\"), ct);
     }
 
     public async Task ApplyUserEmailReconcilePlanAsync(

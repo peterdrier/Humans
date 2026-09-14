@@ -1,6 +1,6 @@
 ---
 name: audit-pii-subject-allowed
-description: Audit entries may carry PII unmasked when the PII belongs to the entry's own subject
+description: An audit entry may show PII unmasked only when the PII belongs to that entry's own subject.
 type: code
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: Google Drive — Shared Drives only, never My Drive
-description: All Google Drive resources live on Shared Drives. API calls must use `SupportsAllDrives = true` and request `permissionDetails`. Only direct permissions are managed; inherited Shared Drive permissions are excluded from drift.
+description: All Google Drive resources live on Shared Drives — API calls need `SupportsAllDrives = true` + `permissionDetails`; only direct (non-inherited) permissions are managed.
 ---
 
 **All Google Drive resources are on Shared Drives.** This system does NOT use regular (My Drive) folders.

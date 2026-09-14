@@ -1,6 +1,6 @@
 ---
 name: Admin and domain-admin roles are supersets
-description: Admin can do everything system-wide. Domain-specific *Admin roles (TeamsAdmin, CampAdmin, TicketAdmin) are supersets within their domain. Always include both in role lists.
+description: When writing role checks/lists, include Admin (system-wide) and the domain's *Admin role (TeamsAdmin/CampAdmin/TicketAdmin) — never one without the other.
 ---
 
 **Admin** can do everything in the entire system that any other role can do. Hard rule, no known exceptions.

@@ -43,8 +43,8 @@ if [ "$CLAUDE_CODE_REMOTE" = "true" ]; then  # ephemeral single-session containe
   git checkout -b freshness-sweep/$TS origin/main
   WORKTREE=$REPO_ROOT
 else
-  git worktree add $REPO_ROOT/.worktrees/freshness-sweep-$TS -b freshness-sweep/$TS origin/main
-  WORKTREE=$REPO_ROOT/.worktrees/freshness-sweep-$TS  # EnterWorktree here; all commands run inside
+  git worktree add $REPO_ROOT/.claude/worktrees/freshness-sweep-$TS -b freshness-sweep/$TS origin/main
+  WORKTREE=$REPO_ROOT/.claude/worktrees/freshness-sweep-$TS  # EnterWorktree here; all commands run inside
 fi
 ```
 

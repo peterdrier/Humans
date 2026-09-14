@@ -1,6 +1,6 @@
 ---
 name: Never rename a type whose name is persisted or used as a lookup key
-description: `nameof(T)` written to a DB column, and `Enum_{typeof(T).Name}_*` resx keys, turn a CLR rename into a silent data or translation break — build green, tests green, no exception. Two different remedies: pin the persisted one, rename the resource keys with the type. Read before renaming any entity, enum, or DTO, and always before dropping a section's legacy type-name prefix.
+description: Before renaming a type, grep for `nameof(T)` written to a DB column and `Enum_{TypeName}_*` resx keys — pin the persisted one as a const, rename the resx keys with the type.
 ---
 
 A CLR type name is inert only where nothing outside the compiler reads it. Two places in this

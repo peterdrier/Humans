@@ -1,6 +1,6 @@
 ---
 name: JSON serialization (System.Text.Json) — required attributes
-description: Private setters need [JsonInclude]; new data classes need [JsonConstructor] (private parameterless); polymorphic types need [JsonPolymorphic] + [JsonDerivedType] on base.
+description: "System.Text.Json: `[JsonInclude]` on private setters, `[JsonConstructor]` on new classes/records, `[JsonPolymorphic]`+`[JsonDerivedType]` on polymorphic types."
 ---
 
 The project uses `System.Text.Json`.

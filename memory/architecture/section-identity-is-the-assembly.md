@@ -1,6 +1,6 @@
 ---
 name: A section is its assembly
-description: A section is an assembly declaring `<AssemblyName>.Section : ISection`, and its name is the assembly name minus the `Humans.` prefix and any `.Contracts` suffix. There is no section attribute.
+description: "A section is an assembly declaring `Section : ISection`; its name is the assembly name minus `Humans.` and any `.Contracts` suffix. There is no separate section attribute."
 ---
 
 # A section is its assembly

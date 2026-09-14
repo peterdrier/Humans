@@ -1,6 +1,6 @@
 ---
 name: Culture support via CultureCatalog / CultureCodeExtensions
-description: Use the shared culture helpers for supported lists, ordering, default selection, and display labels. No per-view language dictionaries.
+description: Use `CultureCatalog`/`CultureCodeExtensions` for culture lists, ordering, and display labels — no per-view language dictionaries.
 ---
 
 Culture support and display names must be centralized.

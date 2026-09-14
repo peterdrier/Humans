@@ -1,6 +1,6 @@
 ---
 name: Register new widgets in /WidgetGallery when adding them
-description: When adding or removing a public TagHelper, ViewComponent, or user-facing shared partial in any section or in the Shell, update `src/Sections/Humans.Debug/Views/WidgetGallery/Index.cshtml` (and its controller if real sample data is needed) so the admin Widget Gallery stays a complete catalog. The Skipped section is the legitimate exception list.
+description: Adding/removing a public TagHelper, ViewComponent, or shared partial → also update `Views/WidgetGallery/Index.cshtml` (and controller if sample data needed).
 ---
 
 When you **add** a new TagHelper, ViewComponent, or user-facing shared partial — in any section, not just the Shell; the gallery is a fan-in over every section's public widgets — also register it in the Widget Gallery in the same PR:

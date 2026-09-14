@@ -1,3 +1,8 @@
+---
+name: Adding a required column to an existing table needs Peter's approval
+description: HARD RULE. Never add a `NOT NULL` column to an existing table without Peter's per-instance approval — default to nullable; declare any approved default in the model too.
+---
+
 # Adding a required column to an existing table needs Peter's approval
 
 **Rule:** Never add a `NOT NULL` (required) column to an existing table without Peter's

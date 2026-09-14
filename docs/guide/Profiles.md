@@ -2,6 +2,7 @@
   src/Sections/Humans.Users/Views/Profile/**
   src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Sections/Humans.Users/Controllers/ProfileApiController.cs
+  src/Sections/Humans.Shifts/Controllers/ShiftProfileController.cs
   src/Sections/Humans.Users/ViewComponents/ProfileCardViewComponent.cs
   src/Sections/Humans.Users/Services/**
   src/Sections/Humans.Users/Services/UserService.cs
@@ -31,7 +32,7 @@ Each contact field has its own visibility setting, so you can share your Signal 
 - **My profile** (`/Profile/Me`) — view your own profile exactly as you see it
 - **Edit profile** (`/Profile/Me/Edit`) — update personal info, contact fields, picture, birthday
 - **Emails** (`/Profile/Me/Emails`) — add, verify, and manage your email addresses
-- **Shift info** (`/Profile/Me/ShiftInfo`) — preferences and availability info used for shift planning
+- **Shift info** (`/Profile/Me/ShiftInfo`) — preferences and availability info used for shift planning (a Shifts page under the profile URL)
 - **Communication preferences** (`/Profile/Me/CommunicationPreferences`) — per-category email and in-app preferences (the older `/Profile/Me/Notifications` URL still works as a permanent redirect)
 - **Privacy** (`/Profile/Me/Privacy`) — data export and account deletion
 - **Outbox** (`/Profile/Me/Outbox`) — the emails the system has sent to you

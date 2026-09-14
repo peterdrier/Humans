@@ -1,6 +1,6 @@
 ---
 name: An img alt on a member-facing view is a user-facing string
-description: Adding or editing an <img alt="..."> in a Razor view — alt text is a user-facing string and needs a resx key in all six cultures. The admin exemption covers only views gated to admin or operator roles, not an ungated modal opened from an admin page. Triggers on any <img> in a .cshtml.
+description: An `<img alt>` on a member-facing view needs resx keys in all six cultures — the admin exemption doesn't cover an ungated modal opened from an admin page.
 ---
 
 `alt` text is read aloud by a screen reader and shown when the image fails to load. On a member-facing view that makes it a **user-facing string**: it gets a resx key in the section's set, in all six supported cultures (en, es, de, it, fr, ca), like any other.

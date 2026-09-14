@@ -1,6 +1,6 @@
 ---
 name: data-migration-hook-gotchas
-description: The block-data-migration-hook.sh always executes from the MAIN checkout regardless of Bash cwd, and its DML matcher false-positives on trigger DDL and on merge commits absorbing main's migrations.
+description: "`block-data-migration-hook.sh` always executes from the MAIN checkout regardless of Bash cwd, and false-positives on trigger DDL and merge commits absorbing main's migrations."
 ---
 
 `.claude/block-data-migration-hook.sh`, referenced from `settings.json`, has three gotchas worth knowing before assuming a block is a real violation:

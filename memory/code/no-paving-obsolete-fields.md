@@ -1,6 +1,6 @@
 ---
 name: no-paving-obsolete-fields
-description: When migrating a read or write, use the canonical replacement field/predicate — not the obsolete one. Don't pave the cow path. Fires whenever code touches a `[Obsolete]`-flagged member, a `#pragma warning disable HUM_*_OBSOLETE` ed property, or a legacy helper that has a canonical successor (e.g. `Profile.IsSuspended` → `Profile.State`).
+description: When migrating a read/write, switch to the canonical replacement — never carry an `[Obsolete]` field/predicate into new code (e.g. `Profile.IsSuspended` → `State`).
 ---
 
 When migrating a caller to a new service / read-model / interface, do NOT carry the call site's pre-existing reliance on a legacy/obsolete field, predicate, or helper. Switch to the canonical replacement at the same time as the migration. New code is never written against the obsolete field — full stop, even if the obsolete one is "still there and still works."

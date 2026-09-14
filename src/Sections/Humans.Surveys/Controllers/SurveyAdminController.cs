@@ -15,8 +15,7 @@ namespace Humans.Surveys.Controllers;
 
 /// <summary>
 /// Board/Admin survey authoring: index, builder (create/edit), open/close, preview, send, results
-/// and CSV/JSON export. Controllers parse → call the service → format; sorting and VM↔DTO mapping
-/// live here (hard rule).
+/// and CSV/JSON export. Sorting and VM↔DTO mapping live here.
 /// </summary>
 [Authorize(Policy = PolicyNames.BoardOrAdmin)]
 [Route("Survey/Admin")]

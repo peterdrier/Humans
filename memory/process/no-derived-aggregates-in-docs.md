@@ -1,3 +1,8 @@
+---
+name: No derived aggregates in docs
+description: HARD RULE. Never write a doc number derived from data already in that doc — no list counts, `Total` rows, or code-owned-set counts. Delete stale counts, don't refresh them.
+---
+
 # No derived aggregates in docs
 
 **HARD RULE.** Never write a number into documentation that is derived from data already

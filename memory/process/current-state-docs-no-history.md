@@ -1,6 +1,6 @@
 ---
 name: current-state-docs-no-history
-description: Living/generated docs (data-access maps, dependency graph, section invariants, auth inventory) document CURRENT state only — no move/migration history, no "new this sweep", no PR archaeology, no generated-by boilerplate. Exempt - dated design records, and the ## History table in a section's health.md.
+description: Living/generated docs (data-access maps, dependency graph, section invariants) document CURRENT state only — no move history, no PR archaeology, no generated-by boilerplate.
 ---
 
 **Living and generated docs describe what IS, never how it got that way.** No "moved from

@@ -1,6 +1,6 @@
 ---
 name: Caching is transparent to the app - no `Cached*` types in the public surface
-description: When introducing caching, public-facing type names must not leak the cache. Consumers should not know whether data came from memory or the database. Use canonical read-model names such as `TeamInfo` or established stitched names such as `FullProfile`.
+description: When naming a cached DTO, never use `Cached*` — consumers shouldn't know data came from cache. Use canonical names like `TeamInfo` or established ones like `FullProfile`.
 ---
 
 When adding a caching layer (decorator, dict cache, projection DTO), the public-facing type names must not advertise the cache. Consumers should not know whether their data came from memory or the database; they call `IXService` and get the result.

@@ -1,6 +1,6 @@
 ---
 name: View components must not inject IMemoryCache
-description: View components cannot reach past the service boundary to manage caching. The owning service exposes a cached accessor; the view component just calls it.
+description: View components must not inject `IMemoryCache` — the owning service exposes a cached accessor; the view component just calls it.
 ---
 
 View components MUST NOT inject or use `IMemoryCache` directly. All caching of data a view component needs lives in the service layer that owns the data.

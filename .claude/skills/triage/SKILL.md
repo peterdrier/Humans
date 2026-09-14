@@ -491,7 +491,7 @@ Default scope: `Triage` + `Open` (untouched + awaiting work). `all` includes `In
 
 If empty: "No pending in-app issues." and stop. Sort by `createdAt` ascending so oldest gets attention first. Short issue ID = first 8 chars of `id` (e.g., `iss:a1b2c3d4`).
 
-Save the raw JSON to a Windows-absolute path (per `feedback_temp_file_path_mismatch`): e.g., `H:/source/Humans/.worktrees/.triage-issues.json`.
+Save the raw JSON to a Windows-absolute path (per `feedback_temp_file_path_mismatch`): e.g., `H:/source/Humans/.claude/worktrees/.triage-issues.json`.
 
 ## Step 4.3: Research all issues (batch, upfront)
 
@@ -724,7 +724,7 @@ curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/backdoor/agent/conversations?ta
 
 `take` is clamped to 200 (`BackdoorAgentController.List`); older rows are reached only via `skip`. If a page comes back with exactly `take` rows, fetch the next one (`skip=200`, `skip=400`, …) until a page returns fewer than `take` rows or you're past the last triage run's date. Merge pages before clustering.
 
-Save the raw JSON to a Windows-absolute path (per `feedback_temp_file_path_mismatch`), e.g. `H:/source/Humans/.worktrees/.triage-agent-conversations.json`.
+Save the raw JSON to a Windows-absolute path (per `feedback_temp_file_path_mismatch`), e.g. `H:/source/Humans/.claude/worktrees/.triage-agent-conversations.json`.
 
 401 → the header is missing, or the key is unknown or revoked. Stop and tell the user to check `/Backdoor`; there is no per-phase key to fall back to.
 

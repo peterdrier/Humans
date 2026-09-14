@@ -1,6 +1,6 @@
 ---
 name: Never put data backfills in EF migrations
-description: HARD RULE. No `migrationBuilder.Sql("UPDATE/INSERT/DELETE ...")` data fix-ups inside EF migrations — ever. When a bulk data fix is genuinely needed, build an admin screen with a proper 2-step (review → confirm → apply) UX. Never propose autonomous one-shot runners, post-deploy "run this once" scripts, or backfill services that fire without operator review.
+description: HARD RULE. No data-mutation SQL in EF migrations, no autonomous one-shot backfill runners. Bulk fixes go through an admin screen with a review → confirm UX.
 ---
 
 EF migrations are schema-only. Any pass that mutates data — `UPDATE`, `INSERT`, `DELETE`, "set this column based on that one" — does **not** belong inside a migration, regardless of how small or "obviously safe" it is.

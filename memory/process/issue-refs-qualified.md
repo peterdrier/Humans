@@ -1,6 +1,6 @@
 ---
 name: Always qualify GitHub issue/PR refs with repo
-description: Two repos with overlapping issue numbers. Bare #N is ambiguous — always write `peterdrier#N` (fork) or `nobodies-collective#N` (upstream), and pass `--repo` to every `gh` call.
+description: "Two repos with overlapping issue numbers. Bare #N is ambiguous — always write `peterdrier#N` (fork) or `nobodies-collective#N` (upstream), and pass `--repo` to every `gh` call."
 ---
 
 Always write GitHub issue and PR references as `owner/repo#N` or at minimum `owner#N` — never bare `#N`.

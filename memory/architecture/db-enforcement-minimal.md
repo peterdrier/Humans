@@ -1,6 +1,6 @@
 ---
 name: DB enforcement is minimal — service is the contract
-description: Don't argue from "DB constraints enforce X." At Humans the only doctrinal DB-level enforcement is the immutability triggers on `audit_log` and `consent_records`. Everything else is service logic, CHECK constraints are banned outright, and NOT NULL is not an enforcement tool — nullable is fine.
+description: Don't design around DB constraints — only `audit_log`/`consent_records` immutability triggers are doctrinal. CHECK constraints are banned; NOT NULL isn't enforcement.
 ---
 
 Don't pitch designs by saying "DB-enforced uniqueness eliminates the race window" or "the unique index gives us free safety." That framing inverts the project's actual model.

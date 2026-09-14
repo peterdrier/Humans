@@ -1,3 +1,4 @@
+using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.Teams.Contracts;
@@ -13,9 +14,10 @@ public sealed class DuplicateAccountServiceTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
+    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private static readonly Instant Now = Instant.FromUtc(2026, 6, 6, 12, 0);
 
-    private DuplicateAccountService Sut => new(_userService, _teamService, _roles);
+    private DuplicateAccountService Sut => new(_userService, _teamService, _roles, _audit);
 
     private void SetUsers(params UserInfo[] infos) =>
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
@@ -81,5 +83,46 @@ public sealed class DuplicateAccountServiceTests
         var groups = await Sut.DetectDuplicatesAsync(Xunit.TestContext.Current.CancellationToken);
 
         groups.Should().ContainSingle("two live accounts sharing a verified email is a real duplicate");
+    }
+
+    [HumansFact]
+    public async Task DetectDuplicatesAsync_AuditsANewPairOnce_LowerIdIsTheEntity()
+    {
+        var a = Guid.NewGuid();
+        var b = Guid.NewGuid();
+        var (low, high) = string.CompareOrdinal(a.ToString(), b.ToString()) < 0 ? (a, b) : (b, a);
+        SetUsers(
+            MakeInfo(a, emails: [Email(a, "dup@foo.com", verified: true, primary: true)]),
+            MakeInfo(b, emails: [Email(b, "dup@foo.com", verified: true, primary: true)]));
+
+        await Sut.DetectDuplicatesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _audit.Received(1).LogAsync(
+            AuditAction.DuplicateAccountFlagged, nameof(User), low, Arg.Any<string>(),
+            DuplicateAccountService.ScanJobName, high, nameof(User));
+    }
+
+    [HumansFact]
+    public async Task DetectDuplicatesAsync_DoesNotReauditAPairAlreadyFlagged()
+    {
+        var a = Guid.NewGuid();
+        var b = Guid.NewGuid();
+        var (low, high) = string.CompareOrdinal(a.ToString(), b.ToString()) < 0 ? (a, b) : (b, a);
+        SetUsers(
+            MakeInfo(a, emails: [Email(a, "dup@foo.com", verified: true, primary: true)]),
+            MakeInfo(b, emails: [Email(b, "dup@foo.com", verified: true, primary: true)]));
+        _audit.GetFilteredEntriesAsync(nameof(User), low, null, Arg.Any<IReadOnlyList<AuditAction>>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>(
+            [
+                new(Guid.NewGuid(), AuditAction.DuplicateAccountFlagged, nameof(User), low, "already flagged",
+                    Now, null, high, nameof(User))
+            ]));
+
+        var groups = await Sut.DetectDuplicatesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        groups.Should().ContainSingle("the pair is still surfaced to the queue");
+        await _audit.DidNotReceive().LogAsync(
+            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 }

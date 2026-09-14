@@ -36,28 +36,13 @@ internal partial interface IUserRepository
     Task<UserEmail?> GetUserEmailByIdReadOnlyAsync(Guid emailId, CancellationToken ct = default);
 
     /// <summary>
-    /// Checks whether an email (or gmail/googlemail alternate) already
-    /// exists for this user.
+    /// The one address→rows read: every <see cref="UserEmail"/> row whose <c>Email</c>
+    /// equals <paramref name="normalizedEmail"/> or <paramref name="alternateEmail"/>
+    /// (the gmail/googlemail twin, when there is one), case-insensitive, read-only.
+    /// Callers apply the ownership, verification and row-id predicates they need.
     /// </summary>
-    Task<bool> UserEmailExistsForUserAsync(
-        Guid userId, string normalizedEmail, string? alternateEmail,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Checks whether a verified email (or gmail/googlemail alternate) exists
-    /// for a different user. Used for conflict/merge detection.
-    /// </summary>
-    Task<bool> VerifiedUserEmailExistsForOtherUserAsync(
-        Guid userId, string normalizedEmail, string? alternateEmail,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the first verified email matching the normalized (or alternate)
-    /// address that belongs to a different user. For merge flow.
-    /// </summary>
-    Task<UserEmail?> GetConflictingVerifiedUserEmailAsync(
-        Guid excludeEmailId, string normalizedEmail, string? alternateEmail,
-        CancellationToken ct = default);
+    Task<IReadOnlyList<UserEmail>> GetUserEmailsByAddressAsync(
+        string normalizedEmail, string? alternateEmail, CancellationToken ct = default);
 
     /// <summary>
     /// Bulk-moves <c>user_emails</c> rows from <paramref name="sourceUserId"/>
@@ -128,13 +113,6 @@ internal partial interface IUserRepository
         IReadOnlyCollection<string> emails, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns true when any <see cref="UserEmail"/> row exists with
-    /// <c>Email</c> equal to <paramref name="email"/> (case-insensitive),
-    /// irrespective of user. Used by admin account-linking flows.
-    /// </summary>
-    Task<bool> AnyUserEmailWithEmailAsync(string email, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns a mapping of userId → verified notification-target email for all users
     /// that have one. If a user has multiple verified notification-target emails,
     /// one is picked arbitrarily.
@@ -143,64 +121,12 @@ internal partial interface IUserRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Finds a verified UserEmail matching the normalized (or alternate) address,
-    /// returning minimal User info for conflict checking.
-    /// </summary>
-    Task<UserEmailWithUser?> FindVerifiedUserEmailWithUserAsync(
-        string normalizedEmail, string? alternateEmail,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Finds any <see cref="UserEmail"/> (verified or unverified, OAuth or not)
-    /// whose address matches the given normalized email — or its
-    /// googlemail/gmail alternate — using case-insensitive comparison.
-    /// Used by account provisioning to dedupe incoming contacts against
-    /// every known email for every user.
-    /// </summary>
-    Task<UserEmail?> FindUserEmailByNormalizedEmailAsync(
-        string normalizedEmail, string? alternateEmail,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the email address for a verified email owned by the user,
-    /// or null if not found or not verified.
-    /// </summary>
-    Task<string?> GetVerifiedUserEmailAddressAsync(
-        Guid userId, Guid emailId, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns distinct user ids whose email starts with <paramref name="prefix"/>
     /// and ends with <paramref name="suffix"/>.
     /// </summary>
     Task<IReadOnlyList<Guid>> GetUserIdsByUserEmailPrefixAndSuffixAsync(
         string prefix,
         string suffix,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the id of any user, other than <paramref name="excludeUserId"/>,
-    /// whose <c>user_emails</c> rows contain the given address (case-insensitive).
-    /// Used by @nobodies.team provisioning to block a prefix that is already
-    /// attached to another human regardless of verification state.
-    /// </summary>
-    Task<Guid?> GetOtherUserIdHavingUserEmailAsync(
-        string email, Guid excludeUserId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Issue nobodies-collective/Humans#697. Returns the first verified
-    /// <see cref="UserEmail"/> row whose <c>Email</c> matches
-    /// <paramref name="normalizedEmail"/> or <paramref name="alternateEmail"/>
-    /// (case-insensitive) and whose <c>UserId</c> is NOT
-    /// <paramref name="excludeUserId"/>. Returns <c>null</c> when no other
-    /// user verified-holds the address. The caller is expected to have
-    /// already normalised the claim email via
-    /// <c>EmailNormalization.NormalizeForComparison</c> so this read uses
-    /// the same comparison rules as every other <c>UserEmail</c> lookup
-    /// (gmail/googlemail alternate, lowercase, trimmed). Sole legitimate
-    /// caller: <c>UserEmailService.ReconcileOAuthIdentityAsync</c>.
-    /// </summary>
-    Task<UserEmail?> FindOtherUsersVerifiedUserEmailRowAsync(
-        string normalizedEmail, string? alternateEmail, Guid excludeUserId,
         CancellationToken ct = default);
 
     /// <summary>
@@ -233,7 +159,6 @@ internal partial interface IUserRepository
 
     Task AddUserEmailAsync(UserEmail email, CancellationToken ct = default);
     Task RemoveUserEmailAsync(UserEmail email, CancellationToken ct = default);
-    Task RemoveAllUserEmailsForUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Persists changes to a single <see cref="UserEmail"/> entity by attaching it

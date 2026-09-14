@@ -1,6 +1,6 @@
 ---
 name: Stripe production keys must be Restricted API Keys (rk_*), never full secret keys
-description: HARD RULE. When wiring any Stripe integration, the production env-var holds a `rk_live_*` RAK with the minimum scopes the integration uses — never `sk_live_*`. Test mode (`sk_test_*` / `rk_test_*`) is fine for dev.
+description: HARD RULE. Production Stripe env vars hold a scoped `rk_live_*` Restricted API Key — never `sk_live_*`. Test mode `sk_test_*` is fine for dev.
 ---
 
 When configuring a Stripe API key for the Humans project in production, use a Restricted API Key (`rk_live_*`) scoped to exactly the operations the integration performs — never a full secret key (`sk_live_*`).

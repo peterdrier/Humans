@@ -101,8 +101,8 @@ and communication-preference interfaces all live in `Humans.Users.Contracts`.
   reads it for names and addresses.
 - **Users — email**: `IUserEmailService.GetNotificationTargetEmailsAsync` (the sync's
   user-id → address resolution), `GetPrimaryEmailAsync` and `GetVerifiedEmailsForUserAsync`
-  (GDPR erasure), `FindAnyEmailRowByAddressAsync` and `GetDistinctVerifiedUserIdsAsync`
-  (import matching), `DeleteEmailAsync` (import remediation).
+  (GDPR erasure), `FindByAddressAsync` (import matching: the verified-only pass counts
+  distinct owners, the unverified pass picks the row to replace), `DeleteEmailAsync` (import remediation).
 - **Users — preferences**: `ICommunicationPreferenceService.IsOptedOutAsync`,
   `GetPreferenceOrNullAsync`, `GetCountByCategoryAndStateAsync` (reads) and
   `UpdatePreferenceAsync`, `ResetPreferenceAsync` (writes, from the import apply).

@@ -1,0 +1,80 @@
+@using NodaTime
+@model Humans.Governance.Models.AssemblyVoteListViewModel
+@{
+    ViewData["Title"] = Localizer["Votes_Title"].Value;
+    var madridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Governance" asp-action="Index">@Localizer["Governance_Title"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Votes_Title"]</li>
+    </ol>
+</nav>
+
+<h1 class="mb-4">@Localizer["Votes_Title"]</h1>
+
+@if (Model.Votes.Count == 0)
+{
+    <div class="card">
+        <div class="card-body">
+            <p class="card-text text-muted mb-0">@Localizer["Votes_NoVotes"]</p>
+        </div>
+    </div>
+}
+else
+{
+    @foreach (var vote in Model.Votes)
+    {
+        var voted = vote.Participation.OfficialCast + vote.Participation.IndicativeCast;
+        var roster = vote.Participation.OfficialRoster + vote.Participation.IndicativeRoster;
+
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <a asp-action="Details" asp-route-voteId="@vote.Id" class="text-decoration-none fw-semibold">@vote.Title</a>
+                <div class="d-flex gap-2">
+                    <span class="badge bg-secondary">@Localizer["Votes_Kind_" + vote.Kind]</span>
+                    <span class="badge @EnumBadgeMap.For(vote.Status)">@Localizer["Votes_Status_" + vote.Status]</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <p class="mb-2 text-muted">
+                    @if (vote.Status == AssemblyVoteStatus.Open)
+                    {
+                        @Localizer["Votes_ClosesAt", vote.ClosesAt.ToDateTime(madridZone)]
+                    }
+                    else if (vote.ClosedAt.HasValue)
+                    {
+                        @Localizer["Votes_ClosedAt", vote.ClosedAt.Value.ToDateTime(madridZone)]
+                    }
+                </p>
+
+                <p class="mb-2">
+                    @if (vote.IsOnRoster)
+                    {
+                        <span class="badge @(vote.IsOfficial ? "bg-primary" : "bg-info text-dark") me-2">
+                            @(vote.IsOfficial ? Localizer["Votes_OnRosterOfficial"] : Localizer["Votes_OnRosterIndicative"])
+                        </span>
+                        <span class="text-muted">@(vote.HasBallot ? Localizer["Votes_BallotIn"] : Localizer["Votes_BallotNotIn"])</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">@Localizer["Votes_NotOnRosterShort"]</span>
+                    }
+                </p>
+
+                <p class="mb-3 text-muted small">
+                    @Localizer["Votes_Turnout", voted, roster]
+                </p>
+
+                <div class="d-flex gap-2 flex-wrap">
+                    <a asp-action="Details" asp-route-voteId="@vote.Id" class="btn btn-outline-primary">@Localizer["Votes_ViewVote"]</a>
+                    @if (vote.Status == AssemblyVoteStatus.Closed)
+                    {
+                        <a asp-action="Results" asp-route-voteId="@vote.Id" class="btn btn-outline-secondary">@Localizer["Votes_ViewResults"]</a>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+}

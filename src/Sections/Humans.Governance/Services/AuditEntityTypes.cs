@@ -14,4 +14,14 @@ internal static class AuditEntityTypes
 {
     /// <summary>Matches the historical <c>nameof(Humans.Domain.Entities.Application)</c>.</summary>
     internal const string Application = "Application";
+
+    /// <summary>An assembly vote. Pinned as a literal, like every discriminator here.</summary>
+    internal const string AssemblyVote = "AssemblyVote";
+
+    /// <summary>
+    /// A member's ballot on an assembly vote. The audit entry names the voter and the vote
+    /// and never the choice, so the ballot's own id is the entity and the content stays in
+    /// the ballot tables.
+    /// </summary>
+    internal const string AssemblyBallot = "AssemblyBallot";
 }

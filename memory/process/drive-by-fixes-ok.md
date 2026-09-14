@@ -1,6 +1,6 @@
 ---
 name: Drive-by fixes are fine — but require explicit human approval before landing
-description: An unrelated small fix discovered alongside in-scope work can land in the same PR, but ONLY after Peter explicitly approves it. Don't auto-include silently; don't auto-revert either. Surface and ask.
+description: An unrelated small fix found alongside in-scope work can land in the same PR, but only after Peter explicitly approves it — surface and ask, don't silently include or revert.
 ---
 
 When a fix subagent (or you) discovers an incidental small fix alongside in-scope work — stale doc table row, unused field, obvious one-line bug, typo — it MAY land in the same PR, but ONLY after the human reviewer has explicitly seen it and approved it. Default state for an unprompted drive-by is "surface to Peter and ask"; never "ship silently."

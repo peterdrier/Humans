@@ -261,9 +261,9 @@ public class GoogleAdminServiceTests
     [HumansFact]
     public async Task ProvisionStandaloneAccountAsync_RejectsWhenPrefixInUseByUserEmail()
     {
-        _userEmailService.IsEmailLinkedToAnyUserAsync(
-                "test@nobodies.team", Arg.Any<CancellationToken>())
-            .Returns(true);
+        _userEmailService.FindByAddressAsync(
+                "test@nobodies.team", false, false, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(Guid.NewGuid(), "test@nobodies.team")]);
 
         var result = await _service.ProvisionStandaloneAccountAsync(
             "test", "Test", "User", _actorUserId, Xunit.TestContext.Current.CancellationToken);
@@ -288,9 +288,9 @@ public class GoogleAdminServiceTests
     public async Task ProvisionStandaloneAccountAsync_RejectsWhenPrefixInUseByGoogleEmail()
     {
         var ownerId = Guid.NewGuid();
-        _userEmailService.IsEmailLinkedToAnyUserAsync(
-                Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(false);
+        _userEmailService.FindByAddressAsync(
+                Arg.Any<string>(), false, false, Arg.Any<CancellationToken>())
+            .Returns([]);
         _userService.GetByEmailOrAlternateAsync(
                 "test@nobodies.team", Arg.Any<CancellationToken>())
             .Returns(new User
@@ -316,9 +316,9 @@ public class GoogleAdminServiceTests
     [HumansFact]
     public async Task ProvisionStandaloneAccountAsync_RejectsWhenPrefixCollidesWithTeamGoogleGroup()
     {
-        _userEmailService.IsEmailLinkedToAnyUserAsync(
-                Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(false);
+        _userEmailService.FindByAddressAsync(
+                Arg.Any<string>(), false, false, Arg.Any<CancellationToken>())
+            .Returns([]);
         _userService.GetByEmailOrAlternateAsync(
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns((UserInfo?)null);
@@ -785,8 +785,8 @@ public class GoogleAdminServiceTests
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new User { Id = userId, DisplayName = "Test User" }.ToUserInfo());
-        _userEmailService.IsEmailLinkedToAnyUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(false);
+        _userEmailService.FindByAddressAsync(Arg.Any<string>(), false, false, Arg.Any<CancellationToken>())
+            .Returns([]);
 
         var result = await _service.LinkAccountAsync(
             "alice@nobodies.team", userId, _actorUserId, Xunit.TestContext.Current.CancellationToken);
@@ -832,9 +832,9 @@ public class GoogleAdminServiceTests
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new User { Id = userId, DisplayName = "Test" }.ToUserInfo());
-        _userEmailService.IsEmailLinkedToAnyUserAsync(
-                "alice@nobodies.team", Arg.Any<CancellationToken>())
-            .Returns(true);
+        _userEmailService.FindByAddressAsync(
+                "alice@nobodies.team", false, false, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(Guid.NewGuid(), "alice@nobodies.team")]);
 
         var result = await _service.LinkAccountAsync(
             "alice@nobodies.team", userId, _actorUserId, Xunit.TestContext.Current.CancellationToken);

@@ -1,6 +1,6 @@
 ---
 name: no-per-task-review-cycle
-description: When executing a plan via subagent-driven-development, skip per-task spec/quality-reviewer dispatches — implement, mark complete, move on; review the whole body of work once at the end.
+description: When executing a plan via subagent-driven-development, skip per-task spec/quality-reviewer dispatches — implement, mark complete, review once at the end.
 ---
 
 When executing a plan via `superpowers:subagent-driven-development`, don't dispatch a per-task spec-reviewer or code-quality-reviewer subagent for every task. Dispatch the implementer, mark complete, move on. Review the entire body of work in one pass at the end (final code review + the PR's own Codex/Claude review).

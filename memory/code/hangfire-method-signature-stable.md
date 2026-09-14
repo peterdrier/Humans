@@ -1,6 +1,6 @@
 ---
 name: hangfire-method-signature-stable
-description: Methods invoked through Hangfire (`backgroundJobs.Enqueue<I>(...)` / `.Schedule<I>(...)`) need a frozen serialization signature — pin the call site to a no-defaults overload, and never add/reorder/change parameter types on that overload
+description: Methods called via `backgroundJobs.Enqueue<I>()`/`.Schedule<I>()` need a frozen signature — pin the call site to a no-defaults overload; never add/reorder/change its params.
 ---
 
 A method bound by `IBackgroundJobClient.Enqueue<TInterface>(expression)` / `.Schedule<TInterface>(expression, ...)` is captured as a specific `MethodInfo` and serialized as `(ParamType1, ParamType2, ...)` in Hangfire storage. At dequeue time Hangfire does **exact** signature matching against the live assembly. Any change to that signature — adding an optional parameter, changing a type, reordering — orphans every job already in the queue.
