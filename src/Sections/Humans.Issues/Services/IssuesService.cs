@@ -396,8 +396,6 @@ internal sealed class IssuesService(
         // handler's move, so the flag is dropped rather than refused.
         var viewerCanHandle = CanHandle(issue, viewer);
 
-        // Derived here, not caller-supplied: reporter status drives auto-reopen and
-        // notification routing, and every door must get identical behavior.
         var senderIsReporter = senderUserId is not null && senderUserId == issue.ReporterUserId;
 
         var now = clock.GetCurrentInstant();
@@ -410,8 +408,6 @@ internal sealed class IssuesService(
             CreatedAt = now
         };
 
-        // Reporter posting on a terminal issue auto-reopens to Open and clears
-        // the resolved fields.
         var statusChangedToOpen = false;
         if (senderIsReporter && issue.Status.IsTerminal())
         {
