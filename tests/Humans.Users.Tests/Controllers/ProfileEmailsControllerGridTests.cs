@@ -37,10 +37,10 @@ using Humans.GoogleIntegration.Contracts;
 namespace Humans.Users.Tests.Controllers;
 
 /// <summary>
-/// Self-route <c>ProfileController</c> actions over the UserEmailService grid:
+/// Self-route <c>ProfileEmailsController</c> actions over the UserEmailService grid:
 /// SetGoogle, Link, Unlink, SetPrimary.
 /// </summary>
-public class ProfileControllerEmailGridTests
+public class ProfileEmailsControllerGridTests
 {
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
@@ -50,10 +50,10 @@ public class ProfileControllerEmailGridTests
     private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
-    private readonly ProfileController _controller;
+    private readonly ProfileEmailsController _controller;
     private readonly Guid _userId = Guid.NewGuid();
 
-    public ProfileControllerEmailGridTests()
+    public ProfileEmailsControllerGridTests()
     {
         var userStore = Substitute.For<IUserStore<User>>();
         _userManager = Substitute.For<UserManager<User>>(
@@ -75,39 +75,17 @@ public class ProfileControllerEmailGridTests
         var sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
         sharedLocalizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
-        _controller = new ProfileController(
+        _controller = new ProfileEmailsController(
             _userService,
             _userManager,
-            Substitute.For<IProfilePictureService>(),
-            Substitute.For<IProfileEditorService>(),
-            Substitute.For<IContactFieldService>(),
             _emailService,
             _emailMessages,
             _userEmailService,
-            Substitute.For<ICommunicationPreferenceService>(),
             _auditLogService,
-            Substitute.For<IOnboardingIntake>(),
-            Substitute.For<IShiftSignups>(),
-            Substitute.For<IBurnSettingsService>(),
-            Substitute.For<IShiftManagementServiceRead>(),
-            Substitute.For<IShiftVolunteerProfiles>(),
-            Substitute.For<IShiftView>(),
-            Substitute.For<IGdprService>(),
-            Substitute.For<IConfiguration>(),
-            new ConfigurationRegistry(),
-            NullLogger<ProfileController>.Instance,
+            NullLogger<ProfileEmailsController>.Instance,
             localizer,
-            sharedLocalizer,
             Substitute.For<ITicketServiceRead>(),
-            Substitute.For<ITeamService>(),
-            Substitute.For<ICampaignService>(),
-            Substitute.For<ICampServiceRead>(),
-            Substitute.For<IEmailOutboxServiceRead>(),
-            new FakeClock(Instant.FromUtc(2026, 4, 30, 12, 0)),
             _authorizationService,
-            Substitute.For<IApplicationDecisionService>(),
-            Substitute.For<IAccountDeletionService>(),
-            Substitute.For<IMembershipCalculatorRead>(),
             _signInManager,
             Options.Create(new GoogleWorkspaceOptions()));
 

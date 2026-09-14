@@ -2,12 +2,13 @@
   src/Sections/Humans.Users/Services/ProfileService.cs
   src/Sections/Humans.Teams/**
   src/Sections/Humans.Users/Controllers/ProfileController.cs
+  src/Sections/Humans.Users/Controllers/ProfileViewController.cs
   src/Sections/Humans.Users/Views/Profile/Edit.cshtml
   src/Sections/Humans.Users/Domain/Profile.cs
   src/Sections/Humans.Users/Data/Configurations/**
 -->
 <!-- freshness:flag-on-change
-  Profile picture upload/serve route, birthday calendar view, and DOB privacy rules — review when Profile entity, ProfileController picture endpoint, or the team birthdays view change.
+  Profile picture upload/serve route, birthday calendar view, and DOB privacy rules — review when Profile entity, the ProfileViewController picture endpoint, or the team birthdays view change.
 -->
 
 # Profile Pictures & Birthday Calendar

@@ -60,9 +60,9 @@ The shapes imply one register with one cache and one write funnel:
   reach `IUserRepository` and `UserManager<User>` around the funnel (the pending-email settle,
   the contact-source stamp, account create); the target is that those writes go through the
   funnel too. Merge is an ordered fan-out over `IUserMerge` with the tombstone last.
-- **Controllers translate only.** `ProfileController` is one controller over unrelated
-  shapes (own profile, own addresses, others' profiles + messaging); the target is a
-  controller per shape.
+- **Controllers translate only.** The `/Profile` surface is one controller per shape:
+  `ProfileController` (own profile), `ProfileEmailsController` (own and admin email grids)
+  and `ProfileViewController` (others' profiles, popovers, messaging, search).
 - **Repair screens are temporary** and sit under an admin nav group named Temp; each retires
   when its count reads zero in production.
 

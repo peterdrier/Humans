@@ -36,7 +36,7 @@ using Humans.GoogleIntegration.Contracts;
 
 namespace Humans.Users.Tests.Controllers;
 
-public class ProfileControllerPopoverTests
+public class ProfileViewControllerPopoverTests
 {
     private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
@@ -44,10 +44,10 @@ public class ProfileControllerPopoverTests
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IAuthorizationService _authorizationService = Substitute.For<IAuthorizationService>();
     private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
-    private readonly ProfileController _controller;
+    private readonly ProfileViewController _controller;
     private readonly Guid _viewerId = Guid.NewGuid();
 
-    public ProfileControllerPopoverTests()
+    public ProfileViewControllerPopoverTests()
     {
         var userStore = Substitute.For<IUserStore<User>>();
         var userManager = Substitute.For<UserManager<User>>(
@@ -69,41 +69,21 @@ public class ProfileControllerPopoverTests
         var sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
         sharedLocalizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
-        _controller = new ProfileController(
+        _controller = new ProfileViewController(
             _userService,
-            userManager,
             _profilePictureService,
-            Substitute.For<IProfileEditorService>(),
-            Substitute.For<IContactFieldService>(),
             Substitute.For<IEmailService>(),
             Substitute.For<IEmailMessageFactory>(),
-            _userEmailService,
             Substitute.For<ICommunicationPreferenceService>(),
             Substitute.For<IAuditLogService>(),
-            Substitute.For<IOnboardingIntake>(),
             Substitute.For<IShiftSignups>(),
             Substitute.For<IBurnSettingsService>(),
             Substitute.For<IShiftManagementServiceRead>(),
-            Substitute.For<IShiftVolunteerProfiles>(),
-            Substitute.For<IShiftView>(),
-            Substitute.For<IGdprService>(),
-            Substitute.For<IConfiguration>(),
-            new ConfigurationRegistry(),
-            NullLogger<ProfileController>.Instance,
             localizer,
             sharedLocalizer,
-            Substitute.For<ITicketServiceRead>(),
             _teamService,
-            Substitute.For<ICampaignService>(),
             _campService,
-            Substitute.For<IEmailOutboxServiceRead>(),
-            new FakeClock(Instant.FromUtc(2026, 5, 9, 12, 0)),
-            _authorizationService,
-            Substitute.For<IApplicationDecisionService>(),
-            Substitute.For<IAccountDeletionService>(),
-            Substitute.For<IMembershipCalculatorRead>(),
-            signInManager,
-            Options.Create(new GoogleWorkspaceOptions()));
+            _authorizationService);
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, _viewerId.ToString())

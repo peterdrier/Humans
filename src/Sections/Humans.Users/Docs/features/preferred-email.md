@@ -4,7 +4,7 @@
   src/Sections/Humans.GoogleIntegration/Services/EmailProvisioningService.cs
   src/Sections/Humans.GoogleIntegration/Services/GoogleWorkspaceUserService.cs
   src/Sections/Humans.GoogleIntegration/Services/GoogleWorkspaceSyncService.cs
-  src/Sections/Humans.Users/Controllers/ProfileController.cs
+  src/Sections/Humans.Users/Controllers/ProfileEmailsController.cs
   src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
   src/Sections/Humans.Email/Controllers/EmailController.cs
   src/Sections/Humans.Users/Views/Profile/Emails.cshtml

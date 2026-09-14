@@ -148,7 +148,7 @@ These are managed by `UserManager<User>` / `SignInManager<User>` / `RoleManager<
 
 ## Routing
 
-The section's controllers (`Controllers/`): `ProfileController` (`/Profile/*`), `ProfileApiController` (`/api/profiles/*`), `UserController` (`/User/*`), `GuestAccountController` (`/Guest/*`), `UnsubscribeController` (`/Unsubscribe/*`), `UsersAdminController` (`/Users/Admin/*`), `UsersAdminAccountMergesController`, `UsersAdminDebugController`, `ProfileAdminController` (`/Profile/Admin/EmailProblems/*`), `ProfileBackfillAdminController`, `ProfilePictureMigrationAdminController`, `UserNameBackfillAdminController`. The Profile, User, Guest, API and admin routes are tabled under [Part 2 — Routing](#routing-1); Part 1 covers identity and unsubscribe.
+The section's controllers (`Controllers/`): `ProfileController` (`/Profile/Me/*`, the member's own profile), `ProfileEmailsController` (`/Profile/Me/Emails/*` and `/Profile/{id}/Admin/Emails/*`), `ProfileViewController` (`/Profile/{id}`, `/Profile/Picture`, popovers, messaging, `/Profile/Search`), `ProfileApiController` (`/api/profiles/*`), `UserController` (`/User/*`), `GuestAccountController` (`/Guest/*`), `UnsubscribeController` (`/Unsubscribe/*`), `UsersAdminController` (`/Users/Admin/*`), `UsersAdminAccountMergesController`, `UsersAdminDebugController`, `ProfileAdminController` (`/Profile/Admin/EmailProblems/*`), `ProfileBackfillAdminController`, `ProfilePictureMigrationAdminController`, `UserNameBackfillAdminController`. The Profile, User, Guest, API and admin routes are tabled under [Part 2 — Routing](#routing-1); Part 1 covers identity and unsubscribe.
 
 Authentication routes are served by `AccountController`, which lives in `Humans.Web/Controllers/` (the Shell) but dispatches into this section's services (`ExternalLoginService`, `IMagicLinkService`, `AccountProvisioningService`):
 
@@ -271,7 +271,7 @@ Inbound (other sections → Users) — the typical direction:
 
 ### Touch-and-clean guidance
 
-- `User` has no `Profile` / `TeamMemberships` / `RoleAssignments` / `Applications` / `ConsentRecords` / `CommunicationPreferences` navs and no `GetEffectiveEmail()` — readers route through `IUserService` / `ITeamService` / `IRoleAssignmentService` / etc. or use `user.Email` (which overrides via the `UserEmails` collection). When touching `TeamService` / `GoogleWorkspaceSyncService` / `ProfileController` and the notification jobs, prefer `IUserEmailRepository.GetByUserIdReadOnlyAsync` / `IUserServiceRead.GetUserInfosAsync` over reaching into the `UserEmails` nav directly.
+- `User` has no `Profile` / `TeamMemberships` / `RoleAssignments` / `Applications` / `ConsentRecords` / `CommunicationPreferences` navs and no `GetEffectiveEmail()` — readers route through `IUserService` / `ITeamService` / `IRoleAssignmentService` / etc. or use `user.Email` (which overrides via the `UserEmails` collection). When touching `TeamService` / `GoogleWorkspaceSyncService` / `ProfileEmailsController` and the notification jobs, prefer `IUserEmailRepository.GetByUserIdReadOnlyAsync` / `IUserServiceRead.GetUserInfosAsync` over reaching into the `UserEmails` nav directly.
 - Do **not** inject a DbContext into any service under `Humans.Users/Services/`. Use `IUserRepository` / `IUserEmailRepository`.
 - `/Unsubscribe/{token}` and `/Unsubscribe/OneClick` must stay unauthenticated. If new unsubscribe-adjacent surfaces are added, route them through `IUnsubscribeService` (which delegates token validation to Profile's `ICommunicationPreferenceService` / the legacy `CampaignUnsubscribe` Data Protection purpose) rather than opening additional unauthenticated endpoints.
 - Event-participation writes must all go through one of `IUserService.DeclareNotAttendingAsync`, `UndoNotAttendingAsync`, `SetParticipationFromTicketSyncAsync`, `RemoveTicketSyncParticipationAsync`, or `BackfillParticipationsAsync`. `TicketSyncService` does this; new writers must follow the same pattern. The repository-level `UpsertParticipationAsync` is internal to the section.
@@ -536,7 +536,7 @@ Stored as string via `HasConversion<string>()`. `IsAlwaysOn()` covers System and
 
 ## Routing
 
-Self-service profile functionality lives under `/Profile` (`ProfileController`, `[Authorize]` class-wide); human administration lives under `/Users/Admin`. GET unless noted; POSTs carry an anti-forgery token.
+Self-service profile functionality lives under `/Profile`, split by shape across `ProfileController` (own profile), `ProfileEmailsController` (own and admin email grids) and `ProfileViewController` (other members' profiles, messaging, search), each `[Authorize]` class-wide; human administration lives under `/Users/Admin`. GET unless noted; POSTs carry an anti-forgery token.
 
 | Route | Purpose |
 |-------|---------|

@@ -65,7 +65,7 @@ public sealed record UserExternalLoginInfo(
 
 /// <summary>
 /// Immutable projection of <see cref="Profile"/> carried inside <see cref="UserInfo"/>. Picture bytes excluded
-/// (served via ProfileController.Picture); only birthday day+month carried (no year).
+/// (served via ProfileViewController.Picture); only birthday day+month carried (no year).
 /// </summary>
 public sealed record ProfileInfo(
     Guid Id,

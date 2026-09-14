@@ -2,6 +2,7 @@
   src/Sections/Humans.Users/Services/**
   src/Sections/Humans.Gdpr/**
   src/Sections/Humans.Users/Controllers/ProfileController.cs
+  src/Sections/Humans.Users/Controllers/ProfileViewController.cs
   src/Sections/Humans.Users/Controllers/ProfileApiController.cs
   src/Sections/Humans.Users/Views/Profile/**
   src/Sections/Humans.Users/Domain/Profile.cs

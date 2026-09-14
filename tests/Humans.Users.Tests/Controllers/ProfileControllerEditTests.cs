@@ -42,7 +42,6 @@ namespace Humans.Users.Tests.Controllers;
 /// </summary>
 public class ProfileControllerEditTests
 {
-    private readonly IProfilePictureService _profilePictureService = Substitute.For<IProfilePictureService>();
     private readonly IProfileEditorService _profileEditorService = Substitute.For<IProfileEditorService>();
     private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
     private readonly IApplicationDecisionService _applicationDecisionService =
@@ -76,28 +75,15 @@ public class ProfileControllerEditTests
         // branches; stub it so a stray re-render doesn't NRE.
         _configuration["GoogleMaps:ApiKey"].Returns("test-key");
 
-        var authorizationService = Substitute.For<IAuthorizationService>();
-        authorizationService.AuthorizeAsync(
-                Arg.Any<ClaimsPrincipal>(),
-                Arg.Any<object?>(),
-                Arg.Any<IEnumerable<IAuthorizationRequirement>>())
-            .Returns(AuthorizationResult.Success());
-
         _controller = new ProfileController(
             _userService,
             userManager,
-            _profilePictureService,
             _profileEditorService,
             Substitute.For<IContactFieldService>(),
-            Substitute.For<IEmailService>(),
-            Substitute.For<IEmailMessageFactory>(),
-            Substitute.For<IUserEmailService>(),
             Substitute.For<ICommunicationPreferenceService>(),
-            Substitute.For<IAuditLogService>(),
             _onboardingService,
             Substitute.For<IShiftSignups>(),
             Substitute.For<IBurnSettingsService>(),
-            Substitute.For<IShiftManagementServiceRead>(),
             _shiftMgmt,
             _shiftView,
             Substitute.For<IGdprService>(),
@@ -106,25 +92,12 @@ public class ProfileControllerEditTests
             NullLogger<ProfileController>.Instance,
             localizer,
             sharedLocalizer,
-            Substitute.For<ITicketServiceRead>(),
-            Substitute.For<ITeamService>(),
             Substitute.For<ICampaignService>(),
-            Substitute.For<ICampServiceRead>(),
             Substitute.For<IEmailOutboxServiceRead>(),
             new FakeClock(Instant.FromUtc(2026, 5, 9, 12, 0)),
-            authorizationService,
             _applicationDecisionService,
             _accountDeletionService,
-            Substitute.For<IMembershipCalculatorRead>(),
-            Substitute.For<SignInManager<User>>(
-                userManager,
-                Substitute.For<IHttpContextAccessor>(),
-                Substitute.For<IUserClaimsPrincipalFactory<User>>(),
-                Options.Create(new IdentityOptions()),
-                NullLogger<SignInManager<User>>.Instance,
-                Substitute.For<Microsoft.AspNetCore.Authentication.IAuthenticationSchemeProvider>(),
-                Substitute.For<IUserConfirmation<User>>()),
-            Options.Create(new GoogleWorkspaceOptions()));
+            Substitute.For<IMembershipCalculatorRead>());
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, _userId.ToString())

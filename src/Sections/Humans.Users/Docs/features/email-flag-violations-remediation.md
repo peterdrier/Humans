@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Users/Services/UserEmailService.cs
   src/Sections/Humans.Users.Contracts/IUserEmailService.cs
-  src/Sections/Humans.Users/Controllers/ProfileController.cs
+  src/Sections/Humans.Users/Controllers/ProfileEmailsController.cs
   src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
   src/Sections/Humans.Users/Views/Profile/Emails.cshtml
   src/Sections/Humans.GoogleIntegration/Views/Google/EmailFlagViolations.cshtml
