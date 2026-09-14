@@ -635,6 +635,7 @@ public sealed class TicketTransferServiceTests
         new(
             _transferRepo,
             _ticketRepo,
+            Substitute.For<ITicketServiceRead>(),
             _vendor,
             _userService,
             _userEmailService,

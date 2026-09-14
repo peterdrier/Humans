@@ -21,7 +21,7 @@ call that needs it. `$WORKTREE` is re-set the same way (Phase 1).
 
 **Shell rules that break a run when missed:**
 
-- Write multi-line content — commit messages, run files — with `git commit -F <file>` or a
+- Write multi-line content — commit messages, run files — with `doctor.py commit -F <file>` or a
   file-write tool, or a **quoted** heredoc. An unquoted heredoc executes backticks inside it, and
   PowerShell here-string syntax (`@'…'@`) silently becomes part of the subject line under Git Bash.
 - Never run `dotnet build` and `dotnet test` against the same worktree at once — the test host

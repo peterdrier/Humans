@@ -3,10 +3,8 @@ namespace Humans.GoogleIntegration.Services.Workspace;
 /// <summary>
 /// Narrow connector over the Google Drive v3 API scoped to the folder- and
 /// permission-management operations performed by <c>GoogleWorkspaceSyncService</c>.
-/// Implementations live in <c>Humans.Infrastructure</c>; the Application-layer
-/// sync service (coming in §15 Part 2b, issue #575) depends only on this
-/// interface so that <c>Humans.Application</c> stays free of
-/// <c>Google.Apis.*</c> imports (design-rules §13).
+/// Shape-neutral so the service layer never names a <c>Google.Apis.*</c> type
+/// (design-rules §13).
 /// </summary>
 /// <remarks>
 /// All Drive operations run with <c>SupportsAllDrives = true</c> per the

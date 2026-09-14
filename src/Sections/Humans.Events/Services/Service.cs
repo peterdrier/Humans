@@ -28,8 +28,6 @@ internal sealed class EventService(
     // erasure edits cached rows, so the fan-out has to run through the decorator.
     : IEventService, ICalendarFeedContributor
 {
-    // EventSettings is owned by Shifts; cross via IBurnSettingsService supplier API (§2c, #719).
-
     public async Task<EventGuideSettingsView?> GetGuideSettingsAsync(CancellationToken ct = default)
     {
         var settings = await repo.GetGuideSettingsAsync(ct);
@@ -39,7 +37,7 @@ internal sealed class EventService(
     private async Task<EventGuideSettingsView> ToGuideSettingsViewAsync(EventGuideSettings settings, CancellationToken ct)
     {
         // TimeZoneId is stitched in from the Shifts-owned event_settings row via
-        // IBurnSettingsService (cross-section supplier API, §2c / #719).
+        // IBurnSettingsService (cross-section supplier API, nobodies-collective/Humans#719).
         var burn = await burnSettings.GetByIdAsync(settings.EventSettingsId, ct);
         return new EventGuideSettingsView(
             Id: settings.Id,

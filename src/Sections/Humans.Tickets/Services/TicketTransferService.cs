@@ -20,6 +20,7 @@ namespace Humans.Tickets.Services;
 internal sealed class TicketTransferService(
     ITicketTransferRepository transferRepo,
     ITicketRepository ticketRepo,
+    ITicketServiceRead holdings,
     ITicketVendorService vendor,
     IUserServiceRead userService,
     IUserEmailService userEmailService,
@@ -34,31 +35,17 @@ internal sealed class TicketTransferService(
     public async Task<IReadOnlyList<MyAttendeeRowDto>> GetMyAttendeesAsync(
         Guid userId, CancellationToken ct = default)
     {
-        var visible = await ticketRepo.GetAttendeesVisibleToUserAsync(userId, ct);
-        // GroupBy defensive: stray duplicate pendings must not crash dashboard read.
-        var pendingByAttendee = (await transferRepo.GetBySenderAsync(userId, ct))
-            .Where(r => r.Status == TicketTransferStatus.Pending)
-            .GroupBy(r => r.OriginalTicketAttendeeId)
-            .ToDictionary(g => g.Key, g => g.First().Id);
-
-        return visible
-            .OrderBy(a => a.AttendeeName, StringComparer.OrdinalIgnoreCase)
-            .Select(a =>
-            {
-                var pending = pendingByAttendee.TryGetValue(a.Id, out var transferId);
-                var owner = TicketAttendeeOwnership.IsCurrentOwner(a, userId);
-                return new MyAttendeeRowDto(
-                    AttendeeId: a.Id,
-                    AttendeeName: a.AttendeeName,
-                    AttendeeEmail: a.AttendeeEmail,
-                    VendorTicketId: a.VendorTicketId,
-                    TicketTypeName: a.TicketTypeName,
-                    Status: a.Status,
-                    IsCurrentOwner: owner,
-                    CanSendTransfer: a.Status == TicketAttendeeStatus.Valid && a.CheckedInAt is null && owner && !pending,
-                    HasPendingOutgoingTransfer: pending,
-                    PendingTransferRequestId: pending ? transferId : null);
-            })
+        // One projection of "what does this person hold": the holdings read already filters
+        // to the current owner and stamps the pending outgoing transfer. The wizard adds only
+        // the send rule and drops voided rows.
+        var held = await holdings.GetUserTicketHoldingsAsync(userId, ct);
+        return held.Tickets
+            .Where(t => t.Status != TicketAttendeeStatus.Void)
+            .Select(t => new MyAttendeeRowDto(
+                t,
+                CanSendTransfer: t.Status == TicketAttendeeStatus.Valid
+                    && t.CheckedInAt is null
+                    && !t.HasPendingOutgoingTransfer))
             .ToList();
     }
 
@@ -105,9 +92,9 @@ internal sealed class TicketTransferService(
         if (attendee.Status != TicketAttendeeStatus.Valid)
             throw new InvalidOperationException("Only Valid tickets can be transferred.");
 
-        // A gate scan keeps Status = Valid and records the scan in CheckedInAt
-        // (nobodies-collective/Humans#736), so the Valid check above no longer
-        // catches an already-used ticket — guard on CheckedInAt explicitly.
+        // A gate scan keeps Status = Valid and records the scan in CheckedInAt,
+        // so the Valid check above does not catch an already-used ticket — guard
+        // on CheckedInAt explicitly.
         if (attendee.CheckedInAt is not null)
             throw new InvalidOperationException("Checked-in tickets cannot be transferred.");
 

@@ -136,7 +136,6 @@ public sealed class Section : ISection
         services.AddScoped<GoogleResourceReconciliationJob>();
         services.AddScoped<ProcessGoogleSyncOutboxJob>();
 
-        // Gauge-refresh loop split out of HumansMetricsService (nobodies-collective/Humans#1091).
         services.AddSingleton<GoogleIntegrationMetricsService>();
         services.AddHostedService(sp => sp.GetRequiredService<GoogleIntegrationMetricsService>());
     }

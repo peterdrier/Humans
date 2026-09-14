@@ -2,10 +2,9 @@ namespace Humans.GoogleIntegration.Services.Workspace;
 
 /// <summary>
 /// Dev/test <see cref="IGoogleDrivePermissionsClient"/> that keeps an
-/// in-memory store of folders and permissions so the Application-layer sync
-/// service can exercise Drive flows without a Google service account. Per
-/// the §15 connector pattern, the Application-layer service runs against
-/// this stub — there is no "stub service" variant.
+/// in-memory store of folders and permissions so the sync service can exercise Drive
+/// flows without a Google service account. The real service runs against this stub —
+/// there is no separate stub service.
 /// </summary>
 internal sealed class StubGoogleDrivePermissionsClient(ILogger<StubGoogleDrivePermissionsClient> logger)
     : IGoogleDrivePermissionsClient

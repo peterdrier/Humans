@@ -33,16 +33,17 @@ One PR per run; never merge.
 **Cost report** — before creating the PR, run:
 
 ```bash
-python .claude/skills/section-doctor/cost-report.py section-doctor/$TS "$RUNDIR/phase-log"
+python .claude/skills/section-doctor/cost-report.py
 ```
 
-It finds this run's own session transcript under `~/.claude/projects` (the model never sees its
-own usage in-band, but the harness logs every API call's tokens there), buckets the main thread
-by the phase log, adds one row per subagent transcript (named by the `thread:` marker its
-prompt opens with), and prints a markdown table with per-row model and API-equivalent $ — plus
-footer lines reporting the peak main-thread context and any compactions detected (a compaction
-mid-run is exactly when Phase 5's re-read rule earns its keep; if one is reported, say so in the
-run file's retro).
+It derives the branch and the phase log from the current branch the way `doctor.py` does (an
+explicit `<branch> <phase-log>` pair still overrides), finds this run's own session transcript
+under `~/.claude/projects` (the model never sees its own usage in-band, but the harness logs
+every API call's tokens there), buckets the main thread by the phase log, adds one row per
+subagent transcript (named by the `thread:` marker its prompt opens with), and prints a
+markdown table with per-row model and API-equivalent $ — plus footer lines reporting the peak
+main-thread context and any compactions detected (a compaction mid-run is exactly when Phase
+5's re-read rule earns its keep; if one is reported, say so in the run file's retro).
 
 **Rows are named by what the run was doing, not by phase number** — each row takes the label from
 its `mark` line, and the phase id is a trailing column. Phase 4's per-item marks give one row per
@@ -57,11 +58,12 @@ table's only home: one append-only write adjacent to the create call, costing no
 and no review round. Never paste it into the PR body or the run file. The table stands on its
 own — never compare it against another run's cost or pull in a prior run's figures; cross-run
 reading is Peter's, done over the PRs. The script never fails the run — on any discovery problem
-it prints `Cost: unmeasured (...)`; post that line as the comment all the same (a failed
-measurement leaves a visible record, never silence) and note it in Needs-Peter.
+it prints `Cost: unmeasured (<error>)` and writes the traceback to stderr and
+`$RUNDIR/cost-report.err`; post that line as the comment all the same (a failed measurement
+leaves a visible record, never silence) and put the traceback's failing line in Needs-Peter.
 
 Then backfill the real PR number over every `pending` reference (run file header, health history
-row), commit, push again.
+row), `doctor.py commit`, push again.
 
 **That backfill is the last bookkeeping push.** From here a push must change code, tests, or a
 doc a reader depends on. **Never push a commit whose entire content is a corrected figure or a

@@ -8,8 +8,7 @@ using Microsoft.Extensions.Logging;
 namespace Humans.Governance.Services;
 
 /// <summary>
-/// Owns the Governance-section observable gauges split out of <c>HumansMetricsService</c>
-/// (nobodies-collective/Humans#1091): asociado count, pending tier applications, and the two
+/// Governance's observable gauges: asociado count, pending tier applications, and the two
 /// consent-completeness gauges (pending_consents also needs the total user count, read
 /// cross-section via <see cref="IUserServiceRead"/>).
 /// </summary>

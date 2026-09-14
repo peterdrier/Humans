@@ -102,10 +102,6 @@ public interface IGoogleSyncService : IGoogleSyncServiceRead, IApplicationServic
     [ExternalWrite]
     Task<int> EnforceInheritedAccessRestrictionsAsync(CancellationToken cancellationToken = default);
 
-    // ==========================================================================
-    // Admin outbox recovery
-    // ==========================================================================
-
     /// <summary>
     /// Requeues a single permanently-failed outbox event for retry.
     /// Returns <c>true</c> if the event was found and reset.

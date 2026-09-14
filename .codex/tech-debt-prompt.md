@@ -48,8 +48,8 @@ file's *Current state* instead of restarting discovery.
   full `dotnet test Humans.slnx -v quiet` before any push. `-v quiet` always.
 - Honor every boundary in the queue file's *Boundaries* section — especially: debt
   only (never feature follow-ups, even fully-specced ones), no authorization/privacy
-  shape changes, no reverting documented test-infrastructure decisions, no schema or
-  migration changes, new public surface goes to *Needs Peter* instead of into the code.
+  shape changes, no reverting documented test-infrastructure decisions, and new public surface goes to *Needs Peter* instead of into the code.
+- Section-owned persistence and generated migrations are allowed when the task needs them. Follow [section-migrations-in-maintenance](../memory/process/section-migrations-in-maintenance.md); substantial architecture transitions get explicitly scoped tasks and dedicated PRs.
 - Scan `memory/INDEX.md` when unsure whether a rule applies.
 - Push after verified progress; finish by rewriting the queue file's *Current state*
   (baseline counts, surface baseline, blocked items, *Needs Peter*) and leaving the

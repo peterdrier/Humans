@@ -6,8 +6,7 @@ namespace Humans.GoogleIntegration.Data;
 
 /// <summary>
 /// EF-backed implementation of <see cref="ISyncSettingsRepository"/>. The only
-/// non-test file that touches <c>DbContext.SyncServiceSettings</c> after the
-/// Google Integration §15 migration lands.
+/// non-test file that touches <c>DbContext.SyncServiceSettings</c>.
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>GoogleIntegrationDbContext</c> remains Scoped.
 /// </summary>

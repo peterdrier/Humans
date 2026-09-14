@@ -14,10 +14,9 @@ namespace Humans.GoogleIntegration.Jobs;
 /// A summary Admin alert fires via SyncError if any phase fails.
 /// </summary>
 /// <remarks>
-/// Moved out of <c>Humans.Infrastructure/Jobs</c> at the G5 jobs move
-/// (nobodies-collective/Humans#866). Public and under <c>Jobs/</c> because Shell names the
-/// concrete type at two sites (<c>AddScoped</c> and the recurring roll-call) and HUM0034 allows
-/// a section's public types there too.
+/// Public because the concrete type is named at two sites (<c>AddScoped</c> in
+/// <c>Section.cs</c>, the descriptor in <c>SectionJobs.cs</c>); HUM0034 allows a section's
+/// public job types.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class GoogleResourceReconciliationJob(
@@ -37,7 +36,6 @@ public class GoogleResourceReconciliationJob(
         int inheritanceCorrected = 0;
         var settingsResult = new GroupSettingsDriftResult();
 
-        // Phase 1: Sync Drive folders
         try
         {
             await googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, cancellationToken);
@@ -48,7 +46,6 @@ public class GoogleResourceReconciliationJob(
             phaseFailures.Add("DriveFolder sync");
         }
 
-        // Phase 2: Sync Drive files
         // DriveFile is handled by the same Drive permission path as DriveFolder; omitting it
         // meant soft-deleted teams with linked files kept Google permissions indefinitely.
         try
@@ -61,7 +58,6 @@ public class GoogleResourceReconciliationJob(
             phaseFailures.Add("DriveFile sync");
         }
 
-        // Phase 3: Reconcile Google Group membership
         // Provisioning of missing Google Groups is handled inside ReconcileAllAsync — when a
         // claim references a group that doesn't yet exist in Google, the reconcile path creates
         // it inline (best-effort) before reconciling membership.
@@ -75,9 +71,8 @@ public class GoogleResourceReconciliationJob(
             phaseFailures.Add("Group membership reconcile");
         }
 
-        // Phase 3b: Reconcile Drive access source fan-out (Workgroups etc.) —
-        // additive to and independent from the Teams-keyed google_resources
-        // Drive path reconciled in Phase 1/2 above.
+        // Reconciles the Drive access source fan-out (Workgroups etc.) — additive to and
+        // independent from the Teams-keyed google_resources Drive path reconciled above.
         try
         {
             await googleDriveSync.ReconcileAllAsync(SyncAction.Execute, cancellationToken);
@@ -88,7 +83,7 @@ public class GoogleResourceReconciliationJob(
             phaseFailures.Add("Drive access source reconcile");
         }
 
-        // Phase 4: Update Drive folder paths (detects renames and moves)
+        // Detects renames and moves.
         try
         {
             var pathUpdates = await googleSyncService.UpdateDriveFolderPathsAsync(cancellationToken);
@@ -103,7 +98,6 @@ public class GoogleResourceReconciliationJob(
             phaseFailures.Add("Drive folder path updates");
         }
 
-        // Phase 5: Enforce inherited access restrictions on Drive folders
         try
         {
             inheritanceCorrected = await googleSyncService.EnforceInheritedAccessRestrictionsAsync(cancellationToken);
@@ -118,7 +112,6 @@ public class GoogleResourceReconciliationJob(
             phaseFailures.Add("Inherited access enforcement");
         }
 
-        // Phase 6: Check Google Group settings for drift and auto-remediate
         try
         {
             settingsResult = await googleSyncService.CheckGroupSettingsAsync(cancellationToken);
@@ -167,7 +160,7 @@ public class GoogleResourceReconciliationJob(
                     $"Google reconciliation fixed {totalDrift} drift issue(s)",
                     RoleNames.Admin,
                     body: $"Inheritance corrections: {inheritanceCorrected}, group settings drift: {settingsResult.DriftCount}",
-                    actionUrl: "/Admin/GoogleSync",
+                    actionUrl: "/Google/Sync",
                     actionLabel: "View sync status",
                     cancellationToken: cancellationToken);
             }
@@ -195,7 +188,7 @@ public class GoogleResourceReconciliationJob(
                     RoleNames.Admin,
                     body: $"The following phase(s) encountered errors and did not complete: {failedPhaseList}. " +
                           "Other phases ran normally. Check application logs for details.",
-                    actionUrl: "/Admin/GoogleSync",
+                    actionUrl: "/Google/Sync",
                     actionLabel: "View sync status",
                     cancellationToken: cancellationToken);
             }
