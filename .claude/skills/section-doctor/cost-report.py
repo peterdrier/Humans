@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Cost report for a section-doctor run (Phase 7).
 
-Usage: python cost-report.py <branch-name> <phase-log-path>
+Usage: python cost-report.py [<branch-name>] [<phase-log-path>]
+
+Both arguments default from the current branch (`section-doctor/<TS>`) the way every
+`doctor.py` subcommand does, so no shell variable has to survive to Phase 7.
 
 Finds this run's own session transcript under ~/.claude/projects (the file that
 mentions the run branch and was modified after the run started), sums per-API-call
@@ -14,16 +17,23 @@ Rows are named by what the run was DOING, not by phase number: each phase-log li
 is `<iso-ts> <phase-id> <label>` and the label becomes the row. Phase 4 writes one
 line per strike item, so the strike rows break down per item rather than collapsing
 into one bucket. The phase id is a trailing column. A line with no label falls back
-to its id, so an older phase log still reports.
+to its id, so an older phase log still reports. A line without a parseable leading
+timestamp is skipped (and counted in a footer warning) rather than corrupting the
+bucketing or failing the report.
 
-Exits 0 with "Cost: unmeasured (...)" on any discovery failure — never fail the run.
+Exits 0 with "Cost: unmeasured (...)" on any discovery failure — never fail the run — and
+writes the traceback to stderr and to `$RUNDIR/cost-report.err` so the failure can be read.
 """
 import glob
 import json
 import os
 import re
 import sys
+import traceback
 from datetime import datetime
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import doctor  # noqa: E402  (branch and rundir derivation, shared with doctor.py)
 
 # $/MTok: fresh input, output, cache write, cache read (API list rates).
 # Order matters: rate() takes the first substring match, so "sonnet-5" ($2/$10)
@@ -50,17 +60,30 @@ def ts(s):
 
 
 def read_phase_log(path):
-    """`<iso-ts> <phase-id> [label...]` -> [(start_ts, phase_id, label)], time-ordered.
+    """`<iso-ts> <phase-id> [label...]` -> ([(start_ts, phase_id, label)], skipped), time-ordered.
 
     The label says what the run was doing; it is the row name. Older logs carry no
-    label, so the id stands in for one."""
+    label, so the id stands in for one. A line without a parseable leading timestamp
+    cannot be bucketed: it is skipped and counted, and the footer reports the count —
+    its phase's spend folds into the preceding row. A skipped line BEFORE the first
+    valid mark is worse: run_start then derives from a later mark, so the spend before
+    it is excluded from the total, not folded — flagged separately."""
     out = []
+    skipped = 0
+    skipped_before_first = False
     for line in open(path, encoding="utf-8"):
         parts = line.split(None, 2)
         if len(parts) < 2:
             continue
-        out.append((ts(parts[0]), parts[1], parts[2].strip() if len(parts) > 2 else parts[1]))
-    return sorted(out)
+        try:
+            t = ts(parts[0])
+        except ValueError:
+            skipped += 1
+            if not out:
+                skipped_before_first = True
+            continue
+        out.append((t, parts[1], parts[2].strip() if len(parts) > 2 else parts[1]))
+    return sorted(out), skipped, skipped_before_first
 
 
 def phase_at(t, phases):
@@ -84,10 +107,14 @@ def usage_entries(path):
 
 
 def thread_name(path):
-    """The `thread: <Name>` marker a dispatched Phase 3d prompt opens with (SKILL.md §3d)."""
+    """The `thread: <Name>` marker a dispatched prompt opens with — Phase 3d threads and
+    Phase 4 strike executors (`thread: strike <what>`) alike (SKILL.md §3d, §4)."""
     with open(path, encoding="utf-8", errors="ignore") as f:
         for line in list(f)[:3]:  # the prompt is the first record; don't match a later mention
-            m = re.search(r'thread:\s*([A-Za-z][A-Za-z &]*)', line)
+            # capture to the end of the marker's logical line: stop at a real newline,
+            # a JSON escape (\n inside a jsonl-encoded prompt), or a closing quote —
+            # punctuation like / . ' + in a strike name is part of the name
+            m = re.search(r'thread:\s*([A-Za-z][^"\\\n]*)', line)
             if m:
                 return m.group(1).strip()
     return None
@@ -112,8 +139,12 @@ def add(bucket, model, u):
 
 
 def main():
-    branch, phase_log = sys.argv[1], sys.argv[2]
-    phases = read_phase_log(phase_log)
+    branch = sys.argv[1] if len(sys.argv) > 1 else doctor.branch()
+    phase_log = sys.argv[2] if len(sys.argv) > 2 else os.path.join(doctor.rundir(), "phase-log")
+    phases, skipped_marks, skipped_before_first = read_phase_log(phase_log)
+    if not phases:
+        print("Cost: unmeasured (phase log has no timestamped marks)")
+        return
     run_start = phases[0][0]
 
     own = None
@@ -185,11 +216,24 @@ def main():
         "API-equivalent $, list rates; run under subscription quota. "
         "Measured Phase 1 to PR creation; PR create/backfill and Phase 8 excluded."
     )
+    if skipped_marks:
+        print()
+        print(
+            f"Warning: {skipped_marks} phase-log line(s) without a leading timestamp "
+            "skipped — that spend is folded into the preceding row."
+        )
+        if skipped_before_first:
+            print(
+                "A skipped line preceded the first timestamped mark: usage before "
+                "that mark is excluded entirely, so the total underreports the run."
+            )
 
     # Context telemetry: where the run's context peaked, and whether it was
     # compacted mid-run. Compaction is detected from the usage data itself — a
     # sustained drop of >50% and >100k tokens between consecutive main-thread
-    # calls (a one-call dip, e.g. a small utility request, does not count).
+    # calls. Sustained means the NEXT call also stays below the same threshold:
+    # a one-call dip (a small utility request between two full-context calls,
+    # e.g. 200k -> 10k -> 199k) rebounds above it and does not count.
     if contexts:
         peak_label, peak_ctx = max(contexts, key=lambda c: c[1])
         print()
@@ -197,7 +241,7 @@ def main():
         compactions = []
         for i in range(1, len(contexts)):
             prev, cur = contexts[i - 1][1], contexts[i][1]
-            sustained = i + 1 >= len(contexts) or contexts[i + 1][1] < prev
+            sustained = i + 1 >= len(contexts) or contexts[i + 1][1] < prev * 0.5
             if cur < prev * 0.5 and prev - cur > 100_000 and sustained:
                 compactions.append(contexts[i][0])
         if compactions:
@@ -209,5 +253,12 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception as e:  # never fail the run over bookkeeping
-        print(f"Cost: unmeasured ({e})")
+    except (Exception, SystemExit) as e:  # never fail the run over bookkeeping — but never hide why
+        tb = traceback.format_exc()
+        sys.stderr.write(tb)
+        try:
+            with open(os.path.join(doctor.rundir(), "cost-report.err"), "w", encoding="utf-8") as f:
+                f.write(tb)
+        except SystemExit:
+            pass  # not on a section-doctor branch and no --ts: stderr is the record
+        print(f"Cost: unmeasured ({type(e).__name__}: {e})")

@@ -32,33 +32,18 @@ internal interface IShiftSignupService : IShiftSignupSeeding, IApplicationServic
     Task<SignupResult> VoluntellRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid enrollerUserId);
 
     /// <summary>
-    /// Marks a confirmed signup as no-show (post-shift only).
+    /// Marks a confirmed signup as no-show. Fails before the shift has ended.
     /// </summary>
     Task<SignupResult> MarkNoShowAsync(Guid signupId, Guid reviewerUserId);
 
-    /// <summary>
-    /// Removes a confirmed signup (coordinator/admin unassignment).
-    /// </summary>
     Task<SignupResult> RemoveSignupAsync(Guid signupId, Guid removedByUserId, string? reason);
 
-    /// <summary>
-    /// Approves all pending signups sharing a SignupBlockId.
-    /// </summary>
     Task<SignupResult> ApproveRangeAsync(Guid signupBlockId, Guid reviewerUserId);
 
-    /// <summary>
-    /// Refuses all pending signups sharing a SignupBlockId.
-    /// </summary>
     Task<SignupResult> RefuseRangeAsync(Guid signupBlockId, Guid reviewerUserId, string? reason);
 
-    /// <summary>
-    /// Bails all signups sharing a SignupBlockId.
-    /// </summary>
     Task BailRangeAsync(Guid signupBlockId, Guid actorUserId, string? reason = null);
 
-    /// <summary>
-    /// Gets all signups for a user, optionally filtered by event.
-    /// </summary>
     Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null);
 
     /// <summary>
@@ -72,14 +57,6 @@ internal interface IShiftSignupService : IShiftSignupSeeding, IApplicationServic
     /// orphan-signup reconciliation screen. Admin-only diagnostic.
     /// </summary>
     Task<IReadOnlyList<OrphanSignupSnapshot>> GetAllForOrphanScanAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns user-ids with at least one ShiftSignup for the given event whose
-    /// Status is Pending or Confirmed. Used by audience computations to identify
-    /// "users who have a shift". Refused/Bailed/Cancelled/NoShow signups do not count.
-    /// </summary>
-    Task<IReadOnlySet<Guid>> GetActiveCommittedUserIdsForEventAsync(
-        Guid eventSettingsId, CancellationToken ct = default);
 
     /// <summary>
     /// Self-service day-row toggle for the current user: bails an existing active

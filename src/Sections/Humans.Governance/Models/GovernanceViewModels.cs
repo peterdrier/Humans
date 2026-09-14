@@ -1,5 +1,6 @@
 using Humans.Users.Contracts;
 using Humans.Governance.Contracts;
+using NodaTime;
 
 namespace Humans.Governance.Models;
 
@@ -15,6 +16,7 @@ internal sealed class GovernanceIndexViewModel
     public MembershipTier? ApplicationTier { get; set; }
     public DateTime? ApplicationSubmittedAt { get; set; }
     public DateTime? ApplicationResolvedAt { get; set; }
+    public LocalDate? ApplicationTermExpiresAt { get; set; }
     public string? ApplicationStatusBadgeClass { get; set; }
     public bool CanApply { get; set; }
     public bool IsApprovedColaborador { get; set; }

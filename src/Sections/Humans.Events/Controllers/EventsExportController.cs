@@ -31,9 +31,7 @@ internal sealed class EventsExportController(
     public async Task<IActionResult> DownloadCsv()
     {
         var (events, settings) = await guide.GetApprovedEventsForExportAsync();
-        var eventSettings = settings != null
-            ? await guide.GetEventSettingsByIdAsync(settings.EventSettingsId)
-            : null;
+        var eventSettings = await LoadBurnSettingsAsync(guide, settings);
         var tz = GetTimeZone(eventSettings);
         var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year);
         var submitters = await LoadSubmittersAsync(
@@ -88,9 +86,7 @@ internal sealed class EventsExportController(
     public async Task<IActionResult> PrintGuide()
     {
         var (events, settings) = await guide.GetApprovedEventsForExportAsync();
-        var eventSettings = settings != null
-            ? await guide.GetEventSettingsByIdAsync(settings.EventSettingsId)
-            : null;
+        var eventSettings = await LoadBurnSettingsAsync(guide, settings);
         var tz = GetTimeZone(eventSettings);
         var maxSlots = settings?.MaxPrintSlots;
         var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year);

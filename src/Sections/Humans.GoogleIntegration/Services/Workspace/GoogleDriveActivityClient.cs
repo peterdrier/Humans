@@ -16,8 +16,7 @@ namespace Humans.GoogleIntegration.Services.Workspace;
 /// Real Google-backed implementation of <see cref="IGoogleDriveActivityClient"/>.
 /// Talks to the Google Drive Activity API v2 and the Admin Directory API
 /// using the configured service account. This is the only file that imports
-/// <c>Google.Apis.*</c> for Drive Activity monitoring; the Application-layer
-/// <c>DriveActivityMonitorService</c> never sees SDK types.
+/// <c>Google.Apis.*</c> for Drive Activity monitoring.
 /// </summary>
 internal sealed class GoogleDriveActivityClient(
     IOptions<GoogleWorkspaceSettings> settings,

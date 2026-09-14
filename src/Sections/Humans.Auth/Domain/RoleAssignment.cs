@@ -8,44 +8,23 @@ namespace Humans.Auth.Domain;
 /// </summary>
 internal sealed class RoleAssignment
 {
-    /// <summary>
-    /// Unique identifier for the role assignment.
-    /// </summary>
     public Guid Id { get; init; }
 
-    /// <summary>
-    /// Foreign key to the user.
-    /// </summary>
+    /// <summary>Bare cross-section id — no FK constraint, no navigation property.</summary>
     public Guid UserId { get; init; }
 
-    /// <summary>
-    /// The role name being assigned.
-    /// </summary>
     public string RoleName { get; set; } = string.Empty;
 
-    /// <summary>
-    /// When this role assignment becomes effective.
-    /// </summary>
     public Instant ValidFrom { get; init; }
 
-    /// <summary>
-    /// When this role assignment expires. Null means no expiration.
-    /// </summary>
+    /// <summary>Null means open-ended: the assignment has not been ended.</summary>
     public Instant? ValidTo { get; set; }
 
-    /// <summary>
-    /// Notes about why this role was assigned.
-    /// </summary>
     public string? Notes { get; set; }
 
-    /// <summary>
-    /// When this role assignment record was created.
-    /// </summary>
     public Instant CreatedAt { get; init; }
 
-    /// <summary>
-    /// ID of the user who created this assignment.
-    /// </summary>
+    /// <summary>Bare cross-section id — no FK constraint, no navigation property.</summary>
     public Guid CreatedByUserId { get; init; }
 
     /// <summary>

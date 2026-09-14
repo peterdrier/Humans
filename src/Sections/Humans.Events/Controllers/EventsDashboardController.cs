@@ -26,12 +26,8 @@ internal sealed class EventsDashboardController(IEventService guide, ICampServic
     public async Task<IActionResult> Index()
     {
         var guideSettings = await guide.GetGuideSettingsAsync();
-        var eventSettings = guideSettings != null
-            ? await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId)
-            : null;
-        DateTimeZone? tz = eventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
-            : null;
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings);
+        var tz = GetTimeZone(eventSettings);
 
         var allEvents = await guide.GetAllEventsForDashboardAsync();
 

@@ -381,9 +381,8 @@ internal sealed class CampRoleService(
         if (definitions.Count == 0)
             return new Dictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>();
 
-        // Season set comes from the cached camp read model (no second entity load);
-        // counts is a single GROUP BY. Same shape as GetComplianceReportAsync but
-        // over all active definitions with SlotCount as the denominator.
+        // Same shape as GetComplianceReportAsync but over all active definitions,
+        // with SlotCount as the denominator.
         var seasons = await campAccess.GetCampSeasonsForComplianceAsync(year, ct);
         var counts = await repo.GetAssignmentCountsForYearAsync(year, ct);
         var countLookup = counts.ToLookup(c => c.CampSeasonId);
@@ -583,8 +582,7 @@ internal sealed class CampRoleService(
         if (activeDefs.Count == 0)
             return new Dictionary<string, Guid[]>(StringComparer.OrdinalIgnoreCase);
 
-        // Pull assignments for every in-scope year in one shot. Filters out
-        // deactivated definitions at the repo level.
+        // GetActiveAssignmentsForYearsAsync already excludes deactivated definitions.
         var assignments = await repo.GetActiveAssignmentsForYearsAsync(inScopeYears, ct);
         var assignmentsBySlugAndYear = assignments
             .Where(a => !string.IsNullOrWhiteSpace(a.Definition.Slug))
@@ -593,8 +591,7 @@ internal sealed class CampRoleService(
                 g => g.Key,
                 g => g.Select(a => a.CampMember.UserId).Distinct().ToArray());
 
-        // Per-camp lookup used for the lead-fallback: which camps have a given
-        // (slug, year) filled, and which leads exist per (camp, year).
+        // Feeds the lead-fallback below.
         var assignmentsByCampSlugYear = assignments
             .Where(a => !string.IsNullOrWhiteSpace(a.Definition.Slug))
             .GroupBy(a => (a.CampSeason.CampId, a.Definition.Slug, a.CampSeason.Year))

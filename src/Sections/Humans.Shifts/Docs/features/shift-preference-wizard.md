@@ -85,7 +85,7 @@ The set of time preference values should be a `static readonly` array (like the 
 
 ### Fields Removed From This Page (Not Deleted)
 
-The following fields are no longer editable on `/Profile/Me/ShiftInfo`. They moved to `Profile` (Feature 35 — [Dietary & Medical Nudge](../../../Humans.Users/Docs/features/dietary-medical-nudge.md)); the corresponding `VolunteerEventProfile` columns are retained-only tombstones pending a deferred drop:
+The following fields are not editable on `/Profile/Me/ShiftInfo`; they live on `Profile` ([Dietary & Medical Nudge](../../../Humans.Users/Docs/features/dietary-medical-nudge.md)), and the corresponding `VolunteerEventProfile` columns are unused pending a deferred drop:
 - `DietaryPreference`
 - `Allergies[]` + `AllergyOtherText`
 - `Intolerances[]` + `IntoleranceOtherText`

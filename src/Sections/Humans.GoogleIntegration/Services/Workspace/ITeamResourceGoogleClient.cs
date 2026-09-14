@@ -3,11 +3,8 @@ namespace Humans.GoogleIntegration.Services.Workspace;
 /// <summary>
 /// Narrow connector over the Google Workspace Drive and Cloud Identity APIs,
 /// scoped to the operations <c>TeamResourceService</c> performs when linking
-/// pre-shared resources. Implementations live in <c>Humans.Infrastructure</c>
-/// (real Google-backed implementation for production, stub for dev without
-/// service-account credentials). The Application-layer service depends only
-/// on this interface so the <c>Humans.Application</c> project can stay
-/// framework-free (no <c>Google.Apis.*</c> imports inside business logic).
+/// pre-shared resources. Shape-neutral so the service layer never names a
+/// <c>Google.Apis.*</c> type (design-rules §13).
 /// </summary>
 internal interface ITeamResourceGoogleClient
 {

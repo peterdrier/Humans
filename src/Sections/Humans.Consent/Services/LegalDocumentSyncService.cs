@@ -151,7 +151,7 @@ internal sealed partial class LegalDocumentSyncService(
         return new GitHubFolderPathNormalizationResult(true, path.TrimEnd('/') + "/", null);
     }
 
-    public async Task<LegalDocument> CreateLegalDocumentAsync(
+    private async Task<LegalDocument> CreateLegalDocumentAsync(
         AdminLegalDocumentUpsertRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -319,37 +319,6 @@ internal sealed partial class LegalDocumentSyncService(
         }
 
         return await SyncSingleDocumentAsync(document, cancellationToken);
-    }
-
-    public async Task<IReadOnlyList<LegalDocument>> CheckForUpdatesAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var documentsWithUpdates = new List<LegalDocument>();
-        var documents = await repository.GetActiveDocumentsAsync(cancellationToken);
-
-        foreach (var document in documents)
-        {
-            try
-            {
-                var checkPath = !string.IsNullOrEmpty(document.GitHubFolderPath)
-                    ? await GetCanonicalFilePathAsync(document.GitHubFolderPath, cancellationToken)
-                    : null;
-
-                if (string.IsNullOrEmpty(checkPath)) continue;
-
-                var latestSha = await gitHub.GetLatestCommitShaAsync(checkPath, cancellationToken);
-                if (latestSha is not null && !string.Equals(latestSha, document.CurrentCommitSha, StringComparison.Ordinal))
-                {
-                    documentsWithUpdates.Add(document);
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Error checking for updates to {DocumentName}", document.Name);
-            }
-        }
-
-        return documentsWithUpdates;
     }
 
     public async Task<IReadOnlyList<LegalDocumentSnapshot>> GetActiveDocumentsAsync(

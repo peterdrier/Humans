@@ -97,7 +97,10 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
 - Sweeps are serialized by a non-blocking in-process gate; a second caller is skipped and told
   so, never queued (single-server deployment).
 - Reads (`GetLedgerLinesAsync`, `GetAccountBalancesAsync`) never call Holded.
-- No user-scoped data → no GDPR contributor. The member→creditor binding lives in Finance.
+- Nothing here is keyed by member, so this section holds no consent gate and no erasure path.
+  It is not free of personal data: a creditor account's name is the member's and the lines on it
+  are their reimbursement history, identifiable through Finance's member→creditor binding.
+  Whether that owes an Article 15 slice is open — debt ledger, 2026-09-03.
 
 ## Negative Access Rules
 
@@ -107,7 +110,7 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
 
 ## Triggers
 
-- `HoldedSyncJob` (nightly, this section's `Jobs/`; scheduled from Shell's roll-call): Finance's doc sync, then `SyncLedgerAsync(full: false)`.
+- `HoldedSyncJob` (nightly at 03:00, this section's `Jobs/`; scheduled by this section's `SectionJobs`, job id `holded-sync`): Finance's doc sync, then `SyncLedgerAsync(full: false)`.
 - `/Holded` buttons: `SyncNow` (incremental + reconcile), `FullSync`.
 
 ## Cross-Section Dependencies
@@ -117,7 +120,8 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
 
 ## Architecture
 
-**Owning section:** `Holded` (`src/Sections/Humans.Holded`, G5)
+**Owning section:** `Holded` (`src/Sections/Humans.Holded`)
 **Public contract:** `Humans.Holded.Contracts.IHoldedService` (+ `HoldedLedgerLineInfo`)
 **Owned tables:** the four above
-**Status:** (G5) Own project. Spec: [`2026-08-10-holded-v2-migration-design.md`](2026-08-10-holded-v2-migration-design.md).
+**Target shape:** [`health.md`](health.md). Historical design record:
+[`2026-08-10-holded-v2-migration-design.md`](2026-08-10-holded-v2-migration-design.md).

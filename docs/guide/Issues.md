@@ -96,7 +96,7 @@ You're notified in-app when a new issue lands in one of your areas, and again wh
 
 `/api/backdoor/issues` is key-authenticated (`X-Api-Key`), using the personal key an admin allocated to you at `/Backdoor`. It lists and reads issues, files one, comments, and changes status, assignee, area, or the linked GitHub issue. Anything it writes is attributed to the human whose key was used.
 
-One difference from the browser: a comment posted through the API always counts as a handler's, even when the key belongs to the issue's own reporter. So an API comment on a closed issue does **not** reopen it, and it notifies as a handler reply would. Comment in the browser if you want the reopen.
+A comment posted through the API counts the same as one in the browser: if the key belongs to the issue's own reporter, it's a reporter reply and reopens a closed issue.
 
 ## Related sections
 

@@ -12,7 +12,7 @@ namespace Humans.Backdoor.Controllers;
 
 /// <summary>
 /// The section's one page, at <c>/Backdoor</c>: allocate, rotate and revoke the personal
-/// keys that open <c>/api/backdoor/*</c> (nobodies-collective/Humans#1128).
+/// keys that open <c>/api/backdoor/*</c>.
 /// </summary>
 /// <remarks>
 /// A freshly issued plaintext rides one redirect in TempData and is shown once. It is never
@@ -25,7 +25,6 @@ internal sealed class BackdoorController(
     IRoleAssignmentService roles,
     IUserServiceRead users) : HumansControllerBase(users)
 {
-    /// <summary>TempData slot carrying a just-issued plaintext across the post-redirect-get.</summary>
     private const string NewKeyTempDataKey = "BackdoorNewKey";
 
     [HttpGet("")]
@@ -90,9 +89,6 @@ internal sealed class BackdoorController(
     {
         var rows = await keys.ListAsync(ct);
 
-        // Admins ∪ Board, narrowed below to active accounts — the same test
-        // IBackdoorApiKeyService enforces on issue, so the dropdown can never offer someone
-        // the service would refuse.
         var eligibleIds = new HashSet<Guid>(await roles.GetActiveUserIdsInRoleAsync(RoleNames.Admin, ct));
         eligibleIds.UnionWith(await roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, ct));
 

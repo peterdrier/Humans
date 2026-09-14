@@ -588,8 +588,6 @@ internal sealed class ShiftSignupService(
 
         var blockId = Guid.NewGuid();
 
-        // Public rotas auto-confirm at signup regardless of the volunteer's admission/consent
-        // status; only RequireApproval rotas park signups as Pending for coordinator review.
         var autoConfirm = rota.Policy == SignupPolicy.Public ||
                            await shiftMgmt.CanApproveSignupsAsync(userId, rota.TeamId);
         var createdSignups = StageRangeSignups(userId, actorUserId, blockId, now, availableShifts, autoConfirm);
@@ -1370,10 +1368,6 @@ internal sealed class ShiftSignupService(
             s.EnrolledByUserId,
             s.SignupBlockId)).ToList();
     }
-
-    public Task<IReadOnlySet<Guid>> GetActiveCommittedUserIdsForEventAsync(
-        Guid eventSettingsId, CancellationToken ct = default) =>
-        repo.GetActiveCommittedUserIdsForEventAsync(eventSettingsId, ct);
 
     public async Task<ToggleDaySignupOutcome> ToggleDayAsync(
         Guid userId,

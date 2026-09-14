@@ -177,11 +177,11 @@ internal sealed partial class TeamResourceService(
             resource.DrivePermissionLevel,
             resource.RestrictInheritedAccess);
 
-    public async Task<LinkResourceResult> LinkDriveFolderAsync(
+    private async Task<LinkResourceResult> LinkDriveFolderAsync(
         Guid teamId,
         string folderUrl,
-        DrivePermissionLevel permissionLevel = DrivePermissionLevel.Contributor,
-        CancellationToken ct = default)
+        DrivePermissionLevel permissionLevel,
+        CancellationToken ct)
     {
         var folderId = ParseDriveFolderId(folderUrl);
         if (folderId is null)
@@ -236,11 +236,11 @@ internal sealed partial class TeamResourceService(
         return new LinkResourceResult(true, Resource: resource);
     }
 
-    public async Task<LinkResourceResult> LinkDriveFileAsync(
+    private async Task<LinkResourceResult> LinkDriveFileAsync(
         Guid teamId,
         string fileUrl,
-        DrivePermissionLevel permissionLevel = DrivePermissionLevel.Contributor,
-        CancellationToken ct = default)
+        DrivePermissionLevel permissionLevel,
+        CancellationToken ct)
     {
         var fileId = ParseDriveFileId(fileUrl);
         if (fileId is null)
@@ -657,14 +657,12 @@ internal sealed partial class TeamResourceService(
 }
 
 /// <summary>
-/// Application-layer options for <see cref="TeamResourceService"/> behavior.
-/// Bound by the Web layer from configuration.
+/// Options for <see cref="TeamResourceService"/> behavior, bound from configuration.
 /// </summary>
 internal sealed class TeamResourceManagementOptions
 {
     /// <summary>
-    /// Configuration section name (matches the pre-migration
-    /// <c>TeamResourceManagementSettings</c> section).
+    /// Configuration section name.
     /// </summary>
     public const string SectionName = "TeamResourceManagement";
 
