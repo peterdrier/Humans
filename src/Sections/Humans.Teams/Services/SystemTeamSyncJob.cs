@@ -369,7 +369,9 @@ internal sealed class SystemTeamSyncJob(
         };
     }
 
-    /// <summary>Volunteers membership for one user: in when approved with required consents signed.</summary>
+    /// <summary>Volunteers membership for one user: in when the required name fields are filled and the
+    /// required consents are signed, and the user is neither suspended nor rejected. Coordinator review
+    /// (<c>Profile.IsApproved</c>) annotates, it does not gate.</summary>
     private async Task SyncVolunteersMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var team = (await teamService.GetTeamsAsync(cancellationToken)).Values

@@ -88,8 +88,10 @@ The shapes imply:
   (on a change to the flag, so a caller passing its current value is not a write).
 - Early-entry grants exist only on `EarlyEntryEnabled` teams; disabling keeps grants but
   hides them from the roster; every grant mutation is audited and evicts the user's EE cache.
-- Every membership add/remove is audit-logged and mirrored to Google (add inline, remove
-  via the nightly reconciliation); the outbox append commits with the team write.
+- Every membership add/remove made one at a time is audit-logged and mirrored to Google (add
+  inline, remove via the nightly reconciliation); the outbox append commits with the team write.
+  Deactivating a team is the exception: `DeleteTeamAsync` closes its live memberships in bulk
+  and logs only, leaving the Board no audit record — ledgered in `Docs/debt.yml`.
 - Slugs are unique across `Slug` and `CustomSlug`; both resolve.
 - Erasure ends live memberships and hard-deletes join requests and EE grants; membership
   rows themselves are retained by legal basis.

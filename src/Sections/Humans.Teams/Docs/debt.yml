@@ -15,6 +15,9 @@ inbox:
     what: "Most TeamsResource keys lack the Teams_ prefix (TeamDetail_*, TeamAdmin_*, MyTeams_*, AdminEditTeam_*); pre-existing baseline, report only — a rename is a six-culture sweep plus every view binding (finding 12, /section-doctor on Teams 2026-09-05)."
     review: panel
   - added: 2026-09-14
+    what: "TeamService.DeleteTeamAsync deactivates a team by closing every live membership through TeamRepository.DeactivateTeamAsync, which stamps LeftAt and saves with no audit entry — only an ILogger line. An admin action ending members' memberships is invisible to the Board, against AGENTS.md's audit rule. Auditing it needs a call: a new AuditAction on the AuditLog leaf (public surface, Peter's approval) or one TeamMemberRemoved row per closed membership. Found by Codex reviewing peterdrier/Humans#1594."
+    review: panel
+  - added: 2026-09-14
     what: "CachingTeamService.GetTeamDirectoryAsync resolves IRoleAssignmentService sideways through its scope factory; memory/architecture/decorators-talk-only-to-inner.md forbids any collaborator beyond the keyed inner service and cache plumbing. Found by Codex reviewing peterdrier/Humans#1670; fix is a service-side move (the directory build belongs in TeamService or an orchestrator), not a decorator tweak."
     review: panel
   - added: 2026-09-14
