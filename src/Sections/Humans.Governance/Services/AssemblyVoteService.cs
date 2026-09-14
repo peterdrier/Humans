@@ -1211,18 +1211,25 @@ internal sealed class AssemblyVoteService(
         if (!await repository.UpdateAsync(vote, AssemblyVoteStatus.Open, readAt, ct))
             return AssemblyVoteActionResult.WrongState;
 
+        await audit.LogAsync(
+            AuditAction.AssemblyVoteExtended, AuditEntityTypes.AssemblyVote, vote.Id,
+            $"Extended assembly vote {vote.Id} from {previous} to {newClosesAt}.",
+            adminUserId);
+
         // Re-arm the T-24h reminder. A vote already inside the reminder window has stamped
         // rows, and the stamp means "told about the old deadline" — left alone, everyone
         // reminded before the extension is never told the new one, which is the deadline
         // that decides whether their ballot counts. Only stamps up to the extension are
         // cleared: an extension that leaves the vote inside the window does not stop a sweep
         // already running, and that sweep is announcing the new deadline already.
-        await repository.ClearReminderStampsAsync(vote.Id, extendedAt, ct);
-
-        await audit.LogAsync(
-            AuditAction.AssemblyVoteExtended, AuditEntityTypes.AssemblyVote, vote.Id,
-            $"Extended assembly vote {vote.Id} from {previous} to {newClosesAt}.",
-            adminUserId);
+        //
+        // Through the post-transition path, not on the request token: the new deadline is
+        // committed and there is no replay for an extension, so an Admin closing the tab
+        // would otherwise leave the stamps standing for a deadline that no longer exists
+        // and everyone already reminded permanently holding the old one.
+        await AfterTransitionAsync(
+            "re-arming the reminder after the extension", vote.Id,
+            token => repository.ClearReminderStampsAsync(vote.Id, extendedAt, token));
 
         return AssemblyVoteActionResult.Ok;
     }

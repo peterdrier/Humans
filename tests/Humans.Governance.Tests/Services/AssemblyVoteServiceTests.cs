@@ -1634,7 +1634,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ReassignAsync_WhenBothAccountsVotedInAClosedVote_KeepsBothBallots()
+    public async Task ReassignAsync_WhenBothAccountsVotedInAClosedVote_StillCollapsesToOneRow()
     {
         var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
         var source = Guid.NewGuid();
@@ -1649,18 +1649,19 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             source, target, Guid.NewGuid(), _fx.Clock.GetCurrentInstant(),
             Xunit.TestContext.Current.CancellationToken);
 
-        var ballots = await _fx.Db.AssemblyBallots.AsNoTracking()
-            .Where(b => b.VoteId == vote.Id)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
-        ballots.Should().HaveCount(2,
-            "the stored result counted two, and the disclosure list and the export have to "
-            + "keep agreeing with the acta");
-
+        // One row per person per vote, whatever state the vote is in: `(VoteId, UserId)` is
+        // unique, so pointing both rows at the survivor is a constraint violation that would
+        // fail the whole merge. The in-memory provider does not enforce the filtered index,
+        // so the row count is the assertion that keeps this honest.
         var rows = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
             .Where(r => r.VoteId == vote.Id)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
-        rows.Should().HaveCount(2).And.OnlyContain(r => r.UserId == target,
-            "both rows point at the surviving account so it can see the history");
+        rows.Should().ContainSingle().Which.UserId.Should().Be(target);
+
+        var ballots = await _fx.Db.AssemblyBallots.AsNoTracking()
+            .Where(b => b.VoteId == vote.Id)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        ballots.Should().ContainSingle("one person holds one ballot per vote");
     }
 
     [HumansFact]

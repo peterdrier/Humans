@@ -575,23 +575,18 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
             .Where(b => rosterIds.Contains(b.RosterId))
             .ToDictionaryAsync(b => b.RosterId, b => b, ct);
 
-        // Which of these votes are still taking ballots. Deduplicating two roster rows into
-        // one only makes sense while the tally is still being formed: a vote that has closed
-        // has its result stored and immutable, counted from the rows as they stood at close.
-        // Dropping a row or a ballot afterwards leaves the disclosure list, the participation
-        // figures and the GDPR export reporting one ballot where the stored legal result
-        // counted two. So a closed vote keeps both rows, pointed at the surviving account.
-        var openVoteIds = (await ctx.AssemblyVotes
-                .Where(v => voteIds.Contains(v.Id) && v.Status == AssemblyVoteStatus.Open)
-                .Select(v => v.Id)
-                .ToListAsync(ct))
-            .ToHashSet();
-
+        // One roster row per person per vote, in every state the vote can be in. That is not
+        // a policy choice here: `(VoteId, UserId)` is a unique index, so keeping both rows and
+        // pointing them at the surviving account is a constraint violation that fails the whole
+        // merge. A closed vote therefore dedupes like an open one. What that costs is narrow
+        // and worth stating: the stored result carries its own roster size and ballot count,
+        // computed at close, so the published numbers do not move — but the disclosure list
+        // and the GDPR export read live rows and will show one ballot where the stored tally
+        // counted two, for the one human who voted twice through two accounts.
         var dropped = new List<AssemblyRosterDrop>();
         foreach (var row in sourceRows)
         {
-            if (openVoteIds.Contains(row.VoteId)
-                && targetRowByVoteId.TryGetValue(row.VoteId, out var targetRow))
+            if (targetRowByVoteId.TryGetValue(row.VoteId, out var targetRow))
             {
                 // The target already holds this vote's roster row, so the source's row goes
                 // — one person, one roster row per vote. The entitlement is not dropped with it:
