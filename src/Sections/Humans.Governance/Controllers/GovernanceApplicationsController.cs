@@ -47,6 +47,7 @@ internal sealed class GovernanceApplicationsController(
                     MembershipTier = a.MembershipTier,
                     SubmittedAt = a.SubmittedAt.ToDateTimeUtc(),
                     ResolvedAt = a.ResolvedAt?.ToDateTimeUtc(),
+                    TermExpiresAt = a.TermExpiresAt,
                     StatusBadgeClass = EnumBadgeMap.For(a.Status)
                 }).ToList(),
             CanSubmitNew = !hasPendingApplication,

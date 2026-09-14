@@ -27,6 +27,12 @@ internal sealed class HoldedNightlySync(
         }
 
         await finance.SyncAsync(ct);
-        await holded.SyncLedgerAsync(full: false, ct);
+
+        // The sweep gate is non-blocking: a sweep already in flight (an admin's Sync now, or a
+        // full resync still rebuilding) makes this one return false rather than queue. Tonight's
+        // window then goes unswept, so say so — reconciliation will cover it, but a silent no-op
+        // reads as a successful sync in the job history.
+        if (!await holded.SyncLedgerAsync(full: false, ct))
+            logger.LogWarning("Nightly Holded ledger sweep skipped — a sweep was already running.");
     }
 }

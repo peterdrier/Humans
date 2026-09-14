@@ -8,7 +8,7 @@ namespace Humans.Shifts.Contracts;
 /// sites, not from the interface: these are the members of the section's
 /// internal <c>IShiftManagementService</c> that something outside the section
 /// actually calls. The rota/shift generation surface, the coordinator
-/// dashboard's twelve aggregate reads and the post-event stats have no
+/// dashboard's aggregate reads and the post-event stats have no
 /// external caller and stay internal.
 /// </summary>
 /// <remarks>
@@ -45,13 +45,8 @@ public interface IShiftManagementServiceRead
 
     /// <summary>
     /// One rota's header fields by id, or <c>null</c> when it does not exist.
-    /// Served from the per-rota cache — free once warm, but a miss populates that
-    /// cache's full view shape, which is far more than these two fields need (ledgered
-    /// 2026-08-20). Added so the section's own
-    /// <c>&lt;vc:shifts-search-result&gt;</c> can render a row the global-search
-    /// orchestrator holds only an id for (nobodies-collective/Humans#1062);
-    /// no visibility filter — the id already came from a filtered search, and
-    /// the destination page enforces access (nobodies-collective/Humans#985).
+    /// Served from the per-rota cache; no visibility filter — the id came from
+    /// a filtered search and the destination page enforces access.
     /// </summary>
     Task<RotaInfo?> GetRotaAsync(Guid rotaId, CancellationToken cancellationToken = default);
 
@@ -135,7 +130,7 @@ public interface IShiftManagementServiceRead
 /// <see cref="IShiftManagementServiceRead.SearchAsync"/>, already scored by this
 /// section — the orchestrator ranks by <see cref="Score"/> and passes
 /// <see cref="RotaId"/> to <c>&lt;vc:shifts-search-result&gt;</c>, which fetches
-/// the row's team name and link itself (nobodies-collective/Humans#1062).
+/// the row's team name and link itself.
 /// Names-only matching: only <see cref="Name"/> is matched.
 /// </summary>
 /// <param name="RotaId">The matched rota; the key the row's view component is invoked with.</param>

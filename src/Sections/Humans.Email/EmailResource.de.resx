@@ -47,9 +47,6 @@
   <data name="Email_ApplicationApproved_Subject" xml:space="preserve">
     <value>Willkommen bei Humans!</value>
   </data>
-  <data name="Email_ApplicationApproved_Heading" xml:space="preserve">
-    <value>Ihr Antrag wurde genehmigt!</value>
-  </data>
   <data name="Email_ApplicationRejected_Subject" xml:space="preserve">
     <value>Bezüglich Ihres Mitgliedschaftsantrags</value>
   </data>
@@ -69,9 +66,6 @@
   </data>
   <data name="Email_Welcome_Subject" xml:space="preserve">
     <value>Willkommen bei Humans!</value>
-  </data>
-  <data name="Email_Welcome_Heading" xml:space="preserve">
-    <value>Willkommen!</value>
   </data>
   <data name="Email_AccessSuspended_Subject" xml:space="preserve">
     <value>Ihr Mitgliedschaftszugang wurde gesperrt</value>
@@ -363,20 +357,6 @@
   <data name="Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve">
     <value>&lt;p&gt;Liebe/r {0},&lt;/p&gt;&lt;p&gt;Eine Nachricht vom Koordinator von &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Zur Info, deine Schichten in den kommenden Dienstpl&#xE4;nen dieses Teams:&lt;/p&gt;{4}&lt;p&gt;Danke,&lt;/p&gt;{5}</value>
   </data>
-  <data name="Email_BoardDailyDigest_Subject" xml:space="preserve"><value>Vorstandsbericht: {0}</value><comment>{0} = date (YYYY-MM-DD)</comment></data>
-  <data name="Email_BoardDailyDigest_Body" xml:space="preserve"><value>&lt;h2&gt;Vorstandsbericht &amp;mdash; {1}&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-{3}
-{2}
-&lt;p&gt;Das Humans-Team&lt;/p&gt;</value><comment>{0} = board member name, {1} = date, {2} = approvals HTML, {3} = outstanding HTML</comment></data>
-  <data name="Email_BoardDigest_OutstandingHeader" xml:space="preserve"><value>Offene Punkte</value></data>
-  <data name="Email_BoardDigest_NoApprovals" xml:space="preserve"><value>Gestern gab es keine neuen Genehmigungen.</value></data>
-  <data name="Email_BoardDigest_OnboardingReview" xml:space="preserve"><value>{0} warten auf Onboarding-Pr&#xFC;fung</value><comment>{0} = count</comment></data>
-  <data name="Email_BoardDigest_StillOnboarding" xml:space="preserve"><value>{0} schlie&#xDF;en noch das Onboarding ab</value><comment>{0} = count</comment></data>
-  <data name="Email_BoardDigest_BoardVoting" xml:space="preserve"><value>{0} Stufenantr&#xE4;ge warten auf Abstimmung ({1} brauchen deine)</value><comment>{0} = total count, {1} = member's unvoted count</comment></data>
-  <data name="Email_BoardDigest_TeamJoinRequests" xml:space="preserve"><value>{0} Team-Beitrittsanfragen ausstehend</value><comment>{0} = count</comment></data>
-  <data name="Email_BoardDigest_PendingConsents" xml:space="preserve"><value>{0} mit ausstehenden Einwilligungen</value><comment>{0} = count</comment></data>
-  <data name="Email_BoardDigest_PendingDeletions" xml:space="preserve"><value>{0} Kontol&#xF6;schungen ausstehend</value><comment>{0} = count</comment></data>
   <data name="Email_SurveyInvitation_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
 &lt;p&gt;Hallo {0},&lt;/p&gt;
 {3}

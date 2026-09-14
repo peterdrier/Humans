@@ -59,7 +59,7 @@ public class ShiftsControllerDietaryGateTests
         // dietary; tests override via SetDietary.
         SetDietary(null);
 
-        // Mine() reads shiftView.GetUserAsync(...).Signups (#720); return an
+        // Mine() reads shiftView.GetUserAsync(...).Signups (nobodies-collective/Humans#720); return an
         // empty, event-less view so the Mine-flag tests reach the dietary
         // computation without a full shift-graph fixture.
         _shiftView.GetUserAsync(_user.Id, Arg.Any<CancellationToken>())

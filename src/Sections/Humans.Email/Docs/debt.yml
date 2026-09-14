@@ -1,0 +1,7 @@
+# Section debt ledger for Humans.Email. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+inbox:
+  - added: 2026-09-10
+    what: "reportLink is dead end-to-end in the feedback-reply email: Email_FeedbackResponse_Body uses {0}–{2} in every culture and EmailRenderer.RenderFeedbackResponse passes the encoded link as an unused {3}. Drop the argument from IEmailMessageFactory.FeedbackResponse, IEmailRenderer.RenderFeedbackResponse and the Feedback caller (finding 23, /section-doctor on Feedback 2026-08-31; swept in by /section-doctor on Rideshare 2026-09-10)."
+    review: light

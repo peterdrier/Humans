@@ -25,11 +25,9 @@ namespace Humans.Gate.Jobs;
 /// Event-manager (or Admin) scope — an Order-manager key 403s on <c>/v1/check_ins</c>.
 /// </summary>
 /// <remarks>
-/// Moved out of <c>Humans.Infrastructure/Jobs</c> at G5 lane 5b-3
-/// (nobodies-collective/Humans#866). Gate, not Tickets: both enqueue sites are Gate
-/// controllers, and it calls into Tickets through the public
-/// <see cref="Humans.Tickets.Contracts.ITicketVendorMirror"/>. It sits under
-/// <c>Jobs/</c> because Shell names the concrete type at registration and HUM0034 makes
+/// Gate, not Tickets: both enqueue sites are Gate controllers, and it calls into Tickets
+/// through the public <see cref="Humans.Tickets.Contracts.ITicketVendorMirror"/>. It sits
+/// under <c>Jobs/</c> because Hangfire activates the concrete type and HUM0034 makes
 /// every other public type in a section assembly an error.
 /// </remarks>
 [AutomaticRetry(Attempts = 0)]
@@ -56,7 +54,7 @@ public sealed class GateVendorCheckInJob(
         if (string.IsNullOrWhiteSpace(vendorTicketId))
             return;
 
-        // Off by default until the check-in payload is verified (see TicketTailorService).
+        // Gated behind Gate:VendorMirrorEnabled (default off).
         if (!configuration.GetValue<bool>("Gate:VendorMirrorEnabled"))
         {
             logger.LogDebug(

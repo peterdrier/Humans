@@ -7,14 +7,11 @@ namespace Humans.Shifts.Services;
 /// bundles behind <see cref="Humans.Shifts.Contracts.IShiftView"/>.
 /// </summary>
 /// <remarks>
-/// Issue #720 introduced one interface carrying both the per-user and the
-/// per-rota bundle. Only the per-user one has consumers outside the section,
-/// and they read a handful of scalars off it rather than the EF rows — so the
-/// boundary keeps <c>IShiftView</c> with a flat
-/// <see cref="Humans.Shifts.Contracts.ShiftUserSummary"/>, and this interface
-/// keeps the rows for the section's own readers, which navigate
-/// <c>Shift</c> → <c>Rota</c> → <c>EventSettings</c> throughout
-/// (nobodies-collective/Humans#866, G5).
+/// Only the per-user bundle has consumers outside the section, and they read
+/// scalars — so <c>IShiftView</c> exposes the flat
+/// <see cref="Humans.Shifts.Contracts.ShiftUserSummary"/> and this interface
+/// keeps the EF rows for the section's own readers, which navigate
+/// <c>Shift</c> → <c>Rota</c> → <c>EventSettings</c> throughout.
 ///
 /// <para>
 /// Same implementation and the same two caches serve both: the section's

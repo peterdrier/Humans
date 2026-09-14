@@ -17,9 +17,12 @@ public abstract class HumansCampControllerBase(
         return campService.GetCampBySlugAsync(slug, cancellationToken);
     }
 
-    protected async Task<(bool IsLead, bool IsCampAdmin)> ResolveCampViewerStateAsync(Guid campId, UserInfo? user, CancellationToken cancellationToken = default)
+    protected async Task<(bool IsLead, bool IsCampAdmin)> ResolveCampViewerStateAsync(CampInfo camp, UserInfo? user)
     {
-        var canManage = (await authorizationService.AuthorizeAsync(User, campId, CampOperationRequirement.Manage)).Succeeded;
+        // Authorize against the loaded camp, not its id: the id path re-resolves the camp
+        // through the PublicYear projection, which cannot see a camp whose only season is
+        // a future (not-yet-public) year — locking its own lead out.
+        var canManage = (await authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.Manage)).Succeeded;
         if (!canManage)
         {
             return (false, false);
@@ -30,13 +33,7 @@ public abstract class HumansCampControllerBase(
             return (false, false);
         }
 
-        var campSettings = await campService.GetSettingsAsync(cancellationToken);
-        var camp = (await campService.GetCampsForYearAsync(campSettings.PublicYear, cancellationToken))
-            .FirstOrDefault(c => c.Id == campId);
-        var isLead = camp?.IsLead(user.Id) == true;
-        var isCampAdmin = RoleChecks.IsCampAdmin(User);
-
-        return (isLead, isCampAdmin);
+        return (camp.IsLead(user.Id), RoleChecks.IsCampAdmin(User));
     }
 
     protected async Task<(IActionResult? ErrorResult, UserInfo User, CampInfo Camp)> ResolveCampManagementAsync(string slug)

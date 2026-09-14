@@ -2,6 +2,9 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 inbox:
-  - added: 2026-08-24
-    what: "src/Sections/Humans.Camps/Models/CampAdmin/CampAdminPageBuilder.cs lines 74, 76 and 77 carry UTF-8 mojibake em-dashes (\u00e2\u20ac\u201d) from an encoding round-trip \u2014 the same one that hit Development's seeder comments. These are rendered fallback strings for a page, so the mojibake reaches a user's screen, not just a reader. Found by /section-doctor on Development 2026-08-24."
+  - added: 2026-08-28
+    what: "tests/Humans.Camps.Tests/Infrastructure/UserInfoStubHelpers.cs MakeUserInfo is dead — no caller in the project (CampControllerTests defines its own private MakeUserInfo with a different arity); only ToUserInfo is used. Found by /section-doctor on Camps 2026-08-28 (finding T7)."
+    review: light
+  - added: 2026-08-28
+    what: "Test gaps from the invariant matrix (/section-doctor on Camps 2026-08-28): (a) no test asserts audit entries on ApproveCampMemberAsync, RejectCampMemberAsync, RemoveCampMemberAsync, ApproveSeasonAsync, RejectSeasonAsync, ChangeSeasonNameAsync or DeleteCampAsync — the admin-acts-on-member's-behalf verbs assert state and notifications only; (b) the (season,user) partial unique index and the 23505 race fallbacks in RequestMembershipAsync/AddAssignmentAsync have no test (EF InMemory cannot raise 23505); (c) nothing pins EE-grant behavior when CampSettings.EeStartDate is null or in the future; (d) no test ties the EE endpoint to CampOperationRequirement.Manage."
     review: light

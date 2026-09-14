@@ -14,8 +14,6 @@
   <ItemGroup>
     <!--
       Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
-      Declaring them keeps the files moved out of the five owning sections byte-identical
-      to their originals.
     -->
     <Using Include="Microsoft.AspNetCore.Http" />
     <Using Include="Microsoft.AspNetCore.Routing" />
@@ -34,11 +32,11 @@
       contracts leaf (Issues) — HUM0034 keeps everything else in those assemblies internal,
       so the reference cannot widen past the published surface. Acyclic by construction:
       nothing references Backdoor. Debug is absent — /api/backdoor/logs reads
-      InMemoryLogSink, which is Base's.
+      InMemoryLogSink, which is Base's; so is Humans.Issues itself, since every Issues type
+      named here resolves from the contracts leaf.
     -->
     <ProjectReference Include="..\Humans.Agent\Humans.Agent.csproj" />
     <ProjectReference Include="..\Humans.Feedback\Humans.Feedback.csproj" />
-    <ProjectReference Include="..\Humans.Issues\Humans.Issues.csproj" />
     <ProjectReference Include="..\Humans.Issues.Contracts\Humans.Issues.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Surveys\Humans.Surveys.csproj" />
   </ItemGroup>

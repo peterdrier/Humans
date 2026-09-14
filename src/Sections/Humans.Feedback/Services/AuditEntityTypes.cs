@@ -11,11 +11,8 @@ namespace Humans.Feedback.Services;
 /// current CLR type names.
 /// </para>
 /// <para>
-/// They were written as <c>nameof(FeedbackReport)</c>, which would silently change what
-/// the code writes and queries if the entity were renamed. Declaring the literal is what
-/// makes a rename schema-inert the way the EF <c>ToTable</c> calls already are
-/// (memory/code/type-name-as-persisted-string.md). Never regenerate these from
-/// <c>nameof</c>.
+/// Never regenerate these from <c>nameof</c> — the literal keeps a CLR rename
+/// schema-inert (memory/code/type-name-as-persisted-string.md).
 /// </para>
 /// </remarks>
 internal static class AuditEntityTypes

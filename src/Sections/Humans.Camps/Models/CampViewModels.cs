@@ -275,6 +275,6 @@ internal sealed class CampSummaryRowViewModel
     public int EeSlotCount { get; set; }
     /// <summary>Count of Active members with HasEarlyEntry=true for this season.</summary>
     public int EeGrantedCount { get; set; }
-    /// <summary>Count of Active <see cref="Humans.Domain.Entities.CampMember"/> rows for this season (humans who joined in-app).</summary>
+    /// <summary>Count of Active <see cref="Humans.Camps.Domain.CampMember"/> rows for this season (humans who joined in-app).</summary>
     public int JoinedMemberCount { get; set; }
 }

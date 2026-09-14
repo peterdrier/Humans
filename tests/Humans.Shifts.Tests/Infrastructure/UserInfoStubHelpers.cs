@@ -52,62 +52,6 @@ internal static class UserInfoStubHelpers
             []);
 
     /// <summary>
-    /// Stubs GetUserInfosAsync to read from the provided DbContext options (new context per call,
-    /// includes UserEmails + Profile slice).
-    /// </summary>
-    public static IUserService StubGetUserInfosFromDb(this IUserService userService, DbContextOptions<UsersDbContext> options)
-    {
-        userService
-            .GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
-                var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
-                if (ids.Count == 0)
-                    return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
-                        new Dictionary<Guid, UserInfo>());
-                using var db = new UsersDbContext(options);
-                var users = db.Users.AsNoTracking()
-                    .Include(u => u.UserEmails)
-                    .Where(u => ids.Contains(u.Id))
-                    .ToList();
-                var profiles = db.Profiles.AsNoTracking()
-                    .Where(p => ids.Contains(p.UserId))
-                    .ToDictionary(p => p.UserId);
-                IReadOnlyDictionary<Guid, UserInfo> dict = users.ToDictionary(
-                    u => u.Id,
-                    u => u.ToUserInfo(u.UserEmails.ToList(), profiles.GetValueOrDefault(u.Id)));
-                return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
-            });
-        return userService;
-    }
-
-    /// <summary>
-    /// Stubs GetAllUserInfosAsync to read from the provided DbContext options
-    /// (new context per call, includes UserEmails + Profile slice).
-    /// </summary>
-    public static IUserService StubGetAllUserInfosFromDb(this IUserService userService, DbContextOptions<UsersDbContext> options)
-    {
-        userService
-            .GetAllUserInfosAsync(Arg.Any<CancellationToken>())
-            .Returns(_ =>
-            {
-                using var db = new UsersDbContext(options);
-                var users = db.Users.AsNoTracking()
-                    .Include(u => u.UserEmails)
-                    .ToList();
-                var userIds = users.Select(u => u.Id).ToList();
-                var profiles = db.Profiles.AsNoTracking()
-                    .Where(p => userIds.Contains(p.UserId))
-                    .ToDictionary(p => p.UserId);
-                IReadOnlyCollection<UserInfo> result = users
-                    .Select(u => u.ToUserInfo(u.UserEmails.ToList(), profiles.GetValueOrDefault(u.Id)))
-                    .ToList();
-                return Task.FromResult(result);
-            });
-        return userService;
-    }
-
-    /// <summary>
     /// Stubs GetUserInfosAsync to read from a long-lived DbContext (uses AsNoTracking but reuses
     /// the same instance — fine for in-memory tests that share one ctx).
     /// </summary>
@@ -132,29 +76,6 @@ internal static class UserInfoStubHelpers
                     u => u.Id,
                     u => u.ToUserInfo(u.UserEmails.ToList(), profiles.GetValueOrDefault(u.Id)));
                 return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
-            });
-        return userService;
-    }
-
-    /// <summary>
-    /// Stubs the singular GetUserInfoAsync to read from a long-lived DbContext, mirroring
-    /// <see cref="StubGetUserInfosFromContext"/>. Returns null for unknown ids.
-    /// </summary>
-    public static IUserService StubGetUserInfoFromContext(this IUserService userService, UsersDbContext dbContext)
-    {
-        userService
-            .GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
-                var id = callInfo.Arg<Guid>();
-                var user = dbContext.Users.AsNoTracking()
-                    .Include(u => u.UserEmails)
-                    .FirstOrDefault(u => u.Id == id);
-                if (user is null)
-                    return new ValueTask<UserInfo?>((UserInfo?)null);
-                var profile = dbContext.Profiles.AsNoTracking()
-                    .FirstOrDefault(p => p.UserId == id);
-                return new ValueTask<UserInfo?>(user.ToUserInfo(user.UserEmails.ToList(), profile));
             });
         return userService;
     }
