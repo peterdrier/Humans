@@ -80,8 +80,8 @@ rules:
       check was an allow-list and reported Helpers/ and Extensions/ as violations. We want
       sections consistent with each other, not restricted in which folders they carry —
       one section having Helpers/ and another not is fine; one spelling it Db/ while the
-      rest say Database/ is not. Rewritten as a cross-section spelling check, so those two
-      rows are retired rather than carried. This is a case where we do not have to be 100%
+      rest say Database/ is not. Rewritten as a cross-section spelling check, so the
+      Helpers/ and Extensions/ rows above are retired rather than carried. This is a case where we do not have to be 100%
       perfect. Jobs/ and ViewComponents/ are used by sections but missing from
       the template's own list — the template is the home of this rule and needs that fix.
       2026-08-23 (Peter, via /section-doctor on Onboarding): the root-file allow-regex was

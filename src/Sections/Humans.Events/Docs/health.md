@@ -25,12 +25,12 @@ Six question-shapes. Every route, contract method, component and job answers exa
 | **Configure** | what are the rules of this edition? | `/Events/Admin/Settings`, `/Events/Admin/Categories`, `/Events/Admin/Venues` |
 | **Publish** | get the programme out | `/Events/Dashboard`, `/Events/Export/Csv`, `/Events/Export/PrintGuide` |
 
-Collapse pressure this grouping exposes: **Programme** is answered five different ways over one
-cached snapshot, each re-deriving occurrence expansion, camp-name resolution and submitter-name
+Collapse pressure this grouping exposes: **Programme** is answered by every route in its row over
+one cached snapshot, each re-deriving occurrence expansion, camp-name resolution and submitter-name
 fallback from scratch — and because favourites come back as the internal `EventInfo` while browse
 comes back as the published `ApprovedEventView`, the API controller carries every projection
-helper twice; **Propose** has two near-identical form pipelines (individual, barrio) that differ
-only in which two fields apply.
+helper twice; **Propose** has near-identical form pipelines (individual, barrio) that differ
+only in which fields apply.
 
 ## 3. Structure
 
