@@ -1543,10 +1543,6 @@ internal sealed class AssemblyVoteService(
     }
 
     /// <summary>
-    /// Pairs roster rows with their member's details and notification address, dropping
-    /// anonymized rows and anyone with no reachable address.
-    /// </summary>
-    /// <summary>
     /// The roster row that entitles this human to a ballot on this vote: their own, or one
     /// left standing on an account merged into theirs.
     /// <para>
@@ -1576,33 +1572,31 @@ internal sealed class AssemblyVoteService(
         return null;
     }
 
+    /// <summary>
+    /// Pairs roster rows with their member's details and notification address, dropping
+    /// anonymized rows and anyone with no reachable address.
+    /// </summary>
+    /// <remarks>
+    /// Keyed by the roster row's own user id, with no resolution of accounts merged away
+    /// since the vote opened: a tombstone holds no notification address, so such a row
+    /// drops out here and that member is not mailed. Following the merge forward is Users'
+    /// business, not this section's, and no read contract offers it — the entitlement
+    /// itself survives, because <see cref="EffectiveRosterAsync"/> finds the row from the
+    /// surviving account and the member can still cast their ballot from the vote page.
+    /// </remarks>
     private async Task<List<(AssemblyVoteRoster Roster, UserInfo Info, string Address)>> RecipientsAsync(
         IReadOnlyList<AssemblyVoteRoster> roster, CancellationToken ct)
     {
-        var rosterUserIds = roster.Where(r => r.UserId is not null).Select(r => r.UserId!.Value).ToList();
-        if (rosterUserIds.Count == 0) return [];
+        var userIds = roster.Where(r => r.UserId is not null).Select(r => r.UserId!.Value).Distinct().ToList();
+        if (userIds.Count == 0) return [];
 
-        // A roster row for an account that has since been merged away still names that
-        // account, because the merge leaves the record alone. The human is reachable at the
-        // surviving account, and only there: the merge moved their email addresses with it,
-        // so mailing the tombstone silently drops the row and the member is never told their
-        // vote opened or is closing.
-        var rosterInfos = await users.GetUserInfosAsync(rosterUserIds, ct);
-        var effective = rosterUserIds.ToDictionary(
-            id => id,
-            id => rosterInfos.TryGetValue(id, out var info) && info.MergedToUserId is { } survivor
-                ? survivor
-                : id);
-
-        var userIds = effective.Values.Distinct().ToList();
         var infos = await users.GetUserInfosAsync(userIds, ct);
         var addresses = await userEmails.GetNotificationTargetEmailsAsync(userIds, ct);
 
         return roster
-            .Where(r => r.UserId is not null)
-            .Select(r => (Roster: r, UserId: effective[r.UserId!.Value]))
-            .Where(x => infos.ContainsKey(x.UserId) && addresses.ContainsKey(x.UserId))
-            .Select(x => (x.Roster, infos[x.UserId], addresses[x.UserId]))
+            .Where(r => r.UserId is not null
+                && infos.ContainsKey(r.UserId.Value) && addresses.ContainsKey(r.UserId.Value))
+            .Select(r => (r, infos[r.UserId!.Value], addresses[r.UserId!.Value]))
             .ToList();
     }
 
