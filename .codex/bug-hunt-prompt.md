@@ -1,4 +1,4 @@
-# Bug Hunt — Codex Autonomous Prompt
+# Bug Hunt — Autonomous Prompt (Codex and Claude)
 
 ## Mission
 
@@ -57,6 +57,7 @@ If you're unsure whether something is "unused" — it isn't. Skip it.
 Section-owned persistence, entity-model, configuration, and generated migrations are allowed when the fix needs them. Read and follow [section-migrations-in-maintenance](../memory/process/section-migrations-in-maintenance.md), including migration tooling, review, and existing approval requirements. Substantial architecture transitions get explicitly scoped tasks and dedicated PRs.
 
 Do not modify:
+- **Entity properties that appear unused** — they are accessed via reflection
 - **Any `[JsonPropertyName]`, `[JsonInclude]`, `[JsonConstructor]`, `[JsonPolymorphic]`, or `[JsonDerivedType]` attributes**
 - **Shipped migration files** — generate new migrations in the owning section; never hand-edit migration history
 - **ConsentRecord** — append-only table with database triggers preventing UPDATE/DELETE
@@ -113,6 +114,14 @@ This project uses **Font Awesome 6 only**. Bootstrap Icons are NOT loaded.
 
 **How to fix:**
 - Replace `bi bi-*` with the equivalent `fa-solid fa-*` icon
+
+### Resx HTML Escaping *(production incident — 15 entries across 4 locale files)*
+
+Resx files are XML. HTML inside `<value>` elements must be XML-escaped (`<p>` → `&lt;p&gt;`). Raw tags parse as child elements and are silently stripped — the localizer returns plain text with no links or structure, and the build stays green.
+
+**How to find them:** search every `*.resx` for `<value>` entries starting with a raw tag (`<value><[a-z]`); compare escaped-entry counts between the English file and each locale; email bodies (`Email_*_Body`) carry the most HTML.
+
+**How to fix:** escape `<`/`>` inside the `<value>` content only, keep it on one line matching the English template, and re-check the counts. See `memory/code/resx-structure-aware-edits.md`.
 
 ## Phase 2: Missing .Include() on EF Core Queries *(6+ historical fixes)*
 

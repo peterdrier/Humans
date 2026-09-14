@@ -19,7 +19,7 @@ None of that was caused by the work. It was caused by the branch topology.
 
 ```bash
 git fetch origin main
-git worktree add .worktrees/<lane> -b <lane> origin/main   # every lane, same base
+git worktree add .claude/worktrees/<lane> -b <lane> origin/main   # every lane, same base
 ```
 
 Lanes are concurrent writers, so they keep separate worktrees even in a cloud run — the exception [[always-use-worktree]] names, alongside `/refactor-swarm`.

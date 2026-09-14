@@ -50,4 +50,4 @@ The `rmdir` step exists because `git worktree remove` often empties the contents
 - If the dir has any contents whatsoever — files, subdirs, hidden files — STOP. Don't escalate.
 - Reporting format: paste the literal git error and stop. Don't propose follow-up actions.
 - Git-level cleanup (registration via `git worktree prune`, local branch via `git branch -d`, remote branch via `git push origin --delete`) can still proceed without the filesystem dir being gone — none of that depends on filesystem deletion.
-- Applies to ANY worktree under `.worktrees/<name>` or anywhere else, regardless of whether the branch was just merged, abandoned, or never had a remote.
+- Applies to ANY worktree under `.claude/worktrees/<name>` or anywhere else, regardless of whether the branch was just merged, abandoned, or never had a remote.
