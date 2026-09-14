@@ -45,7 +45,7 @@
     <comment>{0} = applicant name</comment>
   </data>
   <data name="Email_ApplicationApproved_Subject" xml:space="preserve">
-    <value>Benvingut/da a Humans!</value>
+    <value>Benvingut/da a l'associació!</value>
   </data>
   <data name="Email_ApplicationRejected_Subject" xml:space="preserve">
     <value>Sobre la teva sol·licitud de membres</value>
@@ -108,7 +108,7 @@
   <data name="Email_ApplicationApproved_Body" xml:space="preserve">
     <value>&lt;h2&gt;La teva sol·licitud ha estat aprovada!&lt;/h2&gt;
 &lt;p&gt;Hola {0},&lt;/p&gt;
-&lt;p&gt;Ens complau informar-te que la teva sol·licitud de {1} ha estat aprovada. Benvingut/da a Humans!&lt;/p&gt;
+&lt;p&gt;Ens complau informar-te que la teva sol·licitud de {1} ha estat aprovada. Benvingut/da a l'associació!&lt;/p&gt;
 &lt;p&gt;Ara pots accedir al teu perfil i explorar equips:&lt;/p&gt;
 &lt;ul&gt;
     &lt;li&gt;&lt;a href="{2}/Profile"&gt;Veure el teu perfil&lt;/a&gt;&lt;/li&gt;

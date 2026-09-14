@@ -45,7 +45,7 @@
     <comment>{0} = applicant name</comment>
   </data>
   <data name="Email_ApplicationApproved_Subject" xml:space="preserve">
-    <value>Willkommen bei Humans!</value>
+    <value>Willkommen im Verein!</value>
   </data>
   <data name="Email_ApplicationRejected_Subject" xml:space="preserve">
     <value>Bezüglich Ihres Mitgliedschaftsantrags</value>
@@ -108,7 +108,7 @@
   <data name="Email_ApplicationApproved_Body" xml:space="preserve">
     <value>&lt;h2&gt;Dein Antrag wurde genehmigt!&lt;/h2&gt;
 &lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;Wir freuen uns, dir mitteilen zu können, dass dein {1}-Antrag genehmigt wurde. Willkommen bei Humans!&lt;/p&gt;
+&lt;p&gt;Wir freuen uns, dir mitteilen zu können, dass dein {1}-Antrag genehmigt wurde. Willkommen im Verein!&lt;/p&gt;
 &lt;p&gt;Du kannst jetzt auf dein Profil zugreifen und Teams erkunden:&lt;/p&gt;
 &lt;ul&gt;
     &lt;li&gt;&lt;a href="{2}/Profile"&gt;Dein Profil ansehen&lt;/a&gt;&lt;/li&gt;

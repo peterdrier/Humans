@@ -45,7 +45,7 @@
     <comment>{0} = applicant name</comment>
   </data>
   <data name="Email_ApplicationApproved_Subject" xml:space="preserve">
-    <value>Bienvenue sur Humans !</value>
+    <value>Bienvenue dans l'association !</value>
   </data>
   <data name="Email_ApplicationRejected_Subject" xml:space="preserve">
     <value>Concernant votre candidature d'adhésion</value>
@@ -108,7 +108,7 @@
   <data name="Email_ApplicationApproved_Body" xml:space="preserve">
     <value>&lt;h2&gt;Votre demande a été approuvée !&lt;/h2&gt;
 &lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Nous avons le plaisir de vous informer que votre demande de {1} a été approuvée. Bienvenue chez Humans !&lt;/p&gt;
+&lt;p&gt;Nous avons le plaisir de vous informer que votre demande de {1} a été approuvée. Bienvenue dans l'association !&lt;/p&gt;
 &lt;p&gt;Vous pouvez désormais accéder à votre profil et explorer les équipes :&lt;/p&gt;
 &lt;ul&gt;
     &lt;li&gt;&lt;a href="{2}/Profile"&gt;Voir votre profil&lt;/a&gt;&lt;/li&gt;

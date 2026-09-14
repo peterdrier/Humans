@@ -36,7 +36,7 @@
   <!-- Common / Shared          -->
   <!-- ======================== -->
   <data name="Email_ApplicationSubmitted_Subject" xml:space="preserve"><value>New Membership Application: {0}</value><comment>{0} = applicant name</comment></data>
-  <data name="Email_ApplicationApproved_Subject" xml:space="preserve"><value>Welcome to Humans!</value></data>
+  <data name="Email_ApplicationApproved_Subject" xml:space="preserve"><value>Welcome to the association!</value></data>
   <data name="Email_ApplicationRejected_Subject" xml:space="preserve"><value>Regarding Your Membership Application</value></data>
   <data name="Email_SignupRejected_Subject" xml:space="preserve"><value>Regarding Your Signup</value></data>
   <data name="Email_SurveyInvitation_Subject" xml:space="preserve"><value>Please complete: {0}</value><comment>{0} = survey title</comment></data>
@@ -62,7 +62,7 @@
 &lt;p&gt;&lt;a href="{2}/Governance/Applications/Admin/{1}"&gt;Review Application&lt;/a&gt;&lt;/p&gt;</value><comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment></data>
   <data name="Email_ApplicationApproved_Body" xml:space="preserve"><value>&lt;h2&gt;Your Application Has Been Approved!&lt;/h2&gt;
 &lt;p&gt;Dear {0},&lt;/p&gt;
-&lt;p&gt;We're delighted to inform you that your {1} application has been approved. Welcome to Humans!&lt;/p&gt;
+&lt;p&gt;We're delighted to inform you that your {1} application has been approved. Welcome to the association!&lt;/p&gt;
 &lt;p&gt;You can now access your profile and explore teams:&lt;/p&gt;
 &lt;ul&gt;
     &lt;li&gt;&lt;a href="{2}/Profile"&gt;View Your Profile&lt;/a&gt;&lt;/li&gt;
