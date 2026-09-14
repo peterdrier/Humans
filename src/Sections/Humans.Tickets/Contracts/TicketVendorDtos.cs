@@ -13,7 +13,6 @@ public record VendorOrderDto(
     string PaymentStatus,
     string? VendorDashboardUrl,
     Instant PurchasedAt,
-    IReadOnlyList<VendorTicketDto> Tickets,
     string? StripePaymentIntentId = null,
     decimal? DiscountAmount = null,
     decimal DonationAmount = 0m);
@@ -60,12 +59,6 @@ public enum DiscountType
     Percentage,
     Fixed
 }
-
-/// <summary>Redemption status of a discount code from the vendor.</summary>
-public record DiscountCodeStatusDto(
-    string Code,
-    bool IsRedeemed,
-    int TimesUsed);
 
 // ── Vendor write surface (ticket transfer void+reissue) ──────────────────────
 

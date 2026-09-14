@@ -6,6 +6,13 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 5
+    groups:
+      # Hangfire.NetCore (via AspNetCore) pins Hangfire.Core to an exact version;
+      # bumping one alone fails restore with NU1608. Move them together.
+      hangfire:
+        patterns:
+          - "Hangfire.Core"
+          - "Hangfire.AspNetCore"
     labels:
       - "dependencies"
       - "nuget"

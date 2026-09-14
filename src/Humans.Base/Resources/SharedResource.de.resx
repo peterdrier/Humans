@@ -777,6 +777,9 @@
   <data name="Nav_City" xml:space="preserve">
     <value>Karte</value>
   </data>
+  <data name="Nav_Rideshare" xml:space="preserve">
+    <value>Mitfahren</value>
+  </data>
   <data name="Validation_PhoneE164" xml:space="preserve">
     <value>{0} muss mit + und Ländervorwahl beginnen (z.B. +34 612 345 678)</value>
   </data>

@@ -107,6 +107,15 @@
   <data name="Enum_IssueCategory_Bug" xml:space="preserve"><value>Bug</value></data>
   <data name="Enum_IssueCategory_Feature" xml:space="preserve"><value>Feature</value></data>
   <data name="Enum_IssueCategory_Question" xml:space="preserve"><value>Question</value></data>
+  <data name="Enum_IssueStatus_Triage" xml:space="preserve"><value>Triage</value></data>
+  <data name="Enum_IssueStatus_Open" xml:space="preserve"><value>Open</value></data>
+  <data name="Enum_IssueStatus_InProgress" xml:space="preserve"><value>In progress</value></data>
+  <data name="Enum_IssueStatus_Resolved" xml:space="preserve"><value>Resolved</value></data>
+  <data name="Enum_IssueStatus_WontFix" xml:space="preserve"><value>Won't fix</value></data>
+  <data name="Enum_IssueStatus_Duplicate" xml:space="preserve"><value>Duplicate</value></data>
+  <data name="Issues_QuickFilters" xml:space="preserve"><value>Quick filters</value></data>
+  <data name="Issues_Close" xml:space="preserve"><value>Close</value></data>
+  <data name="Issues_SystemActor" xml:space="preserve"><value>System</value></data>
   <data name="Issue_ColStatus" xml:space="preserve"><value>Status</value></data>
   <data name="Issue_ColTitle" xml:space="preserve"><value>Title</value></data>
   <data name="Issue_ColUpdated" xml:space="preserve"><value>Updated</value></data>

@@ -2,6 +2,12 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 inbox:
-  - added: 2026-08-18
-    what: "Views/BudgetAdmin/NoActiveYear.cshtml carries none of the /Finance/* links that YearDetail.cshtml does, so with no active budget year the Holded provisioning, unmatched-document and creditor-accounts pages have no navigation path at all. Found by /section-doctor on Finance 2026-08-18; the view is Budget's."
+  - added: 2026-08-30
+    what: "Member-facing Budget views hardcode English UI strings throughout (Views/Budget/Index.cshtml, Views/Budget/CategoryDetail.cshtml, Views/Budget/Summary.cshtml) instead of resx keys in all six cultures — violates the localization surface rule; found by section-doctor prose thread. Backfill decision is Peter's (see 2026-08-30 run file Needs-Peter)."
+    review: panel
+  - added: 2026-08-30
+    what: "Chart styling/loader duplicated across Views/BudgetAdmin/YearDetail.cshtml (hardcoded hex palette + '#fff') and Views/Budget/Summary.cshtml (CSS variables), each loading Chart.js separately — one source for palette and loader would end the drift; found by section-doctor comments thread."
+    review: panel
+  - added: 2026-08-30
+    what: "Test gaps left open after the 2026-08-30 doctor run's invariant matrix: (a) GDPR export contributor never executed under test — GetMergedSourceIdsAsync is stubbed empty in the ctor and no test calls the contributor, so the chain-following merge path is unpinned; (b) restricted-group drill-in Forbid only covers the not-a-coordinator case, never coordinator-in-restricted-group; (c) ticketing group hidden from /Budget for non-finance unpinned; (d) group/category/line-item audit-row writes unpinned (year-level ones are); (e) GetActualTicketsSold Notes round-trip unpinned. Found by /section-doctor on Budget 2026-08-30 (finding 14)."
     review: light

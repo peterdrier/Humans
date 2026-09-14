@@ -1,6 +1,6 @@
 ---
 name: current-state-docs-no-history
-description: Living/generated docs (data-access maps, dependency graph, section invariants, auth inventory) document CURRENT state only — no move/migration history, no "new this sweep", no PR archaeology, no generated-by boilerplate.
+description: Living/generated docs (data-access maps, dependency graph, section invariants, auth inventory) document CURRENT state only — no move/migration history, no "new this sweep", no PR archaeology, no generated-by boilerplate. Exempt - dated design records, and the ## History table in a section's health.md.
 ---
 
 **Living and generated docs describe what IS, never how it got that way.** No "moved from
@@ -21,3 +21,8 @@ loads the doc (Peter, 2026-08-18, on `data-access.md`: "It exists to document cu
   a new one, start from the current code and say nothing about predecessors.
 - Dated design records (`docs/superpowers/`, `src/Sections/*/Docs/20*.md`) are exempt —
   they are history by design.
+- The `## History` table in a section's `health.md` is exempt (Peter, 2026-09-11). The rest of
+  `health.md` is bound by this atom — it is the section's target shape, current state only —
+  but that one table is the run-to-run ledger the section-doctor skill mandates by name, and
+  is how a run diffs its section against the previous pass. Don't ask a doctor run to delete
+  it, and don't file it as a finding.

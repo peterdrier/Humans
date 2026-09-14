@@ -34,10 +34,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         _clock = clock;
     }
 
-    // ==========================================================================
-    // EventSettings
-    // ==========================================================================
-
     public async Task<EventSettings?> GetActiveEventSettingsAsync(CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -123,10 +119,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         await tx.CommitAsync(ct);
         return deleted;
     }
-
-    // ==========================================================================
-    // Rota
-    // ==========================================================================
 
     public async Task SaveRotaAsync(Rota rota, EntityMutationMode mode, CancellationToken ct = default)
     {
@@ -251,10 +243,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         await ctx.SaveChangesAsync(ct);
     }
 
-    // ==========================================================================
-    // Shift
-    // ==========================================================================
-
     public async Task SaveShiftAsync(Shift shift, EntityMutationMode mode, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -312,10 +300,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
             .Distinct()
             .ToListAsync(ct);
     }
-
-    // ==========================================================================
-    // Reads for dashboards / urgency / staffing
-    // ==========================================================================
 
     public async Task<IReadOnlyList<Shift>> GetEventShiftsAsync(
         ShiftEventQuery request,
@@ -582,10 +566,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
             .ToList();
     }
 
-    // ==========================================================================
-    // Shift tags
-    // ==========================================================================
-
     public async Task<IReadOnlyList<ShiftTag>> GetTagsAsync(string? query = null, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -615,10 +595,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         return tag;
     }
 
-    // ==========================================================================
-    // Volunteer tag preferences
-    // ==========================================================================
-
     public async Task SetVolunteerTagPreferencesAsync(
         Guid userId, IReadOnlyList<Guid> tagIds, CancellationToken ct = default)
     {
@@ -643,21 +619,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         }
 
         await ctx.SaveChangesAsync(ct);
-    }
-
-    // ==========================================================================
-    // Volunteer event profiles
-    // ==========================================================================
-
-    public async Task<VolunteerEventProfile?> GetVolunteerEventProfileForUpdateAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var profile = await ctx.VolunteerEventProfiles
-            .FirstOrDefaultAsync(p => p.UserId == userId, ct);
-        if (profile is null) return null;
-        ctx.Entry(profile).State = EntityState.Detached;
-        return profile;
     }
 
     public async Task<VolunteerEventProfile?> GetVolunteerEventProfileAsync(
@@ -711,10 +672,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         await ctx.SaveChangesAsync(ct);
         return profiles.Count;
     }
-
-    // ==========================================================================
-    // Account-merge fold
-    // ==========================================================================
 
     public async Task<int> ReassignProfilesAndTagPrefsToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,

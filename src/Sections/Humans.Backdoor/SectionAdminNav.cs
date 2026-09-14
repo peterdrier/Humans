@@ -12,8 +12,7 @@ internal sealed class SectionAdminNav : ISectionAdminNav
     public IEnumerable<AdminNavGroup> Groups() =>
     [
         new("Diagnostics", System: true, Items: [
-            // Weight 60 lands it between Timings (50) and Configuration (70) — next to the
-            // page that used to list the five env-var keys this replaced.
+            // Weight 60 lands it between Timings (50) and Configuration (70).
             new("API keys", "Backdoor", "Index", null, null, "fa-solid fa-key", PolicyNames.AdminOnly, Weight: 60)
         ], Weight: 140)
     ];

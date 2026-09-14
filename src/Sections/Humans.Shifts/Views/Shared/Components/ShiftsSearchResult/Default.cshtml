@@ -1,7 +1,6 @@
 @* One rota-search result row (<vc:shifts-search-result>). Shifts owns how a rota renders;
-   callers pass the rota id their own search produced and no display fields
-   (nobodies-collective/Humans#1062). The link is the department-filtered list, as before —
-   there is no single-rota detail page. *@
+   callers pass the rota id their own search produced and no display fields.
+   The link is the department-filtered list — there is no single-rota detail page. *@
 @model Humans.Shifts.ViewComponents.ShiftsSearchResultViewModel
 
 <a href="/Shifts?departmentId=@Model.TeamId" class="list-group-item list-group-item-action">

@@ -8,10 +8,7 @@ namespace Humans.GoogleIntegration.Services.Workspace;
 /// <see cref="GoogleWorkspaceSettings"/> inline JSON blob or on-disk key file.
 /// Used by all real Google-backed bridge clients in
 /// <c>Humans.GoogleIntegration.Services.Workspace</c>. Authenticates as
-/// the service account itself — no domain-wide delegation / impersonation —
-/// matching the pre-migration behaviour of the inline credential loaders in
-/// <c>GoogleWorkspaceSyncService</c> and the other connectors (which each
-/// held their own copy before §15 Part 2a).
+/// the service account itself — no domain-wide delegation / impersonation.
 /// </summary>
 internal static class GoogleCredentialLoader
 {

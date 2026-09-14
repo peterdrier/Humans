@@ -13,43 +13,35 @@ using IcalEvent = Ical.Net.CalendarComponents.CalendarEvent;
 namespace Humans.Calendar.Services;
 
 /// <summary>
-/// Calendar application service. Owns repository-backed calendar reads and
-/// mutations. Owning-team names resolve via <see cref="ITeamServiceRead"/> (§6b).
+/// Calendar application service — the keyed inner behind
+/// <see cref="CachingCalendarService"/>. Owns the section's mutations and the two row loads
+/// the cache warms and refreshes from. The occurrence-window and event-detail reads are the
+/// decorator's alone: it answers both from its snapshot, so an implementation here would be
+/// unreachable code.
 /// </summary>
 internal sealed class CalendarService(
     ICalendarRepository repo,
-    ITeamServiceRead teamService,
     IClock clock,
     IAuditLogService audit,
     ILogger<CalendarService> logger) : ICalendarService
 {
-    public async Task<IReadOnlyList<CalendarOccurrence>> GetOccurrencesInWindowAsync(
-        Instant from, Instant to, Guid? teamId = null, CancellationToken ct = default)
-    {
-        var events = await repo.GetEventsInWindowAsync(from, to, teamId, ct);
+    /// <summary>
+    /// The instants an all-day event is stored as: half-open, from local midnight on
+    /// <paramref name="startDate"/> to local midnight the day after
+    /// <paramref name="inclusiveEndDate"/>. Forms and views speak in the inclusive last day,
+    /// storage does not, and this is the one place that conversion happens.
+    /// </summary>
+    public static (Instant Start, Instant End) AllDayWindow(
+        LocalDate startDate, LocalDate inclusiveEndDate, DateTimeZone zone) =>
+        (startDate.AtMidnight().InZoneLeniently(zone).ToInstant(),
+         inclusiveEndDate.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant());
 
-        var infos = events.Select(CalendarOccurrenceExpander.ToInfo).ToList();
-        var teamNames = await ResolveTeamNamesAsync(infos, ct);
-
-        return CalendarOccurrenceExpander.Expand(infos, from, to, teamNames, logger);
-    }
-
-    private async Task<IReadOnlyDictionary<Guid, string>> ResolveTeamNamesAsync(
-        IReadOnlyList<CalendarEventInfo> events, CancellationToken ct)
-    {
-        // In-memory join (§6b): no .Include(e => e.OwningTeam).
-        var teamIds = events.Select(e => e.OwningTeamId).Distinct().ToList();
-        var teamsById = await teamService.GetTeamsAsync(ct);
-        return teamIds
-            .Where(teamsById.ContainsKey)
-            .ToDictionary(id => id, id => teamsById[id].Name);
-    }
-
-    public async Task<CalendarEventDetail?> GetEventByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        var ev = await repo.GetEventByIdAsync(id, ct);
-        return ev is null ? null : ToDetail(ev);
-    }
+    /// <summary>
+    /// Inverse of <see cref="AllDayWindow"/>: the last day an all-day event covers, given its
+    /// stored exclusive end. A nanosecond back off the exclusive midnight lands on that day.
+    /// </summary>
+    public static LocalDate AllDayInclusiveEndDate(Instant exclusiveEndUtc, DateTimeZone zone) =>
+        exclusiveEndUtc.Minus(NodaTime.Duration.FromNanoseconds(1)).InZone(zone).Date;
 
     public async Task<IReadOnlyList<CalendarEventInfo>> GetAllEventInfosAsync(CancellationToken ct = default)
     {
@@ -63,7 +55,7 @@ internal sealed class CalendarService(
         return ev is null ? null : CalendarOccurrenceExpander.ToInfo(ev);
     }
 
-    public async Task<CalendarEvent> CreateEventAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default)
+    private async Task<CalendarEvent> CreateEventAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default)
     {
         ValidateRecurrenceRule(dto.RecurrenceRule);
         ValidateTimezone(dto.RecurrenceTimezone);
@@ -216,7 +208,6 @@ internal sealed class CalendarService(
 
         if (count is null) return null;
 
-        // Expand COUNT-bounded rule via Ical.Net; return last-occurrence end-time.
         var ruleZone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(tz);
         if (ruleZone is null) return null;
 
@@ -241,7 +232,7 @@ internal sealed class CalendarService(
         return lastStart.Plus(duration);
     }
 
-    public async Task<CalendarEvent> UpdateEventAsync(Guid id, UpdateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)
+    private async Task<CalendarEvent> UpdateEventAsync(Guid id, UpdateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)
     {
         ValidateRecurrenceRule(dto.RecurrenceRule);
         ValidateTimezone(dto.RecurrenceTimezone);
@@ -407,19 +398,4 @@ internal sealed class CalendarService(
                 auditAction, eventId, userId);
         }
     }
-
-    private static CalendarEventDetail ToDetail(CalendarEvent ev) => new(
-        ev.Id,
-        ev.Title,
-        ev.Description,
-        ev.Location,
-        ev.LocationUrl,
-        ev.OwningTeamId,
-        ev.StartUtc,
-        ev.EndUtc,
-        ev.IsAllDay,
-        ev.RecurrenceRule,
-        ev.RecurrenceTimezone,
-        ev.CreatedAt,
-        ev.UpdatedAt);
 }

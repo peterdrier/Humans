@@ -2,7 +2,6 @@ using Humans.Base.Controllers;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Base.Constants;
 using Humans.Issues.Authorization;
 using Humans.Issues.Contracts;
 using Humans.Issues.Domain;
@@ -29,6 +28,13 @@ internal sealed class IssuesController(
         .Select(c => c.Value)
         .ToList();
 
+    /// <summary>
+    /// The browsing user as the service scopes them. The service refuses anything out of
+    /// their reach on its own; the <see cref="IAuthorizationService"/> checks below stay
+    /// because they shape the page and answer 403 where the service would answer 404.
+    /// </summary>
+    private IssueViewer ViewerFor(Guid userId) => new(userId, ClaimsRoles());
+
     [HttpGet("")]
     public async Task<IActionResult> Index(
         IssueViewMode? view,
@@ -41,11 +47,11 @@ internal sealed class IssuesController(
         var (userMissing, user) = await RequireCurrentUserAsync();
         if (userMissing is not null) return userMissing;
 
-        var roles = ClaimsRoles();
-        var isAdmin = User.IsInRole(RoleNames.Admin);
+        var viewer = ViewerFor(user.Id);
         var viewMode = view ?? IssueViewMode.All;
 
-        // Open = non-terminal (matches nav badge); Closed = terminal; Mine = ReporterUserId == current user.
+        // Open = non-terminal; Closed = terminal; Mine = ReporterUserId == current user.
+        // Wider than the nav badge, which counts Open + Triage only.
         var statuses = viewMode switch
         {
             IssueViewMode.Open => new[] { IssueStatus.Triage, IssueStatus.Open, IssueStatus.InProgress },
@@ -56,7 +62,7 @@ internal sealed class IssuesController(
         // Non-admin: reporter filter forced to self (Mine button). Admin dropdown is independent.
         Guid? reporterFilter = viewMode == IssueViewMode.Mine
             ? user.Id
-            : (isAdmin ? reporter : null);
+            : (viewer.IsAdmin ? reporter : null);
 
         var filter = new IssueListFilter(
             Statuses: statuses,
@@ -67,13 +73,13 @@ internal sealed class IssuesController(
             SearchText: !string.IsNullOrWhiteSpace(search) ? search : null,
             Limit: 200);
 
-        var matches = await issues.GetIssueListAsync(filter, user.Id, roles, isAdmin);
+        var matches = await issues.GetIssueListAsync(filter, viewer);
 
         // Section dropdown: Admin sees all known sections; non-admins see the
         // sections their roles own (so they only filter inside their own queue).
-        var allowedSections = isAdmin
+        var allowedSections = viewer.IsAdmin
             ? IssueSectionRouting.AllKnownSections
-            : IssueSectionRouting.SectionsForRoles(roles).ToList();
+            : IssueSectionRouting.SectionsForRoles(viewer.Roles).ToList();
 
         var sectionOptions = allowedSections
             .Select(s => new SectionOption { Section = s, Label = AreaLabelMap.LabelFor(s) })
@@ -81,7 +87,7 @@ internal sealed class IssuesController(
             .ToList();
 
         var reporterOptions = new List<ReporterDropdownItem>();
-        if (isAdmin)
+        if (viewer.IsAdmin)
         {
             var distinct = await issues.GetDistinctReportersAsync();
             reporterOptions = distinct
@@ -102,9 +108,9 @@ internal sealed class IssuesController(
             View = viewMode,
             CategoryFilter = category,
             SectionFilter = section,
-            ReporterFilter = isAdmin ? reporter : null,
+            ReporterFilter = viewer.IsAdmin ? reporter : null,
             SearchText = search,
-            IsAdmin = isAdmin,
+            IsAdmin = viewer.IsAdmin,
             SelectedIssueId = selected,
             SectionOptions = sectionOptions,
             Reporters = reporterOptions,
@@ -184,7 +190,8 @@ internal sealed class IssuesController(
         if (userMissing is not null) return userMissing;
 
         var isPartial = partial || Request.Headers.XRequestedWith == "XMLHttpRequest";
-        var issue = await issues.GetIssueByIdAsync(id);
+        var viewer = ViewerFor(user.Id);
+        var issue = await issues.GetIssueByIdAsync(id, viewer);
 
         // "Not found" and "no access" indistinguishable. Partial → inline notice; full nav → redirect to Index.
         var canHandle = issue is not null
@@ -198,7 +205,7 @@ internal sealed class IssuesController(
                 : RedirectToAction(nameof(Index));
         }
 
-        var thread = await issues.GetThreadAsync(id);
+        var thread = await issues.GetThreadAsync(id, viewer);
         var displayUsers = await GetIssueDisplayUsersAsync(issue);
         var vm = MapDetailViewModel(issue, thread, displayUsers, isHandler: canHandle, isReporter: isReporter);
 
@@ -255,7 +262,8 @@ internal sealed class IssuesController(
         var (userMissing, user) = await RequireCurrentUserAsync();
         if (userMissing is not null) return userMissing;
 
-        var issue = await issues.GetIssueByIdAsync(id);
+        var viewer = ViewerFor(user.Id);
+        var issue = await issues.GetIssueByIdAsync(id, viewer);
         if (issue is null) return NotFound();
 
         var canHandle = (await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)).Succeeded;
@@ -272,6 +280,7 @@ internal sealed class IssuesController(
         {
             await issues.PostCommentAsync(
                 id,
+                viewer,
                 user.Id,
                 model.Content,
                 resolveOnPost: model.ResolveOnPost && canHandle);
@@ -301,12 +310,13 @@ internal sealed class IssuesController(
         var (userMissing, user) = await RequireCurrentUserAsync();
         if (userMissing is not null) return userMissing;
 
-        var issue = await issues.GetIssueByIdAsync(id);
+        var viewer = ViewerFor(user.Id);
+        var issue = await issues.GetIssueByIdAsync(id, viewer);
         if (issue is null) return NotFound();
         var auth = await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
         if (!auth.Succeeded) return Forbid();
 
-        var result = await issues.UpdateStatusWithResultAsync(id, model.Status, user.Id);
+        var result = await issues.UpdateStatusWithResultAsync(id, viewer, model.Status, user.Id);
         if (result.NotFound) return NotFound();
 
         if (result.Succeeded)
@@ -328,12 +338,13 @@ internal sealed class IssuesController(
         var (userMissing, user) = await RequireCurrentUserAsync();
         if (userMissing is not null) return userMissing;
 
-        var issue = await issues.GetIssueByIdAsync(id);
+        var viewer = ViewerFor(user.Id);
+        var issue = await issues.GetIssueByIdAsync(id, viewer);
         if (issue is null) return NotFound();
         var auth = await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
         if (!auth.Succeeded) return Forbid();
 
-        var result = await issues.UpdateAssigneeWithResultAsync(id, model.AssigneeUserId, user.Id);
+        var result = await issues.UpdateAssigneeWithResultAsync(id, viewer, model.AssigneeUserId, user.Id);
         if (result.NotFound) return NotFound();
 
         if (result.Succeeded)
@@ -355,12 +366,13 @@ internal sealed class IssuesController(
         var (userMissing, user) = await RequireCurrentUserAsync();
         if (userMissing is not null) return userMissing;
 
-        var issue = await issues.GetIssueByIdAsync(id);
+        var viewer = ViewerFor(user.Id);
+        var issue = await issues.GetIssueByIdAsync(id, viewer);
         if (issue is null) return NotFound();
         var auth = await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
         if (!auth.Succeeded) return Forbid();
 
-        var result = await issues.UpdateSectionWithResultAsync(id, model.Section, user.Id);
+        var result = await issues.UpdateSectionWithResultAsync(id, viewer, model.Section, user.Id);
         if (result.Succeeded)
         {
             SetSuccess(localizer["Issue_Section_Updated"].Value);
@@ -386,12 +398,13 @@ internal sealed class IssuesController(
         var (userMissing, user) = await RequireCurrentUserAsync();
         if (userMissing is not null) return userMissing;
 
-        var issue = await issues.GetIssueByIdAsync(id);
+        var viewer = ViewerFor(user.Id);
+        var issue = await issues.GetIssueByIdAsync(id, viewer);
         if (issue is null) return NotFound();
         var auth = await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
         if (!auth.Succeeded) return Forbid();
 
-        var result = await issues.SetGitHubIssueNumberWithResultAsync(id, model.GitHubIssueNumber, user.Id);
+        var result = await issues.SetGitHubIssueNumberWithResultAsync(id, viewer, model.GitHubIssueNumber, user.Id);
         if (result.NotFound) return NotFound();
 
         if (result.Succeeded)

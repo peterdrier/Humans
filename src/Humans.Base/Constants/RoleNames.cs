@@ -102,6 +102,13 @@ public static class RoleNames
     public const string EETeamAdmin = "EETeamAdmin";
 
     /// <summary>
+    /// Rideshare Administrator — sets the year's rideshare destination and travel windows,
+    /// views season statistics, and views the operational day roster (every trip on a date
+    /// with its accepted riders). Confers nothing outside the Rideshare section.
+    /// </summary>
+    public const string RideshareAdmin = "RideshareAdmin";
+
+    /// <summary>
     /// Every role name defined above, in display order. The single source of truth
     /// for UI that enumerates roles (e.g. the role-assignment filter bar) so new
     /// roles surface automatically. Completeness is enforced by
@@ -123,7 +130,8 @@ public static class RoleNames
         FinanceAdmin,
         StoreAdmin,
         CantinaAdmin,
-        EETeamAdmin
+        EETeamAdmin,
+        RideshareAdmin
     ];
 
     /// <summary>
@@ -144,6 +152,7 @@ public static class RoleNames
         StoreAdmin,
         CantinaAdmin,
         EETeamAdmin,
+        RideshareAdmin,
         ConsentCoordinator,
         VolunteerCoordinator
     };

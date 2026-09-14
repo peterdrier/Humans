@@ -11,15 +11,10 @@ namespace Humans.Shifts.Contracts;
 /// user-admin detail and widget-gallery pages.
 /// </summary>
 /// <remarks>
-/// Public, under <c>Contracts/</c>, so MVC's default provider discovers it and the tag
-/// helper is generated at compile time — that is what keeps the four call sites unchanged
-/// (design §15 step 6; HUM0034's carve-out is the folder). Its constructor is therefore
-/// all-public, which is why it reads the leaf <see cref="IShiftView"/> rather than the
-/// section-internal <c>IShiftRowView</c>: a public constructor cannot take an internal
-/// parameter (CS0051). No fidelity is lost — every field this card renders is already
-/// resolved on <see cref="ShiftSignupSummary"/>, so the entity walk the pre-G5 version did
-/// (<c>item.Signup.Shift.Rota.Name</c>, <c>shift.DayOffset</c>) was re-deriving what the
-/// projection had already worked out (nobodies-collective/Humans#866).
+/// Public, under <c>Contracts/</c>, so MVC discovers the tag helper (HUM0034's carve-out
+/// is the folder). Its constructor is therefore all-public, which is why it reads the leaf
+/// <see cref="IShiftView"/> rather than the section-internal <c>IShiftRowView</c>: a public
+/// constructor cannot take an internal parameter (CS0051).
 /// </remarks>
 public sealed class ShiftSignupsViewComponent(
     IShiftView shiftView,
@@ -41,9 +36,9 @@ public sealed class ShiftSignupsViewComponent(
         {
             var es = await burnSettings.GetActiveAsync();
 
-            // T-10: signups come from the cached shift view (issue #720). The summary's
-            // Signups list is pre-filtered to the active event by the inner
-            // ShiftViewService — no active event yields an empty list.
+            // Signups come from the cached shift view; the Signups list is pre-filtered
+            // to the active event by the inner ShiftViewService — no active event
+            // yields an empty list.
             var userView = await shiftView.GetUserAsync(userId);
             var signups = userView.Signups;
 

@@ -30,6 +30,7 @@ internal sealed class GovernanceController(
             ApplicationTier = data.ApplicationTier,
             ApplicationSubmittedAt = data.ApplicationSubmittedAt,
             ApplicationResolvedAt = data.ApplicationResolvedAt,
+            ApplicationTermExpiresAt = data.ApplicationTermExpiresAt,
             ApplicationStatusBadgeClass = data.ApplicationStatus is { } status ? EnumBadgeMap.For(status) : "bg-secondary",
             CanApply = data.CanApply,
             IsApprovedColaborador = data.IsApprovedColaborador,

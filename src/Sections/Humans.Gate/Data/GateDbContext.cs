@@ -5,15 +5,14 @@ using Microsoft.EntityFrameworkCore;
 namespace Humans.Gate.Data;
 
 /// <summary>
-/// Per-section database context for the Gate section
-/// (nobodies-collective/Humans#858): maps only <c>gate_scan_events</c>,
+/// Per-section database context for the Gate section: maps only <c>gate_scan_events</c>,
 /// <c>gate_settings</c> and <c>gate_staff_pins</c>, with its own
 /// <c>__EFMigrationsHistory_Gate</c> table and migrations under
-/// <c>Migrations/Gate/</c>. Same database, same connection — the split
+/// <c>Data/Migrations/</c>. Same database, same connection — the split
 /// is a code-side partition of the EF model.
 /// </summary>
 /// <remarks>
-/// Internal-sealed like every section context (issue #750): repositories
+/// Internal-sealed like every section context (nobodies-collective/Humans#750): repositories
 /// are the only consumers. Configurations are applied explicitly (not by
 /// assembly scanning) so this model can never accrete another section's tables.
 /// A scan's guest, scanner and override users and a pin's user are bare Guid

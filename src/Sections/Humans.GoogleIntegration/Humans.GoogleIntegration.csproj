@@ -23,7 +23,6 @@
   <ItemGroup>
     <!--
       Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
-      Declaring them keeps the files moved out of Humans.Web byte-identical to their originals.
     -->
     <Using Include="Microsoft.AspNetCore.Http" />
     <Using Include="Microsoft.AspNetCore.Routing" />
@@ -60,7 +59,6 @@
       The Google Workspace SDKs come with the section: every caller of them is now here
       (the connectors under Services/Google/), which is what "a connector shaped by one
       section's model belongs to it" means in practice (G5-SECTION-TEMPLATE.md step 5b).
-      They were on Humans.Infrastructure.csproj until this move.
 
       No AspNetCore package: those ship with no PackageVersion on purpose and would fail the
       build with NU1010 under Central Package Management. The controller and view component

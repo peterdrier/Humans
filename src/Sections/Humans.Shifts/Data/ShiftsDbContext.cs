@@ -11,8 +11,8 @@ namespace Humans.Shifts.Data;
 /// <c>rota_shift_tags</c>, <c>volunteer_event_profiles</c>,
 /// <c>general_availability</c>, <c>volunteer_build_statuses</c> and
 /// <c>volunteer_tag_preferences</c>, with its own
-/// <c>__EFMigrationsHistory_Shifts</c> table and migrations under
-/// <c>Migrations/Shifts/</c>. Same database, same connection — the split
+/// <c>__EFMigrationsHistory_Shifts</c> table and its migrations under
+/// <c>Data/Migrations/</c>. Same database, same connection — the split
 /// is a code-side partition of the EF model.
 /// </summary>
 /// <remarks>

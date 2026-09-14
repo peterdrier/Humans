@@ -3,9 +3,8 @@ using NodaTime;
 namespace Humans.Tickets.Domain;
 
 /// <summary>
-/// Singleton tracking ticket sync operational state.
-/// Distinct from SyncServiceSettings which controls sync modes for Google/Discord.
-/// This tracks when sync last ran, whether it succeeded, and error details.
+/// Singleton tracking ticket sync operational state: when sync last ran, whether it
+/// succeeded, and error details.
 /// </summary>
 internal sealed class TicketSyncState
 {

@@ -37,9 +37,7 @@ internal sealed class EventsAdminController(IEventService guide, ILogger<EventsA
         }
 
         var eventSettings = await guide.GetEventSettingsByIdAsync(existing.EventSettingsId);
-        var tz = eventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
-            : null;
+        var tz = GetTimeZone(eventSettings);
         return View(new GuideSettingsViewModel
         {
             Id = existing.Id,

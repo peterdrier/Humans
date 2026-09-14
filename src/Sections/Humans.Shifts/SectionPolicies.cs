@@ -14,7 +14,7 @@ internal sealed class SectionPolicies : ISectionPolicies
 {
     public void AddPolicies(AuthorizationOptions options)
     {
-        // Intentionally identical to ShiftDepartmentManager today; kept separate for future divergence.
+        // Three-role list; ShiftDepartmentManager below additionally admits any team coordinator.
         options.AddPolicy(PolicyNames.ShiftDashboardAccess, policy =>
             policy.RequireRole(RoleNames.Admin, RoleNames.NoInfoAdmin, RoleNames.VolunteerCoordinator));
 

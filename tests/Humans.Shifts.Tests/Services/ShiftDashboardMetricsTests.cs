@@ -840,8 +840,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     public async Task GetCoverageHeatmap_DayPeriodClassification_UsesShiftPeriodEnum()
     {
         // Day-column period tagging must use the ShiftPeriod enum, not English
-        // strings — previously the service emitted "Set-up"/"Event"/"Strike"
-        // which coupled the view to magic values.
+        // strings, which would couple the view to magic values.
         var es = await SeedEventAsync();
         var team = await SeedTeamAsync("Gate");
         var rota = await SeedRotaAsync(team, es, RotaPeriod.Event);
