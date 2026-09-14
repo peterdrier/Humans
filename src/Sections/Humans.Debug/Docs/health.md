@@ -60,12 +60,14 @@ The shapes imply a section with no data layer at all:
 
 ## 4. Invariants
 
-- **Every page and endpoint is Admin-only** (`PolicyNames.AdminOnly`, class-level on
-  `DebugController` and `WidgetGalleryController`) **except the deliberate anonymous
-  surfaces**: `/Debug/DbVersion` (migration names and counts, for deployment tooling) and
-  `/ColorPalette` (static design tokens, no data).
+- **Every page and endpoint is Admin-only** (`PolicyNames.AdminOnly`, class-level on every
+  controller the section has) **except the deliberate anonymous surfaces**:
+  `/Debug/DbVersion` (migration names and counts, for deployment tooling) and
+  `/ColorPalette` (static design tokens, no data). `DebugArchitectureTests` discovers the
+  controllers from the assembly, so a new one enters the rule by existing.
 - **Sensitive configuration values never render in full**: at most the first four
-  characters, and values of four characters or fewer are fully masked.
+  characters, and values of four characters or fewer are fully masked. The prefix is
+  deliberate — enough to tell which value is set, on a page only admins reach.
 - **The section owns no tables and writes no domain state.** Its only writes are counter
   resets and the Hangfire lock clear, all POST + anti-forgery, and the lock clear is logged
   at Warning so it reaches production logs.
@@ -81,10 +83,10 @@ The shapes imply a section with no data layer at all:
 
 ## 5. Seams
 
-- **Read-split on `IBurnSettingsService`.** Both the widget gallery and the dashboard card
-  inject the full Shifts write interface to ask one read question ("what is the active
-  event?"). No `IBurnSettingsServiceRead` exists yet; when Shifts carves one, both callers
-  move to it. Items touching those constructors are shaped by this.
+- **`IBurnSettingsService` is already the read contract.** The widget gallery and the
+  dashboard card ask it one question ("what is the active event?"), and the interface
+  publishes reads only — mutations of `event_settings` stay inside Shifts on
+  `IShiftManagementService`. There is no read-split left to make here.
 - **`/api/client-metrics`, `ClientStatsMiddleware`, the trackers and `UserAgentClassifier`
   live in Shell / Base**, not here. The feature specs in this section describe them because
   the screens are the only consumer; if a Telemetry section ever forms, the specs move with

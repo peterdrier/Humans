@@ -54,7 +54,7 @@ One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the 
 
 ## Invariants
 
-- Every page requires `PolicyNames.AdminOnly` (class-level `[Authorize]` on `DebugController` and `WidgetGalleryController`) except the deliberate anonymous surfaces: `/Debug/DbVersion`, which returns only migration names and counts, and `/ColorPalette`, which renders static markup. Pinned by `DebugArchitectureTests`.
+- Every page requires `PolicyNames.AdminOnly` (class-level `[Authorize]` on every controller in the section) except the deliberate anonymous surfaces: `/Debug/DbVersion`, which returns only migration names and counts, and `/ColorPalette`, which renders static markup. Pinned by `DebugArchitectureTests`, which discovers the controllers from the assembly rather than listing them.
 - Sensitive configuration values never render in full on `/Debug/Configuration`: at most the first four characters, and values of four characters or fewer are fully masked. Pinned by `DebugControllerTests`.
 - Debug owns no domain data; its in-memory telemetry is process-local and resets on restart/redeploy.
 - New developer/diagnostics pages are added here (`/Debug/*`), never under `/Admin/*`.
@@ -75,7 +75,7 @@ The telemetry trackers are fed passively by `ClientStatsMiddleware` (page views;
 
 Debug consumes in-memory telemetry trackers (`IClientStatsTracker`, `IHttpStatusTracker`, query/cache statistics), the configuration registry, `IAdminDatabaseDiagnosticsService` for migration status and Hangfire lock cleanup, and `ISectionCatalog` (`Humans.Base.Interfaces`, published by Shell at startup) to render `/Debug/Sections`. That page names no section: everything on it arrives through the catalog.
 
-The widget gallery and the dashboard card read other sections through their contracts: `ITeamServiceRead`, `ICampServiceRead`, `IShiftManagementServiceRead`, `IEventServiceRead`, `IUserServiceRead`, `IShiftView`, and `IBurnSettingsService` (the full Shifts interface, for one read - no read-split exists yet). The gallery also references the section assemblies whose public view components it renders as `<vc:>` tag helpers (Camps, Users, Tickets, Shifts, Calendar, AuditLog, Teams, Events); that fan-in is the page's job and is opened in `Views/_ViewImports.cshtml`.
+The widget gallery and the dashboard card read other sections through their contracts: `ITeamServiceRead`, `ICampServiceRead`, `IShiftManagementServiceRead`, `IEventServiceRead`, `IUserServiceRead`, `IShiftView`, and `IBurnSettingsService` (Shifts' read-only supplier of the active event). The gallery also references the section assemblies whose public view components it renders as `<vc:>` tag helpers (Camps, Users, Tickets, Shifts, Calendar, AuditLog, Teams, Events); that fan-in is the page's job and is opened in `Views/_ViewImports.cshtml`.
 
 ## Architecture
 

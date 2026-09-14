@@ -4,6 +4,7 @@ using Humans.Base;
 using Humans.Base.Authorization;
 using Humans.Debug.Controllers;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 
 namespace Humans.Debug.Tests;
@@ -17,9 +18,23 @@ namespace Humans.Debug.Tests;
 public class DebugArchitectureTests
 {
     [HumansFact]
-    public void AdminSurfacesRequireAdminOnly_ExceptTheTwoAnonymousOnes()
+    public void AdminSurfacesRequireAdminOnly_ExceptTheDeliberateAnonymousOnes()
     {
-        Type[] adminControllers = [typeof(DebugController), typeof(WidgetGalleryController)];
+        // Discovered from the assembly, not listed: a controller added later enters this
+        // assertion by existing, which is the only way the invariant survives new surfaces.
+        var controllers = typeof(Section).Assembly.GetTypes()
+            .Where(t => typeof(ControllerBase).IsAssignableFrom(t) && !t.IsAbstract)
+            .ToList();
+
+        var anonymousControllers = controllers
+            .Where(t => t.GetCustomAttribute<AllowAnonymousAttribute>() is not null)
+            .ToList();
+
+        anonymousControllers.Should().BeEquivalentTo(
+            [typeof(ColorPaletteController)],
+            because: "the colour palette is the section's one anonymous page — a static design reference");
+
+        var adminControllers = controllers.Except(anonymousControllers).ToList();
 
         foreach (var controller in adminControllers)
         {
@@ -28,17 +43,14 @@ public class DebugArchitectureTests
             authorize!.Policy.Should().Be(PolicyNames.AdminOnly, because: $"{controller.Name} is admin-only");
         }
 
-        typeof(ColorPaletteController).GetCustomAttribute<AllowAnonymousAttribute>()
-            .Should().NotBeNull(because: "the colour palette is a static design reference");
-
-        var anonymousActions = typeof(DebugController)
-            .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+        var anonymousActions = adminControllers
+            .SelectMany(c => c.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
             .Where(m => m.GetCustomAttribute<AllowAnonymousAttribute>() is not null)
             .Select(m => m.Name);
 
-        anonymousActions.Should().Equal(
+        anonymousActions.Should().BeEquivalentTo(
             [nameof(DebugController.DbVersion)],
-            because: "DbVersion (migration names and counts) is the only anonymous diagnostics endpoint");
+            because: "DbVersion (migration names and counts) is the only anonymous action on an admin controller");
     }
 
     [HumansFact]
