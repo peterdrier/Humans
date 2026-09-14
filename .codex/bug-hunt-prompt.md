@@ -304,7 +304,7 @@ Configuration bugs in environment handling, database connections, and external s
 
 Before every fix, verify:
 
-1. **Am I touching an EF entity, migration, or DbContext configuration?** → STOP, skip this fix.
+1. **Am I touching an EF entity, migration, or DbContext configuration?** → Allowed only in the owning section under `memory/process/section-migrations-in-maintenance.md`: generate the migration, inspect the snapshot diff, pass the review gate. Never hand-edit shipped migrations; storage drops and required columns still need Peter's per-case approval — skip those.
 2. **Am I removing a property that looks unused?** → STOP, it's likely used via reflection.
 3. **Am I removing a method, file, or controller action?** → STOP, that's not your job.
 4. **Am I changing authorization level?** → Verify the new level matches the original intent exactly.
