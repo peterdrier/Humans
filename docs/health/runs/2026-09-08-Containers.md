@@ -38,9 +38,11 @@ not a gap).
    `Index.cshtml` title, `ContainerController` flash strings, carousel "Previous"/"Next" in
    `_ContainerCardModals`. One answer: inject `IStringLocalizer<ContainersResource>`, keys in six
    cultures, as Governance does.
-5. [Needs-Peter, main] `SetError(ex.Message)` surfaces service exception text ("A container can have
-   at most 5 images.", "Container name must not contain…") untranslated on the member page. Fork:
-   error keys thrown by the service vs. accept English for validation failures.
+5. [Needs-Peter, answered — deferred] `SetError(ex.Message)` surfaces service exception text ("A
+   container can have at most 5 images.", "Container name must not contain…") untranslated on the
+   member page. Fork: error keys thrown by the service vs. accept English for validation failures.
+   Peter, 2026-09-14: accept English for now, with a later error-key pass — recorded in
+   `Docs/debt.yml`. The code is unchanged this run.
 6. [test, Tests 1] Audit trail unasserted across all seven writes — pin `LogAsync` on one placement
    write.
 7. [test, Tests 2–7] Unpinned invariants: placement-image add/replace/remove branches; annotate
@@ -70,8 +72,9 @@ not a gap).
     `ContainersDbContextFactory` trim.
 13. [debt, Tests 15] No controller tests; the Forbid paths and the 403 on the camp page are unpinned
     end to end. Recorded in `Docs/debt.yml`.
-14. [conformance, report] Every resx key lacks the `Containers_` prefix (`Container_` /
-    `ContainerMap_`) — standing backlog, report only. Layout clean.
+14. [conformance, answered — filed] Every resx key lacks the `Containers_` prefix (`Container_` /
+    `ContainerMap_`) — standing backlog, report only. Layout clean. Peter, 2026-09-14: file it, fix
+    later — peterdrier/Humans#1696. The keys are unchanged this run.
 15. [sweep, Freshness 8] `Humans.CityPlanning/Docs/CityPlanning.md` :17, :36, :144, :153, :167
     claim lead container CRUD is phase-gated; only `Place` is. Owner: CityPlanning → sweep queue.
 16. [sweep, Freshness 10] `docs/architecture/dependency-graph.md` :170 labels the node
@@ -85,21 +88,31 @@ not a gap).
     Manage passed — harmless, left.
 19. [inbox] No open Containers issues in peterdrier/Humans; no ledger rows; no `Docs/debt.yml`;
     in-app issues unreachable (no database in the cloud container).
-20. [lesson, Phase 4 / Phase 7] The cloud container has no database (no Postgres, no Docker), so
-    every view-touching strike this run (1, 3, 4) is verified by the Razor class-library compile
-    and the section's tests, never by a rendered page. The skill's Phase 4 does not say what a
-    run does with a UI strike it cannot render: state the gap in the run file and PR body and
-    point at the preview deploy, or hold view strikes for interactive runs. This run did the
-    former.
+20. [lesson, Phase 4 / Phase 7 — not pursued] The cloud container has no database (no Postgres, no
+    Docker), so no view-touching strike this run (1, 3, 4) could be rendered locally; the run file
+    and PR body said so and pointed at the preview deploy. That gap closed before the question was
+    answered: the preview deploy at `https://1620.n.burn.camp` was driven directly with dev-login
+    personas, and every view-touching change was verified there end to end — the camp container
+    page in English and Spanish, a localized flash on a real POST, the renamed JSON field, and both
+    City Planning container pages. The lesson asked whether Phase 4 should state the gap and lean
+    on the preview deploy or hold view strikes for interactive runs. Peter, 2026-09-14: ignore —
+    no amendment. The preview deploy is the answer a run already has.
 21. [sweep applied with a reading, Phase 5] The Agent run's `memory:` item on
     `debt-ledger-additions` was a question ("say which reading is intended" for the `tests/` row).
     The sweep has no Peter, so it applied the reading every doctor run already uses — a section's
     own `tests/Humans.<X>.Tests` is section-owned and its gaps go to that section's `debt.yml`;
     `tests/Humans.Testing` and other shared test projects stay central — in the atom and its INDEX
-    line. Confirm or revert.
-22. [lesson, Phase 4] The doctor-reviewer dispatch prompt did not open with a `thread:` marker, so
-    the cost report names its row by a transcript hash instead of "Reviewer". Phase 4's reviewer
-    dispatch should carry the marker the way 3d's thread prompts do.
+    line. Confirm or revert. Peter, 2026-09-14: confirmed. `origin/main` had landed the same
+    clarification independently in the meantime, worded more explicitly; merging main took that
+    wording and this run's edit is subsumed by it.
+22. [lesson, Phase 4 — already landed] The doctor-reviewer dispatch prompt did not open with a
+    `thread:` marker, so the cost report names its row by a transcript hash instead of "Reviewer".
+    Phase 4's reviewer dispatch should carry the marker the way 3d's thread prompts do. Peter,
+    2026-09-14: yes — and the rule was already on `origin/main` by then, added by the skill split
+    (peterdrier/Humans#1643, 2026-09-10) two days after this run's anchor: `phases/strike.md` now
+    binds "every Agent dispatch in this phase — executor and reviewer alike" to a `thread:` first
+    line, `thread: review <what>` included. Merging main brought it in; no skill edit was needed
+    here, and none would have been this run's to make.
 
 ## Worked
 
@@ -125,9 +138,10 @@ not a gap).
   Agent `debt.yml` row, the `debt-ledger-additions` row per 21). Every earlier merged run's items
   were already present in their targets.
 
-No page was rendered this run (20). The view changes compile as part of the section's Razor
-class library and the section's tests pass; the preview deploy is where the camp container page
-and City Planning's container pages get looked at.
+No page was rendered locally — the cloud container has no database (20). The view changes compile
+as part of the section's Razor class library and the section's tests pass, and every view-touching
+change was then verified on the preview deploy: the camp container page in English and Spanish, a
+localized flash on a real POST, the renamed JSON field, and both City Planning container pages.
 
 ## Skipped + why
 
@@ -168,11 +182,11 @@ and City Planning's container pages get looked at.
 
 ## Needs Peter
 
-- [ ] 5 — localize service exception messages via error keys thrown by `Service`, or accept English on validation failures?
-- [ ] 14 — `Containers_` prefix backlog: rename now (every consumer) or leave?
-- [ ] 20 — Phase 4/7: when a run cannot render a page, state it and lean on the preview deploy (this run), or hold view strikes for interactive runs?
-- [ ] 21 — Phase 5: confirm the `debt-ledger-additions` reading the sweep applied, or revert it.
-- [ ] 22 — Phase 4: open the reviewer dispatch prompt with a `thread:` marker so the cost report names its row?
+- [x] 5 — accept English for now; later error-key pass recorded in `Docs/debt.yml` (Peter, 2026-09-14).
+- [x] 14 — file it, fix later: peterdrier/Humans#1696 (Peter, 2026-09-14).
+- [x] 20 — not pursued; no amendment (Peter, 2026-09-14).
+- [x] 21 — confirmed; `origin/main` had landed the same clarification independently (Peter, 2026-09-14).
+- [x] 22 — yes, and already on `origin/main` via peterdrier/Humans#1643; merging main brought it in (Peter, 2026-09-14).
 
 ## Sweep queue
 
