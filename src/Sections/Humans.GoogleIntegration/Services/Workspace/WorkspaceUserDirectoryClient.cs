@@ -12,7 +12,7 @@ namespace Humans.GoogleIntegration.Services.Workspace;
 /// Real Google-backed implementation of <see cref="IWorkspaceUserDirectoryClient"/>.
 /// Talks to the Google Workspace Admin SDK (Directory API) using the configured
 /// service account. This is the only file that imports <c>Google.Apis.*</c> for
-/// user-account management; the Application-layer service never sees SDK types.
+/// user-account management.
 /// </summary>
 internal sealed class WorkspaceUserDirectoryClient(
     IOptions<GoogleWorkspaceSettings> settings,

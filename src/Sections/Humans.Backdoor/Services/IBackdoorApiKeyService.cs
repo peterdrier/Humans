@@ -13,7 +13,8 @@ internal interface IBackdoorApiKeyService : IApplicationService
     /// <summary>
     /// Issues a key to <paramref name="ownerUserId"/> and returns the plaintext. This is
     /// the only moment the plaintext exists — it is hashed on the way to the database and
-    /// cannot be recovered. Rejects an owner who is neither a full Admin nor a Board member.
+    /// cannot be recovered. Rejects a missing or over-long label, and an owner who is not a
+    /// full Admin or Board member with an active account.
     /// </summary>
     Task<BackdoorKeyIssueResult> IssueAsync(
         Guid ownerUserId, string label, Guid actorUserId, CancellationToken ct = default);
@@ -33,8 +34,9 @@ internal interface IBackdoorApiKeyService : IApplicationService
     Task<IReadOnlyList<BackdoorKeyRow>> ListAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Resolves a presented plaintext key to its owner and stamps the key's last-used time.
-    /// Returns null when the key is unknown or revoked.
+    /// Resolves a presented plaintext key to its owner. Returns null when the key is unknown,
+    /// revoked, or its owner is no longer a full Admin or Board member with an active account;
+    /// the last-used stamp is written only when it resolves.
     /// </summary>
     Task<Guid?> ResolveOwnerAsync(string presentedKey, CancellationToken ct = default);
 }

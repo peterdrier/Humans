@@ -37,10 +37,8 @@ internal sealed class GoogleSyncOutboxRepository(IDbContextFactory<GoogleIntegra
     public async Task<int> CountFailedAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Include permanently-failed events (FailedPermanently=true) as well as
-        // transient-retry events (ProcessedAt=null && LastError!=null).
-        // Previously only the latter was counted, so dead-lettered events silently
-        // fell out of the badge to zero (nobodies-collective/Humans#847).
+        // Dead-lettered events must stay in the count or the badge silently reads zero
+        // (nobodies-collective/Humans#847).
         return await ctx.GoogleSyncOutboxEvents
             .AsNoTracking()
             .CountAsync(e => e.FailedPermanently || (e.ProcessedAt == null && e.LastError != null), ct);

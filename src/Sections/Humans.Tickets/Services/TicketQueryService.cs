@@ -17,7 +17,7 @@ using Humans.Tickets.Services.Dtos;
 namespace Humans.Tickets.Services;
 
 /// <summary>
-/// Tickets read service (inner) behind <c>CachingTicketQueryService</c> decorator (§15 / T-07).
+/// Tickets read service (inner) behind <c>CachingTicketQueryService</c> decorator (§15).
 /// </summary>
 internal sealed class TicketQueryService(
     ITicketRepository ticketRepository,
@@ -39,17 +39,14 @@ internal sealed class TicketQueryService(
         if (matchedCount > 0)
             return matchedCount;
 
-        // Fallback: verified-emails ↔ attendee-emails, compared in-memory for consistent casing.
-        var verifiedEmails = await userEmailService.GetVerifiedEmailsForUserAsync(userId);
-        if (verifiedEmails.Count == 0)
-            return 0;
-
+        // Fallback: attendee emails against the same verified-email → user index the sync
+        // matches with, so an alias verified by two users counts for neither, as in sync.
         var attendeeEmails = await ticketRepository.GetValidAttendeeEmailsAsync();
         if (attendeeEmails.Count == 0)
             return 0;
 
-        var verifiedSet = verifiedEmails.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return attendeeEmails.Count(verifiedSet.Contains);
+        var (lookup, _) = VerifiedEmailLookup.Build(await userService.GetAllUserInfosAsync());
+        return attendeeEmails.Count(email => lookup.TryGetValue(email, out var owner) && owner == userId);
     }
 
     public async Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrdersAsync(CancellationToken ct = default)
@@ -774,7 +771,8 @@ internal sealed class TicketQueryService(
                 HasPendingOutgoingTransfer: pendingByAttendee.ContainsKey(a.Id),
                 PendingTransferRequestId: pendingByAttendee.TryGetValue(a.Id, out var transferId)
                     ? transferId
-                    : null))
+                    : null,
+                CheckedInAt: a.CheckedInAt))
             .ToList();
 
         var ticketCount = await ComputeUserTicketCountAsync(userId);

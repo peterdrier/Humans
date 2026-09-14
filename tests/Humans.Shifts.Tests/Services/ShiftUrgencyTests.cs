@@ -164,6 +164,20 @@ public class ShiftUrgencyTests
     }
 
     [HumansFact]
+    public void ApplyPeriodDiverseLimit_ReturnsTheListUntouched_WhenCountEqualsLimit()
+    {
+        var ranked = new List<UrgentShiftInfo>
+        {
+            MakeUrgentShift(dayOffset: 1, score: 5, remaining: 3),
+            MakeUrgentShift(dayOffset: 8, score: 9, remaining: 3)
+        };
+
+        var result = ShiftManagementService.ApplyPeriodDiverseLimit(ranked, 2);
+
+        result.Should().BeSameAs(ranked);
+    }
+
+    [HumansFact]
     public void ApplyPeriodDiverseLimit_FewShifts_ReturnsAll()
     {
         var es = new EventSettings

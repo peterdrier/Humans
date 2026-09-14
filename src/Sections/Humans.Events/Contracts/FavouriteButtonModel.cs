@@ -28,10 +28,9 @@ public sealed class FavouriteButtonModel
     public string? ConfirmMessage { get; init; }
 
     // Labels are supplied by the caller rather than looked up in the partial. The strings
-    // are Events' (Events_AddToFavourites and friends) and live in EventsResource. The
-    // model and its partial moved out of Humans.UI into this section at G5 lane 4b-i
-    // (nobodies-collective/Humans#866); the caller-supplies-labels shape stays because
-    // Shell's EventsCard renders the heart too and binds SharedResource, not EventsResource.
+    // are Events' (Events_AddToFavourites and friends) and live in EventsResource; the
+    // caller supplies them because Shell's EventsCard renders the heart too and binds
+    // SharedResource, not EventsResource.
 
     /// <summary>Title/ARIA label for "add to favourites".</summary>
     public required string AddTitle { get; init; }

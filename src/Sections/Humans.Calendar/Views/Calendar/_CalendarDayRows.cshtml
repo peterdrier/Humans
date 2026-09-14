@@ -1,0 +1,85 @@
+@model Humans.Calendar.Models.CalendarMonthViewModel
+@*
+    One row per day of Model.Month, each listing that day's occurrences.
+    Shared by List (all teams) and Team (one team); ViewData["ShowTeamName"]
+    is the only difference between them.
+*@
+@{
+    var showTeamName = ViewData["ShowTeamName"] as bool? ?? false;
+    var zone = DateTimeZoneProviders.Tzdb[Model.ViewerTimezoneLabel];
+
+    var firstOfMonth = new LocalDate(Model.Month.Year, Model.Month.Month, 1);
+    var daysInMonth = firstOfMonth.Calendar.GetDaysInMonth(Model.Month.Year, Model.Month.Month);
+    var lastOfMonth = firstOfMonth.PlusDays(daysInMonth - 1);
+
+    // Expand multi-day occurrences across every day they cover inside this month,
+    // so a three-day event is listed on all three days and not only its first.
+    var byDate = new Dictionary<LocalDate, List<CalendarOccurrence>>();
+    foreach (var o in Model.Occurrences)
+    {
+        var s = o.StartLocalDate(zone);
+        var e = o.EndLocalDate(zone);
+        var clipStart = s < firstOfMonth ? firstOfMonth : s;
+        var clipEnd = e > lastOfMonth ? lastOfMonth : e;
+        for (var d = clipStart; d <= clipEnd; d = d.PlusDays(1))
+        {
+            if (!byDate.TryGetValue(d, out var list))
+            {
+                list = [];
+                byDate[d] = list;
+            }
+            list.Add(o);
+        }
+    }
+    foreach (var key in byDate.Keys.ToList())
+    {
+        byDate[key] = byDate[key].OrderBy(x => x.OccurrenceStartUtc).ToList();
+    }
+}
+
+<table class="table table-bordered align-top">
+    <tbody>
+        @for (int d = 1; d <= daysInMonth; d++)
+        {
+            var day = firstOfMonth.PlusDays(d - 1);
+            var dayOccs = byDate.TryGetValue(day, out var list) ? list : [];
+            <tr>
+                <td style="width: 10rem"><strong>@day.ToWeekdayDayMonth()</strong></td>
+                <td>
+                    @if (dayOccs.Count == 0)
+                    {
+                        <span class="text-muted">—</span>
+                    }
+                    else
+                    {
+                        @foreach (var o in dayOccs)
+                        {
+                            var localStart = o.OccurrenceStartUtc.InZone(zone).LocalDateTime;
+                            <div>
+                                <span class="badge bg-light text-dark">
+                                    @switch (o.TimeLabelFor(day, zone))
+                                    {
+                                        case OccurrenceTimeLabel.Continues:
+                                            @Localizer["Calendar_Continues"].Value
+                                            break;
+                                        case OccurrenceTimeLabel.AllDay:
+                                            @Localizer["Calendar_AllDay"].Value
+                                            break;
+                                        default:
+                                            @DateFormattingExtensions.TimeOfDayPattern.Format(localStart.TimeOfDay)
+                                            break;
+                                    }
+                                </span>
+                                <a asp-action="Event" asp-route-id="@o.EventId">@o.Title</a>
+                                @if (showTeamName)
+                                {
+                                    <small class="text-muted">— @o.OwningTeamName</small>
+                                }
+                            </div>
+                        }
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

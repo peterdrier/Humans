@@ -6,15 +6,8 @@
     var prev = Model.Month.PlusMonths(-1);
     var next = Model.Month.PlusMonths(1);
 
-    var firstOfMonth = new LocalDate(Model.Month.Year, Model.Month.Month, 1);
-    var daysInMonth = firstOfMonth.Calendar.GetDaysInMonth(Model.Month.Year, Model.Month.Month);
-    var lastOfMonth = firstOfMonth.PlusDays(daysInMonth - 1);
-
-    // Monday-first week. IsoDayOfWeek.Monday = 1, Sunday = 7.
-    int LeadOffset(LocalDate d) => ((int)d.DayOfWeek + 6) % 7;
-    var gridStart = firstOfMonth.PlusDays(-LeadOffset(firstOfMonth));
-    var trailOffset = 6 - LeadOffset(lastOfMonth);
-    var gridEnd = lastOfMonth.PlusDays(trailOffset);
+    // Same bounds the controller queried — see CalendarGridLayout.MonthGridBounds.
+    var (gridStart, gridEnd) = CalendarGridLayout.MonthGridBounds(Model.Month);
     var totalCells = Period.Between(gridStart, gridEnd.PlusDays(1), PeriodUnits.Days).Days;
     var weeks = totalCells / 7;
 

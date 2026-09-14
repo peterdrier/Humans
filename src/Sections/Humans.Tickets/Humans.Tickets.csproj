@@ -30,13 +30,13 @@
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
-    <!-- TicketTransferAdmin/Detail.cshtml renders <vc:audit-log>, which moved out of Humans.UI
-         into the AuditLog section in G5 lane 4b-2h (nobodies-collective/Humans#866). -->
+    <!-- TicketTransferAdmin/Detail.cshtml renders <vc:audit-log>, the AuditLog section's component. -->
     <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <!--
       Outbound section references, all through leaves and all acyclic — none of these
       leaves names a Tickets type.
-        Budget    — TicketQueryService reports ticketing actuals into the budget grid.
+        Budget    — TicketQueryService reads IBudgetServiceRead for the dashboard's break-even figure;
+                    the actuals bridge (TicketingBudgetService) lives in Budget and reads Tickets.
         Campaigns — TicketSyncService marks grants redeemed; TicketQueryService builds
                     the code-tracking dashboard; CampaignService now asks *this* section
                     for codes through Humans.Tickets.Contracts.ITicketDiscountCodes.

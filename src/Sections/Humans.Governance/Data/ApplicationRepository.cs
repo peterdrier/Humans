@@ -10,8 +10,7 @@ namespace Humans.Governance.Data;
 /// <summary>
 /// EF-backed implementation of <see cref="IApplicationRepository"/>. The only
 /// non-test file that touches <c>DbContext.Applications</c>,
-/// <c>DbContext.BoardVotes</c>, or <c>DbContext.ApplicationStateHistories</c>
-/// after the Governance migration lands.
+/// <c>DbContext.BoardVotes</c> or <c>DbContext.ApplicationStateHistories</c>.
 /// </summary>
 internal sealed class ApplicationRepository(IDbContextFactory<GovernanceDbContext> factory) : IApplicationRepository
 {
@@ -136,15 +135,6 @@ internal sealed class ApplicationRepository(IDbContextFactory<GovernanceDbContex
             .FirstOrDefaultAsync(
                 a => a.UserId == userId && a.Status == ApplicationStatus.Submitted,
                 ct), ct);
-
-    public async Task<IReadOnlyList<MembershipTier>> GetApprovedTiersForUserAsync(
-        Guid userId, CancellationToken ct = default) =>
-        await WithContextAsync(async ctx => await ctx.Applications
-            .AsNoTracking()
-            .Where(a => a.UserId == userId && a.Status == ApplicationStatus.Approved)
-            .Select(a => a.MembershipTier)
-            .Distinct()
-            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<MemberApplication>> GetAllSubmittedWithVotesAsync(
         CancellationToken ct = default) =>

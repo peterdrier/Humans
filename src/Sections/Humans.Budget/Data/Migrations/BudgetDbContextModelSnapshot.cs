@@ -23,13 +23,13 @@ namespace Humans.Budget.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetAuditLog", b =>
+            modelBuilder.Entity("Humans.Budget.Domain.BudgetAuditLog", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("ActorUserId")
+                    b.Property<Guid?>("ActorUserId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("BudgetYearId")
@@ -76,7 +76,7 @@ namespace Humans.Budget.Data.Migrations
                     b.ToTable("budget_audit_logs", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetCategory", b =>
+            modelBuilder.Entity("Humans.Budget.Domain.BudgetCategory", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -121,7 +121,7 @@ namespace Humans.Budget.Data.Migrations
                     b.ToTable("budget_categories", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetGroup", b =>
+            modelBuilder.Entity("Humans.Budget.Domain.BudgetGroup", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -160,7 +160,7 @@ namespace Humans.Budget.Data.Migrations
                     b.ToTable("budget_groups", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetLineItem", b =>
+            modelBuilder.Entity("Humans.Budget.Domain.BudgetLineItem", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -216,7 +216,7 @@ namespace Humans.Budget.Data.Migrations
                     b.ToTable("budget_line_items", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetYear", b =>
+            modelBuilder.Entity("Humans.Budget.Domain.BudgetYear", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -259,7 +259,7 @@ namespace Humans.Budget.Data.Migrations
                     b.ToTable("budget_years", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.TicketingProjection", b =>
+            modelBuilder.Entity("Humans.Budget.Domain.TicketingProjection", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -314,9 +314,9 @@ namespace Humans.Budget.Data.Migrations
                     b.ToTable("ticketing_projections", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetAuditLog", b =>
+            modelBuilder.Entity("Humans.Budget.Domain.BudgetAuditLog", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.BudgetYear", "BudgetYear")
+                    b.HasOne("Humans.Budget.Domain.BudgetYear", "BudgetYear")
                         .WithMany("AuditLogs")
                         .HasForeignKey("BudgetYearId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -325,9 +325,9 @@ namespace Humans.Budget.Data.Migrations
                     b.Navigation("BudgetYear");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetCategory", b =>
+            modelBuilder.Entity("Humans.Budget.Domain.BudgetCategory", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.BudgetGroup", "BudgetGroup")
+                    b.HasOne("Humans.Budget.Domain.BudgetGroup", "BudgetGroup")
                         .WithMany("Categories")
                         .HasForeignKey("BudgetGroupId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -336,9 +336,9 @@ namespace Humans.Budget.Data.Migrations
                     b.Navigation("BudgetGroup");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetGroup", b =>
+            modelBuilder.Entity("Humans.Budget.Domain.BudgetGroup", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.BudgetYear", "BudgetYear")
+                    b.HasOne("Humans.Budget.Domain.BudgetYear", "BudgetYear")
                         .WithMany("Groups")
                         .HasForeignKey("BudgetYearId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -347,9 +347,9 @@ namespace Humans.Budget.Data.Migrations
                     b.Navigation("BudgetYear");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetLineItem", b =>
+            modelBuilder.Entity("Humans.Budget.Domain.BudgetLineItem", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.BudgetCategory", "BudgetCategory")
+                    b.HasOne("Humans.Budget.Domain.BudgetCategory", "BudgetCategory")
                         .WithMany("LineItems")
                         .HasForeignKey("BudgetCategoryId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -358,30 +358,30 @@ namespace Humans.Budget.Data.Migrations
                     b.Navigation("BudgetCategory");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.TicketingProjection", b =>
+            modelBuilder.Entity("Humans.Budget.Domain.TicketingProjection", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.BudgetGroup", "BudgetGroup")
+                    b.HasOne("Humans.Budget.Domain.BudgetGroup", "BudgetGroup")
                         .WithOne("TicketingProjection")
-                        .HasForeignKey("Humans.Domain.Entities.TicketingProjection", "BudgetGroupId")
+                        .HasForeignKey("Humans.Budget.Domain.TicketingProjection", "BudgetGroupId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("BudgetGroup");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetCategory", b =>
+            modelBuilder.Entity("Humans.Budget.Domain.BudgetCategory", b =>
                 {
                     b.Navigation("LineItems");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetGroup", b =>
+            modelBuilder.Entity("Humans.Budget.Domain.BudgetGroup", b =>
                 {
                     b.Navigation("Categories");
 
                     b.Navigation("TicketingProjection");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetYear", b =>
+            modelBuilder.Entity("Humans.Budget.Domain.BudgetYear", b =>
                 {
                     b.Navigation("AuditLogs");
 

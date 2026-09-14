@@ -5,9 +5,7 @@ namespace Humans.Governance.Services.Dtos;
 
 /// <summary>
 /// Projection of a single Board vote with the voter's display name stitched
-/// from <c>IUserService</c>. Used by <c>OnboardingService</c>'s BoardVoting
-/// methods after the <c>BoardVote.BoardMemberUser</c> cross-domain nav was
-/// stripped.
+/// at the service layer — <c>BoardVote</c> carries no cross-domain nav.
 /// </summary>
 internal sealed record BoardVoteRow(
     Guid BoardMemberUserId,

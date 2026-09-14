@@ -23,4 +23,31 @@ public class StripeCheckoutAmountTests
     {
         StripeService.ToStripeMinorUnits(eur).Should().Be(expectedMinorUnits);
     }
+
+    /// <summary>
+    /// The inverse. Dividing a long by 100m is exact, so there is no rounding rule to pin on
+    /// this side — what matters is that it stays decimal. Both live fee paths
+    /// (GetPaymentDetailsAsync's fee sum, MapSession's AmountEur) run through here, and a
+    /// change to double would silently skew every fee figure the finance pages show.
+    /// </summary>
+    [HumansTheory]
+    [InlineData(0L, 0)]
+    [InlineData(1L, 0.01)]
+    [InlineData(1999L, 19.99)]
+    [InlineData(-250L, -2.50)]
+    [InlineData(12345678L, 123456.78)]
+    public void Converts_stripe_minor_units_back_to_eur(long minorUnits, decimal expectedEur)
+    {
+        StripeService.FromStripeMinorUnits(minorUnits).Should().Be(expectedEur);
+    }
+
+    [HumansTheory]
+    [InlineData(0)]
+    [InlineData(0.01)]
+    [InlineData(19.99)]
+    [InlineData(123456.78)]
+    public void Round_trips_a_representable_amount_without_loss(decimal eur)
+    {
+        StripeService.FromStripeMinorUnits(StripeService.ToStripeMinorUnits(eur)).Should().Be(eur);
+    }
 }
