@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Humans.Consent;
 using Humans.Consent.Contracts;
-using Humans.Onboarding.Contracts;
 using Humans.Onboarding.Services;
 using Humans.Users.Contracts;
 using Humans.Shifts.Contracts;

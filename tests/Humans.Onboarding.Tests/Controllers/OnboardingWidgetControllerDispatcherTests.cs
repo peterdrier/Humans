@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Humans.Consent;
 using Humans.Consent.Contracts;
-using Humans.Onboarding.Contracts;
 using Humans.Onboarding.Services;
 using Humans.Users.Contracts;
 using Humans.Shifts.Contracts;
@@ -57,12 +56,17 @@ public class OnboardingWidgetControllerDispatcherTests
         return ctrl;
     }
 
+    // Keyed by step name rather than the enum itself: OnboardingWidgetStep is internal to
+    // Humans.Onboarding, and xUnit requires a public test class, so an enum parameter here
+    // would drag the type back onto the public surface. Each step routes to the action of
+    // the same name, so the one string carries both halves.
     [HumansTheory]
-    [InlineData(OnboardingWidgetStep.Names, "Names")]
-    [InlineData(OnboardingWidgetStep.Shifts, "Shifts")]
-    [InlineData(OnboardingWidgetStep.Consents, "Consents")]
-    public async Task Index_RedirectsToCurrentStep(OnboardingWidgetStep step, string action)
+    [InlineData("Names")]
+    [InlineData("Shifts")]
+    [InlineData("Consents")]
+    public async Task Index_RedirectsToCurrentStep(string action)
     {
+        var step = Enum.Parse<OnboardingWidgetStep>(action);
         var userId = Guid.NewGuid();
         _state.GetCurrentStepAsync(userId, Arg.Any<CancellationToken>()).Returns(step);
         var ctrl = BuildSut(userId);

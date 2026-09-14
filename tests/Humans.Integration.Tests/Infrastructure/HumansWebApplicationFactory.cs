@@ -4,7 +4,7 @@ using Humans.Consent.Contracts;
 using Humans.Consent.Domain;
 using Humans.Consent.Data;
 using Humans.Consent.Services;
-using Humans.Onboarding.Contracts;
+using Humans.Onboarding.Services;
 using System.Security.Cryptography;
 using System.Text;
 using Hangfire;

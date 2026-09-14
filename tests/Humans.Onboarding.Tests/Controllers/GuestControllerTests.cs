@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Humans.Onboarding.Contracts;
+using Humans.Onboarding.Services;
 using Humans.Onboarding.Controllers;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;

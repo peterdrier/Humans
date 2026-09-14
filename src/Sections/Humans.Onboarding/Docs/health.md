@@ -57,12 +57,13 @@ Notes the table hides:
   funnel's result vocabulary, returned by Users' own surfaces). Nothing else. The leaf is a
   project, not a folder, because Consent calls into Onboarding and Onboarding renders Consent's
   copy; a folder would close a cycle. It has zero project references and that is load-bearing.
-  *Deviation, not yet fixed:* `IOnboardingWidgetState` and `OnboardingWidgetStep` still sit on
-  the leaf (`Contracts/IOnboardingWidgetState.cs`) though no other section asks the funnel-step
-  question. Moving them next to `OnboardingWidgetState` is run 2's deferred finding 18.
 - **`Services/`** — `OnboardingService` (shapes 3–6, an orchestrator over other sections'
-  service interfaces), `OnboardingWidgetState` (shape 1) with the step enum it returns, and the
-  session seam the step resolver needs to see the "not right now" click.
+  service interfaces), `OnboardingWidgetState` (shape 1) behind `IOnboardingWidgetState` with
+  the step enum it returns, and the session seam the step resolver needs to see the "not right
+  now" click. The funnel-step pair is `internal` and lives here rather than on the leaf: every
+  consumer is inside this section. That is also why the dispatcher test keys its theory on the
+  action name instead of the enum — xUnit requires a public test class, and a public test
+  method taking `OnboardingWidgetStep` would drag it back onto the public surface.
 - **`Controllers/`** — one per audience: the widget for the person onboarding, the review
   queue for the coordinator, Guest for the profileless, Welcome for the anonymous visitor.
 - **`Models/`** — view models and the one builder that keeps the shifts action thin.
@@ -91,7 +92,9 @@ Presentation the section does *not* own: the rota tables on the shifts step are 
 - **Reject is the only coordinator action with consequences.** It sets `RejectedAt`,
   de-provisions the approval-gated system teams (Volunteers, Colaboradors, Asociados), and
   notifies the person. (`Services/OnboardingService.cs` `RejectSignupAsync`,
-  `DeprovisionApprovalGatedSystemTeamsAsync`.)
+  `DeprovisionApprovalGatedSystemTeamsAsync`; pinned on the success path by
+  `OnboardingServiceTests.RejectSignupAsync_OnSuccess_AuditsDeprovisionsAllThreeTeamsAndNotifies`,
+  which fails if a team sync or the notification is dropped.)
 - **Nothing in the funnel notifies a coordinator.** The threshold check writes the status and
   logs; the only notification the section raises is `ProfileRejected`, to the rejected person.
   `ConsentReviewNeeded` is a retired source — the coordinator finds the queue through the

@@ -1,7 +1,7 @@
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Onboarding.Contracts;
+using Humans.Onboarding.Services;
 using Humans.Onboarding.Models;
 using Humans.Users.Contracts;
 

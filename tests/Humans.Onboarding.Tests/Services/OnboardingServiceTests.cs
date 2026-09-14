@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Base.Constants;
+using Humans.Base.Enums;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Notifications.Contracts;
@@ -107,6 +108,68 @@ public sealed class OnboardingServiceTests
             default,
             default!,
             default!, cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RejectSignupAsync_OnSuccess_AuditsDeprovisionsAllThreeTeamsAndNotifies()
+    {
+        // Reject is the section's only coordinator action with consequences (Docs/health.md §4),
+        // and until this test its success path was unasserted: dropping one of the three
+        // approval-gated team syncs, or the ProfileRejected notification, passed.
+        var userId = Guid.NewGuid();
+        var reviewerId = Guid.NewGuid();
+        const string reason = "duplicate account";
+
+        _userService.ApplyProfileOnboardingMutationAsync(
+                userId,
+                Arg.Is<UserProfileOnboardingCommand>(cmd =>
+                    cmd.Mutation == UserProfileOnboardingMutation.RejectSignup
+                    && cmd.ActorUserId == reviewerId
+                    && cmd.RejectionReason == reason),
+                Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(true));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(
+                UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(burnerName: "Rejected One"))));
+
+        var result = await BuildSut()
+            .RejectSignupAsync(userId, reviewerId, reason, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.SignupRejected,
+            AuditEntityTypes.Profile,
+            userId,
+            $"Signup rejected: {reason}",
+            reviewerId);
+
+        // All three approval-gated system teams, and nothing else. Asserting each team
+        // individually plus the total is what makes a dropped sync fail rather than pass.
+        await _syncJob.Received(1).SyncMembershipForUserAsync(
+            userId, SystemTeamType.Volunteers, Arg.Any<CancellationToken>());
+        await _syncJob.Received(1).SyncMembershipForUserAsync(
+            userId, SystemTeamType.Colaboradors, Arg.Any<CancellationToken>());
+        await _syncJob.Received(1).SyncMembershipForUserAsync(
+            userId, SystemTeamType.Asociados, Arg.Any<CancellationToken>());
+        await _syncJob.Received(3).SyncMembershipForUserAsync(
+            Arg.Any<Guid>(), Arg.Any<SystemTeamType>(), Arg.Any<CancellationToken>());
+
+        _emailMessages.Received(1).SignupRejected(
+            Arg.Any<string>(), "Rejected One", reason, Arg.Any<string?>());
+
+        await _notificationService.Received(1).SendAsync(
+            NotificationSource.ProfileRejected,
+            NotificationClass.Informational,
+            NotificationPriority.Normal,
+            Arg.Any<string>(),
+            Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == userId),
+            body: Arg.Is<string?>(b => b != null && b.Contains(reason)),
+            actionUrl: Arg.Any<string?>(),
+            actionLabel: Arg.Any<string?>(),
+            targetGroupName: Arg.Any<string?>(),
+            sourceKey: Arg.Any<string?>(),
+            cancellationToken: Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

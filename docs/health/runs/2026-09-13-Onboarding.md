@@ -97,7 +97,8 @@ partial access split at all. Corrected in the review round, not in the strike.
 
 - **Findings 1, 3, 4, 6–13** — docs truth sweep. Commit
   `doctor(Onboarding): docs tell the truth about notifications, admission and /Guest`.
-  Finding 1 is recorded in docs only; the page's fate is Needs Peter.
+  Finding 1 is recorded in docs only; the page's fate went to Peter, who ruled it part of a
+  wider Q4 rework — nobodies-collective/Humans#1183.
 - **Finding 5** — the target's own step-redirect invariant was false against the code. Corrected
   the target, not the code; the tests pin the code's behaviour. Raised by the Tests thread against
   a target I had just regenerated.
@@ -114,18 +115,17 @@ partial access split at all. Corrected in the review round, not in the strike.
 
 ## Skipped
 
-- **Finding 18** (move `IOnboardingWidgetState` + `OnboardingWidgetStep` internal) — reviewer
-  **approved**, with conditions (`Docs/Onboarding.md:130`'s leaf description must be corrected in
-  the same change; the test projects and the integration factory need a namespace swap). Not
-  applied: it is a cross-project structural move, and finding 25 means this container cannot
-  compile the result. Shipping an unverifiable move of a type between assemblies is not a risk
-  worth taking for a surface reduction. Queued for the next run, which should re-confirm the
-  sweep first — the reviewer found the original blast-radius grep had missed
-  `tests/Humans.Onboarding.Tests` (harmless, IVT covers it) and mis-cited where the stale
-  "Shell's `GuestController`" justification lives.
-- **Finding 21** — same reason. The test is worth writing; it needs a machine that can run it.
 - **T1/T3/T4, T6–T8, C13, T11** — recorded during assessment, below the budget line, not struck.
 - No section was passed over as blocked.
+
+**Findings 18 and 21 were struck after the fact, on 2026-09-14.** Both were parked here as
+"deferred, unverifiable" because this container could not compile Razor views. That was the wrong
+disposition and Peter said so: a run either does the work or files an issue, and "a later
+section-doctor run will pick it up" is not a third option. The compile blocker was itself already
+fixed on `origin/main` — `global.json` now pins `10.0.400`, matching the SDK here — so merging main
+made both strikeable, and the branch got its first full-solution gate. The lesson is narrower than
+"the environment was broken": an environment that cannot verify a change bounds what a run may
+ship, never what it may decide.
 
 ## Retro
 
@@ -161,20 +161,23 @@ list before opening the PR, not after a reviewer asks.
 
 ## Needs Peter
 
-- [ ] 1 — a profileless account reaches `Guest/CommunicationPreferences` (it is `[AllowAnonymous]`)
-      and every way out of that page points at `/Guest`, where the name gate bounces it. Exempt
-      `Guest` from `NameRequiredFilter`, retarget those links and redirects, or delete the page?
-      Docs now tell the truth either way; the fix changes business behaviour and touches the Shell.
-- [ ] 18 — reviewer-approved surface reduction, deferred unverifiable; re-run it on a machine that
-      can compile.
-- [ ] 21 — worth a test on a machine that can compile, or leave the success path unasserted?
-- [ ] 25 — the cloud container cannot cold-build Razor views. Should Phase 7's gate detect this and
-      declare itself unmeasured rather than a run discovering it by accident? Separately: is
-      `rollForward: latestFeature` in `global.json` doing what you want, given CI resolves
-      `10.0.x`?
-- [ ] 26 — should `prose-gate` skip `tests/**`, or is an assertion literal genuinely in scope?
-- [ ] 27 — should the Phase 4 executor brief say "fix these findings **and any instance of the same
-      error class in the same files**, listing what you added"?
+All six were ruled on by Peter on 2026-09-14.
+
+- [x] 1 — **ruled: file an issue, leave the code.** `/Guest` is not to be patched in isolation.
+      The disparate flows — new users, incomplete users, users we need new information from —
+      all belong to the concept Onboarding owns, and want one deliberate Q4 investment before
+      the next ticket sale rather than a one-page fix. Filed as
+      nobodies-collective/Humans#1183; this run's docs already tell the truth about the loop.
+- [x] 18 — **ruled: do it.** Removing unused public surface is the mission, not a risk to weigh.
+      Struck 2026-09-14: both types are now `internal` in `Services/`.
+- [x] 21 — **ruled: write it.** Struck 2026-09-14, mutation-checked.
+- [x] 25 — **ruled: skip.** The SDK mismatch was already fixed on `origin/main`; no gate change
+      and no issue.
+- [x] 26 — **ruled: neither.** Tests are code and the rule applies to them, but an assertion
+      literal is not prose — the scan has to tell the difference. Filed as
+      peterdrier/Humans#1700.
+- [x] 27 — **ruled: yes, with a double check** on what the executor widened to. Filed as
+      peterdrier/Humans#1701.
 
 ## Sweep queue
 
@@ -270,14 +273,18 @@ generated: none.
 | strike docs-truth | subagent executor | sonnet | executed findings 1, 3, 4, 6–13; reported same-class lines it was not asked to touch (finding 27) |
 | review: GuestController catch | subagent (`doctor-reviewer`) | inherited | APPROVE (finding 19) |
 | review: bulk-clear collapse | subagent (`doctor-reviewer`) | inherited | APPROVE (finding 17), with the shared-partition condition |
-| review: widget-state internalisation | subagent (`doctor-reviewer`) | inherited | APPROVE (finding 18), with conditions; deferred per finding 25 |
+| review: widget-state internalisation | subagent (`doctor-reviewer`) | inherited | APPROVE (finding 18), with conditions; struck 2026-09-14 once the branch could compile |
 
 All threads ran; none was skipped.
 
 ## Verification
 
-- `tests/Humans.Onboarding.Tests`: 59 passed, 0 failed, 0 skipped — run against every code change
-  in this branch, and the new bulk-clear eligibility test was mutation-checked (filtering on the
-  raw user list instead of the partition fails it).
-- The full-solution gate (`dotnet test Humans.slnx`) **did not run**: finding 25. CI is the first
-  green light this branch will get, and the PR says so.
+- `tests/Humans.Onboarding.Tests`: 60 passed, 0 failed, 0 skipped — run against every code change
+  in this branch. Two tests were mutation-checked: the bulk-clear eligibility test (filtering on
+  the raw user list instead of the partition fails it) and the new reject-path test (dropping the
+  Asociados sync fails it; emptying the notification's recipient list fails it).
+- The full-solution gate (`dotnet test Humans.slnx`) **ran green on 2026-09-14**, after the
+  merge of `origin/main` brought in the `global.json` SDK pin that unblocked the Razor build:
+  every test project passed, no failures. `Humans.Integration.Tests` self-skipped, which is its
+  design under CI/cloud ([`integration-tests-are-not-ci-tests`](../../../memory/process/integration-tests-are-not-ci-tests.md)).
+  Before that merge this branch had no local full-solution verification at all, and the PR said so.
