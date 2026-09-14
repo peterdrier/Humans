@@ -208,6 +208,7 @@
   <data name="Votes_BallotInvalid" xml:space="preserve"><value>That ballot could not be recorded. Check your rankings and try again.</value></data>
   <data name="Votes_ResultsHeading" xml:space="preserve"><value>Results</value></data>
   <data name="Votes_OfficialTextAdoptedHeading" xml:space="preserve"><value>Official text as adopted</value></data>
+  <data name="Votes_OfficialTextVotedHeading" xml:space="preserve"><value>Official text voted on</value></data>
   <data name="Votes_OfficialResultHeading" xml:space="preserve"><value>Official result</value></data>
   <data name="Votes_IndicativeResultHeading" xml:space="preserve"><value>Indicative result (not counted in the official outcome)</value></data>
   <data name="Votes_RequiredMajorityLabel" xml:space="preserve"><value>Required majority</value></data>

@@ -148,7 +148,7 @@ The frozen electorate, written exactly once at open.
 | Tier | MembershipTier | The tier as of the snapshot |
 | IsBoardMember | bool | Board role holder at the snapshot |
 | IsOfficial | bool | Only official rows contribute to the official result |
-| NotifiedAt / ReminderSentAt | Instant? / Instant? | Stamped so the open email and the T-24h reminder never repeat; an extension clears `ReminderSentAt`, and a reminder sent across one is never stamped |
+| NotifiedAt / ReminderSentAt | Instant? / Instant? | Stamped so the open email and the T-24h reminder never repeat. Both stamps are conditional on the deadline the message named, so a send that crossed an extension leaves no stamp and is sent again with the deadline now in force; an extension also clears `ReminderSentAt` |
 
 **Constraint:** Unique `(VoteId, UserId)` filtered on `"UserId" IS NOT NULL` — one row per person per vote, while any number of erasure tombstones can coexist.
 

@@ -147,7 +147,14 @@
 </div>
 
 <div class="card mb-4">
-    <div class="card-header">@Localizer["Votes_OfficialTextAdoptedHeading"]</div>
+    @* "as adopted" only when it was. A motion that failed or tied adopted nothing, and a
+       heading saying otherwise misstates the legal outcome on the page the Secretary reads
+       into the acta. The official verdict decides, not the indicative one. *@
+    <div class="card-header">
+        @Localizer[results.Result.Official.Verdict == AssemblyVoteVerdict.Passed
+            ? "Votes_OfficialTextAdoptedHeading"
+            : "Votes_OfficialTextVotedHeading"]
+    </div>
     <div class="card-body">
         @if (vote.IsTranslation)
         {

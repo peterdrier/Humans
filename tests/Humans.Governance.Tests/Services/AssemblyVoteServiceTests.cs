@@ -1605,6 +1605,35 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task StampNotifiedAsync_ForADeadlineTheVoteNoLongerHas_WritesNothing()
+    {
+        var vote = await _fx.AddVoteAsync(
+            status: AssemblyVoteStatus.Open,
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(30));
+        var row = await _fx.AddRosterRowAsync(
+            vote.Id, Guid.NewGuid(), isOfficial: true, notified: false);
+        var announced = vote.ClosesAt;
+
+        // The extension commits between the opening email going out and its stamp landing.
+        (await _fx.Service.ExtendAsync(
+                vote.Id, announced + Duration.FromDays(3), Guid.NewGuid(),
+                Xunit.TestContext.Current.CancellationToken))
+            .Should().Be(AssemblyVoteActionResult.Ok);
+        _fx.Db.ChangeTracker.Clear();
+
+        await _fx.Repository.StampNotifiedAsync(
+            [row.Id], _fx.Clock.GetCurrentInstant(), announced,
+            Xunit.TestContext.Current.CancellationToken);
+        _fx.Db.ChangeTracker.Clear();
+
+        var stored = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
+            .FirstAsync(r => r.Id == row.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.NotifiedAt.Should().BeNull(
+            "the stamp excludes the row from the retry sweep, so it must never stand for a "
+            + "deadline this member was not told");
+    }
+
+    [HumansFact]
     public async Task StampReminderSentAsync_ForADeadlineTheVoteNoLongerHas_WritesNothing()
     {
         var vote = await _fx.AddVoteAsync(

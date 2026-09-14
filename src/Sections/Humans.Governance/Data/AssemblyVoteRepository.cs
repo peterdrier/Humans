@@ -241,44 +241,51 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.VoteId == voteId && r.UserId == userId, ct), ct);
 
-    public async Task StampNotifiedAsync(
-        IReadOnlyCollection<Guid> rosterIds, Instant at, CancellationToken ct = default)
-    {
-        if (rosterIds.Count == 0)
-            return;
-
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var rows = await ctx.AssemblyVoteRosterEntries
-            .Where(r => rosterIds.Contains(r.Id))
-            .ToListAsync(ct);
-
-        foreach (var row in rows)
-            row.NotifiedAt = at;
-
-        await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task StampReminderSentAsync(
+    public Task StampNotifiedAsync(
         IReadOnlyCollection<Guid> rosterIds, Instant at, Instant announcedClosesAt,
-        CancellationToken ct = default)
+        CancellationToken ct = default) =>
+        StampAsync(rosterIds, announcedClosesAt, (row, stampedAt) => row.NotifiedAt = stampedAt, at, ct);
+
+    public Task StampReminderSentAsync(
+        IReadOnlyCollection<Guid> rosterIds, Instant at, Instant announcedClosesAt,
+        CancellationToken ct = default) =>
+        StampAsync(rosterIds, announcedClosesAt, (row, stampedAt) => row.ReminderSentAt = stampedAt, at, ct);
+
+    /// <summary>
+    /// Writes one "this member was told" stamp, but only while the vote still closes at the
+    /// deadline the message actually named.
+    /// <para>
+    /// Both stamps go through here rather than each owning its own write, because every one
+    /// of them is an idempotency anchor for a send that announces a deadline: a stamped row
+    /// is not sent to again, so a stamp standing for a deadline the recipient was never told
+    /// silently disenfranchises them. The reminder stamp learned that one round and the
+    /// opening stamp the next; a third stamp column added later inherits the guard instead
+    /// of repeating the lesson.
+    /// </para>
+    /// <para>
+    /// The deadline is re-read under the write, not taken from the caller's earlier read: an
+    /// Extend can commit between the send and this write, and its stamp-clearing runs on the
+    /// timestamps that existed then, so a stamp written afterwards would survive that clear.
+    /// </para>
+    /// </summary>
+    private async Task StampAsync(
+        IReadOnlyCollection<Guid> rosterIds,
+        Instant announcedClosesAt,
+        Action<AssemblyVoteRoster, Instant> stamp,
+        Instant at,
+        CancellationToken ct)
     {
         if (rosterIds.Count == 0)
             return;
 
         await using var ctx = await factory.CreateDbContextAsync(ct);
-
-        // The deadline is re-read here, not taken from the caller's earlier read: an Extend
-        // can commit between the send and this write, and its stamp-clearing runs on the
-        // timestamps that existed then. A stamp written afterwards would survive that clear
-        // while standing for a deadline this recipient was never told, and the row would
-        // then be skipped for the deadline that decides whether their ballot counts.
         var rows = await ctx.AssemblyVoteRosterEntries
             .Where(r => rosterIds.Contains(r.Id)
                 && ctx.AssemblyVotes.Any(v => v.Id == r.VoteId && v.ClosesAt == announcedClosesAt))
             .ToListAsync(ct);
 
         foreach (var row in rows)
-            row.ReminderSentAt = at;
+            stamp(row, at);
 
         await ctx.SaveChangesAsync(ct);
     }

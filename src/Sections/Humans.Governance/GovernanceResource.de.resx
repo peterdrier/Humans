@@ -559,6 +559,9 @@
   <data name="Votes_OfficialTextAdoptedHeading" xml:space="preserve">
     <value>Angenommener offizieller Text</value>
   </data>
+  <data name="Votes_OfficialTextVotedHeading" xml:space="preserve">
+    <value>Zur Abstimmung gestellter offizieller Text</value>
+  </data>
   <data name="Votes_OfficialResultHeading" xml:space="preserve">
     <value>Offizielles Ergebnis</value>
   </data>

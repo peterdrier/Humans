@@ -1447,7 +1447,11 @@ internal sealed class AssemblyVoteService(
                 // tells the retry sweep this row was reached, so a batch that dies halfway —
                 // or a stamp write that fails after the enqueues — must not leave every
                 // delivered row looking unsent and earn the whole roster a duplicate notice.
-                await repository.StampNotifiedAsync([rosterRow.Id], clock.GetCurrentInstant(), ct);
+                // Conditional on the deadline this email named, for the same reason the
+                // reminder stamp is: an Extend landing while it went out leaves no stamp, and
+                // the retry sweep sends this member the deadline now in force.
+                await repository.StampNotifiedAsync(
+                    [rosterRow.Id], clock.GetCurrentInstant(), current.ClosesAt, ct);
                 notified++;
             }
             catch (Exception ex)

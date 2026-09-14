@@ -112,11 +112,15 @@ internal interface IAssemblyVoteRepository : IRepository
         Guid voteId, Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Stamps <c>NotifiedAt</c> on the given roster rows. Called after the open emails are
-    /// queued.
+    /// Stamps <c>NotifiedAt</c> on the given roster rows, but only while the vote still closes
+    /// at <paramref name="announcedClosesAt"/> — the deadline the opening email just sent
+    /// actually names. Called after those emails are queued. The stamp is what excludes a row
+    /// from the retry sweep, so an extension landing mid-batch skips it and the sweep sends a
+    /// corrected opening notice rather than leaving that member holding the old deadline.
     /// </summary>
     Task StampNotifiedAsync(
-        IReadOnlyCollection<Guid> rosterIds, Instant at, CancellationToken ct = default);
+        IReadOnlyCollection<Guid> rosterIds, Instant at, Instant announcedClosesAt,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Stamps <c>ReminderSentAt</c> on the given roster rows, but only while the vote still
