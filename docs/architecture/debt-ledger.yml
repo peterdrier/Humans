@@ -421,3 +421,18 @@ inbox:
   - added: 2026-09-10
     what: "docs/architecture/freshness-catalog.yml has no Backdoor entry; add one covering src/Sections/Humans.Backdoor/** and tests/Humans.Backdoor.Tests/** (finding 17, /section-doctor on Backdoor 2026-09-03; swept in by /section-doctor on Rideshare 2026-09-10)."
     review: light
+  - added: 2026-09-14
+    what: "Login_Hello in src/Humans.Base/Resources/SharedResource.resx and its five culture variants is named in no view, controller or tag helper — only in the six resx files. The five keys a scan flagged alongside it (CompleteSignup_AllFieldsRequired, GateLogin_Invalid, GateLogin_Throttled, Login_Login, Login_Logout) are live; do not remove those. Base's set, so Base's run (finding 33, /section-doctor on Auth 2026-09-01; swept in by /section-doctor on Issues 2026-09-14)."
+    review: light
+  - added: 2026-09-14
+    what: "src/Sections/Humans.EarlyEntry has no .Contracts leaf, so every consumer — Gate among them — takes a ProjectReference on the whole section and sees all of it rather than a contracts surface. Cross-cutting: it wants one carve-out decision, not a fix per consumer (finding 14, /section-doctor on Gate 2026-08-31; swept in by /section-doctor on Issues 2026-09-14)."
+    review: panel
+  - added: 2026-09-14
+    what: "docs/architecture/freshness-catalog.yml's service-data-access-map entry triggers on src/Sections/*/Services/** and Data/*Repository.cs but not src/Sections/*/Section.cs, so a registration-only change never marks the map dirty (finding 13, /section-doctor on TicketTailor 2026-09-05; swept in by /section-doctor on Issues 2026-09-14)."
+    review: light
+  - added: 2026-09-14
+    what: "docs/architecture/section-conformance.yml's seeding notes record \"no Docs/ in Settings or TicketTailor\" as a pre-existing detector hit; both sections carry Docs/<Section>.md now. The file is read-only to a section-doctor run, so it is recorded here rather than edited (finding 25, /section-doctor on TicketTailor 2026-09-05; swept in by /section-doctor on Issues 2026-09-14)."
+    review: light
+  - added: 2026-09-14
+    what: "docs/architecture/dependency-graph.md's \"Services with no cross-section edges\" list names TicketVendorService, a type that does not exist; the adapter's services are TicketTailorService and StubTicketVendorService (finding 26, /section-doctor on TicketTailor 2026-09-05; swept in by /section-doctor on Issues 2026-09-14)."
+    review: light
