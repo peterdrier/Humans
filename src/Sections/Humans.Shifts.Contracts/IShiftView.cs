@@ -14,8 +14,8 @@ namespace Humans.Shifts.Contracts;
 /// <c>null</c>, never an exception.
 ///
 /// <para>
-/// Issue #720 introduced this surface over bundled EF rows. The rows
-/// themselves are the section's own vocabulary and do not cross the boundary:
+/// This surface is a flattened projection over the section's bundled EF rows.
+/// The rows themselves are the section's own vocabulary and do not cross the boundary:
 /// the entity-bearing bundle lives on the section's internal
 /// <c>IShiftRowView</c>, and this interface carries the flattened projection
 /// of it. The per-rota bundle has no consumer outside the section at all and

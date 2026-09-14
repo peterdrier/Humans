@@ -6,8 +6,8 @@ namespace Humans.Governance.Services.Dtos;
 
 /// <summary>
 /// Detail projection for a user's own application detail view
-/// (<c>Application/Details.cshtml</c>). Does not include the applicant's own
-/// user/profile fields because the controller already knows who they are.
+/// (<c>Views/Governance/Applications/Details.cshtml</c>). Omits the applicant's
+/// own user/profile fields — the controller already knows who they are.
 /// </summary>
 internal sealed record ApplicationUserDetailDto(
     Guid Id,

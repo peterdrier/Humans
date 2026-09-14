@@ -44,7 +44,7 @@ Tier application entity with state machine workflow. Used for Colaborador and As
 | ResolvedAt | Instant? | When resolved (approved/rejected/withdrawn) |
 | ReviewedByUserId | Guid? | Reviewer ID — **FK only**, no nav |
 | ReviewNotes | string? (4000) | Reviewer notes / rejection reason |
-| TermExpiresAt | LocalDate? | Term expiry (Dec 31 of odd year), set on approval |
+| TermExpiresAt | LocalDate? | Term expiry (Dec 31 of the current cycle's odd year), set on approval |
 | BoardMeetingDate | LocalDate? | Date of Board meeting where decision was made |
 | DecisionNote | string? (4000) | Board's collective decision note (only record after vote deletion) |
 | RenewalReminderSentAt | Instant? | When renewal reminder was last sent |
@@ -97,23 +97,23 @@ Stored as string via `HasConversion<string>()`.
 
 ### Term lifecycle
 
-Colaborador and Asociado memberships have 2-year synchronized terms expiring Dec 31 of **odd years** (2027, 2029, 2031...). `TermExpiryCalculator.ComputeTermExpiry()` computes the expiry as the next Dec 31 of an odd year that is at least 2 years from the approval date.
+Colaborador and Asociado memberships have 2-year synchronized terms expiring Dec 31 of **odd years** (2027, 2029, 2031...). `TermExpiryCalculator.ComputeTermExpiry()` computes the expiry as Dec 31 of the current cycle's odd year: approvals in 2026 or 2027 end 2027-12-31, approvals in 2028 or 2029 end 2029-12-31. Q4 of an odd year is the renewal window (reminders go out 90 days before expiry), so approvals from 1 October of an odd year belong to the next cycle: November 2027 → 2029-12-31.
 
 - On approval: `Application.TermExpiresAt` is set.
 - On expiry without renewal: the next `SystemTeamSyncJob` run removes the human from the Colaboradors / Asociados system team (computed via `HasActiveApprovedTierAsync`) **and downgrades the profile's `MembershipTier`** via `IUserService.DowngradeMembershipTierForExpiredAsync` — to another tier the human still holds an active approval for, otherwise to `Volunteer`. Each downgrade writes an `AuditAction.TierDowngraded` entry.
 - Renewal: new Application entity (same tier), goes through normal Board voting.
 - Reminder: `TermRenewalReminderJob` sends reminders 90 days before expiry.
+- Correction: `/Governance/Applications/Admin/TermExpiry` (Admin only, temporary) lists approved applications whose stored expiry differs from what the calculator gives for their `ResolvedAt`, and a POST rewrites them, one `AuditAction.TierTermExpiryCorrected` entry per row. Exists to repair rows approved under the pre-September-2026 rule (two years out, then bumped to odd); delete once QA and production are clean.
 
 ## Routing
 
-Three controllers serve this section directly. `BoardController` composes Governance data into the broader Board dashboard but does not own Governance workflows.
+These controllers serve this section.
 
 | Controller | Routes | Notes |
 |------------|--------|-------|
 | `GovernanceController` | `GET /Governance` — overview + tier counts + statutes |
 | `GovernanceApplicationsController` | `GET /Governance/Applications` — user's own applications | `GET /Governance/Applications/Create`, `POST /Governance/Applications/Create` — submit | `GET /Governance/Applications/Details/{id}`, `POST /Governance/Applications/Withdraw/{id}` | `GET /Governance/Applications/Admin` — admin list (BoardOrAdmin) | `GET /Governance/Applications/Admin/{id}` — admin detail (BoardOrAdmin) |
 | `GovernanceBoardVotingController` | `GET /Governance/BoardVoting` — voting dashboard (BoardOrAdmin) | `GET /Governance/BoardVoting/{id}` — voting detail (BoardOrAdmin) | `POST /Governance/BoardVoting/Vote` — cast vote (BoardOnly) | `POST /Governance/BoardVoting/Finalize` — approve/reject (AdminOnly) |
-| `BoardController` | `GET /Board` — Board dashboard (BoardOrAdmin) |
 
 `OnboardingReviewController` also owns the Consent Coordinator review queue (`GET /OnboardingReview`, `POST /OnboardingReview/{id}/Clear`, etc.) — those routes belong to the Onboarding section, not Governance.
 
@@ -130,7 +130,7 @@ Three controllers serve this section directly. `BoardController` composes Govern
 
 - Application status follows: Submitted then Approved, Rejected, or Withdrawn. The state machine also defines a `RequestMoreInfo` self-transition on Submitted, but no controller path currently invokes it.
 - Each Board member gets exactly one vote per application (DB-enforced via unique index on `(ApplicationId, BoardMemberUserId)`).
-- On approval, the term expiry is set to the next December 31 of an odd year that is at least 2 years from the approval date.
+- On approval, the term expiry is set to December 31 of the current cycle's odd year (the approval year if odd, otherwise the following year); from 1 October of an odd year it is the next cycle's, so a renewal approved in the reminder window is not born expired.
 - On approval, the human's membership tier is updated and they are added to the corresponding system team (Colaboradors or Asociados).
 - On finalization (approval or rejection), all individual Board vote records for that application are deleted. Only the collective decision note and Board meeting date survive.
 - Admin can assign all roles. Board and HumanAdmin can assign all roles except Admin (per `RoleAssignmentAuthorizationHandler` + `RoleNames.BoardManageableRoles`).
@@ -143,12 +143,12 @@ Three controllers serve this section directly. `BoardController` composes Govern
 - Regular humans **cannot** view other humans' applications, cast Board votes, or manage role assignments.
 - Board **cannot** assign the Admin role.
 - HumanAdmin **cannot** assign the Admin role.
-- Humans who already have a pending (Submitted) application for a tier **cannot** submit another for the same tier until the first is resolved.
+- A human with a pending (Submitted) application **cannot** submit another, of any tier, until the first is resolved.
 
 ## Triggers
 
 - When an application is submitted: nav badge and notification meter caches are invalidated so the Board's pending-application count updates. `NotificationSource.ApplicationSubmitted` is retired — no new rows emit it (historical rows only); submission no longer dispatches an in-app notification.
-- When an application is approved: the human's tier is updated on their profile (`IProfileService.SetMembershipTierAsync`), they are added to the Colaboradors or Asociados system team via `ISystemTeamSync`, an audit-log entry is written (`AuditAction.TierApplicationApproved`), an approval email is sent (`IEmailMessageFactory.ApplicationApproved` via `IEmailService.SendAsync`), and an in-app notification is dispatched (`NotificationSource.ApplicationApproved`). Email + notification are best-effort.
+- When an application is approved: the human's tier is updated on their profile (`IUserService.SetMembershipTierAsync`), they are added to the Colaboradors or Asociados system team via `ISystemTeamSync`, an audit-log entry is written (`AuditAction.TierApplicationApproved`), an approval email is sent (`IEmailMessageFactory.ApplicationApproved` via `IEmailService.SendAsync`), and an in-app notification is dispatched (`NotificationSource.ApplicationApproved`). Email + notification are best-effort.
 - When an application is rejected: an audit-log entry is written (`AuditAction.TierApplicationRejected`), a rejection email is sent (`IEmailMessageFactory.ApplicationRejected` via `IEmailService.SendAsync`), and an in-app notification is dispatched (`NotificationSource.ApplicationRejected`). Email + notification are best-effort.
 - When an application is approved or rejected: all Board vote records for that application are deleted (atomic inside `IApplicationRepository.FinalizeAsync`).
 - A renewal reminder email + in-app notification is dispatched 90 days before term expiry (`TermRenewalReminderJob`, `NotificationSource.TermRenewalReminder`). The job is `Humans.Governance/Jobs/TermRenewalReminderJob.cs` since G5 lane 5b-4 (nobodies-collective/Humans#866) — `public` because Shell names the concrete type when it registers and schedules it; it reads and stamps Applications only through `IApplicationDecisionService`.
@@ -159,7 +159,7 @@ Three controllers serve this section directly. `BoardController` composes Govern
 
 ## Cross-Section Dependencies
 
-- **Profiles:** `IProfileService` — membership tier lives on the profile; approval calls `SetMembershipTierAsync`. `IProfileService.GetTierCountsAsync` is called by `GovernanceController.Index` for sidebar tier counts. Account merge: `ApplicationDecisionService` implements `IUserMerge`; `AccountMergeService` (Profiles section) fans out to all `IUserMerge` implementations, which triggers `ApplicationDecisionService.ReassignAsync` → `IApplicationRepository.ReassignApplicationsToUserAsync` to re-FK `Application.UserId` from source to target. `BoardVote.BoardMemberUserId` is not re-FK'd (votes are transient, deleted on finalization).
+- **Users:** `IUserService` — membership tier lives on the profile; approval calls `SetMembershipTierAsync`. `GovernanceIndexService` counts the sidebar tiers itself from `IUserServiceRead.GetAllUserInfosAsync`. Account merge: `ApplicationDecisionService` implements `IUserMerge`; `AccountMergeService` (Users section) fans out to all `IUserMerge` implementations, which triggers `ApplicationDecisionService.ReassignAsync` → `IApplicationRepository.ReassignApplicationsToUserAsync` to re-FK `Application.UserId` from source to target. `BoardVote.BoardMemberUserId` is not re-FK'd (votes are transient, deleted on finalization).
 - **Teams:** `ISystemTeamSync` — tier approval or expiry adds/removes the human from Colaboradors/Asociados system teams.
 - **Onboarding:** Tier applications are a separate, optional path — never block Volunteer onboarding.
 - **Consent:** Consent checks are reviewed alongside (but independently of) tier applications.
@@ -172,9 +172,9 @@ Three controllers serve this section directly. `BoardController` composes Govern
 **Owned tables:** `applications`, `application_state_history`, `board_votes`
 **Status:** (A) Migrated (peterdrier/Humans PR #503, 2026-04-15). Store/decorator layer subsequently removed under issue nobodies-collective/Humans#533. Moved into its own project `src/Sections/Humans.Governance` at G5 (nobodies-collective/Humans#866); the cross-section surface — `IApplicationServiceRead` (including `GetUnvotedApplicationCountAsync` for the nav badge and admin nav tree), `IMembershipCalculatorRead`, `IApplicationDecisionService` (validate-submission / submit / update-draft / the two renewal-reminder reads / mark-reminder-sent), `ApplicationStatus` and the membership snapshot records — sits on the `Humans.Governance.Contracts` leaf, everything else is `internal`.
 
-- **Architecture test:** `tests/Humans.Governance.Tests/Architecture/GovernanceArchitectureTests.cs` — pins namespace, no-`DbContext`, `IApplicationRepository` dep, no store types. (The `IMemoryCache` check is delegated to `ApplicationServicesTakeNoMemoryCacheRule`, which allowlists `ApplicationDecisionService` — see below.)
+- **Architecture tests:** this section has no architecture test project of its own; the solution-wide rules in `tests/Humans.Web.Tests/Architecture/` cover it, including `ApplicationServicesTakeNoMemoryCacheRule`, which allowlists `ApplicationDecisionService` — see below.
 - `ApplicationDecisionService`, `MembershipCalculator`, and `MembershipQuery` all live in `Humans.Governance/Services/` and depend only on Application-layer abstractions. No `HumansDbContext`. `ApplicationDecisionService` caches the per-board-member unvoted-application count inline via `IMemoryCache` (`CacheKeys.VotingBadge`, 2-min TTL, PerUser — allowlisted in `ApplicationServicesTakeNoMemoryCacheRule`); `MembershipCalculator` and `MembershipQuery` hold no cache.
-- `MembershipCalculator` owns no tables — it computes status by orchestrating reads through `IProfileService`, `IMembershipQuery` (a thin pass-through over `ITeamService` + `IRoleAssignmentService`, used to break the DI cycle with `ISystemTeamSync`), `IUserService`, `ILegalDocumentSyncService`, and `IConsentService` (resolved lazily via `IServiceProvider` to break a second cycle).
+- `MembershipCalculator` owns no tables — it computes status by orchestrating reads through `IMembershipQuery` (a thin pass-through over `ITeamServiceRead` + `IRoleAssignmentService`, used to break the DI cycle with `ISystemTeamSync`), `IUserServiceRead`, `ILegalDocumentSyncServiceRead`, and `IConsentServiceRead` (resolved lazily via `IServiceProvider` to break a second cycle).
 - `IApplicationRepository` (impl `src/Sections/Humans.Governance/Data/ApplicationRepository.cs`) is the only non-test file that touches `DbContext.Applications` / `BoardVotes` / `ApplicationStateHistories`. Aggregate loads include `Application` + `ApplicationStateHistory` + `BoardVote`.
 - `FinalizeAsync(app, ct)` is the atomic approve/reject commit: application update + board-vote bulk delete in one `SaveChangesAsync`.
 - **Decorator decision — no caching decorator.** At this section's traffic level (a handful of Board-driven writes per week and a few admin reads per day) a caching layer isn't worth the complexity. The earlier store/decorator from peterdrier/Humans PR #503 was removed under issue nobodies-collective/Humans#533 once §15 (`CachingProfileService`) established the canonical shape.
@@ -183,5 +183,5 @@ Three controllers serve this section directly. `BoardController` composes Govern
 
 ### Touch-and-clean guidance
 
-- `OnboardingService`, `SendBoardDailyDigestJob`, `SendAdminDailyDigestJob`, `SystemTeamSyncJob`, and `NotificationMeterProvider` still read governance-owned tables directly for dashboards and batch jobs. Those uses are grandfathered until the sections owning those services migrate to call `IApplicationDecisionService` / `IApplicationRepository` instead.
+- Nothing outside this section reads the governance-owned tables. `OnboardingService`, `SystemTeamSyncJob` and `NotificationMeterProvider` all go through `IApplicationServiceRead`.
 - After nobodies-collective#584 the four board-voting methods lost their `OnboardingService` delegating wrappers and are consumed directly. Three of them — `GetBoardVotingDashboardAsync`, `GetBoardVotingDetailAsync`, `CastBoardVoteAsync` — came in with the section at G5 and are now internal, consumed only by the section's own `GovernanceBoardVotingController` at `/Governance/BoardVoting`. `GetUnvotedApplicationCountAsync` is the one that stayed cross-section, and it sits on `IApplicationServiceRead` (Shell's `NavBadgesViewComponent` and `AdminNavTree`, plus Notifications' `NotificationMeterProvider`). `CastBoardVoteAsync` returns `ApplicationDecisionResult` (not `OnboardingResult`); error keys `NotFound` and `NotSubmitted` are still returned by the service. The controller switch handles `NotFound` explicitly and maps all other error keys (including `NotSubmitted`) to the same "not votable" message via the default arm.

@@ -64,6 +64,14 @@ internal sealed class ShiftAdminController(
         return View(model);
     }
 
+    private async Task<IActionResult> RenderInvalidEditAsync(string slug)
+    {
+        var result = await Index(slug);
+        if (result is ViewResult view)
+            view.ViewName = nameof(Index);
+        return result;
+    }
+
     [HttpPost("Rotas")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateRota(string slug, CreateRotaModel model)
@@ -109,6 +117,14 @@ internal sealed class ShiftAdminController(
 
         var rota = await GetRotaForTeamAsync(rotaId, team.Id);
         if (rota is null) return NotFound();
+
+        if (!ModelState.IsValid)
+        {
+            SetError("Please fix the errors below.");
+            model.RotaId = rotaId;
+            ViewData["InvalidRotaEdit"] = model;
+            return await RenderInvalidEditAsync(slug);
+        }
 
         rota.Name = model.Name;
         rota.Description = model.Description;
@@ -248,10 +264,18 @@ internal sealed class ShiftAdminController(
         var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
 
+        var shift = await GetShiftForTeamAsync(shiftId, team.Id);
+        if (shift is null) return NotFound();
+
         if (!model.StartTime.TryParseInvariantLocalTime(out var parsedTime))
+            ModelState.AddModelError(nameof(model.StartTime), "Invalid start time format.");
+
+        if (!ModelState.IsValid)
         {
-            SetError("Invalid start time format.");
-            return RedirectToAction(nameof(Index), new { slug });
+            SetError("Please fix the errors below.");
+            model.ShiftId = shiftId;
+            ViewData["InvalidShiftEdit"] = model;
+            return await RenderInvalidEditAsync(slug);
         }
 
         var result = await shiftMgmt.UpdateShiftAsync(new UpdateShiftInput(
@@ -323,7 +347,7 @@ internal sealed class ShiftAdminController(
         return RedirectToAction(nameof(Index), new { slug });
     }
 
-    // see nobodies-collective/Humans#732 — coordinator "email a rota" (mgmt scope, excludes NoInfoAdmin).
+    // Coordinator "email a rota" (mgmt scope, excludes NoInfoAdmin).
     [HttpGet("Rotas/{rotaId}/Email")]
     public async Task<IActionResult> EmailRota(string slug, Guid rotaId)
     {
@@ -457,8 +481,11 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteRota(string slug, Guid rotaId)
     {
-        var (teamError, _, _) = await ResolveDepartmentManagementAsync(slug);
+        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
+
+        var rota = await GetRotaForTeamAsync(rotaId, team.Id);
+        if (rota is null) return NotFound();
 
         try
         {
@@ -478,8 +505,11 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteShift(string slug, Guid shiftId)
     {
-        var (teamError, _, _) = await ResolveDepartmentManagementAsync(slug);
+        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
+
+        var shift = await GetShiftForTeamAsync(shiftId, team.Id);
+        if (shift is null) return NotFound();
 
         try
         {

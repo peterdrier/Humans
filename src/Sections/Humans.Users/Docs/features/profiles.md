@@ -110,7 +110,7 @@ Emergency contact fields are marked `[PersonalData]` and included in the data ex
 
 ## Membership Status
 
-`MembershipStatus` is no longer computed on `Profile` — it moved to Governance's `IMembershipCalculator` (`Humans.Governance.Contracts.MembershipStatus`), computed from RoleAssignments and ConsentRecords:
+`MembershipStatus` is no longer computed on `Profile` — it moved to Governance's `IMembershipCalculatorRead` (`Humans.Governance.Contracts.MembershipStatus`), computed from RoleAssignments and ConsentRecords:
 
 | Status | Description | Visual |
 |--------|-------------|--------|
@@ -286,8 +286,6 @@ Google permissions (Shared Drive access, Group memberships) are **not** revoked 
 2. The overnight sync job (`SystemTeamSyncJob` / `GoogleResourceReconciliationJob`) detects the ended memberships and removes the corresponding Google permissions
 
 This two-step approach ensures Google deprovisioning uses the same tested code path as any other team departure, rather than a separate deletion-specific implementation.
-
-> **Note:** The automated sync jobs are currently disabled during initial rollout. Google permissions are managed manually via the "Sync Now" button at `/Admin/GoogleSync` until automated sync is validated. Sync jobs must be able to add members reliably before removal logic is enabled.
 
 #### Routes
 

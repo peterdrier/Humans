@@ -25,18 +25,9 @@ Good candidates usually look like:
 - `src/Humans.Web/`: the Shell — chrome, page composition, platform context
 - `tests/Humans.<Section>.Tests/`: one test project per section; architecture baselines in `tests/Humans.Web.Tests/Architecture/Baselines/`
 
-## Forbidden Areas
+## Persistence Changes
 
-Never change how data is stored or migrated.
-
-Avoid these paths entirely:
-
-- `src/Sections/Humans.<Section>/Data/*DbContext*.cs`
-- `src/Sections/Humans.<Section>/Data/Configurations/**`
-- `src/Sections/Humans.<Section>/Data/Migrations/**`
-- `src/Humans.Web/Migrations/**` (platform context)
-
-Also avoid entity-shape cleanup, serialization attribute changes, and other schema-adjacent edits.
+Section-owned persistence and generated migrations may be part of a justified improvement. Follow [section-migrations-in-maintenance](../../../../memory/process/section-migrations-in-maintenance.md), including existing EF review and approval requirements. Substantial architecture transitions are separately scoped tasks with dedicated PRs. Preserve serialization contracts unless the task authorizes changing them.
 
 ## Tech-Debt Priorities
 
@@ -192,5 +183,5 @@ Migration strategy:
 - When touching interfaces in `Application/`, check all implementations and callers.
 - When touching authorization, preserve the exact access level.
 - Keep controllers thin and services cohesive, but do not move code across boundaries unless the ownership problem is obvious and local.
-- Stop if the next step drifts into database, migration, or entity-shape changes.
+- For persistence changes, apply the section-migration rules above; queue substantial architecture transitions for explicit planning.
 - Stop when remaining candidates only satisfy metric movement, not architecture value. Report the exhausted safe opportunities instead of forcing a target.

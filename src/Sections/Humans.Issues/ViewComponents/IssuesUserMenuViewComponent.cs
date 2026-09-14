@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Humans.Base.Constants;
+using Humans.Issues.Contracts;
 using Humans.Issues.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -22,9 +22,8 @@ internal sealed class IssuesUserMenuViewComponent(IIssuesService issuesService) 
             .Where(c => string.Equals(c.Type, ClaimTypes.Role, StringComparison.Ordinal))
             .Select(c => c.Value)
             .ToList();
-        var isAdmin = UserClaimsPrincipal.IsInRole(RoleNames.Admin);
 
-        var count = await issuesService.GetActionableCountForViewerAsync(currentUserId, roles, isAdmin);
+        var count = await issuesService.GetActionableCountForViewerAsync(new IssueViewer(currentUserId, roles));
         return View(count);
     }
 }

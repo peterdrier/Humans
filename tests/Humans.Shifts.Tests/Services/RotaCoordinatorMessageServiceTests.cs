@@ -151,6 +151,28 @@ public sealed class RotaCoordinatorMessageServiceTests
     }
 
     [HumansFact]
+    public async Task SendRotaMessageAsync_CarriesSenderEmail_ForReplyTo()
+    {
+        // Shifts.md: Reply-To is the sending coordinator while From stays the
+        // shared address. This section's contribution to that invariant is
+        // passing the sender's own address through as SenderEmail — the
+        // Email section's factory turns it into the ReplyTo header.
+        var rota = MakeRota(out _);
+        _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
+
+        var userA = Guid.NewGuid();
+        var sender = Guid.NewGuid();
+        var shift = MakeShift(rota.Id, dayOffset: 1, startHour: 10);
+        AddSignups(rota, [MakeSignup(userA, shift)]);
+        StubUsers(sender, userA);
+
+        await CreateSut().SendRotaMessageAsync(rota.Id, sender, "hello", Xunit.TestContext.Current.CancellationToken);
+
+        _emailMessages.Received(1).CoordinatorRotaMessage(
+            Arg.Is<CoordinatorRotaMessageRequest>(r => r.SenderEmail == "sender@example.com"));
+    }
+
+    [HumansFact]
     public async Task SendRotaMessageAsync_WritesOneAuditEntry_WithSenderActor()
     {
         var rota = MakeRota(out _);
@@ -470,6 +492,29 @@ public sealed class RotaCoordinatorMessageServiceTests
         captured.Should().NotBeNull();
         captured!.ShiftGroups[0].RotaName.Should().Be("Antelope", "rotas grouped alphabetically by name");
         captured.ShiftGroups[1].RotaName.Should().Be("Zebra");
+    }
+
+    [HumansFact]
+    public async Task SendTeamRotasMessageAsync_CarriesSenderEmail_ForReplyTo()
+    {
+        // Same header-half invariant as the per-rota path: SenderEmail rides
+        // through so the Email section's factory sets ReplyTo to the sender.
+        var teamId = StubTeam();
+        var es = StubEvent();
+        var userA = Guid.NewGuid();
+        var sender = Guid.NewGuid();
+
+        var shift = MakeShift(Guid.Empty, dayOffset: 30, startHour: 10);
+        var rota = MakeTeamRota(teamId, es, "Rota1", [(shift, [userA])]);
+
+        _repo.GetRotasAsync(es.Id, Arg.Any<IReadOnlyCollection<Guid>>(), RotaReadShape.View, Arg.Any<CancellationToken>())
+            .Returns([rota]);
+        StubUsers(sender, userA);
+
+        await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "hello", Xunit.TestContext.Current.CancellationToken);
+
+        _emailMessages.Received(1).CoordinatorTeamRotasMessage(
+            Arg.Is<CoordinatorTeamRotasMessageRequest>(r => r.SenderEmail == "sender@example.com"));
     }
 
     [HumansFact]

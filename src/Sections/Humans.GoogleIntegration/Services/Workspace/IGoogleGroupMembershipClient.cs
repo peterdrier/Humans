@@ -5,11 +5,8 @@ namespace Humans.GoogleIntegration.Services.Workspace;
 /// scoped to the group-membership operations performed by <c>GoogleWorkspaceSyncService</c>.
 /// The Directory API is used (rather than Cloud Identity Groups) because it can add
 /// members whose email is not a Google account — external addresses such as a
-/// hotmail.fr address — directly to a group.
-/// Implementations live in <c>Humans.Infrastructure</c>; the Application-layer
-/// sync service (coming in §15 Part 2b, issue #575) depends only on this
-/// interface so that <c>Humans.Application</c> stays free of
-/// <c>Google.Apis.*</c> imports (design-rules §13).
+/// hotmail.fr address — directly to a group. Shape-neutral so the service layer never
+/// names a <c>Google.Apis.*</c> type (design-rules §13).
 /// </summary>
 /// <remarks>
 /// <para>

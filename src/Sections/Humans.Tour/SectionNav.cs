@@ -4,8 +4,8 @@ namespace Humans.Tour;
 
 /// <summary>
 /// The top-nav Tour link, offered only while signed out: the signed-in nav is too busy for a
-/// Tour slot, so members get a dashboard card instead (Shell's Home/Dashboard.cshtml). The
-/// weight sorts it last among contributed links, beside Legal.
+/// Tour slot, so members get the dashboard card instead (SectionMemberDashboard). The weight
+/// sorts it last among contributed links, beside Legal.
 /// </summary>
 internal sealed class SectionNav : ISectionNav
 {

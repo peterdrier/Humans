@@ -7,8 +7,7 @@ using Microsoft.Extensions.Logging;
 namespace Humans.GoogleIntegration.Services;
 
 /// <summary>
-/// Owns the GoogleIntegration-section observable gauges split out of
-/// <c>HumansMetricsService</c> (nobodies-collective/Humans#1091): total Google resources
+/// Owns the GoogleIntegration-section observable gauges: total Google resources
 /// (<see cref="ITeamResourceService"/> — the resource-count read moved with the section that
 /// owns <c>google_resources</c>, not Teams) and the unprocessed sync outbox.
 /// </summary>

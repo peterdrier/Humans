@@ -1,36 +1,29 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Tickets' cross-section surface, carved into its own leaf project because five of its
-    consumers are still in Base: DashboardService, UserEmailService, ShiftManagementService
-    and AccountDeletionService read a human's holdings or the order projection through
-    ITicketServiceRead, and AdminDatabaseDiagnosticsService does the same. A Contracts/
-    *folder* inside Humans.Tickets would therefore make Base reference a section and cycle
-    (design §15.5b, memory/architecture/section-project-cycle-fix.md). TicketSyncJob was a
-    sixth until G5 lane 5b-3 (nobodies-collective/Humans#866) moved it into
-    Humans.Tickets/Contracts/.
+    Tickets' cross-section surface, carved into its own leaf project because other
+    sections (Users, Shifts, Budget, Gate, Scanner, MailerLite, Teams, Surveys, Agent) read
+    a human's holdings or the order projection through ITicketServiceRead, and Notifications
+    reads ITicketSync. A Contracts/ *folder* inside Humans.Tickets would make each of them
+    reference the section itself and cycle (design §15.5b,
+    memory/architecture/section-project-cycle-fix.md).
 
-    Tickets is the first section shipping both a .Contracts leaf and a Contracts/ folder,
-    and the split is principled: the leaf carries what Base consumers need, the folder inside
-    Humans.Tickets carries public surface that is ASP.NET plumbing (TicketStubViewComponent).
-
-    That split stands; the reason previously given for it — "the leaf must stay framework-free"
-    — was measured false in G5 lane 3c, 2026-08-15. Humans.Interfaces has carried
-    FrameworkReference Microsoft.AspNetCore.App since ISection landed, and FrameworkReference
-    flows transitively through ProjectReference, so this leaf resolves Microsoft.AspNetCore.App
-    with IsTransitiveFrameworkReference=true and could name a ViewComponent today. Keeping the
-    view component out is a judgement about what cross-section consumers should have to see, not
-    a compiler constraint, and nothing enforces it here. See Humans.Interfaces.csproj for the
-    single invariant that IS mechanical: zero Humans.* ProjectReferences on Base; external
-    packages unrestricted (Peter, 2026-08-15).
+    Tickets ships both a .Contracts leaf and a Contracts/ folder: the leaf carries what
+    cross-section consumers need, the folder inside Humans.Tickets carries public surface that
+    is ASP.NET plumbing (TicketStubViewComponent) or the vendor port. "The leaf must stay
+    framework-free" is not the reason: FrameworkReference flows transitively through
+    ProjectReference, so this leaf resolves Microsoft.AspNetCore.App and could name a
+    ViewComponent today. Keeping the view component out is a judgement about what
+    cross-section consumers should have to see, not a compiler constraint, and nothing
+    enforces it here (Peter, 2026-08-15).
 
     Three of the members here exist so that Tickets is the application's only door to
     ticketing: ITicketDiscountCodes and ITicketVendorMirror move Campaigns' and Gate's
-    (GateVendorCheckInJob, in Humans.Gate/Contracts/ since lane 5b-3) calls off the vendor
-    port (ITicketVendorService), which has
-    exactly two injection sites — Humans.Tickets and Shell's TicketVendorHealthCheck.
-    The port itself is deliberately NOT here: it sits in Humans.Tickets/Contracts/ since
-    G5 lane 4b-2g (nobodies-collective/Humans#866), because no Base consumer names it and
+    (GateVendorCheckInJob, Humans.Gate/Jobs/) calls off the vendor port
+    (ITicketVendorService), which is injected only inside Humans.Tickets — its own
+    Health/TicketVendorHealthCheck included.
+    The port itself is deliberately NOT here: it sits in Humans.Tickets/Contracts/,
+    because no Base consumer names it and
     Humans.TicketTailor references Humans.Tickets directly to implement it.
     TicketDiscountCodeRequest / TicketDiscountKind are the
     section's own boundary vocabulary, mapped to the port's DiscountCodeSpec /

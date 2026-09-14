@@ -54,6 +54,7 @@
     <Project Path="src/Sections/Humans.Monitor/Humans.Monitor.csproj" />
     <Project Path="src/Sections/Humans.Notifications/Humans.Notifications.csproj" />
     <Project Path="src/Sections/Humans.Notifications.Contracts/Humans.Notifications.Contracts.csproj" />
+    <Project Path="src/Sections/Humans.Rideshare/Humans.Rideshare.csproj" />
     <Project Path="src/Sections/Humans.Scanner/Humans.Scanner.csproj" />
     <Project Path="src/Sections/Humans.Search/Humans.Search.csproj" />
     <Project Path="src/Sections/Humans.Shifts.Contracts/Humans.Shifts.Contracts.csproj" />
@@ -110,6 +111,7 @@
     <Project Path="tests/Humans.MailerLite.Tests/Humans.MailerLite.Tests.csproj" />
     <Project Path="tests/Humans.Monitor.Tests/Humans.Monitor.Tests.csproj" />
     <Project Path="tests/Humans.Notifications.Tests/Humans.Notifications.Tests.csproj" />
+    <Project Path="tests/Humans.Rideshare.Tests/Humans.Rideshare.Tests.csproj" />
     <Project Path="tests/Humans.Scanner.Tests/Humans.Scanner.Tests.csproj" />
     <Project Path="tests/Humans.Search.Tests/Humans.Search.Tests.csproj" />
     <Project Path="tests/Humans.Store.Tests/Humans.Store.Tests.csproj" />

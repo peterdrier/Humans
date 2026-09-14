@@ -8,16 +8,12 @@ namespace Humans.Consent.Services;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Footprint budget (CLAUDE.md "Scale and Deployment"): one entry per
-/// user (~500 entries at full population), each entry a small
-/// <see cref="HashSet{T}"/> of Guids (the user's consented version ids,
-/// typically a handful). Worst-case &lt; 1 MB at full population —
-/// well within the 50 MB per-projection budget the cache-migration spec
-/// allots.
+/// Footprint: one entry per user, each a small <see cref="HashSet{T}"/>
+/// of Guids — well under 1 MB at full population.
 /// </para>
 /// <para>
 /// The chain-follow merge resolution (<see
-/// cref="Users.IUserService.GetMergedSourceIdsAsync"/>) is applied at
+/// cref="Users.Contracts.IUserServiceRead.GetMergedSourceIdsAsync"/>) is applied at
 /// warm/refresh time, not at read time — every cache entry already
 /// represents the union of the target user's explicit consents plus
 /// those of any merged source tombstones. Invalidation must trigger on
@@ -29,8 +25,9 @@ namespace Humans.Consent.Services;
 /// cref="IConsentService.SubmitConsentAsync"/> is the load-bearing
 /// invariant of this cache: the controller redirects immediately after
 /// the submit returns, and the next-page consent-banner check must not
-/// observe a stale "still required" entry. The caching decorator clears
-/// the user's entry before returning from <c>SubmitConsentAsync</c>.
+/// observe a stale "still required" entry. The caching decorator refreshes
+/// the user's entry (and each merged-source key) via <c>ReplaceAsync</c>
+/// before returning from <c>SubmitConsentAsync</c>.
 /// </para>
 /// </remarks>
 /// <param name="UserId">The target user id this entry was keyed under.</param>

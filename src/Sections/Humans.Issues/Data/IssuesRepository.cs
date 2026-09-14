@@ -64,9 +64,6 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
                           || EF.Functions.ILike(i.Description, term, "\\"));
         }
 
-        // Visibility filter:
-        //  - sectionFilter null = no constraint (Admin)
-        //  - sectionFilter non-null = "section IN sectionFilter OR ReporterUserId == reporterFallback"
         if (sectionFilter is not null)
         {
             var sectionList = sectionFilter.ToList();
@@ -99,9 +96,7 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
     public async Task AddCommentAndSaveIssueAsync(IssueComment comment, Issue issue, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
-        // Attach the issue (mutated by the caller) and mark it modified so
-        // timestamp/status fields are persisted in the same transaction as the
-        // new comment.
+        // The comment insert and the caller's issue mutation must commit in one SaveChanges.
         db.Attach(issue);
         db.Entry(issue).State = EntityState.Modified;
         db.IssueComments.Add(comment);

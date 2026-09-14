@@ -25,8 +25,9 @@ full-bleed hero, scroll animations) rather than the Shell chrome.
 - **Entry points.** A signed-out visitor gets a `Tour` link in the top nav (`SectionNav`, an
   `ISectionNav` contribution visible only while anonymous) and a "New here?" link on the
   Welcome landing page (Onboarding's `Views/Welcome/Index.cshtml`, by URL). A signed-in member
-  gets a dashboard action card (Shell's `Views/Home/Dashboard.cshtml`, by controller name) and
-  no nav slot — the signed-in nav is too busy for one.
+  gets a dashboard action card (`SectionMemberDashboard`, an `ISectionMemberDashboard`
+  contribution rendering `TourCard` into the `member-dashboard` slot) and no nav slot — the
+  signed-in nav is too busy for one.
 - Photos are event photography reused from the nobodies.team site (same organization).
 - Copy names the event **Elsewhere** only — never "Nowhere" (no legal rights to that name).
 
@@ -48,7 +49,7 @@ None — content-only section. No tables, no DbContext, no repository, no migrat
 - The page shows no member data and calls no services — `TourController` injects nothing and
   the view reads no model. Stats in the hero are static marketing copy, not live queries.
 - The nav link is offered only while signed out (`SectionNavTests`); a member reaches the page
-  from the dashboard card.
+  from the dashboard card the section contributes (`SectionMemberDashboardTests`).
 - The fixed header bar renders on every Tour page with a link back to `/`.
 - All copy is deliberately hardcoded English (spec `docs/superpowers/specs/2026-08-12-burn-demo-pages-design.md`);
   the section carries no resource set and binds no localizer.

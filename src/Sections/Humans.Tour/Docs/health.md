@@ -28,7 +28,7 @@ out of it:
 |---|---|---|
 | in — signed-out top nav | `SectionNav`, visible only while anonymous | Tour |
 | in — Welcome landing page | `/Welcome` body link, by URL | Onboarding |
-| in — member dashboard | `/` action card, by controller name | Shell |
+| in — member dashboard | `/` action card, contributed via `ISectionMemberDashboard` | Tour |
 | out — back into Humans | fixed header bar, brand and "Open Humans" both `/` | Tour |
 | out — the engineering story | `/About` (hero button, closing paragraph) | Shell |
 | out — the team | `mailto:humans@nobodies.team`, the GitHub repository | — |
@@ -40,15 +40,15 @@ shifts, tickets, Board) and names the event **Elsewhere**.
 
 The shape implies almost nothing: one anonymous controller with one action that returns a
 view; that view; the section's own layout, because a promo page has no use for the
-member chrome; one stylesheet and one script for the page's motion; the photographs; a
-nav contribution; and an empty `Section` whose only job is to make the assembly a section
-for discovery. No service, no view model, no repository, no resource set, no contracts
-leaf.
+member chrome; one stylesheet and one script for the page's motion; the photographs; the two
+contributions that lead people in (the signed-out nav link and the member dashboard card,
+with the card's view component); and an empty `Section` whose only job is to make the
+assembly a section for discovery. No service, no view model, no repository, no resource set,
+no contracts leaf.
 
-That is what is built. The one thing the target would place differently is the member
-dashboard tile: it is Tour's entry point but lives in Shell, named by string, which is
-exactly the reference the section-activation scan cannot see and the shape the nav link
-already left behind. The `ISectionMemberDashboard` seam exists for it (§5).
+That is what is built. Both entry points the section owns are contributed through their
+seams, so no Shell view names Tour by string and the section-activation scan sees every
+reference it has.
 
 ## 4. Invariants
 
@@ -68,12 +68,8 @@ already left behind. The `ISectionMemberDashboard` seam exists for it (§5).
 
 ## 5. Seams
 
-- **Dashboard tile behind the seam.** Shell's `Dashboard.cshtml` builds the Tour action
-  card by name. Contributing it from Tour through `ISectionMemberDashboard` would let Shell
-  stop naming the section, but the contributed slot sits above "Your stuff", so the tile
-  would leave that grid — a placement choice, not a mechanical move.
-- **Welcome link.** Onboarding's `/Welcome` links `/Tour` by URL, invisible to the
-  activation scan for the same reason. Onboarding's call.
+- **Welcome link.** Onboarding's `/Welcome` links `/Tour` by raw URL, invisible to the
+  activation scan. Onboarding's call.
 - **Per-burn configuration.** The page describes it as the roadmap. Nothing in this section
   builds it or should.
 

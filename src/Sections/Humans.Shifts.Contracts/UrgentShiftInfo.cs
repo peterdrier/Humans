@@ -9,13 +9,10 @@ namespace Humans.Shifts.Contracts;
 /// scalars already resolved, and the urgency arithmetic.
 /// </summary>
 /// <remarks>
-/// Replaces the entity-bearing <c>UrgentShift(Shift, …)</c> record. The shape
-/// is deliberately the *row*, not the entity graph: <see cref="AbsoluteStart"/>,
-/// <see cref="AbsoluteEnd"/>, <see cref="Date"/> and <see cref="Period"/> are
-/// resolved inside the section — where the event is in scope — so no consumer
-/// has to fetch the burn separately just to render a shift
-/// (nobodies-collective/Humans#866, G5; the same call as
-/// <see cref="ShiftSignupSummary"/>).
+/// The shape is deliberately the row, not the entity graph:
+/// <see cref="AbsoluteStart"/>, <see cref="AbsoluteEnd"/>, <see cref="Date"/>
+/// and <see cref="Period"/> are resolved inside the section so no consumer
+/// fetches the burn to render a shift.
 ///
 /// <para>
 /// The nesting is not decoration: <see cref="Shift"/> and <see cref="Rota"/>

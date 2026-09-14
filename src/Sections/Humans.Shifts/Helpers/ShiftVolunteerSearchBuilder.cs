@@ -7,12 +7,9 @@ using Humans.Shifts.Models;
 
 namespace Humans.Shifts.Helpers;
 
-// T-09 (issue #720): the per-user voluntell search loop used to issue two
-// DB calls per candidate (GetShiftProfileAsync + IShiftSignupService.GetByUserAsync).
-// It now reads from the cached IShiftRowView via a single bulk GetUsersAsync —
-// cache hits complete synchronously via ValueTask. MedicalConditions are
-// redacted at the projection layer here so the shared cached view is never
-// mutated.
+// Reads the cached IShiftRowView via a single bulk GetUsersAsync; cache hits
+// complete synchronously. MedicalConditions are redacted at the projection
+// layer here so the shared cached view is never mutated.
 
 internal enum VolunteerSearchBuildStatus
 {
@@ -87,7 +84,7 @@ internal sealed class ShiftVolunteerSearchBuilder(
 
         // Request the full match set (the service short-circuits at `limit`, so a small limit
         // returns an arbitrary subset in non-deterministic cache order) and rank by relevance so
-        // the closest name match leads. Uncapped — people must be findable (Codex P2, PR #638);
+        // the closest name match leads. Uncapped — people must be findable;
         // cache is small so the full sort is cheap.
         var users = (await userService.SearchUsersAsync(query, PersonSearchFields.Name, limit: int.MaxValue))
             .OrderByRelevance()
@@ -98,7 +95,7 @@ internal sealed class ShiftVolunteerSearchBuilder(
 
         // Bulk-fetch the cached view for every candidate user — replaces the
         // per-user GetShiftProfileAsync + GetByUserAsync round trips with one
-        // cache-friendly call (T-09, issue #720).
+        // cache-friendly call.
         var userIds = users.Select(u => u.UserId).ToList();
         var views = await shiftView.GetUsersAsync(userIds);
 
@@ -110,7 +107,7 @@ internal sealed class ShiftVolunteerSearchBuilder(
         // event (ShiftViewService.GetUserAsync). When the target shift belongs
         // to a different event (e.g. admin searching a past/future event's
         // shift), fall back to a per-user signup query for that event so
-        // BookedShiftCount/HasOverlap stay accurate (Codex P2, PR #579).
+        // BookedShiftCount/HasOverlap stay accurate.
         var targetIsActive = activeEvent is not null && eventSettings.Id == activeEvent.Id;
         Dictionary<Guid, IReadOnlyList<ShiftSignup>>? targetEventSignups = null;
         if (!targetIsActive)

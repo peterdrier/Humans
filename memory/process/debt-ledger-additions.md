@@ -4,13 +4,17 @@
 
 **Exception:** pre-existing hand-maintained/derived counts in docs are never ledgered — the count in place is its own complete debt record ([`no-derived-aggregates-in-docs`](no-derived-aggregates-in-docs.md)).
 
+**Not debt:** code you examined and judged sound. A ledger entry means "this needs fixing"; recording "looked at it, it's fine" so a later reader knows it was examined turns the ledger into a review transcript nobody can act on. Leave it out — or, if the judgment is worth pinning at the code, pin it at the code.
+
 **Which ledger — by where the fix lives:**
 
 | Debt | Goes to |
 |---|---|
 | One-off whose fix is inside a single `src/Sections/Humans.<X>/` **or its own test project `tests/Humans.<X>.Tests/`** — **any** section, not only the one you are working in | that section's [`src/Sections/Humans.<X>/Docs/debt.yml`](../../src/Sections) — create it if absent |
-| One-off spanning sections, or in `Humans.Base` / `Humans.Web` / shared test projects and helpers under `tests/` / infrastructure | `inbox:` in [`docs/architecture/debt-ledger.yml`](../../docs/architecture/debt-ledger.yml) |
+| One-off spanning sections, or in `Humans.Base` / `Humans.Web` / shared `tests/` (`Humans.Testing`, `Humans.Integration.Tests`, …) / infrastructure | `inbox:` in [`docs/architecture/debt-ledger.yml`](../../docs/architecture/debt-ledger.yml) |
 | Recurring class (a pattern with multiple sites, usually analyzer- or baseline-backed) | `themes:` in the central ledger |
+
+The `tests/` in the second row means the shared test infrastructure — `tests/Humans.Testing`, the architecture-test baselines, the harness. A **section's own test project** (`tests/Humans.<X>.Tests`) is section-owned like the section itself, so a test gap there goes in that section's `Docs/debt.yml`, by the first row. (Codex read the row literally on peterdrier/Humans#1553; the first row's "fix is inside a single section" is what decides it.)
 
 Section files keep the central ledger readable and put the debt where the next reader of that section will meet it. The central ledger stays the home of rotation state — `themes:` is global by construction, and `/debt-sweep` pools every section file into the same inbox at pick time, so routing changes where an item is written, never whether it is served.
 

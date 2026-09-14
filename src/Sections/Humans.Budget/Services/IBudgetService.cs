@@ -24,7 +24,6 @@ internal interface IBudgetService : IBudgetServiceRead, IApplicationService
     Task UpdateYearStatusAsync(Guid yearId, BudgetYearStatus status, Guid actorUserId);
     Task UpdateYearAsync(Guid yearId, string year, string name, Guid actorUserId);
     Task DeleteYearAsync(Guid yearId, Guid actorUserId);
-    Task RestoreYearAsync(Guid yearId, Guid actorUserId);
 
     Task<int> SyncDepartmentsAsync(Guid budgetYearId, Guid actorUserId);
     Task<EnsureTicketingGroupResult> EnsureTicketingGroupAsync(Guid budgetYearId, Guid actorUserId);
@@ -40,11 +39,14 @@ internal interface IBudgetService : IBudgetServiceRead, IApplicationService
     /// each completed week's revenue and processing fees, refreshes projection
     /// parameters (average ticket price, stripe fee %, TicketTailor fee %) from
     /// those actuals, and re-materializes projected line items for future weeks.
-    /// Returns the number of line items created or updated.
+    /// Returns the number of line items created or updated. A null
+    /// <paramref name="actorUserId"/> means the nightly job; the sync audit
+    /// entry then records the actor as automation.
     /// </summary>
     Task<int> SyncTicketingActualsAsync(
         Guid budgetYearId,
         IReadOnlyList<TicketingWeeklyActuals> weeklyActuals,
+        Guid? actorUserId,
         CancellationToken ct = default);
 
     /// <summary>
@@ -52,7 +54,8 @@ internal interface IBudgetService : IBudgetServiceRead, IApplicationService
     /// after projection parameters change so the projected lines reflect the new inputs.
     /// Returns the number of projected line items created.
     /// </summary>
-    Task<int> RefreshTicketingProjectionsAsync(Guid budgetYearId, CancellationToken ct = default);
+    Task<int> RefreshTicketingProjectionsAsync(
+        Guid budgetYearId, Guid? actorUserId, CancellationToken ct = default);
 
     /// <summary>
     /// Compute virtual (non-persisted) weekly ticket projections for future weeks.

@@ -9,7 +9,7 @@ namespace Humans.Shifts.Tests.Services;
 /// <summary>
 /// Tests for the undecorated inner <see cref="ShiftViewService"/>: empty-view
 /// behavior for unknown ids / no active event, and the rota fan-out
-/// (Shifts + Tags + flattened Signups). Issue #720.
+/// (Shifts + Tags + flattened Signups). Issue nobodies-collective/Humans#720.
 /// </summary>
 public class ShiftViewServiceTests
 {

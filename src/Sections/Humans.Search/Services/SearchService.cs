@@ -9,8 +9,8 @@ using Microsoft.Extensions.Configuration;
 namespace Humans.Search.Services;
 
 /// <summary>
-/// Per-entity-field search orchestrator (no cross-modal traversal): each section matches and scores its own hits, this returns five buckets of keys (unsorted).
-/// See docs/features/global/global-search.md. Display ordering lives in SearchController.
+/// Trim, gate, fan out; carry each section's own key and score through untouched.
+/// Display ordering lives in <c>SearchController</c>.
 /// </summary>
 internal sealed class SearchService(
     IUserServiceRead userService,
@@ -22,9 +22,7 @@ internal sealed class SearchService(
 {
     private readonly bool _eventsFeatureEnabled = configuration.GetValue<bool>("Features:Events");
 
-    // No per-type cap: at our small scale a name match returns a handful of rows,
-    // and capping made people miss matches (issue: too-hard-to-find-people). Each
-    // section's SearchAsync still takes a max, so pass an effectively-unbounded one.
+    // No per-type cap: capping hid people. Each section's SearchAsync still takes a max.
     private const int Unlimited = int.MaxValue;
 
     public async Task<GlobalSearchResults> SearchAsync(
@@ -56,7 +54,7 @@ internal sealed class SearchService(
         var shifts = onlyType is null or SearchResultType.Shift
             ? await SearchShiftsAsync(trimmed, Unlimited, ct)
             : Array.Empty<GlobalSearchResult>();
-        var events = _eventsFeatureEnabled && onlyType is null or SearchResultType.Event
+        var events = _eventsFeatureEnabled && (onlyType is null or SearchResultType.Event)
             ? await SearchEventsAsync(trimmed, Unlimited, ct)
             : Array.Empty<GlobalSearchResult>();
 
@@ -100,7 +98,7 @@ internal sealed class SearchService(
     private async Task<IReadOnlyList<GlobalSearchResult>> SearchShiftsAsync(
         string query, int limit, CancellationToken ct)
     {
-        // Hits are Rotas (named shift groupings), not individual Shift rows (which have no title).
+        // Hits are rotas (named shift groupings), not individual shifts.
         var hits = await shiftService.SearchAsync(query, limit, ct);
         return hits
             .Select(r => new GlobalSearchResult(

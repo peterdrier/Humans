@@ -432,3 +432,14 @@ and a `## Size` block whose subject was the diff containing it.
     skip, a Phase 6 lesson, a Phase 7 measurement gap — takes the next unused number as it is
     written, and no number is reused. One prose description per finding, where it was first
     written; every other mention cites the number.
+26. **3e checkpoints to disk before any strike, and mechanical strikes dispatch per class
+    (#1562, 2026-08-28).** The 3e→4 boundary is the run's context shed: the last 3e step persists
+    the ranked list, each thread's findings, the independence verdict, the 3a inventory with
+    dispositions, and the thread-status table under `$RUNDIR/assessment/`, so a compaction at or
+    after this point costs nothing the disk doesn't already hold. From Phase 4, a strike whose
+    whole scope is named by its checkpoint entry — dead-code deletion, doc-drift fixes, comment
+    strikes, mechanical renames — dispatches to a per-strike sonnet executor; judgment strikes
+    (`collapse`, `rearch`, cross-file-context deletions) and every reviewer gate stay on main,
+    which reviews `git diff` in the worktree, never the executor's own summary. Reversal
+    criterion: if executors lose findings the main thread would have caught, revert to running
+    Phase 4 entirely on main.
