@@ -3,7 +3,7 @@
   src/Sections/Humans.GoogleIntegration/Services/EmailProvisioningService.cs
   src/Sections/Humans.Users/Services/AccountProvisioningService.cs
   src/Sections/Humans.Users/Services/UserEmailService.cs
-  src/Humans.Web/Controllers/AdminController.cs
+  src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
   src/Sections/Humans.Email/Controllers/EmailController.cs
   src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Sections/Humans.GoogleIntegration/Services/**
@@ -196,7 +196,7 @@ Ambiguous characters (0, O, l, 1, I) are excluded for readability.
 |-------|--------|--------|
 | `/Users/Admin/{id}` | GET | Human admin page (shows provisioning form) |
 | `/Google/Human/{id}/ProvisionEmail` | POST | Provision and link @nobodies.team account |
-| `/Google/Accounts` | GET | List all @nobodies.team accounts with 2FA status, recovery email, link orphans (replaces the legacy `/Admin/Email` route) |
+| `/Google/Accounts` | GET | List all @nobodies.team accounts with 2FA status, recovery email, link orphans |
 | `/Google/Accounts/ResetPassword` | POST | Reset password — temp password shown once in a modal |
 | `/Google/Accounts/ResetPasswordAndGenerate2Fa` | POST | Reset password + issue one backup verification code — both shown once in the same modal |
 

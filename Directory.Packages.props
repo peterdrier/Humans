@@ -5,7 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- AI/LLM -->
-    <PackageVersion Include="Anthropic" Version="12.46.0" />
+    <PackageVersion Include="Anthropic" Version="12.47.0" />
     <!-- Core Framework -->
     <PackageVersion Include="ClosedXML" Version="0.105.1" />
     <!-- CSV — ALL CSV reading/writing goes through CsvHelper (memory/code/csv-use-csvhelper.md). Exact package name "CsvHelper" only; "CsvHelper.Excel.Core.Net" is known malware. -->
@@ -39,7 +39,7 @@
     <PackageVersion Include="Hangfire.AspNetCore" Version="1.8.25" />
     <PackageVersion Include="Hangfire.PostgreSql" Version="1.21.1" />
     <!-- Email -->
-    <PackageVersion Include="MailKit" Version="4.17.0" />
+    <PackageVersion Include="MailKit" Version="4.18.0" />
     <!-- GitHub API -->
     <PackageVersion Include="Octokit" Version="14.0.0" />
     <!-- Direct pin over Octokit's transitive Newtonsoft.Json 11.0.1 (GHSA-5crp-9r3c-p9vr,
@@ -48,9 +48,9 @@
          exposed the latent Octokit constraint. Drop when Octokit ships without Newtonsoft. -->
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <!-- Google Workspace APIs -->
-    <PackageVersion Include="Google.Apis.Admin.Directory.directory_v1" Version="1.75.0.4227" />
+    <PackageVersion Include="Google.Apis.Admin.Directory.directory_v1" Version="1.76.0.4262" />
     <PackageVersion Include="Google.Apis.CloudIdentity.v1" Version="1.76.0.4255" />
-    <PackageVersion Include="Google.Apis.Drive.v3" Version="1.76.0.4252" />
+    <PackageVersion Include="Google.Apis.Drive.v3" Version="1.76.0.4261" />
     <PackageVersion Include="Google.Apis.DriveActivity.v2" Version="1.74.0.3880" />
     <PackageVersion Include="Google.Apis.Groupssettings.v1" Version="1.74.0.2721" />
     <PackageVersion Include="Google.Apis.Auth" Version="1.76.0" />

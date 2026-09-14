@@ -47,6 +47,20 @@ done, so it survives review after review until the set changes again. On
 peterdrier/Humans#1572 a "36 keys" claim refreshed to "30" instead of deleted cost a third
 review round on a class two rounds had already paid for.
 
+**Sweep the whole diff, not the flagged line.** Eyeballing finds the count a reviewer
+already named and leaves its siblings for the next round. On peterdrier/Humans#1621 that cost
+three rounds on this one rule — each round fixed what was quoted, and the round after found
+another. Before pushing a docs change, run the class over every line the branch adds:
+
+```bash
+git diff origin/main...HEAD -- '*.md' '*.yml' | grep '^+' | grep -v '^+++' \
+  | grep -inE '\b(one|two|three|four|five|six|seven|eight|nine|ten|[0-9]+) [a-z][a-z-]*(s|es)\b'
+```
+
+It over-reports — dates, issue refs, config values and thresholds all match, and those are
+fine. Read each hit and ask the one question: *is this number derived from something else?*
+Delete the ones that are, in the same commit.
+
 **Review scope — pre-existing counts are not findings.** This rule binds the *author* of new
 prose: don't write derived numbers. In code review it applies only to counts the PR under
 review **added or modified**. A derived count that already existed on main is documented debt,

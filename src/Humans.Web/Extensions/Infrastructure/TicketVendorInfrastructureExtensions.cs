@@ -9,7 +9,7 @@ namespace Humans.Web.Extensions.Infrastructure;
 /// <remarks>
 /// The settings stay here rather than moving into the adapter because they belong to the
 /// port, which lives in <c>Humans.Tickets.Contracts</c>: <c>Humans.Tickets</c>' sync service reads
-/// <c>EventId</c>, and Shell's <c>TicketVendorHealthCheck</c> reads <c>IsConfigured</c>.
+/// <c>EventId</c>, and Tickets' <c>TicketVendorHealthCheck</c> reads <c>IsConfigured</c>.
 /// Deleting the adapter for the 2027 vendor must not take the port's configuration with it
 /// (Email's <c>EmailSettings</c> rule; G5-SECTION-TEMPLATE.md step 4).
 /// </remarks>

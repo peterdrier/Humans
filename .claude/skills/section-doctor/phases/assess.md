@@ -90,13 +90,18 @@ Each thread is a lens over the **same complete inventory**, and each reports a d
 every file it claims. They run concurrently, but *how* a thread runs follows from what it is —
 the wall-clock / token / fragility balance:
 
-- **Tool threads run as background commands** — InspectCode, reforge, conformance
-  detectors. No subagent context to duplicate, no idle-lane failure mode, and they run while the
-  main thread reads. Reforge's run is `surface-score --format compact --group <Section>`,
-  scoped to the section being doctored, on every run, not only the selector's solution-wide call.
-  Its score and `loc=`/`cogP95=`/`cogMax=` fields are this run's own measurement: they steer the
-  ranked list, and they do not go into a doc row (Phase 5). The PR's surface report is the
-  published number, because it is recomputed against the head that actually shipped.
+- **Tool threads run as background commands on the main thread** — InspectCode, reforge, the
+  conformance detectors. No subagent context to duplicate, no idle-lane failure mode, and they
+  run while the main thread reads. Reforge's run is `surface-score --format compact --group
+  <Section>`, scoped to the section being doctored, on every run, not only the selector's
+  solution-wide call. Its score and `loc=`/`cogP95=`/`cogMax=` fields are this run's own
+  measurement: they steer the ranked list, and they do not go into a doc row (Phase 5). The
+  PR's surface report is the published number, because it is recomputed against the head that
+  actually shipped. **A tool's output is collected on main and handed to the thread that
+  classifies it, never re-run inside a subagent** — a cheap model told to execute shell
+  detectors does not, and returns a clean report over nothing. The conformance detectors run
+  here, before the Conformance thread dispatches, and their output (all of it, hit or clean,
+  per detector) goes into that thread's prompt as a file under `$RUNDIR/assessment/`.
 - **Dispatched threads are the default** (nobodies-collective/Humans#1465). A thread reads a lot
   and returns a little, and reading it on the main thread raises the price of every later turn
   in the run. **Small context dominates model choice**: moving a thread off main saves far more
@@ -113,12 +118,17 @@ cost report names the row by it), then the section, its slice of the 3a inventor
 routes and keys listed, **never counted** — a count typed from a regex over `public` lines is
 wrong, and every thread inherits it), its deadline, and the **absolute** paths of the files it
 reads itself: `$WORKTREE/.claude/skills/section-doctor/threads/CONTRACT.md` (return format,
-never-edit, absence-verdict proof), its lens file from the table, and the target
+never-edit, absence-verdict proof), its lens file from the table, the target
 `$WORKTREE/src/Sections/Humans.<X>/Docs/health.md` — so the 3c trace gate runs before any
-dispatch. Every path in the prompt, inventory included, is rooted at `$WORKTREE`: a subagent
-does not inherit the run's cwd, and on a local machine a relative path resolves against the
-main checkout's stale copy, or no copy at all. It returns a **structured findings list plus a disposition for every
-file it claimed**, never prose, and **never edits anything**. At dispatch, log it:
+dispatch — and, for a thread whose lens says so, the input file main pre-fetched for it (the
+detector output for Conformance, the issue dump for Inbox). **A dispatched thread has no tool
+the main thread would miss**: `doctor-reader` carries Read, Grep, Glob and Bash only, no
+GitHub tools, so anything that needs GitHub is fetched on main first and passed in as a file.
+Every path in the prompt, inventory included, is rooted at `$WORKTREE`: a subagent does not
+inherit the run's cwd, and on a local machine a relative path resolves against the main
+checkout's stale copy, or no copy at all. It returns a **structured findings list plus a
+disposition for every file it claimed**, never prose, and **never edits anything**. At
+dispatch, log it:
 `doctor.py dispatch-log <Name> <model> [agent-type]` — Phase 5's `## Threads` model column is
 copied from `$RUNDIR/assessment/threads.md`, never recalled.
 
@@ -140,12 +150,12 @@ each one.
 | **Shape** | main | below |
 | **Behavior & bugs** | main | below |
 | **Freshness** | subagent (opus low) | `threads/freshness.md` |
-| **Conformance** | background + subagent (haiku) | `threads/conformance.md` |
+| **Conformance** | detectors on main + subagent (haiku) | `threads/conformance.md` — classifies main's detector output |
 | **Tests** | subagent (opus low) | `threads/tests.md` |
 | **Prose & surface** | background + subagent (haiku) | `threads/prose-surface.md` |
 | **History** | subagent (opus low) | `threads/history.md` |
 | **Comments** | subagent (opus low) | `threads/comments.md` |
-| **Inbox** | subagent (opus low) | `threads/inbox.md` — includes the open-issue review |
+| **Inbox** | fetch on main + subagent (opus low) | `threads/inbox.md` — includes the open-issue review over main's issue dump |
 
 The main-thread lenses:
 
@@ -166,8 +176,12 @@ several runs record it as "ran, found nothing".
 **Inbox's open-issue review** (its lens file) is bound by rules the strike loop also
 enforces: a run never mutates an existing GitHub issue (Phase 4's skip-and-queue list, Standing
 constraints), and each verdict is one numbered finding whose `## Needs Peter` entry cites the
-number and adds no prose (Phase 5). Record the pass as ran or skipped in `## Threads` like every
-other thread, with its repo scope.
+number and adds no prose (Phase 5). The issues are fetched on main before dispatch — reach
+proved per repo, then the section's open issues written to `$RUNDIR/assessment/issues.md` with
+a per-repo status line (`covered` / `not covered: <reason>`) at its head. `## Threads` copies
+those status lines as the pass's repo scope: **a repo whose fetch failed is `not covered`, and
+an empty issue list is never recorded as a clean backlog unless the fetch that produced it
+succeeded.**
 
 ### 3e. Merge, rank, and check independence
 

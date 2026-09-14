@@ -6,10 +6,9 @@ namespace Humans.GoogleIntegration.Services.Workspace;
 /// Stub implementation of <see cref="IGoogleDriveActivityClient"/> for
 /// development environments without Google service-account credentials.
 /// Returns an empty activity stream and benign service-account metadata so
-/// the monitor service can run end-to-end locally without hitting Google.
-/// Per the §15 connector pattern (PR #274/#287), the real Application-layer
-/// <c>DriveActivityMonitorService</c> runs against this stub — there is no
-/// separate "stub service" variant.
+/// the monitor service can run end-to-end locally without hitting Google. The real
+/// <c>DriveActivityMonitorService</c> runs against this stub — there is no separate stub
+/// service.
 /// </summary>
 internal sealed class StubGoogleDriveActivityClient(ILogger<StubGoogleDriveActivityClient> logger)
     : IGoogleDriveActivityClient

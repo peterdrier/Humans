@@ -1,7 +1,7 @@
 ---
 name: section-doctor
 description: "Daily per-section review cycle driving a section toward the smallest, clearest form that still does everything it does today. Selects its section live each run (scripted: reforge surface score, middle-out, then changed-since-last-run — no stored plan), inventories every file in the section, derives the target shape before running any scan, then works parallel threads — shape, behavior/bugs, freshness, conformance, tests, prose/nav, inbox — into one ranked list and strikes it on a 2-3h budget. One PR per run; each run's report + Needs-Peter queue lives in its own docs/health/runs/ file; 'resume' applies Peter's answers later. Use for the morning section-improvement run, 'doctor <section>', or 'run section doctor'."
-argument-hint: "[resume] [--section=<Name>] [--budget=2.5h] [--upstream-issues] [--mutation]"
+argument-hint: "[resume] [--section=<Name>] [--budget=2.5h] [--mutation]"
 ---
 
 # Section Doctor
@@ -73,12 +73,12 @@ sweep commit (Phase 5), idempotent by construction.
 | `resume` | no new work — work the Needs-Peter queue (see Resume mode) |
 | `--section=<Name>` | skip the selector, doctor this section |
 | `--budget=<duration>` | override budget (default 2.5h); wall-clock, checked between items |
-| `--upstream-issues` | opt-in upgrade: include `nobodies-collective/Humans` in the Inbox issue review (default: fork only) |
 | `--mutation` | opt-in upgrade: section-scoped Stryker in the Tests thread (default: invariant matrix + test quality only) |
 
-The two opt-in flags exist because the standard cloud environment supports neither — no
-upstream-repo GitHub scope, no Stryker. **Without its flag, a run never attempts, probes for,
-mentions, or records-as-skipped either capability.** The default run is complete without them.
+The opt-in flag exists because the standard cloud environment has no Stryker. **Without it, a
+run never attempts, probes for, mentions, or records-as-skipped mutation scoring.** The default
+run is complete without it. The Inbox review's repo scope is not a flag: the main thread
+proves reach per repo at 3d and reviews whatever it can read (`threads/inbox.md`).
 
 ## Files
 
@@ -98,11 +98,12 @@ is optional reading for the phase it governs.
 | `phases/pr.md` | Phase 7 PR and cost comment, Phase 8 inline round, Phase 9 stand down and resolve gate |
 | `phases/resume.md` | `resume`: gather the Needs-Peter queue from open PRs and merged run files, apply rulings |
 | `select-section.py` | the selection maths (Phase 2) — never re-derived in-band |
-| `doctor.py` | the shell mechanics: `rundir`, `mark`, `push` (origin gate), `prose-gate`, `dispatch-log`, `resolve-check` |
+| `doctor.py` | the shell mechanics: `rundir`, `mark`, `push` (origin gate), `commit` (prose gate, logged), `prose-gate`, `dispatch-log`, `resolve-check` |
 | `cost-report.py` | Phase 7's cost table from the phase log and the `thread:` markers |
 
 `doctor.py` derives the run from its branch, so it needs no shell state between tool calls.
-Every push of the run goes through `doctor.py push`; a run never calls `git push` directly.
+Every commit of the run goes through `doctor.py commit` and every push through `doctor.py
+push`; a run never calls `git commit` or `git push` directly.
 
 ## The run
 

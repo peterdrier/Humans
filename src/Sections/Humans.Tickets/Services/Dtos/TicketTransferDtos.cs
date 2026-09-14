@@ -68,17 +68,9 @@ internal sealed record TicketTransferConfirmDto(
     string ReceiverEmail);
 
 /// <summary>
-/// One row in the "My tickets" attendee list, with eligibility flags for
-/// sending and any pending outgoing transfer pre-computed in the service.
+/// One row in the "My tickets" wizard list: the holdings row plus the send
+/// eligibility the service computed over it.
 /// </summary>
 internal sealed record MyAttendeeRowDto(
-    Guid AttendeeId,
-    string AttendeeName,
-    string? AttendeeEmail,
-    string VendorTicketId,
-    string TicketTypeName,
-    TicketAttendeeStatus Status,
-    bool IsCurrentOwner,
-    bool CanSendTransfer,
-    bool HasPendingOutgoingTransfer,
-    Guid? PendingTransferRequestId);
+    UserTicketHoldingRow Ticket,
+    bool CanSendTransfer);

@@ -52,18 +52,14 @@ Key entry points:
 
 If you're unsure whether something is "unused" — it isn't. Skip it.
 
-## EXCLUSION ZONES — DO NOT TOUCH
+## PERSISTENCE AND EXCLUSION ZONES
 
-```
-src/Humans.Infrastructure/Data/HumansDbContext.cs
-src/Humans.Infrastructure/Data/EntityConfigurations/**
-src/Humans.Infrastructure/Migrations/**
-```
+Section-owned persistence, entity-model, configuration, and generated migrations are allowed when the fix needs them. Read and follow [section-migrations-in-maintenance](../memory/process/section-migrations-in-maintenance.md), including migration tooling, review, and existing approval requirements. Substantial architecture transitions get explicitly scoped tasks and dedicated PRs.
 
-Also do not modify:
-- **Entity classes** in `src/Humans.Domain/Entities/` — properties that appear unused are accessed via reflection
+Do not modify:
+- **Entity properties that appear unused** — they are accessed via reflection
 - **Any `[JsonPropertyName]`, `[JsonInclude]`, `[JsonConstructor]`, `[JsonPolymorphic]`, or `[JsonDerivedType]` attributes**
-- **Migration files**
+- **Shipped migration files** — generate new migrations in the owning section; never hand-edit migration history
 - **ConsentRecord** — append-only table with database triggers preventing UPDATE/DELETE
 - **Test files** in `tests/` — don't modify existing tests
 
@@ -335,7 +331,7 @@ Configuration bugs in environment handling, database connections, and external s
 
 Before every fix, verify:
 
-1. **Am I touching an EF entity, migration, or DbContext configuration?** → STOP, skip this fix.
+1. **Am I touching an EF entity, migration, or DbContext configuration?** → Allowed only in the owning section under `memory/process/section-migrations-in-maintenance.md`: generate the migration, inspect the snapshot diff, pass the review gate. Never hand-edit shipped migrations; storage drops and required columns still need Peter's per-case approval — skip those.
 2. **Am I removing a property that looks unused?** → STOP, it's likely used via reflection.
 3. **Am I removing a method, file, or controller action?** → STOP, that's not your job.
 4. **Am I changing authorization level?** → Verify the new level matches the original intent exactly.

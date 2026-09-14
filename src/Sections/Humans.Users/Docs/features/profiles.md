@@ -287,8 +287,6 @@ Google permissions (Shared Drive access, Group memberships) are **not** revoked 
 
 This two-step approach ensures Google deprovisioning uses the same tested code path as any other team departure, rather than a separate deletion-specific implementation.
 
-> **Note:** The automated sync jobs are currently disabled during initial rollout. Google permissions are managed manually via the "Sync Now" button at `/Admin/GoogleSync` until automated sync is validated. Sync jobs must be able to add members reliably before removal logic is enabled.
-
 #### Routes
 
 | Route | Method | Purpose |

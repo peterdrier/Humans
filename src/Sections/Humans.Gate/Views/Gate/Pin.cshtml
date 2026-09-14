@@ -46,8 +46,8 @@
 
 @inject IFileVersionProvider FileVersionProvider
 @section Scripts {
-    @* The keypad itself is a cache-busted classic script (no module import to go stale); the
-       page module wires it to the claim form. *@
+    @* Shared keypad script (rationale in _PinPad.cshtml); the page module wires it to the
+       claim form. *@
     <script src="@Url.Content("~/_content/Humans.Gate/js/gate/gate-keypad.js")" asp-append-version="true"
             nonce="@Context.Items["CspNonce"]"></script>
     <script nonce="@Context.Items["CspNonce"]" type="module">
