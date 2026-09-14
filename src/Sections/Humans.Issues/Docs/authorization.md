@@ -11,3 +11,8 @@
 | Handler | Requirement | Resource | Path |
 |---|---|---|---|
 | `IssuesAuthorizationHandler` | `IssuesOperationRequirement` (`Handle`) | `IssueDetail` | `Authorization/IssuesAuthorizationHandler.cs` (registered in `Section.cs`) |
+
+The table above covers mutating endpoints. `GET /Issues/{id}` is viewer-scoped too, but the
+handler above doesn't gate it — `IssuesService` does: out of the viewer's reach reads as gone,
+`GetIssueByIdAsync` returns null, and everything else throws the same "not found" a deleted
+issue throws. An id is not an oracle for issues outside the caller's queue.

@@ -9,11 +9,6 @@ namespace Humans.GoogleIntegration.ViewComponents;
 /// <c>&lt;vc:&gt;</c> tag with no matching tag helper ships as inert literal markup with a
 /// green build and no runtime error.
 /// </summary>
-/// <remarks>
-/// Replaces <c>&lt;vc:audit-log layout="sync"&gt;</c>: the sync trail is GoogleIntegration's
-/// data, so GoogleIntegration owns the read and the render
-/// (nobodies-collective/Humans#1083).
-/// </remarks>
 public sealed class GoogleSyncLogViewComponent(
     IGoogleSyncLogViewer syncLog,
     ILogger<GoogleSyncLogViewComponent> logger) : ViewComponent

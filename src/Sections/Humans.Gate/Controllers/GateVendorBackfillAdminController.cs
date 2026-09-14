@@ -75,8 +75,8 @@ internal sealed class GateVendorBackfillAdminController(
         return RedirectToAction(nameof(Index));
     }
 
-    // Pending split into not-yet-sent vs sent-awaiting-sync (the ledger remembers enqueued
-    // ids until the vendor's check-in flows back through the ticket sync).
+    // The ledger remembers enqueued ids until the vendor's check-in flows back
+    // through the ticket sync.
     private async Task<(GateVendorBackfillSnapshot Snapshot, IReadOnlyList<GateVendorBackfillRow> Pending, IReadOnlyList<GateVendorBackfillRow> Sent)>
         GetPendingSplitAsync(CancellationToken ct)
     {

@@ -6,7 +6,7 @@ namespace Humans.Events.Contracts;
 /// events card) without granting access to submission, moderation, or
 /// settings writes. Implemented by the same service that backs
 /// <c>IEventService</c>; registered as a forward to the caching
-/// singleton so reads are served from the existing T-03 cache.
+/// singleton so reads are served from the approved-events cache.
 /// </summary>
 public interface IEventServiceRead
 {

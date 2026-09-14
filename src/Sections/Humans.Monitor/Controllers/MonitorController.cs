@@ -15,27 +15,14 @@ namespace Humans.Monitor.Controllers;
 /// anomaly scan, and the Google-sync audit trail for one resource or one human.
 /// </summary>
 /// <remarks>
-/// These three actions were <c>AuditLogController</c>'s until Monitor was carved out. They
-/// moved because two of them inject GoogleIntegration services and AuditLog is a
-/// *horizontal* — <c>peters-hard-rules.md</c> forbids a horizontal from referencing a
-/// vertical section, and the reference only became visible at the assembly level when
-/// GoogleIntegration went to G5. The third (<c>Human</c>) came with them because all three
-/// render the same <c>SyncAudit</c> view.
-///
-/// The rows themselves are no longer read here: the page emits
-/// <c>&lt;vc:google-sync-log&gt;</c> and the GoogleIntegration section owns the read and the
-/// render.
-///
-/// What stayed in AuditLog is the general audit browser (<c>/AuditLog</c>), which reaches no
-/// section at all.
+/// The sync-log rows are not read here: the page emits <c>&lt;vc:google-sync-log&gt;</c> and
+/// the GoogleIntegration section owns the read and the render.
 /// </remarks>
 [Route("Monitor")]
 internal sealed class MonitorController(
     IUserServiceRead userService,
     ILogger<MonitorController> logger) : HumansControllerBase(userService)
 {
-    private readonly IUserServiceRead _userService = userService;
-
     [HttpPost("CheckDriveActivity")]
     [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     [ValidateAntiForgeryToken]
@@ -95,10 +82,8 @@ internal sealed class MonitorController(
             return NotFound();
         }
 
-        var info = await _userService.GetUserInfoAsync(id);
-        var displayName = info?.BurnerName ?? user.BurnerName;
         return View("SyncAudit", new SyncAuditViewModel(
-            $"Google Sync Audit: {displayName}",
+            $"Google Sync Audit: {user.BurnerName}",
             Url.Action("AdminDetail", "UsersAdmin", new { id }),
             "Back to Human Detail",
             ResourceId: null,

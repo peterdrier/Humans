@@ -14,3 +14,9 @@ inbox:
   - added: 2026-09-11
     what: "TicketTransferService.ProcessTransferAsync / ApproveAsync / RejectAsync guard on request.Status == Pending with a plain read-then-write, so two overlapping Decide POSTs on the same request both pass the check and can both enter the vendor void/reissue flow (the Decide form has no submit guard either). no-concurrency-tokens rules out a row version; the fix is an idempotent guard in the service (e.g. a Processing status written before the vendor call) or a disabled-on-submit form. Raised by Codex on peterdrier/Humans#1589; health.md records it as a gap."
     review: panel
+  - added: 2026-09-14
+    what: "Docs/features/ticket-transfer.md's freshness triggers omit src/Sections/Humans.TicketTailor/** while the spec asserts the vendor void+reissue writeback. Docs/Tickets.md credits tests/Humans.TicketTailor.Tests/Architecture/TicketVendorArchitectureTests.cs with pinning \"the two adapters\"; that is tests/Humans.Web.Tests/Architecture/TicketVendorPortArchitectureTests.cs (finding 19, /section-doctor on TicketTailor 2026-09-05; swept in by /section-doctor on Issues 2026-09-14)."
+    review: light
+  - added: 2026-09-14
+    what: "Contracts/ITicketVendorService.cs says CreateCheckInAsync is \"Safe to retry\", and src/Sections/Humans.Tickets.Contracts/ITicketVendorMirror.cs repeats it. The vendor call creates a record per POST, which is why Gate's GateVendorCheckInJob runs with Attempts = 0. Both should say \"not idempotent; never retried\" (finding 22, /section-doctor on TicketTailor 2026-09-05; swept in by /section-doctor on Issues 2026-09-14)."
+    review: light

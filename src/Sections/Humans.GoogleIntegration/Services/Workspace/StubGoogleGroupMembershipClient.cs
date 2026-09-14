@@ -2,12 +2,10 @@ namespace Humans.GoogleIntegration.Services.Workspace;
 
 /// <summary>
 /// Dev/test <see cref="IGoogleGroupMembershipClient"/> that keeps an in-memory
-/// map of group memberships so the Application-layer sync service can be
-/// exercised locally without a Google service account. Mirrors the
-/// idempotency contract of the real client (409 on duplicate add becomes
-/// <see cref="GroupMembershipMutationOutcome.AlreadyExists"/>). Per the §15
-/// connector pattern, the Application-layer service runs against this stub —
-/// there is no "stub service" variant.
+/// map of group memberships so the sync service can be exercised locally without a
+/// Google service account. Mirrors the idempotency contract of the real client (409 on
+/// duplicate add becomes <see cref="GroupMembershipMutationOutcome.AlreadyExists"/>). The
+/// real service runs against this stub — there is no separate stub service.
 /// </summary>
 internal sealed class StubGoogleGroupMembershipClient(ILogger<StubGoogleGroupMembershipClient> logger)
     : IGoogleGroupMembershipClient

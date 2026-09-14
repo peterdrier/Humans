@@ -48,10 +48,6 @@ public interface ITicketVendorService : IApplicationService
     Task<IReadOnlyList<string>> GenerateDiscountCodesAsync(
         DiscountCodeSpec spec, CancellationToken ct = default);
 
-    /// <summary>Check redemption status of discount codes.</summary>
-    Task<IReadOnlyList<DiscountCodeStatusDto>> GetDiscountCodeUsageAsync(
-        IEnumerable<string> codes, CancellationToken ct = default);
-
     /// <summary>
     /// Voids an issued ticket. When <paramref name="voidToHold"/> is true, the seat's
     /// allocation is reserved as a hold (not returned to public sale) and the returned

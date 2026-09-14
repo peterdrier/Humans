@@ -7,16 +7,12 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Monitor.Tests" />
-    <!-- The one assembly allowed to see many sections (design §5). -->
+    <!-- The one assembly allowed to see many sections. -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 
   <ItemGroup>
-    <!--
-      Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
-      Declaring them keeps the files moved out of Humans.AuditLog byte-identical to their
-      originals.
-    -->
+    <!-- Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not. -->
     <Using Include="Microsoft.AspNetCore.Http" />
     <Using Include="Microsoft.AspNetCore.Routing" />
     <Using Include="Microsoft.Extensions.Logging" />
@@ -25,15 +21,13 @@
   <ItemGroup>
     <!--
       No Humans.Infrastructure reference: Monitor owns no tables, so there is no DbContext, no
-      repository and no AddSectionDbContext call (G5-SECTION-TEMPLATE.md step 1). Scanner's
-      shape. DriveActivityMonitorService reads Google through GoogleIntegration's connector
-      abstraction and writes through IAuditLogService; neither needs Infrastructure.
+      repository and no AddSectionDbContext call (G5-SECTION-TEMPLATE.md step 1).
 
-      Monitor is the *consumer* end of every edge it has — its only inbound reference is
-      Shell naming DriveActivityMonitorJob, which now lives in this project's Contracts/
-      folder (G5 jobs move, nobodies-collective/Humans#866). That is what makes
-      Monitor -> GoogleIntegration + AuditLog legal where AuditLog -> GoogleIntegration was
-      not: AuditLog is a horizontal (peters-hard-rules.md), and Monitor is not.
+      Monitor is the *consumer* end of every edge it has: no section references it, and the
+      Shell's reference is the discovery one every section gets.
+      That is what makes Monitor -> GoogleIntegration + AuditLog legal where
+      AuditLog -> GoogleIntegration is not: AuditLog is a horizontal (peters-hard-rules.md),
+      and Monitor is not.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
@@ -50,19 +44,17 @@
     <!--
       No AspNetCore package here: those ship with no PackageVersion on purpose and would fail
       the build with NU1010 under Central Package Management. Everything the controller needs
-      arrives through the framework reference Sdk.Razor already adds (design §15 step 1).
-      No EF Core either — the section owns no tables.
+      arrives through the framework reference Sdk.Razor already adds. No EF Core either — the
+      section owns no tables.
 
-      Hangfire.Core arrives with DriveActivityMonitorJob (G5 jobs move): the job carries
-      [DisableConcurrentExecution]. Package, not project — no cycle is possible. It used to
-      arrive transitively through Humans.Application, which G5 lane 5c dropped.
+      Hangfire.Core is here for [DisableConcurrentExecution] on DriveActivityMonitorJob.
     -->
     <PackageReference Include="Hangfire.Core" />
     <PackageReference Include="NodaTime" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
+    <!-- Keep the section's docs visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 
