@@ -138,15 +138,17 @@ race in the compiler server, not a defect in either section.
 
 ## Needs Peter
 
-- [ ] 1 — wire `InvalidateAll` into `ShiftManagementService`'s gate/build-offset writes, or drop the claim from `EarlyEntry.md` Triggers and the `InvalidateAll` xmldoc?
-- [ ] 11 — drop `HasMultiple` from `EarlyEntryRosterRow` (derivable), fold `UserEarlyEntry` into the row shape, or leave the contract?
-- [ ] 18 — skill Phase 5: how should the sweep skip an item that was applied and later fixed? (peterdrier/Humans#1592)
-- [ ] 19 — skill Phase 4 step 6: with no database in the cloud container, does build + `razor-lint` on a text-only view edit count, or must the strike be queued?
-- [ ] 20 — skill Phase 9: when a routine prompt caps monitoring (3h here) and Phase 9 says keep the check-in armed, which wins?
+Answered by Peter 2026-09-14. None is implemented in this PR; each is queued as its own change.
+
+- [x] 1 — **Wire it.** `ShiftManagementService`'s gate/build-offset writes call `IEarlyEntryInvalidator.InvalidateAll`; the `EarlyEntry.md` Triggers claim and the xmldoc stay and become true. Peter: *"coming up with a better way than invalidators is a todo for the winter"* — queued in the central ledger, since it spans every invalidator.
+- [x] 11 — **Fold `UserEarlyEntry` into the roster-row shape.** `HasMultiple` stays. A public contract change across the six referencing sections, so it lands on its own.
+- [x] 18 — **Mark swept items done in the source run file**, so the sweep has a durable signal instead of re-proposing an item that was applied and then deliberately reverted (peterdrier/Humans#1592).
+- [x] 19 — **Build + lint is enough** on a text-only view edit; no database in the container is not a reason to queue the strike.
+- [x] 20 — **The routine prompt's cap wins** over the skill's Phase 9. Since superseded in the stronger direction by [`no-scheduled-pr-checkins`](../../../memory/process/no-scheduled-pr-checkins.md), which landed on main on 2026-09-10: with an event subscription live, no periodic check-in is armed at all.
 
 ## Sweep queue
 
-- debt: Shifts — `ShiftManagementService.CreateAsync`/`UpdateAsync` never call `IEarlyEntryInvalidator.InvalidateAll`, while `EarlyEntry.md` Triggers and the `InvalidateAll` xmldoc say gate-date and build-offset edits do; the fix adds a constructor parameter and touches every test that constructs the service. Pending Peter's ruling on finding 1 of 2026-09-05-EarlyEntry (wire it or drop the claim).
+- debt: Shifts — `ShiftManagementService.CreateAsync`/`UpdateAsync` never call `IEarlyEntryInvalidator.InvalidateAll`, while `EarlyEntry.md` Triggers and the `InvalidateAll` xmldoc say gate-date and build-offset edits do; the fix adds a constructor parameter and touches every test that constructs the service. Peter ruled 2026-09-14 on finding 1 of 2026-09-05-EarlyEntry: wire it, keep the claim.
 - debt: Camps — `CampService.DeleteCampAsync` removes a camp's members and grants without calling `IEarlyEntryInvalidator`, so their cached early-entry answer survives the delete (finding 12, 2026-09-05-EarlyEntry).
 - debt: Teams — `TeamService.PermanentlyDeleteTeamAsync` removes a team's early-entry grants without calling `IEarlyEntryInvalidator` (finding 12, 2026-09-05-EarlyEntry).
 - debt: `docs/sections/SECTION-TEMPLATE.md` — the (A) Migrated block and the "Adding a new section" steps name `Humans.Application`, `Humans.Infrastructure` and `tests/Humans.Application.Tests/Architecture/`, none of which exist; every new section doc starts from stale text (finding 15, 2026-09-05-EarlyEntry).
