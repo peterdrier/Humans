@@ -6,10 +6,12 @@
   src/Sections/Humans.Shifts/Section.cs
   src/Sections/Humans.Shifts/SectionPolicies.cs
   src/Sections/Humans.Shifts/Services/VolunteerTrackingExportService.cs
+  src/Sections/Humans.Shifts/Services/ShiftEarlyEntryProjection.cs
   src/Sections/Humans.Shifts/Services/ShiftSignupService.cs
   src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
   src/Sections/Humans.Teams/Section.cs
   src/Sections/Humans.Teams/Services/TeamService.cs
+  src/Sections/Humans.Teams/Services/TeamEarlyEntryProjection.cs
   src/Sections/Humans.Gate/Services/GateService.cs
   src/Sections/Humans.Scanner/Controllers/ScannerController.cs
   src/Sections/Humans.Tickets/Controllers/TicketTransferController.cs
