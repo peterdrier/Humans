@@ -1,6 +1,6 @@
 ---
 name: no-hostile-api-design
-description: Never propose deliberately awkward or ugly method names as a way to discourage callers — restriction is enforced by visibility and call-site pinning, never by punishing the name.
+description: Never propose deliberately awkward/ugly method names to discourage callers — restrict access via visibility and call-site pinning, not the name.
 ---
 
 Never propose deliberately awkward, verbose, or ugly API names (e.g. `RewriteEmailFromOAuthCallbackAsync`, `DoNotCallThisExceptFromXAsync`) as a strategy to discourage misuse. Names describe what the method does, period.

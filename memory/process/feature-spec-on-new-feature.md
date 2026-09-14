@@ -1,6 +1,6 @@
 ---
 name: Create a feature spec when implementing a new feature
-description: When implementing a non-trivial new feature, create a `<feature>.md` spec in the owning section's `src/Sections/Humans.<Section>/Docs/features/` in the same PR as the implementation. Covers create-new; `post-fix-doc-check.md` covers update-existing.
+description: When implementing a non-trivial new feature, create `Docs/features/<feature>.md` in the owning section, in the same PR. Covers create-new; `post-fix-doc-check` covers updates.
 ---
 
 When implementing a non-trivial new feature, **create** a corresponding spec file at `src/Sections/Humans.<Section>/Docs/features/<feature-name>.md` — the owning section's own spec folder — in the same PR as the implementation. A spec that is genuinely cross-section goes in `docs/features/global/` instead.

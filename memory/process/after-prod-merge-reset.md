@@ -1,6 +1,6 @@
 ---
 name: After production merge, reset peter's `main` to upstream
-description: When a PR to `nobodies-collective/Humans` lands, fetch upstream and `git reset --hard upstream/main` on origin's `main`, then `git push origin main --force-with-lease`. Keeps the fork aligned with prod.
+description: After a PR merges to `nobodies-collective/Humans`, reset origin's `main` to `upstream/main` and force-with-lease push.
 ---
 
 After a PR to `nobodies-collective/Humans` lands and is merged to upstream `main`, reset peter's fork's `main` to match:

@@ -1,6 +1,6 @@
 ---
 name: A Base UI registry holding section vocabulary is section-populated, never section-referencing
-description: A shared `Humans.UI` lookup table that would otherwise need to name a section's enum instead gets its rows pushed in from that section's `Section.Register` — Base never gains a reference to a section's contracts leaf just to keep naming the type. (Peter, 2026-08-09.)
+description: When a Base `Humans.UI` registry (EnumBadgeMap etc.) needs a section's enum, have the section push rows via `Section.Register` — Base never references the section's contracts.
 ---
 
 `Humans.UI` is Base. It holds cross-cutting presentation machinery — the table widget, the badge

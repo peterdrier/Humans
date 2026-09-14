@@ -1,6 +1,6 @@
 ---
 name: Analyzer exceptions live on the code via attributes, never in centralised lists
-description: Per-declaration `[Grandfathered("HUM####", ...)]` attributes (on the violating class, interface, or method) are the only way to grandfather existing code out of an analyzer rule. No baselines, no editorconfig per-file severity blocks, no analyzer-internal allowlists, no SuppressMessage scattered files-as-a-list.
+description: To grandfather an analyzer violation, use `[Grandfathered("HUM####",...)]` on the declaration only — never baselines, editorconfig overrides, allowlists, or suppressions.
 type: feedback
 ---
 

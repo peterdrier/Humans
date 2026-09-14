@@ -1,6 +1,6 @@
 ---
 name: always-use-worktree
-description: HARD RULE on a local machine (many agents share one clone): all branch work happens in a `.claude/worktrees/<name>` worktree, the main checkout is read-only, and every Glob/Grep carries an explicit path. In a Claude Code cloud run (`CLAUDE_CODE_REMOTE=true`) it does not apply — the container is single-session and ephemeral, so work in the repo root on the designated branch
+description: HARD RULE (local only): all branch work happens in a `.claude/worktrees/<name>` worktree; main checkout is read-only. Cloud runs skip this — work in repo root.
 ---
 
 Which half of this rule applies is decided by the environment, once, before any exploration:

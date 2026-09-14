@@ -1,6 +1,6 @@
 ---
 name: Falling through to a switch default logs a warning
-description: Use SwitchDefaultWarn (Humans.Base.Extensions.LoggerSwitchExtensions) when a switch/lookup falls through to default because the value is genuinely unknown — new enum member, new status. Skip it when the default is the deliberately-correct branch.
+description: Use `logger.SwitchDefaultWarn(value)` when a switch falls to default for a genuinely unknown value (new enum member) — skip when the default is deliberately correct.
 ---
 
 A `default:` label or `_ =>` arm that means "a value I did not know about" logs a warning naming the enum type, the value, and the call site — not silently. Silently taking the fallback turns a new enum member into wrong-but-plausible output (nobodies-collective/Humans#1065; `EnumBadgeMap.For` rendered new statuses grey with nothing to catch it once the per-section architecture tests covering it were deleted in peterdrier/Humans#1327).

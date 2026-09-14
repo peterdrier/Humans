@@ -1,6 +1,6 @@
 ---
 name: iban-mask-in-logs
-description: All IBAN output to logs / audit / errors goes through IbanFormatter.Mask
+description: All IBAN output to logs/audit/errors must go through `IbanFormatter.Mask`.
 type: code
 ---
 

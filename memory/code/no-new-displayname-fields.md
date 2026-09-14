@@ -1,6 +1,6 @@
 ---
 name: Never coin a new DisplayName field
-description: HARD RULE. Never add a new field/property/parameter named `DisplayName` (or a `*DisplayName` variant) on any new class, interface, struct, record, or method. Pick a concept-specific name — `BurnerName`, `LegalName`, `GroupName`, `TeamName`, `Title`, etc. `User.DisplayName` and the existing `*DisplayName` fields throughout the codebase are legacy debt; do not extend the pattern.
+description: HARD RULE. Never coin a new `DisplayName`/`*DisplayName` field/property/parameter — pick a concept-specific name (`BurnerName`, `LegalName`, `GroupName`, `TeamName`, `Title`).
 ---
 
 `DisplayName` as a field name conflates unrelated concepts (human display names, group titles, role labels, audit-actor labels…) into one bag, which has repeatedly caused PII leaks: a code path expecting a group label receives a user's legal name (because the type system can't tell `string DisplayName` from `string DisplayName`), or vice-versa. The fix is at the naming layer — make the concept impossible to mis-pipe by name alone.

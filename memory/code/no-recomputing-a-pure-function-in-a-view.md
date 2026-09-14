@@ -1,6 +1,6 @@
 ---
 name: Never recompute in a view what a pure function already computes
-description: A `.cshtml` that re-derives a value some service or domain function already derives is a latent bug, not a duplication smell — carry the computed value through the DTO instead. Triggers when a view contains a condition or calculation that mirrors logic in C#.
+description: A `.cshtml` that re-derives a value a service/domain function already computed is a latent bug — carry the computed value through the DTO instead.
 ---
 
 If a pure function already computes a value, the view renders that value — it never computes it a second time.

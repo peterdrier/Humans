@@ -1,6 +1,6 @@
 ---
 name: Google service account uses bare auth (no impersonation)
-description: HARD RULE. The Google Workspace service account authenticates as itself — no domain-wide delegation, no admin-user impersonation. Never propose adding impersonation/DWD when a Google API call fails.
+description: HARD RULE. The Google Workspace service account authenticates as itself — no domain-wide delegation or impersonation. Never propose adding DWD when a Google API call fails.
 ---
 
 The Google Workspace service account authenticates **as itself** — bare service-account credentials loaded by `GoogleCredentialLoader.LoadScopedAsync`, scoped to the OAuth scopes a given client needs. There is **no domain-wide delegation and no admin-user impersonation** anywhere in this codebase. The service account holds Workspace admin roles granted to it **directly** (e.g. Groups Admin / `groups.admin`), which is what authorizes its Directory/Cloud Identity/Drive writes.

@@ -1,6 +1,6 @@
 ---
 name: UI terminology — "humans", not "members" or "volunteers"
-description: Public-facing text uses "humans" — never "members" or "volunteers". Admin screens may say "users" when literally referring to the users table / IUserService. Branded org terminology. Applies across all locales (the word stays in English in es/de/fr/it). Internal code unaffected.
+description: Public-facing text says "humans", never "members"/"volunteers" — stays English in es/de/it/fr. Admin screens may say "users" for the users table/`IUserService`.
 ---
 
 In **public-facing** text (views non-admin members see, localization strings, emails to humans, public copy), use **"humans"** — not "members" or "volunteers". This is the org's branded terminology.

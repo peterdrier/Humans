@@ -1,3 +1,8 @@
+---
+name: Debt found mid-task goes in a debt ledger
+description: Tech debt spotted mid-task goes in a ledger (section's `Docs/debt.yml`, or central `debt-ledger.yml`) for `/debt-sweep` — don't let it evaporate.
+---
+
 # Debt found mid-task goes in a debt ledger
 
 **Rule:** When you spot tech debt you are not going to fix in the current task, record it in a ledger so `/debt-sweep` picks it up — don't let it evaporate in a chat transcript, a run file, or a PR comment, and don't derail the current task to chase it.

@@ -1,6 +1,6 @@
 ---
 name: No URL aliases except Barrios↔Camps
-description: Single canonical URL per page. The only sanctioned alias is Barrios↔Camps (Spanish UX). No singular/plural variants, no second-controller route splits.
+description: Single canonical URL per page; the only sanctioned alias is Barrios↔Camps.
 ---
 
 When adding new pages to an existing section, route them on the existing controller using the existing route convention. Do **NOT** add singular-form aliases (`/Camp/Admin` alongside `/Camps/Admin`), do **NOT** split into a new controller just to vary the URL, do **NOT** introduce any second route prefix.

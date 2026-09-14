@@ -1,6 +1,6 @@
 ---
 name: Governance is tier applications + board voting only
-description: The Governance section owns Colaborador/Asociado applications and Board voting — nothing else. Do not file features (nav groups, docs, code) under Governance because Board members happen to use them; audience is not ownership.
+description: Governance owns only Colaborador/Asociado applications and Board voting. Don't file a feature under Governance just because the Board uses it — audience isn't ownership.
 ---
 
 The Governance section is exactly: **tier applications** (Colaborador/Asociado, the `Application` entity) and **Board voting** on them. Its tables are `applications`, `application_state_history`, `board_votes`.

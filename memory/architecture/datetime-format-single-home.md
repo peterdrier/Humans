@@ -1,6 +1,6 @@
 ---
 name: Date/time format strings live in one home (HUM0030)
-description: HARD RULE. Custom date/time format strings (`.ToString("d MMM yyyy")`, interpolation `{x:MMM d}`, NodaTime `*Pattern.Create("…")`) may appear only inside `Humans.Base.Extensions.DateFormattingExtensions`. Everywhere else, call a named formatter — add one to the home rather than inlining a literal. Enforced by analyzer HUM0030.
+description: HARD RULE. Custom date/time format strings live only in `DateFormattingExtensions` — call a named formatter, never inline a literal. Enforced by HUM0030.
 ---
 
 Custom (multi-character) date/time format strings may live **only** in the single sanctioned home, `Humans.Base.Extensions.DateFormattingExtensions`. Anywhere else in a production assembly a hand-rolled format string is a build **error** (HUM0030).

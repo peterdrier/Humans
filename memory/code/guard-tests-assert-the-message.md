@@ -1,6 +1,6 @@
 ---
 name: A guard test must assert something only that guard produces
-description: A test pinning a guard clause must assert the message or pick an input no other path can reach — a type-only assertion on a shared exception type still passes with the guard deleted. Triggers when writing or reviewing a test for a throw-on-bad-input guard.
+description: A test pinning a guard clause must assert its message or use an input no sibling path can reach — a type-only `Assert.Throws` still passes with the guard deleted.
 ---
 
 A test that pins a guard must fail when that guard is deleted. Assert the guard's message, or choose an input that no other path in the method can reach.

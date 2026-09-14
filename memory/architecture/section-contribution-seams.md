@@ -1,6 +1,6 @@
 ---
 name: Section declares its Shell contributions through interfaces
-description: Adding a nav link, admin tile, job, policy, health check, endpoint, or chrome/dashboard component for a section → prefer implementing the ISectionContribution seam on Section itself; a separate internal Section<Seam> class is the fallback; never a by-name edit to a Shell composition class.
+description: When adding a nav link, admin tile, job, or health check, implement it as an `ISectionContribution` seam on `Section` — never a by-name edit to a Shell composition class.
 ---
 
 Prefer `Section.cs` implementing `ISection` plus the applicable `ISectionContribution` interfaces (`ISectionNav`, `ISectionAdminNav`, `ISectionAdminTiles`, `ISectionChrome`, `ISectionMemberDashboard`, `ISectionThingsToDo`, `ISectionJobs`, `ISectionHealthChecks`, `ISectionEndpoints`, `ISectionPolicies`), so the section's composition capabilities are declared in one place. `Register` remains DI registration; contribution methods supply descriptors, and business logic stays in services. Consolidation of the existing separate classes is nobodies-collective/Humans#1088.

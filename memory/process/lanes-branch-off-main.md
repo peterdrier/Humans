@@ -1,6 +1,6 @@
 ---
 name: Multi-lane epics branch off main, never off each other
-description: When splitting an epic into parallel PRs, cut every lane from `origin/main`. Stacking lane N on lane N-1 is what makes squash-merge produce rebase-per-lane, silent duplicate-line merges, and wrong-base merges.
+description: When splitting an epic into parallel PRs, cut every lane from `origin/main` — never stack lane N on lane N-1 (causes rebase storms, duplicate-line merges, wrong-base merges).
 ---
 
 An epic split into N PRs cuts N branches from `origin/main`. A lane never branches from another lane, and never merges another lane into itself to "get its changes."

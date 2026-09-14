@@ -1,6 +1,6 @@
 ---
 name: Razor — escape `@` in `<script src>` URLs as `&#64;`, not `@@`
-description: NonceTagHelper claims every `<script>`; the tag-helper attribute parser mangles `@@` (literally splices buffered attribute text in at the escape site). Use `&#64;` for npm scopes like `@turf`, `@mapbox`, `@microsoft`.
+description: In `<script src>` URLs use `&#64;` for npm scopes (`@turf`, `@mapbox`) — `@@` gets mangled because `NonceTagHelper` claims every `<script>` tag.
 ---
 
 `NonceTagHelper` (in `src/Humans.Web/TagHelpers/NonceTagHelper.cs`) targets every `<script>` element to inject the CSP nonce. That makes script tags **tag-helper-bound**, and the Razor tag-helper attribute parser does NOT correctly handle `@@` inside their attribute values: it mangles the escape and splices in the literal text of a buffered attribute (e.g. `aria-label="..."`) from elsewhere on the page, producing garbage like:

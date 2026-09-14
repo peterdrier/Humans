@@ -1,6 +1,6 @@
 ---
 name: no-rm-rf
-description: HARD RULE. `rm -rf` (and equivalents like `Remove-Item -Recurse -Force` on repo paths) is never allowed for anything, no exceptions — a PreToolUse hook blocks it. Worktree removal is git-only, then `rmdir` the empty husk; stale build output is `dotnet clean`.
+description: HARD RULE. `rm -rf` / `Remove-Item -Recurse -Force` is never allowed, no exceptions. Worktree removal is git-only + `rmdir` on the empty husk; build output uses `dotnet clean`.
 ---
 
 **HARD RULE.** `rm -rf` — and equivalents, including PowerShell `Remove-Item -Recurse -Force` on repo paths — is never allowed for anything. No exceptions, no fallbacks. A prior Claude Code session destroyed files with `rm -rf`, which is why a PreToolUse hook hard-blocks the pattern on this machine; beyond the block, reaching for a recursive/forced delete is the wrong tool regardless.

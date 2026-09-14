@@ -1,6 +1,6 @@
 ---
 name: Model tiering — Opus orchestrates, Sonnet executes, Haiku snips
-description: Use the Agent tool's `model` param to dispatch mechanical work to cheaper models. Opus stays on judgment calls (design dialogue, architectural reasoning, what-counts-as-a-rule); Sonnet handles self-contained refactors; Haiku does surgical one-shots. Saves ~5-10x on mechanical token volume.
+description: Opus orchestrates judgment calls (design dialogue, architecture); dispatch mechanical refactors to Sonnet, surgical one-shots/log summaries to Haiku via `Agent(model:...)`.
 ---
 
 The `Agent` tool accepts a `model` param: `"sonnet"`, `"opus"`, or `"haiku"`. The orchestrator (the Claude reading this) is usually Opus. It can dispatch subagents on cheaper models for the mechanical bulk of a session.

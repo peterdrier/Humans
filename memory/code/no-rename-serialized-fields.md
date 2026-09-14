@@ -1,6 +1,6 @@
 ---
 name: Never rename fields on JSON-serialized classes
-description: Existing stored JSON expects current property names. Renaming silently breaks deserialization of records already on disk / in DB / in transit.
+description: Never rename a property on a JSON-serialized class — existing stored JSON expects the current property names.
 ---
 
 Classes that are JSON-serialized (to databases, APIs, files) will break if properties are renamed. Existing JSON expects the current property names.

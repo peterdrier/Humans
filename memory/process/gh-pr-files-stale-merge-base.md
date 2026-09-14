@@ -1,6 +1,6 @@
 ---
 name: gh-pr-files-stale-merge-base
-description: A PR showing a huge phantom diff (hundreds of files it never touched, usually marked "removed") is a stale GitHub merge base — merge current main to clear it, don't rebase or panic.
+description: A PR showing a huge phantom diff (files it never touched, usually marked removed) is a stale GitHub merge base — merge current main to clear it, don't rebase.
 ---
 
 GitHub's `pulls/{n}/files` (and the PR's `changedFiles`/`additions`/`deletions`) can serve a **stale diff computed against an old merge base**, showing hundreds of files the PR never touched — typically as `removed`. Seen on a docs-only PR: the endpoint reported 1167 files and −657824 lines, listing every migration `Designer.cs` as deleted, when reality was 11 files and −177 lines.

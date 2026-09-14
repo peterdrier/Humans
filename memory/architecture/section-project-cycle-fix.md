@@ -1,6 +1,6 @@
 ---
 name: A section-project cycle is fixed by splitting contracts downward, never by promoting the shared type up
-description: When MSBuild refuses a section project reference as circular, carve `<Section>.Contracts` out of the UPSTREAM section. Never move the shared type into a Base project to make the error go away — that is how Base silently becomes a global blob.
+description: When MSBuild refuses a section reference as circular, carve `<Section>.Contracts` out of the upstream section — never promote the shared type into Base to dodge the cycle.
 ---
 
 The tier model is `Shell → Section → Base`: Shell owns composition and nav, a section owns its

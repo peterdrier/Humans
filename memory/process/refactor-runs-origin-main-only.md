@@ -1,6 +1,6 @@
 ---
 name: refactor-runs-origin-main-only
-description: For refactor-swarm / Reforge refactor runs, plan against origin/main only — open PRs are not lane-exclusion constraints; never derive a conflict map from in-flight PRs without asking first.
+description: For refactor-swarm/Reforge runs, plan against `origin/main` only — open PRs are not lane-exclusion constraints; never derive a conflict map from in-flight PRs unasked.
 ---
 
 For `refactor-swarm` and similar Reforge-guided refactor runs, the plan is based on **origin/main only**. Open PRs — even ones touching a section's service/interface — are NOT lane-exclusion constraints; Peter treats them as "they rebase around the refactor," not blockers. The conflict map is built only across the refactor's own lanes, never against pre-existing PRs.

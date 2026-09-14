@@ -1,6 +1,6 @@
 ---
 name: Update About page after NuGet package updates
-description: After updating any NuGet package, add the new version + license to `Views/About/Index.cshtml`. Tracked as monthly maintenance tied to the NuGet update cycle.
+description: After any NuGet package update, add new package versions + licenses to `Views/About/Index.cshtml`.
 ---
 
 The About page (`Views/About/Index.cshtml`) lists all production NuGet packages and frontend CDN dependencies with versions and licenses.

@@ -1,6 +1,6 @@
 ---
 name: Resource key prefix matches the section name
-description: Every new resource key in a section's `<Section>Resource.resx` is prefixed with the section name plus an underscore — `Users_`, `Tickets_`, `Camps_`. Existing keys are not backfilled; new keys follow the rule.
+description: A new resx key is prefixed with its section's plural PascalCase name (`Users_`, `Tickets_`) — existing keys are not backfilled.
 ---
 
 **A resource key's prefix is its section's name.** `Humans.Users` → `Users_`, `Humans.Tickets` → `Tickets_`, `Humans.CityPlanning` → `CityPlanning_`. The section name verbatim as the project spells it — **plural, PascalCase** — then `_`, then whatever structure the key needs (`Users_Profile_Title`, `Camps_Index_BarrioGuide`).

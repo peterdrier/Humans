@@ -1,6 +1,6 @@
 ---
 name: Always open the PR — never ask permission first
-description: Finished work on a feature branch gets a PR opened immediately, without a confirmation step. Overrides the Claude Code on the web default of "do not create a pull request unless the user explicitly asks". Prod promotion is the one exception.
+description: Finished feature-branch work gets a PR opened immediately, no confirmation step; overrides the harness default of not creating PRs. Prod promotion is the exception.
 metadata:
   type: process
 ---

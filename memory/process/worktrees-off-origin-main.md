@@ -1,6 +1,6 @@
 ---
 name: worktrees-off-origin-main
-description: Feature-work worktrees branch off origin/main (the fork), not upstream/main — only a cherry-pick fix branch destined directly for upstream uses upstream/main as base.
+description: Feature work branches off `origin/main`, not `upstream/main` — only a cherry-pick fix branch destined directly for upstream uses `upstream/main`.
 ---
 
 For all feature work and issue implementation, branch off `origin/main` (the fork's main), NOT `upstream/main`. This is about the base ref, so it holds either way — off a worktree locally, off the repo root in a cloud run ([[always-use-worktree]]).
