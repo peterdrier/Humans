@@ -1075,11 +1075,13 @@ internal sealed class AssemblyVoteService(
             return AssemblyVoteActionResult.WrongState;
 
         var officialCount = roster.Count(r => r.IsOfficial);
-        await audit.LogAsync(
-            AuditAction.AssemblyVoteOpened, AuditEntityTypes.AssemblyVote, vote.Id,
-            $"Opened assembly vote {vote.Id}: {officialCount} official and "
-            + $"{roster.Count - officialCount} indicative roster members.",
-            adminUserId);
+        await AfterTransitionAsync(
+            "auditing the vote opening", vote.Id,
+            _ => audit.LogAsync(
+                AuditAction.AssemblyVoteOpened, AuditEntityTypes.AssemblyVote, vote.Id,
+                $"Opened assembly vote {vote.Id}: {officialCount} official and "
+                + $"{roster.Count - officialCount} indicative roster members.",
+                adminUserId));
 
         await AfterTransitionAsync(
             "notifying the roster that the vote opened", vote.Id,
@@ -1211,10 +1213,12 @@ internal sealed class AssemblyVoteService(
         if (!await repository.UpdateAsync(vote, AssemblyVoteStatus.Open, readAt, ct))
             return AssemblyVoteActionResult.WrongState;
 
-        await audit.LogAsync(
-            AuditAction.AssemblyVoteExtended, AuditEntityTypes.AssemblyVote, vote.Id,
-            $"Extended assembly vote {vote.Id} from {previous} to {newClosesAt}.",
-            adminUserId);
+        await AfterTransitionAsync(
+            "auditing the extension", vote.Id,
+            _ => audit.LogAsync(
+                AuditAction.AssemblyVoteExtended, AuditEntityTypes.AssemblyVote, vote.Id,
+                $"Extended assembly vote {vote.Id} from {previous} to {newClosesAt}.",
+                adminUserId));
 
         // Re-arm the T-24h reminder. A vote already inside the reminder window has stamped
         // rows, and the stamp means "told about the old deadline" — left alone, everyone
@@ -1263,10 +1267,12 @@ internal sealed class AssemblyVoteService(
 
         await ClearOpenNotificationAsync(vote, adminUserId, ct);
 
-        await audit.LogAsync(
-            AuditAction.AssemblyVoteCancelled, AuditEntityTypes.AssemblyVote, vote.Id,
-            Truncate($"Cancelled assembly vote {vote.Id}: {reason}", MaxAuditDescriptionLength),
-            adminUserId);
+        await AfterTransitionAsync(
+            "auditing the vote cancellation", vote.Id,
+            _ => audit.LogAsync(
+                AuditAction.AssemblyVoteCancelled, AuditEntityTypes.AssemblyVote, vote.Id,
+                Truncate($"Cancelled assembly vote {vote.Id}: {reason}", MaxAuditDescriptionLength),
+                adminUserId));
 
         await AfterTransitionAsync(
             "notifying the roster that the vote was cancelled", vote.Id,
@@ -1368,6 +1374,25 @@ internal sealed class AssemblyVoteService(
         // minutes from now is allowed, a lapsed vote stays persisted Open until something
         // settles it, and an actionable "cast your ballot" alert on a vote that no longer
         // accepts one is a prompt the member cannot act on.
+        // The alert is its own post-transition step, so a throw out of Notifications — a
+        // preference lookup, its own database write — cannot take the roster's emails down
+        // with it. Those have a recovery path (the hourly sweep re-sends every unstamped
+        // row); the in-app alert has none, so the failure mode worth preventing is the one
+        // where a Notifications fault costs the electorate both.
+        await AfterTransitionAsync(
+            "alerting the roster that the vote opened", vote.Id,
+            token => EmitOpenedAlertAsync(vote, roster, token));
+
+        await SendOpenedEmailsAsync(vote, roster, ct);
+    }
+
+    /// <summary>
+    /// The in-app "cast your ballot" alert for a vote that has just opened. Emitted before
+    /// the emails and only while the vote still takes ballots; see the caller for why.
+    /// </summary>
+    private async Task EmitOpenedAlertAsync(
+        AssemblyVote vote, IReadOnlyList<AssemblyVoteRoster> roster, CancellationToken ct)
+    {
         var userIds = roster.Where(r => r.UserId is not null).Select(r => r.UserId!.Value).ToList();
         if (userIds.Count > 0
             && await repository.GetByIdAsync(vote.Id, ct) is { } open
@@ -1396,8 +1421,6 @@ internal sealed class AssemblyVoteService(
                 await ClearOpenNotificationAsync(vote, null, ct);
             }
         }
-
-        await SendOpenedEmailsAsync(vote, roster, ct);
     }
 
     /// <summary>

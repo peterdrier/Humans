@@ -20,18 +20,32 @@ internal sealed class GovernanceLocalizedText : IEquatable<GovernanceLocalizedTe
 
     public IReadOnlyDictionary<string, string> Values => _values;
 
-    /// <summary>Requested culture → official culture → any present → "".</summary>
+    /// <summary>
+    /// Requested culture → official culture → any present → "".
+    /// <para>
+    /// Whitespace counts as absent, not as authored. Optional translations are neither
+    /// required nor normalized on the draft form, so a stray space in one culture's box would
+    /// otherwise be resolved as that culture's text — and a blank motion title, blank official
+    /// text or blank email subject on a binding vote is worse than the official-culture
+    /// wording the reader would have got instead.
+    /// </para>
+    /// </summary>
     public string Resolve(string culture, string officialCulture)
     {
-        if (_values.TryGetValue(culture, out var v) && !string.IsNullOrEmpty(v)) return v;
-        if (_values.TryGetValue(officialCulture, out var d) && !string.IsNullOrEmpty(d)) return d;
-        foreach (var s in _values.Values) if (!string.IsNullOrEmpty(s)) return s;
+        if (_values.TryGetValue(culture, out var v) && !string.IsNullOrWhiteSpace(v)) return v;
+        if (_values.TryGetValue(officialCulture, out var d) && !string.IsNullOrWhiteSpace(d)) return d;
+        foreach (var s in _values.Values) if (!string.IsNullOrWhiteSpace(s)) return s;
         return string.Empty;
     }
 
-    /// <summary>True when the requested culture carries its own text (i.e. is not a fallback).</summary>
+    /// <summary>
+    /// True when the requested culture carries its own text (i.e. is not a fallback). Same
+    /// whitespace rule as <see cref="Resolve"/>, so the two cannot disagree about whether a
+    /// culture was authored — the page would otherwise drop the "this is a translation"
+    /// notice while showing the official culture's text.
+    /// </summary>
     public bool HasCulture(string culture) =>
-        _values.TryGetValue(culture, out var v) && !string.IsNullOrEmpty(v);
+        _values.TryGetValue(culture, out var v) && !string.IsNullOrWhiteSpace(v);
 
     public bool Equals(GovernanceLocalizedText? other) =>
         other is not null && _values.Count == other._values.Count &&
