@@ -73,17 +73,16 @@ same way the prose it was fixing was. `NameRequiredFilter` runs first and exempt
 `UserStateClassifier.Classify` returns `Active` the moment names land, so no onboarding state has a
 partial access split at all. Corrected in the review round, not in the strike.
 
-- **25** — The container cannot build this repo's Razor views from cold. A pristine worktree at
-  the anchor commit `4b43e6f2` fails in `Humans.Base/Views/Shared/_Pager.cshtml` and
-  `_Table.cshtml`; a clean solution build fails in `Humans.EarlyEntry`, a section this run never
-  touched. Projects declare `<AddRazorSupportForMvc>true</AddRazorSupportForMvc>` and the
-  generated `*_cshtml.g.cs` is nonetheless emitted as though the view were a Blazor component
-  (`CS9348: A compilation unit cannot directly contain members`, `@model` type unresolved). The
-  SDK here is 10.0.400; `global.json` pins `10.0.100` with `rollForward: latestFeature`, which
-  permits the feature-band drift, so the pin does not protect the build. `dotnet restore` is clean
-  and does not change it. Not caused by this run's changes, but this run made it visible by
-  deleting a project's `obj/`: the image ships warm build artifacts, and every build before that
-  point was reading them. Governs Phase 7's gate.
+- **25** — This container could not build the repo's Razor views from cold: a pristine worktree
+  at the anchor commit `4b43e6f2` failed in `Humans.Base/Views/Shared/_Pager.cshtml` and
+  `_Table.cshtml`, with the generated `*_cshtml.g.cs` emitted as though the view were a Blazor
+  component (`CS9348`, `@model` unresolved). This run first blamed the SDK band (10.0.400 here
+  against `global.json`'s `10.0.100` + `rollForward: latestFeature`). **That was wrong, and was
+  disproved after the run:** on a fresh container both 10.0.400 and 10.0.401 cold-build the full
+  solution with zero errors from a checkout with no `obj/`, and CI on this PR resolved 10.0.401
+  and went green. The failure was environmental to this one container, most plausibly the mixed
+  build state left by deleting a project's `obj/` by hand mid-chase (`dotnet-clean-not-rm`). Do not
+  inherit the SDK-band explanation into later runs. Governs Phase 7's gate.
 - **26** — `doctor.py prose-gate` fires on test assertion literals — `Received(1)`,
   `Should().Be(2)`, `Instant.FromUnixTimeSeconds(1)`. These are code, not prose that types a count
   over a list, so the gate's own remedy ("delete, list, or justify") does not apply to them.
@@ -121,11 +120,13 @@ partial access split at all. Corrected in the review round, not in the strike.
 **Findings 18 and 21 were struck after the fact, on 2026-09-14.** Both were parked here as
 "deferred, unverifiable" because this container could not compile Razor views. That was the wrong
 disposition and Peter said so: a run either does the work or files an issue, and "a later
-section-doctor run will pick it up" is not a third option. The compile blocker was itself already
-fixed on `origin/main` — `global.json` now pins `10.0.400`, matching the SDK here — so merging main
-made both strikeable, and the branch got its first full-solution gate. The lesson is narrower than
-"the environment was broken": an environment that cannot verify a change bounds what a run may
-ship, never what it may decide.
+section-doctor run will pick it up" is not a third option. The container builds the full solution
+green now, so both were struck and the branch got its first full-solution gate. *Why* it builds now
+is not established: the SDK-band theory this run originally offered was disproved (finding 25), and
+merging `origin/main` before rebuilding is correlation, not a diagnosis — the likeliest reading is
+still the mixed `obj/` state this run created and a later clean rebuild clearing it. The lesson is
+narrower than "the environment was broken": an environment that cannot verify a change bounds what
+a run may ship, never what it may decide.
 
 ## Retro
 
@@ -134,7 +135,7 @@ re-doctor tier and was a good pick — a section whose code is stable but whose 
 badly is exactly the case re-doctoring exists for.
 
 **Wasted motion:** deleting a project's `obj/` while chasing a build error. It looked like
-ordinary cleanup, it destroyed prebuilt state the container cannot regenerate (finding 25), and it
+ordinary cleanup, it left the container in a state that could not build Razor views (finding 25), and it
 cost this run the ability to verify findings 18 and 21. Before that, time went into
 bisecting my own commits for a breakage that was never mine — the honest tell was there early
 (errors in `Humans.Base` views nobody had touched) and I chased my own diff first anyway.
@@ -171,8 +172,12 @@ All six were ruled on by Peter on 2026-09-14.
 - [x] 18 — **ruled: do it.** Removing unused public surface is the mission, not a risk to weigh.
       Struck 2026-09-14: both types are now `internal` in `Services/`.
 - [x] 21 — **ruled: write it.** Struck 2026-09-14, mutation-checked.
-- [x] 25 — **ruled: skip.** The SDK mismatch was already fixed on `origin/main`; no gate change
-      and no issue.
+- [x] 25 — **ruled: skip, no gate change and no issue.** The SDK-band explanation for the
+      cold-build failure was disproved first (both 10.0.400 and 10.0.401 cold-build the solution;
+      CI runs 10.0.401). `global.json`'s floor was raised to `10.0.400` for a different reason:
+      the 1xx band lacks the Roslyn 5.3 the analyzers need and fails with `CS9057`. Whether
+      Phase 7's gate should detect a broken container and declare itself unmeasured stays open,
+      unfiled by Peter's ruling.
 - [x] 26 — **ruled: neither.** Tests are code and the rule applies to them, but an assertion
       literal is not prose — the scan has to tell the difference. Filed as
       peterdrier/Humans#1700.
@@ -283,8 +288,9 @@ All threads ran; none was skipped.
   in this branch. Two tests were mutation-checked: the bulk-clear eligibility test (filtering on
   the raw user list instead of the partition fails it) and the new reject-path test (dropping the
   Asociados sync fails it; emptying the notification's recipient list fails it).
-- The full-solution gate (`dotnet test Humans.slnx`) **ran green on 2026-09-14**, after the
-  merge of `origin/main` brought in the `global.json` SDK pin that unblocked the Razor build:
-  every test project passed, no failures. `Humans.Integration.Tests` self-skipped, which is its
-  design under CI/cloud ([`integration-tests-are-not-ci-tests`](../../../memory/process/integration-tests-are-not-ci-tests.md)).
-  Before that merge this branch had no local full-solution verification at all, and the PR said so.
+- The full-solution gate (`dotnet test Humans.slnx`) **ran green on 2026-09-14**: every test
+  project passed, no failures. `Humans.Integration.Tests` self-skipped, which is its design under
+  CI/cloud ([`integration-tests-are-not-ci-tests`](../../../memory/process/integration-tests-are-not-ci-tests.md)).
+  Until that point this branch had no local full-solution verification at all, and the PR said so.
+  What changed in the container between the failing cold build and this green one was not isolated
+  — see finding 25; do not read the intervening `origin/main` merge as the cause.
