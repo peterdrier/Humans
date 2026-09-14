@@ -1,6 +1,6 @@
 ---
 name: humans-bug-hunt
-description: Autonomous bug-hunt workflow for the Humans repository. Use when the user wants Codex to scan for real bugs, work in a dedicated git worktree branched from origin/main, avoid database or migration changes, commit each fix separately, push progress, and continue until diminishing returns.
+description: Autonomous bug-hunt workflow for the Humans repository. Use when the user wants Codex to scan for real bugs, work in a dedicated git worktree branched from origin/main, commit each fix separately, push progress, and continue until diminishing returns.
 ---
 
 # Humans Bug Hunt
@@ -16,7 +16,7 @@ Run recurring autonomous bug-hunt passes in this repository.
 
 ## Non-Negotiable Limits
 
-- Do not touch database or storage behavior. Avoid `src/Humans.Infrastructure/Data/HumansDbContext.cs`, `src/Humans.Infrastructure/Data/EntityConfigurations/**`, `src/Humans.Infrastructure/Migrations/**`, and any change that alters persistence, migrations, or schema configuration.
+- Section-owned persistence and generated migrations are allowed when the fix needs them. Follow [section-migrations-in-maintenance](../../../memory/process/section-migrations-in-maintenance.md); substantial architecture transitions get explicitly scoped tasks and dedicated PRs.
 - Do not modify `.csproj` files, `src/Humans.Web/Program.cs`, or DI registration unless the user explicitly overrides the rule.
 - Do not delete files, remove controller actions, or remove public members as part of the hunt.
 - Focus on real defects only. Skip refactors, style cleanup, performance work, and feature ideas.

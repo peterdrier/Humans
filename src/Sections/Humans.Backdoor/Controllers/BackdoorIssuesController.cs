@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using System.Text.Json.Serialization;
 using Humans.Backdoor.Filters;
 using Humans.Base.Controllers;
@@ -10,13 +11,11 @@ using NodaTime;
 namespace Humans.Backdoor.Controllers;
 
 /// <summary>
-/// The in-app issue queue, for an agent running triage. Was <c>/api/issues</c> in the Issues
-/// section before the machine surfaces consolidated here (nobodies-collective/Humans#1128).
+/// The in-app issue queue, for an agent running triage.
 /// </summary>
 /// <remarks>
 /// Every write passes <c>ActorUserId</c> — the human the presented key belongs to, resolved by
-/// <see cref="BackdoorApiKeyAuthFilter"/>. Before #1128 these calls passed <c>null</c> and the
-/// audit thread could not say who acted.
+/// <see cref="BackdoorApiKeyAuthFilter"/>.
 /// </remarks>
 [ApiController]
 [Route("api/backdoor/issues")]
@@ -27,8 +26,20 @@ internal sealed class BackdoorIssuesController(
     ILogger<BackdoorIssuesController> logger)
     : ApiControllerBase(users)
 {
+    /// <summary>Ceiling on <c>?limit=</c>, matching the section's other list endpoints.</summary>
+    private const int MaxLimit = 1000;
+
     /// <summary>The key owner, as recorded on everything this controller writes.</summary>
     private Guid ActorUserId => GetCurrentUserId() ?? Guid.Empty;
+
+    /// <summary>
+    /// The key owner as Issues scopes them — their id and the active roles
+    /// <see cref="BackdoorApiKeyAuthFilter"/> installed on the principal. Passed on every call,
+    /// so the key reaches exactly the issues its holder reaches in the browser: the queue lists
+    /// the same rows, and an id outside it is a 404 to read, to comment on and to patch.
+    /// </summary>
+    private IssueViewer Viewer =>
+        new(ActorUserId, User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList());
 
     [HttpGet]
     public async Task<IActionResult> List(
@@ -47,13 +58,9 @@ internal sealed class BackdoorIssuesController(
             ReporterUserId: reporter,
             AssigneeUserId: assignee,
             SearchText: string.IsNullOrWhiteSpace(search) ? null : search,
-            Limit: limit);
+            Limit: Math.Clamp(limit, 1, MaxLimit));
 
-        var rows = await issues.GetIssueListAsync(
-            filter,
-            viewerUserId: Guid.Empty,
-            viewerRoles: [],
-            viewerIsAdmin: true);
+        var rows = await issues.GetIssueListAsync(filter, Viewer);
 
         return Ok(rows.Select(MapList));
     }
@@ -61,11 +68,11 @@ internal sealed class BackdoorIssuesController(
     [HttpGet("{id}")]
     public async Task<IActionResult> Get(Guid id)
     {
-        var issue = await issues.GetIssueByIdAsync(id);
+        var viewer = Viewer;
+        var issue = await issues.GetIssueByIdAsync(id, viewer);
         if (issue is null) return NotFound();
 
-        var thread = await issues.GetThreadAsync(id);
-        // ReporterEmail sourced from UserInfo (not User.Email) — keeps shape parity with the list endpoint. See PR 618.
+        var thread = await issues.GetThreadAsync(id, viewer);
         var displayUsers = await GetIssueDisplayUsersAsync(issue);
         return Ok(MapDetail(issue, thread, displayUsers));
     }
@@ -100,10 +107,11 @@ internal sealed class BackdoorIssuesController(
     [HttpGet("{id}/comments")]
     public async Task<IActionResult> GetComments(Guid id)
     {
-        var issue = await issues.GetIssueByIdAsync(id);
+        var viewer = Viewer;
+        var issue = await issues.GetIssueByIdAsync(id, viewer);
         if (issue is null) return NotFound();
 
-        var thread = await issues.GetThreadAsync(id);
+        var thread = await issues.GetThreadAsync(id, viewer);
         var comments = thread.OfType<IssueCommentEvent>().Select(c => new
         {
             c.CommentId,
@@ -127,6 +135,7 @@ internal sealed class BackdoorIssuesController(
         {
             var comment = await issues.PostCommentAsync(
                 issueId: id,
+                viewer: Viewer,
                 senderUserId: ActorUserId,
                 content: model.Content);
 
@@ -140,7 +149,6 @@ internal sealed class BackdoorIssuesController(
         }
         catch (InvalidOperationException)
         {
-            // 404 on missing — log Warning per always-log-problems.
             logger.LogWarning("Issue {IssueId} not found during API PostComment", id);
             return NotFound();
         }
@@ -152,93 +160,54 @@ internal sealed class BackdoorIssuesController(
     }
 
     [HttpPatch("{id}/status")]
-    public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateIssueStatusModel model)
-    {
-        try
-        {
-            await issues.UpdateStatusAsync(id, model.Status, ActorUserId);
-            logger.LogInformation("Issue {IssueId} status changed to {Status} via API", id, model.Status);
-            return Ok(new { success = true });
-        }
-        catch (InvalidOperationException)
-        {
-            // 404 on missing — log Warning per always-log-problems.
-            logger.LogWarning("Issue {IssueId} not found during API UpdateStatus", id);
-            return NotFound();
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to update issue {IssueId} status", id);
-            return StatusCode(500, new { error = "Failed to update status" });
-        }
-    }
+    public Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateIssueStatusModel model) =>
+        PatchAsync(id, "status", () => issues.UpdateStatusAsync(id, Viewer, model.Status, ActorUserId));
 
     [HttpPatch("{id}/assignee")]
-    public async Task<IActionResult> UpdateAssignee(Guid id, [FromBody] UpdateIssueAssigneeModel model)
-    {
-        try
-        {
-            await issues.UpdateAssigneeAsync(id, model.AssigneeUserId, ActorUserId);
-            return Ok(new { success = true });
-        }
-        catch (InvalidOperationException)
-        {
-            // 404 on missing — log Warning per always-log-problems.
-            logger.LogWarning("Issue {IssueId} not found during API UpdateAssignee", id);
-            return NotFound();
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to update assignee on issue {IssueId}", id);
-            return StatusCode(500, new { error = "Failed to update assignee" });
-        }
-    }
+    public Task<IActionResult> UpdateAssignee(Guid id, [FromBody] UpdateIssueAssigneeModel model) =>
+        PatchAsync(id, "assignee", () => issues.UpdateAssigneeAsync(id, Viewer, model.AssigneeUserId, ActorUserId));
 
     [HttpPatch("{id}/section")]
-    public async Task<IActionResult> UpdateSection(Guid id, [FromBody] UpdateIssueSectionModel model)
+    public Task<IActionResult> UpdateSection(Guid id, [FromBody] UpdateIssueSectionModel model) =>
+        PatchAsync(id, "section", () => issues.UpdateSectionAsync(id, Viewer, model.Section, ActorUserId));
+
+    [HttpPatch("{id}/github-issue")]
+    public Task<IActionResult> SetGitHubIssue(Guid id, [FromBody] SetIssueGitHubIssueModel model) =>
+        PatchAsync(id, "github-issue", () => issues.SetGitHubIssueNumberAsync(id, Viewer, model.GitHubIssueNumber, ActorUserId));
+
+    /// <summary>
+    /// The one shape every <c>PATCH /api/backdoor/issues/{id}/*</c> endpoint has: apply the
+    /// one-field change, answer <c>{success:true}</c>, and map failure the same way whichever
+    /// field moved — a missing issue to 404, a rejected move to 422 carrying the service's
+    /// reason, anything else to 500.
+    /// </summary>
+    /// <remarks>
+    /// The 422 arm used to exist on <c>section</c> alone; the others turned a state-machine
+    /// rejection into a misleading 404. Normalising that is what made one pipeline possible
+    /// at all — the per-endpoint failure strings were the parameter bag standing in the way.
+    /// </remarks>
+    private async Task<IActionResult> PatchAsync(Guid id, string field, Func<Task> apply)
     {
         try
         {
-            await issues.UpdateSectionAsync(id, model.Section, ActorUserId);
+            await apply();
+            logger.LogInformation("Issue {IssueId} {Field} updated via API", id, field);
             return Ok(new { success = true });
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
         {
-            // 404 on missing — log Warning per always-log-problems.
-            logger.LogWarning("Issue {IssueId} not found during API UpdateSection: {Reason}", id, ex.Message);
+            logger.LogWarning("Issue {IssueId} not found during API {Field} patch: {Reason}", id, field, ex.Message);
             return NotFound();
         }
         catch (InvalidOperationException ex)
         {
-            // State-machine violation (terminal status) → 422.
-            logger.LogWarning("Issue {IssueId} API UpdateSection rejected: {Reason}", id, ex.Message);
+            logger.LogWarning("Issue {IssueId} API {Field} patch rejected: {Reason}", id, field, ex.Message);
             return UnprocessableEntity(new { error = ex.Message });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to update section on issue {IssueId}", id);
-            return StatusCode(500, new { error = "Failed to update section" });
-        }
-    }
-
-    [HttpPatch("{id}/github-issue")]
-    public async Task<IActionResult> SetGitHubIssue(Guid id, [FromBody] SetIssueGitHubIssueModel model)
-    {
-        try
-        {
-            await issues.SetGitHubIssueNumberAsync(id, model.GitHubIssueNumber, ActorUserId);
-            return Ok(new { success = true });
-        }
-        catch (InvalidOperationException)
-        {
-            // 404 on missing — log Warning per always-log-problems.
-            logger.LogWarning("Issue {IssueId} not found during API SetGitHubIssue", id);
-            return NotFound();
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to set GitHub issue number on issue {IssueId}", id);
-            return StatusCode(500, new { error = "Failed to set GitHub issue" });
+            logger.LogError(ex, "Failed to update {Field} on issue {IssueId}", field, id);
+            return StatusCode(500, new { error = $"Failed to update {field}" });
         }
     }
 

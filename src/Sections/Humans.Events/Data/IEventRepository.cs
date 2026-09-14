@@ -11,7 +11,7 @@ namespace Humans.Events.Data;
 /// repository can be registered Singleton while <c>EventGuideDbContext</c> stays
 /// Scoped — every method opens its own short-lived context.
 /// <para>
-/// EventSettings is owned by the Shifts section; <see cref="EventService"/>
+/// EventSettings is owned by the Shifts section; <c>EventService</c>
 /// stitches in EventSettings reads via <c>IBurnSettingsService</c>. This
 /// repository never touches <c>event_settings</c> directly
 /// (memory/architecture/no-cross-section-ef-joins.md).

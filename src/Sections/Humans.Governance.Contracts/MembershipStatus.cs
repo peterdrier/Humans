@@ -1,24 +1,14 @@
 namespace Humans.Governance.Contracts;
 
 /// <summary>
-/// Represents the computed membership status of a member.
-/// This is calculated from RoleAssignments and ConsentRecords.
+/// Computed, never stored.
 /// </summary>
 public enum MembershipStatus
 {
-    /// <summary>
-    /// Member has no active roles.
-    /// </summary>
     None = 0,
 
-    /// <summary>
-    /// Member is pending approval or has incomplete requirements.
-    /// </summary>
     Pending = 1,
 
-    /// <summary>
-    /// Member has active roles and valid consent for all required documents.
-    /// </summary>
     Active = 2,
 
     /// <summary>
@@ -26,8 +16,5 @@ public enum MembershipStatus
     /// </summary>
     Inactive = 3,
 
-    /// <summary>
-    /// Member has been suspended by an administrator.
-    /// </summary>
     Suspended = 4
 }

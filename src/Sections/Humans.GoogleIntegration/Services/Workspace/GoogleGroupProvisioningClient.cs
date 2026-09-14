@@ -16,8 +16,7 @@ namespace Humans.GoogleIntegration.Services.Workspace;
 /// Talks to the Cloud Identity Groups API (group lifecycle) and the Google
 /// Workspace Groups Settings API (settings) using the configured service
 /// account. This is the only file that imports <c>Google.Apis.*</c> for
-/// group provisioning and settings reconciliation; the Application-layer
-/// sync service (coming in §15 Part 2b) never sees SDK types.
+/// group provisioning and settings reconciliation.
 /// </summary>
 internal sealed class GoogleGroupProvisioningClient(
     IOptions<GoogleWorkspaceSettings> settings,

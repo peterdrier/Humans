@@ -4,9 +4,9 @@ namespace Humans.GoogleIntegration.Services.Workspace;
 /// Stub implementation of <see cref="IWorkspaceUserDirectoryClient"/> for
 /// development environments without Google Admin SDK credentials. Returns
 /// fake data so the admin UI and higher-level workflows can be developed
-/// and tested locally. Per the §15 connector pattern, the real
+/// and tested locally. The real
 /// <see cref="Humans.GoogleIntegration.Services.GoogleWorkspaceUserService"/>
-/// runs against this stub — there is no "stub service" variant.
+/// runs against this stub — there is no separate stub service.
 /// </summary>
 internal sealed class StubWorkspaceUserDirectoryClient(ILogger<StubWorkspaceUserDirectoryClient> logger)
     : IWorkspaceUserDirectoryClient

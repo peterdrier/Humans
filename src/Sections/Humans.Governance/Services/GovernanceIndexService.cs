@@ -29,6 +29,7 @@ internal sealed class GovernanceIndexService(
             latestApplication?.MembershipTier,
             latestApplication?.SubmittedAt.ToDateTimeUtc(),
             latestApplication?.ResolvedAt?.ToDateTimeUtc(),
+            latestApplication?.TermExpiresAt,
             latestApplication is null || latestApplication.Status != ApplicationStatus.Submitted,
             isApprovedColaborador,
             colaboradorCount,

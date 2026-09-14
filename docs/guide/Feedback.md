@@ -4,6 +4,8 @@
   src/Sections/Humans.Feedback/Domain/**
   src/Sections/Humans.Feedback/Data/Configurations/**
   src/Sections/Humans.Feedback/Views/**
+  src/Sections/Humans.Feedback/Section*.cs
+  src/Sections/Humans.Backdoor/Controllers/BackdoorFeedbackController.cs
 -->
 <!-- freshness:flag-on-change
   Retired section: admin-only triage of historical reports, status transitions, GitHub linkage, and the API triage path. There is no submission flow — if any change reintroduces a creation path, this page is wrong. Review when feedback views, controllers, services, or entities change.

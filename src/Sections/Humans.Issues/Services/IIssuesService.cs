@@ -17,11 +17,10 @@ internal interface IIssuesService : IApplicationService, IIssuesRetention, IIssu
 {
     /// <summary>
     /// Count of Open + Triage issues whose section maps to a role the viewer holds, plus
-    /// their own non-terminal issues. Admins get the global non-terminal count.
+    /// their own. An Admin gets every Open + Triage issue. <c>InProgress</c> counts for
+    /// nobody.
     /// </summary>
-    Task<int> GetActionableCountForViewerAsync(
-        Guid viewerUserId, IReadOnlyList<string> viewerRoles, bool viewerIsAdmin,
-        CancellationToken ct = default);
+    Task<int> GetActionableCountForViewerAsync(IssueViewer viewer, CancellationToken ct = default);
 
     Task<Issue> SubmitIssueAsync(
         Guid reporterUserId,
@@ -37,17 +36,27 @@ internal interface IIssuesService : IApplicationService, IIssuesRetention, IIssu
         IReadOnlyList<string>? reporterRoles = null,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// The four result-returning mutation overloads the section's own controller prefers.
+    /// Each is the <see cref="IIssueTriage"/> method with its exceptions folded into a result,
+    /// viewer included — the scoping rule is the service's either way, so the browser cannot
+    /// reach past it by taking this door.
+    /// </summary>
     Task<IssueMutationResult> UpdateStatusWithResultAsync(
-        Guid issueId, IssueStatus newStatus, Guid? actorUserId, CancellationToken ct = default);
+        Guid issueId, IssueViewer viewer, IssueStatus newStatus, Guid? actorUserId,
+        CancellationToken ct = default);
 
     Task<IssueMutationResult> UpdateAssigneeWithResultAsync(
-        Guid issueId, Guid? newAssigneeUserId, Guid? actorUserId, CancellationToken ct = default);
+        Guid issueId, IssueViewer viewer, Guid? newAssigneeUserId, Guid? actorUserId,
+        CancellationToken ct = default);
 
     Task<IssueMutationResult> UpdateSectionWithResultAsync(
-        Guid issueId, string? newSection, Guid? actorUserId, CancellationToken ct = default);
+        Guid issueId, IssueViewer viewer, string? newSection, Guid? actorUserId,
+        CancellationToken ct = default);
 
     Task<IssueMutationResult> SetGitHubIssueNumberWithResultAsync(
-        Guid issueId, int? githubIssueNumber, Guid? actorUserId, CancellationToken ct = default);
+        Guid issueId, IssueViewer viewer, int? githubIssueNumber, Guid? actorUserId,
+        CancellationToken ct = default);
 
     Task<IReadOnlyList<DistinctReporterRow>> GetDistinctReportersAsync(CancellationToken ct = default);
 }

@@ -9,8 +9,9 @@ namespace Humans.Issues.Domain;
 /// <para>
 /// This is the routing table — adjust as the org learns. A change here is
 /// effective immediately; no migration needed because Section is stored as a
-/// free string. Sections referenced here should match the technical names
-/// used by the rest of the codebase (e.g. matches <c>docs/sections/*.md</c>).
+/// free string. <c>Profiles</c> and <c>Legal</c> name sections that no longer
+/// exist; they stay routable because stored rows still carry those strings,
+/// and <c>SectionAnnotations</c> surfaces the drift on <c>/Debug/Sections</c>.
 /// </para>
 /// </summary>
 internal static class IssueSectionRouting
@@ -47,6 +48,24 @@ internal static class IssueSectionRouting
         Scanner => [RoleNames.TicketAdmin, RoleNames.Board],
         _ => []
     };
+
+    /// <summary>
+    /// Whether a viewer holding <paramref name="viewerRoles"/> may handle an issue filed
+    /// against <paramref name="section"/> — mutate it, or comment on it as a non-reporter.
+    /// Admin handles everything; otherwise the viewer must hold a role that owns the section.
+    /// Admin is read out of the role set, never taken as a separate privilege argument.
+    /// </summary>
+    /// <remarks>
+    /// The one statement of the handle rule. Both enforcement points read it: the service,
+    /// which gates every per-item read and mutation whichever door they arrive through, and
+    /// <c>IssuesAuthorizationHandler</c>, which the browser also asks in order to shape the
+    /// page.
+    /// </remarks>
+    public static bool CanHandle(string? section, IReadOnlyCollection<string> viewerRoles)
+    {
+        var roleSet = viewerRoles.ToHashSet(StringComparer.Ordinal);
+        return roleSet.Contains(RoleNames.Admin) || RolesFor(section).Any(roleSet.Contains);
+    }
 
     /// <summary>
     /// Returns the set of section strings whose role list contains any of

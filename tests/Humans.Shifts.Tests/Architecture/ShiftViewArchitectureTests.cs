@@ -11,11 +11,28 @@ namespace Humans.Shifts.Tests.Architecture;
 
 /// <summary>
 /// Architecture tests for the cached <see cref="IShiftView"/> surface
-/// (issue #720): inner / decorator placement, EF-reference boundaries,
+/// (issue nobodies-collective/Humans#720): inner / decorator placement, EF-reference boundaries,
 /// invalidator fan-in at every Shifts-section service.
 /// </summary>
 public class ShiftViewArchitectureTests
 {
+    [HumansFact]
+    public void ShiftUserView_IsRecord()
+    {
+        // Record types compile to a sealed class with an EqualityContract property.
+        typeof(ShiftUserView).GetProperty("EqualityContract",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            .Should().NotBeNull(because: "ShiftUserView is declared as a record");
+    }
+
+    [HumansFact]
+    public void ShiftRotaView_IsRecord()
+    {
+        typeof(ShiftRotaView).GetProperty("EqualityContract",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            .Should().NotBeNull(because: "ShiftRotaView is declared as a record");
+    }
+
     public static TheoryData<Type> ShiftsServicesThatInvalidate =>
     [
         typeof(ShiftSignupService),
@@ -26,11 +43,11 @@ public class ShiftViewArchitectureTests
     // ── CachingShiftViewService (Singleton decorator) ────────────────────────
 
     [HumansFact]
-    public void CachingShiftViewService_LivesInInfrastructureShifts()
+    public void CachingShiftViewService_LivesInShiftsServices()
     {
         typeof(CachingShiftViewService).Namespace
             .Should().Be("Humans.Shifts.Services",
-                because: "caching decorators live in Infrastructure (mirrors CachingProfileService / CachingTeamService)");
+                because: "caching decorators live alongside the section's other services (mirrors CachingProfileService / CachingTeamService)");
     }
 
     [HumansFact]
@@ -56,25 +73,8 @@ public class ShiftViewArchitectureTests
                 && rt.GetGenericTypeDefinition() == typeof(ValueTask<>);
 
             isValueTaskOfT.Should().BeTrue(
-                because: $"IShiftView methods return ValueTask<T> for cache-friendly async (issue #720) — '{method.Name}' returned '{rt.Name}'");
+                because: $"IShiftView methods return ValueTask<T> for cache-friendly async (issue nobodies-collective/Humans#720) — '{method.Name}' returned '{rt.Name}'");
         }
-    }
-
-    [HumansFact]
-    public void ShiftUserView_IsRecord()
-    {
-        // Record types compile to a sealed class with an EqualityContract property.
-        typeof(ShiftUserView).GetProperty("EqualityContract",
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
-            .Should().NotBeNull(because: "ShiftUserView is declared as a record");
-    }
-
-    [HumansFact]
-    public void ShiftRotaView_IsRecord()
-    {
-        typeof(ShiftRotaView).GetProperty("EqualityContract",
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
-            .Should().NotBeNull(because: "ShiftRotaView is declared as a record");
     }
 
     // ── Invalidator fan-in ──────────────────────────────────────────────────
@@ -87,6 +87,6 @@ public class ShiftViewArchitectureTests
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(IShiftViewInvalidator),
-            because: "every Shifts-section service that mutates a row owned by the section must hold a reference to IShiftViewInvalidator (issue #720)");
+            because: "every Shifts-section service that mutates a row owned by the section must hold a reference to IShiftViewInvalidator (issue nobodies-collective/Humans#720)");
     }
 }
