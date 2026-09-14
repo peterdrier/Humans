@@ -37,13 +37,6 @@ public class EventsArchitectureTests
     }
 
     [HumansFact]
-    public void EventsAdminController_RequiresEventsAdminOrAdminPolicy()
-    {
-        typeof(EventsAdminController).GetCustomAttribute<AuthorizeAttribute>()?.Policy
-            .Should().Be("EventsAdminOrAdmin");
-    }
-
-    [HumansFact]
     public void EventsAdminSurfaces_RequireEventsAdminOrAdminPolicy()
     {
         var controllers = new[]
