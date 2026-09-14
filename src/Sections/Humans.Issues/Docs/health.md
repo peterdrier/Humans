@@ -34,10 +34,18 @@ notify, maybe invalidate*, and each is written twice — once throwing, once ret
 `IssueMutationResult` — because the machine door wants the exception and the browser door wants
 the message.
 
-Every shape above takes the asker with it. `IssueViewer` — the person's id plus the role names
-they hold — is the one way any of these say who is asking, and the section derives everything
-about their reach from it, including admin-ness. Nothing passes a privilege the caller asserted
-(`memory/code/authorization-conventions.md`).
+Every shape that answers *for* a viewer takes the asker with it — the queue, the badge count,
+and every per-item read and mutation in shapes 2, 4 and 5. `IssueViewer` — the person's id plus
+the role names they hold — is their one spelling of who is asking, and the section derives
+everything about reach from it, including admin-ness. Nothing passes a privilege the caller
+asserted (`memory/code/authorization-conventions.md`).
+
+Three surfaces take no viewer, each for its own reason. Filing (shape 3) carries
+`reporterUserId` and `actorUserId`: attribution, not authority, because any signed-in member may
+file. Shape 6 acts for the system, not for a person — the retention job and the GDPR contributor
+answer to a schedule and a data-subject request. And `GetDistinctReportersAsync` returns the
+whole reporter list, gated by its one caller: `Index` asks for it only inside
+`if (viewer.IsAdmin)`. That is the section's one reach decision made outside `IssuesService`.
 
 ## 3. Structure
 
@@ -150,4 +158,4 @@ about their reach from it, including admin-ness. Nothing passes a privilege the 
 | Date | Run | Reforge score | Notes |
 |---|---|---|---|
 | 2026-08-25 | [2026-08-25-Issues](../../../../docs/health/runs/2026-08-25-Issues.md) | 260 → 258 | First doctor run. Three user-visible defects fixed (case-sensitive search, unlocalized toasts, wrong attachment hint). PR: peterdrier/Humans#1499 |
-| 2026-09-14 | [2026-09-14-Issues](../../../../docs/health/runs/2026-09-14-Issues.md) | | `IssueViewer` is now the section's only spelling of who is asking; every status pill and the category filter speak all six cultures; the docs stopped describing cross-section foreign keys the section never configured. PR: peterdrier/Humans#1671 |
+| 2026-09-14 | [2026-09-14-Issues](../../../../docs/health/runs/2026-09-14-Issues.md) | | `IssueViewer` is now the only spelling of who is asking on every member that answers for a viewer; every status pill and the category filter speak all six cultures; the docs stopped describing cross-section foreign keys the section never configured. PR: peterdrier/Humans#1671 |
