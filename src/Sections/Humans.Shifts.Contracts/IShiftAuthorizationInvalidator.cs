@@ -8,21 +8,11 @@ namespace Humans.Shifts.Contracts;
 /// <summary>
 /// One-way cache-staleness signal for the per-user shift-authorization cache
 /// (<c>shift-auth:{userId}</c>, 60s TTL) owned by
-/// <c>IShiftManagementService</c>. Implemented by the Shifts service
-/// itself in Infrastructure/Application. External sections that change the
+/// <c>IShiftManagementService</c>. Implemented by ShiftManagementService.
+/// External sections that change the
 /// user's team / coordinator / admin state inject this and call
 /// <see cref="Invalidate"/> after their own writes — they never mutate the
 /// Shifts cache directly.
-///
-/// <para>
-/// Added during the Shifts §15 migration (issue #541a) to close the gap
-/// recorded in design-rules §15 NEW-B: the Profile <c>RequestDeletionAsync</c>
-/// path used to clear this cache via the old bundled <c>InvalidateUserCaches</c>
-/// extension, but the §15 Profile migration left the shift-auth entry stale
-/// until the 60s TTL elapsed. Plumbing the invalidator through
-/// <c>IShiftManagementService</c> restores cross-section invalidation
-/// without re-introducing the <c>IMemoryCache</c> fan-out.
-/// </para>
 /// </summary>
 [Grandfathered(
     ruleId: "HUM0028",

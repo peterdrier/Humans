@@ -5,16 +5,15 @@ namespace Humans.Tickets.Contracts;
 /// Non-sensitive values (EventId, Provider, SyncIntervalMinutes, BreakEvenTarget)
 /// come from appsettings <c>TicketVendor</c> section. The API key is populated
 /// from the <c>TICKET_VENDOR_API_KEY</c> environment variable at DI registration
-/// time (see <c>InfrastructureServiceCollectionExtensions</c>) and is not stored
+/// time (Shell's <c>TicketVendorInfrastructureExtensions</c>) and is not stored
 /// in appsettings.
 /// </summary>
 /// <remarks>
-/// Lives in <c>Humans.Base.Configuration</c> rather than
-/// <c>Humans.Infrastructure</c> so the Application-layer
-/// <c>TicketSyncService</c> can consume <c>IsConfigured</c> / <c>EventId</c>
-/// without reaching into Infrastructure. The TicketTailor HTTP client and stub
-/// vendor service (both Infrastructure) consume it via the same
-/// <c>IOptions&lt;TicketVendorSettings&gt;</c> binding.
+/// Belongs to the port, not the adapter: <c>TicketSyncService</c> and
+/// <c>TicketVendorHealthCheck</c> read <c>IsConfigured</c> / <c>EventId</c>, and the
+/// TicketTailor HTTP client and stub vendor service (<c>Humans.TicketTailor</c>) consume
+/// it via the same <c>IOptions&lt;TicketVendorSettings&gt;</c> binding, so deleting the
+/// adapter must not take the settings with it.
 /// </remarks>
 public class TicketVendorSettings
 {

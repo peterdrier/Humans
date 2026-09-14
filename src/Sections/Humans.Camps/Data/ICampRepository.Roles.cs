@@ -83,8 +83,8 @@ internal partial interface ICampRepository
     /// Persists a new assignment. Returns <c>true</c> if inserted, <c>false</c> if the
     /// unique index on <c>(CampSeasonId, CampRoleDefinitionId, CampMemberId)</c> fired
     /// (race lost — duplicate already exists). The repo translates the underlying
-    /// PostgreSQL 23505 / EF DbUpdateException so callers in <c>Humans.Application</c>
-    /// don't need to import EF Core (design-rules §1, §3).
+    /// PostgreSQL 23505 / EF DbUpdateException so <c>CampRoleService</c>
+    /// doesn't need to import EF Core (design-rules §1, §3).
     /// </summary>
     Task<bool> AddAssignmentAsync(CampRoleAssignment assignment, CancellationToken ct = default);
 

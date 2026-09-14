@@ -22,8 +22,6 @@ internal sealed class GeneralAvailabilityConfiguration : IEntityTypeConfiguratio
 
         builder.HasIndex(e => new { e.UserId, e.EventSettingsId }).IsUnique();
 
-        // UserId is a bare cross-section Guid column — no FK constraint, no nav.
-
         builder.HasOne(e => e.EventSettings)
             .WithMany()
             .HasForeignKey(e => e.EventSettingsId)

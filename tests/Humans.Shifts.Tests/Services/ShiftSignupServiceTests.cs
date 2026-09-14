@@ -6,10 +6,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
+using Humans.Tickets.Contracts;
+using Humans.Camps.Contracts;
 using NSubstitute;
 using Humans.Shifts.Services;
 using Humans.Shifts.Tests.Infrastructure;
 using Humans.Base.Enums;
+using Humans.Base.Constants;
 using ShiftSignupService = Humans.Shifts.Services.ShiftSignupService;
 using Humans.Teams.Contracts;
 using Humans.Notifications.Contracts;
@@ -27,6 +30,9 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     private readonly ShiftManagementService _shiftMgmt;
     private readonly ShiftRepository _repo;
     private readonly ShiftSignupService _service;
+    private readonly ITeamService _teamService;
+    private readonly IRoleAssignmentService _roleAssignmentService;
+    private readonly IShiftViewInvalidator _viewInvalidator;
 
     // Fixed test time: 2026-06-15 12:00 UTC
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
@@ -34,12 +40,15 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     public ShiftSignupServiceTests()
         : base(TestNow)
     {
-        var teamService = Substitute.For<ITeamService>();
-        var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
+        _teamService = Substitute.For<ITeamService>();
+        _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
         var serviceProvider = new ServiceLocatorBuilder()
-            .With(teamService)
-            .With<ITeamServiceRead>(teamService)
-            .With(roleAssignmentService)
+            .With(_teamService)
+            .With<ITeamServiceRead>(_teamService)
+            .With(_roleAssignmentService)
+            .With<ITicketServiceRead>()
+            .With<IUserServiceRead>()
+            .With<ICampServiceRead>()
             .Build();
 
         var shiftRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
@@ -54,6 +63,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             Clock);
 
         _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
+        _viewInvalidator = Substitute.For<IShiftViewInvalidator>();
         _service = new ShiftSignupService(
             _repo,
             Substitute.For<IVolunteerTrackingRepository>(),
@@ -62,7 +72,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             AuditLog,
             Notifier,
             AdminAuthorization,
-            Substitute.For<IShiftViewInvalidator>(),
+            _viewInvalidator,
             Substitute.For<IEarlyEntryInvalidator>(),
             serviceProvider,
             Clock,
@@ -135,10 +145,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [HumansFact]
     public async Task SignUp_AllDayShiftAfterPriorNightWatch_DoesNotFalselyConflict()
     {
-        // Regression: a night watch ending at 02:00 used to collide with the next day's
-        // all-day shift because all-day was modeled as 00:00-24:00. GetAbsoluteStart/End
-        // now short-circuit to 08:00/18:00 for IsAllDay rows, so the overnight shift
-        // ending at 02:00 no longer overlaps with the 08:00 start.
+        // All-day rows resolve their absolute window to 08:00/18:00, so a night watch
+        // ending at 02:00 does not overlap the next day's all-day shift.
         var (_, rota, _) = SeedShiftScenario(SignupPolicy.Public);
         rota.Period = RotaPeriod.Strike;
         // Night watch: day 0, 22:00-02:00 (next day) — 4h
@@ -158,10 +166,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [HumansFact]
     public async Task SignUp_SameDayEarlyShiftBeforeAllDay_DoesNotFalselyConflict()
     {
-        // Symmetric regression: an early-morning shift (03:00-07:00) on the same day
-        // as an all-day shift must be allowed. Before the fix, all-day was 00:00-24:00
-        // which would overlap with any shift on the same calendar day. After the fix,
-        // all-day starts at 08:00, so a 03:00-07:00 shift has no overlap.
+        // All-day shifts resolve to an 08:00-18:00 window, so an early-morning shift
+        // (03:00-07:00) on the same calendar day has no overlap.
         var (_, rota, _) = SeedShiftScenario(SignupPolicy.Public);
         rota.Period = RotaPeriod.Strike;
         // Early shift: day 0, 03:00-07:00 — ends one hour before all-day window starts
@@ -206,6 +212,52 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         result.Error.Should().Contain("restricted to coordinators");
     }
 
+    [HumansFact]
+    public async Task SignUp_ShiftAtMaxVolunteers_ReturnsError()
+    {
+        var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        for (var i = 0; i < shift.MaxVolunteers; i++)
+            SeedSignup(Guid.NewGuid(), shift.Id, SignupStatus.Confirmed);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.SignUpAsync(Guid.NewGuid(), shift.Id);
+
+        result.Success.Should().BeFalse();
+        result.Error.Should().Contain("at capacity");
+        (await ShiftsDb.ShiftSignups.CountAsync(
+            s => s.ShiftId == shift.Id && s.Status == SignupStatus.Confirmed,
+            TestContext.Current.CancellationToken)).Should().Be(shift.MaxVolunteers);
+    }
+
+    [HumansFact]
+    public async Task SignUp_BuildShiftAfterEeClose_NonPrivileged_ReturnsError()
+    {
+        var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        shift.DayOffset = -1;
+        es.EarlyEntryClose = TestNow - Duration.FromHours(1);
+        var userId = Guid.NewGuid();
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.SignUpAsync(userId, shift.Id);
+
+        result.Success.Should().BeFalse();
+        result.Error.Should().Contain("Early entry signups are closed");
+    }
+
+    [HumansFact]
+    public async Task SignUp_BuildShiftAfterEeClose_Privileged_Succeeds()
+    {
+        var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        shift.DayOffset = -1;
+        es.EarlyEntryClose = TestNow - Duration.FromHours(1);
+        var userId = Guid.NewGuid();
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.SignUpAsync(userId, shift.Id, flags: ShiftSignupRequestFlags.Privileged);
+
+        result.Success.Should().BeTrue();
+    }
+
     // ============================================================
     // Approve
     // ============================================================
@@ -244,6 +296,55 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         // Approve succeeds (overlap is a warning, not a blocker at approval)
         result.Success.Should().BeTrue();
         result.Warning.Should().Contain("Time conflict");
+    }
+
+    [HumansFact]
+    public async Task Approve_ShiftAtMaxVolunteers_ReturnsError()
+    {
+        var (_, _, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        for (var i = 0; i < shift.MaxVolunteers; i++)
+            SeedSignup(Guid.NewGuid(), shift.Id, SignupStatus.Confirmed);
+        var pendingSignup = SeedSignup(Guid.NewGuid(), shift.Id, SignupStatus.Pending);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.ApproveAsync(pendingSignup.Id, Guid.NewGuid());
+
+        result.Success.Should().BeFalse();
+        result.Error.Should().Contain("at capacity");
+        (await ShiftsDb.ShiftSignups.SingleAsync(s => s.Id == pendingSignup.Id, TestContext.Current.CancellationToken))
+            .Status.Should().Be(SignupStatus.Pending);
+    }
+
+    [HumansFact]
+    public async Task Approve_BuildShiftAfterEeClose_NonPrivileged_ReturnsError()
+    {
+        var (es, _, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        shift.DayOffset = -1;
+        es.EarlyEntryClose = TestNow - Duration.FromHours(1);
+        var signup = SeedSignup(Guid.NewGuid(), shift.Id, SignupStatus.Pending);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.ApproveAsync(signup.Id, Guid.NewGuid());
+
+        result.Success.Should().BeFalse();
+        result.Error.Should().Contain("early entry close");
+    }
+
+    [HumansFact]
+    public async Task Approve_BuildShiftAfterEeClose_Privileged_Succeeds()
+    {
+        var (es, _, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        shift.DayOffset = -1;
+        es.EarlyEntryClose = TestNow - Duration.FromHours(1);
+        var signup = SeedSignup(Guid.NewGuid(), shift.Id, SignupStatus.Pending);
+        var reviewerId = Guid.NewGuid();
+        _roleAssignmentService.HasActiveRoleAsync(reviewerId, RoleNames.Admin).Returns(true);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.ApproveAsync(signup.Id, reviewerId);
+
+        result.Success.Should().BeTrue();
+        Saved(result).Status.Should().Be(SignupStatus.Confirmed);
     }
 
     // ============================================================
@@ -445,6 +546,37 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             AuditAction.ShiftSignupVoluntold, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), enrollerId,
             Arg.Any<Guid?>(), Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task Voluntell_ShiftAtMaxVolunteers_ReturnsError()
+    {
+        var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        for (var i = 0; i < shift.MaxVolunteers; i++)
+            SeedSignup(Guid.NewGuid(), shift.Id, SignupStatus.Confirmed);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.VoluntellAsync(Guid.NewGuid(), shift.Id, Guid.NewGuid());
+
+        result.Success.Should().BeFalse();
+        result.Error.Should().Contain("at capacity");
+    }
+
+    [HumansFact]
+    public async Task Voluntell_OverlappingConfirmedSignup_ReturnsError()
+    {
+        var (_, rota, shift1) = SeedShiftScenario(SignupPolicy.Public);
+        var shift2 = SeedShift(rota, dayOffset: 1, startHour: 10, durationHours: 4);
+        var volunteerId = Guid.NewGuid();
+        SeedSignup(volunteerId, shift1.Id, SignupStatus.Confirmed);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.VoluntellAsync(volunteerId, shift2.Id, Guid.NewGuid());
+
+        result.Success.Should().BeFalse();
+        result.Error.Should().Contain("Time conflict");
+        (await ShiftsDb.ShiftSignups.CountAsync(s => s.UserId == volunteerId, TestContext.Current.CancellationToken))
+            .Should().Be(1);
     }
 
     // ============================================================
@@ -897,6 +1029,23 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         newSignupCount.Should().Be(0);
     }
 
+    [HumansFact]
+    public async Task SignUpRange_BuildRotaAfterEeClose_NonPrivileged_ReturnsError()
+    {
+        var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
+        rota.Period = RotaPeriod.Build;
+        SeedAllDayShift(rota, dayOffset: -3);
+        SeedAllDayShift(rota, dayOffset: -2);
+        es.EarlyEntryClose = TestNow - Duration.FromHours(1);
+        var userId = Guid.NewGuid();
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.SignUpRangeAsync(userId, rota.Id, -3, -2);
+
+        result.Success.Should().BeFalse();
+        result.Error.Should().Contain("Early entry signups are closed");
+    }
+
     // ============================================================
     // BailRange
     // ============================================================
@@ -928,6 +1077,84 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             .ToListAsync(TestContext.Current.CancellationToken);
         signups.Should().HaveCount(3);
         signups.Should().AllSatisfy(s => s.Status.Should().Be(SignupStatus.Bailed));
+    }
+
+    // ============================================================
+    // ApproveRange / RefuseRange
+    // ============================================================
+
+    [HumansFact]
+    public async Task ApproveRange_ConfirmsAllPendingSignupsInBlock()
+    {
+        var (_, rota, _) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        var shifts = new List<Shift> { SeedAllDayShift(rota, 1), SeedAllDayShift(rota, 2) };
+        var userId = Guid.NewGuid();
+        var blockId = Guid.NewGuid();
+        foreach (var shift in shifts)
+        {
+            var signup = SeedSignup(userId, shift.Id, SignupStatus.Pending);
+            signup.SignupBlockId = blockId;
+        }
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.ApproveRangeAsync(blockId, Guid.NewGuid());
+
+        result.Success.Should().BeTrue();
+        var signups = await ShiftsDb.ShiftSignups
+            .Where(s => s.SignupBlockId == blockId)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        signups.Should().HaveCount(2);
+        signups.Should().AllSatisfy(s => s.Status.Should().Be(SignupStatus.Confirmed));
+    }
+
+    [HumansFact]
+    public async Task ApproveRange_AutoRefusesPendingOnShiftFilledSinceRequest()
+    {
+        var (_, rota, _) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        var filledShift = SeedAllDayShift(rota, 1);
+        var freeShift = SeedAllDayShift(rota, 2);
+        var userId = Guid.NewGuid();
+        var blockId = Guid.NewGuid();
+        for (var i = 0; i < filledShift.MaxVolunteers; i++)
+            SeedSignup(Guid.NewGuid(), filledShift.Id, SignupStatus.Confirmed);
+        var filledPending = SeedSignup(userId, filledShift.Id, SignupStatus.Pending);
+        filledPending.SignupBlockId = blockId;
+        var freePending = SeedSignup(userId, freeShift.Id, SignupStatus.Pending);
+        freePending.SignupBlockId = blockId;
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.ApproveRangeAsync(blockId, Guid.NewGuid());
+
+        result.Success.Should().BeTrue();
+        result.Warning.Should().Contain("capacity");
+        (await ShiftsDb.ShiftSignups.SingleAsync(s => s.Id == freePending.Id, TestContext.Current.CancellationToken))
+            .Status.Should().Be(SignupStatus.Confirmed);
+        (await ShiftsDb.ShiftSignups.SingleAsync(s => s.Id == filledPending.Id, TestContext.Current.CancellationToken))
+            .Status.Should().Be(SignupStatus.Refused);
+    }
+
+    [HumansFact]
+    public async Task RefuseRangeAsync_RefusesAllPendingSignupsInBlock()
+    {
+        var (_, rota, _) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        var shifts = new List<Shift> { SeedAllDayShift(rota, 1), SeedAllDayShift(rota, 2) };
+        var userId = Guid.NewGuid();
+        var blockId = Guid.NewGuid();
+        foreach (var shift in shifts)
+        {
+            var signup = SeedSignup(userId, shift.Id, SignupStatus.Pending);
+            signup.SignupBlockId = blockId;
+        }
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.RefuseRangeAsync(blockId, Guid.NewGuid(), "no longer needed");
+
+        result.Success.Should().BeTrue();
+        var signups = await ShiftsDb.ShiftSignups
+            .Where(s => s.SignupBlockId == blockId)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        signups.Should().HaveCount(2);
+        signups.Should().AllSatisfy(s => s.Status.Should().Be(SignupStatus.Refused));
     }
 
     // ============================================================
@@ -1102,6 +1329,183 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             Arg.Is<string>(s => s.Contains("(range, pending)")),
             userId,
             userId, nameof(User));
+    }
+
+    // ============================================================
+    // ShiftSignupChange notification completeness
+    // ============================================================
+
+    [HumansFact]
+    public async Task SignUp_PublicPolicy_DispatchesShiftSignupChangeNotification()
+    {
+        var (_, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var coordinatorId = Guid.NewGuid();
+        _teamService.GetTeamAsync(rota.TeamId, Arg.Any<CancellationToken>())
+            .Returns(BuildTeamInfoWithCoordinator(rota.TeamId, coordinatorId));
+        var userId = Guid.NewGuid();
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.SignUpAsync(userId, shift.Id);
+
+        result.Success.Should().BeTrue();
+        await AssertShiftSignupChangeSent(coordinatorId);
+    }
+
+    [HumansFact]
+    public async Task Approve_DispatchesShiftSignupChangeNotification()
+    {
+        var (_, rota, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        var coordinatorId = Guid.NewGuid();
+        _teamService.GetTeamAsync(rota.TeamId, Arg.Any<CancellationToken>())
+            .Returns(BuildTeamInfoWithCoordinator(rota.TeamId, coordinatorId));
+        var signup = SeedSignup(Guid.NewGuid(), shift.Id, SignupStatus.Pending);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.ApproveAsync(signup.Id, Guid.NewGuid());
+
+        result.Success.Should().BeTrue();
+        await AssertShiftSignupChangeSent(coordinatorId);
+    }
+
+    [HumansFact]
+    public async Task Refuse_DispatchesShiftSignupChangeNotification()
+    {
+        var (_, rota, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        var coordinatorId = Guid.NewGuid();
+        _teamService.GetTeamAsync(rota.TeamId, Arg.Any<CancellationToken>())
+            .Returns(BuildTeamInfoWithCoordinator(rota.TeamId, coordinatorId));
+        var signup = SeedSignup(Guid.NewGuid(), shift.Id, SignupStatus.Pending);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.RefuseAsync(signup.Id, Guid.NewGuid(), "not needed");
+
+        result.Success.Should().BeTrue();
+        await AssertShiftSignupChangeSent(coordinatorId);
+    }
+
+    [HumansFact]
+    public async Task Bail_DispatchesShiftSignupChangeNotification()
+    {
+        var (_, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var coordinatorId = Guid.NewGuid();
+        _teamService.GetTeamAsync(rota.TeamId, Arg.Any<CancellationToken>())
+            .Returns(BuildTeamInfoWithCoordinator(rota.TeamId, coordinatorId));
+        var userId = Guid.NewGuid();
+        var signup = SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.BailAsync(signup.Id, userId, null);
+
+        result.Success.Should().BeTrue();
+        await AssertShiftSignupChangeSent(coordinatorId);
+    }
+
+    [HumansFact]
+    public async Task Remove_DispatchesShiftSignupChangeNotification()
+    {
+        var (_, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var coordinatorId = Guid.NewGuid();
+        _teamService.GetTeamAsync(rota.TeamId, Arg.Any<CancellationToken>())
+            .Returns(BuildTeamInfoWithCoordinator(rota.TeamId, coordinatorId));
+        var signup = SeedSignup(Guid.NewGuid(), shift.Id, SignupStatus.Confirmed);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.RemoveSignupAsync(signup.Id, Guid.NewGuid(), null);
+
+        result.Success.Should().BeTrue();
+        await AssertShiftSignupChangeSent(coordinatorId);
+    }
+
+    private async Task AssertShiftSignupChangeSent(Guid coordinatorId) =>
+        await Notifier.Received(1).SendAsync(
+            NotificationSource.ShiftSignupChange,
+            Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
+            Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(c => c.Contains(coordinatorId)),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+
+    private static TeamInfo BuildTeamInfoWithCoordinator(Guid teamId, Guid coordinatorUserId) =>
+        new(
+            teamId, "Team", null, "team",
+            IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+            RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+            IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+            Members:
+            [
+                new(Guid.NewGuid(), coordinatorUserId, string.Empty, null, null, TeamMemberRole.Coordinator,
+                    Instant.MinValue)
+            ]);
+
+    // ============================================================
+    // Cache eviction on signup mutations
+    // ============================================================
+
+    [HumansFact]
+    public async Task SignUp_EvictsUserAndShiftViewCache()
+    {
+        var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var userId = Guid.NewGuid();
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.SignUpAsync(userId, shift.Id);
+
+        result.Success.Should().BeTrue();
+        _viewInvalidator.Received(1).InvalidateUser(userId);
+        _viewInvalidator.Received(1).InvalidateShift(shift.Id);
+    }
+
+    [HumansFact]
+    public async Task SignUp_EvictsDashboardCache_SoNewlyFilledShiftShowsImmediately()
+    {
+        // Min=2, Max=5 (SeedShiftScenario default). One Confirmed signup exists — below min.
+        var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        SeedSignup(Guid.NewGuid(), shift.Id, SignupStatus.Confirmed);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        // Prime the dashboard cache while the shift is still short of MinVolunteers.
+        var before = await _shiftMgmt.GetDashboardOverviewAsync(es.Id);
+        before.FilledShifts.Should().Be(0);
+
+        var result = await _service.SignUpAsync(Guid.NewGuid(), shift.Id);
+        result.Success.Should().BeTrue();
+
+        // If the cache weren't invalidated, this would still read the primed 0.
+        var after = await _shiftMgmt.GetDashboardOverviewAsync(es.Id);
+        after.FilledShifts.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task Bail_EvictsUserAndShiftViewCache()
+    {
+        var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var userId = Guid.NewGuid();
+        var signup = SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.BailAsync(signup.Id, userId, null);
+
+        result.Success.Should().BeTrue();
+        _viewInvalidator.Received(1).InvalidateUser(userId);
+        _viewInvalidator.Received(1).InvalidateShift(shift.Id);
+    }
+
+    [HumansFact]
+    public async Task Bail_EvictsDashboardCache_SoDroppedBelowMinShowsImmediately()
+    {
+        var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var userId = Guid.NewGuid();
+        var signup = SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
+        SeedSignup(Guid.NewGuid(), shift.Id, SignupStatus.Confirmed); // 2 of Min=2 — filled
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var before = await _shiftMgmt.GetDashboardOverviewAsync(es.Id);
+        before.FilledShifts.Should().Be(1);
+
+        var result = await _service.BailAsync(signup.Id, userId, null);
+        result.Success.Should().BeTrue();
+
+        var after = await _shiftMgmt.GetDashboardOverviewAsync(es.Id);
+        after.FilledShifts.Should().Be(0);
     }
 
     // ============================================================

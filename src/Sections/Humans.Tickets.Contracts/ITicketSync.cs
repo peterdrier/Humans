@@ -4,10 +4,8 @@ namespace Humans.Tickets.Contracts;
 
 /// <summary>
 /// The cross-section vendor-sync surface: <c>TicketSyncJob</c> drives the cycle and
-/// Notifications' meter provider asks whether the last one failed. The job is no longer a
-/// Base consumer — it moved to <c>Humans.Tickets/Contracts/</c> at G5 lane 5b-3
-/// (nobodies-collective/Humans#866). The rest of the section's sync surface (the full-resync
-/// reset) is internal.
+/// Notifications' meter provider asks whether the last one failed. The rest of the
+/// section's sync surface (the full-resync reset) is internal.
 /// </summary>
 public interface ITicketSync : IApplicationService
 {

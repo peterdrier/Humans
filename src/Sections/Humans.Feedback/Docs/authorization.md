@@ -1,3 +1,10 @@
+<!-- freshness:triggers
+  src/Sections/Humans.Feedback/Controllers/**
+  src/Sections/Humans.Feedback/Section*.cs
+  src/Sections/Humans.Backdoor/Controllers/BackdoorFeedbackController.cs
+  src/Sections/Humans.Backdoor/Filters/BackdoorApiKeyAuthFilter.cs
+-->
+
 # Feedback — Authorization
 
 | Controller | Scope | Roles | Source |

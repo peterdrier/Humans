@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Governance/**
-  src/Sections/Humans.Governance/Services/TermExpiryCalculator.cs
+  src/Sections/Humans.Governance.Contracts/**
 -->
 <!-- freshness:flag-on-change
   Board voting workflow, finalize/approve/reject effects, BoardVote deletion-on-finalization rule, and voting routes — review when ApplicationDecisionService, BoardVote entity, or GovernanceBoardVotingController actions change.
@@ -28,7 +28,6 @@ Board voting only applies to tier applications (Colaborador and Asociado). Volun
 - Dashboard shows all applications where Status is Submitted (not gated on consent-check status)
 - Spreadsheet-style layout: rows = applications, columns = Board members
 - Each cell shows the Board member's current vote (or empty if not yet voted)
-- Filter by tier: Colaborador / Asociado / All
 - Sort by submission date (oldest first)
 - Shows applicant name, tier, motivation preview, submission date
 
@@ -65,7 +64,7 @@ Board voting only applies to tier applications (Colaborador and Asociado). Volun
   - Application.Status → Rejected
   - Decision note required (applicant deserves to know why)
   - Rejection notification email sent
-  - Stays as Volunteer
+  - No tier change — the applicant keeps whatever tier they already held
 - **Individual votes are deleted** after finalization (GDPR data minimization)
 - Cannot finalize if no Board members have voted
 

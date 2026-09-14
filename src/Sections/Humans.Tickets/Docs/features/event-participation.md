@@ -1,6 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Tickets/**
-  src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
+  src/Sections/Humans.Shifts/Services/BurnSettingsService.cs
+  src/Sections/Humans.Gate/Services/GateService.cs
   src/Sections/Humans.Users.Contracts/EventParticipation.cs
   src/Sections/Humans.Shifts/Domain/EventSettings.cs
   src/Sections/Humans.Users/Data/Configurations/EventParticipationConfiguration.cs
@@ -65,7 +66,7 @@ Added `Year` (int) to EventSettings so participation records can be linked to th
 | NotAttending -> Ticketed | Ticket purchase overrides |
 | Ticketed -> Attended | Ticket sync sees a gate scan (`TicketAttendee.CheckedInAt`, synced from the vendor's `/check_ins` — a scanned ticket's Status stays Valid) |
 | any (except Attended) -> Attended | Gate admit: `GateService` projects a recorded admit onto participation (CheckedInAt = admit instant), best-effort after the durable scan event — so consumed camp Early Entry can't be revoked |
-| Ticketed -> NoShow | Post-event derivation |
+| Ticketed -> NoShow | Reserved — the enum value exists, nothing writes it yet |
 | Ticketed -> (removed) | All valid tickets voided/transferred |
 
 Attended is permanent -- cannot be reverted by any mechanism.

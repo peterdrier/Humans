@@ -3,8 +3,7 @@ using Humans.GoogleIntegration.Contracts;
 namespace Humans.GoogleIntegration.Services.Workspace;
 
 /// <summary>
-/// Shape-neutral connector for the Google Cloud Translation API (§15 connector pattern — the real
-/// SDK/REST implementation and the dev stub live in <c>Humans.Infrastructure</c>). Consumed only by
+/// Shape-neutral connector for the Google Cloud Translation API. Consumed only by
 /// <see cref="IGoogleTranslationService"/>; other sections go through that service interface.
 /// </summary>
 internal interface IGoogleTranslationClient

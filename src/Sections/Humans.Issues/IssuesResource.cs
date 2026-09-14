@@ -9,7 +9,8 @@ namespace Humans.Issues;
 /// </summary>
 /// <remarks>
 /// Public because the boot localization diagnostic discovers section resource markers
-/// via <c>GetExportedTypes()</c>; an internal marker is skipped in silence (§15.3b).
+/// via <c>GetExportedTypes()</c>; an internal marker is skipped in silence
+/// (G5-SECTION-TEMPLATE.md step 3b).
 /// The set also covers the floating help widget's issue-submission modal, which lives here
 /// as <c>Views/Shared/_IssueWidgetModal.cshtml</c> so the whole <c>Issue_*</c> set stays in
 /// one resource set.

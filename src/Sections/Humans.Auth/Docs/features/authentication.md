@@ -75,14 +75,19 @@ User (extends IdentityUser<Guid>)
 ```
 RoleAssignment
 ├── Id: Guid
-├── UserId: Guid (FK → User)
+├── UserId: Guid              (bare user id — no FK, no nav property)
 ├── RoleName: string (256) ["Admin", "Board", etc.]
 ├── ValidFrom: Instant
 ├── ValidTo: Instant?
 ├── Notes: string? (2000)
 ├── CreatedAt: Instant
-└── CreatedByUserId: Guid (FK → User)
+└── CreatedByUserId: Guid     (bare user id — no FK, no nav property)
 ```
+
+`role_assignments` lives in `AuthDbContext`, `users` in Users' context, so
+neither id carries a database FK and neither has a navigation property to
+`.Include()`. Display names are stitched in memory via
+`IUserServiceRead.GetUserInfosAsync`.
 
 ## Authentication Flow
 
@@ -147,6 +152,7 @@ All roles are stored as temporal `RoleAssignment` records. Role claims are added
 | **StoreAdmin** | Store-domain superset: catalog, orders, payments, invoices, treasury sync (FinanceAdmin retains parallel access for accounting workflows) |
 | **EventsAdmin** | Approve, reject, and request edits on event guide submissions |
 | **CantinaAdmin** | Read-only cantina roster for meal planning; dietary preferences only, never medical conditions |
+| **RideshareAdmin** | Rideshare settings, season statistics, and the day roster; confers nothing outside Rideshare |
 | **EETeamAdmin** | Cross-team Early-Entry administrator — grant/edit/revoke early-entry on any team with `EarlyEntryEnabled`; confers nothing else |
 | **NoInfoAdmin** | Approve/voluntell shift signups; access volunteer medical data |
 

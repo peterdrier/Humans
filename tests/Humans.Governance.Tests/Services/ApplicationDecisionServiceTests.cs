@@ -888,7 +888,52 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         result.UserId.Should().Be(userId);
     }
 
+    // --- Term expiry correction (temporary screen) ---
+
+    [HumansFact]
+    public async Task GetTermExpiryDriftAsync_ReportsOnlyApprovedRowsWhoseStoredExpiryDisagreesWithCalculator()
+    {
+        var drifted = await SeedApprovedApplicationAsync(new LocalDate(2029, 12, 31));
+        await SeedApprovedApplicationAsync(TermExpiryCalculator.ComputeTermExpiry(Clock.GetCurrentInstant().InUtc().Date));
+        await SeedSubmittedApplicationAsync(Guid.NewGuid());
+
+        var drift = await _service.GetTermExpiryDriftAsync(Xunit.TestContext.Current.CancellationToken);
+
+        drift.Should().ContainSingle().Which.ApplicationId.Should().Be(drifted.Id);
+        drift[0].StoredExpiry.Should().Be(new LocalDate(2029, 12, 31));
+        drift[0].ExpectedExpiry.Should().Be(new LocalDate(2027, 12, 31));
+    }
+
+    [HumansFact]
+    public async Task FixTermExpiryDriftAsync_RewritesExpiryAndAuditsEachRow()
+    {
+        var drifted = await SeedApprovedApplicationAsync(new LocalDate(2029, 12, 31));
+        var adminId = Guid.NewGuid();
+
+        var count = await _service.FixTermExpiryDriftAsync(adminId, Xunit.TestContext.Current.CancellationToken);
+
+        count.Should().Be(1);
+        ClearAllTrackers();
+        var updated = await GovernanceDb.Applications.FirstAsync(a => a.Id == drifted.Id, Xunit.TestContext.Current.CancellationToken);
+        updated.TermExpiresAt.Should().Be(new LocalDate(2027, 12, 31));
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.TierTermExpiryCorrected, AuditEntityTypes.Application, drifted.Id,
+            Arg.Any<string>(), adminId);
+        (await _service.GetTermExpiryDriftAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeEmpty();
+    }
+
     // --- Helpers ---
+
+    // Approved today (Clock: 2026-03-01) with the given stored expiry.
+    private async Task<MemberApplication> SeedApprovedApplicationAsync(LocalDate storedExpiry)
+    {
+        var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
+        app.Approve(Guid.NewGuid(), null, Clock);
+        app.TermExpiresAt = storedExpiry;
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        ClearAllTrackers();
+        return app;
+    }
 
     // Finalize (Approve/Reject) requires at least one board vote (NoVotes guard).
     private async Task SeedBoardVoteAsync(Guid applicationId)

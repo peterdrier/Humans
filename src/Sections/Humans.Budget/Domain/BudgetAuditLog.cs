@@ -16,7 +16,9 @@ internal sealed class BudgetAuditLog
     public string? OldValue { get; init; }
     public string? NewValue { get; init; }
     public string Description { get; init; } = string.Empty;
-    public Guid ActorUserId { get; init; }
+
+    /// <summary>Null when the change was made by automation (the nightly ticketing sync job).</summary>
+    public Guid? ActorUserId { get; init; }
 
     public Instant OccurredAt { get; init; }
 }

@@ -42,14 +42,12 @@ public sealed class Section : ISection
         });
 
         // The Holded API connector — typed HttpClient, its options, and the in-memory call log the
-        // mirror drains into holded_api_calls. Registered here since G5 lane 4b-2f
-        // (nobodies-collective/Humans#866); it was Humans.Web's AddHoldedConnector before that.
+        // mirror drains into holded_api_calls.
         services.Configure<HoldedClientOptions>(opts =>
         {
             // HOLDED_API_KEY_V2, not HOLDED_API_KEY: a v2-generated key is rejected by the v1 API
-            // (probed 2026-08-11: 400 Invalid key), so a same-name cutover would break whichever
-            // build held the wrong key. Distinct names let both keys coexist in the environment
-            // while the old build drains; delete HOLDED_API_KEY once this build is confirmed live.
+            // (400 Invalid key), so the two names must stay distinct — renaming this to the plain
+            // HOLDED_API_KEY would hand a v2 key to anything still speaking v1.
             opts.ApiKey = Environment.GetEnvironmentVariable("HOLDED_API_KEY_V2") ?? "";
             opts.BaseUrl = configuration["Holded:BaseUrl"] ?? "https://api.holded.com";
         });
@@ -68,8 +66,7 @@ public sealed class Section : ISection
         services.AddScoped<IHoldedService>(sp => sp.GetRequiredService<Services.Service>());
         services.AddScoped<Services.IHoldedAdminService>(sp => sp.GetRequiredService<Services.Service>());
 
-        // The nightly pull's body (G5 step 6b). Its Hangfire target, HoldedSyncJob, is in
-        // this project's Contracts/ folder since G5 lane 5b-5.
+        // The nightly pull's body; its Hangfire target is HoldedSyncJob, in this project's Jobs/.
         services.AddScoped<IHoldedNightlySync, Services.HoldedNightlySync>();
 
         services.AddScoped<HoldedSyncJob>();

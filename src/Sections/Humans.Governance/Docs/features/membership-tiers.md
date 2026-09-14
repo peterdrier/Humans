@@ -6,7 +6,7 @@
   src/Sections/Humans.Users/Domain/Profile.cs
   src/Humans.Base/Constants/SystemTeamIds.cs
   src/Sections/Humans.Governance.Contracts/MembershipStatusLabels.cs
-  src/Sections/Humans.Governance/Services/TermExpiryCalculator.cs
+  src/Sections/Humans.Governance.Contracts/**
 -->
 <!-- freshness:flag-on-change
   Tier definitions, term expiry rules, system-team mapping per tier, and tier-application flow — review when MembershipTier enum, term calculator, or governance services change.
@@ -121,7 +121,7 @@ Tier is stored on Profile, **not** as a RoleAssignment. Roles (Admin, Board, Con
 ```
 Application (existing entity — new fields)
 ├── MembershipTier: MembershipTier (Colaborador or Asociado — never Volunteer)
-├── TermExpiresAt: LocalDate? (set on approval: Dec 31 of the next odd year at least 2 years out)
+├── TermExpiresAt: LocalDate? (set on approval: Dec 31 of the current cycle's odd year; next cycle from Oct 1 of an odd year)
 ├── BoardMeetingDate: LocalDate? (when Board finalized decision)
 ├── DecisionNote: string? (4000) (Board's collective note)
 ```
@@ -135,16 +135,17 @@ Terms are synchronized to fixed 2-year cycles ending Dec 31 of **odd years**:
 - Cycle 2: Jan 1, 2028 → Dec 31, 2029
 - Cycle 3: Jan 1, 2030 → Dec 31, 2031
 
-All Colaborador and Asociado terms within a cycle expire on the same date. A mid-cycle approval is **not** shortened to the current cycle end — `TermExpiryCalculator` always lands on the next odd-year Dec 31 that is at least 2 years out, so the first term runs long rather than short. Renewals grant the next full 2-year cycle.
+All Colaborador and Asociado terms within a cycle expire on the same date. A mid-cycle approval **is** shortened to the current cycle end — the first term runs short, never long. Q4 of an odd year is the renewal window (reminders go out 90 days before expiry), so an approval from October 1 of an odd year onward belongs to the next cycle.
 
 ### Term Expiry Calculation
 
-`TermExpiresAt` = Dec 31 of the next odd year that is at least 2 years from the approval date. Computed by `TermExpiryCalculator.ComputeTermExpiry()`.
+`TermExpiresAt` = Dec 31 of the current cycle's odd year: the approval year if odd, else the following year; plus one cycle when approved in Q4 of an odd year. Computed by `TermExpiryCalculator.ComputeTermExpiry()`.
 
 Examples:
-- Approved March 2026 → 2026+2=2028 (even) → Dec 31, 2029
-- Approved June 2027 → 2027+2=2029 (odd) → Dec 31, 2029
-- Approved January 2028 → 2028+2=2030 (even) → Dec 31, 2031
+- Approved March 2026 → Dec 31, 2027
+- Approved June 2027 → Dec 31, 2027
+- Approved November 2027 → Dec 31, 2029 (renewal window)
+- Approved January 2028 → Dec 31, 2029
 
 ### Renewal
 
@@ -152,7 +153,7 @@ Renewal is a new Application entity (same tier). Goes through normal Board votin
 
 ### Lapse
 
-If term expires without renewal, human reverts to Volunteer tier and is removed from the Colaboradors/Asociados system team.
+If term expires without renewal, the human is removed from the Colaboradors/Asociados system team and their profile tier is downgraded — to another tier they still hold an active approval for, otherwise to Volunteer.
 
 ## Application Flow
 
@@ -171,7 +172,7 @@ Both proceed through their respective pipelines:
 
 ### After Onboarding (Dedicated Application Route)
 ```
-Active Volunteer/Colaborador → /Governance/Applications → Fill form → Submit
+Active Volunteer/Colaborador → /Governance/Applications/Create → Fill form → Submit
     │
     ▼
 Application created → Board Voting → Approve/Reject

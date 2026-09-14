@@ -14,7 +14,7 @@ Nobodies Collective teams coordinate through meetings, workshops, and gatherings
 ## Scope — Slice 1 (v1)
 
 - Month view (`/Calendar`), list view (`/Calendar/List` — same month window, flat list), and agenda (upcoming events) view (`/Calendar/Agenda`); switched via the `_CalendarViewPills` partial
-- Team-filtered view — show only events from selected team(s), plus a per-team page at `/Calendar/Team/{teamId}`
+- Team-filtered view — `?teamId` narrows month/list/agenda to one team, plus a per-team page at `/Calendar/Team/{teamId}` (see US-39.2: no picker UI ships)
 - Single and recurring events (RFC 5545 recurrence rules)
 - Cancel or override individual occurrences without deleting the entire series
 - Team-owned events; any authenticated human can create, edit, or delete events for any team
@@ -25,9 +25,9 @@ Nobodies Collective teams coordinate through meetings, workshops, and gatherings
 
 The following are explicitly deferred to future slices:
 
-- **Module aggregation** (Shifts contributing shift events, Camps contributing camp dates, Budget contributing budget review events, etc. via `ICalendarContributor` interface)
+- **Module aggregation into the community calendar** (Shifts contributing shift events, Camps contributing camp dates, etc.). Note the shipped `ICalendarFeedContributor` fan-out is a different thing: it aggregates into a user's *personal* iCal feed, which contains no community-calendar events at all.
 - **Audience scoping** (private events, visibility rules per team)
-- **iCal export feed** (`.ics` for subscriptions)
+- **An `.ics` subscription feed of the community calendar.** The shipped `/api/ical` feed is the personal one and emits none of these events.
 - **Public view** (anonymous/unauthenticated calendar)
 - **Personal calendar digest and notifications** ("your upcoming events" email)
 - **RSVP and attendance tracking**
@@ -53,11 +53,10 @@ The following are explicitly deferred to future slices:
 **So that** I can focus on teams I care about
 
 **Acceptance Criteria:**
-- Team filter dropdown or multi-select widget
-- Can select one or more teams
-- "All Teams" option shows all events
-- Filter persists in the session or browser storage
-- Filtered view updates immediately
+- Single-team filter via the `?teamId` query parameter, plus a per-team page at `/Calendar/Team/{teamId}`
+- No `teamId` shows all events
+
+**Not shipped** (the original criteria; kept as the open remainder of this story): a filter widget in any view, multi-team select, and filter persistence across requests.
 
 ### US-39.3: Create Team Event
 **As an** authenticated human
@@ -69,7 +68,8 @@ The following are explicitly deferred to future slices:
 - Support single event or recurring (select recurrence frequency, interval, until date)
 - Save creates the event and redirects to event details
 - Required fields: title, team, start date/time
-- If recurring, show preview of next 5 occurrences
+
+**Not shipped:** the recurrence preview of the next 5 occurrences on the create form. Occurrences are only listed after the event exists, on its detail page.
 
 ### US-39.4: Edit or Delete Team Event
 **As an** authenticated human
@@ -91,7 +91,7 @@ The following are explicitly deferred to future slices:
 
 **Acceptance Criteria:**
 - On a recurring event, show "Manage Occurrences" or similar UI
-- List next 10 upcoming occurrences
+- List the next 5 upcoming occurrences
 - Per-occurrence actions: cancel, reschedule (change time/title)
 - Cancelled occurrence is hidden from calendar view
 - Rescheduled occurrence shows new time; recurrence rule unchanged

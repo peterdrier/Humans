@@ -122,9 +122,6 @@ public sealed class LegalDocumentServiceTests : IDisposable
         public Task<string?> GetCommitMessageAsync(string sha, CancellationToken ct = default) =>
             Task.FromResult<string?>(null);
 
-        public Task<string?> GetLatestCommitShaAsync(string path, CancellationToken ct = default) =>
-            Task.FromResult<string?>(null);
-
         public Task<IReadOnlyDictionary<string, string>> GetFolderContentByPrefixAsync(
             string folderPath, string filePrefix, CancellationToken ct = default)
         {

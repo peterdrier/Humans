@@ -3,18 +3,17 @@ using NodaTime;
 namespace Humans.Events.Contracts;
 
 /// <summary>
-/// T-03 — Cached projection of the <c>EventGuideSettings</c> singleton,
+/// Cached projection of the <c>EventGuideSettings</c> singleton,
 /// pre-stitched with <c>TimeZoneId</c> from the foreign <c>EventSettings</c>
 /// row so the presentation layer can convert <c>Instant</c> → local time without
 /// re-reading the foreign table on every render.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Held as a single nullable field inside <c>CachingEventService</c>. Tiny —
-/// well under the 50 MB cache budget.
+/// Held as a single nullable field inside <c>CachingEventService</c>.
 /// </para>
 /// <para>
-/// <b>Stop-gap stale window (issue #719):</b> <see cref="TimeZoneId"/> is
+/// <b>Stop-gap stale window (nobodies-collective/Humans#719):</b> <see cref="TimeZoneId"/> is
 /// read from the Shifts-owned <c>event_settings</c> table at warm /
 /// refresh time via <c>IBurnSettingsService</c>. The Events section has no
 /// invalidation signal for burn-settings edits today, so a moderator

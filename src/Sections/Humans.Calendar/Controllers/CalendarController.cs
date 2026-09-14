@@ -41,49 +41,34 @@ internal sealed class CalendarController : HumansControllerBase
         [FromQuery] int? year,
         [FromQuery] int? month,
         [FromQuery] Guid? teamId,
-        CancellationToken ct)
-    {
-        var zone = GetViewerZone();
-        var today = _clock.GetCurrentInstant().InZone(zone).Date;
-        var ym = new YearMonth(year ?? today.Year, month ?? today.Month);
-
-        var firstOfMonth = ym.OnDayOfMonth(1);
-        var from = firstOfMonth.AtMidnight().InZoneLeniently(zone).ToInstant();
-        var daysInMonth = firstOfMonth.Calendar.GetDaysInMonth(ym.Year, ym.Month);
-        var to = ym.OnDayOfMonth(daysInMonth).AtMidnight().InZoneLeniently(zone).ToInstant()
-                     .Plus(Duration.FromDays(1));
-
-        var occ = await _calendarRead.GetOccurrencesInWindowAsync(from, to, teamId, ct);
-        var teams = (await _teams.GetTeamsAsync(ct))
-            .Values
-            .Where(t => t.IsActive)
-            .Select(t => new TeamOption(t.Id, t.Name))
-            .ToList();
-
-        return View(new CalendarMonthViewModel(
-            Month: ym,
-            Occurrences: occ,
-            FilterTeamId: teamId,
-            TeamOptions: teams,
-            ViewerTimezoneLabel: zone.Id));
-    }
+        CancellationToken ct) =>
+        View(await BuildMonthViewAsync(year, month, teamId, ct));
 
     [HttpGet("List")]
     public async Task<IActionResult> List(
         [FromQuery] int? year,
         [FromQuery] int? month,
         [FromQuery] Guid? teamId,
-        CancellationToken ct)
+        CancellationToken ct) =>
+        View(await BuildMonthViewAsync(year, month, teamId, ct));
+
+    /// <summary>
+    /// The month window Index and List both render — same query, same view model,
+    /// differing only in which view renders it (grid vs one row per day).
+    /// </summary>
+    private async Task<CalendarMonthViewModel> BuildMonthViewAsync(
+        int? year, int? month, Guid? teamId, CancellationToken ct)
     {
         var zone = GetViewerZone();
         var today = _clock.GetCurrentInstant().InZone(zone).Date;
         var ym = new YearMonth(year ?? today.Year, month ?? today.Month);
 
-        var firstOfMonth = ym.OnDayOfMonth(1);
-        var from = firstOfMonth.AtMidnight().InZoneLeniently(zone).ToInstant();
-        var daysInMonth = firstOfMonth.Calendar.GetDaysInMonth(ym.Year, ym.Month);
-        var to = ym.OnDayOfMonth(daysInMonth).AtMidnight().InZoneLeniently(zone).ToInstant()
-                     .Plus(Duration.FromDays(1));
+        // The whole rendered grid, not just the month: Index pads the first and last weeks
+        // with adjacent-month days, and querying only [1st, 1st of next month) left those
+        // cells permanently empty. List and Team clip to the month themselves.
+        var (gridStart, gridEnd) = CalendarGridLayout.MonthGridBounds(ym);
+        var from = gridStart.AtMidnight().InZoneLeniently(zone).ToInstant();
+        var to = gridEnd.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant();
 
         var occ = await _calendarRead.GetOccurrencesInWindowAsync(from, to, teamId, ct);
         var teams = (await _teams.GetTeamsAsync(ct))
@@ -92,12 +77,12 @@ internal sealed class CalendarController : HumansControllerBase
             .Select(t => new TeamOption(t.Id, t.Name))
             .ToList();
 
-        return View(new CalendarMonthViewModel(
+        return new CalendarMonthViewModel(
             Month: ym,
             Occurrences: occ,
             FilterTeamId: teamId,
             TeamOptions: teams,
-            ViewerTimezoneLabel: zone.Id));
+            ViewerTimezoneLabel: zone.Id);
     }
 
     [HttpGet("Agenda")]
@@ -163,7 +148,6 @@ internal sealed class CalendarController : HumansControllerBase
             .Take(5)
             .ToList();
 
-        // §6b: owning-team name via ITeamService lookup (OwningTeam nav is [Obsolete]).
         var owningTeam = await _teams.GetTeamAsync(ev.OwningTeamId, ct);
         var owningTeamName = owningTeam?.Name ?? string.Empty;
 
@@ -229,9 +213,8 @@ internal sealed class CalendarController : HumansControllerBase
         var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(tzId)
             ?? DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         var startDate = ev.StartUtc.InZone(zone).Date;
-        // Stored end is half-open exclusive midnight; subtract a tick for inclusive display.
         var endDateInclusive = ev.EndUtc is { } endUtc
-            ? endUtc.Minus(Duration.FromNanoseconds(1)).InZone(zone).Date
+            ? CalendarService.AllDayInclusiveEndDate(endUtc, zone)
             : startDate;
         return View(new CalendarEventFormViewModel
         {
@@ -282,13 +265,15 @@ internal sealed class CalendarController : HumansControllerBase
         return View(form);
     }
 
-    // All-day stored as half-open [Start 00:00, EndDate+1 00:00). Bad input → ModelState (no throw).
+    // Validates the posted form and resolves it to stored instants. The all-day storage shape
+    // itself is CalendarService.AllDayWindow's; what stays here is the ModelState translation.
+    // Bad input → ModelState (no throw).
     private void TryResolveStartEnd(CalendarEventFormViewModel form, out Instant start, out Instant? end)
     {
         start = default;
         end = null;
 
-        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(form.RecurrenceTimezone);
+        var zone = CalendarEventFormViewModel.TryResolveZone(form.RecurrenceTimezone);
         if (zone is null)
         {
             ModelState.AddModelError(nameof(form.RecurrenceTimezone), "Unknown IANA timezone.");
@@ -309,8 +294,7 @@ internal sealed class CalendarController : HumansControllerBase
                 ModelState.AddModelError(nameof(form.EndDateLocal), "End date must be on or after the start date.");
                 return;
             }
-            start = startDate.AtMidnight().InZoneLeniently(zone).ToInstant();
-            end = inclusiveEnd.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant();
+            (start, end) = CalendarService.AllDayWindow(startDate, inclusiveEnd, zone);
             return;
         }
 
@@ -347,7 +331,8 @@ internal sealed class CalendarController : HumansControllerBase
         var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
-        var original = OccurrenceOverrideFormViewModel.ParseOriginal(originalStartUtc);
+        if (OccurrenceOverrideFormViewModel.TryParseOriginal(originalStartUtc) is not { } original) return NotFound();
+
         await _calendar.CancelOccurrenceAsync(id, original, RequireCurrentUserId(), ct);
         return RedirectToAction(nameof(Event), new { id });
     }
@@ -357,6 +342,7 @@ internal sealed class CalendarController : HumansControllerBase
     {
         var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
+        if (OccurrenceOverrideFormViewModel.TryParseOriginal(originalStartUtc) is null) return NotFound();
 
         return View("OccurrenceEdit", new OccurrenceOverrideFormViewModel
         {
@@ -372,14 +358,14 @@ internal sealed class CalendarController : HumansControllerBase
     {
         var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
+        if (OccurrenceOverrideFormViewModel.TryParseOriginal(originalStartUtc) is not { } original) return NotFound();
 
-        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(form.RecurrenceTimezone);
+        var zone = CalendarEventFormViewModel.TryResolveZone(form.RecurrenceTimezone);
         if (zone is null)
         {
             ModelState.AddModelError(nameof(form.RecurrenceTimezone), "Unknown timezone.");
             return View("OccurrenceEdit", form);
         }
-        var original = OccurrenceOverrideFormViewModel.ParseOriginal(originalStartUtc);
 
         Instant? overrideStart = form.OverrideStartLocal is { } s
             ? LocalDateTime.FromDateTime(s).InZoneLeniently(zone).ToInstant()
@@ -410,16 +396,17 @@ internal sealed class CalendarController : HumansControllerBase
     private Guid RequireCurrentUserId() =>
         GetCurrentUserId() ?? throw new InvalidOperationException("Current user has no valid ID claim.");
 
+    // The service names the member for the pair it validates by hand, and leaves it null for
+    // everything else — Title, EndUtc and start-after-end arrive through Failed(), which
+    // carries no member name at all. Null belongs at the form level, where the validation
+    // summary carries it; mapping null to RecurrenceRule is what put a Title error under the
+    // RRULE input.
     private void AddCalendarEventMutationError(
         CalendarEventMutationResult result)
     {
-        var memberName = string.Equals(
-                result.ValidationMemberName,
-                nameof(CreateCalendarEventDto.RecurrenceTimezone),
-                StringComparison.Ordinal)
-            ? nameof(CalendarEventFormViewModel.RecurrenceTimezone)
-            : nameof(CalendarEventFormViewModel.RecurrenceRule);
-        ModelState.AddModelError(memberName, result.ErrorMessage ?? "Failed to save calendar event.");
+        ModelState.AddModelError(
+            CalendarEventFormViewModel.ErrorFieldFor(result.ValidationMemberName),
+            result.ErrorMessage ?? "Failed to save calendar event.");
     }
 
     // Org default for v1 (all volunteers in Spain). TODO: derive from browser/profile.

@@ -17,8 +17,7 @@ namespace Humans.Shifts.Services;
 /// <para>
 /// A signup whose <c>Shift</c>, <c>Rota</c> or <c>Rota.EventSettings</c>
 /// navigation is missing is dropped rather than projected with placeholder
-/// dates: every scalar here is resolved against the event, and the consumers
-/// that used to walk these navigations all guarded against the same nulls.
+/// dates.
 /// </para>
 /// </remarks>
 internal static class ShiftUserSummaryProjection
