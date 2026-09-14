@@ -84,7 +84,8 @@ The shapes imply:
   (directory, detail, join, birthdays, My Teams, search, profile cards of others).
 - Only departments can have a public page; anonymous visitors see public departments
   only, coordinators-only member lists, no emails.
-- `IsSensitive` is written only by a global Admin.
+- `IsSensitive` is written only by a global Admin, enforced in `TeamService.UpdateTeamAsync`
+  (on a change to the flag, so a caller passing its current value is not a write).
 - Early-entry grants exist only on `EarlyEntryEnabled` teams; disabling keeps grants but
   hides them from the roster; every grant mutation is audited and evicts the user's EE cache.
 - Every membership add/remove is audit-logged and mirrored to Google (add inline, remove

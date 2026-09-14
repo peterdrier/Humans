@@ -738,6 +738,58 @@ public sealed class TeamServiceTests : TeamsTestHarness
         Cache.TryGetValue(CacheKeys.ShiftAuthorization(manager.Id), out _).Should().BeFalse();
     }
 
+    // health.md §4: IsSensitive is written only by a global Admin. The gate is the service's,
+    // not the edit controller's, so a second caller cannot set the flag around it.
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_IsSensitiveChangedByNonAdmin_ThrowsAndLeavesFlag()
+    {
+        var team = SeedTeam("Alpha");
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        AdminAuthorization.RequireCurrentUserIsAdminAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new UnauthorizedAccessException("A full Admin role is required.")));
+
+        var act = () => _service.UpdateTeamAsync(
+            team.Id, "Alpha", null, requiresApproval: false, isActive: true,
+            isSensitive: true, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+        ClearAllTrackers();
+        var stored = await TeamsDb.Teams.AsNoTracking().SingleAsync(t => t.Id == team.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.IsSensitive.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_IsSensitiveChangedByAdmin_Writes()
+    {
+        var team = SeedTeam("Alpha");
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _service.UpdateTeamAsync(
+            team.Id, "Alpha", null, requiresApproval: false, isActive: true,
+            isSensitive: true, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        ClearAllTrackers();
+        var stored = await TeamsDb.Teams.AsNoTracking().SingleAsync(t => t.Id == team.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.IsSensitive.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamAsync_IsSensitiveUnchanged_DoesNotRequireAdmin()
+    {
+        // The dev fixture seeders on ITeamSeeding pass the flag's current value; a no-op is not a write.
+        var team = SeedTeam("Alpha");
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        AdminAuthorization.RequireCurrentUserIsAdminAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new UnauthorizedAccessException("A full Admin role is required.")));
+
+        await _service.UpdateTeamAsync(
+            team.Id, "Alpha", null, requiresApproval: false, isActive: true,
+            isSensitive: false, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        await AdminAuthorization.DidNotReceive().RequireCurrentUserIsAdminAsync(Arg.Any<CancellationToken>());
+    }
+
     // ==========================================================================
     // Create/Update with Google group (T15 — service-owned compensation)
     // ==========================================================================

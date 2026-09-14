@@ -14,9 +14,6 @@ inbox:
   - added: 2026-09-05
     what: "Most TeamsResource keys lack the Teams_ prefix (TeamDetail_*, TeamAdmin_*, MyTeams_*, AdminEditTeam_*); pre-existing baseline, report only — a rename is a six-culture sweep plus every view binding (finding 12, /section-doctor on Teams 2026-09-05)."
     review: panel
-  - added: 2026-09-05
-    what: "health.md §4 says IsSensitive is written only by a global Admin; the gate lives in Controllers/TeamController.cs Edit (non-Admin posts pass null) and not in TeamService.UpdateTeamAsync, so a second caller of the service could set it. Either move the check into the service or restate the invariant as controller-enforced (finding 16, /section-doctor on Teams 2026-09-05)."
-    review: panel
   - added: 2026-09-14
     what: "CachingTeamService.GetTeamDirectoryAsync resolves IRoleAssignmentService sideways through its scope factory; memory/architecture/decorators-talk-only-to-inner.md forbids any collaborator beyond the keyed inner service and cache plumbing. Found by Codex reviewing peterdrier/Humans#1670; fix is a service-side move (the directory build belongs in TeamService or an orchestrator), not a decorator tweak."
     review: panel
