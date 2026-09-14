@@ -1,3 +1,13 @@
+<!-- freshness:triggers
+  src/Sections/Humans.Teams/Controllers/**
+  src/Sections/Humans.Teams/Contracts/HumansTeamControllerBase.cs
+  src/Sections/Humans.Teams/Authorization/**
+  src/Sections/Humans.Teams/SectionPolicies.cs
+-->
+<!-- freshness:flag-on-change
+  Route/attribute table below is read off the controllers; any auth attribute or resolver change moves a row.
+-->
+
 # Teams — Authorization
 
 | Controller | Scope | Roles | Source |
@@ -10,7 +20,8 @@
 | `TeamController.EditTeam` (GET/POST) | Action | `TeamsAdmin, Board, Admin` | `PolicyNames.TeamsAdminBoardOrAdmin` |
 | `TeamController.DeleteTeam` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
 | `TeamController.GetTeamGoogleResources` | Action | `TeamsAdmin, Board, Admin` | `PolicyNames.TeamsAdminBoardOrAdmin` |
-| `TeamController.EditTeam` (POST) runtime guard | In-method | `authorizationService.AuthorizeAsync(User, PolicyNames.AdminOnly)` — non-Admin editors post no `IsSensitive` value (checkbox is `authorize-policy="AdminOnly"`-suppressed), so the flag is passed as leave-unchanged unless the editor is a global Admin | `PolicyNames.AdminOnly` |
+| `TeamController.EditTeam` (POST) runtime guard | In-method | `authorizationService.AuthorizeAsync(User, PolicyNames.AdminOnly)` — non-Admin editors post no `IsSensitive` value (checkbox is `authorize-policy="AdminOnly"`-suppressed), so the flag is passed as leave-unchanged unless the editor is a global Admin. View-model hygiene, not the gate: it keeps a suppressed checkbox from reading as "set it to false" | `PolicyNames.AdminOnly` |
+| `TeamService.UpdateTeamAsync` `IsSensitive` write | In-method | `adminAuthorization.RequireCurrentUserIsAdminAsync()` when the call changes the flag — the enforcement point for the invariant, so no caller can set `IsSensitive` around Edit Team. A call passing the flag's current value is not a write and is not gated | `RoleNames.Admin` via `IAdminAuthorizationService` |
 | `TeamAdminController` | Class | `[Authorize]` (authenticated) | Coordinator checks at runtime via `HumansTeamControllerBase` |
 | `TeamAdminController.Roster` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` (narrows the class-level coordinator-reachable `ResolveTeamManagementAsync` down to Board-or-Admin only — coordinators don't see the full-name roster) |
 | `TeamAdminController` runtime guards (most actions) | In-method | `authorizationService.AuthorizeAsync(User, team, TeamOperationRequirement.ManageCoordinators)` via `ResolveTeamManagementAsync` | Resource-based (see handler below) |

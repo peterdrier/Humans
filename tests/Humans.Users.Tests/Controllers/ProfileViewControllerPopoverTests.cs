@@ -170,8 +170,6 @@ public class ProfileViewControllerPopoverTests
         };
         _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
             .Returns(BuildUserInfo(user, profile, userEmails: null));
-        _teamService.GetActiveTeamMembershipsForUserAsync(id, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMembership>());
 
         var result = await _controller.Popover(id, Xunit.TestContext.Current.CancellationToken);
 
@@ -206,8 +204,6 @@ public class ProfileViewControllerPopoverTests
         };
         _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
             .Returns(BuildUserInfo(user, profile, userEmails: null));
-        _teamService.GetActiveTeamMembershipsForUserAsync(id, Arg.Any<CancellationToken>())
-            .Returns(new List<TeamMembership>());
 
         var season = new CampSeasonInfo(
             Guid.NewGuid(), Guid.NewGuid(), "camp-funhouse", 2026, null,

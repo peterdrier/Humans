@@ -33,7 +33,7 @@
     <div class="input-group" style="max-width: 600px;">
         <input type="text" name="q" class="form-control" value="@Model.Query"
                placeholder="@(eventsEnabled ? Localizer["Search_GlobalPlaceholderEvents"].Value : Localizer["Search_GlobalPlaceholder"].Value)"
-               autofocus aria-label="Search query" />
+               autofocus aria-label="@Localizer["Search_QueryAriaLabel"]" />
         <button type="submit" class="btn btn-primary">
             <i class="fa-solid fa-magnifying-glass me-1"></i>@Localizer["Search_GlobalTitle"]
         </button>
@@ -56,7 +56,7 @@ else if (Model.QueryIsTooShort)
 }
 else
 {
-    <div class="d-flex flex-wrap gap-2 mb-3" role="group" aria-label="Filter results by type">
+    <div class="d-flex flex-wrap gap-2 mb-3" role="group" aria-label="@Localizer["Search_FilterAriaLabel"]">
         <a href="@ChipUrl(null)" class="@ChipClass(null)">
             @Localizer["Search_FilterAll"] (@Model.TotalCount)
         </a>

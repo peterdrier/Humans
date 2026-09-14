@@ -11,30 +11,15 @@ namespace Humans.Teams.Domain;
 /// </summary>
 internal sealed class Team
 {
-    /// <summary>
-    /// Unique identifier for the team.
-    /// </summary>
     public Guid Id { get; init; }
 
-    /// <summary>
-    /// Team name.
-    /// </summary>
     public string Name { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Team description.
-    /// </summary>
     [MarkdownContent]
     public string? Description { get; set; }
 
-    /// <summary>
-    /// URL-friendly slug for the team.
-    /// </summary>
     public string Slug { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Whether the team is currently active.
-    /// </summary>
     public bool IsActive { get; set; } = true;
 
     /// <summary>
@@ -59,14 +44,8 @@ internal sealed class Team
         ? $"{GoogleGroupPrefix}@{DomainConstants.GoogleGroupDomain}"
         : null;
 
-    /// <summary>
-    /// When the team was created.
-    /// </summary>
     public Instant CreatedAt { get; init; }
 
-    /// <summary>
-    /// When the team was last updated.
-    /// </summary>
     public Instant UpdatedAt { get; set; }
 
     /// <summary>
@@ -86,20 +65,11 @@ internal sealed class Team
     /// </summary>
     public bool ShowCoordinatorsOnPublicPage { get; set; } = true;
 
-    /// <summary>
-    /// Free-form markdown content for the public team page.
-    /// </summary>
     [MarkdownContent]
     public string? PageContent { get; set; }
 
-    /// <summary>
-    /// When the page content was last updated.
-    /// </summary>
     public Instant? PageContentUpdatedAt { get; set; }
 
-    /// <summary>
-    /// User ID of who last updated the page content.
-    /// </summary>
     public Guid? PageContentUpdatedByUserId { get; set; }
 
     /// <summary>
@@ -142,34 +112,16 @@ internal sealed class Team
     /// </summary>
     public Guid? ParentTeamId { get; set; }
 
-    /// <summary>
-    /// Navigation property to the parent team (department).
-    /// </summary>
     public Team? ParentTeam { get; set; }
 
-    /// <summary>
-    /// Navigation property to child teams (sub-teams of this department).
-    /// </summary>
     public ICollection<Team> ChildTeams { get; } = new List<Team>();
 
-    /// <summary>
-    /// Navigation property to team members.
-    /// </summary>
     public ICollection<TeamMember> Members { get; } = new List<TeamMember>();
 
-    /// <summary>
-    /// Navigation property to early-entry grants owned by this team.
-    /// </summary>
     public ICollection<TeamEarlyEntryGrant> EarlyEntryGrants { get; } = new List<TeamEarlyEntryGrant>();
 
-    /// <summary>
-    /// Navigation property to join requests.
-    /// </summary>
     public ICollection<TeamJoinRequest> JoinRequests { get; } = new List<TeamJoinRequest>();
 
-    /// <summary>
-    /// Navigation property to role definitions.
-    /// </summary>
     public ICollection<TeamRoleDefinition> RoleDefinitions { get; } = new List<TeamRoleDefinition>();
 
     /// <summary>
@@ -185,9 +137,6 @@ internal sealed class Team
     /// </summary>
     public bool IsInDirectory => ParentTeamId == null || IsPromotedToDirectory;
 
-    /// <summary>
-    /// Whether this is a system-managed team.
-    /// </summary>
     public bool IsSystemTeam => SystemTeamType != SystemTeamType.None;
 
     /// <summary>

@@ -3,11 +3,9 @@ using Humans.Base.Interfaces;
 namespace Humans.Search;
 
 /// <summary>
-/// Member top-nav contribution — was the icon-only magnifying-glass link Shell's
-/// <c>_Layout.cshtml</c> named by <c>asp-controller="Search"</c>
-/// (nobodies-collective/Humans#1090). Gated on plain authentication, not
-/// <see cref="Humans.Base.Authorization.PolicyNames.AppAccess"/> — search is available before
-/// a human has an active profile, unlike most nav items.
+/// The icon-only magnifying-glass link in the member top-nav. Gated on plain
+/// authentication, not <see cref="Humans.Base.Authorization.PolicyNames.AppAccess"/> —
+/// search is available before a human has an active profile, unlike most nav items.
 /// </summary>
 internal sealed class SectionNav : ISectionNav
 {

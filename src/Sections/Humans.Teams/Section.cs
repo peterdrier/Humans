@@ -17,9 +17,9 @@ namespace Humans.Teams;
 
 /// <summary>
 /// Teams' DI entry point, at the project root by convention. Discovered by Shell — nothing
-/// names it, so it needs no section prefix. The §15 caching decorator is a Singleton that warms
-/// the whole team graph at startup and mutates it in place on write; the keyed inner service is
-/// Scoped because it owns the repository's unit of work.
+/// names it, so it needs no section prefix. The caching decorator is a Singleton that warms
+/// the whole team graph at startup and clears it wholesale on every write; the keyed inner
+/// service is Scoped because it owns the repository's unit of work.
 /// </summary>
 public sealed class Section : ISection
 {
@@ -53,19 +53,13 @@ public sealed class Section : ISection
 
         services.AddScoped<ITeamPageService, TeamPageService>();
 
-        // The one invalidator in the MemoryCacheInvalidators family that is Teams' own: its six
-        // siblings wrap IMemoryCache and moved to Base at G5 lane 3a-1, but this one injects
-        // ITeamService, so the implementation lives here (and HUM0034 makes it internal, which
-        // is why Web can no longer register it). The interface stays on Humans.Teams.Contracts
-        // because Humans.Users evicts through it.
         services.AddScoped<IActiveTeamsCacheInvalidator, ActiveTeamsCacheInvalidator>();
 
-        // The system-team reconciler. Its interface joined it on Humans.Teams.Contracts at
-        // lane 5c; Hangfire resolves the implementation from DI at execution time.
+        // The system-team reconciler; Hangfire resolves it from DI at execution time.
         services.AddScoped<ISystemTeamSync, SystemTeamSyncJob>();
 
         // Resource-based handler; the policies it backs stay in Shell's
-        // AuthorizationPolicyExtensions (design §15 step 6's asymmetry).
+        // AuthorizationPolicyExtensions.
         services.AddScoped<IAuthorizationHandler, TeamAuthorizationHandler>();
 
         // Gauge-refresh loop split out of HumansMetricsService (nobodies-collective/Humans#1091).

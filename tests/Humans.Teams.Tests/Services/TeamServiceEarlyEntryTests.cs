@@ -298,29 +298,31 @@ public sealed class TeamServiceEarlyEntryTests
     }
 
     // ==========================================================================
-    // DeleteEarlyEntryGrantsForUserAsync (right-to-erasure)
+    // EraseForUserAsync (right-to-erasure)
     // ==========================================================================
 
     [HumansFact]
-    public async Task DeleteEarlyEntryGrantsForUserAsync_HasGrants_RemovesAllInvalidates()
+    public async Task EraseForUserAsync_EndsMembershipsDeletesRequestsAndGrantsInvalidates()
     {
         var userId = Guid.NewGuid();
         _repo.GetEarlyEntryGrantsForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<TeamEarlyEntryGrant> { Grant(Guid.NewGuid(), userId), Grant(Guid.NewGuid(), userId) });
 
-        await _service.DeleteEarlyEntryGrantsForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await _service.EraseForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
+        await _repo.Received(1).RevokeAllMembershipsAsync(userId, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        await _repo.Received(1).DeleteJoinRequestsForUserAsync(userId, Arg.Any<CancellationToken>());
         await _repo.Received(1).RemoveEarlyEntryGrantsForUserAsync(userId, Arg.Any<CancellationToken>());
         _eeInvalidator.Received(1).InvalidateUser(userId);
     }
 
     [HumansFact]
-    public async Task DeleteEarlyEntryGrantsForUserAsync_NoGrants_IsNoOp()
+    public async Task EraseForUserAsync_NoGrants_SkipsGrantDeleteAndEviction()
     {
         _repo.GetEarlyEntryGrantsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new List<TeamEarlyEntryGrant>());
 
-        await _service.DeleteEarlyEntryGrantsForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await _service.EraseForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         await _repo.DidNotReceive().RemoveEarlyEntryGrantsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         _eeInvalidator.DidNotReceive().InvalidateUser(Arg.Any<Guid>());
