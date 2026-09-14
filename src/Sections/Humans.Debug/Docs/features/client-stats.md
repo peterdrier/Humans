@@ -7,6 +7,7 @@
   src/Humans.Web/Middleware/ClientStatsMiddleware.cs
   src/Sections/Humans.Debug/**
   src/Humans.Web/wwwroot/js/client-metrics.js
+  src/Humans.Web/Program.cs
 -->
 <!-- freshness:flag-on-change
   In-memory/reset-on-restart guarantee, the beacon anonymity contract, the
@@ -21,7 +22,7 @@ A `/Debug/ClientStats` screen showing, since process start, the OS / browser / d
 
 ## Business Context
 
-The project owner asked "what are people browsing with — Linux/Windows/PC/Mac/phone, resolution — and what status codes are we serving?" as an occasional admin/debug signal, explicitly *not* something to persist. The app already exports rich operational metrics to Prometheus, but there was no in-app, at-a-glance view of client demographics, and the status-code breakdown lived only in Grafana.
+An occasional admin/debug signal — "what are people browsing with, and what status codes are we serving?" — explicitly *not* something to persist. Prometheus/Grafana carry the operational metrics; this is the in-app, at-a-glance view.
 
 Constraint shaping the design (shared with [active-user-metrics](../../../../../docs/features/global/active-user-metrics.md)): the container bounces **daily or more often**, so anything in process memory is "since this deploy", not historical. That is acceptable for a debug aid.
 
@@ -54,11 +55,11 @@ Constraint shaping the design (shared with [active-user-metrics](../../../../../
 
 ## Data Model
 
-Three new types, no DB schema:
+Types, no DB schema. The interfaces live in `Humans.Base.Interfaces`, the implementations in Shell (`Humans.Web.Services`); Debug only reads them:
 
-- `IClientStatsTracker` (Application) — `RecordPageView(string? ua)`, `RecordResolution(int w, int h)`, `GetSnapshot()`, `RecordError(ClientErrorEntry)`, `GetErrorsSnapshot(int count)`. Impl `ClientStatsTracker` (Infrastructure, singleton): `ConcurrentDictionary` tallies for OS / browser / device / bots / resolution, plus a rolling 1000-entry `ConcurrentQueue` for error responses (see [http-errors.md](http-errors.md)).
-- `IHttpStatusTracker` (Application) — `Total`, `GetCounts()`. Impl `HttpStatusTracker` (Infrastructure, singleton + `IHostedService`).
-- `UserAgentClassifier` (Infrastructure, static) — maps a UA to coarse `(Os, Browser, Device, BotName?)` via `MyCSharp.HttpUserAgentParser`. `BotName` is non-null only for recognised crawlers; OS/Browser/Device still collapse to `"Bot"` so the main device-type table stays bounded.
+- `IClientStatsTracker` — `RecordPageView(string? ua)`, `RecordResolution(int w, int h)`, `GetSnapshot()`, `RecordError(ClientErrorEntry)`, `GetErrorsSnapshot(int count)`. Impl `ClientStatsTracker` (singleton): `ConcurrentDictionary` tallies for OS / browser / device / bots / resolution, plus a rolling 1000-entry `ConcurrentQueue` for error responses (see [http-errors.md](http-errors.md)).
+- `IHttpStatusTracker` — `Total`, `GetCounts()`. Impl `HttpStatusTracker` (singleton + `IHostedService`).
+- `UserAgentClassifier` (static) — maps a UA to coarse `(Os, Browser, Device, BotName?)` via `MyCSharp.HttpUserAgentParser`. `BotName` is non-null only for recognised crawlers; OS/Browser/Device still collapse to `"Bot"` so the main device-type table stays bounded.
 
 No persistence, no EF entity, no table.
 
@@ -101,7 +102,7 @@ every request → ASP.NET Core records http.server.request.duration
 
 ## Design decisions
 
-- **MyCSharp.HttpUserAgentParser, not UAParser.** The canonical `UAParser` NuGet is frozen at 2021 with a stale regex database (misdetects current browsers); MyCSharp is **code-based** (no data file to age), effectively zero-dependency, and actively maintained. Its own OpenTelemetry metrics are operational-only (untagged parse counts) and are left off.
+- **MyCSharp.HttpUserAgentParser, not UAParser.** `UAParser`'s regex database is frozen and misdetects current browsers; MyCSharp is code-based, so it does not age. Its own OpenTelemetry metrics are left off.
 - **Status codes via a passive `MeterListener`, not a second counter.** It observes the same measurements the existing OpenTelemetry→Prometheus exporter consumes, without resetting or interfering with that pipeline. Registered as an `IHostedService` so it counts from the first request. Keyed by status code only (bounded cardinality).
 - **Cardinality is bounded.** OS/browser/device labels come from a fixed vocabulary. Resolution buckets are **soft-capped** at 200 (then `Other`); under concurrent first-sightings the cap may be exceeded by a handful before the gate closes — bounded by concurrency, never unbounded.
 - **Anonymity.** The beacon carries only screen width/height; it is not joined to the user, the UA, or any identifier.

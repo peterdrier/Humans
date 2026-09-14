@@ -73,6 +73,31 @@ public class EarlyEntryRosterControllerTests
     }
 
     [HumansFact]
+    public async Task Index_SortsByEntryDateThenUserId()
+    {
+        var early = new LocalDate(2026, 8, 20);
+        var late = new LocalDate(2026, 8, 25);
+        var lowId = new Guid("00000000-0000-0000-0000-000000000001");
+        var highId = new Guid("00000000-0000-0000-0000-000000000002");
+
+        _earlyEntryService.GetRosterAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<EarlyEntryRosterRow>
+            {
+                new(highId, late, ["Camp Alpha"], HasMultiple: false),
+                new(highId, early, ["Camp Alpha"], HasMultiple: false),
+                new(lowId, late, ["Camp Alpha"], HasMultiple: false),
+            });
+
+        var ctrl = BuildSut();
+        var result = await ctrl.Index(Xunit.TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>().Subject
+            .Model.Should().BeOfType<EarlyEntryRosterViewModel>().Subject;
+        model.Rows.Select(r => (r.EarliestEntryDate, r.UserId))
+            .Should().Equal((early, highId), (late, lowId), (late, highId));
+    }
+
+    [HumansFact]
     public async Task Index_PopulatesLegalNameFromProfile()
     {
         var userId = Guid.NewGuid();

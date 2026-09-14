@@ -14,8 +14,7 @@ namespace Humans.Debug.Services;
 ///   <item><description>bit 3 — <c>Marketing</c>: explicit marketing opt-in (<c>MarketingOptedOut == false</c>)</description></item>
 /// </list>
 /// The Venn diagram uses only the first three bits (marginalized over Marketing); the UpSet
-/// plot uses all four. Moved out of the deleted admin-dashboard aggregator at
-/// nobodies-collective/Humans#1091.
+/// plot uses all four.
 /// </summary>
 internal static class UserSetMembershipCalculator
 {
@@ -25,7 +24,7 @@ internal static class UserSetMembershipCalculator
         IShiftView shiftView,
         CancellationToken ct)
     {
-        var activeEvent = await burnSettings.GetActiveAsync();
+        var activeEvent = await burnSettings.GetActiveAsync(ct);
         var activeYear = activeEvent?.Year ?? 0;
         var shiftViews = await shiftView.GetUsersAsync(snapshot.Select(u => u.Id), ct);
 
