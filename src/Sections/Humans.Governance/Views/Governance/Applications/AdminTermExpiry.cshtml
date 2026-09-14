@@ -61,7 +61,8 @@
     {
         <div class="card-footer">
             <form method="post" asp-action="AdminTermExpiryFix">
-                <button type="submit" class="btn btn-danger">Fix all @Model.Count</button>
+                <button type="submit" class="btn btn-danger"
+                        data-confirm="Rewrite the term expiry on @Model.Count approved application(s) to the calculator value? Each rewrite is audit-logged.">Fix all @Model.Count</button>
             </form>
         </div>
     }
