@@ -37,6 +37,14 @@ symbol, route and file path it names has been checked against the tree. This is 
 it is what catches the doc that still names a controller's old home, a dependency a read-split
 replaced, or a folder a job moved out of.
 
+**A grep whose empty result this phase will state as a fact is never truncated.** A `head`-cut
+grep that found nothing is indistinguishable from one with nothing to find, and the briefs written
+here are read as ground truth by every thread that gets one. Run it repo-wide and uncut, or write
+the brief without the claim. This is the main thread's half of the rule `threads/CONTRACT.md`
+already puts on the threads' own absence verdicts: a run told two threads that
+`ScannerPageRenderTests` did not exist, on a truncated grep, and the Freshness thread built a
+finding on the false absence and had to retract it (peterdrier/Humans#1608).
+
 ### 3b. Behavior first, tool-free
 
 No scores, no linters, no scans yet. Read the section for what it *does*, in words its user would

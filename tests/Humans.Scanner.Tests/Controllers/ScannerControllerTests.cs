@@ -15,6 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
+using Xunit;
 
 namespace Humans.Scanner.Tests.Controllers;
 
@@ -50,7 +51,7 @@ public class ScannerControllerTests
         return ctrl;
     }
 
-    private static ITicketServiceRead TicketsWithAttendee(TicketAttendeeInfo attendee)
+    private static ITicketServiceRead TicketsWithAttendee(TicketAttendeeInfo attendee, bool isCurrentEvent = true)
     {
         var order = new TicketOrderInfo(
             Id: Guid.NewGuid(),
@@ -64,7 +65,7 @@ public class ScannerControllerTests
             VendorEventId: "evt-1",
             PurchasedAt: Instant.FromUtc(2026, 6, 1, 12, 0),
             MatchedUserId: null,
-            IsCurrentEvent: true,
+            IsCurrentEvent: isCurrentEvent,
             Attendees: new[] { attendee });
 
         var tickets = Substitute.For<ITicketServiceRead>();
@@ -187,6 +188,58 @@ public class ScannerControllerTests
         vm.Found.Should().BeFalse();
         vm.ScannedBarcode.Should().Be("nope-0000");
         vm.Stub.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task Card_PriorEventOrder_ReturnsNotFoundCard()
+    {
+        var tickets = TicketsWithAttendee(Attendee(), isCurrentEvent: false);
+        var ctrl = NewController(tickets);
+
+        var result = await ctrl.Card("xyz34Qy5", Xunit.TestContext.Current.CancellationToken);
+
+        var vm = result.Should().BeOfType<PartialViewResult>().Subject
+            .Model.Should().BeOfType<ScannerTicketCardViewModel>().Subject;
+        vm.Found.Should().BeFalse();
+        vm.ScannedBarcode.Should().Be("xyz34Qy5");
+    }
+
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Card_BlankBarcode_ReturnsNotFoundCardWithoutEcho(string? barcode)
+    {
+        var ctrl = NewController(TicketsWithAttendee(Attendee()));
+
+        var result = await ctrl.Card(barcode!, Xunit.TestContext.Current.CancellationToken);
+
+        var vm = result.Should().BeOfType<PartialViewResult>().Subject
+            .Model.Should().BeOfType<ScannerTicketCardViewModel>().Subject;
+        vm.Found.Should().BeFalse();
+        vm.ScannedBarcode.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task Card_MatchedUserWithoutActiveBurn_OfferedEventKeepsItsOwnStart()
+    {
+        var userId = Guid.NewGuid();
+        var start = Instant.FromUtc(2026, 6, 18, 6, 0);
+        var events = Substitute.For<IEventServiceRead>();
+        events.GetApprovedEventsAsync(null, null, null, null, Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new[]
+            {
+                OfferedEvent(userId, campId: null, "Daily Yoga", start, isRecurring: true, recurrenceDays: "0,2"),
+            });
+        var ctrl = NewController(TicketsWithAttendee(Attendee(userId)), events: events);
+
+        var result = await ctrl.Card("xyz34Qy5", Xunit.TestContext.Current.CancellationToken);
+
+        var vm = result.Should().BeOfType<PartialViewResult>().Subject
+            .Model.Should().BeOfType<ScannerTicketCardViewModel>().Subject;
+        vm.BurnTimeZone.Should().BeNull();
+        vm.CheckedInAt.Should().BeNull();
+        vm.ProvideItems.Should().ContainSingle().Which.Start.Should().Be(start);
     }
 
     [HumansFact]

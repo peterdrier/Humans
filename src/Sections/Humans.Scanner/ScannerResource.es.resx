@@ -87,7 +87,7 @@
     <value>Vista previa en vivo de la cámara</value>
   </data>
   <data name="Scanner_Index_Intro" xml:space="preserve">
-    <value>Herramientas de escáner en el navegador. No se envían datos al servidor — todo se ejecuta en tu dispositivo.</value>
+    <value>Herramientas de cámara para el equipo de entradas. El decodificador de códigos de barras se ejecuta en tu dispositivo y no envía nada; la consulta de entradas envía el código escaneado al servidor para encontrar la entrada. Ninguna de las dos se usa para el check-in.</value>
   </data>
   <data name="Scanner_Index_Title" xml:space="preserve">
     <value>Herramientas de escáner</value>
@@ -113,6 +113,9 @@
   <data name="Scanner_Tickets_Intro" xml:space="preserve">
     <value>Escanea una entrada para ver sus detalles.</value>
   </data>
+  <data name="Scanner_Tickets_LookupFailed" xml:space="preserve">
+    <value>La consulta ha fallado. Inténtalo de nuevo.</value>
+  </data>
   <data name="Scanner_Tickets_ManualEntry_Lookup" xml:space="preserve">
     <value>Buscar</value>
   </data>
@@ -133,6 +136,15 @@
   </data>
   <data name="Scanner_Tickets_Status" xml:space="preserve">
     <value>Estado</value>
+  </data>
+  <data name="Scanner_Tickets_Status_CheckedIn" xml:space="preserve">
+    <value>Registrada</value>
+  </data>
+  <data name="Scanner_Tickets_Status_Valid" xml:space="preserve">
+    <value>Válida</value>
+  </data>
+  <data name="Scanner_Tickets_Status_Void" xml:space="preserve">
+    <value>Anulada</value>
   </data>
   <data name="Scanner_Tickets_Title" xml:space="preserve">
     <value>Consulta de entradas</value>
