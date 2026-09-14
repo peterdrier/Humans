@@ -109,9 +109,13 @@ internal sealed class AssemblyVoteService(
 
         // A draft is the Board's authoring surface: unannounced, still being written, and
         // deletable. Members see a vote from the moment it opens, never before.
+        // Resolved once for the whole list rather than per vote: a member with no roster row
+        // of their own is the common case, and that is exactly the case that has to ask.
+        var mergedSourceIds = await users.GetMergedSourceIdsAsync(userId, ct);
+
         foreach (var vote in votes.Where(v => v.Status != AssemblyVoteStatus.Draft))
         {
-            var roster = await repository.GetRosterRowAsync(vote.Id, userId, ct);
+            var roster = await EffectiveRosterAsync(vote.Id, userId, ct, mergedSourceIds);
             var ballot = roster is null
                 ? null
                 : await repository.GetBallotForRosterAsync(vote.Id, roster.Id, ct);
@@ -145,7 +149,7 @@ internal sealed class AssemblyVoteService(
         // Same rule as the list: a draft's id is not a back door to its official text.
         if (vote.Status == AssemblyVoteStatus.Draft) return null;
 
-        var roster = await repository.GetRosterRowAsync(voteId, userId, ct);
+        var roster = await EffectiveRosterAsync(voteId, userId, ct);
         var ballot = roster is null
             ? null
             : await repository.GetBallotForRosterAsync(voteId, roster.Id, ct);
@@ -230,7 +234,7 @@ internal sealed class AssemblyVoteService(
 
         // Entitlement comes from the frozen roster, never from the member's tier today: a
         // member who lost their term mid-vote keeps the ballot the roster granted them.
-        var roster = await repository.GetRosterRowAsync(voteId, userId, ct);
+        var roster = await EffectiveRosterAsync(voteId, userId, ct);
         if (roster is null) return BallotSubmissionOutcome.NotOnRoster;
 
         if (!TryNormalizeBallot(vote, choice, ranking, out var normalizedRanking))
@@ -611,7 +615,7 @@ internal sealed class AssemblyVoteService(
             return null;
         }
 
-        var roster = await repository.GetRosterRowAsync(voteId, userId, ct);
+        var roster = await EffectiveRosterAsync(voteId, userId, ct);
         var ownBallot = roster is null
             ? null
             : await repository.GetBallotForRosterAsync(voteId, roster.Id, ct);
@@ -1542,18 +1546,61 @@ internal sealed class AssemblyVoteService(
     /// Pairs roster rows with their member's details and notification address, dropping
     /// anonymized rows and anyone with no reachable address.
     /// </summary>
+    /// <summary>
+    /// The roster row that entitles this human to a ballot on this vote: their own, or one
+    /// left standing on an account merged into theirs.
+    /// <para>
+    /// An account merge deliberately leaves roster rows and ballots keyed to the merged-away
+    /// id — they record who was entitled when the vote opened, not who holds the account
+    /// today. Without this resolution the survivor of a merge reads as off-roster on a vote
+    /// their other account was enrolled in: no ballot, no amendment, no reminder. The record
+    /// stays untouched and the chain is walked at read time instead.
+    /// </para>
+    /// The survivor's own row wins when both accounts were enrolled, which is the row every
+    /// other read already agrees on.
+    /// </summary>
+    private async Task<AssemblyVoteRoster?> EffectiveRosterAsync(
+        Guid voteId, Guid userId, CancellationToken ct, IReadOnlySet<Guid>? mergedSourceIds = null)
+    {
+        if (await repository.GetRosterRowAsync(voteId, userId, ct) is { } own) return own;
+
+        mergedSourceIds ??= await users.GetMergedSourceIdsAsync(userId, ct);
+        foreach (var sourceId in mergedSourceIds)
+        {
+            if (await repository.GetRosterRowAsync(voteId, sourceId, ct) is { } inherited)
+            {
+                return inherited;
+            }
+        }
+
+        return null;
+    }
+
     private async Task<List<(AssemblyVoteRoster Roster, UserInfo Info, string Address)>> RecipientsAsync(
         IReadOnlyList<AssemblyVoteRoster> roster, CancellationToken ct)
     {
-        var userIds = roster.Where(r => r.UserId is not null).Select(r => r.UserId!.Value).ToList();
-        if (userIds.Count == 0) return [];
+        var rosterUserIds = roster.Where(r => r.UserId is not null).Select(r => r.UserId!.Value).ToList();
+        if (rosterUserIds.Count == 0) return [];
 
+        // A roster row for an account that has since been merged away still names that
+        // account, because the merge leaves the record alone. The human is reachable at the
+        // surviving account, and only there: the merge moved their email addresses with it,
+        // so mailing the tombstone silently drops the row and the member is never told their
+        // vote opened or is closing.
+        var rosterInfos = await users.GetUserInfosAsync(rosterUserIds, ct);
+        var effective = rosterUserIds.ToDictionary(
+            id => id,
+            id => rosterInfos.TryGetValue(id, out var info) && info.MergedToUserId is { } survivor
+                ? survivor
+                : id);
+
+        var userIds = effective.Values.Distinct().ToList();
         var infos = await users.GetUserInfosAsync(userIds, ct);
         var addresses = await userEmails.GetNotificationTargetEmailsAsync(userIds, ct);
 
         return roster
             .Where(r => r.UserId is not null)
-            .Select(r => (Roster: r, UserId: r.UserId!.Value))
+            .Select(r => (Roster: r, UserId: effective[r.UserId!.Value]))
             .Where(x => infos.ContainsKey(x.UserId) && addresses.ContainsKey(x.UserId))
             .Select(x => (x.Roster, infos[x.UserId], addresses[x.UserId]))
             .ToList();
@@ -1755,7 +1802,15 @@ internal sealed class AssemblyVoteService(
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(
         Guid userId, CancellationToken ct)
     {
+        // Plus every account merged into this one. The merge leaves roster rows and ballots
+        // on the merged-away id, so the survivor's download would otherwise omit an
+        // entitlement and a ballot that are unmistakably theirs — the erasure path beside
+        // this one already follows the same chain.
         var record = await repository.GetVotingRecordForUserAsync(userId, ct);
+        foreach (var sourceId in await users.GetMergedSourceIdsAsync(userId, ct))
+        {
+            record = [.. record, .. await repository.GetVotingRecordForUserAsync(sourceId, ct)];
+        }
 
         var rows = record
             .Select(x => new

@@ -1534,6 +1534,88 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
 
     [HumansFact]
+    public async Task CastBallotAsync_OnTheMergedAwayAccountsRosterRow_IsAccepted()
+    {
+        var vote = await _fx.AddVoteAsync();
+        var mergedAway = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        _fx.StubMergedInto(mergedAway, survivor);
+        var row = await _fx.AddRosterRowAsync(vote.Id, mergedAway, isOfficial: true);
+
+        var outcome = await _fx.Service.CastBallotAsync(
+            vote.Id, survivor, AssemblyBallotChoice.Yes, null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        // The merge leaves the roster row on the merged-away id, so the entitlement is only
+        // reachable by walking the chain. Without that, the human who merged their accounts
+        // is silently off the electorate of a vote they were enrolled in.
+        outcome.Should().Be(BallotSubmissionOutcome.Recorded);
+        var ballots = await _fx.Db.AssemblyBallots.AsNoTracking()
+            .Where(b => b.VoteId == vote.Id)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        ballots.Should().ContainSingle().Which.RosterId.Should().Be(row.Id);
+    }
+
+    [HumansFact]
+    public async Task GetVoteForMemberAsync_ForTheSurvivorOfAMerge_ShowsThemOnTheRoster()
+    {
+        var vote = await _fx.AddVoteAsync();
+        var mergedAway = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        _fx.StubMergedInto(mergedAway, survivor);
+        await _fx.AddRosterRowAsync(vote.Id, mergedAway, isOfficial: true);
+
+        var detail = await _fx.Service.GetVoteForMemberAsync(
+            vote.Id, survivor, Xunit.TestContext.Current.CancellationToken);
+
+        detail!.IsOnRoster.Should().BeTrue(
+            "off-roster would hide the ballot form from a member the frozen roster entitled");
+        detail.IsOfficial.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task ContributeForUserAsync_IncludesTheMergedAwayAccountsBallot()
+    {
+        var vote = await _fx.AddVoteAsync();
+        var mergedAway = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        _fx.StubMergedInto(mergedAway, survivor);
+        var row = await _fx.AddRosterRowAsync(vote.Id, mergedAway, isOfficial: true);
+        await _fx.AddBallotAsync(vote.Id, row.Id, AssemblyBallotChoice.No);
+
+        var slices = await _fx.Service.ContributeForUserAsync(
+            survivor, Xunit.TestContext.Current.CancellationToken);
+
+        // Erasure already follows the merge chain, so an export that does not is the same
+        // data reachable for deletion but invisible to the subject who asked for it.
+        var json = System.Text.Json.JsonSerializer.Serialize(
+            slices.Single(x => string.Equals(
+                x.SectionName, GdprExportSections.AssemblyVotes, StringComparison.Ordinal)).Data);
+        json.Should().Contain("\"Choice\":");
+    }
+
+    [HumansFact]
+    public async Task RunLapseAndReminderSweepAsync_RemindsTheSurvivorOfAMerge()
+    {
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(12));
+        var mergedAway = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        _fx.StubMergedInto(mergedAway, survivor);
+        await _fx.AddRosterRowAsync(vote.Id, mergedAway, isOfficial: true, notified: false);
+
+        await _fx.Service.RunLapseAndReminderSweepAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        // The merge moved the email addresses to the survivor, so mailing the tombstone
+        // drops the row and this member is never told their vote is closing.
+        _fx.Messages.Received(1).AssemblyVoteReminder(
+            survivor + "@example.org",
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<LocalDateTime>(),
+            Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
     public async Task ReassignAsync_WhenBothAccountsVoted_LeavesBothRowsAndBothBallotsAsCast()
     {
         var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
