@@ -134,7 +134,18 @@ exactly one home.
 
 - **No resource set.** Every string in the four views is English, because the content they wrap
   is English-only markdown. Pinned structurally: the section has no `.resx` and
-  `_ViewImports.cshtml` injects no localizer.
+  `_ViewImports.cshtml` injects no localizer. Re-asked when `/Guide` gained a top-nav link: the
+  read routes are `[AllowAnonymous]` and no longer reachable only from the signed-in menu, which
+  puts them outside AGENTS.md's admin/operator localization exemption. Answer unchanged —
+  translating four pieces of page furniture around English content buys a reader nothing, so the
+  exemption is stated here rather than earned by a six-culture resx set (Peter, 2026-09-14).
+- **Fence state is line-scanned, not parsed.** `GuideSegmenter` decides whether a `##` is a
+  heading by tracking fence delimiters itself rather than walking Markdig's block AST. That buys
+  byte-exact rejoining (invariant 13) and one parse per render instead of two; it costs coverage
+  of every CommonMark construct the scanner does not model. One such gap is known and open: a
+  fence-looking line inside a raw HTML block puts the scanner into fence state where Markdig
+  would not, and a real `## As a …` heading below it then opens no segment. Weighed and kept
+  (Peter, 2026-09-14) — no shipped guide file triggers it — and recorded in `Docs/debt.yml`.
 - **No repository, no `DbContext`.** The section owns no tables; the service *is* the cache.
   `IMemoryCache` is injected directly, allowlisted in `ApplicationServicesTakeNoMemoryCacheRule`.
 - **No `Contracts` project.** Nothing outside the section reads a guide page. The folder stays
