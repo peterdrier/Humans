@@ -151,9 +151,9 @@ Settled decisions that look wrong until you know why. Do not re-litigate these.
   refused at the last step; the doubled check is the point, not redundancy.
 - **Ballots are ordered by response id in the drill-down**, not by submission time — a stable,
   meaningless order that cannot be aligned with the participation ledger.
-- **Ranked counting keeps two results side by side** — all authored options and currently
-  available options — because striking an option can break a preference cycle and change the
-  winner even when the old winner is still available. Both are shown so the change is visible.
+- **Ranked counting keeps the all-authored-options result beside the currently-available
+  one** — because striking an option can break a preference cycle and change the winner even
+  when the old winner is still available. Both are shown so the change is visible.
 
 ## History
 
