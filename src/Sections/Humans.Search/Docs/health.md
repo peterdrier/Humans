@@ -66,7 +66,8 @@ The shapes imply exactly today's layout, and nothing more:
   scope, not a global enum — the field mask constant and the per-section filter calls are
   where it would plug in. Reserved, not built.
 - **Rota reach from a past event** and **`/Camps/{slug}` season gating**: both ruled
-  destination-page matters (nobodies-collective/Humans#993, #998, closed as designed).
+  destination-page matters (nobodies-collective/Humans#993, nobodies-collective/Humans#998,
+  closed as designed).
   Nothing here changes for them.
 
 ## 6. Deliberately not done
