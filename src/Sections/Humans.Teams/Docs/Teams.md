@@ -251,7 +251,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - **Onboarding, Governance, Auth, Camps, GoogleIntegration, Development:** call `ISystemTeamSync` after the facts they own change (volunteer activation, tier approval or expiry, role grants, camp leads, the sync admin page, the persona seeder).
 - **Users:** `AccountDeletionService` calls `RevokeAllMembershipsAsync` / `RemoveMemberFromAllTeamsCache`; account merge reaches `IUserMerge.ReassignAsync`; the profile card and popovers read `GetTeamsAsync` / `GetUserTeamMembershipsAsync`.
 - **Shifts:** `ShiftAdminController` derives from `HumansTeamControllerBase`; shift authorization reads `GetUserCoordinatedTeamIdsAsync`.
-- **Agent, Calendar, Campaigns, CityPlanning, Consent, Debug, Feedback, Guide, Notifications, Store, Surveys, Tickets, the Shell:** read-side consumers of `ITeamServiceRead` / `TeamInfo`; Consent's legal-document sync, Calendar's controller, Governance's membership query and Budget's repository also hold `ITeamService`.
+- **Agent, Calendar, Campaigns, CityPlanning, Consent, Debug, Feedback, Guide, Notifications, Store, Surveys, Tickets, the Shell:** read-side consumers of `ITeamServiceRead` / `TeamInfo`. Consent is the exception: `CachingLegalDocumentSyncService` resolves the full `ITeamService` to stitch team display names, while the rest of that section's sync path takes the read interface.
 
 ## Architecture
 
