@@ -30,6 +30,8 @@ public enum AuditAction
     TierApplicationApproved,
     TierApplicationRejected,
     TierDowngraded,
+    // An admin rewrote a stored term expiry from the temporary /Governance/Applications/Admin/TermExpiry screen.
+    TierTermExpiryCorrected,
     GoogleResourceDeactivated,
     FacilitatedMessageSent,
     TeamRoleDefinitionCreated,
