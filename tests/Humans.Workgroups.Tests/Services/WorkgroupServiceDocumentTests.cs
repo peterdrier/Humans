@@ -127,6 +127,24 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
+    public async Task OpenComments_WithACategoryLongerThanItsColumn_Throws()
+    {
+        // The window would open, then every comment filed under that category would fail to
+        // persist against the 100-character Category column.
+        var workgroup = await SeedWorkgroupAsync();
+        var member = workgroup.Members.Single().UserId;
+        var document = await AddDocumentAsync(workgroup.Id, WorkgroupDocumentStatus.Published, body: "Body");
+        var now = Clock.GetCurrentInstant();
+
+        var act = () => NewService().OpenCommentsAsync(
+            document.Id, member,
+            new WorkgroupCommentWindow(now, now.Plus(Duration.FromDays(1)), [new string('c', 101)]), Ct);
+
+        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+            .Should().Be(WorkgroupErrorKeys.CategoryTooLong);
+    }
+
+    [HumansFact]
     public async Task OpenComments_ClosingBeforeItOpens_Throws()
     {
         var workgroup = await SeedWorkgroupAsync();

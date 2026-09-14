@@ -474,8 +474,11 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
         Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
+        // Questions are included because the GDPR export reports a question count off this
+        // graph; without it AsNoTracking hands back surveys whose Questions are empty.
         return await ctx.Surveys
             .AsNoTracking()
+            .Include(s => s.Questions)
             .Where(s => s.CreatedByUserId == userId)
             .ToListAsync(ct);
     }

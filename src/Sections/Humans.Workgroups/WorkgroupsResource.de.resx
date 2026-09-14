@@ -127,6 +127,7 @@
   <data name="Workgroups_Error_DocumentFrozen" xml:space="preserve"><value>Dieses Dokument wurde geliefert; sein Inhalt ist gesperrt.</value></data>
   <data name="Workgroups_Error_NotPublished" xml:space="preserve"><value>Dieses Dokument wurde noch nicht veröffentlicht.</value></data>
   <data name="Workgroups_Error_CategoriesRequired" xml:space="preserve"><value>Mindestens eine Kommentarkategorie ist erforderlich.</value></data>
+  <data name="Workgroups_Error_CategoryTooLong" xml:space="preserve"><value>Eine Kommentarkategorie darf nicht länger als 100 Zeichen sein.</value></data>
   <data name="Workgroups_Error_WindowInvalid" xml:space="preserve"><value>Der Kommentierungszeitraum ist ungültig.</value></data>
   <data name="Workgroups_Error_CommentsClosed" xml:space="preserve"><value>Die Kommentierungsphase ist nicht geöffnet.</value></data>
   <data name="Workgroups_Error_CommentsStillOpen" xml:space="preserve"><value>Beende die Kommentierungsphase, bevor du dieses Dokument einreichst.</value></data>

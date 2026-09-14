@@ -30,6 +30,18 @@ internal sealed partial class WorkgroupService
 
         return
         [
+            // Applying for a group is an attribution the register keeps on the group row and
+            // the erasure nulls, so it is disclosed here alongside the rows that carry an id.
+            new UserDataSlice(GdprExportSections.WorkgroupApplications, rows.AppliedFor
+                .Select(w => new
+                {
+                    Workgroup = w.Name,
+                    Status = w.Status.ToString(),
+                    w.Purpose,
+                    w.AppliedAt,
+                    w.RegisteredAt
+                })
+                .ToList()),
             new UserDataSlice(GdprExportSections.WorkgroupMemberships, rows.Memberships
                 .Select(m => new
                 {

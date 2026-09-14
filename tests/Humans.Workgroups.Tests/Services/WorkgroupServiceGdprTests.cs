@@ -29,6 +29,7 @@ public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
 
         slices.Select(s => s.SectionName).Should().BeEquivalentTo(
         [
+            GdprExportSections.WorkgroupApplications,
             GdprExportSections.WorkgroupMemberships,
             GdprExportSections.WorkgroupLogEntries,
             GdprExportSections.WorkgroupMeetings,
@@ -37,6 +38,31 @@ public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
         ]);
         slices.Should().OnlyContain(s => s.Data != null);
         comment.AuthorUserId.Should().Be(author);
+    }
+
+    [HumansFact]
+    public async Task Export_IncludesGroupsThisPersonAppliedFor_TheColumnTheErasureNulls()
+    {
+        // AppliedByUserId is attribution the register keeps on the group row itself. The
+        // erasure nulls it, so Art. 15 has to disclose it — the pairing this test pins.
+        // The harness seeds the coordinator as the applicant, which is the real shape: the
+        // person who applies is the group's first coordinator.
+        var applicant = SeedUser("Applicant");
+        var workgroup = await SeedWorkgroupAsync(coordinatorUserId: applicant);
+
+        var slices = await NewService().ContributeForUserAsync(applicant, Ct);
+
+        var applications = slices.Single(s =>
+            string.Equals(s.SectionName, GdprExportSections.WorkgroupApplications, StringComparison.Ordinal));
+        applications.Data.Should().NotBeNull();
+        System.Text.Json.JsonSerializer.Serialize(applications.Data).Should().Contain(workgroup.Name);
+
+        await NewService().EraseForUserAsync(applicant, Ct);
+
+        var erased = await NewService().ContributeForUserAsync(applicant, Ct);
+        erased.Single(s =>
+                string.Equals(s.SectionName, GdprExportSections.WorkgroupApplications, StringComparison.Ordinal))
+            .Data.Should().BeEquivalentTo(Array.Empty<object>());
     }
 
     [HumansFact]

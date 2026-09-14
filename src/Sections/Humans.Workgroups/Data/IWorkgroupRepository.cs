@@ -16,6 +16,7 @@ internal sealed record WorkgroupsGraph(IReadOnlyList<Workgroup> Workgroups);
 /// erasure surface. Group names are stitched by the service from the register graph.
 /// </summary>
 internal sealed record WorkgroupUserRows(
+    IReadOnlyList<Workgroup> AppliedFor,
     IReadOnlyList<WorkgroupMember> Memberships,
     IReadOnlyList<WorkgroupLogEntry> LogEntries,
     IReadOnlyList<WorkgroupMeeting> Meetings,

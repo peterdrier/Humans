@@ -190,6 +190,10 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
+        // The applicant attribution lives on the group row itself, and EraseUserAsync nulls
+        // it — so it has to be exportable too, or we erase something we never disclosed.
+        var appliedFor = await ctx.Workgroups.AsNoTracking()
+            .Where(w => w.AppliedByUserId == userId).ToListAsync(ct);
         var memberships = await ctx.Members.AsNoTracking()
             .Where(m => m.UserId == userId).ToListAsync(ct);
         var logEntries = await ctx.LogEntries.AsNoTracking()
@@ -212,7 +216,7 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
                 || c.HiddenByUserId == userId)
             .ToListAsync(ct);
 
-        return new WorkgroupUserRows(memberships, logEntries, meetings, documents, comments);
+        return new WorkgroupUserRows(appliedFor, memberships, logEntries, meetings, documents, comments);
     }
 
     public async Task EraseUserAsync(Guid userId, Instant now, CancellationToken ct = default)

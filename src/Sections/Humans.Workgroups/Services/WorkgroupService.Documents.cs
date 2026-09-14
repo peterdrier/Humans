@@ -14,6 +14,10 @@ namespace Humans.Workgroups.Services;
 /// </summary>
 internal sealed partial class WorkgroupService
 {
+    /// <summary>The 100 characters of <c>WorkgroupDocumentComment.Category</c>, which every
+    /// comment in an opened window has to fit.</summary>
+    private const int MaxCommentCategoryLength = 100;
+
     // ── Documents ─────────────────────────────────────────────────────────
 
     public async Task<Guid> CreateDocumentAsync(
@@ -103,6 +107,10 @@ internal sealed partial class WorkgroupService
             .ToList();
         if (categories.Count == 0)
             throw new WorkgroupRuleException(WorkgroupErrorKeys.CategoriesRequired);
+        // Comments carry their category in a 100-character column, so a longer one here would
+        // open a window whose own comments could never be saved.
+        if (categories.Any(c => c.Length > MaxCommentCategoryLength))
+            throw new WorkgroupRuleException(WorkgroupErrorKeys.CategoryTooLong);
         if (window.ClosesAt <= window.OpensAt)
             throw new WorkgroupRuleException(WorkgroupErrorKeys.WindowInvalid);
 

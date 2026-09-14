@@ -127,6 +127,7 @@
   <data name="Workgroups_Error_DocumentFrozen" xml:space="preserve"><value>Este documento está entregado; su contenido está congelado.</value></data>
   <data name="Workgroups_Error_NotPublished" xml:space="preserve"><value>Este documento aún no se ha publicado.</value></data>
   <data name="Workgroups_Error_CategoriesRequired" xml:space="preserve"><value>Se requiere al menos una categoría de comentarios.</value></data>
+  <data name="Workgroups_Error_CategoryTooLong" xml:space="preserve"><value>Una categoría de comentarios no puede superar los 100 caracteres.</value></data>
   <data name="Workgroups_Error_WindowInvalid" xml:space="preserve"><value>El periodo de comentarios no es válido.</value></data>
   <data name="Workgroups_Error_CommentsClosed" xml:space="preserve"><value>El periodo de comentarios no está abierto.</value></data>
   <data name="Workgroups_Error_CommentsStillOpen" xml:space="preserve"><value>Cierra el periodo de comentarios antes de entregar este documento.</value></data>

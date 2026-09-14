@@ -73,4 +73,5 @@ public static class GdprExportSections
     public const string WorkgroupMeetings = "WorkgroupMeetings";
     public const string WorkgroupDocuments = "WorkgroupDocuments";
     public const string WorkgroupComments = "WorkgroupComments";
+    public const string WorkgroupApplications = "WorkgroupApplications";
 }

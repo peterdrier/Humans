@@ -240,6 +240,10 @@ internal sealed class CachingWorkgroupService(
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
+            [GdprExportSections.WorkgroupApplications] =
+                "Partially retained: the applicant attribution is dropped (AppliedByUserId " +
+                "nulled), the working group itself stays. A registered group is the " +
+                "association's own body and outlives whoever proposed it.",
             [GdprExportSections.WorkgroupMemberships] = null,
             [GdprExportSections.WorkgroupLogEntries] =
                 "Partially retained: the authorship is dropped (AuthorUserId nulled), the entry " +

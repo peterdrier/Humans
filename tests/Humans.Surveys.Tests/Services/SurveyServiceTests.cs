@@ -3558,6 +3558,8 @@ public class SurveyServiceTests
         var mine = SurveyWith(SurveyStatus.Draft, null, null);
         mine.Title = L("My Draft");
         mine.RejectionNote = "Needs a clearer audience";
+        mine.Questions.Add(new SurveyQuestion { Id = Guid.NewGuid(), SurveyId = mine.Id });
+        mine.Questions.Add(new SurveyQuestion { Id = Guid.NewGuid(), SurveyId = mine.Id });
         _repo.GetSurveysAuthoredByAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<Survey> { mine });
 
@@ -3568,6 +3570,9 @@ public class SurveyServiceTests
         var json = System.Text.Json.JsonSerializer.Serialize(slice.Data);
         json.Should().Contain("My Draft");
         json.Should().Contain("Needs a clearer audience");
+        // The count comes off the Questions graph, so the repository query has to load it —
+        // GetSurveysAuthoredByAsync includes Questions for exactly this projection.
+        json.Should().Contain("\"QuestionCount\":2");
     }
 
     [HumansFact]

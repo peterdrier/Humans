@@ -227,7 +227,9 @@ See `authorization.md` for the auth policy per route.
 - Every lifecycle transition writes a system log entry and an `AuditLogEntry`
   (`relatedEntityId`/`Type` = the workgroup) via `AuditAsync`.
 - A document's comment window may only be set on a Published document with at least one
-  category, and must end before the document is Delivered (`OpenCommentsAsync`).
+  category, and must end before the document is Delivered (`OpenCommentsAsync`). Each
+  category has to fit the 100 characters a comment's own `Category` column holds, or the
+  window would accept comments that could never be saved.
 - Delivered freezes a document's body (`UpdateDocumentAsync` refuses further edits); a
   disposition may only be recorded on a Delivered document. Deferred remains in the
   awaiting-disposition queue until a final reply is recorded.
@@ -321,11 +323,12 @@ per 7 days), not part of the job.
 
 ## GDPR
 
-- **Export** (`ContributeForUserAsync`): five slices — memberships (role, dates), log
-  entries, meetings created, documents (created, updated, or with a disposition this person
-  recorded — each labelled), comments (including hidden ones, with disposition and response).
-  Every attribution column the erasure nulls is also an export predicate, so nothing is
-  erasable but unexportable.
+- **Export** (`ContributeForUserAsync`): six slices — applications (groups this person
+  applied for, which is attribution the register keeps on the group row), memberships (role,
+  dates), log entries, meetings created, documents (created, updated, or with a disposition
+  this person recorded — each labelled), comments (including hidden ones, with disposition
+  and response). Every attribution column the erasure nulls is also an export predicate, so
+  nothing is erasable but unexportable.
 - **Erasure** (`EraseForUserAsync`): nulls attribution everywhere (`AuthorUserId`,
   `CreatedByUserId`, `UpdatedByUserId`, `RespondedByUserId`, `AppliedByUserId`,
   `HiddenByUserId`, `DispositionByUserId`). **Content stays** — comments, log bodies,

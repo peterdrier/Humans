@@ -184,6 +184,20 @@ public sealed class EmailRendererTests
         es.Subject.Should().Be("Grupo de trabajo registrado: Safety");
     }
 
+    [HumansFact]
+    public void WorkgroupNotice_NameWithAnAmpersand_StaysRawInTheSubjectAndEncodedInTheBody()
+    {
+        var renderer = CreateRealRenderer();
+
+        var content = renderer.RenderWorkgroupNotice(new WorkgroupNoticeRequest(
+            "board@x.com", "Ada", WorkgroupNoticeKind.Applied, "Health & Safety", "health-safety",
+            Culture: "en"));
+
+        // The subject is plain text; the body is HTML. One encoded value cannot serve both.
+        content.Subject.Should().Contain("Health & Safety").And.NotContain("&amp;");
+        content.HtmlBody.Should().Contain("Health &amp; Safety");
+    }
+
     private static EmailRenderer CreateRealRenderer()
     {
         var factory = new ResourceManagerStringLocalizerFactory(
