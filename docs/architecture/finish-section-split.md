@@ -16,7 +16,7 @@ Measured against `origin/main` at the time of writing, from the section `.csproj
 - Nav, admin nav, tiles, chrome slots, jobs, health checks, endpoints, policies, GDPR export/erasure, migrations and localization are all discovered. None of them needs a Shell edit per section.
 - Data access is clean: no section reaches another's `DbContext`, and there is no raw SQL under `src/Sections`.
 - What pins sections today is the **core depending on the optional**. Users references Governance, Shifts, Onboarding, Tickets, Campaigns, Notifications, GoogleIntegration, Consent, Camps and Events (the last two as implementation references, for view components on the profile page). Auth references Teams, Email and Notifications. Because the activation guard reads those references, none of the sections Users or Auth name can be switched off.
-- The sections no other section references, and so are deactivatable today with no other edit: Backdoor, Cantina, Debug, Development, Expenses, Gate, Guide, MailerLite, Monitor, Rideshare, Scanner, Search, Store, TicketTailor, Tour.
+- The sections no other section references by assembly: Backdoor, Cantina, Debug, Development, Expenses, Gate, Guide, MailerLite, Monitor, Rideshare, Scanner, Search, Store, TicketTailor, Tour. These are the candidates for disable testing, not proven independent: the guard sees assembly references only, and a DI registration one section supplies for another's port is invisible to it. TicketTailor is the counterexample: it is the only registrar of `ITicketVendorService`, which Tickets requires, so deactivating it passes the guard and fails at first resolution.
 
 ## Agreed design direction
 
@@ -45,7 +45,7 @@ Done when required member operations, the profile page and the admin member page
 
 ### 2. Replace point-to-point cache invalidation with the in-process event bus
 
-- [ ] Land the design in nobodies-collective/Humans#799: a writer publishes a fact about its own domain; caches subscribe. No writer names another section's invalidator.
+- [ ] Settle the open design in nobodies-collective/Humans#799 first: failure semantics (a failing subscriber must not fail the writer), handler lifetimes, and whether publish happens inside or after the writer's transaction. Then land it: a writer publishes a fact about its own domain; caches subscribe. No writer names another section's invalidator.
 - [ ] Migrate every `I<X>Invalidator` injection site and retire the interfaces as their last subscriber moves. The HUM0028 grandfathers go with them (`grandfathered-hum0028-invalidators` in the debt ledger).
 
 Done when no section injects another section's invalidator, `[CrossSectionWrite]` sites that existed only to flush a cache are gone, and package 1's Users flushes and package 8's connector flushes ride the bus. Prerequisite for the done-state of packages 1 and 8.
@@ -85,7 +85,8 @@ Done when profile, admin, Home, navigation, and search work with a participating
 ### 7. Define and implement optional-section lifecycle
 
 - [ ] Establish the required platform set and distinguish operational disablement from complete removal. Audit `SectionActivation`, `IsActive`, feature flags, and dependencies on services supplied by other sections, such as Tickets' vendor provider.
-- [ ] Keep the activation guard derived from assembly references; packages 1 to 6 are what make it permissive. Its startup failure on an unmet dependency is deliberate (nobodies-collective/Humans#1081) and is not a startup guard in the sense of [`no-startup-guards`](../../memory/architecture/no-startup-guards.md): it reports a misconfigured deployment, not a runtime condition to heal. Do not suppress missing-dependency failures.
+- [ ] Keep the activation guard derived from assembly references; packages 1 to 6 are what make it permissive. Extend it to cover port registrations one section supplies for another (the TicketTailor case above), derived the same way, never declared.
+- [ ] **Needs Peter.** nobodies-collective/Humans#1081 requires the guard to fail startup on an unmet dependency; [`no-startup-guards`](../../memory/architecture/no-startup-guards.md) is a hard rule that forbids any boot-time throw and says to strip previously approved ones. The two conflict and this plan does not resolve them. Options: (a) the rule wins and the guard becomes a boot-time error log plus a `/Debug/Sections` diagnostic, with the deactivated section's routes 404ing; (b) Peter carves an explicit exception for composition errors into the atom. Do not implement either until decided, and do not silently suppress missing-dependency failures in the meantime.
 - [ ] Define how retained personal data, pending work, migrations, and reactivation behave when a feature is off. Ensure export/deletion remain available for retained data and jobs do not execute against absent services. Reuse existing recurring-job cleanup.
 
 Done when representative optional sections can be disabled and re-enabled without breaking required services, losing data obligations, or leaving invalid scheduled work. `IsActive = false` is runtime activation, not removal of the shipped assembly. Physical project removal is a separate packaging check.
@@ -101,10 +102,10 @@ Done when removing an optional integration or campaign domain leaves generic not
 
 ### 9. Let the compiler enforce the boundary
 
-- [ ] Internalize section write interfaces and rename `I<X>ServiceRead` to `I<X>Service` (nobodies-collective/Humans#1058), so a cross-section write is a compile error rather than an analyzer finding.
+- [ ] Internalize implementation-only write interfaces and rename `I<X>ServiceRead` to `I<X>Service` (nobodies-collective/Humans#1058). A write another section genuinely needs stays on the public contract, reviewed; what becomes a compile error is reaching a write nobody agreed to export.
 - [ ] Fold the `.Contracts` leaves no cycle pins (nobodies-collective/Humans#1066, #1041) and retire the analyzers, baselines and `[Grandfathered]` entries the assembly boundary subsumes (nobodies-collective/Humans#1010).
 
-Done when the public surface of a section is exactly its `Contracts/` folder or leaf, and the remaining analyzers are the ones the compiler cannot express.
+Done when a section's public surface is its `Contracts/` folder or leaf plus the framework-required public types (`Section`, the `<Section>Resource` marker), and the remaining analyzers are the ones the compiler cannot express.
 
 ### 10. Remove remaining assembly and tooling roll calls
 
