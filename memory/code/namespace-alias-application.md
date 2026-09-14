@@ -1,6 +1,6 @@
 ---
 name: Use `MemberApplication` alias for the Application entity
-description: Namespace collision between `Humans.Domain.Entities.Application` and the framework `Application` type — use `using MemberApplication = Humans.Domain.Entities.Application;`.
+description: Referencing `Humans.Domain.Entities.Application`? Alias it `using MemberApplication = ...;` — it collides with the framework `Application` type.
 ---
 
 Due to namespace collision, use the `MemberApplication` alias when referencing `Humans.Domain.Entities.Application`:

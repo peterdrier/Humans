@@ -1,6 +1,6 @@
 ---
 name: Person search uses one bit-flag service method and two canonical UI patterns
-description: HARD RULE. All person-search call sites route through `IUserServiceRead.SearchUsersAsync(query, PersonSearchFields, limit)`. UI is one of two patterns — `<vc:human-search>` (inline picker) or `<vc:user-search-result>` (page-style row). Admin-bit fields require admin auth at the controller. Emergency-contact data is never searchable. Shift volunteer search is exempt.
+description: HARD RULE. Person search routes only through `IUserServiceRead.SearchUsersAsync`, rendered via `<vc:human-search>`/`<vc:user-search-result>`. Emergency contacts aren't searchable.
 ---
 
 Person search shows up across the app — Camp role assignment, team-admin member picker, public profile search page, admin humans list, ticket-transfer recipient lookup, etc. Today they all consolidate behind a single service method and two UI components. Don't fork.
@@ -42,7 +42,7 @@ Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
 
 Don't roll a third. If you need a new search surface, route it through one of these.
 
-**`allow-email` (exact-email opt-in on the inline picker):** when set, a query containing `@` resolves as an **exact, case-insensitive** verified-email match returning at most one person (`IUserEmailService.GetUserIdByExactEmailAsync`) instead of a name search — `peter@x` matches `PETER@x`, not `peter73@x`. Exact-match-only means no substring/enumeration leak (a caller can only confirm membership for an address they already know in full), so it is **safe on non-admin surfaces** — the ticket-transfer recipient lookup uses it. This is distinct from the `Admin` bit's fuzzy email search, which stays admin-gated. The branch lives in `ProfileApiController.Search` (the controller is the auth boundary); `SearchProfilesAsync` is unchanged.
+**`allow-email` (exact-email opt-in on the inline picker):** when set, a query containing `@` resolves as an **exact, case-insensitive** verified-email match returning at most one person (`IUserEmailService.FindByAddressAsync`, exact form, verified only; a match only when exactly one owner) instead of a name search — `peter@x` matches `PETER@x`, not `peter73@x`. Exact-match-only means no substring/enumeration leak (a caller can only confirm membership for an address they already know in full), so it is **safe on non-admin surfaces** — the ticket-transfer recipient lookup uses it. This is distinct from the `Admin` bit's fuzzy email search, which stays admin-gated. The branch lives in `ProfileApiController.Search` (the controller is the auth boundary); `SearchProfilesAsync` is unchanged.
 
 **Out-of-scope carve-outs:**
 

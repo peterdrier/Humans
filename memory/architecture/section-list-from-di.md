@@ -1,6 +1,6 @@
 ---
 name: The section list comes from DI — don't hand-maintain another one
-description: Before writing a list of section names as consts, an array or a HashSet, inject `ISectionCatalog` (`Humans.Base.Interfaces`). Shell publishes the real section set at startup from the dependency-graph walk. A list that is a deliberate subset (agent doc keys, issue queues) stays owned by its section, but publishes an `ISectionAnnotations` contribution so drift shows up on `/Debug/Sections` instead of degrading in silence.
+description: Before hand-writing a list of section names, inject `ISectionCatalog` — Shell publishes the real set at startup. A deliberate subset publishes `ISectionAnnotations` so drift shows.
 ---
 
 **Don't hand-maintain a list of section names.** `ISectionCatalog` is a singleton in `Humans.Base.Interfaces`, built by `SectionCatalogBuilder` from the same dependency-graph walk that registers the sections, so it cannot drift from what the app runs. Inject it. It carries, per section, everything derived from the assembly: `IsActive`, `DependsOn`, `Seams`, `DbContexts`, `ServiceInterfaces`, `Repositories`, `HasContracts`, `HasResources`. `TryResolve` canonicalizes casing, which is what you want before building a path, a cache key or a stored column value.

@@ -1,6 +1,6 @@
 ---
 name: Never create a subfolder/namespace named "System"
-description: A `System/` subfolder shadows the BCL `System` namespace in every sibling subfolder, breaking fully-qualified `System.X` references across the tree. Use `SystemSettings/`, `Platform/`, `Infra/` instead.
+description: Never create a `System/` subfolder — it shadows the BCL `System` namespace and breaks `System.X` refs in sibling folders. Use `SystemSettings/`/`Platform/`/`Infra/`.
 ---
 
 Never propose a subfolder named `System` inside any namespace in this codebase (`Humans.Infrastructure.Data.Configurations.System`, `Humans.Domain.Entities.System`, `Humans.Application.Services.System`, etc.).

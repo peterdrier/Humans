@@ -41,8 +41,11 @@ internal static class CalendarGridLayout
 
         // Sort: earliest-start, longest-duration first so banners stack deterministically.
         var ordered = weekOccurrences
-            .OrderBy(o => o.OccurrenceStartUtc)
-            .ThenByDescending(o => (o.OccurrenceEndUtc ?? o.OccurrenceStartUtc).ToUnixTimeTicks() - o.OccurrenceStartUtc.ToUnixTimeTicks())
+            .OrderBy(o => o.StartLocalDate(zone))
+            .ThenBy(o => o.OccurrenceStartUtc)
+            .ThenByDescending(o => o.IsAllDay
+                ? Period.Between(o.StartDate!.Value, o.EndDateExclusive!.Value, PeriodUnits.Days).Days * NodaConstants.TicksPerDay
+                : (o.OccurrenceEndUtc ?? o.OccurrenceStartUtc!.Value).ToUnixTimeTicks() - o.OccurrenceStartUtc!.Value.ToUnixTimeTicks())
             .ToList();
 
         foreach (var o in ordered)

@@ -277,7 +277,8 @@ internal sealed class AttendeeContactImportService(
                 ObservedNames: names);
         }
 
-        var verifiedUserIds = await userEmails.GetDistinctVerifiedUserIdsAsync(a.AttendeeEmail, ct);
+        var verifiedUserIds = (await userEmails.FindByAddressAsync(a.AttendeeEmail, aliased: true, verifiedOnly: true, ct))
+            .Select(r => r.UserId).Distinct().ToList();
 
         if (verifiedUserIds.Count > 1)
         {
@@ -306,15 +307,16 @@ internal sealed class AttendeeContactImportService(
                 ObservedNames: names);
         }
 
-        var existingRow = await userEmails.FindAnyEmailRowByAddressAsync(a.AttendeeEmail, ct);
-        if (existingRow is var (uid, emailId))
+        var existingRow = (await userEmails.FindByAddressAsync(a.AttendeeEmail, aliased: true, verifiedOnly: false, ct))
+            .FirstOrDefault();
+        if (existingRow is not null)
         {
             return new AttendeeImportDecision(
                 a.Id, a.AttendeeEmail, name, a.VendorTicketId,
                 AttendeeImportOutcome.DeleteUnverifiedThenCreate,
                 TargetUserId: null,
-                UnverifiedEmailIdToDelete: emailId,
-                UnverifiedRowUserId: uid,
+                UnverifiedEmailIdToDelete: existingRow.Id,
+                UnverifiedRowUserId: existingRow.UserId,
                 AmbiguousUserIds: null,
                 AdditionalAttendeeIds: addl,
                 ObservedNames: names);

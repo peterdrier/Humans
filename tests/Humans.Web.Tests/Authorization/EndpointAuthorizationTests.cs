@@ -321,9 +321,9 @@ public class EndpointAuthorizationTests
             "TeamController.Index",
             "TeamController.Details",
             "DebugController.DbVersion",
-            "ProfileController.VerifyEmail",
-            "ProfileController.Picture",
-            "ProfileController.PublicPopover",
+            "ProfileEmailsController.VerifyEmail",
+            "ProfileViewController.Picture",
+            "ProfileViewController.PublicPopover",
         };
 
         var controllerTypes = AllControllerTypes()

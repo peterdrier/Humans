@@ -1,6 +1,6 @@
 ---
 name: Narrow admin/console roles must join the AnyAdminRole policy
-description: A new grantable narrow admin role (e.g. CantinaAdmin) that gates an admin-shell page must be added to the AnyAdminRole policy — the admin-shell entry gate — alongside RoleNames.All and (if board-grantable) BoardManageableRoles, or holders never see the ADMIN link.
+description: A new narrow admin-shell role (e.g. `CantinaAdmin`) must join the `AnyAdminRole` policy too, or holders pass their page but never see the ADMIN nav link.
 ---
 
 When you introduce a new grantable **narrow** admin/console role (e.g. `CantinaAdmin`) that gates a single admin-shell page, add it to the `AnyAdminRole` policy as well as to `RoleNames.All` and (if board-grantable) `BoardManageableRoles`.

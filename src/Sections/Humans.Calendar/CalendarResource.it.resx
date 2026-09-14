@@ -116,4 +116,16 @@
   <data name="Calendar_ViewGrid" xml:space="preserve"><value>Griglia</value></data>
   <data name="Calendar_ViewList" xml:space="preserve"><value>Elenco</value></data>
   <data name="Calendar_Yes" xml:space="preserve"><value>Sì</value></data>
+  <data name="Calendar_InvalidOccurrenceOverride" xml:space="preserve">
+    <value>Inserisci un intervallo di date o orari valido per questa occorrenza.</value>
+  </data>
+  <data name="Calendar_InvalidAllDayEvent" xml:space="preserve">
+    <value>Inserisci un titolo e un intervallo di date valido senza orari.</value>
+  </data>
+  <data name="Calendar_InvalidAllDayRecurrence" xml:space="preserve">
+    <value>Usa una regola di ricorrenza valida senza orari, con UNTIL nel formato YYYYMMDD.</value>
+  </data>
+  <data name="Calendar_CannotChangeEventType" xml:space="preserve">
+    <value>Questa serie contiene occorrenze modificate. Mantieni il tipo a giornata intera o con orari, oppure crea una nuova serie.</value>
+  </data>
 </root>

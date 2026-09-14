@@ -58,7 +58,7 @@ tiered=0
 tiers_csv="low,medium,high,super"
 prompt_override=""
 runs_dir_override=""
-worktrees_dir=".worktrees"
+worktrees_dir=".claude/worktrees"
 branch_prefix_override=""
 allow_dirty=0
 use_worktree=1
@@ -169,13 +169,13 @@ require_command jq
 
 case "$mode" in
   bug-hunt)
-    prompt_path="${prompt_override:-.claude/bug-hunt-prompt.md}"
+    prompt_path="${prompt_override:-.codex/bug-hunt-prompt.md}"
     runs_dir="${runs_dir_override:-local/claude-runs/bug-hunt}"
     branch_prefix="${branch_prefix_override:-claude/weekly-bug-hunt}"
     tiers_file=".claude/tiers/bug-hunt.json"
     ;;
   tech-debt)
-    prompt_path="${prompt_override:-.claude/tech-debt-prompt.md}"
+    prompt_path="${prompt_override:-.codex/tech-debt-prompt.md}"
     runs_dir="${runs_dir_override:-local/claude-runs/tech-debt}"
     branch_prefix="${branch_prefix_override:-claude/weekly-tech-debt}"
     tiers_file=".claude/tiers/tech-debt.json"

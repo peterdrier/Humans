@@ -11,7 +11,7 @@ using NSubstitute;
 
 namespace Humans.Users.Tests.Services;
 
-/// <summary>nobodies-collective/Humans#1097 — the admin name backfill screen's service.</summary>
+/// <summary>The admin name-backfill screen's service.</summary>
 public sealed class UserNameSyncServiceTests : IDisposable
 {
     private readonly UsersDbContext _dbContext;

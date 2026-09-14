@@ -1,6 +1,6 @@
 ---
 name: Date/time formatting via the shared home (which method to call)
-description: Render dates through the named methods on `DateFormattingExtensions` — `ToDate`/`ToDateTime`/`ToWeekdayDayMonth` for display, `ToInvariantDate`/`ToInvariantTimestamp`/`ToIso8601` for machine. Never inline `ToString("d MMM yyyy")`. Enforced by HUM0030.
+description: Render dates via `DateFormattingExtensions` — `ToDate`/`ToWeekdayDayMonth` etc. for display, `ToInvariantDate`/`ToIso8601` for machine. Never inline format strings (HUM0030).
 ---
 
 All date/time formatting goes through the one home `Humans.Base.Extensions.DateFormattingExtensions`; an inline format string anywhere else is a build error — see [`datetime-format-single-home`](../architecture/datetime-format-single-home.md) (HUM0030).

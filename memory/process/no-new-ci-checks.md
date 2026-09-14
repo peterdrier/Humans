@@ -1,6 +1,6 @@
 ---
 name: Never propose new CI checks
-description: HARD RULE. Do not propose, suggest, or add CI checks, build gates, or workflow steps. Builds already take far too long. Report the finding and stop — Peter decides if anything gets automated.
+description: HARD RULE. Never propose or add CI checks, build gates, or workflow steps — builds are already too slow. Report the finding and stop; Peter decides what's automated.
 metadata:
   type: feedback
 ---

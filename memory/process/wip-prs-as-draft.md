@@ -1,6 +1,6 @@
 ---
 name: wip-prs-as-draft
-description: Open multi-phase / mid-implementation PRs as `--draft` so CI and bot review (Claude review, Codex) don't burn compute on every intermediate push.
+description: Open multi-phase / mid-implementation PRs with `gh pr create --draft`; intermediate pushes burn CI + review-bot compute on a non-draft PR. Flip to ready only at end of run.
 metadata:
   type: process
 ---

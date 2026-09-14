@@ -1,6 +1,6 @@
 ---
 name: service-read-no-ef
-description: Cross-section read interfaces (I*Read) must expose DTO/Info projections only — no EF entities, no Microsoft.EntityFrameworkCore types, no IQueryable. Structural for entities and EF types; convention for IQueryable.
+description: Cross-section `I*Read` interfaces expose DTO/Info projections only — no EF entities, no `Microsoft.EntityFrameworkCore` types, no `IQueryable`.
 metadata:
   type: project
 ---

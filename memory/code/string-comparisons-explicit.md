@@ -1,6 +1,6 @@
 ---
 name: Always use explicit StringComparison
-description: `StringComparison.Ordinal` for exact matches, `OrdinalIgnoreCase` for case-insensitive. For user search input, use shared `Humans.Web.Extensions` helpers.
+description: "`StringComparison.Ordinal` for exact matches, `OrdinalIgnoreCase` for case-insensitive. For user search input, use shared `Humans.Web.Extensions` helpers."
 ---
 
 Always use explicit `StringComparison` parameter on string operations.

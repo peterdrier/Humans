@@ -1,0 +1,120 @@
+@model AssemblyVotePeekViewModel
+@using NodaTime
+@{
+    ViewData["Title"] = "Vote peek";
+    Layout = "_AdminLayout";
+    var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+
+    var audiences = new List<(string Label, AssemblyVoteAudienceResult Audience, bool IsIndicative)>
+    {
+        ("Official", Model.Result.Official, false)
+    };
+    if (Model.Result.Indicative is { } indicative)
+    {
+        audiences.Add(("Indicative", indicative, true));
+    }
+}
+
+@* Admin routes are localization-exempt (AGENTS.md) — plain English literals throughout. *@
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">Assembly Votes</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Peek</li>
+    </ol>
+</nav>
+
+<div class="alert alert-danger" role="alert">
+    <strong>This peek has been recorded.</strong> Viewing the live tally before a vote closes
+    writes an audit entry, and this peek — who and when — is listed on the vote's public
+    results page after it closes. Only peek when you genuinely need to make a call at the
+    assembly.
+</div>
+
+<h1 class="mb-3">Live tally</h1>
+<p class="text-muted">Method: @Model.Result.Method · Computed for this peek at @Model.Result.ComputedAt.ToDateTime(madrid)</p>
+
+@foreach (var (label, audience, isIndicative) in audiences)
+{
+    <h2 class="h5">
+        @label
+        @if (isIndicative)
+        {
+            <span class="text-muted fw-normal">(advisory, never counted in the official result)</span>
+        }
+    </h2>
+    <div class="card mb-3">
+        <div class="card-body">
+            <p class="mb-2">
+                Roster: <strong>@audience.RosterSize</strong> ·
+                Ballots cast: <strong>@audience.BallotsCast</strong> ·
+                Verdict: <span class="badge @EnumBadgeMap.For(audience.Verdict)">@audience.Verdict</span>
+            </p>
+
+            @if (audience.YesNo is { } yn)
+            {
+                <table class="table table-sm w-auto">
+                    <tbody>
+                        <tr><th>Yes</th><td>@yn.Yes</td></tr>
+                        <tr><th>No</th><td>@yn.No</td></tr>
+                        <tr><th>Abstain</th><td>@yn.Abstain</td></tr>
+                    </tbody>
+                </table>
+            }
+
+            @if (audience.Rounds is { Count: > 0 } rounds)
+            {
+                @* Authored order, matching the results page and the authored-order tie-break. *@
+                var optionKeys = Model.Options.OrderBy(o => o.Order).Select(o => o.Key).ToList();
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Round</th>
+                                @foreach (var key in optionKeys)
+                                {
+                                    <th>@Model.LabelFor(key)</th>
+                                }
+                                <th>Exhausted</th>
+                                <th>Eliminated</th>
+                                <th>Winner</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var round in rounds)
+                            {
+                                <tr>
+                                    <td>@round.Number</td>
+                                    @foreach (var key in optionKeys)
+                                    {
+                                        <td>@(round.Counts.TryGetValue(key, out var c) ? c.ToString() : "—")</td>
+                                    }
+                                    <td>@round.Exhausted</td>
+                                    <td>@(round.EliminatedKey is { } e ? Model.LabelFor(e) : "—")</td>
+                                    <td>@(round.WinnerKey is { } w ? Model.LabelFor(w) : "—")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+
+            @if (audience.WinnerKey is { } winner)
+            {
+                <p class="mb-0"><strong>Winning option:</strong> @Model.LabelFor(winner)</p>
+            }
+
+            @if (audience.Notes.Count > 0)
+            {
+                <ul class="text-muted small mb-0">
+                    @foreach (var note in audience.Notes)
+                    {
+                        <li>@Localizer[note.ResourceKey, note.Round, note.TiedCount]</li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+}
+
+<a asp-action="Index" class="btn btn-outline-secondary btn-sm">Back to Assembly Votes</a>

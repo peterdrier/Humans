@@ -3,12 +3,10 @@ using Humans.Base.Interfaces;
 namespace Humans.Guide;
 
 /// <summary>
-/// Member top-nav contribution — the Guide's only reachable entry point for a signed-out
-/// reader. The section serves anonymous readers deliberately (<c>GET /Guide</c> and
+/// Member top-nav contribution — the Guide's only entry point for a signed-out reader. The
+/// section serves anonymous readers deliberately: <c>GET /Guide</c> and
 /// <c>GET /Guide/{name}</c> are <c>[AllowAnonymous]</c>, and the filter's anonymous branch
-/// shows Volunteer blocks), but until this link the app's only route in was the signed-in
-/// user menu, so that branch was unreachable in practice
-/// (peterdrier/Humans#1655, N5 — Peter's call).
+/// shows Volunteer blocks.
 /// </summary>
 /// <remarks>
 /// Weight sits just past <c>Humans.Tour</c>'s 1000 so the two newcomer links render together.

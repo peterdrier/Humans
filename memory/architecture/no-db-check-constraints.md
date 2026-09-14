@@ -1,6 +1,6 @@
 ---
 name: no CHECK constraints in the database
-description: HARD RULE. Never put a CHECK constraint into the forward model — no `HasCheckConstraint` in an entity configuration, no hand-written `AddCheckConstraint`, no raw-SQL `ALTER TABLE ... ADD CONSTRAINT ... CHECK`. Enforce the invariant in service code instead. An EF-generated `AddCheckConstraint` in a migration's `Down`, triggers, and intra-section FKs are unaffected.
+description: HARD RULE. Never add a CHECK constraint to the forward model (`HasCheckConstraint`, hand-written SQL) — enforce invariants in service code instead. Triggers are unaffected.
 ---
 
 Invariants are enforced in service code, not by database CHECK constraints. Never write

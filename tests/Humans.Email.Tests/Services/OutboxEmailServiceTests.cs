@@ -171,8 +171,8 @@ public sealed class OutboxEmailServiceTests : IDisposable
     public async Task SendAsync_NullCategory_NeverSuppressesAndStampsNoUnsubscribe()
     {
         var userId = Guid.NewGuid();
-        _userEmailService.GetUserIdByVerifiedEmailAsync("alice@example.com", Arg.Any<CancellationToken>())
-            .Returns(userId);
+        _userEmailService.FindByAddressAsync("alice@example.com", false, true, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(userId, "alice@example.com")]);
 
         await _service.SendAsync(Message(category: null), Xunit.TestContext.Current.CancellationToken);
 
@@ -187,8 +187,8 @@ public sealed class OutboxEmailServiceTests : IDisposable
     public async Task SendAsync_SystemCategory_NeverSuppressesAndStampsNoUnsubscribe()
     {
         var userId = Guid.NewGuid();
-        _userEmailService.GetUserIdByVerifiedEmailAsync("alice@example.com", Arg.Any<CancellationToken>())
-            .Returns(userId);
+        _userEmailService.FindByAddressAsync("alice@example.com", false, true, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(userId, "alice@example.com")]);
 
         await _service.SendAsync(Message(template: "signup_rejected", category: MessageCategory.System), Xunit.TestContext.Current.CancellationToken);
 
@@ -202,8 +202,8 @@ public sealed class OutboxEmailServiceTests : IDisposable
     public async Task SendAsync_WhenUserOptedOutOfCategory_DoesNotCreateOutboxRow()
     {
         var userId = Guid.NewGuid();
-        _userEmailService.GetUserIdByVerifiedEmailAsync("charlie@example.com", Arg.Any<CancellationToken>())
-            .Returns(userId);
+        _userEmailService.FindByAddressAsync("charlie@example.com", false, true, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(userId, "charlie@example.com")]);
         _commPrefService.IsOptedOutAsync(userId, MessageCategory.TeamUpdates, Arg.Any<CancellationToken>())
             .Returns(true);
 
@@ -219,8 +219,8 @@ public sealed class OutboxEmailServiceTests : IDisposable
     public async Task SendAsync_WhenOptedIn_StampsUnsubscribeHeadersAndUrl()
     {
         var userId = Guid.NewGuid();
-        _userEmailService.GetUserIdByVerifiedEmailAsync("grace@example.com", Arg.Any<CancellationToken>())
-            .Returns(userId);
+        _userEmailService.FindByAddressAsync("grace@example.com", false, true, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(userId, "grace@example.com")]);
         _commPrefService.IsOptedOutAsync(userId, MessageCategory.Governance, Arg.Any<CancellationToken>())
             .Returns(false);
         _commPrefService.GenerateUnsubscribeHeaders(userId, MessageCategory.Governance)
@@ -262,7 +262,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
         msg.ReplyTo.Should().Be("reply@example.com");
         msg.ExtraHeaders.Should().NotBeNull();
         await _userEmailService.DidNotReceive()
-            .GetUserIdByVerifiedEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+            .FindByAddressAsync(Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

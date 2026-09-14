@@ -1,6 +1,6 @@
 ---
 name: privilege/permission/role changes need explicit per-change approval
-description: triggers when a change grants users new or elevated capabilities — Drive roles, auth scopes, role memberships, admin flags, default permission tiers, public-route allowlists. Stop and get Peter's explicit per-change approval; never autonomously execute, regardless of issue tier or sprint plan.
+description: HARD RULE. Any change granting users new/elevated capability (Drive roles, auth scopes, role/admin grants, allowlist expansions) needs Peter's explicit approval first.
 ---
 
 Any change that grants users new or elevated capabilities requires Peter's explicit per-change approval. Stop and ask before implementing — do not autonomously execute, regardless of how the issue is sized, what tier the sprint plan assigned, or how mechanical the diff looks.

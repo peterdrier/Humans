@@ -263,7 +263,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
         persistedProfile.UpdatedAt.Should().Be(profileUpdatedAt);
     }
 
-    // #1097 — every Profile write mirrors the names onto the owning User row.
+    // Every Profile write mirrors the names onto the owning User row.
 
     [HumansFact]
     public async Task AddAsync_MirrorsProfileNamesOntoTheUser()

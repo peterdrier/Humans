@@ -1,6 +1,6 @@
 ---
 name: User and Profile are foundational — no outbound calls to higher-level sections
-description: UserService and ProfileService sit at the bottom of the dependency stack. They must not call out to Teams, Shifts, Tickets, Campaigns, Applications, Google, Legal, Governance. Crosscuts (Audit, Email, Notification, Metrics) are the only OK exceptions.
+description: UserService/ProfileService sit at the bottom of the stack — no outbound calls to Teams, Shifts, Tickets, etc. Only Crosscuts (Audit, Email, Notification, Metrics) are exempt.
 ---
 
 > Vocabulary ([`CONTEXT.md`](../../CONTEXT.md)): **foundational** is a *descriptor* (a Section with outbound-width-into-sections = 0), not a separate tier; the "universal crosscuts" below are **Crosscuts** (Audit/Email/Notification/Metrics).

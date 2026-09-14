@@ -1,6 +1,6 @@
 ---
 name: Profile section namespace is "Profiles" (plural)
-description: `Humans.*.Services.Profiles` (plural). Singular `Profile` collides with the `Profile` entity class and triggers C# CS0135 ambiguity errors.
+description: "`Humans.*.Services.Profiles` (plural). Singular collides with the `Profile` entity."
 ---
 
 The section folder and namespace for Profile is **`Profiles`** (plural), not `Profile`.

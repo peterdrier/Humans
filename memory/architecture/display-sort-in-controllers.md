@@ -1,6 +1,6 @@
 ---
 name: Display sort belongs at the presentation layer, not in services or repositories
-description: Display ordering is a presentation concern. Sorting in controllers, views, view-model assembly, or `@Html` partials is fine. Sorting in Application services, repositories, or DB-layer code is a layer leak. Repository-layer `OrderBy`/`OrderByDescending` is allowed only for pagination tie-breakers, top-N selectors, and identity-ordered chronological sequences — each marked with an inline `// arch:db-sort-ok <reason>` comment.
+description: Display ordering belongs in controllers/views, not services or repos. Repo-layer `OrderBy` is allowed only for tie-breakers/top-N/chronological streams, marked `// arch:db-sort-ok`.
 ---
 
 Display ordering is presentation. Anything **above** the service boundary may sort: controllers, views (`.cshtml`), view-model assembly, partials, tag helpers — all fine. Anything **at or below** the service boundary should not: a repo file (`src/Humans.Infrastructure/Repositories/**/*.cs`) or an Application service (`src/Humans.Application/Services/**/*.cs`) calling `.OrderBy(...)` / `.OrderByDescending(...)` for display ordering is a layer leak.

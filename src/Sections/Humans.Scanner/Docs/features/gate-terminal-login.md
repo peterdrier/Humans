@@ -8,25 +8,23 @@
   src/Humans.Base/Constants/SystemUserIds.cs
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
+  src/Humans.Web/Program.cs
 -->
 <!-- freshness:flag-on-change
-  Gate-terminal shared account (GateTerminal GUID, ScannerAccess policy, /Account/GateLogin, /Tickets/Admin/Gate password set/rotate, GateTerminalAccountSeeder, GateLoginThrottle, onsite-roster access) — review when any of these change.
+  Gate-terminal shared account (GateTerminal GUID, ScannerAccess policy, /Account/GateLogin, /Tickets/Admin/Gate password set/rotate, GateTerminalAccountSeeder, GateLoginThrottle, kiosk route restriction, onsite-roster access) — review when any of these change.
 -->
 
 # Scanner — Gate Terminal Login
 
 ## Business Context
 
-The laptop at gate originally used the ticket lookup tool (`/Scanner/Tickets`) to
-check people's ticket status and early-entry date as they arrive; the same shared
-account now fronts the Gate admissions terminal (`/Gate` — `src/Sections/Humans.Gate/Docs/Gate.md`)
-instead. The device is shared
-between whoever is on gate shift, so tying it to one human's login is wrong: their
-session, their personal permissions, their magic-link email. And the previous
-access policy (`TicketAdminBoardOrAdmin`) meant a gate laptop could only be signed
-in by handing it ticket-admin powers — vendor syncs, exports, transfer decisions.
+The laptop at gate fronts the Gate admissions terminal (`/Gate` —
+`src/Sections/Humans.Gate/Docs/Gate.md`). The device is shared between whoever is on
+gate shift, so tying it to one human's login is wrong: their session, their personal
+permissions, their magic-link email. And signing it in as a ticket admin would hand the
+laptop ticket-admin powers — vendor syncs, exports, transfer decisions.
 
-The fix is a **shared gate-terminal account**: a real `User` row with a well-known
+The answer is a **shared gate-terminal account**: a real `User` row with a well-known
 GUID (`SystemUserIds.GateTerminal`, reserved block `0004`), akin to the dev-login
 personas. It is not a person — no email, no roles, no team memberships. Ticket
 admins set its password from the ticketing admin pages; gate staff sign the laptop
@@ -35,12 +33,11 @@ in once and the session persists across restarts.
 **Read-only by construction, not by enforcement.** The account holds no admin
 roles, so every admin surface and private-info page stays invisible. Self-scoped
 writes are the same writes any baseline volunteer could do, scoped to the gate
-account itself. No per-controller read-only machinery was added (deliberate — see
-the design dialogue: "no heroics on the hard read-only bit"). Since the Gate
-section landed, a hard route-restriction middleware in `Program.cs` additionally
-bounces the signed-in gate account to `/Gate` for any path outside `/Gate/*`,
-`/Account/GateLogin`, `/Account/Logout`, and `/Account/AccessDenied` — defense
-in depth on top of the zero roles.
+account itself. There is no per-controller read-only machinery, deliberately. A
+route-restriction middleware in `src/Humans.Web/Program.cs` bounces the signed-in gate
+account to `/Gate` for any path outside `/Gate/*`, `/Account/GateLogin`,
+`/Account/Logout`, and `/Account/AccessDenied` — defense in depth on top of the zero
+roles.
 
 ## How It Works
 
@@ -58,8 +55,7 @@ in depth on top of the zero roles.
 - **Login:** `/Account/GateLogin` (anonymous GET form + POST). Username is the fixed
   constant `gate`; password checked via `CheckPasswordSignInAsync` with
   `lockoutOnFailure: false`. Success signs in with `isPersistent: true` and redirects
-  to the Gate admissions terminal (`/Gate` — see `src/Sections/Humans.Gate/Docs/Gate.md`; originally
-  `/Scanner/Tickets`, repointed when the Gate section landed). Signing the kiosk out
+  to the Gate admissions terminal (`/Gate`). Signing the kiosk out
   again is the gate terminal's "logout"-typed-into-the-scan-field escape hatch, which
   POSTs the standard `/Account/Logout`.
 - **Brute-force protection is per source IP, never per account.** The username is
@@ -79,13 +75,13 @@ in depth on top of the zero roles.
   this connection — possibly someone else on it), what to do (wait, use the correct
   password, ask the ticket team), and that the account itself is NOT locked and
   admins can verify/change the password under Tickets → Gate terminal.
-- **Authorization:** scanner routes and the onsite-roster route moved from
-  `TicketAdminBoardOrAdmin` to the new `ScannerAccess` policy — TicketAdmin/Board/Admin
-  roles OR `NameIdentifier == SystemUserIds.GateTerminal`. Policy-wise this also grants
-  the gate terminal `/Tickets/Admin/Onsite` (the who's-onsite roster) and `/Scanner/*`,
-  but the kiosk route-restriction middleware now bounces the gate account to `/Gate`
-  for both — human TicketAdmin/Board/Admin sessions still reach those routes via the
-  same policy. Deliberately NOT a `RoleNames` constant: role
+- **Authorization:** `ScannerController`, `TicketsOnsiteAdminController` and the Gate
+  section's read routes share the `ScannerAccess` policy — TicketAdmin/Board/Admin
+  roles OR `NameIdentifier == SystemUserIds.GateTerminal`. Policy-wise this also admits
+  the gate terminal to `/Tickets/Admin/Onsite` (the who's-onsite roster) and `/Scanner/*`,
+  but the kiosk route-restriction middleware bounces the gate account to `/Gate` for
+  both — human TicketAdmin/Board/Admin sessions reach those routes via the same
+  policy. Deliberately NOT a `RoleNames` constant: role
   constants flow into the role-assignment UI and dev personas via the test-enforced
   `RoleNames.All`. The Gate section's *write* actions sit behind a second policy,
   `GateAdmit` — same principals today (TicketAdmin/Board/Admin or the gate account by
@@ -100,12 +96,13 @@ in depth on top of the zero roles.
 ### In Scope
 
 - `SystemUserIds` constants + GUID block `0004` reservation.
-- `ScannerAccess` policy; `ScannerController` and `TicketsOnsiteAdminController` switched to it.
+- `ScannerAccess` policy on `ScannerController` and `TicketsOnsiteAdminController`.
 - `/Account/GateLogin` (localized, all six locales).
 - `/Tickets/Admin/Gate` admin card (status + set/rotate password) + admin-nav entry.
-- `GateTerminalAccountSeeder` (Web infrastructure, registered in all environments).
-- Onsite roster (`/Tickets/Admin/Onsite`) accessible to the gate terminal via `ScannerAccess`
-  (since route-locked away from the kiosk account — see Authorization above).
+- `GateTerminalAccountSeeder` (`src/Sections/Humans.Tickets/Services/`, registered by the
+  Tickets section in every environment).
+- Onsite roster (`/Tickets/Admin/Onsite`) behind `ScannerAccess` (route-locked away from
+  the kiosk account — see Authorization above).
 
 ### Out of Scope
 

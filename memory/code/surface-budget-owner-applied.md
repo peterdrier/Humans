@@ -1,6 +1,6 @@
 ---
 name: SurfaceBudget is owner-applied only — never add it, never suggest it
-description: HARD RULE. `[SurfaceBudget(N)]` is placed by the repo owner by hand on the surfaces they choose. Agents NEVER add it to a type and NEVER suggest adding it — not in a PR, review, or aside. It lives predominantly on read interfaces. An agent's only job is to keep an already-present N accurate when it edits that type.
+description: HARD RULE. `[SurfaceBudget(N)]` is owner-applied only — never add it or suggest adding it. Only keep an already-present `N` accurate when editing that type.
 ---
 
 `[SurfaceBudget(N)]` is **owner-applied only**. Peter decides where it goes and places it by hand. Agents never add the attribute and never suggest adding it — not in a PR, a review, or in passing.

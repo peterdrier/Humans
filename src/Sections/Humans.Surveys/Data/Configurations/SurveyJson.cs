@@ -10,8 +10,7 @@ namespace Humans.Surveys.Data.Configurations;
 
 /// <summary>
 /// Shared jsonb plumbing for the Survey section. One cached <see cref="JsonSerializerOptions"/>
-/// (CA1869) and a reusable <see cref="LocalizedText"/> property converter mirroring the
-/// DocumentVersion jsonb precedent.
+/// (CA1869) and a reusable <see cref="LocalizedText"/> property converter.
 /// </summary>
 internal static class SurveyJson
 {

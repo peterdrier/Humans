@@ -1,6 +1,6 @@
 ---
 name: Profile visibility to other users is intentional, not a security finding
-description: Basic profile info (name, photo, city, teams) visible to other authenticated users — including suspended/unapproved users — is intentional. Don't flag in security review or gate it on IsSuspended/IsApproved.
+description: Basic profile info (name, photo, city, teams) visible to other authenticated users — including suspended/unapproved — is intentional, not a security finding.
 ---
 
 A user's basic profile info (display name, photo, city, teams) being visible to other authenticated users in the system is **not a privacy concern**. This includes suspended users and unapproved users.

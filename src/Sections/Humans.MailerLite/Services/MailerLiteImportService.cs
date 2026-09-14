@@ -64,7 +64,8 @@ internal sealed class MailerLiteImportService(
             }
 
             // 2. Verified match — count distinct owners so uniqueness drift surfaces as Ambiguous.
-            var verifiedUserIds = await userEmails.GetDistinctVerifiedUserIdsAsync(s.Email, ct);
+            var verifiedUserIds = (await userEmails.FindByAddressAsync(s.Email, aliased: true, verifiedOnly: true, ct))
+                .Select(r => r.UserId).Distinct().ToList();
             if (verifiedUserIds.Count > 1)
             {
                 decisions.Add(new SubscriberDecision(s.Email, s.Status,
@@ -82,11 +83,12 @@ internal sealed class MailerLiteImportService(
             }
 
             // 3. Unverified match
-            var row = await userEmails.FindAnyEmailRowByAddressAsync(s.Email, ct);
-            if (row is var (uid, emailId))
+            var row = (await userEmails.FindByAddressAsync(s.Email, aliased: true, verifiedOnly: false, ct))
+                .FirstOrDefault();
+            if (row is not null)
             {
                 decisions.Add(new SubscriberDecision(s.Email, s.Status,
-                    SubscriberOutcome.ReplaceUnverifiedEmail, uid, emailId, null));
+                    SubscriberOutcome.ReplaceUnverifiedEmail, row.UserId, row.Id, null));
                 continue;
             }
 

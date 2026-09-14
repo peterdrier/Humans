@@ -8,4 +8,6 @@ internal sealed record OverrideOccurrenceDto(
     string? OverrideTitle,
     string? OverrideDescription,
     string? OverrideLocation,
-    string? OverrideLocationUrl);
+    string? OverrideLocationUrl,
+    LocalDate? OverrideStartDate = null,
+    LocalDate? OverrideEndDateExclusive = null);

@@ -45,7 +45,7 @@ internal sealed class CalendarRepository(IDbContextFactory<CalendarDbContext> fa
         CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var ev = await ctx.CalendarEvents.FirstOrDefaultAsync(e => e.Id == id, ct);
+        var ev = await ctx.CalendarEvents.Include(e => e.Exceptions).FirstOrDefaultAsync(e => e.Id == id, ct);
         if (ev is null)
         {
             return false;
@@ -76,11 +76,11 @@ internal sealed class CalendarRepository(IDbContextFactory<CalendarDbContext> fa
 
     public async Task UpsertExceptionAsync(
         Guid eventId,
-        Instant originalOccurrenceStartUtc,
+        Instant? originalOccurrenceStartUtc,
         Guid createdByUserId,
         Instant now,
         Action<CalendarEventException> apply,
-        CancellationToken ct = default)
+        CancellationToken ct = default, LocalDate? originalDate = null)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
@@ -92,7 +92,8 @@ internal sealed class CalendarRepository(IDbContextFactory<CalendarDbContext> fa
         var existing = await ctx.CalendarEventExceptions
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(
-                x => x.EventId == eventId && x.OriginalOccurrenceStartUtc == originalOccurrenceStartUtc,
+                x => x.EventId == eventId && ((originalDate != null && x.OriginalOccurrenceDate == originalDate) ||
+                    (originalOccurrenceStartUtc != null && x.OriginalOccurrenceStartUtc == originalOccurrenceStartUtc)),
                 ct);
 
         if (existing is null)
@@ -113,6 +114,8 @@ internal sealed class CalendarRepository(IDbContextFactory<CalendarDbContext> fa
             existing.UpdatedAt = now;
         }
 
+        existing.OriginalOccurrenceDate = originalDate;
+        existing.OriginalOccurrenceStartUtc = originalDate is null ? originalOccurrenceStartUtc : null;
         apply(existing);
 
         var errors = existing.Validate();

@@ -11,7 +11,7 @@ Run recurring autonomous bug-hunt passes in this repository.
 
 1. Confirm the repo root is the current Humans checkout.
 2. Resume an existing `bughunt/*` worktree and branch if the user is continuing prior work.
-3. Otherwise fetch `origin/main`, create a fresh branch `bughunt/YYYY-MM-DD-codex-N`, and attach a worktree at `.worktrees/bughunt-YYYY-MM-DD-codex-N`.
+3. Otherwise fetch `origin/main`, create a fresh branch `bughunt/YYYY-MM-DD-codex-N`, and attach a worktree at `.claude/worktrees/bughunt-YYYY-MM-DD-codex-N`.
 4. Keep scratch notes and temporary files under `local/bug-hunt-runs/<run-id>/`.
 
 ## Non-Negotiable Limits

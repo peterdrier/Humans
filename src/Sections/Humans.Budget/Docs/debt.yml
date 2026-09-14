@@ -8,6 +8,9 @@ inbox:
   - added: 2026-08-30
     what: "Chart styling/loader duplicated across Views/BudgetAdmin/YearDetail.cshtml (hardcoded hex palette + '#fff') and Views/Budget/Summary.cshtml (CSS variables), each loading Chart.js separately — one source for palette and loader would end the drift; found by section-doctor comments thread."
     review: panel
+  - added: 2026-09-14
+    what: "DevelopmentBudgetSeeder.EnsureBudgetTeamAsync now passes the team's current IsSensitive to ITeamSeeding.UpdateTeamAsync, so a FinanceAdmin reseeding a team someone marked sensitive no longer trips the Admin-only gate in TeamService.UpdateTeamAsync. The fix is unpinned: the seeder is internal and its team path is private, reachable only by driving SeedAsync with IBudgetService, ICampServiceRead and a full fixture, so a regression test needs a harness this section has none of. Wanted: a test that reseeding a sensitive demo team preserves the flag and does not throw. Found by Codex reviewing peterdrier/Humans#1594."
+    review: light
   - added: 2026-08-30
     what: "Test gaps left open after the 2026-08-30 doctor run's invariant matrix: (a) GDPR export contributor never executed under test — GetMergedSourceIdsAsync is stubbed empty in the ctor and no test calls the contributor, so the chain-following merge path is unpinned; (b) restricted-group drill-in Forbid only covers the not-a-coordinator case, never coordinator-in-restricted-group; (c) ticketing group hidden from /Budget for non-finance unpinned; (d) group/category/line-item audit-row writes unpinned (year-level ones are); (e) GetActualTicketsSold Notes round-trip unpinned. Found by /section-doctor on Budget 2026-08-30 (finding 14)."
     review: light

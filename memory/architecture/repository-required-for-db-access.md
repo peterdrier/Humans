@@ -1,6 +1,6 @@
 ---
 name: repository required for every DB-accessing service
-description: HARD RULE. Every service that reads or writes a DB table goes through a repository class; no service injects a DbContext directly, even for singleton-row tables. The repository derives from `IRepository` — including inside a section's own project, where the interface stays because the section's tests substitute it.
+description: HARD RULE. Every DB-accessing service goes through a repository deriving from `IRepository` — no service injects a DbContext directly, even for a singleton-row table.
 ---
 
 If a service stores or reads anything in the database, it goes through a repository class. No exceptions — not for singleton-row settings tables, not for "trivial" lookups, not for "this is a tiny convenience" cases.

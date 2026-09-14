@@ -1,3 +1,4 @@
+using Humans.Users.Services;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,7 +12,7 @@ namespace Humans.Users.Controllers;
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Profile/Admin/Backfill")]
 internal sealed class ProfileBackfillAdminController(
-    IUserService userService,
+    IUserServiceInternal userService,
     ILogger<ProfileBackfillAdminController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]

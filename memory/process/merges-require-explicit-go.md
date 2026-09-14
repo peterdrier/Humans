@@ -1,6 +1,6 @@
 ---
 name: merges-require-explicit-go
-description: Never merge a PR without Peter's explicit, per-instance go — and never OFFER to merge; the offer invites the ambiguous reply. With the go, merging is fine — it is not a destructive action.
+description: Never merge a PR without Peter's explicit, per-instance go — and never OFFER to merge; report state and stop. With the go, merging is fine, it's not destructive.
 ---
 
 Never merge a pull request — `gh pr merge`, `--admin`, `--auto`, the API — unless Peter has explicitly said to merge that PR. Merging is not destructive in the sense of [[no-destructive-actions-without-approval]] (nothing is lost; production data is untouched), so once the go is given, just do it.

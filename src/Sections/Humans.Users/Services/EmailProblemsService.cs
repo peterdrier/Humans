@@ -3,7 +3,7 @@ using NodaTime;
 
 namespace Humans.Users.Services;
 
-internal sealed class EmailProblemsService(IUserEmailService userEmailService, IUserService userService, IClock clock)
+internal sealed class EmailProblemsService(IUserEmailService userEmailService, IUserServiceInternal userService, IClock clock)
     : IEmailProblemsService
 {
     public async Task<EmailProblemsReport> ScanAsync(CancellationToken ct = default)

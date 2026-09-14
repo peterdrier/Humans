@@ -1,6 +1,6 @@
 ---
 name: Don't drop columns for decoupling work — the property override IS the migration
-description: HARD RULE. When decoupling code from a column, the property override + read sweeps complete the work. Column drops are separate, optional, and waited until the full sequence is verified end-to-end in production.
+description: HARD RULE. When decoupling code from a column, a property override plus read sweeps completes the work — the column drop is separate, optional, and waits for prod verification.
 ---
 
 When the goal is "stop relying on a column as the source of truth," the **property override + read sweeps are the migration.** The column drop is separate, optional, and dangerous — defer it until the entire multi-PR sequence has run through production successfully.

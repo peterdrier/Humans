@@ -55,7 +55,7 @@ namespace Humans.Users.Tests.Controllers;
 public class ProfileControllerDietaryMedicalReplayTests
 {
     private readonly UserManager<User> _userManager;
-    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
     private readonly IProfileEditorService _profileEditor = Substitute.For<IProfileEditorService>();
     private readonly IShiftVolunteerProfiles _shiftMgmt = Substitute.For<IShiftVolunteerProfiles>();
     private readonly IShiftSignups _signupService = Substitute.For<IShiftSignups>();
@@ -79,28 +79,15 @@ public class ProfileControllerDietaryMedicalReplayTests
             .Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
         var configuration = Substitute.For<IConfiguration>();
-        var authorizationService = Substitute.For<IAuthorizationService>();
-        authorizationService.AuthorizeAsync(
-                Arg.Any<ClaimsPrincipal>(),
-                Arg.Any<object?>(),
-                Arg.Any<IEnumerable<IAuthorizationRequirement>>())
-            .Returns(AuthorizationResult.Success());
-
         _controller = new ProfileController(
             _userService,
             _userManager,
-            Substitute.For<IProfilePictureService>(),
             _profileEditor,
             Substitute.For<IContactFieldService>(),
-            Substitute.For<IEmailService>(),
-            Substitute.For<IEmailMessageFactory>(),
-            Substitute.For<IUserEmailService>(),
             Substitute.For<ICommunicationPreferenceService>(),
-            Substitute.For<IAuditLogService>(),
             Substitute.For<IOnboardingIntake>(),
             _signupService,
             Substitute.For<IBurnSettingsService>(),
-            Substitute.For<IShiftManagementServiceRead>(),
             _shiftMgmt,
             Substitute.For<IShiftView>(),
             Substitute.For<IGdprService>(),
@@ -109,25 +96,12 @@ public class ProfileControllerDietaryMedicalReplayTests
             NullLogger<ProfileController>.Instance,
             localizer,
             sharedLocalizer,
-            Substitute.For<ITicketServiceRead>(),
-            Substitute.For<ITeamService>(),
             Substitute.For<ICampaignService>(),
-            Substitute.For<ICampServiceRead>(),
             Substitute.For<IEmailOutboxServiceRead>(),
             new FakeClock(Instant.FromUtc(2026, 5, 25, 12, 0)),
-            authorizationService,
             Substitute.For<IApplicationDecisionService>(),
             Substitute.For<IAccountDeletionService>(),
-            Substitute.For<IMembershipCalculatorRead>(),
-            Substitute.For<SignInManager<User>>(
-                _userManager,
-                Substitute.For<IHttpContextAccessor>(),
-                Substitute.For<IUserClaimsPrincipalFactory<User>>(),
-                Options.Create(new IdentityOptions()),
-                NullLogger<SignInManager<User>>.Instance,
-                Substitute.For<Microsoft.AspNetCore.Authentication.IAuthenticationSchemeProvider>(),
-                Substitute.For<IUserConfirmation<User>>()),
-            Options.Create(new GoogleWorkspaceOptions()));
+            Substitute.For<IMembershipCalculatorRead>());
 
         var identity = new ClaimsIdentity(new[]
         {

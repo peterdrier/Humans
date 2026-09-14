@@ -1,0 +1,19 @@
+@using Humans.Base.Models
+@* Deliberately English-only, like the /Tour page it opens (spec 2026-08-12).
+   Brings its own row markup: the slot leaves no empty row behind when a section is off. *@
+<div class="row justify-content-center mb-4">
+    <div class="col-lg-8">
+        <div class="row g-3">
+            @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
+            {
+                Controller = "Tour",
+                Action = "Index",
+                Title = "Tour",
+                Description = "What Humans does, in plain language — the page to show other burns.",
+                IconCssClass = "fa-solid fa-fire",
+                IconVariant = "info",
+                Compact = true
+            })
+        </div>
+    </div>
+</div>

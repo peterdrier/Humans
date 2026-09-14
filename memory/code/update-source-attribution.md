@@ -1,6 +1,6 @@
 ---
 name: UpdateSource attribution — distinguish actor + channel
-description: When writing CommunicationPreference (or any audited preference write), `UpdateSource` must reflect how the user reached the endpoint — token-driven anonymous vs. session-driven, and which UI. Don't conflate "Guest" with "MagicLink".
+description: When writing `CommunicationPreference.UpdateSource`, reflect actor (signed-in/anon) + channel — don't conflate `Guest` (session) with `MagicLink` (token).
 ---
 
 When a controller writes a `CommunicationPreference` via `ICommunicationPreferenceService.UpdatePreferenceAsync`, the `source` parameter must reflect both the **actor** (signed-in vs. anonymous) and the **channel** (which UI/endpoint). Don't use one label for two channels.

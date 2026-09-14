@@ -1,6 +1,6 @@
 ---
 name: Context discipline — read narrow, build to file, batch edits
-description: Concrete habits that keep the context window from filling up during multi-file refactors. The patterns below collectively saved ~60% of session tokens in retrospect; each is independently adoptable.
+description: "During multi-file refactors: read narrow ranges, pipe build/test output to a file, batch edits into one Write, use reforge for symbol queries, commit checkpoints often."
 ---
 
 When refactoring across many files, the context window fills with the same kinds of repeat offenders. These are the levers that actually move the needle.

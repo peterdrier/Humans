@@ -1,5 +1,5 @@
 <!-- freshness:triggers
-  src/Sections/Humans.Users/Controllers/ProfileController.cs
+  src/Sections/Humans.Users/Controllers/ProfileViewController.cs
   src/Sections/Humans.Users/Views/Shared/_HumanPopoverPublic.cshtml
   src/Sections/Humans.Users/Models/PublicPopoverViewModel.cs
   src/Humans.Base/ViewComponents/HumanViewComponent.cs
@@ -52,7 +52,7 @@ Fixes [nobodies-collective/Humans#771](https://github.com/nobodies-collective/Hu
 |---|---|---|---|
 | `GET` | `/Profile/{id}/PublicPopover` | `[AllowAnonymous]` | `_HumanPopoverPublic` partial (200) when active public coordinator; 404 otherwise |
 
-Allowlisted in `EndpointAuthorizationTests` alongside the existing `[AllowAnonymous]` `/Profile/Picture?id={id}` endpoint (PR #649 pattern).
+Allowlisted in `EndpointAuthorizationTests` alongside the `[AllowAnonymous]` `/Profile/Picture?id={id}` endpoint.
 
 ## Data Model
 
@@ -74,6 +74,6 @@ No schema changes. The public-coordinator gate filters the existing `ITeamServic
 
 ## Related
 
-- [`docs/sections/Profiles.md`](../Users.md) — Profile section invariants.
+- [Users section doc](../Users.md) — Profile invariants.
 - [`src/Sections/Humans.Teams/Docs/Teams.md`](../../../Humans.Teams/Docs/Teams.md) — `IsPublicPage` and `ShowCoordinatorsOnPublicPage` flags.
 - [`src/Sections/Humans.Users/Docs/features/profile-pictures-birthdays.md`](profile-pictures-birthdays.md) — `[AllowAnonymous] /Profile/{id}/Picture` pattern this endpoint mirrors.

@@ -34,7 +34,7 @@ The consent check is purely a **Volunteer-level gate**. It has nothing to do wit
 
 ### Key Change from Previous Model
 
-Previously, Board members manually set `IsApproved = true` on each profile. The new model introduces a Consent Coordinator safety gate that automatically approves Volunteers after clearance. Board members now only vote on Colaborador/Asociado tier applications.
+Previously, Board members manually set `IsApproved = true` on each profile. The new model replaced that with a Consent Coordinator audit gate; Volunteers admission is name + consents, not this gate. Board members now only vote on Colaborador/Asociado tier applications.
 
 ## Pipeline Overview
 
@@ -144,7 +144,7 @@ Two parallel tracks (either order):
   - If Colaborador/Asociado → Application entity created (Status = Submitted)
 - **After initial onboarding, profile edit shows profile fields only — no tier selector or application form**
 
-The default Volunteer flow uses the **onboarding widget** (Names → Shifts → Consents) instead of the legacy single-page form — see "Onboarding Widget (Low-Friction Variant)" below. The full one-shot form remains the path for Colaborador/Asociado applicants because it surfaces the application fields inline.
+The default Volunteer flow uses the **onboarding widget** (Names → Shifts → Consents) — see "Onboarding Widget (Low-Friction Variant)" below. The full one-shot form remains the path for Colaborador/Asociado applicants because it surfaces the application fields inline.
 
 ### Stage 3: Legal Consents
 
@@ -154,7 +154,6 @@ The default Volunteer flow uses the **onboarding widget** (Names → Shifts → 
 - User reviews and signs each
 - When ALL required consents signed:
   - ConsentCheckStatus auto-set to Pending (if currently null)
-  - Consent Coordinator notified
 
 ### Stage 4: Profile Review (Volunteer Gate — parallel with Stage 3)
 
@@ -190,7 +189,7 @@ A guided three-step UX that replaces the single-page profile form for the Volunt
 ### Steps
 
 1. **Names** — burner name, first name, last name. Pre-filled from the user's own saved profile when present — never from OAuth claims, which are unverified. Required because every downstream view ("Hi, X") depends on a display name.
-2. **Shifts** — browse priority shifts and pick one (or skip). Build/Strike rotas use the multi-day range picker; event shifts use the standard sign-up. Signups before admission are stored as `Pending` and auto-promoted on admission.
+2. **Shifts** — browse priority shifts and pick one (or skip). Build/Strike rotas use the multi-day range picker; event shifts use the standard sign-up.
 3. **Consents** — the unsigned legal documents required for Volunteers, signed one at a time inline.
 
 ### Dispatcher

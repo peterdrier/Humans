@@ -52,7 +52,7 @@
             <ul class="list-unstyled">
                 @foreach (var (day, o) in dayGroup.OrderBy(x => x.Occ.OccurrenceStartUtc))
                 {
-                    var localStart = o.OccurrenceStartUtc.InZone(zone).LocalDateTime;
+                    var localStart = o.OccurrenceStartUtc?.InZone(zone).LocalDateTime;
                     <li class="mb-2">
                         <span class="badge bg-light text-dark me-2">
                             @switch (o.TimeLabelFor(day, zone))
@@ -64,7 +64,7 @@
                                     @Localizer["Calendar_AllDay"].Value
                                     break;
                                 default:
-                                    @DateFormattingExtensions.TimeOfDayPattern.Format(localStart.TimeOfDay)
+                                    @DateFormattingExtensions.TimeOfDayPattern.Format(localStart!.Value.TimeOfDay)
                                     break;
                             }
                         </span>

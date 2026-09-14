@@ -119,7 +119,7 @@ Human enters email on login page
                                 └── Redirect to onboarding
 ```
 
-**Email lookup order:** Check `UserEmails` table via `IUserEmailService.FindVerifiedEmailWithUserAsync` (where `IsVerified = true`). This ensures a user with 3 verified emails can log in with any of them.
+**Email lookup order:** Check `UserEmails` via `IUserEmailService.FindByAddressAsync` (aliased, verified only). This ensures a user with 3 verified emails can log in with any of them.
 
 ### Google OAuth with Account Linking
 
@@ -213,11 +213,12 @@ Survey and unsubscribe links are a different mechanism (`SurveyPreviewTokenProvi
 
 ```csharp
 // 1. Check UserEmails (covers all verified addresses including non-primary)
-var userEmail = await _userEmailService.FindVerifiedEmailWithUserAsync(email, ct);
+var userEmail = (await _userEmailService.FindByAddressAsync(email, aliased: true, verifiedOnly: true, ct))
+    .FirstOrDefault();
 
 if (userEmail is not null)
 {
-    // Generate login token for userEmail.User
+    // Generate login token for userEmail.UserId
     // Send magic link to the specific address they typed (userEmail.Email)
     return;
 }

@@ -1,6 +1,6 @@
 ---
 name: Issue fetch protocol — always include comments + author, stop on unauthorized authors
-description: HARD RULE. Before implementing ANY GitHub issue or PR, fetch it with both comments AND author included. The OP is often not Peter; his comments often flip OP intent. If `.author.login` is not an authorized author (`peterdrier`, `swombat`), STOP and get Peter's input first — never branch or code from an unauthorized issue without explicit per-issue approval.
+description: HARD RULE. Before implementing any GitHub issue/PR, fetch with comments AND author. If `.author.login` isn't `peterdrier` or `swombat`, STOP — get per-issue approval first.
 ---
 
 Two coupled rules fire on every `gh issue view` (and on every batch dispatch that hands an issue to a worker). Both data points come from the same fetch, so they're covered together here.

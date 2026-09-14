@@ -1,6 +1,6 @@
 ---
 name: Add or remove a resx key structurally, then validate the key set
-description: Adding or deleting a `.resx` `<data>` entry — insert or remove the exact block by text match, never by sed or an XML round-trip, then assert with a parser that only the intended keys moved and that all six cultures still agree. Triggers on any add/remove of a resource key.
+description: Add/remove a `.resx` key by exact-match text replacement of the whole `<data>` block, once per culture — never `sed` or an XML round-trip; validate with a parser after.
 ---
 
 Adding or removing a `.resx` key is an **exact-match text edit of the whole `<data>` block**, followed by a parser check that the key sets changed the way you meant.

@@ -1,6 +1,6 @@
 ---
 name: our-rules-are-movable
-description: Self-authored analyzers/conventions/architecture-test predicates are options, not walls — never argue "X forbids it"; give the reason behind the rule and let Peter weigh moving it.
+description: Self-authored analyzers/conventions/arch-test predicates are options, not walls — never argue 'X forbids it'; give Peter the reason behind the rule and let him weigh moving it.
 ---
 
 Never present a project-authored rule as an external constraint. Analyzers (HUM00xx), conventions in design docs, section-gate predicates, and architecture-test baselines were all written by this project and can be changed, relaxed, or deleted. Saying "the keystone analyzer forbids public entity types" is a non-argument. Peter: "we can move types if need be, there's no forbids, we own this whole project."

@@ -95,6 +95,10 @@ rules:
       a section's own health-check probes (Agent, Tickets), contributed via
       SectionHealthChecks.cs. Agent's was blessed in its run file on 2026-08-28; the
       template's own list needs the same addition.
+      2026-09-14 (Peter, via /section-doctor on Finance): this layout is a convention, not a
+      rule. A detector-1b hit — a loose *Options.cs at the root (Finance, Holded, Store) —
+      is advisory: report it as such, never as a finding or a Needs-Peter item, and never
+      move the file or queue a move over it.
 
   - id: resource-key-prefix
     title: >-

@@ -227,10 +227,8 @@ internal sealed class WebsiteScopeHarness
             .Returns(Task.FromResult<IReadOnlyList<MailerLiteGroup>>(groups));
 
         // Default: no verified / unverified match → unmatched subscribers become CreateNewHuman.
-        _userEmails.GetDistinctVerifiedUserIdsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<Guid>>([]));
-        _userEmails.FindAnyEmailRowByAddressAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<(Guid, Guid)?>(null));
+        _userEmails.FindByAddressAsync(Arg.Any<string>(), true, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<UserEmailRowSnapshot>>([]));
 
         // Default: no reset-candidate users.
         _users.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
@@ -266,8 +264,8 @@ internal sealed class WebsiteScopeHarness
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(users));
 
     public void MatchVerified(string email, Guid userId) =>
-        _userEmails.GetDistinctVerifiedUserIdsAsync(email, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<Guid>>([userId]));
+        _userEmails.FindByAddressAsync(email, true, true, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<UserEmailRowSnapshot>>([UserEmailFixtures.Row(userId, email)]));
 
     public void SetUserInfo(Guid id, UserInfo info) =>
         _users.GetUserInfoAsync(id, Arg.Any<CancellationToken>())

@@ -1,6 +1,6 @@
 ---
 name: Always log problems — even expected ones, at Warning, without the exception
-description: Expected/user-driven problems still get logged at LogWarning. Drop the exception object if the stack trace is noise, but keep the severity. Information is invisible in prod.
+description: When logging an expected/user-driven failure, use LogWarning and drop the exception object — LogInformation is invisible in prod.
 ---
 
 Always log problems. If a condition is a "known problem that happens in the normal course of action" (user-input validation failures, guardrail violations like "can't delete shift with signups", client-aborted requests), that doesn't mean "don't log it" — it means "log it at Warning without the exception object." Drop the stack trace, drop the `ex` argument, keep `LogWarning`. The event still needs to be in the logs AND visible in the prod log viewer.

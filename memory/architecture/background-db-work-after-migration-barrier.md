@@ -1,6 +1,6 @@
 ---
 name: Background DB workers arm behind the migration barrier
-description: timers/pollers/pre-warmers that query the DB must arm in IHostedService.StartAsync — never a constructor Timer or an eager GetRequiredService before app.Run() — so they run after DatabaseMigrationHostedService applies migrations
+description: DB-touching background workers (timers/pollers/pre-warmers) must arm in `IHostedService.StartAsync`, never a constructor `Timer` or eager pre-`app.Run()` `GetRequiredService`.
 ---
 
 Any background worker that touches the database (refresh timers, pollers, cache pre-warmers) must arm/start its work from `IHostedService.StartAsync`, **not** from a constructor and **not** from an eager `GetRequiredService<T>()` before `app.Run()`. The host runs every `IHostedLifecycleService.StartingAsync` — including `DatabaseMigrationHostedService`, which applies pending migrations — to completion before *any* `StartAsync`. Arming in the constructor escapes that barrier and can query a not-yet-migrated schema.

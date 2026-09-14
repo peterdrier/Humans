@@ -1,6 +1,6 @@
 ---
 name: User-facing copy says "placement", not "polygon"
-description: In member-facing text (guide docs, views, emails), a camp's map shape is its "placement" — "polygon" is technical jargon a regular user wouldn't know. Code/entities (CampPolygon) and GeoJSON admin specifics are unaffected.
+description: Member-facing copy calls a camp's map shape its "placement", never "polygon" — jargon. Code entities (`CampPolygon`) and admin GeoJSON specifics are unaffected.
 ---
 
 In **member-facing** copy — guide docs, Razor views, emails, notifications — refer to a camp's shape on the City Planning map as its **placement** ("edit your camp's placement", "placements outside the limit zone"). Never "polygon".

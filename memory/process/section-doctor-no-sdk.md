@@ -1,6 +1,6 @@
 ---
 name: An unattended run without a compiler reads and queues, it does not edit C#
-description: Running section-doctor (or any unattended maintenance run) in an environment with no .NET SDK — do the reading threads and doc/prose strikes, record every compiler-dependent thread as skipped-with-reason, and queue every code finding instead of editing C# you cannot build. Triggers when `dotnet build` is unavailable in an unattended run.
+description: An unattended run with no .NET SDK does reading/doc/prose strikes only, never edits C# — record each compiler-dependent thread as skipped and queue code findings.
 ---
 
 An unattended run that cannot build is not a failed run. It is a **reading** run.

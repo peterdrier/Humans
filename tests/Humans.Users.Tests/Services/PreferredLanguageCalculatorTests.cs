@@ -7,8 +7,7 @@ using NodaTime;
 namespace Humans.Users.Tests.Services;
 
 /// <summary>
-/// Unit tests for the admin dashboard's "Preferred language" filter, extracted from the
-/// deleted admin-dashboard aggregator at nobodies-collective/Humans#1091.
+/// Unit tests for the admin dashboard's "Preferred language" filter.
 /// </summary>
 public class PreferredLanguageCalculatorTests
 {

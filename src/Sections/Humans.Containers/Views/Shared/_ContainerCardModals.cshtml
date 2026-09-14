@@ -38,11 +38,11 @@
                             </div>
                             <button class="carousel-control-prev" type="button" data-bs-target="#@carouselId" data-bs-slide="prev">
                                 <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                                <span class="visually-hidden">Previous</span>
+                                <span class="visually-hidden">@Localizer["Container_Carousel_Previous"]</span>
                             </button>
                             <button class="carousel-control-next" type="button" data-bs-target="#@carouselId" data-bs-slide="next">
                                 <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                                <span class="visually-hidden">Next</span>
+                                <span class="visually-hidden">@Localizer["Container_Carousel_Next"]</span>
                             </button>
                         </div>
                     }
@@ -81,28 +81,25 @@
     </div>
 }
 
-@if (Model.CanManage)
-{
-    <div class="modal fade" id="editModal-@c.Id" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@Localizer["Container_EditModal_Title"]</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <form asp-controller="@Model.FormController" asp-action="@Model.EditAction"
-                      asp-all-route-data="@Model.ExtraRouteValues" asp-route-id="@c.Id"
-                      method="post" enctype="multipart/form-data">
-                    @Html.AntiForgeryToken()
-                    <div class="modal-body">
-                        <partial name="_ContainerFormFields" model="@c" />
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@SharedLocalizer["Common_Cancel"]</button>
-                        <button type="submit" class="btn btn-primary">@SharedLocalizer["Common_Save"]</button>
-                    </div>
-                </form>
+<div class="modal fade" id="editModal-@c.Id" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">@Localizer["Container_EditModal_Title"]</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
+            <form asp-controller="@Model.FormController" asp-action="@Model.EditAction"
+                  asp-all-route-data="@Model.ExtraRouteValues" asp-route-id="@c.Id"
+                  method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <partial name="_ContainerFormFields" model="@c" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@SharedLocalizer["Common_Cancel"]</button>
+                    <button type="submit" class="btn btn-primary">@SharedLocalizer["Common_Save"]</button>
+                </div>
+            </form>
         </div>
     </div>
-}
+</div>

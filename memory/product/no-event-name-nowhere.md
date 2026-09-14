@@ -1,6 +1,6 @@
 ---
 name: Never use the name "Nowhere" — legal restriction
-description: "Nowhere" / "Nowhere Festival" is restricted in all user-facing content (UI, emails, docs, release notes). "Elsewhere" is the current event name and is fine to use freely.
+description: '"Nowhere"/"Nowhere Festival" is restricted in all user-facing content (UI, emails, docs, release notes). "Elsewhere" is the current event name and is fine to use freely.'
 ---
 
 Never use the name **"Nowhere"** (or "Nowhere Festival") in UI text, emails, docs, release notes, or any user-facing content. **"Elsewhere" is the current event name and is 100% fine to use.**

@@ -4,6 +4,7 @@ using Humans.Containers.Contracts;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 
 using Humans.Users.Contracts;
 
@@ -17,6 +18,7 @@ internal sealed class ContainerController(
     ICityPlanningServiceRead cityPlanningService,
     IAuthorizationService authorizationService,
     IUserServiceRead userService,
+    IStringLocalizer<ContainersResource> localizer,
     ILogger<ContainerController> logger) : HumansControllerBase(userService)
 {
     private async Task<bool> AuthorizeAsync(ContainerAuthorizationTarget target, ContainerOperationRequirement requirement) =>
@@ -57,38 +59,18 @@ internal sealed class ContainerController(
         var containerIds = containers.Select(c => c.Id).ToHashSet();
         var placementsByContainerId = placements
             .Where(p => containerIds.Contains(p.ContainerId))
-            .ToDictionary(p => p.ContainerId, ToPlacementViewModel);
+            .ToDictionary(p => p.ContainerId);
         return new ContainerIndexViewModel
         {
             CampSlug = camp.Slug,
             CampName = displayName,
-            CampId = camp.Id,
             CurrentYear = currentYear,
-            CanManage = true, // controller already authorized Manage above
             IsPlacementOpen = isPlacementOpen,
             IsLeadButPhaseClosed = !canPlace && !isPlacementOpen,
-            Containers = containers.Select(ToContainerViewModel).ToList(),
+            Containers = containers.ToList(),
             PlacementsByContainerId = placementsByContainerId,
         };
     }
-
-    private static ContainerPlacementViewModel ToPlacementViewModel(ContainerPlacementDto p) => new()
-    {
-        ContainerId = p.ContainerId,
-        Year = p.Year,
-        LocationGeoJson = p.LocationGeoJson,
-        PlacementNotes = p.PlacementNotes,
-        PlacementImageUrl = p.PlacementImageStoragePath,
-        PlacementImageFileName = p.PlacementImageFileName,
-    };
-
-    private static ContainerViewModel ToContainerViewModel(ContainerDto c) => new()
-    {
-        Id = c.Id,
-        Name = c.Name,
-        Description = c.Description,
-        Images = c.Images,
-    };
 
     [HttpPost("Create")]
     [ValidateAntiForgeryToken]
@@ -106,14 +88,14 @@ internal sealed class ContainerController(
 
         if (!ModelState.IsValid)
         {
-            SetError("Please correct the validation errors.");
+            SetError(localizer["Container_ValidationErrors"].Value);
             return RedirectToAction(nameof(Index), new { slug });
         }
 
         return await TryRunContainerWriteAsync(
             () => containerService.CreateAsync(model.ToContainerData(camp.Id), user.Id, ct),
             slug,
-            "Container added.");
+            localizer["Container_Added"].Value);
     }
 
     [HttpPost("{id}/Edit")]
@@ -129,14 +111,14 @@ internal sealed class ContainerController(
 
         if (!ModelState.IsValid)
         {
-            SetError("Please correct the validation errors.");
+            SetError(localizer["Container_ValidationErrors"].Value);
             return RedirectToAction(nameof(Index), new { slug });
         }
 
         return await TryRunContainerWriteAsync(
             () => containerService.UpdateAsync(id, model.ToContainerData(container!.CampId), user.Id, ct),
             slug,
-            "Container updated.");
+            localizer["Container_Updated"].Value);
     }
 
     [HttpPost("{id}/Delete")]
@@ -150,7 +132,7 @@ internal sealed class ContainerController(
         if (notFound is not null) return notFound;
 
         await containerService.DeleteAsync(id, user.Id, ct);
-        SetSuccess("Container deleted.");
+        SetSuccess(localizer["Container_Deleted"].Value);
         return RedirectToAction(nameof(Index), new { slug });
     }
 

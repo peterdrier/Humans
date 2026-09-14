@@ -1,9 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Users + Profiles' cross-section surface (nobodies-collective/Humans#866, G5 lane 2).
-    Carved in PR A ahead of the section move; PR B added the three entities and the write
-    interface Base still names.
+    Users + Profiles' cross-section surface. Carved ahead of the section move; a later change
+    added the three entities and the write interface Base still names.
 
     A Contracts/ *folder* inside Humans.Users was never an option here. UserInfo is the
     canonical "everything-about-a-person" read model and IUserServiceRead is injected by
@@ -82,28 +81,13 @@
     harmless and the flat "zero references" phrasing of the G5 end-state design is the thing
     that is imprecise, not this csproj. State the rule above, not the count.
 
-    G5 lane 3b (nobodies-collective/Humans#866) removed the other two:
-
-      Humans.Interfaces — was here for four markers/attributes. All six usages are gone:
-      IApplicationService dropped from 7 interfaces (IAccountProvisioningService,
-      ICommunicationPreferenceService, IContactFieldService, IProfileEditorService,
-      IUserEmailService, IUserParticipationBackfillService, IUserService), IOrchestrator from
-      2 (IHumanLifecycleService, INonCompliantMemberSuspension), IInvalidator and
-      [Grandfathered("HUM0028")] from IUserInfoInvalidator, and [ExpiresOn] from
-      User.NormalizedEmail. Each site carries a COVERAGE REDUCED comment naming what stopped
-      being enforced; the losses are HUM0027 on the seven service classes,
-      HUM0026/HUM0027 on the two orchestrators, the InvalidatorInterfaceRatchetAnalyzer count
-      and HUM0028 bookkeeping, and HUM0010/HUM0011's 2026-09-01 deadline on
-      nobodies-collective/Humans#635. Peter's ruling: the migration outranks the analyzers.
-      MarkdownContentAttribute was the fifth user; it is now a deliberate internal twin in
-      this project (see MarkdownContentAttribute.cs) rather than a move, because eight
-      section projects apply the Humans.Interfaces original.
-
-      Humans.Domain — the whole project is gone. Its last five enums moved to their owners:
-      ConsentCheckStatus, GoogleEmailStatus, MembershipTier and MessageCategory here (they
-      are Users' own vocabulary, carried on UserInfo/ProfileInfo/CommunicationPreference),
-      and SyncAction to Humans.GoogleIntegration.Contracts. No member was renamed, so nothing
-      persisted moved and there is no migration.
+    Also gone: Humans.Interfaces, which owned the IApplicationService / IOrchestrator /
+    IInvalidator marker interfaces and the [Grandfathered] / [ExpiresOn] attributes — none of
+    this project's interfaces carry them now, and analyzers key on the implementing classes
+    instead (MarkdownContentAttribute is a deliberate internal twin here, not a move, because
+    eight section projects apply the original). And Humans.Domain, whose last enums —
+    ConsentCheckStatus, GoogleEmailStatus, MembershipTier, MessageCategory — moved here; no
+    member was renamed, so nothing persisted moved.
 
     THREE leaves gain an edge to this project as a consequence, all acyclic under the same
     rule — this project is itself terminal-but-one and none of them is reachable from it:

@@ -107,7 +107,8 @@ internal sealed class DevLoginController(
             return (resolvedUserId, user);
 
         var email = $"dev-{info.Slug}@localhost";
-        var byEmailUserId = await userEmailService.GetUserIdByVerifiedEmailAsync(email);
+        var byEmailUserId = (await userEmailService.FindByAddressAsync(email, aliased: false, verifiedOnly: true))
+            .FirstOrDefault()?.UserId;
         user = byEmailUserId is null
             ? null
             : await userManager.FindByIdAsync(byEmailUserId.Value.ToString());

@@ -1,6 +1,6 @@
 ---
 name: No ranking language — tiers are commitments, not ranks
-description: Never use phrases that frame membership tiers as rankings — "tier status", "standing", "level", "upgrade your status", "higher tier". Tiers (Volunteer / Colaborador / Asociado) describe different commitments and responsibilities, not a hierarchy. Say "membership tier" when referring to the tier itself.
+description: Never use ranking language ("tier status", "standing", "level", "upgrade") for membership tiers — they're commitments, not ranks. Say "membership tier".
 ---
 
 Never write phrases that imply humans are ranked — **"tier status"**, "standing", "level", "rank", "higher/lower tier", "upgrade your status" — in any copy, docs, commit messages, or PR text. The membership tiers (Volunteer, Colaborador, Asociado) describe **different commitments and responsibilities**, not a ladder; ranking framing is the antithesis of the org's culture.

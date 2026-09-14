@@ -32,6 +32,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 | InvitationEmailSubject / InvitationEmailMessage | LocalizedText | optional custom initial-invitation copy; jsonb default `'{}'::jsonb` means use standard localized wording |
 | DefaultCulture | string | max 10; fallback culture for resolution |
 | AllowAnonymous | bool | gates the anonymity selector and the public slug |
+| IsAsociadoVote | bool? | binding Asociado vote (see Invariants); null and false both mean an ordinary survey |
 | Status | SurveyStatus | string-converted; Draft / Open / Closed |
 | OpensAt / ClosesAt | Instant? | optional open/close window |
 | AudienceType | SurveyAudienceType? | string-converted; null = no audience |
@@ -62,6 +63,8 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 | GridSelectionMode | GridSelectionMode? | string-converted; Single / Multiple for Grid questions |
 | GridRows | List&lt;SurveyGridRow&gt;? | jsonb; ordered stable row `Value` + localized label |
 | InformationImages | List&lt;SurveyInformationImage&gt;? | nullable jsonb; up to five public storage keys with localized label and alt text |
+| RankedSettings | RankedQuestionSettings? | jsonb; allow equal ranks, allow reject, official method; RankedChoice only, frozen at the first saved answer |
+| RankedUnavailableOptionValues | List&lt;string&gt;? | jsonb; option values struck from the count after close; never rewrites a ballot |
 | ShowIf | BranchCondition? | jsonb skip-logic |
 
 **Index:** `(SurveyId, PageNumber, Order)`.
@@ -126,26 +129,28 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 | TextValue | string? | max 4000 |
 | RatingValue | int? | |
 | GridSelections | Dictionary&lt;string, List&lt;string&gt;&gt;? | jsonb; stable row key → selected stable column keys |
+| RankedValue | RankedAnswer? | jsonb; ordered rank groups of stable option values plus a rejected set |
 
 ### Enums
 
 | Enum | Values |
 |------|--------|
 | SurveyStatus | Draft, Open, Closed |
-| SurveyQuestionType | SingleChoice, MultiChoice, ShortText, LongText, Rating, Grid, Information |
+| SurveyQuestionType | SingleChoice, MultiChoice, ShortText, LongText, Rating, Grid, Information, RankedChoice |
 | GridSelectionMode | Single, Multiple |
 | ResponseAnonymity | Identified, CompletionTracked, Anonymous |
 | SurveyInputMethod | UserSpecificLink, Slug |
-| SurveyAudienceType | Team, AllActiveMembers, TicketHolders, ShiftParticipants, LoggedInSince |
+| SurveyAudienceType | Team, AllActiveMembers, TicketHolders, ShiftParticipants, LoggedInSince, Asociados |
 | BranchCombine | All, Any |
 | BranchOperator | Is, IsNot, Answered, NotAnswered |
 
-`LocalizedText` (culture → text), `SurveyGridRow`, `SurveyInformationImage`, and `BranchCondition`/`BranchClause` are section-owned value objects in `src/Sections/Humans.Surveys/Domain/`; localized text, Grid rows/selections, Information images, and branch conditions are persisted as jsonb.
+`LocalizedText` (culture → text), `SurveyGridRow`, `SurveyInformationImage`, `RankedQuestionSettings`, `RankedAnswer`, and `BranchCondition`/`BranchClause` are section-owned value objects in `src/Sections/Humans.Surveys/Domain/`; all are persisted as jsonb.
 
 ## Routing
 
 - **`/Survey/Admin/*`** — `SurveyAdminController` (BoardOrAdmin): index, builder, read-only preview,
-  preview-email-to-self, send, results, CSV/JSON export.
+  preview-email-to-self, open/close, the official link, send, results, post-close ranked-option
+  availability, CSV/JSON export.
   The builder's **Save and review recipients** action continues to the Send page; a Draft with
   net-new recipients can be opened there before the separate invitation confirmation.
 - **`/Survey/Answer?t={token}`** — `SurveyController` invited wizard (token carries identity; never the current principal).
@@ -179,7 +184,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 - **A survey with nothing left to show says so; it never reports itself as completed.** When the wizard reaches a page whose questions are all hidden and there is no next visible page, the respondent gets the `Closed` view with `Reason = "empty"` — not the thank-you page. Nothing has been submitted at that point, so no completion marker is written and the session is left alone. Reaching this state usually means the survey has no questions, or its branching hides all of them, and it is meant to be visible as such rather than disguised as a finished response.
 - **Branching is server-side and authoritative.** A null `ShowIf` is visible; hidden questions are never treated as required; at submit the full branching is re-evaluated and answers to hidden questions are **dropped/rejected** (the client cannot smuggle them). Author-save rejects `ShowIf` forward-references (`SurveyBranchingEvaluator.ValidateNoForwardReferences`).
 - **Grid questions are bounded matrices.** A Grid has at least one localized row, one to five localized columns, and a `Single` or `Multiple` selection mode. Row and column keys are non-blank and unique. A required Grid is complete only when every row has a valid selection; `Single` permits exactly one column per row. Posted selections are normalized against the authored schema before autosave/submission.
-- **Grid questions may be branch targets, never branch sources.** A Grid can carry its own `ShowIf`, but author-save rejects any branch clause that references a Grid question.
+- **Grid, Information and RankedChoice questions may be branch targets, never branch sources.** Each can carry its own `ShowIf`, but author-save rejects any branch clause that references one — none yields the flat option set a clause matches on.
 - **Grid result percentages are row-local.** Each cell's percentage uses respondents who answered that row as its denominator. Results retain the current authored matrix. The admin results page can aggregate Combined, Identified/CompletionTracked ("unique"), or Anonymous responses; participation cards and funnel remain combined. The JSON download stores question/Grid metadata once in its top-level schema and keeps each response answer to stable keys/values. CSV/Markdown export, the analysis API, and GDPR export retain raw stored row/column keys just as choice exports retain `SelectedOptionValues`, alongside best-effort labels in the survey's default culture; removed definitions fall back to their raw keys instead of hiding historical answers.
 - **Response rate belongs to the invited pool.** It is completed sent invitations divided by sent invitations, using the participation ledger rather than submitted-response rows. Identified and CompletionTracked invited completions count; Anonymous responses and public participation rows with no `SentAt` do not.
 - **Information items are context, not answers.** They share question ordering, paging, translation, preview, and conditional visibility, but are never required, never branch sources, emit no answer input, and are omitted from results and response exports. Markdown uses the shared sanitizer. Images are public `IFileStorage` objects under `uploads/surveys/`, capped at five, and their builder upload form warns that URLs can be shared outside the survey.
@@ -252,7 +257,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 **Owning services:** `SurveyService`
 **Owned tables:** `surveys`, `survey_questions`, `survey_question_options`, `survey_invitations`, `survey_responses`, `survey_answers`
-**Status:** (A) Migrated — born §15-compliant. Everything but `Section`, `SurveysResource`, `Contracts/` and `Jobs/` is `internal` (HUM0034). `Contracts/` is entirely public: the enums, the `SurveyDefinitionSnapshot`/`SurveyReadModels` DTOs, `SurveyResponsesMarkdownBuilder`, `ISurveyReminderSender.SendDueRemindersAsync`, and `ISurveyAnalysisRead` (the Backdoor API's read surface — see Cross-section read interface below). `Jobs/SendSurveyReminderJob.cs` is public under the HUM0034 `Jobs/` carve-out because the Shell names the concrete type when it registers and schedules it.
+**Status:** (A) Migrated. Everything but `Section`, `SurveysResource`, `Contracts/` and `Jobs/` is `internal` (HUM0034). `Contracts/` is entirely public: the enums, the `SurveyDefinitionSnapshot`/`SurveyReadModels` DTOs, `SurveyResponsesMarkdownBuilder`, `ISurveyReminderSender.SendDueRemindersAsync`, and `ISurveyAnalysisRead` (the Backdoor API's read surface — see Cross-section read interface below). `Jobs/SendSurveyReminderJob.cs` is public under the HUM0034 `Jobs/` carve-out because the Shell names the concrete type when it registers and schedules it.
 
 - `SurveyService` lives in `Humans.Surveys.Services` and never imports `Microsoft.EntityFrameworkCore`. Implements `ISurveyService` and `IUserDataContributor`.
 - `ISurveyRepository` (impl `src/Sections/Humans.Surveys/Data/SurveyRepository.cs`, `internal sealed`) is the only code path that touches the six `survey_*` tables via `DbContext`. Registered as Singleton; uses `IDbContextFactory<SurveysDbContext>` (per-section DbContext, nobodies-collective/Humans#858; baseline migration `20260715105933_BaselineSurveys` under `Data/Migrations/`) for per-call scoped contexts.

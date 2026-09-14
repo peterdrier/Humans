@@ -54,7 +54,7 @@ internal static class SurveyCsvExportBuilder
         });
     }
 
-    /// <summary>The cell content for one answer: choice values flattened <c>a|b</c>, free text verbatim, or the rating integer.</summary>
+    /// <summary>The cell content for one answer: choice values flattened <c>a|b</c>, free text verbatim, the rating integer, or JSON for Grid selections and ranked ballots.</summary>
     private static string CellValue(SurveyExportQuestion question, SurveyExportAnswer answer) => question.Type switch
     {
         SurveyQuestionType.SingleChoice or SurveyQuestionType.MultiChoice =>

@@ -180,7 +180,7 @@ git fetch origin --quiet
 if [ "$CLAUDE_CODE_REMOTE" = "true" ]; then  # ephemeral single-session container — no worktree
   git checkout -b feat/<lower-section>-service-read-split origin/main
 else
-  git worktree add .worktrees/section-read-split-<lower-section> -b feat/<lower-section>-service-read-split origin/main
+  git worktree add .claude/worktrees/section-read-split-<lower-section> -b feat/<lower-section>-service-read-split origin/main
 fi
 ```
 

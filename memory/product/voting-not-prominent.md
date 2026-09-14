@@ -1,6 +1,6 @@
 ---
 name: Don't make Voting/Review/Applications prominent
-description: Board voting, review queues, and tier applications serve ~8 people. Don't put them at the top of dashboards, sidebars, stat tiles, or feature ordering — design for the 800 humans, not the 8 board members.
+description: Voting/Review/Applications serve ~8 board members — don't headline them in dashboards/nav. Order by daily-traffic-across-the-whole-audience instead.
 ---
 
 Stop privileging Voting / Review / Applications in design proposals. Their audience is the Board (~8 people); the rest of the system serves ~800 humans. Putting these queues in the first stat tile, the first sidebar group, the dashboard centerpiece, or the lead user-story is a structural error — it makes the most niche workflow look like the spine of the product.

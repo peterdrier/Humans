@@ -1,4 +1,4 @@
-namespace Humans.Onboarding.Contracts;
+namespace Humans.Onboarding.Services;
 
 /// <summary>
 /// Returns which step of the onboarding widget a user should be routed to.
@@ -7,16 +7,17 @@ namespace Humans.Onboarding.Contracts;
 /// No new tables; no new claims.
 /// </summary>
 /// <remarks>
-/// On the leaf because this section's own <c>GuestController</c> bounces a mid-widget
-/// user back into the flow with it; the section's own dispatcher and progress banner
-/// are the other two consumers.
+/// Internal, and next to its implementation: every consumer is inside this section — the
+/// widget dispatcher, <c>GuestController</c> and the progress banner. The funnel-step
+/// question is not one other sections ask; <c>IOnboardingIntake</c> and
+/// <c>OnboardingResult</c> on the leaf are.
 /// </remarks>
-public interface IOnboardingWidgetState
+internal interface IOnboardingWidgetState
 {
     Task<OnboardingWidgetStep> GetCurrentStepAsync(Guid userId, CancellationToken ct = default);
 }
 
-public enum OnboardingWidgetStep
+internal enum OnboardingWidgetStep
 {
     Names = 0,
     Shifts = 1,

@@ -2,6 +2,7 @@
   src/Sections/Humans.Users/Services/CommunicationPreferenceService.cs
   src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Sections/Humans.Users/Controllers/UnsubscribeController.cs
+  src/Sections/Humans.Users/Controllers/GuestAccountController.cs
   src/Sections/Humans.Users/Domain/CommunicationPreference.cs
   src/Sections/Humans.Users/Data/Configurations/CommunicationPreferenceConfiguration.cs
 -->
@@ -59,6 +60,7 @@ When a user opts out of Facilitated Messages, the "Send Message" button is hidde
 - `GET /Profile/Me/CommunicationPreferences` — view/edit preferences
 - `POST /Profile/Me/CommunicationPreferences/Update` — save one category's preference
 - `GET /Profile/Me/Notifications` — permanent redirect to above (backwards compat)
+- `GET /Guest/CommunicationPreferences`, `POST /Guest/CommunicationPreferences/Update` — profileless-account variant (`GuestAccountController`, `[AllowAnonymous]`; accepts an unsubscribe token in place of a session; `UpdateSource` is `"Guest"` when signed in, `"MagicLink"` via token)
 
 ## Migration History
 

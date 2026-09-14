@@ -16,11 +16,9 @@ using NodaTime.Testing;
 namespace Humans.Teams.Tests.Data;
 
 /// <summary>
-/// Repository tests for the Teams section — issue #540a (§15 Part 1 —
-/// TeamService core). Covers the bundled-write paths (which have compound
-/// mutations across TeamMembers / TeamJoinRequests / TeamRoleAssignments /
-/// and the narrow read shapes the service depends on for cross-section
-/// stitching.
+/// Repository tests for the Teams section: the bundled-write paths (compound
+/// mutations across TeamMembers / TeamJoinRequests / TeamRoleAssignments) and the
+/// narrow read shapes the service depends on for cross-section stitching.
 /// </summary>
 public sealed class TeamRepositoryTests : IDisposable
 {

@@ -1,17 +1,16 @@
 @model Humans.Containers.Contracts.ContainerIndexViewModel
 @{
-    ViewData["Title"] = $"Containers — {Model.CampName}";
+    ViewData["Title"] = $"{Localizer["Container_Breadcrumb"]} — {Model.CampName}";
 
     var routeValues = new Dictionary<string, string>(StringComparer.Ordinal)
     {
         ["slug"] = Model.CampSlug,
     };
 
-    ContainerCardModel CardFor(ContainerViewModel c) => new()
+    ContainerCardModel CardFor(ContainerDto c) => new()
     {
         Container = c,
         Placement = Model.PlacementsByContainerId.TryGetValue(c.Id, out var p) ? p : null,
-        CanManage = Model.CanManage,
         FormController = "Container",
         EditAction = "Edit",
         DeleteAction = "Delete",
@@ -29,13 +28,10 @@
 
 <div class="d-flex align-items-center gap-2 mb-4">
     <h1 class="mb-0">@Localizer["Container_Breadcrumb"] <small class="text-muted">@Model.CampName</small></h1>
-    @if (Model.CanManage)
-    {
-        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addContainerModal">
-            <i class="fa-solid fa-plus me-1"></i> @SharedLocalizer["Common_Add"]
-        </button>
-    }
-    @if (Model.CanManage && !Model.IsLeadButPhaseClosed)
+    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addContainerModal">
+        <i class="fa-solid fa-plus me-1"></i> @SharedLocalizer["Common_Add"]
+    </button>
+    @if (!Model.IsLeadButPhaseClosed)
     {
         <a asp-controller="CityPlanning" asp-action="ContainerMap" asp-route-year="@Model.CurrentYear"
            class="btn btn-outline-primary btn-sm ms-auto">
@@ -67,30 +63,27 @@ else
     </ul>
 }
 
-@if (Model.CanManage)
-{
-    <div class="modal fade" id="addContainerModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@Localizer["Container_AddModal_Title"]</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <form asp-action="Create" asp-route-slug="@Model.CampSlug"
-                      method="post" enctype="multipart/form-data">
-                    @Html.AntiForgeryToken()
-                    <div class="modal-body">
-                        <partial name="_ContainerFormFields" model="null" />
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@SharedLocalizer["Common_Cancel"]</button>
-                        <button type="submit" class="btn btn-primary">@SharedLocalizer["Common_Add"]</button>
-                    </div>
-                </form>
+<div class="modal fade" id="addContainerModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">@Localizer["Container_AddModal_Title"]</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
+            <form asp-action="Create" asp-route-slug="@Model.CampSlug"
+                  method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <partial name="_ContainerFormFields" model="null" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@SharedLocalizer["Common_Cancel"]</button>
+                    <button type="submit" class="btn btn-primary">@SharedLocalizer["Common_Add"]</button>
+                </div>
+            </form>
         </div>
     </div>
-}
+</div>
 
 @foreach (var c in Model.Containers)
 {

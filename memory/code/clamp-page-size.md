@@ -1,6 +1,6 @@
 ---
 name: Use ClampPageSize() for page-size clamping
-description: Use `ClampPageSize()` for repeated page-size clamping instead of scattering inline `Math.Clamp(pageSize, ...)` calls.
+description: Use `ClampPageSize()` for page-size clamping instead of scattering inline `Math.Clamp(pageSize, ...)` calls.
 ---
 
 Use `ClampPageSize()` for repeated page-size clamping instead of scattering `Math.Clamp(pageSize, ...)` inline at each call site.

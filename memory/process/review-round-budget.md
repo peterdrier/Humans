@@ -1,6 +1,6 @@
 ---
 name: review-round-budget
-description: Unattended, a PR gets at most five review-round commits — commits pushed in response to an automated review finding or a CI failure, counted from the point the PR's own work is functionally complete. Peter's instructions, the PR's own deliverable and mechanical commits are not rounds and do not raise the cap. On any CI/review wake for a PR you opened, read .claude/skills/steward/SKILL.md FIRST and count before reading any finding. At the ceiling — one summary comment, unsubscribe, stop. Raising the ceiling needs Peter.
+description: Unattended PRs get at most 5 review-round commits (bot-finding/CI-failure responses). Read `.claude/skills/steward/SKILL.md` and count before acting on any wake.
 ---
 
 Unattended review rounds on a PR are capped at **five review-round commits**. Before acting on

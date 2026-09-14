@@ -1,6 +1,6 @@
 ---
 name: View Components vs Partial Views — pick by data-fetching responsibility
-description: View Component when the component fetches its own data. Partial View when it's pure presentation of a model the parent already has. If the parent fetches data just to pass through, it should be a View Component.
+description: Use a View Component when it fetches its own data; a Partial View when the parent already has the model. Parent fetching data just to pass through → View Component.
 ---
 
 ASP.NET Core offers two reusable view mechanisms. Use the right one:

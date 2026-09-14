@@ -187,7 +187,7 @@ public sealed class UserRepositoryTests : IDisposable
     }
 
     // ==========================================================================
-    // CheckedInAt (#736)
+    // CheckedInAt
     // ==========================================================================
 
     [HumansFact]
@@ -433,7 +433,7 @@ public sealed class UserRepositoryTests : IDisposable
     // ↔ googlemail) is in UserService and is tested there.
 
     // ==========================================================================
-    // ApplyExpiredDeletionAnonymizationAsync — deletes AspNetUserLogins (issue #661)
+    // ApplyExpiredDeletionAnonymizationAsync — deletes AspNetUserLogins
     // ==========================================================================
 
     [HumansFact]
@@ -501,6 +501,19 @@ public sealed class UserRepositoryTests : IDisposable
         reloaded.UserName.Should().Be($"merged-{source.Id:N}@merged.local");
         reloaded.MergedToUserId.Should().Be(target.Id);
         reloaded.MergedAt.Should().Be(now);
+    }
+
+    [HumansFact]
+    public async Task AnonymizeForMergeAsync_LocksOutTheSourceFarFuture()
+    {
+        var source = await SeedUserAsync();
+        var target = await SeedUserAsync();
+
+        await _repo.AnonymizeForMergeAsync(source.Id, target.Id, _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
+
+        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == source.Id, Xunit.TestContext.Current.CancellationToken);
+        reloaded.LockoutEnabled.Should().BeTrue("a merge tombstone cannot sign in");
+        reloaded.LockoutEnd.Should().Be(DateTimeOffset.MaxValue);
     }
 
     private void AddLogin(Guid userId, string loginProvider, string providerKey)
