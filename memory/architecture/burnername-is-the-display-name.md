@@ -1,6 +1,6 @@
 ---
 name: BurnerName is THE display name when a Profile exists
-description: When a Profile exists, only `Profile.BurnerName` renders the name (via `<vc:human>`, `UserInfo.BurnerName`) — never read `DisplayName` directly.
+description: HARD RULE. When a Profile exists, only `Profile.BurnerName` renders the name (via `<vc:human>`, `UserInfo.BurnerName`) — never read `DisplayName` directly.
 ---
 
 When a `Profile` row exists for a `User`, `Profile.BurnerName` is the only name we ever render in the UI. `User.DisplayName` is a legacy field we can't remove; it's a fallback only when no Profile exists.
