@@ -10,4 +10,4 @@ inbox:
     review: light
   - added: 2026-09-07
     what: "Services/RankedChoiceCounter.cs carries no comment naming the precommitment — Ranked Pairs is the official method and authored option order the disclosed final tie-break — which health.md and Docs/features/ranked-choice-voting.md both state. Flagged by /section-doctor 2026-09-07 without reading the algorithm; wants one read-through and a header comment."
-    review: light
+    review: panel
