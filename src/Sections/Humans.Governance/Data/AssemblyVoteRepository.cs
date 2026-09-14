@@ -259,14 +259,22 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
     }
 
     public async Task StampReminderSentAsync(
-        IReadOnlyCollection<Guid> rosterIds, Instant at, CancellationToken ct = default)
+        IReadOnlyCollection<Guid> rosterIds, Instant at, Instant announcedClosesAt,
+        CancellationToken ct = default)
     {
         if (rosterIds.Count == 0)
             return;
 
         await using var ctx = await factory.CreateDbContextAsync(ct);
+
+        // The deadline is re-read here, not taken from the caller's earlier read: an Extend
+        // can commit between the send and this write, and its stamp-clearing runs on the
+        // timestamps that existed then. A stamp written afterwards would survive that clear
+        // while standing for a deadline this recipient was never told, and the row would
+        // then be skipped for the deadline that decides whether their ballot counts.
         var rows = await ctx.AssemblyVoteRosterEntries
-            .Where(r => rosterIds.Contains(r.Id))
+            .Where(r => rosterIds.Contains(r.Id)
+                && ctx.AssemblyVotes.Any(v => v.Id == r.VoteId && v.ClosesAt == announcedClosesAt))
             .ToListAsync(ct);
 
         foreach (var row in rows)
@@ -567,10 +575,23 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
             .Where(b => rosterIds.Contains(b.RosterId))
             .ToDictionaryAsync(b => b.RosterId, b => b, ct);
 
+        // Which of these votes are still taking ballots. Deduplicating two roster rows into
+        // one only makes sense while the tally is still being formed: a vote that has closed
+        // has its result stored and immutable, counted from the rows as they stood at close.
+        // Dropping a row or a ballot afterwards leaves the disclosure list, the participation
+        // figures and the GDPR export reporting one ballot where the stored legal result
+        // counted two. So a closed vote keeps both rows, pointed at the surviving account.
+        var openVoteIds = (await ctx.AssemblyVotes
+                .Where(v => voteIds.Contains(v.Id) && v.Status == AssemblyVoteStatus.Open)
+                .Select(v => v.Id)
+                .ToListAsync(ct))
+            .ToHashSet();
+
         var dropped = new List<AssemblyRosterDrop>();
         foreach (var row in sourceRows)
         {
-            if (targetRowByVoteId.TryGetValue(row.VoteId, out var targetRow))
+            if (openVoteIds.Contains(row.VoteId)
+                && targetRowByVoteId.TryGetValue(row.VoteId, out var targetRow))
             {
                 // The target already holds this vote's roster row, so the source's row goes
                 // — one person, one roster row per vote. The entitlement is not dropped with it:

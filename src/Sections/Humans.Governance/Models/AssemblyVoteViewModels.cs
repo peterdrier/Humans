@@ -26,6 +26,18 @@ internal sealed class AssemblyVoteDetailViewModel
 
     /// <summary>One row per option, pre-filled from the viewer's standing ballot when they have one. Empty for a YesNo vote.</summary>
     public IReadOnlyList<AssemblyRankedBallotOptionRow> RankedOptions { get; init; } = [];
+
+    /// <summary>
+    /// Which choice the form should show as selected. Null on a plain page load, where the
+    /// standing ballot is the answer. Set when redisplaying a submission that was rejected,
+    /// so the voter gets their own answer back: without it the radio falls back to the
+    /// stored ballot, and someone switching from Abstain to a ranking would fix the rank
+    /// the page complained about and silently record an abstention instead.
+    /// </summary>
+    public AssemblyBallotChoice? SelectedChoice { get; init; }
+
+    /// <summary>The choice the radios render as checked: the rejected submission's, else the standing ballot's.</summary>
+    public AssemblyBallotChoice? ChoiceToShow => SelectedChoice ?? Vote.OwnBallot?.Choice;
 }
 
 /// <summary>

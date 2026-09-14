@@ -169,7 +169,8 @@ internal sealed class GovernanceVotesController(
         return View("~/Views/Governance/Votes/Details.cshtml", new AssemblyVoteDetailViewModel
         {
             Vote = vote,
-            RankedOptions = rows
+            RankedOptions = rows,
+            SelectedChoice = model.Choice
         });
     }
 

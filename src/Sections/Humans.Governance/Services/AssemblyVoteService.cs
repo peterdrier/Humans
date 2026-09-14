@@ -1672,8 +1672,12 @@ internal sealed class AssemblyVoteService(
 
                     // Stamped per row, immediately: the stamp is the only thing stopping the
                     // next sweep re-sending, so the widest window worth having between the
-                    // send and the stamp is one roster row, not the whole batch.
-                    await repository.StampReminderSentAsync([rosterRow.Id], sentAt, ct);
+                    // send and the stamp is one roster row, not the whole batch. Conditional
+                    // on the deadline this email named: if an Extend landed while it was
+                    // going out, no stamp, and the next sweep tells this member the deadline
+                    // now in force rather than leaving them with the one they were sent.
+                    await repository.StampReminderSentAsync(
+                        [rosterRow.Id], sentAt, current.ClosesAt, ct);
                     reminded.Add(rosterRow.Id);
                 }
                 catch (Exception ex)

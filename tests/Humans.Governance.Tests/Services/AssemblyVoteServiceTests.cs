@@ -1400,7 +1400,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(6));
         var roster = await _fx.AddRosterRowAsync(vote.Id, Guid.NewGuid(), isOfficial: true);
         await _fx.Repository.StampReminderSentAsync(
-            [roster.Id], _fx.Clock.GetCurrentInstant(),
+            [roster.Id], _fx.Clock.GetCurrentInstant(), vote.ClosesAt,
             Xunit.TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
 
@@ -1431,7 +1431,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         // the same deadline twice.
         _fx.Clock.AdvanceMinutes(1);
         await _fx.Repository.StampReminderSentAsync(
-            [roster.Id], _fx.Clock.GetCurrentInstant(),
+            [roster.Id], _fx.Clock.GetCurrentInstant(), vote.ClosesAt,
             Xunit.TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
 
@@ -1602,6 +1602,65 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         ballots.Should().ContainSingle("one person may hold only one ballot per vote")
             .Which.Id.Should().Be(kept.Id, "the surviving account's own ballot is the one that stands");
+    }
+
+    [HumansFact]
+    public async Task StampReminderSentAsync_ForADeadlineTheVoteNoLongerHas_WritesNothing()
+    {
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(6));
+        var roster = await _fx.AddRosterRowAsync(vote.Id, Guid.NewGuid(), isOfficial: true);
+        var announced = vote.ClosesAt;
+
+        (await _fx.Service.ExtendAsync(
+                vote.Id, announced + Duration.FromDays(2), Guid.NewGuid(),
+                Xunit.TestContext.Current.CancellationToken))
+            .Should().Be(AssemblyVoteActionResult.Ok);
+        _fx.Db.ChangeTracker.Clear();
+
+        // The send was already in flight and announced the deadline it read. Stamping it now
+        // would leave the row standing for a deadline this member was never told, and the
+        // extension's own stamp-clearing has already run.
+        await _fx.Repository.StampReminderSentAsync(
+            [roster.Id], _fx.Clock.GetCurrentInstant(), announced,
+            Xunit.TestContext.Current.CancellationToken);
+        _fx.Db.ChangeTracker.Clear();
+
+        (await _fx.Repository.GetRosterNeedingReminderAsync(
+                vote.Id, Xunit.TestContext.Current.CancellationToken))
+            .Select(r => r.Id)
+            .Should().Equal([roster.Id],
+                "the next sweep tells them the deadline now in force");
+    }
+
+    [HumansFact]
+    public async Task ReassignAsync_WhenBothAccountsVotedInAClosedVote_KeepsBothBallots()
+    {
+        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        _fx.StubActiveUsers(source, target);
+        var sourceRow = await _fx.AddRosterRowAsync(vote.Id, source, isOfficial: true);
+        var targetRow = await _fx.AddRosterRowAsync(vote.Id, target, isOfficial: true);
+        await _fx.AddBallotAsync(vote.Id, sourceRow.Id, AssemblyBallotChoice.Yes);
+        await _fx.AddBallotAsync(vote.Id, targetRow.Id, AssemblyBallotChoice.No);
+
+        await _fx.Service.ReassignAsync(
+            source, target, Guid.NewGuid(), _fx.Clock.GetCurrentInstant(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        var ballots = await _fx.Db.AssemblyBallots.AsNoTracking()
+            .Where(b => b.VoteId == vote.Id)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        ballots.Should().HaveCount(2,
+            "the stored result counted two, and the disclosure list and the export have to "
+            + "keep agreeing with the acta");
+
+        var rows = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
+            .Where(r => r.VoteId == vote.Id)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        rows.Should().HaveCount(2).And.OnlyContain(r => r.UserId == target,
+            "both rows point at the surviving account so it can see the history");
     }
 
     [HumansFact]

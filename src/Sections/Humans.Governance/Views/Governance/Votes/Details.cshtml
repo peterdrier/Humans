@@ -85,7 +85,7 @@
 
                 @if (vote.Kind == AssemblyVoteKind.YesNo)
                 {
-                    var currentChoice = vote.OwnBallot?.Choice;
+                    var currentChoice = Model.ChoiceToShow;
                     <div class="d-grid gap-2 mb-3">
                         @foreach (var choice in new[] { AssemblyBallotChoice.Yes, AssemblyBallotChoice.No, AssemblyBallotChoice.Abstain })
                         {
@@ -104,7 +104,7 @@
                 }
                 else
                 {
-                    var isAbstain = vote.OwnBallot?.Choice == AssemblyBallotChoice.Abstain;
+                    var isAbstain = Model.ChoiceToShow == AssemblyBallotChoice.Abstain;
                     <div class="d-flex gap-2 mb-3">
                         <input type="radio" class="btn-check" name="Choice" id="choice-Ranked" value="Ranked" @(isAbstain ? "" : "checked") />
                         <label class="btn btn-outline-primary py-2 flex-fill" for="choice-Ranked">@Localizer["Votes_RankOptions"]</label>

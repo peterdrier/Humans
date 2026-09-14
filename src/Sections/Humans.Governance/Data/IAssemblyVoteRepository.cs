@@ -119,11 +119,16 @@ internal interface IAssemblyVoteRepository : IRepository
         IReadOnlyCollection<Guid> rosterIds, Instant at, CancellationToken ct = default);
 
     /// <summary>
-    /// Stamps <c>ReminderSentAt</c> on the given roster rows. The idempotency anchor for
-    /// the T-24h reminder: a stamped row is never reminded again.
+    /// Stamps <c>ReminderSentAt</c> on the given roster rows, but only while the vote still
+    /// closes at <paramref name="announcedClosesAt"/> — the deadline the email that was just
+    /// sent actually names. The idempotency anchor for the T-24h reminder: a stamped row is
+    /// never reminded again, so a stamp must never stand for a deadline the recipient was
+    /// not told. An extension landing mid-send moves the deadline, the stamp is skipped, and
+    /// the next sweep reminds that member of the deadline now in force.
     /// </summary>
     Task StampReminderSentAsync(
-        IReadOnlyCollection<Guid> rosterIds, Instant at, CancellationToken ct = default);
+        IReadOnlyCollection<Guid> rosterIds, Instant at, Instant announcedClosesAt,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Clears <c>ReminderSentAt</c> on the roster rows of a vote stamped at or before
