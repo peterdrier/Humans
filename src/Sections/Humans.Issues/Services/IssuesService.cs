@@ -396,8 +396,6 @@ internal sealed class IssuesService(
         // handler's move, so the flag is dropped rather than refused.
         var viewerCanHandle = CanHandle(issue, viewer);
 
-        // Derived here, not caller-supplied: reporter status drives auto-reopen and
-        // notification routing, and every door must get identical behavior.
         var senderIsReporter = senderUserId is not null && senderUserId == issue.ReporterUserId;
 
         var now = clock.GetCurrentInstant();
@@ -410,8 +408,6 @@ internal sealed class IssuesService(
             CreatedAt = now
         };
 
-        // Reporter posting on a terminal issue auto-reopens to Open and clears
-        // the resolved fields.
         var statusChangedToOpen = false;
         if (senderIsReporter && issue.Status.IsTerminal())
         {
@@ -705,19 +701,17 @@ internal sealed class IssuesService(
 
     // ─── Counts & badge/dashboard queries ───
 
-    public async Task<int> GetActionableCountForViewerAsync(
-        Guid viewerUserId, IReadOnlyList<string> viewerRoles, bool viewerIsAdmin,
-        CancellationToken ct = default)
+    public async Task<int> GetActionableCountForViewerAsync(IssueViewer viewer, CancellationToken ct = default)
     {
-        var cacheKey = CacheKeys.IssuesBadge(viewerUserId);
+        var cacheKey = CacheKeys.IssuesBadge(viewer.UserId);
         return await cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = BadgeCacheDuration;
 
-            if (viewerIsAdmin) return await repo.CountActionableAsync(null, null, ct);
+            if (viewer.IsAdmin) return await repo.CountActionableAsync(null, null, ct);
 
-            var sections = IssueSectionRouting.SectionsForRoles(viewerRoles);
-            return await repo.CountActionableAsync(sections, viewerUserId, ct);
+            var sections = IssueSectionRouting.SectionsForRoles(viewer.Roles);
+            return await repo.CountActionableAsync(sections, viewer.UserId, ct);
         });
     }
 

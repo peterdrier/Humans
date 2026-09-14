@@ -5,3 +5,6 @@ inbox:
   - added: 2026-09-14
     what: "CachingTeamService.GetTeamDirectoryAsync resolves IRoleAssignmentService sideways through its scope factory; memory/architecture/decorators-talk-only-to-inner.md forbids any collaborator beyond the keyed inner service and cache plumbing. Found by Codex reviewing peterdrier/Humans#1670; fix is a service-side move (the directory build belongs in TeamService or an orchestrator), not a decorator tweak."
     review: panel
+  - added: 2026-09-14
+    what: "Docs/data-access.md names IShiftManagementService twice; Teams consumes the read leaf, IShiftManagementServiceRead (finding N18, /section-doctor on Shifts 2026-09-05; swept in by /section-doctor on Issues 2026-09-14)."
+    review: light

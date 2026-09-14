@@ -18,13 +18,14 @@ Repository: `IIssuesRepository`.
 
 | Cache Key | TTL | Read | Write | Invalidate |
 |-----------|-----|------|-------|------------|
-| `NavBadge:Issues:{userId}` (`IIssuesBadgeCacheInvalidator`) | 2 min | yes | yes | yes |
+| `NavBadge:Issues:{userId:N}` (`IIssuesBadgeCacheInvalidator`) | 2 min | yes | yes | yes |
 | `FeedbackBadgeCount` (`INavBadgeCacheInvalidator`) | 2 min | | | yes |
 
 Cross-section calls via `IUserServiceRead`, `IUserEmailService`,
 `IRoleAssignmentService`, `IEmailService`,
 `IEmailMessageFactory`, `INotificationEmitter`, `INotificationAutoResolve`,
-`IAuditLogService`, `IHostEnvironment`. Implements `IUserDataContributor`,
+`IAuditLogService`, `INavBadgeCacheInvalidator`, `IIssuesBadgeCacheInvalidator`,
+`ISectionCatalog`, `IHostEnvironment`. Implements `IUserDataContributor`,
 `IIssueTriage` (Backdoor's machine-API triage surface,
 nobodies-collective/Humans#1128).
 

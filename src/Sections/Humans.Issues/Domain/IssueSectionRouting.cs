@@ -9,8 +9,9 @@ namespace Humans.Issues.Domain;
 /// <para>
 /// This is the routing table — adjust as the org learns. A change here is
 /// effective immediately; no migration needed because Section is stored as a
-/// free string. Sections referenced here should match the technical names
-/// used by the rest of the codebase (e.g. matches <c>docs/sections/*.md</c>).
+/// free string. <c>Profiles</c> and <c>Legal</c> name sections that no longer
+/// exist; they stay routable because stored rows still carry those strings,
+/// and <c>SectionAnnotations</c> surfaces the drift on <c>/Debug/Sections</c>.
 /// </para>
 /// </summary>
 internal static class IssueSectionRouting
@@ -58,7 +59,7 @@ internal static class IssueSectionRouting
     /// The one statement of the handle rule. Both enforcement points read it: the service,
     /// which gates every per-item read and mutation whichever door they arrive through, and
     /// <c>IssuesAuthorizationHandler</c>, which the browser also asks in order to shape the
-    /// page. A second spelling of this rule is how the machine surface came to be unscoped.
+    /// page.
     /// </remarks>
     public static bool CanHandle(string? section, IReadOnlyCollection<string> viewerRoles)
     {
