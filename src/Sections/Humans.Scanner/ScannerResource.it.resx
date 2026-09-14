@@ -113,6 +113,9 @@
   <data name="Scanner_Tickets_Intro" xml:space="preserve">
     <value>Scansiona un biglietto per vederne i dettagli.</value>
   </data>
+  <data name="Scanner_Tickets_LookupFailed" xml:space="preserve">
+    <value>Ricerca non riuscita. Riprova.</value>
+  </data>
   <data name="Scanner_Tickets_ManualEntry_Lookup" xml:space="preserve">
     <value>Cerca</value>
   </data>
@@ -133,6 +136,15 @@
   </data>
   <data name="Scanner_Tickets_Status" xml:space="preserve">
     <value>Stato</value>
+  </data>
+  <data name="Scanner_Tickets_Status_CheckedIn" xml:space="preserve">
+    <value>Registrato</value>
+  </data>
+  <data name="Scanner_Tickets_Status_Valid" xml:space="preserve">
+    <value>Valido</value>
+  </data>
+  <data name="Scanner_Tickets_Status_Void" xml:space="preserve">
+    <value>Annullato</value>
   </data>
   <data name="Scanner_Tickets_Title" xml:space="preserve">
     <value>Ricerca biglietti</value>

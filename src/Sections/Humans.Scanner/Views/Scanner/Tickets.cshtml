@@ -86,7 +86,8 @@
                 pathNative: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Scanner_Barcode_Path_Native"].Value)),
                 pathZxing: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Scanner_Barcode_Path_ZXing"].Value)),
                 errorCamera: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Scanner_Barcode_Error_Camera"].Value)),
-                errorNoDecoder: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Scanner_Barcode_Error_NoDecoder"].Value))
+                errorNoDecoder: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Scanner_Barcode_Error_NoDecoder"].Value)),
+                lookupFailed: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Scanner_Tickets_LookupFailed"].Value))
             }
         });
     </script>

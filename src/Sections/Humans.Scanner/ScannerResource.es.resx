@@ -113,6 +113,9 @@
   <data name="Scanner_Tickets_Intro" xml:space="preserve">
     <value>Escanea una entrada para ver sus detalles.</value>
   </data>
+  <data name="Scanner_Tickets_LookupFailed" xml:space="preserve">
+    <value>La consulta ha fallado. Inténtalo de nuevo.</value>
+  </data>
   <data name="Scanner_Tickets_ManualEntry_Lookup" xml:space="preserve">
     <value>Buscar</value>
   </data>
@@ -133,6 +136,15 @@
   </data>
   <data name="Scanner_Tickets_Status" xml:space="preserve">
     <value>Estado</value>
+  </data>
+  <data name="Scanner_Tickets_Status_CheckedIn" xml:space="preserve">
+    <value>Registrada</value>
+  </data>
+  <data name="Scanner_Tickets_Status_Valid" xml:space="preserve">
+    <value>Válida</value>
+  </data>
+  <data name="Scanner_Tickets_Status_Void" xml:space="preserve">
+    <value>Anulada</value>
   </data>
   <data name="Scanner_Tickets_Title" xml:space="preserve">
     <value>Consulta de entradas</value>
