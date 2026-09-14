@@ -1377,4 +1377,9 @@
   <data name="Onboarding_BurnerNameLabel" xml:space="preserve"><value>Burner Name</value></data>
   <data name="Onboarding_LegalFirstNameLabel" xml:space="preserve"><value>Bürgerlicher Vorname</value></data>
   <data name="Onboarding_LegalLastNameLabel" xml:space="preserve"><value>Bürgerlicher Nachname</value></data>
+  <data name="Nav_Votes" xml:space="preserve"><value>Abstimmungen</value></data>
+  <data name="Todo_AssemblyVote_Title" xml:space="preserve"><value>Stimme abgeben</value></data>
+  <data name="Todo_AssemblyVote_Pending" xml:space="preserve"><value>„{0}“ ist zur Abstimmung geöffnet.</value><comment>{0} = vote title</comment></data>
+  <data name="Todo_AssemblyVote_Done" xml:space="preserve"><value>Deine Stimme zu „{0}“ ist erfasst. Du kannst sie bis zum Ende der Abstimmung ändern.</value><comment>{0} = vote title</comment></data>
+  <data name="Todo_AssemblyVote_Action" xml:space="preserve"><value>Abstimmen</value></data>
 </root>

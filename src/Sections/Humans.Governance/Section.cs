@@ -5,6 +5,7 @@ using Humans.Governance.Data;
 using Humans.Governance.Domain;
 using Humans.Governance.Jobs;
 using Humans.Governance.Services;
+using Humans.Governance.Services.Dtos;
 using Humans.Base.Hosting;
 using Humans.Base.Models.Tables;
 using Microsoft.Extensions.Configuration;
@@ -34,6 +35,16 @@ public sealed class Section : ISection
 
         services.AddScoped<IGovernanceIndexService, GovernanceIndexService>();
 
+        // Assembly votes. The service is the embargo boundary, so nothing here exposes the
+        // repository outside the section and no caching decorator wraps it — a cached tally
+        // is a leaked tally.
+        services.AddSingleton<IAssemblyVoteRepository, AssemblyVoteRepository>();
+        services.AddScoped<AssemblyVoteService>();
+        services.AddScoped<IAssemblyVoteService>(sp => sp.GetRequiredService<AssemblyVoteService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<AssemblyVoteService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<AssemblyVoteService>());
+        services.AddScoped<AssemblyVoteLapseJob>();
+
         // Query adapter breaks the circular DI graph between MembershipCalculator
         // and ITeamServiceRead / IRoleAssignmentService (both of which inject
         // ISystemTeamSync, whose implementation injects IMembershipCalculatorRead back).
@@ -55,6 +66,20 @@ public sealed class Section : ISection
             [VoteChoice.Maybe] = "bg-warning text-dark",
             [VoteChoice.No] = "bg-danger",
             [VoteChoice.Abstain] = "bg-secondary",
+
+            [AssemblyVoteStatus.Draft] = "bg-secondary",
+            [AssemblyVoteStatus.Open] = "bg-primary",
+            [AssemblyVoteStatus.Closed] = "bg-success",
+            [AssemblyVoteStatus.Cancelled] = "bg-danger",
+
+            [AssemblyVoteVerdict.Passed] = "bg-success",
+            [AssemblyVoteVerdict.Failed] = "bg-danger",
+            [AssemblyVoteVerdict.Tie] = "bg-warning text-dark",
+
+            [AssemblyBallotChoice.Yes] = "bg-success",
+            [AssemblyBallotChoice.No] = "bg-danger",
+            [AssemblyBallotChoice.Abstain] = "bg-secondary",
+            [AssemblyBallotChoice.Ranked] = "bg-primary",
         });
 
         services.AddScoped<TermRenewalReminderJob>();
