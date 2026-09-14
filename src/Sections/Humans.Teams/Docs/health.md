@@ -15,8 +15,9 @@ privacy-sensitive groupings; only admins see them. A team may also be switched o
 **Early Entry**, letting its coordinators put named crew on the festival's early-arrival
 roster.
 
-Every membership change is audit-logged, mirrored to the team's Google resources, and
-reflected in the Coordinators system team when a management role is involved.
+Every membership change made one at a time is audit-logged, mirrored to the team's Google
+resources, and reflected in the Coordinators system team when a management role is involved.
+Deactivating a team closes its memberships in bulk and does none of the three (§4).
 
 ## 2. The shapes
 
@@ -76,18 +77,20 @@ The shapes imply:
 - System-team membership is written only by the reconciler and its bulk-apply members;
   manual add/remove/join/leave on a system team is refused; role assignment on a system
   team never adds a non-member.
-- Approval-required teams gain members only through an approved request; open teams add
-  at once. One pending request per human per team; state history is append-only.
+- A human joins an approval-required team only through an approved request; open teams add at
+  once. A coordinator may also add someone directly, which approves any pending request they
+  hold. One pending request per human per team; state history is append-only.
 - Removing a member removes all their role assignments on that team; a management-role
   change reconciles the Coordinators system team for that human.
 - Hidden teams are invisible to non-admins everywhere they would otherwise appear
   (directory, detail, join, birthdays, My Teams, search, profile cards of others).
-- Only departments can have a public page; anonymous visitors see public departments
-  only, coordinators-only member lists, no emails.
+- Only departments can have a public page; anonymous visitors see public departments plus the
+  sub-teams promoted to the directory, coordinators-only member lists, no emails.
 - `IsSensitive` is written only by a global Admin, enforced in `TeamService.UpdateTeamAsync`
   (on a change to the flag, so a caller passing its current value is not a write).
-- Early-entry grants exist only on `EarlyEntryEnabled` teams; disabling keeps grants but
-  hides them from the roster; every grant mutation is audited and evicts the user's EE cache.
+- An early-entry grant may be created only while its team has `EarlyEntryEnabled`; disabling
+  keeps the grants already issued but hides them from the roster; every grant mutation is
+  audited and evicts the user's EE cache.
 - Every membership add/remove made one at a time is audit-logged and mirrored to Google (add
   inline, remove via the nightly reconciliation); the outbox append commits with the team write.
   Deactivating a team is the exception: `DeleteTeamAsync` closes its live memberships in bulk
