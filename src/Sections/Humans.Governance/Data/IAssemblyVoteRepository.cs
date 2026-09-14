@@ -235,20 +235,23 @@ internal interface IAssemblyVoteRepository : IRepository
     Task<int> AnonymizeRosterForUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Account merge: moves the source account's roster rows to the target. Where both
-    /// accounts sit on the same vote's roster the target's row wins and the source's row
-    /// goes — one person may hold only one ballot per vote. A ballot on the dropped row
-    /// moves to the surviving row when that row has none of its own, and is destroyed with
-    /// it only when both rows voted. Returns what happened to each, so the caller can audit
-    /// the real entities rather than the roster row's own id.
+    /// Account merge: moves the section's own actor references — <c>CreatedByUserId</c>,
+    /// <c>OpenedByUserId</c>, <c>ClosedByUserId</c> and a peek's <c>AdminUserId</c> — off
+    /// the source account, so the acta and the published peek list keep naming the
+    /// surviving human rather than the tombstone Users leaves behind.
     /// <para>
-    /// Also moves the section's own actor references — <c>OpenedByUserId</c>,
-    /// <c>ClosedByUserId</c> and a peek's <c>AdminUserId</c> — off the source account, so
-    /// the acta and the published peek list keep naming the surviving human rather than the
-    /// tombstone Users leaves behind.
+    /// Roster rows and ballots are deliberately left on the source account. A roster is the
+    /// record of who was entitled to vote when the vote opened and a ballot is what that
+    /// entitlement produced: both are evidence, not account state. Two accounts on one
+    /// roster means one human was enrolled twice, and two ballots means they voted twice —
+    /// a defect in the vote that the merge must not tidy away. The merge chain
+    /// (<c>IUserServiceRead.GetMergedSourceIdsAsync</c>) still resolves the survivor to
+    /// every id folded into it, which is how GDPR erasure already reaches these rows.
     /// </para>
+    /// Returns the votes the source account was rostered on, so the caller can audit that
+    /// the merge saw those rows and left them alone.
     /// </summary>
-    Task<IReadOnlyList<AssemblyRosterDrop>> ReassignRosterToUserAsync(
+    Task<IReadOnlyList<Guid>> ReassignVoteActorsToUserAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
 }
 
@@ -271,11 +274,3 @@ internal sealed record AssemblyVoteParticipation(
     int ChangedBallots,
     int TotalRevisions,
     Instant? LastBallotAt);
-
-/// <summary>
-/// One roster row dropped by an account merge: the vote it sat on, and the ballot it
-/// carried. <c>BallotId</c> is null when the merged-from account was on the roster but never
-/// voted. <c>BallotMoved</c> distinguishes the two fates of a ballot that did exist —
-/// re-parented onto the surviving row, or destroyed because that row had voted too.
-/// </summary>
-internal sealed record AssemblyRosterDrop(Guid VoteId, Guid? BallotId, bool BallotMoved);

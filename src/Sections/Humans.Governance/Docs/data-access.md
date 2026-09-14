@@ -76,9 +76,9 @@ Cross-section calls via `IUserServiceRead`, `IUserEmailService`,
 and retains the linked ballot and history rows unlinked — the vote is a
 legal record of the association (GDPR Art. 17(3)(b) / (e)), and the
 tombstone keeps the turnout counts and the stored `ResultJson` valid.
-`ReassignAsync` re-FKs roster rows and ballots from source to target; when
-both accounts sit on the same roster the target's row wins and the
-source's ballot is dropped with an audit entry.
+`ReassignAsync` (`ReassignVoteActorsToUserAsync`) moves only the vote actor
+columns; roster rows and ballots stay on the merged-away id, audited per
+vote, because they are the record of the vote rather than account state.
 
 **The embargo is a data-access property, not a UI one.** Only
 `GetResultsAsync` (stored result, Closed only), `PeekAsync` (AdminOnly,

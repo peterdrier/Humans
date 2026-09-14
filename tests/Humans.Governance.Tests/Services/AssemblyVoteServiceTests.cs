@@ -807,27 +807,28 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ReassignAsync_AuditsTheDroppedBallotAndItsVote()
+    public async Task ReassignAsync_AuditsEveryVoteTheMergedAccountWasRosteredOn()
     {
         var vote = await _fx.AddVoteAsync();
         var source = Guid.NewGuid();
         var target = Guid.NewGuid();
         var sourceRoster = await _fx.AddRosterRowAsync(vote.Id, source, isOfficial: true);
         await _fx.AddRosterRowAsync(vote.Id, target, isOfficial: true);
-        var ballot = await _fx.AddBallotAsync(vote.Id, sourceRoster.Id, AssemblyBallotChoice.Yes);
+        await _fx.AddBallotAsync(vote.Id, sourceRoster.Id, AssemblyBallotChoice.Yes);
 
         var actor = Guid.NewGuid();
         await _fx.Service.ReassignAsync(
             source, target, actor, _fx.Clock.GetCurrentInstant(),
             Xunit.TestContext.Current.CancellationToken);
 
-        // The entity is the ballot that was destroyed and the related entity is its vote —
-        // the roster row's own id resolves to nothing once the row is gone.
+        // The merge leaves the roster row and the ballot alone, so the visible record that
+        // it found them is the audit entry — on the vote, which is the entity a Board member
+        // can actually open.
         await _fx.Audit.Received(1).LogAsync(
             AuditAction.AssemblyVoteRosterMerged,
-            "AssemblyBallot",
-            ballot.Id,
-            Arg.Any<string>(),
+            "AssemblyVote",
+            vote.Id,
+            Arg.Is<string>(d => d.Contains(source.ToString(), StringComparison.Ordinal)),
             actor,
             vote.Id,
             "AssemblyVote");
@@ -1530,78 +1531,40 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         stored.ClosesAt.Should().Be(longer);
     }
 
-    [HumansFact]
-    public async Task ReassignAsync_WhenTheMergedAccountHeldTheOfficialRow_KeepsTheEntitlement()
-    {
-        var vote = await _fx.AddVoteAsync();
-        var source = Guid.NewGuid();
-        var target = Guid.NewGuid();
-        _fx.StubActiveUsers(source, target);
-        await _fx.AddRosterRowAsync(
-            vote.Id, source, isOfficial: true, tier: MembershipTier.Asociado, isBoardMember: true);
-        var targetRow = await _fx.AddRosterRowAsync(vote.Id, target, isOfficial: false);
 
-        await _fx.Service.ReassignAsync(
-            source, target, Guid.NewGuid(), _fx.Clock.GetCurrentInstant(),
-            Xunit.TestContext.Current.CancellationToken);
-
-        var rows = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
-            .Where(r => r.VoteId == vote.Id)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
-        var survivor = rows.Should().ContainSingle("one human holds one roster row per vote").Subject;
-        survivor.Id.Should().Be(targetRow.Id, "the target's row wins, with its ballot");
-        survivor.IsOfficial.Should().BeTrue(
-            "a human reachable through two sources is official if either source made them official");
-        survivor.Tier.Should().Be(MembershipTier.Asociado);
-        survivor.IsBoardMember.Should().BeTrue();
-    }
 
     [HumansFact]
-    public async Task ReassignAsync_WhenOnlyTheMergedAccountVoted_MovesTheBallotToTheSurvivingRow()
+    public async Task ReassignAsync_WhenBothAccountsVoted_LeavesBothRowsAndBothBallotsAsCast()
     {
-        var vote = await _fx.AddVoteAsync();
-        var source = Guid.NewGuid();
-        var target = Guid.NewGuid();
-        _fx.StubActiveUsers(source, target);
-        var sourceRow = await _fx.AddRosterRowAsync(vote.Id, source, isOfficial: true);
-        var targetRow = await _fx.AddRosterRowAsync(vote.Id, target, isOfficial: true);
-        var ballot = await _fx.AddBallotAsync(vote.Id, sourceRow.Id, AssemblyBallotChoice.Yes);
-
-        await _fx.Service.ReassignAsync(
-            source, target, Guid.NewGuid(), _fx.Clock.GetCurrentInstant(),
-            Xunit.TestContext.Current.CancellationToken);
-
-        var ballots = await _fx.Db.AssemblyBallots.AsNoTracking()
-            .Where(b => b.VoteId == vote.Id)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
-        var survivingBallot = ballots.Should().ContainSingle(
-            "the human's only ballot survives the merge — dropping it would remove it from "
-            + "the binding tally").Subject;
-        survivingBallot.Id.Should().Be(ballot.Id);
-        survivingBallot.RosterId.Should().Be(targetRow.Id, "it counts under the surviving row");
-    }
-
-    [HumansFact]
-    public async Task ReassignAsync_WhenBothAccountsVoted_DropsTheMergedAccountsBallot()
-    {
-        var vote = await _fx.AddVoteAsync();
+        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
         var source = Guid.NewGuid();
         var target = Guid.NewGuid();
         _fx.StubActiveUsers(source, target);
         var sourceRow = await _fx.AddRosterRowAsync(vote.Id, source, isOfficial: true);
         var targetRow = await _fx.AddRosterRowAsync(vote.Id, target, isOfficial: true);
         await _fx.AddBallotAsync(vote.Id, sourceRow.Id, AssemblyBallotChoice.Yes);
-        var kept = await _fx.AddBallotAsync(vote.Id, targetRow.Id, AssemblyBallotChoice.No);
+        await _fx.AddBallotAsync(vote.Id, targetRow.Id, AssemblyBallotChoice.No);
 
         await _fx.Service.ReassignAsync(
             source, target, Guid.NewGuid(), _fx.Clock.GetCurrentInstant(),
             Xunit.TestContext.Current.CancellationToken);
 
+        // One human enrolled twice and voting twice is a defect in the vote itself. The
+        // merge must not re-point or collapse either row: doing so destroys the only record
+        // that the double vote happened. The merge chain resolves the survivor to the
+        // merged-away id, so nothing becomes unreachable.
+        var rows = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
+            .Where(r => r.VoteId == vote.Id)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        rows.Select(r => r.UserId).Should().BeEquivalentTo([source, target],
+            "the roster records who was entitled when the vote opened, not who holds the "
+            + "account today");
+
         var ballots = await _fx.Db.AssemblyBallots.AsNoTracking()
             .Where(b => b.VoteId == vote.Id)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
-        ballots.Should().ContainSingle("one person may hold only one ballot per vote")
-            .Which.Id.Should().Be(kept.Id, "the surviving account's own ballot is the one that stands");
+        ballots.Select(b => b.RosterId).Should().BeEquivalentTo([sourceRow.Id, targetRow.Id],
+            "both ballots stay where they were cast");
     }
 
     [HumansFact]
@@ -1662,36 +1625,6 @@ public sealed class AssemblyVoteServiceTests : IDisposable
                 "the next sweep tells them the deadline now in force");
     }
 
-    [HumansFact]
-    public async Task ReassignAsync_WhenBothAccountsVotedInAClosedVote_StillCollapsesToOneRow()
-    {
-        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
-        var source = Guid.NewGuid();
-        var target = Guid.NewGuid();
-        _fx.StubActiveUsers(source, target);
-        var sourceRow = await _fx.AddRosterRowAsync(vote.Id, source, isOfficial: true);
-        var targetRow = await _fx.AddRosterRowAsync(vote.Id, target, isOfficial: true);
-        await _fx.AddBallotAsync(vote.Id, sourceRow.Id, AssemblyBallotChoice.Yes);
-        await _fx.AddBallotAsync(vote.Id, targetRow.Id, AssemblyBallotChoice.No);
-
-        await _fx.Service.ReassignAsync(
-            source, target, Guid.NewGuid(), _fx.Clock.GetCurrentInstant(),
-            Xunit.TestContext.Current.CancellationToken);
-
-        // One row per person per vote, whatever state the vote is in: `(VoteId, UserId)` is
-        // unique, so pointing both rows at the survivor is a constraint violation that would
-        // fail the whole merge. The in-memory provider does not enforce the filtered index,
-        // so the row count is the assertion that keeps this honest.
-        var rows = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
-            .Where(r => r.VoteId == vote.Id)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
-        rows.Should().ContainSingle().Which.UserId.Should().Be(target);
-
-        var ballots = await _fx.Db.AssemblyBallots.AsNoTracking()
-            .Where(b => b.VoteId == vote.Id)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
-        ballots.Should().ContainSingle("one person holds one ballot per vote");
-    }
 
     [HumansFact]
     public async Task StopAsync_BuiltBeforeAnExtensionCommitted_KeepsTheExtendedDeadline()

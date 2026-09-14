@@ -1667,17 +1667,23 @@ internal sealed class AssemblyVoteService(
 
             foreach (var (rosterRow, info, address) in recipients)
             {
-                // And the clock per recipient too: a vote whose deadline passes mid-batch is
-                // still persisted Open until the close pass below runs, so comparing against
-                // the sweep-start instant would keep mailing "closing soon" after it closed.
-                var sentAt = clock.GetCurrentInstant();
-
                 // Eligibility is re-read per recipient, not trusted from the list: sending
                 // the whole roster takes long enough for somebody to vote, or for an Admin to
                 // stop, cancel or extend the vote, and "you have not voted and the vote closes
                 // soon" is wrong in each case — all but the first for everybody left.
                 var current = await repository.GetByIdAsync(vote.Id, ct);
                 if (current is null || current.Status != AssemblyVoteStatus.Open) break;
+
+                // And the clock per recipient too: a vote whose deadline passes mid-batch is
+                // still persisted Open until the close pass below runs, so comparing against
+                // the sweep-start instant would keep mailing "closing soon" after it closed.
+                //
+                // Read after the vote, never before: this instant becomes the row's reminder
+                // stamp, and ExtendAsync clears every stamp at or before the instant it
+                // extended. An Extend that commits before this read is therefore older than
+                // the stamp and cannot clear it, so the member who was just told the new
+                // deadline is not reminded of it a second time.
+                var sentAt = clock.GetCurrentInstant();
 
                 // The deadline comes from that same read, not from the queried row. An Extend
                 // mid-batch moves it, and half an electorate holding an email that announces a
@@ -1854,47 +1860,29 @@ internal sealed class AssemblyVoteService(
     }
 
     /// <summary>
-    /// Folds a merged account's entitlements into the surviving one. Where both accounts sat
-    /// on the same vote's roster the target's row wins — one person may hold only one ballot
-    /// per vote — and the dropped row's ballot moves to the survivor, or is destroyed when
-    /// the survivor voted too. Either way it is audited: one of them destroys a recorded
-    /// ballot and the other changes which roster row a recorded ballot counts under.
+    /// Folds a merged account into the surviving one — the section's own actor columns only.
+    /// Roster rows and ballots stay exactly as they were cast: they record what happened at
+    /// the vote, not who holds the account today, and a human enrolled or voting twice is a
+    /// defect in the vote that the merge must not erase. Each such row is audited so the
+    /// Board can see the merge found it and left it standing.
     /// </summary>
     public async Task ReassignAsync(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct)
     {
-        var dropped = await repository.ReassignRosterToUserAsync(mergedFromUserId, mergedToUserId, ct);
+        var rosteredVoteIds =
+            await repository.ReassignVoteActorsToUserAsync(mergedFromUserId, mergedToUserId, ct);
 
-        foreach (var drop in dropped)
+        foreach (var voteId in rosteredVoteIds)
         {
-            // The ballot is the entity when there was one, the vote when the merged-from
-            // account was on the roster but never voted. Logging the roster row's own id
-            // under either discriminator would leave an audit entry that resolves to
-            // nothing — and after a drop the row is gone anyway.
-            var (entityType, entityId) = drop.BallotId is { } ballotId
-                ? (AuditEntityTypes.AssemblyBallot, ballotId)
-                : (AuditEntityTypes.AssemblyVote, drop.VoteId);
-
-            var what = drop switch
-            {
-                { BallotId: null } =>
-                    "merged-from account's roster row was dropped in favour of the surviving "
-                    + "account's. No ballot was destroyed: that account never voted.",
-                { BallotMoved: true } =>
-                    "merged-from account's roster row was dropped in favour of the surviving "
-                    + "account's, and its ballot moved onto that row — the surviving account "
-                    + "had not voted, so this is the same human's only ballot on the vote.",
-                _ =>
-                    "merged-from account's roster row was dropped in favour of the surviving "
-                    + "account's, and its ballot with it: both accounts had voted, and one "
-                    + "person may hold only one ballot per vote."
-            };
-
             await audit.LogAsync(
-                AuditAction.AssemblyVoteRosterMerged, entityType, entityId,
-                "Account merge: both accounts were on the same assembly-vote roster, so the "
-                + what,
-                actorUserId, drop.VoteId, AuditEntityTypes.AssemblyVote);
+                AuditAction.AssemblyVoteRosterMerged, AuditEntityTypes.AssemblyVote, voteId,
+                $"Account merge: the merged-away account {mergedFromUserId} was on this "
+                + "vote's roster, and its roster row and any ballot were left as cast. The "
+                + "roster and the ballot record what happened at the vote, so if both "
+                + "accounts voted, that double vote stays visible rather than being tidied "
+                + "away. The merge chain resolves the surviving account to the merged-away "
+                + "id.",
+                actorUserId, voteId, AuditEntityTypes.AssemblyVote);
         }
     }
 }

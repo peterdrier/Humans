@@ -557,87 +557,25 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
         return rows.Count;
     }
 
-    public async Task<IReadOnlyList<AssemblyRosterDrop>> ReassignRosterToUserAsync(
+    public async Task<IReadOnlyList<Guid>> ReassignVoteActorsToUserAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        var sourceRows = await ctx.AssemblyVoteRosterEntries
+        // Roster rows and ballots are deliberately NOT re-pointed at the surviving account.
+        // A roster is the legal record of who was entitled to vote at the instant the vote
+        // opened, and a ballot is what that entitlement produced — both are frozen evidence,
+        // not account state. Two accounts on one roster means one human was enrolled twice,
+        // and if both cast a ballot they voted twice, which is a defect in the vote itself.
+        // Tidying it away in the merge would destroy the only record that it happened.
+        //
+        // Nothing is lost by leaving them: `IUserServiceRead.GetMergedSourceIdsAsync` walks
+        // the merge chain transitively, so the surviving account still resolves to every id
+        // folded into it — which is how GDPR erasure already reaches these rows.
+        var rostered = await ctx.AssemblyVoteRosterEntries
             .Where(r => r.UserId == sourceUserId)
+            .Select(r => r.VoteId)
             .ToListAsync(ct);
-        var voteIds = sourceRows.Select(r => r.VoteId).ToList();
-
-        var targetRowByVoteId = await ctx.AssemblyVoteRosterEntries
-            .Where(r => r.UserId == targetUserId && voteIds.Contains(r.VoteId))
-            .ToDictionaryAsync(r => r.VoteId, r => r, ct);
-
-        // Read the ballots before the cascade takes them: the audit entry has to name the
-        // ballot it destroyed, and after SaveChanges the id is gone. The target's ballots come
-        // too, because whether the target row already holds one decides between re-parenting
-        // the source's ballot and dropping it.
-        var rosterIds = sourceRows.Select(r => r.Id)
-            .Concat(targetRowByVoteId.Values.Select(r => r.Id))
-            .ToList();
-        var ballotByRosterId = await ctx.AssemblyBallots
-            .Where(b => rosterIds.Contains(b.RosterId))
-            .ToDictionaryAsync(b => b.RosterId, b => b, ct);
-
-        // One roster row per person per vote, in every state the vote can be in. That is not
-        // a policy choice here: `(VoteId, UserId)` is a unique index, so keeping both rows and
-        // pointing them at the surviving account is a constraint violation that fails the whole
-        // merge. A closed vote therefore dedupes like an open one. What that costs is narrow
-        // and worth stating: the stored result carries its own roster size and ballot count,
-        // computed at close, so the published numbers do not move — but the disclosure list
-        // and the GDPR export read live rows and will show one ballot where the stored tally
-        // counted two, for the one human who voted twice through two accounts.
-        var dropped = new List<AssemblyRosterDrop>();
-        foreach (var row in sourceRows)
-        {
-            if (targetRowByVoteId.TryGetValue(row.VoteId, out var targetRow))
-            {
-                // The target already holds this vote's roster row, so the source's row goes
-                // — one person, one roster row per vote. The entitlement is not dropped with it:
-                // one human reachable through two sources is official if either source made
-                // them official, so an official source row must not leave the survivor
-                // counted in the indicative result only.
-                // Written through EF rather than the properties: the snapshot's entitlement
-                // columns are init-only on purpose — a roster is frozen at open and never
-                // recomputed — and a merge is the one thing that legitimately corrects them.
-                var entry = ctx.Entry(targetRow);
-                if (row.IsOfficial && !targetRow.IsOfficial)
-                {
-                    entry.Property(r => r.IsOfficial).CurrentValue = true;
-                    entry.Property(r => r.Tier).CurrentValue = row.Tier;
-                }
-
-                if (row.IsBoardMember && !targetRow.IsBoardMember)
-                {
-                    entry.Property(r => r.IsBoardMember).CurrentValue = true;
-                }
-
-                // One person, one ballot — but only one of the two rows may actually carry
-                // one. When the merged-from account is the only one that voted, letting the
-                // cascade take its ballot would delete this human's sole ballot: on an open
-                // vote it vanishes from the binding tally, and after close the disclosure
-                // list and the GDPR export stop agreeing with the stored result. The ballot
-                // is tied to the roster row rather than the user (erasure anonymizes the
-                // row and leaves the ballot standing), so the surviving row inherits it.
-                // RosterId is init-only for the same reason the entitlement columns are.
-                var sourceBallot = ballotByRosterId.GetValueOrDefault(row.Id);
-                var moved = sourceBallot is not null && !ballotByRosterId.ContainsKey(targetRow.Id);
-                if (moved)
-                {
-                    ctx.Entry(sourceBallot!).Property(b => b.RosterId).CurrentValue = targetRow.Id;
-                }
-
-                dropped.Add(new AssemblyRosterDrop(row.VoteId, sourceBallot?.Id, moved));
-                ctx.AssemblyVoteRosterEntries.Remove(row);
-            }
-            else
-            {
-                row.UserId = targetUserId;
-            }
-        }
 
         // The merged account may also have drafted, opened, stopped or peeked at votes.
         // Those columns are this section's own and point at an account Users is about to
@@ -677,7 +615,7 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
         }
 
         await ctx.SaveChangesAsync(ct);
-        return dropped;
+        return rostered;
     }
 
     private async Task<T> WithContextAsync<T>(
