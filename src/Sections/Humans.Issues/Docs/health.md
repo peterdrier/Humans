@@ -150,3 +150,4 @@ about their reach from it, including admin-ness. Nothing passes a privilege the 
 | Date | Run | Reforge score | Notes |
 |---|---|---|---|
 | 2026-08-25 | [2026-08-25-Issues](../../../../docs/health/runs/2026-08-25-Issues.md) | 260 → 258 | First doctor run. Three user-visible defects fixed (case-sensitive search, unlocalized toasts, wrong attachment hint). PR: peterdrier/Humans#1499 |
+| 2026-09-14 | [2026-09-14-Issues](../../../../docs/health/runs/2026-09-14-Issues.md) | | `IssueViewer` is now the section's only spelling of who is asking; every status pill and the category filter speak all six cultures; the docs stopped describing cross-section foreign keys the section never configured. PR: pending |
