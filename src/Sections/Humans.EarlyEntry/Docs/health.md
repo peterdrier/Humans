@@ -15,6 +15,7 @@
   src/Sections/Humans.Teams/Services/TeamEarlyEntryProjection.cs
   src/Sections/Humans.Gate/Services/GateService.cs
   src/Sections/Humans.Scanner/Controllers/ScannerController.cs
+  src/Sections/Humans.Tickets.Contracts/TicketStubInfo.cs
   src/Sections/Humans.Tickets/Controllers/TicketTransferController.cs
   src/Sections/Humans.Tickets/ViewComponents/MyTicketStubsViewComponent.cs
   src/Sections/Humans.Tickets/ViewComponents/TicketHoldingsViewComponent.cs

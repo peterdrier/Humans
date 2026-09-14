@@ -9,8 +9,8 @@
 ## Assessment summary
 
 First doctor pass over EarlyEntry, a tableless read-side aggregator (reforge 54, loc=245,
-cogP95=1, cogMax=1 — the smallest surface in the never-doctored tier): three contracts in a
-`Contracts/` folder, one orchestrator, one Singleton caching decorator, one admin roster page.
+cogP95=1, cogMax=1 — the smallest surface in the never-doctored tier): the contracts in a
+`Contracts/` folder, an orchestrator, a Singleton caching decorator, an admin roster page.
 The target shape ([`health.md`](../../../src/Sections/Humans.EarlyEntry/Docs/health.md),
 written this run before any scan) finds the structure right as built. Two small deltas from the
 fresh form: the per-person collapse was written twice in the orchestrator (finding 10, struck),
@@ -45,7 +45,7 @@ Value = bug surface removed, then concepts removed, then words removed.
 | 11 | **`HasMultiple` is derivable** (`Sources.Count > 1`) and `UserEarlyEntry` is `EarlyEntryRosterRow` minus `UserId`. Dropping the field or folding the records is a public-contract change (six referencing sections). | low | **Needs Peter** |
 | 12 | **Delete paths do not evict:** `CampService.DeleteCampAsync` and `TeamService.PermanentlyDeleteTeamAsync` remove grants without calling `IEarlyEntryInvalidator`, so a deleted camp's or team's members keep a cached date until their next own change. Other sections' code → sweep queue. | med | **queued** |
 | 13 | **`EarlyEntry.md` rewritten end to end** (898 → 848 words): Cross-Section Dependencies rebuilt from the csproj; caching and fan-out explanations that lived three times (doc, `data-access.md`, xmldoc) now live once each; Status footer trimmed to the issue ref. | low | **worked** |
-| 14 | **Freshness triggers watched only the section's own tree** while the doc asserts about Camps, Shifts, Teams, Gate, Scanner and Tickets files. Widened in `EarlyEntry.md`; `health.md` also watches the three contributors' `Section.cs`, Shifts' `SectionPolicies.cs` and the integration render test. | low | **worked** |
+| 14 | **Freshness triggers watched only the section's own tree** while the doc asserts about Camps, Shifts, Teams, Gate, Scanner and Tickets files. Widened in `EarlyEntry.md`; `health.md` also watches the contributors' `Section.cs`, Shifts' `SectionPolicies.cs` and the integration render test. | low | **worked** |
 | 15 | **`docs/sections/SECTION-TEMPLATE.md`'s (A) block names `Humans.Application` / `Humans.Infrastructure`**, projects that no longer exist, so every new section doc starts stale. Shared file → sweep queue. | low | **queued** |
 | 16 | **`design-rules.md:620` wheat comment cites `docs/superpowers/plans/2026-05-25-early-entry-roster.md`**, which does not exist in the tree. Provenance marker, shared file → sweep queue. | low | **queued** |
 | 17 | **Inbox:** zero open EarlyEntry issues on peterdrier/Humans; ledger reviewed — the section `debt.yml` entry is finding 3 (retired), the central HUM0028 ruling (2026-06-13, leave `IEarlyEntryInvalidator` grandfathered) stands and is recorded in `health.md` §5. No verdicts to enact. | — | **no change** |
