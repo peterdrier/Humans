@@ -3,14 +3,12 @@ using Humans.Base.Interfaces;
 
 namespace Humans.EarlyEntry;
 
-/// <summary>EarlyEntry's contribution to the shared "Tickets" admin group (nobodies-collective/Humans#1077).</summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>
     [
         new("Tickets", [
-            // Early Entry aggregates providers from Shifts, Teams AND Camps; its
-            // consumers are gate ops (scanner door context), so it lives here.
+            // Under Tickets, not Shifts: gate ops is who looks for it. Moving it is a nav change, not a cleanup.
             new("Early entry", "EarlyEntryRoster", "Index", null, null, "fa-solid fa-door-open", PolicyNames.ShiftDashboardAccess, Weight: 80)
         ], Weight: 0)
     ];

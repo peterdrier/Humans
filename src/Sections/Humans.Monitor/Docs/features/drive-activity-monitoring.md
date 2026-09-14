@@ -166,6 +166,6 @@ Job ID: monitor-drive-activity
 
 ## Related Features
 
-- [F-07: Google Integration](google-integration.md) - Manages the resources being monitored
+- [F-07: Google Integration](../../../Humans.GoogleIntegration/Docs/features/google-integration.md) - Manages the resources being monitored
 - [F-08: Background Jobs](../../../../../docs/features/global/background-jobs.md) - Job scheduling
 - [F-12: Audit Log](../../../Humans.AuditLog/Docs/features/audit-log.md) - Audit log infrastructure

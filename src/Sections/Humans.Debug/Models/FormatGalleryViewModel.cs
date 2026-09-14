@@ -117,7 +117,7 @@ internal static class FormatGalleryModelBuilder
 
         var fields = typeof(DateFormattingExtensions)
             .GetFields(BindingFlags.Public | BindingFlags.Static)
-            .Where(f => f.IsInitOnly) // static readonly
+            .Where(f => f.IsInitOnly)
             .OrderBy(f => f.Name, StringComparer.Ordinal);
 
         foreach (var field in fields)

@@ -56,14 +56,23 @@ worktree/PR, three bookkeeping writes:
     subagent rows carry the same thread names. Don't write "see `## Cost`" or any other
     cost pointer that names a section this file does not have.
 
-  **Prose gate — `doctor.py prose-gate`, before every commit that carries prose this run
-  wrote** (run file, `health.md`, `debt.yml`, any `.md`, rewritten `.cs` comment blocks, the
-  sweep's writes). `no-derived-aggregates-in-docs` binds the author of new prose, and the run
-  is that author. The gate lists every added line that types a count. A hit that counts a list or set — one this file carries, one another doc carries, or one the
-  code owns — is deleted or replaced by the list or "all of them"; a measurement with a
-  generator (a reforge score, a date, a PR number, a line reference) and a plain "two branches
-  differ" stand. A typed count is wrong the first time the list changes, and a wrong one
-  points a refactor at the wrong method.
+  **Prose gate — inside `doctor.py commit`, on every commit the run makes.** A run never
+  calls `git commit`; the gate runs over the staged diff in the same call and appends a
+  timestamped line to `$RUNDIR/gates.log`, so a run that skipped it is visible there rather
+  than in the review rounds after. `no-derived-aggregates-in-docs` binds the author of new
+  prose, and the run is that author. The gate reads prose files (`.md`, `.yml`, `.cshtml`,
+  `.resx`) and the comment lines of `.cs`, and nothing under `tests/` — a `Received(1)` or
+  `Should().Be(2)` is the thing pinned, not a count of a list. It prints two lists:
+
+  - **Must fix (the commit is refused):** a count typed immediately above the table or list
+    it counts, a parenthesised `(13)` count, a `Total:` / `count =` figure or total row, a
+    count in a heading. Each is deleted or replaced by the list or "all of them".
+  - **Advisory (printed, never blocks):** any other numeral near a plural — "one of these
+    questions", "the two person records". Read once; a measurement with a generator (a reforge
+    score, a date, a PR number, a line reference) and a plain "two branches differ" stand.
+
+  A typed count is wrong the first time the list changes, and a wrong one points a refactor at
+  the wrong method.
 
   **The run file never describes its own diff.** No size block, no insertions/deletions, no line
   count of the branch or of the file itself: the commit that writes such a figure is a commit the

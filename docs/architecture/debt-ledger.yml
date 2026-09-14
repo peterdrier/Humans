@@ -267,6 +267,9 @@ themes:
     notes: Each inbox entry carries its own review tier; drained entries are deleted from the list.
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
+  - added: 2026-09-14
+    what: "docs/architecture/dependency-graph.md declares classDef monitor twice in the same Mermaid graph with different fills (#0369a1 white text, and #c084fc black text further down), so one silently wins and the legend disagrees with itself. Two runs each applied the same queued 'style the Monitor carve-out' sweep item without seeing the other's. Pick one fill and delete the other. Found while merging main into peterdrier/Humans#1602."
+    review: light
   - added: 2026-09-03
     what: "The Holded ledger mirror holds member-identifiable data that no GDPR export reaches. Finance binds a member to a 400000xx creditor account (HoldedCreditorContact.UserId -> SupplierAccountNum); Humans.Holded then mirrors that account's HoldedAccount.Name (Holded's contact name, i.e. the member's) and every HoldedLedgerLine on it, free-text Description included, and /Holded/Accounts/{n} renders both. Finance's ContributeForUserAsync exports only the binding itself and SEPA payouts, so an Article 15 export omits the member's mirrored reimbursement history. Deciding the fix means deciding what belongs in the slice, whether Holded gains a contributor (it holds no UserId, so Gdpr or Finance must pass the account number) and the retention basis for refusing erasure — the mirror is re-derivable from Holded, so the Codigo de Comercio Art. 30 argument Finance uses for payout files may not transfer. Spans Holded, Finance and Gdpr and adds public surface whichever way it goes, so it is Peter's call. Found by /section-doctor on Holded 2026-09-03, from a Codex review finding on peterdrier/Humans#1583; the docs there previously asserted 'no user-scoped data -> no GDPR contributor' and have been corrected to state the gap."
     review: panel
@@ -412,3 +415,21 @@ inbox:
   - added: 2026-09-10
     what: "docs/architecture/freshness-catalog.yml has no Backdoor entry; add one covering src/Sections/Humans.Backdoor/** and tests/Humans.Backdoor.Tests/** (finding 17, /section-doctor on Backdoor 2026-09-03; swept in by /section-doctor on Rideshare 2026-09-10)."
     review: light
+  - added: 2026-09-14
+    what: "Login_Hello in src/Humans.Base/Resources/SharedResource.resx and its five culture variants is named in no view, controller or tag helper — only in the six resx files. The five keys a scan flagged alongside it (CompleteSignup_AllFieldsRequired, GateLogin_Invalid, GateLogin_Throttled, Login_Login, Login_Logout) are live; do not remove those. Base's set, so Base's run (finding 33, /section-doctor on Auth 2026-09-01; swept in by /section-doctor on Issues 2026-09-14)."
+    review: light
+  - added: 2026-09-14
+    what: "src/Sections/Humans.EarlyEntry has no .Contracts leaf, so every consumer — Gate among them — takes a ProjectReference on the whole section and sees all of it rather than a contracts surface. Cross-cutting: it wants one carve-out decision, not a fix per consumer (finding 14, /section-doctor on Gate 2026-08-31; swept in by /section-doctor on Issues 2026-09-14)."
+    review: panel
+  - added: 2026-09-14
+    what: "docs/architecture/freshness-catalog.yml's service-data-access-map entry triggers on src/Sections/*/Services/** and Data/*Repository.cs but not src/Sections/*/Section.cs, so a registration-only change never marks the map dirty (finding 13, /section-doctor on TicketTailor 2026-09-05; swept in by /section-doctor on Issues 2026-09-14)."
+    review: light
+  - added: 2026-09-14
+    what: "docs/architecture/section-conformance.yml's seeding notes record \"no Docs/ in Settings or TicketTailor\" as a pre-existing detector hit; both sections carry Docs/<Section>.md now. The file is read-only to a section-doctor run, so it is recorded here rather than edited (finding 25, /section-doctor on TicketTailor 2026-09-05; swept in by /section-doctor on Issues 2026-09-14)."
+    review: light
+  - added: 2026-09-14
+    what: "docs/architecture/dependency-graph.md's \"Services with no cross-section edges\" list names TicketVendorService, a type that does not exist; the adapter's services are TicketTailorService and StubTicketVendorService (finding 26, /section-doctor on TicketTailor 2026-09-05; swept in by /section-doctor on Issues 2026-09-14)."
+    review: light
+  - added: 2026-09-14
+    what: "The *Invalidator family (IEarlyEntryInvalidator, IEventViewInvalidator, …, all [Grandfathered(\"HUM0028\")]) makes every cross-section cache flush a caller's job, so a contributor that forgets to call one leaves stale data (findings 1 and 12, /section-doctor on EarlyEntry 2026-09-05, each of which is such a gap). Peter 2026-09-14, ruling finding 1: 'coming up with a better way than invalidators is a todo for the winter' — design the replacement (owning decorator absorbs invalidation), don't keep ratcheting call sites."
+    review: panel

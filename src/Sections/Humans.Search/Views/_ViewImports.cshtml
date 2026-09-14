@@ -1,17 +1,8 @@
-@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
-   here ships broken markup with a green build and no runtime error — see design §1/§2.
-
-   Two localizers by design (design §15 step 3b, Governance's two-marker variant): the
-   section owns its 12 Search_Filter* / Search_Global* keys, and SharedResource keeps
-   Search_MinChars, which Shell's /Profile/Search page renders too — carving one key out of
-   that page's four-key message set to claim it would split the set.
-
-   Every result row is its owning section's own view component, invoked with the key this
-   orchestrator holds (nobodies-collective/Humans#1062) — <vc:user-search-result>,
-   <vc:teams-search-result>, <vc:camps-search-result>, <vc:shifts-search-result>,
-   <vc:events-search-result>. Each binds only through its @addTagHelper below: drop one and
-   that bucket ships as inert literal markup on a green 200. Guarded statically by
-   ViewComponentTagHelperBindingTests, and on a real page by GlobalSearchSectionRenderTests. *@
+@* A section RCL does not inherit the host's _ViewImports; a missing line here ships broken
+   markup on a green build. Two localizers: the section's own keys, plus SharedResource for
+   Search_MinChars, which /Profile/Search renders too. One @addTagHelper per publishing
+   section — drop one and that bucket renders as inert literal markup
+   (ViewComponentTagHelperBindingTests, GlobalSearchSectionRenderTests). *@
 @using Humans.Search
 @using Humans.Search.Models
 @using Humans.Search.Services.Dtos
@@ -19,15 +10,12 @@
 @using Humans.Base.Extensions
 @using Humans.Users.Contracts
 @using Microsoft.AspNetCore.Mvc.ViewFeatures
-@* Index.cshtml @injects IConfiguration for the Features:Events flag; Sdk.Razor's implicit
-   usings are a subset of Sdk.Web's and do not carry it. *@
 @using Microsoft.Extensions.Configuration
 @using Microsoft.Extensions.Localization
 @inject IStringLocalizer<SearchResource> Localizer
 @inject IStringLocalizer<SharedResource> SharedLocalizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @addTagHelper *, Humans.Base
-@* One line per publishing section — each owns the row its bucket renders. *@
 @addTagHelper *, Humans.Users
 @addTagHelper *, Humans.Teams
 @addTagHelper *, Humans.Camps

@@ -44,7 +44,7 @@ Tier application entity with state machine workflow. Used for Colaborador and As
 | ResolvedAt | Instant? | When resolved (approved/rejected/withdrawn) |
 | ReviewedByUserId | Guid? | Reviewer ID — **FK only**, no nav |
 | ReviewNotes | string? (4000) | Reviewer notes / rejection reason |
-| TermExpiresAt | LocalDate? | Term expiry (Dec 31 of odd year), set on approval |
+| TermExpiresAt | LocalDate? | Term expiry (Dec 31 of the current cycle's odd year), set on approval |
 | BoardMeetingDate | LocalDate? | Date of Board meeting where decision was made |
 | DecisionNote | string? (4000) | Board's collective decision note (only record after vote deletion) |
 | RenewalReminderSentAt | Instant? | When renewal reminder was last sent |
@@ -97,12 +97,13 @@ Stored as string via `HasConversion<string>()`.
 
 ### Term lifecycle
 
-Colaborador and Asociado memberships have 2-year synchronized terms expiring Dec 31 of **odd years** (2027, 2029, 2031...). `TermExpiryCalculator.ComputeTermExpiry()` computes the expiry as the next Dec 31 of an odd year that is at least 2 years from the approval date.
+Colaborador and Asociado memberships have 2-year synchronized terms expiring Dec 31 of **odd years** (2027, 2029, 2031...). `TermExpiryCalculator.ComputeTermExpiry()` computes the expiry as Dec 31 of the current cycle's odd year: approvals in 2026 or 2027 end 2027-12-31, approvals in 2028 or 2029 end 2029-12-31. Q4 of an odd year is the renewal window (reminders go out 90 days before expiry), so approvals from 1 October of an odd year belong to the next cycle: November 2027 → 2029-12-31.
 
 - On approval: `Application.TermExpiresAt` is set.
 - On expiry without renewal: the next `SystemTeamSyncJob` run removes the human from the Colaboradors / Asociados system team (computed via `HasActiveApprovedTierAsync`) **and downgrades the profile's `MembershipTier`** via `IUserService.DowngradeMembershipTierForExpiredAsync` — to another tier the human still holds an active approval for, otherwise to `Volunteer`. Each downgrade writes an `AuditAction.TierDowngraded` entry.
 - Renewal: new Application entity (same tier), goes through normal Board voting.
 - Reminder: `TermRenewalReminderJob` sends reminders 90 days before expiry.
+- Correction: `/Governance/Applications/Admin/TermExpiry` (Admin only, temporary) lists approved applications whose stored expiry differs from what the calculator gives for their `ResolvedAt`, and a POST rewrites them, one `AuditAction.TierTermExpiryCorrected` entry per row. Exists to repair rows approved under the pre-September-2026 rule (two years out, then bumped to odd); delete once QA and production are clean.
 
 ## Routing
 
@@ -129,7 +130,7 @@ These controllers serve this section.
 
 - Application status follows: Submitted then Approved, Rejected, or Withdrawn. The state machine also defines a `RequestMoreInfo` self-transition on Submitted, but no controller path currently invokes it.
 - Each Board member gets exactly one vote per application (DB-enforced via unique index on `(ApplicationId, BoardMemberUserId)`).
-- On approval, the term expiry is set to the next December 31 of an odd year that is at least 2 years from the approval date.
+- On approval, the term expiry is set to December 31 of the current cycle's odd year (the approval year if odd, otherwise the following year); from 1 October of an odd year it is the next cycle's, so a renewal approved in the reminder window is not born expired.
 - On approval, the human's membership tier is updated and they are added to the corresponding system team (Colaboradors or Asociados).
 - On finalization (approval or rejection), all individual Board vote records for that application are deleted. Only the collective decision note and Board meeting date survive.
 - Admin can assign all roles. Board and HumanAdmin can assign all roles except Admin (per `RoleAssignmentAuthorizationHandler` + `RoleNames.BoardManageableRoles`).

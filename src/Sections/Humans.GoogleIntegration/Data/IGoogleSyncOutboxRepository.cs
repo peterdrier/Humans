@@ -6,41 +6,25 @@ namespace Humans.GoogleIntegration.Data;
 
 /// <summary>
 /// Repository for the Google Integration section's
-/// <c>google_sync_outbox_events</c> table.
+/// <c>google_sync_outbox</c> table.
 /// </summary>
 /// <remarks>
-/// Part 1 of issue #554 introduced this repository surface so Notifications
-/// (<c>NotificationMeterProvider</c>) and Admin metrics
-/// (<c>HumansMetricsService</c>) could reach failed, pending, and transient
-/// retry counts without reading the table directly.
-///
-/// Part 2c of issue #576 extended the surface with the admin read for the
-/// SyncOutbox view and the full processor cycle. Enqueue writes live here;
-/// callers that need atomicity with another section's mutation wrap the two
-/// repository calls in an ambient transaction from the application service.
+/// Enqueue writes live here; callers that need atomicity with another section's mutation
+/// wrap the two repository calls in an ambient transaction from the application service.
 ///
 /// Registered as Singleton via <c>IDbContextFactory&lt;GoogleIntegrationDbContext&gt;</c>.
 /// </remarks>
 internal interface IGoogleSyncOutboxRepository : IRepository
 {
-    // ==========================================================================
-    // Write - enqueue
-    // ==========================================================================
-
     Task AddAsync(GoogleSyncOutboxEvent outboxEvent, CancellationToken ct = default);
 
     Task AddRangeAsync(
         IReadOnlyCollection<GoogleSyncOutboxEvent> outboxEvents,
         CancellationToken ct = default);
 
-    // ==========================================================================
-    // Read - counts
-    // ==========================================================================
-
     /// <summary>
-    /// Counts unprocessed outbox events that carry a non-null <c>LastError</c>.
-    /// Matches the pre-migration inline query
-    /// <c>e.ProcessedAt == null &amp;&amp; e.LastError != null</c>. Read-only.
+    /// Counts failed outbox events: permanently failed, or unprocessed with a non-null
+    /// <c>LastError</c>. Read-only.
     /// </summary>
     Task<int> CountFailedAsync(CancellationToken ct = default);
 
@@ -51,10 +35,6 @@ internal interface IGoogleSyncOutboxRepository : IRepository
     /// </summary>
     Task<int> CountPendingAsync(CancellationToken ct = default);
 
-    // ==========================================================================
-    // Read - admin dashboard
-    // ==========================================================================
-
     /// <summary>
     /// Returns up to <paramref name="take"/> outbox rows ordered by
     /// <c>OccurredAt</c> descending, for the admin <c>SyncOutbox</c> view.
@@ -62,10 +42,6 @@ internal interface IGoogleSyncOutboxRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<GoogleSyncOutboxEvent>> GetRecentAsync(
         int take, CancellationToken ct = default);
-
-    // ==========================================================================
-    // Processor - used by ProcessGoogleSyncOutboxJob
-    // ==========================================================================
 
     /// <summary>
     /// Loads up to <paramref name="batchSize"/> pending events
@@ -93,10 +69,6 @@ internal interface IGoogleSyncOutboxRepository : IRepository
     /// </summary>
     Task MarkPermanentlyFailedAsync(
         Guid id, Instant processedAt, string lastError, CancellationToken ct = default);
-
-    // ==========================================================================
-    // Admin recovery
-    // ==========================================================================
 
     /// <summary>
     /// Requeues a single failed outbox event for retry: clears

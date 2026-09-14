@@ -3,12 +3,14 @@
 ## Teams
 
 Project: `src/Sections/Humans.Teams`, with a `src/Sections/Humans.Teams.Contracts`
-leaf for the cross-section surface. Structure: `Domain/` (7 entities,
+leaf for the cross-section surface. Structure: `Domain/` (the entities,
 internal sealed), `Data/` (`ITeamRepository`/`TeamRepository`, `TeamsDbContext`
 + factory, EF configurations, migrations), `Services/`, `Controllers/`,
-`Models/`, `Views/`, `Resources/`, `Authorization/`, `Contracts/` (public
+`Models/`, `Views/`, `ViewComponents/`, `Authorization/`, `Contracts/` (public
 `HumansTeamControllerBase`, derives from `HumansControllerBase` in
-`Humans.UI`, which no leaf may reference). **DbContext:**
+`Humans.Base`, which the leaf must not carry because Shifts' admin controller
+needs it and a leaf may not reference Base's UI layer), and the `TeamsResource`
+resx set at the project root. **DbContext:**
 `TeamsDbContext` (`TeamRepository` injects
 `IDbContextFactory<TeamsDbContext>`). Owns `Teams`,
 `TeamMembers`, `TeamJoinRequests`, `TeamJoinRequestStateHistories`,
@@ -19,22 +21,25 @@ surface) inside a `TransactionScope`, not through `TeamRepository`. The
 table is therefore owned wholly by Google Integration.
 
 The `Humans.Teams.Contracts` leaf carries three interface levels:
-`ITeamServiceRead` (5 members, `[SurfaceBudget(5)]`)
-and `ITeamService` (~20 members, flat projections — extends
-`ITeamServiceRead` + `IApplicationService`) on the leaf; the internal
+`ITeamServiceRead` (the cross-section read surface, `TeamInfo` /
+`TeamSearchHit` / `UserTeamMembershipInfo` projections only)
+and `ITeamService` (flat projections — extends
+`ITeamServiceRead` + `IApplicationService`; only members some other section
+calls) on the leaf; the internal
 `ITeamManagementService : ITeamService` in `Services/` carries the rest
-(create/update/role-assignment/EE-grant mutation surface). The leaf also
+(create/update/role-assignment/EE-grant mutation surface, the coordinator-role
+reconciliation the hourly job runs). The leaf also
 carries `ITeamSeeding` (implemented explicitly by `TeamService` /
 `CachingTeamService`) for the dev fixture seeders in `Humans.Development`
-and `Humans.Budget`.
+and `Humans.Budget`, `ISystemTeamSync` (the reconciler's contract, registered
+in `Section.cs`) and `IActiveTeamsCacheInvalidator` (registered in `Section.cs`;
+Users evicts through it).
 
 The section exposes no entity-returning reads — external consumers call
 `GetTeamAsync` / `GetTeamBySlugAsync` (`TeamInfo`), `GetUserTeamMembershipsAsync`
 (`UserTeamMembershipInfo`), and `GetTeamsWithParentsAsync` (`TeamInfo`); no
-entity type crosses the section boundary. `IActiveTeamsCacheInvalidator` and
-`ISystemTeamSync` live in Shell's `InfrastructureServiceCollectionExtensions`
-(neither is Teams-owned); the `TeamAuthorizationHandler` registration lives
-in the section while its policies stay in Shell.
+entity type crosses the section boundary. The `TeamAuthorizationHandler`
+registration lives in the section; its policies stay in Shell.
 
 Teams is an `IEarlyEntryProvider` (role-gated team early entry,
 cantina-style). `ITeamRepository` has an EE-grant surface
@@ -55,9 +60,8 @@ is no DB-backed search path.
 The inner `ITeamService`
 registration is wrapped by
 `Humans.Teams.Services.CachingTeamService` (Singleton
-decorator inheriting `TrackedCache<Guid, TeamInfo>`, still in the section's
-own `Services/` folder post-move); it exposes the
-budgeted cross-section read surface as `ITeamServiceRead`.
+decorator inheriting `TrackedCache<Guid, TeamInfo>`); it exposes the
+cross-section read surface as `ITeamServiceRead`.
 
 ### TeamService (Scoped — wrapped by CachingTeamService Singleton decorator)
 
@@ -81,7 +85,7 @@ Repository: `ITeamRepository`.
 | `EarlyEntry.UserEarlyEntry` TrackedCache (`IEarlyEntryInvalidator`) | yes (per-user on grant writes / merge; `InvalidateAll` on team EE-flag flip) |
 
 Cross-section calls via `IAuditLogService`, `INotificationEmitter`,
-`IShiftManagementService`, `IAdminAuthorizationService`,
+`IShiftManagementServiceRead`, `IAdminAuthorizationService`,
 `IEarlyEntryInvalidator`, `IGoogleSyncOutboxService` (lazy-resolved via
 `IServiceProvider`, for transactional outbox appends), plus
 `IServiceProvider` for cycle-breaking. Implements `ITeamManagementService`
@@ -94,7 +98,7 @@ Cross-section calls via `IAuditLogService`, `INotificationEmitter`,
 `TeamService` does not reach into the table via `TeamRepository`; it calls
 `IGoogleSyncOutboxService.AddAsync` / `AddRangeAsync` inside a
 `TransactionScope` so the team mutation and the outbox append commit
-atomically — a §15-compliant cross-section call (service interface).
+atomically — a cross-section call through the service interface.
 
 ### CachingTeamService (Singleton, `Humans.Teams.Services`)
 
@@ -109,9 +113,10 @@ snapshot, never the DB. Surfaced on `/Debug/CacheStats`.
 
 ### TeamPageService / TeamPageSummaryMapper / TeamDirectoryBuilder
 
-Read-only assemblers — no repository, no cache. Fan out over
-`ITeamService`, `IUserService`, `ITeamResourceService`,
-`IShiftManagementService`.
+Read-only assemblers — no repository, no cache. `TeamPageService` fans out
+over `ITeamManagementService`, `ITeamResourceService`,
+`IShiftManagementServiceRead`, `IBurnSettingsService` and `IUserServiceRead`;
+the mapper and the directory builder are pure.
 
 ---
 

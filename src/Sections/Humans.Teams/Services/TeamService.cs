@@ -445,8 +445,15 @@ internal sealed class TeamService(
             team.HasBudget = hasBudget.Value;
         if (isHidden.HasValue)
             team.IsHidden = isHidden.Value;
-        if (isSensitive.HasValue)
+        if (isSensitive.HasValue && isSensitive.Value != team.IsSensitive)
+        {
+            // Docs/health.md §4: only a global Admin writes IsSensitive. The gate sits here rather
+            // than in the controller so every caller of this service is held to it. Gating on the
+            // change, not on the argument, keeps a caller that passes the flag's current value
+            // (the dev fixture seeders on ITeamSeeding do) out of it — a no-op is not a write.
+            await adminAuthorization.RequireCurrentUserIsAdminAsync(cancellationToken);
             team.IsSensitive = isSensitive.Value;
+        }
         if (isPromotedToDirectory.HasValue)
             team.IsPromotedToDirectory = isPromotedToDirectory.Value;
         if (earlyEntryEnabled is { } eeFlag && eeFlag != team.EarlyEntryEnabled)
@@ -1759,27 +1766,6 @@ internal sealed class TeamService(
         CancellationToken cancellationToken = default) =>
         repo.GetUserCoordinatorTeamIdsAsync(userId, cancellationToken);
 
-    public async Task<IReadOnlyList<TeamMembership>> GetActiveTeamMembershipsForUserAsync(
-        Guid userId, CancellationToken cancellationToken = default)
-    {
-        var teamsById = await LoadTeamsByIdAsync(cancellationToken);
-        var rows = new List<TeamMembership>();
-        foreach (var team in teamsById.Values.Where(t => t.IsActive))
-        {
-            if (team.SystemTeamType == SystemTeamType.Volunteers)
-                continue;
-            var membership = team.Members.FirstOrDefault(m => m.UserId == userId);
-            if (membership is null)
-                continue;
-            rows.Add(new TeamMembership(team.Name, membership.Role)
-            {
-                IsHidden = team.IsHidden,
-            });
-        }
-        // Display sort happens at rendering layer (memory/architecture/display-sort-in-controllers.md).
-        return rows;
-    }
-
     public async Task EnqueueGoogleResyncForUserTeamsAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
@@ -1934,9 +1920,6 @@ internal sealed class TeamService(
 
         return await repo.PermanentlyDeleteTeamAsync(teamId, cancellationToken);
     }
-
-    public Task<int> GetTotalPendingJoinRequestCountAsync(CancellationToken cancellationToken = default) =>
-        repo.GetTotalPendingCountAsync(cancellationToken);
 
     public Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
         IEnumerable<Guid> teamIds,
@@ -2155,7 +2138,7 @@ internal sealed class TeamService(
             $"EE revoked for {grant.UserId} (team {grant.TeamId})", actorUserId);
     }
 
-    public async Task DeleteEarlyEntryGrantsForUserAsync(Guid userId, CancellationToken ct = default)
+    private async Task DeleteEarlyEntryGrantsForUserAsync(Guid userId, CancellationToken ct)
     {
         var grants = await repo.GetEarlyEntryGrantsForUserAsync(userId, ct);
         if (grants.Count == 0) return;

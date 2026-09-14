@@ -1072,7 +1072,7 @@ public sealed class IssuesServiceTests
             Clock, env, SectionCatalog, NullLogger<IssuesApplicationService>.Instance);
 
         await svc.GetActionableCountForViewerAsync(
-            Guid.NewGuid(), [], viewerIsAdmin: true, ct: Xunit.TestContext.Current.CancellationToken);
+            new IssueViewer(Guid.NewGuid(), [RoleNames.Admin]), Xunit.TestContext.Current.CancellationToken);
 
         await repo.Received(1).CountActionableAsync(
             Arg.Is<IReadOnlySet<string>?>(s => s == null),
@@ -1100,7 +1100,7 @@ public sealed class IssuesServiceTests
 
         var viewerId = Guid.NewGuid();
         await svc.GetActionableCountForViewerAsync(
-            viewerId, [RoleNames.TeamsAdmin], viewerIsAdmin: false, ct: Xunit.TestContext.Current.CancellationToken);
+            new IssueViewer(viewerId, [RoleNames.TeamsAdmin]), Xunit.TestContext.Current.CancellationToken);
 
         await repo.Received(1).CountActionableAsync(
             Arg.Is<IReadOnlySet<string>?>(s => s != null && s.Contains(IssueSectionRouting.Teams)),
@@ -1152,10 +1152,8 @@ public sealed class IssuesServiceTests
         await SeedIssueRowAsync(strangerId, IssueStatus.Resolved, "Terminal, my section", IssueSectionRouting.Tickets);
 
         var count = await _service.GetActionableCountForViewerAsync(
-            viewerId,
-            viewerRoles: [RoleNames.TicketAdmin],
-            viewerIsAdmin: false,
-            ct: Xunit.TestContext.Current.CancellationToken);
+            new IssueViewer(viewerId, [RoleNames.TicketAdmin]),
+            Xunit.TestContext.Current.CancellationToken);
 
         count.Should().Be(2);
     }
@@ -1228,20 +1226,17 @@ public sealed class IssuesServiceTests
     }
 
     // ==========================================================================
-    // Helpers
-    // ==========================================================================
-
-    // ==========================================================================
     // Who may reach one issue
     //
-    // The queue has always been scoped; the per-item methods took no viewer, so a caller
-    // holding an id reached any issue. These pin the rule the service now applies to every
-    // per-item read and mutation, whichever door the call arrives through: a handler (Admin,
-    // or a role owning the issue's section) may do anything, the reporter may read and comment
-    // on their own issue, and everyone else is told it does not exist.
+    // The rule the service applies to every per-item read and mutation, whichever door the
+    // call arrives through: a handler (Admin, or a role owning the issue's section) may do
+    // anything, the reporter may read and comment on their own issue, and everyone else is
+    // told it does not exist.
     // ==========================================================================
 
-    private static readonly CancellationToken Ct = Xunit.TestContext.Current.CancellationToken;
+    // A property, not a field: TestContext.Current is ambient per test, and HumansFact gives
+    // each one its own timeout CTS, so a captured token would outlive the test that made it.
+    private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
 
     /// <summary>Holds a role that owns the Tickets section, so Tickets issues are theirs.</summary>
     private static IssueViewer Handler() => new(Guid.NewGuid(), [RoleNames.TicketAdmin]);
@@ -1354,6 +1349,10 @@ public sealed class IssuesServiceTests
         after!.CommentCount.Should().Be(1);
         after.Status.Should().Be(IssueStatus.Open);
     }
+
+    // ==========================================================================
+    // Helpers
+    // ==========================================================================
 
     private async Task<(Guid reporterId, Guid issueId)> SeedIssueAsync(
         IssueStatus status,

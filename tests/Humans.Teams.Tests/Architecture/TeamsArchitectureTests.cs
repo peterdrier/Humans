@@ -9,7 +9,7 @@ using NSubstitute;
 namespace Humans.Teams.Tests.Architecture;
 
 /// <summary>
-/// What is left of the Teams §15 checks (issue #540). The read split is the subject:
+/// The read split is the subject:
 /// <see cref="ITeamService"/> inherits <see cref="ITeamServiceRead"/>, the caching decorator
 /// implements both, and the two resolve to the same singleton — so a reader and a writer can
 /// never end up looking at different caches. Plus the repository implements its own interface.

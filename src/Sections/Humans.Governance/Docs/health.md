@@ -16,7 +16,7 @@ Unrelated jobs live here.
 motivation (and, for Asociado, what they have contributed and what they think the role is).
 The Board reads the request, each Board member records a position on it, and an Admin closes
 it at a Board meeting — approved or not. Approval grants the tier for a term that runs to
-31 December of the first odd year at least two years out, puts the person in the matching system team, tells them by email and
+31 December of the current cycle's odd year, puts the person in the matching system team, tells them by email and
 in-app, and leaves an audit entry. Ninety days before a term runs out the person is reminded to
 re-apply. Individual Board positions are destroyed the moment the decision is made; only the
 Board's collective note and the meeting date survive.
@@ -79,7 +79,7 @@ Nothing that is only called from inside the section belongs on an interface.
 - Finalization is atomic: the application update and the destruction of every `BoardVote` row
   for it commit together.
 - After finalization no individual vote survives — only `DecisionNote` and `BoardMeetingDate`.
-- Approval sets a term expiring 31 December of the first odd year at least two years out.
+- Approval sets a term expiring 31 December of the current cycle's odd year (the approval year if odd, else the next); from 1 October of an odd year, the next cycle's.
 - `application_state_history` is append-only in normal operation: the repository offers no
   update or delete for it. GDPR erasure is the one exception — `ScrubFreeTextForUserAsync`
   nulls `Notes` on the rows of the person's own applications and on the rows they authored

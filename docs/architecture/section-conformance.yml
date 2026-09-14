@@ -23,25 +23,37 @@ version: 1
 rules:
   - id: section-file-layout
     title: >-
-      A section project's files sit where the G5 layout says: layer folders only at the
-      top level, Docs/ present, migrations under Data/Migrations/, and the resource class
-      + its .resx at the project root.
+      A section project's files sit where the G5 layout says: top-level folder names
+      spelled the same way across sections, Docs/ present, migrations under
+      Data/Migrations/, and the resource class + its .resx at the project root.
     home: docs/sections/G5-SECTION-TEMPLATE.md step 2
     added: 2026-08-18 (Peter)
     scope: all
     detect:
-      # 1. No top-level entry outside the allowed set. "Ship only the folders the section
-      #    has" — this is a deny-list check, so a section legitimately without Views/ or
-      #    Data/ is not a hit.
+      # 1. Top-level folder NAMES agree across sections. Not an allow-list: a section is
+      #    free to carry the folders it needs — Helpers/ in one, no Views/ in another — and
+      #    a name only this section uses is fine. The hit is two sections spelling the same
+      #    idea differently (Data/ vs data/, Service/ vs Services/), which is what makes the
+      #    tree unreadable. Case and plural drift is what this catches; an abbreviation
+      #    against a full word (Db/ vs Database/) still needs a reader.
       - kind: shell
-        what: top-level entries outside the allowed set
+        what: top-level folder names spelled two ways across sections
         run: |
-          ALLOWED='Contracts|Interfaces|Domain|Data|Services|Controllers|Models|Views|ViewComponents|Authorization|Filters|Jobs|Health|Docs|Properties|wwwroot'
+          for d in src/Sections/Humans.*/; do
+            case "$d" in *.Contracts/) continue;; esac
+            git ls-files -- "$d" | sed "s|^$d||" | awk -F/ 'NF>1 { print $1 }'
+          done | sort -u \
+            | awk '{ key=tolower($0); sub(/s$/,"",key);
+                     if (key in seen) print seen[key]" vs "$0; else seen[key]=$0 }'
+      # 1b. Loose files at the project root: the section registration classes, the csproj
+      #     and the resource class + its .resx, and nothing else.
+      - kind: shell
+        what: root-level files outside the allowed set
+        run: |
           for d in src/Sections/Humans.*/; do
             case "$d" in *.Contracts/) continue;; esac
             git ls-files -- "$d" | sed "s|^$d||" \
-              | awk -F/ '{ if (NF>1) print $1"/"; else print $1 }' | sort -u \
-              | grep -vE "^($ALLOWED)/$" \
+              | awk -F/ 'NF==1 { print }' | sort -u \
               | grep -vE '^(Section[A-Za-z]*\.cs|.*\.csproj|[A-Za-z]+Resource\.cs|[A-Za-z]+Resource(\.[a-z]{2})?\.resx)$' \
               | sed "s|^|$d|"
           done
@@ -64,7 +76,13 @@ rules:
       Known hits at seeding (2026-08-18), recorded so a run reports them as pre-existing
       rather than new: Helpers/ in Events, Shifts and Users; Extensions/ in Users;
       HoldedSectionOptions.cs loose at Humans.Holded's root; no Docs/ in Settings or
-      TicketTailor. Jobs/ and ViewComponents/ are in the allowed set above but missing from
+      TicketTailor. 2026-09-14 (Peter, answering /section-doctor on Events): the folder
+      check was an allow-list and reported Helpers/ and Extensions/ as violations. We want
+      sections consistent with each other, not restricted in which folders they carry —
+      one section having Helpers/ and another not is fine; one spelling it Db/ while the
+      rest say Database/ is not. Rewritten as a cross-section spelling check, so the
+      Helpers/ and Extensions/ rows above are retired rather than carried. This is a case where we do not have to be 100%
+      perfect. Jobs/ and ViewComponents/ are used by sections but missing from
       the template's own list — the template is the home of this rule and needs that fix.
       2026-08-23 (Peter, via /section-doctor on Onboarding): the root-file allow-regex was
       Section\.cs, which flagged the sibling registration files 29 sections carry —

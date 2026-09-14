@@ -6,13 +6,14 @@ namespace Humans.Base.Interfaces;
 /// registered as a singleton against every seam interface it implements.
 /// </summary>
 /// <remarks>
-/// Implementations are <c>internal sealed</c> stateless classes with a parameterless
-/// constructor at the section project's root, one file per seam, named after the interface
-/// they implement — <c>SectionJobs : ISectionJobs</c>, <c>SectionNav : ISectionNav</c>.
-/// Internal on purpose: Shell finds them by reflection and no other section ever names one,
-/// so they are not part of the section's public surface. The bare name would
-/// collide with the section's same-named namespace (<c>class Jobs</c> in <c>Humans.Consent</c>
-/// against <c>Humans.Consent.Jobs</c>). Activated with <see cref="Activator"/>; per-request
+/// Preferred shape: the section's <c>Section : ISection</c> entry point implements the seams
+/// it needs (memory/architecture/section-contribution-seams.md). A larger contribution may
+/// instead be a separate <c>internal sealed</c> stateless class with a parameterless
+/// constructor at the section project's root, named after the interface it implements —
+/// <c>SectionJobs : ISectionJobs</c>, <c>SectionNav : ISectionNav</c>. Internal on purpose:
+/// Shell finds them by reflection and no other section ever names one, so they are not part
+/// of the section's public surface. The bare name would collide with the section's same-named
+/// namespace (<c>class Jobs</c> in <c>Humans.Consent</c> against <c>Humans.Consent.Jobs</c>). Activated with <see cref="Activator"/>; per-request
 /// services are resolved from the <see cref="IServiceProvider"/> the descriptors' delegates
 /// receive.
 ///
