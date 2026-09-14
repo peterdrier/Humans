@@ -5,3 +5,6 @@ inbox:
   - added: 2026-08-27
     what: "ICalFeedService.cs:11-12 justifies its sequential provider fan-out as \"contributors share the scoped section DbContexts which are not thread-safe (same as GdprExportService)\". That reason is obsolete (design-rules.md §8a); Gdpr's own copy was corrected on peterdrier/Humans#1540. Sequential stays — the reason changes (finding 22, /section-doctor on Gdpr 2026-08-27)."
     review: panel
+  - added: 2026-09-14
+    what: "Recurring all-day events drift across a DST transition and render a spurious extra day from then on: CalendarOccurrenceExpander builds each occurrence from an elapsed duration where it needs local dates. Diagnosed, not fixed — the Calendar run hit its review-round ceiling (finding 34, /section-doctor on Calendar 2026-09-01; swept in by /section-doctor on Issues 2026-09-14)."
+    review: panel

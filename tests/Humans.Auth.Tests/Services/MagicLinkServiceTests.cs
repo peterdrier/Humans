@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 // The subject is internal to Humans.Auth; this project reaches it through that assembly's
 // InternalsVisibleTo. Assertions are unchanged from before the move.
 using MagicLinkService = Humans.Auth.Services.MagicLinkService;
@@ -49,7 +50,7 @@ public sealed class MagicLinkServiceTests : IDisposable
             $"https://test.example.com/Account/MagicLinkSignup?email={call[0]}&token=abc");
 
         _rateLimiter = Substitute.For<IMagicLinkRateLimiter>();
-        _rateLimiter.TryConsumeLoginTokenAsync(Arg.Any<string>(), Arg.Any<TimeSpan>()).Returns(true);
+        _rateLimiter.TryConsumeTokenAsync(Arg.Any<string>(), Arg.Any<TimeSpan>()).Returns(true);
         _rateLimiter.TryReserveSignupSendAsync(Arg.Any<string>(), Arg.Any<TimeSpan>()).Returns(true);
 
         _service = new MagicLinkService(
@@ -191,6 +192,78 @@ public sealed class MagicLinkServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task SendMagicLinkAsync_SignupSendThrows_ReleasesTheReservation()
+    {
+        // The reservation is taken before the send. If a send failure left it
+        // standing, the address would be locked out of retrying for the whole
+        // cooldown over an error that was never the caller's fault.
+        _emailService
+            .SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("SMTP down"));
+
+        var send = async () => await _service.SendMagicLinkAsync(
+            "newperson@example.com", null, Xunit.TestContext.Current.CancellationToken);
+
+        await send.Should().ThrowAsync<InvalidOperationException>();
+        _rateLimiter.Received(1).ReleaseSignupReservation("newperson@example.com");
+    }
+
+    [HumansFact]
+    public async Task SendLoginLink_SendThrows_DoesNotStampMagicLinkSentAt()
+    {
+        // MagicLinkSentAt is the login cooldown. Stamping it before the send would
+        // cool the user down for 60s on an email that never left the building.
+        var userId = Guid.NewGuid();
+        var user = new User
+        {
+            Id = userId,
+            UserName = "alice@gmail.com",
+            Email = "alice@gmail.com",
+            DisplayName = "Alice",
+            CreatedAt = Clock.GetCurrentInstant()
+        };
+
+        _userEmailService
+            .FindVerifiedEmailWithUserAsync("alice@gmail.com", Arg.Any<CancellationToken>())
+            .Returns(new UserEmailWithUser(userId, "alice@gmail.com", null, null));
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+        _emailService
+            .SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("SMTP down"));
+
+        var send = async () => await _service.SendMagicLinkAsync(
+            "alice@gmail.com", null, Xunit.TestContext.Current.CancellationToken);
+
+        await send.Should().ThrowAsync<InvalidOperationException>();
+        user.MagicLinkSentAt.Should().BeNull();
+        await _userManager.DidNotReceive().UpdateAsync(user);
+    }
+
+    [HumansFact]
+    public async Task SendLoginLink_Sends_ThenStampsMagicLinkSentAt()
+    {
+        var userId = Guid.NewGuid();
+        var user = new User
+        {
+            Id = userId,
+            UserName = "alice@gmail.com",
+            Email = "alice@gmail.com",
+            DisplayName = "Alice",
+            CreatedAt = Clock.GetCurrentInstant()
+        };
+
+        _userEmailService
+            .FindVerifiedEmailWithUserAsync("alice@gmail.com", Arg.Any<CancellationToken>())
+            .Returns(new UserEmailWithUser(userId, "alice@gmail.com", null, null));
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+
+        await _service.SendMagicLinkAsync("alice@gmail.com", null, Xunit.TestContext.Current.CancellationToken);
+
+        user.MagicLinkSentAt.Should().Be(Clock.GetCurrentInstant());
+        await _userManager.Received(1).UpdateAsync(user);
+    }
+
+    [HumansFact]
     public async Task SendMagicLinkAsync_UnverifiedEmail_DoesNotMatch()
     {
         // The repository-level FindVerifiedEmailWithUserAsync already returns null
@@ -241,7 +314,7 @@ public sealed class MagicLinkServiceTests : IDisposable
         var user = new User { Id = userId, UserName = "test@test.com" };
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
         _urlBuilder.UnprotectLoginToken("good-token").Returns(userId.ToString());
-        _rateLimiter.TryConsumeLoginTokenAsync("good-token", Arg.Any<TimeSpan>()).Returns(false);
+        _rateLimiter.TryConsumeTokenAsync("good-token", Arg.Any<TimeSpan>()).Returns(false);
 
         var result = await _service.VerifyLoginTokenAsync(userId, "good-token", Xunit.TestContext.Current.CancellationToken);
 
@@ -260,6 +333,68 @@ public sealed class MagicLinkServiceTests : IDisposable
 
         result.Should().NotBeNull();
         result.Id.Should().Be(userId);
+    }
+
+    [HumansFact]
+    public async Task VerifyAndConsumeSignupTokenAsync_ValidUnusedToken_ReturnsEmail()
+    {
+        _urlBuilder.UnprotectSignupToken("good-token").Returns("new@test.com");
+
+        var result = await _service.VerifyAndConsumeSignupTokenAsync(
+            "good-token", ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().Be("new@test.com");
+        await _rateLimiter.Received(1).TryConsumeTokenAsync("good-token", Arg.Any<TimeSpan>());
+    }
+
+    [HumansFact]
+    public async Task VerifyAndConsumeSignupTokenAsync_TokenAlreadyConsumed_ReturnsNull()
+    {
+        // F41: the replay a signup link used to allow. The payload still decodes —
+        // only the reservation stops the second redemption.
+        _urlBuilder.UnprotectSignupToken("good-token").Returns("new@test.com");
+        _rateLimiter.TryConsumeTokenAsync("good-token", Arg.Any<TimeSpan>()).Returns(false);
+
+        var result = await _service.VerifyAndConsumeSignupTokenAsync(
+            "good-token", ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task VerifyAndConsumeSignupTokenAsync_InvalidToken_NeverReachesTheReservation()
+    {
+        _urlBuilder.UnprotectSignupToken("bad-token").Returns((string?)null);
+
+        var result = await _service.VerifyAndConsumeSignupTokenAsync(
+            "bad-token", ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeNull();
+        await _rateLimiter.DidNotReceive().TryConsumeTokenAsync(Arg.Any<string>(), Arg.Any<TimeSpan>());
+    }
+
+    [HumansFact]
+    public void VerifySignupToken_DoesNotConsume_SoScannersCannotBurnTheLink()
+    {
+        // The GET that renders the signup form decodes only; redemption is the POST's job.
+        _urlBuilder.UnprotectSignupToken("good-token").Returns("new@test.com");
+
+        var result = _service.VerifySignupToken("good-token");
+
+        result.Should().Be("new@test.com");
+        _rateLimiter.ReceivedCalls()
+            .Select(c => c.GetMethodInfo().Name)
+            .Should().NotContain(nameof(IMagicLinkRateLimiter.TryConsumeTokenAsync));
+    }
+
+    [HumansFact]
+    public void ReleaseSignupToken_HandsTheLinkBackAfterFailedProvisioning()
+    {
+        // Provisioning rolls itself back on failure, so the redemption accomplished
+        // nothing and the person must be able to resubmit the same link.
+        _service.ReleaseSignupToken("good-token");
+
+        _rateLimiter.Received(1).ReleaseTokenReservation("good-token");
     }
 
     [HumansFact]

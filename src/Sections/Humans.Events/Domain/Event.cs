@@ -12,29 +12,10 @@ namespace Humans.Events.Domain;
 /// </summary>
 internal sealed class Event
 {
-    /// <summary>
-    /// Unique identifier.
-    /// </summary>
     public Guid Id { get; init; }
-
-    /// <summary>
-    /// FK to the camp/barrio (null for individual events at shared venues).
-    /// </summary>
     public Guid? CampId { get; set; }
-
-    /// <summary>
-    /// FK to the shared venue (null for camp events).
-    /// </summary>
     public Guid? GuideSharedVenueId { get; set; }
-
-    /// <summary>
-    /// FK to the user who submitted this event.
-    /// </summary>
     public Guid SubmitterUserId { get; set; }
-
-    /// <summary>
-    /// FK to the event category.
-    /// </summary>
     public Guid CategoryId { get; set; }
 
     /// <summary>
@@ -58,20 +39,8 @@ internal sealed class Event
     /// For individual events: shown in the guide instead of the submitter's name when set.
     /// </summary>
     public string? Host { get; set; }
-
-    /// <summary>
-    /// Event start date/time.
-    /// </summary>
     public Instant StartAt { get; set; }
-
-    /// <summary>
-    /// Duration in minutes.
-    /// </summary>
     public int DurationMinutes { get; set; }
-
-    /// <summary>
-    /// Whether this event repeats on multiple days.
-    /// </summary>
     public bool IsRecurring { get; set; }
 
     /// <summary>
@@ -84,47 +53,19 @@ internal sealed class Event
     /// Submitter-assigned priority for print guide selection (1 = highest; null = unranked).
     /// </summary>
     public int? PriorityRank { get; set; }
-
-    /// <summary>
-    /// Current moderation status.
-    /// </summary>
     public EventStatus Status { get; set; }
 
     /// <summary>
     /// Internal moderator notes (not visible to submitter).
     /// </summary>
     public string? AdminNotes { get; set; }
-
-    /// <summary>
-    /// When this event was submitted.
-    /// </summary>
     public Instant SubmittedAt { get; set; }
-
-    /// <summary>
-    /// When this event was last updated.
-    /// </summary>
     public Instant LastUpdatedAt { get; set; }
 
     // Navigation properties
-
-    /// <summary>
-    /// Navigation property to the shared venue (null for camp events).
-    /// </summary>
     public EventVenue? EventVenue { get; set; }
-
-    /// <summary>
-    /// Navigation property to the category.
-    /// </summary>
     public EventCategory Category { get; set; } = null!;
-
-    /// <summary>
-    /// Navigation property to moderation actions on this event.
-    /// </summary>
     public ICollection<EventModerationAction> EventModerationActions { get; } = new List<EventModerationAction>();
-
-    /// <summary>
-    /// Navigation property to user favourites of this event.
-    /// </summary>
     public ICollection<EventFavourite> EventFavourites { get; } = new List<EventFavourite>();
 
     // Schedule encoding

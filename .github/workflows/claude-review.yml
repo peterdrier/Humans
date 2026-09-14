@@ -44,6 +44,21 @@ name: claude-review
 #               Dependabot secret store, so CLAUDE_CODE_OAUTH_TOKEN is empty
 #               and the action fails fast — a spurious red check on every bump.
 #
+# Reviewer tools: Read/Grep/Glob inside the checkout plus the read-only
+# `gh` and `git show` sub-commands in `claude_args` below. The file tools
+# are deliberately NOT in the allow-list: Claude Code permits them within
+# the working directory without a rule, and a bare `Read` rule would lift
+# that fence and let the reviewer read /proc/self/environ (the OAuth token)
+# or the runner's temp files. The prompt still tells the reviewer to use
+# them — `gh pr diff` truncates on a large PR, so without Read a big PR
+# gets a green check and no review. Nothing here can write: the workspace
+# is read-only to the reviewer and no build or test step runs.
+#
+# Tool failures: the `tool-failures` step after the action prints every
+# permission denial and errored tool result from the SDK execution file,
+# so a review that did nothing is diagnosable from the run log without
+# `show_full_output`.
+#
 # Concurrency: per-PR group with cancel-in-progress. A new push or `/review`
 # during an in-flight review cancels the stale run instead of stacking.
 #
@@ -180,7 +195,8 @@ jobs:
             echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - if: steps.guard.outputs.skip != 'true'
+      - id: claude
+        if: steps.guard.outputs.skip != 'true'
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -209,9 +225,40 @@ jobs:
             rejected whole. Do not use `&&` or `;`, and do not redirect
             output (`>`) — /tmp and the workspace are both blocked, so
             saving the diff to a file cannot work and only costs a turn.
-            Read `gh pr diff` output straight from the tool result. A pipe
-            is fine when every stage is a plain read-only tool
-            (`git show … | sed -n '10,40p'`).
+            Read `gh pr diff` output straight from the tool result.
+
+            ## Reading the code
+
+            Read, Grep and Glob are available and you are expected to use
+            them. A finding is worth far more when you have read the
+            surrounding file than when you have only seen its diff hunk, and
+            the rule documents listed below can only be reached this way.
+
+            What the working tree holds depends on the trigger, and this run's
+            trigger is `${{ github.event_name }}`:
+
+            - `pull_request` — the tree is the PR's merge ref: the code as it
+              will look once merged. Read/Grep/Glob show you the change
+              itself. Use them to read a changed file in full, find the other
+              callers of a symbol, or check whether a pattern already exists
+              elsewhere.
+            - `pull_request_target` (fork PR) or `issue_comment` (a `/review`
+              comment) — the tree is the base or default branch, NOT the PR's
+              code. Use Read/Grep/Glob for the rule documents and for existing
+              code you are comparing against, but never to read a file the PR
+              changed: you would be reading main's version and reviewing the
+              wrong text. The change itself comes from `gh pr diff` and the
+              GitHub API only.
+
+            `gh pr diff` output is truncated on a large PR, and a truncated
+            diff is not a reviewed PR. On a `pull_request` run, if the diff
+            looks cut off, get the file list with
+            `gh pr diff <n> --name-only` and Read the changed files directly —
+            on any PR over a few hundred lines that is the reliable path, not
+            a fallback. On the other two triggers you cannot do that, so
+            review what you can see and say plainly in the summary that
+            coverage was partial. Never post a review that silently rests on
+            a diff you know was truncated.
 
             Anchor your review on the project's own rule documents (read them
             from the checkout):
@@ -400,4 +447,27 @@ jobs:
             real findings.
           claude_args: |
             --max-turns 100
-            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr checks:*),Bash(gh api:*)"
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr checks:*),Bash(gh api:*),Bash(git show:*)"
+
+      # Surface what went wrong without a full debug log. The action writes
+      # every SDK message to claude-execution-output.json; the result message
+      # carries permission_denials (tool name + input) and each tool_result
+      # carries is_error. Inputs are truncated so PR content does not flood
+      # the log. Informational only — it never fails the job.
+      - name: tool-failures
+        if: always() && steps.claude.outputs.execution_file != ''
+        env:
+          FILE: ${{ steps.claude.outputs.execution_file }}
+        run: |
+          set -uo pipefail
+          [ -f "$FILE" ] || { echo "No execution file at $FILE"; exit 0; }
+          echo "== permission denials =="
+          jq -r '.[] | select(.type=="result") | .permission_denials[]?
+                 | "DENIED \(.tool_name): \(.tool_input | tostring | .[0:200])"' "$FILE"
+          echo "== tool errors =="
+          jq -r '([.[] | select(.type=="assistant") | .message.content[]?
+                   | select(.type=="tool_use") | {key: .id, value: .name}]
+                  | from_entries) as $names
+                 | .[] | select(.type=="user") | .message.content[]?
+                 | select(.type=="tool_result" and .is_error==true)
+                 | "ERROR \($names[.tool_use_id] // "?"): \(.content | tostring | .[0:300])"' "$FILE"

@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using Humans.Calendar.Services.Dtos;
+using NodaTime;
 
 namespace Humans.Calendar.Models;
 
@@ -42,4 +44,26 @@ internal sealed class CalendarEventFormViewModel
     public string RecurrenceTimezone { get; set; } = "Europe/Madrid";
 
     public IReadOnlyList<TeamOption> TeamOptions { get; set; } = [];
+
+    /// <summary>
+    /// Resolves the posted timezone, or null when it names no IANA zone. The field is a
+    /// free-text input, so a cleared box arrives here as null — model binding turns an
+    /// empty posted string into null — and <c>GetZoneOrNull(null)</c> throws rather than
+    /// returning null. Null means the form is invalid, never that the request faulted.
+    /// </summary>
+    public static DateTimeZone? TryResolveZone(string? tz) =>
+        string.IsNullOrWhiteSpace(tz) ? null : DateTimeZoneProviders.Tzdb.GetZoneOrNull(tz);
+
+    /// <summary>
+    /// The form field a mutation's validation error belongs to, given the member name the
+    /// service reported. Empty means the form level, where the validation summary carries it:
+    /// the service names a member only for the recurrence pair it validates by hand, and every
+    /// other rejection reaches the caller with no member name.
+    /// </summary>
+    public static string ErrorFieldFor(string? serviceMemberName) => serviceMemberName switch
+    {
+        nameof(CreateCalendarEventDto.RecurrenceTimezone) => nameof(RecurrenceTimezone),
+        nameof(CreateCalendarEventDto.RecurrenceRule) => nameof(RecurrenceRule),
+        _ => string.Empty,
+    };
 }

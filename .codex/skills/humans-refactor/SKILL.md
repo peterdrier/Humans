@@ -75,7 +75,7 @@ Two failed patches in a row are a signal that the search strategy is too shallow
 
 ## Hard Limits
 
-- Avoid database/storage changes unless the user explicitly asks for them: no migrations, no schema configuration changes, no entity persistence-shape changes, no JSON serialization attribute changes.
+- Section-owned persistence and generated migrations are allowed when the refactor needs them. Follow [section-migrations-in-maintenance](../../../memory/process/section-migrations-in-maintenance.md); substantial architecture transitions get explicitly scoped tasks and dedicated PRs. Preserve JSON serialization contracts unless the task authorizes changing them.
 - Do not revert user changes or unrelated work.
 - Do not move debt across sections to win points. Regressions outside the target section count against the change.
 - Public members may be removed when they are internal application surface and the call graph is updated. Preserve reflection/external contracts, Razor action routes, serialized DTO contracts, and public APIs that are intentionally consumed outside the repo.

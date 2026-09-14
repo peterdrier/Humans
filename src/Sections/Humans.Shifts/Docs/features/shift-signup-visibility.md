@@ -59,7 +59,7 @@ Coordinators and admins managing shifts cannot currently see who has signed up f
 
 ## Data Model
 
-**No schema changes.** `ShiftSignup` carries `UserId` and `Status` as bare columns — the `User` navigation was stripped in #541 and the FK went with the cross-section FK cut in #992. Display data (`DisplayName`, profile picture) resolves through `IUserServiceRead.GetUserInfosAsync` from the cached user snapshot.
+**No schema changes.** `ShiftSignup` carries `UserId` as a bare Guid column with no navigation property and no FK. Display data (`DisplayName`, profile picture) resolves through `IUserServiceRead.GetUserInfosAsync` from the cached user snapshot.
 
 ### Service Layer
 

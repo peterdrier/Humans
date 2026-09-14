@@ -187,7 +187,14 @@ internal sealed class CampController(
             return NotFound();
 
         var currentUser = await GetCurrentUserInfoAsync(ct);
-        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp.Id, currentUser, ct);
+        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp, currentUser);
+
+        // nobodies-collective/Humans#993: a season outside Active/Full is non-public everywhere
+        // else (directory, search), so the destination page refuses it too — 404, not 403, so
+        // the slug leaks nothing. Leads and CampAdmin keep access to their own non-public camp.
+        if (season.Status is not (CampSeasonStatus.Active or CampSeasonStatus.Full) && !isLead && !isCampAdmin)
+            return NotFound();
+
         var membership = ResolveCurrentUserMembershipState(camp, currentUser);
         await PopulateCityPlanningViewBagAsync(currentUser, ct);
 
@@ -213,7 +220,16 @@ internal sealed class CampController(
 
         var settings = await _campService.GetSettingsAsync(ct);
         var currentUser = await GetCurrentUserInfoAsync(ct);
-        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp.Id, currentUser, ct);
+        // Authorize against the slug-loaded camp, not the year projection above: the
+        // projection carries only the requested year's season, and an opted-in renewal
+        // season starts with no lead assignments — the camp's leads are only visible
+        // on its earlier seasons.
+        var fullCamp = await GetCampBySlugAsync(slug, ct) ?? camp;
+        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(fullCamp, currentUser);
+
+        // Same nobodies-collective/Humans#993 gate as Details, for arbitrary-year seasons.
+        if (season.Status is not (CampSeasonStatus.Active or CampSeasonStatus.Full) && !isLead && !isCampAdmin)
+            return NotFound();
         var membership = ResolveCurrentUserMembershipState(camp, currentUser);
         await PopulateCityPlanningViewBagAsync(currentUser, ct);
 
@@ -378,7 +394,7 @@ internal sealed class CampController(
                 model.Name,
                 model.ContactEmail,
                 model.ContactPhone,
-                null, // WebOrSocialUrl legacy � new registrations/edits use Links
+                null, // WebOrSocialUrl legacy — new registrations/edits use Links
                 campLinks,
                 model.IsSwissCamp,
                 model.TimesAtNowhere,
@@ -399,7 +415,6 @@ internal sealed class CampController(
         }
         catch (DbUpdateException ex)
         {
-            // Belt-and-suspenders: friendly error if downstream sync races (primary fix lives in owning service).
             logger.LogError(ex, "Camp registration failed with DB error for user {UserId} in year {Year}", user.Id, year);
             ModelState.AddModelError(string.Empty, "We couldn't register your camp right now. Please try again, or contact an admin if the problem persists.");
             await PopulateRegisterSeasonYearAsync();
@@ -638,7 +653,7 @@ internal sealed class CampController(
 
         try
         {
-            await _campService.WithdrawSeasonAsync(seasonId);
+            await _campService.WithdrawSeasonAsync(camp.Id, seasonId);
             SetSuccess("Season withdrawn.");
         }
         catch (InvalidOperationException ex)
@@ -675,35 +690,8 @@ internal sealed class CampController(
         return RedirectToAction(nameof(Details), new { slug });
     }
 
-    [Authorize]
-    [HttpPost("{slug}/Rejoin/{seasonId:guid}")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Rejoin(string slug, Guid seasonId)
-    {
-        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
-        if (errorResult is not null)
-        {
-            return errorResult;
-        }
-
-        try
-        {
-            await _campService.ReactivateSeasonAsync(seasonId);
-            SetSuccess("Season reactivated. Welcome back!");
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning(ex, "Camp season reactivation failed for camp {CampId}, slug {Slug}, and season {SeasonId}", camp.Id, slug, seasonId);
-            SetError(ex.Message);
-        }
-
-        return RedirectToAction(nameof(Details), new { slug });
-    }
-
-    // The legacy AddLead / RemoveLead actions were retired in
-    // issue nobodies-collective/Humans#753 (Camp Lead retired into the
-    // CampRoleAssignment system role). Lead assignment is now performed via
-    // the Camp Lead row in the unified Roles panel on the Members page.
+    // Season reactivation (Withdrawn → Pending, Full → Active) is CampAdmin-only:
+    // CampAdminController.Reactivate. Leads withdraw; only CampAdmin brings a season back.
 
     [Authorize]
     [HttpPost("{slug}/HistoricalNames/Add")]
@@ -745,7 +733,7 @@ internal sealed class CampController(
 
         try
         {
-            await _campService.RemoveHistoricalNameAsync(nameId);
+            await _campService.RemoveHistoricalNameAsync(camp.Id, nameId);
             SetSuccess("Historical name removed.");
         }
         catch (InvalidOperationException ex)
@@ -806,7 +794,7 @@ internal sealed class CampController(
 
         try
         {
-            await _campService.DeleteImageAsync(imageId);
+            await _campService.DeleteImageAsync(camp.Id, imageId);
             SetSuccess("Image deleted.");
         }
         catch (InvalidOperationException ex)
@@ -930,7 +918,7 @@ internal sealed class CampController(
 
         try
         {
-            // C2: cross-camp check — service rejects cross-camp member ids.
+            // Cross-camp guard: ApproveCampMemberAsync rejects member ids outside camp.Id.
             await _campService.ApproveCampMemberAsync(camp.Id, campMemberId, user.Id);
             SetSuccess("Membership approved.");
         }
@@ -1120,7 +1108,7 @@ internal sealed class CampController(
         var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null) return errorResult;
 
-        // C2: verify the assignment belongs to a season of THIS camp before delegating to the service.
+        // Verify the assignment belongs to a season of THIS camp before delegating to the service.
         var assignment = await campRoleService.GetAssignmentByIdAsync(assignmentId, ct);
         var seasonIds = camp.Seasons.Select(s => s.Id).ToHashSet();
         if (assignment is null || !seasonIds.Contains(assignment.CampSeasonId))

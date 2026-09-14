@@ -1,7 +1,7 @@
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
-using System.ComponentModel.DataAnnotations;
 using AwesomeAssertions;
+using Humans.Calendar.Domain;
 using Humans.Calendar.Services.Dtos;
 using Humans.Calendar.Services;
 using Humans.Integration.Tests.Infrastructure;
@@ -16,10 +16,11 @@ namespace Humans.Integration.Tests.Services;
 public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     [HumansFact]
-    public async Task CreateEventAsync_persists_and_GetEventById_returns_it()
+    public async Task CreateEventWithResultAsync_persists_and_GetEventById_returns_it()
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, "Test Team A");
@@ -28,7 +29,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         var start = Instant.FromUtc(2026, 5, 1, 17, 0);
         var end = Instant.FromUtc(2026, 5, 1, 18, 0);
 
-        var created = await svc.CreateEventAsync(
+        var created = await CreateAsync(svc,
             new CreateCalendarEventDto(
                 Title: "Community call",
                 Description: "Monthly sync",
@@ -40,11 +41,11 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
                 IsAllDay: false,
                 RecurrenceRule: null,
                 RecurrenceTimezone: null),
-            createdByUserId: userId, ct: TestContext.Current.CancellationToken);
+            userId);
 
         created.Id.Should().NotBe(Guid.Empty);
 
-        var fetched = await svc.GetEventByIdAsync(created.Id, TestContext.Current.CancellationToken);
+        var fetched = await read.GetEventByIdAsync(created.Id, TestContext.Current.CancellationToken);
         fetched.Should().NotBeNull();
         fetched.Title.Should().Be("Community call");
         fetched.OwningTeamId.Should().Be(team.Id);
@@ -57,24 +58,25 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
         var userId = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
 
-        await svc.CreateEventAsync(new CreateCalendarEventDto(
+        await CreateAsync(svc, new CreateCalendarEventDto(
             "Inside", null, null, null, team.Id,
             Instant.FromUtc(2026, 6, 15, 17, 0),
             Instant.FromUtc(2026, 6, 15, 18, 0),
-            false, null, null), userId, TestContext.Current.CancellationToken);
+            false, null, null), userId);
 
-        await svc.CreateEventAsync(new CreateCalendarEventDto(
+        await CreateAsync(svc, new CreateCalendarEventDto(
             "Outside", null, null, null, team.Id,
             Instant.FromUtc(2027, 1, 1, 0, 0),
             Instant.FromUtc(2027, 1, 1, 1, 0),
-            false, null, null), userId, TestContext.Current.CancellationToken);
+            false, null, null), userId);
 
-        var occ = await svc.GetOccurrencesInWindowAsync(
+        var occ = await read.GetOccurrencesInWindowAsync(
             from: Instant.FromUtc(2026, 6, 1, 0, 0),
             to: Instant.FromUtc(2026, 7, 1, 0, 0),
             teamId: team.Id, ct: TestContext.Current.CancellationToken);
@@ -89,23 +91,24 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var a = await SeedTeamAsync(db, $"A-{Guid.NewGuid():N}");
         var b = await SeedTeamAsync(db, $"B-{Guid.NewGuid():N}");
         var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
 
-        await svc.CreateEventAsync(new CreateCalendarEventDto(
+        await CreateAsync(svc, new CreateCalendarEventDto(
             "A-evt", null, null, null, a.Id,
             Instant.FromUtc(2026, 6, 15, 17, 0),
-            Instant.FromUtc(2026, 6, 15, 18, 0), false, null, null), uid, TestContext.Current.CancellationToken);
+            Instant.FromUtc(2026, 6, 15, 18, 0), false, null, null), uid);
 
-        await svc.CreateEventAsync(new CreateCalendarEventDto(
+        await CreateAsync(svc, new CreateCalendarEventDto(
             "B-evt", null, null, null, b.Id,
             Instant.FromUtc(2026, 6, 15, 19, 0),
-            Instant.FromUtc(2026, 6, 15, 20, 0), false, null, null), uid, TestContext.Current.CancellationToken);
+            Instant.FromUtc(2026, 6, 15, 20, 0), false, null, null), uid);
 
-        var occ = await svc.GetOccurrencesInWindowAsync(
+        var occ = await read.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 6, 1, 0, 0),
             Instant.FromUtc(2026, 7, 1, 0, 0),
             teamId: a.Id, ct: TestContext.Current.CancellationToken);
@@ -119,19 +122,20 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
         var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
 
-        var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
+        var ev = await CreateAsync(svc, new CreateCalendarEventDto(
             "DoomedEvent", null, null, null, team.Id,
             Instant.FromUtc(2026, 6, 15, 17, 0),
-            Instant.FromUtc(2026, 6, 15, 18, 0), false, null, null), uid, TestContext.Current.CancellationToken);
+            Instant.FromUtc(2026, 6, 15, 18, 0), false, null, null), uid);
 
         await svc.DeleteEventAsync(ev.Id, uid, TestContext.Current.CancellationToken);
 
-        var occ = await svc.GetOccurrencesInWindowAsync(
+        var occ = await read.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 6, 1, 0, 0),
             Instant.FromUtc(2026, 7, 1, 0, 0),
             teamId: team.Id, ct: TestContext.Current.CancellationToken);
@@ -144,6 +148,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
@@ -155,15 +160,15 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         var firstLocal = new LocalDateTime(2026, 3, 24, 19, 0);
         var firstUtc = firstLocal.InZoneLeniently(zone).ToInstant();
 
-        await svc.CreateEventAsync(new CreateCalendarEventDto(
+        await CreateAsync(svc, new CreateCalendarEventDto(
             "Tuesday call", null, null, null, team.Id,
             StartUtc: firstUtc,
             EndUtc: firstUtc.Plus(Duration.FromHours(1)),
             IsAllDay: false,
             RecurrenceRule: "FREQ=WEEKLY;BYDAY=TU;COUNT=4",
-            RecurrenceTimezone: "Europe/Madrid"), uid, TestContext.Current.CancellationToken);
+            RecurrenceTimezone: "Europe/Madrid"), uid);
 
-        var occ = await svc.GetOccurrencesInWindowAsync(
+        var occ = await read.GetOccurrencesInWindowAsync(
             from: Instant.FromUtc(2026, 3, 1, 0, 0),
             to: Instant.FromUtc(2026, 5, 1, 0, 0),
             teamId: team.Id, ct: TestContext.Current.CancellationToken);
@@ -182,20 +187,21 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
         var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
 
-        await svc.CreateEventAsync(new CreateCalendarEventDto(
+        await CreateAsync(svc, new CreateCalendarEventDto(
             "Old", null, null, null, team.Id,
             StartUtc: Instant.FromUtc(2024, 1, 7, 18, 0),
             EndUtc: Instant.FromUtc(2024, 1, 7, 19, 0),
             IsAllDay: false,
             RecurrenceRule: "FREQ=WEEKLY;UNTIL=20240201T000000Z",
-            RecurrenceTimezone: "Europe/Madrid"), uid, TestContext.Current.CancellationToken);
+            RecurrenceTimezone: "Europe/Madrid"), uid);
 
-        var occ = await svc.GetOccurrencesInWindowAsync(
+        var occ = await read.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 1, 1, 0, 0),
             Instant.FromUtc(2026, 2, 1, 0, 0),
             teamId: team.Id, ct: TestContext.Current.CancellationToken);
@@ -208,6 +214,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
@@ -216,16 +223,16 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
 
         var first = new LocalDateTime(2026, 5, 5, 19, 0).InZoneLeniently(zone).ToInstant();
 
-        var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
+        var ev = await CreateAsync(svc, new CreateCalendarEventDto(
             "Weekly", null, null, null, team.Id,
             first, first.Plus(Duration.FromHours(1)),
-            false, "FREQ=WEEKLY;BYDAY=TU;COUNT=4", "Europe/Madrid"), uid, TestContext.Current.CancellationToken);
+            false, "FREQ=WEEKLY;BYDAY=TU;COUNT=4", "Europe/Madrid"), uid);
 
         // Cancel the 3rd occurrence (2026-05-19 19:00 Madrid).
         var cancel = new LocalDateTime(2026, 5, 19, 19, 0).InZoneLeniently(zone).ToInstant();
         await svc.CancelOccurrenceAsync(ev.Id, cancel, uid, TestContext.Current.CancellationToken);
 
-        var occ = await svc.GetOccurrencesInWindowAsync(
+        var occ = await read.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 5, 1, 0, 0),
             Instant.FromUtc(2026, 6, 1, 0, 0),
             teamId: team.Id, ct: TestContext.Current.CancellationToken);
@@ -239,6 +246,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
@@ -247,10 +255,10 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
 
         var first = new LocalDateTime(2026, 5, 5, 19, 0).InZoneLeniently(zone).ToInstant();
 
-        var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
+        var ev = await CreateAsync(svc, new CreateCalendarEventDto(
             "Weekly", null, null, null, team.Id,
             first, first.Plus(Duration.FromHours(1)),
-            false, "FREQ=WEEKLY;BYDAY=TU;COUNT=4", "Europe/Madrid"), uid, TestContext.Current.CancellationToken);
+            false, "FREQ=WEEKLY;BYDAY=TU;COUNT=4", "Europe/Madrid"), uid);
 
         // Move the 2nd occurrence from 19:00 to 20:00.
         var original = new LocalDateTime(2026, 5, 12, 19, 0).InZoneLeniently(zone).ToInstant();
@@ -264,7 +272,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
             OverrideLocation: null,
             OverrideLocationUrl: null), uid, TestContext.Current.CancellationToken);
 
-        var occ = await svc.GetOccurrencesInWindowAsync(
+        var occ = await read.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 5, 1, 0, 0),
             Instant.FromUtc(2026, 6, 1, 0, 0),
             teamId: team.Id, ct: TestContext.Current.CancellationToken);
@@ -280,22 +288,24 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
         var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
 
-        var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
+        var ev = await CreateAsync(svc, new CreateCalendarEventDto(
             "Original", null, null, null, team.Id,
             Instant.FromUtc(2026, 7, 1, 17, 0),
-            Instant.FromUtc(2026, 7, 1, 18, 0), false, null, null), uid, TestContext.Current.CancellationToken);
+            Instant.FromUtc(2026, 7, 1, 18, 0), false, null, null), uid);
 
-        await svc.UpdateEventAsync(ev.Id, new UpdateCalendarEventDto(
+        var updated = await svc.UpdateEventWithResultAsync(ev.Id, new UpdateCalendarEventDto(
             "Updated", "new desc", "Hall", null, team.Id,
             Instant.FromUtc(2026, 7, 2, 17, 0),
             Instant.FromUtc(2026, 7, 2, 18, 0), false, null, null), uid, TestContext.Current.CancellationToken);
+        updated.Succeeded.Should().BeTrue(updated.ErrorMessage);
 
-        var fetched = await svc.GetEventByIdAsync(ev.Id, TestContext.Current.CancellationToken);
+        var fetched = await read.GetEventByIdAsync(ev.Id, TestContext.Current.CancellationToken);
         fetched.Should().NotBeNull();
         fetched.Title.Should().Be("Updated");
         fetched.Description.Should().Be("new desc");
@@ -312,7 +322,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
         var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
 
-        var act = async () => await svc.CreateEventAsync(new CreateCalendarEventDto(
+        var result = await svc.CreateEventWithResultAsync(new CreateCalendarEventDto(
             "Bad", null, null, null, team.Id,
             Instant.FromUtc(2026, 5, 1, 17, 0),
             Instant.FromUtc(2026, 5, 1, 18, 0),
@@ -320,8 +330,8 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
             RecurrenceRule: "FREQ=NOT_A_REAL_FREQ",
             RecurrenceTimezone: "Europe/Madrid"), uid, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<ValidationException>()
-            .WithMessage("*Recurrence rule is malformed*");
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Recurrence rule is malformed");
     }
 
     [HumansFact]
@@ -334,12 +344,12 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
         var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
 
-        var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
+        var ev = await CreateAsync(svc, new CreateCalendarEventDto(
             "Original", null, null, null, team.Id,
             Instant.FromUtc(2026, 5, 1, 17, 0),
-            Instant.FromUtc(2026, 5, 1, 18, 0), false, null, null), uid, TestContext.Current.CancellationToken);
+            Instant.FromUtc(2026, 5, 1, 18, 0), false, null, null), uid);
 
-        var act = async () => await svc.UpdateEventAsync(ev.Id, new UpdateCalendarEventDto(
+        var result = await svc.UpdateEventWithResultAsync(ev.Id, new UpdateCalendarEventDto(
             "Updated", null, null, null, team.Id,
             Instant.FromUtc(2026, 5, 2, 17, 0),
             Instant.FromUtc(2026, 5, 2, 18, 0),
@@ -347,8 +357,8 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
             RecurrenceRule: "FREQ=NOT_A_REAL_FREQ",
             RecurrenceTimezone: "Europe/Madrid"), uid, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<ValidationException>()
-            .WithMessage("*Recurrence rule is malformed*");
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Recurrence rule is malformed");
     }
 
     [HumansFact]
@@ -356,19 +366,30 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var read = scope.ServiceProvider.GetRequiredService<ICalendarServiceRead>();
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
         var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
 
-        var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
+        var ev = await CreateAsync(svc, new CreateCalendarEventDto(
             "ToDelete", null, null, null, team.Id,
             Instant.FromUtc(2026, 8, 1, 10, 0),
-            Instant.FromUtc(2026, 8, 1, 11, 0), false, null, null), uid, TestContext.Current.CancellationToken);
+            Instant.FromUtc(2026, 8, 1, 11, 0), false, null, null), uid);
 
         await svc.DeleteEventAsync(ev.Id, uid, TestContext.Current.CancellationToken);
 
-        (await svc.GetEventByIdAsync(ev.Id, TestContext.Current.CancellationToken)).Should().BeNull();
+        (await read.GetEventByIdAsync(ev.Id, TestContext.Current.CancellationToken)).Should().BeNull();
+    }
+
+    // Create is published only in its result-returning form. These tests want the event,
+    // so unwrap it once here rather than asserting Succeeded at every seeding call site.
+    private static async Task<CalendarEvent> CreateAsync(
+        ICalendarService svc, CreateCalendarEventDto dto, Guid userId)
+    {
+        var result = await svc.CreateEventWithResultAsync(dto, userId, TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeTrue(result.ErrorMessage);
+        return result.Event!;
     }
 
     private static async Task<Team> SeedTeamAsync(TeamsDbContext db, string name)

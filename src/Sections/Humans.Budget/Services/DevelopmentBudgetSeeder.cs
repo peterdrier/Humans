@@ -178,7 +178,9 @@ internal sealed class DevelopmentBudgetSeeder(
             budgetYearId = budgetYearSummary.Id;
             if (budgetYearSummary.IsDeleted)
             {
-                await budgetService.RestoreYearAsync(budgetYearId, actorUserId);
+                // An archived demo year is a deliberate operator state — leave it
+                // archived rather than resurrecting it.
+                return $"Budget demo year '{budgetYearSummary.Name}' is archived; skipped budget seeding.";
             }
         }
 
@@ -198,7 +200,6 @@ internal sealed class DevelopmentBudgetSeeder(
             activatedBudgetYear = true;
         }
 
-        // Load full year tree — groups, categories, line items — for in-memory lookups
         var currentYear = await budgetService.GetYearByIdAsync(budgetYearId)
             ?? throw new InvalidOperationException($"Budget year {budgetYearId} not found after creation");
 
@@ -331,15 +332,18 @@ internal sealed class DevelopmentBudgetSeeder(
 
             await teamSeeding.UpdateTeamAsync(
                 team.Id, team.Name, team.Description, team.RequiresApproval, isActive: true,
-                hasBudget: true, isHidden: false, isSensitive: false, cancellationToken: cancellationToken);
+                hasBudget: true, isHidden: false, isSensitive: team.IsSensitive, cancellationToken: cancellationToken);
 
             onCreated();
             return;
         }
 
+        // isSensitive carries the team's current value, never a literal: TeamService.UpdateTeamAsync
+        // requires a global Admin to *change* the flag, and /dev/seed/budget is FinanceAdminOrAdmin.
+        // Passing false would abort a FinanceAdmin's reseed of a team someone had marked sensitive.
         await teamSeeding.UpdateTeamAsync(
             existing.Id, seed.Name, seed.Description, existing.RequiresApproval, isActive: true,
-            hasBudget: true, isHidden: false, isSensitive: false, cancellationToken: cancellationToken);
+            hasBudget: true, isHidden: false, isSensitive: existing.IsSensitive, cancellationToken: cancellationToken);
 
         onUpdated();
     }

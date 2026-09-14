@@ -40,16 +40,11 @@ internal sealed record PostEventDepartmentRow(
     PostEventPeriodRow Event,
     PostEventPeriodRow Strike)
 {
-    /// <summary>
-    /// No-show rate as a percentage 0..100, or 0 when no signups to measure.
-    /// </summary>
+    // NoShowPct/CompletionPct: see PostEventStats above — same 0-when-empty rule.
     public int NoShowPct => (TotalConfirmed + TotalNoShow) > 0
         ? (int)Math.Round(100.0 * TotalNoShow / (TotalConfirmed + TotalNoShow), MidpointRounding.AwayFromZero)
         : 0;
 
-    /// <summary>
-    /// Completion rate as a percentage 0..100, or 0 when no signups to measure.
-    /// </summary>
     public int CompletionPct => (TotalConfirmed + TotalNoShow) > 0
         ? Math.Clamp(100 - NoShowPct, 0, 100)
         : 0;
@@ -60,16 +55,11 @@ internal sealed record PostEventDepartmentRow(
 /// </summary>
 internal sealed record PostEventPeriodRow(int TotalConfirmed, int TotalNoShow)
 {
-    /// <summary>
-    /// No-show rate as a percentage 0..100, or 0 when no signups to measure.
-    /// </summary>
+    // NoShowPct/CompletionPct: see PostEventStats above — same 0-when-empty rule.
     public int NoShowPct => (TotalConfirmed + TotalNoShow) > 0
         ? (int)Math.Round(100.0 * TotalNoShow / (TotalConfirmed + TotalNoShow), MidpointRounding.AwayFromZero)
         : 0;
 
-    /// <summary>
-    /// Completion rate as a percentage 0..100, or 0 when no signups to measure.
-    /// </summary>
     public int CompletionPct => (TotalConfirmed + TotalNoShow) > 0
         ? Math.Clamp(100 - NoShowPct, 0, 100)
         : 0;

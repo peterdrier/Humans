@@ -10,7 +10,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Search.Controllers;
 
-/// <summary>Global search: matches each entity's own public fields (for humans: name + bio/city/interests/pronouns/contact) across humans/teams/camps/rotas/events, with no cross-modal traversal. Text queries match the public surface only; a GUID query resolves straight to the entity, and the destination page — not search — enforces visibility (one known gap, nobodies-collective/Humans#993; docs/features/global/global-search.md).</summary>
+/// <summary>The global <c>/Search</c> page: one action, which sorts the buckets and assembles the view-model.</summary>
 [Authorize]
 [Route("Search")]
 internal sealed class SearchController(
@@ -18,7 +18,6 @@ internal sealed class SearchController(
     IUserServiceRead userService,
     ILogger<SearchController> logger) : HumansControllerBase(userService)
 {
-    /// <summary>Global search page. Short query → placeholder; otherwise fans out and renders type-grouped results.</summary>
     [HttpGet("")]
     public async Task<IActionResult> Index(
         string? q,
@@ -59,8 +58,7 @@ internal sealed class SearchController(
         {
             Query = results.Query,
             Filter = filter,
-            // Display sort lives in controller (display-sort-in-controllers): humans by relevance
-            // (exact/prefix/contains, then name), others by Score desc + SortKey asc.
+            // Display sort lives here (display-sort-in-controllers), never in the service.
             HumanResults = results.Humans
                 .OrderByRelevance()
                 .ToList(),

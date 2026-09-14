@@ -9,11 +9,8 @@ using Humans.Users.Contracts;
 namespace Humans.GoogleIntegration.Services;
 
 /// <summary>
-/// The Google sync outbox drain. Lifted verbatim out of
-/// <c>Humans.Infrastructure/Jobs/ProcessGoogleSyncOutboxJob</c> at the section's G5 move:
-/// the job injected this section's two repositories directly, both of which are now internal,
-/// so the queue semantics moved in beside them and the job kept the Hangfire shim and its
-/// job-level metric (G5-SECTION-TEMPLATE.md step 6b, <c>EmailOutboxProcessor</c>'s shape).
+/// The Google sync outbox drain. <c>ProcessGoogleSyncOutboxJob</c> is the Hangfire shim around
+/// it and owns the job-level metric.
 /// </summary>
 /// <remarks>
 /// SyncSettings enforcement is handled by the gateway methods in

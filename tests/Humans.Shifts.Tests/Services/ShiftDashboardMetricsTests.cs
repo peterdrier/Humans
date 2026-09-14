@@ -840,8 +840,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     public async Task GetCoverageHeatmap_DayPeriodClassification_UsesShiftPeriodEnum()
     {
         // Day-column period tagging must use the ShiftPeriod enum, not English
-        // strings — previously the service emitted "Set-up"/"Event"/"Strike"
-        // which coupled the view to magic values.
+        // strings, which would couple the view to magic values.
         var es = await SeedEventAsync();
         var team = await SeedTeamAsync("Gate");
         var rota = await SeedRotaAsync(team, es, RotaPeriod.Event);
@@ -1250,17 +1249,13 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         public Task<bool> IsUserCoordinatorOfTeamAsync(Guid teamId, Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<(bool Updated, string? PreviousPrefix)> SetGoogleGroupPrefixAsync(Guid teamId, string? prefix, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task SetMemberRoleAsync(Guid teamId, Guid userId, TeamMemberRole role, Guid actorUserId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public Task<IReadOnlyList<TeamMembership>> GetActiveTeamMembershipsForUserAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<UserTeamMembershipInfo>> GetUserTeamMembershipsAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task EnqueueGoogleResyncForUserTeamsAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<bool> PermanentlyDeleteTeamAsync(Guid teamId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public Task DeleteEarlyEntryGrantsForUserAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public void RemoveMemberFromAllTeamsCache(Guid userId) => throw new NotSupportedException();
         public void InvalidateActiveTeamsCache() => throw new NotSupportedException();
         public Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public Task<IReadOnlyList<TeamRoleReconciliationMembership>> GetActiveMembershipsForRoleReconciliationAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public Task<int> ApplyMemberRoleChangesAsync(IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<bool> ApplySystemTeamMembershipDeltaAsync(Guid teamId, IReadOnlyCollection<Guid> userIdsToAdd, IReadOnlyCollection<Guid> userIdsToRemove, Instant now, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 }

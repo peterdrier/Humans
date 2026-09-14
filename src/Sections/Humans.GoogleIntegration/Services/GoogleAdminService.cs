@@ -8,10 +8,8 @@ using Humans.Teams.Contracts;
 namespace Humans.GoogleIntegration.Services;
 
 /// <summary>
-/// Application-layer service for Google Workspace admin operations:
-/// workspace account management, group linking, email backfill, account
-/// linking. Migrated to the §15 pattern as part of issue #554 — no DbContext
-/// dependency; all cross-section data access routes through the owning
+/// Workspace admin operations: account provisioning, suspend/reactivate, credential
+/// recovery, group linking, rename detection. All cross-section reads go through the owning
 /// services (<see cref="IUserService"/>, <see cref="IUserEmailService"/>,
 /// <see cref="ITeamService"/>, <see cref="ITeamResourceService"/>).
 /// </summary>

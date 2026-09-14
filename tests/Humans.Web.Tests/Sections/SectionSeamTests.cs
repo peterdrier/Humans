@@ -93,9 +93,11 @@ public class SectionSeamTests
     }
 
     /// <summary>
-    /// Discovery activates the real section contributions, which are <c>internal sealed</c>:
-    /// a class's compiler-generated default constructor is public even when the class is not,
-    /// so <c>Activator.CreateInstance(Type)</c> reaches them without non-public binding flags.
+    /// Discovery activates the real section contributions. Separate contribution classes are
+    /// <c>internal sealed</c>: a class's compiler-generated default constructor is public even
+    /// when the class is not, so <c>Activator.CreateInstance(Type)</c> reaches them without
+    /// non-public binding flags. The public <c>Section : ISection</c> entry point may carry
+    /// seams itself (memory/architecture/section-contribution-seams.md).
     /// </summary>
     [HumansFact]
     public void Internal_Section_Contributions_Are_Reflection_Constructible()
@@ -103,7 +105,9 @@ public class SectionSeamTests
         var navs = SectionDiscoveryExtensions.DiscoverImplementations<ISectionAdminNav>();
 
         navs.Should().NotBeEmpty();
-        navs.Should().OnlyContain(n => !n.GetType().IsPublic, "contributions stay off the section's public surface");
+        navs.Should().OnlyContain(
+            n => !n.GetType().IsPublic || n is ISection,
+            "contributions stay off the section's public surface unless they ride on the Section entry point");
     }
 
     private interface IReportingJob

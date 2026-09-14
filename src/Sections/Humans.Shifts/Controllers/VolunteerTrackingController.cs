@@ -74,11 +74,8 @@ internal sealed class VolunteerTrackingController(
                 .ThenBy(r => nameByUserId.GetValueOrDefault(r.UserId, ""), StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-        // Export card form state — driven by the active event's departments.
-        // GetActiveAsync is the same lookup the Index page is gated on (we
-        // already know HasActiveEvent is true here), so the result is non-null
-        // in practice; defensive fall-back keeps the page renderable if a race
-        // empties EventSettings between the two calls.
+        // Export card form state — the active event's departments. The page is gated on
+        // an active event, so the null fall-back only covers a race between the two reads.
         var activeEvent = await burnSettings.GetActiveAsync(ct);
         var departments = activeEvent is null
             ? []
@@ -334,6 +331,10 @@ internal sealed class VolunteerTrackingController(
                 $"DayOffset={form.DayOffset}; cleared by coordinator",
                 current.Id);
             SetSuccess(localizer["VolTrack_Msg_DayOffCleared"]);
+        }
+        else
+        {
+            SetInfo(localizer["VolTrack_Msg_DayOffNotSet"]);
         }
 
         return RedirectBack(returnUrl);

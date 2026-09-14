@@ -251,6 +251,15 @@
   <data name="Enum_IssueCategory_Bug" xml:space="preserve"><value>Bug</value></data>
   <data name="Enum_IssueCategory_Feature" xml:space="preserve"><value>Funzionalità</value></data>
   <data name="Enum_IssueCategory_Question" xml:space="preserve"><value>Domanda</value></data>
+  <data name="Enum_IssueStatus_Triage" xml:space="preserve"><value>Triage</value></data>
+  <data name="Enum_IssueStatus_Open" xml:space="preserve"><value>Aperta</value></data>
+  <data name="Enum_IssueStatus_InProgress" xml:space="preserve"><value>In corso</value></data>
+  <data name="Enum_IssueStatus_Resolved" xml:space="preserve"><value>Risolta</value></data>
+  <data name="Enum_IssueStatus_WontFix" xml:space="preserve"><value>Non verrà risolta</value></data>
+  <data name="Enum_IssueStatus_Duplicate" xml:space="preserve"><value>Duplicata</value></data>
+  <data name="Issues_QuickFilters" xml:space="preserve"><value>Filtri rapidi</value></data>
+  <data name="Issues_Close" xml:space="preserve"><value>Chiudi</value></data>
+  <data name="Issues_SystemActor" xml:space="preserve"><value>Sistema</value></data>
   <data name="Issue_ColStatus" xml:space="preserve"><value>Stato</value></data>
   <data name="Issue_ColTitle" xml:space="preserve"><value>Titolo</value></data>
   <data name="Issue_ColUpdated" xml:space="preserve"><value>Aggiornata</value></data>

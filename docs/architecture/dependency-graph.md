@@ -29,6 +29,7 @@ graph LR
     classDef tickets fill:#14b8a6,color:#fff
     classDef campaigns fill:#ef4444,color:#fff
     classDef google fill:#0ea5e9,color:#fff
+    classDef monitor fill:#0369a1,color:#fff
     classDef onboarding fill:#a3e635,color:#000
     classDef feedback fill:#d946ef,color:#fff
     classDef auth fill:#facc15,color:#000
@@ -50,9 +51,11 @@ graph LR
     classDef settings fill:#71717a,color:#fff
     classDef surveys fill:#0ea5e9,color:#fff
     classDef icalfeed fill:#38bdf8,color:#000
+    classDef monitor fill:#c084fc,color:#000
     classDef gate fill:#b45309,color:#fff
     classDef holded fill:#ca8a04,color:#fff
     classDef guide fill:#65a30d,color:#fff
+    classDef rideshare fill:#f472b6,color:#000
     classDef crosscut fill:#334155,color:#fff
     classDef platform fill:#52525b,color:#fff
 
@@ -119,7 +122,7 @@ graph LR
     GGroupSync[GoogleGroupSyncService]:::google
     GAdmin[GoogleAdminService]:::google
     EmailProv[EmailProvisioningService]:::google
-    DriveMon[DriveActivityMonitorService]:::google
+    DriveMon[DriveActivityMonitorService]:::monitor
     GRemoval[GoogleRemovalNotificationService]:::google
     GSyncOutbox[GoogleSyncOutboxService]:::google
     GSyncOutboxProc[GoogleSyncOutboxProcessor]:::google
@@ -179,6 +182,7 @@ graph LR
     SettingsSvc[SettingsWriteService]:::settings
     SettingsCarry[EventSettingsCarryService]:::settings
     Guide[GuideRoleResolver]:::guide
+    Rideshare[RideshareService]:::rideshare
 
     %% ═══════════════════════════════════
     %% Ctor-injected dependencies (solid)
@@ -340,6 +344,7 @@ graph LR
     GRemoval --> UEmail
     GRemoval --> User
     GRemoval --> Email
+    %% Monitor (DriveActivityMonitorService moved out of GoogleIntegration; edges kept here so linkStyle indices hold)
     DriveMon --> TRes
     DriveMon --> User
     DriveMon --> SettingsSvc
@@ -504,6 +509,12 @@ graph LR
     EventSvc --> User
     EventSvc --> Email
 
+    %% Rideshare
+    Rideshare --> User
+    Rideshare --> BurnSettings
+    Rideshare --> NotifEmitter
+    Rideshare --> Audit
+
     %% Email (admin outbox — pause flag lives in Settings)
     EmailOutbox --> SettingsSvc
     EmailOutboxProc --> Campaign
@@ -560,9 +571,9 @@ graph LR
     GSyncSvc -. "lazy" .-> TRes
 
     %% ── Edge styling ──
-    %% Lazy edges colored + thickened. Eager count: 282 (indices 0..281);
-    %% the 18 lazy edges are indices 282..299. Recompute whenever edges change.
-    linkStyle 282,283,284,285,286,287,288,289,290,291,292,293,294,295,296,297,298,299 stroke:#f97316,stroke-width:2.5px
+    %% Lazy edges colored + thickened. linkStyle indices are edge declaration order;
+    %% the lazy block is declared last. Recompute the indices whenever edges change.
+    linkStyle 289,290,291,292,293,294,295,296,297,298,299,300,301,302,303,304,305,306 stroke:#f97316,stroke-width:2.5px
 ```
 
 ## Services with no cross-section edges
@@ -582,7 +593,7 @@ Each pair below would fail constructor injection if both sides eager-injected th
 
 1. **ShiftManagement ↔ Team** — ShiftManagementService lazy-resolves `ITeamService`; TeamService eagerly injects `IShiftManagementService`. (ShiftSignupService also lazy-resolves `ITeamServiceRead`; the reverse edge runs through ShiftManagementService.)
 2. **ShiftManagement ↔ Tickets** — ShiftManagementService lazy-resolves `ITicketServiceRead` (ticket-holder → shift-eligibility lookups); TicketQueryService eagerly injects `IShiftManagementService`.
-3. **Consent ↔ MembershipCalculator** — ConsentService lazy-resolves `IMembershipCalculator` for status recomputes; MembershipCalculator lazy-resolves `IConsentServiceRead` for required-docs-given checks. Both lazy because the cycle is two-way hot.
+3. **Consent ↔ MembershipCalculator** — ConsentService lazy-resolves `IMembershipCalculatorRead` for status recomputes; MembershipCalculator lazy-resolves `IConsentServiceRead` for required-docs-given checks. Both lazy because the cycle is two-way hot.
 4. **GoogleWorkspaceSync ↔ TeamResource** — GoogleWorkspaceSyncService lazy-resolves `ITeamResourceService` inside `ReconcileNobodiesDriveAsync`; the reverse eager edge is gone but the call still needs the live scoped instance.
 5. **Camp ↔ CityPlanning** — CampService holds `Lazy<ICityPlanningService>` to delete a camp's polygon/history rows inside the camp-deletion transaction; CityPlanningService eagerly injects `ICampServiceRead`.
 6. **UserEmail ↔ Tickets** — UserEmailService lazy-resolves `ITicketServiceRead` for the email delete-guard (nobodies-collective/Humans#758); TicketQueryService eagerly injects `IUserEmailService`.

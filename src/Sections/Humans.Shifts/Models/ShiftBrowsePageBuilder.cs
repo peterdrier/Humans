@@ -10,7 +10,7 @@ namespace Humans.Shifts.Models;
 /// <summary>
 /// Inputs for <see cref="ShiftBrowsePageBuilder"/>. <see cref="UserTagPreferences"/>
 /// is the raw <see cref="VolunteerTagPreference"/> rows from the cached
-/// <c>ShiftUserView</c> (T-10, issue #720); the builder reads
+/// <c>ShiftUserView</c>; the builder reads
 /// <see cref="VolunteerTagPreference.ShiftTagId"/> to build the preferred-tag
 /// id set on the view model.
 /// </summary>
@@ -61,7 +61,7 @@ internal sealed class ShiftBrowsePageBuilder(
         if ((!string.IsNullOrEmpty(request.FromDate) || !string.IsNullOrEmpty(request.ToDate)) && !string.IsNullOrEmpty(period))
             period = null;
 
-        // Single-day filter (issue #889) wins over the phase/date-range filters —
+        // Single-day filter wins over the phase/date-range filters —
         // it's a separate dropdown control, not meant to compose with them.
         var filterDay = !string.IsNullOrEmpty(request.Day) && LocalDatePattern.Iso.Parse(request.Day) is { Success: true } dayResult
             ? dayResult.Value
@@ -114,14 +114,14 @@ internal sealed class ShiftBrowsePageBuilder(
 
         var departments = await BuildDepartmentGroupsAsync(filteredShifts);
         // The day filter forces the flat, openings-ranked view — a department/period
-        // grouping doesn't express "most openings first" (issue #889).
+        // grouping doesn't express "most openings first".
         var isUrgencySort = filterDay.HasValue || !string.Equals(request.Sort, "department", StringComparison.OrdinalIgnoreCase);
 
         var allDepartments = await GetDepartmentOptionsAsync(request.DepartmentId, departments, es.Id);
         var allTags = await shiftManagement.GetTagsAsync();
         var dayOptions = await BuildDayOptionsAsync(es, browseFlags);
-        // T-10: preferred tag ids come from the cached ShiftUserView's
-        // TagPreferences (issue #720) — the controller already fetched the
+        // Preferred tag ids come from the cached ShiftUserView's
+        // TagPreferences — the controller already fetched the
         // view for the signup read, so we reuse those rows here. The shape
         // shift is harmless: ShiftTagPreferenceInfo.ShiftTagId == ShiftTag.Id ==
         // VolunteerTagPreference.ShiftTagId.
@@ -197,7 +197,7 @@ internal sealed class ShiftBrowsePageBuilder(
     }
 
     /// <summary>
-    /// Orders the flat rota list. Openings-first (issue #889 day filter) ranks by
+    /// Orders the flat rota list. Openings-first (day filter) ranks by
     /// total remaining slots descending, so fully-booked rotas naturally sink to
     /// the bottom rather than needing a separate hide-when-full toggle. Otherwise
     /// falls back to the existing urgency-score ranking.
@@ -209,7 +209,7 @@ internal sealed class ShiftBrowsePageBuilder(
 
     /// <summary>
     /// Every calendar day with at least one browsable shift for the event, labeled
-    /// with its period/build-sub-period for the day-filter dropdown (issue #889).
+    /// with its period/build-sub-period for the day-filter dropdown.
     /// Deliberately unfiltered by department/tag/period/day so the option list
     /// doesn't shrink as the viewer narrows other filters.
     /// </summary>

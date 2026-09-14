@@ -6,7 +6,7 @@ namespace Humans.Shifts.Tests.Architecture;
 
 /// <summary>
 /// Architecture tests enforcing the §15 repository pattern for the
-/// <c>ShiftManagementService</c> portion of the Shifts section (issue #541a).
+/// <c>ShiftManagementService</c> portion of the Shifts section (issue nobodies-collective/Humans#541a).
 /// Sibling services (<c>ShiftSignupService</c>, <c>VolunteerTrackingService</c>)
 /// cover signup and user-oriented tracking workflows.
 /// </summary>

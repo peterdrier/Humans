@@ -21,10 +21,6 @@ namespace Humans.Feedback.Services;
 /// The Feedback section's service. Admin triage over the historical rows —
 /// Feedback stopped accepting new reports in nobodies-collective/Humans#977, so
 /// there is deliberately no create path.
-/// Cross-section reads (display names, team names, effective emails) go through
-/// <see cref="IUserServiceRead"/>, <see cref="ITeamServiceRead"/>, and
-/// <see cref="IUserEmailService"/> and are projected into
-/// <see cref="FeedbackReportInfo"/> / <see cref="FeedbackMessageInfo"/>.
 /// Nav-badge invalidation routes through <see cref="INavBadgeCacheInvalidator"/>.
 /// </summary>
 internal sealed class FeedbackService(
@@ -124,7 +120,6 @@ internal sealed class FeedbackService(
 
         await repository.SaveTrackedReportAsync(report, cancellationToken);
 
-        // Audit after the business save so a rollback never leaves a ghost audit row.
         var description =
             $"Feedback {id} GitHub link: {(issueNumber.HasValue ? issueNumber.Value.ToString(CultureInfo.InvariantCulture) : "(cleared)")}";
         if (actorUserId.HasValue)
@@ -232,7 +227,6 @@ internal sealed class FeedbackService(
 
         var changes = new List<string>();
 
-        // Capture previous assignee/team names for the audit description.
         string? oldAssigneeName = null;
         string? oldTeamName = null;
 
@@ -281,7 +275,6 @@ internal sealed class FeedbackService(
 
         await repository.SaveTrackedReportAsync(report, cancellationToken);
 
-        // Audit after the business save so a rollback never leaves a ghost audit row.
         var description = $"Feedback {id} assignment changed: {string.Join("; ", changes)}";
         if (actorUserId.HasValue)
         {
@@ -405,7 +398,6 @@ internal sealed class FeedbackService(
         }
     }
 
-    // Cross-domain read stitching (design-rules §6b in-memory join via UserInfo).
     private async Task<FeedbackCrossDomainLookups> StitchCrossDomainNavsAsync(
         IReadOnlyList<FeedbackReport> reports, CancellationToken ct)
     {
