@@ -75,7 +75,7 @@ Per-occurrence override or cancellation for a recurring `CalendarEvent`. Cascade
 | CreatedAt | Instant | |
 | UpdatedAt | Instant | |
 
-**Indexes:** unique `(EventId, OriginalOccurrenceStartUtc)` for timed identities. Date identities are upserted by `(EventId, OriginalOccurrenceDate)`.
+**Indexes:** unique `(EventId, OriginalOccurrenceStartUtc)` for timed identities and unique `(EventId, OriginalOccurrenceDate)` for all-day identities.
 
 ## Routing
 
@@ -121,7 +121,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 - A series with exceptions cannot switch between all-day and timed: its saved occurrence identities must remain meaningful.
 - Soft-delete via `DeletedAt` — a global EF Core query filter hides deleted events from all queries. `CalendarEventException` carries a matching filter (`ex => ex.Event.DeletedAt == null`) so exception rows attached to a soft-deleted event are also hidden; repository writes that need to observe orphaned-by-soft-delete exceptions (e.g. `UpsertExceptionAsync`'s existence lookup, to avoid duplicate-insert against the unique index when the parent is soft-deleted between pre-check and upsert) call `IgnoreQueryFilters()` explicitly.
 - `CalendarEventException` rows cascade-delete with the parent event.
-- Timed exceptions retain the unique `(EventId, OriginalOccurrenceStartUtc)` index; all-day mutations upsert by event and original date.
+- Timed exceptions retain the unique `(EventId, OriginalOccurrenceStartUtc)` index; all-day exceptions upsert by event and original date under their own unique `(EventId, OriginalOccurrenceDate)` index.
 - Recurrence expands in-memory through Ical.Net: local times for timed events, floating dates for all-day events.
 
 ## Negative Access Rules

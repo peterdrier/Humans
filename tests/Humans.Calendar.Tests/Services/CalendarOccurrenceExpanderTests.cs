@@ -97,10 +97,13 @@ public sealed class CalendarOccurrenceExpanderTests
         var day = new LocalDate(2026, 3, 28);
         var info = CalendarOccurrenceExpander.ToInfo(new Humans.Calendar.Domain.CalendarEvent
         {
-            Id = Guid.NewGuid(), Title = "All day", IsAllDay = true,
+            Id = Guid.NewGuid(),
+            Title = "All day",
+            IsAllDay = true,
             StartUtc = day.AtStartOfDayInZone(zone).ToInstant(),
             EndUtc = day.PlusDays(1).AtStartOfDayInZone(zone).ToInstant(),
-            RecurrenceRule = "FREQ=DAILY;COUNT=5", RecurrenceTimezone = zone.Id,
+            RecurrenceRule = "FREQ=DAILY;COUNT=5",
+            RecurrenceTimezone = zone.Id,
         });
         var results = CalendarOccurrenceExpander.Expand([info],
             day.AtStartOfDayInZone(zone).ToInstant(),
@@ -121,8 +124,12 @@ public sealed class CalendarOccurrenceExpanderTests
         var first = new LocalDate(2026, month, day);
         var info = BuildInfo(recurrenceRule: "FREQ=DAILY;COUNT=5") with
         {
-            IsAllDay = true, StartUtc = null, EndUtc = null, RecurrenceTimezone = null,
-            StartDate = first, EndDateExclusive = first.PlusDays(2),
+            IsAllDay = true,
+            StartUtc = null,
+            EndUtc = null,
+            RecurrenceTimezone = null,
+            StartDate = first,
+            EndDateExclusive = first.PlusDays(2),
         };
         var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         var results = CalendarOccurrenceExpander.Expand([info], first.AtStartOfDayInZone(madrid).ToInstant(),
@@ -145,8 +152,12 @@ public sealed class CalendarOccurrenceExpanderTests
     {
         var info = BuildInfo(recurrenceRule: "FREQ=DAILY;UNTIL=20260329") with
         {
-            IsAllDay = true, StartUtc = null, EndUtc = null, RecurrenceTimezone = null,
-            StartDate = new LocalDate(2026, 3, 28), EndDateExclusive = new LocalDate(2026, 3, 30),
+            IsAllDay = true,
+            StartUtc = null,
+            EndUtc = null,
+            RecurrenceTimezone = null,
+            StartDate = new LocalDate(2026, 3, 28),
+            EndDateExclusive = new LocalDate(2026, 3, 30),
         };
         var results = CalendarOccurrenceExpander.Expand([info], Instant.FromUtc(2026, 3, 30, 0, 0),
             Instant.FromUtc(2026, 3, 31, 0, 0), new Dictionary<Guid, string>(), NullLogger.Instance);
@@ -161,8 +172,13 @@ public sealed class CalendarOccurrenceExpanderTests
         var date = new LocalDate(2026, 6, 10);
         var info = BuildInfo(recurrenceRule: "FREQ=DAILY;COUNT=2") with
         {
-            IsAllDay = true, StartUtc = null, EndUtc = null, RecurrenceTimezone = null,
-            StartDate = date, EndDateExclusive = date.PlusDays(2), RecurrenceUntilDate = date.PlusDays(3),
+            IsAllDay = true,
+            StartUtc = null,
+            EndUtc = null,
+            RecurrenceTimezone = null,
+            StartDate = date,
+            EndDateExclusive = date.PlusDays(2),
+            RecurrenceUntilDate = date.PlusDays(3),
             Exceptions = [new CalendarEventExceptionInfo(Guid.NewGuid(), null, false, null, null,
                 "Moved", null, null, null, date, new LocalDate(2026, 3, 29))],
         };

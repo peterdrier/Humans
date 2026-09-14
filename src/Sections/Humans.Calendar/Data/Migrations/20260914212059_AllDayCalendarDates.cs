@@ -62,11 +62,21 @@ namespace Humans.Calendar.Data.Migrations
                 table: "calendar_event_exceptions",
                 type: "date",
                 nullable: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_calendar_event_exceptions_EventId_OriginalOccurrenceDate",
+                table: "calendar_event_exceptions",
+                columns: new[] { "EventId", "OriginalOccurrenceDate" },
+                unique: true);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropIndex(
+                name: "IX_calendar_event_exceptions_EventId_OriginalOccurrenceDate",
+                table: "calendar_event_exceptions");
+
             migrationBuilder.DropColumn(
                 name: "EndDateExclusive",
                 table: "calendar_events");

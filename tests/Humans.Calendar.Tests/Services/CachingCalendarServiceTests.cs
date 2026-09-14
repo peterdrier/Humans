@@ -37,9 +37,13 @@ public sealed class CachingCalendarServiceTests
         var day = new LocalDate(2026, 3, 29);
         var before = BuildInfo() with
         {
-            IsAllDay = true, StartUtc = null, EndUtc = null,
-            StartDate = day, EndDateExclusive = day.PlusDays(1),
-            RecurrenceRule = "FREQ=DAILY;COUNT=1", RecurrenceTimezone = null,
+            IsAllDay = true,
+            StartUtc = null,
+            EndUtc = null,
+            StartDate = day,
+            EndDateExclusive = day.PlusDays(1),
+            RecurrenceRule = "FREQ=DAILY;COUNT=1",
+            RecurrenceTimezone = null,
         };
         var after = before with
         {

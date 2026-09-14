@@ -72,8 +72,13 @@ public sealed class CalendarRepositoryTests : IDisposable
         var rejectTime = () => service.OverrideOccurrenceAsync(ev.Id, null, timed, Guid.NewGuid(),
             Xunit.TestContext.Current.CancellationToken, ev.StartDate);
         await rejectTime.Should().ThrowAsync<InvalidOperationException>();
-        var invalid = timed with { OverrideStartUtc = null, OverrideEndUtc = null,
-            OverrideStartDate = ev.StartDate, OverrideEndDateExclusive = ev.StartDate };
+        var invalid = timed with
+        {
+            OverrideStartUtc = null,
+            OverrideEndUtc = null,
+            OverrideStartDate = ev.StartDate,
+            OverrideEndDateExclusive = ev.StartDate
+        };
         var rejectRange = () => service.OverrideOccurrenceAsync(ev.Id, null, invalid, Guid.NewGuid(),
             Xunit.TestContext.Current.CancellationToken, ev.StartDate);
         await rejectRange.Should().ThrowAsync<InvalidOperationException>();

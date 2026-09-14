@@ -156,6 +156,9 @@ namespace Humans.Calendar.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("EventId", "OriginalOccurrenceDate")
+                        .IsUnique();
+
                     b.HasIndex("EventId", "OriginalOccurrenceStartUtc")
                         .IsUnique();
 

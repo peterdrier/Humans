@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Calendar.Data.Migrations
 {
     [DbContext(typeof(CalendarDbContext))]
-    [Migration("20260911031217_AllDayCalendarDates")]
+    [Migration("20260914212059_AllDayCalendarDates")]
     partial class AllDayCalendarDates
     {
         /// <inheritdoc />
@@ -158,6 +158,9 @@ namespace Humans.Calendar.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("EventId", "OriginalOccurrenceDate")
+                        .IsUnique();
 
                     b.HasIndex("EventId", "OriginalOccurrenceStartUtc")
                         .IsUnique();

@@ -117,15 +117,15 @@
   <data name="Calendar_ViewList" xml:space="preserve"><value>Liste</value></data>
   <data name="Calendar_Yes" xml:space="preserve"><value>Oui</value></data>
   <data name="Calendar_InvalidOccurrenceOverride" xml:space="preserve">
-    <value>Saisissez une plage de dates ou d’heures valide pour cette occurrence.</value>
+    <value>Saisissez une plage de dates ou dâ€™heures valide pour cette occurrence.</value>
   </data>
   <data name="Calendar_InvalidAllDayEvent" xml:space="preserve">
     <value>Saisissez un titre et une plage de dates valide sans heures.</value>
   </data>
   <data name="Calendar_InvalidAllDayRecurrence" xml:space="preserve">
-    <value>Utilisez une règle de récurrence valide sans heures, avec UNTIL au format YYYYMMDD.</value>
+    <value>Utilisez une rÃ¨gle de rÃ©currence valide sans heures, avec UNTIL au format YYYYMMDD.</value>
   </data>
   <data name="Calendar_CannotChangeEventType" xml:space="preserve">
-    <value>Cette série contient des occurrences modifiées. Conservez son type journée entière ou avec horaires, ou créez une nouvelle série.</value>
+    <value>Cette sÃ©rie contient des occurrences modifiÃ©es. Conservez son type journÃ©e entiÃ¨re ou avec horaires, ou crÃ©ez une nouvelle sÃ©rie.</value>
   </data>
 </root>
