@@ -15,7 +15,9 @@ internal sealed class SectionAdminNav : ISectionAdminNav
         new("Governance", [
             new("Voting", "GovernanceBoardVoting", "BoardVoting", null, null, "fa-solid fa-check-to-slot", PolicyNames.BoardOrAdmin,
                  PillCount: PillCounts.VotingQueue),
-            new("Applications", "GovernanceApplications", "Admin", null, null, "fa-solid fa-file-signature", PolicyNames.BoardOrAdmin)
+            new("Applications", "GovernanceApplications", "Admin", null, null, "fa-solid fa-file-signature", PolicyNames.BoardOrAdmin),
+            // Temporary: term-expiry repair for rows approved under the pre-September-2026 rule.
+            new("Term expiry (temp)", "GovernanceApplications", "AdminTermExpiry", null, null, "fa-solid fa-calendar-check", PolicyNames.AdminOnly)
         ], Weight: 70)
     ];
 }

@@ -79,7 +79,7 @@ Nothing that is only called from inside the section belongs on an interface.
 - Finalization is atomic: the application update and the destruction of every `BoardVote` row
   for it commit together.
 - After finalization no individual vote survives — only `DecisionNote` and `BoardMeetingDate`.
-- Approval sets a term expiring 31 December of the current cycle's odd year (the approval year if odd, else the next).
+- Approval sets a term expiring 31 December of the current cycle's odd year (the approval year if odd, else the next); from 1 October of an odd year, the next cycle's.
 - `application_state_history` is append-only in normal operation: the repository offers no
   update or delete for it. GDPR erasure is the one exception — `ScrubFreeTextForUserAsync`
   nulls `Notes` on the rows of the person's own applications and on the rows they authored
