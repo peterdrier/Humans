@@ -113,7 +113,7 @@ internal sealed class ProfileEmailsController(
         var trimmedEmail = email.Trim();
         var verificationUrl = Url.Action(
             nameof(VerifyEmail),
-            "Profile",
+            "ProfileEmails",
             new { userId = user.Id, emailId = result.EmailId, token = HttpUtility.UrlEncode(result.Token) },
             Request.Scheme);
 
@@ -752,7 +752,7 @@ internal sealed class ProfileEmailsController(
         var trimmedEmail = email.Trim();
         var verificationUrl = Url.Action(
             nameof(VerifyEmail),
-            "Profile",
+            "ProfileEmails",
             new { userId, emailId = result.EmailId, token = HttpUtility.UrlEncode(result.Token) },
             Request.Scheme);
 

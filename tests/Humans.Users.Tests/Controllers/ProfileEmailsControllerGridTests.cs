@@ -1,4 +1,5 @@
 using Humans.Users.Services;
+using Humans.Users.Models;
 using Humans.Users.Controllers;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -330,7 +331,7 @@ public class ProfileEmailsControllerGridTests
 
         // Stub Url.Action to embed the encoded token in the returned URL so the
         // test can verify the verification URL is built from the AddEmailAsync token.
-        _controller.Url.Action(Arg.Is<UrlActionContext>(ctx => ctx.Action == "VerifyEmail"))
+        _controller.Url.Action(Arg.Is<UrlActionContext>(ctx => ctx.Action == "VerifyEmail" && ctx.Controller == "ProfileEmails"))
             .Returns(ci =>
             {
                 var ctx = ci.Arg<UrlActionContext>();
@@ -359,6 +360,35 @@ public class ProfileEmailsControllerGridTests
             "es");
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be("AdminEmails");
+    }
+
+    [HumansFact]
+    public async Task AddEmail_SendsVerificationLink_RoutedToThisController()
+    {
+        const string newEmail = "mine@example.com";
+        const string token = "verification-token-self";
+
+        // Only a link asked for this controller carries the token; VerifyEmail
+        // no longer lives on ProfileController, so "Profile" would not route.
+        _controller.Url.Action(Arg.Is<UrlActionContext>(ctx => ctx.Action == "VerifyEmail" && ctx.Controller == "ProfileEmails"))
+            .Returns(ci =>
+            {
+                var routeValues = new Microsoft.AspNetCore.Routing.RouteValueDictionary(ci.Arg<UrlActionContext>().Values);
+                return $"/Profile/Me/Emails/Verify?userId={routeValues["userId"]}&token={routeValues["token"]}";
+            });
+        _userEmailService.AddEmailAsync(_userId, newEmail, Arg.Any<CancellationToken>())
+            .Returns(new AddEmailResult(Guid.NewGuid(), token, IsConflict: false));
+
+        var result = await _controller.AddEmail(new EmailsViewModel { NewEmail = newEmail });
+
+        _emailMessages.Received(1).EmailVerification(
+            newEmail,
+            Arg.Any<string>(),
+            Arg.Is<string>(url => url.Contains(token, StringComparison.Ordinal)),
+            false,
+            Arg.Any<string?>());
+        result.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be("Emails");
     }
 
     [HumansFact]
