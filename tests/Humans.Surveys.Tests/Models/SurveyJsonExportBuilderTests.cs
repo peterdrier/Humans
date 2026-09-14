@@ -104,5 +104,49 @@ public sealed class SurveyJsonExportBuilderTests
         answer.TryGetProperty("SelectedValues", out _).Should().BeFalse();
         answer.TryGetProperty("RatingValue", out _).Should().BeFalse();
         answer.TryGetProperty("GridSelections", out _).Should().BeFalse();
+        answer.TryGetProperty("RankedBallot", out _).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void Carries_ranked_ballots_like_the_csv_export()
+    {
+        var questionId = Guid.NewGuid();
+        var export = new SurveyResponseExport(
+            Guid.NewGuid(),
+            "Board election",
+            "en",
+            [
+                new SurveyExportQuestion(
+                    questionId,
+                    "Rank the candidates",
+                    SurveyQuestionType.RankedChoice,
+                    [new SurveyExportOption("a", "A"), new SurveyExportOption("b", "B"), new SurveyExportOption("c", "C")],
+                    RankedSettings: new SurveyRankedSettings(true, true, "RankedPairs")),
+            ],
+            [
+                new SurveyExportRow(
+                    Guid.NewGuid(),
+                    ResponseAnonymity.CompletionTracked,
+                    SurveyInputMethod.UserSpecificLink,
+                    "en",
+                    Instant.FromUtc(2026, 8, 25, 6, 0),
+                    null,
+                    null,
+                    [
+                        new SurveyExportAnswer(
+                            questionId, [], [], null, null,
+                            RankedBallot: new SurveyRankedBallot([["a", "c"]], ["b"])),
+                    ]),
+            ]);
+
+        using var json = JsonDocument.Parse(SurveyJsonExportBuilder.Build(export));
+
+        var question = json.RootElement.GetProperty("Questions")[0];
+        question.GetProperty("RankedSettings").GetProperty("OfficialMethod").GetString().Should().Be("RankedPairs");
+
+        var ballot = json.RootElement.GetProperty("Rows")[0].GetProperty("Answers")[0].GetProperty("RankedBallot");
+        ballot.GetProperty("RankGroups")[0].EnumerateArray().Select(v => v.GetString())
+            .Should().Equal("a", "c");
+        ballot.GetProperty("Rejected")[0].GetString().Should().Be("b");
     }
 }

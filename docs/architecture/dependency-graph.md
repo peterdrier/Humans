@@ -136,7 +136,7 @@ graph LR
     HumanLifecycle[HumanLifecycleService]:::onboarding
     Feedback[FeedbackService]:::feedback
     Budget[BudgetService]:::budget
-    Finance[HoldedFinanceService]:::finance
+    Finance[Finance.Service]:::finance
     Holded[HoldedService]:::holded
 
     User[UserService]:::users

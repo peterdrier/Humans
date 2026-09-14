@@ -94,18 +94,18 @@ ballot, including any legacy Identified row.
 
 ## Data model
 
-Planned question settings:
+Question settings (`RankedQuestionSettings`, plus `RankedUnavailableOptionValues`):
 
 - allow equal ranks;
 - allow Reject;
 - official method;
 - unavailable option values.
 
-Planned survey setting:
+Survey setting (`IsAsociadoVote`):
 
 - whether the survey is an Asociado vote.
 
-Planned answer data:
+Answer data (`RankedAnswer`):
 
 - ordered rank groups of stable option values;
 - a distinct rejected-option set.
