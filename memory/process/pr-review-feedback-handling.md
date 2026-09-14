@@ -1,6 +1,6 @@
 ---
 name: PR review feedback — fetch from both repos, reply per-thread, resolve when authorized
-description: Handling PR review feedback: fetch comments from BOTH repos, reply per-thread, resolve dispositioned threads, react 👍/👎 on Codex findings, never re-ping `@codex review`.
+description: "Handling PR review feedback: fetch comments from BOTH repos, reply per-thread, resolve dispositioned threads, react 👍/👎 on Codex findings, never re-ping `@codex review`."
 ---
 
 When handling PR review feedback — Codex bot, Claude bot, or human inline review comments — these five rules fire together. They cover the full "find → triage → reply → close" loop.

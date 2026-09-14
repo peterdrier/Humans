@@ -1,6 +1,6 @@
 ---
 name: always-use-worktree
-description: HARD RULE (local only): all branch work happens in a `.claude/worktrees/<name>` worktree; main checkout is read-only. Cloud runs skip this — work in repo root.
+description: "HARD RULE (local only): all branch work happens in a `.claude/worktrees/<name>` worktree; main checkout is read-only. Cloud runs skip this — work in repo root."
 ---
 
 Which half of this rule applies is decided by the environment, once, before any exploration:

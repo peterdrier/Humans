@@ -1,6 +1,6 @@
 ---
 name: No direct commits to main on peterdrier/Humans (except memory/ atoms)
-description: HARD RULE. Feature branch + PR for all code/docs/config changes, even trivial ones. Narrow exception: `memory/**`-only changes may go direct to `origin/main`.
+description: "HARD RULE. Feature branch + PR for all code/docs/config changes, even trivial ones. Narrow exception: `memory/**`-only changes may go direct to `origin/main`."
 ---
 
 Never `git commit` + `git push origin main` on `peterdrier/Humans` for code, docs, or config changes, regardless of how small the change is. Always create a feature branch and open a PR.

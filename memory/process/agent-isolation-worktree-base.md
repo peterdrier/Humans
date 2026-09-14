@@ -1,6 +1,6 @@
 ---
 name: agent isolation:worktree bases off origin/main, not your feature HEAD — and reaps on idle before a commit
-description: `Agent(isolation:"worktree")` forks off `origin/main`, not the controller's feature branch, and reaps an idle worker's worktree before its first commit.
+description: "`Agent(isolation:\"worktree\")` forks off `origin/main`, not the controller's feature branch, and reaps an idle worker's worktree before its first commit."
 ---
 
 `Agent(isolation:"worktree")` creates the agent's worktree branched off **origin/main**, NOT off the controller's current (feature-branch) HEAD. Observed 2026-05-25 on a multi-wave analyzer-consolidation branch: a Wave B worker's commit had a merge-base of plain `origin/main`, so it lacked the branch's own earlier commits and re-deleted things already removed — 3-way-merge conflicts on an attempted fast-forward. Separately, spawning several such agents **in parallel** from inside a nested worktree flaked: only a fraction actually isolated, the rest ran in the controller's worktree and committed concurrently on the shared branch, entangling files mid-work.

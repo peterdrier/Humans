@@ -1,5 +1,5 @@
 ---
-name: `Humans.Integration.Tests` is local-only — never propose running it in CI/cloud, never report it
+name: "`Humans.Integration.Tests` is local-only — never propose running it in CI/cloud, never report it"
 description: HARD RULE. `Humans.Integration.Tests` is local-only and self-skips under CI/cloud — skipped entries are the design; never mention, investigate, count, or CI-gate it.
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: Issue home routing — which repo gets a new issue
-description: New issues: community feedback/direction → `nobodies-collective/Humans`; bugs, tech debt, agent-created → `peterdrier/Humans`. Existing issues stay put.
+description: "New issues: community feedback/direction → `nobodies-collective/Humans`; bugs, tech debt, agent-created → `peterdrier/Humans`. Existing issues stay put."
 ---
 
 Both repos have issues enabled. Route new issues by kind:

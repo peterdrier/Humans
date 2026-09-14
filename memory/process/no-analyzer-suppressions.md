@@ -1,6 +1,6 @@
 ---
 name: No suppressions of Humans architecture analyzers
-description: HARD RULE. Never suppress a HUM* analyzer via `#pragma`, `[SuppressMessage]`, or `// ReSharper disable` — fix the structural mismatch. Sole exception: Peter-applied `[DontFix]`.
+description: "HARD RULE. Never suppress a HUM* analyzer via `#pragma`, `[SuppressMessage]`, or `// ReSharper disable` — fix the structural mismatch. Sole exception: Peter-applied `[DontFix]`."
 ---
 
 There is no path under which *silencing* a Humans architecture analyzer (HUM* diagnostic id) with `#pragma` / `[SuppressMessage]` / ReSharper-disable is the right answer. Always fix the underlying architectural mistake — or, for a deliberate **permanent** exception, use a Peter-applied `[DontFix]` (see below).

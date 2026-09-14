@@ -1,6 +1,6 @@
 ---
 name: pr-fix-switches-to-pr-branch
-description: `/pr-fix` always switches to the PR's head branch (worktree locally, plain checkout in cloud). Never code in main; never stop to ask just because the branch differs.
+description: "`/pr-fix` always switches to the PR's head branch (worktree locally, plain checkout in cloud). Never code in main; never stop to ask just because the branch differs."
 ---
 
 When `/pr-fix <N>` runs, always switch to the PR's head branch — use the existing worktree if one exists (`git worktree list` to find it), otherwise create one under `.claude/worktrees/`. In a cloud run, where [[always-use-worktree]] puts the work in the repo root, that's a plain `git checkout` of the PR head there instead. Don't stop and ask "should I switch?" when the current branch differs from the PR head, and don't code from `main` or an unrelated branch.

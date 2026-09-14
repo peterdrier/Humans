@@ -1,6 +1,6 @@
 ---
 name: Profile section namespace is "Profiles" (plural)
-description: `Humans.*.Services.Profiles` (plural). Singular collides with the `Profile` entity.
+description: "`Humans.*.Services.Profiles` (plural). Singular collides with the `Profile` entity."
 ---
 
 The section folder and namespace for Profile is **`Profiles`** (plural), not `Profile`.

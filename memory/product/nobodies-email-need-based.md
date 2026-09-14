@@ -1,6 +1,6 @@
 ---
 name: "@nobodies.team accounts are need-based, not a free-for-all"
-description: @nobodies.team accounts are need-based (role requires it, or handles others' PII), never a default perk — copy must caution about 2FA and primary-account status.
+description: "@nobodies.team accounts are need-based (role requires it, or handles others' PII), never a default perk — copy must caution about 2FA and primary-account status."
 ---
 
 `@nobodies.team` Workspace accounts are **granted on need, never by default**: the human's role requires one (coordinating, externally facing — ticketing, comms, production) or they access other humans' personal data. Docs, UI copy, and features must never present them as a perk everyone gets or a self-service request.
