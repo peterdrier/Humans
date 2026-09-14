@@ -10,11 +10,10 @@ using Xunit;
 namespace Humans.Shifts.Tests.Authorization;
 
 /// <summary>
-/// Unit tests for <see cref="IsAnyTeamManagerOrCoordinatorHandler"/> — moved into this
+/// Unit tests for <see cref="IsAnyTeamManagerOrCoordinatorHandler"/> — lives in this
 /// section with the handler (design §15 step 6's asymmetry); the policy it backs
 /// (<c>PolicyNames.ShiftDepartmentManager</c>) is still registered by Shell's
-/// AuthorizationPolicyExtensions. Coverage previously lived in
-/// Humans.Web.Tests/Authorization/AuthorizationPolicyTests.cs.
+/// AuthorizationPolicyExtensions.
 /// </summary>
 public sealed class IsAnyTeamManagerOrCoordinatorHandlerTests
 {

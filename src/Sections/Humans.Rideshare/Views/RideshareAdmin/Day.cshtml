@@ -1,0 +1,72 @@
+@model DayViewModel
+@{
+    ViewData["Title"] = $"Rideshare day roster {Model.Date.ToInvariantDate()}";
+}
+
+<h1>Day roster <small class="text-muted">@Model.Date.ToWeekdayDayMonth()</small></h1>
+<p class="text-muted">Every ride happening on this day — including full and cancelled ones — with its accepted riders.</p>
+
+<form method="get" asp-action="Day" class="row g-2 align-items-end mb-3">
+    <div class="col-auto">
+        <label for="day-date" class="form-label">Date</label>
+        <input id="day-date" type="date" name="date" class="form-control" value="@Model.Date.ToInvariantDate()" />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-secondary">Show</button>
+    </div>
+    <div class="col-auto">
+        <a asp-action="Index" class="btn btn-outline-secondary">Settings &amp; stats</a>
+    </div>
+</form>
+
+@if (Model.Trips.Count == 0)
+{
+    <p class="text-muted">No rides on this day.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>Direction</th>
+                    <th>From / to</th>
+                    <th>Departs</th>
+                    <th>Status</th>
+                    <th>Driver</th>
+                    <th>Seats</th>
+                    <th>Accepted riders</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.Trips)
+                {
+                    var t = row.Trip;
+                    <tr>
+                        <td>@t.Direction</td>
+                        <td>@t.MemberPlaceLabel</td>
+                        <td>@t.DepartureDate.ToInvariantDate() (@t.ExpectedDurationDays d)</td>
+                        <td><span class="badge @EnumBadgeMap.For(t.Status)">@t.Status</span></td>
+                        <td><vc:human user-id="@t.UserId" layout="AvatarName" link="Admin" /></td>
+                        <td>@(t.SeatsOffered - t.SeatsRemaining) / @t.SeatsOffered</td>
+                        <td>
+                            @if (row.Riders.Count == 0)
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                            else
+                            {
+                                <ul class="list-unstyled mb-0">
+                                    @foreach (var rider in row.Riders)
+                                    {
+                                        <li><vc:human user-id="@rider.UserId" link="Admin" /> <span class="text-muted">× @rider.Seats</span></li>
+                                    }
+                                </ul>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

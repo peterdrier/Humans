@@ -26,7 +26,7 @@ public sealed class Section : ISection
         // Singleton + IDbContextFactory pattern (§15b): repo owns context lifetime.
         services.AddSingleton<IEventRepository, EventRepository>();
 
-        // T-03: CachingEventService Singleton decorator + warmup. The base
+        // CachingEventService Singleton decorator + warmup. The base
         // Service is registered keyed under "event-inner"; unkeyed
         // IEventService resolves to the decorator. The decorator handles its
         // own invalidation inline after each delegated write (no
@@ -50,7 +50,7 @@ public sealed class Section : ISection
 
         // Cross-section read surface — forwards to the same caching Singleton so
         // reads served to other sections (e.g. the camp detail events card) hit
-        // the existing T-03 cache. Interface segregation only; no new cache layer.
+        // the existing approved-events cache. Interface segregation only; no new cache layer.
         services.AddSingleton<IEventServiceRead>(sp => sp.GetRequiredService<CachingEventService>());
 
         // IEventViewInvalidator must resolve to the SAME Singleton instance

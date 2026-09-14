@@ -1,0 +1,7 @@
+# Section debt ledger for Humans.Feedback. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+inbox:
+  - added: 2026-08-31
+    what: "Views/Feedback/Index.cshtml:139 renders the list row's ReporterName string while FeedbackListItemViewModel also carries ReporterUserId — the pair memory/architecture/burnername-is-the-display-name.md forbids; the compliant fix is <vc:human user-id=...> as the detail partial already does (the reporter filter dropdown's ReporterDropdownItem carries the same UserId+DisplayName pair). Deleting the unused ReporterUserId instead was proposed and rejected by the strike reviewer as cementing the anti-pattern (finding 27, /section-doctor on Feedback 2026-08-31)."
+    review: panel

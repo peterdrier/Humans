@@ -145,9 +145,6 @@
     </div>
 </div>
 
-@* Heatmap CSS (.vt-*) lives in _VolunteerHeatmap.cshtml so the partial renders
-   correctly wherever it's hosted (here AND the profile build strip). Only the
-   page-scoped legend swatch styling stays here. *@
 @section Styles {
 <style>
     .legend-swatch {
@@ -161,10 +158,6 @@
 </style>
 }
 
-@* Heatmap scroll-arrow + popover-init JS now lives in _VolunteerHeatmap.cshtml
-   so it travels with the partial wherever it renders. Only the page-scoped
-   row search-filter (which targets #vt-search, an input only this page has)
-   stays here. *@
 @section Scripts {
 <script>
 // Live row filter for the volunteer-tracking heatmaps. Matches case-insensitively

@@ -799,10 +799,10 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     [HumansFact]
     public async Task SearchAsync_GuidQuery_ResolvesARotaHiddenFromVolunteers()
     {
-        // Ruling on nobodies-collective/Humans#985 (2026-08-07): the id path skips the
-        // visibility filter on purpose. The rota's destination — /Shifts?departmentId={teamId}
-        // — still builds its listing through the ExcludeHiddenRotas filter, so the hit is a
-        // link, not access. The text-query half of this pair needs Postgres ILike and lives in
+        // A GUID-query hit skips the visibility filter on purpose (nobodies-collective/Humans#985):
+        // the rota's destination — /Shifts?departmentId={teamId} — still builds its listing
+        // through the ExcludeHiddenRotas filter, so the hit is a link, not access. The
+        // text-query half of this pair needs Postgres ILike and lives in
         // Humans.Integration.Tests/Repositories/Shifts/ShiftRepositoryRotaSearchTests.
         var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
         rota.IsVisibleToVolunteers = false;
@@ -841,10 +841,10 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     [HumansFact]
     public async Task GetBrowseShifts_HiddenRota_IsAbsentForAVolunteer_AndPresentForAPrivilegedViewer()
     {
-        // Destination-page enforcement for the rota half of the nobodies-collective/Humans#985
-        // ruling. A GUID search hit links to /Shifts?departmentId={teamId}; the listing that
-        // page builds is a default ShiftBrowseQuery, which excludes rotas hidden from
-        // volunteers. ShiftBrowsePageBuilder only adds IncludeHidden for a privileged viewer.
+        // Destination-page enforcement for the rota half of nobodies-collective/Humans#985's
+        // no-visibility-filter GUID search: the listing /Shifts?departmentId={teamId} builds is
+        // a default ShiftBrowseQuery, which excludes rotas hidden from volunteers.
+        // ShiftBrowsePageBuilder only adds IncludeHidden for a privileged viewer.
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
         rota.IsVisibleToVolunteers = false;
         SeedShift(rota, dayOffset: 1);
@@ -1156,10 +1156,9 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             .WithMessage("*one*active*");
     }
 
-    // Medical-data gating moved off GetShiftProfileAsync: MedicalConditions is now
-    // a Profile field on the cached UserInfo, gated per render/serialize surface by
-    // the MedicalDataViewer policy (see the dietary-medical-to-profile migration).
-    // The old includeMedical strip tests were removed with that parameter.
+    // Medical-data gating: MedicalConditions is a Profile field on the cached UserInfo,
+    // gated per render/serialize surface by the MedicalDataViewer policy — see
+    // ShiftVolunteerSearchBuilderTests for coverage.
 
     // ============================================================
     // Rota delete — Shifts.md trigger line 262

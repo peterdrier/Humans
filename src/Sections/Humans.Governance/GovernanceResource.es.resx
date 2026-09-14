@@ -364,9 +364,6 @@
   <data name="BoardVoting_ApplicationNotFound" xml:space="preserve">
     <value>Solicitud no encontrada.</value>
   </data>
-  <data name="BoardVoting_ConcurrencyConflict" xml:space="preserve">
-    <value>Esta solicitud fue modificada por otro usuario. Recarga e inténtalo de nuevo.</value>
-  </data>
   <data name="BoardVoting_AdditionalInfo" xml:space="preserve">
     <value>Información adicional</value>
   </data>
@@ -384,5 +381,11 @@
   </data>
   <data name="Dashboard_GovernanceCardDescription" xml:space="preserve">
     <value>Asambleas, elecciones, y lo serio.</value>
+  </data>
+  <data name="GovernanceCreate_MotivationLabel" xml:space="preserve">
+    <value>¿Por qué quieres unirte?</value>
+  </data>
+  <data name="GovernanceCreate_AdditionalInfoLabel" xml:space="preserve">
+    <value>Información adicional (opcional)</value>
   </data>
 </root>

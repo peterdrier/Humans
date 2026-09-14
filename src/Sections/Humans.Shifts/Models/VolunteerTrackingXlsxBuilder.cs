@@ -53,9 +53,9 @@ internal sealed class VolunteerTrackingXlsxBuilder
     {
         for (var i = 0; i < model.Days.Count; i++)
         {
-            var col = i + 2;  // start at column B
+            var col = i + 2;
             var d = model.Days[i];
-            sheet.Cell(5, col).Value = d.DayOfWeek.ToString().Substring(0, 3); // Mon, Tue, ...
+            sheet.Cell(5, col).Value = d.DayOfWeek.ToString().Substring(0, 3);
             sheet.Cell(6, col).Value = $"{d.Day:D2}/{d.Month:D2}/{d.Year:D4}";
             sheet.Cell(5, col).Style.Font.Bold = true;
             sheet.Cell(6, col).Style.Font.Bold = true;
@@ -65,11 +65,10 @@ internal sealed class VolunteerTrackingXlsxBuilder
     private static int WriteGroupsAndHumans(IXLWorksheet sheet, VolunteerExportModel model, int startRow)
     {
         var dayCount = model.Days.Count;
-        var lastCol = dayCount + 1;  // 1 label + day columns
+        var lastCol = dayCount + 1;
         var row = startRow;
         foreach (var group in model.Groups)
         {
-            // Banner row
             var bannerRange = sheet.Range(row, 1, row, lastCol);
             sheet.Cell(row, 1).Value = $"{group.TeamName} ({group.Humans.Count} humans)";
             bannerRange.Merge();
@@ -78,7 +77,6 @@ internal sealed class VolunteerTrackingXlsxBuilder
             bannerRange.Style.Font.FontColor = XLColor.White;
             row++;
 
-            // Human rows
             foreach (var human in group.Humans)
             {
                 sheet.Cell(row, 1).Value = human.PlayaName;
@@ -89,7 +87,6 @@ internal sealed class VolunteerTrackingXlsxBuilder
                     switch (state.Kind)
                     {
                         case CellKind.Empty:
-                            // no value, no fill
                             break;
                         case CellKind.Arrival:
                             cell.Value = human.PlayaName;

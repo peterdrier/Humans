@@ -3,7 +3,7 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Consent;
 
-/// <summary>Consent's admin sidebar contribution — the "Legal" group (nobodies-collective/Humans#1077).</summary>
+/// <summary>Consent's admin sidebar contribution — the "Legal" group.</summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>

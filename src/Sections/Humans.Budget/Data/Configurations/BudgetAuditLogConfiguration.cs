@@ -18,8 +18,8 @@ internal sealed class BudgetAuditLogConfiguration : IEntityTypeConfiguration<Bud
         builder.Property(a => a.Description).HasMaxLength(1000).IsRequired();
         builder.Property(a => a.OccurredAt).IsRequired();
 
-        // Explicit index: replaces the convention index that died with the
-        // ActorUserId FK. BudgetRepository:1013,1029 filter the column alone.
+        // Explicit index: replaces the convention index that died with the ActorUserId
+        // FK. BudgetRepository.GetAuditLogEntriesForUser{,Ids}Async filter the column alone.
         builder.HasIndex(a => a.ActorUserId);
 
         builder.HasIndex(a => a.BudgetYearId);

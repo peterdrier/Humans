@@ -5,6 +5,12 @@ using NodaTime;
 
 namespace Humans.Calendar.Services;
 
+/// <summary>
+/// The section's read surface. Both members are answered from
+/// <see cref="CachingCalendarService"/>'s in-memory snapshot and never reach SQL, so this
+/// contract is deliberately not part of <see cref="ICalendarService"/>: the keyed inner
+/// service would only be able to implement it with code nothing can reach.
+/// </summary>
 internal interface ICalendarServiceRead : IApplicationService
 {
     Task<IReadOnlyList<CalendarOccurrence>> GetOccurrencesInWindowAsync(
@@ -14,19 +20,24 @@ internal interface ICalendarServiceRead : IApplicationService
         CancellationToken ct = default);
 
     Task<CalendarEventDetail?> GetEventByIdAsync(Guid id, CancellationToken ct = default);
+}
 
+/// <summary>
+/// The mutation surface, plus the two row loads the cache warms and refreshes from.
+/// Implemented twice: by <c>CalendarService</c> (the keyed inner, which does the work) and
+/// by <see cref="CachingCalendarService"/> (which delegates and then refreshes its snapshot).
+/// </summary>
+internal interface ICalendarService : IApplicationService
+{
     Task<IReadOnlyList<CalendarEventInfo>> GetAllEventInfosAsync(CancellationToken ct = default);
 
     Task<CalendarEventInfo?> GetEventInfoAsync(Guid id, CancellationToken ct = default);
-}
 
-internal interface ICalendarService : ICalendarServiceRead
-{
-    Task<CalendarEvent> CreateEventAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default);
 
+    // Create and update are published only in their result-returning form. The throwing pair
+    // they wrap stays private to CalendarService: a caller that has to catch ValidationException
+    // to render a form field is a caller doing the service's job.
     Task<CalendarEventMutationResult> CreateEventWithResultAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default);
-
-    Task<CalendarEvent> UpdateEventAsync(Guid id, UpdateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default);
 
     Task<CalendarEventMutationResult> UpdateEventWithResultAsync(Guid id, UpdateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default);
 

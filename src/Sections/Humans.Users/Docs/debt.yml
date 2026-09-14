@@ -19,4 +19,6 @@ inbox:
     review: light
   - added: 2026-09-06
     what: "Data/Configurations/UserEmailConfiguration.cs:68-71 declares a partial unique index on user_emails.Email (IsVerified = true) — a unique index on a user-editable string, forbidden by memory/architecture/unique-constraints-ids-only.md. The cross-account check is already service-enforced (VerifyEmailAsync and AdminMarkVerifiedAsync open a merge request; the OAuth reconcile blocks or displaces), so the index is a backstop only. Dropping it is a Users migration (Codex finding on peterdrier/Humans#1603)."
+  - added: 2026-08-31
+    what: "Same false thread-safety rationale for the sequential *erasure* contributor fan-out, in two places: AccountDeletionService.cs:200-201 and Docs/Users.md:212, both citing GdprExportService as the authority. Obsolete per design-rules.md §8a; sequential stays, the reason changes (finding 22, /section-doctor on Gdpr 2026-08-27)."
     review: light

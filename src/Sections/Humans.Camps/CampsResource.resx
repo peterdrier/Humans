@@ -59,7 +59,6 @@
   <data name="Camp_Links_Header" xml:space="preserve"><value>Links &amp; Contact</value></data>
   <data name="Camp_Edit_Links" xml:space="preserve"><value>Links</value></data>
   <data name="Camp_Edit_AddLink" xml:space="preserve"><value>Add link</value></data>
-  <data name="Camp_Edit_RemoveLink" xml:space="preserve"><value>Remove</value></data>
   <data name="Camp_Edit_WebsiteNudge" xml:space="preserve"><value>We strongly recommend adding a website for your barrio so visitors can learn more about you.</value></data>
   <data name="CampCard_NeedsPhoto" xml:space="preserve"><value>This barrio needs a photo!</value></data>
   <data name="Camp_AboutHeading" xml:space="preserve"><value>About Your {0}</value></data>
@@ -147,4 +146,16 @@
   <data name="Enum_CampVibe_Sober" xml:space="preserve"><value>Sober</value></data>
   <data name="Enum_CampVibe_Wellness" xml:space="preserve"><value>Wellness</value></data>
   <data name="Enum_CampVibe_Workshop" xml:space="preserve"><value>Workshop</value></data>
+  <data name="Camp_Details_AlsoKnownAs" xml:space="preserve"><value>Also known as:</value></data>
+  <data name="Camp_Details_SwissCampBadge" xml:space="preserve"><value>Swiss Camp</value></data>
+  <data name="Camp_Details_RosterEmpty" xml:space="preserve"><value>No humans recorded for this season yet.</value></data>
+  <data name="Camp_Members_NoRolesDefined" xml:space="preserve"><value>No camp roles defined yet.</value></data>
+  <data name="Camp_Members_NoRolesAdminHint" xml:space="preserve"><value>CampAdmin can add them at</value></data>
+  <data name="Camp_Members_NoRolesAdminHintLink" xml:space="preserve"><value>Camp roles</value></data>
+  <data name="Camp_Members_RoleRequiredBadge" xml:space="preserve"><value>required</value></data>
+  <data name="Camp_Members_RoleSlotsFilled" xml:space="preserve"><value>{0} / {1} filled</value></data>
+  <data name="Camp_Members_RoleOverCapacityBadge" xml:space="preserve"><value>Over capacity</value></data>
+  <data name="Camp_Members_RoleOverCapacityTitle" xml:space="preserve"><value>More assignments than the configured slot count.</value></data>
+  <data name="Camp_Members_AddMemberSearchHelp" xml:space="preserve"><value>Search by name. The human is added to the camp's open season as Active.</value></data>
+  <data name="Camp_Members_NoPendingRequests" xml:space="preserve"><value>No pending requests.</value></data>
 </root>

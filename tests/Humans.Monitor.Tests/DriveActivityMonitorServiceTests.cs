@@ -12,12 +12,11 @@ using Humans.Users.Contracts;
 namespace Humans.Monitor.Tests;
 
 /// <summary>
-/// Behavioral tests for the §15-migrated
-/// <see cref="DriveActivityMonitorService"/>. The service is a dispatcher
-/// over four collaborators — <see cref="IGoogleDriveActivityClient"/>,
-/// <see cref="ITeamResourceService"/>,
-/// <see cref="ISettingsService"/>, and
-/// <see cref="IAuditLogService"/> — so tests substitute all four and pin down:
+/// Behavioral tests for <see cref="DriveActivityMonitorService"/>. The service is a
+/// dispatcher over five collaborators — <see cref="IGoogleDriveActivityClient"/>,
+/// <see cref="ITeamResourceService"/>, <see cref="ISettingsService"/>,
+/// <see cref="IUserServiceRead"/> and
+/// <see cref="IAuditLogService"/> — so tests substitute all five and pin down:
 /// self-initiated changes get filtered, anomaly descriptions are built
 /// correctly and emitted through <see cref="IAuditLogService"/>,
 /// partial-failure keeps the last-run marker, and the happy path advances it.
@@ -128,6 +127,19 @@ public class DriveActivityMonitorServiceTests
                 d.Contains("intruder@example.com", StringComparison.Ordinal) &&
                 d.Contains("added writer", StringComparison.Ordinal)),
             JobName);
+
+        // Marker first, then audit — the monitor's own state is saved before the entries
+        // that describe it.
+        Received.InOrder(() =>
+        {
+            _ = _settingsStore.SetValueAsync(
+                SettingKeys.DriveActivityMonitorLastRunAt,
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>());
+            _ = _auditLog.LogAsync(
+                Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<string>(), Arg.Any<string>());
+        });
     }
 
     [HumansFact]
@@ -353,6 +365,26 @@ public class DriveActivityMonitorServiceTests
     }
 
     [HumansFact]
+    public async Task CheckForAnomalousActivityAsync_WithEveryResourceFailing_Throws()
+    {
+        // Nothing was queried, so a quiet "0 anomalies" would be a hollow success: the
+        // connector is down and the job must record a failed run.
+        var first = BuildResource("First-Broken");
+        var second = BuildResource("Second-Broken");
+        SeedResources(first, second);
+
+        _client.QueryActivityAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ => ThrowingEnumerable());
+
+        var act = async () => await _service.CheckForAnomalousActivityAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>())
+            .WithInnerException<InvalidOperationException>().WithMessage("boom");
+        await _settingsStore.DidNotReceiveWithAnyArgs().SetValueAsync(null!, null!, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task CheckForAnomalousActivityAsync_DownGradesResourceNotFoundToWarning()
     {
         var missing = BuildResource("Missing-Drive");
@@ -413,8 +445,6 @@ public class DriveActivityMonitorServiceTests
         var expectedFilter = NodaTime.Text.InstantPattern.General.Format(expectedLookback);
         _client.Received(1).QueryActivityAsync(resource.GoogleId, expectedFilter, Arg.Any<CancellationToken>());
     }
-
-    // ── helpers ──────────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task CheckForAnomalousActivityAsync_UsesStoredLookback_WhenMarkerParses()

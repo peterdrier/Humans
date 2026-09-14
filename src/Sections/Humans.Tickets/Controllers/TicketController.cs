@@ -176,12 +176,6 @@ internal sealed class TicketController(
         return View(model);
     }
 
-    [HttpGet("GateList")]
-    public IActionResult GateList()
-    {
-        return View();
-    }
-
     [HttpGet("WhoHasntBought")]
     public async Task<IActionResult> WhoHasntBought(
         string? search, string? filterTeam = null, string? filterTier = null,

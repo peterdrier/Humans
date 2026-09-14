@@ -201,6 +201,31 @@ public class BackdoorApiKeyServiceTests
         await _repository.Received(1).RevokeAsync(key.Id, _actor, Now, Arg.Any<CancellationToken>());
     }
 
+    /// <summary>
+    /// The audit half of a rotate: two entries, revoke then issue, both naming the actor and
+    /// the owner. Without this, a rotate that silently skipped one of them would still pass.
+    /// </summary>
+    [HumansFact]
+    public async Task Rotate_writes_a_revoke_entry_then_an_issue_entry()
+    {
+        var key = ExistingKey();
+        MakeEligible(key.UserId);
+        _repository.GetByIdAsync(key.Id, Arg.Any<CancellationToken>()).Returns(key);
+        _repository.RevokeAsync(key.Id, _actor, Now, Arg.Any<CancellationToken>()).Returns(true);
+
+        (await _sut.RotateAsync(key.Id, _actor)).Succeeded.Should().BeTrue();
+
+        Received.InOrder(() =>
+        {
+            _ = _audit.LogAsync(
+                AuditAction.BackdoorApiKeyRevoked, AuditEntityTypes.BackdoorApiKey, key.Id,
+                Arg.Any<string>(), _actor, key.UserId, AuditEntityTypes.User);
+            _ = _audit.LogAsync(
+                AuditAction.BackdoorApiKeyIssued, AuditEntityTypes.BackdoorApiKey, Arg.Any<Guid>(),
+                Arg.Any<string>(), _actor, key.UserId, AuditEntityTypes.User);
+        });
+    }
+
     [HumansFact]
     public async Task Rotate_refuses_when_the_owner_has_lost_Admin_and_Board()
     {
