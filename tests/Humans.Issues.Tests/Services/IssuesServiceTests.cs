@@ -1228,20 +1228,17 @@ public sealed class IssuesServiceTests
     }
 
     // ==========================================================================
-    // Helpers
-    // ==========================================================================
-
-    // ==========================================================================
     // Who may reach one issue
     //
-    // The queue has always been scoped; the per-item methods took no viewer, so a caller
-    // holding an id reached any issue. These pin the rule the service now applies to every
-    // per-item read and mutation, whichever door the call arrives through: a handler (Admin,
-    // or a role owning the issue's section) may do anything, the reporter may read and comment
-    // on their own issue, and everyone else is told it does not exist.
+    // The rule the service applies to every per-item read and mutation, whichever door the
+    // call arrives through: a handler (Admin, or a role owning the issue's section) may do
+    // anything, the reporter may read and comment on their own issue, and everyone else is
+    // told it does not exist.
     // ==========================================================================
 
-    private static readonly CancellationToken Ct = Xunit.TestContext.Current.CancellationToken;
+    // A property, not a field: TestContext.Current is ambient per test, and HumansFact gives
+    // each one its own timeout CTS, so a captured token would outlive the test that made it.
+    private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
 
     /// <summary>Holds a role that owns the Tickets section, so Tickets issues are theirs.</summary>
     private static IssueViewer Handler() => new(Guid.NewGuid(), [RoleNames.TicketAdmin]);
@@ -1354,6 +1351,10 @@ public sealed class IssuesServiceTests
         after!.CommentCount.Should().Be(1);
         after.Status.Should().Be(IssueStatus.Open);
     }
+
+    // ==========================================================================
+    // Helpers
+    // ==========================================================================
 
     private async Task<(Guid reporterId, Guid issueId)> SeedIssueAsync(
         IssueStatus status,
