@@ -4,11 +4,8 @@ using Humans.Base.Interfaces;
 namespace Humans.EarlyEntry.Contracts;
 
 /// <summary>
-/// §15e one-way cache-staleness signal for the per-user EE cache. Implemented by
-/// the caching decorator. EE is derived from camp grants and build-shift signups,
-/// so the Camps and Shifts write paths inject this and evict the affected user
-/// after their writes. Pure eviction (the cache has no warmup); the next read
-/// lazy-reloads.
+/// Contributors tell this section to forget a cached answer after they write
+/// (design-rules §15e). Camps, Shifts and Teams call it.
 /// </summary>
 [Grandfathered(
     ruleId: "HUM0028",
@@ -17,13 +14,14 @@ namespace Humans.EarlyEntry.Contracts;
     issueRef: "nobodies-collective/Humans#805")]
 public interface IEarlyEntryInvalidator : IInvalidator
 {
-    /// <summary>Evict one user's cached EE (member-level grant/signup change).</summary>
+    /// <summary>Forget one person's answer.</summary>
     void InvalidateUser(Guid userId);
 
     /// <summary>
     /// Evict the whole cache. For global config changes that shift every holder's
     /// EE at once — the camps' global <c>EeStartDate</c> and EventSettings gate /
-    /// build-offset edits (which move every shift-derived date).
+    /// build-offset edits (which move every shift-derived date). Not wired today:
+    /// Shifts' gate/build-offset edits do not call this yet — see <c>Docs/health.md</c> §5.
     /// </summary>
     void InvalidateAll();
 }

@@ -1,6 +1,5 @@
-@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
-   here ships broken markup with a green build and no runtime error — see design §1/§2.
-   Guarded by DebugPageRenderTests (step 12). *@
+@* A section RCL does not inherit the host's _ViewImports. A missing line here ships broken
+   markup with a green build and no runtime error; DebugPageRenderTests guards it. *@
 @using Humans.Base.Extensions
 @using Humans.Debug
 @using Humans.Debug.Controllers
@@ -13,26 +12,21 @@
 @using Humans.Base.Models.Tables
 @using Microsoft.AspNetCore.Html
 @using Microsoft.Extensions.Localization
-@* Debug carries no resource set of its own — every string on these pages is English
-   developer copy (step 3b's "does the section have any keys" opens with no). The one
-   localizer the section touches is SharedResource, and only as *data*: /Debug/Translations
-   enumerates the whole shared set as a coverage gallery. DebugArchitectureTests pins that
-   to SharedResource so a future page cannot quietly bind some third set. *@
+@* Debug has no resource set — every string here is English developer copy. /Debug/Translations
+   reads SharedResource as data, not as its own UI strings; DebugArchitectureTests pins it as
+   the only localizer bound. *@
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @* A section can only addTagHelper against assemblies it references — a Shell-resident
-   component renders as inert literal markup (step 6). <vc:human> is in Humans.Base. *@
+   component renders as inert literal markup. <vc:human> is in Humans.Base. *@
 @addTagHelper *, Humans.Base
-@* /WidgetGallery's fan-in (nobodies-collective/Humans#1091): the gallery renders other
-   sections' public view components as <vc:> tag helpers, so their assemblies are opened
-   here — _ViewImports rather than the view so AuditLogPageRenderTests' binding walk
-   sees the <vc:audit-log> call site as bound. *@
+@* /WidgetGallery renders other sections' public view components as <vc:> tag helpers, so
+   their assemblies are opened here — _ViewImports rather than the view so
+   AuditLogPageRenderTests' binding walk sees the <vc:audit-log> call site as bound. *@
 @addTagHelper *, Humans.Camps
 @addTagHelper *, Humans.Users
 @addTagHelper *, Humans.Tickets
 @addTagHelper *, Humans.Shifts
 @addTagHelper *, Humans.Calendar
 @addTagHelper *, Humans.AuditLog
-@* Teams and Events had no public component until the search-result rows
-   (nobodies-collective/Humans#1062); the other three assemblies were already open. *@
 @addTagHelper *, Humans.Teams
 @addTagHelper *, Humans.Events

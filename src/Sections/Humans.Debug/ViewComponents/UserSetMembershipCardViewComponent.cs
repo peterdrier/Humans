@@ -7,8 +7,7 @@ namespace Humans.Debug.ViewComponents;
 
 /// <summary>
 /// The Venn + UpSet "user set membership" card on the admin dashboard. Contributed into the
-/// admin dashboard's <c>admin-dashboard</c> chrome slot (<see cref="Humans.Debug.SectionChrome"/>)
-/// since nobodies-collective/Humans#1091.
+/// admin dashboard's <c>admin-dashboard</c> chrome slot (<see cref="Humans.Debug.SectionChrome"/>).
 /// </summary>
 /// <remarks>
 /// Internal — invoked by name through <c>ChromeSlotViewComponent</c>'s
