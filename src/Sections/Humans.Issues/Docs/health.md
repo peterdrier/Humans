@@ -37,9 +37,7 @@ the message.
 Every shape above takes the asker with it. `IssueViewer` — the person's id plus the role names
 they hold — is the one way any of these say who is asking, and the section derives everything
 about their reach from it, including admin-ness. Nothing passes a privilege the caller asserted
-(`memory/code/authorization-conventions.md`). **Target, not built:** shape 1's
-`GetActionableCountForViewerAsync` still takes `(userId, roles, isAdmin)`, the asserted-privilege
-triple `IssueViewer` replaced everywhere else.
+(`memory/code/authorization-conventions.md`).
 
 ## 3. Structure
 
@@ -54,9 +52,9 @@ triple `IssueViewer` replaced everywhere else.
   field change* pipeline they parameterise, with result-vs-throw as a single wrapper — see §2
   shape 5 and §5.
 - **`Controllers/` + `Models/` + `Views/`** — one controller, one page (list + inline detail),
-  one submit form, one widget modal. View models carry only what a `.cshtml` renders.
-  **Target, not built:** the controller builds its `IssueViewer` per request through `ViewerFor`
-  and reads admin-ness off it; `Index` builds its own inline and asks `User.IsInRole` separately.
+  one submit form, one widget modal. View models carry only what a `.cshtml` renders. Every
+  action builds its viewer through `ViewerFor` and reads admin-ness off it — never `User.IsInRole`
+  and never a second viewer inline.
 - **`Authorization/`** — one requirement (`Handle`) and its resource handler, which asks
   `IssueSectionRouting.CanHandle` the same question the service asks, to shape the page and to
   answer 403 where the service would answer 404.

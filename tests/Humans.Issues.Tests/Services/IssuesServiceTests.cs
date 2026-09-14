@@ -1072,7 +1072,7 @@ public sealed class IssuesServiceTests
             Clock, env, SectionCatalog, NullLogger<IssuesApplicationService>.Instance);
 
         await svc.GetActionableCountForViewerAsync(
-            Guid.NewGuid(), [], viewerIsAdmin: true, ct: Xunit.TestContext.Current.CancellationToken);
+            new IssueViewer(Guid.NewGuid(), [RoleNames.Admin]), Xunit.TestContext.Current.CancellationToken);
 
         await repo.Received(1).CountActionableAsync(
             Arg.Is<IReadOnlySet<string>?>(s => s == null),
@@ -1100,7 +1100,7 @@ public sealed class IssuesServiceTests
 
         var viewerId = Guid.NewGuid();
         await svc.GetActionableCountForViewerAsync(
-            viewerId, [RoleNames.TeamsAdmin], viewerIsAdmin: false, ct: Xunit.TestContext.Current.CancellationToken);
+            new IssueViewer(viewerId, [RoleNames.TeamsAdmin]), Xunit.TestContext.Current.CancellationToken);
 
         await repo.Received(1).CountActionableAsync(
             Arg.Is<IReadOnlySet<string>?>(s => s != null && s.Contains(IssueSectionRouting.Teams)),
@@ -1152,10 +1152,8 @@ public sealed class IssuesServiceTests
         await SeedIssueRowAsync(strangerId, IssueStatus.Resolved, "Terminal, my section", IssueSectionRouting.Tickets);
 
         var count = await _service.GetActionableCountForViewerAsync(
-            viewerId,
-            viewerRoles: [RoleNames.TicketAdmin],
-            viewerIsAdmin: false,
-            ct: Xunit.TestContext.Current.CancellationToken);
+            new IssueViewer(viewerId, [RoleNames.TicketAdmin]),
+            Xunit.TestContext.Current.CancellationToken);
 
         count.Should().Be(2);
     }

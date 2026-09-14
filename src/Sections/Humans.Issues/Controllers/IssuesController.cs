@@ -2,7 +2,6 @@ using Humans.Base.Controllers;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Base.Constants;
 using Humans.Issues.Authorization;
 using Humans.Issues.Contracts;
 using Humans.Issues.Domain;
@@ -48,11 +47,11 @@ internal sealed class IssuesController(
         var (userMissing, user) = await RequireCurrentUserAsync();
         if (userMissing is not null) return userMissing;
 
-        var roles = ClaimsRoles();
-        var isAdmin = User.IsInRole(RoleNames.Admin);
+        var viewer = ViewerFor(user.Id);
         var viewMode = view ?? IssueViewMode.All;
 
-        // Open = non-terminal (matches nav badge); Closed = terminal; Mine = ReporterUserId == current user.
+        // Open = non-terminal; Closed = terminal; Mine = ReporterUserId == current user.
+        // Wider than the nav badge, which counts Open + Triage only.
         var statuses = viewMode switch
         {
             IssueViewMode.Open => new[] { IssueStatus.Triage, IssueStatus.Open, IssueStatus.InProgress },
@@ -63,7 +62,7 @@ internal sealed class IssuesController(
         // Non-admin: reporter filter forced to self (Mine button). Admin dropdown is independent.
         Guid? reporterFilter = viewMode == IssueViewMode.Mine
             ? user.Id
-            : (isAdmin ? reporter : null);
+            : (viewer.IsAdmin ? reporter : null);
 
         var filter = new IssueListFilter(
             Statuses: statuses,
@@ -74,13 +73,13 @@ internal sealed class IssuesController(
             SearchText: !string.IsNullOrWhiteSpace(search) ? search : null,
             Limit: 200);
 
-        var matches = await issues.GetIssueListAsync(filter, new IssueViewer(user.Id, roles));
+        var matches = await issues.GetIssueListAsync(filter, viewer);
 
         // Section dropdown: Admin sees all known sections; non-admins see the
         // sections their roles own (so they only filter inside their own queue).
-        var allowedSections = isAdmin
+        var allowedSections = viewer.IsAdmin
             ? IssueSectionRouting.AllKnownSections
-            : IssueSectionRouting.SectionsForRoles(roles).ToList();
+            : IssueSectionRouting.SectionsForRoles(viewer.Roles).ToList();
 
         var sectionOptions = allowedSections
             .Select(s => new SectionOption { Section = s, Label = AreaLabelMap.LabelFor(s) })
@@ -88,7 +87,7 @@ internal sealed class IssuesController(
             .ToList();
 
         var reporterOptions = new List<ReporterDropdownItem>();
-        if (isAdmin)
+        if (viewer.IsAdmin)
         {
             var distinct = await issues.GetDistinctReportersAsync();
             reporterOptions = distinct
@@ -109,9 +108,9 @@ internal sealed class IssuesController(
             View = viewMode,
             CategoryFilter = category,
             SectionFilter = section,
-            ReporterFilter = isAdmin ? reporter : null,
+            ReporterFilter = viewer.IsAdmin ? reporter : null,
             SearchText = search,
-            IsAdmin = isAdmin,
+            IsAdmin = viewer.IsAdmin,
             SelectedIssueId = selected,
             SectionOptions = sectionOptions,
             Reporters = reporterOptions,
