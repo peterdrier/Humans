@@ -15,8 +15,9 @@ Measured against `origin/main` at the time of writing, from the section `.csproj
 - Sections are assemblies, discovered by reflection. `Sections:Active` / `ISection.IsActive` exists and its dependency guard is derived from real assembly references (nobodies-collective/Humans#1081). Shell's own data is the data-protection key table and nothing else.
 - Nav, admin nav, tiles, chrome slots, jobs, health checks, endpoints, policies, GDPR export/erasure, migrations and localization are all discovered. None of them needs a Shell edit per section.
 - Data access is clean: no section reaches another's `DbContext`, and there is no raw SQL under `src/Sections`.
+- Shell itself pins Users, Auth, Backdoor, Email, GoogleIntegration and Tickets: the guard reads Shell's compiled references the same way, and those come from sign-in glue, `MembershipRequiredFilter`'s Backdoor-scheme check, and the three `Extensions/Infrastructure/*` settings bindings (package 10).
 - What pins sections today is the **core depending on the optional**. Users references Governance, Shifts, Onboarding, Tickets, Campaigns, Notifications, GoogleIntegration, Consent, Camps and Events (the last two as implementation references, for view components on the profile page). Auth references Teams, Email and Notifications. Because the activation guard reads those references, none of the sections Users or Auth name can be switched off.
-- The sections no other section references by assembly: Backdoor, Cantina, Debug, Development, Expenses, Gate, Guide, MailerLite, Monitor, Rideshare, Scanner, Search, Store, TicketTailor, Tour. These are the candidates for disable testing, not proven independent: the guard sees assembly references only, and a DI registration one section supplies for another's port is invisible to it. TicketTailor is the counterexample: it is the only registrar of `ITicketVendorService`, which Tickets requires, so deactivating it passes the guard and fails at first resolution.
+- The sections neither Shell nor another section references by assembly: Cantina, Debug, Development, Expenses, Gate, Guide, MailerLite, Monitor, Rideshare, Scanner, Search, Store, TicketTailor, Tour. These are the candidates for disable testing, not proven independent: the guard sees assembly references only, and a DI registration one section supplies for another's port is invisible to it. TicketTailor is the counterexample: it is the only registrar of `ITicketVendorService`, which Tickets requires, so deactivating it passes the guard and fails at first resolution.
 
 ## Agreed design direction
 
@@ -96,7 +97,7 @@ Prerequisite for final disable acceptance: packages 1 to 6 remove the domain dep
 ### 8. Finish crosscut and connector ownership
 
 - [ ] Remove domain orchestration from generic crosscuts and provider infrastructure. Audit `NotificationMeterProvider`, `HumansMetricsService` (push model, nobodies-collective/Humans#580), Campaigns callbacks in `EmailOutboxProcessor`, `HoldedNightlySync`, and Teams' Google-specific event construction.
-- [ ] Put each workflow in its domain owner or a table-free orchestrator, using narrow contracts. Contributors invalidate their own caches through package 2's bus. A caching decorator with sideways service calls (`CachingTeamService` is the suspect) violates [`decorators-talk-only-to-inner`](../../memory/architecture/decorators-talk-only-to-inner.md) today; confirm and ledger it now rather than waiting for this package.
+- [ ] Put each workflow in its domain owner or a table-free orchestrator, using narrow contracts. Contributors invalidate their own caches through package 2's bus. `CachingTeamService.GetTeamDirectoryAsync` resolves `IRoleAssignmentService` sideways, violating [`decorators-talk-only-to-inner`](../../memory/architecture/decorators-talk-only-to-inner.md) today; it is ledgered in Teams' `Docs/debt.yml` so the sweep reaches it before this package does.
 
 Done when removing an optional integration or campaign domain leaves generic notifications/email and required member operations usable. Preserve delivery/retry and synchronization behavior; no new orchestration layer without a concrete need.
 
@@ -105,11 +106,11 @@ Done when removing an optional integration or campaign domain leaves generic not
 - [ ] Internalize implementation-only write interfaces and rename `I<X>ServiceRead` to `I<X>Service` (nobodies-collective/Humans#1058). A write another section genuinely needs stays on the public contract, reviewed; what becomes a compile error is reaching a write nobody agreed to export.
 - [ ] Fold the `.Contracts` leaves no cycle pins (nobodies-collective/Humans#1066, #1041) and retire the analyzers, baselines and `[Grandfathered]` entries the assembly boundary subsumes (nobodies-collective/Humans#1010).
 
-Done when a section's public surface is its `Contracts/` folder or leaf plus the framework-required public types (`Section`, the `<Section>Resource` marker), and the remaining analyzers are the ones the compiler cannot express.
+Done when a section's public surface is its `Contracts/` folder or leaf plus the exceptions design-rules already enumerates (`Section`, the `<Section>Resource` marker, migrations, `Jobs/`, and framework-discovered view components and tag helpers), and the remaining analyzers are the ones the compiler cannot express.
 
 ### 10. Remove remaining assembly and tooling roll calls
 
-- [ ] Replace the explicit section project list in `Humans.Web.csproj` with a repository-appropriate inclusion convention. Audit remaining Shell DI hooks (`Extensions/Infrastructure/*` binding Email, Google and ticket-vendor settings) and move domain-owned registration/configuration while retaining rightful Shell platform context.
+- [ ] Replace the explicit section project list in `Humans.Web.csproj` with a repository-appropriate inclusion convention. Move the `Extensions/Infrastructure/*` settings bindings (Email, Google, ticket-vendor port) and `MembershipRequiredFilter`'s Backdoor-scheme check behind seams, so Shell's compiled references shrink to the declared identity core (Users, Auth) and the guard stops pinning Backdoor, Email, GoogleIntegration and Tickets.
 - [ ] Remove hand-maintained section inventories from migration tooling and contributor expectations where discovery can supply them. Audit `SECTION_DB_CONTEXTS` in `build.yml`, GDPR contributor expectations, and tests reaching into another section's context.
 - [ ] Consolidate existing contribution declarations on `Section` when touching a section (nobodies-collective/Humans#1088); do not make a repository-wide cosmetic rewrite a prerequisite for independence.
 
