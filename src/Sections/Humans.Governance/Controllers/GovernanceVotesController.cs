@@ -259,7 +259,11 @@ internal sealed class GovernanceVotesController(
             Text("Votes_WinnerHeader")]);
         foreach (var round in audience.Rounds)
         {
-            var counts = optionKeys.Select(k => (object?)(round.Counts.TryGetValue(k, out var c) ? c : 0));
+            // Blank, not zero, for an option already eliminated: a round counts only the
+            // options still standing, so a missing key means "not in this round", which a
+            // zero would turn into a recorded count of nobody ranking it. The results page
+            // leaves the same cell empty, and the CSV has to agree with it.
+            var counts = optionKeys.Select(k => (object?)(round.Counts.TryGetValue(k, out var c) ? c : null));
             csv.WriteRow([
                 round.Number, .. counts, round.Exhausted,
                 optionLabel(round.EliminatedKey), optionLabel(round.WinnerKey)]);

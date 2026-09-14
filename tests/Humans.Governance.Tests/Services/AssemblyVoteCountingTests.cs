@@ -146,6 +146,10 @@ public sealed class AssemblyVoteCountingTests
         rounds[1].Exhausted.Should().Be(2);
         rounds[1].Counts["c"].Should().Be(4);
         rounds[1].Counts["a"].Should().Be(3);
+        // An eliminated option is absent, not zero. The results page and the CSV both
+        // render the missing key as an empty cell, which is what "no longer standing"
+        // means; a zero would read as nobody ranking it that round.
+        rounds[1].Counts.Should().NotContainKey("b");
         winner.Should().Be("c");
         verdict.Should().Be(AssemblyVoteVerdict.Passed);
     }

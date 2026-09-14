@@ -15,13 +15,13 @@
         return string.Join(", ", ranking.Select((key, i) => $"{i + 1}. {OptionLabel(key)}"));
     }
 
-    var audiences = new List<(AssemblyVoteAudienceResult Audience, string HeadingKey)>
+    var audiences = new List<(AssemblyVoteAudienceResult Audience, string HeadingKey, bool IsOfficial)>
     {
-        (results.Result.Official, "Votes_OfficialResultHeading")
+        (results.Result.Official, "Votes_OfficialResultHeading", true)
     };
     if (results.Result.Indicative is { } indicativeResult)
     {
-        audiences.Add((indicativeResult, "Votes_IndicativeResultHeading"));
+        audiences.Add((indicativeResult, "Votes_IndicativeResultHeading", false));
     }
 }
 
@@ -41,7 +41,7 @@
 
 <p class="text-muted">@Localizer["Votes_Method_" + results.Result.Method]</p>
 
-@foreach (var (audience, headingKey) in audiences)
+@foreach (var (audience, headingKey, isOfficial) in audiences)
 {
     <div class="card mb-4">
         <div class="card-header">@Localizer[headingKey]</div>
@@ -128,7 +128,11 @@
                 </dl>
             }
 
-            @if (audience.Verdict == AssemblyVoteVerdict.Tie)
+            @* Official only. The notice states the Art. 10.2 consequence of a tie — the
+               President's deciding vote, recorded in the acta — and that only attaches to
+               the binding result. The indicative audience is advisory and excluded from it,
+               so printing it there would give an advisory tie a legal effect it has not. *@
+            @if (isOfficial && audience.Verdict == AssemblyVoteVerdict.Tie)
             {
                 <p class="alert alert-warning mt-3 mb-0">@Localizer["Votes_TieNotice"]</p>
             }
