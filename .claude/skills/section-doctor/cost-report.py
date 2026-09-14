@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Cost report for a section-doctor run (Phase 7).
 
-Usage: python cost-report.py <branch-name> <phase-log-path>
+Usage: python cost-report.py [<branch-name>] [<phase-log-path>]
+
+Both arguments default from the current branch (`section-doctor/<TS>`) the way every
+`doctor.py` subcommand does, so no shell variable has to survive to Phase 7.
 
 Finds this run's own session transcript under ~/.claude/projects (the file that
 mentions the run branch and was modified after the run started), sums per-API-call
@@ -18,14 +21,19 @@ to its id, so an older phase log still reports. A line without a parseable leadi
 timestamp is skipped (and counted in a footer warning) rather than corrupting the
 bucketing or failing the report.
 
-Exits 0 with "Cost: unmeasured (...)" on any discovery failure — never fail the run.
+Exits 0 with "Cost: unmeasured (...)" on any discovery failure — never fail the run — and
+writes the traceback to stderr and to `$RUNDIR/cost-report.err` so the failure can be read.
 """
 import glob
 import json
 import os
 import re
 import sys
+import traceback
 from datetime import datetime
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import doctor  # noqa: E402  (branch and rundir derivation, shared with doctor.py)
 
 # $/MTok: fresh input, output, cache write, cache read (API list rates).
 # Order matters: rate() takes the first substring match, so "sonnet-5" ($2/$10)
@@ -131,7 +139,8 @@ def add(bucket, model, u):
 
 
 def main():
-    branch, phase_log = sys.argv[1], sys.argv[2]
+    branch = sys.argv[1] if len(sys.argv) > 1 else doctor.branch()
+    phase_log = sys.argv[2] if len(sys.argv) > 2 else os.path.join(doctor.rundir(), "phase-log")
     phases, skipped_marks, skipped_before_first = read_phase_log(phase_log)
     if not phases:
         print("Cost: unmeasured (phase log has no timestamped marks)")
@@ -244,5 +253,12 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception as e:  # never fail the run over bookkeeping
-        print(f"Cost: unmeasured ({e})")
+    except (Exception, SystemExit) as e:  # never fail the run over bookkeeping — but never hide why
+        tb = traceback.format_exc()
+        sys.stderr.write(tb)
+        try:
+            with open(os.path.join(doctor.rundir(), "cost-report.err"), "w", encoding="utf-8") as f:
+                f.write(tb)
+        except SystemExit:
+            pass  # not on a section-doctor branch and no --ts: stderr is the record
+        print(f"Cost: unmeasured ({type(e).__name__}: {e})")

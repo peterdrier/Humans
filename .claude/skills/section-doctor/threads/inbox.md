@@ -34,25 +34,29 @@ Peter enacts every verdict after review. **Opening a new issue on `peterdrier/Hu
 allowed** — it is a write of the run's own, like its run file and its PR (whose body and
 description it owns). Never upstream.
 
-**Issue scope is `peterdrier/Humans` only, by default.** The standard cloud environment's GitHub
-access does not reach `nobodies-collective/Humans` — a default run never queries it, probes for
-it, or records the review as partial for lacking it; fork-only **is** the complete review, and
-the run file's `## Threads` states its scope without caveat. Issues an upstream backlog might
-duplicate are Peter's to reconcile, not the run's to hunt.
+**Issue scope is whatever the main thread proved it can read.** The thread has no GitHub tool:
+it reads the issue dump main wrote to `$RUNDIR/assessment/issues.md` (path in the prompt) and
+never queries GitHub itself. Main builds that file before dispatch:
 
-Under `--upstream-issues`, include upstream — and then prove reach per repo before any issue
-work, because an issue search against an out-of-scope repo returns 0 **silently**, which is
-indistinguishable from a clean backlog. Probe each repo by reading an issue whose number you
-already hold — don't discover one by listing, which is the very call the probe exists to
-qualify:
+1. **Prove reach per repo** — read an issue whose number you already hold, never one
+   discovered by listing (a search against an out-of-scope repo returns 0 **silently**, which
+   is indistinguishable from a clean backlog):
 
-```bash
-gh issue view --repo nobodies-collective/Humans 1118
-gh issue view --repo peterdrier/Humans 1494
-```
+   ```bash
+   gh issue view --repo nobodies-collective/Humans 1118
+   gh issue view --repo peterdrier/Humans 1494
+   ```
 
-(the GitHub MCP `issue_read` where `gh` is absent; the issue need not still be open, the read
-only has to prove access). A probe that fails for **any** reason — scope, auth, network, rate
-limit, missing tool — suspends that repo's half; don't reason about the cause, and don't infer
-one repo's reach from the other's. Report what was actually covered. The ledger and in-app
-halves are unaffected either way.
+   (the GitHub MCP `issue_read` where `gh` is absent; the issue need not still be open, the
+   read only has to prove access). A probe that fails for **any** reason — scope, auth,
+   network, rate limit, missing tool — marks that repo `not covered: <reason>`; don't reason
+   about the cause, and don't infer one repo's reach from the other's.
+2. **List the section's open issues** in every repo that proved reachable, into the file:
+   one status line per repo at the head (`peterdrier/Humans: covered` /
+   `nobodies-collective/Humans: not covered: <reason>`), then each issue's ref, title, labels
+   and body — the labels are what the spec-quality lens's section-label check reads.
+
+Both repos are in scope whenever they are readable; the environment decides, not a flag. The
+thread's return names the repos it reviewed exactly as the status lines say, and `## Threads`
+carries the same lines. An empty list under a `covered` repo is a clean backlog; under a
+`not covered` one it is nothing, and is recorded as nothing.

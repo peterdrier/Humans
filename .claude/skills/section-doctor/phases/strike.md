@@ -17,12 +17,23 @@ mechanical renames — dispatches to a per-strike **sonnet** executor subagent, 
 strike's checkpoint text, its target file paths — **absolute, rooted at `$WORKTREE`**; a
 subagent does not inherit the run's cwd, and on a local machine a relative path can land in
 another session's checkout — and the rules of this phase it will touch (the doc-sweep and
-delete-sweep rules, the resx/XML rule, the build-output rule). It edits and validates under
-`$WORKTREE` only, runs **no git commands** — where a handed rule prescribes `git grep` (the
-delete sweep), the executor runs the same search with the Grep tool or `rg -n` rooted at
-`$WORKTREE` instead — and returns a diff summary; the main thread reviews
-**`git diff` in the worktree, never the executor's own summary,** and commits. One executor at a
-time — Phase 0's one-build-per-worktree rule applies to them too. **Every Agent dispatch in this
+delete-sweep rules, the resx/XML rule, the build-output rule). It edits under `$WORKTREE`
+only, runs **no git commands** — where a handed rule prescribes `git grep` (the delete
+sweep), the executor runs the same search with the Grep tool or `rg -n` rooted at
+`$WORKTREE` instead — and **never builds or tests**: Phase 0's one-build-per-worktree rule
+means an executor holding `dotnet` leaves the main thread nothing buildable for the duration,
+so the gate (step 3) is the main thread's after the executor returns. It returns a diff
+summary; the main thread reviews **`git diff` in the worktree, never the executor's own
+summary,** gates, and commits. One executor at a time.
+
+**The executor's brief is the finding's error class, not its line.** The brief reads: *fix
+these findings, and any instance of the same error class in the same files; list every line you
+changed beyond the given findings, with the finding number it matches.* A brief that names only
+lines leaves the same false claim standing three paragraphs down and ships a doc that
+contradicts itself; the class-in-file scope finishes the sweep without letting the executor
+range across the repo. "Where the doc and the code disagree and you cannot tell which is right,
+leave both alone" still holds, and the listed additions are what the main thread's `git diff`
+review checks first. **Every Agent dispatch in this
 phase — executor and reviewer alike — opens with a `thread:` marker as its whole first line**
 (`thread: strike <what>`, the same `<what>` as the item's phase-log mark; `thread: review
 <what>`) so the cost report names its row per 3d's convention instead of an opaque agent
@@ -122,9 +133,10 @@ Per item (one item or tight cluster per commit):
    the changed path and no page errors; a cshtml/resx strike gets the build plus
    `.claude/razor-lint.sh`, and the run file says as a dated session line that no live render
    happened. Anything beyond that is a preview-deploy check after the PR opens.
-7. Run `doctor.py prose-gate` over the staged diff (Phase 5), then commit
-   `doctor(<section>): <what>`. `doctor.py push` every 3–5 items. When a reviewer gate could not
-   be obtained, say so in the commit message as well as the run file — a commit that lands
+7. Commit with `doctor.py commit -F <msgfile>` as `doctor(<section>): <what>` — the prose
+   gate (Phase 5) runs inside it over the staged diff and is recorded in `$RUNDIR/gates.log`;
+   a run never calls `git commit` itself. `doctor.py push` every 3–5 items. When a reviewer
+   gate could not be obtained, say so in the commit message as well as the run file — a commit that lands
    unreviewed should say so where the diff is read.
 
 **File-format rules that only the build catches:**

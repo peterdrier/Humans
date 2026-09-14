@@ -122,11 +122,6 @@ their future callers are shaped by them.
 - **Bounce handling.** `Sent` means the SMTP server accepted the message, not that it
   arrived. The section states this explicitly and has no bounce path. Anything that
   wants real delivery outcomes needs a new inbound seam, not a new status value.
-- **Per-signup notification dedup.** The schema carries a `ShiftSignupId` column and a
-  filtered index for "one email of each template per signup". Nothing writes the column
-  and nothing queries the index; the dedup was specified and never built. Peter's ruling
-  (2026-09-11) is to drop both rather than build it — the destructive migration ships in
-  its own PR, per `memory/architecture/no-drops-until-prod-verified.md`.
 - **A moved-inward job contract.** `IEmailOutboxProcessor` and `IEmailOutboxRetention`
   sit on the public leaf but have no consumer outside the section since the jobs came in —
   Shell names neither. They can move inward whenever someone wants the churn.

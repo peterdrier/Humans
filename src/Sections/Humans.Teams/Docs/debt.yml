@@ -1,0 +1,7 @@
+# Section debt ledger for Humans.Teams. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+inbox:
+  - added: 2026-09-14
+    what: "CachingTeamService.GetTeamDirectoryAsync resolves IRoleAssignmentService sideways through its scope factory; memory/architecture/decorators-talk-only-to-inner.md forbids any collaborator beyond the keyed inner service and cache plumbing. Found by Codex reviewing peterdrier/Humans#1670; fix is a service-side move (the directory build belongs in TeamService or an orchestrator), not a decorator tweak."
+    review: panel
