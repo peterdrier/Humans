@@ -48,8 +48,8 @@ public class AttendeeContactImportServicePlanTests
             AttendeeName = "Jane Doe",
             Status = TicketAttendeeStatus.Valid,
         });
-        harness.UserEmails.GetDistinctVerifiedUserIdsAsync("jane@x.com", Arg.Any<CancellationToken>())
-            .Returns([userId]);
+        harness.UserEmails.FindByAddressAsync("jane@x.com", true, true, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(userId, "jane@x.com")]);
         harness.Users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(
                 new User { Id = userId, MergedToUserId = null },
@@ -77,8 +77,8 @@ public class AttendeeContactImportServicePlanTests
             AttendeeName = "Jane",
             Status = TicketAttendeeStatus.Valid,
         });
-        harness.UserEmails.GetDistinctVerifiedUserIdsAsync("jane@x.com", Arg.Any<CancellationToken>())
-            .Returns([deadId]);
+        harness.UserEmails.FindByAddressAsync("jane@x.com", true, true, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(deadId, "jane@x.com")]);
         harness.Users.GetUserInfoAsync(deadId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(
                 new User { Id = deadId, MergedToUserId = liveId },
@@ -107,10 +107,10 @@ public class AttendeeContactImportServicePlanTests
             AttendeeName = "Victim",
             Status = TicketAttendeeStatus.Valid,
         });
-        harness.UserEmails.GetDistinctVerifiedUserIdsAsync("victim@x.com", Arg.Any<CancellationToken>())
+        harness.UserEmails.FindByAddressAsync("victim@x.com", true, true, Arg.Any<CancellationToken>())
             .Returns([]);
-        harness.UserEmails.FindAnyEmailRowByAddressAsync("victim@x.com", Arg.Any<CancellationToken>())
-            .Returns((squatterUserId, unverifiedRowId));
+        harness.UserEmails.FindByAddressAsync("victim@x.com", true, false, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(squatterUserId, "victim@x.com", verified: false, id: unverifiedRowId)]);
 
         var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -132,10 +132,10 @@ public class AttendeeContactImportServicePlanTests
             AttendeeName = "Fresh Face",
             Status = TicketAttendeeStatus.Valid,
         });
-        harness.UserEmails.GetDistinctVerifiedUserIdsAsync("fresh@x.com", Arg.Any<CancellationToken>())
+        harness.UserEmails.FindByAddressAsync("fresh@x.com", true, true, Arg.Any<CancellationToken>())
             .Returns([]);
-        harness.UserEmails.FindAnyEmailRowByAddressAsync("fresh@x.com", Arg.Any<CancellationToken>())
-            .Returns(((Guid, Guid)?)null);
+        harness.UserEmails.FindByAddressAsync("fresh@x.com", true, false, Arg.Any<CancellationToken>())
+            .Returns([]);
 
         var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -176,10 +176,8 @@ public class AttendeeContactImportServicePlanTests
             AttendeeName = "Sara Smith",
             Status = TicketAttendeeStatus.Valid,
         });
-        harness.UserEmails.GetDistinctVerifiedUserIdsAsync(
-                Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns([]);
-        harness.UserEmails.FindAnyEmailRowByAddressAsync(
-                Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(((Guid, Guid)?)null);
+        harness.UserEmails.FindByAddressAsync(
+                Arg.Any<string>(), true, Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns([]);
 
         var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -233,8 +231,8 @@ public class AttendeeContactImportServicePlanTests
             AttendeeEmail = "shared@x.com",
             Status = TicketAttendeeStatus.Valid,
         });
-        harness.UserEmails.GetDistinctVerifiedUserIdsAsync("shared@x.com", Arg.Any<CancellationToken>())
-            .Returns([u1, u2]);
+        harness.UserEmails.FindByAddressAsync("shared@x.com", true, true, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(u1, "shared@x.com"), UserEmailFixtures.Row(u2, "shared@x.com")]);
 
         var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 

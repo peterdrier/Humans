@@ -20,7 +20,7 @@ internal sealed class UserService(
     IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
     IFileStorage fileStorage,
     IClock clock,
-    ILogger<UserService> logger) : IUserService, IUserDataContributor
+    ILogger<UserService> logger) : IUserServiceInternal, IUserDataContributor
 {
     private static readonly TrackedLock[] ProfileStubLocks = Enumerable
         .Range(0, 32)
@@ -630,8 +630,9 @@ internal sealed class UserService(
         if (!new EmailAddressAttribute().IsValid(email))
             throw new ValidationException("Please enter a valid email address.");
 
-        var existing = await repo.FindUserEmailByNormalizedEmailAsync(normalizedEmail, alternateEmail, ct);
-        if (existing is not null && existing.UserId == userId)
+        var rows = await repo.GetUserEmailsByAddressAsync(normalizedEmail, alternateEmail, ct);
+        var existing = rows.FirstOrDefault(e => e.UserId == userId);
+        if (existing is not null)
         {
             if (command.IgnoreExisting)
                 return new UserEmailAddResult(existing.Id, Added: false, IsConflict: false);
@@ -639,7 +640,7 @@ internal sealed class UserService(
             throw new ValidationException("This email address is already in your account.");
         }
 
-        var isConflict = existing is not null && existing.UserId != userId && existing.IsVerified;
+        var isConflict = rows.Any(e => e.UserId != userId && e.IsVerified);
 
         _ = await repo.GetByIdAsync(userId, ct)
             ?? throw new InvalidOperationException("User not found.");

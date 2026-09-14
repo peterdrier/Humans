@@ -22,7 +22,7 @@ internal sealed class AccountMergeService(
     ILogger<AccountMergeService> logger,
     IClock clock,
     IEnumerable<IUserMerge> userMerges,
-    IUserService userService,
+    IUserServiceInternal userService,
     IActiveTeamsCacheInvalidator activeTeamsCacheInvalidator,
     IRoleAssignmentService roleAssignmentService,
     INotificationService notificationService,

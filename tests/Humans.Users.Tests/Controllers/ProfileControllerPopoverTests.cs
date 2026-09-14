@@ -38,7 +38,7 @@ namespace Humans.Users.Tests.Controllers;
 
 public class ProfileControllerPopoverTests
 {
-    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IProfilePictureService _profilePictureService = Substitute.For<IProfilePictureService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();

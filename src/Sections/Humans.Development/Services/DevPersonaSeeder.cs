@@ -71,7 +71,8 @@ internal sealed class DevPersonaSeeder(
         var email = $"dev-{slug}@localhost";
 
         // Legacy personas may exist with old hardcoded GUIDs — reuse them.
-        var byEmailUserId = await userEmailService.GetUserIdByVerifiedEmailAsync(email);
+        var byEmailUserId = (await userEmailService.FindByAddressAsync(email, aliased: false, verifiedOnly: true))
+            .FirstOrDefault()?.UserId;
         if (byEmailUserId is not null)
         {
             logger.LogInformation("DEV: found legacy persona {Email} ({OldId}), reusing", email, byEmailUserId.Value);

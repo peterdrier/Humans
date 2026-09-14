@@ -22,9 +22,9 @@ People manage themselves under `/Profile/Me/*`; member admins manage people unde
 | Shape | Question it answers | Where it lives today |
 |---|---|---|
 | **Resolve a person** | id → snapshot; ids → snapshots; everyone; text → ranked matches; address → snapshot | `IUserServiceRead` over the cached `UserInfo` dictionary |
-| **Address ownership** | which account holds address X (verified / any / other-than-me / prefix+suffix); which addresses does account Y hold (all / verified / primary / Google / nobodies.team) | `IUserEmailService` lookups, `IUserRepository.UserEmails` |
-| **Address mutation** | add, verify, promote, demote, hide, delete, link/unlink a provider, reconcile the OAuth claim | `IUserEmailService` writes → `IUserService` storage commands → repository |
-| **Profile mutation** | save the edit form; save dietary/medical; set picture; set tier; set IBAN; stub a profile; replace languages / history | `IProfileEditorService` (validation + file) → `IUserService` (row) → repository |
+| **Address ownership** | which rows hold address X (`FindByAddressAsync`: aliased or exact, verified or any — callers pick the cardinality; prefix+suffix for the dev seeder); which addresses does account Y hold (all / verified / primary / Google / nobodies.team) | `IUserEmailService` over the cached snapshot; `IUserRepository.GetUserEmailsByAddressAsync` behind the write paths |
+| **Address mutation** | add, verify, promote, demote, hide, delete, link/unlink a provider, reconcile the OAuth claim | `IUserEmailService` writes → `IUserServiceInternal` storage commands → repository |
+| **Profile mutation** | save the edit form; save dietary/medical; set picture; set tier; set IBAN; stub a profile; replace languages / history | `IProfileEditorService` (validation + file) → `IUserServiceInternal` (row) → repository |
 | **Contact handles** | what can this viewer see of that owner; save the owner's list | `IContactFieldService` |
 | **Mail consent** | is Y opted out of category C; flip it; mint / validate an unsubscribe token | `ICommunicationPreferenceService`, `IUnsubscribeService`, `IUnsubscribeTokenProvider` |
 | **Presence** | for year N: declare not attending, undo, ticket-sync upsert/remove, admin backfill; who was on site | `IUserService` participation methods, `IUserServiceRead.GetOnsiteUsersAsync`, `IUserParticipationBackfillService` |
@@ -41,15 +41,18 @@ The shapes imply one register with one cache and one write funnel:
 
 - **One read surface**, `IUserServiceRead`, answering *resolve a person* from the cache. Every
   other section reads through it and nothing else.
-- **One write funnel**, `IUserService`, owning every row write to the tables the section owns,
-  so the cache refresh happens exactly once per write. Domain services (`UserEmailService`,
+- **One write funnel** owning every row write to the tables the section owns, so the cache
+  refresh happens exactly once per write: `IUserService` is the half other sections call,
+  `IUserServiceInternal : IUserService` the section-only half; one `CachingUserService`
+  behind both. Domain services (`UserEmailService`,
   `ProfileEditorService`, `ContactFieldService`, `CommunicationPreferenceService`) hold the
   rules and call the funnel; they do not reach the repository around it — except where a table
   is that service's own lane (contact fields, communication preferences).
-- **Address ownership as one lookup family**: each lookup is a filter on the cached snapshot
-  (`UserInfo.UserEmails`), not a query. Variants differ by predicate (verified? primary?
-  Google? nobodies.team?) and by cardinality (one id, one address, a set). The ideal is a
-  handful of methods over a predicate, not one method per predicate × cardinality.
+- **Address ownership as one lookup**: `FindByAddressAsync` filters the cached snapshot
+  (`UserInfo.UserEmails`) by address form (aliased / exact) and verification, and returns
+  every matching row; the caller picks the cardinality (first owner, distinct owners, exactly
+  one, any other user). The write paths read the table through the one repository address
+  read, `GetUserEmailsByAddressAsync`, and apply the same predicates in memory.
 - **Account life**: `HumanLifecycleService`, `AccountDeletionService` and
   `ExternalLoginService` are orchestrators — no tables, no repository; they call the funnel and
   other sections' leaves. `AccountMergeService` is a section service over

@@ -20,7 +20,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     private readonly ProfileService _service;
     private readonly ProfileEditorService _editor;
     private readonly IUserRepository _userRepository;
-    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
     private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository = Substitute.For<ICommunicationPreferenceRepository>();
     private readonly InMemoryFileStorage _fileStorage = new();
 
@@ -314,7 +314,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 
     // --- Cooldown and export ---
 
-    // The search surface lives on IUserService.SearchUsersAsync and is
+    // The search surface lives on IUserServiceInternal.SearchUsersAsync and is
     // covered by CachingUserServiceTests.
 
     // --- SaveProfileVolunteerHistoryAsync ---

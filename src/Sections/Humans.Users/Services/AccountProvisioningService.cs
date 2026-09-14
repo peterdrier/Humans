@@ -10,7 +10,7 @@ namespace Humans.Users.Services;
 internal sealed class AccountProvisioningService(
     IUserRepository userRepository,
     IUserEmailService userEmailService,
-    IUserService userService,
+    IUserServiceInternal userService,
     UserManager<User> userManager,
     IAuditLogService auditLogService,
     IClock clock,
@@ -23,7 +23,8 @@ internal sealed class AccountProvisioningService(
         ArgumentException.ThrowIfNullOrWhiteSpace(email);
 
         // 1. Look up across OAuth / verified / unverified — via service so orchestrator owns invariants (see #687).
-        var matchingUserId = await userEmailService.FindAnyUserIdByEmailAsync(email, ct);
+        var matchingUserId = (await userEmailService.FindByAddressAsync(email, aliased: true, verifiedOnly: false, ct))
+            .FirstOrDefault()?.UserId;
 
         if (matchingUserId is not null)
         {
@@ -106,7 +107,8 @@ internal sealed class AccountProvisioningService(
         ArgumentException.ThrowIfNullOrWhiteSpace(firstName);
         ArgumentException.ThrowIfNullOrWhiteSpace(lastName);
 
-        var existingEmail = await userEmailService.FindVerifiedEmailWithUserAsync(email, ct);
+        var existingEmail = (await userEmailService.FindByAddressAsync(email, aliased: true, verifiedOnly: true, ct))
+            .FirstOrDefault();
         if (existingEmail is not null)
         {
             var existingUser = await userRepository.GetByIdAsync(existingEmail.UserId, ct);

@@ -357,8 +357,8 @@ public class ProfileApiControllerTests
         var targetUserId = Guid.NewGuid();
         var targetProfileId = Guid.NewGuid();
 
-        _userEmailService.GetUserIdByExactEmailAsync("Friend@Example.com", Arg.Any<CancellationToken>())
-            .Returns(targetUserId);
+        _userEmailService.FindByAddressAsync("Friend@Example.com", false, true, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(targetUserId, "friend@example.com")]);
         _userService.GetUserInfoAsync(targetUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(targetUserId, targetProfileId, burnerName: "Friend")));
         _contactFieldService.GetViewerAccessLevelAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
@@ -384,8 +384,8 @@ public class ProfileApiControllerTests
     public async Task Search_allowEmail_returns_empty_when_email_unknown()
     {
         var viewer = MakeUser(Guid.NewGuid());
-        _userEmailService.GetUserIdByExactEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns((Guid?)null);
+        _userEmailService.FindByAddressAsync(Arg.Any<string>(), false, true, Arg.Any<CancellationToken>())
+            .Returns([]);
 
         var sut = BuildSut(viewer);
 
@@ -407,8 +407,8 @@ public class ProfileApiControllerTests
 
         await sut.Search(q: "friend@example.com", scope: null, allowEmail: false, ct: Xunit.TestContext.Current.CancellationToken);
 
-        await _userEmailService.DidNotReceive().GetUserIdByExactEmailAsync(
-            Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _userEmailService.DidNotReceive().FindByAddressAsync(
+            Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
     // ==========================================================================

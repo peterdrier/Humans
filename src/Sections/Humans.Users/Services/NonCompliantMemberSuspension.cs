@@ -29,7 +29,7 @@ namespace Humans.Users.Services;
 /// </remarks>
 [CrossSectionWrite("Suspension removes the user from their team Google resources.")]
 internal sealed class NonCompliantMemberSuspension(
-    IUserService userService,
+    IUserServiceInternal userService,
     ITeamServiceRead teamService,
     IActiveTeamsCacheInvalidator activeTeamsCacheInvalidator,
     IMembershipCalculatorRead membershipCalculator,

@@ -1,3 +1,4 @@
+using Humans.Users.Services;
 using Humans.Base.Attributes;
 using Humans.Base.Models.Tables;
 // @e2e: board.spec.ts
@@ -42,7 +43,7 @@ namespace Humans.Users.Controllers;
 [Route("Profile")]
 [CrossSectionWrite("Profile submits and edits the member tier application.")]
 internal sealed class ProfileController(
-    IUserService userService,
+    IUserServiceInternal userService,
     UserManager<User> userManager,
     IProfilePictureService profilePictureService,
     IProfileEditorService profileEditorService,
@@ -80,7 +81,7 @@ internal sealed class ProfileController(
     IOptions<GoogleWorkspaceOptions> googleWorkspaceOptions) : HumansControllerBase(userService)
 {
     private readonly ITicketServiceRead _ticketQueryService = ticketQueryService;
-    private readonly IUserService _userService = userService;
+    private readonly IUserServiceInternal _userService = userService;
     private readonly GoogleWorkspaceOptions _googleWorkspaceOptions = googleWorkspaceOptions.Value;
 
     private const int MaxProfilePictureUploadBytes = 20 * 1024 * 1024; // 20MB upload limit

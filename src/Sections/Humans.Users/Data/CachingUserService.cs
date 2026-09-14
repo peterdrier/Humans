@@ -38,7 +38,7 @@ namespace Humans.Users.Data;
 internal sealed class CachingUserService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingUserService> logger) : TrackedCache<Guid, UserInfo>("User.UserInfo", warmOnStartup: true, logger),
-    IUserService, IUserInfoInvalidator, IUserInfoSliceRefresher, IEntityNameContributor
+    IUserServiceInternal, IUserInfoInvalidator, IUserInfoSliceRefresher, IEntityNameContributor
 {
     /// <summary>
     /// DI service key under which the undecorated (inner) <see cref="IUserService"/>
@@ -63,7 +63,7 @@ internal sealed class CachingUserService(
     protected override async ValueTask<UserInfo?> LoadRowAsync(Guid userId, CancellationToken ct)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserService>(InnerServiceKey);
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserServiceInternal>(InnerServiceKey);
         return await inner.GetUserInfoAsync(userId, ct);
     }
 
@@ -392,17 +392,17 @@ internal sealed class CachingUserService(
     // refreshes the affected entry on writes.
     // ==========================================================================
 
-    private async Task<T> WithInnerAsync<T>(Func<IUserService, Task<T>> work)
+    private async Task<T> WithInnerAsync<T>(Func<IUserServiceInternal, Task<T>> work)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserService>(InnerServiceKey);
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserServiceInternal>(InnerServiceKey);
         return await work(inner);
     }
 
-    private async Task WithInnerAsync(Func<IUserService, Task> work)
+    private async Task WithInnerAsync(Func<IUserServiceInternal, Task> work)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserService>(InnerServiceKey);
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserServiceInternal>(InnerServiceKey);
         await work(inner);
     }
 

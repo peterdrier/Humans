@@ -1,3 +1,4 @@
+using Humans.Users.Services;
 using AwesomeAssertions;
 using Humans.Shifts.Contracts;
 using Humans.Application.Services.Users;
@@ -10,7 +11,7 @@ namespace Humans.Users.Tests.Services;
 
 public sealed class UserParticipationBackfillServiceTests
 {
-    private readonly IUserService _users = Substitute.For<IUserService>();
+    private readonly IUserServiceInternal _users = Substitute.For<IUserServiceInternal>();
     private readonly IBurnSettingsService _shifts = Substitute.For<IBurnSettingsService>();
     private List<(Guid UserId, ParticipationStatus Status)>? _captured;
 

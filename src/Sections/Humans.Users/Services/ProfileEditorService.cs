@@ -6,7 +6,7 @@ using Humans.Base.Threading;
 namespace Humans.Users.Services;
 
 internal sealed class ProfileEditorService(
-    IUserService userService,
+    IUserServiceInternal userService,
     IFileStorage fileStorage,
     ILogger<ProfileEditorService> logger) : IProfileEditorService
 {

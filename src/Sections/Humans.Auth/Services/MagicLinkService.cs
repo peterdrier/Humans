@@ -35,7 +35,8 @@ internal sealed class MagicLinkService(
 
     public async Task SendMagicLinkAsync(string email, string? returnUrl, CancellationToken ct = default)
     {
-        var userEmail = await userEmailService.FindVerifiedEmailWithUserAsync(email, ct);
+        var userEmail = (await userEmailService.FindByAddressAsync(email, aliased: true, verifiedOnly: true, ct))
+            .FirstOrDefault();
         if (userEmail is not null)
         {
             var ownerUser = await userManager.FindByIdAsync(userEmail.UserId.ToString());
@@ -116,7 +117,8 @@ internal sealed class MagicLinkService(
 
     public async Task<User?> FindUserByVerifiedEmailAsync(string email, CancellationToken ct = default)
     {
-        var userEmail = await userEmailService.FindVerifiedEmailWithUserAsync(email, ct);
+        var userEmail = (await userEmailService.FindByAddressAsync(email, aliased: true, verifiedOnly: true, ct))
+            .FirstOrDefault();
         if (userEmail is null)
             return null;
 

@@ -25,7 +25,7 @@ namespace Humans.Users.Tests.Services;
 /// </summary>
 public class NonCompliantMemberSuspensionTests : IDisposable
 {
-    private readonly IUserService _userService;
+    private readonly IUserServiceInternal _userService;
     private readonly ITeamService _teamService;
     private readonly IMembershipCalculatorRead _membershipCalculator;
     private readonly IEmailService _emailService;
@@ -44,7 +44,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
 
     public NonCompliantMemberSuspensionTests()
     {
-        _userService = Substitute.For<IUserService>();
+        _userService = Substitute.For<IUserServiceInternal>();
         _teamService = Substitute.For<ITeamService>();
         _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
         _emailService = Substitute.For<IEmailService>();

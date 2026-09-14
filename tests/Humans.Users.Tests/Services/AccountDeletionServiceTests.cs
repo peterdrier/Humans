@@ -24,7 +24,7 @@ namespace Humans.Users.Tests.Services;
 /// </summary>
 public class AccountDeletionServiceTests
 {
-    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
     private readonly IUserServiceRead _userServiceRead = Substitute.For<IUserServiceRead>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();

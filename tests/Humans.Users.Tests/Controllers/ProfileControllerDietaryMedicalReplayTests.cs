@@ -55,7 +55,7 @@ namespace Humans.Users.Tests.Controllers;
 public class ProfileControllerDietaryMedicalReplayTests
 {
     private readonly UserManager<User> _userManager;
-    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
     private readonly IProfileEditorService _profileEditor = Substitute.For<IProfileEditorService>();
     private readonly IShiftVolunteerProfiles _shiftMgmt = Substitute.For<IShiftVolunteerProfiles>();
     private readonly IShiftSignups _signupService = Substitute.For<IShiftSignups>();

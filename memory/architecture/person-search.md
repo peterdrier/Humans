@@ -42,7 +42,7 @@ Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
 
 Don't roll a third. If you need a new search surface, route it through one of these.
 
-**`allow-email` (exact-email opt-in on the inline picker):** when set, a query containing `@` resolves as an **exact, case-insensitive** verified-email match returning at most one person (`IUserEmailService.GetUserIdByExactEmailAsync`) instead of a name search — `peter@x` matches `PETER@x`, not `peter73@x`. Exact-match-only means no substring/enumeration leak (a caller can only confirm membership for an address they already know in full), so it is **safe on non-admin surfaces** — the ticket-transfer recipient lookup uses it. This is distinct from the `Admin` bit's fuzzy email search, which stays admin-gated. The branch lives in `ProfileApiController.Search` (the controller is the auth boundary); `SearchProfilesAsync` is unchanged.
+**`allow-email` (exact-email opt-in on the inline picker):** when set, a query containing `@` resolves as an **exact, case-insensitive** verified-email match returning at most one person (`IUserEmailService.FindByAddressAsync`, exact form, verified only; a match only when exactly one owner) instead of a name search — `peter@x` matches `PETER@x`, not `peter73@x`. Exact-match-only means no substring/enumeration leak (a caller can only confirm membership for an address they already know in full), so it is **safe on non-admin surfaces** — the ticket-transfer recipient lookup uses it. This is distinct from the `Admin` bit's fuzzy email search, which stays admin-gated. The branch lives in `ProfileApiController.Search` (the controller is the auth boundary); `SearchProfilesAsync` is unchanged.
 
 **Out-of-scope carve-outs:**
 

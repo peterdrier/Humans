@@ -56,14 +56,15 @@ public sealed class Section : ISection
         services.AddScoped<IDuplicateAccountService, DuplicateAccountService>();
 
         // Inner Scoped + keyed; decorator resolves via IServiceScopeFactory per-call.
-        services.AddKeyedScoped<IUserService, UserService>(CachingUserService.InnerServiceKey);
+        services.AddKeyedScoped<IUserServiceInternal, UserService>(CachingUserService.InnerServiceKey);
         services.AddScoped<UserService>(sp =>
-            (UserService)sp.GetRequiredKeyedService<IUserService>(CachingUserService.InnerServiceKey));
+            (UserService)sp.GetRequiredKeyedService<IUserServiceInternal>(CachingUserService.InnerServiceKey));
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<UserService>());
 
         // Singleton so _byUserId dict survives across requests.
         services.AddSingleton<CachingUserService>();
         services.AddSingleton<IUserService>(sp => sp.GetRequiredService<CachingUserService>());
+        services.AddSingleton<IUserServiceInternal>(sp => sp.GetRequiredService<CachingUserService>());
         services.AddSingleton<IUserServiceRead>(sp => sp.GetRequiredService<CachingUserService>());
         // Guid → display-name fan-out.
         services.AddSingleton<IEntityNameContributor>(sp => sp.GetRequiredService<CachingUserService>());

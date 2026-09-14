@@ -1,3 +1,4 @@
+using Humans.Users.Services;
 using Humans.Base.Attributes;
 using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
@@ -17,7 +18,7 @@ namespace Humans.Application.Services.Users.AccountLifecycle;
 // Orchestrates user/profile deletion cascade — sits above User/Profile so foundational services stay dependency-free of Teams/Shifts/Tickets.
 [CrossSectionWrite("GDPR erasure revokes the user's team memberships and early-entry grants.")]
 internal sealed class AccountDeletionService(
-    IUserService userService,
+    IUserServiceInternal userService,
     // Merge-chain resolution goes through the read contract, matching every other caller of
     // GetMergedSourceIdsAsync (AuditLog, Consent, Budget) — the primitive is only answerable
     // by the caching decorator, which is what IUserServiceRead resolves to.

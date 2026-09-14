@@ -126,7 +126,7 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 
 ## Cross-Section Dependencies
 
-- **Users:** `IUserEmailService.GetUserIdByVerifiedEmailAsync` — resolves `UserId` from a recipient address so `OutboxEmailService` can link outbox rows to users. `ICommunicationPreferenceService` — checked by `OutboxEmailService` for per-category opt-outs and to generate `List-Unsubscribe` headers.
+- **Users:** `IUserEmailService.FindByAddressAsync` (exact form, verified only) — resolves `UserId` from a recipient address so `OutboxEmailService` can link outbox rows to users. `ICommunicationPreferenceService` — checked by `OutboxEmailService` for per-category opt-outs and to generate `List-Unsubscribe` headers.
 - **Campaigns:** `ICampaignService` queues campaign wave messages via this section; per-grant latest-status is mirrored to `CampaignGrant.LatestEmailStatus` / `LatestEmailAt`.
 - **Shifts:** `IShiftSignupService` sends approve/refuse/voluntell emails through this section.
 - **Feedback:** `IFeedbackService` sends admin-reply emails through this section.
