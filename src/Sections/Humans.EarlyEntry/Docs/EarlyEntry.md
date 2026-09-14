@@ -126,8 +126,9 @@ Inbound, all through `Contracts/`:
 ### Cross-section read interface
 
 The whole outward surface is read-only, so there is no read/write split to make. The
-contracts live in `Contracts/`, a folder rather than a leaf project: the section references no
-contributor, so there is no cycle to break.
+contracts live in `Contracts/`, a folder rather than a leaf project — known debt with a
+queued carve-out decision (`debt-ledger.yml`, added 2026-09-14), not a settled shape: every
+consumer references the whole section, and only `internal` keeps them off the internals.
 
 | Read interface | Methods | Notes |
 |---|---:|---|

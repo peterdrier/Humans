@@ -103,6 +103,12 @@ a field when it is `Sources.Count > 1`.
 - **`settings_event` cutover** (nobodies-collective/Humans#1104): the gate date, build offset
   and early-entry window Shifts' provider reads today will move to Settings. When they do, the
   "global change evicts everyone" trigger moves with them.
+- **No `Humans.EarlyEntry.Contracts` leaf project** — open debt, not a settled shape
+  (`debt-ledger.yml`, added 2026-09-14 from the Gate run, `review: panel`). Camps, Shifts,
+  Teams, Gate, Scanner and Tickets each take a `ProjectReference` on the whole section, so
+  what stops them reaching past the contracts today is that everything outside `Contracts/`
+  is `internal` — accessibility, not a project boundary. That is weaker than a leaf, and
+  the carve-out decision is queued: treat the current shape as debt, never as precedent.
 - **`IEarlyEntryInvalidator` is a grandfathered HUM0028 invalidator**
   (nobodies-collective/Humans#805): contributors flush this section's cache. Peter's ruling
   (2026-06-13, `debt-ledger.yml`) is to leave it; the decorator cannot own invalidation
@@ -110,10 +116,6 @@ a field when it is `Sources.Count > 1`.
 
 ## 6. Deliberately not done
 
-- **No `Humans.EarlyEntry.Contracts` project.** The `Contracts/` folder is the public surface
-  and the referencing sections see only it. A leaf project would matter only if this
-  section had to reference a contributor — it references Users.Contracts alone, so there is
-  no cycle to break.
 - **No per-user provider method.** `GetForUserAsync` gathers every contributor's full list to
   answer for one person. The dataset is a few hundred grants; the per-person cache is what
   makes the holder surfaces cheap, not a narrower query.
