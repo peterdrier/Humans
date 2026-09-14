@@ -708,8 +708,10 @@ internal sealed class AssemblyVoteService(
         var official = result.Official;
 
         // The counting result is keyed by the stable option key; the acta is read by people.
-        // Resolved in the vote's official culture, like the title above it — which language
-        // the acta as a whole is written in is a separate, open question.
+        // Resolved in the vote's official culture, like the title above it. Rendering the
+        // acta for every viewer's language is peterdrier/Humans#1695: it needs the acta out
+        // of this service, which holds no localizer by convention, and a multi-culture
+        // display control that does not exist yet (peterdrier/Humans#1694).
         string Label(string key) =>
             vote.Options.FirstOrDefault(o => string.Equals(o.Key, key, StringComparison.Ordinal))
                 is { } option
