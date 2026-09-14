@@ -267,6 +267,9 @@ themes:
     notes: Each inbox entry carries its own review tier; drained entries are deleted from the list.
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
+  - added: 2026-09-14
+    what: "docs/architecture/dependency-graph.md declares classDef monitor twice in the same Mermaid graph with different fills (#0369a1 white text, and #c084fc black text further down), so one silently wins and the legend disagrees with itself. Two runs each applied the same queued 'style the Monitor carve-out' sweep item without seeing the other's. Pick one fill and delete the other. Found while merging main into peterdrier/Humans#1602."
+    review: light
   - added: 2026-09-06
     what: "View-side half of Search's Features:Events gate is unpinned in CI: SearchServiceTests pins that the service never calls Events when the flag is off, but nothing CI-run asserts that Search's Index.cshtml hides the Events chip and heading — the only render tests (SearchPageRenderTests, GlobalSearchSectionRenderTests) live in the local-only Humans.Integration.Tests, and Humans.Web.Tests has no page-render harness to add a case to. The fix is not a render case: Peter ruled 2026-09-14 that searchable targets should be a DI-discovered fanout, so a switched-off section never registers and the double gate disappears along with the thing to pin — tracked as nobodies-collective/Humans#1182. Routed here rather than to Search's section ledger because it is resolved by that cross-section change, not by Search code (finding 17, /section-doctor on Search 2026-09-06; moved on a review finding on peterdrier/Humans#1602)."
     review: panel
