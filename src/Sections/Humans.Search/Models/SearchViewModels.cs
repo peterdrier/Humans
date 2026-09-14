@@ -1,30 +1,18 @@
-using Humans.Search.Services;
 using Humans.Search.Services.Dtos;
 using Humans.Users.Contracts;
 
 namespace Humans.Search.Models;
 
 /// <summary>
-/// View-model for the global <c>/Search</c> page. Built by
-/// <c>SearchController</c> from the <see cref="GlobalSearchResults"/>
-/// returned by <see cref="ISearchService"/>.
+/// View-model for <c>/Search</c>: the query, the active filter chip, and five buckets in
+/// display order. The view hands each row to its owning section's view component.
 /// </summary>
 internal sealed class GlobalSearchViewModel
 {
     public string? Query { get; init; }
 
-    /// <summary>
-    /// When set, only this type's results are shown. Drives the active
-    /// filter chip in the view.
-    /// </summary>
     public SearchResultType? Filter { get; init; }
 
-    /// <summary>
-    /// Human hits in display order, unprojected. The view passes each row's id
-    /// and match context to Users' own <c>&lt;vc:user-search-result&gt;</c>; this
-    /// section builds no Users display model
-    /// (nobodies-collective/Humans#1062).
-    /// </summary>
     public IReadOnlyList<HumanSearchResult> HumanResults { get; init; } =
         [];
 

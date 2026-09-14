@@ -12,24 +12,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!--
-      Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
-      Declaring them keeps the files moved out of Humans.Web byte-identical to their originals.
-    -->
-    <Using Include="Microsoft.AspNetCore.Http" />
-    <Using Include="Microsoft.AspNetCore.Routing" />
+    <!-- Sdk.Razor does not add this implicit using; the controller takes an ILogger. -->
     <Using Include="Microsoft.Extensions.Logging" />
   </ItemGroup>
 
   <ItemGroup>
-    <!--
-      No Humans.Infrastructure reference: Search owns no tables, so there is no DbContext, no
-      repository and no AddSectionDbContext call (G5-SECTION-TEMPLATE.md step 1 / the
-      Data-and-DbContext steps are skipped wholesale). The orchestrator fans out over
-      IUserServiceRead / ITeamServiceRead / ICampServiceRead / IShiftManagementService, all
-      on their owners' contracts leaves, plus IEventServiceRead off the Events leaf.
-      Scanner's, Cantina's, MailerLite's and Onboarding's shape.
-    -->
+    <!-- No Humans.Infrastructure and no EF Core: Search owns no tables. -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Events.Contracts\Humans.Events.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
@@ -37,27 +25,16 @@
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--
-      Every result row is its owning section's own view component
-      (nobodies-collective/Humans#1062), and @addTagHelper only binds against an assembly the
-      section references — so the five publishers are referenced whole, not just their leaves.
-      An orchestrator referencing what it orchestrates is expected; only cycles are forbidden.
-      Only Contracts-folder public surface and the view components the framework needs public
-      are reachable through them (HUM0034) — Debug's widget-gallery fan-in has the same shape.
+      Every result row is its owning section's view component, and @addTagHelper binds only
+      against a referenced assembly — so the five publishers are referenced whole, not just
+      their leaves. Only Contracts-folder surface and the components the framework needs public
+      are reachable through them (HUM0034).
     -->
     <ProjectReference Include="..\Humans.Users\Humans.Users.csproj" />
     <ProjectReference Include="..\Humans.Teams\Humans.Teams.csproj" />
     <ProjectReference Include="..\Humans.Camps\Humans.Camps.csproj" />
     <ProjectReference Include="..\Humans.Shifts\Humans.Shifts.csproj" />
     <ProjectReference Include="..\Humans.Events\Humans.Events.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!--
-      No AspNetCore package here: those ship with no PackageVersion on purpose and would fail
-      the build with NU1010 under Central Package Management. Everything the controller needs
-      arrives through the framework reference Sdk.Razor already adds (design §15 step 1).
-      No EF Core either — the section owns no tables.
-    -->
   </ItemGroup>
 
   <ItemGroup>
