@@ -47,6 +47,7 @@ internal sealed class GovernanceApplicationsController(
                     MembershipTier = a.MembershipTier,
                     SubmittedAt = a.SubmittedAt.ToDateTimeUtc(),
                     ResolvedAt = a.ResolvedAt?.ToDateTimeUtc(),
+                    TermExpiresAt = a.TermExpiresAt,
                     StatusBadgeClass = EnumBadgeMap.For(a.Status)
                 }).ToList(),
             CanSubmitNew = !hasPendingApplication,
@@ -239,6 +240,29 @@ internal sealed class GovernanceApplicationsController(
         };
 
         return View("~/Views/Governance/Applications/Admin.cshtml", viewModel);
+    }
+
+    // Temporary: repairs expiries stored under the pre-September-2026 rule. Delete once QA and production are clean.
+    [HttpGet("Admin/TermExpiry")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    public async Task<IActionResult> AdminTermExpiry()
+    {
+        var rows = await applicationDecisionService.GetTermExpiryDriftAsync();
+        return View("~/Views/Governance/Applications/AdminTermExpiry.cshtml", rows);
+    }
+
+    [HttpPost("Admin/TermExpiry/Fix")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AdminTermExpiryFix()
+    {
+        var userId = GetCurrentUserId();
+        if (userId is null)
+            return Unauthorized();
+
+        var count = await applicationDecisionService.FixTermExpiryDriftAsync(userId.Value);
+        SetSuccess($"Corrected {count} term expir{(count == 1 ? "y" : "ies")}.");
+        return RedirectToAction(nameof(AdminTermExpiry));
     }
 
     [HttpGet("Admin/{id:guid}")]

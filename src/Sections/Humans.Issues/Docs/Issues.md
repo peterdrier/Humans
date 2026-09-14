@@ -29,7 +29,7 @@ In-app issue tracker (bugs, features, questions) with screenshots, role-routed t
 | Property | Type | Notes |
 |----------|------|-------|
 | Id | Guid | PK |
-| ReporterUserId | Guid | FK → User (reporter), Restrict on delete — **FK only, no nav property**. Restrict is intentional: `IAccountDeletionService` anonymizes the User row in place rather than removing it, so the FK should never trip; if anyone bypasses the deletion service, Restrict makes the DB reject the operation rather than silently wiping reported issues. |
+| ReporterUserId | Guid | No FK, no nav property — bare column (`memory/architecture/no-cross-section-ef-joins.md`). |
 | Section | string? | One of `IssueSectionRouting.AllKnownSections` or null. Max 64. Indexed. |
 | Category | IssueCategory | Bug, Feature, Question. Stored as string (max 32). |
 | Title | string | Issue title (max 200) |
@@ -43,15 +43,15 @@ In-app issue tracker (bugs, features, questions) with screenshots, role-routed t
 | Status | IssueStatus | Triage (default), Open, InProgress, Resolved, WontFix, Duplicate. Stored as string (max 32). |
 | GitHubIssueNumber | int? | Linked GitHub issue (org-scoped) |
 | DueDate | LocalDate? | Optional handler-set deadline |
-| AssigneeUserId | Guid? | FK → User, SetNull on delete — **FK only, no nav property** |
+| AssigneeUserId | Guid? | No FK, no nav property — bare column. |
 | CreatedAt | Instant | Submission timestamp |
 | UpdatedAt | Instant | Last modification |
 | ResolvedAt | Instant? | When resolved/won't-fix/duplicate |
-| ResolvedByUserId | Guid? | FK → User, SetNull on delete — **FK only, no nav property** |
+| ResolvedByUserId | Guid? | No FK, no nav property — bare column. |
 
 **Indexes:** `Status`, `CreatedAt`, `ReporterUserId`, `AssigneeUserId`, `Section`, `(Section, Status)`.
 
-**Cross-section FKs:** `ReporterUserId`, `AssigneeUserId`, `ResolvedByUserId` → `Users/Identity.User` — **FK only**, no navigation property at all; EF configures the FK/cascade behavior via `HasOne<User>()` with no nav reference, and Application code stitches display names via `IUserServiceRead.GetUserInfosAsync`.
+**Cross-section FKs:** none. `ReporterUserId`, `AssigneeUserId`, `ResolvedByUserId` are bare `Guid`/`Guid?` columns — no `HasOne<User>()`, no delete behavior, nothing for EF to join across (`memory/architecture/no-cross-section-ef-joins.md`). Application code stitches display names via `IUserServiceRead.GetUserInfosAsync`.
 
 ### IssueComment
 
@@ -63,7 +63,7 @@ Conversation thread between reporter and handlers. Aggregate-local (same section
 |----------|------|-------|
 | Id | Guid | PK |
 | IssueId | Guid | FK → Issue, Cascade on delete |
-| SenderUserId | Guid? | FK → User, SetNull on delete — null when posted via API key (no user session) |
+| SenderUserId | Guid? | No FK, no nav property — bare column. Null on comments the author left on someone else's issue after their own account was purged. |
 | Content | string | Comment body (max 5000) |
 | CreatedAt | Instant | When the comment was posted |
 
@@ -71,7 +71,7 @@ There is no per-comment reporter/handler flag — reporter-vs-handler is derived
 
 **Indexes:** `IssueId`, `CreatedAt`.
 
-**Cross-section FKs:** `SenderUserId` → `Users/Identity.User` — **FK only**, no navigation property.
+**Cross-section FKs:** none. `SenderUserId` is a bare `Guid?` column, no navigation property.
 
 ### IssueStatus
 
@@ -99,7 +99,7 @@ There is no per-comment reporter/handler flag — reporter-vs-handler is derived
 Two controllers serve this section:
 
 - `IssuesController` (`/Issues`, `/Issues/New`, `/Issues/{id}`, `/Issues/{id}/Comments`, `/Issues/{id}/Status`, `/Issues/{id}/Assignee`, `/Issues/{id}/Section`, `/Issues/{id}/GitHubIssue`) — cookie-authenticated humans.
-- `BackdoorIssuesController` (`/api/backdoor/issues/*`) — API-key authenticated; no user session. Used by Claude Code agents and external integrations.
+- `BackdoorIssuesController` (`/api/backdoor/issues/*`) — API-key authenticated; the key resolves to its owner, who becomes the request principal. Used by Claude Code agents and external integrations.
 
 `Issue.Section` selects which roles see the issue in their queue (see `IssueSectionRouting.RolesFor`); a null section is Admin-only. Section is editable by handlers as long as the issue is non-terminal — re-routing an issue is just changing its `Section` string.
 
@@ -110,7 +110,7 @@ Two controllers serve this section:
 | Any authenticated human | Submit an issue (with optional screenshot). View, comment on, and reopen by commenting on issues they reported. Cannot triage or change status. |
 | Section role-holder (e.g., `TicketAdmin`, `CampAdmin`, `TeamsAdmin`, `Board`, …) | All reporter capabilities. Additionally: list, view, comment on, change status, assign, change section, link GitHub issue **on issues whose `Section` maps to their role** (per `IssueSectionRouting.RolesFor`). |
 | Admin | All section-role-holder capabilities, on every section including null-section issues. |
-| API (key auth) | List, get, create, post comments, update status, update assignee, set GitHub issue, change section via `/api/backdoor/issues/*`. The controller lives in `Humans.Backdoor` and calls this section through `IIssueTriage`; the key resolves to a human, who is recorded as the actor on every write. |
+| API (key auth) | List, get, create, post comments, update status, update assignee, set GitHub issue, change section via `/api/backdoor/issues/*`. The controller lives in `Humans.Backdoor` and calls this section through `IIssueTriage`; the key resolves to a human, who is recorded as the actor on every write **and whose capabilities the key inherits exactly** — a key held by a `TicketAdmin` is a `TicketAdmin`, not an admin. |
 
 ## Invariants
 
@@ -120,11 +120,13 @@ Two controllers serve this section:
 - A handler may post a comment and atomically mark the issue resolved in the same request ("Comment & mark resolved"). The status change is audit-logged after the comment is persisted.
 - Visibility: a regular human sees only the issues they reported. A section role-holder sees all issues whose `Section` maps to one of their roles. Admin sees every issue.
 - Mutation: only handlers (Admin or section role-holders) may change status, assignee, section, or GitHub link, or post a comment as a non-reporter. The reporter may post a comment but cannot change other fields.
+- Both rules above are enforced in `IssuesService`, not in a controller, and every member that answers for a viewer — the per-item reads and mutations, the queue, the badge count — takes an `IssueViewer` to make that possible. The handle test itself is `IssueSectionRouting.CanHandle`, which `IssuesAuthorizationHandler` also reads, so the browser and a Backdoor key cannot drift apart. Out of reach and gone are the same answer: a read returns null, a mutation or every other per-item read throws the "not found" it would throw for a deleted issue, so an id is not an oracle for issues outside the caller's queue.
+- A mutation is authorized against the section the issue is **in**, not the one it is moving to, so a handler may route an issue out of their own queue.
 - `Section` is editable in any non-terminal state (handlers may re-route at any time before the issue closes).
 - Screenshots are validated for allowed file types (JPEG, PNG, WebP) and a max size of 10 MB before storage.
 - All issue mutations are audit-logged via `IAuditLogService.LogAsync` (`AuditAction.IssueStatusChanged`, `AuditAction.IssueAssigneeChanged`, `AuditAction.IssueSectionChanged`, `AuditAction.IssueGitHubLinked`). Audit writes happen **after** the business save, never before — see `coding-rules.md` "audit-after-save".
 - Creation is audited only on the machine path (`CreateIssueAsync`, `AuditAction.IssueCreated`), where the filer and the reporter can differ and the entry is the filer's only durable record. The in-app reporter is their own filer, so `Issue.ReporterUserId` says it all and `SubmitIssueAsync` writes no creation audit.
-- API-initiated changes are audit-logged with actor `null` (the API-key path has no user identity); the audit row's metadata records that the change came from the API.
+- API-initiated changes are audit-logged with the key's owner as actor — the key resolves to a human before any handler runs, so nothing on this path writes as nobody.
 
 ## Negative Access Rules
 
@@ -132,6 +134,7 @@ Two controllers serve this section:
 - A section role-holder **cannot** see, comment on, or mutate issues whose `Section` does not map to one of their roles. (Their elevated access is scoped to their section; null-section issues are Admin-only.)
 - A regular human **cannot** change an issue's status, assignee, section, or GitHub link — even on issues they reported. (They may comment, and that comment may auto-reopen a terminal issue, but the status field itself is handler-only.)
 - An API client **cannot** call `/Issues/*` (the cookie-authenticated controller) — and a cookie-authenticated user **cannot** call `/api/backdoor/issues/*` without an API key.
+- A key holder **cannot** reach an issue by id that their own queue would not have listed: `GET {id}`, its comments, `POST {id}/comments` and every `PATCH` all answer 404, the same as the browser shows them nothing.
 
 ## Triggers
 
@@ -142,7 +145,7 @@ Two controllers serve this section:
 - When a reporter comments on a terminal issue, the issue is auto-reopened to `Open` and an audit row records the implicit status change with actor = the reporter.
 - When the actionable count for a viewer could have changed (issue created, status changed, comment posted, section changed), the nav-badge cache is invalidated via `INavBadgeCacheInvalidator`. Assignment does not move the count — `CountActionableAsync` filters on status + section + reporter only — so `UpdateAssigneeAsync` does not invalidate.
 - **Retention.** Issues that have been in a terminal state (Resolved / WontFix / Duplicate) for at least 6 months are deleted by `CleanupIssuesJob` (daily Hangfire job at 05:00 UTC). Comments cascade via FK; the screenshot directory under `wwwroot/uploads/issues/{id}/` is removed best-effort in the same pass. A reporter comment that auto-reopens a terminal issue clears `ResolvedAt`, which automatically excludes the issue from the retention sweep.
-- When a user is purged via `IAccountDeletionService.PurgeAsync`, the User row is **anonymized in place** (display name + email replaced with sentinels) — the row itself stays, so issues they reported persist with their FKs intact and continue to render under the anonymized name. The `Reporter` FK uses `Restrict` (not `Cascade`) so a stray `db.Users.Remove(user)` would be rejected by the DB rather than silently wiping every issue. Assignee / resolved-by FKs on issues where the deleted-user was acting in those roles set to null. Their comments set `SenderUserId` to null but keep the row.
+- When a user is purged via `IAccountDeletionService.PurgeAsync`, `IssuesService.EraseForUserAsync` deletes their reported issues outright (comments cascade via the one real FK, `FK_issue_comments_issues_IssueId`; the screenshot directory is removed). Comments they left on other people's issues keep the row with `SenderUserId` nulled; `AssigneeUserId` / `ResolvedByUserId` on other people's issues are nulled the same way — in C#, not by a DB delete behavior, since there is none.
 
 ## Cross-Section Dependencies
 
@@ -165,8 +168,8 @@ Two controllers serve this section:
 - `IIssuesRepository` (impl `src/Sections/Humans.Issues/Data/IssuesRepository.cs`) is the only code path that touches `issues` and `issue_comments` via `DbContext`. Singleton + `IDbContextFactory<IssuesDbContext>` per `design-rules.md §15b`.
 - **Aggregate-local navs kept:** `Issue.Comments ↔ IssueComment.Issue`. Both sides live in Issues-owned tables, so `.Include(i => i.Comments)` is legal inside the repository.
 - **Decorator decision — no caching decorator.** Issues are per-section queues triaged by handlers, not a hot bulk-read path. Same rationale as Feedback / User / Governance.
-- **No cross-domain navs:** `Issue.Reporter`, `.Assignee`, `.ResolvedByUser`, `IssueComment.SenderUser` do not exist as nav properties. The repository does not `.Include()` them; `IssuesService` resolves display data in memory via `IUserServiceRead.GetUserInfosAsync` (design-rules §6b). EF configures the cross-section FK/cascade behavior with `HasOne<User>()` and no nav reference.
-- **Cross-section calls** — the public interfaces this section consumes: `IUserServiceRead`, `IUserEmailService`, `IRoleAssignmentService`, `IEmailService`, `IEmailMessageFactory`, `INotificationEmitter`, `INotificationAutoResolve`, `IAuditLogService`, `INavBadgeCacheInvalidator`, `IIssuesBadgeCacheInvalidator`.
+- **No cross-domain navs:** `Issue.Reporter`, `.Assignee`, `.ResolvedByUser`, `IssueComment.SenderUser` do not exist as nav properties. The repository does not `.Include()` them; `IssuesService` resolves display data in memory via `IUserServiceRead.GetUserInfosAsync` (design-rules §6b). There is no FK to configure — `ReporterUserId`/`AssigneeUserId`/`ResolvedByUserId`/`SenderUserId` are bare columns.
+- **Cross-section calls** — the public interfaces this section consumes: `IUserServiceRead`, `IUserEmailService`, `IRoleAssignmentService`, `IEmailService`, `IEmailMessageFactory`, `INotificationEmitter`, `INotificationAutoResolve`, `IAuditLogService`, `INavBadgeCacheInvalidator`, `IIssuesBadgeCacheInvalidator`, `ISectionCatalog`.
 - **Nav-badge cache invalidation** uses two invalidators: `INavBadgeCacheInvalidator` (global nav count) and `IIssuesBadgeCacheInvalidator` (per-viewer actionable count). `IssuesService` holds both; the architecture test pins each explicitly. `IssuesBadgeCacheInvalidator` (impl in `Humans.Base/Caching/MemoryCacheInvalidators.cs`) — `MemoryCacheExtensions.InvalidateNavBadgeCounts()` drops every badge count by the same `CacheKeys` constant — is registered Scoped from this section's own `Section.Register`.
 - **Cross-section surface** — `Humans.Issues.Contracts` carries `IIssueTriage` (the machine door), `IIssuesRetention.PurgeExpiredAsync` (driven by this section's `Jobs/CleanupIssuesJob`), `IssueStatus` and `IssueCategory` (named by `Humans.Agent`'s `route_to_issue` proposal), and the read models the machine door serialises. Everything else is internal to the section — the actionable count is on the internal-only `IIssuesService`, read by this section's own `IssuesUserMenuViewComponent`.
 - **Architecture test** — `tests/Humans.Issues.Tests/Architecture/IssuesArchitectureTests.cs` pins the shape: the constructor takes both badge invalidators and the cross-section read interfaces (`IUserServiceRead`, `IUserEmailService`, `IRoleAssignmentService`), and audit discriminators are literals.

@@ -12,8 +12,7 @@ namespace Humans.Auth.Contracts;
 /// <c>Humans.Onboarding.Contracts</c> is the reference <c>peters-hard-rules.md</c> forbids
 /// outright. It was never Auth's vocabulary either — the three services that give
 /// <c>OnboardingResult</c> its name are the onboarding funnel's own siblings; role
-/// assignment is not one of them. The section owns its boundary type and the two outside
-/// call sites (Shell's <c>UsersAdminController</c> and <c>Humans.Development</c>'s
-/// <c>DevPersonaSeeder</c>) read the same two members they already read.
+/// assignment is not one of them. The section owns its boundary type; its outside callers
+/// read the same two members they always did.
 /// </remarks>
 public record RoleAssignmentResult(bool Success, string? ErrorKey = null);

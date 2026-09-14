@@ -73,6 +73,25 @@ public class CachingEarlyEntryServiceTests
     }
 
     [HumansFact]
+    public async Task InvalidateAll_ForcesReloadForEveryone()
+    {
+        var (sut, inner) = CreateSut();
+        var alice = Guid.NewGuid();
+        var bob = Guid.NewGuid();
+        inner.GetForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+             .Returns(Task.FromResult<UserEarlyEntry?>(null));
+
+        _ = await sut.GetForUserAsync(alice, Xunit.TestContext.Current.CancellationToken);
+        _ = await sut.GetForUserAsync(bob, Xunit.TestContext.Current.CancellationToken);
+        sut.InvalidateAll();
+        _ = await sut.GetForUserAsync(alice, Xunit.TestContext.Current.CancellationToken);
+        _ = await sut.GetForUserAsync(bob, Xunit.TestContext.Current.CancellationToken);
+
+        await inner.Received(2).GetForUserAsync(alice, Arg.Any<CancellationToken>());
+        await inner.Received(2).GetForUserAsync(bob, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task GetRosterAsync_AlwaysDelegates()
     {
         var (sut, inner) = CreateSut();

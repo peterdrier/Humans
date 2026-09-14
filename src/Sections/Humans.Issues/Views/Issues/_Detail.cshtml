@@ -12,8 +12,8 @@
                     @Model.Title
                 </h4>
                 <div class="d-flex gap-2 align-items-center flex-wrap">
-                    <span class="badge @IssuePresentation.StatusPillClass(Model.Status)">@Model.Status</span>
-                    <span class="badge bg-light text-muted border">@Model.Category</span>
+                    <span class="badge @IssuePresentation.StatusPillClass(Model.Status)">@Localizer.EnumDisplay(Model.Status)</span>
+                    <span class="badge bg-light text-muted border">@Localizer.EnumDisplay(Model.Category)</span>
                     <span class="badge bg-light text-muted border">@Model.AreaLabel</span>
                 </div>
                 <div class="text-muted small mt-2">
@@ -69,7 +69,7 @@
                 {
                     <div class="issue-audit text-muted small mb-2">
                         <i class="fa-solid fa-circle-info fa-xs me-1"></i>
-                        <strong>@(ev.ActorName ?? "System")</strong>
+                        <strong>@(ev.ActorName ?? Localizer["Issues_SystemActor"].Value)</strong>
                         @ev.Description
                         <span class="ms-1">· @ev.At.ToDateTime()</span>
                     </div>
@@ -122,11 +122,11 @@
                                 {
                                     if (Model.Status == s)
                                     {
-                                        <option value="@s" selected>@s</option>
+                                        <option value="@s" selected>@Localizer.EnumDisplay(s)</option>
                                     }
                                     else
                                     {
-                                        <option value="@s">@s</option>
+                                        <option value="@s">@Localizer.EnumDisplay(s)</option>
                                     }
                                 }
                             </select>
@@ -134,12 +134,12 @@
                     }
                     else
                     {
-                        <span class="badge @IssuePresentation.StatusPillClass(Model.Status)">@Model.Status</span>
+                        <span class="badge @IssuePresentation.StatusPillClass(Model.Status)">@Localizer.EnumDisplay(Model.Status)</span>
                     }
                 </dd>
 
                 <dt class="col-5">@Localizer["Issue_Type"]</dt>
-                <dd class="col-7">@Model.Category</dd>
+                <dd class="col-7">@Localizer.EnumDisplay(Model.Category)</dd>
 
                 <dt class="col-5">@Localizer["Issue_Area"]</dt>
                 <dd class="col-7">

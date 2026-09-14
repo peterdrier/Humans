@@ -3,11 +3,17 @@
 version: 1
 inbox:
   - added: 2026-08-25
-    what: "Screenshots are written directly to wwwroot/uploads/issues/{id}/ with FileStream rather than through Humans.Base/Interfaces/IFileStorage.cs, and are served from wwwroot with no authorization check, so an issue screenshot is public to anyone holding the URL. Humans.Feedback does the same — this is a repo-wide pattern and wants one decision, not two section fixes. Found by /section-doctor on Issues 2026-08-25."
+    what: "IssuesService writes screenshots with a raw FileStream to a path it builds itself from ContentRootPath + wwwroot, and DeleteScreenshotDirectory rebuilds the same path by hand, rather than going through Humans.Base/Interfaces/IFileStorage.cs. Humans.Feedback has since moved to IFileStorage, so Issues is now the only section doing this and the fix is Issues-local. Found by /section-doctor on Issues 2026-08-25, re-scoped 2026-09-14. Peter 2026-09-14: deferred, and paired with the unauthorized-serving row below — both or neither, because half a fix is a waste. Do not take this row alone."
+    review: panel
+  - added: 2026-09-14
+    what: "An issue screenshot is readable by anyone holding its URL, with no authorization check. FileSystemFileStorage roots at wwwroot and every consumer hands the stored path out as a static URL, so moving Issues onto IFileStorage does not fix this half — it wants an authorization-checked serving endpoint. Repo-wide in cause, listed here because Issues is one of the sections exposing it. Found by /section-doctor on Issues 2026-09-14. Peter 2026-09-14: deferred, and paired with the IFileStorage row above — both or neither, because half a fix is a waste. Do not take this row alone."
     review: panel
   - added: 2026-08-25
-    what: "IssuesService is 838 lines, at the top of the section's range, and holds four near-identical field-mutation pipelines plus their four …WithResultAsync twins — eight method signatures for one operation shape. Collapsing them changes the machine door's surface, so it is Peter's call. Found by /section-doctor on Issues 2026-08-25."
+    what: "IssuesService holds four near-identical field-mutation pipelines plus their four …WithResultAsync twins — eight method signatures for one operation shape — and is the largest file in the section and still growing. Collapsing them changes the machine door's surface, so it is Peter's call. Found by /section-doctor on Issues 2026-08-25, re-measured 2026-09-14."
     review: panel
   - added: 2026-08-25
-    what: "IssuesServiceTests duplicates state assertions the direct-call tests already own, while GetThreadAsync's merge/sort, AuditAction.IssueGitHubLinked, badge-cache invalidation and the null-actor (\"API\") audit branch are each unasserted. Found by /section-doctor on Issues 2026-08-25."
+    what: "IssuesServiceTests's …WithResultAsync success twins re-assert stored state their direct-call counterparts already own, and four tests assert only which arguments the service handed a substitute repository while the file's own real-repository equivalents cover the same behaviour. Trimming deletes tests, so it is Peter's call. Found by /section-doctor on Issues 2026-08-25, narrowed 2026-09-14 — the four unasserted behaviours it also named are now covered."
+    review: panel
+  - added: 2026-09-14
+    what: "Invariants in Docs/health.md that no test pins: reach through the IIssueTriage machine door (every case calls IssuesService directly), audit-after-save ordering (Received.InOrder is never used), the _issuesBadge invalidator on a status change, on a section change and on a reporter's reopening comment, and the case UpdateSectionAsync's authorize-against-the-source-section rule exists for — a section role-holder routing an issue out of their own queue, which the existing tests only exercise as Admin. Found by /section-doctor on Issues 2026-09-14."
     review: panel

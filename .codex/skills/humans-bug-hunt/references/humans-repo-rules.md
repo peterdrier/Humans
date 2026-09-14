@@ -27,17 +27,9 @@ A good bug candidate usually causes one of these:
 
 Start with controllers, services, and views. Prefer application tests when adding coverage.
 
-## Forbidden Areas
+## Persistence Changes
 
-Never change how data is stored or migrated.
-
-Avoid these paths entirely:
-
-- `src/Humans.Infrastructure/Data/HumansDbContext.cs`
-- `src/Humans.Infrastructure/Data/EntityConfigurations/**`
-- `src/Humans.Infrastructure/Migrations/**`
-
-Also avoid entity-shape cleanup, JSON serialization attribute changes, and any schema-adjacent edits.
+Section-owned persistence and generated migrations may be part of a bug fix. Follow [section-migrations-in-maintenance](../../../../memory/process/section-migrations-in-maintenance.md), including existing EF review and approval requirements. Substantial architecture transitions are separately scoped tasks with dedicated PRs. Preserve JSON serialization contracts unless the task authorizes changing them.
 
 ## High-Yield Search Patterns
 

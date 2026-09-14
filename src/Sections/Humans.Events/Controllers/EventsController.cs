@@ -35,12 +35,10 @@ internal sealed class EventsController(
         if (user == null) return Challenge();
 
         var guideSettings = await guide.GetGuideSettingsAsync();
-        var eventSettings = await LoadBurnSettingsAsync(guideSettings);
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings);
         var isSubmissionOpen = IsSubmissionOpen(guideSettings);
 
-        DateTimeZone? tz = eventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
-            : null;
+        var tz = GetTimeZone(eventSettings);
 
         // Personal block
         var individualEvents = await guide.GetUserSubmissionsAsync(user.Id);
@@ -126,7 +124,7 @@ internal sealed class EventsController(
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadBurnSettingsAsync(guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
             ?? throw new InvalidOperationException("Event settings not configured.");
         var model = await BuildFormAsync(eventSettings);
         return View("IndividualEventForm", model);
@@ -146,7 +144,7 @@ internal sealed class EventsController(
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadBurnSettingsAsync(guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         if (!ModelState.IsValid)
@@ -210,7 +208,7 @@ internal sealed class EventsController(
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadBurnSettingsAsync(guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
             ?? throw new InvalidOperationException("Event settings not configured.");
         var tz = GetTimeZone(eventSettings);
         var localStart = ToLocalDateTime(guideEvent.StartAt, tz);
@@ -259,7 +257,7 @@ internal sealed class EventsController(
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadBurnSettingsAsync(guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         if (!ModelState.IsValid)
@@ -326,10 +324,8 @@ internal sealed class EventsController(
         if (user == null) return Challenge();
 
         var guideSettings = await guide.GetGuideSettingsAsync();
-        var eventSettings = await LoadBurnSettingsAsync(guideSettings);
-        DateTimeZone? tz = eventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
-            : null;
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings);
+        var tz = GetTimeZone(eventSettings);
 
         var gateOpeningDate = eventSettings?.GateOpeningDate;
         var favourites = await guide.GetFavouritesWithEventsAsync(user.Id);
@@ -412,10 +408,8 @@ internal sealed class EventsController(
         if (user == null) return Challenge();
 
         var guideSettings = await guide.GetGuideSettingsAsync();
-        var eventSettings = await LoadBurnSettingsAsync(guideSettings);
-        DateTimeZone? tz = eventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
-            : null;
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings);
+        var tz = GetTimeZone(eventSettings);
 
         var gateOpeningDate = eventSettings?.GateOpeningDate;
         var filterDays = days != null && days.Length > 0 ? days.ToHashSet() : null;
@@ -537,7 +531,7 @@ internal sealed class EventsController(
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadBurnSettingsAsync(guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
             ?? throw new InvalidOperationException("Event settings not configured.");
         var model = await BuildBarrioFormAsync(slug, camp, eventSettings);
         return View("BarrioEventForm", model);
@@ -557,7 +551,7 @@ internal sealed class EventsController(
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadBurnSettingsAsync(guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         if (!ModelState.IsValid)
@@ -613,7 +607,7 @@ internal sealed class EventsController(
 
         var guideSettings = await guide.GetGuideSettingsAsync()
             ?? throw new InvalidOperationException("Guide settings not configured.");
-        var eventSettings = await LoadBurnSettingsAsync(guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
             ?? throw new InvalidOperationException("Event settings not configured.");
         var tz = GetTimeZone(eventSettings);
         var localStart = ToLocalDateTime(guideEvent.StartAt, tz);
@@ -654,7 +648,7 @@ internal sealed class EventsController(
 
         var guideSettings = await guide.GetGuideSettingsAsync()
             ?? throw new InvalidOperationException("Guide settings not configured.");
-        var eventSettings = await LoadBurnSettingsAsync(guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         if (!ModelState.IsValid)
@@ -748,7 +742,7 @@ internal sealed class EventsController(
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadBurnSettingsAsync(guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
             ?? throw new InvalidOperationException("Event settings not configured.");
         var tz = GetTimeZone(eventSettings)
             ?? throw new InvalidOperationException("Event timezone not configured.");
@@ -816,12 +810,6 @@ internal sealed class EventsController(
         model.TimeZoneId = burn.TimeZoneId;
 
         model.EventDays = BuildEventDayOptions(burn);
-    }
-
-    private async Task<BurnSettingsInfo?> LoadBurnSettingsAsync(EventGuideSettingsView? guideSettings)
-    {
-        if (guideSettings == null) return null;
-        return await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId);
     }
 
     internal static bool IsSubmitStateException(InvalidOperationException ex) =>

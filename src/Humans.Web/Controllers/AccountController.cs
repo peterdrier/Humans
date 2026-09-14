@@ -243,16 +243,55 @@ public class AccountController(
             return View("CompleteSignup");
         }
 
-        var result = await accountProvisioningService.CompleteMagicLinkSignupAsync(
-            verifiedEmail,
-            burnerName,
-            firstName,
-            lastName,
-            HttpContext.RequestAborted);
+        // Redeem only once the submission is complete — consuming before the
+        // validation re-render above would burn the link on a blank field.
+        var redeemedEmail = await magicLinkService.VerifyAndConsumeSignupTokenAsync(
+            token, email, HttpContext.RequestAborted);
+        if (redeemedEmail is null)
+        {
+            // Already redeemed. A resubmit that carries the cookie the first POST set
+            // is the person who just signed up, so send them on. Everyone else errors:
+            // a replay, and also the losing half of a double-click, whose request was
+            // issued before that cookie existed. That half sees the error page, but the
+            // account and session the winning half created stand — their next navigation
+            // is signed in. Nothing derived from the request could tell those two apart,
+            // since a replay carries the same body.
+            if (User.Identity?.IsAuthenticated == true)
+                return RedirectToLocal(returnUrl);
+
+            return View("MagicLinkError");
+        }
+
+        MagicLinkSignupCompletionResult result;
+        try
+        {
+            result = await accountProvisioningService.CompleteMagicLinkSignupAsync(
+                redeemedEmail,
+                burnerName,
+                firstName,
+                lastName,
+                HttpContext.RequestAborted);
+        }
+        catch (Exception ex)
+        {
+            // Provisioning threw — a cancelled request, a database failure. Hand the link
+            // back before the exception surfaces: if it created nothing, the retry signs
+            // them up; if it got as far as the account, the retry finds it and signs them in.
+            magicLinkService.ReleaseSignupToken(token);
+            logger.LogError(ex, "Magic link signup: provisioning threw for {Email}; " +
+                "the signup token reservation was released", redeemedEmail);
+            throw;
+        }
 
 #pragma warning disable CS0618 // result.User is a record field on MagicLinkSignupCompletionResult, not a cross-domain nav read; arch test pattern-matches the literal `.User`.
         if (result.User is null)
+        {
+            // Provisioning failed and rolled itself back, so the redemption
+            // accomplished nothing. Hand the link back rather than making the
+            // person request a new email over a transient failure.
+            magicLinkService.ReleaseSignupToken(token);
             return View("MagicLinkError");
+        }
 
         await signInManager.SignInAsync(result.User, isPersistent: true);
 #pragma warning restore CS0618

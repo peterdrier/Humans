@@ -310,18 +310,14 @@ internal sealed partial class CampRepository : ICampRepository
             .FirstOrDefaultAsync(s => s.Id == campSeasonId, ct);
     }
 
-    // Leads (role-backed team-sync reads; the legacy camp_leads table was
-    // dropped in nobodies-collective/Humans#774.)
+    // Leads (role-backed team-sync reads)
 
     public async Task<IReadOnlyList<Guid>> GetActiveLeadUserIdsAsync(
         CancellationToken ct = default)
     {
-        // Post-Camp-Lead-retirement source of truth (issue
-        // nobodies-collective/Humans#753): CampRoleAssignment against the
-        // Camp Lead special role. Existing semantic preserved — no year filter
-        // (Barrio Leads team is year-agnostic). Note: cross-aggregate read of
-        // camp_role_definitions/camp_role_assignments; both tables live in the
-        // Camps section so this stays within the section boundary.
+        // No year filter: the Barrio Leads team is year-agnostic. Cross-aggregate
+        // read of camp_role_definitions/camp_role_assignments — both tables are
+        // Camps-owned, so this stays within the section boundary.
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampRoleAssignments
             .AsNoTracking()
@@ -334,7 +330,6 @@ internal sealed partial class CampRepository : ICampRepository
 
     public async Task<bool> IsLeadAnywhereAsync(Guid userId, CancellationToken ct = default)
     {
-        // Same post-retirement repoint as GetActiveLeadUserIdsAsync — see comment there.
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampRoleAssignments
             .AsNoTracking()

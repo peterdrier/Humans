@@ -1078,9 +1078,6 @@
   <data name="EmailRota_Send" xml:space="preserve">
     <value>An {0} Empf&#xE4;nger senden</value>
   </data>
-  <data name="EmailRota_Success" xml:space="preserve">
-    <value>{0} E-Mail(s) an Empf&#xE4;nger im Dienstplan '{1}' eingereiht.</value>
-  </data>
   <data name="EmailRota_NoActiveSignups" xml:space="preserve">
     <value>Dieser Dienstplan hat keine aktiven Anmeldungen, denen eine E-Mail gesendet werden k&#xF6;nnte.</value>
   </data>
@@ -1173,4 +1170,18 @@
   <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>We need your dietary info</value></data>
   <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>You're signed up for a long shift. The cantina can't plan your meals until you tell us your food preferences.</value></data>
   <data name="DietaryMissingBanner_Cta" xml:space="preserve"><value>Tell us now</value></data>
+  <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>Alle meine Schichten anzeigen</value></data>
+  <data name="Shifts_IcalFeedTitle" xml:space="preserve"><value>iCal-Feed</value></data>
+  <data name="Shifts_IcalFeedHelp" xml:space="preserve"><value>Abonniere deine Schichten und gespeicherten Events in deiner Kalender-App:</value></data>
+  <data name="Shifts_IcalCopy" xml:space="preserve"><value>Kopieren</value></data>
+  <data name="Shifts_IcalRegenerateConfirm" xml:space="preserve"><value>Dadurch wird die aktuelle URL ungültig. Fortfahren?</value></data>
+  <data name="Shifts_IcalRegenerate" xml:space="preserve"><value>URL neu erzeugen</value></data>
+  <data name="Shifts_SortOrder" xml:space="preserve"><value>Sortierung</value></data>
+  <data name="Shifts_BailRangeSuccess" xml:space="preserve"><value>Du hast die Schichtreihe abgesagt.</value></data>
+  <data name="Shifts_BailFailed" xml:space="preserve"><value>Absagen der Schicht fehlgeschlagen.</value></data>
+  <data name="Shifts_BailSuccess" xml:space="preserve"><value>Du hast die Schicht abgesagt.</value></data>
+  <data name="Shifts_AvailabilityUpdated" xml:space="preserve"><value>Verfügbarkeit aktualisiert.</value></data>
+  <data name="Shifts_IcalRegenerated" xml:space="preserve"><value>iCal-URL neu erzeugt.</value></data>
+  <data name="Shifts_TagPreferencesSaved" xml:space="preserve"><value>Tag-Einstellungen gespeichert.</value></data>
+  <data name="VolTrack_Msg_DayOffNotSet" xml:space="preserve"><value>Für diesen Tag war kein freier Tag markiert.</value></data>
 </root>

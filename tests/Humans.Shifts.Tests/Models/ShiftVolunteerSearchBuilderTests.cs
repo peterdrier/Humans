@@ -2,7 +2,9 @@ using Humans.Shifts.Domain;
 using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
+using Humans.Shifts.Tests.Infrastructure;
 using Humans.Users.Contracts;
+using Humans.Users.Domain;
 using Humans.Shifts.Helpers;
 using NodaTime;
 using NSubstitute;
@@ -16,7 +18,7 @@ namespace Humans.Shifts.Tests.Models;
 /// lookup and the signup filter) and the currently active burn (decides whether
 /// the active-scoped cached <c>ShiftUserView.Signups</c> can be reused). Admins
 /// search shifts in past/future cycles, so a single-burn fixture would pass even
-/// if the two were collapsed (issue #809).
+/// if the two were collapsed (issue nobodies-collective/Humans#809).
 /// </summary>
 public class ShiftVolunteerSearchBuilderTests
 {
@@ -112,6 +114,32 @@ public class ShiftVolunteerSearchBuilderTests
     }
 
     [HumansFact]
+    public async Task CanViewMedical_True_SurfacesMedicalConditions()
+    {
+        var target = MakeShift(ActiveBurnId, dayOffset: 1, new LocalTime(10, 0), Duration.FromHours(4));
+        SetCachedSignups();
+        StubCandidateMedicalConditions("Epilepsy");
+
+        var result = await BuildSut().BuildForShiftAsync(target, "ann", canViewMedical: true);
+
+        var row = Assert.Single(result.Results);
+        Assert.Equal("Epilepsy", row.MedicalConditions);
+    }
+
+    [HumansFact]
+    public async Task CanViewMedical_False_RedactsMedicalConditions()
+    {
+        var target = MakeShift(ActiveBurnId, dayOffset: 1, new LocalTime(10, 0), Duration.FromHours(4));
+        SetCachedSignups();
+        StubCandidateMedicalConditions("Epilepsy");
+
+        var result = await BuildSut().BuildForShiftAsync(target, "ann", canViewMedical: false);
+
+        var row = Assert.Single(result.Results);
+        Assert.Null(row.MedicalConditions);
+    }
+
+    [HumansFact]
     public async Task BlankQuery_ShortCircuitsBeforeAnyBurnLookup()
     {
         var result = await BuildSut().BuildForShiftAsync(
@@ -128,6 +156,22 @@ public class ShiftVolunteerSearchBuilderTests
             .Returns(new Dictionary<Guid, ShiftUserView>
             {
                 [_candidateId] = new(_candidateId, null, null, null, [], signups),
+            });
+
+    private void StubCandidateMedicalConditions(string medicalConditions) =>
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo>
+            {
+                [_candidateId] = UserInfoStubHelpers.MakeUserInfo(_candidateId, profile: new Profile
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = _candidateId,
+                    BurnerName = "Ann",
+                    MedicalConditions = medicalConditions,
+                    CreatedAt = Instant.MinValue,
+                    UpdatedAt = Instant.MinValue,
+                    IsApproved = true
+                })
             });
 
     private static Shift MakeShift(Guid burnId, int dayOffset, LocalTime start, Duration duration) =>

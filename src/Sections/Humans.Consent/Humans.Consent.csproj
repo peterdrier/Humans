@@ -14,7 +14,6 @@
   <ItemGroup>
     <!--
       Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
-      Declaring them keeps the files moved out of Humans.Web byte-identical to their originals.
     -->
     <Using Include="Microsoft.AspNetCore.Http" />
     <Using Include="Microsoft.AspNetCore.Routing" />
@@ -50,11 +49,9 @@
   <ItemGroup>
     <!-- Octokit: the GitHub content API behind IGitHubLegalDocumentConnector. The connector
          is shaped by this section's {name}.md / {name}-{lang}.md convention and has no
-         consumer outside it, so it moved in whole (design §15.5b, Agent's rule). -->
+         consumer outside it. -->
     <PackageReference Include="Octokit" />
-    <!-- Contracts/SyncLegalDocumentsJob.cs — [DisableConcurrentExecution] and IRecurringJob,
-         since G5 lane 5b-4. Package, not project, so no cycle is possible; it was already
-         arriving transitively. -->
+    <!-- Hangfire.Core: [DisableConcurrentExecution] on Jobs/SyncLegalDocumentsJob.cs. -->
     <PackageReference Include="Hangfire.Core" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="NodaTime" />

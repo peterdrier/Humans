@@ -12,7 +12,6 @@ namespace Humans.Shifts.Services.Dtos;
 /// Returned by <see cref="Humans.Shifts.Services.IShiftRowView.GetRotaAsync"/> /
 /// <see cref="Humans.Shifts.Services.IShiftRowView.GetRotasAsync"/>. Missing rotas yield an
 /// empty view with <c>Rota = null</c> — never <c>null</c>, never an exception.
-/// Issue #720.
 /// </remarks>
 internal sealed record ShiftRotaView(
     Guid RotaId,

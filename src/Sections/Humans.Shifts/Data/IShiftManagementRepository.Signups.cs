@@ -24,10 +24,6 @@ namespace Humans.Shifts.Data;
 /// </remarks>
 internal partial interface IShiftManagementRepository
 {
-    // ============================================================
-    // Reads — ShiftSignup (per-user / per-shift / per-block)
-    // ============================================================
-
     /// <summary>
     /// Returns <see cref="ShiftSignup"/> rows for the supplied users,
     /// optionally filtered to a single event. Includes
@@ -79,15 +75,11 @@ internal partial interface IShiftManagementRepository
         ShiftDayUserStatusScope statusScope,
         CancellationToken ct = default);
 
-    // ============================================================
-    // Reads - signup-adjacent Shifts data
-    // ============================================================
-
     /// <summary>
     /// Loads <see cref="VolunteerTagPreference"/> rows for the supplied user
     /// ids in one query, with <c>ShiftTag</c> included (read-only). Backs the
     /// bulk path on
-    /// <see cref="Application.Services.Shifts.ShiftViewService.GetUsersAsync"/>.
+    /// <see cref="Humans.Shifts.Services.ShiftViewService.GetUsersAsync"/>.
     /// </summary>
     Task<IReadOnlyList<VolunteerTagPreference>> GetVolunteerTagPreferencesForUsersAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
@@ -102,10 +94,6 @@ internal partial interface IShiftManagementRepository
     /// part of that record.
     /// </summary>
     Task<int> ClearSignupStatusReasonsForUserAsync(Guid userId, CancellationToken ct = default);
-
-    // ============================================================
-    // Writes — ShiftSignup
-    // ============================================================
 
     /// <summary>
     /// Adds many <see cref="ShiftSignup"/> rows to the context without
@@ -163,13 +151,6 @@ internal partial interface IShiftManagementRepository
     /// reconciliation screen. Read-only.
     /// </summary>
     Task<IReadOnlyList<ShiftSignup>> GetAllForOrphanScanAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns user-ids with at least one Pending or Confirmed signup for the
-    /// given event. Read-only. Used by MailerLite audience computations.
-    /// </summary>
-    Task<IReadOnlySet<Guid>> GetActiveCommittedUserIdsForEventAsync(
-        Guid eventSettingsId, CancellationToken ct = default);
 
     /// <summary>
     /// All eligible Build-period signups for the event: rows where

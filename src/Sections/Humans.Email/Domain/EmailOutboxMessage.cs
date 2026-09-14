@@ -24,11 +24,6 @@ internal sealed class EmailOutboxMessage
     public string? LastError { get; set; }
     public Instant? NextRetryAt { get; set; }
 
-    /// <summary>
-    /// FK to ShiftSignup for notification deduplication.
-    /// </summary>
-    public Guid? ShiftSignupId { get; set; }
-
     // Note: no cross-domain nav properties (FK-only per design-rules §6c —
     // cross-section navs into the Users/Campaigns/Shifts sections would defeat
     // table ownership). Callers resolve via the owning section's service.

@@ -6,8 +6,7 @@ namespace Humans.Auth.Data;
 
 /// <summary>
 /// EF-backed implementation of <see cref="IRoleAssignmentRepository"/>. The
-/// only non-test file that writes to <c>DbContext.RoleAssignments</c> after
-/// the Auth migration lands.
+/// only non-test writer of <c>role_assignments</c>.
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>AuthDbContext</c> remains Scoped.
 /// </summary>
@@ -180,23 +179,6 @@ internal sealed class RoleAssignmentRepository(IDbContextFactory<AuthDbContext> 
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<string>> GetActiveRoleNamesAsync(
-        Guid userId,
-        Instant now,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.RoleAssignments
-            .AsNoTracking()
-            .Where(ra =>
-                ra.UserId == userId &&
-                ra.ValidFrom <= now &&
-                (ra.ValidTo == null || ra.ValidTo > now))
-            .Select(ra => ra.RoleName)
-            .Distinct()
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyDictionary<string, int>> GetActiveCountsByRoleAsync(
         Instant now,
         CancellationToken ct = default)
@@ -210,15 +192,6 @@ internal sealed class RoleAssignmentRepository(IDbContextFactory<AuthDbContext> 
             .ToListAsync(ct);
 
         return rows.ToDictionary(r => r.Role, r => r.Count, StringComparer.Ordinal);
-    }
-
-    public async Task<IReadOnlyList<RoleAssignment>> GetAllRowsForCacheAsync(
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.RoleAssignments
-            .AsNoTracking()
-            .ToListAsync(ct);
     }
 
     // ==========================================================================

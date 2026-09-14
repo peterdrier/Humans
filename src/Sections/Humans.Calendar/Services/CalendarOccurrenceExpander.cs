@@ -263,7 +263,11 @@ internal static class CalendarOccurrenceExpander
     private static string ResolveTeamName(IReadOnlyDictionary<Guid, string> teamNamesById, Guid teamId) =>
         teamNamesById.TryGetValue(teamId, out var name) ? name : string.Empty;
 
-    /// <summary>Mirrors the SQL prefilter in <c>CalendarRepository.GetEventsInWindowAsync</c>.</summary>
+    /// <summary>
+    /// The section's only window prefilter. It used to mirror a SQL one in
+    /// <c>CalendarRepository</c>; that query had no live caller once the decorator began
+    /// answering every window read from its snapshot, and was retired with it.
+    /// </summary>
     public static List<CalendarEventInfo> FilterForWindow(
         IEnumerable<CalendarEventInfo> snapshot,
         Instant from,

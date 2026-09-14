@@ -196,15 +196,6 @@ internal sealed class BudgetService(
         logger.LogInformation("Archived budget year {YearId}", yearId);
     }
 
-    public async Task RestoreYearAsync(Guid yearId, Guid actorUserId)
-    {
-        var now = clock.GetCurrentInstant();
-
-        var restored = await repository.RestoreYearAsync(yearId, actorUserId, now);
-        if (restored)
-            logger.LogInformation("Restored budget year {YearId}", yearId);
-    }
-
     public async Task<int> SyncDepartmentsAsync(Guid budgetYearId, Guid actorUserId)
     {
         var now = clock.GetCurrentInstant();
@@ -499,6 +490,8 @@ internal sealed class BudgetService(
         int initialSalesCount, decimal dailySalesRate, decimal averageTicketPrice, int vatRate,
         decimal stripeFeePercent, decimal stripeFeeFixed, decimal ticketTailorFeePercent, Guid actorUserId)
     {
+        ValidateVatRate(vatRate);
+
         var now = clock.GetCurrentInstant();
 
         var update = new TicketingProjectionUpdate(
@@ -579,7 +572,7 @@ internal sealed class BudgetService(
             .Where(li => li.VatRate > 0 && li.ExpectedDate.HasValue)
             .Select(li => new
             {
-                VatAmount = Math.Abs(li.Amount) * li.VatRate / (100m + li.VatRate),
+                VatAmount = ComputeVatPortion(li.Amount, li.VatRate),
                 IsExpense = li.Amount > 0 // Income generates VAT liability (expense).
             })
             .ToList();
@@ -710,7 +703,7 @@ internal sealed class BudgetService(
             .Where(li => li.VatRate > 0 && li.ExpectedDate.HasValue)
             .Select(li =>
             {
-                var vatAmount = Math.Abs(li.Amount) * li.VatRate / (100m + li.VatRate);
+                var vatAmount = ComputeVatPortion(li.Amount, li.VatRate);
                 // Income → VAT liability (expense); expense → VAT credit (income).
                 var cashFlowAmount = li.Amount > 0 ? -vatAmount : vatAmount;
                 var categoryName = li.Amount > 0 ? "VAT Liability" : "VAT Credits";
@@ -724,7 +717,17 @@ internal sealed class BudgetService(
             .ToList();
     }
 
-    private static LocalDate ComputeVatSettlementDate(LocalDate expectedDate)
+    /// <summary>
+    /// The VAT portion of a VAT-inclusive amount: |amount| × rate / (100 + rate).
+    /// </summary>
+    internal static decimal ComputeVatPortion(decimal amount, int vatRate) =>
+        Math.Abs(amount) * vatRate / (100m + vatRate);
+
+    /// <summary>
+    /// Spanish quarterly VAT: settlement lands 45 days after the quarter-end of the
+    /// expected date.
+    /// </summary>
+    internal static LocalDate ComputeVatSettlementDate(LocalDate expectedDate)
     {
         var quarterEnd = expectedDate.Month switch
         {
@@ -733,7 +736,6 @@ internal sealed class BudgetService(
             >= 7 and <= 9 => new LocalDate(expectedDate.Year, 9, 30),
             _ => new LocalDate(expectedDate.Year, 12, 31)
         };
-
         return quarterEnd.PlusDays(45);
     }
 
@@ -741,6 +743,7 @@ internal sealed class BudgetService(
     public async Task<int> SyncTicketingActualsAsync(
         Guid budgetYearId,
         IReadOnlyList<TicketingWeeklyActuals> weeklyActuals,
+        Guid? actorUserId,
         CancellationToken ct = default)
     {
         var now = clock.GetCurrentInstant();
@@ -757,7 +760,7 @@ internal sealed class BudgetService(
             .ToList();
 
         var changed = await repository.SyncTicketingActualsAsync(
-            budgetYearId, actualsInputs, today, now, ct);
+            budgetYearId, actualsInputs, today, actorUserId, now, ct);
 
         logger.LogInformation(
             "Ticketing budget sync: {Created} line items created/updated for {Weeks} actual weeks + projections",
@@ -766,12 +769,14 @@ internal sealed class BudgetService(
         return changed;
     }
 
-    public async Task<int> RefreshTicketingProjectionsAsync(Guid budgetYearId, CancellationToken ct = default)
+    public async Task<int> RefreshTicketingProjectionsAsync(
+        Guid budgetYearId, Guid? actorUserId, CancellationToken ct = default)
     {
         var now = clock.GetCurrentInstant();
         var today = now.InUtc().Date;
 
-        var created = await repository.RefreshTicketingProjectionsAsync(budgetYearId, today, now, ct);
+        var created = await repository.RefreshTicketingProjectionsAsync(
+            budgetYearId, today, actorUserId, now, ct);
 
         logger.LogInformation("Ticketing projections refreshed: {Count} line items", created);
         return created;

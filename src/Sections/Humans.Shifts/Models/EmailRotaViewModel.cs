@@ -3,8 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace Humans.Shifts.Models;
 
 /// <summary>
-/// Compose-form model for the coordinator "email a rota" action
-/// (issue nobodies-collective/Humans#732).
+/// Compose-form model for the coordinator "email a rota" action.
 /// </summary>
 internal sealed class EmailRotaViewModel
 {

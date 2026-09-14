@@ -6,9 +6,6 @@ namespace Humans.Governance.Domain;
 /// </summary>
 internal enum VoteChoice
 {
-    /// <summary>
-    /// In favor of approving the application.
-    /// </summary>
     Yay = 0,
 
     /// <summary>
@@ -16,13 +13,7 @@ internal enum VoteChoice
     /// </summary>
     Maybe = 1,
 
-    /// <summary>
-    /// Against approving the application.
-    /// </summary>
     No = 2,
 
-    /// <summary>
-    /// No position on this application.
-    /// </summary>
     Abstain = 3
 }

@@ -9,24 +9,12 @@ namespace Humans.Shifts.Domain;
 /// </summary>
 internal sealed class ShiftSignup
 {
-    /// <summary>
-    /// Unique identifier.
-    /// </summary>
     public Guid Id { get; init; }
 
-    /// <summary>
-    /// FK to the volunteer.
-    /// </summary>
     public Guid UserId { get; set; }
 
-    /// <summary>
-    /// FK to the shift.
-    /// </summary>
     public Guid ShiftId { get; set; }
 
-    /// <summary>
-    /// Current state of the signup.
-    /// </summary>
     public SignupStatus Status { get; set; }
 
     /// <summary>
@@ -44,9 +32,6 @@ internal sealed class ShiftSignup
     /// </summary>
     public Guid? ReviewedByUserId { get; set; }
 
-    /// <summary>
-    /// When the signup was reviewed (approved, refused, etc.).
-    /// </summary>
     public Instant? ReviewedAt { get; set; }
 
     /// <summary>
@@ -60,28 +45,12 @@ internal sealed class ShiftSignup
     /// </summary>
     public Guid? SignupBlockId { get; set; }
 
-    /// <summary>
-    /// When the signup was created.
-    /// </summary>
     public Instant CreatedAt { get; init; }
 
-    /// <summary>
-    /// When the signup was last updated.
-    /// </summary>
     public Instant UpdatedAt { get; set; }
 
-    // Navigation properties
-
-    /// <summary>
-    /// Navigation property to the shift.
-    /// </summary>
     public Shift Shift { get; set; } = null!;
 
-    // State transition methods
-
-    /// <summary>
-    /// Confirm a pending signup.
-    /// </summary>
     public void Confirm(Guid reviewerUserId, IClock clock)
     {
         if (Status is not SignupStatus.Pending)
@@ -93,9 +62,6 @@ internal sealed class ShiftSignup
         UpdatedAt = now;
     }
 
-    /// <summary>
-    /// Refuse a pending signup.
-    /// </summary>
     public void Refuse(Guid reviewerUserId, IClock clock, string? reason)
     {
         if (Status is not SignupStatus.Pending)
@@ -108,9 +74,6 @@ internal sealed class ShiftSignup
         UpdatedAt = now;
     }
 
-    /// <summary>
-    /// Bail from a confirmed or pending signup.
-    /// </summary>
     public void Bail(Guid actorUserId, IClock clock, string? reason)
     {
         if (Status is not (SignupStatus.Confirmed or SignupStatus.Pending))
@@ -149,9 +112,6 @@ internal sealed class ShiftSignup
         UpdatedAt = clock.GetCurrentInstant();
     }
 
-    /// <summary>
-    /// Remove a confirmed signup (coordinator/admin unassignment).
-    /// </summary>
     public void Remove(Guid removedByUserId, IClock clock, string? reason)
     {
         if (Status is not SignupStatus.Confirmed)

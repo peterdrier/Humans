@@ -7,33 +7,7 @@
     var group = Model.BudgetGroup;
     var year = group?.BudgetYear;
 
-    // Compute VAT projections
-    var vatProjections = Model.LineItems
-        .Where(li => li.VatRate > 0 && li.ExpectedDate.HasValue)
-        .Select(li => new VatProjection
-        {
-            SourceDescription = li.Description,
-            VatAmount = Math.Abs(li.Amount) * li.VatRate / (100m + li.VatRate),
-            SettlementDate = ComputeVatSettlementDate(li.ExpectedDate!.Value),
-            VatRate = li.VatRate,
-            IsExpense = li.Amount > 0
-        })
-        .OrderBy(v => v.SettlementDate)
-        .ToList();
-}
-
-@functions {
-    private static LocalDate ComputeVatSettlementDate(LocalDate expectedDate)
-    {
-        var quarterEnd = expectedDate.Month switch
-        {
-            >= 1 and <= 3 => new LocalDate(expectedDate.Year, 3, 31),
-            >= 4 and <= 6 => new LocalDate(expectedDate.Year, 6, 30),
-            >= 7 and <= 9 => new LocalDate(expectedDate.Year, 9, 30),
-            _ => new LocalDate(expectedDate.Year, 12, 31)
-        };
-        return quarterEnd.PlusDays(45);
-    }
+    var vatProjections = VatProjection.ForLineItems(Model.LineItems);
 }
 
 <nav aria-label="breadcrumb" class="mb-3">
