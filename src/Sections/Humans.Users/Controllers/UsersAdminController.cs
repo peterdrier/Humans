@@ -148,10 +148,6 @@ internal sealed class UsersAdminController(
             ? value
             : null;
 
-        // If this is a merge tombstone, resolve the survivor's name for the banner.
-        var mergedToName = info.MergedToUserId is Guid mergedTo
-            ? (await _userService.GetRawUserInfoAsync(mergedTo, ct))?.BurnerName
-            : null;
         var rejectedByName = info.Profile?.RejectedByUserId is Guid rejectedByUserId
             ? (await _userService.GetRawUserInfoAsync(rejectedByUserId, ct))?.BurnerName
             : null;
@@ -167,8 +163,7 @@ internal sealed class UsersAdminController(
             outboxCount,
             clock.GetCurrentInstant(),
             rejectedByName,
-            revealedIban,
-            mergedToName);
+            revealedIban);
 
         return View(viewModel);
     }

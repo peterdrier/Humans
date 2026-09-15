@@ -1,0 +1,35 @@
+@model Humans.Users.Models.MergedAccountsViewModel
+
+@if (Model.MergedInto is not null)
+{
+    <div class="alert alert-warning">
+        <i class="fa-solid fa-code-merge me-2"></i>
+        This account is a <strong>merge tombstone</strong> — it was folded into
+        <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@Model.MergedInto.UserId">@(Model.MergedInto.DisplayName ?? "another account")</a>
+        @if (Model.MergedAt is DateTime mergedAt)
+        {
+            <text> on @mergedAt.ToString("g") UTC</text>
+        }
+        and is locked out (sign-in disabled). Its data was reassigned to the surviving account.
+    </div>
+}
+
+@if (Model.MergedIn.Count > 0)
+{
+    <div class="alert alert-info">
+        <i class="fa-solid fa-code-merge me-2"></i>
+        <strong>@Model.MergedIn.Count</strong> account@(Model.MergedIn.Count == 1 ? "" : "s") folded into this one:
+        <ul class="mb-0 mt-1">
+            @foreach (var account in Model.MergedIn)
+            {
+                <li>
+                    <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@account.UserId">@(account.DisplayName ?? account.UserId.ToString())</a>
+                    @if (account.MergedAt is DateTime at)
+                    {
+                        <text> — @at.ToString("g") UTC</text>
+                    }
+                </li>
+            }
+        </ul>
+    </div>
+}
