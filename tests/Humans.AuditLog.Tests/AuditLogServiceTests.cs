@@ -301,6 +301,28 @@ public class AuditLogServiceTests : IDisposable
             because: "rows belonging to unrelated users must not bleed into the merged view");
     }
 
+    [HumansFact]
+    public async Task GetByUserAsync_ThroughAMergedAwayId_SurfacesTheSurvivorsRowsToo()
+    {
+        // #1704: the read through the archived id answers with the survivor's record, and the
+        // ids unioned are that record's own (survivor first), so rows written against the
+        // survivor after the merge show up beside the archived id's own history.
+        var archived = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        var resolved = WithMergedIds(survivor, archived);
+        _userService.GetUserInfoAsync(archived, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(resolved));
+
+        var now = _clock.GetCurrentInstant();
+        SeedAuditLogEntry(AuditAction.VolunteerApproved, "User", archived, now - Duration.FromHours(2));
+        SeedAuditLogEntry(AuditAction.RoleAssigned, "User", survivor, now - Duration.FromHours(1));
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _service.GetByUserAsync(archived, 10, Xunit.TestContext.Current.CancellationToken);
+
+        result.Select(e => e.EntityId).Should().BeEquivalentTo([archived, survivor]);
+    }
+
     // --- Helpers ---
 
     private AuditLogEntry SeedAuditLogEntry(

@@ -156,4 +156,24 @@ public class GateControllerClaimTests
             return false;
         }
     }
+
+    [HumansFact]
+    public async Task ClaimPin_MergedAwayUserId_FailsClosed_DoesNotEnrolOrStampSession()
+    {
+        // The resolving read answers a merged-away id with its survivor. The kiosk must not
+        // mint a PIN or claim the session for an id the PIN store no longer recognises.
+        var ct = TestContext.Current.CancellationToken;
+        var archived = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        _gate.GetPinStatusAsync(archived, Arg.Any<CancellationToken>()).Returns(new GatePinStatus(false, false));
+        _users.GetUserInfoAsync(archived, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(survivor));
+
+        var pin = await _controller.ClaimPin(archived, "1357", ct);
+        var claim = await _controller.Claim(archived, ct);
+
+        Assert.IsType<RedirectToActionResult>(pin);
+        Assert.IsType<RedirectToActionResult>(claim);
+        await _gate.DidNotReceive().SetOwnPinAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        Assert.DoesNotContain(ScannerSessionKey, _session.Keys, StringComparer.Ordinal);
+    }
 }

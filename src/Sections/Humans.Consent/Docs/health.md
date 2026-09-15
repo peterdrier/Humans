@@ -86,7 +86,7 @@ contract fold-inward).
 - No per-document cache keys on the legal cache — the consumed unit is the whole
   active+required set; invalidation is wholesale by design.
 - `GetConsentMapForUsersAsync` resolves the whole batch through one
-  `GetUserInfosAsync` call and reads `UserInfo.MergedUserIds` off each row.
+  `GetUserInfosAsync` call and reads `UserInfo.AllUserIds` off each resolved row.
 - No FK constraints or navs across sections (`LegalDocument.TeamId`, `ConsentRecord.UserId`
   are bare Guids) — data-ownership rule, not an omission.
 - No eager warm on the per-user consent cache — the banner workload fills it lazily.

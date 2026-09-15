@@ -1567,4 +1567,63 @@ public sealed class IssuesServiceTests
         deleted.Should().Be(0);
         _navBadge.DidNotReceive().Invalidate();
     }
+
+    // ==========================================================================
+    // Merged-away ids (#1704): in-app notifications reach the survivor, and the
+    // assignee is stored as the live id.
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task UpdateStatusAsync_notifies_the_survivor_when_the_reporter_id_was_merged_away()
+    {
+        var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open);
+        var survivorId = Guid.NewGuid();
+        SeedUser(survivorId, "Survivor").Email = "s@x.com";
+        Db.Users.Single(u => u.Id == reporterId).MergedToUserId = survivorId;
+        StubResolution(reporterId, survivorId);
+
+        await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Resolved, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        await _notificationService.Received(1).SendAsync(
+            NotificationSource.IssueStatusChanged,
+            NotificationClass.Informational,
+            NotificationPriority.Normal,
+            Arg.Any<string>(),
+            Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == survivorId),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UpdateAssigneeAsync_stores_the_survivor_when_given_a_merged_away_id()
+    {
+        var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
+        var archivedId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        SeedUser(archivedId, "Archived").Email = "a@x.com";
+        SeedUser(survivorId, "Survivor").Email = "s@x.com";
+        StubResolution(archivedId, survivorId);
+
+        await _service.UpdateAssigneeAsync(issueId, Admin, archivedId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        var stored = await _issuesDb.Issues.AsNoTracking().SingleAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
+        stored.AssigneeUserId.Should().Be(survivorId);
+    }
+
+    /// <summary>Makes the registry-backed user service resolve <paramref name="archived"/> forward.</summary>
+    private void StubResolution(Guid archived, Guid survivor)
+    {
+        _userService.GetUserInfoAsync(archived, Arg.Any<CancellationToken>())
+            .Returns(_ => new ValueTask<UserInfo?>(Info(survivor)));
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => (IReadOnlyDictionary<Guid, UserInfo>)call
+                .ArgAt<IReadOnlyCollection<Guid>>(0)
+                .Select(id => (Key: id, Info: Info(id == archived ? survivor : id)))
+                .Where(x => x.Info is not null)
+                .ToDictionary(x => x.Key, x => x.Info!));
+    }
 }

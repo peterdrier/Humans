@@ -1163,4 +1163,31 @@ public class ExpenseReportServiceHoldedOutboxTests
             Arg.Any<Exception?>(),
             Arg.Any<Func<object, Exception?, string>>());
     }
+
+    [HumansFact]
+    public async Task CreateIncomingDoc_SubmitterMergedAway_BindsTheCreditorToTheSurvivor()
+    {
+        // #1704: the report stays under the archived id, but the human is the survivor now, so
+        // one member keeps one Holded contact rather than a second one under the old id.
+        var survivorId = Guid.NewGuid();
+        var survivor = new User { Id = survivorId, DisplayName = "Alice Smith" };
+        _userService.GetUserInfoAsync(SubmitterId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(MinimalUserInfo(survivor) with { MergedUserIds = [SubmitterId] }));
+        var report = MakeReport();
+        var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), 100, Arg.Any<CancellationToken>())
+            .Returns([outboxEvent]);
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
+            .Returns(report);
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns("holded-doc-1");
+
+        await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
+
+        await _holdedFinance.Received(1).EnsureCreditorContactAsync(
+            survivorId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
+        await _repo.Received(1).GetForSubmitterAsync(survivorId, Arg.Any<CancellationToken>());
+        await _repo.Received(1).GetForSubmitterAsync(SubmitterId, Arg.Any<CancellationToken>());
+    }
 }

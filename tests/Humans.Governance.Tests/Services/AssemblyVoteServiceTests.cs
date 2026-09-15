@@ -1672,6 +1672,31 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task RunLapseAndReminderSweepAsync_WhenTheSurvivorVotedOnTheirOwnRow_DoesNotRemindThroughTheArchivedRow()
+    {
+        // The pending read returns only the blank archived row; deciding on it alone would tell
+        // a member who has voted that they have not. Grouped over the whole roster, the human
+        // holds a voted row, so no reminder goes out and the blank row stays unstamped.
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(12));
+        var mergedAway = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        _fx.StubMergedInto(mergedAway, survivor);
+        var archivedRow = await _fx.AddRosterRowAsync(vote.Id, mergedAway, isOfficial: false);
+        var survivorRow = await _fx.AddRosterRowAsync(vote.Id, survivor, isOfficial: true);
+        await _fx.AddBallotAsync(vote.Id, survivorRow.Id, AssemblyBallotChoice.Yes);
+
+        await _fx.Service.RunLapseAndReminderSweepAsync(Xunit.TestContext.Current.CancellationToken);
+
+        _fx.Messages.DidNotReceive().AssemblyVoteReminder(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<LocalDateTime>(),
+            Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<string?>());
+        var stored = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
+            .SingleAsync(r => r.Id == archivedRow.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.ReminderSentAt.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task SendOpenedEmails_MailsTheSurvivorOfARosterRowLeftOnATombstone()
     {
         var vote = await _fx.AddVoteAsync(

@@ -136,14 +136,12 @@ internal sealed class GoogleSyncLogService(
         await repo.DeleteByUserIdsAsync([userId], ct);
     }
 
-    /// <summary>Includes accounts merged into this one, so a merged human keeps their trail.</summary>
-    private async Task<List<Guid>> UserIdsWithMergedSourcesAsync(Guid userId, CancellationToken ct)
-    {
-        IReadOnlyList<Guid> sourceIds = (await userService.GetUserInfoAsync(userId, ct))?.MergedUserIds ?? [];
-        var ids = new List<Guid>(sourceIds.Count + 1) { userId };
-        ids.AddRange(sourceIds);
-        return ids;
-    }
+    /// <summary>
+    /// Every id the human behind <paramref name="userId"/> has held, from the resolved
+    /// record, so a merged human keeps their whole trail whichever of their ids is asked with.
+    /// </summary>
+    private async Task<IReadOnlyList<Guid>> UserIdsWithMergedSourcesAsync(Guid userId, CancellationToken ct) =>
+        (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
 
     private async Task<IReadOnlyList<GoogleSyncLogView>> ToViewsAsync(
         IReadOnlyList<GoogleSyncLogEntry> entries, CancellationToken ct)

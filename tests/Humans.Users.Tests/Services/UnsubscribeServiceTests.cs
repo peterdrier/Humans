@@ -4,19 +4,17 @@ using Humans.Users.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using Humans.Users.Data.Repositories;
 
 namespace Humans.Users.Tests.Services;
 
 /// <summary>
 /// Unit tests for the Application-layer <see cref="UnsubscribeService"/>.
-/// Dependencies are mocked; the repository
+/// Dependencies are mocked; the user service
 /// replacement simply returns the seeded user by id so we can verify the
 /// service's decision paths (valid / expired / legacy / missing user).
 /// </summary>
 public class UnsubscribeServiceTests
 {
-    private readonly IUserRepository _userRepo = Substitute.For<IUserRepository>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICommunicationPreferenceService _preferenceService = Substitute.For<ICommunicationPreferenceService>();
     private readonly IDataProtectionProvider _dataProtection = new EphemeralDataProtectionProvider();
@@ -25,7 +23,6 @@ public class UnsubscribeServiceTests
     public UnsubscribeServiceTests()
     {
         _service = new UnsubscribeService(
-            _userRepo,
             _userService,
             _preferenceService,
             _dataProtection,
@@ -34,10 +31,15 @@ public class UnsubscribeServiceTests
 
     private void SeedUser(Guid userId, string displayName)
     {
-        _userRepo.GetByIdAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = userId, UserName = $"{userId}@example.com", DisplayName = displayName });
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(CreateUserInfo(new User { Id = userId, DisplayName = displayName }));
+    }
+
+    // The resolving read hands a merged-away id its survivor.
+    private void SeedMergedUser(Guid mergedId, Guid survivorId, string survivorName)
+    {
+        _userService.GetUserInfoAsync(mergedId, Arg.Any<CancellationToken>())
+            .Returns(CreateUserInfo(new User { Id = survivorId, DisplayName = survivorName }));
     }
 
     private static UserInfo CreateUserInfo(User user) =>
@@ -123,7 +125,7 @@ public class UnsubscribeServiceTests
     public async Task ValidateTokenAsync_ReturnsInvalid_WhenUserMissingForValidNewToken()
     {
         var userId = Guid.NewGuid();
-        _userRepo.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns((User?)null);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
 
         _preferenceService.ValidateUnsubscribeToken("new-token")
             .Returns((TokenValidationStatus.Valid, userId, MessageCategory.Marketing));
@@ -147,9 +149,41 @@ public class UnsubscribeServiceTests
         result.IsValid.Should().BeTrue();
         await _preferenceService.Received(1).UpdatePreferenceAsync(
             userId, MessageCategory.Marketing, true, "MagicLink", Arg.Any<CancellationToken>());
-        // Only the per-category preference flips; the User row (UnsubscribedFromCampaigns) is never written.
-        _userRepo.ReceivedCalls().Select(c => c.GetMethodInfo().Name)
-            .Should().OnlyContain(name => name == nameof(IUserRepository.GetByIdAsync));
+    }
+
+    [HumansFact]
+    public async Task ValidateTokenAsync_ResolvesMergedUser_ToSurvivor()
+    {
+        var mergedId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        SeedMergedUser(mergedId, survivorId, "Survivor");
+
+        _preferenceService.ValidateUnsubscribeToken("new-token")
+            .Returns((TokenValidationStatus.Valid, mergedId, MessageCategory.Marketing));
+
+        var result = await _service.ValidateTokenAsync("new-token", Xunit.TestContext.Current.CancellationToken);
+
+        result.IsValid.Should().BeTrue();
+        result.UserId.Should().Be(survivorId);
+        result.DisplayName.Should().Be("Survivor");
+    }
+
+    [HumansFact]
+    public async Task ConfirmUnsubscribeAsync_WritesPreference_ForSurvivor_WhenTokenIsForMergedUser()
+    {
+        var mergedId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        SeedMergedUser(mergedId, survivorId, "Survivor");
+
+        _preferenceService.ValidateUnsubscribeToken("new-token")
+            .Returns((TokenValidationStatus.Valid, mergedId, MessageCategory.Marketing));
+
+        await _service.ConfirmUnsubscribeAsync("new-token", "MagicLink", Xunit.TestContext.Current.CancellationToken);
+
+        await _preferenceService.Received(1).UpdatePreferenceAsync(
+            survivorId, MessageCategory.Marketing, true, "MagicLink", Arg.Any<CancellationToken>());
+        await _preferenceService.DidNotReceive().UpdatePreferenceAsync(
+            mergedId, Arg.Any<MessageCategory>(), Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

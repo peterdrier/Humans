@@ -30,6 +30,7 @@ public sealed class ProfileCardViewComponent(
         {
             return Content(string.Empty);
         }
+        userId = info.Id; // everything below (emails, teams, membership) is keyed by the live id
         var profile = info.Profile;
 
         var isOwnProfile = viewMode == ProfileCardViewMode.Self;

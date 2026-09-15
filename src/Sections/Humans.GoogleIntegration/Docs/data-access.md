@@ -119,7 +119,7 @@ side (`IGoogleSyncLogViewer`) backing `<vc:google-sync-log>`, and
 at Error and swallowed so a sync never fails on its own bookkeeping. The
 contributor read is uncapped, unlike the 200-row display reads. Cross-section
 calls: `ITeamResourceService` (resource display names) and
-`IUserServiceRead.GetUserInfoAsync`, whose `UserInfo.MergedUserIds` chain-follows
+`IUserServiceRead.GetUserInfoAsync`, whose `UserInfo.AllUserIds` chain-follows
 merge tombstones on per-user reads. No cache.
 
 ### GoogleSyncHistoryMigrationService (Scoped, `internal`)

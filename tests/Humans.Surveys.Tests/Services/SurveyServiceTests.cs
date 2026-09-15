@@ -923,10 +923,33 @@ public class SurveyServiceTests
             .Returns(TeamWith(teamId, alreadyInvited, newA, newB));
         _repo.GetInvitedUserIdsAsync(survey.Id, Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid> { alreadyInvited });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo>());
 
         var count = await CreateService().PreviewAudienceCountAsync(survey.Id, TestContext.Current.CancellationToken);
 
         count.Should().Be(2);
+    }
+
+    [HumansFact]
+    public async Task PreviewAudienceCountAsync_does_not_count_a_survivor_whose_archived_id_was_already_invited()
+    {
+        // #1704: invitations are never re-pointed on merge. The team lists the survivor's live
+        // id; the invitation sits under the archived one. Same human, not a net-new invitee.
+        var teamId = Guid.NewGuid();
+        Guid archived = Guid.NewGuid(), survivor = Guid.NewGuid(), newA = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Draft, SurveyAudienceType.Team, teamId);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(TeamWith(teamId, survivor, newA));
+        _repo.GetInvitedUserIdsAsync(survey.Id, Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid> { archived });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [archived] = Asociado(survivor) });
+
+        var count = await CreateService().PreviewAudienceCountAsync(survey.Id, TestContext.Current.CancellationToken);
+
+        count.Should().Be(1);
     }
 
     // ── issue #1065: an unhandled audience type resolves to nobody, warned not silent ──
@@ -4209,5 +4232,25 @@ public class SurveyServiceTests
         result.Select(r => r.Id).Should().Equal(older.Id, newer.Id);
         result.Should().NotContain(r => r.Id == draft.Id);
         result.Single(r => r.Id == older.Id).CreatedByName.Should().Be(authorAInfo.BurnerName);
+    }
+
+    [HumansFact]
+    public async Task IsEligibleAsociadoAsync_rejects_a_stored_id_that_resolves_to_another_user()
+    {
+        // #1704: every caller passes an id a draft, invitation or response is stored under. An
+        // archived id resolves to an eligible survivor, but answering under it would give one
+        // Asociado two ballots.
+        var archived = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        _userService.GetUserInfoAsync(archived, Arg.Any<CancellationToken>())
+            .Returns(Asociado(survivor));
+        _userService.GetUserInfoAsync(survivor, Arg.Any<CancellationToken>())
+            .Returns(Asociado(survivor));
+        var service = CreateService();
+
+        (await service.IsEligibleAsociadoAsync(archived, TestContext.Current.CancellationToken))
+            .Should().BeFalse();
+        (await service.IsEligibleAsociadoAsync(survivor, TestContext.Current.CancellationToken))
+            .Should().BeTrue();
     }
 }

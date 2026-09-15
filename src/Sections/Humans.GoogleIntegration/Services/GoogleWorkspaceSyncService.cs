@@ -296,6 +296,11 @@ internal sealed class GoogleWorkspaceSyncService(
             return;
         }
 
+        // From here on the id is the resolved human's, as the email above already is: the
+        // team_members rows the permission level is read from moved to the survivor at
+        // merge, and the grant is audited against the account that actually holds it.
+        userId = user.Id;
+
         var team = await teamService.GetTeamAsync(teamId, cancellationToken);
         var resources = await resourceRepository.GetActiveByTeamIdAsync(teamId, cancellationToken);
 

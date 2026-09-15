@@ -665,7 +665,7 @@ internal sealed class SurveyService(
         var recipients = await ResolveRecipientIdsAsync(
             audienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
         if (recipients.Count == 0) return 0;
-        var alreadyInvited = await repo.GetInvitedUserIdsAsync(surveyId, ct);
+        var alreadyInvited = await InvitedUserIdsResolvedAsync(surveyId, ct);
         var completedPublicParticipants = (await repo.GetInvitationsAsync(surveyId, ct))
             .Where(invitation => invitation.SentAt is null && invitation.Completed)
             .Select(invitation => invitation.UserId);
@@ -686,7 +686,7 @@ internal sealed class SurveyService(
         var now = clock.GetCurrentInstant();
         var target = await ResolveRecipientIdsAsync(
             audienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
-        var alreadyInvited = await repo.GetInvitedUserIdsAsync(surveyId, ct);
+        var alreadyInvited = await InvitedUserIdsResolvedAsync(surveyId, ct);
         var participationRows = await repo.GetInvitationsAsync(surveyId, ct);
         var completedPublicParticipants = participationRows
             .Where(invitation => invitation.SentAt is null && invitation.Completed)
@@ -768,6 +768,20 @@ internal sealed class SurveyService(
         return new SendResult(invitationsCreated, emailsQueued, failed);
     }
 
+    /// <summary>
+    /// Invited ids plus, for any that has since been merged away, its survivor. Invitations are
+    /// never re-pointed on merge, so the audience (live ids) is compared against both, or the
+    /// survivor is invited a second time to a survey their archived id already holds.
+    /// </summary>
+    private async Task<HashSet<Guid>> InvitedUserIdsResolvedAsync(Guid surveyId, CancellationToken ct)
+    {
+        var invited = (await repo.GetInvitedUserIdsAsync(surveyId, ct)).ToHashSet();
+        if (invited.Count == 0) return invited;
+        foreach (var info in (await userService.GetUserInfosAsync(invited.ToList(), ct)).Values)
+            invited.Add(info.Id);
+        return invited;
+    }
+
     public async Task<int> SendDueRemindersAsync(CancellationToken ct = default)
     {
         var now = clock.GetCurrentInstant();
@@ -789,6 +803,17 @@ internal sealed class SurveyService(
         var reminded = 0;
         foreach (var inv in due)
         {
+            // An invitation held by a since-merged id belongs to the survivor's past: the
+            // survivor's own invitation (if any) carries the reminder, and for an Asociado vote
+            // this token could no longer answer. Left unstamped and skipped, like a missing email.
+            if (users.TryGetValue(inv.UserId, out var holder) && holder.Id != inv.UserId)
+            {
+                logger.LogInformation(
+                    "Invitation {InvitationId} belongs to merged user {UserId}; skipping reminder",
+                    inv.Id, inv.UserId);
+                continue;
+            }
+
             if (!emails.TryGetValue(inv.UserId, out var email))
             {
                 logger.LogWarning(
@@ -904,7 +929,13 @@ internal sealed class SurveyService(
     }
 
     public async Task<bool> IsEligibleAsociadoAsync(Guid userId, CancellationToken ct = default)
-        => IsEligibleAsociado(await userService.GetUserInfoAsync(userId, ct));
+    {
+        // Every caller passes an id a draft, invitation or response is stored under. A merged-away
+        // id resolves to an eligible survivor, but answering under the archived id would let one
+        // Asociado hold two ballots, so eligibility requires the stored id to be the live one.
+        var info = await userService.GetUserInfoAsync(userId, ct);
+        return info is not null && info.Id == userId && IsEligibleAsociado(info);
+    }
 
     public async Task<Guid> StartIdentifiedDraftAsync(
         Guid surveyId,

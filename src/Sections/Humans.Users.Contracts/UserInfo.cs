@@ -180,6 +180,16 @@ public sealed record UserInfo(
     public IReadOnlyList<Guid> MergedUserIds { get; init; } = [];
 
     /// <summary>
+    /// Every id this human has held: <see cref="Id"/> first, then <see cref="MergedUserIds"/>.
+    /// The list a per-user read of an append-only table queries by (audit rows, consent
+    /// records, roster rows and ballots stay keyed to the archived id on purpose). Seeded from
+    /// this record's own id, never from the id the caller asked with: the cross-section reads
+    /// resolve a tombstone forward, so the id asked with may be one of the archived ones and
+    /// the survivor's own rows would otherwise be the ones left out.
+    /// </summary>
+    public IReadOnlyList<Guid> AllUserIds => MergedUserIds.Count == 0 ? [Id] : [Id, .. MergedUserIds];
+
+    /// <summary>
     /// Canonical profile picture URL. Custom upload served from the file share via
     /// <c>/Profile/Picture?id={ProfileId}&amp;v={ticks}</c> when present, otherwise the
     /// legacy <see cref="User.ProfilePictureUrl"/> column as a fallback. This is the ONLY

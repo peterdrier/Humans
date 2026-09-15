@@ -284,7 +284,9 @@ internal sealed partial class WorkgroupService
     {
         if (recipientUserIds.Count == 0) return;
         var people = await users.GetUserInfosAsync(recipientUserIds, ct);
-        foreach (var group in recipientUserIds.Distinct().GroupBy(id => people.GetValueOrDefault(id)?.PreferredLanguage ?? "en", StringComparer.OrdinalIgnoreCase))
+        // In-app notices are keyed by user id: deliver to the live id the read resolved to.
+        var liveIds = recipientUserIds.Select(id => people.GetValueOrDefault(id)?.Id ?? id).Distinct();
+        foreach (var group in liveIds.GroupBy(id => people.GetValueOrDefault(id)?.PreferredLanguage ?? "en", StringComparer.OrdinalIgnoreCase))
         {
             var culture = System.Globalization.CultureInfo.GetCultureInfo(group.Key);
             var title = $"{NoticeResources.GetString(titleKey, culture)}: {w.Name}";

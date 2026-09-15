@@ -2125,6 +2125,27 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
+    public async Task GetEntitiesByUserIdsAsync_MergeTombstone_ReturnsEachRowsOwnEmails()
+    {
+        // #1704: raw for the same reason as the singular read, each requested id gets its own
+        // rows, stamped with itself.
+        var archived = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        var archivedRow = new UserEmail { Id = Guid.NewGuid(), UserId = archived, Email = "old@example.com", IsVerified = true };
+        var survivorRow = new UserEmail { Id = Guid.NewGuid(), UserId = survivor, Email = "new@example.com", IsVerified = true };
+        _userService.GetRawUserInfoAsync(archived, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(BuildStubUserInfo(archived, [archivedRow])));
+        _userService.GetRawUserInfoAsync(survivor, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(BuildStubUserInfo(survivor, [survivorRow])));
+
+        var result = await _service.GetEntitiesByUserIdsAsync([archived, survivor], Xunit.TestContext.Current.CancellationToken);
+
+        result[archived].Should().ContainSingle().Which.Id.Should().Be(archivedRow.Id);
+        result[survivor].Should().ContainSingle().Which.Id.Should().Be(survivorRow.Id);
+        result[archived].Single().UserId.Should().Be(archived);
+    }
+
+    [HumansFact]
     public async Task GetNobodiesTeamEmailAsync_MergeTombstone_ReturnsNull()
     {
         // #1704: raw. Its sole consumer is GDPR erasure, which runs per id down the merge chain.

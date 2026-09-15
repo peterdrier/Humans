@@ -902,18 +902,17 @@ internal sealed class BudgetService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        // GDPR export must include audit rows left on accounts merged into this one.
-        IReadOnlyList<Guid> sourceIds = (await userService.GetUserInfoAsync(userId, ct))?.MergedUserIds ?? [];
+        // GDPR export must include audit rows left on accounts merged into this one. The
+        // id list is the resolved record's: asked with an archived id, the survivor's own
+        // rows are theirs too.
+        var allIds = (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
         IReadOnlyList<BudgetAuditLog> entries;
-        if (sourceIds.Count == 0)
+        if (allIds.Count == 1)
         {
-            entries = await repository.GetAuditLogEntriesForUserAsync(userId, ct);
+            entries = await repository.GetAuditLogEntriesForUserAsync(allIds[0], ct);
         }
         else
         {
-            var allIds = new List<Guid>(sourceIds.Count + 1);
-            allIds.AddRange(sourceIds);
-            allIds.Add(userId);
             entries = await repository.GetAuditLogEntriesForUserIdsAsync(allIds, ct);
         }
 

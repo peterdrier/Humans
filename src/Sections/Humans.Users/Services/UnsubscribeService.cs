@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.DataProtection;
 namespace Humans.Users.Services;
 
 internal sealed class UnsubscribeService(
-    IUserRepository userRepository,
     IUserServiceRead userService,
     ICommunicationPreferenceService preferenceService,
     IDataProtectionProvider dataProtection,
@@ -17,12 +16,14 @@ internal sealed class UnsubscribeService(
         var result = preferenceService.ValidateUnsubscribeToken(token);
         if (result.Status == TokenValidationStatus.Valid)
         {
-            var user = await userRepository.GetByIdAsync(result.UserId, ct);
-            if (user is null)
+            // Resolve merge tombstones forward: a token minted for a since-merged id must act on
+            // the survivor, so the returned id (and the preference ConfirmUnsubscribeAsync writes)
+            // is the resolved record's, never the token's.
+            var info = await userService.GetUserInfoAsync(result.UserId, ct);
+            if (info is null)
                 return UnsubscribeTokenResult.Invalid();
 
-            var info = await userService.GetUserInfoAsync(result.UserId, ct);
-            return UnsubscribeTokenResult.Valid(result.UserId, info?.BurnerName ?? string.Empty, result.Category);
+            return UnsubscribeTokenResult.Valid(info.Id, info.BurnerName, result.Category);
         }
 
         if (result.Status == TokenValidationStatus.Expired)
@@ -48,12 +49,11 @@ internal sealed class UnsubscribeService(
             return UnsubscribeTokenResult.Invalid();
         }
 
-        var legacyUser = await userRepository.GetByIdAsync(userId, ct);
-        if (legacyUser is null)
+        var legacyInfo = await userService.GetUserInfoAsync(userId, ct);
+        if (legacyInfo is null)
             return UnsubscribeTokenResult.Invalid();
 
-        var legacyInfo = await userService.GetUserInfoAsync(userId, ct);
-        return UnsubscribeTokenResult.Valid(userId, legacyInfo?.BurnerName ?? string.Empty, MessageCategory.Marketing, isLegacy: true);
+        return UnsubscribeTokenResult.Valid(legacyInfo.Id, legacyInfo.BurnerName, MessageCategory.Marketing, isLegacy: true);
     }
 
     public async Task<UnsubscribeTokenResult> ConfirmUnsubscribeAsync(string token, string source, CancellationToken ct = default)

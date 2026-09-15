@@ -26,19 +26,14 @@ internal sealed class ConsentService(
     IClock clock,
     ILogger<ConsentService> logger) : IConsentService, IUserDataContributor
 {
-    // Read ids: always {userId ∪ the ids merged into it}. When nothing was merged into
-    // userId the set is just [userId], so every consent read runs through the
-    // multi-id repository methods uniformly (the single-id repo overloads are exactly
-    // these called with one id).
+    // Read ids: every id the human behind userId has held. The read resolves a merge
+    // tombstone forward, so the list is the resolved record's (its own id plus the ids
+    // merged into it), never [userId ∪ …]: asked with an archived id, that would leave
+    // the survivor's own consents out. When nothing was merged the list is just the one
+    // id, so every consent read runs through the multi-id repository methods uniformly.
     private async Task<IReadOnlyCollection<Guid>> GetChainFollowIdsAsync(
-        Guid userId, CancellationToken ct)
-    {
-        IReadOnlyList<Guid> sourceIds = (await userService.GetUserInfoAsync(userId, ct))?.MergedUserIds ?? [];
-
-        var allIds = new List<Guid>(sourceIds.Count + 1) { userId };
-        allIds.AddRange(sourceIds);
-        return allIds;
-    }
+        Guid userId, CancellationToken ct) =>
+        (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
 
     public async Task<ConsentDashboard> GetConsentDashboardAsync(Guid userId, CancellationToken ct = default)
     {
@@ -204,41 +199,43 @@ internal sealed class ConsentService(
         if (userIds.Count == 0)
             return new Dictionary<Guid, IReadOnlySet<Guid>>();
 
+        // Per input, every id its human has held: the resolved record's own id plus the
+        // ids merged into it, as GetChainFollowIdsAsync does for one. An input that is
+        // itself an archived id resolves to the survivor, whose own consents are then in.
         var infos = await userService.GetUserInfosAsync(userIds, ct);
-        var sourcesByTarget = new Dictionary<Guid, IReadOnlyList<Guid>>(userIds.Count);
+        var idsByInput = new Dictionary<Guid, IReadOnlyList<Guid>>(userIds.Count);
         foreach (var userId in userIds)
         {
-            sourcesByTarget[userId] = infos.TryGetValue(userId, out var info) ? info.MergedUserIds : [];
+            idsByInput[userId] = infos.TryGetValue(userId, out var info) ? info.AllUserIds : [userId];
         }
 
-        var hasAnySources = sourcesByTarget.Values.Any(s => s.Count > 0);
-        if (!hasAnySources)
+        if (idsByInput.All(kv => kv.Value.Count == 1 && kv.Value[0] == kv.Key))
         {
-            // Common case: no merged sources. Dedup defensively — callers may pass overlapping ids.
+            // Common case: nothing merged anywhere. Dedup defensively; callers may pass overlapping ids.
             var distinctInputs = userIds.Distinct().ToList();
             return await repo.GetExplicitlyConsentedVersionIdsForUsersAsync(distinctInputs, ct);
         }
 
-        // Build {inputs ∪ their source ids} for the repo batch.
+        // One repo batch over every id any input needs.
         // HashSet dedup is required — repo's ToDictionary throws on duplicate keys.
-        var allIdsSet = new HashSet<Guid>(userIds);
-        foreach (var userId in userIds)
-            allIdsSet.UnionWith(sourcesByTarget[userId]);
+        var allIdsSet = new HashSet<Guid>();
+        foreach (var ids in idsByInput.Values)
+            allIdsSet.UnionWith(ids);
 
         var raw = await repo.GetExplicitlyConsentedVersionIdsForUsersAsync(allIdsSet.ToList(), ct);
 
-        // Each input unions its own sources. A reverse source→target map would not do:
+        // Each input unions its own id list. A reverse source→target map would not do:
         // a batch holding both a survivor and one of its tombstones resolves both to the
-        // survivor's row, so both inputs carry the same source list and the last one
-        // written would take sole ownership of it.
+        // survivor's row, so both inputs carry the same list and the last one written
+        // would take sole ownership of it.
         var result = new Dictionary<Guid, IReadOnlySet<Guid>>(userIds.Count);
         foreach (var userId in userIds)
         {
-            var merged = new HashSet<Guid>(raw[userId]);
-            foreach (var sourceId in sourcesByTarget[userId])
+            var merged = new HashSet<Guid>();
+            foreach (var id in idsByInput[userId])
             {
-                if (raw.TryGetValue(sourceId, out var sourceVersions))
-                    merged.UnionWith(sourceVersions);
+                if (raw.TryGetValue(id, out var versions))
+                    merged.UnionWith(versions);
             }
             result[userId] = merged;
         }

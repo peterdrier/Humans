@@ -80,7 +80,7 @@ tombstone keeps the turnout counts and the stored `ResultJson` valid.
 columns; roster rows and ballots stay on the merged-away id, audited per
 vote, because they are the record of the vote rather than account state.
 Member-facing reads resolve the chain instead — `EffectiveRosterAsync` for
-the roster row, `UserInfo.MergedUserIds` unioned into
+the roster row, the resolved record's `UserInfo.AllUserIds` looped in
 `ContributeForUserAsync`, and `RecipientsAsync` resolving every roster row's
 user id through `GetUserInfosAsync` and grouping by the resolved human, so
 mail reaches the survivor of a merge and one human gets one email however

@@ -387,6 +387,8 @@ internal sealed class SystemTeamSyncJob(
         }
 
         var info = await userService.GetUserInfoAsync(userId, cancellationToken);
+        if (info is not null)
+            userId = info.Id; // membership is synced for the live id the read describes
 
         // Name-only access switch: admission is name + consents — see SyncVolunteersTeamAsync.
         var isEligible = info is { HasRequiredNameFields: true, IsSuspended: false }
@@ -442,10 +444,12 @@ internal sealed class SystemTeamSyncJob(
 
         var today = clock.GetCurrentInstant().InUtc().Date;
 
+        var info = await userService.GetUserInfoAsync(userId, cancellationToken);
+        if (info is not null)
+            userId = info.Id; // applications and membership were re-pointed to the survivor on merge
+
         var hasApprovedApp = await ApplicationDecisionService
             .HasActiveApprovedTierAsync(userId, tier, today, cancellationToken);
-
-        var info = await userService.GetUserInfoAsync(userId, cancellationToken);
 
         var isEligible = hasApprovedApp
             && info is { Profile.IsApproved: true, IsSuspended: false }

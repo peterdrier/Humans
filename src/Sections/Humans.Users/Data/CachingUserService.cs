@@ -55,22 +55,22 @@ internal sealed class CachingUserService(
     /// <summary>
     /// Derived index: for every id that has at least one row merged into it,
     /// transitively, the sorted ids of those rows. Null means dirty — see
-    /// <see cref="OnMutated"/>. Rebuilt lazily on first read after a mutation;
-    /// two threads racing to rebuild off the same store produce the same answer,
-    /// so the rebuild is not locked — only its publication is guarded, by
-    /// <see cref="_mergeIndexVersion"/>.
+    /// <see cref="OnMutated"/>. Rebuilt lazily on first read after a mutation.
     /// </summary>
-    private volatile Dictionary<Guid, Guid[]>? _mergeIndex;
-
-    /// <summary>
-    /// Bumped by every mutation. A rebuild reads the live store, so one that started
-    /// before a mutation can finish after it and would otherwise publish a pre-mutation
-    /// index over the null <see cref="OnMutated"/> just wrote — leaving a newly merged
-    /// id invisible to consent reads and the GDPR fan-outs until the next mutation,
-    /// whenever that is. Carrying the version across the rebuild makes that case drop
-    /// its result instead, and the next reader rebuilds.
-    /// </summary>
-    private long _mergeIndexVersion;
+    /// <remarks>
+    /// Rebuild, publication and invalidation all run under <see cref="_mergeIndexLock"/>.
+    /// A rebuild reads the live store, so an unlocked one that started before a mutation
+    /// could finish after it and publish a pre-mutation index over the null
+    /// <see cref="OnMutated"/> had just written, leaving a newly merged id invisible to
+    /// consent reads and the GDPR fan-outs until the next mutation, whenever that is. A
+    /// version check on publication still has that gap between the check and the write.
+    /// The lock makes the stale state unrepresentable: a mutation either lands before the
+    /// rebuild starts and is in it, or waits for the publish and then drops it. The cost is
+    /// readers serialising behind one O(rows) walk after a mutation, which at this scale is
+    /// milliseconds, a few times a day.
+    /// </remarks>
+    private Dictionary<Guid, Guid[]>? _mergeIndex;
+    private readonly Lock _mergeIndexLock = new();
 
     /// <summary>
     /// Any change to the raw store can change the merge graph — a merge lands as a
@@ -79,10 +79,7 @@ internal sealed class CachingUserService(
     /// </summary>
     protected override void OnMutated()
     {
-        // Version first, so a rebuild that reads it after this point cannot also
-        // observe the stale index it is about to replace.
-        Interlocked.Increment(ref _mergeIndexVersion);
-        _mergeIndex = null;
+        lock (_mergeIndexLock) _mergeIndex = null;
     }
 
     /// <inheritdoc cref="_mergeIndex" />
@@ -90,45 +87,43 @@ internal sealed class CachingUserService(
     {
         get
         {
-            if (_mergeIndex is { } cached) return cached;
-
-            var version = Interlocked.Read(ref _mergeIndexVersion);
-
-            // One pass: each tombstone walks forward to its terminus and registers
-            // itself against every node on the way, so a survivor ends up carrying
-            // the whole chain behind it (A→B→C leaves C with {A, B}). The visited
-            // set makes a cyclic or dangling MergedToUserId terminate rather than loop.
-            var rows = AsReadOnlyDictionary;
-            var builder = new Dictionary<Guid, List<Guid>>();
-            foreach (var row in rows.Values)
+            lock (_mergeIndexLock)
             {
-                if (row.MergedToUserId is null) continue;
+                if (_mergeIndex is { } cached) return cached;
 
-                var visited = new HashSet<Guid> { row.Id };
-                var next = row.MergedToUserId;
-                while (next is { } nodeId && visited.Add(nodeId))
+                // One pass: each tombstone walks forward to its terminus and registers
+                // itself against every node on the way, so a survivor ends up carrying
+                // the whole chain behind it (A→B→C leaves C with {A, B}). The visited
+                // set makes a cyclic or dangling MergedToUserId terminate rather than loop.
+                var rows = AsReadOnlyDictionary;
+                var builder = new Dictionary<Guid, List<Guid>>();
+                foreach (var row in rows.Values)
                 {
-                    if (!builder.TryGetValue(nodeId, out var sources))
-                        builder[nodeId] = sources = [];
-                    sources.Add(row.Id);
+                    if (row.MergedToUserId is null) continue;
 
-                    next = rows.TryGetValue(nodeId, out var node) ? node.MergedToUserId : null;
+                    var visited = new HashSet<Guid> { row.Id };
+                    var next = row.MergedToUserId;
+                    while (next is { } nodeId && visited.Add(nodeId))
+                    {
+                        if (!builder.TryGetValue(nodeId, out var sources))
+                            builder[nodeId] = sources = [];
+                        sources.Add(row.Id);
+
+                        next = rows.TryGetValue(nodeId, out var node) ? node.MergedToUserId : null;
+                    }
                 }
-            }
 
-            var index = new Dictionary<Guid, Guid[]>(builder.Count);
-            foreach (var (id, sources) in builder)
-            {
-                var ids = sources.ToArray();
-                Array.Sort(ids);
-                index[id] = ids;
-            }
+                var index = new Dictionary<Guid, Guid[]>(builder.Count);
+                foreach (var (id, sources) in builder)
+                {
+                    var ids = sources.ToArray();
+                    Array.Sort(ids);
+                    index[id] = ids;
+                }
 
-            // Publish only if the store held still while we walked it; otherwise this
-            // index may already be missing a merge, and a stale one would outlive the
-            // mutation that should have dropped it.
-            if (Interlocked.Read(ref _mergeIndexVersion) == version) _mergeIndex = index;
-            return index;
+                _mergeIndex = index;
+                return index;
+            }
         }
     }
 
@@ -301,7 +296,10 @@ internal sealed class CachingUserService(
         if ((fields & PersonSearchFields.ExactName) == PersonSearchFields.None
             && Guid.TryParse(query, out var idGuid))
         {
-            if (TryGet(idGuid, out var byId) && byId.Profile is not null && byId.Profile.RejectedAt is null)
+            // A pasted id from an audit trail may be a merged-away one: jump to its survivor.
+            if (TryGet(idGuid, out var byIdRow)
+                && Resolve(byIdRow) is { Profile: not null } byId
+                && byId.Profile.RejectedAt is null)
             {
                 return [
                     new HumanSearchResult(
@@ -321,6 +319,9 @@ internal sealed class CachingUserService(
         var results = new List<HumanSearchResult>();
         foreach (var u in Values)
         {
+            // Tombstones never surface: a search hit is an id callers act on, and the survivor
+            // row carries the same person.
+            if (u.IsTombstone) continue;
             if (u.Profile is null) continue;
             if (u.Profile.RejectedAt is not null) continue;
 

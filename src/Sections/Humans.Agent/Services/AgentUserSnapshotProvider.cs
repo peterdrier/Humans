@@ -26,6 +26,8 @@ internal sealed class AgentUserSnapshotProvider(
     public async Task<AgentUserSnapshot> LoadAsync(Guid userId, CancellationToken cancellationToken)
     {
         var user = await users.GetUserInfoAsync(userId, cancellationToken);
+        if (user is not null)
+            userId = user.Id; // roles, teams, consents and tickets are keyed by the live id
         var profile = user?.Profile;
         var activeRoles = await roles.GetActiveForUserAsync(userId, cancellationToken);
         var teamMemberships = (await teams.GetTeamsAsync(cancellationToken)).Values

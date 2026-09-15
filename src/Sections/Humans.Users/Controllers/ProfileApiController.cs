@@ -123,6 +123,7 @@ internal sealed class ProfileApiController(
         var info = await _userService.GetUserInfoAsync(userId, ct);
         if (info?.Profile is null || info.Profile.RejectedAt is not null)
             return NotFound();
+        userId = info.Id; // a merged-away id answers as its survivor
 
         var detail = await GetSharedDetailAsync(
             userId,

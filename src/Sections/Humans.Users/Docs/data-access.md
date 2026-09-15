@@ -209,7 +209,9 @@ The decorator also owns the **merge index**: a `Dictionary<Guid, Guid[]>` built 
 the warmed snapshot mapping each row to every id whose `MergedToUserId` chain reaches
 it, transitively. It is rebuilt lazily on first use after any dict mutation
 (`TrackedCache.OnMutated`), never persisted, and reads the snapshot through
-`AsReadOnlyDictionary` so a rebuild leaves the hit/miss counters alone. Every read
+`AsReadOnlyDictionary` so a rebuild leaves the hit/miss counters alone. The
+rebuild and the drop share one lock, so a mutation landing mid-rebuild cannot
+be overwritten by the stale index that rebuild was producing. Every read
 stamps its rows' `MergedUserIds` from it, and the cross-section reads resolve a
 tombstone id forward to the surviving row before stamping; `GetRawUserInfoAsync` /
 `GetAllRawUserInfosAsync` stamp without resolving.

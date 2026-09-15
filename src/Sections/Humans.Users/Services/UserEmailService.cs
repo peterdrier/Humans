@@ -469,11 +469,12 @@ internal sealed class UserEmailService(
         if (userIds.Count == 0)
             return new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>();
 
-        var infos = await userService.GetUserInfosAsync(userIds, cancellationToken);
-        var result = new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>(infos.Count);
-        foreach (var (uid, info) in infos)
+        // Raw, like the singular read above: each id gets its own rows, stamped with itself.
+        var result = new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>(userIds.Count);
+        foreach (var uid in userIds.Distinct())
         {
-            if (info.UserEmails.Count == 0) continue;
+            var info = await userService.GetRawUserInfoAsync(uid, cancellationToken);
+            if (info is null || info.UserEmails.Count == 0) continue;
             result[uid] = info.UserEmails.Select(e => ToSnapshot(uid, e)).ToList();
         }
         return result;

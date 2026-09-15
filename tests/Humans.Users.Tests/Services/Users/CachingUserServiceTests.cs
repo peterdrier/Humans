@@ -1471,4 +1471,72 @@ public class CachingUserServiceTests
 
         rowA!.MergedUserIds.Should().Equal([b], "the cycle guard stops the walk, it does not hang");
     }
+
+    // ==================================================================
+    // AllUserIds and tombstones in search (#1704)
+    // ==================================================================
+
+    [HumansFact]
+    public async Task AllUserIds_OnAResolvedRecord_ListsTheSurvivorFirstThenTheWholeChain()
+    {
+        // A caller holding the archived id A reads through it and gets C's record; the ids to
+        // union its own rows over are C's, never A's.
+        var (a, b, c, _) = SeedChain();
+        var sut = CreateSut();
+
+        var resolved = await sut.GetUserInfoAsync(a, Xunit.TestContext.Current.CancellationToken);
+
+        resolved!.Id.Should().Be(c);
+        resolved.AllUserIds.Should().Equal([c, .. new[] { a, b }.Order()]);
+    }
+
+    [HumansFact]
+    public async Task AllUserIds_OnARowNothingWasMergedInto_IsJustItself()
+    {
+        var (a, _, _, _) = SeedChain();
+        var sut = CreateSut();
+
+        var raw = await sut.GetRawUserInfoAsync(a, Xunit.TestContext.Current.CancellationToken);
+
+        raw!.AllUserIds.Should().Equal(a);
+    }
+
+    [HumansFact]
+    public async Task SearchUsersAsync_OmitsMergeTombstones()
+    {
+        // A hit is an id callers act on. The survivor row carries the same person, so the
+        // archived row never surfaces beside it.
+        var survivorId = Guid.NewGuid();
+        var archivedId = Guid.NewGuid();
+        var sut = CreateSut();
+        await PrimeAsync(sut, BuildSearchableUserInfo(survivorId, burnerName: "Twin Peaks"));
+        await PrimeAsync(sut, BuildSearchableUserInfo(archivedId, burnerName: "Twin Peaks") with
+        {
+            MergedToUserId = survivorId,
+            MergedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+        });
+
+        var results = await sut.SearchUsersAsync("Twin", PersonSearchFields.PublicAll, ct: Xunit.TestContext.Current.CancellationToken);
+
+        results.Select(r => r.UserId).Should().Equal(survivorId);
+    }
+
+    [HumansFact]
+    public async Task SearchUsersAsync_ByExactId_ResolvesAnArchivedIdToItsSurvivor()
+    {
+        // An id pasted from an audit trail may be one that was merged away since.
+        var survivorId = Guid.NewGuid();
+        var archivedId = Guid.NewGuid();
+        var sut = CreateSut();
+        await PrimeAsync(sut, BuildSearchableUserInfo(survivorId, burnerName: "Survivor"));
+        await PrimeAsync(sut, BuildSearchableUserInfo(archivedId, burnerName: "Archived") with
+        {
+            MergedToUserId = survivorId,
+            MergedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+        });
+
+        var results = await sut.SearchUsersAsync(archivedId.ToString(), PersonSearchFields.PublicAll, ct: Xunit.TestContext.Current.CancellationToken);
+
+        results.Should().ContainSingle().Which.UserId.Should().Be(survivorId);
+    }
 }
