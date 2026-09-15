@@ -10,14 +10,12 @@ namespace Humans.Backdoor.Filters;
 /// <summary>
 /// The one <c>X-Api-Key</c> gate on <c>/api/backdoor/*</c>. Resolves the presented key to
 /// the human it was issued to and installs that human as the request principal — id and
-/// active roles — so every read is scoped to what that person may see and every write
-/// records a real actor instead of <c>null</c>.
+/// active roles — so every write records a real actor instead of <c>null</c>, and a served
+/// section that scopes by viewer gets a real one to scope by.
 /// </summary>
 /// <remarks>
 /// 401 covers both a missing header and an unknown or revoked key — deliberately
-/// indistinguishable to the caller. There is no 503 "not configured" case any more: keys are
-/// rows an admin allocates, not an environment variable a deploy might forget, so an empty
-/// table is an unauthorized caller rather than a misconfigured server.
+/// indistinguishable to the caller.
 /// </remarks>
 internal sealed class BackdoorApiKeyAuthFilter(
     IBackdoorApiKeyService keys,

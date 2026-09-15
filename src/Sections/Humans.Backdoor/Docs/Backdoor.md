@@ -35,7 +35,7 @@ The machine surface. Every key-authed API an agent talks to lives here, under `/
 | DisplayPrefix | string(16) | First 12 characters of the plaintext, so a human can tell their rows apart |
 | Label | string(100) | Free text — what the key is for |
 | CreatedAt | Instant | |
-| CreatedByUserId | Guid | The admin who allocated it |
+| CreatedByUserId | Guid? | The admin who allocated it. Nullable so erasure can detach a deleted admin from a key that still belongs to someone else |
 | LastUsedAt | Instant? | Stamped on every successful resolve |
 | RevokedAt | Instant? | Null means active |
 | RevokedByUserId | Guid? | |
@@ -67,8 +67,8 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 
 ## Invariants
 
-- A key resolves to exactly one human, and that human is installed as the request principal — `ClaimTypes.NameIdentifier` plus one `ClaimTypes.Role` claim per active role assignment — so every write records a real actor and every log line is enriched with them. Only the Issues queue read consults those role claims to scope its result (see below); Agent, Feedback, Logs, and Surveys reads do not.
-- Every `/api/backdoor/issues/*` route is fetched as the key's owner — id, roles and admin flag — so a Board-only key lists the Board-only queue, and an issue whose id it happens to hold but whose queue would not list it is a 404 to read, to comment on and to patch. Issues enforces that itself, on the same `IssueSectionRouting.CanHandle` the browser reads, so a key reaches exactly as far as its holder does in the browser.
+- A key resolves to exactly one human, and that human is installed as the request principal — `ClaimTypes.NameIdentifier` plus one `ClaimTypes.Role` claim per active role assignment — so every write records a real actor and every log line is enriched with them. Only the Issues routes consult those role claims to scope their results (see below); Agent, Feedback, Logs, and Surveys reads do not.
+- Every `/api/backdoor/issues/*` route is fetched as the key's owner — id and roles, never a privilege flag Backdoor asserts — so a Board-only key lists the Board-only queue, and an issue whose id it happens to hold but whose queue would not list it is a 404 to read, to comment on and to patch. Issues enforces that itself, on the same `IssueSectionRouting.CanHandle` the browser reads, so a key reaches exactly as far as its holder does in the browser.
 - The database never holds a plaintext key. `BackdoorApiKeyService` hashes on the way in and compares hashes on the way out.
 - A key only works for a full Admin or a Board member **whose account state is `Active`** — checked at issue, at rotation, **and on every authentication**. A role that expires, is revoked, or is swept by account deletion stops the key working on the next request, and so does suspension, which moves `users.State` while deliberately leaving role assignments standing. The row is refused, not revoked, so restoring the role or lifting the suspension restores the key. The admin page shows such a key as **Disabled** and withholds Rotate, since rotation applies the same test.
 - Issue and revoke both write an audit entry naming the key and its owner (`BackdoorApiKeyIssued` / `BackdoorApiKeyRevoked`); a rotation is recorded as a revoke followed by an issue.
