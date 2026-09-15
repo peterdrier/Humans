@@ -1381,6 +1381,92 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
+    public async Task GetUserInfoAsync_ResolvesAMergedAwayIdForwardToTheSurvivor()
+    {
+        var (a, _, c, _) = SeedChain();
+        var sut = CreateSut();
+
+        var resolved = await sut.GetUserInfoAsync(a, Xunit.TestContext.Current.CancellationToken);
+
+        resolved!.Id.Should().Be(c, "outside Users a merge chain does not exist");
+    }
+
+    [HumansFact]
+    public async Task GetUserInfosAsync_KeysByTheRequestedIdAndValuesByTheSurvivor()
+    {
+        // Asked for all three ids of an A→B→C chain: three entries, every one of them C.
+        // Keying by the survivor instead would turn infos[a] into a miss, which is the
+        // failure this change exists to remove.
+        var (a, b, c, _) = SeedChain();
+        var sut = CreateSut();
+
+        var infos = await sut.GetUserInfosAsync([a, b, c], Xunit.TestContext.Current.CancellationToken);
+
+        infos.Keys.Should().BeEquivalentTo([a, b, c]);
+        infos.Values.Select(i => i.Id).Should().AllBeEquivalentTo(c);
+    }
+
+    [HumansFact]
+    public async Task GetUserInfoAsync_ResolvesAGdprErasedIdToItsOwnRow()
+    {
+        // Erasure reuses MergedAt but leaves MergedToUserId null: there is no survivor to
+        // redirect to, and every AuditLog/Consent/Budget row referencing them must still
+        // render "Deleted User" rather than nothing.
+        var (_, _, _, d) = SeedChain();
+        var sut = CreateSut();
+
+        var erased = await sut.GetUserInfoAsync(d, Xunit.TestContext.Current.CancellationToken);
+
+        erased!.Id.Should().Be(d);
+        erased.State.Should().Be(UserState.Deleted);
+        erased.IsGdprAnonymized.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task GetAllUserInfosAsync_OmitsTombstonesOfBothKinds()
+    {
+        var (a, b, c, d) = SeedChain();
+        var sut = CreateSut();
+
+        var all = await sut.GetAllUserInfosAsync(Xunit.TestContext.Current.CancellationToken);
+
+        all.Select(u => u.Id).Should().BeEquivalentTo([c],
+            "one entry per living human — merge tombstones and erased rows both drop out");
+        all.Select(u => u.Id).Should().NotContain([a, b, d]);
+    }
+
+    [HumansFact]
+    public async Task GetUserInfoAsync_ResolvesForwardThroughAMergeThatLandedAfterWarmup()
+    {
+        var (_, _, c, _) = SeedChain();
+        var sut = CreateSut();
+        await sut.GetUserInfoAsync(c, Xunit.TestContext.Current.CancellationToken);
+
+        var e = Guid.NewGuid();
+        _inner.GetUserInfoAsync(e, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(ChainRow(e, mergedTo: c)));
+        await sut.InvalidateAsync(e, Xunit.TestContext.Current.CancellationToken);
+
+        (await sut.GetUserInfoAsync(e, Xunit.TestContext.Current.CancellationToken))!
+            .Id.Should().Be(c);
+    }
+
+    [HumansFact]
+    public async Task GetUserInfoAsync_OnACyclicChain_ReturnsWithoutHanging()
+    {
+        var a = Guid.NewGuid();
+        var b = Guid.NewGuid();
+        _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<UserInfo> { ChainRow(a, mergedTo: b), ChainRow(b, mergedTo: a) });
+
+        var sut = CreateSut();
+
+        var resolved = await sut.GetUserInfoAsync(a, Xunit.TestContext.Current.CancellationToken);
+
+        resolved!.Id.Should().Be(b, "the walk stops at the first repeat rather than looping");
+    }
+
+    [HumansFact]
     public async Task GetAllRawUserInfosAsync_IncludesEveryRowTombstonesAndAll()
     {
         var (a, b, c, d) = SeedChain();

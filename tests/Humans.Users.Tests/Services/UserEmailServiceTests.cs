@@ -10,6 +10,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Services;
+using Humans.Users.Tests.Infrastructure;
 
 namespace Humans.Users.Tests.Services;
 
@@ -2044,6 +2045,30 @@ public class UserEmailServiceTests
             "shared@example.com", aliased: false, verifiedOnly: true, Xunit.TestContext.Current.CancellationToken);
 
         result.Select(r => r.UserId).Should().BeEquivalentTo([userA, userB]);
+    }
+
+    [HumansFact]
+    public async Task GetNotificationTargetEmailsAsync_ForAMergedAwayId_ReturnsTheSurvivorsAddress()
+    {
+        // #1704: keyed by the requested id, addressed to the resolved human. The merge scrubs
+        // the tombstone's own address to a merged-<id>@merged.local sentinel for Identity
+        // uniqueness, so answering by the requested id would hand out an address that bounces.
+        var archived = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        _userService.GetUserInfosAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo>
+                {
+                    [archived] = UserInfoStubHelpers.MakeUserInfo(survivor),
+                }));
+        _repository.GetAllNotificationTargetUserEmailsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [survivor] = "survivor@example.org" });
+
+        var result = await _service.GetNotificationTargetEmailsAsync(
+            [archived], Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().ContainKey(archived).WhoseValue.Should().Be("survivor@example.org");
     }
 
     [HumansFact]

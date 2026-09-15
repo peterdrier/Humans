@@ -362,25 +362,25 @@ internal sealed class UserEmailService(
         if (userIds.Count == 0)
             return new Dictionary<Guid, string>();
 
+        // #1704: resolve first, then look up. A merge tombstone's own address is the
+        // merged-<id>@merged.local sentinel Identity needs for uniqueness, and its
+        // notification-target rows moved to the survivor at merge time — so asking by the
+        // requested id would mail a sentinel that bounces. The key stays the requested id;
+        // the address is the resolved human's.
+        var resolved = await userService.GetUserInfosAsync(userIds, cancellationToken);
         var allNotificationTargets = await repository.GetAllNotificationTargetUserEmailsAsync(cancellationToken);
 
         var result = new Dictionary<Guid, string>(userIds.Count);
         foreach (var userId in userIds)
         {
-            if (allNotificationTargets.TryGetValue(userId, out var email))
-                result[userId] = email;
-        }
+            if (!resolved.TryGetValue(userId, out var user))
+                continue;
 
-        // Fall back to User.Email (Identity) for users without a notification-target row.
-        var missing = userIds.Where(id => !result.ContainsKey(id)).ToList();
-        if (missing.Count > 0)
-        {
-            var users = await userService.GetUserInfosAsync(missing, cancellationToken);
-            foreach (var userId in missing)
-            {
-                if (users.TryGetValue(userId, out var user) && !string.IsNullOrEmpty(user.Email))
-                    result[userId] = user.Email;
-            }
+            if (allNotificationTargets.TryGetValue(user.Id, out var email))
+                result[userId] = email;
+            // Fall back to User.Email (Identity) for users without a notification-target row.
+            else if (!string.IsNullOrEmpty(user.Email))
+                result[userId] = user.Email;
         }
 
         return result;

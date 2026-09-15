@@ -117,6 +117,38 @@ internal sealed class CachingUserService(
     private UserInfo Stamp(UserInfo row) =>
         MergeIndex.TryGetValue(row.Id, out var ids) ? row with { MergedUserIds = ids } : row;
 
+    /// <summary>
+    /// Follows a merge tombstone forward to its terminus — the first row on the chain
+    /// with no <see cref="UserInfo.MergedToUserId"/>. A living row, and a GDPR-erased row
+    /// (erasure reuses <c>MergedAt</c> but leaves <c>MergedToUserId</c> null), resolve to
+    /// themselves. A cycle or a pointer at a row that is gone resolves to the last row
+    /// reached and logs; it never throws and never loops.
+    /// </summary>
+    private UserInfo Resolve(UserInfo row)
+    {
+        if (row.MergedToUserId is null) return row;
+
+        var visited = new HashSet<Guid> { row.Id };
+        while (row.MergedToUserId is { } next)
+        {
+            if (!visited.Add(next))
+            {
+                logger.LogWarning(
+                    "Merge chain cycles at userId={UserId}; resolving to that row.", row.Id);
+                break;
+            }
+            if (!TryGet(next, out var target))
+            {
+                logger.LogWarning(
+                    "Merge chain from userId={UserId} points at missing userId={MissingUserId}; " +
+                    "resolving to the last row reached.", row.Id, next);
+                break;
+            }
+            row = target;
+        }
+        return row;
+    }
+
     // ==========================================================================
     // UserInfo reads
     // ==========================================================================
@@ -127,7 +159,7 @@ internal sealed class CachingUserService(
         // holding only this one row would stamp an empty chain onto a survivor.
         await EnsureWarmedAsync(ct).ConfigureAwait(false);
         var row = await GetAsync(userId, ct).ConfigureAwait(false);
-        return row is null ? null : Stamp(row);
+        return row is null ? null : Stamp(Resolve(row));
     }
 
     /// <inheritdoc cref="IUserService.GetRawUserInfoAsync" />
@@ -161,7 +193,10 @@ internal sealed class CachingUserService(
     public async Task<IReadOnlyCollection<UserInfo>> GetAllUserInfosAsync(CancellationToken ct = default)
     {
         await EnsureWarmedAsync(ct).ConfigureAwait(false);
-        return Values.Select(Stamp).ToArray();
+        // Tombstones are omitted — one entry per living human. Merge tombstones and
+        // GDPR-erased rows alike: outside Users a merge chain does not exist. Both stay
+        // reachable by id through GetUserInfoAsync.
+        return Values.Where(r => !r.IsTombstone).Select(Stamp).ToArray();
     }
 
     /// <inheritdoc cref="IUserService.GetUserInfosAsync" />
@@ -178,7 +213,7 @@ internal sealed class CachingUserService(
         foreach (var id in userIds)
         {
             if (TryGet(id, out var hit))
-                result[id] = Stamp(hit);
+                result[id] = Stamp(Resolve(hit));
             else
                 (misses ??= []).Add(id);
         }
@@ -191,7 +226,7 @@ internal sealed class CachingUserService(
                 if (info is not null)
                 {
                     Set(id, info);
-                    result[id] = Stamp(info);
+                    result[id] = Stamp(Resolve(info));
                 }
             }
         }

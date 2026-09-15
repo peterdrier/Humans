@@ -1432,7 +1432,8 @@ internal sealed class AssemblyVoteService(
     /// <summary>
     /// Emails the given roster rows that the vote is open, stamping each row that was sent.
     /// An unstamped row is one the email never reached, and the hourly sweep retries it.
-    /// Returns how many rows the email actually reached. The vote is re-read per recipient,
+    /// Returns how many members the email actually reached — rows that resolve to one human
+    /// are one member, mailed once, with every one of their rows stamped. The vote is re-read per recipient,
     /// so a stop, cancel or extend mid-batch ends it rather than mailing the rest a deadline
     /// — or a vote — that no longer stands; the unstamped rows are then left for the sweep,
     /// which only retries while the vote is Open.
@@ -1443,7 +1444,7 @@ internal sealed class AssemblyVoteService(
         var recipients = await RecipientsAsync(rows, ct);
         var notified = 0;
 
-        foreach (var (rosterRow, info, address) in recipients)
+        foreach (var (rosterRow, rowIds, info, address) in recipients)
         {
             // Re-read per recipient, as the reminder loop does: mailing a whole electorate
             // takes long enough for an Admin to stop, cancel or extend the vote in the
@@ -1480,7 +1481,7 @@ internal sealed class AssemblyVoteService(
                 // reminder stamp is: an Extend landing while it went out leaves no stamp, and
                 // the retry sweep sends this member the deadline now in force.
                 await repository.StampNotifiedAsync(
-                    [rosterRow.Id], clock.GetCurrentInstant(), current.ClosesAt, ct);
+                    rowIds, clock.GetCurrentInstant(), current.ClosesAt, ct);
                 notified++;
             }
             catch (Exception ex)
@@ -1520,7 +1521,7 @@ internal sealed class AssemblyVoteService(
         var roster = await repository.GetRosterAsync(vote.Id, ct);
         var recipients = await RecipientsAsync(roster, ct);
 
-        foreach (var (rosterRow, info, address) in recipients)
+        foreach (var (rosterRow, _, info, address) in recipients)
         {
             try
             {
@@ -1595,19 +1596,25 @@ internal sealed class AssemblyVoteService(
     }
 
     /// <summary>
-    /// Pairs roster rows with their member's details and notification address, dropping
-    /// anonymized rows and anyone with no reachable address.
+    /// One recipient per human on the roster: their details, their notification address, and
+    /// every roster row that resolved to them. Rows with no reachable address drop out.
     /// </summary>
     /// <remarks>
-    /// Keyed by the roster row's own user id, with no resolution of accounts merged away
-    /// since the vote opened: a tombstone holds no notification address, so such a row
-    /// drops out here and that member is not mailed. Following the merge forward is Users'
-    /// business, not this section's, and no read contract offers it — the entitlement
-    /// itself survives, because <see cref="EffectiveRosterAsync"/> finds the row from the
-    /// surviving account and the member can still cast their ballot from the vote page.
+    /// A roster row stays on the account that held the entitlement when the vote opened, and
+    /// that account may since have been merged away (peterdrier/Humans#1699 keeps the row
+    /// where it is deliberately — it is the evidence of who was entitled). Users resolves such
+    /// an id forward to the surviving account (#1704), so the member is mailed at the address
+    /// they actually read, and this section never knows a merge chain exists. A GDPR-erased
+    /// row resolves to itself, still has no address, and still drops out.
+    ///
+    /// <para>Two roster rows can therefore resolve to one human — enrolled twice, then merged.
+    /// They are one recipient, mailed once, and <b>every</b> row in the group is stamped;
+    /// stamping only one would earn that member the same email again on the next sweep.
+    /// The group is represented by an official row where it has one, since that is the
+    /// member's standing and the emails say so.</para>
     /// </remarks>
-    private async Task<List<(AssemblyVoteRoster Roster, UserInfo Info, string Address)>> RecipientsAsync(
-        IReadOnlyList<AssemblyVoteRoster> roster, CancellationToken ct)
+    private async Task<List<(AssemblyVoteRoster Roster, IReadOnlyList<Guid> RowIds, UserInfo Info, string Address)>>
+        RecipientsAsync(IReadOnlyList<AssemblyVoteRoster> roster, CancellationToken ct)
     {
         var userIds = roster.Where(r => r.UserId is not null).Select(r => r.UserId!.Value).Distinct().ToList();
         if (userIds.Count == 0) return [];
@@ -1617,13 +1624,17 @@ internal sealed class AssemblyVoteService(
 
         return roster
             .Where(r => r.UserId is not null
-                && infos.ContainsKey(r.UserId.Value) && addresses.ContainsKey(r.UserId.Value)
-                // A tombstone — merged away or GDPR-erased — is dropped rather than mailed.
-                // It keeps a sentinel `@merged.local` / erased address that satisfies Identity
-                // uniqueness and reaches nobody, so sending would bounce the association's
-                // domain rather than quietly do nothing.
-                && !infos[r.UserId.Value].IsTombstone)
-            .Select(r => (r, infos[r.UserId!.Value], addresses[r.UserId!.Value]))
+                && infos.ContainsKey(r.UserId.Value) && addresses.ContainsKey(r.UserId.Value))
+            .GroupBy(r => infos[r.UserId!.Value].Id)
+            .Select(g =>
+            {
+                var representative = g.FirstOrDefault(r => r.IsOfficial) ?? g.First();
+                return (
+                    representative,
+                    (IReadOnlyList<Guid>)g.Select(r => r.Id).ToList(),
+                    infos[representative.UserId!.Value],
+                    addresses[representative.UserId!.Value]);
+            })
             .ToList();
     }
 
@@ -1735,7 +1746,7 @@ internal sealed class AssemblyVoteService(
             var recipients = await RecipientsAsync(pending, ct);
             var reminded = new List<Guid>(pending.Count);
 
-            foreach (var (rosterRow, info, address) in recipients)
+            foreach (var (rosterRow, rowIds, info, address) in recipients)
             {
                 // Eligibility is re-read per recipient, not trusted from the list: sending
                 // the whole roster takes long enough for somebody to vote, or for an Admin to
@@ -1787,8 +1798,8 @@ internal sealed class AssemblyVoteService(
                     // going out, no stamp, and the next sweep tells this member the deadline
                     // now in force rather than leaving them with the one they were sent.
                     await repository.StampReminderSentAsync(
-                        [rosterRow.Id], sentAt, current.ClosesAt, ct);
-                    reminded.Add(rosterRow.Id);
+                        rowIds, sentAt, current.ClosesAt, ct);
+                    reminded.AddRange(rowIds);
                 }
                 catch (Exception ex)
                 {
