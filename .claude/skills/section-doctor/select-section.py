@@ -14,8 +14,8 @@ Locally that is one `gh pr list --repo peterdrier/Humans --state open --limit 20
 --json number,headRefName,title` call; a cloud session without gh writes the same
 shape from its GitHub MCP tools. Each PR's changed files come from git, never the
 API: `refs/pull/<n>/head` is fetched and diffed against origin/main (the API's file
-list carries patch bodies and silently caps at 100 files). A `files` list in the
-JSON is used only when that fetch fails.
+list carries patch bodies and silently caps at 100 files). A fetch that fails stops
+the selector: it cannot see in-flight work, so it must not pick.
 
 Re-doctor ranking: age of the last run in days plus the share of the section
 rewritten since it (CHURN_DAYS_PER_PERCENT days per percent of LOC changed), so a
@@ -44,18 +44,20 @@ RUN_FILE_RE = re.compile(r"docs/health/runs/\d{4}-\d{2}-\d{2}-([A-Za-z0-9]+)")
 def pr_files(pr):
     """Changed files of an open PR, from origin/pr/<n> (fetched by fetch_pr_heads)."""
     rc, out = run(["git", "diff", "--name-only", "origin/main...origin/pr/%s" % pr.get("number")])
-    if rc == 0:
-        return out.split()
-    return [f["path"] if isinstance(f, dict) else f for f in pr.get("files") or []]
+    if rc != 0:
+        sys.exit("cannot diff origin/pr/%s -- selection would be blind to in-flight work; stop" % pr.get("number"))
+    return out.split()
 
 
-def fetch_pr_heads(prs, warnings):
+def fetch_pr_heads(prs):
+    """A selector that cannot see the open PRs' files cannot build the blocked set or the
+    feature-active down-rank, so a failed fetch stops the run rather than selecting blind."""
     if not prs:
         return
     refs = ["+refs/pull/%s/head:refs/remotes/origin/pr/%s" % (pr["number"], pr["number"]) for pr in prs]
     rc, out = run(["git", "fetch", "--quiet", "origin"] + refs)
     if rc != 0:
-        warnings.append("fetching refs/pull/*/head failed -- PR file lists fall back to the JSON's `files`")
+        sys.exit("fetching refs/pull/*/head failed -- selection would be blind to in-flight work; stop\n" + out.strip())
 
 
 def path_section(path):
@@ -193,7 +195,7 @@ def main():
     canonical = {s.casefold(): s for s in pool}
 
     blocked, warnings = {}, []
-    fetch_pr_heads(prs, warnings)
+    fetch_pr_heads(prs)
     for pr in prs:
         if not (pr.get("headRefName") or "").startswith("section-doctor/"):
             continue
