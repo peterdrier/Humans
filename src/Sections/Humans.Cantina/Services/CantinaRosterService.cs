@@ -8,10 +8,11 @@ namespace Humans.Cantina.Services;
 /// <summary>
 /// Application-layer implementation of <see cref="ICantinaRosterService"/>.
 /// The on-site cohort (who is around each day) comes from
-/// <see cref="IShiftManagementServiceRead.GetOnSiteUserIdsForDayAsync"/>; dietary
-/// data (preference, allergies, intolerances) is read from the cross-section
-/// <see cref="IUserServiceRead"/> (cached <see cref="UserInfo"/>/<see cref="ProfileInfo"/>),
-/// since dietary moved to <c>Profile</c>. The service unions the days into a
+/// <see cref="IShiftManagementServiceRead.GetOnSiteUserIdsForDayAsync"/>; the display
+/// name and the dietary data (preference, allergies, intolerances) both come from the
+/// cross-section <see cref="IUserServiceRead"/> — the name off <see cref="UserInfo"/>
+/// already resolved, the dietary fields off its nested <see cref="ProfileInfo"/>,
+/// where they live. The service unions the days into a
 /// unique-humans cohort and computes the weekly aggregates the Cantina UI needs.
 /// <c>MedicalConditions</c> is never read here — the cantina plans around food, not medical history.
 /// </summary>
@@ -24,7 +25,8 @@ internal sealed class CantinaRosterService : ICantinaRosterService
     private readonly IUserServiceRead _userRead;
     private readonly IClock _clock;
 
-    // Canonical preference labels, with the "Unanswered" pseudo-bucket.
+    // Must stay in step with the last entry of Roster.cshtml's dietaryOrder array,
+    // its only lookup; the service tests pin the literal as the rename tripwire.
     private static readonly string UnansweredKey = "Unanswered";
 
     public CantinaRosterService(
@@ -67,7 +69,8 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         var onSiteByOffset = new Dictionary<int, IReadOnlyList<Guid>>();
 
         // Per-day cohort: 7 sequential queries for the on-site user ids. At ~500
-        // users this is fine (see CLAUDE.md scale notes).
+        // users this is fine — one server, dataset in RAM, no query cleverness
+        // bought by an imagined scale (AGENTS.md, "Small scale, simple systems").
         var perDay = await LoadWeeklyOnSiteUsersAsync(burn, weekStartOffset, onSiteByOffset, ct).ConfigureAwait(false);
 
         // Build the union of unique on-site user IDs across the week, and
@@ -108,18 +111,19 @@ internal sealed class CantinaRosterService : ICantinaRosterService
 
         var uniqueUserIds = daysOnSiteByUserId.Keys.ToList();
 
-        // Dietary lives on Profile — read it from the cached UserInfo for the whole
-        // on-site cohort in one batched, cache-friendly call. profileByUserId is the
-        // single source for dietary preference / allergies / intolerances below.
-        var profileByUserId = uniqueUserIds.Count == 0
-            ? new Dictionary<Guid, ProfileInfo>()
-            : BuildProfileMap(await _userRead.GetUserInfosAsync(uniqueUserIds, ct).ConfigureAwait(false));
+        // One batched, cache-friendly read for the whole on-site cohort. UserInfo is
+        // the single source below for both halves of a row: the display name (already
+        // resolved by Users) and the Profile that carries dietary preference,
+        // allergies and intolerances.
+        var userInfoById = uniqueUserIds.Count == 0
+            ? new Dictionary<Guid, UserInfo>()
+            : await _userRead.GetUserInfosAsync(uniqueUserIds, ct).ConfigureAwait(false);
 
         // Build per-day summaries (counts only) from the POST-injection on-site
         // map so arrival-day people are counted on their arrival date — keeping
         // the weekly strip consistent with the daily drill-down. Dietary is
         // per-user, so a day's "unanswered" count is over that day's user ids.
-        var days = BuildDaySummaries(daysOnSiteByUserId, weekStartOffset, weekStartDate, profileByUserId);
+        var days = BuildDaySummaries(daysOnSiteByUserId, weekStartOffset, weekStartDate, userInfoById);
 
         if (uniqueUserIds.Count == 0)
         {
@@ -142,18 +146,16 @@ internal sealed class CantinaRosterService : ICantinaRosterService
 
         // Unique-humans dietary cohort — every aggregate below is computed over
         // this list so a person on-site multiple days contributes exactly once.
-        var uniqueProfiles = BuildUniqueProfiles(uniqueUserIds, profileByUserId);
+        var uniqueProfiles = BuildUniqueProfiles(uniqueUserIds, userInfoById);
 
         // The 7 calendar dates of the week, used to compute NoShift as the
-        // complement of each person's on-site days. Empty when the week
-        // has no anchor date (no active event) — in that branch we don't
-        // reach this code path anyway since uniqueUserIds.Count == 0.
+        // complement of each person's on-site days.
         var weekDays = BuildWeekDays(weekStartDate);
 
-        // People are returned in unspecified order. Display sort happens at
-        // the Web layer in CantinaRosterAssembler (see
+        // People are returned in unspecified order. The controller sorts, via
+        // CantinaRosterAssembler in this section's Models/ (see
         // memory/architecture/display-sort-in-controllers.md).
-        var people = BuildWeeklyPeople(uniqueUserIds, profileByUserId, daysOnSiteByUserId, weekDays);
+        var people = BuildWeeklyPeople(uniqueUserIds, userInfoById, daysOnSiteByUserId, weekDays);
 
         var dietaryBreakdown = BuildDietaryBreakdown(uniqueProfiles, uniqueUserIds.Count);
         var (allergyRollup, allergyOther) = BuildRollup(
@@ -294,16 +296,17 @@ internal sealed class CantinaRosterService : ICantinaRosterService
                 People: Array.Empty<DailyPersonRowDto>());
         }
 
-        // Dietary from the cached UserInfo for the day's cohort.
-        var profileByUserId = BuildProfileMap(await _userRead.GetUserInfosAsync(userIds, ct).ConfigureAwait(false));
+        // Names and dietary from the cached UserInfo for the day's cohort.
+        var userInfoById = await _userRead.GetUserInfosAsync(userIds, ct).ConfigureAwait(false);
 
-        // People — built in repo-order (caller is expected to sort for display
-        // via CantinaRosterAssembler.WithSortedPeople; see
+        // People — built in the order the cohort read returned (caller is expected
+        // to sort for display via CantinaRosterAssembler.WithSortedPeople; see
         // memory/architecture/display-sort-in-controllers.md).
         var people = new List<DailyPersonRowDto>(userIds.Count);
         foreach (var id in userIds)
         {
-            profileByUserId.TryGetValue(id, out var profile);
+            userInfoById.TryGetValue(id, out var info);
+            var profile = info?.Profile;
 
             IReadOnlySet<string> allergies = profile?.Allergies is { Count: > 0 } a
                 ? new HashSet<string>(a, StringComparer.Ordinal)
@@ -314,7 +317,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
 
             people.Add(new DailyPersonRowDto(
                 UserId: id,
-                BurnerName: ResolveBurnerName(profile),
+                BurnerName: ResolveBurnerName(info),
                 DietaryPreference: profile?.DietaryPreference,
                 Allergies: allergies,
                 AllergyOtherText: profile?.AllergyOtherText,
@@ -438,7 +441,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         IReadOnlyDictionary<Guid, List<LocalDate>> daysOnSiteByUserId,
         int weekStartOffset,
         LocalDate? weekStartDate,
-        IReadOnlyDictionary<Guid, ProfileInfo> profileByUserId)
+        IReadOnlyDictionary<Guid, UserInfo> userInfoById)
     {
         var days = new List<DayRosterSummaryDto>(DaysPerWeek);
         for (var i = 0; i < DaysPerWeek; i++)
@@ -458,8 +461,8 @@ internal sealed class CantinaRosterService : ICantinaRosterService
                         continue;
 
                     total++;
-                    if (!profileByUserId.TryGetValue(id, out var profile)
-                        || string.IsNullOrEmpty(profile.DietaryPreference))
+                    if (!userInfoById.TryGetValue(id, out var info)
+                        || string.IsNullOrEmpty(info.Profile?.DietaryPreference))
                         unanswered++;
                 }
             }
@@ -476,13 +479,13 @@ internal sealed class CantinaRosterService : ICantinaRosterService
 
     private static List<ProfileInfo> BuildUniqueProfiles(
         IReadOnlyList<Guid> uniqueUserIds,
-        IReadOnlyDictionary<Guid, ProfileInfo> profileByUserId)
+        IReadOnlyDictionary<Guid, UserInfo> userInfoById)
     {
         var uniqueProfiles = new List<ProfileInfo>(uniqueUserIds.Count);
         foreach (var id in uniqueUserIds)
         {
-            if (profileByUserId.TryGetValue(id, out var profile))
-                uniqueProfiles.Add(profile);
+            if (userInfoById.TryGetValue(id, out var info) && info.Profile is not null)
+                uniqueProfiles.Add(info.Profile);
         }
 
         return uniqueProfiles;
@@ -497,20 +500,21 @@ internal sealed class CantinaRosterService : ICantinaRosterService
 
     private static List<RosterPersonDto> BuildWeeklyPeople(
         IReadOnlyList<Guid> uniqueUserIds,
-        IReadOnlyDictionary<Guid, ProfileInfo> profileByUserId,
+        IReadOnlyDictionary<Guid, UserInfo> userInfoById,
         IReadOnlyDictionary<Guid, List<LocalDate>> daysOnSiteByUserId,
         IReadOnlyList<LocalDate> weekDays)
     {
         var people = new List<RosterPersonDto>(uniqueUserIds.Count);
         foreach (var id in uniqueUserIds)
         {
-            profileByUserId.TryGetValue(id, out var profile);
+            userInfoById.TryGetValue(id, out var info);
+            var profile = info?.Profile;
             var daysList = daysOnSiteByUserId[id];
             daysList.Sort();
 
             people.Add(new RosterPersonDto(
                 UserId: id,
-                BurnerName: ResolveBurnerName(profile),
+                BurnerName: ResolveBurnerName(info),
                 ArrivesOn: daysList[0],
                 NoShift: BuildNoShiftDays(daysList, weekDays),
                 DietaryPreference: profile?.DietaryPreference,
@@ -551,20 +555,16 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         return _clock.GetCurrentInstant().InZone(zone).Date;
     }
 
-    private static Dictionary<Guid, ProfileInfo> BuildProfileMap(IReadOnlyDictionary<Guid, UserInfo> userInfos)
-    {
-        var map = new Dictionary<Guid, ProfileInfo>(userInfos.Count);
-        foreach (var (id, info) in userInfos)
-        {
-            if (info.Profile is not null)
-                map[id] = info.Profile;
-        }
-        return map;
-    }
-
-    private static string ResolveBurnerName(ProfileInfo? profile) =>
-        profile is not null && !string.IsNullOrWhiteSpace(profile.BurnerName)
-            ? profile.BurnerName
+    /// <summary>
+    /// The display name Users already resolved (<c>User.BurnerName</c> →
+    /// <c>Profile.BurnerName</c> → legacy display name, nobodies-collective/Humans#1097).
+    /// Reading <c>ProfileInfo.BurnerName</c> instead would show <c>"(unknown)"</c> for a
+    /// human whose name lives only on the user row. The fallback covers a user id the cohort
+    /// read did not return.
+    /// </summary>
+    private static string ResolveBurnerName(UserInfo? info) =>
+        info is not null && !string.IsNullOrWhiteSpace(info.BurnerName)
+            ? info.BurnerName
             : "(unknown)";
 
     private static IReadOnlyDictionary<string, int> EmptyDietaryBreakdown()
@@ -598,8 +598,9 @@ internal sealed class CantinaRosterService : ICantinaRosterService
                 continue;
 
             answered++;
-            // Only bucket known preferences — unknown/legacy values would otherwise
-            // distort the breakdown. Treat them as Unanswered for display purposes.
+            // An unknown value counts as answered but matches no bucket, so the returned
+            // counts sum to less than totalUniqueOnSite. Which bucket it belongs in is
+            // undecided — nobodies-collective/Humans#1113.
             if (dict.ContainsKey(profile.DietaryPreference))
                 dict[profile.DietaryPreference]++;
         }

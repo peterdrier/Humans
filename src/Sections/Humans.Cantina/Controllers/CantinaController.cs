@@ -10,8 +10,8 @@ using Humans.Users.Contracts;
 namespace Humans.Cantina.Controllers;
 
 /// <summary>
-/// Cantina coordinator surface — weekly roster page and CSV export
-/// (feature #36 — src/Sections/Humans.Cantina/Docs/features/daily-roster.md). View-only.
+/// Cantina coordinator surface — weekly roster, per-day drill-down, and their CSV
+/// exports (feature #36 — src/Sections/Humans.Cantina/Docs/features/daily-roster.md). View-only.
 /// Authorization gate: the <see cref="PolicyNames.CantinaAdminOrAdmin"/> policy
 /// (Admin or the grantable CantinaAdmin role). Anonymous callers follow the
 /// standard <see cref="AuthorizeAttribute"/> challenge; authenticated humans
@@ -37,18 +37,17 @@ internal sealed class CantinaController : HumansControllerBase
     [HttpGet("Roster")]
     public async Task<IActionResult> Roster(int? weekStartOffset = null, CancellationToken ct = default)
     {
-        var roster = await _roster.GetWeeklyRosterAsync(weekStartOffset, ct).ConfigureAwait(false);
-        // Display sort is a presentation concern; the service returns People
-        // in unspecified order. See memory/architecture/display-sort-in-controllers.md.
-        return View(CantinaRosterAssembler.WithSortedPeople(roster));
+        // No sort: the weekly page is overview-only and renders none of People.
+        // The CSV below is the one surface that reads it, and sorts for itself.
+        return View(await _roster.GetWeeklyRosterAsync(weekStartOffset, ct).ConfigureAwait(false));
     }
 
     [HttpGet("Roster/Csv")]
     public async Task<IActionResult> Csv(int? weekStartOffset = null, CancellationToken ct = default)
     {
         var roster = await _roster.GetWeeklyRosterAsync(weekStartOffset, ct).ConfigureAwait(false);
-        // Match the HTML view's sort order so an exported CSV reads the same
-        // as the on-screen roster (see CantinaRosterAssembler.SortForDisplay).
+        // Display sort is a presentation concern; the service returns People in
+        // unspecified order (memory/architecture/display-sort-in-controllers.md).
         roster = CantinaRosterAssembler.WithSortedPeople(roster);
 
         var bytes = CantinaRosterCsvWriter.Write(roster);

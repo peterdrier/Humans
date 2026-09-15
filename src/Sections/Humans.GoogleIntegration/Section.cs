@@ -129,6 +129,8 @@ public sealed class Section : ISection
         services.AddScoped<IGoogleSyncOutboxProcessor, GoogleSyncOutboxProcessor>();
         services.AddScoped<IGoogleGroupSyncScheduler, HangfireGoogleGroupSyncScheduler>();
         services.AddScoped<IGoogleGroupSync, GoogleGroupSyncService>();
+        services.AddScoped<IGoogleDriveAccessSyncScheduler, HangfireGoogleDriveAccessSyncScheduler>();
+        services.AddScoped<IGoogleDriveSync, GoogleDriveAccessSyncService>();
         services.AddScoped<IGoogleTranslationService, GoogleTranslationService>();
 
         services.AddScoped<GoogleResourceReconciliationJob>();

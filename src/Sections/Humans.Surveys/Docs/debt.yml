@@ -5,6 +5,9 @@ inbox:
   - added: 2026-08-28
     what: "SurveyService is the solution's largest class by reforge's largeClass rule and grew again with ranked-choice voting. Deliberate per the section's target shape (one aggregate, one anonymity contract, now one embargo), but recorded so the score is not mistaken for unexamined debt (/section-doctor on Surveys 2026-08-27, re-examined 2026-09-07; the measurements live in those run files)."
     review: light
+  - added: 2026-09-10
+    what: "Builder.cshtml, Send.cshtml, Results.cshtml and related SurveyAdmin views under Views/SurveyAdmin/ are hardcoded English, pre-dating the localization-admin-exempt carve-out because /Survey/Admin was BoardOrAdmin-only. The Workgroups §11 self-service change widened /Survey/Admin to any approved-profile author, so these pages are no longer admin-exempt and need a full Survey_* resx retrofit across all six cultures. Only the new approval-workflow UI (Index list additions, Queue.cshtml, the Submit/rejection-note bits added to Builder.cshtml) was localized in that change; the pre-existing ~2000 lines of Builder/Send/Results markup were left as-is given the change's scope."
+    review: light
   - added: 2026-09-07
     what: "Surveys.md invariants with no test that pins them: individual submissions are never audit-logged; exactly one reminder per invitee; Close is audit-logged; eligibility is re-checked on every wizard page; a SentAt = null ledger row is excluded from invited counts, status and reminders; Article 17 erasure unlinks a response; ballots in the drill-down are ordered by response id. Found by /section-doctor's Tests thread on 2026-09-07; its sibling gaps were closed in that run."
     review: light

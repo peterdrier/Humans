@@ -113,6 +113,9 @@ public interface IEmailMessageFactory
     /// <summary>Ticket-transfer decision (completed or cancelled) to sender or receiver (System).</summary>
     EmailMessage TicketTransferDecision(string toEmail, string toName, bool successful, string ticketLabel, string receiverName, string? reason, string? culture = null);
 
+    /// <summary>Working-group register notice (Governance category) — one method, the kind picks the copy.</summary>
+    EmailMessage WorkgroupNotice(WorkgroupNoticeRequest request);
+
     /// <summary>Assembly vote opened notification to a roster member (System); indicative ballots are called out.</summary>
     EmailMessage AssemblyVoteOpened(string toEmail, string userName, string voteTitle, LocalDateTime closesAt, bool isOfficial, string voteUrl, string? culture = null);
 

@@ -25,13 +25,23 @@ Nobodies Collective teams coordinate through meetings, workshops, and gatherings
 
 The following are explicitly deferred to future slices:
 
-- **Module aggregation into the community calendar** (Shifts contributing shift events, Camps contributing camp dates, etc.). Note the shipped `ICalendarFeedContributor` fan-out is a different thing: it aggregates into a user's *personal* iCal feed, which contains no community-calendar events at all.
 - **Audience scoping** (private events, visibility rules per team)
 - **An `.ics` subscription feed of the community calendar.** The shipped `/api/ical` feed is the personal one and emits none of these events.
 - **Public view** (anonymous/unauthenticated calendar)
 - **Personal calendar digest and notifications** ("your upcoming events" email)
 - **RSVP and attendance tracking**
 - **Event categories, colors, custom fields**
+
+## Module Aggregation
+
+`ICalendarFeedContributor.GetPublicItemsForWindowAsync` lets another section feed the
+month grid, list, and agenda with its own public items, merged in memory with
+`calendar_events` occurrences and marked by `Source`. Shifts and Events implement
+the method today but return an empty list — nothing public to contribute yet.
+Contributor items carry no team, so they only appear on the unfiltered
+(`?teamId` absent) calendar; a team-filtered view or the per-team page shows
+Calendar's own events only. The personal iCal feed (`GetCalendarItemsForUserAsync`)
+is a separate call on the same interface and is unaffected.
 
 ## User Stories
 

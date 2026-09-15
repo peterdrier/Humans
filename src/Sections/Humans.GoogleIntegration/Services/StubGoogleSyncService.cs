@@ -1,5 +1,6 @@
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Data;
+using Humans.GoogleIntegration.Services.Workspace;
 
 namespace Humans.GoogleIntegration.Services;
 
@@ -9,8 +10,38 @@ namespace Humans.GoogleIntegration.Services;
 /// </summary>
 internal sealed class StubGoogleSyncService(
     ILogger<StubGoogleSyncService> logger,
-    IGoogleSyncOutboxRepository outboxRepository) : IGoogleSyncService
+    IGoogleSyncOutboxRepository outboxRepository,
+    IGoogleDrivePermissionsClient drivePermissions,
+    IGoogleDriveAccessSyncScheduler driveAccessSyncScheduler) : IGoogleSyncService
 {
+    public async Task<string> CreateSubfolderAsync(
+        string parentFolderId,
+        string name,
+        CancellationToken cancellationToken = default)
+    {
+        logger.LogInformation("[STUB] Would create Drive subfolder '{Name}' under {ParentFolderId}", name, parentFolderId);
+        var result = await drivePermissions.CreateFolderAsync(parentFolderId, name, cancellationToken);
+        if (result.FolderId is null)
+        {
+            throw new InvalidOperationException(
+                $"[STUB] Failed to create Drive subfolder '{name}' under {parentFolderId}: {result.Error?.RawMessage}");
+        }
+
+        return result.FolderId;
+    }
+
+    public Task RequestSyncAsync(string folderId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(folderId))
+        {
+            throw new ArgumentException("Folder id is required.", nameof(folderId));
+        }
+
+        logger.LogInformation("[STUB] Would request Drive access reconcile for folder {FolderId}", folderId);
+        driveAccessSyncScheduler.Enqueue(folderId.Trim());
+        return Task.CompletedTask;
+    }
+
     public Task AddUserToTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken cancellationToken = default)
     {
         logger.LogInformation("[STUB] Would add user {UserId} to team {TeamId} Google resources", userId, teamId);

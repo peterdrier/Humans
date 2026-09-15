@@ -123,6 +123,16 @@ public sealed class CalendarOccurrenceViewExtensionsTests
         occurrence.ShouldHideTimeLabel(madrid).Should().BeTrue();
     }
 
+    [HumansFact]
+    public void IsCommunityContribution_TrueOnlyForNonCalendarSource()
+    {
+        var ownEvent = Occurrence(Instant.FromUtc(2026, 6, 1, 10, 0), Instant.FromUtc(2026, 6, 1, 11, 0));
+        var contributed = ownEvent with { Source = "Workgroups" };
+
+        ownEvent.IsCommunityContribution().Should().BeFalse();
+        contributed.IsCommunityContribution().Should().BeTrue();
+    }
+
     private static CalendarOccurrence Occurrence(Instant start, Instant? end, bool isAllDay = false) => new(
         EventId: Guid.NewGuid(),
         OccurrenceStartUtc: start,

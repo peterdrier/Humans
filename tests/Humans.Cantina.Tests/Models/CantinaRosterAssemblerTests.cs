@@ -7,8 +7,8 @@ namespace Humans.Cantina.Tests.Models;
 
 /// <summary>
 /// Tests for <see cref="CantinaRosterAssembler.SortForDisplay"/>, the
-/// presentation-layer sort that the Cantina Weekly Roster controller
-/// applies before handing the DTO to the view or CSV writer. Moved here
+/// presentation-layer sort the Cantina controller applies before handing the
+/// weekly DTO to the CSV writer. Moved here
 /// from <c>CantinaRosterServiceTests</c> when display sort migrated out
 /// of the Application service per
 /// <c>memory/architecture/display-sort-in-controllers.md</c>.
@@ -201,7 +201,7 @@ public class CantinaRosterAssemblerTests
     {
         // Smoke check: lower-case "alice" must sort BEFORE upper-case "Bob"
         // (cultural-collation, case-insensitive). Ordinal would put 'B' (0x42)
-        // before 'a' (0x61). The daily matrix sort matches the weekly view's
+        // before 'a' (0x61). The daily matrix sort matches the weekly sort's
         // BurnerName tiebreaker on this dimension.
         var input = Matrix(new[] { DP("Bob"), DP("alice") });
 

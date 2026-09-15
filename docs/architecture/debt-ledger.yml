@@ -266,7 +266,19 @@ themes:
     remaining: 10
     notes: Each inbox entry carries its own review tier; drained entries are deleted from the list.
 inbox:
+  - added: 2026-09-10
+    what: "GoogleIntegration's Drive sync knows about Teams directly: google_resources rows are keyed by TeamId and expected Drive access is derived from team membership inside the connector. The Workgroups design (src/Sections/Humans.Workgroups/Docs/2026-09-10-workgroups-section-design.md §9) introduces IGoogleDriveAccessSource, the Drive analogue of IGoogleGroupMembershipSource, with Workgroups as its first source. Migrate Teams' Drive path onto the same fan-out so the connector stops referencing team membership at all (Teams becomes a source that claims its google_resources folder ids); then the connector owns only clients, diffing, mutation and the sync log. Peter's call 2026-09-10: 'should google-drive have a fanout then, instead of knowing about teams directly?' — yes, as follow-up after Workgroups lands."
+    review: panel
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
+  - added: 2026-09-12
+    what: "memory/architecture/burnername-is-the-display-name.md states the pre-#1097 resolution order. Since nobodies-collective/Humans#1097 the burner name lives on the user row and UserInfo.BurnerName is the resolved value (User.BurnerName -> Profile.BurnerName -> legacy DisplayName). An agent following this atom today writes the exact defect that shipped \"(unknown)\" to Cantina coordinators. It is a rule file, so it propagates (/section-doctor on Cantina 2026-09-12)."
+    review: panel
+  - added: 2026-09-12
+    what: "src/Sections/Humans.Users/Docs/features/dietary-medical-nudge.md:73 points at docs/sections/Profiles.md, which does not exist. Same dangling pointer that was fixed on Cantina's side in the same run (/section-doctor on Cantina 2026-09-12)."
+    review: light
+  - added: 2026-09-12
+    what: "docs/sections/G5-SECTION-TEMPLATE.md:1037 step 6 still tells a new section that authorization policies stay in Shell's AuthorizationPolicyExtensions; ISectionPolicies superseded that (nobodies-collective/Humans#1076) and the sections with their own policies now register them themselves. Shell's own AuthorizationPolicyExtensions class doc says the new rule while :22 still cites \"design §15 step 6's asymmetry\" for the old one. The template is what new sections are built from, so it manufactures the drift. These Section.cs files also cite \"design §8\" for this, which is design-rules.md's Table Ownership Map — the intended source is the G5 split-design spec §8: Humans.Development:34, Humans.Debug:20, Humans.Issues:42, Humans.Expenses:46, Humans.Containers:27, Humans.Budget:54. Checked and NOT stale: Humans.Camps:78 and Humans.Users:136 (/section-doctor on Cantina 2026-09-12)."
+    review: panel
   - added: 2026-09-14
     what: "docs/architecture/dependency-graph.md declares classDef monitor twice in the same Mermaid graph with different fills (#0369a1 white text, and #c084fc black text further down), so one silently wins and the legend disagrees with itself. Two runs each applied the same queued 'style the Monitor carve-out' sweep item without seeing the other's. Pick one fill and delete the other. Found while merging main into peterdrier/Humans#1602."
     review: light
@@ -417,6 +429,9 @@ inbox:
     review: light
   - added: 2026-09-10
     what: "docs/architecture/freshness-catalog.yml has no Backdoor entry; add one covering src/Sections/Humans.Backdoor/** and tests/Humans.Backdoor.Tests/** (finding 17, /section-doctor on Backdoor 2026-09-03; swept in by /section-doctor on Rideshare 2026-09-10)."
+    review: light
+  - added: 2026-09-11
+    what: "Rideshare and Issues still send member notifications in English. Workgroups now groups recipients by PreferredLanguage and uses existing localized labels with INotificationService.SendAsync; no new notification API is required. Apply the same approach to the remaining callers. Found during review of peterdrier/Humans#1650."
     review: light
   - added: 2026-09-11
     what: "GenerateDocumentationFile is set in no project in this repo, so CS1574 never fires and a broken <see cref> target never fails a build; Calendar alone was carrying a batch of them. Repo-wide (finding 5, /section-doctor on Calendar 2026-09-01; swept in by /section-doctor on Guide 2026-09-11)."

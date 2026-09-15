@@ -221,6 +221,14 @@ internal interface IEmailRenderer
         string toName, bool successful, string ticketLabel, string receiverName,
         string? reason, string? culture = null);
 
+    /// <summary>
+    /// Working-group register notice — dispatches on <see cref="WorkgroupNoticeRequest.Kind"/>
+    /// to render the matching template. Builds the working-group link from
+    /// <see cref="WorkgroupNoticeRequest.WorkgroupSlug"/> the same way <see cref="RenderAddedToTeam"/>
+    /// builds the team link from a slug.
+    /// </summary>
+    EmailContent RenderWorkgroupNotice(WorkgroupNoticeRequest request);
+
     /// <summary>Assembly vote opened — notifies a roster member; indicative ballots get the "not counted" caveat.</summary>
     EmailContent RenderAssemblyVoteOpened(string userName, string voteTitle, LocalDateTime closesAt, bool isOfficial, string voteUrl, string? culture = null);
 

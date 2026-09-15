@@ -77,6 +77,9 @@ public sealed class GoogleWorkspaceSyncServiceTests
     private readonly IGoogleSyncLogService _googleSyncLog =
         Substitute.For<IGoogleSyncLogService>();
 
+    private readonly IGoogleDriveAccessSyncScheduler _driveAccessSyncScheduler =
+        Substitute.For<IGoogleDriveAccessSyncScheduler>();
+
     private readonly GoogleWorkspaceSyncService _syncService;
 
     // ── Fixed test data ────────────────────────────────────────────────────────
@@ -115,10 +118,82 @@ public sealed class GoogleWorkspaceSyncServiceTests
             _googleSyncLog,
             _syncSettingsService,
             _removalNotifications,
+            _driveAccessSyncScheduler,
             options,
             clock,
             serviceProvider,
             NullLogger<GoogleWorkspaceSyncService>.Instance);
+    }
+
+    // ==========================================================================
+    // CreateSubfolderAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task CreateSubfolderAsync_Succeeds_ReturnsNewFolderId()
+    {
+        _syncSettingsService
+            .GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
+            .Returns(SyncMode.AddOnly);
+        _drivePermissions.CreateFolderAsync("parent-1", "New Group", Arg.Any<CancellationToken>())
+            .Returns(new DriveFolderCreateResult("child-1", null));
+
+        var folderId = await _syncService.CreateSubfolderAsync(
+            "parent-1", "New Group", Xunit.TestContext.Current.CancellationToken);
+
+        folderId.Should().Be("child-1");
+    }
+
+    [HumansFact]
+    public async Task CreateSubfolderAsync_SyncModeNone_Throws()
+    {
+        _syncSettingsService
+            .GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
+            .Returns(SyncMode.None);
+
+        Func<Task> act = () => _syncService.CreateSubfolderAsync(
+            "parent-1", "New Group", Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _drivePermissions.DidNotReceiveWithAnyArgs()
+            .CreateFolderAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateSubfolderAsync_GoogleApiFailure_ThrowsRatherThanReturningABogusId()
+    {
+        _syncSettingsService
+            .GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
+            .Returns(SyncMode.AddOnly);
+        _drivePermissions.CreateFolderAsync("parent-1", "New Group", Arg.Any<CancellationToken>())
+            .Returns(new DriveFolderCreateResult(null, new GoogleClientError(503, "backend error")));
+
+        Func<Task> act = () => _syncService.CreateSubfolderAsync(
+            "parent-1", "New Group", Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*backend error*");
+    }
+
+    // ==========================================================================
+    // RequestSyncAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task RequestSyncAsync_ValidFolderId_Enqueues()
+    {
+        await _syncService.RequestSyncAsync("folder-1", Xunit.TestContext.Current.CancellationToken);
+
+        _driveAccessSyncScheduler.Received(1).Enqueue("folder-1");
+    }
+
+    [HumansFact]
+    public async Task RequestSyncAsync_EmptyFolderId_Throws()
+    {
+        Func<Task> act = () => _syncService.RequestSyncAsync("  ", Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+        _driveAccessSyncScheduler.DidNotReceiveWithAnyArgs().Enqueue(Arg.Any<string>());
     }
 
     // ==========================================================================

@@ -1,26 +1,28 @@
 @model SurveyBuilderViewModel
 
 @{
-    ViewData["Title"] = Model.IsNew ? "New survey" : "Edit survey";
+    ViewData["Title"] = Model.IsNew
+        ? Localizer["Survey_Admin_Builder_TitleNew"].Value
+        : Localizer["Survey_Admin_Builder_TitleEdit"].Value;
     // The culture the localized-field partials render visible initially (see _SurveyLocalizedField).
     ViewData["SurveyActiveCulture"] = Model.DefaultCulture;
 
-    static string AudienceLabel(SurveyAudienceType audience) => audience switch
+    string AudienceLabel(SurveyAudienceType audience) => audience switch
     {
-        SurveyAudienceType.Team => "A team",
-        SurveyAudienceType.AllActiveMembers => "All active humans",
-        SurveyAudienceType.TicketHolders => "Current ticket holders",
-        SurveyAudienceType.ShiftParticipants => "Humans with shifts",
-        SurveyAudienceType.LoggedInSince => "Humans logged in since a date",
-        SurveyAudienceType.Asociados => "All active Asociados",
+        SurveyAudienceType.Team => Localizer["Survey_Admin_Builder_Audience_Team"],
+        SurveyAudienceType.AllActiveMembers => Localizer["Survey_Admin_Builder_Audience_AllActiveMembers"],
+        SurveyAudienceType.TicketHolders => Localizer["Survey_Admin_Builder_Audience_TicketHolders"],
+        SurveyAudienceType.ShiftParticipants => Localizer["Survey_Admin_Builder_Audience_ShiftParticipants"],
+        SurveyAudienceType.LoggedInSince => Localizer["Survey_Admin_Builder_Audience_LoggedInSince"],
+        SurveyAudienceType.Asociados => Localizer["Survey_Admin_Builder_Audience_Asociados"],
         _ => audience.ToString(),
     };
 }
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
-        <li class="breadcrumb-item"><a asp-controller="SurveyAdmin" asp-action="Index">Surveys</a></li>
+        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">@Localizer["Survey_Admin_Common_AdminBreadcrumb"]</a></li>
+        <li class="breadcrumb-item"><a asp-controller="SurveyAdmin" asp-action="Index">@Localizer["Survey_Admin_Index_Title"]</a></li>
         <li class="breadcrumb-item active" aria-current="page">@ViewData["Title"]</li>
     </ol>
 </nav>
@@ -30,39 +32,55 @@
     @if (!Model.IsNew)
     {
         <div class="d-flex align-items-center gap-2">
-            <partial name="_SurveyPreviewMenu" model="@Model.Id!.Value" />
-            <span class="badge @(Model.Status == SurveyStatus.Open ? "bg-success" : Model.Status == SurveyStatus.Closed ? "bg-secondary" : "bg-warning text-dark")">@Model.Status</span>
-            @if (Model.Status != SurveyStatus.Open
+            @if (Model.IsBoardOrAdmin)
+            {
+                <partial name="_SurveyPreviewMenu" model="@Model.Id!.Value" />
+            }
+            <span class="badge @(Model.Status == SurveyStatus.Open ? "bg-success" : Model.Status == SurveyStatus.Closed ? "bg-secondary" : Model.Status == SurveyStatus.PendingApproval ? "bg-info text-dark" : "bg-warning text-dark")">@Model.Status</span>
+            @if (Model.Status == SurveyStatus.Draft)
+            {
+                <form asp-controller="SurveyAdmin" asp-action="Submit" asp-route-id="@Model.Id" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-success btn-sm">@Localizer["Survey_Admin_Index_SubmitForApproval"]</button>
+                </form>
+            }
+            @if (Model.IsBoardOrAdmin
+                && Model.Status != SurveyStatus.Open && Model.Status != SurveyStatus.PendingApproval
                 && !(Model.Status == SurveyStatus.Closed && Model.IsAsociadoVote))
             {
                 <form asp-controller="SurveyAdmin" asp-action="Open" asp-route-id="@Model.Id" method="post" class="d-inline">
                     @Html.AntiForgeryToken()
                     <button type="submit" class="btn btn-success btn-sm"
                             data-confirm="@(Model.IsAsociadoVote
-                                ? "Open this binding Asociado vote? Once opened, its questions, wording, settings, dates, audience and invitation copy cannot be edited; once closed, it cannot be reopened."
-                                : "Open this survey so it can receive responses?")">Open</button>
+                                ? Localizer["Survey_Admin_Builder_ConfirmOpenVote"].Value
+                                : Localizer["Survey_Admin_Builder_ConfirmOpenSurvey"].Value)">@Localizer["Survey_Admin_Builder_Open"]</button>
                 </form>
             }
-            @if (Model.Status == SurveyStatus.Open)
+            @if (Model.IsBoardOrAdmin && Model.Status == SurveyStatus.Open)
             {
                 <form asp-controller="SurveyAdmin" asp-action="Close" asp-route-id="@Model.Id" method="post" class="d-inline">
                     @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-outline-secondary btn-sm" data-confirm="Close this survey to new responses?">Close</button>
+                    <button type="submit" class="btn btn-outline-secondary btn-sm" data-confirm="@Localizer["Survey_Admin_Builder_ConfirmClose"]">@Localizer["Survey_Admin_Builder_Close"]</button>
                 </form>
             }
         </div>
     }
 </div>
 
+@if (Model.Status == SurveyStatus.Draft && !string.IsNullOrWhiteSpace(Model.RejectionNote))
+{
+    <div class="alert alert-danger" role="alert">
+        @string.Format(Localizer["Survey_Admin_Index_RejectionNote"].Value, Model.RejectionNote)
+    </div>
+}
+
 <div asp-validation-summary="All" class="alert alert-danger" role="alert" style="@(ViewData.ModelState.IsValid ? "display:none" : "")"></div>
 
 @if (Model.IsDefinitionLocked)
 {
     <div class="alert alert-warning" role="alert">
-        <strong>This binding Asociado vote is locked.</strong>
-        Once it opened, its questions, wording, settings, dates, audience and invitation copy became
-        read-only. You may still preview it, close it, inspect participation, and—after close—mark ranked
-        options unavailable for recounting.
+        <strong>@Localizer["Survey_Admin_Builder_LockedTitle"]</strong>
+        @Localizer["Survey_Admin_Builder_LockedBody"]
     </div>
 }
 
@@ -78,7 +96,7 @@
 
     @* One culture is edited at a time; the badge counts fields still missing vs the default language. *@
     <div class="d-flex flex-wrap align-items-center gap-1 mb-2" id="culture-tabs">
-        <span class="small text-muted me-1">Editing language:</span>
+        <span class="small text-muted me-1">@Localizer["Survey_Admin_Builder_EditingLanguage"]</span>
         @foreach (var c in CultureCatalog.SupportedCultureCodes)
         {
             <button type="button" data-culture="@c"
@@ -90,15 +108,15 @@
     </div>
 
     <div class="card mb-3">
-        <div class="card-header py-2"><strong>Survey</strong></div>
+        <div class="card-header py-2"><strong>@Localizer["Survey_Admin_Builder_SurveySectionHeader"]</strong></div>
         <div class="card-body">
-            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel(nameof(Model.Title), "Title", Model.Title))" />
-            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel(nameof(Model.Intro), "Intro", Model.Intro, Multiline: true, Markdown: true))" />
-            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel(nameof(Model.ThankYou), "Thank-you", Model.ThankYou, Multiline: true))" />
+            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel(nameof(Model.Title), Localizer["Survey_Admin_Builder_Field_Title"], Model.Title))" />
+            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel(nameof(Model.Intro), Localizer["Survey_Admin_Builder_Field_Intro"], Model.Intro, Multiline: true, Markdown: true))" />
+            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel(nameof(Model.ThankYou), Localizer["Survey_Admin_Builder_Field_ThankYou"], Model.ThankYou, Multiline: true))" />
 
             <div class="row g-3 mt-1">
                 <div class="col-md-3">
-                    <label class="form-label small">Default language</label>
+                    <label class="form-label small">@Localizer["Survey_Admin_Builder_DefaultLanguage"]</label>
                     <select asp-for="DefaultCulture" class="form-select form-select-sm">
                         @* asp-for selects the matching option — no manual selected attribute. *@
                         @foreach (var c in CultureCatalog.SupportedCultureCodes)
@@ -108,28 +126,26 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label small">Opens at</label>
+                    <label class="form-label small">@Localizer["Survey_Admin_Builder_OpensAt"]</label>
                     <input type="datetime-local" name="OpensAt" value="@Model.OpensAtInput" class="form-control form-control-sm" />
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label small">Closes at</label>
+                    <label class="form-label small">@Localizer["Survey_Admin_Builder_ClosesAt"]</label>
                     <input type="datetime-local" name="ClosesAt" value="@Model.ClosesAtInput" class="form-control form-control-sm" />
                 </div>
                 <div class="col-md-3 align-self-end">
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" id="allowAnon" asp-for="AllowAnonymous" />
-                        <label class="form-check-label small" for="allowAnon">Allow anonymous responses</label>
+                        <label class="form-check-label small" for="allowAnon">@Localizer["Survey_Admin_Builder_AllowAnonymous"]</label>
                     </div>
                 </div>
             </div>
 
             <section class="border border-warning rounded p-3 mt-3" aria-labelledby="asociado-vote-heading">
-                <h2 class="h6" id="asociado-vote-heading">Asociado vote</h2>
+                <h2 class="h6" id="asociado-vote-heading">@Localizer["Survey_Admin_Builder_AsociadoVoteHeading"]</h2>
                 <div class="alert alert-warning small" role="note">
                     <i class="fa-solid fa-circle-info me-1"></i>
-                    Use this only for a binding association decision. Review every question, option, date,
-                    translation, audience setting and invitation carefully before opening. Opening is
-                    irreversible: the complete survey becomes read-only, and after it closes it cannot be reopened.
+                    @Localizer["Survey_Admin_Builder_AsociadoVoteWarning"]
                 </div>
                 <div class="form-check">
                     @if (!Model.IsNew && Model.Status != SurveyStatus.Draft)
@@ -142,33 +158,29 @@
                     {
                         <input type="checkbox" class="form-check-input" id="asociadoVote" asp-for="IsAsociadoVote" />
                     }
-                    <label class="form-check-label fw-semibold" for="asociadoVote">This is a binding Asociado vote</label>
+                    <label class="form-check-label fw-semibold" for="asociadoVote">@Localizer["Survey_Admin_Builder_IsAsociadoVoteLabel"]</label>
                     <div class="form-text">
-                        Only active, approved Asociados may answer. Humans records who has voted to enforce
-                        eligibility and prevent double-voting, but stores submitted ballots without a voter
-                        identity. While open, only
-                        participation statistics are visible; all answer-derived results are sealed until close.
-                        Once opened, the survey cannot be edited. Once closed, it cannot be reopened.
+                        @Localizer["Survey_Admin_Builder_IsAsociadoVoteHelp"]
                     </div>
                 </div>
             </section>
 
             <div class="row g-3 mt-1">
                 <div class="col-md-3">
-                    <label class="form-label small">Audience</label>
+                    <label class="form-label small">@Localizer["Survey_Admin_Builder_AudienceLabel"]</label>
                     <select asp-for="AudienceType" class="form-select form-select-sm">
-                        <option value="">No audience selected</option>
+                        <option value="">@Localizer["Survey_Admin_Builder_NoAudienceSelected"]</option>
                         @foreach (var a in Enum.GetValues<SurveyAudienceType>())
                         {
                             <option value="@a">@AudienceLabel(a)</option>
                         }
                     </select>
-                    <div class="form-text">Invitations are reviewed and sent separately after saving.</div>
+                    <div class="form-text">@Localizer["Survey_Admin_Builder_AudienceHelp"]</div>
                 </div>
                 <div class="col-md-3" id="audience-team-field" style="@(Model.AudienceType == SurveyAudienceType.Team ? "" : "display:none")">
-                    <label class="form-label small">Team</label>
+                    <label class="form-label small">@Localizer["Survey_Admin_Builder_TeamLabel"]</label>
                     <select asp-for="AudienceTeamId" class="form-select form-select-sm">
-                        <option value="">Choose a team</option>
+                        <option value="">@Localizer["Survey_Admin_Builder_ChooseTeam"]</option>
                         @foreach (var t in Model.Teams)
                         {
                             <option value="@t.Id">@t.Name</option>
@@ -177,16 +189,15 @@
                     <span asp-validation-for="AudienceTeamId" class="text-danger small"></span>
                 </div>
                 <div class="col-md-2" id="logged-in-since-field" style="@(Model.AudienceType == SurveyAudienceType.LoggedInSince ? "" : "display:none")">
-                    <label class="form-label small">Logged in since</label>
+                    <label class="form-label small">@Localizer["Survey_Admin_Builder_LoggedInSinceLabel"]</label>
                     <input type="date" name="AudienceLoggedInSince" value="@Model.AudienceLoggedInSinceInput" class="form-control form-control-sm" />
                     <span asp-validation-for="AudienceLoggedInSince" class="text-danger small"></span>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label small">Shareable link slug (optional)</label>
-                    <input type="text" asp-for="PublicSlug" class="form-control form-control-sm" placeholder="e.g. feedback-2026" />
+                    <label class="form-label small">@Localizer["Survey_Admin_Builder_SlugLabel"]</label>
+                    <input type="text" asp-for="PublicSlug" class="form-control form-control-sm" placeholder="@Localizer["Survey_Admin_Builder_SlugPlaceholder"]" />
                     <div class="form-text">
-                        Anonymous surveys allow anyone with the link. Identified surveys require sign-in
-                        and, when configured, current audience eligibility.
+                        @Localizer["Survey_Admin_Builder_SlugHelp"]
                     </div>
                 </div>
             </div>
@@ -194,22 +205,25 @@
     </div>
 
     <div class="card mb-3">
-        <div class="card-header py-2"><strong>Invitation email</strong></div>
+        <div class="card-header py-2"><strong>@Localizer["Survey_Admin_Builder_InvitationEmailHeader"]</strong></div>
         <div class="card-body">
             <p class="small text-muted mb-2">
-                Customize the initial invitation. Humans adds the greeting, survey title, survey-link button,
-                and sign-off. The message supports Markdown formatting, but not images. Leave either field
-                blank to use the standard wording.
+                @Localizer["Survey_Admin_Builder_InvitationEmailIntro"]
             </p>
             <partial name="_SurveyLocalizedField"
-                     model="@(new SurveyLocalizedFieldModel(nameof(Model.InvitationEmailSubject), "Email subject", Model.InvitationEmailSubject, MaxLength: 200))" />
+                     model="@(new SurveyLocalizedFieldModel(nameof(Model.InvitationEmailSubject), Localizer["Survey_Admin_Builder_Field_EmailSubject"], Model.InvitationEmailSubject, MaxLength: 200))" />
             <partial name="_SurveyLocalizedField"
-                     model="@(new SurveyLocalizedFieldModel(nameof(Model.InvitationEmailMessage), "Email message", Model.InvitationEmailMessage, Multiline: true, Markdown: true, MaxLength: 4000))" />
+                     model="@(new SurveyLocalizedFieldModel(nameof(Model.InvitationEmailMessage), Localizer["Survey_Admin_Builder_Field_EmailMessage"], Model.InvitationEmailMessage, Multiline: true, Markdown: true, MaxLength: 4000))" />
         </div>
     </div>
 
-    <h2 class="h5">Questions</h2>
-    <div id="questions-container">
+    <h2 class="h5">@Localizer["Survey_Admin_Builder_QuestionsHeader"]</h2>
+    <div id="questions-container"
+         data-columns-label="@Localizer["Survey_Admin_Builder_JS_Columns"]"
+         data-options-label="@Localizer["Survey_Admin_Builder_JS_Options"]"
+         data-question-label="@Localizer["Survey_Admin_Builder_QuestionLabel"]"
+         data-choose-question="@Localizer["Survey_Admin_Builder_JS_ChooseQuestion"]"
+         data-untitled="@Localizer["Survey_Admin_Builder_JS_Untitled"]">
         @foreach (var (q, i) in Model.Questions.Select((q, i) => (q, i)))
         {
             <partial name="_SurveyQuestionCard" model="@(new SurveyQuestionCardModel(i.ToString(), q, Model.HasSavedAnswers))" />
@@ -224,16 +238,19 @@
     @if (!Model.IsDefinitionLocked)
     {
     <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mt-3">
-        <button type="button" class="btn btn-outline-secondary btn-sm" id="add-question">+ Add question</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="add-question">@Localizer["Survey_Admin_Builder_AddQuestion"]</button>
         <div class="d-flex flex-column flex-sm-row flex-wrap gap-2">
             <button type="submit" name="submitAction" value="save-translate" class="btn btn-outline-primary"
-                    title="Saves, then machine-translates fields still missing in other languages from the default language. Existing text is never overwritten — review before opening.">
-                Save + translate missing
+                    title="@Localizer["Survey_Admin_Builder_SaveTranslateTitle"]">
+                @Localizer["Survey_Admin_Builder_SaveTranslate"]
             </button>
-            <button type="submit" name="submitAction" value="save-review" class="btn btn-outline-primary">
-                Save and review recipients
-            </button>
-            <button type="submit" class="btn btn-primary">Save survey</button>
+            @if (Model.IsBoardOrAdmin)
+            {
+                <button type="submit" name="submitAction" value="save-review" class="btn btn-outline-primary">
+                    @Localizer["Survey_Admin_Builder_SaveReview"]
+                </button>
+            }
+            <button type="submit" class="btn btn-primary">@Localizer["Survey_Admin_Builder_SaveSurvey"]</button>
         </div>
     </div>
     }
@@ -358,7 +375,7 @@
                 if (options) {
                     options.style.display = isChoice || isGrid ? '' : 'none';
                     const label = options.querySelector('.options-label');
-                    if (label) label.textContent = isGrid ? 'Columns' : 'Options';
+                    if (label) label.textContent = isGrid ? container.dataset.columnsLabel : container.dataset.optionsLabel;
                     const help = options.querySelector('.grid-column-help');
                     if (help) help.style.display = isGrid ? '' : 'none';
                 }
@@ -462,7 +479,7 @@
                     const down = card.querySelector('.move-question-down');
                     const samePageCards = cards.filter(candidate => questionPage(candidate) === questionPage(card));
                     const pageIndex = samePageCards.indexOf(card);
-                    if (label) label.textContent = 'Question ' + (index + 1);
+                    if (label) label.textContent = container.dataset.questionLabel + ' ' + (index + 1);
                     if (up) up.disabled = pageIndex === 0;
                     if (down) down.disabled = pageIndex === samePageCards.length - 1;
                 });
@@ -505,7 +522,7 @@
             function questionLabel(card, index) {
                 // The first localized field on a card is its Prompt.
                 const prompt = card.querySelector('.survey-localized-field');
-                const text = prompt && cultureInput(prompt, defaultCulture.value)?.value.trim() || '(untitled)';
+                const text = prompt && cultureInput(prompt, defaultCulture.value)?.value.trim() || container.dataset.untitled;
                 return 'Q' + (index + 1) + ': ' + (text.length > 60 ? text.slice(0, 57) + '…' : text);
             }
 
@@ -513,7 +530,7 @@
                 const current = select.value;
                 const ownCard = select.closest('.question-card');
                 select.innerHTML = '';
-                select.add(new Option('— choose a question —', ''));
+                select.add(new Option(container.dataset.chooseQuestion, ''));
                 questionCards().forEach((card, i) => {
                     if (card === ownCard) return;
                     const type = card.querySelector('.question-type')?.value;

@@ -1,0 +1,284 @@
+@model DocumentPageViewModel
+@{
+    var w = Model.Workgroup;
+    var d = Model.Document;
+    ViewData["Title"] = d.Title;
+    var categories = d.Comments.Select(c => c.Category).Concat(d.CommentCategories).Distinct().ToList();
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Workgroups_Title"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Details" asp-route-slug="@w.Slug">@w.Name</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@d.Title</li>
+    </ol>
+</nav>
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+    <div>
+        <h1 class="mb-1">@d.Title</h1>
+        <span class="badge @EnumBadgeMap.For(d.Status)">@Localizer.EnumDisplay(d.Status)</span>
+        <span class="badge bg-light text-dark border">@Localizer.EnumDisplay(d.Kind)</span>
+        @if (Model.IsOpenForComment)
+        {
+            <span class="badge bg-primary">@Localizer["Workgroups_OpenForComment"]</span>
+        }
+        @if (d.Disposition is { } disposition)
+        {
+            <span class="badge @EnumBadgeMap.For(disposition)">@Localizer.EnumDisplay(disposition)</span>
+        }
+    </div>
+    @if (Model.CanDoMemberWork && d.Status != WorkgroupDocumentStatus.Delivered)
+    {
+        <a asp-action="EditDocument" asp-route-slug="@w.Slug" asp-route-id="@d.Id" class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-pen me-1"></i>@SharedLocalizer["Common_Edit"]
+        </a>
+    }
+</div>
+
+<div class="text-muted small mb-3">@Localizer["Workgroups_LastEditedBy", Model.DisplayName(d.UpdatedByUserId ?? d.CreatedByUserId), d.UpdatedAt.ToDateTime()]</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        @Html.SanitizedMarkdown(d.Body)
+    </div>
+</div>
+
+@if (Model.CanDoMemberWork)
+{
+    <div class="d-flex flex-wrap gap-2 mb-4">
+        @if (d.Status == WorkgroupDocumentStatus.Draft)
+        {
+            <form method="post" asp-action="PublishDocument" asp-route-slug="@w.Slug" asp-route-id="@d.Id">
+                <button type="submit" class="btn btn-sm btn-primary">@Localizer["Workgroups_Publish"]</button>
+            </form>
+        }
+        @if (d.Status == WorkgroupDocumentStatus.Published && !Model.IsOpenForComment)
+        {
+            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#openCommentsModal">
+                @Localizer["Workgroups_OpenComments"]
+            </button>
+        }
+        @if (Model.IsOpenForComment)
+        {
+            <form method="post" asp-action="CloseComments" asp-route-slug="@w.Slug" asp-route-id="@d.Id">
+                <button type="submit" class="btn btn-sm btn-outline-secondary">@Localizer["Workgroups_CloseComments"]</button>
+            </form>
+        }
+        @if (d.Status == WorkgroupDocumentStatus.Published)
+        {
+            <form method="post" asp-action="DeliverDocument" asp-route-slug="@w.Slug" asp-route-id="@d.Id" data-confirm="@Localizer["Workgroups_DeliverConfirm"]">
+                <button type="submit" class="btn btn-sm btn-outline-success">@Localizer["Workgroups_Deliver"]</button>
+            </form>
+        }
+    </div>
+}
+
+@if (Model.CanAdminister && d.Status == WorkgroupDocumentStatus.Delivered && d.Disposition is null)
+{
+    <div class="card mb-4 border-warning">
+        <div class="card-body">
+            <h2 class="h6">@Localizer["Workgroups_RecordDisposition"]</h2>
+            <form method="post" asp-controller="WorkgroupsAdmin" asp-action="Disposition" asp-route-id="@d.Id">
+                <div class="row g-2 align-items-start">
+                    <div class="col-md-3">
+                        <select name="disposition" class="form-select form-select-sm">
+                            @foreach (WorkgroupDisposition value in Enum.GetValues<WorkgroupDisposition>())
+                            {
+                                <option value="@value">@Localizer.EnumDisplay(value)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-7">
+                        <textarea name="note" class="form-control form-control-sm" rows="2" maxlength="4000" placeholder="@Localizer["Workgroups_DispositionNotePlaceholder"]"></textarea>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-sm btn-warning w-100">@Localizer["Workgroups_RecordDisposition"]</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+else if (d.Disposition is { } recorded && !string.IsNullOrWhiteSpace(d.DispositionNote))
+{
+    <div class="alert alert-light border">
+        <strong>@Localizer.EnumDisplay(recorded)</strong> — @Html.SanitizedMarkdown(d.DispositionNote)
+    </div>
+}
+
+<h2 class="h5">@Localizer["Workgroups_Comments"]</h2>
+
+@if (Model.IsOpenForComment)
+{
+    <form method="post" asp-action="AddComment" asp-route-slug="@w.Slug" asp-route-id="@d.Id" class="card mb-3">
+        <div class="card-body">
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <select name="category" class="form-select form-select-sm">
+                        @foreach (var cat in d.CommentCategories)
+                        {
+                            <option value="@cat">@cat</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-7">
+                    <textarea name="body" class="form-control form-control-sm" rows="2" maxlength="4000" required></textarea>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-sm btn-primary w-100">@Localizer["Workgroups_AddComment"]</button>
+                </div>
+            </div>
+        </div>
+    </form>
+}
+
+@if (categories.Count == 0)
+{
+    <p class="text-muted">@Localizer["Workgroups_NoComments"]</p>
+}
+else
+{
+    @foreach (var category in categories)
+    {
+        var inCategory = d.Comments.Where(c => c.Category == category).OrderBy(c => c.CreatedAt).ToList();
+        if (inCategory.Count == 0) { continue; }
+        <h3 class="h6 mt-3">@category <span class="badge bg-secondary">@inCategory.Count</span></h3>
+        <ul class="list-group mb-3">
+            @foreach (var c in inCategory)
+            {
+                var hidden = c.HiddenAt is not null && !Model.CanSeeHidden;
+                <li class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div>
+                            @if (c.HiddenAt is not null)
+                            {
+                                <span class="badge bg-secondary me-1">@Localizer["Workgroups_HiddenByGroup"]</span>
+                            }
+                            <span class="text-muted small">@Model.DisplayName(c.AuthorUserId) · @c.CreatedAt.ToDateTime()</span>
+                        </div>
+                        <span class="badge @EnumBadgeMap.For(c.Disposition)">@Localizer.EnumDisplay(c.Disposition)</span>
+                    </div>
+                    @if (hidden)
+                    {
+                        <div class="mt-1 fst-italic text-muted">@Localizer["Workgroups_HiddenByGroup"]</div>
+                    }
+                    else
+                    {
+                        <div class="mt-1">@Html.SanitizedMarkdown(c.Body)</div>
+                        @if (c.HiddenAt is not null && !string.IsNullOrWhiteSpace(c.HiddenReason))
+                        {
+                            <div class="small text-muted">@Localizer["Workgroups_HiddenReason"]: @c.HiddenReason</div>
+                        }
+                    }
+                    @if (!string.IsNullOrWhiteSpace(c.Response))
+                    {
+                        <div class="mt-2 border-start ps-2">
+                            <strong>@Localizer["Workgroups_GroupResponse"]:</strong> @Html.SanitizedMarkdown(c.Response)
+                        </div>
+                    }
+                    @if (Model.CanDoMemberWork && c.HiddenAt is null)
+                    {
+                        <details class="mt-2">
+                            <summary class="small text-muted">@Localizer["Workgroups_Respond"]</summary>
+                            <form method="post" asp-action="RespondToComment" asp-route-slug="@w.Slug" asp-route-id="@c.Id" asp-route-documentId="@d.Id" class="row g-2 mt-1">
+                                <div class="col-md-4">
+                                    <select name="disposition" class="form-select form-select-sm">
+                                        @foreach (WorkgroupCommentDisposition value in Enum.GetValues<WorkgroupCommentDisposition>())
+                                        {
+                                            <option value="@value" selected="@(value == c.Disposition)">@Localizer.EnumDisplay(value)</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <input name="response" class="form-control form-control-sm" maxlength="4000" value="@c.Response" />
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="submit" class="btn btn-sm btn-outline-primary w-100">@SharedLocalizer["Common_Save"]</button>
+                                </div>
+                            </form>
+                            <form method="post" asp-action="HideComment" asp-route-slug="@w.Slug" asp-route-id="@c.Id" asp-route-documentId="@d.Id" class="d-flex gap-2 mt-1">
+                                <input name="reason" class="form-control form-control-sm" maxlength="500" placeholder="@Localizer["Workgroups_HideReasonPlaceholder"]" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger text-nowrap">@Localizer["Workgroups_HideComment"]</button>
+                            </form>
+                        </details>
+                    }
+                </li>
+            }
+        </ul>
+        @if (Model.CanDoMemberWork)
+        {
+            <form method="post" asp-action="RespondToCategory" asp-route-slug="@w.Slug" asp-route-id="@d.Id" class="d-flex gap-2 mb-3">
+                <input type="hidden" name="category" value="@category" />
+                <select name="disposition" class="form-select form-select-sm">
+                    @foreach (WorkgroupCommentDisposition value in Enum.GetValues<WorkgroupCommentDisposition>())
+                    {
+                        <option value="@value">@Localizer.EnumDisplay(value)</option>
+                    }
+                </select>
+                <input name="response" class="form-control form-control-sm" maxlength="4000" placeholder="@Localizer["Workgroups_BulkResponsePlaceholder"]" />
+                <button type="submit" class="btn btn-sm btn-outline-secondary text-nowrap">@Localizer["Workgroups_RespondToCategory"]</button>
+            </form>
+        }
+    }
+}
+
+@if (Model.CanDoMemberWork && d.Status == WorkgroupDocumentStatus.Published)
+{
+    <div class="modal fade" id="openCommentsModal" tabindex="-1" aria-labelledby="openCommentsModalTitle">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="post" asp-action="OpenComments" asp-route-slug="@w.Slug" asp-route-id="@d.Id" id="open-comments-form">
+                    <input type="hidden" name="opensAt" id="opensAt" />
+                    <input type="hidden" name="closesAt" id="closesAt" />
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="openCommentsModalTitle">@Localizer["Workgroups_OpenComments"]</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label small">@Localizer["Workgroups_Field_OpensAt"]</label>
+                                <input type="date" class="form-control form-control-sm" id="opensDate" required />
+                                <input type="time" class="form-control form-control-sm mt-1" id="opensTime" value="00:00" required />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small">@Localizer["Workgroups_Field_ClosesAt"]</label>
+                                <input type="date" class="form-control form-control-sm" id="closesDate" required />
+                                <input type="time" class="form-control form-control-sm mt-1" id="closesTime" value="23:59" required />
+                            </div>
+                        </div>
+                        <div class="form-text mb-2">@Localizer["Workgroups_Field_TimesAreUtc"]</div>
+                        <div class="mb-2">
+                            <label class="form-label small">@Localizer["Workgroups_Field_Categories"]</label>
+                            <textarea name="categories" class="form-control form-control-sm" rows="2" placeholder="@Localizer["Workgroups_CategoriesPlaceholder"]" required></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@SharedLocalizer["Common_Cancel"]</button>
+                        <button type="submit" class="btn btn-primary">@Localizer["Workgroups_OpenComments"]</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+<a asp-action="Details" asp-route-slug="@w.Slug" class="btn btn-outline-secondary mt-3">
+    <i class="fa-solid fa-arrow-left me-1"></i>@Localizer["Workgroups_BackToGroup"]
+</a>
+
+@section Scripts {
+    <script>
+        (function () {
+            var form = document.getElementById('open-comments-form');
+            if (!form) { return; }
+            form.addEventListener('submit', function () {
+                document.getElementById('opensAt').value =
+                    document.getElementById('opensDate').value + 'T' + document.getElementById('opensTime').value + ':00Z';
+                document.getElementById('closesAt').value =
+                    document.getElementById('closesDate').value + 'T' + document.getElementById('closesTime').value + ':00Z';
+            });
+        })();
+    </script>
+}

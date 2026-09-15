@@ -1288,6 +1288,10 @@ internal sealed class ShiftSignupService(
         earlyEntryInvalidator.InvalidateUser(userId);
     }
 
+    // Nothing public to contribute to the community calendar yet.
+    public Task<IReadOnlyList<CalendarFeedItem>> GetPublicItemsForWindowAsync(Instant from, Instant to, CancellationToken ct) =>
+        Task.FromResult<IReadOnlyList<CalendarFeedItem>>([]);
+
     public async Task<IReadOnlyList<CalendarFeedItem>> GetCalendarItemsForUserAsync(Guid userId, CancellationToken ct)
     {
         // Active commitments only — Confirmed + Pending. Cancelled/bailed/noshow

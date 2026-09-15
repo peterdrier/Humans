@@ -21,6 +21,7 @@ Shared-Drive-only Google resource sync: Drive folders, Groups, Workspace account
 - **Sync Mode** controls how the system interacts with Google APIs for each service type. Modes are: None (disabled), AddOnly (grant access but never revoke), or AddAndRemove (full bidirectional sync).
 - **Reconciliation** compares the expected Google resource state (based on team membership) against the actual Google resource state, detecting drift.
 - **Google Group membership sources** implement `IGoogleGroupMembershipSource`. Each source claims group keys and returns expected user IDs only; `IGoogleGroupSync` owns email hydration, user/profile filtering, Google API diffing, collision handling, and mutation.
+- **Drive access sources** implement `IGoogleDriveAccessSource`, the Drive analogue: each source claims Drive folder ids (Google file ids) and returns a per-user `DrivePermissionLevel`. `IGoogleDriveSync` (`GoogleDriveAccessSyncService`) owns the same division of labour as the group side — email hydration, user-state filtering, diffing, mutation, sync log, reconciliation — for these source-claimed folders only. This fan-out is additive to, and independent from, the Teams-keyed `google_resources` Drive path below; consumer sections call the two `IGoogleSyncService` entry points — `RequestSyncAsync(folderId)` after a membership or status change, and `CreateSubfolderAsync` to provision a new folder outside that path (e.g. Workgroups) — so Workgroups depends on exactly one GoogleIntegration interface; `RequestSyncAsync` is implemented on `GoogleWorkspaceSyncService` by enqueuing onto the same `IGoogleDriveAccessSyncScheduler` the daily job's on-demand reconciles use. Migrating the Teams-keyed path onto this fan-out is follow-up debt (`docs/architecture/debt-ledger.yml`).
 - The **sync outbox** queues resource-level sync events for processing by a background job.
 
 ## Data Model
@@ -124,6 +125,8 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 - `IGoogleGroupSync.ReconcileOneAsync` reconciles one group key and, on Google API failure during Execute, schedules delayed scoped Hangfire retries for the same group key, capped at five retry attempts.
 - If more than one `IGoogleGroupMembershipSource` claims the same group key, the orchestrator logs/audits a collision and skips mutation for that group. First-wins is forbidden because it would silently revoke access claimed by another owner.
 - `TeamService` directly implements `IGoogleGroupMembershipSource` for team Google Groups. `ITeamService` does not inherit that interface; Google Integration registers the concrete `TeamService` as a source.
+- If more than one `IGoogleDriveAccessSource` claims the same folder id, `IGoogleDriveSync` logs/audits a collision and skips that folder — same collision rule as the group side, applied per folder id instead of per group key.
+- `IGoogleSyncService.CreateSubfolderAsync` respects the `GoogleDrive` `SyncMode` (throws when it is `None`) and throws on a Google API failure rather than returning a bogus id, so a failed creation is visible to the caller.
 
 ## Negative Access Rules
 
@@ -140,7 +143,8 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 - The system team sync job runs hourly, reconciling system team membership.
 - After the hourly system team sync completes, all Google Group memberships are reconciled through `IGoogleGroupSync.ReconcileAllAsync` so membership changes are reflected in Google Groups.
 - The reconciliation job runs daily at 03:00, detecting drift between expected and actual Google resource state.
-- On every applied or failed Drive/Group permission grant or revocation, `GoogleWorkspaceSyncService` / `GoogleGroupSyncService` append a `google_sync_log` row via `IGoogleSyncLogService.LogAsync`, carrying `success: false` + the API error on failure.
+- On every applied or failed Drive/Group permission grant or revocation, `GoogleWorkspaceSyncService` / `GoogleGroupSyncService` / `GoogleDriveAccessSyncService` append a `google_sync_log` row via `IGoogleSyncLogService.LogAsync`, carrying `success: false` + the API error on failure.
+- The daily reconciliation job also runs `IGoogleDriveSync.ReconcileAllAsync` as its own phase, reconciling every folder claimed by a registered `IGoogleDriveAccessSource`.
 
 ## Cross-Section Dependencies
 
@@ -152,7 +156,7 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 
 ## Architecture
 
-**Owning services:** `GoogleWorkspaceSyncService` (implements `IGoogleSyncService`), `GoogleGroupSyncService` (implements `IGoogleGroupSync`), `GoogleAdminService`, `GoogleWorkspaceUserService`, `SyncSettingsService`, `EmailProvisioningService`, `GoogleTranslationService` (implements `IGoogleTranslationService`)
+**Owning services:** `GoogleWorkspaceSyncService` (implements `IGoogleSyncService`), `GoogleGroupSyncService` (implements `IGoogleGroupSync`), `GoogleDriveAccessSyncService` (implements `IGoogleDriveSync`), `GoogleAdminService`, `GoogleWorkspaceUserService`, `SyncSettingsService`, `EmailProvisioningService`, `GoogleTranslationService` (implements `IGoogleTranslationService`)
 **Owned tables:** `sync_service_settings`, `google_sync_outbox`, `google_sync_log`
 **Status:** (A) Migrated.
 
@@ -180,7 +184,7 @@ The read/write split is deliberate: `IGoogleSyncLogViewer` and its `GoogleSyncLo
 
 ### Connector clients
 
-Section services depend only on shape-neutral connector interfaces in `Humans.GoogleIntegration.Services.Workspace` (`IGoogleDriveActivityClient` is on the `Humans.GoogleIntegration.Contracts` leaf, because Monitor consumes it across an assembly boundary) — `IGoogleDirectoryClient`, `IGoogleDrivePermissionsClient`, `IGoogleGroupMembershipClient`, `IGoogleGroupProvisioningClient`, `ITeamResourceGoogleClient`, `IGoogleDriveActivityClient`, `IWorkspaceUserDirectoryClient`, `IGoogleTranslationClient` — so they never import `Google.Apis.*` (design-rules §13). Real Google-backed implementations and dev-mode stubs live beside them in `src/Sections/Humans.GoogleIntegration/Services/Workspace/`.
+Section services depend only on shape-neutral connector interfaces in `Humans.GoogleIntegration.Services.Workspace` (`IGoogleDriveActivityClient` is on the `Humans.GoogleIntegration.Contracts` leaf, because Monitor consumes it across an assembly boundary) — `IGoogleDirectoryClient`, `IGoogleDrivePermissionsClient`, `IGoogleGroupMembershipClient`, `IGoogleGroupProvisioningClient`, `ITeamResourceGoogleClient`, `IGoogleDriveActivityClient`, `IWorkspaceUserDirectoryClient`, `IGoogleTranslationClient` — so they never import `Google.Apis.*` (design-rules §13). Real Google-backed implementations and dev-mode stubs live beside them in `src/Sections/Humans.GoogleIntegration/Services/Workspace/`. `IGoogleDrivePermissionsClient.CreateFolderAsync` is the one folder-creation capability on that connector — used by `IGoogleSyncService.CreateSubfolderAsync`, not by any reconciliation path.
 
 ### Touch-and-clean guidance
 

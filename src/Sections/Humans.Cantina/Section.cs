@@ -13,8 +13,11 @@ namespace Humans.Cantina;
 /// One registration: the roster service. Cantina owns no tables, so there is no
 /// <c>AddSectionDbContext</c> call and no repository — the service composes over
 /// <c>IShiftManagementServiceRead</c>, <c>IBurnSettingsService</c> and <c>IUserServiceRead</c>,
-/// each registered by its own owner. Access is the <c>CantinaAdminOrAdmin</c> policy, which
-/// stays in Shell's <c>AuthorizationPolicyExtensions</c> (design §8).
+/// each registered by its own owner. Access is the <c>CantinaAdminOrAdmin</c> policy,
+/// registered by this section's own <see cref="SectionPolicies"/> via <c>ISectionPolicies</c> —
+/// not in the Shell. (The G5 split design's §8 parked policy registration in Shell's
+/// <c>AuthorizationPolicyExtensions</c>; <c>ISectionPolicies</c> superseded that, and the
+/// Shell's own header says so.)
 /// <para>
 /// The line moved here out of <c>ShiftsSectionExtensions.AddShiftsSection</c>, where it had
 /// been parked because the on-site cohort comes from Shifts: the section that owns the

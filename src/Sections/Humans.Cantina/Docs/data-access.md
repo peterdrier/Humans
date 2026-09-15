@@ -22,7 +22,8 @@ around food, not medical history.
 Arrival-day feeding: each human is also fed the day before their first
 confirmed shift of the event. The first-shift scan reads confirmed
 signups through the same `IShiftManagementServiceRead` surface, one call
-per day from build start.
+per day from build start through `min(StrikeEndOffset, the last day the
+caller needs)` — not the whole event every time.
 
 ---
 

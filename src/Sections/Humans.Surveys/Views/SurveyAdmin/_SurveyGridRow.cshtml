@@ -7,22 +7,22 @@
     <div class="d-flex gap-2 align-items-start">
         <div class="flex-grow-1">
             <div class="input-group input-group-sm mb-2">
-                <span class="input-group-text">Value</span>
+                <span class="input-group-text">@Localizer["Survey_Admin_Builder_ValueLabel"]</span>
                 <input type="text" name="@(prefix).Value" class="form-control" value="@Model.Row.Value"
-                       placeholder="stable key, e.g. may-03-09" />
+                       placeholder="@Localizer["Survey_Admin_Builder_ValuePlaceholder_GridRow"]" />
             </div>
-            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.Label", "Row label", Model.Row.Label))" />
+            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.Label", Localizer["Survey_Admin_Builder_Field_RowLabel"], Model.Row.Label))" />
         </div>
-        <div class="btn-group btn-group-sm" role="group" aria-label="Grid row actions">
-            <button type="button" class="btn btn-outline-secondary move-grid-row-up" title="Move row up">
+        <div class="btn-group btn-group-sm" role="group" aria-label="@Localizer["Survey_Admin_Builder_GridRowActionsAriaLabel"]">
+            <button type="button" class="btn btn-outline-secondary move-grid-row-up" title="@Localizer["Survey_Admin_Builder_MoveRowUp"]">
                 <i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
-                <span class="visually-hidden">Move row up</span>
+                <span class="visually-hidden">@Localizer["Survey_Admin_Builder_MoveRowUp"]</span>
             </button>
-            <button type="button" class="btn btn-outline-secondary move-grid-row-down" title="Move row down">
+            <button type="button" class="btn btn-outline-secondary move-grid-row-down" title="@Localizer["Survey_Admin_Builder_MoveRowDown"]">
                 <i class="fa-solid fa-arrow-down" aria-hidden="true"></i>
-                <span class="visually-hidden">Move row down</span>
+                <span class="visually-hidden">@Localizer["Survey_Admin_Builder_MoveRowDown"]</span>
             </button>
-            <button type="button" class="btn btn-outline-danger remove-grid-row" title="Remove row">&times;</button>
+            <button type="button" class="btn btn-outline-danger remove-grid-row" title="@Localizer["Survey_Admin_Builder_RemoveRow"]">&times;</button>
         </div>
     </div>
 </div>

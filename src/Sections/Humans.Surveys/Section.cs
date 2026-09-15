@@ -1,10 +1,13 @@
+using Humans.Users.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
 using Humans.Base.Hosting;
+using Humans.Surveys.Authorization;
 using Humans.Surveys.Contracts;
 using Humans.Surveys.Data;
 using Humans.Surveys.Jobs;
 using Humans.Surveys.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -33,10 +36,13 @@ public sealed class Section : ISection
         // Owns the user-scoped survey_responses/survey_invitations tables → GDPR export
         // contributor (design-rules §8a).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<SurveyService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<SurveyService>());
         services.AddScoped<ISurveyInviteTokenProvider, SurveyInviteTokenProvider>();
         services.AddScoped<SurveyPreviewTokenProvider>();
         services.AddScoped<ISurveyPreviewEmailService, SurveyPreviewEmailService>();
 
         services.AddScoped<SendSurveyReminderJob>();
+
+        services.AddSingleton<IAuthorizationHandler, SurveyAuthorizationHandler>();
     }
 }

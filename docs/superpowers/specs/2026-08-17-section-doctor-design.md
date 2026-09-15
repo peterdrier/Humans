@@ -43,8 +43,8 @@ under `src/Sections/` and can be reviewed as a unit.
    skills become plays in its toolbox, named by plan items. They remain directly invocable.
 3. **Self-proposing, never self-amending.** Every run ends with a retro; mechanical and
    rubric-level lessons alike become Needs-Peter findings proposing a one-line edit, and reach the
-   skill only through Peter's answer. No run edits the skill's own files, in a sweep or otherwise.
-   Durable project rules still graduate to `memory/` atoms through the sweep queue.
+   skill only through Peter's answer. No run edits the skill's own files.
+   Durable project rules are written as `memory/` atoms in the run's own PR.
 4. **Toolbox in:** section-align, audit-surface, section-read-split, trim-tests, simplify,
    reuse-review (run against the section's own surface, not a diff), the refactor-swarm per-lane
    process (`.codex/skills/humans-refactor`), debt-sweep (absorbed — its ledger becomes a planner
@@ -82,12 +82,10 @@ under `src/Sections/` and can be reviewed as a unit.
     `last-report.md` are deleted — the runs directory is the log, the newest file is the last
     report, and no generated index replaces them. `plan.md` carries no tick/status column;
     done-ness is derived (health.md date vs. plan anchor) so selection can be recomputed fresh
-    every run. Shared files (`debt-ledger.yml`, `memory/`) are written only in the sweep commit,
-    with **no locking** (Peter's call): a rare overlap costs one hand-resolved conflict. Other
-    runs queue such writes in their run file's `## Sweep queue` for a later run's sweep to apply —
-    idempotence is the only bookkeeping, and a sweep never edits the swept run files, leaving
-    `resume` their only post-merge editor. The skill's own files are on no run's write list at
-    all (decision 24). Daily runs no longer write
+    every run. Shared files (a ledger, `memory/`) are appended directly by the run that finds
+    the debt or rule, in its own PR, with **no locking** (Peter's call): a rare overlap costs one
+    hand-resolved conflict. `resume` is a run file's only post-merge editor. The skill's own
+    files are on no run's write list at all (decision 24). Daily runs no longer write
     `docs/architecture/maintenance-log.md` at all.
 
 ## Invocation
@@ -189,9 +187,6 @@ Run: <invocation>, anchor <commit>, budget <n>h. PR: peterdrier/Humans#N
 - [ ] <one-line question>  ← `- [ ]` unanswered / `- [x]` answered; keyed to a finding number,
                               never a queue position. Authoritative in the PR body while open;
                               here after merge
-## Sweep queue             ← shared-file writes; a later run's sweep applies them (no ticks)
-- debt: <debt-ledger inbox entry>
-- memory: <bucket>/<name> — <rule>
 ```
 
 ## The planner
@@ -201,18 +196,11 @@ stale. Staleness is a judgment call with a guideline: a merged change since the 
 materially reshapes an upcoming scheduled section (move, rename, major feature) justifies
 replanning; routine churn does not. Threshold expected to be tuned by the learning loop.
 
-**Replans are the only writers of shared files** (`plan.md`, `debt-ledger.yml`, `memory/` — never
-the skill's own files, decision 24), and they are rare — a full-cycle plan outlasts ~2 weeks of
-2×/day runs, invocations are scheduled one at a time, and later runs read the open replan's
-plan from its branch (newest anchor wins) instead of writing their own. There is **no lock**
-(Peter's call, PR #1366); a rare overlap costs one hand-resolved conflict, not corruption.
-Besides writing the plan, the replanning run **sweeps merged run files by anchor window** — files
-that landed under `docs/health/runs/` between the previous plan's anchor commit and the new
-anchor (`git diff --name-only <prev-anchor>..origin/main -- docs/health/runs/`; all of history
-when no previous plan exists): every `## Sweep queue` item is applied to its shared target,
-skipping items already present (idempotence covers a run that merges late and straddles
-windows). The swept run files themselves are **never edited** — `resume` is their only
-post-merge editor, so resume's edits cannot collide with a concurrent sweep.
+**Replans are the only writers of `plan.md`** (never the skill's own files, decision 24), and
+they are rare — a full-cycle plan outlasts ~2 weeks of 2×/day runs, invocations are scheduled
+one at a time, and later runs read the open replan's plan from its branch (newest anchor wins)
+instead of writing their own. There is **no lock** (Peter's call, PR #1366); a rare overlap
+costs one hand-resolved conflict, not corruption. A replan reads no other section's run files.
 
 Signals (mid-level — no deep reading):
 
@@ -271,7 +259,7 @@ The plan is advisory — run-day findings can extend a section's stay.
 - **6 Retro + propose amendments** — what was planned vs. what helped, wasted motion, rubric
   misses — written into the run file. Mechanical and judgment lessons alike → the Needs-Peter
   queue as a proposed one-line edit naming the phase it governs; a run never edits the skill's
-  files, mid-run or in a sweep. Durable rules → sweep queue as `memory:` items. All Phase 5–6 edits are committed before the Phase 7 push — nothing lands
+  files. Durable rules → their `memory/` atom plus INDEX line, in this PR. All Phase 5–6 edits are committed before the Phase 7 push — nothing lands
   after it.
 - **7 PR** — one PR per run to `peterdrier/Humans:main`. Body: assessment summary, worked/skipped,
   **Needs Peter** block — authoritative while the PR is open; the run file's copy carries it
@@ -305,9 +293,10 @@ PRs cannot conflict with each other or with concurrent doctor runs. No new asses
 - Explicit model on every subagent, tagged in name + description.
 - Section projects only (`src/Sections/`); pre-G5 remnants are out of scope.
 - A run touches only: the section's files, its callers where a play requires (e.g. read-split
-  migrations), the section's `health.md`, and its own `docs/health/runs/` file. A replanning run
-  additionally touches: `plan.md`, `debt-ledger.yml`, and `memory/` — never the run files it
-  sweeps, and never the skill's own files (decision 24). Nothing writes `maintenance-log.md`.
+  migrations), the section's `health.md`, its own `docs/health/runs/` file, the ledger that owns
+  a debt it found, and a `memory/` atom it writes. A replanning run additionally touches
+  `plan.md`. Never another section's run files, and never the skill's own files (decision 24).
+  Nothing writes `maintenance-log.md`.
 
 ## Relationship to existing skills — cutover checklist
 
@@ -421,11 +410,9 @@ and a `## Size` block whose subject was the diff containing it.
     had no compiler" was false an hour after it was written.
 
 24. **Only Peter edits the skill.** Decision 3's self-amendment is withdrawn: no run edits
-    `SKILL.md`, mid-run or in a sweep, and `lesson:` leaves the sweep queue entirely. A lesson is
-    a Needs-Peter finding proposing a one-line edit that names the phase it governs, and reaches
-    the skill through Peter's answer alone. It is never a sweep-queue item — the sweep has no
-    anchor window, so it would re-ask the question on every later run, blind to the tick that
-    closed it. The skill is instructions, not a record: the `## Lessons` list is gone, its
+    `SKILL.md`. A lesson is a Needs-Peter finding proposing a one-line edit that names the phase
+    it governs, and reaches the skill through Peter's answer alone. It is never a ledger or
+    `memory/` item. The skill is instructions, not a record: the `## Lessons` list is gone, its
     entries folded into the phases they govern, and an issue reference earns its place only by
     naming a live contract or a baseline a phase is bound to.
 25. **Finding numbers outlive 3e.** 3e numbers the ranked list; a finding raised later — a Phase 4
@@ -461,7 +448,7 @@ issues. Replaced:
 - Precedence: hard and working rules, then the invoking prompt, then the skill (an emergency is
   fixed in the routine's prompt before the skill).
 - Unattended cloud runs never boot the app; the reviewer gate pauses striking while a verdict is
-  pending; a sweep-queue item names its target file.
+  pending.
 - The reading that is a lookup is scripted: `doctor.py comments` and `history` hand the Comments
   and History threads their input; `trace` is the trace gate; `blast` bounds a symbol; `runfile`
   writes the run file's header and its two mechanical tables; `review-pack` captures the diff,
@@ -469,3 +456,11 @@ issues. Replaced:
   re-reading the section. The reviewer runs in tiers by section (`REVIEW_TIERS`): fable
   high where a wrong approval costs the most, opus high by default, opus medium for small
   low-stakes sections.
+
+## Amendment, 2026-09-15 — no sweep; a run stays in its section
+
+The sweep queue and the sweep commit are gone, and the text above reads as if they never
+existed. Every run re-applied every merged run's queue into shared ledgers, so parallel runs
+edited the same hunks and conflicted. A run now writes debt once, in its own PR, to the owning
+ledger, and reads only its own section's run files. Merged run files that still carry a
+`## Sweep queue` block are history; nothing applies them.

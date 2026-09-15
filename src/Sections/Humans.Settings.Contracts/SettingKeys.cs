@@ -8,4 +8,7 @@ public static class SettingKeys
 {
     public const string IsEmailSendingPaused = "IsEmailSendingPaused";
     public const string DriveActivityMonitorLastRunAt = "DriveActivityMonitor:LastRunAt";
+
+    /// <summary>Google Drive folder id the Workgroups section creates each group's subfolder under.</summary>
+    public const string WorkgroupsRootDriveFolderId = "Workgroups:RootDriveFolderId";
 }

@@ -1,0 +1,38 @@
+@using Humans.Workgroups.ViewComponents
+@model MyWorkgroupsViewModel
+
+<div class="row justify-content-center mb-4">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h2 class="h6 text-uppercase text-muted mb-3"><i class="fa-solid fa-people-group me-2"></i>@Localizer["Workgroups_MyWorkgroups"]</h2>
+                @if (Model.Mine.Count == 0)
+                {
+                    <p class="text-muted mb-2">@Localizer["Workgroups_MyWorkgroupsEmpty"]</p>
+                    <a asp-controller="Workgroups" asp-action="Index" class="btn btn-sm btn-outline-primary">@Localizer["Workgroups_ViewRegister"]</a>
+                }
+                else
+                {
+                    <ul class="list-group list-group-flush">
+                        @foreach (var w in Model.Mine)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <a asp-controller="Workgroups" asp-action="Details" asp-route-slug="@w.Slug" class="text-decoration-none">@w.Name</a>
+                                <span class="d-flex gap-1">
+                                    @if (w.IsOpenForComment(Model.Now))
+                                    {
+                                        <span class="badge bg-primary">@Localizer["Workgroups_OpenForComment"]</span>
+                                    }
+                                    @if (w.IsUpdateDue(Model.Now))
+                                    {
+                                        <span class="badge bg-warning text-dark">@Localizer["Workgroups_UpdateDue"]</span>
+                                    }
+                                </span>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+</div>

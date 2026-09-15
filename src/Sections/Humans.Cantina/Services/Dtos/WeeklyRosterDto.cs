@@ -5,8 +5,9 @@ namespace Humans.Cantina.Services.Dtos;
 /// <summary>
 /// Everything the Cantina Weekly Roster page needs for one event week in
 /// a single payload. Computed by <c>ICantinaRosterService</c> so the
-/// controller can render headers, aggregate cards, the per-day mini-summary,
-/// and the per-human table without further round-trips.
+/// controller can render headers, aggregate cards and the per-day
+/// mini-summary — and hand <see cref="People"/> to the CSV writer — without
+/// further round-trips.
 /// </summary>
 /// <param name="WeekStartOffset">
 /// The day-offset (relative to <c>EventSettings.GateOpeningDate</c>) of the
@@ -54,9 +55,9 @@ namespace Humans.Cantina.Services.Dtos;
 /// </param>
 /// <param name="People">
 /// One row per unique on-site human across the week. Returned in unspecified
-/// order — the web layer's <c>CantinaRosterAssembler</c> sorts for display
+/// order — the CSV action pipes them through <c>CantinaRosterAssembler</c>
 /// (first arrival → has-allergies → dietary priority → cultural-collation
-/// burner name). The service builds rows for the whole on-site cohort
+/// burner name). The weekly page renders none of them. The service builds rows for the whole on-site cohort
 /// regardless of profile state; in practice every on-site human has a profile
 /// row, so the empty-field path is defensive.
 /// </param>

@@ -87,17 +87,16 @@ and look, never work around.
 - Explicit tagged model on every subagent, a `thread:` marker as its first line, and a
   `doctor.py dispatch-log` entry. Never leave the branch red between commits.
 - **A run touches only:** the section's files (and callers where a play requires), the section's
-  `Docs/health.md` and `Docs/debt.yml`, its own `docs/health/runs/<date>-<Section>.md`, and — in
-  the sweep commit only — the debt ledgers and `memory/`. Never the run files it sweeps, never
-  `docs/architecture/maintenance-log.md`, never `docs/architecture/section-conformance.yml`
+  `Docs/health.md` and `Docs/debt.yml`, its own `docs/health/runs/<date>-<Section>.md`, the debt
+  ledger that owns a debt it found, and a `memory/` atom it writes. It reads no other section's run
+  files. Never `docs/architecture/maintenance-log.md`, never `docs/architecture/section-conformance.yml`
   (rows change only at Peter's direction; propose in Needs-Peter), never this skill. Scratch lives
   in `$RUNDIR`, outside the tree.
 - **Existing GitHub issues are read-only to every run** — no close, edit, relabel or comment,
   ever; the Inbox review recommends, Peter enacts. A run's GitHub writes are its own PR and, under
   the bar in "When the skill is wrong", a new issue.
-- A run writes no file another concurrent run also writes (nobodies-collective/Humans#1069).
-  N unattended days are N open PRs that must merge in any order; the shared-file writes are the
-  sweep commit, idempotent by construction.
+- N unattended days are N open PRs that must merge in any order. A ledger or `memory/` append is
+  the only write another run may share; an overlap is one hand-resolved hunk.
 
 ## The run
 
@@ -222,7 +221,7 @@ whose empty result the run will state as a fact is never truncated.
 
 **3e Rank, check, checkpoint.** One value-ranked list across all threads — value is bug surface,
 concepts and reader cost removed; effort is a column, never the sort key. A carry-forward item from
-a previous run file or from the Inbox thread enters the list only after main has grepped the branch
+this section's previous run file or from the Inbox thread enters the list only after main has grepped the branch
 for its distinguishing terms and confirmed it still holds. Then the independence check: if every
 item traces to a tool, score or grep, or none cites a shape mismatch, a spec-vs-reality delta, or a
 partial abstraction, 3c was reverse-engineered from the scans — re-derive it from 3b and re-rank.
@@ -306,13 +305,14 @@ changes, guardrail retirement, mutating an existing issue, anything needing Pete
 A queued item naming a symbol carries its repo-wide `git grep -n`. If in-flight feature work on
 this section surfaces mid-run, stop striking and ship the assessment-only PR. Debt found and not
 fixed goes to a ledger, not the run file (`memory/process/debt-ledger-additions.md`): in-section
-to `src/Sections/Humans.<X>/Docs/debt.yml`; off-section to this run's `## Sweep queue` as
-`debt:`, written to the owning section's ledger by a later sweep. A queue item is ledger prose:
-no reforge figures, no counts, no line numbers.
+to `src/Sections/Humans.<X>/Docs/debt.yml`; off-section straight to the owning section's
+`Docs/debt.yml`, or `docs/architecture/debt-ledger.yml` when no one section owns it. Skip it when
+the ledger already carries it. A ledger entry is prose: no reforge figures, no counts, no line
+numbers.
 
 **Needs-Peter admission test.** An item is admitted only if *two reasonable implementers would do
 different things* **and** *the choice sits inside this section*. One obvious answer: do it. Choice
-in another section: the sweep queue. A finding, not a fork: the findings list. A lesson about this
+in another section: that section's ledger. A finding, not a fork: the findings list. A lesson about this
 skill: never (see "When the skill is wrong").
 
 ### Phase 5: Bookkeeping
@@ -328,20 +328,12 @@ writes, in this PR:
   next unused number); `## Worked`; `## Skipped` with why, including sections passed over as
   blocked; `## Retro`; `## Needs Peter` (`- [ ]` unanswered, `- [x]` applied, one per line, each
   `<finding #> — <the question, in a phrase>`, citing the number and adding no prose a ruling could
-  invalidate); `## Sweep queue` (`debt:` / `memory:` bullets, each naming its target file path, for
-  a later run's sweep; nothing ever ticks them); `## File coverage` and `## Threads`: `doctor.py runfile <X>`
+  invalidate); `## File coverage` and `## Threads`: `doctor.py runfile <X>`
   regenerates both from git and the dispatch log — `generated` and `changed` per path, how each
   thread ran and on what — and keeps what the run wrote by hand: `reviewed` on a path (every name
   the file carries resolves, not merely opened) and the findings count per thread, plus why a
   thread did not run. No cost column, no diff-size block, no line counts, no reforge score: the
   PR carries those. `doctor.py check-run-file <path> --section <X>` says what is missing.
-- **The sweep**, its own commit, the only place a run touches shared files: apply every
-  `## Sweep queue` item in merged run files on `origin/main` — `debt:` to the owning section's
-  `Docs/debt.yml` (or `docs/architecture/debt-ledger.yml` when no one section owns it), `memory:` to
-  the named atom plus its INDEX line. Skip an item that is already carried (its phrase is in its
-  target on `origin/main` or any open `origin/section-doctor/*` branch), already fixed (what it
-  names is gone), or not debt (blessed code, or it carries figures — write the qualitative row or
-  nothing). The sweep never edits a swept run file and never carries a lesson about this skill.
 
 The prose gate runs inside every `doctor.py commit` (`memory/process/no-derived-aggregates-in-docs.md`):
 a typed count of the list beneath it, a parenthesised count, a total row or a count in a heading
@@ -352,8 +344,8 @@ time the list changes.
 
 The retro questions in the run file, a paragraph each and no more: what the selector got wrong, what
 was wasted motion, what striking revealed that the assessment missed, what the target diff says.
-Durable project rules go to `## Sweep queue` as `memory: <bucket>/<name> — <rule>`. Lessons about
-this skill are not Needs-Peter items and not sweep items; the bar for them is below.
+A durable project rule is written in this PR as its `memory/` atom plus INDEX line. Lessons about
+this skill are not Needs-Peter items and not atoms; the bar for them is below.
 
 ### Phase 7: PR
 

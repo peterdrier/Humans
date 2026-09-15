@@ -38,7 +38,7 @@ This tightens the Art. 9 boundary: cantina coordinators don't need health data a
 
 `DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText` are not special-category data — they're personal data already disclosed to coordinators via the existing badges path, and the roster aggregates them. This feature introduces no retention policy of its own; the fields live on `Profile` and follow whatever that row's lifecycle is.
 
-> **Retention, as actually implemented:** account deletion *anonymizes* the profile rather than dropping it — `UserRepository.AnonymizeProfileInternalAsync` clears name, contact, location, bio, emergency-contact and notes fields, and deletes contact-field and volunteer-history rows. It does **not** clear the dietary fields, and it does not clear `MedicalConditions` either. So dietary answers (and medical answers) survive account deletion attached to an anonymized profile. Tracked in nobodies-collective/Humans#1113, which moves the food fields to Cantina behind a GDPR erasure contribution. Do not describe this page as inheriting an erasure guarantee it does not have.
+> **Retention, as actually implemented:** right-to-erasure clears the dietary fields. `GdprService.EraseForUserAsync` fans out to Users' erasure contributor (`UserService.EraseForUserAsync`), which calls `UserRepository.EraseProfileExtrasForUserAsync` — that nulls `DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText` and `MedicalConditions` — after the shared anonymization pass (`AnonymizeProfileForDeletionAsync`) has run over the rest of the profile, so a failure between the two leaves ordinary profile PII anonymized while the food and health fields await the retry (nobodies-collective/Humans#1446). The merge fold deliberately does *not* clear them: a merged account's surviving profile keeps its food answers. Cantina holds no copy of any of this — it owns no tables and reads through `IUserServiceRead`, so an erased profile drops off this page on the next read. nobodies-collective/Humans#1113 still moves the food fields into Cantina, at which point Cantina gains its own erasure contributor; it is a data-ownership move, not an erasure gap.
 
 ## Week Boundary
 
@@ -178,7 +178,7 @@ Reads:
 | `Profile.AllergyOtherText` | "Other (N): …" list, deduped across the week | Same read path |
 | `Profile.Intolerances` (`List<string>`) | Intolerance chips + roll-up | Same read path |
 | `Profile.IntoleranceOtherText` | "Other (N): …" list, deduped across the week | Same read path |
-| `Profile.BurnerName` | Row label on the drill-down matrix and in both CSVs | `"(unknown)"` is a defensive default; every on-site human has a profile row |
+| `UserInfo.BurnerName` | Row label on the drill-down matrix and in both CSVs | Already resolved by Users (`User.BurnerName` → `Profile.BurnerName` → legacy display name, nobodies-collective/Humans#1097); `"(unknown)"` covers a user id the cohort read did not return |
 | `BurnSettingsInfo.GateOpeningDate`, `BurnSettingsInfo.TimeZoneId` | Compute calendar dates for each day in the week + default week | Existing, via `IBurnSettingsService` |
 
 At our small scale, the service issues 7 sequential per-day cohort queries (`GetOnSiteUserIdsForDayAsync`, one per day) plus a single batched `IUserServiceRead.GetUserInfosAsync` for the week's unique cohort (dietary + names from the cached `UserInfo`). For the arrival-day rule it additionally scans per-day cohorts from build start up to the window's end (capped at strike end) to find each human's first confirmed shift.
@@ -227,6 +227,8 @@ Name,ArrivesOn,NoShift,Dietary,Allergies,AllergyOther,Intolerances,IntoleranceOt
 One row per unique human. Otherwise the same RFC 4180 quoting rules, UTF-8 BOM, and chip-join behaviour as before.
 
 Filename: `cantina-roster-week-of-<yyyy-MM-dd>.csv`, where `<yyyy-MM-dd>` is the ISO date of the week's Monday.
+
+The day matrix has its own export at `GET /Cantina/Roster/Day/Csv`, filename `cantina-day-<yyyy-MM-dd>-matrix.csv`, where `<yyyy-MM-dd>` is the ISO date of the day. Both filenames fall back to `unknown` in place of the date when there is no active event.
 
 ## Cross-section dependencies
 

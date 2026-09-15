@@ -49,6 +49,17 @@ in-process `IEnumerable<IGoogleGroupMembershipSource>` (currently only
 `IGoogleRemovalNotificationService`, `IGoogleGroupSyncScheduler`. No
 direct DB access, no cache.
 
+### GoogleDriveAccessSyncService (Scoped)
+
+No repository directly — operates over the `IGoogleDrivePermissionsClient`
+connector and the in-process `IEnumerable<IGoogleDriveAccessSource>` (empty
+until a consumer section registers one, e.g. Workgroups). Cross-section calls
+via `IUserServiceRead`, `IUserEmailService`, `ISyncSettingsService`,
+`IAuditLogService`, `IGoogleRemovalNotificationService`,
+`IGoogleDriveAccessSyncScheduler`. No direct DB access, no cache. Mirrors
+`GoogleGroupSyncService` for source-claimed Drive folders; the Teams-keyed
+`google_resources` Drive path stays on `GoogleWorkspaceSyncService`.
+
 ### GoogleAdminService (Scoped)
 
 No repository — no DbContext

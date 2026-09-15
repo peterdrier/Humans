@@ -94,6 +94,42 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task SubmitForApprovalAsync(Guid id, Instant submittedAt, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var survey = await ctx.Surveys.FirstOrDefaultAsync(s => s.Id == id, ct);
+        if (survey is null) return;
+        survey.Status = SurveyStatus.PendingApproval;
+        survey.SubmittedAt = submittedAt;
+        survey.RejectionNote = null;
+        survey.UpdatedAt = submittedAt;
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task ApproveAsync(Guid id, Instant approvedAt, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var survey = await ctx.Surveys.FirstOrDefaultAsync(s => s.Id == id, ct);
+        if (survey is null) return;
+        survey.Status = SurveyStatus.Open;
+        survey.SubmittedAt = null;
+        survey.RejectionNote = null;
+        survey.UpdatedAt = approvedAt;
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task RejectAsync(Guid id, string note, Instant rejectedAt, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var survey = await ctx.Surveys.FirstOrDefaultAsync(s => s.Id == id, ct);
+        if (survey is null) return;
+        survey.Status = SurveyStatus.Draft;
+        survey.SubmittedAt = null;
+        survey.RejectionNote = note;
+        survey.UpdatedAt = rejectedAt;
+        await ctx.SaveChangesAsync(ct);
+    }
+
     public async Task<IReadOnlyDictionary<Guid, int>> GetInvitedCountsBySurveyAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -423,6 +459,52 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
             .Where(i => i.UserId == userId)
             .ToListAsync(ct);
         ctx.SurveyInvitations.RemoveRange(invitations);
+
+        return await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<Survey>> GetSurveysAuthoredByAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        // Questions are included because the GDPR export reports a question count off this
+        // graph; without it AsNoTracking hands back surveys whose Questions are empty.
+        return await ctx.Surveys
+            .AsNoTracking()
+            .Include(s => s.Questions)
+            .Where(s => s.CreatedByUserId == userId)
+            .ToListAsync(ct);
+    }
+
+    public async Task<int> ClearAuthorshipForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+
+        var surveys = await ctx.Surveys.Where(s => s.CreatedByUserId == userId).ToListAsync(ct);
+        foreach (var survey in surveys)
+        {
+            // CreatedByUserId is init-only and non-nullable — Guid.Empty is this section's
+            // "nobody", the same value an unattributed survey carries.
+            ctx.Entry(survey).Property(nameof(Survey.CreatedByUserId)).CurrentValue = Guid.Empty;
+            survey.RejectionNote = null;
+        }
+
+        return await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<int> ReassignAuthorshipAsync(
+        Guid fromUserId, Guid toUserId, Instant now, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+
+        var surveys = await ctx.Surveys.Where(s => s.CreatedByUserId == fromUserId).ToListAsync(ct);
+        foreach (var survey in surveys)
+        {
+            // Same init-only property as the erasure, set the same way — here to the survivor
+            // rather than to Guid.Empty.
+            ctx.Entry(survey).Property(nameof(Survey.CreatedByUserId)).CurrentValue = toUserId;
+            survey.UpdatedAt = now;
+        }
 
         return await ctx.SaveChangesAsync(ct);
     }

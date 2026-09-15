@@ -22,6 +22,7 @@ namespace Humans.GoogleIntegration.Jobs;
 public class GoogleResourceReconciliationJob(
     IGoogleSyncService googleSyncService,
     IGoogleGroupSync googleGroupSync,
+    IGoogleDriveSync googleDriveSync,
     INotificationService notificationService,
     IHumansMetrics metrics,
     ILogger<GoogleResourceReconciliationJob> logger,
@@ -68,6 +69,18 @@ public class GoogleResourceReconciliationJob(
         {
             logger.LogError(ex, "Google reconciliation phase 'Group membership reconcile' failed");
             phaseFailures.Add("Group membership reconcile");
+        }
+
+        // Reconciles the Drive access source fan-out (Workgroups etc.) — additive to and
+        // independent from the Teams-keyed google_resources Drive path reconciled above.
+        try
+        {
+            await googleDriveSync.ReconcileAllAsync(SyncAction.Execute, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Google reconciliation phase 'Drive access source reconcile' failed");
+            phaseFailures.Add("Drive access source reconcile");
         }
 
         // Detects renames and moves.

@@ -531,6 +531,61 @@ internal sealed class EmailRenderer(
         }
     }
 
+    public EmailContent RenderWorkgroupNotice(WorkgroupNoticeRequest request)
+        => RenderLocalized(request.Culture, () =>
+        {
+            var greeting = string.IsNullOrEmpty(request.RecipientName)
+                ? L("Email_WorkgroupNotice_Greeting_Generic")
+                : Lf("Email_WorkgroupNotice_Greeting_Named", HtmlEncode(request.RecipientName));
+            // Two forms of the same name: subjects are plain text, bodies are HTML. Encoding
+            // once for both would put "Health &amp; Safety" in the subject line.
+            var name = request.WorkgroupName;
+            var nameHtml = HtmlEncode(request.WorkgroupName);
+            var url = $"{_settings.BaseUrl}/Workgroups/{request.WorkgroupSlug}";
+            var detail = HtmlEncode(request.Detail ?? "");
+
+            return request.Kind switch
+            {
+                WorkgroupNoticeKind.Applied => new EmailContent(
+                    Lf("Email_WorkgroupNotice_Applied_Subject", name),
+                    Lf("Email_WorkgroupNotice_Applied_Body", greeting, nameHtml, url)),
+                WorkgroupNoticeKind.Referred => new EmailContent(
+                    Lf("Email_WorkgroupNotice_Referred_Subject", name),
+                    Lf("Email_WorkgroupNotice_Referred_Body", greeting, nameHtml, url)),
+                WorkgroupNoticeKind.Registered => new EmailContent(
+                    Lf("Email_WorkgroupNotice_Registered_Subject", name),
+                    Lf("Email_WorkgroupNotice_Registered_Body", greeting, nameHtml, url)),
+                WorkgroupNoticeKind.Refused => new EmailContent(
+                    Lf("Email_WorkgroupNotice_Refused_Subject", name),
+                    Lf("Email_WorkgroupNotice_Refused_Body", greeting, nameHtml,
+                        string.IsNullOrEmpty(request.Detail) ? "" : Lf("Email_ReasonLine", detail), url)),
+                WorkgroupNoticeKind.Withdrawn => new EmailContent(
+                    Lf("Email_WorkgroupNotice_Withdrawn_Subject", name),
+                    Lf("Email_WorkgroupNotice_Withdrawn_Body", greeting, nameHtml,
+                        string.IsNullOrEmpty(request.Detail) ? "" : Lf("Email_ReasonLine", detail), url)),
+                WorkgroupNoticeKind.Ended => new EmailContent(
+                    Lf("Email_WorkgroupNotice_Ended_Subject", name),
+                    Lf("Email_WorkgroupNotice_Ended_Body", greeting, nameHtml, url)),
+                WorkgroupNoticeKind.Reactivated => new EmailContent(
+                    Lf("Email_WorkgroupNotice_Reactivated_Subject", name),
+                    Lf("Email_WorkgroupNotice_Reactivated_Body", greeting, nameHtml, url)),
+                WorkgroupNoticeKind.CoordinatorsChanged => new EmailContent(
+                    Lf("Email_WorkgroupNotice_CoordinatorsChanged_Subject", name),
+                    Lf("Email_WorkgroupNotice_CoordinatorsChanged_Body", greeting, nameHtml, url)),
+                WorkgroupNoticeKind.DormancyInquiry => new EmailContent(
+                    Lf("Email_WorkgroupNotice_DormancyInquiry_Subject", name),
+                    Lf("Email_WorkgroupNotice_DormancyInquiry_Body", greeting, nameHtml, detail, url)),
+                WorkgroupNoticeKind.Delivered => new EmailContent(
+                    Lf("Email_WorkgroupNotice_Delivered_Subject", name),
+                    Lf("Email_WorkgroupNotice_Delivered_Body", greeting, nameHtml, detail, url)),
+                WorkgroupNoticeKind.DispositionRecorded => new EmailContent(
+                    Lf("Email_WorkgroupNotice_DispositionRecorded_Subject", name),
+                    Lf("Email_WorkgroupNotice_DispositionRecorded_Body", greeting, nameHtml, detail, url)),
+                _ => throw new InvalidOperationException(
+                    $"WorkgroupNotice does not support kind {request.Kind}")
+            };
+        });
+
     /// <summary>
     /// Webmail has no Humans origin, so a root-relative path in an email resolves against the
     /// reader's own host. Callers pass the in-app path; the absolute link is built here, the

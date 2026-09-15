@@ -1,0 +1,6 @@
+version: 1
+inbox: []
+# Emptied 2026-09-14: the one entry here asked for grant revocation when
+# SettingKeys.WorkgroupsRootDriveFolderId is replaced. Peter, on
+# peterdrier/Humans#1650: "this is fine, I won't do that" — the root is set once
+# at rollout, so there is no replacement to reconcile.

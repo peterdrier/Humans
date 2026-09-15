@@ -4,18 +4,19 @@ using Humans.Users.Contracts;
 namespace Humans.Cantina.Models;
 
 /// <summary>
-/// Web-layer view-model assembler for the Cantina Weekly Roster. Sort-for-
-/// display lives here, not in <c>CantinaRosterService</c>: display ordering
-/// is a presentation concern (see
-/// <c>memory/architecture/display-sort-in-controllers.md</c>). The
+/// Presentation helper for the Cantina roster payloads. Sort-for-display lives
+/// here, not in <c>CantinaRosterService</c>: display ordering is a presentation
+/// concern (see <c>memory/architecture/display-sort-in-controllers.md</c>). The
 /// Application service returns <see cref="WeeklyRosterDto.People"/> in
 /// unspecified order; the controller pipes the DTO through
-/// <see cref="SortForDisplay"/> before passing to the view or the CSV writer.
+/// <see cref="WithSortedPeople(WeeklyRosterDto)"/> before handing it to the CSV
+/// writer, and the daily payload through its overload before the matrix view and
+/// that view's CSV.
 /// </summary>
 internal static class CantinaRosterAssembler
 {
     /// <summary>
-    /// Coordinator-friendly sort for the per-person table:
+    /// Coordinator-friendly sort for the weekly CSV's per-person rows:
     /// <list type="number">
     ///   <item>First arrival date asc (<see cref="RosterPersonDto.ArrivesOn"/>)
     ///         — earliest-on-site humans surface to the top.</item>
@@ -77,9 +78,9 @@ internal static class CantinaRosterAssembler
     /// <summary>
     /// Returns a copy of <paramref name="roster"/> with its
     /// <see cref="WeeklyRosterDto.People"/> replaced by
-    /// <see cref="SortForDisplay"/>'s output. Convenience wrapper for callers
-    /// that need to hand a sorted DTO to a downstream renderer (e.g., the CSV
-    /// writer) without re-wiring the call site to use the bare People list.
+    /// <see cref="SortForDisplay"/>'s output. Its one caller is the weekly CSV
+    /// action, which hands the sorted DTO straight to the CSV writer; the weekly
+    /// page renders none of <see cref="WeeklyRosterDto.People"/> and does not sort.
     /// </summary>
     public static WeeklyRosterDto WithSortedPeople(WeeklyRosterDto roster)
     {
@@ -94,7 +95,7 @@ internal static class CantinaRosterAssembler
     /// case-insensitive — Spanish event, Spanish names with ñ/á/í).
     ///
     /// <para>
-    /// Deliberately NOT the same multi-key sort used for the weekly view
+    /// Deliberately NOT the same multi-key sort used for the weekly CSV
     /// (<see cref="SortForDisplay(IReadOnlyList{RosterPersonDto})"/>): the
     /// daily matrix is a coordinator look-up surface (matrix-scan by column,
     /// then "find this specific person on the row"), so alphabetical is

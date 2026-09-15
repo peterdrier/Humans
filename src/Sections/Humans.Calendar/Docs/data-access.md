@@ -38,7 +38,9 @@ not an injected dependency.
 
 Implements `ICalendarService`, `ICalendarServiceRead`. Resolves the keyed
 Scoped inner per-call; resolves `ITeamServiceRead` for occurrence team
-names. Surfaced on `/Debug/CacheStats`.
+names, and (when `teamId` is null) `IEnumerable<ICalendarFeedContributor>`
+for community-calendar items — fanned out fresh per call, never cached, and
+never routed through the repository. Surfaced on `/Debug/CacheStats`.
 
 ---
 
@@ -66,8 +68,13 @@ reads `UserInfo.ICalToken` from the `CachingUserService` TrackedCache) and
 Current `ICalendarFeedContributor` implementations (registered by their owning
 sections in each section's own `Section.cs`):
 
-- **`ShiftSignupService`** (Shifts) — the user's Confirmed **and** Pending shift signups (pending get a "(pending)" summary suffix); Cancelled/Bailed/NoShow history is excluded.
-- **`EventService`** (Events) — approved event-guide entries the user has favourited (moderation un-approval drops an event from the feed without touching the favourite row). No hosting/ownership path.
+- **`ShiftSignupService`** (Shifts) — the user's Confirmed **and** Pending shift signups (pending get a "(pending)" summary suffix); Cancelled/Bailed/NoShow history is excluded. `GetPublicItemsForWindowAsync` returns `[]` — nothing public yet.
+- **`EventService`** (Events) — approved event-guide entries the user has favourited (moderation un-approval drops an event from the feed without touching the favourite row). No hosting/ownership path. `GetPublicItemsForWindowAsync` returns `[]` — nothing public yet.
+
+`GetPublicItemsForWindowAsync` results are consumed by `CachingCalendarService.GetOccurrencesInWindowAsync`
+(Calendar section, above), not by `ICalFeedService` — the two fan-outs share the
+interface and contributor registrations but serve different surfaces (personal
+feed vs. community calendar).
 
 Sequential fan-out, matching `GdprService` and `EarlyEntryService`.
 `ShiftSignupService` reads via `ShiftsDbContext` and `EventService` via

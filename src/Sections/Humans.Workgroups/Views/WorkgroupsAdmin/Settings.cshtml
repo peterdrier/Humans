@@ -1,0 +1,36 @@
+@model WorkgroupsSettingsViewModel
+@{
+    ViewData["Title"] = "Workgroups settings";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">Workgroups</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Settings</li>
+    </ol>
+</nav>
+
+<h1>Workgroups settings</h1>
+
+<div class="card" style="max-width: 600px;">
+    <div class="card-body">
+        <form method="post" asp-action="Settings">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="RootDriveFolderId" class="form-label">Root Drive folder id</label>
+                <input asp-for="RootDriveFolderId" class="form-control" />
+                <div class="form-text">
+                    Every registered group gets a subfolder created under this Drive folder.
+                    Registration is refused while this is unset.
+                </div>
+                <span asp-validation-for="RootDriveFolderId" class="text-danger"></span>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Save settings</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>

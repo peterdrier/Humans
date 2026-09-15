@@ -17,6 +17,7 @@ public class GoogleResourceReconciliationJobTests : IDisposable
 {
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IGoogleGroupSync _googleGroupSync;
+    private readonly IGoogleDriveSync _googleDriveSync;
     private readonly FakeClock _clock;
     private readonly IHumansMetrics _metrics;
     private readonly INotificationService _notifications;
@@ -26,6 +27,7 @@ public class GoogleResourceReconciliationJobTests : IDisposable
     {
         _googleSyncService = Substitute.For<IGoogleSyncService>();
         _googleGroupSync = Substitute.For<IGoogleGroupSync>();
+        _googleDriveSync = Substitute.For<IGoogleDriveSync>();
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 9, 2, 0));
         _metrics = TestMetrics.Create();
         _notifications = Substitute.For<INotificationService>();
@@ -33,6 +35,7 @@ public class GoogleResourceReconciliationJobTests : IDisposable
         _job = new GoogleResourceReconciliationJob(
             _googleSyncService,
             _googleGroupSync,
+            _googleDriveSync,
             _notifications,
             _metrics,
             NullLogger<GoogleResourceReconciliationJob>.Instance,
@@ -59,6 +62,8 @@ public class GoogleResourceReconciliationJobTests : IDisposable
         await _googleSyncService.DidNotReceive()
             .SyncResourcesByTypeAsync(GoogleResourceType.Group, Arg.Any<SyncAction>(), Arg.Any<CancellationToken>());
         await _googleGroupSync.Received(1)
+            .ReconcileAllAsync(SyncAction.Execute, Arg.Any<CancellationToken>());
+        await _googleDriveSync.Received(1)
             .ReconcileAllAsync(SyncAction.Execute, Arg.Any<CancellationToken>());
     }
 
@@ -94,6 +99,8 @@ public class GoogleResourceReconciliationJobTests : IDisposable
         await act.Should().ThrowAsync<OperationCanceledException>();
 
         await _googleGroupSync.DidNotReceive()
+            .ReconcileAllAsync(Arg.Any<SyncAction>(), Arg.Any<CancellationToken>());
+        await _googleDriveSync.DidNotReceive()
             .ReconcileAllAsync(Arg.Any<SyncAction>(), Arg.Any<CancellationToken>());
     }
 }

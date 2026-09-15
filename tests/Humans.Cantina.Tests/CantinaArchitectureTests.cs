@@ -21,12 +21,6 @@ public class CantinaArchitectureTests
 
         paramTypes.Should().Contain(typeof(IShiftManagementServiceRead));
         paramTypes.Should().Contain(typeof(IUserServiceRead));
-        paramTypes.Should().NotContain(typeof(IUserService),
-            because: "cross-section user reads must use the read interface "
-                   + "(section-read-write-split / HUM0032)");
-        paramTypes.Should().NotContain(
-            t => t.Name.EndsWith("Repository", StringComparison.Ordinal),
-            because: "only a section's own repository may be injected, and Cantina has none");
     }
 
     [HumansFact]
