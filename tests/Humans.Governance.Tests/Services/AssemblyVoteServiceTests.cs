@@ -1244,6 +1244,30 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task RunLapseAndReminderSweepAsync_MergedRosterRows_AuditsOneMemberNotTwoRows()
+    {
+        // #1704: a merge chain leaves the survivor holding two roster rows. Both are stamped so
+        // neither is re-sent, but one email went out, so the audit line the Board reads has to
+        // count humans — counting rows overstates who was reminded.
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(12));
+        var source = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        _fx.StubMergedInto(source, survivor);
+        await _fx.AddRosterRowAsync(vote.Id, survivor, isOfficial: true);
+        await _fx.AddRosterRowAsync(vote.Id, source, isOfficial: false);
+
+        await _fx.Service.RunLapseAndReminderSweepAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _fx.Audit.Received(1).LogAsync(
+            AuditAction.AssemblyVoteRemindersSent,
+            AuditEntityTypes.AssemblyVote,
+            vote.Id,
+            Arg.Is<string>(m => m.Contains("1 roster member(s)")),
+            AssemblyVoteService.LapseJobName);
+    }
+
+    [HumansFact]
     public async Task OpenAsync_WhenTheDeadlinePassesWhileTheRosterIsBuilt_IsRejected()
     {
         var vote = await _fx.AddVoteAsync(

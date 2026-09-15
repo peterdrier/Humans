@@ -435,7 +435,11 @@ internal sealed class UserEmailService(
     public async Task<IReadOnlyList<UserEmailRowSnapshot>> GetEntitiesByUserIdAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        var info = await userService.GetUserInfoAsync(userId, cancellationToken);
+        // #1704: raw, unlike the DTO reads above. These snapshots carry the owner id, and the
+        // callers edit and delete the rows by it, so the rows and the id labelling them have to
+        // come from the same user — a resolving read would hand a tombstone's caller the
+        // survivor's rows stamped with the archived id.
+        var info = await userService.GetRawUserInfoAsync(userId, cancellationToken);
         if (info is null) return [];
         return info.UserEmails.Select(e => ToSnapshot(userId, e)).ToList();
     }

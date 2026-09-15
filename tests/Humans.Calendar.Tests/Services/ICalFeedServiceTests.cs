@@ -120,12 +120,30 @@ public class ICalFeedServiceTests
         var tombstoneId = Guid.NewGuid();
         var survivorId = Guid.NewGuid();
         var tombstoneToken = Guid.NewGuid();
-        // The read resolves the tombstone forward, so the feed is checked against the
-        // survivor's token — the URL minted for the merged-away account stops working.
+        // The read resolves the tombstone forward, so the row that comes back is the
+        // survivor's — the URL minted for the merged-away account stops working.
         StubUser(tombstoneId, icalToken: Guid.NewGuid(), resolvedId: survivorId);
         var service = CreateService();
 
         var ics = await service.GetFeedIcsAsync(tombstoneId, tombstoneToken, Xunit.TestContext.Current.CancellationToken);
+
+        ics.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetFeedIcsAsync_MergedUser_SurvivorsOwnToken_ReturnsNull()
+    {
+        var tombstoneId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        var survivorToken = Guid.NewGuid();
+        // Same resolution, but now the token presented is the survivor's own, so the token
+        // check alone would pass. The feed is still a 404: serving it would answer the old
+        // URL under an id that no longer names a human, and tell whoever holds that URL
+        // which account absorbed it.
+        StubUser(tombstoneId, icalToken: survivorToken, resolvedId: survivorId);
+        var service = CreateService();
+
+        var ics = await service.GetFeedIcsAsync(tombstoneId, survivorToken, Xunit.TestContext.Current.CancellationToken);
 
         ics.Should().BeNull();
     }

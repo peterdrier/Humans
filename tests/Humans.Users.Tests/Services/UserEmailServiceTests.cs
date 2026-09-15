@@ -2086,4 +2086,41 @@ public class UserEmailServiceTests
 
         result.Should().ContainSingle().Which.UserId.Should().Be(userId);
     }
+
+    [HumansFact]
+    public async Task GetEntitiesByUserIdAsync_MergeTombstone_ReturnsThatRowsOwnEmails()
+    {
+        // #1704: the snapshots carry the owner id and the callers edit and delete rows by it,
+        // so this read stays raw. Resolving forward would hand the tombstone's caller the
+        // survivor's row ids stamped with the archived id — an admin detail page showing one
+        // user's addresses under another's, and a delete aimed at the wrong account.
+        var archived = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        var archivedRow = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = archived,
+            Email = "old@example.com",
+            IsVerified = true,
+        };
+        var survivorRow = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = survivor,
+            Email = "new@example.com",
+            IsVerified = true,
+        };
+        _userService.GetRawUserInfoAsync(archived, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(BuildStubUserInfo(archived, [archivedRow])));
+        _userService.GetUserInfoAsync(archived, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(BuildStubUserInfo(survivor, [survivorRow])));
+
+        var result = await _service.GetEntitiesByUserIdAsync(
+            archived, Xunit.TestContext.Current.CancellationToken);
+
+        var only = result.Should().ContainSingle().Subject;
+        only.Id.Should().Be(archivedRow.Id);
+        only.Email.Should().Be("old@example.com");
+        only.UserId.Should().Be(archived);
+    }
 }

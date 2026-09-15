@@ -1799,7 +1799,9 @@ internal sealed class AssemblyVoteService(
                     // now in force rather than leaving them with the one they were sent.
                     await repository.StampReminderSentAsync(
                         rowIds, sentAt, current.ClosesAt, ct);
-                    reminded.AddRange(rowIds);
+                    // One entry per human, not per row: every row of a merge chain is stamped,
+                    // but the member behind them got one email and the audit count says members.
+                    reminded.Add(rosterRow.Id);
                 }
                 catch (Exception ex)
                 {
