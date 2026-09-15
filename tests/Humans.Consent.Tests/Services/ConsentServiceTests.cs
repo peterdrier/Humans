@@ -599,9 +599,10 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         // The source was merged into the target, so the target's record lists it. The source
         // id still resolves to the target's record — that is the redirect (#1704) — and the
         // unrelated id lists nothing.
-        var targetInfo = WrapInUserInfo(targetId, UserFixtures.Profile(
+        var target = WrapInUserInfo(targetId, UserFixtures.Profile(
             burnerName: "Burner", firstName: "First", lastName: "Last",
-            createdAt: Clock.GetCurrentInstant())) with { MergedUserIds = [sourceId] };
+            createdAt: Clock.GetCurrentInstant()));
+        var targetInfo = target with { MergedUserIds = [sourceId] };
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 ((IReadOnlyCollection<Guid>)call[0]).ToDictionary(
