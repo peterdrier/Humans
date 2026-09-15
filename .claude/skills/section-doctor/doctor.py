@@ -8,6 +8,8 @@
     doctor.py prose-gate [--base REF]   count-in-prose gate over the staged diff (or REF..HEAD)
     doctor.py dispatch-log <thread> <model> [agent-type]   record a subagent dispatch
     doctor.py resolve-check <sha>       the commit exists and is on origin/<current branch>
+    doctor.py inventory <Section>       every tracked path of the section (Phase 3a), generated ones tagged
+    doctor.py check-run-file <path> --section <Section>   the run file carries every required block and a disposition per inventory path
 
 Every subcommand derives the run's identity from the branch (`section-doctor/<TS>`), so nothing
 depends on shell state surviving between tool calls. Non-zero exit means "stop and look".
@@ -21,8 +23,8 @@ from datetime import datetime, timezone
 
 ORIGIN_RE = re.compile(r"github\.com[:/]peterdrier/Humans(\.git)?$")
 BRANCH_RE = re.compile(r"^section-doctor/(.+)$")
-WORDS = {w: i + 1 for i, w in enumerate(
-    "one two three four five six seven eight nine ten eleven twelve".split())}
+WORDS = {w: i + 2 for i, w in enumerate(
+    "two three four five six seven eight nine ten eleven twelve".split())}  # "one" is a pronoun too
 NUM = r"(?:[0-9]+|" + "|".join(WORDS) + ")"
 # Must-fix: a count with a structural tell — it names the rows under it, or it is a total.
 STRUCTURAL_RE = re.compile(
@@ -40,6 +42,7 @@ TABLE_ROW_RE = re.compile(r"^\|(?!\s*-)")     # a table row that is not the |---
 BULLET_RE = re.compile(r"^\s*(?:[-*+]|[0-9]+[.)])\s")
 PROSE_SUFFIXES = (".md", ".yml", ".yaml", ".txt", ".cshtml", ".resx")
 COMMENT_RE = re.compile(r"^\s*(?://|/\*|\*)")
+FENCE_RE = re.compile(r"^\s*(?:```|~~~)")
 
 
 def git(*args, check=True):
@@ -91,8 +94,13 @@ def _num(tok):
     return int(tok) if tok.isdigit() else WORDS[tok.lower()]
 
 
+COMMENT_PREFIX_RE = re.compile(r"^\s*(?:///?|\*)\s?")
+
+
 def _rows_under(lines, i):
-    """Rows of the table or list that follows line i (blank lines between skipped), else 0."""
+    """Rows of the table or list that follows line i (blank lines between skipped), else 0.
+    Comment prefixes are stripped so a list inside a `//` block counts like one in a doc."""
+    lines = [COMMENT_PREFIX_RE.sub("", l) for l in lines]
     j = i + 1
     while j < len(lines) and not lines[j].strip():
         j += 1
@@ -116,11 +124,24 @@ def _rows_under(lines, i):
 HUNK_RE = re.compile(r"^@@ -\S+ \+([0-9]+)")
 
 
+def fenced_lines(lines):
+    """Line numbers (1-based) inside ``` fences — code samples in a doc are not prose."""
+    inside, out = False, set()
+    for i, l in enumerate(lines, 1):
+        if FENCE_RE.match(l):
+            inside = not inside
+            out.add(i)
+        elif inside:
+            out.add(i)
+    return out
+
+
 def prose_gate_hits(diff, read_file):
-    """(must_fix, advisory) lists of `path: line`. Prose files only; in .cs only comment
-    lines; nothing under tests/ (assertion literals are the thing pinned, not a count).
-    The rows under a count are read from the resulting file (`read_file(path)`), never from
-    the diff — a -U0 diff drops the unchanged rows a newly typed count sits above."""
+    """(must_fix, advisory) lists of `path: line`. The gate tells prose from code, not
+    paths: in .cs only comment lines (tests/ included — a count in a test comment rots like
+    any other), in .md nothing inside a fenced block. The rows under a count are read from
+    the resulting file (`read_file(path)`), never from the diff — a -U0 diff drops the
+    unchanged rows a newly typed count sits above."""
     must, advisory = [], []
     path, added = None, []  # added: (new-file line number, text)
 
@@ -128,12 +149,18 @@ def prose_gate_hits(diff, read_file):
         if path is None:
             return
         cs = path.endswith(".cs")
-        if not (cs or path.endswith(PROSE_SUFFIXES)) or path.startswith("tests/"):
+        if not (cs or path.endswith(PROSE_SUFFIXES)):
             return
-        file_lines = None
+        file_lines, fenced = None, None
         for lineno, l in added:
             if cs and not COMMENT_RE.match(l):
                 continue
+            if path.endswith(".md"):
+                if file_lines is None:
+                    file_lines = read_file(path).splitlines()
+                    fenced = fenced_lines(file_lines)
+                if lineno in fenced:
+                    continue
             tag = f"{path}: {l}"
             if STRUCTURAL_RE.search(l):
                 must.append(tag)
@@ -212,6 +239,47 @@ def cmd_dispatch_log(a):
         f.write(f"| {a.thread} | {a.model} | {a.agent_type or '-'} | {now()} |\n")
 
 
+GENERATED_RE = re.compile(r"(\.Designer\.cs|DbContextModelSnapshot\.cs)$")
+THREADS = ("Shape", "Behavior & bugs", "Freshness", "Conformance", "Tests", "Prose & surface",
+           "History", "Comments", "Inbox")
+RUN_FILE_BLOCKS = ("## Findings", "## Skipped", "## Retro", "## Needs Peter", "## Sweep queue",
+                   "## File coverage", "## Threads")  # "## Ranked findings" is accepted for Findings
+
+
+def inventory(section):
+    """[(path, generated?)] — the section, its Contracts leaf, its test project, its guide page."""
+    roots = [f"src/Sections/Humans.{section}", f"src/Sections/Humans.{section}.Contracts",
+             f"tests/Humans.{section}.Tests", f"docs/guide/{section}.md"]
+    paths = git("ls-files", "--", *roots).splitlines()
+    return [(x, bool(GENERATED_RE.search(x))) for x in paths if x]
+
+
+def cmd_inventory(a):
+    for path, gen in inventory(a.section):
+        print(f"{path}\tgenerated" if gen else path)
+
+
+def cmd_check_run_file(a):
+    """Coverage is a success criterion: the run file names every inventory path with a
+    disposition, every thread with how it ran, and every required block. Lists what is
+    missing; non-zero if anything is."""
+    text = worktree_file(a.path)
+    missing = [b for b in RUN_FILE_BLOCKS if b not in text and not (b == "## Findings" and "## Ranked findings" in text)]
+    if not re.search(r"Independence check: (pass|fail)", text):
+        missing.append("Independence check: pass|fail line")
+    for path, _ in inventory(a.section):
+        if not re.search(r"`" + re.escape(path) + r"`[^\n]*\b(reviewed|changed|generated)\b", text):
+            missing.append(f"coverage row: {path}")
+    for t in THREADS:
+        if not re.search(r"^\|\s*" + re.escape(t) + r"\s*\|", text, re.M):
+            missing.append(f"thread row: {t}")
+    for m in missing:
+        print("missing: " + m)
+    if missing:
+        sys.exit(f"run file: {len(missing)} required item(s) missing")
+    print("run file: complete")
+
+
 def cmd_resolve_check(a):
     b = branch()
     if subprocess.run(["git", "cat-file", "-e", a.sha]).returncode != 0:
@@ -234,6 +302,9 @@ def main():
     s = sub.add_parser("dispatch-log"); s.add_argument("thread"); s.add_argument("model")
     s.add_argument("agent_type", nargs="?"); s.set_defaults(fn=cmd_dispatch_log)
     s = sub.add_parser("resolve-check"); s.add_argument("sha"); s.set_defaults(fn=cmd_resolve_check)
+    s = sub.add_parser("inventory"); s.add_argument("section"); s.set_defaults(fn=cmd_inventory)
+    s = sub.add_parser("check-run-file"); s.add_argument("path"); s.add_argument("--section", required=True)
+    s.set_defaults(fn=cmd_check_run_file)
     a = p.parse_args()
     a.fn(a)
 

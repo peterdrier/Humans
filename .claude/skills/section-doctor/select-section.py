@@ -9,11 +9,17 @@ tier, and the changed-since-last-run rule for the re-doctor tier. Prints
 SECTION:/TIER:/RATIONALE: (plus BASE: for a re-doctor). Exit 2 = NOTHING CHANGED
 (every eligible section was doctored and untouched since); exit 3 = ALL BLOCKED.
 
-<open-prs.json> is the open-PR list as JSON: [{number, headRefName, title,
-files: ["path", ...] | [{"path": ...}, ...]}, ...]. Locally that is one
-`gh pr list --repo peterdrier/Humans --state open --limit 200 --json
-number,headRefName,title,files` call; a cloud session without gh writes the same
-shape from its GitHub MCP tools.
+<open-prs.json> is the open-PR list as JSON: [{number, headRefName, title}, ...].
+Locally that is one `gh pr list --repo peterdrier/Humans --state open --limit 200
+--json number,headRefName,title` call; a cloud session without gh writes the same
+shape from its GitHub MCP tools. Each PR's changed files come from git, never the
+API: `refs/pull/<n>/head` is fetched and diffed against origin/main (the API's file
+list carries patch bodies and silently caps at 100 files). A `files` list in the
+JSON is used only when that fetch fails.
+
+Re-doctor ranking: age of the last run in days plus the share of the section
+rewritten since it (CHURN_DAYS_PER_PERCENT days per percent of LOC changed), so a
+heavy recent rewrite can outrank an older quiet run. Ties by lowest score.
 
 The blocked set also reads `origin`'s `section-doctor/*` branches directly (git,
 not gh): a run that has pushed its Phase 2 marker but not yet opened its PR is
@@ -31,11 +37,25 @@ import time
 REPO_ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
 SECTIONS_DIR = os.path.join(REPO_ROOT, "src", "Sections")
 BRANCH_MAX_AGE_DAYS = 3
+CHURN_DAYS_PER_PERCENT = 1.0   # one percent of a section's LOC changed since its last run == one day of age
 RUN_FILE_RE = re.compile(r"docs/health/runs/\d{4}-\d{2}-\d{2}-([A-Za-z0-9]+)")
 
 
 def pr_files(pr):
+    """Changed files of an open PR, from origin/pr/<n> (fetched by fetch_pr_heads)."""
+    rc, out = run(["git", "diff", "--name-only", "origin/main...origin/pr/%s" % pr.get("number")])
+    if rc == 0:
+        return out.split()
     return [f["path"] if isinstance(f, dict) else f for f in pr.get("files") or []]
+
+
+def fetch_pr_heads(prs, warnings):
+    if not prs:
+        return
+    refs = ["+refs/pull/%s/head:refs/remotes/origin/pr/%s" % (pr["number"], pr["number"]) for pr in prs]
+    rc, out = run(["git", "fetch", "--quiet", "origin"] + refs)
+    if rc != 0:
+        warnings.append("fetching refs/pull/*/head failed -- PR file lists fall back to the JSON's `files`")
 
 
 def path_section(path):
@@ -138,9 +158,17 @@ def last_doctored(s):
     return None
 
 
-def changed_since(sha, s):
-    rc, out = run(["git", "rev-list", "--count", sha + "..origin/main", "--"] + section_paths(s))
-    return rc == 0 and out.strip() not in ("", "0")
+def churn_since(sha, s):
+    """Lines added+deleted under the section's paths on origin/main since sha (0 = unchanged)."""
+    rc, out = run(["git", "diff", "--numstat", sha + "..origin/main", "--"] + section_paths(s))
+    if rc != 0:
+        return 0
+    total = 0
+    for line in out.splitlines():
+        parts = line.split("\t")
+        if len(parts) == 3 and parts[0].isdigit() and parts[1].isdigit():
+            total += int(parts[0]) + int(parts[1])
+    return total
 
 
 def main():
@@ -165,6 +193,7 @@ def main():
     canonical = {s.casefold(): s for s in pool}
 
     blocked, warnings = {}, []
+    fetch_pr_heads(prs, warnings)
     for pr in prs:
         if not (pr.get("headRefName") or "").startswith("section-doctor/"):
             continue
@@ -225,9 +254,17 @@ def main():
     redoctor = [s for s in eligible if s not in never]
     doctored = {s: last_doctored(s) for s in redoctor}
     # Re-doctor tier: eligible only if the section changed since its last run merged;
-    # ranked oldest run first, ties by lowest score.
-    stale = sorted((s for s in redoctor if doctored[s] and changed_since(doctored[s][1], s)),
-                   key=lambda s: (doctored[s][0], score(s)))
+    # ranked by age of that run plus how much of the section was rewritten since, ties by
+    # lowest score.
+    churn = {s: churn_since(doctored[s][1], s) for s in redoctor if doctored[s]}
+    now_t = time.time()
+
+    def priority(s):
+        age_days = (now_t - doctored[s][0]) / 86400
+        loc = max(score(s)[1], 1)
+        return age_days + CHURN_DAYS_PER_PERCENT * 100.0 * churn[s] / loc
+
+    stale = sorted((s for s in churn if churn[s]), key=lambda s: (-priority(s), score(s)))
 
     print("select-section: build=%s, score source=%s" % (build, source))
     for w in warnings:
@@ -242,7 +279,7 @@ def main():
                                              "score=%-6d loc=%-7d" % sc if sc else "score=n/a    loc=n/a",
                                              " [feature-active]" if s in active else "",
                                              (" last-run=%s%s" % (time.strftime("%Y-%m-%d", time.gmtime(doctored[s][0])),
-                                                                  " changed" if s in stale else " unchanged"))
+                                                                  " churn=%d priority=%.0f" % (churn[s], priority(s)) if s in stale else " unchanged"))
                                              if s in doctored and doctored[s] else ""))
 
     # Feature-active sections sink to the tier bottom: median over the rest, unless only they remain.
@@ -266,8 +303,9 @@ def main():
         print("\nSECTION: %s" % pick)
         print("TIER: re-doctor")
         print("BASE: %s" % doctored[pick][1])
-        print("RATIONALE: oldest previously-doctored section changed since its last run merged "
-              "(last run %s); Phase 3 diffs against BASE." % time.strftime("%Y-%m-%d", time.gmtime(doctored[pick][0])))
+        print("RATIONALE: highest age-plus-churn priority among previously-doctored sections changed "
+              "since their last run merged (last run %s, %d lines churned); Phase 3 diffs against BASE."
+              % (time.strftime("%Y-%m-%d", time.gmtime(doctored[pick][0])), churn[pick]))
     else:
         print("\nNOTHING CHANGED: every eligible section is previously-doctored and unchanged since its last run.")
         return 2

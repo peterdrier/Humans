@@ -6,16 +6,17 @@ worktree; read and grep only under that root — a relative path or your own cwd
 different checkout. Before reading anything else, read the files the prompt names:
 
 1. `threads/<name>.md` — your lens.
-2. `src/Sections/Humans.<X>/Docs/health.md` — the target shape (all six parts plus the
-   load-bearing weirdness list). Every judgment is against the target, not the section's own
-   description of itself.
+2. `src/Sections/Humans.<X>/Docs/health.md` — the target shape. Every judgment is against the
+   target, not the section's own description of itself.
 
-Your prompt lists members, routes and keys; it never counts them, and neither do you.
+Your prompt lists members, routes and keys; it never counts them, and neither do you. **Any
+number you report is the output of a command you ran, stated with the command.**
 
-**Return:** a structured findings list plus a disposition for every file you claimed
-(`reviewed` / `changed` / `generated`) — never prose narrative. `reviewed` means the file's names
-resolve: every code symbol, route and file path a doc or comment names has been checked against
-the tree, not merely that the file was opened.
+**Return:** a structured findings list; a disposition for every file you claimed
+(`reviewed` / `changed` / `generated` — `reviewed` means every code symbol, route and path the
+file names has been checked against the tree, not merely that the file was opened); and, last,
+the list of checks your lens and prompt gave you with one result each — `hit: <n>`, `clean`, or
+`not run: <why>` — so a check you skipped is visible. Never prose narrative.
 
 **Never edit anything.** Striking is the main thread's job. Bash is for read-only queries.
 

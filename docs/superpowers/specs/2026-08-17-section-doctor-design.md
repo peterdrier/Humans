@@ -443,3 +443,22 @@ and a `## Size` block whose subject was the diff containing it.
     which reviews `git diff` in the worktree, never the executor's own summary. Reversal
     criterion: if executors lose findings the main thread would have caught, revert to running
     Phase 4 entirely on main.
+
+## Amendment, 2026-09-15 — a stable skill, and a bar for lessons about it
+
+Decision 3's lesson engine — every run's retro proposing skill edits as Needs-Peter items, then
+as filed issues — grew the skill by a paragraph per incident until it was ~1,250 lines of prose
+carrying the war story behind each rule, and produced more open skill issues than section
+issues. Replaced:
+
+- The skill is one file again (`SKILL.md` plus the `threads/` lenses and the scripts); rules are
+  stated once, without provenance. Mechanics live in `doctor.py` (`inventory`,
+  `check-run-file`, the prose gate) and `select-section.py` (PR files from `refs/pull/*/head`,
+  age-plus-churn re-doctor ranking), where a rule costs no context and cannot be half-followed.
+- A run files a skill issue only for a script failure, two rules contradicting each other on a
+  real decision, or a gate refusing a change it can show was correct — at most two per run,
+  after searching for an existing one. Everything else about the skill is a retro sentence.
+- Precedence: hard and working rules, then the invoking prompt, then the skill (an emergency is
+  fixed in the routine's prompt before the skill).
+- Unattended cloud runs never boot the app; the reviewer gate pauses striking while a verdict is
+  pending; a sweep-queue item names its target file.

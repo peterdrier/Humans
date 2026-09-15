@@ -116,9 +116,10 @@ rules:
           base=$(git merge-base HEAD origin/main)
           for f in $(git diff --name-only "$base" -- 'src/Sections/*/*Resource.resx'); do
             sec=$(basename "$(dirname "$f")" | sed 's/^Humans\.//')
+            case "$sec" in Issues) exempt='^Issue_';; *) exempt='^$';; esac
             git diff "$base" -- "$f" \
               | grep '^+' | grep -o '<data name="[^"]*"' | sed 's/.*"\(.*\)"/\1/' \
-              | grep -v "^${sec}_" | grep -v '^Enum_' \
+              | grep -v "^${sec}_" | grep -v '^Enum_' | grep -v "$exempt" \
               | sed "s|^|$f: |"
           done
       # 2. THE BACKLOG — the standing count per section, so a run can report the size of
@@ -132,8 +133,9 @@ rules:
           for f in src/Sections/*/[A-Za-z]*Resource.resx; do
             sec=$(basename "$(dirname "$f")" | sed 's/^Humans\.//')
             tot=$(grep -c '<data name=' "$f")
+            case "$sec" in Issues) exempt='^Issue_';; *) exempt='^$';; esac
             bad=$(grep -o '<data name="[^"]*"' "$f" | sed 's/.*"\(.*\)"/\1/' \
-                  | grep -v "^${sec}_" | grep -vc '^Enum_')
+                  | grep -v "^${sec}_" | grep -v "$exempt" | grep -vc '^Enum_')
             [ "$bad" -gt 0 ] && echo "$sec: $bad of $tot keys not prefixed ${sec}_"
           done
           true
@@ -145,7 +147,9 @@ rules:
       Shifts 247 of 349, Teams 172 of 193, Camps 102 of 112. Singular section-name variants
       are excluded by both detectors: they are resolved by reflection through
       Localizer.EnumDisplay off the type name, so the prefix is not free to change.
-      SharedResource is out of scope — it is not a section.
+      SharedResource is out of scope — it is not a section. Exempt (Peter, 2026-09-14,
+      peterdrier/Humans#1682): the Issues section keeps its `Issue_` prefix; both
+      detectors skip it.
 
 # Rules deliberately NOT tracked here, so runs stop re-proposing them.
 declined:

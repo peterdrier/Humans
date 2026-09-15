@@ -30,9 +30,8 @@ each, never a budget.
 
 **A run may not mutate an existing GitHub issue.** No close, no edit, no relabel, no comment on
 another issue — including issues this run's own findings duplicate, and including a `keep`.
-Peter enacts every verdict after review. **Opening a new issue on `peterdrier/Humans` is
-allowed** — it is a write of the run's own, like its run file and its PR (whose body and
-description it owns). Never upstream.
+Peter enacts every verdict after review. A carry-forward item you report as still open is a
+candidate only: main re-checks it against the code before it is ranked.
 
 **Issue scope is whatever the main thread proved it can read.** The thread has no GitHub tool:
 it reads the issue dump main wrote to `$RUNDIR/assessment/issues.md` (path in the prompt) and
