@@ -34,7 +34,7 @@ public class HumanViewComponent(IUserServiceRead userService, IUrlHelperFactory 
                     var urlHelper = urlHelperFactory.GetUrlHelper(ViewContext);
                     profilePictureUrl = urlHelper.Action(
                         action: "Picture",
-                        controller: "Profile",
+                        controller: "ProfileView",
                         values: new { id = profile.Id, v = profile.UpdatedAt.ToUnixTimeTicks() });
                 }
             }
