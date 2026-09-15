@@ -49,11 +49,101 @@ internal sealed class CachingUserService(
     public const string InnerServiceKey = "user-inner";
 
     // ==========================================================================
+    // Merge index
+    // ==========================================================================
+
+    /// <summary>
+    /// Derived index: for every id that has at least one row merged into it,
+    /// transitively, the sorted ids of those rows. Null means dirty — see
+    /// <see cref="OnMutated"/>. Rebuilt lazily on first read after a mutation;
+    /// two threads racing to rebuild produce the same answer, so the race is
+    /// harmless and the field is not locked.
+    /// </summary>
+    private volatile Dictionary<Guid, Guid[]>? _mergeIndex;
+
+    /// <summary>
+    /// Any change to the raw store can change the merge graph — a merge lands as a
+    /// per-entry <c>Set</c> via <c>RefreshEntryAsync</c>, not only at warmup — so the
+    /// index is dropped on every mutation rather than built once after the snapshot loads.
+    /// </summary>
+    protected override void OnMutated() => _mergeIndex = null;
+
+    /// <inheritdoc cref="_mergeIndex" />
+    private Dictionary<Guid, Guid[]> MergeIndex
+    {
+        get
+        {
+            if (_mergeIndex is { } cached) return cached;
+
+            // One pass: each tombstone walks forward to its terminus and registers
+            // itself against every node on the way, so a survivor ends up carrying
+            // the whole chain behind it (A→B→C leaves C with {A, B}). The visited
+            // set makes a cyclic or dangling MergedToUserId terminate rather than loop.
+            var rows = AsReadOnlyDictionary;
+            var builder = new Dictionary<Guid, List<Guid>>();
+            foreach (var row in rows.Values)
+            {
+                if (row.MergedToUserId is null) continue;
+
+                var visited = new HashSet<Guid> { row.Id };
+                var next = row.MergedToUserId;
+                while (next is { } nodeId && visited.Add(nodeId))
+                {
+                    if (!builder.TryGetValue(nodeId, out var sources))
+                        builder[nodeId] = sources = [];
+                    sources.Add(row.Id);
+
+                    next = rows.TryGetValue(nodeId, out var node) ? node.MergedToUserId : null;
+                }
+            }
+
+            var index = new Dictionary<Guid, Guid[]>(builder.Count);
+            foreach (var (id, sources) in builder)
+            {
+                var ids = sources.ToArray();
+                Array.Sort(ids);
+                index[id] = ids;
+            }
+
+            _mergeIndex = index;
+            return index;
+        }
+    }
+
+    /// <summary>
+    /// Stamps <see cref="UserInfo.MergedUserIds"/> from the merge index. Allocates only
+    /// for a row that absorbed something, which is rare.
+    /// </summary>
+    private UserInfo Stamp(UserInfo row) =>
+        MergeIndex.TryGetValue(row.Id, out var ids) ? row with { MergedUserIds = ids } : row;
+
+    // ==========================================================================
     // UserInfo reads
     // ==========================================================================
 
-    public ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default) =>
-        GetAsync(userId, ct);
+    public async ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default)
+    {
+        // Warm first: MergedUserIds is a property of the whole graph, so a cold cache
+        // holding only this one row would stamp an empty chain onto a survivor.
+        await EnsureWarmedAsync(ct).ConfigureAwait(false);
+        var row = await GetAsync(userId, ct).ConfigureAwait(false);
+        return row is null ? null : Stamp(row);
+    }
+
+    /// <inheritdoc cref="IUserService.GetRawUserInfoAsync" />
+    public async ValueTask<UserInfo?> GetRawUserInfoAsync(Guid userId, CancellationToken ct = default)
+    {
+        await EnsureWarmedAsync(ct).ConfigureAwait(false);
+        var row = await GetAsync(userId, ct).ConfigureAwait(false);
+        return row is null ? null : Stamp(row);
+    }
+
+    /// <inheritdoc cref="IUserService.GetAllRawUserInfosAsync" />
+    public async Task<IReadOnlyCollection<UserInfo>> GetAllRawUserInfosAsync(CancellationToken ct = default)
+    {
+        await EnsureWarmedAsync(ct).ConfigureAwait(false);
+        return Values.Select(Stamp).ToArray();
+    }
 
     /// <summary>
     /// Per-key loader plugged into <see cref="TrackedCache{TKey,TValue}.GetAsync"/>.
@@ -71,7 +161,7 @@ internal sealed class CachingUserService(
     public async Task<IReadOnlyCollection<UserInfo>> GetAllUserInfosAsync(CancellationToken ct = default)
     {
         await EnsureWarmedAsync(ct).ConfigureAwait(false);
-        return Values.ToArray();
+        return Values.Select(Stamp).ToArray();
     }
 
     /// <inheritdoc cref="IUserService.GetUserInfosAsync" />
@@ -88,7 +178,7 @@ internal sealed class CachingUserService(
         foreach (var id in userIds)
         {
             if (TryGet(id, out var hit))
-                result[id] = hit;
+                result[id] = Stamp(hit);
             else
                 (misses ??= []).Add(id);
         }
@@ -101,7 +191,7 @@ internal sealed class CachingUserService(
                 if (info is not null)
                 {
                     Set(id, info);
-                    result[id] = info;
+                    result[id] = Stamp(info);
                 }
             }
         }

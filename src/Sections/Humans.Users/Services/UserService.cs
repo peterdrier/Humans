@@ -32,6 +32,18 @@ internal sealed class UserService(
 
     // --- User reads ---
 
+    /// <summary>
+    /// The inner service reads rows, it does not resolve merge chains — only
+    /// <c>CachingUserService</c> sees the whole graph. So raw and redirecting reads
+    /// are the same thing here, and the redirect is tested through the decorator.
+    /// </summary>
+    public ValueTask<UserInfo?> GetRawUserInfoAsync(Guid userId, CancellationToken ct = default) =>
+        GetUserInfoAsync(userId, ct);
+
+    /// <inheritdoc cref="GetRawUserInfoAsync" />
+    public Task<IReadOnlyCollection<UserInfo>> GetAllRawUserInfosAsync(CancellationToken ct = default) =>
+        GetAllUserInfosAsync(ct);
+
     public async ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default)
     {
         var user = await repo.GetByIdAsync(userId, ct);

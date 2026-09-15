@@ -89,7 +89,20 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     /// refresh-after-write paths that have already gone through their own
     /// hit/miss accounting (or are bulk warmup).
     /// </summary>
-    public void Set(TKey key, TValue value) => _dict[key] = value;
+    public void Set(TKey key, TValue value)
+    {
+        _dict[key] = value;
+        OnMutated();
+    }
+
+    /// <summary>
+    /// Called after every mutation of the dict (<see cref="Set"/>, <see cref="Clear"/>,
+    /// and the removing branches of <see cref="Invalidate"/> and <see cref="DeleteKey"/>;
+    /// <see cref="Replace"/> and <see cref="ReplaceAsync"/> route through those).
+    /// Subclasses that maintain an index derived from the whole dict override this to
+    /// mark it dirty. Default is a no-op.
+    /// </summary>
+    protected virtual void OnMutated() { }
 
     /// <summary>
     /// Lazy-cache evict — drops the entry; the next read lazy-loads. The
@@ -109,6 +122,7 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
         {
             Interlocked.Increment(ref _keyRemovals);
             if (_warmOnStartup) _warmedUp = false;
+            OnMutated();
             return true;
         }
         return false;
@@ -126,6 +140,7 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
         if (_dict.TryRemove(key, out _))
         {
             Interlocked.Increment(ref _keyRemovals);
+            OnMutated();
             return true;
         }
         return false;
@@ -166,6 +181,7 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
         _warmedUp = false;
         _dict.Clear();
         Interlocked.Increment(ref _bulkInvalidations);
+        OnMutated();
     }
 
     public void ResetCounters()

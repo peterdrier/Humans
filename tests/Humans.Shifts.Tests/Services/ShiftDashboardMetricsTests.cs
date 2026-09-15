@@ -1122,6 +1122,12 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         public ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default)
             => throw new NotSupportedException();
 
+        public ValueTask<UserInfo?> GetRawUserInfoAsync(Guid userId, CancellationToken ct = default)
+            => throw new NotSupportedException();
+
+        public Task<IReadOnlyCollection<UserInfo>> GetAllRawUserInfosAsync(CancellationToken ct = default)
+            => GetAllUserInfosAsync(ct);
+
         public Task<IReadOnlyCollection<UserInfo>> GetAllUserInfosAsync(CancellationToken ct = default)
         {
             // Build a UserInfo snapshot from the in-memory DB so dashboard-metrics

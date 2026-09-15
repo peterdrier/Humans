@@ -36,7 +36,7 @@ internal sealed class AccountMergeService(
         if (requests.Count == 0) return [];
 
         var userIds = CollectUserIds(requests);
-        var users = await userService.GetUserInfosAsync(userIds, ct);
+        var users = await GetRawUserInfosAsync(userIds, ct);
         return requests.Select(r => ToSnapshot(r, users)).ToList();
     }
 
@@ -46,8 +46,23 @@ internal sealed class AccountMergeService(
         if (request is null) return null;
 
         var userIds = CollectUserIds([request]);
-        var users = await userService.GetUserInfosAsync(userIds, ct);
+        var users = await GetRawUserInfosAsync(userIds, ct);
         return ToSnapshot(request, users);
+    }
+
+    /// <summary>
+    /// Raw rows for several ids. Merge code reads the row an admin named — a tombstone's
+    /// own <c>MergedToUserId</c> is the whole point here — so it cannot use the
+    /// cross-section read, which resolves the chain forward. There is no batched raw read;
+    /// filtering the warmed snapshot costs no query.
+    /// </summary>
+    private async Task<IReadOnlyDictionary<Guid, UserInfo>> GetRawUserInfosAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct)
+    {
+        var wanted = userIds.ToHashSet();
+        return (await userService.GetAllRawUserInfosAsync(ct))
+            .Where(u => wanted.Contains(u.Id))
+            .ToDictionary(u => u.Id);
     }
 
     private static IReadOnlyCollection<Guid> CollectUserIds(IReadOnlyList<AccountMergeRequest> requests)
@@ -94,9 +109,9 @@ internal sealed class AccountMergeService(
         if (survivorUserId == archivedUserId)
             throw new InvalidOperationException("Survivor and archived users are the same.");
 
-        var survivor = await userService.GetUserInfoAsync(survivorUserId, ct)
+        var survivor = await userService.GetRawUserInfoAsync(survivorUserId, ct)
             ?? throw new InvalidOperationException($"Survivor user {survivorUserId} not found.");
-        var archived = await userService.GetUserInfoAsync(archivedUserId, ct)
+        var archived = await userService.GetRawUserInfoAsync(archivedUserId, ct)
             ?? throw new InvalidOperationException($"Archived user {archivedUserId} not found.");
         if (survivor.IsMerged)
             throw new InvalidOperationException($"Survivor user {survivorUserId} is already tombstoned.");
@@ -257,8 +272,8 @@ internal sealed class AccountMergeService(
         if (request.Status != AccountMergeRequestStatus.Pending)
             throw new InvalidOperationException("Merge request is not pending.");
 
-        var source = await userService.GetUserInfoAsync(request.SourceUserId, ct);
-        var target = await userService.GetUserInfoAsync(request.TargetUserId, ct);
+        var source = await userService.GetRawUserInfoAsync(request.SourceUserId, ct);
+        var target = await userService.GetRawUserInfoAsync(request.TargetUserId, ct);
         // Only close when this pair actually merged INTO EACH OTHER (one tombstoned into
         // the other). A side merged into some unrelated third account is a different
         // conflict — closing here would silently drop the still-unresolved pending email.

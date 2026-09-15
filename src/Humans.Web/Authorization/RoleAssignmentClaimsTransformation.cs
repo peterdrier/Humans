@@ -15,7 +15,7 @@ namespace Humans.Web.Authorization;
 /// </summary>
 public class RoleAssignmentClaimsTransformation(
     IRoleAssignmentService roleAssignments,
-    IUserServiceRead userService,
+    IUserService userService,
     IMemoryCache cache) : IClaimsTransformation
 {
     /// <summary>Carries the user's stored <see cref="UserState"/> enum name.</summary>
@@ -76,9 +76,16 @@ public class RoleAssignmentClaimsTransformation(
     {
         var claims = new List<Claim>();
 
-        // Stored UserState is the single access source. GetUserInfoAsync seeds legacy null-State
-        // rows on first read, so State is populated here.
-        var userInfo = await userService.GetUserInfoAsync(userId);
+        // Stored UserState is the single access source. GetRawUserInfoAsync seeds legacy
+        // null-State rows on first read, so State is populated here.
+        //
+        // Raw, deliberately: the cross-section read resolves a merge tombstone forward to
+        // the surviving account, and stamping that survivor's Active state on a principal
+        // carrying the tombstone's id would admit the holder as the surviving member.
+        // Sign-in already blocks it (AnonymizeForMergeAsync locks the account out and
+        // rotates the security stamp), but Backdoor API-key and dev-login principals reach
+        // this path too. UserState.Merged must keep flowing.
+        var userInfo = await userService.GetRawUserInfoAsync(userId);
         if (userInfo?.State is { } state)
         {
             claims.Add(new Claim(UserStateClaimType, state.ToString()));

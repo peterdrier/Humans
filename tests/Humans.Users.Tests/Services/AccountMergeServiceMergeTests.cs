@@ -46,14 +46,14 @@ public class AccountMergeServiceMergeTests
     private void SetupUsers(Guid sourceId, Guid targetId, bool sourceTombstoned = false)
     {
         // A real tombstone sets both MergedToUserId and MergedAt; IsMerged keys off MergedAt.
-        _userService.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>())
+        _userService.GetRawUserInfoAsync(sourceId, Arg.Any<CancellationToken>())
             .Returns(new User
             {
                 Id = sourceId,
                 MergedToUserId = sourceTombstoned ? targetId : null,
                 MergedAt = sourceTombstoned ? _clock.GetCurrentInstant() : null,
             }.ToUserInfo());
-        _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>())
+        _userService.GetRawUserInfoAsync(targetId, Arg.Any<CancellationToken>())
             .Returns(new User { Id = targetId }.ToUserInfo());
     }
 
@@ -96,7 +96,7 @@ public class AccountMergeServiceMergeTests
     public async Task MergeAsync_ArchivedMissing_Throws()
     {
         var src = Guid.NewGuid(); var tgt = Guid.NewGuid();
-        _userService.GetUserInfoAsync(tgt, Arg.Any<CancellationToken>())
+        _userService.GetRawUserInfoAsync(tgt, Arg.Any<CancellationToken>())
             .Returns(UserInfoFactory.Create(new User { Id = tgt }, [], [], [], null, [], [], [], []));
         // archived (src) returns null by default — Substitute.For<>'s default for ValueTask<UserInfo?> is null
         var act = () => BuildSut().MergeAsync(tgt, src, Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
@@ -129,9 +129,9 @@ public class AccountMergeServiceMergeTests
         _mergeRepo.GetPendingAsync(Arg.Any<CancellationToken>())
             .Returns(new List<AccountMergeRequest> { req });
         // Source already tombstoned, target survives.
-        _userService.GetUserInfoAsync(src, Arg.Any<CancellationToken>())
+        _userService.GetRawUserInfoAsync(src, Arg.Any<CancellationToken>())
             .Returns(new User { Id = src, MergedToUserId = tgt, MergedAt = _clock.GetCurrentInstant() }.ToUserInfo());
-        _userService.GetUserInfoAsync(tgt, Arg.Any<CancellationToken>())
+        _userService.GetRawUserInfoAsync(tgt, Arg.Any<CancellationToken>())
             .Returns(new User { Id = tgt }.ToUserInfo());
 
         await BuildSut().ReconcileMergedRequestAsync(req.Id, admin, Xunit.TestContext.Current.CancellationToken);
@@ -156,9 +156,9 @@ public class AccountMergeServiceMergeTests
             Status = AccountMergeRequestStatus.Pending,
         };
         _mergeRepo.GetByIdPlainAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
-        _userService.GetUserInfoAsync(src, Arg.Any<CancellationToken>())
+        _userService.GetRawUserInfoAsync(src, Arg.Any<CancellationToken>())
             .Returns(new User { Id = src }.ToUserInfo());
-        _userService.GetUserInfoAsync(tgt, Arg.Any<CancellationToken>())
+        _userService.GetRawUserInfoAsync(tgt, Arg.Any<CancellationToken>())
             .Returns(new User { Id = tgt }.ToUserInfo());
 
         var act = () => BuildSut().ReconcileMergedRequestAsync(req.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
@@ -182,9 +182,9 @@ public class AccountMergeServiceMergeTests
             Status = AccountMergeRequestStatus.Pending,
         };
         _mergeRepo.GetByIdPlainAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
-        _userService.GetUserInfoAsync(src, Arg.Any<CancellationToken>())
+        _userService.GetRawUserInfoAsync(src, Arg.Any<CancellationToken>())
             .Returns(new User { Id = src, MergedToUserId = third, MergedAt = _clock.GetCurrentInstant() }.ToUserInfo());
-        _userService.GetUserInfoAsync(tgt, Arg.Any<CancellationToken>())
+        _userService.GetRawUserInfoAsync(tgt, Arg.Any<CancellationToken>())
             .Returns(new User { Id = tgt }.ToUserInfo());
 
         var act = () => BuildSut().ReconcileMergedRequestAsync(req.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);

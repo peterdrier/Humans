@@ -42,7 +42,7 @@ internal sealed class AccountDeletionService(
 
     public async Task<DeletionRequestResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default)
     {
-        var user = await userService.GetUserInfoAsync(userId, ct);
+        var user = await userService.GetRawUserInfoAsync(userId, ct);
         if (user is null)
             return new DeletionRequestResult(false, "NotFound");
 
@@ -101,7 +101,7 @@ internal sealed class AccountDeletionService(
 
     public async Task<OnboardingResult> CancelDeletionAsync(Guid userId, CancellationToken ct = default)
     {
-        var user = await userService.GetUserInfoAsync(userId, ct);
+        var user = await userService.GetRawUserInfoAsync(userId, ct);
         if (user is null)
             return new OnboardingResult(false, "NotFound");
 
@@ -119,7 +119,7 @@ internal sealed class AccountDeletionService(
 
     public async Task<OnboardingResult> PurgeAsync(Guid userId, Guid? actorId = null, CancellationToken ct = default)
     {
-        if (await userService.GetUserInfoAsync(userId, ct) is null)
+        if (await userService.GetRawUserInfoAsync(userId, ct) is null)
             return new OnboardingResult(false, "NotFound");
 
         // Same Article 17 fan-out as the expiry path — an admin purge must not
@@ -165,7 +165,7 @@ internal sealed class AccountDeletionService(
         Guid userId, CancellationToken ct = default)
     {
         // Capture identity slice BEFORE any writes — caller still needs it if the cascade throws.
-        var user = await userService.GetUserInfoAsync(userId, ct);
+        var user = await userService.GetRawUserInfoAsync(userId, ct);
         if (user is null)
             return null;
 

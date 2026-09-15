@@ -1303,6 +1303,129 @@ public class CachingUserServiceTests
         ids.Should().BeEquivalentTo([aId, bId]);
     }
 
+    // ==================================================================
+    // Merge chain: MergedUserIds and the raw reads (#1704)
+    // ==================================================================
+
+    /// <summary>Row builder for chain tests: a plain row, a merge tombstone, or a GDPR-erased row.</summary>
+    private static UserInfo ChainRow(Guid id, Guid? mergedTo = null, bool gdprErased = false) =>
+        UserInfoFactory.Create(
+            new User
+            {
+                Id = id,
+                PreferredLanguage = "en",
+                DisplayName = gdprErased ? UserInfo.GdprAnonymizedBurnerName : "Row",
+                MergedToUserId = mergedTo,
+                // GDPR erasure reuses MergedAt while leaving MergedToUserId null.
+                MergedAt = mergedTo is not null || gdprErased ? Instant.FromUtc(2026, 1, 1, 0, 0) : null,
+                State = gdprErased ? UserState.Deleted : mergedTo is not null ? UserState.Merged : UserState.Active,
+            },
+            userEmails: [], eventParticipations: [], externalLogins: [],
+            profile: null, contactFields: [], profileLanguages: [],
+            volunteerHistory: [], communicationPreferences: []);
+
+    /// <summary>A→B→C chain plus an unrelated GDPR-erased row D.</summary>
+    private (Guid A, Guid B, Guid C, Guid D) SeedChain()
+    {
+        var a = Guid.NewGuid();
+        var b = Guid.NewGuid();
+        var c = Guid.NewGuid();
+        var d = Guid.NewGuid();
+
+        _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<UserInfo>
+            {
+                ChainRow(a, mergedTo: b),
+                ChainRow(b, mergedTo: c),
+                ChainRow(c),
+                ChainRow(d, gdprErased: true),
+            });
+
+        return (a, b, c, d);
+    }
+
+    [HumansFact]
+    public async Task MergedUserIds_CarriesTheWholeChainTransitively()
+    {
+        // A merged into B, then B merged into C: A's row still points at B, so a
+        // one-hop scan from C would miss A. C must carry both, sorted.
+        var (a, b, c, _) = SeedChain();
+        var sut = CreateSut();
+
+        var survivor = await sut.GetRawUserInfoAsync(c, Xunit.TestContext.Current.CancellationToken);
+
+        survivor!.MergedUserIds.Should().Equal(new[] { a, b }.Order());
+    }
+
+    [HumansFact]
+    public async Task MergedUserIds_OnAMidChainRow_CarriesOnlyWhatIsBehindIt()
+    {
+        var (a, b, c, _) = SeedChain();
+        var sut = CreateSut();
+
+        var midChain = await sut.GetRawUserInfoAsync(b, Xunit.TestContext.Current.CancellationToken);
+
+        midChain!.MergedToUserId.Should().Be(c, "the raw read shows the row as stored");
+        midChain.MergedUserIds.Should().Equal(a);
+    }
+
+    [HumansFact]
+    public async Task MergedUserIds_IsEmptyForTheHeadOfAChain()
+    {
+        var (a, _, _, _) = SeedChain();
+        var sut = CreateSut();
+
+        var head = await sut.GetRawUserInfoAsync(a, Xunit.TestContext.Current.CancellationToken);
+
+        head!.MergedUserIds.Should().BeEmpty("nothing was merged into A");
+    }
+
+    [HumansFact]
+    public async Task GetAllRawUserInfosAsync_IncludesEveryRowTombstonesAndAll()
+    {
+        var (a, b, c, d) = SeedChain();
+        var sut = CreateSut();
+
+        var all = await sut.GetAllRawUserInfosAsync(Xunit.TestContext.Current.CancellationToken);
+
+        all.Select(u => u.Id).Should().BeEquivalentTo([a, b, c, d]);
+    }
+
+    [HumansFact]
+    public async Task MergeIndex_IsRebuiltAfterACacheMutation()
+    {
+        // A merge that lands after startup arrives as a per-entry refresh, not a re-warm.
+        // A one-shot backfill would never see it.
+        var (a, b, c, _) = SeedChain();
+        var sut = CreateSut();
+
+        (await sut.GetRawUserInfoAsync(c, Xunit.TestContext.Current.CancellationToken))!
+            .MergedUserIds.Should().Equal(new[] { a, b }.Order());
+
+        var e = Guid.NewGuid();
+        _inner.GetUserInfoAsync(e, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(ChainRow(e, mergedTo: c)));
+        await sut.InvalidateAsync(e, Xunit.TestContext.Current.CancellationToken);
+
+        (await sut.GetRawUserInfoAsync(c, Xunit.TestContext.Current.CancellationToken))!
+            .MergedUserIds.Should().Equal(new[] { a, b, e }.Order());
+    }
+
+    [HumansFact]
+    public async Task MergeIndex_TerminatesOnACyclicChain()
+    {
+        var a = Guid.NewGuid();
+        var b = Guid.NewGuid();
+        _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<UserInfo> { ChainRow(a, mergedTo: b), ChainRow(b, mergedTo: a) });
+
+        var sut = CreateSut();
+
+        var rowA = await sut.GetRawUserInfoAsync(a, Xunit.TestContext.Current.CancellationToken);
+
+        rowA!.MergedUserIds.Should().Equal([b], "the cycle guard stops the walk, it does not hang");
+    }
+
     [HumansFact]
     public async Task GetMergedSourceIdsAsync_NoMerges_ReturnsEmpty()
     {

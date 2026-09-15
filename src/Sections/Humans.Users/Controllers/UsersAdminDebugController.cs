@@ -8,16 +8,17 @@ using Humans.Users.Contracts;
 
 namespace Humans.Users.Controllers;
 
-// Diagnostic surface for UserInfo cache — flat sortable table from GetAllUserInfosAsync, no secondary queries.
+// Diagnostic surface for UserInfo cache — flat sortable table from GetAllRawUserInfosAsync
+// (tombstones included: this is the cache diagnostic, it shows what is in the cache), no secondary queries.
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Users/Admin/Debug")]
-internal sealed class UsersAdminDebugController(IUserServiceRead userService) : HumansControllerBase(userService)
+internal sealed class UsersAdminDebugController(IUserService userService) : HumansControllerBase(userService)
 {
     private const int MinPageSize = 10;
     private const int MaxPageSize = 200;
     private const int DefaultPageSize = 25;
 
-    private readonly IUserServiceRead _userService = userService;
+    private readonly IUserService _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(int page = 1, int pageSize = DefaultPageSize,
@@ -27,7 +28,7 @@ internal sealed class UsersAdminDebugController(IUserServiceRead userService) : 
         pageSize = Math.Clamp(pageSize, MinPageSize, MaxPageSize);
         if (page < 1) page = 1;
 
-        var snapshot = await _userService.GetAllUserInfosAsync(ct);
+        var snapshot = await _userService.GetAllRawUserInfosAsync(ct);
         var allRows = snapshot.Select(UserDebugRow.From).ToList();
 
         var sorted = ApplySort(allRows, sort, dir);

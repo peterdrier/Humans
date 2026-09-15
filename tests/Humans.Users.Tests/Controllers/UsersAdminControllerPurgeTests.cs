@@ -42,6 +42,8 @@ public class UsersAdminControllerPurgeTests
         _environment.EnvironmentName.Returns("Development");
         _userService.GetUserInfoAsync(_adminUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(new User { Id = _adminUserId, PreferredLanguage = "en" }.ToUserInfo()));
+        _userService.GetRawUserInfoAsync(_adminUserId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(new User { Id = _adminUserId, PreferredLanguage = "en" }.ToUserInfo()));
     }
 
     private UsersAdminController BuildController()
@@ -91,7 +93,7 @@ public class UsersAdminControllerPurgeTests
     {
         _environment.EnvironmentName.Returns("Production");
         var target = Guid.NewGuid();
-        _userService.GetUserInfoAsync(target, Arg.Any<CancellationToken>())
+        _userService.GetRawUserInfoAsync(target, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(new User { Id = target }.ToUserInfo()));
 
         var result = await BuildController().PurgeHuman(target);

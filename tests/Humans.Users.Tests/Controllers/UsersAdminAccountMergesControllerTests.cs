@@ -16,7 +16,7 @@ namespace Humans.Users.Tests.Controllers;
 
 public class UsersAdminAccountMergesControllerTests
 {
-    private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IAccountMergeService _mergeService = Substitute.For<IAccountMergeService>();
     private readonly IDuplicateAccountService _duplicateService = Substitute.For<IDuplicateAccountService>();
     private readonly Guid _adminUserId = Guid.NewGuid();
