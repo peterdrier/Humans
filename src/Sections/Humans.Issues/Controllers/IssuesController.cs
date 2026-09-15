@@ -242,16 +242,22 @@ internal sealed class IssuesController(
         }
 
         // If the current assignee isn't in the active list (left org, etc.),
-        // surface them anyway so the dropdown doesn't silently un-assign.
+        // surface them anyway so the dropdown doesn't silently un-assign. A stored
+        // assignee id that has been merged away selects its survivor's option instead.
         if (vm.AssigneeUserId.HasValue &&
             vm.AssigneeOptions.All(a => a.Id != vm.AssigneeUserId.Value))
         {
             var inactiveInfo = await UserService.GetUserInfoAsync(vm.AssigneeUserId.Value);
-            vm.AssigneeOptions.Insert(0, new AssigneeOption
+            if (inactiveInfo is not null && inactiveInfo.Id != vm.AssigneeUserId.Value)
+                vm.AssigneeUserId = inactiveInfo.Id;
+            if (vm.AssigneeOptions.All(a => a.Id != vm.AssigneeUserId.Value))
             {
-                Id = vm.AssigneeUserId.Value,
-                DisplayName = (inactiveInfo?.BurnerName ?? "Unknown") + " (inactive)"
-            });
+                vm.AssigneeOptions.Insert(0, new AssigneeOption
+                {
+                    Id = vm.AssigneeUserId.Value,
+                    DisplayName = (inactiveInfo?.BurnerName ?? "Unknown") + " (inactive)"
+                });
+            }
         }
     }
 

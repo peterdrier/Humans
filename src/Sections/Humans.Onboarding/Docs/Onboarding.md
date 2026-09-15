@@ -47,7 +47,7 @@ Multiple controllers serve this section:
 | Controller | Route | Notes |
 |------------|-------|-------|
 | `OnboardingReviewController` | `GET /OnboardingReview` | Review queue (`PolicyNames.ReviewQueueAccess`). Internal to `Humans.Onboarding`, routed by Shell's `SectionControllerFeatureProvider`; the policy stays in Shell's `AuthorizationPolicyExtensions`. |
-| `OnboardingReviewController` | `GET /OnboardingReview/{userId}` | Detail view |
+| `OnboardingReviewController` | `GET /OnboardingReview/{userId}` | Detail view. A merged-away id redirects to the survivor's route, so the Clear/Flag/Reject forms post the id the page shows. |
 | `OnboardingReviewController` | `POST /OnboardingReview/{userId}/Clear` | CC clear (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
 | `OnboardingReviewController` | `POST /OnboardingReview/BulkClear` | Bulk clear (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
 | `OnboardingReviewController` | `POST /OnboardingReview/{userId}/Flag` | CC flag (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |

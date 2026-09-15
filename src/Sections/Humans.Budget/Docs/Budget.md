@@ -216,13 +216,13 @@ Stored as string via `HasConversion<string>()`.
 ## Triggers
 
 - Every mutation to budget groups, categories, or line items generates an append-only `BudgetAuditLog` entry.
-- `BudgetService.ContributeForUserAsync` (GDPR contributor) chain-follows merge tombstones via `IUserServiceRead.GetMergedSourceIdsAsync` so `BudgetAuditLog` entries written under a now-merged source `ActorUserId` surface for the fold target. `BudgetAuditLog` is append-only (§12) and stays attributed to the source User row by design.
+- `BudgetService.ContributeForUserAsync` (GDPR contributor) chain-follows merge tombstones via the resolved record's `UserInfo.AllUserIds` so `BudgetAuditLog` entries written under a now-merged source `ActorUserId` surface for the fold target. `BudgetAuditLog` is append-only (§12) and stays attributed to the source User row by design.
 
 ## Cross-Section Dependencies
 
 - **Teams:** `ITeamServiceRead.GetTeamsAsync` — team lookups for the department picker and `HasBudget`-filtered budgetable-team lists; `BudgetService.GetEffectiveCoordinatorTeamIdsAsync` derives the coordinator scope itself (department + child teams) over the same read model rather than calling a dedicated Teams-side method.
 - **Tickets:** none inbound. The Tickets→Budget bridge (`TicketingBudgetService`) is Budget's own service — it reads paid orders via `ITicketServiceRead` and calls the section's internal `IBudgetService` (`SyncTicketingActualsAsync` / `RefreshTicketingProjectionsAsync` / `UpdateTicketingProjectionAsync` / `GetTicketingProjectionEntriesAsync`). Budget has no code path that reads Tickets tables directly. The internal `ITicketingBudgetService` (`Humans.Budget.Services`, ruling 43) is the nightly `TicketingBudgetSyncJob`'s test seam and carries only `SyncActualsAsync`; `BudgetAdminController` deliberately injects the concrete `TicketingBudgetService` for its sync/projection actions.
-- **Users/Identity:** `IUserServiceRead.GetUserInfosAsync` — actor display names for audit log. `IUserServiceRead.GetMergedSourceIdsAsync` — chain-follow merge tombstones on `BudgetAuditLog` GDPR export so source-attributed entries surface for the fold target.
+- **Users/Identity:** `IUserServiceRead.GetUserInfosAsync`, actor display names for audit log. `IUserServiceRead.GetUserInfoAsync`, the returned `UserInfo.AllUserIds` chain-follows merge tombstones on the `BudgetAuditLog` GDPR export so source-attributed entries surface for the fold target.
 - **Admin:** Budget year lifecycle management is restricted to FinanceAdmin and Admin.
 
 ## Architecture

@@ -837,6 +837,24 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
+                            <span class="wg-card-name">&lt;vc:merged-accounts&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/MergedAccountsViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">Both directions of the merge graph around one account — the account it was folded into if it is a tombstone, and every account folded into it. Renders nothing for an account that has never been merged, so an admin page can invoke it unconditionally.</div>
+                    @ParamsBlock(
+                        ("user-id", "<code>Guid</code> — required")
+                    )
+                    <div class="wg-card-example">
+                        <vc:merged-accounts user-id="@Model.CurrentUserId" />
+                        <div class="text-muted small">↑ renders nothing unless the current account is on one end of a merge.</div>
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
                             <span class="wg-card-name">&lt;vc:access-matrix&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>

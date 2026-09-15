@@ -71,9 +71,6 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
         UserEmails.GetNotificationTargetEmailsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(new Dictionary<Guid, string>()));
-        Users.GetMergedSourceIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlySet<Guid>>(new HashSet<Guid>()));
-
         Service = new AssemblyVoteService(
             Repository,
             Applications,
@@ -119,42 +116,32 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
 
     /// <summary>
     /// Folds <paramref name="source"/> into <paramref name="survivor"/> the way an accepted
-    /// account merge leaves it: the source is a tombstone pointing at the survivor, only the
-    /// survivor has a notification address (the merge moved the emails along), and
-    /// <c>GetMergedSourceIdsAsync</c> on the survivor reports the source.
+    /// account merge leaves it, as Users now reports it (#1704): both ids read back as the
+    /// <b>survivor's</b> record, carrying <c>MergedUserIds = [source]</c>, and both resolve to
+    /// the survivor's notification address. The tombstone's own sentinel address is never
+    /// handed out — "where do I mail this person" has one answer.
     /// </summary>
     public void StubMergedInto(Guid source, Guid survivor)
     {
-        var map = new Dictionary<Guid, UserInfo>
-        {
-            [source] = TombstoneInfo(source, survivor),
-            [survivor] = TombstoneInfo(survivor, null)
-        };
+        var resolved = TombstoneInfo(survivor, null) with { MergedUserIds = [source] };
+        var map = new Dictionary<Guid, UserInfo> { [source] = resolved, [survivor] = resolved };
 
         Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 ((IReadOnlyCollection<Guid>)call[0])
                     .Where(map.ContainsKey)
                     .ToDictionary(id => id, id => map[id])));
+        Users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => new ValueTask<UserInfo?>(
+                map.TryGetValue((Guid)call[0], out var info) ? info : null));
 
         UserEmails.GetNotificationTargetEmailsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(
-                new Dictionary<Guid, string>
-                {
-                    [survivor] = survivor + "@example.org",
-                    // The real service falls back to User.Email when a user has no
-                    // notification-target row, and the merge scrubbed the tombstone's to a
-                    // sentinel — so asking for a tombstone's address yields one that reaches
-                    // nobody rather than nothing at all.
-                    [source] = TombstoneAddress(source)
-                }));
-
-        Users.GetMergedSourceIdsAsync(survivor, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlySet<Guid>>(new HashSet<Guid> { source }));
+            .Returns(call => Task.FromResult<IReadOnlyDictionary<Guid, string>>(
+                ((IReadOnlyCollection<Guid>)call[0])
+                    .Where(map.ContainsKey)
+                    .ToDictionary(id => id, _ => survivor + "@example.org")));
     }
-
-    private static string TombstoneAddress(Guid id) => $"merged-{id:N}@merged.local";
 
     private UserInfo TombstoneInfo(Guid id, Guid? mergedTo) =>
         new User
@@ -162,7 +149,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
             Id = id,
             DisplayName = "Member " + id,
             UserName = id + "@example.org",
-            Email = mergedTo is null ? id + "@example.org" : TombstoneAddress(id),
+            Email = mergedTo is null ? id + "@example.org" : $"merged-{id:N}@merged.local",
             PreferredLanguage = "en",
             State = UserState.Active,
             MergedToUserId = mergedTo,

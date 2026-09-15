@@ -18,7 +18,7 @@ namespace Humans.Web.Tests.Authorization;
 public class RoleAssignmentClaimsTransformationTests : IDisposable
 {
     private readonly IRoleAssignmentService _roleAssignments;
-    private readonly IUserServiceRead _userService;
+    private readonly IUserService _userService;
     private readonly IMemoryCache _cache;
 
     public RoleAssignmentClaimsTransformationTests()
@@ -28,7 +28,7 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
             .GetActiveForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
-        _userService = Substitute.For<IUserServiceRead>();
+        _userService = Substitute.For<IUserService>();
         _cache = new MemoryCache(new MemoryCacheOptions());
     }
 
@@ -73,7 +73,7 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
     public async Task Transform_stamps_UserState_claim_matching_stored_state(UserState state)
     {
         var userId = Guid.NewGuid();
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId, state)));
 
         var principal = await BuildSut().TransformAsync(BuildPrincipal(userId));
@@ -84,14 +84,36 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
         RoleAssignmentClaimsTransformation.IsActive(principal)
             .Should().Be(state == UserState.Active, "only Active grants full app access");
 
-        await _userService.Received(1).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
+        await _userService.Received(1).GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Transform_stamps_Merged_for_a_tombstone_never_the_survivors_state()
+    {
+        // #1704: the cross-section read resolves a merge tombstone forward to the surviving
+        // account. If the claims path used it, a principal carrying the tombstone's id would
+        // be stamped with the survivor's Active state and admitted as that member. The raw
+        // read is what keeps UserState.Merged flowing.
+        var tombstoneId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        _userService.GetRawUserInfoAsync(tombstoneId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(tombstoneId, UserState.Merged)));
+        _userService.GetUserInfoAsync(tombstoneId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(survivorId, UserState.Active)));
+
+        var principal = await BuildSut().TransformAsync(BuildPrincipal(tombstoneId));
+
+        RoleAssignmentClaimsTransformation.GetUserState(principal).Should().Be(UserState.Merged);
+        RoleAssignmentClaimsTransformation.IsActive(principal)
+            .Should().BeFalse("a merged account must never inherit the survivor's app access");
+        await _userService.DidNotReceive().GetUserInfoAsync(tombstoneId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
     public async Task Transform_omits_UserState_claim_when_UserInfo_is_null()
     {
         var userId = Guid.NewGuid();
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>((UserInfo?)null));
 
         var principal = await BuildSut().TransformAsync(BuildPrincipal(userId));
@@ -105,7 +127,7 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
     public async Task Transform_adds_role_claims_from_auth_service_active_roles()
     {
         var userId = Guid.NewGuid();
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId, UserState.Active)));
 
         _roleAssignments

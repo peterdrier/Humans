@@ -178,6 +178,13 @@ public interface IUserEmailService
     /// resolved are omitted from the result. Used by cross-section callers
     /// (Feedback, Campaigns, future mass-mail pipelines) so they never navigate
     /// <c>User.UserEmails</c> directly.
+    /// <para>
+    /// Keyed by the <b>requested</b> id; the address is the <b>resolved</b> human's.
+    /// An id that was merged away resolves forward to the surviving account
+    /// (<see cref="IUserServiceRead.GetUserInfoAsync"/>), so asking for an archived id
+    /// returns the survivor's address under that archived key — "where do I mail this
+    /// person" has one right answer and it is never the merge sentinel.
+    /// </para>
     /// </summary>
     Task<IReadOnlyDictionary<Guid, string>> GetNotificationTargetEmailsAsync(
         IReadOnlyCollection<Guid> userIds,

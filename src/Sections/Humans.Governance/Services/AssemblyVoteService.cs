@@ -111,11 +111,11 @@ internal sealed class AssemblyVoteService(
         // deletable. Members see a vote from the moment it opens, never before.
         // Resolved once for the whole list rather than per vote: a member with no roster row
         // of their own is the common case, and that is exactly the case that has to ask.
-        var mergedSourceIds = await users.GetMergedSourceIdsAsync(userId, ct);
+        var chainIds = (await users.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
 
         foreach (var vote in votes.Where(v => v.Status != AssemblyVoteStatus.Draft))
         {
-            var roster = await EffectiveRosterAsync(vote.Id, userId, ct, mergedSourceIds);
+            var roster = await EffectiveRosterAsync(vote.Id, userId, ct, chainIds);
             var ballot = roster is null
                 ? null
                 : await repository.GetBallotForRosterAsync(vote.Id, roster.Id, ct);
@@ -1430,20 +1430,25 @@ internal sealed class AssemblyVoteService(
     }
 
     /// <summary>
-    /// Emails the given roster rows that the vote is open, stamping each row that was sent.
-    /// An unstamped row is one the email never reached, and the hourly sweep retries it.
-    /// Returns how many rows the email actually reached. The vote is re-read per recipient,
+    /// Emails the roster that the vote is open, stamping each row that was sent. An unstamped
+    /// row is one the email never reached, and the hourly sweep retries it. Takes the whole
+    /// roster and skips a human any of whose rows is already stamped: two rows for one human
+    /// (enrolled twice, then merged) are one member, mailed once, and a human reached through
+    /// one row is not told again through the other. Returns how many members the email
+    /// actually reached, every one of their rows stamped. The vote is re-read per recipient,
     /// so a stop, cancel or extend mid-batch ends it rather than mailing the rest a deadline
     /// — or a vote — that no longer stands; the unstamped rows are then left for the sweep,
     /// which only retries while the vote is Open.
     /// </summary>
     private async Task<int> SendOpenedEmailsAsync(
-        AssemblyVote vote, IReadOnlyList<AssemblyVoteRoster> rows, CancellationToken ct)
+        AssemblyVote vote, IReadOnlyList<AssemblyVoteRoster> roster, CancellationToken ct)
     {
-        var recipients = await RecipientsAsync(rows, ct);
+        var recipients = (await RecipientsAsync(roster, ct))
+            .Where(r => r.Rows.All(row => row.NotifiedAt is null))
+            .ToList();
         var notified = 0;
 
-        foreach (var (rosterRow, info, address) in recipients)
+        foreach (var (rosterRow, rows, info, address) in recipients)
         {
             // Re-read per recipient, as the reminder loop does: mailing a whole electorate
             // takes long enough for an Admin to stop, cancel or extend the vote in the
@@ -1480,7 +1485,7 @@ internal sealed class AssemblyVoteService(
                 // reminder stamp is: an Extend landing while it went out leaves no stamp, and
                 // the retry sweep sends this member the deadline now in force.
                 await repository.StampNotifiedAsync(
-                    [rosterRow.Id], clock.GetCurrentInstant(), current.ClosesAt, ct);
+                    rows.Select(r => r.Id).ToList(), clock.GetCurrentInstant(), current.ClosesAt, ct);
                 notified++;
             }
             catch (Exception ex)
@@ -1520,7 +1525,7 @@ internal sealed class AssemblyVoteService(
         var roster = await repository.GetRosterAsync(vote.Id, ct);
         var recipients = await RecipientsAsync(roster, ct);
 
-        foreach (var (rosterRow, info, address) in recipients)
+        foreach (var (rosterRow, _, info, address) in recipients)
         {
             try
             {
@@ -1563,21 +1568,20 @@ internal sealed class AssemblyVoteService(
     /// </para>
     /// </summary>
     private async Task<AssemblyVoteRoster?> EffectiveRosterAsync(
-        Guid voteId, Guid userId, CancellationToken ct, IReadOnlySet<Guid>? mergedSourceIds = null)
+        Guid voteId, Guid userId, CancellationToken ct, IReadOnlyList<Guid>? chainIds = null)
     {
-        var own = await repository.GetRosterRowAsync(voteId, userId, ct);
+        // Every id the human has held: the resolved record's own id first and the archived
+        // ids after it in id order, not set enumeration order, which comes out of a cache
+        // and is not stable, and which row a member is shown must not vary between reads.
+        chainIds ??= (await users.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
+        if (chainIds.Count == 1) return await repository.GetRosterRowAsync(voteId, chainIds[0], ct);
 
-        mergedSourceIds ??= await users.GetMergedSourceIdsAsync(userId, ct);
-        if (mergedSourceIds.Count == 0) return own;
-
-        // Ordered by id, not by set enumeration: the set comes out of a cache and its order
-        // is not stable, and which row a member is shown must not vary between two reads.
-        var candidates = own is null ? [] : new List<AssemblyVoteRoster> { own };
-        foreach (var sourceId in mergedSourceIds.OrderBy(id => id))
+        var candidates = new List<AssemblyVoteRoster>(chainIds.Count);
+        foreach (var id in chainIds)
         {
-            if (await repository.GetRosterRowAsync(voteId, sourceId, ct) is { } inherited)
+            if (await repository.GetRosterRowAsync(voteId, id, ct) is { } row)
             {
-                candidates.Add(inherited);
+                candidates.Add(row);
             }
         }
 
@@ -1595,19 +1599,28 @@ internal sealed class AssemblyVoteService(
     }
 
     /// <summary>
-    /// Pairs roster rows with their member's details and notification address, dropping
-    /// anonymized rows and anyone with no reachable address.
+    /// One recipient per human on the roster: their details, their notification address, and
+    /// every roster row that resolved to them. Rows with no reachable address drop out.
+    /// Always fed the whole roster, never a pre-filtered slice of it: a filter that drops one
+    /// of a human's rows (already stamped, already voted) hides that row from the group, and
+    /// the decision to mail is taken over the group; see the callers.
     /// </summary>
     /// <remarks>
-    /// Keyed by the roster row's own user id, with no resolution of accounts merged away
-    /// since the vote opened: a tombstone holds no notification address, so such a row
-    /// drops out here and that member is not mailed. Following the merge forward is Users'
-    /// business, not this section's, and no read contract offers it — the entitlement
-    /// itself survives, because <see cref="EffectiveRosterAsync"/> finds the row from the
-    /// surviving account and the member can still cast their ballot from the vote page.
+    /// A roster row stays on the account that held the entitlement when the vote opened, and
+    /// that account may since have been merged away (peterdrier/Humans#1699 keeps the row
+    /// where it is deliberately — it is the evidence of who was entitled). Users resolves such
+    /// an id forward to the surviving account (#1704), so the member is mailed at the address
+    /// they actually read, and this section never knows a merge chain exists. A GDPR-erased
+    /// row resolves to itself, still has no address, and still drops out.
+    ///
+    /// <para>Two roster rows can therefore resolve to one human — enrolled twice, then merged.
+    /// They are one recipient, mailed once, and <b>every</b> row in the group is stamped;
+    /// stamping only one would earn that member the same email again on the next sweep.
+    /// The group is represented by an official row where it has one, since that is the
+    /// member's standing and the emails say so.</para>
     /// </remarks>
-    private async Task<List<(AssemblyVoteRoster Roster, UserInfo Info, string Address)>> RecipientsAsync(
-        IReadOnlyList<AssemblyVoteRoster> roster, CancellationToken ct)
+    private async Task<List<(AssemblyVoteRoster Roster, IReadOnlyList<AssemblyVoteRoster> Rows, UserInfo Info, string Address)>>
+        RecipientsAsync(IReadOnlyList<AssemblyVoteRoster> roster, CancellationToken ct)
     {
         var userIds = roster.Where(r => r.UserId is not null).Select(r => r.UserId!.Value).Distinct().ToList();
         if (userIds.Count == 0) return [];
@@ -1617,13 +1630,17 @@ internal sealed class AssemblyVoteService(
 
         return roster
             .Where(r => r.UserId is not null
-                && infos.ContainsKey(r.UserId.Value) && addresses.ContainsKey(r.UserId.Value)
-                // A tombstone — merged away or GDPR-erased — is dropped rather than mailed.
-                // It keeps a sentinel `@merged.local` / erased address that satisfies Identity
-                // uniqueness and reaches nobody, so sending would bounce the association's
-                // domain rather than quietly do nothing.
-                && !infos[r.UserId.Value].IsTombstone)
-            .Select(r => (r, infos[r.UserId!.Value], addresses[r.UserId!.Value]))
+                && infos.ContainsKey(r.UserId.Value) && addresses.ContainsKey(r.UserId.Value))
+            .GroupBy(r => infos[r.UserId!.Value].Id)
+            .Select(g =>
+            {
+                var representative = g.FirstOrDefault(r => r.IsOfficial) ?? g.First();
+                return (
+                    representative,
+                    (IReadOnlyList<AssemblyVoteRoster>)g.ToList(),
+                    infos[representative.UserId!.Value],
+                    addresses[representative.UserId!.Value]);
+            })
             .ToList();
     }
 
@@ -1699,12 +1716,12 @@ internal sealed class AssemblyVoteService(
     {
         if (vote.Status != AssemblyVoteStatus.Open) return;
 
-        var unsent = (await repository.GetRosterAsync(vote.Id, ct))
-            .Where(r => r.NotifiedAt is null)
-            .ToList();
-        if (unsent.Count == 0) return;
+        var roster = await repository.GetRosterAsync(vote.Id, ct);
+        if (roster.All(r => r.NotifiedAt is not null)) return;
 
-        var sent = await SendOpenedEmailsAsync(vote, unsent, ct);
+        // The whole roster, not the unstamped rows: a human holding a stamped row and an
+        // unstamped one was reached, and the send decides that over all their rows.
+        var sent = await SendOpenedEmailsAsync(vote, roster, ct);
         if (sent == 0) return;
 
         // Automation that emails the electorate says so under the job actor, as the reminder
@@ -1732,10 +1749,20 @@ internal sealed class AssemblyVoteService(
             var pending = await repository.GetRosterNeedingReminderAsync(vote.Id, ct);
             if (pending.Count == 0) continue;
 
-            var recipients = await RecipientsAsync(pending, ct);
-            var reminded = new List<Guid>(pending.Count);
+            // Grouped over the whole roster, not the pending rows. The pending read excludes
+            // a row holding a ballot and a row already reminded, so a human who voted on one
+            // row, or was reminded through it, and still holds a blank one would arrive
+            // here through the blank row alone, and a decision taken on that row alone tells
+            // a member who has voted that they have not. A human is reminded only when every
+            // row they hold is pending; a group with a voted or reminded row is left as it
+            // is, and its blank rows pend again next sweep at the cost of this read.
+            var pendingIds = pending.Select(r => r.Id).ToHashSet();
+            var recipients = (await RecipientsAsync(await repository.GetRosterAsync(vote.Id, ct), ct))
+                .Where(r => r.Rows.All(row => pendingIds.Contains(row.Id)))
+                .ToList();
+            var reminded = new List<Guid>(recipients.Count);
 
-            foreach (var (rosterRow, info, address) in recipients)
+            foreach (var (rosterRow, rows, info, address) in recipients)
             {
                 // Eligibility is re-read per recipient, not trusted from the list: sending
                 // the whole roster takes long enough for somebody to vote, or for an Admin to
@@ -1762,7 +1789,9 @@ internal sealed class AssemblyVoteService(
                 if (current.ClosesAt <= sentAt || current.ClosesAt > sentAt + ReminderLeadTime) break;
                 var closesAt = ClosingLocal(current.ClosesAt);
 
-                if (await repository.GetBallotForRosterAsync(vote.Id, rosterRow.Id, ct) is not null)
+                // Over every row the human holds: a ballot cast mid-batch lands on whichever
+                // of their rows EffectiveRosterAsync resolved them to.
+                if (await HasBallotOnAnyRowAsync(vote.Id, rows, ct))
                 {
                     continue;
                 }
@@ -1787,7 +1816,9 @@ internal sealed class AssemblyVoteService(
                     // going out, no stamp, and the next sweep tells this member the deadline
                     // now in force rather than leaving them with the one they were sent.
                     await repository.StampReminderSentAsync(
-                        [rosterRow.Id], sentAt, current.ClosesAt, ct);
+                        rows.Select(r => r.Id).ToList(), sentAt, current.ClosesAt, ct);
+                    // One entry per human, not per row: every row of a merge chain is stamped,
+                    // but the member behind them got one email and the audit count says members.
                     reminded.Add(rosterRow.Id);
                 }
                 catch (Exception ex)
@@ -1812,6 +1843,16 @@ internal sealed class AssemblyVoteService(
         }
     }
 
+    private async Task<bool> HasBallotOnAnyRowAsync(
+        Guid voteId, IReadOnlyList<AssemblyVoteRoster> rows, CancellationToken ct)
+    {
+        foreach (var row in rows)
+        {
+            if (await repository.GetBallotForRosterAsync(voteId, row.Id, ct) is not null) return true;
+        }
+        return false;
+    }
+
     // ==========================================================================
     // GDPR and account merge
     // ==========================================================================
@@ -1827,10 +1868,10 @@ internal sealed class AssemblyVoteService(
         // on the merged-away id, so the survivor's download would otherwise omit an
         // entitlement and a ballot that are unmistakably theirs — the erasure path beside
         // this one already follows the same chain.
-        var record = await repository.GetVotingRecordForUserAsync(userId, ct);
-        foreach (var sourceId in await users.GetMergedSourceIdsAsync(userId, ct))
+        IReadOnlyList<(AssemblyVoteRoster Roster, AssemblyVote Vote, AssemblyBallot? Ballot)> record = [];
+        foreach (var id in (await users.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId])
         {
-            record = [.. record, .. await repository.GetVotingRecordForUserAsync(sourceId, ct)];
+            record = [.. record, .. await repository.GetVotingRecordForUserAsync(id, ct)];
         }
 
         var rows = record

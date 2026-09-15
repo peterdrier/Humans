@@ -56,19 +56,19 @@ public sealed class DuplicateAccountServiceTests
     }
 
     [HumansFact]
-    public async Task DetectDuplicatesAsync_ExcludesMergeTombstone()
+    public async Task DetectDuplicatesAsync_NeverSeesAMergeTombstone()
     {
         var survivor = Guid.NewGuid();
-        var tombstone = Guid.NewGuid();
-        SetUsers(
-            MakeInfo(survivor, emails: [Email(survivor, "john@foo.com", verified: true, primary: true)]),
-            // Tombstone: its UserEmail rows were reassigned to the survivor, but the legacy
-            // User.Email column lingers — UserInfo.Email falls back to it. Must NOT re-collide.
-            MakeInfo(tombstone, identityEmailColumn: "john@foo.com", mergedAt: Now, mergedToUserId: survivor));
+        SetUsers(MakeInfo(survivor, emails: [Email(survivor, "john@foo.com", verified: true, primary: true)]));
 
         var groups = await Sut.DetectDuplicatesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        groups.Should().BeEmpty("a merge tombstone must not re-collide with its own survivor");
+        groups.Should().BeEmpty(
+            "a tombstone still carries its pre-merge User.Email column and would re-collide "
+            + "with its own survivor forever; GetAllUserInfosAsync is one entry per living "
+            + "human so the scan never sees one (pinned in CachingUserServiceTests)");
+        await _userService.Received(1).GetAllUserInfosAsync(Arg.Any<CancellationToken>());
+        await _userService.DidNotReceive().GetAllRawUserInfosAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

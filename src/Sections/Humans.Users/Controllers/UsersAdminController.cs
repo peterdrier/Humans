@@ -54,7 +54,7 @@ internal sealed class UsersAdminController(
         int page = 1,
         CancellationToken ct = default)
     {
-        var allUsers = await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
+        var allUsers = await _userService.GetAllRawUserInfosAsync(ct).ConfigureAwait(false);
         var allUserIds = allUsers.Select(u => u.Id).ToList();
         var notificationEmails =
             await userEmailService.GetNotificationEmailsByUserIdsAsync(allUserIds, ct);
@@ -131,7 +131,7 @@ internal sealed class UsersAdminController(
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> AdminDetail(Guid id, CancellationToken ct)
     {
-        var info = await _userService.GetUserInfoAsync(id, ct);
+        var info = await _userService.GetRawUserInfoAsync(id, ct);
         if (info is null)
             return NotFound();
 
@@ -148,12 +148,8 @@ internal sealed class UsersAdminController(
             ? value
             : null;
 
-        // If this is a merge tombstone, resolve the survivor's name for the banner.
-        var mergedToName = info.MergedToUserId is Guid mergedTo
-            ? (await _userService.GetUserInfoAsync(mergedTo, ct))?.BurnerName
-            : null;
         var rejectedByName = info.Profile?.RejectedByUserId is Guid rejectedByUserId
-            ? (await _userService.GetUserInfoAsync(rejectedByUserId, ct))?.BurnerName
+            ? (await _userService.GetRawUserInfoAsync(rejectedByUserId, ct))?.BurnerName
             : null;
 
         var viewModel = AdminHumanDetailViewModelBuilder.Build(
@@ -167,8 +163,7 @@ internal sealed class UsersAdminController(
             outboxCount,
             clock.GetCurrentInstant(),
             rejectedByName,
-            revealedIban,
-            mergedToName);
+            revealedIban);
 
         return View(viewModel);
     }
@@ -181,7 +176,7 @@ internal sealed class UsersAdminController(
         var actor = await GetCurrentUserInfoAsync(ct);
         if (actor is null) return Forbid();
 
-        var info = await _userService.GetUserInfoAsync(id, ct);
+        var info = await _userService.GetRawUserInfoAsync(id, ct);
         var iban = info?.Profile?.Iban;
         if (iban is null)
         {
@@ -262,7 +257,7 @@ internal sealed class UsersAdminController(
     [HttpGet("{id:guid}/Roles/Add")]
     public async Task<IActionResult> AddRole(Guid id)
     {
-        if (await _userService.GetUserInfoAsync(id) is null)
+        if (await _userService.GetRawUserInfoAsync(id) is null)
             return NotFound();
 
         var viewModel = new CreateRoleAssignmentViewModel
@@ -278,7 +273,7 @@ internal sealed class UsersAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddRole(Guid id, CreateRoleAssignmentViewModel model)
     {
-        if (await _userService.GetUserInfoAsync(id) is null)
+        if (await _userService.GetRawUserInfoAsync(id) is null)
             return NotFound();
 
         if (string.IsNullOrWhiteSpace(model.RoleName))
@@ -398,7 +393,7 @@ internal sealed class UsersAdminController(
         if (environment.IsProduction())
             return NotFound();
 
-        var user = await _userService.GetUserInfoAsync(id);
+        var user = await _userService.GetRawUserInfoAsync(id);
         if (user is null)
             return NotFound();
 

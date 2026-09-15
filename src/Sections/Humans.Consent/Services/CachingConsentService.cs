@@ -187,17 +187,16 @@ internal sealed class CachingConsentService(
         string ipAddress, string userAgent, CancellationToken ct = default)
     {
         ConsentSubmitResult result;
-        IReadOnlySet<Guid> sourceIds;
+        IReadOnlyList<Guid> chainIds;
 
-        // Resolve the merge-chain source ids OUTSIDE the submit so we know
-        // every cache key affected by this write, then refresh all of them
-        // inline below. We also need the SAME source-id set the inner uses
-        // to decide AlreadyConsented; resolving it once here and trusting
-        // the inner is consistent (both go through IUserService).
+        // Resolve the human's full id list OUTSIDE the submit so we know every cache
+        // key affected by this write, then refresh all of them inline below. It is the
+        // SAME list the inner uses to decide AlreadyConsented; resolving it once here
+        // and trusting the inner is consistent (both go through IUserService).
         await using (var scope = scopeFactory.CreateAsyncScope())
         {
             var userService = scope.ServiceProvider.GetRequiredService<IUserServiceRead>();
-            sourceIds = await userService.GetMergedSourceIdsAsync(userId, ct);
+            chainIds = (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
 
             var inner = scope.ServiceProvider.GetRequiredKeyedService<IConsentService>(InnerServiceKey);
             result = await inner.SubmitConsentAsync(
@@ -209,9 +208,10 @@ internal sealed class CachingConsentService(
         // cache entry is still correct.
         if (result.Success)
         {
-            await ReplaceAsync(userId, ct).ConfigureAwait(false);
-            foreach (var sourceId in sourceIds)
-                await ReplaceAsync(sourceId, ct).ConfigureAwait(false);
+            // The id submitted with is refreshed even when it is not in the list (a stale
+            // read); every id of the human is refreshed because every one is a cache key.
+            foreach (var id in chainIds.Contains(userId) ? chainIds : [userId, .. chainIds])
+                await ReplaceAsync(id, ct).ConfigureAwait(false);
         }
 
         return result;

@@ -588,6 +588,14 @@ internal sealed class ProfileEmailsController(
         if (targetUser is null)
             return NotFound();
 
+        // A merge moves every email row to the surviving account, and the grid's forms
+        // submit the row ids under the id in the route. Opened on a tombstone, the page
+        // would show the survivor's rows under the archived id and every form would post
+        // a mismatched owner; the survivor's own page is where those rows are managed.
+        var resolved = await _userService.GetUserInfoAsync(id, ct);
+        if (resolved is not null && resolved.Id != id)
+            return RedirectToAction(nameof(AdminEmails), new { id = resolved.Id });
+
         var viewModel = await BuildEmailsViewModelAsync(targetUser, isAdminContext: true, ct);
         return View("Emails", viewModel);
     }

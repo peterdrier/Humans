@@ -15,7 +15,10 @@ namespace Humans.Workgroups.Tests.Services;
 /// </summary>
 public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
 {
-    [HumansTheory]
+    // The first case stands up a full WorkgroupService over the in-memory context, so on a
+    // cold runner it pays the EF model build inside a theory's default 5 s budget. Same
+    // allowance as the Camps and Shifts theories that do the same.
+    [HumansTheory(Timeout = 10000)]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
     public async Task Registration_CompletesWhenTheRequestDisconnectsDuringFolderCreation(bool existing)

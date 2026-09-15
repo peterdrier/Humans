@@ -121,17 +121,16 @@ internal sealed class AuditLogService(
     /// <inheritdoc />
     public async Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default)
     {
-        // Chain-follow merge tombstones for source-id-attributed rows.
-        var sourceIds = await userService.GetMergedSourceIdsAsync(userId, ct);
-        if (sourceIds.Count == 0)
+        // Rows attributed to an account merged into this one belong to the same human, and
+        // the id asked with may itself be an archived one: the read resolves it forward, so
+        // the ids are the resolved record's, not the caller's.
+        var allIds = (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
+        if (allIds.Count == 1)
         {
-            var entries = await repo.GetByUserAsync(userId, count, ct);
+            var entries = await repo.GetByUserAsync(allIds[0], count, ct);
             return entries.Select(ToSnapshot).ToList();
         }
 
-        var allIds = new List<Guid>(sourceIds.Count + 1);
-        allIds.AddRange(sourceIds);
-        allIds.Add(userId);
         var mergedEntries = await repo.GetByUserIdsAsync(allIds, count, ct);
         return mergedEntries.Select(ToSnapshot).ToList();
     }
@@ -145,22 +144,12 @@ internal sealed class AuditLogService(
         int limit = 20,
         CancellationToken ct = default)
     {
-        // Chain-follow merge tombstones when userId is supplied.
+        // Rows attributed to an account merged into this one belong to the same human; the
+        // id list is the resolved record's, as in GetByUserAsync.
         IReadOnlyCollection<Guid>? userIds = null;
         if (userId.HasValue)
         {
-            var sourceIds = await userService.GetMergedSourceIdsAsync(userId.Value, ct);
-            if (sourceIds.Count == 0)
-            {
-                userIds = [userId.Value];
-            }
-            else
-            {
-                var combined = new List<Guid>(sourceIds.Count + 1);
-                combined.AddRange(sourceIds);
-                combined.Add(userId.Value);
-                userIds = combined;
-            }
+            userIds = (await userService.GetUserInfoAsync(userId.Value, ct))?.AllUserIds ?? [userId.Value];
         }
 
         var entries = await repo.GetFilteredEntriesAsync(entityType, entityId, userIds, actions, limit, ct);
@@ -171,18 +160,16 @@ internal sealed class AuditLogService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        // Chain-follow merge tombstones for source-id-attributed rows.
-        var sourceIds = await userService.GetMergedSourceIdsAsync(userId, ct);
+        // Rows attributed to an account merged into this one belong to the same human; the
+        // id list is the resolved record's, as in GetByUserAsync.
+        var allIds = (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
         IReadOnlyList<AuditLogEntry> entries;
-        if (sourceIds.Count == 0)
+        if (allIds.Count == 1)
         {
-            entries = await repo.GetAllForUserContributorAsync(userId, ct);
+            entries = await repo.GetAllForUserContributorAsync(allIds[0], ct);
         }
         else
         {
-            var allIds = new List<Guid>(sourceIds.Count + 1);
-            allIds.AddRange(sourceIds);
-            allIds.Add(userId);
             entries = await repo.GetAllForUserIdsContributorAsync(allIds, ct);
         }
 

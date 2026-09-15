@@ -25,7 +25,6 @@ namespace Humans.Users.Tests.Services;
 public class AccountDeletionServiceTests
 {
     private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
-    private readonly IUserServiceRead _userServiceRead = Substitute.For<IUserServiceRead>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
@@ -50,13 +49,8 @@ public class AccountDeletionServiceTests
             .Returns(new UserProfileAnonymizeResult(false, null, null));
         _ticketQueryService.GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new UserTicketHoldings(0, []));
-        // No merge history unless a test gives one — Users walks the chain and calls Gdpr per id.
-        _userServiceRead.GetMergedSourceIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid>());
-
         _service = new AccountDeletionService(
             _userService,
-            _userServiceRead,
             _userEmailService,
             _teamService,
             _roleAssignmentService,
@@ -81,7 +75,7 @@ public class AccountDeletionServiceTests
     public async Task RequestDeletionAsync_UnknownUser_ReturnsNotFound()
     {
         var userId = Guid.NewGuid();
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
 
         var result = await _service.RequestDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -95,7 +89,7 @@ public class AccountDeletionServiceTests
     public async Task RequestDeletionAsync_AlreadyPending_ReturnsAlreadyPending()
     {
         var userId = Guid.NewGuid();
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(MakeUser(userId, deletionPending: true));
 
         var result = await _service.RequestDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
@@ -111,7 +105,7 @@ public class AccountDeletionServiceTests
     {
         var userId = Guid.NewGuid();
         var user = MakeUser(userId);
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
         _teamService.RevokeAllMembershipsAsync(userId, Arg.Any<CancellationToken>()).Returns(3);
         _roleAssignmentService.RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>()).Returns(1);
         _userEmailService.GetNotificationTargetEmailsAsync(
@@ -152,7 +146,7 @@ public class AccountDeletionServiceTests
     {
         var userId = Guid.NewGuid();
         var user = MakeUser(userId, email: "primary@example.com");
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
         _userEmailService.GetNotificationTargetEmailsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
                 Arg.Any<CancellationToken>())
@@ -175,7 +169,7 @@ public class AccountDeletionServiceTests
         var userId = Guid.NewGuid();
         var user = MakeUser(userId);
         var holdDate = _clock.GetCurrentInstant().Plus(Duration.FromDays(60));
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
         _ticketQueryService.GetUserTicketHoldingsAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new UserTicketHoldings(
                 1,
@@ -208,7 +202,7 @@ public class AccountDeletionServiceTests
     public async Task CancelDeletionAsync_PendingDeletion_ClearsViaUserService()
     {
         var userId = Guid.NewGuid();
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(MakeUser(userId, deletionPending: true));
 
         var result = await _service.CancelDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
@@ -221,7 +215,7 @@ public class AccountDeletionServiceTests
     public async Task CancelDeletionAsync_NoPendingDeletion_ReturnsNoDeletionPending()
     {
         var userId = Guid.NewGuid();
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(MakeUser(userId));
 
         var result = await _service.CancelDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
@@ -235,7 +229,7 @@ public class AccountDeletionServiceTests
     public async Task CancelDeletionAsync_UnknownUser_ReturnsNotFound()
     {
         var userId = Guid.NewGuid();
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
 
         var result = await _service.CancelDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -252,7 +246,7 @@ public class AccountDeletionServiceTests
     public async Task PurgeAsync_UnknownUser_ReturnsNotFound()
     {
         var userId = Guid.NewGuid();
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
 
         var result = await _service.PurgeAsync(userId, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -268,9 +262,8 @@ public class AccountDeletionServiceTests
     {
         var userId = Guid.NewGuid();
         var mergedIn = Guid.NewGuid();
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
-        _userServiceRead.GetMergedSourceIdsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid> { mergedIn });
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(MakeUser(userId) with { MergedUserIds = [mergedIn] });
 
         await _service.PurgeAsync(userId, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -290,46 +283,48 @@ public class AccountDeletionServiceTests
         var survivor = Guid.NewGuid();
         var middle = Guid.NewGuid();
         var oldest = Guid.NewGuid();
-        _userService.GetUserInfoAsync(survivor, Arg.Any<CancellationToken>()).Returns(MakeUser(survivor));
-        // oldest -> middle -> survivor: the first hop is not rewritten when the second happens.
-        _userServiceRead.GetMergedSourceIdsAsync(survivor, Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid> { middle });
-        _userServiceRead.GetMergedSourceIdsAsync(middle, Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid> { oldest });
+        // oldest -> middle -> survivor: Users reports the whole chain transitively, so the
+        // survivor's record lists both archived ids.
+        _userService.GetRawUserInfoAsync(survivor, Arg.Any<CancellationToken>())
+            .Returns(MakeUser(survivor) with { MergedUserIds = [oldest, middle] });
 
         await _service.PurgeAsync(survivor, ct: Xunit.TestContext.Current.CancellationToken);
 
-        // Every id in the chain — the transitive sources and the survivor — reaches Gdpr.
+        // Every id in the chain — the archived ids and the survivor — reaches Gdpr, and the
+        // survivor goes last so a contributor that throws partway leaves the rest erased.
         await _gdprService.Received(1).EraseForUserAsync(oldest, Arg.Any<CancellationToken>());
         await _gdprService.Received(1).EraseForUserAsync(middle, Arg.Any<CancellationToken>());
         await _gdprService.Received(1).EraseForUserAsync(survivor, Arg.Any<CancellationToken>());
+        Received.InOrder(() =>
+        {
+            _ = _gdprService.EraseForUserAsync(oldest, Arg.Any<CancellationToken>());
+            _ = _gdprService.EraseForUserAsync(middle, Arg.Any<CancellationToken>());
+            _ = _gdprService.EraseForUserAsync(survivor, Arg.Any<CancellationToken>());
+        });
     }
 
-    // Termination is the assertion here, so it is stated rather than left to the default
-    // timeout: a chain that loops fails this in seconds instead of burning the full 30.
-    [HumansFact(Timeout = 5000)]
-    public async Task PurgeAsync_WithACircularMergeRecord_StillTerminates()
+    [HumansFact]
+    public async Task PurgeAsync_OnATombstoneId_ErasesThatRowAloneNotTheSurvivor()
     {
-        var userId = Guid.NewGuid();
-        var other = Guid.NewGuid();
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
-        _userServiceRead.GetMergedSourceIdsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid> { other });
-        _userServiceRead.GetMergedSourceIdsAsync(other, Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid> { userId, other });
+        // The raw read is the whole point: purging an archived id directly must erase that
+        // one row. Through the redirecting read it would resolve to the living survivor and
+        // erase the whole human instead.
+        var archived = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        _userService.GetRawUserInfoAsync(archived, Arg.Any<CancellationToken>())
+            .Returns(MakeUser(archived));
 
-        var result = await _service.PurgeAsync(userId, ct: Xunit.TestContext.Current.CancellationToken);
+        await _service.PurgeAsync(archived, ct: Xunit.TestContext.Current.CancellationToken);
 
-        result.Success.Should().BeTrue();
-        await _gdprService.Received(1).EraseForUserAsync(other, Arg.Any<CancellationToken>());
-        await _gdprService.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
+        await _gdprService.Received(1).EraseForUserAsync(archived, Arg.Any<CancellationToken>());
+        await _gdprService.DidNotReceive().EraseForUserAsync(survivor, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
     public async Task PurgeAsync_Success_ErasesEverySectionAndInvalidatesActiveTeamsCache()
     {
         var userId = Guid.NewGuid();
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
 
         var result = await _service.PurgeAsync(userId, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -351,7 +346,7 @@ public class AccountDeletionServiceTests
     {
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
 
         await _service.PurgeAsync(userId, actorId, Xunit.TestContext.Current.CancellationToken);
 
@@ -373,7 +368,7 @@ public class AccountDeletionServiceTests
     public async Task AnonymizeExpiredAccountAsync_UnknownUser_ReturnsNull()
     {
         var userId = Guid.NewGuid();
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
 
         var result = await _service.AnonymizeExpiredAccountAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -388,7 +383,7 @@ public class AccountDeletionServiceTests
         var user = MakeUser(userId, email: "expired@example.com", displayName: "Expired Human",
             preferredLanguage: "es");
 
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
 
         var result = await _service.AnonymizeExpiredAccountAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -412,7 +407,7 @@ public class AccountDeletionServiceTests
         // post-erasure cross-section cache invalidations must not run either. Contributor
         // ordering and per-section semantics are Gdpr's concern (GdprServiceTests).
         var userId = Guid.NewGuid();
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
         _gdprService.When(x => x.EraseForUserAsync(userId, Arg.Any<CancellationToken>()))
             .Do(_ => throw new InvalidOperationException("boom"));
 
@@ -431,9 +426,8 @@ public class AccountDeletionServiceTests
         // its cache dropped — an admin purge has no daily retry to fix it otherwise.
         var survivor = Guid.NewGuid();
         var archived = Guid.NewGuid();
-        _userService.GetUserInfoAsync(survivor, Arg.Any<CancellationToken>()).Returns(MakeUser(survivor));
-        _userServiceRead.GetMergedSourceIdsAsync(survivor, Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid> { archived });
+        _userService.GetRawUserInfoAsync(survivor, Arg.Any<CancellationToken>())
+            .Returns(MakeUser(survivor) with { MergedUserIds = [archived] });
         // Chain is [archived, survivor]; the survivor's erasure throws after archived's succeeds.
         _gdprService.When(x => x.EraseForUserAsync(survivor, Arg.Any<CancellationToken>()))
             .Do(_ => throw new InvalidOperationException("boom"));

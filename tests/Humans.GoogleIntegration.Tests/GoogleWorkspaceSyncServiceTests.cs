@@ -386,6 +386,61 @@ public sealed class GoogleWorkspaceSyncServiceTests
     }
 
     [HumansFact]
+    public async Task AddUserToTeamResourcesAsync_ForAMergedAwayId_GrantsAndLogsAgainstTheSurvivor()
+    {
+        // #1704: the outbox event names the archived id; the emails, the permission level and
+        // the sync-log attribution all belong to the survivor the read resolved to.
+        var archivedId = Guid.NewGuid();
+        _syncSettingsService
+            .GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
+            .Returns(SyncMode.AddAndRemove);
+        _syncSettingsService
+            .GetModeAsync(SyncServiceType.GoogleGroups, Arg.Any<CancellationToken>())
+            .Returns(SyncMode.None);
+
+        _userService.GetUserInfoAsync(archivedId, Arg.Any<CancellationToken>())
+            .Returns(MakeUser(TestUserId, TestUserEmail));
+        _userEmailService
+            .GetEntitiesByUserIdAsync(TestUserId, Arg.Any<CancellationToken>())
+            .Returns([
+                new UserEmailRowSnapshot(
+                    Guid.NewGuid(), TestUserId, TestUserEmail,
+                    IsVerified: true, Provider: null, ProviderKey: null, IsGoogle: true,
+                    IsPrimary: false, Visibility: null, VerificationSentAt: null,
+                    CreatedAt: default, UpdatedAt: default)
+            ]);
+
+        var driveResource = MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId);
+        _resourceRepository
+            .GetActiveByTeamIdAsync(TestTeamId, Arg.Any<CancellationToken>())
+            .Returns([driveResource]);
+        _teamService.GetTeamAsync(TestTeamId, Arg.Any<CancellationToken>())
+            .Returns((TeamInfo?)null);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo>());
+        _drivePermissions
+            .CreatePermissionAsync(TestGoogleFolderId, TestUserEmail, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Created, null));
+
+        await _syncService.AddUserToTeamResourcesAsync(TestTeamId, archivedId, Xunit.TestContext.Current.CancellationToken);
+
+        await _userEmailService.DidNotReceive()
+            .GetEntitiesByUserIdAsync(archivedId, Arg.Any<CancellationToken>());
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessGranted,
+            TestDriveFolderResourceId,
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            TestUserEmail,
+            Arg.Any<string>(),
+            Arg.Any<GoogleSyncSource>(),
+            success: true,
+            errorMessage: Arg.Any<string?>(),
+            userId: TestUserId,
+            ct: Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task AddUserToDriveAsync_WhenCreateFails_RecordsFailedSyncLogEntry()
     {
         // Issue nobodies-collective/Humans#1099 — a failed Drive grant must

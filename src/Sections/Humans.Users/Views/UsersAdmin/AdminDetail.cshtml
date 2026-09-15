@@ -20,26 +20,7 @@
 </nav>
 
 
-@if (Model.IsMerged)
-{
-    <div class="alert alert-warning">
-        <i class="fa-solid fa-code-merge me-2"></i>
-        This account is a <strong>merge tombstone</strong> — it was folded into
-        @if (Model.MergedToUserId is Guid mergedTo)
-        {
-            <a asp-action="AdminDetail" asp-route-id="@mergedTo">@(Model.MergedToDisplayName ?? "another account")</a>
-        }
-        else
-        {
-            <text>another account</text>
-        }
-        @if (Model.MergedAt is DateTime mergedAt)
-        {
-            <text> on @mergedAt.ToString("g") UTC</text>
-        }
-        and is locked out (sign-in disabled). Its data was reassigned to the surviving account.
-    </div>
-}
+<vc:merged-accounts user-id="@Model.UserId" />
 
 <div class="row">
     <div class="col-md-8">

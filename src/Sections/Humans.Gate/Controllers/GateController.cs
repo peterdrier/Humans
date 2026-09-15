@@ -126,8 +126,10 @@ internal sealed class GateController(
     {
         // The claimant must be a real active member — the id comes from the form, so an
         // arbitrary/inactive guid must never reach PIN enrolment (attribution integrity).
+        // A merged-away id resolves to its survivor; fail closed rather than stamp the
+        // session with an id the PIN store and attribution no longer recognise.
         var info = await UserService.GetUserInfoAsync(userId, ct);
-        if (info is not { IsActive: true })
+        if (info is not { IsActive: true } || info.Id != userId)
             return RedirectToAction(nameof(Claim));
 
         // Don't stamp the session yet — resolve the staffer's PIN status and hand off to the
@@ -143,8 +145,9 @@ internal sealed class GateController(
     {
         // The claimant must be a real active member — guard before any enrol/verify/stamp, so a
         // direct POST with an arbitrary or inactive id can't mint a PIN or claim the session.
+        // A merged-away id resolves to its survivor; fail closed (see Claim).
         var info = await UserService.GetUserInfoAsync(userId, ct);
-        if (info is not { IsActive: true })
+        if (info is not { IsActive: true } || info.Id != userId)
             return RedirectToAction(nameof(Claim));
 
         // Re-derive the mode from the server (never trust a client-supplied set/verify hint).
@@ -199,11 +202,12 @@ internal sealed class GateController(
     }
 
     // The one email safe to hint on a shared, role-less kiosk: a verified address the owner set to
-    // org-public (AllActiveProfiles) visibility — never a Board/coordinator/team-scoped address, and
-    // never a merged/GDPR tombstone. Mirrors the Bio-bucket public-email rule; if the person has no
-    // org-public email, the picker simply shows no disambiguator (the photo still helps).
+    // org-public (AllActiveProfiles) visibility, never a Board/coordinator/team-scoped address.
+    // Tombstones never reach here: search omits them and the resolving read returns the
+    // survivor. Mirrors the Bio-bucket public-email rule; if the person has no org-public
+    // email, the picker simply shows no disambiguator (the photo still helps).
     private static string? PublicEmail(UserInfo? info) =>
-        info is null || info.IsTombstone
+        info is null
             ? null
             : info.UserEmails
                 .Where(e => e.IsVerified && e.Visibility == ContactFieldVisibility.AllActiveProfiles)

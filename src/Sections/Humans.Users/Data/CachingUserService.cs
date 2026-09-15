@@ -49,11 +49,150 @@ internal sealed class CachingUserService(
     public const string InnerServiceKey = "user-inner";
 
     // ==========================================================================
+    // Merge index
+    // ==========================================================================
+
+    /// <summary>
+    /// Derived index: for every id that has at least one row merged into it,
+    /// transitively, the sorted ids of those rows. Null means dirty — see
+    /// <see cref="OnMutated"/>. Rebuilt lazily on first read after a mutation.
+    /// </summary>
+    /// <remarks>
+    /// Rebuild, publication and invalidation all run under <see cref="_mergeIndexLock"/>.
+    /// A rebuild reads the live store, so an unlocked one that started before a mutation
+    /// could finish after it and publish a pre-mutation index over the null
+    /// <see cref="OnMutated"/> had just written, leaving a newly merged id invisible to
+    /// consent reads and the GDPR fan-outs until the next mutation, whenever that is. A
+    /// version check on publication still has that gap between the check and the write.
+    /// The lock makes the stale state unrepresentable: a mutation either lands before the
+    /// rebuild starts and is in it, or waits for the publish and then drops it. The cost is
+    /// readers serialising behind one O(rows) walk after a mutation, which at this scale is
+    /// milliseconds, a few times a day.
+    /// </remarks>
+    private Dictionary<Guid, Guid[]>? _mergeIndex;
+    private readonly Lock _mergeIndexLock = new();
+
+    /// <summary>
+    /// Any change to the raw store can change the merge graph — a merge lands as a
+    /// per-entry <c>Set</c> via <c>RefreshEntryAsync</c>, not only at warmup — so the
+    /// index is dropped on every mutation rather than built once after the snapshot loads.
+    /// </summary>
+    protected override void OnMutated()
+    {
+        lock (_mergeIndexLock) _mergeIndex = null;
+    }
+
+    /// <inheritdoc cref="_mergeIndex" />
+    private Dictionary<Guid, Guid[]> MergeIndex
+    {
+        get
+        {
+            lock (_mergeIndexLock)
+            {
+                if (_mergeIndex is { } cached) return cached;
+
+                // One pass: each tombstone walks forward to its terminus and registers
+                // itself against every node on the way, so a survivor ends up carrying
+                // the whole chain behind it (A→B→C leaves C with {A, B}). The visited
+                // set makes a cyclic or dangling MergedToUserId terminate rather than loop.
+                var rows = AsReadOnlyDictionary;
+                var builder = new Dictionary<Guid, List<Guid>>();
+                foreach (var row in rows.Values)
+                {
+                    if (row.MergedToUserId is null) continue;
+
+                    var visited = new HashSet<Guid> { row.Id };
+                    var next = row.MergedToUserId;
+                    while (next is { } nodeId && visited.Add(nodeId))
+                    {
+                        if (!builder.TryGetValue(nodeId, out var sources))
+                            builder[nodeId] = sources = [];
+                        sources.Add(row.Id);
+
+                        next = rows.TryGetValue(nodeId, out var node) ? node.MergedToUserId : null;
+                    }
+                }
+
+                var index = new Dictionary<Guid, Guid[]>(builder.Count);
+                foreach (var (id, sources) in builder)
+                {
+                    var ids = sources.ToArray();
+                    Array.Sort(ids);
+                    index[id] = ids;
+                }
+
+                _mergeIndex = index;
+                return index;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Stamps <see cref="UserInfo.MergedUserIds"/> from the merge index. Allocates only
+    /// for a row that absorbed something, which is rare.
+    /// </summary>
+    private UserInfo Stamp(UserInfo row) =>
+        MergeIndex.TryGetValue(row.Id, out var ids) ? row with { MergedUserIds = ids } : row;
+
+    /// <summary>
+    /// Follows a merge tombstone forward to its terminus — the first row on the chain
+    /// with no <see cref="UserInfo.MergedToUserId"/>. A living row, and a GDPR-erased row
+    /// (erasure reuses <c>MergedAt</c> but leaves <c>MergedToUserId</c> null), resolve to
+    /// themselves. A cycle or a pointer at a row that is gone resolves to the last row
+    /// reached and logs; it never throws and never loops.
+    /// </summary>
+    private UserInfo Resolve(UserInfo row)
+    {
+        if (row.MergedToUserId is null) return row;
+
+        var visited = new HashSet<Guid> { row.Id };
+        while (row.MergedToUserId is { } next)
+        {
+            if (!visited.Add(next))
+            {
+                logger.LogWarning(
+                    "Merge chain cycles at userId={UserId}; resolving to that row.", row.Id);
+                break;
+            }
+            if (!TryGet(next, out var target))
+            {
+                logger.LogWarning(
+                    "Merge chain from userId={UserId} points at missing userId={MissingUserId}; " +
+                    "resolving to the last row reached.", row.Id, next);
+                break;
+            }
+            row = target;
+        }
+        return row;
+    }
+
+    // ==========================================================================
     // UserInfo reads
     // ==========================================================================
 
-    public ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default) =>
-        GetAsync(userId, ct);
+    public async ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default)
+    {
+        // Warm first: MergedUserIds is a property of the whole graph, so a cold cache
+        // holding only this one row would stamp an empty chain onto a survivor.
+        await EnsureWarmedAsync(ct).ConfigureAwait(false);
+        var row = await GetAsync(userId, ct).ConfigureAwait(false);
+        return row is null ? null : Stamp(Resolve(row));
+    }
+
+    /// <inheritdoc cref="IUserService.GetRawUserInfoAsync" />
+    public async ValueTask<UserInfo?> GetRawUserInfoAsync(Guid userId, CancellationToken ct = default)
+    {
+        await EnsureWarmedAsync(ct).ConfigureAwait(false);
+        var row = await GetAsync(userId, ct).ConfigureAwait(false);
+        return row is null ? null : Stamp(row);
+    }
+
+    /// <inheritdoc cref="IUserService.GetAllRawUserInfosAsync" />
+    public async Task<IReadOnlyCollection<UserInfo>> GetAllRawUserInfosAsync(CancellationToken ct = default)
+    {
+        await EnsureWarmedAsync(ct).ConfigureAwait(false);
+        return Values.Select(Stamp).ToArray();
+    }
 
     /// <summary>
     /// Per-key loader plugged into <see cref="TrackedCache{TKey,TValue}.GetAsync"/>.
@@ -71,7 +210,10 @@ internal sealed class CachingUserService(
     public async Task<IReadOnlyCollection<UserInfo>> GetAllUserInfosAsync(CancellationToken ct = default)
     {
         await EnsureWarmedAsync(ct).ConfigureAwait(false);
-        return Values.ToArray();
+        // Tombstones are omitted — one entry per living human. Merge tombstones and
+        // GDPR-erased rows alike: outside Users a merge chain does not exist. Both stay
+        // reachable by id through GetUserInfoAsync.
+        return Values.Where(r => !r.IsTombstone).Select(Stamp).ToArray();
     }
 
     /// <inheritdoc cref="IUserService.GetUserInfosAsync" />
@@ -88,7 +230,7 @@ internal sealed class CachingUserService(
         foreach (var id in userIds)
         {
             if (TryGet(id, out var hit))
-                result[id] = hit;
+                result[id] = Stamp(Resolve(hit));
             else
                 (misses ??= []).Add(id);
         }
@@ -101,7 +243,7 @@ internal sealed class CachingUserService(
                 if (info is not null)
                 {
                     Set(id, info);
-                    result[id] = info;
+                    result[id] = Stamp(Resolve(info));
                 }
             }
         }
@@ -154,7 +296,10 @@ internal sealed class CachingUserService(
         if ((fields & PersonSearchFields.ExactName) == PersonSearchFields.None
             && Guid.TryParse(query, out var idGuid))
         {
-            if (TryGet(idGuid, out var byId) && byId.Profile is not null && byId.Profile.RejectedAt is null)
+            // A pasted id from an audit trail may be a merged-away one: jump to its survivor.
+            if (TryGet(idGuid, out var byIdRow)
+                && Resolve(byIdRow) is { Profile: not null } byId
+                && byId.Profile.RejectedAt is null)
             {
                 return [
                     new HumanSearchResult(
@@ -174,6 +319,9 @@ internal sealed class CachingUserService(
         var results = new List<HumanSearchResult>();
         foreach (var u in Values)
         {
+            // Tombstones never surface: a search hit is an id callers act on, and the survivor
+            // row carries the same person.
+            if (u.IsTombstone) continue;
             if (u.Profile is null) continue;
             if (u.Profile.RejectedAt is not null) continue;
 
@@ -456,31 +604,6 @@ internal sealed class CachingUserService(
     public Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
         Instant now, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetAccountsDueForAnonymizationAsync(now, ct));
-
-    public async Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(
-        Guid targetUserId, CancellationToken ct = default)
-    {
-        await EnsureWarmedAsync(ct).ConfigureAwait(false);
-
-        // Transitive: A merged into B, then B later merged into C leaves A's
-        // row pointing at B, not C. Walk the tombstone chain to a fixed point
-        // rather than one hop, so C's read picks up {A, B}. `ids.Add` guards
-        // against a cyclic MergedToUserId chain (shouldn't happen, but would
-        // otherwise loop forever).
-        var ids = new HashSet<Guid>();
-        var frontier = new HashSet<Guid> { targetUserId };
-        while (frontier.Count > 0)
-        {
-            var next = new HashSet<Guid>();
-            foreach (var u in Values)
-            {
-                if (u.MergedToUserId is { } mergedTo && frontier.Contains(mergedTo) && ids.Add(u.Id))
-                    next.Add(u.Id);
-            }
-            frontier = next;
-        }
-        return ids;
-    }
 
     public Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetUsersWithLoginsButNoEmailsAsync(ct));

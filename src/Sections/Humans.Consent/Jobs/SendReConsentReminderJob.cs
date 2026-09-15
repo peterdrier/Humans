@@ -103,12 +103,12 @@ public class SendReConsentReminderJob(
                         user.PreferredLanguage),
                         cancellationToken);
 
-                    await userService.SetLastConsentReminderSentAsync(userId, now, cancellationToken);
+                    await userService.SetLastConsentReminderSentAsync(user.Id, now, cancellationToken);
                     sentCount++;
 
                     logger.LogInformation(
                         "Sent re-consent reminder to user {UserId} ({Email})",
-                        userId, effectiveEmail);
+                        user.Id, effectiveEmail);
                 }
             }
 

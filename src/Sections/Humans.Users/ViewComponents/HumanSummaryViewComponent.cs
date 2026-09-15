@@ -20,6 +20,8 @@ public sealed class HumanSummaryViewComponent(IUserServiceRead userService, ITea
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)
     {
         var info = await userService.GetUserInfoAsync(userId);
+        if (info is not null)
+            userId = info.Id; // team memberships below are keyed by the live id
         if (info is null)
         {
             return View("Default", new ProfileSummaryViewModel

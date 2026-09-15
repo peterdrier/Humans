@@ -33,7 +33,7 @@ public class NobodiesEmailBadgeViewComponent(IUserServiceRead userService) : Vie
         var nobodies = info?.UserEmails.FirstOrDefault(e => e.IsVerified
             && e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase));
 
-        ViewBag.UserId = userId;
+        ViewBag.UserId = info?.Id ?? userId; // the provisioning form posts the live id
         ViewBag.HasEmail = nobodies is not null;
         ViewBag.Email = nobodies?.Email;
         ViewBag.IsPrimary = nobodies?.IsPrimary == true;

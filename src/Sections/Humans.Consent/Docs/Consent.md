@@ -82,7 +82,7 @@ Append-only per design-rules §12. **DB triggers** (`prevent_consent_record_upda
 
 Cross-aggregate nav `ConsentRecord.DocumentVersion` — still declared and walked by `ConsentRepository.GetAllForUserIdsAsync` (`.Include(c => c.DocumentVersion).ThenInclude(v => v.LegalDocument)`) to surface document name + version number on the user's consent-history view.
 
-Per-user reads on `consent_records` chain-follow merge tombstones via `IUserServiceRead.GetMergedSourceIdsAsync(userId)` so consents signed under a now-merged source id surface for the fold target. Consent records stay at source after merge by design — DB triggers make any rewrite physically impossible, so `AnonymizeForMergeAsync` cannot move them.
+Per-user reads on `consent_records` chain-follow merge tombstones via `UserInfo.AllUserIds` of the record `IUserServiceRead.GetUserInfoAsync(userId)` returned (survivor first, then `MergedUserIds`; never the requested id) so consents signed under a now-merged source id surface for the fold target, and a read through a merged-away id sees the survivor's consents. Consent records stay at source after merge by design, DB triggers make any rewrite physically impossible, so `AnonymizeForMergeAsync` cannot move them.
 
 ## Routing
 
@@ -132,7 +132,7 @@ Three controllers serve this section.
 - When all required global documents have active consent, the human's consent check status transitions from unset to Pending.
 - Legal documents are synced from a GitHub repository by a background job.
 - When a new document version is published, existing consents for the old version become stale and re-consent is required.
-- Per-user reads on `consent_records` chain-follow merge tombstones via `IUserServiceRead.GetMergedSourceIdsAsync(userId)` so consents signed under a now-merged source id surface for the fold target. Consent records stay at source after merge — DB triggers (`prevent_consent_record_update`, `prevent_consent_record_delete`) make any rewrite physically impossible.
+- Per-user reads on `consent_records` chain-follow merge tombstones via the resolved record's `UserInfo.AllUserIds` so consents signed under a now-merged source id surface for the fold target. Consent records stay at source after merge, DB triggers (`prevent_consent_record_update`, `prevent_consent_record_delete`) make any rewrite physically impossible.
 
 ## Negative Access Rules
 
@@ -155,7 +155,7 @@ Three controllers serve this section.
 - **Notifications:** `Humans.Notifications.Contracts.INotificationEmitter` (in-app fan-out from `LegalDocumentSyncService`) and `INotificationAutoResolve.ResolveBySourceAsync` (auto-resolve `AccessSuspended` notifications from `ConsentService` once all required consents are complete — the narrow auto-resolve contract, not the full inbox service).
 - **Human Lifecycle:** `IHumanLifecycleService.RestoreConsentSuspensionAsync` — `ConsentService` lifts a consent suspension once all required consents are complete (alongside resolving the `AccessSuspended` notification). `ConsentService` no longer depends on `ISystemTeamSync` — after the name-only access switch, a consent submit does not provision system-team membership; the scheduled `SystemTeamSyncJob` reconciles Volunteers/Coordinators on name + consents.
 - **Governance:** `IMembershipCalculatorRead.GetRequiredTeamIdsForUserAsync` / `HasAllRequiredConsentsAsync` — `ConsentService` resolves which teams' documents apply to a given user and whether all required consents are complete.
-- **Users/Identity:** `IUserServiceRead.GetMergedSourceIdsAsync` — chain-follow merge tombstones on every per-user consent read so consents signed under a source id surface for the fold target. Consent records are immutable per §12 and stay at source. `IUserServiceRead.GetAllUserInfosAsync` (filtered to `IsActive`) is the in-app notification fan-out list when `LegalDocumentSyncService` publishes a new / re-consent-required version; only the email pass (`LegalDocumentSyncRunner`) narrows to affected team members.
+- **Users/Identity:** `IUserServiceRead.GetUserInfoAsync` / `GetUserInfosAsync`, the returned `UserInfo.AllUserIds` chain-follows merge tombstones on every per-user consent read so consents signed under a source id surface for the fold target, and the read resolves a tombstone id forward to its survivor. Consent records are immutable per §12 and stay at source. `IUserServiceRead.GetAllUserInfosAsync` (filtered to `IsActive`) is the in-app notification fan-out list when `LegalDocumentSyncService` publishes a new / re-consent-required version; only the email pass (`LegalDocumentSyncRunner`) narrows to affected team members.
 
 `IGitHubLegalDocumentConnector` is owned by this section (interface and implementation both `internal` in `Humans.Consent.Services`); not a cross-section dependency.
 

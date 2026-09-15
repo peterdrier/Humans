@@ -569,9 +569,9 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
         // and if both cast a ballot they voted twice, which is a defect in the vote itself.
         // Tidying it away in the merge would destroy the only record that it happened.
         //
-        // Nothing is lost by leaving them: `IUserServiceRead.GetMergedSourceIdsAsync` walks
-        // the merge chain transitively, so the surviving account still resolves to every id
-        // folded into it — which is how GDPR erasure already reaches these rows.
+        // Nothing is lost by leaving them: `UserInfo.MergedUserIds` carries the merge chain
+        // transitively, so the surviving account still resolves to every id folded into it —
+        // which is how GDPR erasure already reaches these rows.
         var rostered = await ctx.AssemblyVoteRosterEntries
             .Where(r => r.UserId == sourceUserId)
             .Select(r => r.VoteId)

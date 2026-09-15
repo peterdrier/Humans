@@ -79,14 +79,10 @@ public class AttendeeContactImportServicePlanTests
         });
         harness.UserEmails.FindByAddressAsync("jane@x.com", true, true, Arg.Any<CancellationToken>())
             .Returns([UserEmailFixtures.Row(deadId, "jane@x.com")]);
+        // The user read resolves the merge chain forward (#1704): asking for the merged-away
+        // id hands back the surviving row.
         harness.Users.GetUserInfoAsync(deadId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(
-                new User { Id = deadId, MergedToUserId = liveId },
-                [], [], [], null, []));
-        harness.Users.GetUserInfoAsync(liveId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(
-                new User { Id = liveId, MergedToUserId = null },
-                [], [], [], null, []));
+            .Returns(UserInfo.Create(new User { Id = liveId }, [], [], [], null, []));
 
         var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 

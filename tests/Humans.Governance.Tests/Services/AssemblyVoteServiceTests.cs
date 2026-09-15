@@ -1244,6 +1244,30 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task RunLapseAndReminderSweepAsync_MergedRosterRows_AuditsOneMemberNotTwoRows()
+    {
+        // #1704: a merge chain leaves the survivor holding two roster rows. Both are stamped so
+        // neither is re-sent, but one email went out, so the audit line the Board reads has to
+        // count humans — counting rows overstates who was reminded.
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(12));
+        var source = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        _fx.StubMergedInto(source, survivor);
+        await _fx.AddRosterRowAsync(vote.Id, survivor, isOfficial: true);
+        await _fx.AddRosterRowAsync(vote.Id, source, isOfficial: false);
+
+        await _fx.Service.RunLapseAndReminderSweepAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _fx.Audit.Received(1).LogAsync(
+            AuditAction.AssemblyVoteRemindersSent,
+            AuditEntityTypes.AssemblyVote,
+            vote.Id,
+            Arg.Is<string>(m => m.Contains("1 roster member(s)")),
+            AssemblyVoteService.LapseJobName);
+    }
+
+    [HumansFact]
     public async Task OpenAsync_WhenTheDeadlinePassesWhileTheRosterIsBuilt_IsRejected()
     {
         var vote = await _fx.AddVoteAsync(
@@ -1623,24 +1647,103 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task RunLapseAndReminderSweepAsync_DoesNotMailARosterRowLeftOnAMergeTombstone()
+    public async Task RunLapseAndReminderSweepAsync_RemindsTheSurvivorOfARosterRowLeftOnATombstone()
     {
         var vote = await _fx.AddVoteAsync(
             closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(12));
         var mergedAway = Guid.NewGuid();
         var survivor = Guid.NewGuid();
         _fx.StubMergedInto(mergedAway, survivor);
-        await _fx.AddRosterRowAsync(vote.Id, mergedAway, isOfficial: true, notified: false);
+        var row = await _fx.AddRosterRowAsync(vote.Id, mergedAway, isOfficial: true, notified: false);
 
         await _fx.Service.RunLapseAndReminderSweepAsync(
             Xunit.TestContext.Current.CancellationToken);
 
-        // The merge leaves the roster row where it is and scrubs the tombstone's address to
-        // a `@merged.local` sentinel that reaches nobody. Mailing it would bounce, so the row
-        // is dropped; the entitlement is unaffected and the survivor votes from the vote page.
+        // The merge leaves the roster row on the archived id deliberately — it records who
+        // was entitled when the vote opened. Users resolves that id forward, so the member is
+        // reminded at the address they read, not at the `@merged.local` sentinel (#1704).
+        _fx.Messages.Received(1).AssemblyVoteReminder(
+            survivor + "@example.org", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<LocalDateTime>(),
+            Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<string?>());
+
+        var stamped = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
+            .SingleAsync(r => r.Id == row.Id, Xunit.TestContext.Current.CancellationToken);
+        stamped.ReminderSentAt.Should().NotBeNull();
+    }
+
+    [HumansFact]
+    public async Task RunLapseAndReminderSweepAsync_WhenTheSurvivorVotedOnTheirOwnRow_DoesNotRemindThroughTheArchivedRow()
+    {
+        // The pending read returns only the blank archived row; deciding on it alone would tell
+        // a member who has voted that they have not. Grouped over the whole roster, the human
+        // holds a voted row, so no reminder goes out and the blank row stays unstamped.
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(12));
+        var mergedAway = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        _fx.StubMergedInto(mergedAway, survivor);
+        var archivedRow = await _fx.AddRosterRowAsync(vote.Id, mergedAway, isOfficial: false);
+        var survivorRow = await _fx.AddRosterRowAsync(vote.Id, survivor, isOfficial: true);
+        await _fx.AddBallotAsync(vote.Id, survivorRow.Id, AssemblyBallotChoice.Yes);
+
+        await _fx.Service.RunLapseAndReminderSweepAsync(Xunit.TestContext.Current.CancellationToken);
+
         _fx.Messages.DidNotReceive().AssemblyVoteReminder(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<LocalDateTime>(),
             Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<string?>());
+        var stored = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
+            .SingleAsync(r => r.Id == archivedRow.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.ReminderSentAt.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task SendOpenedEmails_MailsTheSurvivorOfARosterRowLeftOnATombstone()
+    {
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromDays(5));
+        var mergedAway = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        _fx.StubMergedInto(mergedAway, survivor);
+        var row = await _fx.AddRosterRowAsync(vote.Id, mergedAway, isOfficial: true, notified: false);
+
+        await _fx.Service.RunLapseAndReminderSweepAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        _fx.Messages.Received(1).AssemblyVoteOpened(
+            survivor + "@example.org", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<LocalDateTime>(),
+            Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<string?>());
+
+        var stamped = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
+            .SingleAsync(r => r.Id == row.Id, Xunit.TestContext.Current.CancellationToken);
+        stamped.NotifiedAt.Should().NotBeNull();
+    }
+
+    [HumansFact]
+    public async Task SendOpenedEmails_TwoRosterRowsForOneHuman_MailOnceAndStampBoth()
+    {
+        // Enrolled twice, then merged: both rows resolve to the same person. Mailing per row
+        // would send the same notice twice, and stamping only one would send it again on the
+        // next sweep.
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromDays(5));
+        var mergedAway = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        _fx.StubMergedInto(mergedAway, survivor);
+        var archivedRow = await _fx.AddRosterRowAsync(vote.Id, mergedAway, isOfficial: true, notified: false);
+        var survivorRow = await _fx.AddRosterRowAsync(vote.Id, survivor, isOfficial: true, notified: false);
+
+        await _fx.Service.RunLapseAndReminderSweepAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        _fx.Messages.Received(1).AssemblyVoteOpened(
+            survivor + "@example.org", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<LocalDateTime>(),
+            Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<string?>());
+
+        var rows = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
+            .Where(r => r.VoteId == vote.Id)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        rows.Should().HaveCount(2).And.OnlyContain(r => r.NotifiedAt != null);
+        rows.Select(r => r.Id).Should().BeEquivalentTo([archivedRow.Id, survivorRow.Id]);
     }
 
     [HumansFact]

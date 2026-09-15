@@ -92,6 +92,10 @@ internal sealed class ProfileViewController(
             return NotFound();
         }
 
+        // A link to a merged-away id lands on the survivor's page, under the survivor's URL.
+        if (profileInfo.Id != id)
+            return RedirectToAction(nameof(ViewProfile), new { id = profileInfo.Id });
+
         var viewer = await GetCurrentUserInfoAsync(ct);
         if (viewer is null)
         {
@@ -208,6 +212,7 @@ internal sealed class ProfileViewController(
     {
         var info = await _userService.GetUserInfoAsync(id, ct);
         if (info is null) return NotFound();
+        id = info.Id; // memberships and camp below are keyed by the live id
 
         var profile = info.Profile;
         if (profile is null)
@@ -244,6 +249,7 @@ internal sealed class ProfileViewController(
     {
         var info = await _userService.GetUserInfoAsync(id, ct);
         if (info is null) return NotFound();
+        id = info.Id;
 
         var roleLabels = (await teamService.GetTeamsAsync(ct)).Values
             .Where(t => t.IsActive
@@ -280,6 +286,9 @@ internal sealed class ProfileViewController(
         var targetInfo = await _userService.GetUserInfoAsync(id);
         if (targetInfo is null)
             return NotFound();
+        id = targetInfo.Id;
+        if (currentUser.Id == id)
+            return RedirectToAction(nameof(ViewProfile), new { id });
 
         if (!await commPrefService.AcceptsFacilitatedMessagesAsync(id))
         {
@@ -312,6 +321,9 @@ internal sealed class ProfileViewController(
         var participants = await _userService.GetUserInfosAsync([id, currentUser.Id]);
         if (!participants.TryGetValue(id, out var targetUser))
             return NotFound();
+        id = targetUser.Id;
+        if (currentUser.Id == id)
+            return RedirectToAction(nameof(ViewProfile), new { id });
 
         if (!await commPrefService.AcceptsFacilitatedMessagesAsync(id))
         {

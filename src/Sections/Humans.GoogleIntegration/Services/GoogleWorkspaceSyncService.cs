@@ -254,37 +254,15 @@ internal sealed class GoogleWorkspaceSyncService(
         // Issue #635 (§15i): read UserEmails through the owning section
         // service (design-rules §2c) instead of traversing user.UserEmails
         // cross-domain.
+        // Merge-fold redirect (issue peterdrier/Humans#646): an outbox event enqueued
+        // before a merge is dequeued after it, so the id here may be an account that was
+        // folded away — its team_members row and its UserEmails moved to the survivor.
+        // Users resolves that forward (#1704), so provisioning reads the survivor's emails.
         var user = await userService.GetUserInfoAsync(userId, cancellationToken);
-
-        // Merge-fold redirect (issue peterdrier/Humans#646): if the source
-        // user has been folded into a target via AccountMergeService, the
-        // outbox event was enqueued before the merge but is being dequeued
-        // after. The team_members row was re-FK'd to the target, and the
-        // source's UserEmails were also re-FK'd, so a lookup against the
-        // source returns "no verified email" even though the target has one.
-        // Follow the MergedToUserId chain to the terminal target — A→B→C
-        // possible if B was later merged into C.
-        var hops = 0;
-        while (user is { MergedToUserId: { } targetUserId } && hops < 16)
-        {
-            logger.LogInformation(
-                "Following merge-fold redirect for AddUserToTeamResources: source {SourceUserId} → target {TargetUserId} (team {TeamId})",
-                userId, targetUserId, teamId);
-            userId = targetUserId;
-            user = await userService.GetUserInfoAsync(userId, cancellationToken);
-            hops++;
-        }
-
-        if (hops >= 16 && user is { MergedToUserId: not null })
-        {
-            logger.LogWarning(
-                "Merge-fold chain exceeded 16 hops for user {UserId} on team {TeamId}; provisioning against intermediate node",
-                userId, teamId);
-        }
 
         var userEmails = user is null
             ? (IReadOnlyList<UserEmailRowSnapshot>)[]
-            : await userEmailService.GetEntitiesByUserIdAsync(userId, cancellationToken);
+            : await userEmailService.GetEntitiesByUserIdAsync(user.Id, cancellationToken);
 
         var googleEmail = userEmails
             .Where(e => e.IsVerified && e.IsGoogle)
@@ -317,6 +295,11 @@ internal sealed class GoogleWorkspaceSyncService(
             logger.LogDebug("Skipping AddUserToTeamResources for user {UserId} — GoogleEmailStatus is Rejected", userId);
             return;
         }
+
+        // From here on the id is the resolved human's, as the email above already is: the
+        // team_members rows the permission level is read from moved to the survivor at
+        // merge, and the grant is audited against the account that actually holds it.
+        userId = user.Id;
 
         var team = await teamService.GetTeamAsync(teamId, cancellationToken);
         var resources = await resourceRepository.GetActiveByTeamIdAsync(teamId, cancellationToken);

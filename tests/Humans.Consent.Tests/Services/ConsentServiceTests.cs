@@ -73,11 +73,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
 
         var consentRepository = new ConsentRepository(LegalDbFactory);
 
-        // Default: no merge tombstones — chain-follow short-circuits to the
-        // single-id repo path.
-        _userService.GetMergedSourceIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid>());
-
+        // Default: nothing merged into anybody, so reads take the single-id repo path.
         // Default: requesting any user returns a UserInfo carrying an Active
         // profile with all required identity fields populated. Tests that need
         // a Stub-state (or missing) profile override this for the specific
@@ -600,14 +596,22 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         SeedConsentRecord(sourceId, versionId);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        // Target's chain-follow set includes the source.
-        _userService.GetMergedSourceIdsAsync(targetId, Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid> { sourceId });
-        // Source tombstone has no further sources.
-        _userService.GetMergedSourceIdsAsync(sourceId, Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid>());
-        _userService.GetMergedSourceIdsAsync(unrelatedId, Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid>());
+        // The source was merged into the target, so the target's record lists it. The source
+        // id still resolves to the target's record — that is the redirect (#1704) — and the
+        // unrelated id lists nothing.
+        var target = WrapInUserInfo(targetId, UserFixtures.Profile(
+            burnerName: "Burner", firstName: "First", lastName: "Last",
+            createdAt: Clock.GetCurrentInstant()));
+        var targetInfo = target with { MergedUserIds = [sourceId] };
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                ((IReadOnlyCollection<Guid>)call[0]).ToDictionary(
+                    id => id,
+                    id => id == unrelatedId
+                        ? WrapInUserInfo(unrelatedId, UserFixtures.Profile(
+                            burnerName: "Burner", firstName: "First", lastName: "Last",
+                            createdAt: Clock.GetCurrentInstant()))
+                        : targetInfo)));
 
         // Input contains both source and target — duplicate-id risk path.
         var result = await _service.GetConsentMapForUsersAsync([sourceId, targetId, unrelatedId], Xunit.TestContext.Current.CancellationToken);
@@ -616,6 +620,34 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         result[targetId].Should().Contain(versionId, "target's chain-follow includes the source's explicit consent");
         result.Should().ContainKey(sourceId);
         result.Should().ContainKey(unrelatedId);
+    }
+
+    [HumansFact]
+    public async Task GetConsentMapForUsersAsync_TargetBeforeSource_TargetStillSeesTheSourcesConsent()
+    {
+        // Same batch, reversed. Both ids resolve to the target's row, so both carry the
+        // same MergedUserIds; a reverse source→target map let whichever input was written
+        // last own the source, and with the target written first it lost the source's
+        // consent — enough to fail a required-consent gate for the surviving human.
+        var sourceId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
+        SeedConsentRecord(sourceId, versionId);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var target = WrapInUserInfo(targetId, UserFixtures.Profile(
+            burnerName: "Burner", firstName: "First", lastName: "Last",
+            createdAt: Clock.GetCurrentInstant()));
+        var targetInfo = target with { MergedUserIds = [sourceId] };
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                ((IReadOnlyCollection<Guid>)call[0]).ToDictionary(id => id, _ => targetInfo)));
+
+        var result = await _service.GetConsentMapForUsersAsync([targetId, sourceId], Xunit.TestContext.Current.CancellationToken);
+
+        result[targetId].Should().Contain(versionId,
+            "the survivor keeps the consent signed under the id merged into it, whatever the batch order");
     }
 
     // --- Helpers ---
@@ -691,5 +723,32 @@ public sealed class ConsentServiceTests : ConsentTestHarness
             CreatedAt = Clock.GetCurrentInstant()
         });
         LegalDb.SaveChanges();
+    }
+
+    [HumansFact]
+    public async Task GetConsentMapForUsersAsync_ThroughAMergedAwayId_IncludesTheSurvivorsOwnConsent()
+    {
+        // #1704: a caller still holding the archived id gets the survivor's record, and the
+        // chain to union is that record's AllUserIds, survivor first. A union over
+        // [archived, ..MergedUserIds] would miss what the survivor signed after the merge.
+        var sourceId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
+        SeedConsentRecord(targetId, versionId);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var target = WrapInUserInfo(targetId, UserFixtures.Profile(
+            burnerName: "Burner", firstName: "First", lastName: "Last",
+            createdAt: Clock.GetCurrentInstant()));
+        var targetInfo = target with { MergedUserIds = [sourceId] };
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                ((IReadOnlyCollection<Guid>)call[0]).ToDictionary(id => id, _ => targetInfo)));
+
+        var result = await _service.GetConsentMapForUsersAsync([sourceId], Xunit.TestContext.Current.CancellationToken);
+
+        result[sourceId].Should().Contain(versionId,
+            "the archived id reads as the human it became, consents signed as the survivor included");
     }
 }

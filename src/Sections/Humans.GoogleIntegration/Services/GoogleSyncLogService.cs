@@ -129,17 +129,19 @@ internal sealed class GoogleSyncLogService(
             }
         }
 
-        await repo.DeleteByUserIdsAsync(await UserIdsWithMergedSourcesAsync(userId, ct), ct);
+        // This id only, unlike the export above. #1704: erasure is driven per id by
+        // AccountDeletionService, which walks the merge chain raw and calls every contributor
+        // once per archived id, so fanning out here would resolve a tombstone forward and take
+        // the living survivor's trail with it on a direct purge of that tombstone.
+        await repo.DeleteByUserIdsAsync([userId], ct);
     }
 
-    /// <summary>Chain-follows merge tombstones so a merged human keeps their trail.</summary>
-    private async Task<List<Guid>> UserIdsWithMergedSourcesAsync(Guid userId, CancellationToken ct)
-    {
-        var sourceIds = await userService.GetMergedSourceIdsAsync(userId, ct);
-        var ids = new List<Guid>(sourceIds.Count + 1) { userId };
-        ids.AddRange(sourceIds);
-        return ids;
-    }
+    /// <summary>
+    /// Every id the human behind <paramref name="userId"/> has held, from the resolved
+    /// record, so a merged human keeps their whole trail whichever of their ids is asked with.
+    /// </summary>
+    private async Task<IReadOnlyList<Guid>> UserIdsWithMergedSourcesAsync(Guid userId, CancellationToken ct) =>
+        (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
 
     private async Task<IReadOnlyList<GoogleSyncLogView>> ToViewsAsync(
         IReadOnlyList<GoogleSyncLogEntry> entries, CancellationToken ct)

@@ -161,4 +161,31 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
         public Task<GoogleIntegrationDbContext> CreateDbContextAsync(CancellationToken ct = default) =>
             Task.FromResult(new GoogleIntegrationDbContext(options));
     }
+
+    [HumansFact]
+    public async Task ProcessQueuedAsync_AddUserEventForAMergedAwayId_MarksTheSurvivorsEmailValid()
+    {
+        // #1704: the sync carried the event out for the survivor, so the status lands there.
+        var outboxEvent = await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.AddUserToTeamResources);
+        var survivorId = Guid.NewGuid();
+        _userService
+            .GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo>
+                {
+                    [outboxEvent.UserId] = UserInfo.Create(
+                        new User { Id = survivorId, UserName = "s", Email = "s@example.org" },
+                        [], [], [], null, []),
+                }));
+        _resourceRepository
+            .GetActiveByTeamIdAsync(outboxEvent.TeamId, Arg.Any<CancellationToken>())
+            .Returns([new GoogleResource { Id = Guid.NewGuid(), TeamId = outboxEvent.TeamId, ResourceType = GoogleResourceType.DriveFolder, GoogleId = "f", Name = "f", IsActive = true }]);
+
+        await _processor.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _userService.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
+            survivorId, GoogleEmailStatus.Valid, Arg.Any<CancellationToken>());
+        await _userService.DidNotReceive().TrySetGoogleEmailStatusFromSyncAsync(
+            outboxEvent.UserId, Arg.Any<GoogleEmailStatus>(), Arg.Any<CancellationToken>());
+    }
 }

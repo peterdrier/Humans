@@ -554,7 +554,11 @@ internal sealed class GoogleGroupSyncService(
         {
             if (!users.TryGetValue(userId, out var user))
                 continue;
-            if (user.GoogleEmailStatus == GoogleEmailStatus.Rejected || user.IsDeletionPending || user.MergedToUserId is not null)
+            // A claim on a merged-away id resolves to its survivor, but the email rows below are
+            // the claimed id's own; skip rather than pair the survivor with an archived address.
+            if (user.Id != userId)
+                continue;
+            if (user.GoogleEmailStatus == GoogleEmailStatus.Rejected || user.IsDeletionPending)
                 continue;
             if (user.IsSuspended)
                 continue;

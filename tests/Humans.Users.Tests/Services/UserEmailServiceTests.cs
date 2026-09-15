@@ -10,6 +10,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Services;
+using Humans.Users.Tests.Infrastructure;
 
 namespace Humans.Users.Tests.Services;
 
@@ -2047,6 +2048,30 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
+    public async Task GetNotificationTargetEmailsAsync_ForAMergedAwayId_ReturnsTheSurvivorsAddress()
+    {
+        // #1704: keyed by the requested id, addressed to the resolved human. The merge scrubs
+        // the tombstone's own address to a merged-<id>@merged.local sentinel for Identity
+        // uniqueness, so answering by the requested id would hand out an address that bounces.
+        var archived = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        _userService.GetUserInfosAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo>
+                {
+                    [archived] = UserInfoStubHelpers.MakeUserInfo(survivor),
+                }));
+        _repository.GetAllNotificationTargetUserEmailsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [survivor] = "survivor@example.org" });
+
+        var result = await _service.GetNotificationTargetEmailsAsync(
+            [archived], Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().ContainKey(archived).WhoseValue.Should().Be("survivor@example.org");
+    }
+
+    [HumansFact]
     public async Task FindByAddressAsync_Exact_IsCaseInsensitive()
     {
         var userId = Guid.NewGuid();
@@ -2060,5 +2085,90 @@ public class UserEmailServiceTests
             "ALICE@EXAMPLE.COM", aliased: false, verifiedOnly: true, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().ContainSingle().Which.UserId.Should().Be(userId);
+    }
+
+    [HumansFact]
+    public async Task GetEntitiesByUserIdAsync_MergeTombstone_ReturnsThatRowsOwnEmails()
+    {
+        // #1704: the snapshots carry the owner id and the callers edit and delete rows by it,
+        // so this read stays raw. Resolving forward would hand the tombstone's caller the
+        // survivor's row ids stamped with the archived id — an admin detail page showing one
+        // user's addresses under another's, and a delete aimed at the wrong account.
+        var archived = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        var archivedRow = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = archived,
+            Email = "old@example.com",
+            IsVerified = true,
+        };
+        var survivorRow = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = survivor,
+            Email = "new@example.com",
+            IsVerified = true,
+        };
+        _userService.GetRawUserInfoAsync(archived, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(BuildStubUserInfo(archived, [archivedRow])));
+        _userService.GetUserInfoAsync(archived, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(BuildStubUserInfo(survivor, [survivorRow])));
+
+        var result = await _service.GetEntitiesByUserIdAsync(
+            archived, Xunit.TestContext.Current.CancellationToken);
+
+        var only = result.Should().ContainSingle().Subject;
+        only.Id.Should().Be(archivedRow.Id);
+        only.Email.Should().Be("old@example.com");
+        only.UserId.Should().Be(archived);
+    }
+
+    [HumansFact]
+    public async Task GetEntitiesByUserIdsAsync_MergeTombstone_ReturnsEachRowsOwnEmails()
+    {
+        // #1704: raw for the same reason as the singular read, each requested id gets its own
+        // rows, stamped with itself.
+        var archived = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        var archivedRow = new UserEmail { Id = Guid.NewGuid(), UserId = archived, Email = "old@example.com", IsVerified = true };
+        var survivorRow = new UserEmail { Id = Guid.NewGuid(), UserId = survivor, Email = "new@example.com", IsVerified = true };
+        _userService.GetRawUserInfoAsync(archived, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(BuildStubUserInfo(archived, [archivedRow])));
+        _userService.GetRawUserInfoAsync(survivor, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(BuildStubUserInfo(survivor, [survivorRow])));
+
+        var result = await _service.GetEntitiesByUserIdsAsync([archived, survivor], Xunit.TestContext.Current.CancellationToken);
+
+        result[archived].Should().ContainSingle().Which.Id.Should().Be(archivedRow.Id);
+        result[survivor].Should().ContainSingle().Which.Id.Should().Be(survivorRow.Id);
+        result[archived].Single().UserId.Should().Be(archived);
+    }
+
+    [HumansFact]
+    public async Task GetNobodiesTeamEmailAsync_MergeTombstone_ReturnsNull()
+    {
+        // #1704: raw. Its sole consumer is GDPR erasure, which runs per id down the merge chain.
+        // A merge moves the addresses to the survivor, so a tombstone owns none — resolving
+        // forward would answer with the survivor's Workspace address and get a living human's
+        // mailbox suspended by a purge aimed at an archived row.
+        var archived = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        var survivorRow = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = survivor,
+            Email = "alice@nobodies.team",
+            IsVerified = true,
+        };
+        _userService.GetRawUserInfoAsync(archived, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(BuildStubUserInfo(archived, [])));
+        _userService.GetUserInfoAsync(archived, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(BuildStubUserInfo(survivor, [survivorRow])));
+
+        var result = await _service.GetNobodiesTeamEmailAsync(
+            archived, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeNull();
     }
 }

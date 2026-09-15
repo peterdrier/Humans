@@ -349,7 +349,11 @@ internal sealed class UserEmailService(
     public async Task<string?> GetNobodiesTeamEmailAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        var info = await userService.GetUserInfoAsync(userId, cancellationToken);
+        // #1704: raw. The sole consumer is GDPR erasure, which runs per id down the merge
+        // chain and therefore asks about tombstones. A merge moves the addresses to the
+        // survivor, so a tombstone owns none — and resolving forward would answer with the
+        // survivor's Workspace address and suspend a living human's mailbox.
+        var info = await userService.GetRawUserInfoAsync(userId, cancellationToken);
         return info?.UserEmails
             .FirstOrDefault(e => e.IsVerified
                 && e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))
@@ -362,25 +366,25 @@ internal sealed class UserEmailService(
         if (userIds.Count == 0)
             return new Dictionary<Guid, string>();
 
+        // #1704: resolve first, then look up. A merge tombstone's own address is the
+        // merged-<id>@merged.local sentinel Identity needs for uniqueness, and its
+        // notification-target rows moved to the survivor at merge time — so asking by the
+        // requested id would mail a sentinel that bounces. The key stays the requested id;
+        // the address is the resolved human's.
+        var resolved = await userService.GetUserInfosAsync(userIds, cancellationToken);
         var allNotificationTargets = await repository.GetAllNotificationTargetUserEmailsAsync(cancellationToken);
 
         var result = new Dictionary<Guid, string>(userIds.Count);
         foreach (var userId in userIds)
         {
-            if (allNotificationTargets.TryGetValue(userId, out var email))
-                result[userId] = email;
-        }
+            if (!resolved.TryGetValue(userId, out var user))
+                continue;
 
-        // Fall back to User.Email (Identity) for users without a notification-target row.
-        var missing = userIds.Where(id => !result.ContainsKey(id)).ToList();
-        if (missing.Count > 0)
-        {
-            var users = await userService.GetUserInfosAsync(missing, cancellationToken);
-            foreach (var userId in missing)
-            {
-                if (users.TryGetValue(userId, out var user) && !string.IsNullOrEmpty(user.Email))
-                    result[userId] = user.Email;
-            }
+            if (allNotificationTargets.TryGetValue(user.Id, out var email))
+                result[userId] = email;
+            // Fall back to User.Email (Identity) for users without a notification-target row.
+            else if (!string.IsNullOrEmpty(user.Email))
+                result[userId] = user.Email;
         }
 
         return result;
@@ -435,7 +439,11 @@ internal sealed class UserEmailService(
     public async Task<IReadOnlyList<UserEmailRowSnapshot>> GetEntitiesByUserIdAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        var info = await userService.GetUserInfoAsync(userId, cancellationToken);
+        // #1704: raw, unlike the DTO reads above. These snapshots carry the owner id, and the
+        // callers edit and delete the rows by it, so the rows and the id labelling them have to
+        // come from the same user — a resolving read would hand a tombstone's caller the
+        // survivor's rows stamped with the archived id.
+        var info = await userService.GetRawUserInfoAsync(userId, cancellationToken);
         if (info is null) return [];
         return info.UserEmails.Select(e => ToSnapshot(userId, e)).ToList();
     }
@@ -461,11 +469,12 @@ internal sealed class UserEmailService(
         if (userIds.Count == 0)
             return new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>();
 
-        var infos = await userService.GetUserInfosAsync(userIds, cancellationToken);
-        var result = new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>(infos.Count);
-        foreach (var (uid, info) in infos)
+        // Raw, like the singular read above: each id gets its own rows, stamped with itself.
+        var result = new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>(userIds.Count);
+        foreach (var uid in userIds.Distinct())
         {
-            if (info.UserEmails.Count == 0) continue;
+            var info = await userService.GetRawUserInfoAsync(uid, cancellationToken);
+            if (info is null || info.UserEmails.Count == 0) continue;
             result[uid] = info.UserEmails.Select(e => ToSnapshot(uid, e)).ToList();
         }
         return result;
@@ -707,9 +716,9 @@ internal sealed class UserEmailService(
     {
         // Orphans are UserEmail rows whose UserId is missing or merged. Iterating UserInfo can't find rows for
         // non-existent users, so the repo's full-table scan is still required here.
+        // GetAllUserInfosAsync is already one entry per living human — tombstones are omitted.
         var allEmails = await repository.GetAllUserEmailsAsync(ct);
         var liveUserIds = (await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
-            .Where(u => u.MergedToUserId is null)
             .Select(u => u.Id)
             .ToHashSet();
 

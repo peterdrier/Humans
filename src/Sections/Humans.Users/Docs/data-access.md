@@ -205,6 +205,17 @@ Implements `IUserServiceInternal` (hence `IUserService`, `IUserServiceRead`), `I
 catch OAuth/`UpdateAsync`/`LastLoginAt` writes that bypass the service
 surface). Surfaced on `/Debug/CacheStats`.
 
+The decorator also owns the **merge index**: a `Dictionary<Guid, Guid[]>` built over
+the warmed snapshot mapping each row to every id whose `MergedToUserId` chain reaches
+it, transitively. It is rebuilt lazily on first use after any dict mutation
+(`TrackedCache.OnMutated`), never persisted, and reads the snapshot through
+`AsReadOnlyDictionary` so a rebuild leaves the hit/miss counters alone. The
+rebuild and the drop share one lock, so a mutation landing mid-rebuild cannot
+be overwritten by the stale index that rebuild was producing. Every read
+stamps its rows' `MergedUserIds` from it, and the cross-section reads resolve a
+tombstone id forward to the surviving row before stamping; `GetRawUserInfoAsync` /
+`GetAllRawUserInfosAsync` stamp without resolving.
+
 `UserEmailService.FindByAddressAsync` (the one address → rows lookup; callers
 pick aliasing, verification and cardinality) and
 `UserService.GetByEmailOrAlternateAsync` match addresses in memory against

@@ -163,6 +163,33 @@ public sealed record UserInfo(
     public UserState State { get; init; }
 
     /// <summary>
+    /// Every id whose <see cref="MergedToUserId"/> chain passes through this row,
+    /// transitively, sorted by id. In an A→B→C merge chain, C carries <c>[A, B]</c>.
+    /// Empty for a row nothing was merged into.
+    /// <para>
+    /// This is the single answer to "which archived accounts are this human" — the
+    /// rows AuditLog, Consent, Budget, Expenses and Governance's assembly-vote rosters
+    /// deliberately keep keyed to the archived id. Callers union by these ids; nobody
+    /// walks a chain.
+    /// </para>
+    /// <para>
+    /// Stamped by the Users caching decorator, the only thing that sees the whole graph.
+    /// A record built straight from one row (<see cref="Create"/>) always has <c>[]</c>.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<Guid> MergedUserIds { get; init; } = [];
+
+    /// <summary>
+    /// Every id this human has held: <see cref="Id"/> first, then <see cref="MergedUserIds"/>.
+    /// The list a per-user read of an append-only table queries by (audit rows, consent
+    /// records, roster rows and ballots stay keyed to the archived id on purpose). Seeded from
+    /// this record's own id, never from the id the caller asked with: the cross-section reads
+    /// resolve a tombstone forward, so the id asked with may be one of the archived ones and
+    /// the survivor's own rows would otherwise be the ones left out.
+    /// </summary>
+    public IReadOnlyList<Guid> AllUserIds => MergedUserIds.Count == 0 ? [Id] : [Id, .. MergedUserIds];
+
+    /// <summary>
     /// Canonical profile picture URL. Custom upload served from the file share via
     /// <c>/Profile/Picture?id={ProfileId}&amp;v={ticks}</c> when present, otherwise the
     /// legacy <see cref="User.ProfilePictureUrl"/> column as a fallback. This is the ONLY

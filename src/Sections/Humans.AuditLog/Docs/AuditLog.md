@@ -120,7 +120,7 @@ No one reads audit entries anonymously. The `/AuditLog` dashboard is gated to Bo
 - Audit save failures are swallowed after a log at Error inside `AuditLogService.PersistAsync`. The audit `LogAsync` overloads do not throw back to the caller.
 - `ActorUserId` is nullable — system jobs (Hangfire recurring jobs) write audit entries with no actor; the job-overload `LogAsync(..., string jobName, ...)` prepends the job name to the description.
 - `AuditLogService` implements `IUserDataContributor`, exposing every entry where the user is actor, primary entity, or related entity to the GDPR export orchestrator.
-- Per-user reads chain-follow merge tombstones via `IUserService.GetMergedSourceIdsAsync(userId)` so audit entries written under a now-merged source id surface for the fold target. Applies to `GetByUserAsync`, `GetUserAuditLogPageAsync`, the per-entity history filter when entity is a User, and `ContributeForUserAsync` (GDPR). Audit entries are append-only (§12) and stay attributed to the source User row by design — `AnonymizeForMergeAsync` does NOT rewrite `ActorUserId` / `EntityId` / `RelatedEntityId` columns.
+- Per-user reads chain-follow merge tombstones via `UserInfo.AllUserIds` of the record `IUserServiceRead.GetUserInfoAsync(userId)` returned (the survivor's own id plus `MergedUserIds`; never the requested id) so audit entries written under a now-merged source id surface for the fold target, and a read through a merged-away id shows the survivor's rows too. Applies to `GetByUserAsync`, `GetUserAuditLogPageAsync`, the per-entity history filter when entity is a User, and `ContributeForUserAsync` (GDPR). Audit entries are append-only (§12) and stay attributed to the source User row by design, `AnonymizeForMergeAsync` does NOT rewrite `ActorUserId` / `EntityId` / `RelatedEntityId` columns.
 
 ### `<vc:audit-log>` — the render path for other sections
 
@@ -152,7 +152,7 @@ Nearly every other section **writes** into this section via `IAuditLogService`. 
 
 - **No section (display names):** `AuditViewerService` injects `IEnumerable<IEntityNameContributor>` from `Humans.Base` and asks every contributor to name the Guids on a page — actor, subject and target-team ids in one pass. Teams and Users implement it on their existing caching services; ids nobody owns come back unnamed. This is the inversion nobodies-collective/Humans#1059 asked for: the sections point at the Base contract, and AuditLog names none of them.
 - **GDPR (`IUserDataContributor`):** `AuditLogService` contributes per-user audit slices to the GDPR export orchestrator via `ContributeForUserAsync`.
-- **Users/Identity:** `IUserService.GetMergedSourceIdsAsync` — chain-follow merge tombstones on every per-user audit read so source-attributed entries surface for the fold target.
+- **Users/Identity:** `IUserServiceRead.GetUserInfoAsync`, the returned `UserInfo.AllUserIds` chain-follows merge tombstones on every per-user audit read so source-attributed entries surface for the fold target. The read also resolves a tombstone id forward to its survivor, so a per-user audit read keyed on a merged-away id returns the survivor's history.
 
 No other cross-section writes from this section outward. Audit is a sink.
 

@@ -34,7 +34,7 @@ internal sealed class ContactFieldService(
             return [];
 
         var accessLevel = await GetViewerAccessLevelAsync(
-            userId, viewerUserId, cancellationToken);
+            info.Id, viewerUserId, cancellationToken);
         var allowedVisibilities = GetAllowedVisibilities(accessLevel);
 
         return info.Profile.ContactFields

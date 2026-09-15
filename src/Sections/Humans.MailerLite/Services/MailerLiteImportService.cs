@@ -74,7 +74,7 @@ internal sealed class MailerLiteImportService(
             }
             if (verifiedUserIds.Count == 1)
             {
-                var targetId = await ResolveTombstoneAsync(verifiedUserIds[0], ct);
+                var targetId = (await users.GetUserInfoAsync(verifiedUserIds[0], ct))?.Id ?? verifiedUserIds[0];
                 var existing = await prefs.GetPreferenceOrNullAsync(targetId, MessageCategory.Marketing, ct);
                 var outcome = ClassifyVerifiedMatch(s, existing);
                 decisions.Add(new SubscriberDecision(s.Email, s.Status,
@@ -144,19 +144,6 @@ internal sealed class MailerLiteImportService(
         return mlOptedOut
             ? SubscriberOutcome.VerifiedFlipToOptOut
             : SubscriberOutcome.VerifiedFlipToOptIn;
-    }
-
-    private async Task<Guid> ResolveTombstoneAsync(Guid userId, CancellationToken ct)
-    {
-        var visited = new HashSet<Guid> { userId };
-        var current = userId;
-        while (true)
-        {
-            var user = await users.GetUserInfoAsync(current, ct);
-            if (user?.MergedToUserId is not Guid next) return current;
-            if (!visited.Add(next)) return current;
-            current = next;
-        }
     }
 
     public async Task<ImportResult> ApplyAsync(

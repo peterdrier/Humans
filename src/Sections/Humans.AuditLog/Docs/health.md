@@ -69,7 +69,7 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
 - Best-effort: append failures are logged at Error and swallowed inside `PersistAsync`.
 - Audit after the business save, always.
 - `ActorUserId` nullable = system/job action; job overload prepends the job name.
-- Per-user reads chain-follow merge tombstones via `IUserServiceRead.GetMergedSourceIdsAsync`,
+- Per-user reads chain-follow merge tombstones via the resolved record's `UserInfo.AllUserIds`,
   and merge never rewrites the id columns.
 - Rendered output carries no raw Guid — ids resolve to names, and the viewer's own id renders as
   "You" in agent output.

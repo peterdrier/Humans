@@ -47,9 +47,12 @@ internal sealed class ICalFeedService(
 
     public async Task<string?> GetFeedIcsAsync(Guid userId, Guid token, CancellationToken ct = default)
     {
+        // #1704: the read resolves merges forward, so a tombstone id answers with the survivor.
+        // Comparing the row back against the requested id keeps the documented contract that a
+        // merged user's feed is a 404 — no oracle telling the holder of an old URL who absorbed
+        // the account, and no feed served under an id that no longer names a human.
         var user = await users.GetUserInfoAsync(userId, ct);
-        if (user is null || user.MergedToUserId is not null
-            || user.ICalToken is null || user.ICalToken.Value != token)
+        if (user is null || user.Id != userId || user.ICalToken is null || user.ICalToken.Value != token)
         {
             return null;
         }

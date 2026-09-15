@@ -100,6 +100,7 @@ internal sealed class HumanLifecycleService(
         var info = await userService.GetUserInfoAsync(userId, ct);
         if (info?.State != UserState.Suspended)
             return new OnboardingResult(true);
+        userId = info.Id; // the suspension read is the survivor's; so are the write and the audit
 
         var result = await userService.ApplyProfileOnboardingMutationAsync(
             userId,

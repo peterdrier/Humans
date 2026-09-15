@@ -20,8 +20,7 @@ internal static class AdminHumanDetailViewModelBuilder
         int outboxCount,
         Instant now,
         string? rejectedByName,
-        string? revealedIban,
-        string? mergedToName = null)
+        string? revealedIban)
     {
         ArgumentNullException.ThrowIfNull(info);
         ArgumentNullException.ThrowIfNull(applications);
@@ -45,10 +44,6 @@ internal static class AdminHumanDetailViewModelBuilder
             CreatedAt = info.CreatedAt.ToDateTimeUtc(),
             LastLoginAt = info.LastLoginAt?.ToDateTimeUtc(),
             State = info.State,
-            IsMerged = info.IsMerged,
-            MergedToUserId = info.MergedToUserId,
-            MergedAt = info.MergedAt?.ToDateTimeUtc(),
-            MergedToDisplayName = mergedToName,
             AdminNotes = profile?.AdminNotes,
             PreferredLanguage = info.PreferredLanguage,
             MembershipTier = profile?.MembershipTier ?? MembershipTier.Volunteer,

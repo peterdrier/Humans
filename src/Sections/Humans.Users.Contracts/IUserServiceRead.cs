@@ -5,8 +5,18 @@ namespace Humans.Users.Contracts;
 /// <summary>
 /// Cross-section read surface for the Users section. External sections inject
 /// this interface; it exposes only UserInfo / HumanSearchResult / OnsiteUserRow
-/// projections and the merge-chain-follow primitive — no EF entities, no writes,
-/// no cache hooks. See memory/architecture/section-read-write-split.md.
+/// projections — no EF entities, no writes, no cache hooks.
+/// See memory/architecture/section-read-write-split.md.
+///
+/// <para>
+/// Merge chains do not exist on this surface (#1704). An account merge leaves a
+/// tombstone row behind, and the six sections that deliberately keep rows keyed to
+/// the archived id read them back through here: every <see cref="UserInfo"/> accessor
+/// resolves such an id forward to the surviving account, so no caller follows a chain
+/// or knows there is one. <see cref="UserInfo.MergedUserIds"/> is the one place the
+/// archived ids surface, for callers that union rows by them.
+/// Users' own merge, deletion and admin code uses <c>IUserService</c>'s raw reads.
+/// </para>
 /// </summary>
 public interface IUserServiceRead
 {
@@ -18,6 +28,11 @@ public interface IUserServiceRead
     /// <c>volunteer_history_entries</c>. Issue #703: the caching decorator
     /// serves dict hits synchronously; the inner service rebuilds from
     /// repositories on miss.
+    ///
+    /// <para>#1704: resolves a merge chain forward. An id that was merged away returns the
+    /// surviving account's record, so <c>(await GetUserInfoAsync(a)).Id</c> is the survivor's
+    /// id, not <c>a</c>. A GDPR-erased id resolves to its own row (<see cref="UserState.Deleted"/>),
+    /// which is how a deleted human still renders. Null only when no row exists for the id.</para>
     /// </summary>
     ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default);
 
@@ -28,6 +43,10 @@ public interface IUserServiceRead
     /// rather than re-querying the contributing tables. Returns a new
     /// collection per call — the underlying dictionary is mutable and callers
     /// iterate without locking. Drives warmup on demand if the cache is cold.
+    ///
+    /// <para>#1704: tombstones are omitted — merge tombstones and GDPR-erased rows alike —
+    /// so this is one entry per living human. There is no requested id to key a redirect by.
+    /// Both kinds stay reachable through <see cref="GetUserInfoAsync"/>.</para>
     /// </summary>
     Task<IReadOnlyCollection<UserInfo>> GetAllUserInfosAsync(CancellationToken ct = default);
 
@@ -39,6 +58,11 @@ public interface IUserServiceRead
     /// <see cref="GetUserInfoAsync"/>. The single batched-lookup surface for
     /// cross-section readers — no entity-returning equivalent exists
     /// (nobodies-collective/Humans#979).
+    ///
+    /// <para>#1704: keyed by the <b>requested</b> id, valued by the <b>resolved</b> record,
+    /// per <see cref="GetUserInfoAsync"/>. Asked for all three ids of an A→B→C merge chain,
+    /// the result has three entries, every one of them C's record. Indexing by an id you
+    /// passed in therefore always hits, which is the point.</para>
     /// </summary>
     ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
         IReadOnlyCollection<Guid> userIds,
@@ -84,16 +108,6 @@ public interface IUserServiceRead
     /// </remarks>
     Task<IReadOnlyList<OnsiteUserRow>> GetOnsiteUsersAsync(
         int year, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the set of source-tombstone ids whose <c>MergedToUserId</c>
-    /// equals <paramref name="targetUserId"/>. Single canonical chain-follow
-    /// primitive: AuditLog, Consent, BudgetAuditLog reads call this rather
-    /// than each section reinventing the lookup. Set is small (typically
-    /// zero, usually one).
-    /// </summary>
-    Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(
-        Guid targetUserId, CancellationToken ct = default);
 
     /// <summary>
     /// Get all participation records for a given year, projected to the slim

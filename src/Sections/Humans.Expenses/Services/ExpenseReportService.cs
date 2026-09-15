@@ -1251,9 +1251,11 @@ internal sealed class ExpenseReportService(
         // 1. Ensure the member's Holded creditor contact + binding (Finance owns creditor identity).
         //    Reuses the binding — including an admin's manual bind — or lazy-seeds from a cached
         //    contact id; never mints a duplicate. Legal name -> name; burner -> tradeName.
-        string? burnerName = null;
-        if (!string.IsNullOrWhiteSpace(report.PayeeName))
-            burnerName = (await userService.GetUserInfoAsync(report.SubmitterUserId, ct))?.BurnerName;
+        //    The creditor is the member as they are now: a report submitted under a since-merged
+        //    id binds (and seeds from) the survivor, so one human keeps one Holded contact.
+        var submitter = await userService.GetUserInfoAsync(report.SubmitterUserId, ct);
+        var creditorUserId = submitter?.Id ?? report.SubmitterUserId;
+        var burnerName = string.IsNullOrWhiteSpace(report.PayeeName) ? null : submitter?.BurnerName;
 
         // This report carries a contact id only on a re-drain. Seeding from it alone misses a member
         // whose contact predates holded_creditor_contacts (that migration creates the table and
@@ -1264,7 +1266,10 @@ internal sealed class ExpenseReportService(
         var seedAccountNum = report.HoldedSupplierAccountNum;
         if (string.IsNullOrEmpty(seedContactId))
         {
-            var priorLinked = (await repo.GetForSubmitterAsync(report.SubmitterUserId, ct))
+            var priorReports = new List<ExpenseReportDto>();
+            foreach (var submitterId in submitter?.AllUserIds ?? [report.SubmitterUserId])
+                priorReports.AddRange(await repo.GetForSubmitterAsync(submitterId, ct));
+            var priorLinked = priorReports
                 .Where(r => r.Id != report.Id && !string.IsNullOrEmpty(r.HoldedContactId))
                 .OrderByDescending(r => r.SubmittedAt ?? r.CreatedAt)
                 .FirstOrDefault();
@@ -1273,7 +1278,7 @@ internal sealed class ExpenseReportService(
         }
 
         var holdedContactId = await holdedFinance.EnsureCreditorContactAsync(
-            report.SubmitterUserId, report.PayeeName, burnerName, report.PayeeIban,
+            creditorUserId, report.PayeeName, burnerName, report.PayeeIban,
             seedContactId, seedAccountNum, ct);
 
         // Mirror the contact id onto the report (keeps the creditor-timeline reads working) before the
@@ -1526,15 +1531,14 @@ internal sealed class ExpenseReportService(
             throw new UnauthorizedAccessException("Actor is not a coordinator of the category's team.");
     }
 
-    /// <summary>User's reports (lines+attachment metadata), masked IBAN, audit. Chain-follows merge tombstones.</summary>
+    /// <summary>User's reports (lines+attachment metadata), masked IBAN, audit. Includes accounts merged into this one.</summary>
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(
         Guid userId, CancellationToken ct)
     {
-        var sourceIds = await userService.GetMergedSourceIdsAsync(userId, ct);
-
-        var allIds = new List<Guid>(sourceIds.Count + 1);
-        allIds.AddRange(sourceIds);
-        allIds.Add(userId);
+        // Every id the human has held, from the resolved record: asked with an archived
+        // id, the survivor's own reports are theirs too.
+        var user = await userService.GetUserInfoAsync(userId, ct);
+        var allIds = user?.AllUserIds ?? [userId];
 
         var allReports = new List<ExpenseReportDto>();
         foreach (var id in allIds)
@@ -1543,7 +1547,7 @@ internal sealed class ExpenseReportService(
             allReports.AddRange(reports);
         }
 
-        var profile = (await userService.GetUserInfoAsync(userId, ct))?.Profile;
+        var profile = user?.Profile;
         var maskedIban = string.IsNullOrEmpty(profile?.Iban)
             ? null
             : IbanFormatter.Mask(profile.Iban);

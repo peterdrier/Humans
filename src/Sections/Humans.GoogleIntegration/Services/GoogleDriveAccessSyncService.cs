@@ -163,7 +163,12 @@ internal sealed class GoogleDriveAccessSyncService(
                 continue;
             if (!users.TryGetValue(userId, out var user))
                 continue;
-            if (user.GoogleEmailStatus == GoogleEmailStatus.Rejected || user.IsDeletionPending || user.MergedToUserId is not null)
+            // #1704: the read resolves merges forward, so a tombstone id answers with the
+            // survivor and the MergedToUserId test can no longer see one. Comparing the row
+            // back against the requested id keeps this the skip it has always been: an ACL
+            // entry keyed to an archived id grants nobody, least of all silently granting the
+            // human who absorbed it.
+            if (user.Id != userId || user.GoogleEmailStatus == GoogleEmailStatus.Rejected || user.IsDeletionPending)
                 continue;
             if (user.IsSuspended)
                 continue;

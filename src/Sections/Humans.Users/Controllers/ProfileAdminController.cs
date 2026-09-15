@@ -22,12 +22,15 @@ internal sealed class ProfileAdminController(
     {
         var report = await emailProblems.ScanAsync(ct);
 
+        // Raw: the report names the rows that hold each address, tombstones included, and the
+        // page labels (and deletes by) exactly those rows.
         var allInvolvedUserIds = report.Problems
             .SelectMany(p => new[] { p.UserId, p.OtherUserId })
             .OfType<Guid>()
-            .Distinct()
-            .ToList();
-        var users1 = await users.GetUserInfosAsync(allInvolvedUserIds, ct);
+            .ToHashSet();
+        var users1 = (await users.GetAllRawUserInfosAsync(ct))
+            .Where(u => allInvolvedUserIds.Contains(u.Id))
+            .ToDictionary(u => u.Id);
 
         return View(EmailProblemsListViewModel.From(report, users1));
     }

@@ -796,6 +796,32 @@ public sealed class GoogleGroupSyncServiceTests
         _clock,
         _logger);
 
+    [HumansFact]
+    public async Task ReconcileOneAsync_ClaimOnAMergedAwayId_IsSkippedRatherThanPairedWithTheSurvivor()
+    {
+        // #1704: the resolving read hands a claimed archived id its survivor, but the email rows
+        // fetched here are the archived id's own (raw), so the pair is dropped. A survivor a
+        // source claims by its live id is still added.
+        var archived = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        var service = CreateService(new StaticSource("team@nobodies.team", archived));
+        StubUsers((archived, "Old", "old@nobodies.team"));
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo>
+                {
+                    [archived] = new User { Id = survivor, DisplayName = "Survivor", CreatedAt = _clock.GetCurrentInstant() }
+                        .ToUserInfo(),
+                }));
+        StubGroup("team@nobodies.team", "group-1");
+
+        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        diff.MembersToAdd.Should().BeEmpty();
+        await _membershipClient.DidNotReceive()
+            .CreateMembershipAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
     private void StubUsers(params (Guid UserId, string DisplayName, string Email)[] users)
     {
         var userEntities = users.ToDictionary(

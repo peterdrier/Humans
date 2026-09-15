@@ -67,7 +67,7 @@ public class UsersAdminDebugControllerTests
             .ToArray();
 
         var userService = Substitute.For<IUserService>();
-        userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+        userService.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(users));
 
         var controller = new UsersAdminDebugController(userService);
@@ -92,7 +92,7 @@ public class UsersAdminDebugControllerTests
             MakeUserInfo(Guid.NewGuid(), "Carol", hasProfile: true, hasTicket: false),
         };
         var userService = Substitute.For<IUserService>();
-        userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+        userService.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(users));
 
         var controller = new UsersAdminDebugController(userService);
@@ -110,7 +110,7 @@ public class UsersAdminDebugControllerTests
             .Select(i => MakeUserInfo(Guid.NewGuid(), $"User {i}", true, false))
             .ToArray();
         var userService = Substitute.For<IUserService>();
-        userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+        userService.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(users));
 
         var controller = new UsersAdminDebugController(userService);

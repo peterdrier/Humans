@@ -36,9 +36,8 @@ public class ExpenseReportServiceGdprTests
         _userService = Substitute.For<IUserService>();
         _auditLogService = Substitute.For<IAuditLogService>();
 
-        // No merge tombstones by default
-        _userService.GetMergedSourceIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid>());
+        // Nothing merged into anybody by default: GetUserInfoAsync returns null and the
+        // export reads the single id.
 
         _auditLogService.GetFilteredEntriesAsync(
                 entityType: Arg.Any<string>(),
@@ -201,8 +200,8 @@ public class ExpenseReportServiceGdprTests
     public async Task MergedSourceIds_ReportsFromBothIds_AreIncluded()
     {
         var sourceId = Guid.NewGuid();
-        _userService.GetMergedSourceIdsAsync(UserId, Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid> { sourceId });
+        _userService.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(WithMergedIds(UserId, sourceId)));
 
         var ownReport = MakeReport(UserId);
         var sourceReport = MakeReport(sourceId);
@@ -212,9 +211,6 @@ public class ExpenseReportServiceGdprTests
         _repo.GetForSubmitterAsync(UserId, Arg.Any<CancellationToken>())
             .Returns([ownReport]);
 
-        _userService.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
-            .Returns((UserInfo?)null);
-
         var slices = await _sut.ContributeForUserAsync(UserId, Xunit.TestContext.Current.CancellationToken);
 
         var reportsSlice = slices.Single(s => string.Equals(s.SectionName, "ExpenseReports", StringComparison.Ordinal));
@@ -222,5 +218,12 @@ public class ExpenseReportServiceGdprTests
         // Both report IDs should appear
         json.Should().Contain(ownReport.Id.ToString());
         json.Should().Contain(sourceReport.Id.ToString());
+    }
+
+    /// <summary>A record listing the given ids as accounts merged into <paramref name="userId"/>.</summary>
+    private static UserInfo WithMergedIds(Guid userId, params Guid[] mergedUserIds)
+    {
+        var info = UserInfo.Create(new User { Id = userId, PreferredLanguage = "en" }, [], [], [], null, []);
+        return info with { MergedUserIds = mergedUserIds };
     }
 }

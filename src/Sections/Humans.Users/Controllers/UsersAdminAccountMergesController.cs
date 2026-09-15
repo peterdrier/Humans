@@ -10,12 +10,12 @@ namespace Humans.Users.Controllers;
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Users/Admin/AccountMerges")]
 internal sealed class UsersAdminAccountMergesController(
-    IUserServiceRead userService,
+    IUserService userService,
     IAccountMergeService mergeService,
     IDuplicateAccountService duplicateService,
     ILogger<UsersAdminAccountMergesController> logger) : HumansControllerBase(userService)
 {
-    private readonly IUserServiceRead _userService = userService;
+    private readonly IUserService _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
@@ -30,9 +30,13 @@ internal sealed class UsersAdminAccountMergesController(
         var involvedIds = requests
             .SelectMany(r => new[] { r.TargetUser.Id, r.SourceUser.Id })
             .Concat(groups.SelectMany(g => g.Accounts.Select(a => a.UserId)))
-            .Distinct()
-            .ToList();
-        var infos = await _userService.GetUserInfosAsync(involvedIds, ct);
+            .ToHashSet();
+
+        // Raw: the already-merged test below reads a tombstone's own MergedToUserId, which
+        // the cross-section read resolves away. Filtering the warmed snapshot costs no query.
+        var infos = (await _userService.GetAllRawUserInfosAsync(ct))
+            .Where(u => involvedIds.Contains(u.Id))
+            .ToDictionary(u => u.Id);
 
         // "Already merged" gates the Close action, which only applies when THIS pair
         // merged into each other — not when one side merged into an unrelated account.

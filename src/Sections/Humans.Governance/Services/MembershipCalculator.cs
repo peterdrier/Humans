@@ -49,6 +49,7 @@ internal sealed class MembershipCalculator(
         }
 
         // Active = has role assignments OR is a Volunteers-team member.
+        userId = info.Id; // roles and memberships were re-pointed to the survivor on merge
         var hasActiveRoles = await HasActiveRolesAsync(userId, cancellationToken);
         var isVolunteerMember = await membershipQuery.IsUserMemberOfTeamAsync(
             SystemTeamIds.Volunteers, userId, cancellationToken);

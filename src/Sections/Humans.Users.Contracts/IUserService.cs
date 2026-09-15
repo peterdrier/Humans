@@ -16,6 +16,29 @@ namespace Humans.Users.Contracts;
 // No marker interface — see Humans.Users.Contracts.csproj.
 public interface IUserService : IUserServiceRead, IUserMerge
 {
+    /// <summary>
+    /// The row as stored for <paramref name="userId"/>, with no merge redirect:
+    /// a merge tombstone comes back as itself, <see cref="UserInfo.MergedToUserId"/>
+    /// and <see cref="UserInfo.MergedAt"/> intact. <see cref="UserInfo.MergedUserIds"/>
+    /// is still stamped. Returns null when no row exists.
+    /// <para>
+    /// The counterpart to <see cref="IUserServiceRead.GetUserInfoAsync"/>, which
+    /// resolves the chain forward. This one exists for the two callers that must see
+    /// the tombstone itself: Users' own merge/deletion/admin code, which acts on the
+    /// row an admin named, and the claims transformation, which must stamp a
+    /// tombstone's <see cref="UserState.Merged"/> rather than the survivor's state.
+    /// Every other caller wants the redirecting read.
+    /// </para>
+    /// </summary>
+    ValueTask<UserInfo?> GetRawUserInfoAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Every row as stored, tombstones included — the unfiltered counterpart to
+    /// <see cref="IUserServiceRead.GetAllUserInfosAsync"/>, which omits tombstones.
+    /// Served from the warmed snapshot, so filtering it by id is the cheap way to
+    /// read several raw rows at once.
+    /// </summary>
+    Task<IReadOnlyCollection<UserInfo>> GetAllRawUserInfosAsync(CancellationToken ct = default);
 
 
     /// <summary>

@@ -562,6 +562,11 @@ internal sealed class IssuesService(
             ? (users1!.TryGetValue(newAssigneeUserId.Value, out var nu) ? nu.BurnerName : newAssigneeUserId.Value.ToString())
             : "Unassigned";
 
+        // Store the resolved id: a merged-away assignee id would point the issue at a tombstone.
+        if (newAssigneeUserId is { } requested && users1!.TryGetValue(requested, out var resolved))
+            newAssigneeUserId = resolved.Id;
+        if (issue.AssigneeUserId == newAssigneeUserId) return;
+
         issue.AssigneeUserId = newAssigneeUserId;
         issue.UpdatedAt = clock.GetCurrentInstant();
         await repo.SaveTrackedIssueAsync(issue, ct);
@@ -894,7 +899,8 @@ internal sealed class IssuesService(
             await SendCommentEmailAsync(issue, comment, ct);
         }
 
-        if (recipients.Count == 0) return;
+        var targets = await ResolveRecipientsAsync(recipients, comment.SenderUserId, ct);
+        if (targets.Count == 0) return;
 
         try
         {
@@ -903,7 +909,7 @@ internal sealed class IssuesService(
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 subject,
-                recipients.ToList(),
+                targets,
                 body: comment.Content,
                 actionUrl: link,
                 actionLabel: "View issue",
@@ -953,7 +959,8 @@ internal sealed class IssuesService(
         var recipients = new HashSet<Guid>();
         if (issue.ReporterUserId != actorUserId) recipients.Add(issue.ReporterUserId);
         if (issue.AssigneeUserId is { } aid && aid != actorUserId) recipients.Add(aid);
-        if (recipients.Count == 0) return;
+        var targets = await ResolveRecipientsAsync(recipients, actorUserId, ct);
+        if (targets.Count == 0) return;
 
         try
         {
@@ -962,7 +969,7 @@ internal sealed class IssuesService(
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 $"Issue status changed: {issue.Title}",
-                recipients.ToList(),
+                targets,
                 body: $"Status: {oldStatus} → {newStatus}",
                 actionUrl: $"/Issues/{issue.Id}",
                 actionLabel: "View issue",
@@ -1032,6 +1039,24 @@ internal sealed class IssuesService(
                 "Failed to resolve IssueSubmitted notifications for issue {IssueId}",
                 issue.Id);
         }
+    }
+
+    /// <summary>
+    /// In-app notifications are keyed by user id, so a stored reporter or assignee id that has
+    /// since been merged away is delivered to its survivor, and self-exclusion is judged on the
+    /// resolved id. Role-holder ids are live already; resolving them is a no-op.
+    /// </summary>
+    private async Task<List<Guid>> ResolveRecipientsAsync(
+        IEnumerable<Guid> userIds, Guid? exclude, CancellationToken ct)
+    {
+        var ids = userIds.Distinct().ToList();
+        if (ids.Count == 0) return [];
+        var infos = await users.GetUserInfosAsync(ids, ct);
+        return ids
+            .Select(id => infos.TryGetValue(id, out var info) ? info.Id : id)
+            .Where(id => id != exclude)
+            .Distinct()
+            .ToList();
     }
 
     private async Task DispatchAssignedNotificationAsync(
