@@ -11,7 +11,7 @@ The prefix stops being a second, hand-maintained taxonomy. Once a section owns i
 
 **Applies to new keys only.** As of 2026-08-20 about 713 of 1,960 section keys conform; the rest are not being backfilled. Don't rename existing keys as a side effect of unrelated work — a rename touches six language files and every call site, and a missed one renders raw with no error. Backfill a prefix only as its own deliberate change, one section at a time.
 
-Singular section-name variants are hits, not exceptions: `Camp_` in `Humans.Camps`, `Ticket_` in `Humans.Tickets`, `Issue_` in `Humans.Issues`.
+Singular section-name variants are hits, not exceptions: `Camp_` in `Humans.Camps`, `Ticket_` in `Humans.Tickets`. The one exemption is `Issue_` in `Humans.Issues` (Peter, 2026-09-14, peterdrier/Humans#1682); the detector in `docs/architecture/section-conformance.yml` carries the same carve-out.
 
 `SharedResource` is exempt — it is not a section, and its keys are the cross-section vocabulary (`Common_`, `Nav_`, `Validation_`, `Enum_`). *Which* set a key belongs in is the carve question (`docs/sections/G5-SECTION-TEMPLATE.md` step 3b), not this one; this rule only names the key once the set is settled.
 

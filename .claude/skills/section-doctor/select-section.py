@@ -161,15 +161,16 @@ def last_doctored(s):
 
 
 def churn_since(sha, s):
-    """Lines added+deleted under the section's paths on origin/main since sha (0 = unchanged)."""
+    """Lines added+deleted under the section's paths on origin/main since sha (0 = unchanged).
+    A binary file (numstat `-`) counts as one line: changed, however little it weighs."""
     rc, out = run(["git", "diff", "--numstat", sha + "..origin/main", "--"] + section_paths(s))
     if rc != 0:
         return 0
     total = 0
     for line in out.splitlines():
         parts = line.split("\t")
-        if len(parts) == 3 and parts[0].isdigit() and parts[1].isdigit():
-            total += int(parts[0]) + int(parts[1])
+        if len(parts) == 3:
+            total += int(parts[0]) + int(parts[1]) if parts[0].isdigit() and parts[1].isdigit() else 1
     return total
 
 

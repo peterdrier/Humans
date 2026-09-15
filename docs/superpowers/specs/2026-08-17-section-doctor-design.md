@@ -466,6 +466,6 @@ issues. Replaced:
   and History threads their input; `trace` is the trace gate; `blast` bounds a symbol; `runfile`
   writes the run file's header and its two mechanical tables; `review-pack` captures the diff,
   its blast grep and the touched files' heads for the reviewer, which judges the pack instead of
-  re-reading the section. The reviewer runs in three tiers by section (`REVIEW_TIERS`): fable
+  re-reading the section. The reviewer runs in tiers by section (`REVIEW_TIERS`): fable
   high where a wrong approval costs the most, opus high by default, opus medium for small
   low-stakes sections.

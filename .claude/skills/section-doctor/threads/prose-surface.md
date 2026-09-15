@@ -13,7 +13,7 @@ keys not prefixed with the section name (`memory/code/resource-key-prefix-matche
 report, don't backfill unless the run is *for* that); nav quality — dead ends, missing backlinks,
 discoverability from `AdminNavTree`.
 
-**Dead resx keys — a fixed step, not judgment, in two halves.** Keys read through the generated
+**Dead resx keys — a fixed step, not judgment, one half per way a key is read.** Keys read through the generated
 designer property (`<Section>Resource.Key`) are symbols: reforge's references query answers them,
 cross-project callers included. Keys read as strings (`IStringLocalizer["Key"]`, tag-helper
 attributes in `.cshtml`) are not: grep each literal across `*.cs`, `*.cshtml` and `*.resx` outside

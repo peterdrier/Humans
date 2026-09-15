@@ -29,7 +29,7 @@ without changing what it does for its users, and will Peter be able to see and v
 both: do it. Anything that changes behaviour, widens surface, retires a guardrail, or cannot be
 verified is Peter's call, not the run's.
 
-A run is judged on three things: did the section get smaller and clearer without losing anything
+A run is judged on this: did the section get smaller and clearer without losing anything
 (net across every section touched — the PR's own diff stats are the figure, never restated in
 prose); was every file actually looked at (coverage is what makes this a review rather than a
 sweep, and it is where the bugs come from); is the section still doing exactly what it did.
@@ -68,7 +68,7 @@ resx, code findings queue, the run file's header and the PR body say so.
 | `select-section.py` | Phase 2's selection maths — never re-derived in-band |
 | `cost-report.py` | Phase 7's cost table from the phase log and the `thread:` markers |
 | `threads/CONTRACT.md` + `threads/<lens>.md` | what a dispatched thread reads and returns; one file per lens |
-| `.claude/agents/doctor-reader.md`, `doctor-reviewer*.md` | the reading-thread agent and the three reviewer tiers (the only place model and effort are pinned); `REVIEW_TIERS` in `doctor.py` maps a section to its tier |
+| `.claude/agents/doctor-reader.md`, `doctor-reviewer*.md` | the reading-thread agent and the reviewer tiers (the only place model and effort are pinned); `REVIEW_TIERS` in `doctor.py` maps a section to its tier |
 
 Every subcommand derives the run from its branch, so nothing depends on shell state surviving
 between tool calls. **Every commit is `doctor.py commit` and every push is `doctor.py push`** —
@@ -154,7 +154,7 @@ tool exists; skip silently otherwise.
 
 ### Phase 3: Assess
 
-Five steps, in this order; the order is the point — a target written after the scans is a
+In this order; the order is the point — a target written after the scans is a
 summary of the scans. A re-doctor (`BASE:` present, or under `--section` the commit that added
 the section's newest run file) keeps the full inventory but reads `git diff BASE..HEAD` in full and
 skims the rest; the previous target and `health.md` history say what was already judged.
@@ -171,7 +171,7 @@ items visible); owned tables, cross-section calls in and out, config it reads; w
 page and specs said it would be — stated-but-unbuilt and built-differently-than-stated are deltas
 no tool reports.
 
-**3c Target.** One page in `src/Sections/Humans.<X>/Docs/health.md`, six required parts ("none"
+**3c Target.** One page in `src/Sections/Humans.<X>/Docs/health.md`, the required parts ("none"
 where empty): what the section does (no code nouns); the shapes as a table; the structure those
 shapes imply, written fresh; invariants, each stated so a violation is recognisable; seams
 (specified-but-unbuilt — reserved, not built, not ranked); deliberately not done (abstractions a
@@ -317,7 +317,7 @@ skill: never (see "When the skill is wrong").
 
 ### Phase 5: Bookkeeping
 
-Re-read this phase and Phase 7 before writing — by now the run may have been compacted. Three
+Re-read this phase and Phase 7 before writing — by now the run may have been compacted. The
 writes, in this PR:
 
 - **`Docs/health.md` history row** — run, date, headline, PR link. Never a score: every later
@@ -350,7 +350,7 @@ time the list changes.
 
 ### Phase 6: Retro
 
-Four questions in the run file, a paragraph each and no more: what the selector got wrong, what
+The retro questions in the run file, a paragraph each and no more: what the selector got wrong, what
 was wasted motion, what striking revealed that the assessment missed, what the target diff says.
 Durable project rules go to `## Sweep queue` as `memory: <bucket>/<name> — <rule>`. Lessons about
 this skill are not Needs-Peter items and not sweep items; the bar for them is below.
@@ -360,7 +360,7 @@ this skill are not Needs-Peter items and not sweep items; the bar for them is be
 Self-review the run's own new prose against the gates: `doctor.py prose-gate --base origin/main`,
 `doctor.py trace <run file> <health.md>` (every symbol, route and path resolves; every "only",
 "never" and "always" is checked by hand), and the render rule (a claim about what a page shows traces to the `.cshtml`). Then
-`doctor.py check-run-file`, `dotnet format whitespace Humans.slnx --verify-no-changes`, the full
+`doctor.py check-run-file <run file> --section <X>`, `dotnet format whitespace Humans.slnx --verify-no-changes`, the full
 test run, `doctor.py push`, and the PR against `peterdrier/Humans` `main`:
 
 - Title `doctor(<Section>): <headline>` — something a user or reader would notice, never the
