@@ -88,7 +88,7 @@ and look, never work around.
   `doctor.py dispatch-log` entry. Never leave the branch red between commits.
 - **A run touches only:** the section's files (and callers where a play requires), the section's
   `Docs/health.md` and `Docs/debt.yml`, its own `docs/health/runs/<date>-<Section>.md`, the debt
-  ledger that owns a debt it found, and a `memory/` atom it found. It reads no other section's run
+  ledger that owns a debt it found, and a `memory/` atom it writes. It reads no other section's run
   files. Never `docs/architecture/maintenance-log.md`, never `docs/architecture/section-conformance.yml`
   (rows change only at Peter's direction; propose in Needs-Peter), never this skill. Scratch lives
   in `$RUNDIR`, outside the tree.
