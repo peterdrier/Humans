@@ -17,8 +17,7 @@ namespace Humans.Surveys.Controllers;
 /// (<c>/Survey/Answer?t=…</c>), where identity comes from the token's invitation (never the current
 /// principal); and the shareable slug link (<c>/Survey/{slug}</c>). Anonymous-enabled surveys retain
 /// the public representation choice; identified surveys require sign-in and current audience access.
-/// Controllers parse →
-/// call the service → format (hard rule): all flow decisions live in
+/// All flow decisions live in
 /// <see cref="ISurveyService.AdvanceWizardAsync"/>; the controller persists the session per
 /// <see cref="WizardRoute"/> and renders/redirects per the outcome.
 /// </summary>

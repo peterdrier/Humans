@@ -1,6 +1,6 @@
 ---
 name: Check a non-English culture on a preview deploy via POST /Language/SetLanguage
-description: Verifying a translation on a preview deploy while signed in — drive POST /Language/SetLanguage with the page's __RequestVerificationToken. Accept-Language and a hand-set .AspNetCore.Culture cookie do NOT work while signed in and make every culture render English. Triggers when checking es/de/it/fr/ca output on a deployed instance.
+description: To check a non-English culture on a preview deploy while signed in, drive `POST /Language/SetLanguage` — `Accept-Language`/cookie hacks don't work signed in.
 ---
 
 To see a page in a non-English culture on a preview deploy **while signed in**, drive the app's own switcher:

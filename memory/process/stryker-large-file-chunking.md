@@ -1,6 +1,6 @@
 ---
 name: stryker-large-file-chunking
-description: Stryker's mutate span `{a..b}` counts CHARACTERS, not lines; use it to split a large file into chunks that each finish inside the 10-minute tool timeout, then merge reports by mutant id
+description: Stryker's mutate span `{a..b}` counts CHARACTERS not lines — use it to chunk a large file so each run finishes inside the 10-min timeout, then merge reports by mutant id.
 ---
 
 A whole-file Stryker run on a 2,000-line service takes ~15 minutes at `concurrency: 16` — longer than the 10-minute cap on a foreground `Bash`/`PowerShell` call, and background runs are not an option for builds. Split the file instead.

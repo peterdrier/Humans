@@ -1,6 +1,6 @@
 ---
 name: Sections are logical units — tables are not a requirement
-description: A section is a logical unit of the app that can be worked on independently; owning DB tables is NOT a requirement. Never propose demoting/merging a section because it is "thin" or table-less. (Peter, 2026-08-03 inventory freeze.)
+description: A section is a logical, independently-workable unit — owning DB tables is not required. Never propose demoting or merging a section for being thin or table-less.
 ---
 
 A **section** is a logical unit of the application that can be worked on independently. Owning database tables is **not** a requirement for being a section — thin sections are fine when they represent a logical construct the rest of the app uses, plus a small amount of GUI/agent/service code.

@@ -11,7 +11,10 @@ internal sealed class CalendarEventException
     public Guid Id { get; init; }
     public Guid EventId { get; set; }
     public CalendarEvent Event { get; set; } = null!;
-    public Instant OriginalOccurrenceStartUtc { get; set; }
+    public Instant? OriginalOccurrenceStartUtc { get; set; }
+    public LocalDate? OriginalOccurrenceDate { get; set; }
+    public LocalDate? OverrideStartDate { get; set; }
+    public LocalDate? OverrideEndDateExclusive { get; set; }
     public bool IsCancelled { get; set; }
     public Instant? OverrideStartUtc { get; set; }
     public Instant? OverrideEndUtc { get; set; }
@@ -26,6 +29,8 @@ internal sealed class CalendarEventException
     public IReadOnlyList<string> Validate()
     {
         var hasOverride =
+            OverrideStartDate is not null ||
+            OverrideEndDateExclusive is not null ||
             OverrideStartUtc is not null ||
             OverrideEndUtc is not null ||
             OverrideTitle is not null ||

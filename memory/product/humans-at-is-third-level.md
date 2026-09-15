@@ -1,6 +1,6 @@
 ---
 name: humans@ is third-level support — never front-line in copy
-description: humans@nobodies.team is Peter personally. Docs/UI copy must never offer it as a general support contact. The support ladder is — in-app help button (AI helper / Create issue / Feedback) → coordinator / #🧘-humans-app Discord → humans@ only when nothing else worked.
+description: "humans@nobodies.team is Peter personally, third-level support — never present it as a general contact. Ladder: help button → coordinator/Discord → humans@ last resort."
 ---
 
 `humans@nobodies.team` goes to Peter personally — the person with by far the most hours on the project. It is **third-level support**: copy, docs, emails, and UI must never present it as a general helpdesk or a parallel first option.

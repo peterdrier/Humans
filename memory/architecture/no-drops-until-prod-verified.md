@@ -1,6 +1,6 @@
 ---
 name: A destructive migration needs a written description of what it removes and Peter's approval for that case
-description: HARD RULE. DB columns/tables/indexes/constraints, persistent filesystem data and external persisted state may be dropped — but only with a written description of what is being removed, evidence it holds nothing in use, and Peter's per-case written approval. An LLM never approves its own drop. Code-only deletions are exempt.
+description: HARD RULE. Dropping DB columns/tables/indexes or persisted files needs a written description, evidence of no in-use readers, and Peter's per-case approval — code deletions are exempt.
 ---
 
 > **Filename is historical.** The slug still says `no-drops-until-prod-verified` because ~20 files link

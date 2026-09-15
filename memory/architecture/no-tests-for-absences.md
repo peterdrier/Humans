@@ -1,6 +1,6 @@
 ---
 name: no-tests-for-absences
-description: never write a per-section test asserting a section does NOT have something — no repository, no DbContext, no Hangfire dependency, no public type beyond N, no nav property, no ctor parameter; an absence has no behaviour to regress, the list of things a section lacks is unbounded, and the test can only fail on the deliberate edit that was going to update it anyway. Repo-wide universal enforcers are exempt; an analyzer beats a test wherever one can express the rule
+description: Never write a per-section test asserting a section lacks something (no repo, DbContext, nav property) — absence has no behaviour to regress. Repo-wide universal enforcers are exempt.
 ---
 
 Never write a per-section test whose assertion is that a section *lacks* something. The category is

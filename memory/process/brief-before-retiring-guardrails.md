@@ -1,6 +1,6 @@
 ---
 name: brief-before-retiring-guardrails
-description: Before retiring any analyzer, architecture test, ratchet, or other guardrail, give Peter a short brief (title / what it did / purpose / why it's no longer valid) and wait for his go.
+description: Before retiring any analyzer, architecture test, ratchet, or guardrail, give Peter a short brief (title/what it did/purpose/why invalid) and wait for his go.
 ---
 
 Never retire an analyzer, architecture test, ratchet, or other guardrail without first giving Peter a short brief per item: title, what it did, what its purpose was, and why it is no longer valid. Then wait for his go.

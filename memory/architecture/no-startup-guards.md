@@ -1,6 +1,6 @@
 ---
 name: No startup guards — ever
-description: HARD RULE. The Humans app must always boot. No startup checks that throw, abort, or refuse to register services. Fix at runtime, via admin button, or via idempotent migration step.
+description: HARD RULE. The app must always boot — no startup checks that throw or refuse to register services. Fix at runtime, via an admin button, or an idempotent migration.
 ---
 
 The application MUST always start. Never add a startup guard / pre-flight check / boot-time invariant that throws or aborts if data or environment is wrong.

@@ -11,8 +11,8 @@ namespace Humans.Calendar.Services.Dtos;
 /// <para>
 /// Cache shape: the decorator holds <em>all</em> non-soft-deleted events keyed
 /// by id. Window queries (<c>GetOccurrencesInWindowAsync</c>) snapshot-scan
-/// this dict and filter in-memory by the same predicate the SQL prefilter uses
-/// (<c>StartUtc &lt;= to AND (RecurrenceUntilUtc == null || RecurrenceUntilUtc &gt;= from)</c>).
+/// this dict and filter by date bounds for all-day series or instant bounds for timed
+/// series. Rows with exceptions survive the prefilter because overrides can move outside it.
 /// Expansion + exception merging stay in the service layer
 /// (<see cref="CalendarOccurrenceExpander"/>).
 /// </para>
@@ -35,7 +35,7 @@ internal sealed record CalendarEventInfo(
     string? Location,
     string? LocationUrl,
     Guid OwningTeamId,
-    Instant StartUtc,
+    Instant? StartUtc,
     Instant? EndUtc,
     bool IsAllDay,
     string? RecurrenceRule,
@@ -44,7 +44,10 @@ internal sealed record CalendarEventInfo(
     Guid CreatedByUserId,
     Instant CreatedAt,
     Instant UpdatedAt,
-    IReadOnlyList<CalendarEventExceptionInfo> Exceptions);
+    IReadOnlyList<CalendarEventExceptionInfo> Exceptions,
+    LocalDate? StartDate = null,
+    LocalDate? EndDateExclusive = null,
+    LocalDate? RecurrenceUntilDate = null);
 
 /// <summary>
 /// Immutable projection of a single <c>calendar_event_exceptions</c> row,
@@ -53,11 +56,14 @@ internal sealed record CalendarEventInfo(
 /// </summary>
 internal sealed record CalendarEventExceptionInfo(
     Guid Id,
-    Instant OriginalOccurrenceStartUtc,
+    Instant? OriginalOccurrenceStartUtc,
     bool IsCancelled,
     Instant? OverrideStartUtc,
     Instant? OverrideEndUtc,
     string? OverrideTitle,
     string? OverrideDescription,
     string? OverrideLocation,
-    string? OverrideLocationUrl);
+    string? OverrideLocationUrl,
+    LocalDate? OriginalOccurrenceDate = null,
+    LocalDate? OverrideStartDate = null,
+    LocalDate? OverrideEndDateExclusive = null);

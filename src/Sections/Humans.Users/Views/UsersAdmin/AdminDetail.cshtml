@@ -372,7 +372,7 @@
                 @* AdminEmails is self-or-Admin only; AdminDetail reaches further — gate to avoid 403 *@
                 @if (isAdmin)
                 {
-                    <a asp-controller="Profile" asp-action="AdminEmails" asp-route-id="@Model.UserId"
+                    <a asp-controller="ProfileEmails" asp-action="AdminEmails" asp-route-id="@Model.UserId"
                        class="btn btn-sm btn-outline-secondary">
                         @Localizer["AdminDetail_ManageEmails"]
                     </a>

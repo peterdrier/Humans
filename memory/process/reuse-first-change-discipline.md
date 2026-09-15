@@ -1,6 +1,6 @@
 ---
 name: Reuse existing surface before adding durable surface
-description: Before adding new files, public types, service/repository methods, DTOs/view models, helpers, endpoints, dependencies, or DI registrations, audit the existing owner/surface and prefer reuse or local composition; public/interface surface requires Peter approval.
+description: Before adding any new file, public type, service/repo method, DTO, helper, or DI registration, audit existing owners and prefer reuse; public surface needs Peter's approval.
 ---
 
 New durable surface is technical debt until proven otherwise. Before adding any new file, public type, interface method, service/repository method, DTO/view model, helper, endpoint, dependency, or DI registration, audit the existing owner and prefer reuse, caller-side composition, or a small local LINQ/mapping chain.

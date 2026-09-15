@@ -1,6 +1,6 @@
 ---
 name: Provenance FKs are not user-scoped data
-description: A section's tables can carry user FK columns (AddedByUserId, RecordedByUserId, IssuedByUserId) without the section being user-scoped. Don't reflexively demand IUserDataContributor whenever you see a per-user FK.
+description: A section can carry user FK columns (AddedByUserId, etc.) without being user-scoped — don't reflexively demand `IUserDataContributor` for every per-user FK; apply the deletion test
 type: architecture
 ---
 

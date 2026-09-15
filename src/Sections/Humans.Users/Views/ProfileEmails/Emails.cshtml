@@ -25,7 +25,7 @@
                 }
                 else
                 {
-                    <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a></li>
+                    <li class="breadcrumb-item"><a asp-controller="Profile" asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a></li>
                 }
                 <li class="breadcrumb-item active" aria-current="page">@Localizer["Emails_Title"]</li>
             </ol>
@@ -763,7 +763,7 @@
             }
             else
             {
-                <a asp-action="Edit" class="btn btn-outline-secondary">
+                <a asp-controller="Profile" asp-action="Edit" class="btn btn-outline-secondary">
                     <i class="fa-solid fa-arrow-left me-1"></i>
                     @Localizer["Emails_BackToEdit"]
                 </a>

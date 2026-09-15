@@ -12,10 +12,9 @@ namespace Humans.Containers.Services;
 /// <c>Humans.Store.Services.AuditEntityTypes</c>.
 /// </para>
 /// <para>
-/// <c>Camp</c> is the one Containers cannot express as <c>nameof</c> at all after the G5
-/// move (nobodies-collective/Humans#866): the entity belongs to Camps and is not nameable
-/// from this assembly. It stays a literal here, as a related-entity discriminator, rather
-/// than becoming a reason to reach for Camps' type.
+/// <c>Camp</c> cannot be expressed as <c>nameof</c> here at all: the entity belongs to
+/// Camps and is not nameable from this assembly. It stays a literal, as a related-entity
+/// discriminator, rather than becoming a reason to reach for Camps' type.
 /// </para>
 /// </remarks>
 internal static class AuditEntityTypes

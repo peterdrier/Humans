@@ -71,7 +71,7 @@
                         <a href="@MemberTicketStatusViewModel.TicketPurchaseUrl" target="_blank" rel="noopener" class="btn btn-primary">
                             <i class="fa-solid fa-external-link-alt me-1"></i> @SharedLocalizer["Dashboard_BuyTicket"]
                         </a>
-                        <a asp-controller="Profile" asp-action="Emails" class="btn btn-outline-secondary btn-sm">@SharedLocalizer["Dashboard_DifferentEmail"]</a>
+                        <a asp-controller="ProfileEmails" asp-action="Emails" class="btn btn-outline-secondary btn-sm">@SharedLocalizer["Dashboard_DifferentEmail"]</a>
                     </div>
                     @if (Model.EventYear.HasValue)
                     {

@@ -76,9 +76,9 @@ internal interface ICalendarRepository : IRepository
     /// </summary>
     Task UpsertExceptionAsync(
         Guid eventId,
-        Instant originalOccurrenceStartUtc,
+        Instant? originalOccurrenceStartUtc,
         Guid createdByUserId,
         Instant now,
         Action<CalendarEventException> apply,
-        CancellationToken ct = default);
+        CancellationToken ct = default, LocalDate? originalDate = null);
 }

@@ -1,6 +1,6 @@
 ---
 name: Check a PR's base branch before merging it
-description: `gh pr merge` reports success when it squashes onto whatever `baseRefName` says — including a stale lane branch. Read base, mergeable and check rollup in one call before every merge.
+description: "`gh pr merge` reports success even squashing onto a stale `baseRefName` (e.g. a dead lane branch) — read base, mergeable, and check rollup in one call before merging."
 ---
 
 Before merging any PR, confirm what it is merging *into*:

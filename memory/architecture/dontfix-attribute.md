@@ -1,6 +1,6 @@
 ---
 name: DontFix is the one sanctioned permanent analyzer exception, Peter-applied only
-description: The DontFix attribute marks an intentional PERMANENT exception to an architecture rule — never auto-fix. Provenance is the point: agents may add [Grandfathered] (debt they'll fix) but NEVER DontFix (Peter-only). It is the sole carve-out to no-analyzer-suppressions.
+description: "`[DontFix]` marks a permanent, Peter-only analyzer exception — agents may add `[Grandfathered]` (debt) but must never add `[DontFix]` themselves."
 ---
 
 `[DontFix]` (`Humans.Base.Attributes.DontFixAttribute`) marks a class as an **intentional, permanent** exception to an architecture rule. Unlike `[Grandfathered]` — a TODO that should be refactored away and is fair game for automated tech-debt passes — a `[DontFix]` class is meant to stay. See [[analyzer-exceptions-via-attributes]] for the debt counterpart and [[no-analyzer-suppressions]] for the ban it carves out of.

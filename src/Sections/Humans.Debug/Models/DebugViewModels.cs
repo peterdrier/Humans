@@ -1,10 +1,5 @@
 namespace Humans.Debug.Models;
 
-// Moved out of Humans.Web/Models/AdminViewModels.cs at the section's G5
-// (nobodies-collective/Humans#866). Every type here had exactly one production consumer —
-// DebugController and its views — so the whole block came with the section and turned
-// internal (step 5). Nothing outside Humans.Debug ever named one.
-
 /// <summary>One auto-discovered configuration entry, with its value already masked for display.</summary>
 internal sealed class ConfigurationItemViewModel
 {
@@ -54,9 +49,8 @@ internal sealed class CacheStatsViewModel
     public List<CacheStatEntryViewModel> Entries { get; set; } = [];
 
     /// <summary>
-    /// Stats for the in-memory caching decorators (Profile / User / Team /
-    /// ShiftView), rendered in a separate table below the IMemoryCache stats.
-    /// These caches have no TTL and track invalidation count instead.
+    /// Stats for the TrackedCache decorators, in a separate table below the IMemoryCache
+    /// stats: no TTL, so they track invalidation count instead.
     /// </summary>
     public List<DecoratorCacheStatEntryViewModel> DecoratorEntries { get; set; } = [];
 }
@@ -73,7 +67,7 @@ internal sealed class CacheStatEntryViewModel
     public string Type { get; set; } = string.Empty;
 }
 
-/// <summary>One §15 caching decorator with its counters and warm-up state.</summary>
+/// <summary>One TrackedCache decorator with its counters and warm-up state.</summary>
 internal sealed class DecoratorCacheStatEntryViewModel
 {
     public string Name { get; set; } = string.Empty;

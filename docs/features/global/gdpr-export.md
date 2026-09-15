@@ -89,7 +89,7 @@ change.
 │    AuditLogService           BudgetService        │
 │    SurveyService             AgentService         │
 │    CachingEventService       IssuesService        │
-│    ExpenseReportService      HoldedFinanceService │
+│    ExpenseReportService      Finance.Service      │
 │    GateService               GoogleSyncLogService │
 │    EmailOutboxService                             │
 │    MailerLiteGdprContributor BackdoorApiKeyService │
@@ -160,8 +160,8 @@ service has no data for this user are omitted.
 | `AgentConversations` | `AgentService` | Array of `{ Id, StartedAt, LastMessageAt, Locale, MessageCount, Messages: [{ Role, Content, CreatedAt, Model, RefusalReason, HandedOffToFeedbackId }] }` — the user's AI assistant conversations with full message history. |
 | `ExpenseReports` | `ExpenseReportService` | Array of `{ Id, Status, Note, PayeeName, PayeeIban (masked), Total, SubmittedAt, ApprovedAt, CreatedAt, Lines: [{ Id, Description, Amount, LineType, SortOrder, Attachment? }] }` — the user's expense reports including line items and attachment metadata; null when the user has no reports. |
 | `ExpenseAuditLog` | `ExpenseReportService` | Single object `{ MaskedIban, Entries: [{ Action, EntityType, EntityId, Description, OccurredAt }] }` covering all expense-related audit events (submit, endorse, approve, reject, IBAN set/remove/reveal, etc.); null when the user has no expense audit entries. |
-| `HoldedCreditorAccount` | `HoldedFinanceService` | Single object `{ SupplierAccountNum, HoldedContactId, Source }` — the user's Holded creditor account binding; null when no binding exists. |
-| `SepaPayouts` | `HoldedFinanceService` | Array of `{ GeneratedAt, FileName, SupplierAccountNum, CreditorName, Iban (masked), Amount }` — every SEPA credit transfer paid to the user, oldest first; empty when they have never been paid. Retained after erasure on the fiscal basis. |
+| `HoldedCreditorAccount` | `Finance.Service` | Single object `{ SupplierAccountNum, HoldedContactId, Source }` — the user's Holded creditor account binding; null when no binding exists. |
+| `SepaPayouts` | `Finance.Service` | Array of `{ GeneratedAt, FileName, SupplierAccountNum, CreditorName, Iban (masked), Amount }` — every SEPA credit transfer paid to the user, oldest first; empty when they have never been paid. Retained after erasure on the fiscal basis. |
 | `SurveyResponses` | `SurveyService` | Array of `{ Survey, SubmittedAt, Culture, Answers[] }` where each answer has `{ Question, SelectedLabels, TextValue, RatingValue }`. |
 | `GateScans` | `GateService` | Array of `{ OccurredAt, Verdict, Role, LaneId }` — the user's own gate activity, as guest or as scanner (`Role` is "Guest" or "Scanner"). Data-minimized: no barcode, no other person's identifiers. |
 | `GoogleSyncLog` | `GoogleSyncLogService` | Array of `{ Action, OccurredAt, Description, ResourceName, UserEmail, Role, Source, Success, ErrorMessage }` — every Workspace sync row attributed to the human, merge tombstones followed. |
@@ -170,6 +170,8 @@ service has no data for this user are omitted.
 | `RideshareTrips` | `RideshareService` | Array of `{ Id, Year, Direction, MemberPlaceLabel, MemberLatitude, MemberLongitude, Waypoints[], DepartureDate, ExpectedDurationDays, OvernightPlan, VehicleType, SeatsOffered, LuggageCapacity, CapacityNote, Restrictions, WillingToDetour, CostSharing, CostNote, LinkedTripId, Status, CreatedAt, UpdatedAt }` — the human's ride offers, oldest first. |
 | `RideshareRequests` | `RideshareService` | Array of `{ Id, Year, Direction, PickupPlaceLabel, PickupLatitude, PickupLongitude, DesiredDate, PartySize, LuggageLoad, CanContributeToFuel, Notes, Status, CreatedAt, UpdatedAt }` — the human's ride requests, oldest first. |
 | `RideshareInterests` | `RideshareService` | Array of `{ Id, TripId, RequestId, Seats, Message, Status, CreatedAt, RespondedAt }` — interests the human expressed (as rider, or as driver answering a request), oldest first. |
+| `AssemblyVotes` | `AssemblyVoteService` | Array of `{ Vote, Status, ClosesAt, Entitlement ("Official"/"Indicative"), Tier, IsBoardMember, Ballot: { Choice, Ranking[], Revision, CastAt, UpdatedAt, History: [{ Revision, Choice, Ranking[], RecordedAt }] }? }` — every assembly vote the human was on the roster for, with their current ballot and each revision of it; `Ballot` is null when they did not vote. Retained after erasure, unlinked: the vote is the association's record of a decision. |
+| `AssemblyVoteActions` | `AssemblyVoteService` | Single object `{ RanVotes: [{ Vote, Status, Roles[] ("Drafted"/"Opened"/"Closed"), CreatedAt, OpenedAt, ClosedAt }], Peeks: [{ Vote, PeekedAt }] }` — the votes the human ran and the live tallies they peeked at. Declared as retained: the acta names the closer and the results page publishes the early-view list. |
 
 All instants are serialized as invariant ISO-8601 strings (e.g.
 `2026-04-15T10:30:00Z`) via `NodaTime` extensions.

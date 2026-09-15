@@ -1,6 +1,6 @@
 ---
 name: NodaTime for all dates/times — server-side always UTC
-description: Use NodaTime types (`Instant`, `LocalDate`, `ZonedDateTime`) instead of `DateTime`/`DateOnly`/`TimeOnly`. Server-side ALWAYS UTC. Client-side translates to local at display.
+description: Use NodaTime types (`Instant`/`LocalDate`/`ZonedDateTime`), not `DateTime`/`DateOnly`/`TimeOnly` — server-side is ALWAYS UTC; convert to local only at display.
 ---
 
 **Prefer NodaTime for internal time handling:**

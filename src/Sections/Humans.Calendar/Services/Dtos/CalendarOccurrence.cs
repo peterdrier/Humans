@@ -13,7 +13,7 @@ namespace Humans.Calendar.Services.Dtos;
 /// </summary>
 internal sealed record CalendarOccurrence(
     Guid EventId,
-    Instant OccurrenceStartUtc,
+    Instant? OccurrenceStartUtc,
     Instant? OccurrenceEndUtc,
     bool IsAllDay,
     string Title,
@@ -24,6 +24,9 @@ internal sealed record CalendarOccurrence(
     string OwningTeamName,
     bool IsRecurring,
     Instant? OriginalOccurrenceStartUtc,
+    LocalDate? StartDate = null,
+    LocalDate? EndDateExclusive = null,
+    LocalDate? OriginalOccurrenceDate = null,
     string Source = CalendarOccurrence.CalendarSource,
     string? Url = null)
 {

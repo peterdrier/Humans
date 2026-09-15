@@ -122,7 +122,7 @@ A payment Holded **accepted** but gave no readable id for is not a failure at al
 `"unconfirmed:{documentId}"`, the allocation continues, and the transfer books normally. The sentinel
 lands in `HoldedPaymentRefs` and in the audit entry, naming the document the treasurer has to eyeball
 in Holded. Throwing there would have lost a real payment from the record and left the transfer
-retryable — so reaching the catch on the *first* payment now genuinely means Holded refused it.
+retryable — so reaching the catch on the *first* payment means Holded refused it.
 
 ## The file
 
@@ -179,10 +179,10 @@ Server-side, all-or-nothing:
 
 ## IBAN handling
 
-The unmasked IBAN exists in exactly two places: the generated XML and `sepa_payout_transfers.Iban`.
-Everything else — logs, audit descriptions, the page, and even the cross-section
-`HoldedCreditorAccountRow` — carries `IbanFormatter.Mask(...)` output only. Builder error messages
-mask the IBAN they name.
+The unmasked IBAN is stored only as sent: the generated XML and `sepa_payout_transfers.Iban`.
+Logs, audit descriptions, the SEPA page and the cross-section `HoldedCreditorAccountRow` carry
+`IbanFormatter.Mask(...)` output only; builder error messages mask the IBAN they name. An admin
+screen (`/Finance/CreditorStatement`) and the member's own view may show it in full.
 
 ## GDPR
 

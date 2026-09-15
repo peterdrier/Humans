@@ -1,6 +1,6 @@
 ---
 name: Vendor connectors stay their own sections — never merged with app code
-description: HARD RULE. External-vendor connector sections (Holded, MailerLite, GoogleIntegration) are never merged into the app sections that consume them — vendors can be swapped. (Peter, 2026-08-03 inventory freeze.)
+description: HARD RULE. Vendor connector sections (Holded, MailerLite, GoogleIntegration) are never merged into their consumer sections — vendors can be swapped; never re-export a vendor's wire DTO.
 ---
 
 A section that wraps an **external vendor** (Holded accounting, MailerLite, Google Workspace via GoogleIntegration) stays its **own section**, even when a single app section is its only consumer. Vendor connectors are never merged with application code.

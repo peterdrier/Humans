@@ -1,3 +1,8 @@
+---
+name: "`Humans.Integration.Tests` is local-only — never propose running it in CI/cloud, never report it"
+description: HARD RULE. `Humans.Integration.Tests` is local-only and self-skips under CI/cloud — skipped entries are the design; never mention, investigate, count, or CI-gate it.
+---
+
 # `Humans.Integration.Tests` is local-only — never propose running it in CI/cloud, never report it
 
 **Rule:** `tests/Humans.Integration.Tests/` is the home of tests that run **only in Peter's local environment** — they integrate with things that exist nowhere else. `build.yml`'s `--filter "FullyQualifiedName!~Humans.Integration.Tests"` is the design, not an oversight, not a stale Docker workaround, and not tech debt. Never propose adding a CI job for the project, moving it into `build.yml`, or "unblocking" it. Do not open an issue about it. Do not add it to a debt ledger.

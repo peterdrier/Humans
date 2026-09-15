@@ -1,6 +1,6 @@
 ---
 name: Email Mutation Paths
-description: HARD RULE. `UserEmail.Email` is written only by the OAuth-callback reconcile primitive via `(Provider, ProviderKey)` match; `User.Email` is a vestigial Identity field computed from the verified `IsPrimary` row, never written by application code.
+description: HARD RULE. `UserEmail.Email` is written only by the OAuth-callback reconcile primitive (`(Provider, ProviderKey)` match); `User.Email` is vestigial, never written by app code.
 ---
 
 # Email Mutation Paths

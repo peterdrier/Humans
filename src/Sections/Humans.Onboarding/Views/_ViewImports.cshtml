@@ -11,10 +11,10 @@
    wrong one renders as its own name with a green build and a 200, so
    OnboardingLocalizerBindingTests checks every one of them.
 
-   The review pages' three <vc:> elements resolve as follows: <vc:human> and
-   <vc:access-matrix> are both in Humans.Base/ViewComponents/ and bind through the
-   @addTagHelper below; <vc:profile-card> is Users' (Humans.Users/ViewComponents/) and is
-   invoked by name (design §15 step 6). Guarded by OnboardingPageRenderTests (step 12). *@
+   The review pages use two <vc:> elements, <vc:human> and <vc:access-matrix>, both in
+   Humans.Base/ViewComponents/ and bound through the @addTagHelper below. Users' ProfileCard
+   is not one of them: it is invoked by name (design §15 step 6). OnboardingPageRenderTests
+   covers these, but it lives in Humans.Integration.Tests and self-skips in CI. *@
 @using Humans.Base.Extensions
 @using Humans.Consent
 @using Humans.Consent.Contracts

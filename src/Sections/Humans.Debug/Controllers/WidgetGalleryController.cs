@@ -61,9 +61,8 @@ internal sealed class WidgetGalleryController(
             SampleEventSettings = BuildSampleEventSettings(),
             SampleStaffingData = BuildSampleStaffingData(),
             SampleStaffingHours = BuildSampleStaffingHours(),
-            // ProfileSummaryViewModel samples (_ProfileCard / _HumanPopover) are internal to
-            // Humans.Users, so the Users section renders those cards itself via its
-            // UsersGallery view component (nobodies-collective/Humans#1091).
+            // ProfileSummaryViewModel is internal to Humans.Users, so that section renders the
+            // _ProfileCard / _HumanPopover cards itself via UsersGallery.
             SampleShiftsSummary = new ShiftsSummaryCardViewModel
             {
                 TotalSlots = 24,
@@ -75,9 +74,8 @@ internal sealed class WidgetGalleryController(
                 IncludesSubTeamCount = 2,
             },
             SamplePager = new PagerViewModel(totalPages: 8, currentPage: 3, action: "Index"),
-            // <vc:user-search-result> is keyed by user id and Users resolves the human itself
-            // (nobodies-collective/Humans#1062), so the gallery has no sample rows to fabricate —
-            // the card renders the signed-in admin with a made-up match snippet.
+            // <vc:user-search-result> resolves the human from a user id, so the card renders the
+            // signed-in admin with a made-up match snippet.
             SampleTableRows =
             [
                 new() { Name = "Sparkle", Amount = 120.50m, JoinedAt = SystemClock.Instance.GetCurrentInstant().Minus(Duration.FromDays(400)), Status = TicketAttendeeStatus.Valid, IsVip = true },
@@ -91,11 +89,9 @@ internal sealed class WidgetGalleryController(
     }
 
     /// <summary>
-    /// One real key per search-result row card. Those four components fetch by key and render
-    /// nothing when it does not resolve, so a fabricated sample would show a blank card —
-    /// indistinguishable from the unbound-tag failure the gallery is meant to expose
-    /// (nobodies-collective/Humans#1062). Every read here is cache-served. A key is null in an
-    /// environment holding no such row, and the card says so instead of rendering empty.
+    /// One real key per search-result row card. Those components render nothing for an
+    /// unresolved key, so a fabricated sample would be indistinguishable from an unbound tag.
+    /// Every read is cache-served. Null where this environment holds no such row; the card says so.
     /// </summary>
     private async Task<SearchRowKeys> ResolveSearchRowKeysAsync(CancellationToken ct)
     {
@@ -131,15 +127,10 @@ internal sealed class WidgetGalleryController(
         Quirks: ["Early riser", "Coffee snob"],
         Languages: ["English", "Spanish"]);
 
-    /// <summary>
-    /// The staffing-chart samples and the active event's name. The rota-shaped samples
-    /// moved into Humans.Shifts' ShiftsGalleryViewComponent at that section's G5
-    /// (nobodies-collective/Humans#866); what is left binds only leaf records, which is
-    /// why the two staffing partials stayed in Shell.
-    /// </summary>
+    /// <summary>The staffing-chart samples and the active event's name — leaf records only.</summary>
     private static BurnSettingsInfo BuildSampleEventSettings() => new(
         Id: Guid.NewGuid(),
-        EventName: "Nowhere 2026",
+        EventName: "Elsewhere 2026",
         Year: 2026,
         TimeZoneId: "Europe/Madrid",
         GateOpeningDate: new LocalDate(2026, 7, 1),
@@ -188,8 +179,8 @@ internal sealed class WidgetGalleryViewModel
 }
 
 /// <summary>
-/// Live keys for the five search-result row cards. Null where this environment holds no
-/// such row — the humans row always resolves, so it keys off the signed-in admin instead.
+/// Live keys for four of the five search-result rows; the humans row keys off the signed-in
+/// admin. Null where the environment holds no such row.
 /// </summary>
 internal sealed record SearchRowKeys(
     Guid? TeamId,

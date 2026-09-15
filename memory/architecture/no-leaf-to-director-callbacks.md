@@ -1,6 +1,6 @@
 ---
 name: No leaf-to-director callbacks
-description: Reject any ctor or call edge where a leaf service (ProfileService, ConsentService, etc.) reaches up to a director (OnboardingService, AdminDashboardService, etc.). Director-to-leaf is one-way.
+description: Reject any ctor/call edge where a leaf service (ProfileService, ConsentService) reaches up to a director (OnboardingService, etc.) — director-to-leaf is one-way only.
 ---
 
 > Vocabulary ([`CONTEXT.md`](../../CONTEXT.md)): here **leaf** = a low-level **Section** (Profile/Consent/User); **director** = **Orchestrator**. The rule is the section→orchestrator direction — a Section never calls *up* into an Orchestrator; Orchestrator→Section is one-way.

@@ -452,14 +452,12 @@ internal sealed partial class UserRepository
             .ToHashSet();
         var now = _clock.GetCurrentInstant();
 
-        // Remove entries whose Id is not in the incoming set
         var toRemove = existing
             .Where(v => !incomingIds.Contains(v.Id))
             .ToList();
         if (toRemove.Count > 0)
             ctx.VolunteerHistoryEntries.RemoveRange(toRemove);
 
-        // Update matched, add new
         foreach (var entry in entries)
         {
             if (entry.Id != Guid.Empty && existingLookup.TryGetValue(entry.Id, out var match))

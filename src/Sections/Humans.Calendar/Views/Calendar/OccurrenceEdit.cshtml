@@ -18,6 +18,21 @@
 
         <div asp-validation-summary="All" class="text-danger mb-2"></div>
 
+        @if (Model.IsAllDay)
+        {
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="OverrideStartDateLocal" class="form-label">@Localizer["Calendar_StartDate"]</label>
+                    <input asp-for="OverrideStartDateLocal" type="date" class="form-control" />
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label asp-for="OverrideEndDateLocal" class="form-label">@Localizer["Calendar_EndDate"]</label>
+                    <input asp-for="OverrideEndDateLocal" type="date" class="form-control" />
+                </div>
+            </div>
+        }
+        else
+        {
         <div class="row">
             <div class="col-md-6 mb-3">
                 <label asp-for="OverrideStartLocal" class="form-label">@Localizer["Calendar_OverrideStart"]</label>
@@ -28,6 +43,8 @@
                 <input asp-for="OverrideEndLocal" type="datetime-local" class="form-control" />
             </div>
         </div>
+
+        }
 
         <div class="mb-3">
             <label asp-for="OverrideTitle" class="form-label">@Localizer["Calendar_OverrideTitle"]</label>

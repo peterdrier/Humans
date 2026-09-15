@@ -1,6 +1,6 @@
 ---
 name: Service tests inherit ServiceTestHarness (or a section-local copy)
-description: Users' service tests inherit ServiceTestHarness (Db, DbFactory, Clock, Cache, NewDbBackedUserService) instead of hand-rolling per-class scaffolding. Every other section keeps its own local `<Section>TestHarness` copying the same shape.
+description: Users' service tests inherit `ServiceTestHarness` (Db, Clock, Cache, `NewDbBackedUserService`) instead of hand-rolled scaffolding — other sections copy the shape locally.
 ---
 
 `tests/Humans.Users.Tests/Infrastructure/ServiceTestHarness.cs` is the base class for Users' own service tests that need an in-memory `UsersDbContext` + `FakeClock` + `IMemoryCache` + a DB-backed `IUserService` stub. Inherit it instead of repeating the constructor boilerplate.

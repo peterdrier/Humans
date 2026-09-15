@@ -1,6 +1,6 @@
 ---
 name: Slug-keyed routes fall back to GUID
-description: Any URL keyed by an entity slug (`/Section/Admin/Foo/{slug}`) must accept a GUID in the same position and look up by Id when the slug doesn't match. Empty/missing slugs are a normal state; the GUID path is the always-available identity. New routes use this pattern; pre-existing routes are migrated opportunistically when touched.
+description: A slug-keyed URL must also accept the entity GUID in the same slot, looking up by Id when the slug doesn't match — new routes only; existing ones migrate opportunistically.
 ---
 
 URLs keyed by a sluggable field (`{slug}` route parameter) must accept either the slug **or** the entity GUID in the same slot. Resolution order:

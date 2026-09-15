@@ -1,3 +1,4 @@
+using Humans.Users.Services;
 using Humans.Base.Attributes;
 using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
@@ -17,7 +18,7 @@ namespace Humans.Application.Services.Users.AccountLifecycle;
 // Orchestrates user/profile deletion cascade — sits above User/Profile so foundational services stay dependency-free of Teams/Shifts/Tickets.
 [CrossSectionWrite("GDPR erasure revokes the user's team memberships and early-entry grants.")]
 internal sealed class AccountDeletionService(
-    IUserService userService,
+    IUserServiceInternal userService,
     // Merge-chain resolution goes through the read contract, matching every other caller of
     // GetMergedSourceIdsAsync (AuditLog, Consent, Budget) — the primitive is only answerable
     // by the caching decorator, which is what IUserServiceRead resolves to.
@@ -59,16 +60,13 @@ internal sealed class AccountDeletionService(
             eligibleAfter = ticketHoldings.PostEventHoldDate;
         }
 
-        // 1. Persist deletion-pending fields on User.
         await userService.SetDeletionPendingAsync(userId, now, deletionDate, eligibleAfter, ct);
 
-        // 2. Revoke team memberships immediately — user loses access during grace period.
+        // User loses access during grace period.
         var endedMemberships = await teamService.RevokeAllMembershipsAsync(userId, ct);
 
-        // 3. Revoke governance roles.
         var endedRoles = await roleAssignmentService.RevokeAllActiveAsync(userId, ct);
 
-        // 4. Audit.
         await auditLogService.LogAsync(
             AuditAction.MembershipsRevokedOnDeletionRequest, nameof(User), userId,
             $"Revoked {endedMemberships} team membership(s) and {endedRoles} role assignment(s) on deletion request",
@@ -79,7 +77,6 @@ internal sealed class AccountDeletionService(
             "Revoked {MembershipCount} memberships and {RoleCount} roles immediately",
             userId, deletionDate, eligibleAfter, endedMemberships, endedRoles);
 
-        // 5. Send deletion confirmation email.
         var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync([userId], ct);
         var notificationEmail = notificationEmails.GetValueOrDefault(userId) ?? user.Email;
         if (notificationEmail is not null)
@@ -92,7 +89,7 @@ internal sealed class AccountDeletionService(
                 ct);
         }
 
-        // 6. Drop shift-authorization cache so coordinator privilege reverts immediately (parity with Purge/AnonymizeExpired).
+        // Drop shift-authorization cache so coordinator privilege reverts immediately (parity with Purge/AnonymizeExpired).
         shiftAuthorizationInvalidator.Invalidate(userId);
         shiftViewInvalidator.InvalidateUser(userId);
 

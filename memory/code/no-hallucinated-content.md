@@ -1,6 +1,6 @@
 ---
 name: Never hardcode fabricated content into views
-description: Don't invent user-facing copy (benefits, policies, pricing, deadlines, vendor lists, "tips", FAQs) and ship it hardcoded. If there's no authoritative source, wire to an admin-editable field or ask.
+description: Never invent user-facing copy (benefits, policies, pricing) and hardcode it — wire to an admin-editable field or ask for the source text.
 ---
 
 Never fabricate user-facing content and ship it hardcoded in a view, partial, seed, or localization string. This includes benefits lists, obligations, policies, pricing, deadlines, resource links, vendor lists, "tips", FAQs, event rules, or any domain copy that sounds like it should come from an admin or a document.

@@ -49,8 +49,8 @@ public sealed class DependencyCycleResolutionTests : ServiceTestHarness
         // types collected above so external implementations don't pollute the
         // graph.
         //
-        // This used to key on the "IFoo → Foo" naming convention, which silently
-        // dropped every cross-section read interface: there is no `UserServiceRead`
+        // Keying on the "IFoo → Foo" naming convention passes silently when the
+        // convention is broken: there is no `UserServiceRead`
         // class, because `IUserServiceRead` (and ITeamServiceRead / ICampServiceRead /
         // IEventServiceRead) is registered as a forwarder factory onto the matching
         // `Caching*Service` decorator. Any edge through a read interface therefore

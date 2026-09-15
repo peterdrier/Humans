@@ -50,6 +50,7 @@ internal static class NotificationSourceMapping
         NotificationSource.WorkgroupReportingDue => MessageCategory.Governance,
         NotificationSource.WorkgroupDocumentActivity => MessageCategory.Governance,
         NotificationSource.WorkgroupDispositionRecorded => MessageCategory.Governance,
+        NotificationSource.AssemblyVoteOpened => MessageCategory.Governance,
         _ => MessageCategory.System
     };
 }

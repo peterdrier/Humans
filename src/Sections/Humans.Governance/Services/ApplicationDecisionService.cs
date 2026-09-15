@@ -362,6 +362,52 @@ internal sealed class ApplicationDecisionService(
         return (rows, totalCount);
     }
 
+    /// <summary>
+    /// Approved applications whose stored expiry disagrees with the calculator for their
+    /// approval date. Temporary: repairs rows approved under the pre-September-2026 rule.
+    /// </summary>
+    public async Task<IReadOnlyList<TermExpiryDriftRow>> GetTermExpiryDriftAsync(CancellationToken ct = default)
+    {
+        var (approved, _) = await repository.GetFilteredAsync(ApplicationStatus.Approved, null, 1, int.MaxValue, ct);
+        return approved
+            .Where(a => a.ResolvedAt is not null)
+            .Select(a =>
+            {
+                var resolvedOn = a.ResolvedAt!.Value.InUtc().Date;
+                return new TermExpiryDriftRow(
+                    a.Id, a.UserId, a.MembershipTier, resolvedOn, a.TermExpiresAt,
+                    TermExpiryCalculator.ComputeTermExpiry(resolvedOn));
+            })
+            .Where(r => r.StoredExpiry != r.ExpectedExpiry)
+            .OrderBy(r => r.ResolvedOn)
+            .ToList();
+    }
+
+    /// <summary>Rewrites every drifted expiry to the calculator's value; one audit entry per row. Returns the count.</summary>
+    public async Task<int> FixTermExpiryDriftAsync(Guid adminUserId, CancellationToken ct = default)
+    {
+        var drift = await GetTermExpiryDriftAsync(ct);
+        foreach (var row in drift)
+        {
+            var application = await repository.GetByIdAsync(row.ApplicationId, ct);
+            if (application is null)
+                continue;
+
+            application.TermExpiresAt = row.ExpectedExpiry;
+            await repository.UpdateAsync(application, ct);
+
+            await auditLogService.LogAsync(
+                AuditAction.TierTermExpiryCorrected,
+                AuditEntityTypes.Application,
+                application.Id,
+                $"{application.MembershipTier} term expiry {row.StoredExpiry.ToInvariantDate() ?? "null"} -> {row.ExpectedExpiry.ToInvariantDate()}",
+                adminUserId);
+        }
+
+        logger.LogInformation("Term expiry corrected on {Count} applications by {UserId}", drift.Count, adminUserId);
+        return drift.Count;
+    }
+
     public async Task<ApplicationAdminDetailDto?> GetApplicationDetailAsync(
         Guid applicationId, CancellationToken ct = default)
     {

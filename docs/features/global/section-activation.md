@@ -55,8 +55,9 @@ nobodies-collective/Humans#1090 found two shapes of this and closed most of it:
 
 - **Shell to section.** `_Layout.cshtml` used to link `Search` and `Tour` that way. Both
   are now `ISectionNav` contributions (`Humans.Search/SectionNav.cs`,
-  `Humans.Tour/SectionNav.cs`) — Shell no longer names either, so deactivating them is
-  invisible to Shell and safe.
+  `Humans.Tour/SectionNav.cs`), so the top nav no longer names either. Shell's dashboard
+  tile in `Views/Home/Dashboard.cshtml` still names `Tour` by controller name, so
+  deactivating Tour leaves a dead tile the scan cannot see.
 - **Section to section.** `Humans.Users/Views/Profile/Index.cshtml` and
   `Humans.Camps/Views/Camp/Details.cshtml` both invoke Events' `EventsCard` by name.
   `Humans.Users` now references `Humans.Events` and renders it as `<vc:events-card>`, a

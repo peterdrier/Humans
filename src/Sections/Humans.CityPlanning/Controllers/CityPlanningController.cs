@@ -321,10 +321,8 @@ internal sealed class CityPlanningController(
                 {
                     CampId = g.CampId,
                     CampName = g.CampName,
-                    CampSlug = g.CampSlug,
                     Containers = g.Containers
                         .OrderBy(c => c.Container.Name, StringComparer.OrdinalIgnoreCase)
-                        .Select(ToContainerWithPlacementViewModel)
                         .ToList()
                 })
                 .ToList()
@@ -332,31 +330,6 @@ internal sealed class CityPlanningController(
 
         return View(vm);
     }
-
-    private static ContainerViewModel ToContainerViewModel(ContainerDto c) => new()
-    {
-        Id = c.Id,
-        Name = c.Name,
-        Description = c.Description,
-        Images = c.Images,
-    };
-
-    private static ContainerPlacementViewModel? ToPlacementViewModel(ContainerPlacementDto? p) =>
-        p is null ? null : new ContainerPlacementViewModel
-        {
-            ContainerId = p.ContainerId,
-            Year = p.Year,
-            LocationGeoJson = p.LocationGeoJson,
-            PlacementNotes = p.PlacementNotes,
-            PlacementImageUrl = p.PlacementImageStoragePath,
-            PlacementImageFileName = p.PlacementImageFileName,
-        };
-
-    private static ContainerWithPlacementViewModel ToContainerWithPlacementViewModel(ContainerWithPlacement cwp) => new()
-    {
-        Container = ToContainerViewModel(cwp.Container),
-        Placement = ToPlacementViewModel(cwp.Placement),
-    };
 
     [HttpPost("BarrioMap/Admin/Containers/Barrios/{campId}/Create")]
     [ValidateAntiForgeryToken]

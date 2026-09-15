@@ -1,6 +1,6 @@
 ---
 name: retirement-first-for-subsumed-guardrails
-description: When a structural migration subsumes a guardrail (an analyzer/arch-test covering what a new structure now enforces by construction), prefer retiring it over generalizing it to the new shape.
+description: When a structural migration makes a guardrail's check enforced by construction, prefer retiring the analyzer/arch-test over generalizing it to the new shape.
 ---
 
 During a structural migration (e.g. the per-section project split), the instinct is often to widen analyzers and architecture tests to also cover the new shape. That's frequently wrong: most such violations become obsolete once assembly boundaries, per-section DbContexts, and internal-by-default accessibility make the violation impossible or a compile error — the right outcome is deletion, not widening.

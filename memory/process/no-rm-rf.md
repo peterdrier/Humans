@@ -1,6 +1,6 @@
 ---
 name: no-rm-rf
-description: HARD RULE. `rm -rf` (and equivalents like `Remove-Item -Recurse -Force` on repo paths) is never allowed for anything, no exceptions — a PreToolUse hook blocks it. Worktree removal is git-only, then `rmdir` the empty husk; stale build output is `dotnet clean`.
+description: HARD RULE. `rm -rf` / `Remove-Item -Recurse -Force` is never allowed, no exceptions. Worktree removal is git-only + `rmdir` on the empty husk; build output uses `dotnet clean`.
 ---
 
 **HARD RULE.** `rm -rf` — and equivalents, including PowerShell `Remove-Item -Recurse -Force` on repo paths — is never allowed for anything. No exceptions, no fallbacks. A prior Claude Code session destroyed files with `rm -rf`, which is why a PreToolUse hook hard-blocks the pattern on this machine; beyond the block, reaching for a recursive/forced delete is the wrong tool regardless.
@@ -50,4 +50,4 @@ The `rmdir` step exists because `git worktree remove` often empties the contents
 - If the dir has any contents whatsoever — files, subdirs, hidden files — STOP. Don't escalate.
 - Reporting format: paste the literal git error and stop. Don't propose follow-up actions.
 - Git-level cleanup (registration via `git worktree prune`, local branch via `git branch -d`, remote branch via `git push origin --delete`) can still proceed without the filesystem dir being gone — none of that depends on filesystem deletion.
-- Applies to ANY worktree under `.worktrees/<name>` or anywhere else, regardless of whether the branch was just merged, abandoned, or never had a remote.
+- Applies to ANY worktree under `.claude/worktrees/<name>` or anywhere else, regardless of whether the branch was just merged, abandoned, or never had a remote.

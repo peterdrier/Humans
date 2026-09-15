@@ -78,7 +78,7 @@
         <input asp-for="RecurrenceRule" class="form-control" placeholder="FREQ=WEEKLY;BYDAY=TU" />
         <small class="text-muted">@Localizer["Calendar_RRuleHelpPrefix"] <code>FREQ=WEEKLY;BYDAY=TU;COUNT=10</code></small>
     </div>
-    <div class="col-md-4 mb-3">
+    <div class="col-md-4 mb-3 @(Model.IsAllDay ? "d-none" : null)" data-timezone>
         <label asp-for="RecurrenceTimezone" class="form-label">@Localizer["Calendar_RecurrenceTimezoneLabel"]</label>
         <input asp-for="RecurrenceTimezone" class="form-control" />
         <small class="text-muted">@Localizer["Calendar_RecurrenceTimezoneHelpPrefix"] <code>Europe/Madrid</code></small>
@@ -96,6 +96,7 @@
         if (!timed || !allDay) return;
         function update() {
             timed.classList.toggle('d-none', checkbox.checked);
+            form.querySelector('[data-timezone]').classList.toggle('d-none', checkbox.checked);
             allDay.classList.toggle('d-none', !checkbox.checked);
         }
         checkbox.addEventListener('change', update);

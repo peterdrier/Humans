@@ -107,7 +107,7 @@ Phase 3  /simplify pass — Opus; internal cohesion + interface trimming
 Phase 4  Doc polish — Opus; final review loop until merge-ready
 ```
 
-Sequential phases. Within a phase, parallel subagents up to **hard cap of 3** (`~/.claude-shared/shared/claude.md`). Escalate model: Sonnet for Phase 1 mechanical work → Opus for Phases 2–4.
+Sequential phases. Within a phase, fan out parallel subagents as wide as the files are disjoint (the old 3-agent cap was lifted 2026-09-10; see [[model-tiering]]). Escalate model: Sonnet for Phase 1 mechanical work → Opus for Phases 2–4.
 
 ## Context discipline
 
@@ -133,7 +133,7 @@ This keeps the orchestrator focused on plan-execution decisions; the heavy readi
 | Existing-section | `section <Name>`, main clean | new `align/<section>` | none |
 | Mid-build | `section <Name>`, on feature branch | continue | none |
 
-Locally, always use a worktree under `.worktrees/section-align-<target>/`; in a cloud run work in the repo root on the branch instead (`memory/process/always-use-worktree.md`).
+Locally, always use a worktree under `.claude/worktrees/section-align-<target>/`; in a cloud run work in the repo root on the branch instead (`memory/process/always-use-worktree.md`).
 
 ---
 

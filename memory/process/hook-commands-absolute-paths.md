@@ -1,6 +1,6 @@
 ---
 name: Hook commands must use absolute paths
-description: Every hook `command` in `.claude/settings.json` locates its script via `"$CLAUDE_PROJECT_DIR/.claude/<script>.sh"`, never a bare relative `.claude/<script>.sh`. A hook fires before the tool command runs, so its cwd is whatever the previous Bash call left behind — a worktree, or a directory that has since been deleted. Scripts that call sibling scripts resolve them from `BASH_SOURCE`, not cwd.
+description: Every hook `command` in `.claude/settings.json` must locate its script via `"$CLAUDE_PROJECT_DIR/.claude/<script>.sh"`, never a bare relative path.
 ---
 
 Hook `command` entries in `.claude/settings.json` must locate their script absolutely:

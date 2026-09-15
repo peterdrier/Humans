@@ -48,8 +48,8 @@ file sealed class StubAuditLog : IAuditLogService
 }
 
 /// <summary>
-/// Unit tests for the Application-layer <see cref="AccountProvisioningService"/>
-/// (§15 migration, issue #558). Repositories are stubbed in-memory so these
+/// Unit tests for the Application-layer <see cref="AccountProvisioningService"/>.
+/// Repositories are stubbed in-memory so these
 /// tests do not depend on Npgsql-specific translations (<c>ILike</c>) that
 /// the EF InMemory provider does not support; behaviour of the actual
 /// <see cref="UserEmail"/> / <see cref="User"/> matching is covered in
@@ -243,14 +243,8 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<UserEmail?> GetUserEmailByIdReadOnlyAsync(Guid emailId, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<bool> UserEmailExistsForUserAsync(
-            Guid userId, string normalizedEmail, string? alternateEmail, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<bool> VerifiedUserEmailExistsForOtherUserAsync(
-            Guid userId, string normalizedEmail, string? alternateEmail, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<UserEmail?> GetConflictingVerifiedUserEmailAsync(
-            Guid excludeEmailId, string normalizedEmail, string? alternateEmail, CancellationToken ct = default) =>
+        public Task<IReadOnlyList<UserEmail>> GetUserEmailsByAddressAsync(
+            string normalizedEmail, string? alternateEmail, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<int> ReassignUserEmailsToUserAsync(
             Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default) =>
@@ -273,28 +267,11 @@ public class AccountProvisioningServiceTests
         public Task<IReadOnlyList<UserEmail>> GetUserEmailsByEmailsAsync(
             IReadOnlyCollection<string> emails, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<bool> AnyUserEmailWithEmailAsync(string email, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<Dictionary<Guid, string>> GetAllNotificationTargetUserEmailsAsync(
             CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<UserEmailWithUser?> FindVerifiedUserEmailWithUserAsync(
-            string normalizedEmail, string? alternateEmail, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<UserEmail?> FindUserEmailByNormalizedEmailAsync(
-            string normalizedEmail, string? alternateEmail, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<string?> GetVerifiedUserEmailAddressAsync(
-            Guid userId, Guid emailId, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetUserIdsByUserEmailPrefixAndSuffixAsync(
             string prefix, string suffix, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<Guid?> GetOtherUserIdHavingUserEmailAsync(
-            string email, Guid excludeUserId, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<UserEmail?> FindOtherUsersVerifiedUserEmailRowAsync(
-            string normalizedEmail, string? alternateEmail, Guid excludeUserId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task ApplyUserEmailReconcilePlanAsync(
             UserEmail? displacedRowToDelete,
@@ -310,8 +287,6 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task RemoveUserEmailAsync(UserEmail email, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task RemoveAllUserEmailsForUserAsync(Guid userId, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task UpdateUserEmailAsync(UserEmail email, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task UpdateUserEmailsAsync(IReadOnlyList<UserEmail> emails, CancellationToken ct = default) =>
@@ -320,8 +295,7 @@ public class AccountProvisioningServiceTests
 
     /// <summary>
     /// In-memory fake of the two <c>IUserEmailService</c> methods that
-    /// <c>AccountProvisioningService</c> calls. Issue
-    /// nobodies-collective/Humans#687: AccountProvisioningService routes
+    /// <c>AccountProvisioningService</c> calls. AccountProvisioningService routes
     /// UserEmail mutations through <c>IUserEmailService</c> instead of the
     /// repository, so the test fixture mirrors the same boundary.
     /// </summary>
@@ -334,18 +308,21 @@ public class AccountProvisioningServiceTests
         public void Seed(UserEmail email) => _emails[email.Id] = email;
         public IReadOnlyCollection<UserEmail> All => _emails.Values;
 
-        public Task<Guid?> FindAnyUserIdByEmail(string email)
+        public Task<IReadOnlyList<UserEmailRowSnapshot>> FindByAddress(string email, bool verifiedOnly)
         {
             var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
             var alternateEmail = GetAlternateEmail(normalizedEmail);
-            foreach (var ue in _emails.Values)
-            {
-                var n = EmailNormalization.NormalizeForComparison(ue.Email);
-                if (string.Equals(n, normalizedEmail, StringComparison.OrdinalIgnoreCase)) return Task.FromResult<Guid?>(ue.UserId);
-                if (alternateEmail is not null && string.Equals(n, alternateEmail, StringComparison.OrdinalIgnoreCase)) return Task.FromResult<Guid?>(ue.UserId);
-            }
-
-            return Task.FromResult<Guid?>(null);
+            var rows = _emails.Values
+                .Where(ue => !verifiedOnly || ue.IsVerified)
+                .Where(ue =>
+                {
+                    var n = EmailNormalization.NormalizeForComparison(ue.Email);
+                    return string.Equals(n, normalizedEmail, StringComparison.OrdinalIgnoreCase)
+                        || (alternateEmail is not null && string.Equals(n, alternateEmail, StringComparison.OrdinalIgnoreCase));
+                })
+                .Select(ue => UserEmailFixtures.Row(ue.UserId, ue.Email, ue.IsVerified, ue.Id))
+                .ToList();
+            return Task.FromResult<IReadOnlyList<UserEmailRowSnapshot>>(rows);
         }
 
         public Task AddProvisioned(Guid userId, string email, Instant now)
@@ -366,8 +343,7 @@ public class AccountProvisioningServiceTests
                 UserId = userId,
                 Email = email,
                 IsVerified = true,
-                // Issue nobodies-collective/Humans#687: simulate the
-                // EnsurePrimaryInvariantAsync + EnsureGoogleInvariantAsync
+                // Simulates the EnsurePrimaryInvariantAsync + EnsureGoogleInvariantAsync
                 // orchestrator behaviour for newly-provisioned single-row
                 // users — the fresh row becomes both Primary and Google.
                 IsPrimary = true,
@@ -378,31 +354,6 @@ public class AccountProvisioningServiceTests
             };
             _emails[row.Id] = row;
             return Task.CompletedTask;
-        }
-
-        public Task<UserEmailWithUser?> FindVerifiedEmailWithUser(string email, FakeUserRepository users)
-        {
-            var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
-            var alternateEmail = GetAlternateEmail(normalizedEmail);
-            foreach (var ue in _emails.Values)
-            {
-                if (!ue.IsVerified)
-                    continue;
-
-                var n = EmailNormalization.NormalizeForComparison(ue.Email);
-                if (!string.Equals(n, normalizedEmail, StringComparison.OrdinalIgnoreCase)
-                    && (alternateEmail is null || !string.Equals(n, alternateEmail, StringComparison.OrdinalIgnoreCase)))
-                    continue;
-
-                var user = users.All.FirstOrDefault(u => u.Id == ue.UserId);
-                return Task.FromResult<UserEmailWithUser?>(new UserEmailWithUser(
-                    ue.UserId,
-                    ue.Email,
-                    user?.ContactSource,
-                    user?.LastLoginAt));
-            }
-
-            return Task.FromResult<UserEmailWithUser?>(null);
         }
 
         public Task<bool> AddVerified(Guid userId, string email, Instant now)
@@ -449,7 +400,7 @@ public class AccountProvisioningServiceTests
     private readonly FakeUserRepository _userRepo;
     private readonly FakeUserEmailService _userEmailFake;
     private readonly IUserEmailService _userEmailService;
-    private readonly IUserService _userService;
+    private readonly IUserServiceInternal _userService;
     private readonly AccountProvisioningService _service;
 
     public AccountProvisioningServiceTests()
@@ -463,21 +414,17 @@ public class AccountProvisioningServiceTests
         _userRepo = new FakeUserRepository();
         _userEmailFake = new FakeUserEmailService();
 
-        // Wire the fake's two methods onto an NSubstitute IUserEmailService —
-        // the fixture only needs FindAnyUserIdByEmailAsync and
-        // AddProvisionedEmailAsync; everything else stays an unstubbed mock.
+        // Wire the fake's methods onto an NSubstitute IUserEmailService —
+        // the fixture only needs FindByAddressAsync and the two add commands;
+        // everything else stays an unstubbed mock.
         _userEmailService = Substitute.For<IUserEmailService>();
-        _userEmailService.FindAnyUserIdByEmailAsync(
-                Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(call => _userEmailFake.FindAnyUserIdByEmail(call.Arg<string>()));
+        _userEmailService.FindByAddressAsync(
+                Arg.Any<string>(), true, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(call => _userEmailFake.FindByAddress(call.ArgAt<string>(0), call.ArgAt<bool>(2)));
         _userEmailService.AddProvisionedEmailAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(call => _userEmailFake.AddProvisioned(
                 call.ArgAt<Guid>(0), call.ArgAt<string>(1), _clock.GetCurrentInstant()));
-        _userEmailService.FindVerifiedEmailWithUserAsync(
-                Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(call => _userEmailFake.FindVerifiedEmailWithUser(
-                call.Arg<string>(), _userRepo));
         _userEmailService.AddVerifiedEmailAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(call => _userEmailFake.AddVerified(
@@ -502,7 +449,7 @@ public class AccountProvisioningServiceTests
                 return Task.FromResult(IdentityResult.Success);
             });
 
-        _userService = Substitute.For<IUserService>();
+        _userService = Substitute.For<IUserServiceInternal>();
 
         _service = new AccountProvisioningService(
             _userRepo,
@@ -521,8 +468,7 @@ public class AccountProvisioningServiceTests
             "alice@example.com", "Alice Smith", ContactSource.TicketTailor, Xunit.TestContext.Current.CancellationToken);
 
         result.Created.Should().BeTrue();
-        // Per PR 1 of email-identity-decoupling spec: User.Email is no longer
-        // populated on creation — the UserEmail row carries the email.
+        // User.Email is no longer the identity — the verified row is.
         result.User.Email.Should().BeNull();
         result.User.DisplayName.Should().Be("Alice Smith");
         result.User.ContactSource.Should().Be(ContactSource.TicketTailor);
@@ -714,9 +660,8 @@ public class AccountProvisioningServiceTests
         result2.Created.Should().BeFalse();
         result3.Created.Should().BeFalse();
 
-        // Only one user should exist. Per PR 1 of email-identity-decoupling
-        // spec, User.Email is null on newly-created users — assert via the
-        // UserEmail row instead.
+        // Only one user should exist. User.Email is no longer the identity —
+        // assert via the UserEmail row instead.
         _userEmailFake.All
             .Count(ue => string.Equals(ue.Email, "henry@example.com", StringComparison.Ordinal))
             .Should().Be(1);
@@ -725,7 +670,6 @@ public class AccountProvisioningServiceTests
     [HumansFact]
     public async Task FindOrCreateUserByEmailAsync_NewUser_GetsExactlyOneIsGoogleRow()
     {
-        // Issue nobodies-collective/Humans#687 acceptance criterion:
         // AccountProvisioningService path enforces the IsGoogle invariant via
         // the IUserEmailService orchestrator — a newly-provisioned user gets
         // exactly one IsGoogle row (the one we just created).
@@ -747,15 +691,14 @@ public class AccountProvisioningServiceTests
     [HumansFact]
     public async Task FindOrCreateUserByEmailAsync_RoutesEmailRowsThroughIUserEmailService()
     {
-        // Issue nobodies-collective/Humans#687: email-row policy still routes
-        // through IUserEmailService even though Users now owns the underlying
-        // repository storage methods.
+        // Email-row policy still routes through IUserEmailService even though
+        // Users now owns the underlying repository storage methods.
         var result = await _service.FindOrCreateUserByEmailAsync(
             "jane@example.com", "Jane", ContactSource.MailerLite, Xunit.TestContext.Current.CancellationToken);
 
         result.Created.Should().BeTrue();
         await _userEmailService.Received(1)
-            .FindAnyUserIdByEmailAsync("jane@example.com", Arg.Any<CancellationToken>());
+            .FindByAddressAsync("jane@example.com", true, false, Arg.Any<CancellationToken>());
         await _userEmailService.Received(1)
             .AddProvisionedEmailAsync(result.User.Id, "jane@example.com", Arg.Any<CancellationToken>());
     }

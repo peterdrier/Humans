@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using Xunit;
 
 namespace Humans.Teams.Tests.Services;
 
@@ -377,8 +378,8 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         var inner = _serviceProvider.GetRequiredKeyedService<ITeamManagementService>(
             CachingTeamService.InnerServiceKey);
 
-        // A warm-cache second call must NOT touch the inner ITeamManagementService â€” the
-        // T-01 zero-EF-on-warm assertion for GetMyTeamMembershipsAsync.
+        // A warm-cache second call must NOT touch the inner ITeamManagementService:
+        // GetMyTeamMembershipsAsync projects from the cache alone.
         var second = await _service.GetMyTeamMembershipsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
         second.Should().ContainSingle();
 
@@ -390,58 +391,29 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
     // Join-lifecycle invalidation â€” issue nobodies-collective/Humans#748
     // ==========================================================================
 
-    [HumansFact]
-    public async Task JoinTeamAsync_InvalidatesCache()
+    [HumansTheory]
+    [InlineData(nameof(CachingTeamService.JoinTeamAsync))]
+    [InlineData(nameof(CachingTeamService.WithdrawJoinRequestAsync))]
+    [InlineData(nameof(CachingTeamService.RejectJoinRequestAsync))]
+    [InlineData(nameof(CachingTeamService.ApproveJoinRequestAsync))]
+    public async Task JoinLifecycleWrite_InvalidatesCache(string write)
     {
         var team = SeedTeam("Alpha");
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        var ct = Xunit.TestContext.Current.CancellationToken;
 
         // Warm the cache so we can observe invalidation by counter.
-        await _service.GetTeamAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
+        await _service.GetTeamAsync(team.Id, ct);
         var before = _service.BulkInvalidations;
 
-        await _service.JoinTeamAsync(team.Id, Guid.NewGuid(), null, Xunit.TestContext.Current.CancellationToken);
-
-        _service.BulkInvalidations.Should().BeGreaterThan(before);
-    }
-
-    [HumansFact]
-    public async Task WithdrawJoinRequestAsync_InvalidatesCache()
-    {
-        var team = SeedTeam("Alpha");
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-        await _service.GetTeamAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
-        var before = _service.BulkInvalidations;
-
-        await _service.WithdrawJoinRequestAsync(Guid.NewGuid(), Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
-
-        _service.BulkInvalidations.Should().BeGreaterThan(before);
-    }
-
-    [HumansFact]
-    public async Task RejectJoinRequestAsync_InvalidatesCache()
-    {
-        var team = SeedTeam("Alpha");
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-        await _service.GetTeamAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
-        var before = _service.BulkInvalidations;
-
-        await _service.RejectJoinRequestAsync(Guid.NewGuid(), Guid.NewGuid(), "reason", Xunit.TestContext.Current.CancellationToken);
-
-        _service.BulkInvalidations.Should().BeGreaterThan(before);
-    }
-
-    [HumansFact]
-    public async Task ApproveJoinRequestAsync_InvalidatesCache()
-    {
-        var team = SeedTeam("Alpha");
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-        await _service.GetTeamAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
-        var before = _service.BulkInvalidations;
-
-        // Inner is an unconfigured NSubstitute mock; ApproveJoinRequestAsync
-        // returns default (null TeamMember) â€” that's fine for this assertion.
-        await _service.ApproveJoinRequestAsync(Guid.NewGuid(), Guid.NewGuid(), null, Xunit.TestContext.Current.CancellationToken);
+        // Inner is an unconfigured NSubstitute mock; approve returns default (null) — fine for this assertion.
+        await (write switch
+        {
+            nameof(CachingTeamService.JoinTeamAsync) => _service.JoinTeamAsync(team.Id, Guid.NewGuid(), null, ct),
+            nameof(CachingTeamService.WithdrawJoinRequestAsync) => _service.WithdrawJoinRequestAsync(Guid.NewGuid(), Guid.NewGuid(), ct),
+            nameof(CachingTeamService.RejectJoinRequestAsync) => _service.RejectJoinRequestAsync(Guid.NewGuid(), Guid.NewGuid(), "reason", ct),
+            _ => _service.ApproveJoinRequestAsync(Guid.NewGuid(), Guid.NewGuid(), null, ct),
+        });
 
         _service.BulkInvalidations.Should().BeGreaterThan(before);
     }

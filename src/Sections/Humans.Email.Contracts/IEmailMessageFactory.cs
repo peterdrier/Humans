@@ -115,4 +115,13 @@ public interface IEmailMessageFactory
 
     /// <summary>Working-group register notice (Governance category) — one method, the kind picks the copy.</summary>
     EmailMessage WorkgroupNotice(WorkgroupNoticeRequest request);
+
+    /// <summary>Assembly vote opened notification to a roster member (System); indicative ballots are called out.</summary>
+    EmailMessage AssemblyVoteOpened(string toEmail, string userName, string voteTitle, LocalDateTime closesAt, bool isOfficial, string voteUrl, string? culture = null);
+
+    /// <summary>Assembly vote T-24h reminder to a roster member who has not voted yet (System); indicative ballots are called out.</summary>
+    EmailMessage AssemblyVoteReminder(string toEmail, string userName, string voteTitle, LocalDateTime closesAt, bool isOfficial, string voteUrl, string? culture = null);
+
+    /// <summary>Assembly vote cancelled notification to a roster member (System).</summary>
+    EmailMessage AssemblyVoteCancelled(string toEmail, string userName, string voteTitle, string reason, string? culture = null);
 }

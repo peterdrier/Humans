@@ -13,6 +13,24 @@ namespace Humans.Calendar.Tests.Models;
 /// </summary>
 public sealed class OccurrenceOverrideFormViewModelTests
 {
+    [HumansFact]
+    public void DateOverride_ParsesDatesWithoutTimezoneAndRejectsPostedTimes()
+    {
+        OccurrenceOverrideFormViewModel.TryParseOriginalDate("2026-03-29").Should().Be(new LocalDate(2026, 3, 29));
+        OccurrenceOverrideFormViewModel.TryParseOriginalDate("2026-03-29T14:00:00Z").Should().BeNull();
+        var form = new OccurrenceOverrideFormViewModel
+        {
+            OverrideStartDateLocal = new DateTime(2026, 3, 29),
+            OverrideEndDateLocal = new DateTime(2026, 3, 29),
+        };
+        form.TryBuildOverride(DateTimeZoneProviders.Tzdb["America/Los_Angeles"], out var dto).Should().BeTrue();
+        dto.OverrideStartDate.Should().Be(new LocalDate(2026, 3, 29));
+        dto.OverrideEndDateExclusive.Should().Be(new LocalDate(2026, 3, 30));
+        dto.OverrideStartUtc.Should().BeNull();
+        form.OverrideStartDateLocal = new DateTime(2026, 3, 29, 14, 0, 0);
+        form.TryBuildOverride(DateTimeZone.Utc, out _).Should().BeFalse();
+    }
+
     [HumansTheory]
     [InlineData("garbage")]
     [InlineData("")]

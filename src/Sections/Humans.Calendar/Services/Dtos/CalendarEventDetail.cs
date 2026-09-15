@@ -9,10 +9,12 @@ internal sealed record CalendarEventDetail(
     string? Location,
     string? LocationUrl,
     Guid OwningTeamId,
-    Instant StartUtc,
+    Instant? StartUtc,
     Instant? EndUtc,
     bool IsAllDay,
     string? RecurrenceRule,
     string? RecurrenceTimezone,
     Instant CreatedAt,
-    Instant UpdatedAt);
+    Instant UpdatedAt,
+    LocalDate? StartDate = null,
+    LocalDate? EndDateExclusive = null);

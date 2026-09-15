@@ -143,12 +143,12 @@
                             }
                             @foreach (var o in singleDay.Take(singleDayTake))
                             {
-                                var localStart = o.OccurrenceStartUtc.InZone(zone).LocalDateTime;
+                                var localStart = o.OccurrenceStartUtc?.InZone(zone).LocalDateTime;
                                 var isCommunityItem = o.IsCommunityContribution();
                                 <div class="small text-truncate" title="@(isCommunityItem ? $"{o.Title} — {o.Source}" : $"{o.Title} — {o.OwningTeamName}")">
                                     @if (!o.ShouldHideTimeLabel(zone))
                                     {
-                                        <span class="text-muted">@DateFormattingExtensions.TimeOfDayPattern.Format(localStart.TimeOfDay)</span>
+                                        <span class="text-muted">@DateFormattingExtensions.TimeOfDayPattern.Format(localStart!.Value.TimeOfDay)</span>
                                     }
                                     @if (isCommunityItem)
                                     {

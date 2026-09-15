@@ -18,7 +18,7 @@ internal sealed class Survey
     public Instant? OpensAt { get; set; }
     public Instant? ClosesAt { get; set; }
     public SurveyAudienceType? AudienceType { get; set; }
-    public Guid? AudienceTeamId { get; set; }                 // bare Guid when AudienceType == Team; no nav, no cross-section FK constraint
+    public Guid? AudienceTeamId { get; set; }                 // bare Guid when AudienceType == Team
     public Instant? AudienceLoggedInSince { get; set; }       // cutoff when AudienceType == LoggedInSince; users with LastLoginAt >= cutoff match
     public string? PublicSlug { get; set; }                   // shareable answering link; identified surveys require sign-in; null = invite-only
     public int PublicStartedCount { get; set; }               // all slug-path starts; tracked users also have a per-person ledger row

@@ -6,17 +6,11 @@ using Humans.Surveys.Contracts;
 
 namespace Humans.Surveys.Tests;
 
-/// <summary>
-/// Architecture tests enforcing the section shape for Surveys
-/// (nobodies-collective/Humans#866, G5).
-/// </summary>
+/// <summary>Architecture tests enforcing the section shape for Surveys.</summary>
 /// <remarks>
-/// Replaces <c>Humans.Application.Tests/Architecture/SurveyArchitectureTests.cs</c>. Its
-/// <c>ISurveyService_InheritsISurveyServiceRead</c> test is gone with the interface: the read
-/// interface shipped empty and no section ever consumed it, so the assembly boundary plus the
-/// one-interface contracts leaf is the whole cross-section story now (design §15 step 5/11).
-/// The no-nav assertions were dropped per memory/architecture/no-tests-for-absences.md.
-/// The completion-timing one stays: it is a re-identification guard, not a shape claim.
+/// No-nav and no-read-interface assertions were dropped per
+/// memory/architecture/no-tests-for-absences.md. The completion-timing one stays: it is a
+/// re-identification guard, not a shape claim.
 /// </remarks>
 public class SurveysArchitectureTests
 {
@@ -30,7 +24,7 @@ public class SurveysArchitectureTests
     {
         typeof(SurveyInvitation).GetProperty("CompletedAt").Should().BeNull(
             because: "a precise completion time would correlate with an anon/completion-tracked response's " +
-                     "SubmittedAt and re-identify the invitee (plan Deviation #10)");
+                     "SubmittedAt and re-identify the invitee");
         typeof(SurveyInvitation).GetProperty("UpdatedAt").Should().BeNull(
             because: "no UpdatedAt on invitations — it would leak completion timing");
 

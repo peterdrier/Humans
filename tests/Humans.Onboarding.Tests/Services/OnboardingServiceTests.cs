@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Base.Constants;
+using Humans.Base.Enums;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Notifications.Contracts;
@@ -107,6 +108,68 @@ public sealed class OnboardingServiceTests
             default,
             default!,
             default!, cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RejectSignupAsync_OnSuccess_AuditsDeprovisionsAllThreeTeamsAndNotifies()
+    {
+        // Reject is the section's only coordinator action with consequences (Docs/health.md §4),
+        // and until this test its success path was unasserted: dropping one of the three
+        // approval-gated team syncs, or the ProfileRejected notification, passed.
+        var userId = Guid.NewGuid();
+        var reviewerId = Guid.NewGuid();
+        const string reason = "duplicate account";
+
+        _userService.ApplyProfileOnboardingMutationAsync(
+                userId,
+                Arg.Is<UserProfileOnboardingCommand>(cmd =>
+                    cmd.Mutation == UserProfileOnboardingMutation.RejectSignup
+                    && cmd.ActorUserId == reviewerId
+                    && cmd.RejectionReason == reason),
+                Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(true));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(
+                UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(burnerName: "Rejected One"))));
+
+        var result = await BuildSut()
+            .RejectSignupAsync(userId, reviewerId, reason, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.SignupRejected,
+            AuditEntityTypes.Profile,
+            userId,
+            $"Signup rejected: {reason}",
+            reviewerId);
+
+        // All three approval-gated system teams, and nothing else. Asserting each team
+        // individually plus the total is what makes a dropped sync fail rather than pass.
+        await _syncJob.Received(1).SyncMembershipForUserAsync(
+            userId, SystemTeamType.Volunteers, Arg.Any<CancellationToken>());
+        await _syncJob.Received(1).SyncMembershipForUserAsync(
+            userId, SystemTeamType.Colaboradors, Arg.Any<CancellationToken>());
+        await _syncJob.Received(1).SyncMembershipForUserAsync(
+            userId, SystemTeamType.Asociados, Arg.Any<CancellationToken>());
+        await _syncJob.Received(3).SyncMembershipForUserAsync(
+            Arg.Any<Guid>(), Arg.Any<SystemTeamType>(), Arg.Any<CancellationToken>());
+
+        _emailMessages.Received(1).SignupRejected(
+            Arg.Any<string>(), "Rejected One", reason, Arg.Any<string?>());
+
+        await _notificationService.Received(1).SendAsync(
+            NotificationSource.ProfileRejected,
+            NotificationClass.Informational,
+            NotificationPriority.Normal,
+            Arg.Any<string>(),
+            Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == userId),
+            body: Arg.Is<string?>(b => b != null && b.Contains(reason)),
+            actionUrl: Arg.Any<string?>(),
+            actionLabel: Arg.Any<string?>(),
+            targetGroupName: Arg.Any<string?>(),
+            sourceKey: Arg.Any<string?>(),
+            cancellationToken: Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -313,6 +376,73 @@ public sealed class OnboardingServiceTests
         result.Outcome.Should().Be(NextConsentStepOutcome.DocumentUnavailable);
         result.Next.Should().BeNull();
         await _humanLifecycle.DidNotReceiveWithAnyArgs().RestoreConsentSuspensionAsync(default, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task BulkClearConsentChecksAsync_ClearsOnlySelectedUsersWhoAreInTheQueue()
+    {
+        // Bulk clear's eligibility IS queue membership: a selected id that is not a queue row
+        // must not be cleared. Without this, the only thing standing between a crafted POST and
+        // clearing a rejected or merged profile is the queue-building code path.
+        var now = Instant.FromUnixTimeSeconds(1);
+
+        var flaggedId = Guid.NewGuid();
+        var pendingId = Guid.NewGuid();
+        var rejectedId = Guid.NewGuid();
+        var unselectedId = Guid.NewGuid();
+        var mergedId = Guid.NewGuid();
+
+        var flagged = UserInfoStubs.MakeUserInfo(flaggedId, UserFixtures.Profile(
+            burnerName: "Burner", firstName: "In", lastName: "Flagged",
+            consentCheckStatus: ConsentCheckStatus.Flagged, createdAt: now));
+        var pending = UserInfoStubs.MakeUserInfo(pendingId, UserFixtures.Profile(
+            burnerName: "Burner", firstName: "In", lastName: "Pending",
+            isApproved: false, createdAt: now));
+        var rejected = UserInfoStubs.MakeUserInfo(rejectedId, UserFixtures.Profile(
+            burnerName: "Burner", firstName: "Out", lastName: "Rejected",
+            consentCheckStatus: ConsentCheckStatus.Flagged, rejectedAt: now, createdAt: now));
+        var unselected = UserInfoStubs.MakeUserInfo(unselectedId, UserFixtures.Profile(
+            burnerName: "Burner", firstName: "Out", lastName: "Unselected",
+            isApproved: false, createdAt: now));
+        var merged = new User
+        {
+            Id = mergedId,
+            PreferredLanguage = "en",
+            MergedAt = now,
+            MergedToUserId = Guid.NewGuid(),
+        }.ToUserInfo(profile: UserFixtures.Profile(
+            burnerName: "Burner", firstName: "Out", lastName: "Merged",
+            consentCheckStatus: ConsentCheckStatus.Flagged, createdAt: now));
+
+        StubReviewQueueDependencies([flagged, pending, rejected, unselected, merged]);
+        _userService.ApplyProfileOnboardingMutationAsync(
+                Arg.Any<Guid>(), Arg.Any<UserProfileOnboardingCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new OnboardingResult(true)));
+
+        var reviewerId = Guid.NewGuid();
+        var result = await BuildSut().BulkClearConsentChecksAsync(
+            [flaggedId, pendingId, rejectedId, mergedId],
+            reviewerId,
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.ApprovedCount.Should().Be(2);
+
+        foreach (var cleared in new[] { flaggedId, pendingId })
+        {
+            await _userService.Received(1).ApplyProfileOnboardingMutationAsync(
+                cleared,
+                Arg.Is<UserProfileOnboardingCommand>(cmd =>
+                    cmd.Mutation == UserProfileOnboardingMutation.RecordConsentCheck
+                    && cmd.ConsentCheckStatus == ConsentCheckStatus.Cleared
+                    && cmd.ActorUserId == reviewerId),
+                Arg.Any<CancellationToken>());
+        }
+
+        foreach (var untouched in new[] { rejectedId, unselectedId, mergedId })
+        {
+            await _userService.DidNotReceive().ApplyProfileOnboardingMutationAsync(
+                untouched, Arg.Any<UserProfileOnboardingCommand>(), Arg.Any<CancellationToken>());
+        }
     }
 
     private void StubReviewQueueDependencies(IReadOnlyCollection<UserInfo> users)

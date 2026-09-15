@@ -1,6 +1,6 @@
 ---
 name: Don't remove "unused" properties — they may be reflection-bound
-description: Properties/methods that appear unused may be used dynamically via serialization, change tracking, cloning/merging, or dynamic binding. Verify before removing.
+description: Don't remove a seemingly-unused property/method without checking for reflection use — serialization, EF change tracking, cloning/merging, dynamic binding.
 ---
 
 Properties/methods appearing "unused" may be used dynamically via reflection:

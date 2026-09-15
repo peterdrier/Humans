@@ -2,10 +2,9 @@
 namespace Humans.Containers.Contracts;
 
 /// <summary>
-/// Minimal shape <see cref="ContainerAuthorizationHandler"/> needs to make a
+/// Minimal shape <c>ContainerAuthorizationHandler</c> needs to make a
 /// decision. Used in place of the <c>Container</c> entity so callers don't
-/// hand-build sparse entities at the controller seam. Add fields here if the
-/// handler grows to inspect more — that forces every callsite to provide them.
+/// hand-build sparse entities at the controller seam.
 /// </summary>
 public sealed record ContainerAuthorizationTarget(Guid CampId)
 {

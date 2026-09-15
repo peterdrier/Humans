@@ -1,6 +1,6 @@
 ---
 name: View auth — components self-resolve, callers don't pre-compute auth bools
-description: Reusable views/components inject `IAuthorizationService` and resolve their own gates. Don't pass auth-derived booleans on view models from caller/component to template.
+description: In reusable views/components, resolve auth via injected `IAuthorizationService` in the template — don't pass `Can…` auth booleans on the view model.
 type: feedback
 ---
 

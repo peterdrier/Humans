@@ -103,7 +103,7 @@ cap comment and in the run file's `## Needs Peter` — never resolved, never mar
 
 Phase 9 writes nothing. Phase 7's backfill commit is the run's last write, and everything a later
 session needs is already derivable: the branch is `section-doctor/$TS`, its workspace is
-`$REPO_ROOT/.worktrees/section-doctor-$TS` locally (`$REPO_ROOT` in a cloud run), and the PR
+`$REPO_ROOT/.claude/worktrees/section-doctor-$TS` locally (`$REPO_ROOT` in a cloud run), and the PR
 number is in the run file. `$RUNDIR` is
 scratch; leave it for the OS to reclaim. **Leave the worktree clean** — an uncommitted edit here
 never reaches the PR and makes the retained worktree dirty for whoever picks the review up.

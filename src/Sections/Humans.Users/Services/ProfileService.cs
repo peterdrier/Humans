@@ -5,7 +5,7 @@ using Humans.Base.Interfaces;
 namespace Humans.Users.Services;
 
 internal sealed class ProfileService(IUserRepository userRepository,
-    IUserService userService,
+    IUserServiceInternal userService,
     IFileStorage fileStorage,
     ILogger<ProfileService> logger) : IProfilePictureService
 {

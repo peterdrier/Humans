@@ -5,3 +5,6 @@ inbox:
   - added: 2026-09-10
     what: "Docs/features/workspace-account-provisioning.md:47 lists the supported cultures as en/es/de/fr/it, omitting ca. Found fixing the same list in Feedback's spec (/section-doctor on Feedback 2026-08-31; swept in by /section-doctor on Rideshare 2026-09-10)."
     review: light
+  - added: 2026-09-14
+    what: "Docs/features/drive-activity-monitoring.md presents the 24h fallback as the mechanism rather than the fallback, omits the people/{client_id} service-account arm of identity resolution entirely, and attributes service-account email extraction to DriveActivityMonitorService when the connector does it. Its freshness trigger block names neither src/Sections/Humans.Monitor/Section.cs nor Controllers/MonitorController.cs (finding 27, /section-doctor on Monitor 2026-09-02; swept in by /section-doctor on Issues 2026-09-14)."
+    review: light

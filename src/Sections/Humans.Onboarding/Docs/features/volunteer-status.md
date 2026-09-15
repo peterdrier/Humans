@@ -110,7 +110,7 @@ Status is computed on the dashboard based on Volunteers team presence and profil
 | Pending | `bg-info` | Blue | Not yet in Volunteers team (name + consents not yet reconciled by `SystemTeamSyncJob`) |
 | Inactive | `bg-warning` | Yellow | In Volunteers team but missing re-consent on updated docs |
 | Suspended | `bg-danger` | Red | Admin-suspended |
-| Rejected | `bg-danger` | Red | Consent check rejected by Admin |
+| Rejected | `bg-danger` | Red | Consent check rejected by ConsentCoordinator, Board, or Admin |
 
 ## Volunteer Gating (MembershipRequiredFilter)
 
@@ -159,13 +159,10 @@ Complete Profile (optional: select tier + application inline)
 Sign Required Legal Documents (Volunteers team docs)
     │
     ▼
-[Auto] ConsentCheckStatus → Pending
-    │
-    ▼
-Consent Coordinator reviews → Cleared (sets IsApproved = true — audit annotation only)
-    │
-    ▼
 Name + all consents → Volunteers team (Google Workspace), reconciled by SystemTeamSyncJob
+
+(parallel, non-gating audit track)
+[Auto] ConsentCheckStatus → Pending → Consent Coordinator reviews → Cleared (sets IsApproved = true — audit annotation only)
 ```
 
 Neither consent-check clearance nor consent submission triggers a per-user team sync any more — `SystemTeamSyncJob` reconciles Volunteers membership on **name + consents** (eventually consistent). App access is unaffected: it was granted at name entry (`UserState == Active`).
@@ -224,7 +221,7 @@ Triggered by:
 ### Becoming Rejected (Pending → Rejected)
 ```
 Triggered by:
-  - Admin rejects a flagged consent check
+  - A ConsentCoordinator, Board member, or Admin rejects the signup
   - Profile.RejectionReason set, RejectedAt set
   - Human is notified, cannot become Volunteer unless rejection is reversed
 ```

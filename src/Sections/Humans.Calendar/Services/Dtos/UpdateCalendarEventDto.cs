@@ -8,8 +8,10 @@ internal sealed record UpdateCalendarEventDto(
     string? Location,
     string? LocationUrl,
     Guid OwningTeamId,
-    Instant StartUtc,
+    Instant? StartUtc,
     Instant? EndUtc,
     bool IsAllDay,
     string? RecurrenceRule,
-    string? RecurrenceTimezone);
+    string? RecurrenceTimezone,
+    LocalDate? StartDate = null,
+    LocalDate? EndDateExclusive = null);
