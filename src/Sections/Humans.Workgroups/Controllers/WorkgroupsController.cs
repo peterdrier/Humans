@@ -415,9 +415,16 @@ internal sealed class WorkgroupsController(
     private async Task<IReadOnlyDictionary<Guid, UserInfo>> PeopleAsync(
         IReadOnlyList<WorkgroupInfo> register, CancellationToken ct)
     {
+        // Every attribution the pages actually render, not just the memberships: a Board or
+        // Secretary user who writes a document or minutes a meeting is named there without
+        // ever joining the group, and a missing id renders as the em dash placeholder.
         var ids = register
             .SelectMany(w => w.Members.Select(m => m.UserId)
                 .Concat(w.LogEntries.Select(e => e.AuthorUserId).OfType<Guid>())
+                .Concat(w.Meetings.Select(m => m.CreatedByUserId).OfType<Guid>())
+                .Concat(w.Documents.Select(d => d.CreatedByUserId).OfType<Guid>())
+                .Concat(w.Documents.Select(d => d.UpdatedByUserId).OfType<Guid>())
+                .Concat(w.Documents.Select(d => d.DispositionByUserId).OfType<Guid>())
                 .Concat(w.Documents.SelectMany(d => d.Comments.Select(c => c.AuthorUserId).OfType<Guid>()))
                 .Concat(w.AppliedByUserId is { } applicant ? new[] { applicant } : []))
             .Distinct()

@@ -55,9 +55,17 @@
                     var canViewResults = Model.IsBoardOrAdmin || s.Status == SurveyStatus.Closed;
                     <tr>
                         <td>
-                            <a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@s.Id">
-                                @(string.IsNullOrWhiteSpace(s.Title) ? Localizer["Survey_Admin_Index_Untitled"].Value : s.Title)
-                            </a>
+                            @{ var title = string.IsNullOrWhiteSpace(s.Title) ? Localizer["Survey_Admin_Index_Untitled"].Value : s.Title; }
+                            @if (Model.IsBoardOrAdmin || s.Status == SurveyStatus.Draft)
+                            {
+                                @* Same gate as the Edit button below: past Draft this destination
+                                   is a 403 for an author (SurveyAuthorizationHandler). *@
+                                <a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@s.Id">@title</a>
+                            }
+                            else
+                            {
+                                @title
+                            }
                             @if (s.Status == SurveyStatus.Draft && !string.IsNullOrWhiteSpace(s.RejectionNote))
                             {
                                 <div class="small text-danger">@string.Format(Localizer["Survey_Admin_Index_RejectionNote"].Value, s.RejectionNote)</div>

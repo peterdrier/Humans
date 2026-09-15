@@ -196,4 +196,47 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
                 e => e.WorkgroupId == workgroup.Id && e.Kind == WorkgroupLogKind.StatusRequested, Ct))
             .Should().Be(2);
     }
+
+    // ── Linking a survey ─────────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task LinkSurvey_ASurveyTheMemberAuthored_WritesTheEntry()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var author = SeedUser("Author");
+        var surveyId = SeedSurvey(author);
+
+        await NewService().LinkSurveyAsync(workgroup.Id, author, surveyId, Ct);
+
+        await using var ctx = OpenContext();
+        var entry = await ctx.LogEntries.SingleAsync(
+            e => e.WorkgroupId == workgroup.Id && e.Kind == WorkgroupLogKind.SurveySubmitted, Ct);
+        entry.SurveyId.Should().Be(surveyId);
+    }
+
+    [HumansFact]
+    public async Task LinkSurvey_SomebodyElsesSurvey_Throws()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var author = SeedUser("Author");
+        var member = SeedUser("Member");
+        var surveyId = SeedSurvey(author);
+
+        var act = () => NewService().LinkSurveyAsync(workgroup.Id, member, surveyId, Ct);
+
+        (await act.Should().ThrowAsync<WorkgroupRuleException>())
+            .Which.Key.Should().Be(WorkgroupErrorKeys.SurveyNotYours);
+    }
+
+    [HumansFact]
+    public async Task LinkSurvey_ASurveyIdThatDoesNotExist_Throws()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var member = SeedUser("Member");
+
+        var act = () => NewService().LinkSurveyAsync(workgroup.Id, member, Guid.NewGuid(), Ct);
+
+        (await act.Should().ThrowAsync<WorkgroupRuleException>())
+            .Which.Key.Should().Be(WorkgroupErrorKeys.SurveyNotYours);
+    }
 }

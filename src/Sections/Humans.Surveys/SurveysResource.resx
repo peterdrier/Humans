@@ -292,4 +292,19 @@
   <data name="Survey_Admin_Results_BallotLabel" xml:space="preserve"><value>Ballot {0}</value></data>
   <data name="Survey_Admin_Results_BackToSurveys" xml:space="preserve"><value>Back to surveys</value></data>
   <data name="Survey_Admin_Results_RespondentRejectedLabel" xml:space="preserve"><value>Rejected:</value></data>
+  <data name="Survey_Admin_Builder_Error_TeamRequired" xml:space="preserve">
+    <value>Choose a team for the Team audience.</value>
+  </data>
+  <data name="Survey_Admin_Builder_Error_LoggedInSinceRequired" xml:space="preserve">
+    <value>A "Logged in since" cutoff date is required for the LoggedInSince audience.</value>
+  </data>
+  <data name="Survey_Admin_Builder_Saved_TranslationsFilled" xml:space="preserve">
+    <value>Survey saved; {0} missing translation(s) pre-filled — review them before opening.</value>
+  </data>
+  <data name="Survey_Admin_Builder_Saved_NoTranslationsNeeded" xml:space="preserve">
+    <value>Survey saved — no missing translations to fill.</value>
+  </data>
+  <data name="Survey_Admin_Builder_Saved_TranslationFailed" xml:space="preserve">
+    <value>Survey saved, but translation failed: {0}</value>
+  </data>
 </root>

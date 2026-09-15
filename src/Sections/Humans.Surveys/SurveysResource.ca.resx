@@ -297,4 +297,19 @@
   <data name="Survey_Admin_Results_BallotLabel" xml:space="preserve"><value>Papereta {0}</value></data>
   <data name="Survey_Admin_Results_BackToSurveys" xml:space="preserve"><value>Torna a les enquestes</value></data>
   <data name="Survey_Admin_Results_RespondentRejectedLabel" xml:space="preserve"><value>Rebutjat:</value></data>
+  <data name="Survey_Admin_Builder_Error_TeamRequired" xml:space="preserve">
+    <value>Tria un equip per a l’audiència Equip.</value>
+  </data>
+  <data name="Survey_Admin_Builder_Error_LoggedInSinceRequired" xml:space="preserve">
+    <value>L’audiència «Connectat des de» requereix una data límit.</value>
+  </data>
+  <data name="Survey_Admin_Builder_Saved_TranslationsFilled" xml:space="preserve">
+    <value>Enquesta desada; {0} traducció/ons que faltaven s’han emplenat: revisa-les abans d’obrir-la.</value>
+  </data>
+  <data name="Survey_Admin_Builder_Saved_NoTranslationsNeeded" xml:space="preserve">
+    <value>Enquesta desada: no faltava cap traducció.</value>
+  </data>
+  <data name="Survey_Admin_Builder_Saved_TranslationFailed" xml:space="preserve">
+    <value>Enquesta desada, però la traducció ha fallat: {0}</value>
+  </data>
 </root>

@@ -7,6 +7,7 @@ using Humans.Email.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Settings.Contracts;
+using Humans.Surveys.Contracts;
 using Humans.Users.Contracts;
 using Humans.Workgroups.Data;
 using Humans.Workgroups.Domain;
@@ -30,6 +31,7 @@ namespace Humans.Workgroups.Services;
 internal sealed partial class WorkgroupService(
     IWorkgroupRepository repository,
     IUserServiceRead users,
+    ISurveyAnalysisRead surveys,
     IUserEmailService userEmails,
     IRoleAssignmentService roles,
     ISettingsService settings,
@@ -430,6 +432,14 @@ internal sealed partial class WorkgroupService(
     {
         var workgroup = await RequireAsync(workgroupId, ct);
         RequireAcceptsMemberWork(workgroup);
+
+        // The entry is a trusted system record naming a survey, so the id has to be one the
+        // member actually authored — otherwise the log can point at somebody else's survey, or
+        // at nothing at all. Peter 2026-09-14: author == actor is the whole check.
+        var survey = (await surveys.GetSummariesAsync(ct))
+            .FirstOrDefault(s => s.Id == surveyId);
+        if (survey is null || survey.CreatedByUserId != actorUserId)
+            throw new WorkgroupRuleException(WorkgroupErrorKeys.SurveyNotYours);
 
         var now = clock.GetCurrentInstant();
         await repository.AddLogEntryAsync(new WorkgroupLogEntry

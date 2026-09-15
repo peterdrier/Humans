@@ -297,4 +297,19 @@
   <data name="Survey_Admin_Results_BallotLabel" xml:space="preserve"><value>Scheda {0}</value></data>
   <data name="Survey_Admin_Results_BackToSurveys" xml:space="preserve"><value>Torna ai sondaggi</value></data>
   <data name="Survey_Admin_Results_RespondentRejectedLabel" xml:space="preserve"><value>Rifiutato:</value></data>
+  <data name="Survey_Admin_Builder_Error_TeamRequired" xml:space="preserve">
+    <value>Scegli un team per il pubblico Team.</value>
+  </data>
+  <data name="Survey_Admin_Builder_Error_LoggedInSinceRequired" xml:space="preserve">
+    <value>Il pubblico «Connesso da» richiede una data di riferimento.</value>
+  </data>
+  <data name="Survey_Admin_Builder_Saved_TranslationsFilled" xml:space="preserve">
+    <value>Sondaggio salvato; {0} traduzione/i mancante/i precompilata/e: controllale prima di aprirlo.</value>
+  </data>
+  <data name="Survey_Admin_Builder_Saved_NoTranslationsNeeded" xml:space="preserve">
+    <value>Sondaggio salvato: non mancava alcuna traduzione.</value>
+  </data>
+  <data name="Survey_Admin_Builder_Saved_TranslationFailed" xml:space="preserve">
+    <value>Sondaggio salvato, ma la traduzione non è riuscita: {0}</value>
+  </data>
 </root>

@@ -297,4 +297,19 @@
   <data name="Survey_Admin_Results_BallotLabel" xml:space="preserve"><value>Stimmzettel {0}</value></data>
   <data name="Survey_Admin_Results_BackToSurveys" xml:space="preserve"><value>Zurück zu den Umfragen</value></data>
   <data name="Survey_Admin_Results_RespondentRejectedLabel" xml:space="preserve"><value>Abgelehnt:</value></data>
+  <data name="Survey_Admin_Builder_Error_TeamRequired" xml:space="preserve">
+    <value>Wähle ein Team für die Zielgruppe „Team“.</value>
+  </data>
+  <data name="Survey_Admin_Builder_Error_LoggedInSinceRequired" xml:space="preserve">
+    <value>Für die Zielgruppe „Angemeldet seit“ ist ein Stichtag erforderlich.</value>
+  </data>
+  <data name="Survey_Admin_Builder_Saved_TranslationsFilled" xml:space="preserve">
+    <value>Umfrage gespeichert; {0} fehlende Übersetzung(en) vorausgefüllt — prüfe sie vor dem Öffnen.</value>
+  </data>
+  <data name="Survey_Admin_Builder_Saved_NoTranslationsNeeded" xml:space="preserve">
+    <value>Umfrage gespeichert — es fehlten keine Übersetzungen.</value>
+  </data>
+  <data name="Survey_Admin_Builder_Saved_TranslationFailed" xml:space="preserve">
+    <value>Umfrage gespeichert, aber die Übersetzung ist fehlgeschlagen: {0}</value>
+  </data>
 </root>

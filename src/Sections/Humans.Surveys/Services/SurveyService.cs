@@ -35,7 +35,7 @@ internal sealed class SurveyService(
     IEmailMessageFactory emailMessages,
     ISurveyInviteTokenProvider tokenProvider,
     IGoogleTranslationService translation,
-    IFileStorage fileStorage) : ISurveyService, ISurveyReminderSender, IUserDataContributor
+    IFileStorage fileStorage) : ISurveyService, ISurveyReminderSender, IUserDataContributor, IUserMerge
 {
     private const int InvitationEmailSubjectMaxLength = 200;
     private const int InvitationEmailMessageMaxLength = 4000;
@@ -59,7 +59,8 @@ internal sealed class SurveyService(
             s.Title.Resolve(s.DefaultCulture, s.DefaultCulture),
             s.Status,
             invited.GetValueOrDefault(s.Id),
-            responses.GetValueOrDefault(s.Id))).ToList();
+            responses.GetValueOrDefault(s.Id),
+            s.CreatedByUserId)).ToList();
     }
 
     public async Task<SurveyOfficialLink?> GetOfficialLinkAsync(
@@ -1781,6 +1782,14 @@ internal sealed class SurveyService(
         await repo.AnonymizeResponsesForUserAsync(userId, ct);
         await repo.ClearAuthorshipForUserAsync(userId, ct);
     }
+
+    /// <summary>
+    /// Account merge: authorship follows the survivor. Responses and invitations are keyed by
+    /// the account merge's own paths; only the authored surveys need re-FKing here.
+    /// </summary>
+    public Task ReassignAsync(
+        Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct)
+        => repo.ReassignAuthorshipAsync(mergedFromUserId, mergedToUserId, now, ct);
 
     /// <summary>Aggregates one question across the submitted responses per its type (counts/distribution/free-text).</summary>
     private static QuestionAggregate BuildQuestionAggregate(

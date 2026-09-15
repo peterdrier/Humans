@@ -297,4 +297,7 @@
   <data name="Workgroups_ViewRegister" xml:space="preserve"><value>View register</value></data>
   <data name="Workgroups_MyWorkgroups" xml:space="preserve"><value>My workgroups</value></data>
   <data name="Workgroups_MyWorkgroupsEmpty" xml:space="preserve"><value>You haven't joined a working group yet.</value></data>
+  <data name="Workgroups_Error_SurveyNotYours" xml:space="preserve">
+    <value>You can only link a survey you created yourself.</value>
+  </data>
 </root>

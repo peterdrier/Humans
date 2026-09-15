@@ -93,7 +93,10 @@ internal sealed class WorkgroupFormViewModel
     [StringLength(200)]
     public string Name { get; set; } = string.Empty;
 
+    /// <summary>Matches the 4,000-character <c>workgroups.Purpose</c> column, so an overlong
+    /// paste is a validation error on the form rather than a SaveChangesAsync failure.</summary>
     [Required]
+    [StringLength(4000)]
     public string Purpose { get; set; } = string.Empty;
 
     /// <summary>The group's promise, in one line. Changing it writes a ScopeChanged entry.</summary>

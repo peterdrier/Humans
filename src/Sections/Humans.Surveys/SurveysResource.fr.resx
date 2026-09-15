@@ -297,4 +297,19 @@
   <data name="Survey_Admin_Results_BallotLabel" xml:space="preserve"><value>Bulletin {0}</value></data>
   <data name="Survey_Admin_Results_BackToSurveys" xml:space="preserve"><value>Retour aux sondages</value></data>
   <data name="Survey_Admin_Results_RespondentRejectedLabel" xml:space="preserve"><value>Rejeté :</value></data>
+  <data name="Survey_Admin_Builder_Error_TeamRequired" xml:space="preserve">
+    <value>Choisissez une équipe pour l’audience Équipe.</value>
+  </data>
+  <data name="Survey_Admin_Builder_Error_LoggedInSinceRequired" xml:space="preserve">
+    <value>L’audience « Connecté depuis » exige une date limite.</value>
+  </data>
+  <data name="Survey_Admin_Builder_Saved_TranslationsFilled" xml:space="preserve">
+    <value>Questionnaire enregistré ; {0} traduction(s) manquante(s) pré-remplie(s) — vérifiez-les avant l’ouverture.</value>
+  </data>
+  <data name="Survey_Admin_Builder_Saved_NoTranslationsNeeded" xml:space="preserve">
+    <value>Questionnaire enregistré — aucune traduction manquante.</value>
+  </data>
+  <data name="Survey_Admin_Builder_Saved_TranslationFailed" xml:space="preserve">
+    <value>Questionnaire enregistré, mais la traduction a échoué : {0}</value>
+  </data>
 </root>

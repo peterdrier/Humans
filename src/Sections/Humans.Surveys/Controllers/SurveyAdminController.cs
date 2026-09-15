@@ -1,3 +1,4 @@
+using System.Globalization;
 using Humans.Surveys.Contracts;
 using Humans.Base.Controllers;
 using Humans.Surveys.Authorization;
@@ -381,13 +382,13 @@ internal sealed class SurveyAdminController(
         if (model.AudienceType == SurveyAudienceType.Team && model.AudienceTeamId is null)
         {
             ModelState.AddModelError(nameof(model.AudienceTeamId),
-                "Choose a team for the Team audience.");
+                localizer["Survey_Admin_Builder_Error_TeamRequired"]);
         }
 
         if (model.AudienceType == SurveyAudienceType.LoggedInSince && model.AudienceLoggedInSince is null)
         {
             ModelState.AddModelError(nameof(model.AudienceLoggedInSince),
-                "A \"Logged in since\" cutoff date is required for the LoggedInSince audience.");
+                localizer["Survey_Admin_Builder_Error_LoggedInSinceRequired"]);
         }
     }
 
@@ -402,13 +403,17 @@ internal sealed class SurveyAdminController(
             var filled = await surveyService.PreFillTranslationsAsync(
                 id, CultureCatalog.SupportedCultureCodes, actorId, ct);
             SetSuccess(filled > 0
-                ? $"Survey saved; {filled} missing translation(s) pre-filled — review them before opening."
-                : "Survey saved — no missing translations to fill.");
+                ? string.Format(
+                    CultureInfo.CurrentCulture,
+                    localizer["Survey_Admin_Builder_Saved_TranslationsFilled"].Value, filled)
+                : localizer["Survey_Admin_Builder_Saved_NoTranslationsNeeded"].Value);
         }
         catch (InvalidOperationException ex)
         {
             logger.LogWarning("Survey translation failed for {SurveyId}: {Reason}", id, ex.Message);
-            SetError($"Survey saved, but translation failed: {ex.Message}");
+            SetError(string.Format(
+                CultureInfo.CurrentCulture,
+                localizer["Survey_Admin_Builder_Saved_TranslationFailed"].Value, ex.Message));
         }
     }
 

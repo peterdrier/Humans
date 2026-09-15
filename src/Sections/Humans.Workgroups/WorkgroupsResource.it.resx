@@ -297,4 +297,7 @@
   <data name="Workgroups_ViewRegister" xml:space="preserve"><value>Vedi il registro</value></data>
   <data name="Workgroups_MyWorkgroups" xml:space="preserve"><value>I miei gruppi di lavoro</value></data>
   <data name="Workgroups_MyWorkgroupsEmpty" xml:space="preserve"><value>Non hai ancora aderito a un gruppo di lavoro.</value></data>
+  <data name="Workgroups_Error_SurveyNotYours" xml:space="preserve">
+    <value>Puoi collegare solo un sondaggio creato da te.</value>
+  </data>
 </root>

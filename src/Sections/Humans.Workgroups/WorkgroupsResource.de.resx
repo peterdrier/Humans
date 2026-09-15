@@ -297,4 +297,7 @@
   <data name="Workgroups_ViewRegister" xml:space="preserve"><value>Register ansehen</value></data>
   <data name="Workgroups_MyWorkgroups" xml:space="preserve"><value>Meine Arbeitsgruppen</value></data>
   <data name="Workgroups_MyWorkgroupsEmpty" xml:space="preserve"><value>Du bist noch keiner Arbeitsgruppe beigetreten.</value></data>
+  <data name="Workgroups_Error_SurveyNotYours" xml:space="preserve">
+    <value>Du kannst nur eine Umfrage verknüpfen, die du selbst erstellt hast.</value>
+  </data>
 </root>

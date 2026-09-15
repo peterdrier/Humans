@@ -26,7 +26,7 @@
 
             <div class="mb-3">
                 <label asp-for="Purpose" class="form-label">@Localizer["Workgroups_Field_Purpose"]</label>
-                <markdown-editor asp-for="Purpose" rows="6" />
+                <markdown-editor asp-for="Purpose" rows="6" maxlength="4000" />
                 <span asp-validation-for="Purpose" class="text-danger"></span>
             </div>
 

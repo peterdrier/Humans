@@ -1,3 +1,4 @@
+using Humans.Surveys.Contracts;
 using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
@@ -27,6 +28,7 @@ namespace Humans.Workgroups.Tests.Infrastructure;
 public abstract class WorkgroupsTestHarness : IDisposable
 {
     private readonly Dictionary<Guid, UserInfo> _users = [];
+    private readonly Dictionary<Guid, SurveySummary> _surveys = [];
     private bool _disposed;
 
     protected WorkgroupsTestHarness(Instant? now = null)
@@ -57,6 +59,10 @@ public abstract class WorkgroupsTestHarness : IDisposable
             });
         Users.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<IReadOnlyCollection<UserInfo>>(_users.Values.ToList()));
+
+        Surveys = Substitute.For<ISurveyAnalysisRead>();
+        Surveys.GetSummariesAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult<IReadOnlyList<SurveySummary>>(_surveys.Values.ToList()));
 
         UserEmails = Substitute.For<IUserEmailService>();
         UserEmails.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -105,6 +111,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
     private protected TestDbContextFactory<WorkgroupsDbContext> DbFactory { get; }
     private protected FakeClock Clock { get; }
     private protected IUserServiceRead Users { get; }
+    private protected ISurveyAnalysisRead Surveys { get; }
     private protected IUserEmailService UserEmails { get; }
     private protected IRoleAssignmentService Roles { get; }
     private protected ITeamServiceRead Teams { get; }
@@ -120,13 +127,21 @@ public abstract class WorkgroupsTestHarness : IDisposable
 
     /// <summary>The undecorated service over the real repository and the substitutes above.</summary>
     private protected WorkgroupService NewService() => new(
-        new WorkgroupRepository(DbFactory), Users, UserEmails, Roles, Settings, GoogleSync,
+        new WorkgroupRepository(DbFactory), Users, Surveys, UserEmails, Roles, Settings, GoogleSync,
         Notifications, Email, EmailFactory, AuditLog, Clock, Logger);
 
     /// <summary>A fresh context over the same store — what a test reads back through.</summary>
     private protected WorkgroupsDbContext OpenContext() => DbFactory.CreateDbContext();
 
     // ── Seeders ───────────────────────────────────────────────────────────
+
+    /// <summary>Registers a survey the <see cref="ISurveyAnalysisRead"/> substitute knows, authored by <paramref name="authorUserId"/>.</summary>
+    private protected Guid SeedSurvey(Guid authorUserId, Guid? id = null, string title = "Test Survey")
+    {
+        var surveyId = id ?? Guid.NewGuid();
+        _surveys[surveyId] = new SurveySummary(surveyId, title, SurveyStatus.Closed, 0, 0, authorUserId);
+        return surveyId;
+    }
 
     /// <summary>Registers a human the <see cref="IUserServiceRead"/> substitute knows by burner name.</summary>
     protected Guid SeedUser(

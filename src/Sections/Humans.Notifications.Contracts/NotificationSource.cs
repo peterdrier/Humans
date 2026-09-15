@@ -111,7 +111,7 @@ public enum NotificationSource
     /// <summary>The posting owner declined a rideshare interest (neutral wording, no reason).</summary>
     RideshareInterestDeclined = 35,
 
-/// <summary>An assembly vote opened and the roster was notified.</summary>
+    /// <summary>An assembly vote opened and the roster was notified.</summary>
     AssemblyVoteOpened = 36,
 
     /// <summary>A working group applied, was referred, or the Board owes it a decision.</summary>

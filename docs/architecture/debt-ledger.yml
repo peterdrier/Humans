@@ -422,9 +422,6 @@ inbox:
     what: "docs/architecture/freshness-catalog.yml has no Backdoor entry; add one covering src/Sections/Humans.Backdoor/** and tests/Humans.Backdoor.Tests/** (finding 17, /section-doctor on Backdoor 2026-09-03; swept in by /section-doctor on Rideshare 2026-09-10)."
     review: light
   - added: 2026-09-11
-    what: "WorkgroupService.LinkSurveyAsync (src/Sections/Humans.Workgroups/Services/WorkgroupService.cs) writes a SurveySubmitted log entry for any Guid the member posts, without checking the survey exists or that the group authored it — the log can name a survey nobody can open. Validating it needs a new cross-section read seam (Workgroups has no project reference to Surveys, which exposes only ISurveyAnalysisRead), so it needs Peter's sign-off on the new public surface. Found by Codex review round 3 on peterdrier/Humans#1650."
-    review: panel
-  - added: 2026-09-11
     what: "Rideshare and Issues still send member notifications in English. Workgroups now groups recipients by PreferredLanguage and uses existing localized labels with INotificationService.SendAsync; no new notification API is required. Apply the same approach to the remaining callers. Found during review of peterdrier/Humans#1650."
     what: "INotificationAutoResolve has ResolveBySourceAsync (user + source, every key) and ResolveBySourceKeyAsync (source + key, every user) but nothing per user AND key, so Governance cannot retract one voter's AssemblyVoteOpened entry when they cast their ballot — the actionable row stands until the vote closes, and clearing it with ResolveBySourceAsync would wipe the member's prompts for every other open vote of the same assembly. Needs a new method on the Notifications contracts leaf, so Peter's call on the surface addition (Codex on peterdrier/Humans#1649)."
     review: panel

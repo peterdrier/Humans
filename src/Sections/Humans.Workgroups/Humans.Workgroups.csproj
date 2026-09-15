@@ -37,6 +37,9 @@
       Shifts and Events do the same.
     -->
     <ProjectReference Include="..\Humans.Calendar\Humans.Calendar.csproj" />
+    <!-- ISurveyAnalysisRead lives in the Surveys project's Contracts folder (no .Contracts leaf),
+         the same way Backdoor consumes it. LinkSurveyAsync uses it to check the posted survey. -->
+    <ProjectReference Include="..\Humans.Surveys\Humans.Surveys.csproj" />
   </ItemGroup>
 
   <ItemGroup>

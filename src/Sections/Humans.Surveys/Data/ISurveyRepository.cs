@@ -181,4 +181,12 @@ internal partial interface ISurveyRepository : IRepository
     /// them. The survey and its questions stay — they are the association's own record.
     /// </summary>
     Task<int> ClearAuthorshipForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Account merge: moves authorship of the eliminated account's surveys onto the survivor
+    /// (<c>CreatedByUserId</c>), stamping <paramref name="now"/> as <c>UpdatedAt</c>. Without it
+    /// the author-scoped index hides the surviving account's own surveys from them.
+    /// </summary>
+    Task<int> ReassignAuthorshipAsync(
+        Guid fromUserId, Guid toUserId, Instant now, CancellationToken ct = default);
 }

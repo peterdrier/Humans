@@ -246,6 +246,10 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 - When the invited wizard advances past the intro, `Invitation.Started` is set; on the public path, `Survey.PublicStartedCount` is incremented.
 - When the GDPR export runs, `SurveyService` (as `IUserDataContributor`) contributes the user's **Identified** responses under `GdprExportSections.SurveyResponses`, plus the surveys they authored (`CreatedByUserId`, any status, Drafts included) under `GdprExportSections.AuthoredSurveys` — authoring is open to every approved Human, so a member's own surveys and any Board rejection note are their personal data.
 - When Article 17 erasure runs, `EraseForUserAsync` deletes the user's `SurveyInvitation` rows and severs their Identified responses from the person (`UserId`/`InvitationId` dropped, `Anonymity` forced to `Anonymous`) — the answers themselves survive as an anonymous data point in the survey's results (Art. 17(3)(b)), which is what `ErasureDeclaration` names as partial retention for `GdprExportSections.SurveyResponses`. It also drops authorship on the surveys they wrote (`CreatedByUserId` to `Guid.Empty`, `RejectionNote` cleared) while the survey and its questions survive as the association's own record — partial retention for `GdprExportSections.AuthoredSurveys`.
+- On an account merge, `ReassignAsync` (`IUserMerge`) moves `Survey.CreatedByUserId` from the
+  eliminated account onto the survivor and stamps `UpdatedAt`. Without it the author-scoped
+  index would hide the survivor's own surveys from them, and the authorization handler would
+  refuse their drafts.
 
 ## Cross-Section Dependencies
 

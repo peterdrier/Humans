@@ -3,7 +3,12 @@ using NodaTime;
 namespace Humans.Surveys.Contracts;
 
 /// <summary>A survey and its participation counts — the machine API's list row and the admin index.</summary>
-public sealed record SurveySummary(Guid Id, string Title, SurveyStatus Status, int InvitedCount, int ResponseCount);
+/// <summary>
+/// One survey as cross-section readers see it. <c>CreatedByUserId</c> is the author, and is
+/// <see cref="Guid.Empty"/> for an unattributed survey or one whose author was erased.
+/// </summary>
+public sealed record SurveySummary(
+    Guid Id, string Title, SurveyStatus Status, int InvitedCount, int ResponseCount, Guid CreatedByUserId);
 
 // ── Results DTOs (co-located) ───────────────────────────────────────────────
 

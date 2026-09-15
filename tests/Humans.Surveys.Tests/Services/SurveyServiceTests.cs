@@ -3617,6 +3617,21 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task ReassignAsync_moves_authored_surveys_to_the_surviving_account()
+    {
+        var eliminated = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        var now = Instant.FromUtc(2026, 9, 14, 12, 0);
+
+        await CreateService().ReassignAsync(
+            eliminated, survivor, Guid.NewGuid(), now, TestContext.Current.CancellationToken);
+
+        // Without this fold the author-scoped index hides the survivor's own surveys from them.
+        await _repo.Received(1).ReassignAuthorshipAsync(
+            eliminated, survivor, now, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task CreateAsync_allows_ranked_choice_in_an_ordinary_survey()
     {
         Survey? captured = null;

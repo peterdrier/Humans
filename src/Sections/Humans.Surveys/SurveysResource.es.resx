@@ -297,4 +297,19 @@
   <data name="Survey_Admin_Results_BallotLabel" xml:space="preserve"><value>Papeleta {0}</value></data>
   <data name="Survey_Admin_Results_BackToSurveys" xml:space="preserve"><value>Volver a las encuestas</value></data>
   <data name="Survey_Admin_Results_RespondentRejectedLabel" xml:space="preserve"><value>Rechazado:</value></data>
+  <data name="Survey_Admin_Builder_Error_TeamRequired" xml:space="preserve">
+    <value>Elige un equipo para la audiencia Equipo.</value>
+  </data>
+  <data name="Survey_Admin_Builder_Error_LoggedInSinceRequired" xml:space="preserve">
+    <value>La audiencia «Conectado desde» requiere una fecha límite.</value>
+  </data>
+  <data name="Survey_Admin_Builder_Saved_TranslationsFilled" xml:space="preserve">
+    <value>Encuesta guardada; {0} traducción(es) que faltaban se han rellenado: revísalas antes de abrirla.</value>
+  </data>
+  <data name="Survey_Admin_Builder_Saved_NoTranslationsNeeded" xml:space="preserve">
+    <value>Encuesta guardada: no faltaba ninguna traducción.</value>
+  </data>
+  <data name="Survey_Admin_Builder_Saved_TranslationFailed" xml:space="preserve">
+    <value>Encuesta guardada, pero la traducción falló: {0}</value>
+  </data>
 </root>

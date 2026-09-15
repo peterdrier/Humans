@@ -120,6 +120,11 @@ DormancyInquiry, DocumentPublished, CommentPeriodOpened, CommentPeriodClosed, De
 DispositionRecorded, SurveySubmitted, SurveySent. Member: Update, Disclosure,
 StatusRequested, Note.
 
+**Linking a survey writes a trusted record, so the id is checked first.** `LinkSurveyAsync`
+reads the posted survey through `ISurveyAnalysisRead.GetSummariesAsync` and rejects
+(`Workgroups_Error_SurveyNotYours`) unless it exists and the actor authored it — otherwise the
+log could name somebody else's survey, or none at all.
+
 ### WorkgroupDocument — `workgroup_documents`
 
 | Property | Type | Notes |
