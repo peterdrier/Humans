@@ -181,7 +181,8 @@ here, never as debt. No generated-by subtitle; the History table is the only dat
 
 *Trace gate, before 3d and again before Phase 4:* `doctor.py trace <health.md>` resolves every
 backticked name, route, path and `file:line` the target names against the tree — a `MISS` is a
-hard stop, a `CHECK` (a route whose literal is not in the code) is read by hand; every invariant
+false claim unless the name sits in deliberately-not-done, a `CHECK` (a route whose literal is
+not in the code) is read by hand; every invariant
 cites the `file:line` that enforces it — a bullet with no enforcement site is not an invariant
 and moves to seams, deliberately-not-done, or out. A claim taken from the section's own prose is traced like any
 other. Part 1 never restates an invariant part 4 owns. A test this run adds that contradicts an

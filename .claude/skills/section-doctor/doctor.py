@@ -471,6 +471,11 @@ def trace_token(tok, doc, exclude):
         for c in _path_candidates(tok, doc):
             if os.path.exists(c):
                 return "ok", c
+        if "/" not in tok:   # a bare file name: anywhere under the doc's section
+            root = SECTION_ROOT_RE.match(doc)
+            found = git("ls-files", "--", os.path.join(root.group(1) if root else "", "**", tok)).split()
+            if found:
+                return "ok", found[0]
         return "MISS", "no such path"
     hits = grep_hits(tok, CODE_GLOBS, word=False, exclude=exclude)
     if hits:
