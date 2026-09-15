@@ -206,7 +206,7 @@ internal sealed class BackdoorIssuesController(
         }
     }
 
-    private static object MapDetailIssue(IssueDetail i, IReadOnlyDictionary<Guid, UserInfo>? displayUsers = null) => new
+    private static object MapDetailIssue(IssueDetail i, IReadOnlyDictionary<Guid, UserInfo>? displayUsers) => new
     {
         i.Id,
         Status = i.Status.ToString(),
