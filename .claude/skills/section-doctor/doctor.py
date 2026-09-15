@@ -255,8 +255,8 @@ def cmd_dispatch_log(a):
 GENERATED_RE = re.compile(r"(\.Designer\.cs|DbContextModelSnapshot\.cs)$")
 THREADS = ("Shape", "Behavior & bugs", "Freshness", "Conformance", "Tests", "Prose & surface",
            "History", "Comments", "Inbox")
-RUN_FILE_BLOCKS = ("## Findings", "## Worked", "## Skipped", "## Retro", "## Needs Peter", "## Sweep queue",
-                   "## File coverage", "## Threads")  # "## Ranked findings" is accepted for Findings
+RUN_FILE_BLOCKS = ("## Assessment summary", "## Findings", "## Worked", "## Skipped", "## Retro", "## Needs Peter",
+                   "## Sweep queue", "## File coverage", "## Threads")  # "## Ranked findings" is accepted for Findings
 
 
 def inventory(section):
@@ -377,6 +377,23 @@ def _block_comments(text, pairs):
     return [(n, t) for n, t in out if t]
 
 
+def _hash_comments(text):
+    """`# ...` rows of a yaml file; a `#` inside a quoted scalar is not a comment."""
+    rows = []
+    for n, line in enumerate(text.splitlines(), 1):
+        quote = None
+        for i, ch in enumerate(line):
+            if quote:
+                if ch == quote:
+                    quote = None
+            elif ch in "\"'":
+                quote = ch
+            elif ch == "#" and (i == 0 or line[i - 1].isspace()):
+                rows.append((n, line[i:].strip()))
+                break
+    return rows
+
+
 def file_comments(path):
     """Comment rows of one inventory file, or None when the file type carries no comments."""
     if path.endswith((".cs", ".js", ".ts")):
@@ -389,6 +406,8 @@ def file_comments(path):
         return sorted(set(rows))
     if path.endswith((".csproj", ".props", ".targets", ".xml", ".config", ".md", ".html")):
         return _block_comments(worktree_file(path), (("<!--", "-->"),))
+    if path.endswith((".yml", ".yaml")):
+        return _hash_comments(worktree_file(path))
     return None   # .resx: its only comments are the schema boilerplate every file repeats
 
 
@@ -415,9 +434,10 @@ def cmd_history(a):
     for path, gen in inventory(a.section):
         if gen:
             continue
-        rows = file_comments(path)
-        if rows is None and path.endswith((".md", ".yml", ".yaml")):
+        if path.endswith((".md", ".yml", ".yaml")):   # prose narrates history too, not only its comments
             rows = list(enumerate(worktree_file(path).splitlines(), 1))
+        else:
+            rows = file_comments(path)
         for n, t in rows or ():
             if HISTORY_RE.search(t):
                 print(f"{path}:{n}: {t.strip()}")
