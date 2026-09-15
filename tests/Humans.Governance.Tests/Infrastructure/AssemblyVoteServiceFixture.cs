@@ -71,6 +71,8 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
         UserEmails.GetNotificationTargetEmailsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(new Dictionary<Guid, string>()));
+        Users.GetMergedSourceIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlySet<Guid>>(new HashSet<Guid>()));
 
         Service = new AssemblyVoteService(
             Repository,
@@ -114,6 +116,58 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(
                 userIds.ToDictionary(id => id, id => id + "@example.org")));
     }
+
+    /// <summary>
+    /// Folds <paramref name="source"/> into <paramref name="survivor"/> the way an accepted
+    /// account merge leaves it: the source is a tombstone pointing at the survivor, only the
+    /// survivor has a notification address (the merge moved the emails along), and
+    /// <c>GetMergedSourceIdsAsync</c> on the survivor reports the source.
+    /// </summary>
+    public void StubMergedInto(Guid source, Guid survivor)
+    {
+        var map = new Dictionary<Guid, UserInfo>
+        {
+            [source] = TombstoneInfo(source, survivor),
+            [survivor] = TombstoneInfo(survivor, null)
+        };
+
+        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                ((IReadOnlyCollection<Guid>)call[0])
+                    .Where(map.ContainsKey)
+                    .ToDictionary(id => id, id => map[id])));
+
+        UserEmails.GetNotificationTargetEmailsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(
+                new Dictionary<Guid, string>
+                {
+                    [survivor] = survivor + "@example.org",
+                    // The real service falls back to User.Email when a user has no
+                    // notification-target row, and the merge scrubbed the tombstone's to a
+                    // sentinel — so asking for a tombstone's address yields one that reaches
+                    // nobody rather than nothing at all.
+                    [source] = TombstoneAddress(source)
+                }));
+
+        Users.GetMergedSourceIdsAsync(survivor, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlySet<Guid>>(new HashSet<Guid> { source }));
+    }
+
+    private static string TombstoneAddress(Guid id) => $"merged-{id:N}@merged.local";
+
+    private UserInfo TombstoneInfo(Guid id, Guid? mergedTo) =>
+        new User
+        {
+            Id = id,
+            DisplayName = "Member " + id,
+            UserName = id + "@example.org",
+            Email = mergedTo is null ? id + "@example.org" : TombstoneAddress(id),
+            PreferredLanguage = "en",
+            State = UserState.Active,
+            MergedToUserId = mergedTo,
+            MergedAt = mergedTo is null ? null : Clock.GetCurrentInstant()
+        }.ToUserInfo();
 
     public async Task<AssemblyVote> AddVoteAsync(
         AssemblyVoteStatus status = AssemblyVoteStatus.Open,

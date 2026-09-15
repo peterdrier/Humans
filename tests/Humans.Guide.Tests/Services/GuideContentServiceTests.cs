@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using AwesomeAssertions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -39,39 +40,50 @@ public class GuideContentServiceTests
         public string Render(string markdown, string fileStem) => $"[rendered:{fileStem}]";
     }
 
-    private static GuideContentService CreateService(FakeSource source, out IMemoryCache cache)
+    private sealed class ThrowingRenderer(Exception toThrow) : IGuideRenderer
+    {
+        public string Render(string markdown, string fileStem) => throw toThrow;
+    }
+
+    private static GuideContentService CreateService(FakeSource source, out IMemoryCache cache) =>
+        CreateService(source, new StubRenderer(), out cache);
+
+    private static GuideContentService CreateService(
+        FakeSource source,
+        IGuideRenderer renderer,
+        out IMemoryCache cache)
     {
         cache = new MemoryCache(new MemoryCacheOptions());
         var settings = Options.Create(new GuideSettings { CacheTtlHours = 6 });
         return new GuideContentService(
             source,
-            new StubRenderer(),
+            renderer,
             cache,
             settings,
             NullLogger<GuideContentService>.Instance);
     }
 
     [HumansFact]
-    public async Task GetRenderedAsync_FirstCall_FetchesFromSource()
+    public async Task GetPageAsync_FirstCall_FetchesFromSource()
     {
         var source = new FakeSource();
         var service = CreateService(source, out _);
 
-        var html = await service.GetRenderedAsync("Profiles", Xunit.TestContext.Current.CancellationToken);
+        var html = await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
 
         html.Should().Be("[rendered:Profiles]");
         source.Calls.Should().BeGreaterThan(0);
     }
 
     [HumansFact]
-    public async Task GetRenderedAsync_SecondCall_ServedFromCache()
+    public async Task GetPageAsync_SecondCall_ServedFromCache()
     {
         var source = new FakeSource();
         var service = CreateService(source, out _);
 
-        await service.GetRenderedAsync("Profiles", Xunit.TestContext.Current.CancellationToken);
+        await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
         var callsAfterFirst = source.Calls;
-        await service.GetRenderedAsync("Profiles", Xunit.TestContext.Current.CancellationToken);
+        await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
 
         source.Calls.Should().Be(callsAfterFirst);
     }
@@ -81,7 +93,7 @@ public class GuideContentServiceTests
     {
         var source = new FakeSource();
         var service = CreateService(source, out _);
-        await service.GetRenderedAsync("Profiles", Xunit.TestContext.Current.CancellationToken);
+        await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
         var callsBefore = source.Calls;
 
         await service.RefreshAllAsync(Xunit.TestContext.Current.CancellationToken);
@@ -90,33 +102,33 @@ public class GuideContentServiceTests
     }
 
     [HumansFact]
-    public async Task GetRenderedAsync_UnknownFile_Throws()
+    public async Task GetPageAsync_UnknownFile_Throws()
     {
         var source = new FakeSource();
         var service = CreateService(source, out _);
 
-        var act = async () => await service.GetRenderedAsync("DoesNotExist", Xunit.TestContext.Current.CancellationToken);
+        var act = async () => await service.GetPageAsync("DoesNotExist", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<FileNotFoundException>();
     }
 
     [HumansFact]
-    public async Task GetRenderedAsync_ColdCacheGitHubFailure_ThrowsUnavailable()
+    public async Task GetPageAsync_ColdCacheGitHubFailure_ThrowsUnavailable()
     {
         var source = new FakeSource { FailFor = _ => new InvalidOperationException("network down") };
         var service = CreateService(source, out _);
 
-        var act = async () => await service.GetRenderedAsync("Profiles", Xunit.TestContext.Current.CancellationToken);
+        var act = async () => await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<GuideContentUnavailableException>();
     }
 
     [HumansFact]
-    public async Task GetRenderedAsync_WarmCacheThenSourceFails_ServesStale()
+    public async Task GetPageAsync_WarmCacheThenSourceFails_ServesStale()
     {
         var source = new FakeSource();
         var service = CreateService(source, out _);
-        await service.GetRenderedAsync("Profiles", Xunit.TestContext.Current.CancellationToken);
+        await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
 
         // Nothing is evicted before the refetch, so the entries cached above are still present
         // when every fetch below fails — which is what makes the refresh degrade to stale
@@ -124,8 +136,67 @@ public class GuideContentServiceTests
         source.FailFor = _ => new InvalidOperationException("flaky");
         await service.RefreshAllAsync(Xunit.TestContext.Current.CancellationToken); // should NOT throw — stale content present
 
-        var html = await service.GetRenderedAsync("Profiles", Xunit.TestContext.Current.CancellationToken);
+        var html = await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
 
         html.Should().Be("[rendered:Profiles]");
+    }
+
+    [HumansFact]
+    public async Task GetPageAsync_RequestedStemEvictedAndItsFetchFails_ThrowsEvenThoughOtherStemsAreCached()
+    {
+        // The cache is per stem, so "something is cached" is not the fallback condition — the
+        // requested stem's own copy is. PopulateAsync's hasStale flag only suppresses its own
+        // throw; the caller still finds the key missing and 503s. health.md invariant 7 said
+        // otherwise until peterdrier/Humans#1655.
+        var source = new FakeSource();
+        var service = CreateService(source, out var cache);
+        await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
+
+        cache.Remove("guide:Profiles");
+        source.FailFor = stem => string.Equals(stem, "Profiles", StringComparison.Ordinal)
+            ? new InvalidOperationException("this one file is unreachable")
+            : null;
+
+        var act = async () => await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<GuideContentUnavailableException>(
+            "every other stem is still cached, and none of them is the page the reader asked for");
+    }
+
+    [HumansFact]
+    public async Task GetPageAsync_RenderTimesOut_SurfacesAsUnavailableNotAnUnhandledThrow()
+    {
+        // Raised by Codex on peterdrier/Humans#1655. Before the markdown-filtering change,
+        // rendering happened inside PopulateAsync's per-file catch; moving it onto the request
+        // path put GuideHtmlPostprocessor's timeout-bounded regexes outside any handler, where
+        // they would have reached the user as a raw 500 instead of the section's 503 view.
+        var source = new FakeSource();
+        var service = CreateService(
+            source,
+            new ThrowingRenderer(new RegexMatchTimeoutException("input", "pattern", TimeSpan.FromMilliseconds(500))),
+            out _);
+
+        var act = async () => await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<GuideContentUnavailableException>(
+            "GuideController only translates GuideContentUnavailableException into the 503 view");
+    }
+
+    [HumansFact]
+    public async Task GetPageAsync_RenderTimesOut_LeavesTheCachedSegmentsInPlace()
+    {
+        // The document is fine; one reader's filtered slice of it was not. Evicting here would
+        // punish every other reader for that, and re-fetching the whole corpus on the next GET.
+        var source = new FakeSource();
+        var service = CreateService(
+            source,
+            new ThrowingRenderer(new RegexMatchTimeoutException("input", "pattern", TimeSpan.FromMilliseconds(500))),
+            out var cache);
+
+        var act = async () => await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<GuideContentUnavailableException>();
+
+        cache.TryGetValue("guide:Profiles", out GuideDocument? cached).Should().BeTrue();
+        cached.Should().NotBeNull();
     }
 }

@@ -194,8 +194,8 @@ public class GuideRoleResolverTests
     [MemberData(nameof(MappedRoles))]
     public async Task Resolve_EveryRoleAParentheticalCanName_IsProbedAgainstClaims(string role)
     {
-        // A role the map can name but the resolver never probes is invisible: the block
-        // carries data-guide-roles="<role>" and GuideFilter looks for it in SystemRoles,
+        // A role the map can name but the resolver never probes is invisible: the segment
+        // carries "<role>" among its privileges and GuideFilter looks for it in SystemRoles,
         // which the resolver never populated. Events Admin and Store Admin were in exactly
         // that state until the resolver started deriving its probe list from the map.
         var resolver = CreateResolver();

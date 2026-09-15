@@ -6,7 +6,6 @@ namespace Humans.Guide.Services;
 
 internal sealed class GuideRenderer(
     IOptions<GuideSettings> settings,
-    GuideMarkdownPreprocessor preprocessor,
     GuideHtmlPostprocessor postprocessor) : IGuideRenderer
 {
     private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
@@ -18,8 +17,6 @@ internal sealed class GuideRenderer(
         ArgumentNullException.ThrowIfNull(markdown);
         ArgumentException.ThrowIfNullOrWhiteSpace(fileStem);
 
-        var wrapped = preprocessor.Wrap(markdown);
-        var rendered = Markdown.ToHtml(wrapped, Pipeline);
-        return postprocessor.Rewrite(rendered, settings.Value);
+        return postprocessor.Rewrite(Markdown.ToHtml(markdown, Pipeline), settings.Value);
     }
 }

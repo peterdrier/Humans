@@ -6,34 +6,40 @@ namespace Humans.Guide.Tests.Services;
 
 public class GuideFilterTests
 {
+    // Fixtures are markdown now, not HTML: the filter runs before Markdig, so these exercise
+    // segmentation and role selection together — the same pair a real request runs.
     private const string Sample = """
-        <p>Intro, always visible.</p>
-        <div data-guide-role="volunteer" data-guide-roles="">
-          <h2>As a Volunteer</h2>
-          <p>Volunteer content.</p>
-        </div>
-        <div data-guide-role="coordinator" data-guide-roles="ConsentCoordinator">
-          <h2>As a Coordinator (Consent Coordinator)</h2>
-          <p>Coord content.</p>
-        </div>
-        <div data-guide-role="boardadmin" data-guide-roles="TeamsAdmin">
-          <h2>As a Board member / Admin (Teams Admin)</h2>
-          <p>Teams admin content.</p>
-        </div>
-        <h2>Related sections</h2>
-        <p>Always visible.</p>
+        Intro, always visible.
+
+        ## As a Volunteer
+
+        Volunteer content.
+
+        ## As a Coordinator (Consent Coordinator)
+
+        Coord content.
+
+        ## As a Board member / Admin (Teams Admin)
+
+        Teams admin content.
+
+        ## Related sections
+
+        Always visible.
         """;
 
     private const string CampsLike = """
-        <div data-guide-role="coordinator" data-guide-roles="CampLead">
-          <h2>As a Coordinator (Camp Lead)</h2>
-          <p>Camp lead content.</p>
-        </div>
-        <div data-guide-role="boardadmin" data-guide-roles="CampAdmin">
-          <h2>As a Board member / Admin (Camp Admin)</h2>
-          <p>Camp admin content.</p>
-        </div>
+        ## As a Coordinator (Camp Lead)
+
+        Camp lead content.
+
+        ## As a Board member / Admin (Camp Admin)
+
+        Camp admin content.
         """;
+
+    private static string Apply(string markdown, GuideRoleContext context) =>
+        GuideFilter.Apply(GuideSegmenter.Segment(markdown), context);
 
     private static GuideRoleContext Roles(bool isCoord, params string[] systemRoles) =>
         new(IsAuthenticated: true, IsTeamCoordinator: isCoord, IsCampLead: false,
@@ -46,7 +52,7 @@ public class GuideFilterTests
     [HumansFact]
     public void Apply_Anonymous_KeepsOnlyVolunteerBlock()
     {
-        var result = GuideFilter.Apply(Sample, GuideRoleContext.Anonymous);
+        var result = Apply(Sample, GuideRoleContext.Anonymous);
 
         result.Should().Contain("Volunteer content.");
         result.Should().Contain("Intro, always visible.");
@@ -56,9 +62,20 @@ public class GuideFilterTests
     }
 
     [HumansFact]
+    public void Apply_Anonymous_DropsTheHeadingAndNotJustTheBody()
+    {
+        // Filtering markdown means an invisible block leaves nothing behind — under the old
+        // HTML filter the heading went with its div, and that must stay true.
+        var result = Apply(Sample, GuideRoleContext.Anonymous);
+
+        result.Should().NotContain("As a Coordinator");
+        result.Should().NotContain("As a Board member");
+    }
+
+    [HumansFact]
     public void Apply_PlainVolunteer_SameAsAnonymous()
     {
-        var result = GuideFilter.Apply(Sample, Roles(isCoord: false));
+        var result = Apply(Sample, Roles(isCoord: false));
 
         result.Should().Contain("Volunteer content.");
         result.Should().NotContain("Coord content.");
@@ -68,7 +85,7 @@ public class GuideFilterTests
     [HumansFact]
     public void Apply_TeamCoordinator_SeesVolunteerAndCoordinator()
     {
-        var result = GuideFilter.Apply(Sample, Roles(isCoord: true));
+        var result = Apply(Sample, Roles(isCoord: true));
 
         result.Should().Contain("Volunteer content.");
         result.Should().Contain("Coord content.");
@@ -78,7 +95,7 @@ public class GuideFilterTests
     [HumansFact]
     public void Apply_ConsentCoordinatorRoleOnly_SeesCoordinatorBlockByParenthetical()
     {
-        var result = GuideFilter.Apply(Sample, Roles(isCoord: false, RoleNames.ConsentCoordinator));
+        var result = Apply(Sample, Roles(isCoord: false, RoleNames.ConsentCoordinator));
 
         result.Should().Contain("Coord content.");
         result.Should().NotContain("Teams admin content.");
@@ -88,13 +105,12 @@ public class GuideFilterTests
     public void Apply_ConsentCoordinatorOnBareCoordinatorHeading_NotVisible()
     {
         const string bareCoord = """
-            <div data-guide-role="coordinator" data-guide-roles="">
-              <h2>As a Coordinator</h2>
-              <p>Bare coord content.</p>
-            </div>
+            ## As a Coordinator
+
+            Bare coord content.
             """;
 
-        var result = GuideFilter.Apply(bareCoord, Roles(isCoord: false, RoleNames.ConsentCoordinator));
+        var result = Apply(bareCoord, Roles(isCoord: false, RoleNames.ConsentCoordinator));
 
         result.Should().NotContain("Bare coord content.");
     }
@@ -103,7 +119,7 @@ public class GuideFilterTests
     public void Apply_TeamsAdmin_SeesCoordinatorAndBoardOnTeamsFile()
     {
         // Within-file superset: seeing Board/Admin via (Teams Admin) implies seeing Coordinator too.
-        var result = GuideFilter.Apply(Sample, Roles(isCoord: false, RoleNames.TeamsAdmin));
+        var result = Apply(Sample, Roles(isCoord: false, RoleNames.TeamsAdmin));
 
         result.Should().Contain("Coord content.");
         result.Should().Contain("Teams admin content.");
@@ -113,22 +129,30 @@ public class GuideFilterTests
     public void Apply_TeamsAdminOnTicketsFile_SeesNothingBeyondVolunteer()
     {
         const string ticketsLike = """
-            <div data-guide-role="volunteer" data-guide-roles="">V</div>
-            <div data-guide-role="coordinator" data-guide-roles="">C</div>
-            <div data-guide-role="boardadmin" data-guide-roles="TicketAdmin">BA</div>
+            ## As a Volunteer
+
+            V-body
+
+            ## As a Coordinator
+
+            C-body
+
+            ## As a Board member / Admin (Ticket Admin)
+
+            BA-body
             """;
 
-        var result = GuideFilter.Apply(ticketsLike, Roles(isCoord: false, RoleNames.TeamsAdmin));
+        var result = Apply(ticketsLike, Roles(isCoord: false, RoleNames.TeamsAdmin));
 
-        result.Should().Contain("V");
-        result.Should().NotContain(">C<");
-        result.Should().NotContain("BA");
+        result.Should().Contain("V-body");
+        result.Should().NotContain("C-body");
+        result.Should().NotContain("BA-body");
     }
 
     [HumansFact]
     public void Apply_Admin_SeesEverything()
     {
-        var result = GuideFilter.Apply(Sample, Roles(isCoord: false, RoleNames.Admin));
+        var result = Apply(Sample, Roles(isCoord: false, RoleNames.Admin));
 
         result.Should().Contain("Volunteer content.");
         result.Should().Contain("Coord content.");
@@ -136,17 +160,33 @@ public class GuideFilterTests
     }
 
     [HumansFact]
+    public void Apply_Admin_ReproducesTheFileExactly()
+    {
+        // The join is lossless when nothing is dropped: a reader who sees everything must get
+        // byte-for-byte what GitHub served, or the filter is rewriting content rather than
+        // selecting it.
+        var result = Apply(Sample, Roles(isCoord: false, RoleNames.Admin));
+
+        result.Should().Be(Sample);
+    }
+
+    [HumansFact]
     public void Apply_Board_SeesAllBoardAdminBlocksRegardlessOfParenthetical()
     {
         const string mixed = """
-            <div data-guide-role="boardadmin" data-guide-roles="">Plain</div>
-            <div data-guide-role="boardadmin" data-guide-roles="CampAdmin">Camp-scoped</div>
+            ## As a Board member / Admin
+
+            Plain-body
+
+            ## As a Board member / Admin (Camp Admin)
+
+            Camp-scoped-body
             """;
 
-        var result = GuideFilter.Apply(mixed, Roles(isCoord: false, RoleNames.Board));
+        var result = Apply(mixed, Roles(isCoord: false, RoleNames.Board));
 
-        result.Should().Contain("Plain");
-        result.Should().Contain("Camp-scoped");
+        result.Should().Contain("Plain-body");
+        result.Should().Contain("Camp-scoped-body");
     }
 
     [HumansFact]
@@ -156,12 +196,12 @@ public class GuideFilterTests
         // within-file superset promotion could carry them and IsCoordinatorVisible's own
         // Board/Admin grant would never be exercised. This file has no boardadmin block at all.
         const string coordOnly = """
-            <div data-guide-role="coordinator" data-guide-roles="">
-              <p>Coord-only content.</p>
-            </div>
+            ## As a Coordinator
+
+            Coord-only content.
             """;
 
-        var result = GuideFilter.Apply(coordOnly, Roles(isCoord: false, RoleNames.Admin));
+        var result = Apply(coordOnly, Roles(isCoord: false, RoleNames.Admin));
 
         result.Should().Contain("Coord-only content.");
     }
@@ -171,7 +211,7 @@ public class GuideFilterTests
     {
         // nobodies-collective/Humans#1035: the Camps Coordinator block is written for camp
         // leads, who hold no system role — before the CampLead token it reached only Board/Admin.
-        var result = GuideFilter.Apply(CampsLike, CampLeadOnly());
+        var result = Apply(CampsLike, CampLeadOnly());
 
         result.Should().Contain("Camp lead content.");
         result.Should().NotContain("Camp admin content.");
@@ -182,7 +222,7 @@ public class GuideFilterTests
     {
         // Leading a camp is not a general coordinator grant: only blocks whose parenthetical
         // names Camp Lead open up.
-        var result = GuideFilter.Apply(Sample, CampLeadOnly());
+        var result = Apply(Sample, CampLeadOnly());
 
         result.Should().Contain("Volunteer content.");
         result.Should().NotContain("Coord content.");
@@ -191,17 +231,17 @@ public class GuideFilterTests
     [HumansFact]
     public void Apply_NotACampLead_DoesNotSeeCampLeadBlock()
     {
-        var result = GuideFilter.Apply(CampsLike, Roles(isCoord: false));
+        var result = Apply(CampsLike, Roles(isCoord: false));
 
         result.Should().NotContain("Camp lead content.");
     }
 
     [HumansFact]
-    public void Apply_NoRoleDivs_ReturnsUnchanged()
+    public void Apply_NoRoleHeadings_ReturnsUnchanged()
     {
-        const string plain = "<p>Glossary entries.</p>";
+        const string plain = "Glossary entries.";
 
-        var result = GuideFilter.Apply(plain, GuideRoleContext.Anonymous);
+        var result = Apply(plain, GuideRoleContext.Anonymous);
 
         result.Should().Be(plain);
     }
