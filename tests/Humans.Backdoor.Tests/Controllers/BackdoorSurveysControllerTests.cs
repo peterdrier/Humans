@@ -11,9 +11,8 @@ namespace Humans.Backdoor.Tests.Controllers;
 
 /// <summary>
 /// The query parsing, filtering, paging and formatting the machine survey API does on top of
-/// <see cref="ISurveyAnalysisRead"/> — ported from the Surveys section's own API tests when the
-/// controller moved to <c>/api/backdoor/surveys</c> (nobodies-collective/Humans#1128).
-/// Everything below is controller work: the service is a substitute throughout.
+/// <see cref="ISurveyAnalysisRead"/>. Everything below is controller work: the service is a
+/// substitute throughout.
 /// </summary>
 public class BackdoorSurveysControllerTests
 {

@@ -15,7 +15,7 @@ namespace Humans.Backdoor.Tests.Services;
 
 /// <summary>
 /// The key lifecycle: who may hold one, what the database keeps, and what the caller gets
-/// back (nobodies-collective/Humans#1128).
+/// back.
 /// </summary>
 public class BackdoorApiKeyServiceTests
 {

@@ -161,8 +161,7 @@ public class BackdoorFeedbackControllerTests
     }
 
     /// <summary>
-    /// A rejected move is not a missing report — every patch endpoint here used to answer 404
-    /// to both, which told the caller to stop retrying something that was merely refused.
+    /// A rejected move is not a missing report.
     /// </summary>
     [HumansFact]
     public async Task UpdateStatus_returns_422_when_the_service_rejects_the_move()

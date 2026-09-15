@@ -238,7 +238,7 @@ public class BackdoorIssuesControllerTests
     }
 
     // ==========================================================================
-    // Writes — every one carries the key owner as actor (#1128)
+    // Writes — every one carries the key owner as actor
     // ==========================================================================
 
     [HumansFact]
@@ -336,8 +336,7 @@ public class BackdoorIssuesControllerTests
     }
 
     /// <summary>
-    /// A rejected move is not a missing issue. The 422 arm used to exist on <c>section</c>
-    /// alone; every patch endpoint carries it now that they share one pipeline.
+    /// A rejected move is not a missing issue.
     /// </summary>
     [HumansFact]
     public async Task UpdateStatus_returns_422_when_the_service_rejects_the_move()
@@ -392,9 +391,7 @@ public class BackdoorIssuesControllerTests
     }
 
     /// <summary>
-    /// The per-item routes used to reach <see cref="IIssueTriage"/> with no viewer at all, so a
-    /// key holding an id read and moved issues its own queue would never have listed. Each
-    /// route now carries the same viewer the queue does; refusing on it is Issues' job, and
+    /// Each route carries the same viewer the queue does; refusing on it is Issues' job, and
     /// these pin that the controller hands it over.
     /// </summary>
     [HumansFact]

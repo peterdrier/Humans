@@ -181,11 +181,6 @@ internal sealed class BackdoorIssuesController(
     /// field moved — a missing issue to 404, a rejected move to 422 carrying the service's
     /// reason, anything else to 500.
     /// </summary>
-    /// <remarks>
-    /// The 422 arm used to exist on <c>section</c> alone; the others turned a state-machine
-    /// rejection into a misleading 404. Normalising that is what made one pipeline possible
-    /// at all — the per-endpoint failure strings were the parameter bag standing in the way.
-    /// </remarks>
     private async Task<IActionResult> PatchAsync(Guid id, string field, Func<Task> apply)
     {
         try

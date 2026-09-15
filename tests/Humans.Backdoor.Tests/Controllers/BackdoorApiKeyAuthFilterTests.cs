@@ -13,10 +13,9 @@ using System.Security.Claims;
 namespace Humans.Backdoor.Tests.Controllers;
 
 /// <summary>
-/// The one gate on <c>/api/backdoor/*</c>. Unlike the five per-section filters it replaced,
-/// it resolves the key to a person rather than comparing it to an env var — so the
-/// interesting assertion is the principal it installs, not just the status code
-/// (nobodies-collective/Humans#1128).
+/// The one gate on <c>/api/backdoor/*</c>. It resolves the key to a person rather than
+/// comparing it to an env var — so the interesting assertion is the principal it installs,
+/// not just the status code.
 /// </summary>
 public class BackdoorApiKeyAuthFilterTests
 {

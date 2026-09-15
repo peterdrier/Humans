@@ -113,7 +113,7 @@ No section depends on Backdoor. It is a leaf, and deliberately so — the fan-in
 
 **Owning services:** `BackdoorApiKeyService`
 **Owned tables:** `backdoor_api_keys`
-**Status:** (A) Migrated — created at this shape in nobodies-collective/Humans#1128 (2026-08).
+**Status:** (A) Migrated
 
 ### Cross-section read interface
 
