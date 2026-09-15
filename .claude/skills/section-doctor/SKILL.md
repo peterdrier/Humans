@@ -358,7 +358,7 @@ this skill are not Needs-Peter items and not sweep items; the bar for them is be
 ### Phase 7: PR
 
 Self-review the run's own new prose against the gates: `doctor.py prose-gate --base origin/main`,
-`doctor.py trace <run file> <health.md>` (every symbol, route and path resolves; every "only",
+`doctor.py trace <run file> <health.md> --section <X>` (every symbol, route and path resolves; every "only",
 "never" and "always" is checked by hand), and the render rule (a claim about what a page shows traces to the `.cshtml`). Then
 `doctor.py check-run-file <run file> --section <X>`, `dotnet format whitespace Humans.slnx --verify-no-changes`, the full
 test run, `doctor.py push`, and the PR against `peterdrier/Humans` `main`:

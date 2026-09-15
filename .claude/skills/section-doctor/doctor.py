@@ -13,7 +13,7 @@
     doctor.py runfile <Section> [--invocation TEXT] [--budget B]   create the run file, or refresh its coverage and thread tables
     doctor.py comments <Section>    every comment in the section's code, path:line: text (the Comments thread's input)
     doctor.py history <Section>     lines narrating a prior state across docs and comments (the History thread's candidates)
-    doctor.py trace <doc>…          the trace gate: every backticked name, route, path and file:line resolved against the tree
+    doctor.py trace <doc>… [--section X]   the trace gate: every backticked name, route, path and file:line resolved against the tree
     doctor.py blast <symbol>…       repo-wide word-bounded git grep per symbol (blast radius before a strike names one)
     doctor.py review-pack <Section> <what> [--finding TEXT]   capture the uncommitted diff, its blast grep and file heads for the reviewer; name the reviewer agent
 
@@ -278,9 +278,9 @@ def cmd_check_run_file(a):
     for path, _ in inventory(a.section):
         if not re.search(r"`?" + re.escape(path) + r"`?[^\n]*\b(reviewed|changed|generated)\b", text):
             missing.append(f"coverage row: {path}")
-    for t in THREADS:
-        if not re.search(r"^\|\s*" + re.escape(t) + r"\s*\|", text, re.M):
-            missing.append(f"thread row: {t}")
+    for t in THREADS:   # the row exists (runfile writes it) and the run filled how it ran and what it found
+        if not re.search(r"^\|\s*" + re.escape(t) + r"\s*\|\s*[^|\s][^|]*\|[^|]*\|\s*[^|\s][^|]*\|", text, re.M):
+            missing.append(f"thread row incomplete: {t} (how it ran, findings)")
     for m in missing:
         print("missing: " + m)
     if missing:
@@ -374,10 +374,14 @@ def _block_comments(text, pairs):
 
 def file_comments(path):
     """Comment rows of one inventory file, or None when the file type carries no comments."""
-    if path.endswith(".cs"):
+    if path.endswith((".cs", ".js", ".ts")):
         return _cs_comments(worktree_file(path))
-    if path.endswith(".cshtml"):
-        return _block_comments(worktree_file(path), (("@*", "*@"), ("<!--", "-->")))
+    if path.endswith((".css", ".scss")):
+        return _block_comments(worktree_file(path), (("/*", "*/"),))
+    if path.endswith(".cshtml"):   # razor and html comments, plus `//` and `/* */` inside code and script blocks
+        text = worktree_file(path)
+        rows = _block_comments(text, (("@*", "*@"), ("<!--", "-->"))) + _cs_comments(text)
+        return sorted(set(rows))
     return None
 
 
@@ -423,6 +427,8 @@ IDENT_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{2,}")
 PROSE_TOKEN_RE = re.compile(r"^[a-z][a-z -]*$")   # `keep`, `not a defect`: words, not names
 PATH_TOKEN_RE = re.compile(r"^(?:src|tests|docs|memory|\.claude|\.github)/|\.[a-z0-9]{1,6}$")
 SECTION_ROOT_RE = re.compile(r"^(src/Sections/Humans\.[A-Za-z0-9]+)/")
+SHA_RE = re.compile(r"^[0-9a-f]{7,40}$")
+GIT_REF_RE = re.compile(r"^(?:origin|upstream|refs|section-doctor)/|^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+#\d+$")  # branches, issue refs
 
 
 def grep_hits(needle, globs, word=True, exclude=()):
@@ -434,20 +440,30 @@ def grep_hits(needle, globs, word=True, exclude=()):
     return sorted(hits, key=lambda h: (not h.startswith("src/"), not h.startswith("tests/")))
 
 
-def _path_candidates(tok, doc):
+def _section_root(doc, section):
+    m = SECTION_ROOT_RE.match(doc)
+    return m.group(1) if m else f"src/Sections/Humans.{section}" if section else None
+
+
+def _path_candidates(tok, doc, section):
     """A doc names paths relative to itself, its section root or `src/Sections/` as often as to the repo."""
     tok = tok.rstrip("/")
-    root = SECTION_ROOT_RE.match(doc)
+    root = _section_root(doc, section)
     return ([tok, os.path.join(os.path.dirname(doc), tok), os.path.join("src/Sections", tok)]
-            + ([os.path.join(root.group(1), tok)] if root else []))
+            + ([os.path.join(root, tok)] if root else []))
 
 
-def trace_token(tok, doc, exclude):
+def trace_token(tok, doc, section, exclude):
     """(status, detail): ok / MISS / CHECK (a route whose literal is not in the code: read the
     attribute by hand) / skip (a word or an extension, not a name)."""
+    if SHA_RE.match(tok):
+        ok = subprocess.run(["git", "cat-file", "-e", tok], capture_output=True).returncode == 0
+        return ("ok", "commit") if ok else ("MISS", "no such commit")
+    if GIT_REF_RE.match(tok):
+        return "skip", "a branch or issue reference"
     m = LINE_REF_RE.match(tok)
     if m:
-        for path in _path_candidates(m.group(1), doc):
+        for path in _path_candidates(m.group(1), doc, section):
             if os.path.isfile(path):
                 n = len(worktree_file(path).splitlines())
                 return ("ok", f"{path}, {n} lines") if int(m.group(2)) <= n else ("MISS", f"{path} has {n} lines")
@@ -456,7 +472,7 @@ def trace_token(tok, doc, exclude):
             or re.match(r"^[a-z]+:", tok) or "<" in tok or tok.startswith("$"):
         return "skip", "a word, a placeholder, an extension or a URL, not a name"
     if "*" in tok and "/" in tok and not tok.startswith("/"):
-        return ("ok", "glob") if any(glob.glob(c, recursive=True) for c in _path_candidates(tok, doc)) else ("MISS", "glob matches nothing")
+        return ("ok", "glob") if any(glob.glob(c, recursive=True) for c in _path_candidates(tok, doc, section)) else ("MISS", "glob matches nothing")
     if "*" in tok and not tok.startswith("/"):
         hits = grep_hits(tok.split("*")[0], CODE_GLOBS, word=False, exclude=exclude)
         return ("ok", f"prefix, {len(hits)} hit(s), first {hits[0]}") if hits else ("MISS", "prefix matches nothing")
@@ -468,12 +484,12 @@ def trace_token(tok, doc, exclude):
                 return "ok", f"route, {len(hits)} hit(s) for {needle}, first {hits[0]}"
         return "CHECK", "route literal not in code; read the attribute"
     if PATH_TOKEN_RE.search(tok):
-        for c in _path_candidates(tok, doc):
+        for c in _path_candidates(tok, doc, section):
             if os.path.exists(c):
                 return "ok", c
-        if "/" not in tok:   # a bare file name: anywhere under the doc's section
-            root = SECTION_ROOT_RE.match(doc)
-            found = git("ls-files", "--", os.path.join(root.group(1) if root else "", "**", tok)).split()
+        if "/" not in tok:   # a bare file name: anywhere in the tree, the doc's section first
+            found = sorted(git("ls-files", "--", "**/" + tok).split(),
+                           key=lambda f: not f.startswith(_section_root(doc, section) or "\0"))
             if found:
                 return "ok", found[0]
         return "MISS", "no such path"
@@ -493,7 +509,9 @@ def trace_token(tok, doc, exclude):
 
 def cmd_trace(a):
     """The trace gate (3c, Phase 7): every backticked name, route, path and file:line in the
-    given docs, resolved against the tree. Prints one line per token; non-zero on any MISS."""
+    given docs, resolved against the tree (paths also relative to the doc, to `src/Sections/` and
+    to the section named by `--section` or the doc's own location; a hex token is a commit).
+    Prints one line per token; non-zero on any MISS."""
     exclude, seen, misses = set(a.file), set(), 0
     for doc in a.file:
         for tok in BACKTICK_RE.findall(worktree_file(doc)):
@@ -501,7 +519,7 @@ def cmd_trace(a):
             if not tok or tok in seen or tok.startswith("-"):
                 continue
             seen.add(tok)
-            status, detail = trace_token(tok, doc, exclude)
+            status, detail = trace_token(tok, doc, a.section, exclude)
             if status == "skip" and not a.all:
                 continue
             misses += status == "MISS"
@@ -746,7 +764,8 @@ def main():
     s.add_argument("--budget", default="2.5h"); s.set_defaults(fn=cmd_runfile)
     s = sub.add_parser("comments"); s.add_argument("section"); s.set_defaults(fn=cmd_comments)
     s = sub.add_parser("history"); s.add_argument("section"); s.set_defaults(fn=cmd_history)
-    s = sub.add_parser("trace"); s.add_argument("file", nargs="+"); s.add_argument("--all", action="store_true", help="print skipped word tokens too")
+    s = sub.add_parser("trace"); s.add_argument("file", nargs="+"); s.add_argument("--section", help="resolve section-relative paths (a run file names Docs/X.md)")
+    s.add_argument("--all", action="store_true", help="print skipped word tokens too")
     s.set_defaults(fn=cmd_trace)
     s = sub.add_parser("blast"); s.add_argument("symbol", nargs="+"); s.set_defaults(fn=cmd_blast)
     s = sub.add_parser("review-pack"); s.add_argument("section"); s.add_argument("what"); s.add_argument("--finding")
