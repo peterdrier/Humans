@@ -48,6 +48,9 @@ What follows from the table drives everything below:
   controller here is a rule in the wrong section.
 - **S7 is one near-identical body per patch endpoint, spread across the controllers that
   carry it.** The right shape is one expression of the patch pipeline per controller.
+- **A served section's scoping test travels in the call, not in a flag Backdoor computes.**
+  What a key may reach is that section's rule; Backdoor hands over who is asking and nothing
+  else.
 
 ## 3. Structure
 
@@ -75,34 +78,43 @@ The structural rules the layout has to keep:
   reaches the sections it serves; every one of those references is load-bearing or it is not
   there. A
   reference retained "because the section is served here" is dead weight that widens the graph.
-- **A request-shaping default that can never fire is not a safety net.** S2 guarantees a
-  principal before any S3–S8 body runs; a controller that also carries a fallback for its
-  absence is describing a state the filter forbids.
+- **Every optional parameter is one a caller actually omits.** A default nobody takes is a
+  second signature to read and a second path to reason about.
 
 ## 4. Invariants
 
 Stated so a violation is recognisable:
 
 - A presented key resolves to exactly one person, and that person becomes the request principal —
-  id plus active roles. No key, unknown key, revoked key → 401, all indistinguishable.
-- Everything served is scoped by the owner's own id, roles and admin flag — the queues row by
-  row, and each per-item read and write by the same test. A key reaches exactly as far as its
-  holder does in the browser.
-- The database never holds a plaintext key: SHA-256 hash plus a 12-character display prefix.
+  id plus active roles. No key, unknown key, revoked key → 401, all indistinguishable
+  (`Filters/BackdoorApiKeyAuthFilter.cs:32`, `Filters/BackdoorApiKeyAuthFilter.cs:39`).
+- Backdoor tells a served section **who** is asking, never **what they may do**: the issue routes
+  pass `IssueViewer(id, roles)` and Issues derives admin reach from those roles itself
+  (`Controllers/BackdoorIssuesController.cs:41`). A key reaches exactly as far as its holder does
+  in the browser — the queue lists the same rows, and an id outside it is a 404 to read, to
+  comment on and to patch.
+- The database never holds a plaintext key: SHA-256 hash plus a 12-character display prefix
+  (`Services/BackdoorApiKeyService.cs:154`, `Services/BackdoorApiKeyService.cs:155`).
 - A key authenticates only while its owner is **both** in Admin or Board **and** in
-  `UserState.Active` — tested at issue, at rotate, and on every single request. Failing the test
-  refuses the key; it never revokes it.
-- Issue and revoke each write one audit entry naming the key and its owner. A rotate is a revoke
-  entry followed by an issue entry.
+  `UserState.Active` — tested at issue, at rotate, and on every single request
+  (`Services/BackdoorApiKeyService.cs:138`). Failing the test refuses the key; it never revokes
+  it.
+- Issue and revoke each write one audit entry naming the key and its owner
+  (`Services/BackdoorApiKeyService.cs:166`). A rotate is a revoke entry followed by an issue
+  entry (`Services/BackdoorApiKeyService.cs:91`).
 - Every `/api/backdoor/*` write passes the key owner as the acting user. Nothing here writes as
-  nobody.
+  nobody (`Controllers/BackdoorIssuesController.cs:33`,
+  `Controllers/BackdoorFeedbackController.cs:31`).
 - No controller in this section touches a repository or `DbContext` other than
   `IBackdoorApiKeyRepository`; every served datum arrives through another section's published
-  contracts interface.
-- A key-authed principal carries the Backdoor scheme and no state claims, and the
-  Shell's onboarding gates let it through rather than redirecting a JSON client to HTML.
+  contracts interface (`Humans.Backdoor.csproj`).
+- A key-authed principal carries the Backdoor scheme
+  (`Filters/BackdoorApiKeyAuthFilter.cs:59`) and no state claims, and the Shell's onboarding
+  gates let it through rather than redirecting a JSON client to HTML
+  (`src/Humans.Web/Authorization/MembershipRequiredFilter.cs`).
 - Erasure hard-deletes the person's own keys and detaches them from anyone else's as both
-  creator and revoker. Merge re-points every one of those columns onto the survivor.
+  creator and revoker (`Data/BackdoorApiKeyRepository.cs:68`). Merge re-points every one of those
+  columns onto the survivor (`Data/BackdoorApiKeyRepository.cs:85`).
 
 ## 5. Seams
 
@@ -143,6 +155,11 @@ Essential complexity and settled decisions, so later runs stop re-litigating the
   would keep authenticating a suspended admin's key.
 - **`CreatedByUserId` is nullable.** Not because issuing is optional, but so GDPR erasure can
   detach a deleted admin from a key that still belongs to someone else.
+- **`ActorUserId` falls back to `Guid.Empty` rather than throwing.** The filter makes the
+  fallback unreachable, so it reads like dead defensiveness — but `ActorUserId` is evaluated
+  inside `try` blocks whose `catch` turns an `InvalidOperationException` into `NotFound()`, so a
+  loud throw would surface to a client as a spurious "not found". Proposed and rejected on
+  review in the 2026-09-03 run; leave it.
 - **The migrations-history table is `__EFMigrationsHistory_Backdoor`.** One database, one
   connection; the split is a code-side partition of the EF model.
 
