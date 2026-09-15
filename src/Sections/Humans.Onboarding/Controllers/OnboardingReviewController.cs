@@ -45,6 +45,15 @@ internal sealed class OnboardingReviewController(
     [HttpGet("{userId:guid}")]
     public async Task<IActionResult> Detail(Guid userId, CancellationToken ct)
     {
+        var detailUser = await _userService.GetUserInfoAsync(userId, ct);
+        if (detailUser is null)
+            return NotFound();
+
+        // A merged-away id resolves to the survivor. Land on the survivor's own route so the
+        // Clear/Flag/Reject forms post the id the page is showing, not the archived one.
+        if (detailUser.Id != userId)
+            return RedirectToAction(nameof(Detail), new { userId = detailUser.Id });
+
         var detail = await onboardingService.GetReviewDetailAsync(userId, ct);
         var (profile, consentCount, requiredConsentCount, pendingApplicationMotivation) =
             (detail.Profile, detail.ConsentCount, detail.RequiredConsentCount, detail.PendingApplicationMotivation);
@@ -52,12 +61,10 @@ internal sealed class OnboardingReviewController(
         if (profile is null)
             return NotFound();
 
-        var detailUser = await _userService.GetUserInfoAsync(userId, ct);
-
         var viewModel = new OnboardingReviewDetailViewModel
         {
             UserId = userId,
-            Email = detailUser?.Email ?? string.Empty,
+            Email = detailUser.Email ?? string.Empty,
             FirstName = profile.FirstName,
             LastName = profile.LastName,
             City = profile.City,

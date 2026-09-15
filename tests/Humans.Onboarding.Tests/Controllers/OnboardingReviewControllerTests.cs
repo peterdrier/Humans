@@ -90,6 +90,29 @@ public class OnboardingReviewControllerTests
             "Volunteer Coordinators are meant to read the queue to help new humans");
     }
 
+    // --- Merged-away ids ---
+
+    /// <summary>
+    /// A stale link to an archived id resolves to the survivor. If the page rendered under
+    /// the archived id, Clear/Flag/Reject would post that id and the consent check would land
+    /// on the anonymized source profile while the coordinator sees the survivor's name.
+    /// </summary>
+    [HumansFact]
+    public async Task Detail_ThroughAMergedAwayId_RedirectsToTheSurvivorsRoute()
+    {
+        var survivorId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(_subjectId, Arg.Any<CancellationToken>())
+            .Returns(UserInfoStubs.MakeUserInfo(survivorId, displayName: "Survivor"));
+
+        var ctrl = BuildSut();
+        var result = await ctrl.Detail(_subjectId, TestContext.Current.CancellationToken);
+
+        var redirect = result.Should().BeOfType<RedirectToActionResult>().Which;
+        redirect.ActionName.Should().Be(nameof(OnboardingReviewController.Detail));
+        redirect.RouteValues.Should().ContainKey("userId").WhoseValue.Should().Be(survivorId);
+        await _onboarding.DidNotReceiveWithAnyArgs().GetReviewDetailAsync(default, default);
+    }
+
     // --- Outcome reporting ---
 
     [HumansFact]
