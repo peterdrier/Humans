@@ -129,7 +129,11 @@ internal sealed class GoogleSyncLogService(
             }
         }
 
-        await repo.DeleteByUserIdsAsync(await UserIdsWithMergedSourcesAsync(userId, ct), ct);
+        // This id only, unlike the export above. #1704: erasure is driven per id by
+        // AccountDeletionService, which walks the merge chain raw and calls every contributor
+        // once per archived id, so fanning out here would resolve a tombstone forward and take
+        // the living survivor's trail with it on a direct purge of that tombstone.
+        await repo.DeleteByUserIdsAsync([userId], ct);
     }
 
     /// <summary>Includes accounts merged into this one, so a merged human keeps their trail.</summary>

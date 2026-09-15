@@ -2123,4 +2123,31 @@ public class UserEmailServiceTests
         only.Email.Should().Be("old@example.com");
         only.UserId.Should().Be(archived);
     }
+
+    [HumansFact]
+    public async Task GetNobodiesTeamEmailAsync_MergeTombstone_ReturnsNull()
+    {
+        // #1704: raw. Its sole consumer is GDPR erasure, which runs per id down the merge chain.
+        // A merge moves the addresses to the survivor, so a tombstone owns none — resolving
+        // forward would answer with the survivor's Workspace address and get a living human's
+        // mailbox suspended by a purge aimed at an archived row.
+        var archived = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        var survivorRow = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = survivor,
+            Email = "alice@nobodies.team",
+            IsVerified = true,
+        };
+        _userService.GetRawUserInfoAsync(archived, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(BuildStubUserInfo(archived, [])));
+        _userService.GetUserInfoAsync(archived, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(BuildStubUserInfo(survivor, [survivorRow])));
+
+        var result = await _service.GetNobodiesTeamEmailAsync(
+            archived, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeNull();
+    }
 }

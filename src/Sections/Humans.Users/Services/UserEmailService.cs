@@ -349,7 +349,11 @@ internal sealed class UserEmailService(
     public async Task<string?> GetNobodiesTeamEmailAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        var info = await userService.GetUserInfoAsync(userId, cancellationToken);
+        // #1704: raw. The sole consumer is GDPR erasure, which runs per id down the merge
+        // chain and therefore asks about tombstones. A merge moves the addresses to the
+        // survivor, so a tombstone owns none — and resolving forward would answer with the
+        // survivor's Workspace address and suspend a living human's mailbox.
+        var info = await userService.GetRawUserInfoAsync(userId, cancellationToken);
         return info?.UserEmails
             .FirstOrDefault(e => e.IsVerified
                 && e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))
