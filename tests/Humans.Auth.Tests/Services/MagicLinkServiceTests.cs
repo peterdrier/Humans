@@ -37,10 +37,10 @@ public sealed class MagicLinkServiceTests : IDisposable
         _userService = Substitute.For<IUserService>();
 
         // Default: no verified UserEmail row exists. Individual tests override
-        // by stubbing the service with a UserEmailWithUser.
+        // by stubbing the service with a row.
         _userEmailService
-            .FindVerifiedEmailWithUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns((UserEmailWithUser?)null);
+            .FindByAddressAsync(Arg.Any<string>(), true, true, Arg.Any<CancellationToken>())
+            .Returns([]);
 
         _emailService = Substitute.For<IEmailService>();
         _urlBuilder = Substitute.For<IMagicLinkUrlBuilder>();
@@ -85,8 +85,8 @@ public sealed class MagicLinkServiceTests : IDisposable
         };
 
         _userEmailService
-            .FindVerifiedEmailWithUserAsync("alice@work.com", Arg.Any<CancellationToken>())
-            .Returns(new UserEmailWithUser(userId, "alice@work.com", null, null));
+            .FindByAddressAsync("alice@work.com", true, true, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(userId, "alice@work.com")]);
 
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
@@ -114,8 +114,8 @@ public sealed class MagicLinkServiceTests : IDisposable
         };
 
         _userEmailService
-            .FindVerifiedEmailWithUserAsync("alice@gmail.com", Arg.Any<CancellationToken>())
-            .Returns(new UserEmailWithUser(userId, "alice@gmail.com", null, null));
+            .FindByAddressAsync("alice@gmail.com", true, true, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(userId, "alice@gmail.com")]);
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(CreateUserInfo(user));
@@ -132,7 +132,7 @@ public sealed class MagicLinkServiceTests : IDisposable
     [HumansFact]
     public async Task SendMagicLinkAsync_UnknownEmail_SendsSignupLink()
     {
-        // Default _userEmailService.FindVerifiedEmailWithUserAsync returns null —
+        // Default _userEmailService.FindByAddressAsync returns no rows —
         // no setup needed; the service falls through to signup.
         await _service.SendMagicLinkAsync("newperson@example.com", "/welcome", Xunit.TestContext.Current.CancellationToken);
 
@@ -165,8 +165,8 @@ public sealed class MagicLinkServiceTests : IDisposable
         };
 
         _userEmailService
-            .FindVerifiedEmailWithUserAsync("alice@gmail.com", Arg.Any<CancellationToken>())
-            .Returns(new UserEmailWithUser(userId, "alice@gmail.com", null, null));
+            .FindByAddressAsync("alice@gmail.com", true, true, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(userId, "alice@gmail.com")]);
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
 
         await _service.SendMagicLinkAsync("alice@gmail.com", null, Xunit.TestContext.Current.CancellationToken);
@@ -224,8 +224,8 @@ public sealed class MagicLinkServiceTests : IDisposable
         };
 
         _userEmailService
-            .FindVerifiedEmailWithUserAsync("alice@gmail.com", Arg.Any<CancellationToken>())
-            .Returns(new UserEmailWithUser(userId, "alice@gmail.com", null, null));
+            .FindByAddressAsync("alice@gmail.com", true, true, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(userId, "alice@gmail.com")]);
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
         _emailService
             .SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
@@ -253,8 +253,8 @@ public sealed class MagicLinkServiceTests : IDisposable
         };
 
         _userEmailService
-            .FindVerifiedEmailWithUserAsync("alice@gmail.com", Arg.Any<CancellationToken>())
-            .Returns(new UserEmailWithUser(userId, "alice@gmail.com", null, null));
+            .FindByAddressAsync("alice@gmail.com", true, true, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(userId, "alice@gmail.com")]);
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
 
         await _service.SendMagicLinkAsync("alice@gmail.com", null, Xunit.TestContext.Current.CancellationToken);
@@ -266,8 +266,8 @@ public sealed class MagicLinkServiceTests : IDisposable
     [HumansFact]
     public async Task SendMagicLinkAsync_UnverifiedEmail_DoesNotMatch()
     {
-        // The repository-level FindVerifiedEmailWithUserAsync already returns null
-        // for unverified rows; the default substitute returns null. Post-PR-2
+        // The verified-only FindByAddressAsync already skips unverified rows;
+        // the default substitute returns no rows. Post-PR-2
         // there is no User.Email-column fallback either, so the service routes
         // straight to the signup-link branch.
         await _service.SendMagicLinkAsync("alice@work.com", null, Xunit.TestContext.Current.CancellationToken);
@@ -404,8 +404,8 @@ public sealed class MagicLinkServiceTests : IDisposable
         var user = new User { Id = userId, UserName = "alice@gmail.com", DisplayName = "Alice" };
 
         _userEmailService
-            .FindVerifiedEmailWithUserAsync("alice@work.com", Arg.Any<CancellationToken>())
-            .Returns(new UserEmailWithUser(userId, "alice@work.com", null, null));
+            .FindByAddressAsync("alice@work.com", true, true, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(userId, "alice@work.com")]);
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
 
         var result = await _service.FindUserByVerifiedEmailAsync("alice@work.com", Xunit.TestContext.Current.CancellationToken);

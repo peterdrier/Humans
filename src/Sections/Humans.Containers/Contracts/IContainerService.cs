@@ -12,7 +12,6 @@ public interface IContainerService : IApplicationService
     Task<ContainerDto> UpdateAsync(Guid id, ContainerData data, Guid actorUserId, CancellationToken ct = default);
     Task DeleteAsync(Guid id, Guid actorUserId, CancellationToken ct = default);
 
-    // Placement
     Task<IReadOnlyList<ContainerPlacementDto>> GetPlacementsByYearAsync(int year, CancellationToken ct = default);
     Task<ContainerPlacementDto> SavePlacementAsync(Guid containerId, int year, string geoJson, Guid actorUserId, CancellationToken ct = default);
     Task ClearPlacementAsync(Guid containerId, int year, Guid actorUserId, CancellationToken ct = default);
@@ -47,7 +46,6 @@ public record ContainerAdminOverview(
 public record ContainerCampGroup(
     Guid CampId,
     string CampName,
-    string CampSlug,
     IReadOnlyList<ContainerWithPlacement> Containers);
 
 public record ContainerWithPlacement(ContainerDto Container, ContainerPlacementDto? Placement);
@@ -56,7 +54,7 @@ public record ContainerImageUpload(Stream Content, string ContentType, string Fi
 
 /// <summary>
 /// One image in a container's gallery, in display order. <see cref="Id"/> is
-/// <see cref="Guid.Empty"/> for the pre-#797 single image still held in the
+/// <see cref="Guid.Empty"/> for the pre-nobodies-collective/Humans#797 single image still held in the
 /// <c>containers</c> image columns; every other id is a <c>container_images</c> row.
 /// </summary>
 public record ContainerImageDto(Guid Id, string Url, string? FileName);
@@ -76,12 +74,15 @@ public record ContainerPlacementDto(
     int Year,
     string? LocationGeoJson,
     string? PlacementNotes,
-    string? PlacementImageStoragePath,
-    string? PlacementImageContentType,
+    string? PlacementImageUrl,
     string? PlacementImageFileName,
     Instant CreatedAt,
     Instant UpdatedAt
-);
+)
+{
+    public bool IsPlaced => LocationGeoJson is not null;
+    public bool HasPlacementInfo => !string.IsNullOrEmpty(PlacementNotes) || PlacementImageUrl is not null;
+}
 
 public record ContainerData(
     Guid CampId,

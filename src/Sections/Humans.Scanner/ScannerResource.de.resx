@@ -87,7 +87,7 @@
     <value>Live-Kameravorschau</value>
   </data>
   <data name="Scanner_Index_Intro" xml:space="preserve">
-    <value>Scanner-Tools im Browser. Es werden keine Daten an den Server gesendet — alles läuft auf deinem Gerät.</value>
+    <value>Kamera-Tools für das Ticket-Team. Der Barcode-Decoder läuft auf deinem Gerät und sendet nichts; die Ticket-Suche sendet den gescannten Code an den Server, um das Ticket zu finden. Keines der beiden wird für den Check-in verwendet.</value>
   </data>
   <data name="Scanner_Index_Title" xml:space="preserve">
     <value>Scanner-Tools</value>
@@ -113,6 +113,9 @@
   <data name="Scanner_Tickets_Intro" xml:space="preserve">
     <value>Scanne ein Ticket, um seine Details zu sehen.</value>
   </data>
+  <data name="Scanner_Tickets_LookupFailed" xml:space="preserve">
+    <value>Abfrage fehlgeschlagen. Bitte erneut versuchen.</value>
+  </data>
   <data name="Scanner_Tickets_ManualEntry_Lookup" xml:space="preserve">
     <value>Suchen</value>
   </data>
@@ -133,6 +136,15 @@
   </data>
   <data name="Scanner_Tickets_Status" xml:space="preserve">
     <value>Status</value>
+  </data>
+  <data name="Scanner_Tickets_Status_CheckedIn" xml:space="preserve">
+    <value>Eingecheckt</value>
+  </data>
+  <data name="Scanner_Tickets_Status_Valid" xml:space="preserve">
+    <value>Gültig</value>
+  </data>
+  <data name="Scanner_Tickets_Status_Void" xml:space="preserve">
+    <value>Storniert</value>
   </data>
   <data name="Scanner_Tickets_Title" xml:space="preserve">
     <value>Ticket-Suche</value>

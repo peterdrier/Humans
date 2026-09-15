@@ -1,90 +1,66 @@
 # How `memory/` Works
 
-A flat-ish catalog of atomic project rules. Each rule lives in its own file with frontmatter + a `Why:` / `How to apply:` body. `INDEX.md` is the on-demand catalog Claude consults when a task needs to check project rules — not auto-loaded itself. `CLAUDE.md` (which IS auto-loaded) tells Claude when and why to read `INDEX.md`, and Claude then reads the specific atom on demand.
+A catalog of atomic project rules. Each rule is one file with frontmatter + a `Why:` / `How to apply:` body. `INDEX.md` lists every atom in one line and is read on demand — when a task might touch a rule — not on every turn. `AGENTS.md` (auto-loaded via `CLAUDE.md`) says when to scan it; the atom body is the second read when a line's trigger matches.
 
 ## Design intent
 
-Two goals drive the structure, and both are non-negotiable:
+1. **Token efficiency.** Only `CLAUDE.md` → `AGENTS.md` and Peter's two rules files are paid every turn. `INDEX.md` is one read when a rule might apply; an atom is a second. An INDEX line is a *trigger*, not the rule — keep it to one sentence so the scan stays cheap.
+2. **Portability across machines.** Rules live in the repo and sync via git across Peter's machines and the cloud runners. Per-machine agent memory (`~/.claude/projects/<slug>/memory/`) does not sync; new durable rules go here, never there.
 
-1. **Token efficiency.** Only `CLAUDE.md` (~80 lines, orientation + pointers) is paid every turn. `INDEX.md` is a 1-read scan when a rule might apply; the atom body is a 2nd read when one does. The old long-bullet `CLAUDE.md` paid context for every rule on every turn, even when 95% were irrelevant to the current task.
-2. **Portability across machines.** All rules live in the repo and sync via git across Peter's Windows / NUC / laptop. The previous external Claude memory at `~/.claude/projects/H--source-Humans/memory/` was per-machine — a rule learned in one session was invisible from any other machine. That's the bug this directory exists to fix; preserve it. New rules go here, not there.
-
-## What this replaces
-
-- The external Claude memory system (per-machine, didn't sync across Peter's Windows / NUC / laptop).
-- Long bullet sections in `CLAUDE.md` (paid context every turn even when irrelevant).
-- Long bullet sections in `coding-rules.md` (not auto-loaded; rules buried in prose).
-
-## When to add a rule here vs. somewhere else
+## Where a rule belongs
 
 | Where | What goes there |
 |---|---|
-| **`memory/<bucket>/<rule>.md`** (this directory) | Atomic, task-fires rules: "when doing X, do Y". One rule per file (or one cluster of tightly related sub-rules per file). |
-| **`docs/architecture/design-rules.md`** | Architectural narrative. The "constitution." Read sequentially by new contributors and reviewers. Layer responsibilities, table ownership, the §15 caching story. Don't atomize — atomization destroys the story. |
-| **`docs/architecture/code-review-rules.md`** | Reviewer handoff. Passed verbatim to Codex / Gemini / Claude as one block. Don't split. |
-| **`docs/sections/*.md`** | Per-section invariants. One file per section is already the right granularity. |
-| **`CLAUDE.md`** | Orientation only — purpose, layer overview, terminology, build commands, Git basics, pointer to `memory/INDEX.md`. The rules-of-thumb that fire **every turn** in **every conversation**. ~80 lines max. Anything that fires only when touching a specific area belongs in an atom, not here. |
+| **`memory/<bucket>/<rule>.md`** | Atomic, task-fired rules: "when doing X, do Y". One rule per file. |
+| **`docs/architecture/peters-hard-rules.md`**, **`peters-working-rules.md`** | Peter's constitution. Hand-written; LLMs never edit them. |
+| **`docs/architecture/design-rules.md`** | The regulations: implementing detail behind the hard rules, read one section at a time. Narrative, not atomized. |
+| **`docs/architecture/code-review-rules.md`** | Reviewer handoff, passed verbatim to review bots. Don't split. |
+| **`src/Sections/Humans.<Section>/Docs/<Section>.md`** | Per-section invariants. |
+| **`AGENTS.md`** | Orientation: purpose, glossary, layer overview, build commands, PR flow, pointers. Only what fires every turn in every conversation. |
+| **`.claude/hooks/session-start.sh`** | Rules a harness default actively contradicts, restated at session start. Keep it to those. |
 
-**The mental model:** `design-rules.md` is the constitution. `memory/*.md` are the case law. `CLAUDE.md` is the table of contents.
+**Mental model:** the hard rules are the constitution, `design-rules.md` the regulations, `memory/*.md` the case law, `AGENTS.md` the table of contents.
 
 ### What `memory/` is NOT for
 
-- **Not ADRs / design decisions / narrative-history.** Atoms are "when doing X, do Y." Decision rationale ("we chose X over Y because Z") is a different genre — it belongs in `design-rules.md` (architecture-level) or `conventions.md` (pattern-level), and either way it carries weight that needs human review before landing. Don't auto-create memory atoms that are really ADRs in disguise.
-- **Not session ephemera.** In-flight investigation notes, current task state, "what we tried today" — those die at end of conversation. Atoms are durable across sessions and machines.
-- **Not the dumping ground for "this might be useful someday."** Every atom pays a small attention tax via `INDEX.md`. If you can't say in one line when a future-you would need this rule to fire, it doesn't belong here yet.
+- **Not ADRs or design narrative.** "We chose X over Y because Z" belongs in `design-rules.md` or a dated doc under `docs/`, with human review.
+- **Not session ephemera.** In-flight notes and task state die with the conversation.
+- **Not "might be useful someday."** Every atom taxes every INDEX scan. If you can't say in one line when a future task needs it to fire, it doesn't belong yet.
 
 ## Buckets
 
-Atoms live under one of four buckets. Pick by *primary* purpose:
+- **`architecture/`** — how the code is shaped: layer constraints, data ownership, interface budgets.
+- **`code/`** — code-level conventions: naming, idioms, NodaTime, EF gotchas, views.
+- **`process/`** — workflow: git, PRs, issues, review handling, agent operation.
+- **`product/`** — terminology, restrictions, deployment specifics.
 
-- **`architecture/`** — system-level rules about how the code is shaped (interface budgets, drop-storage discipline, layer constraints, no-startup-guards, etc.)
-- **`code/`** — code-level conventions and patterns (naming, idioms, NodaTime, JSON serialization, EF query gotchas, view-component vs partial, etc.)
-- **`process/`** — workflow/git/PR/issues/release/triage (issue-ref qualifying, PR review process, dotnet verbosity, no-direct-to-main, etc.)
-- **`product/`** — terminology, restrictions, framing, deployment specifics (Humans terminology, Coolify build constraint, Shared Drives only, voting-not-prominent, etc.)
-
-If a rule could go in two buckets, pick the one a future-you would search first. Cross-link from the other if useful.
+Pick the bucket a future reader would search first; the subfolders are a navigation aid, nothing more.
 
 ## File format
 
-Filename: kebab-case, descriptive enough to grep (`no-extensions-for-owned-classes.md`, not `extensions.md`).
-
-Frontmatter:
+Filename: kebab-case, descriptive enough to grep.
 
 ```yaml
 ---
-name: <human-readable name — same wording you'd use in INDEX.md>
-description: <one-line trigger telling future-you when to read this — what + when>
+name: <human-readable name>
+description: <one sentence, ≤180 chars: the trigger — when to read this. Same text as the INDEX line.>
 ---
 ```
 
-Body structure:
-
 ```markdown
-<The rule itself, in one or two imperative sentences.>
+<The rule, in one or two imperative sentences.>
 
-**Why:** <The reason. Often a past incident, an architectural commitment, or a stakeholder preference. This is what lets future-you judge edge cases instead of blindly following.>
+**Why:** <The incident, commitment, or preference behind it — enough to judge edge cases.>
 
-**How to apply:** <When/where this fires. Examples of what it looks like in practice. What NOT to do.>
+**How to apply:** <When it fires, what it looks like, what not to do.>
 ```
 
-Optional sections: `**Exceptions:**`, `**Related:**` (links to other atoms or to design-rules sections), `**Examples:**`.
+Optional: `**Exceptions:**`, `**Related:**` (`[[atom-name]]` links), `**Examples:**`. Keep an atom to one screen; longer means it is a narrative and belongs in `design-rules.md`.
 
-Keep atoms short — one screen ideally. If a rule needs more than that, it's probably a narrative and belongs in `design-rules.md` instead.
+## Adding, changing, removing
 
-## Adding a new rule
+1. Write the atom with frontmatter + Why + How to apply.
+2. Add its INDEX line under the bucket, same commit: `` - [`<name>`](<bucket>/<name>.md) — <description> ``.
+3. Changing a trigger: update both the frontmatter and the INDEX line. Retiring a rule: delete the file and its INDEX line together.
 
-1. Decide bucket. Pick a kebab-case filename.
-2. Write the atom file with frontmatter + Why + How to apply.
-3. **Add a line to `INDEX.md`** under the right bucket section. The line format is:
-   ```markdown
-   - [`<filename-without-md>`](<bucket>/<filename>) — <description from frontmatter>
-   ```
-4. If the rule supersedes a memory in `~/.claude/projects/H--source-Humans/memory/`, leave that memory alone — it's per-machine and doesn't sync. The atom in the repo is now the source of truth; the external memory becomes dead weight to clean up later.
-
-## Updating an existing rule
-
-Edit the atom file. Update the `description` in INDEX.md if the trigger changed. If the rule no longer applies, delete the atom file AND its INDEX.md line in the same commit.
-
-## Why not just a flat folder
-
-The bucket subfolders are a convenience for human navigation, nothing more. Atoms are retrieved by `Glob "memory/**/*<keyword>*.md"` or by reading the INDEX. The subfolders don't carry semantic meaning beyond "primary lens to search by."
+A change confined to `memory/**` may go straight to `origin/main` ([`no-direct-to-main`](process/no-direct-to-main.md) has the carve-out).

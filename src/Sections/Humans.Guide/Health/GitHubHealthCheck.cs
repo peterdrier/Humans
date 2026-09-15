@@ -7,8 +7,8 @@ using Humans.Base.Extensions;
 namespace Humans.Guide.Health;
 
 /// <summary>
-/// Health check that validates GitHub API connectivity and repository access.
-/// Verifies authentication and that the configured repository is accessible.
+/// Validates GitHub API connectivity for <see cref="GitHubSettings"/>, the legal-documents
+/// repo (<c>nobodies-collective/legal</c>) — not the guide's source, which is <c>GuideSettings</c>.
 /// </summary>
 internal sealed class GitHubHealthCheck(IOptions<GitHubSettings> settings, ILogger<GitHubHealthCheck> logger) : IHealthCheck
 {

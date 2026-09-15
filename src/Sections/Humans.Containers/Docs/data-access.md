@@ -8,7 +8,7 @@ Folder: `src/Sections/Humans.Containers/Services/`. **DbContext:**
 `IContainerRepository`) injects `IDbContextFactory<ContainersDbContext>`
 directly. Owns `Containers`, `ContainerImages`, `ContainerPlacements`.
 
-### ContainerService (Scoped)
+### Service (Scoped, registered as `IContainerService`)
 
 Repository: `IContainerRepository`.
 
@@ -18,7 +18,7 @@ Repository: `IContainerRepository`.
 | ContainerImages | R/W |
 | ContainerPlacements | R/W |
 
-Cross-section calls via `ICampService`, `IAuditLogService`,
+Cross-section calls via `ICampServiceRead`, `IAuditLogService`,
 `IFileStorage`. No cache.
 
 ---

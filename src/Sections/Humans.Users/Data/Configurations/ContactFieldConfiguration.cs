@@ -46,7 +46,6 @@ internal sealed class ContactFieldConfiguration : IEntityTypeConfiguration<Conta
         builder.HasIndex(cf => cf.ProfileId);
         builder.HasIndex(cf => new { cf.ProfileId, cf.Visibility });
 
-        // Ignore computed property
         builder.Ignore(cf => cf.DisplayLabel);
     }
 }

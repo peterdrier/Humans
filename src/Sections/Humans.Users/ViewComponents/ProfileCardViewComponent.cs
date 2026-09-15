@@ -87,7 +87,7 @@ public sealed class ProfileCardViewComponent(
 
         var hasCustomPicture = profile?.HasCustomPicture == true;
         var pictureUrl = hasCustomPicture
-            ? Url.Action(nameof(ProfileController.Picture), "Profile", new { id = profile!.Id, v = profile.UpdatedAt.ToUnixTimeTicks() })
+            ? Url.Action(nameof(ProfileViewController.Picture), "ProfileView", new { id = profile!.Id, v = profile.UpdatedAt.ToUnixTimeTicks() })
             : null;
 
         var model = new ProfileCardViewModel

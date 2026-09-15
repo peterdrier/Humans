@@ -5,11 +5,8 @@ using Microsoft.AspNetCore.Authorization;
 namespace Humans.Users.Authorization;
 
 /// <summary>
-/// Resource-based authorization handler for user email operations.
-/// Self-or-admin gate: actor matches target user id, or actor is in
-/// Admin / HumanAdmin / Board. The HumanAdmin/Board roles match the
-/// Profiles section invariants (docs/sections/Profiles.md). Service
-/// signatures stay auth-free per design-rules.md.
+/// Self-or-admin gate: actor matches target, or actor is Admin / HumanAdmin /
+/// Board. Service signatures stay auth-free.
 /// </summary>
 internal sealed class UserEmailAuthorizationHandler
     : AuthorizationHandler<UserEmailOperationRequirement, Guid>

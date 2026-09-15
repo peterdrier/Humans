@@ -45,10 +45,12 @@ internal sealed class GuideController(IGuideContentService content, IGuideRoleRe
             return View("NotFound");
         }
 
-        string rendered;
+        var roleContext = await roles.ResolveAsync(User, cancellationToken);
+
+        string html;
         try
         {
-            rendered = await content.GetRenderedAsync(canonical, cancellationToken);
+            html = await content.GetPageAsync(canonical, roleContext, cancellationToken);
         }
         catch (GuideContentUnavailableException)
         {
@@ -56,13 +58,10 @@ internal sealed class GuideController(IGuideContentService content, IGuideRoleRe
             return View("Unavailable");
         }
 
-        var roleContext = await roles.ResolveAsync(User, cancellationToken);
-        var filtered = GuideFilter.Apply(rendered, roleContext);
-
         var viewModel = new GuideViewModel
         {
             Title = DisplayName(canonical),
-            Html = new HtmlString(filtered),
+            Html = new HtmlString(html),
             Sidebar = BuildSidebar(canonical),
             FileStem = canonical
         };
@@ -77,7 +76,7 @@ internal sealed class GuideController(IGuideContentService content, IGuideRoleRe
     {
         var entries = new List<GuideSidebarEntry>
         {
-            new(GuideFiles.GettingStarted, "Getting Started", "Start here")
+            new(GuideFiles.GettingStarted, DisplayName(GuideFiles.GettingStarted), "Start here")
         };
         foreach (var section in GuideFiles.Sections)
         {
@@ -87,7 +86,7 @@ internal sealed class GuideController(IGuideContentService content, IGuideRoleRe
         {
             entries.Add(new GuideSidebarEntry(faq, DisplayName(faq), "Common questions"));
         }
-        entries.Add(new GuideSidebarEntry(GuideFiles.Glossary, "Glossary", "Appendix"));
+        entries.Add(new GuideSidebarEntry(GuideFiles.Glossary, DisplayName(GuideFiles.Glossary), "Appendix"));
         return new GuideSidebarModel { Entries = entries, ActiveStem = activeStem };
     }
 

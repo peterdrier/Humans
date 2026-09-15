@@ -5,12 +5,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.EarlyEntry.Services;
 
 /// <summary>
-/// Singleton caching decorator for <see cref="IEarlyEntryService"/>. Caches the
-/// per-user stub read (<see cref="GetForUserAsync"/>), including the negative
-/// (no-EE) result so the no-EE majority does not re-fan-out on every render.
-/// <see cref="GetRosterAsync"/> always delegates to the inner service (the admin
-/// roster must see live data). No startup warmup — cold-loaded on first read.
-/// EE is derived, so external write paths evict via <see cref="IEarlyEntryInvalidator"/>.
+/// Caches <see cref="GetForUserAsync"/> per person, negative results included — "no early
+/// entry" is the common answer and must be remembered. <see cref="GetRosterAsync"/> is
+/// always live.
 /// </summary>
 internal sealed class CachingEarlyEntryService(
     IServiceScopeFactory scopeFactory,
@@ -18,12 +15,7 @@ internal sealed class CachingEarlyEntryService(
     : TrackedCache<Guid, UserEarlyEntry?>("EarlyEntry.UserEarlyEntry", warmOnStartup: false, logger),
         IEarlyEntryService, IEarlyEntryInvalidator
 {
-    /// <summary>
-    /// DI service key under which the undecorated (inner) <see cref="IEarlyEntryService"/>
-    /// is registered. Used by the Singleton decorator to resolve the Scoped inner
-    /// service per-call without triggering self-resolution on the unkeyed
-    /// <see cref="IEarlyEntryService"/> registration.
-    /// </summary>
+    /// <summary>Key for the undecorated inner service. Unkeyed, this Singleton would resolve itself.</summary>
     public const string InnerServiceKey = "early-entry-inner";
 
     public async Task<UserEarlyEntry?> GetForUserAsync(Guid userId, CancellationToken ct)

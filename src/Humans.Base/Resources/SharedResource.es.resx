@@ -1377,4 +1377,9 @@
   <data name="Onboarding_BurnerNameLabel" xml:space="preserve"><value>Burner name</value></data>
   <data name="Onboarding_LegalFirstNameLabel" xml:space="preserve"><value>Nombre legal</value></data>
   <data name="Onboarding_LegalLastNameLabel" xml:space="preserve"><value>Apellidos legales</value></data>
+  <data name="Nav_Votes" xml:space="preserve"><value>Votaciones</value></data>
+  <data name="Todo_AssemblyVote_Title" xml:space="preserve"><value>Emite tu voto</value></data>
+  <data name="Todo_AssemblyVote_Pending" xml:space="preserve"><value>«{0}» está abierta a votación.</value><comment>{0} = vote title</comment></data>
+  <data name="Todo_AssemblyVote_Done" xml:space="preserve"><value>Tu voto en «{0}» está registrado. Puedes cambiarlo hasta que se cierre la votación.</value><comment>{0} = vote title</comment></data>
+  <data name="Todo_AssemblyVote_Action" xml:space="preserve"><value>Votar</value></data>
 </root>

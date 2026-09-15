@@ -1,6 +1,6 @@
 ---
 name: Issue home routing — which repo gets a new issue
-description: Both repos accept issues. Community feedback and project-direction issues go to nobodies-collective/Humans; bugs found during fixes, tech debt, arch migrations, and anything agent-created go to peterdrier/Humans. Existing issues stay where they are.
+description: "New issues: community feedback/direction → `nobodies-collective/Humans`; bugs, tech debt, agent-created → `peterdrier/Humans`. Existing issues stay put."
 ---
 
 Both repos have issues enabled. Route new issues by kind:

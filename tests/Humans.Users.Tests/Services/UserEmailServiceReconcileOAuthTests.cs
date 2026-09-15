@@ -12,8 +12,8 @@ using Humans.Users.Services;
 namespace Humans.Users.Tests.Services;
 
 /// <summary>
-/// Tests for <see cref="IUserEmailService.ReconcileOAuthIdentityAsync"/>
-/// (issue nobodies-collective/Humans#697). The reconcile method is the
+/// Tests for <see cref="IUserEmailService.ReconcileOAuthIdentityAsync"/>.
+/// The reconcile method is the
 /// single OAuth-callback entry point that mutates <see cref="UserEmail"/>
 /// rows; it owns every audit row written for the OAuth path.
 /// </summary>
@@ -21,7 +21,7 @@ public class UserEmailServiceReconcileOAuthTests
 {
     private readonly IUserRepository _repository = Substitute.For<IUserRepository>();
     private readonly IAccountMergeService _mergeService = Substitute.For<IAccountMergeService>();
-    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
     private readonly UserManager<User> _userManager;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 11, 12, 0));
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
@@ -330,9 +330,8 @@ public class UserEmailServiceReconcileOAuthTests
         };
         _repository.GetUserEmailsByUserIdForMutationAsync(displacedUserId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { displacedRow, displacedSurvivor });
-        _repository.FindOtherUsersVerifiedUserEmailRowAsync(
-                Arg.Any<string>(), Arg.Any<string?>(), signingUserId, Arg.Any<CancellationToken>())
-            .Returns(displacedRow);
+        _repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns([displacedRow]);
 
         var result = await _service.ReconcileOAuthIdentityAsync(
             signingUserId, Provider, ProviderKey,
@@ -385,9 +384,8 @@ public class UserEmailServiceReconcileOAuthTests
         // they're left with zero verified emails.
         _repository.GetUserEmailsByUserIdForMutationAsync(displacedUserId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { displacedRow });
-        _repository.FindOtherUsersVerifiedUserEmailRowAsync(
-                Arg.Any<string>(), Arg.Any<string?>(), signingUserId, Arg.Any<CancellationToken>())
-            .Returns(displacedRow);
+        _repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns([displacedRow]);
 
         var result = await _service.ReconcileOAuthIdentityAsync(
             signingUserId, Provider, ProviderKey,
@@ -436,9 +434,8 @@ public class UserEmailServiceReconcileOAuthTests
         };
         _repository.GetUserEmailsByUserIdForMutationAsync(signingUserId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { tagged });
-        _repository.FindOtherUsersVerifiedUserEmailRowAsync(
-                Arg.Any<string>(), Arg.Any<string?>(), signingUserId, Arg.Any<CancellationToken>())
-            .Returns(blocker);
+        _repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns([blocker]);
 
         var result = await _service.ReconcileOAuthIdentityAsync(
             signingUserId, Provider, ProviderKey,

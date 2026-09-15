@@ -1,6 +1,6 @@
 ---
 name: Localization — admin and operator-only pages do not require it
-description: Existing `@Localizer[...]` calls can stay, but don't add new resource keys for a view gated to admin or operator roles — `/Admin/*`, `/TeamAdmin/*`, `/Shifts/Dashboard`, `/Monitor/*` and their like. A view without that gate requires localization, wherever it is routed.
+description: Admin/operator-only pages (`/Admin/*`, `/TeamAdmin/*`, `/Shifts/Dashboard`, `/Monitor/*`) don't need new resx keys — a page without that gate is never exempt.
 ---
 
 **A page only admin or operator roles can reach does not require localization.** Existing localized strings there can stay, but do not add new `@Localizer[...]` calls or resource keys for them until further notice.

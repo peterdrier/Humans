@@ -37,23 +37,13 @@ using Humans.GoogleIntegration.Contracts;
 namespace Humans.Users.Tests.Controllers;
 
 /// <summary>
-/// Coverage for the initial-setup tier-application orchestration that moved
-/// from the profile save coordinator into <c>ProfileController.Edit</c>
-/// POST under issue nobodies-collective/Humans#685. The four removed
-/// <c>ProfileServiceTests</c> tests that exercised the old service-layer
-/// dispatch are replaced here at the controller layer:
-///   * Volunteer + initial setup → no Application created.
-///   * Colaborador + initial setup, no existing app → SubmitAsync called.
-///   * Colaborador + initial setup, existing draft → UpdateDraftApplicationAsync called.
-///   * Approved profile (not initial setup) → tier dispatch skipped entirely.
-/// The no-duplicate guard (no second SubmitAsync when a Submitted app exists) is
-/// the critical path: prevents data integrity issues if the form is replayed.
+/// Initial-setup tier-application dispatch on <c>ProfileController.Edit</c> POST.
+/// The no-duplicate guard is the critical path: a replayed form must not submit twice.
 /// </summary>
 public class ProfileControllerEditTests
 {
-    private readonly IProfilePictureService _profilePictureService = Substitute.For<IProfilePictureService>();
     private readonly IProfileEditorService _profileEditorService = Substitute.For<IProfileEditorService>();
-    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
     private readonly IApplicationDecisionService _applicationDecisionService =
         Substitute.For<IApplicationDecisionService>();
     private readonly IOnboardingIntake _onboardingService = Substitute.For<IOnboardingIntake>();
@@ -85,28 +75,15 @@ public class ProfileControllerEditTests
         // branches; stub it so a stray re-render doesn't NRE.
         _configuration["GoogleMaps:ApiKey"].Returns("test-key");
 
-        var authorizationService = Substitute.For<IAuthorizationService>();
-        authorizationService.AuthorizeAsync(
-                Arg.Any<ClaimsPrincipal>(),
-                Arg.Any<object?>(),
-                Arg.Any<IEnumerable<IAuthorizationRequirement>>())
-            .Returns(AuthorizationResult.Success());
-
         _controller = new ProfileController(
             _userService,
             userManager,
-            _profilePictureService,
             _profileEditorService,
             Substitute.For<IContactFieldService>(),
-            Substitute.For<IEmailService>(),
-            Substitute.For<IEmailMessageFactory>(),
-            Substitute.For<IUserEmailService>(),
             Substitute.For<ICommunicationPreferenceService>(),
-            Substitute.For<IAuditLogService>(),
             _onboardingService,
             Substitute.For<IShiftSignups>(),
             Substitute.For<IBurnSettingsService>(),
-            Substitute.For<IShiftManagementServiceRead>(),
             _shiftMgmt,
             _shiftView,
             Substitute.For<IGdprService>(),
@@ -115,25 +92,12 @@ public class ProfileControllerEditTests
             NullLogger<ProfileController>.Instance,
             localizer,
             sharedLocalizer,
-            Substitute.For<ITicketServiceRead>(),
-            Substitute.For<ITeamService>(),
             Substitute.For<ICampaignService>(),
-            Substitute.For<ICampServiceRead>(),
             Substitute.For<IEmailOutboxServiceRead>(),
             new FakeClock(Instant.FromUtc(2026, 5, 9, 12, 0)),
-            authorizationService,
             _applicationDecisionService,
             _accountDeletionService,
-            Substitute.For<IMembershipCalculatorRead>(),
-            Substitute.For<SignInManager<User>>(
-                userManager,
-                Substitute.For<IHttpContextAccessor>(),
-                Substitute.For<IUserClaimsPrincipalFactory<User>>(),
-                Options.Create(new IdentityOptions()),
-                NullLogger<SignInManager<User>>.Instance,
-                Substitute.For<Microsoft.AspNetCore.Authentication.IAuthenticationSchemeProvider>(),
-                Substitute.For<IUserConfirmation<User>>()),
-            Options.Create(new GoogleWorkspaceOptions()));
+            Substitute.For<IMembershipCalculatorRead>());
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, _userId.ToString())
@@ -163,7 +127,7 @@ public class ProfileControllerEditTests
 
         // Edit POST resolves the current user through GetCurrentUserInfoAsync
         // (cache-resident); subsequent setup-detection lookups in the action body
-        // also call IUserService.GetUserInfoAsync. Default stub returns a UserInfo
+        // also call IUserServiceInternal.GetUserInfoAsync. Default stub returns a UserInfo
         // with no profile so the initial-setup branch is taken; per-test overrides
         // (e.g. approved profile) replace it.
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())

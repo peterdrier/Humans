@@ -37,8 +37,4 @@
   <data name="GoogleAccounts_ResetPassword" xml:space="preserve">
     <value>Reimposta password</value>
   </data>
-  <data name="GoogleAccounts_ResetPasswordConfirm" xml:space="preserve">
-    <value>Reimpostare la password di {0}? Verrà generata una nuova password temporanea e mostrata sullo schermo. Il human dovrà cambiarla al prossimo accesso.</value>
-    <comment>{0} = email</comment>
-  </data>
 </root>

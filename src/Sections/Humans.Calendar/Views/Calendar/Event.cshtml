@@ -2,7 +2,7 @@
 @{
     ViewData["Title"] = $"{Localizer["Calendar_EventTitle"].Value} — {Model.Event.Title}";
     var zone = DateTimeZoneProviders.Tzdb[Model.ViewerTimezoneLabel];
-    var firstLocal = Model.Event.StartUtc.InZone(zone).LocalDateTime;
+    var firstLocal = Model.Event.StartUtc?.InZone(zone).LocalDateTime;
     var endLocal = Model.Event.EndUtc?.InZone(zone).LocalDateTime;
 }
 
@@ -30,10 +30,22 @@
     <dl class="row">
         <dt class="col-sm-3">@Localizer["Calendar_FirstStart"]</dt>
         <dd class="col-sm-9">
-            @firstLocal.ToMonthDayTime()
-            <small class="text-muted">(@Model.ViewerTimezoneLabel)</small>
+            @if (Model.Event.IsAllDay)
+            {
+                @Model.Event.StartDate.ToDate()
+            }
+            else
+            {
+                @firstLocal?.ToMonthDayTime()
+                <small class="text-muted">(@Model.ViewerTimezoneLabel)</small>
+            }
         </dd>
 
+        @if (Model.Event.EndDateExclusive is { } endDate)
+        {
+            <dt class="col-sm-3">@Localizer["Calendar_End"]</dt>
+            <dd class="col-sm-9">@endDate.PlusDays(-1).ToDate()</dd>
+        }
         @if (endLocal is { } el)
         {
             <dt class="col-sm-3">@Localizer["Calendar_End"]</dt>
@@ -72,7 +84,10 @@
             <dt class="col-sm-3">@Localizer["Calendar_Recurrence"]</dt>
             <dd class="col-sm-9">
                 <code>@Model.Event.RecurrenceRule</code>
-                <small class="text-muted d-block">@Localizer["Calendar_RecurrenceTimezoneNote", Model.Event.RecurrenceTimezone ?? string.Empty]</small>
+                @if (!Model.Event.IsAllDay)
+                {
+                    <small class="text-muted d-block">@Localizer["Calendar_RecurrenceTimezoneNote", Model.Event.RecurrenceTimezone ?? string.Empty]</small>
+                }
             </dd>
         }
     </dl>
@@ -83,26 +98,28 @@
         <ul class="list-unstyled">
             @foreach (var o in Model.UpcomingOccurrences)
             {
-                var localStart = o.OccurrenceStartUtc.InZone(zone).LocalDateTime;
+                var localStart = o.OccurrenceStartUtc?.InZone(zone).LocalDateTime;
+                var occurrenceKey = o.OriginalOccurrenceDate is { } date
+                    ? NodaTime.Text.LocalDatePattern.Iso.Format(date) : o.OriginalOccurrenceStartUtc?.ToIso8601();
                 <li class="mb-1 d-flex align-items-center gap-2">
                     <span>
-                        <strong>@localStart.ToMonthDayTime()</strong>
+                        <strong>@(o.IsAllDay ? o.StartDate.ToDate() : localStart?.ToMonthDayTime())</strong>
                         @if (!string.Equals(o.Title, Model.Event.Title, StringComparison.Ordinal))
                         {
                             <em class="text-muted">— @o.Title</em>
                         }
                     </span>
-                    @if (Model.CanEdit && o.IsRecurring && o.OriginalOccurrenceStartUtc is not null)
+                    @if (Model.CanEdit && o.IsRecurring && (o.OriginalOccurrenceStartUtc is not null || o.OriginalOccurrenceDate is not null))
                     {
                         <a class="btn btn-sm btn-outline-secondary"
                            asp-action="EditOccurrence"
                            asp-route-id="@Model.Event.Id"
-                           asp-route-originalStartUtc="@o.OriginalOccurrenceStartUtc.Value.ToString()">
+                           asp-route-originalStartUtc="@occurrenceKey">
                             @Localizer["Calendar_EditThisOccurrence"]
                         </a>
                         <form asp-action="CancelOccurrence"
                               asp-route-id="@Model.Event.Id"
-                              asp-route-originalStartUtc="@o.OriginalOccurrenceStartUtc.Value.ToString()"
+                              asp-route-originalStartUtc="@occurrenceKey"
                               method="post" class="d-inline"
                               data-confirm="@Localizer["Calendar_CancelOccurrenceConfirm"]">
                             @Html.AntiForgeryToken()

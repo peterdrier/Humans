@@ -1,3 +1,4 @@
+using Humans.Base.Enums;
 using Humans.Teams.Contracts;
 using Humans.Teams.Domain;
 using NodaTime;
@@ -466,13 +467,24 @@ internal interface ITeamManagementService : ITeamService
         Instant joinedAt,
         CancellationToken cancellationToken = default);
 
+    // ==========================================================================
+    // Coordinator-role reconciliation — used only by SystemTeamSyncJob.
+    // ==========================================================================
+
     /// <summary>
-    /// Returns the total number of pending team join requests across all teams.
-    /// Used by the notification meter to surface pending requests to Admin
-    /// without letting the Notifications section read <c>team_join_requests</c>
-    /// directly (design-rules §2c).
+    /// Loads every active membership with enough role-assignment / role-definition / team
+    /// context to decide coordinator promotion and demotion in memory.
     /// </summary>
-    Task<int> GetTotalPendingJoinRequestCountAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<TeamRoleReconciliationMembership>> GetActiveMembershipsForRoleReconciliationAsync(
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Applies a bulk list of <c>TeamMember.Role</c> changes (promote to Coordinator / demote to
+    /// Member) in a single save. Returns the number of memberships updated.
+    /// </summary>
+    Task<int> ApplyMemberRoleChangesAsync(
+        IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes,
+        CancellationToken cancellationToken = default);
 
     // ==========================================================================
     // Early-Entry Grants (Teams-internal; called by TeamAdminController for the
@@ -509,6 +521,15 @@ internal interface ITeamManagementService : ITeamService
     /// </summary>
     Task RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default);
 }
+
+internal sealed record TeamRoleReconciliationMembership(
+    Guid TeamMemberId,
+    Guid UserId,
+    Guid TeamId,
+    string TeamName,
+    TeamMemberRole Role,
+    SystemTeamType SystemTeamType,
+    bool HasManagementRoleAssignment);
 
 internal sealed record TeamRoleManagementToggleResult(
     string RoleName,

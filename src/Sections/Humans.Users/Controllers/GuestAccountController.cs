@@ -11,9 +11,8 @@ namespace Humans.Users.Controllers;
 
 /// <summary>
 /// Self-service comms preferences and GDPR-erasure actions for profileless accounts
-/// (authenticated users without a Profile). Moved from Shell's GuestController
-/// (nobodies-collective/Humans#1091) — the dashboard frame itself lives in
-/// Humans.Onboarding, the data export lives in Humans.Gdpr; these actions stayed
+/// (authenticated users without a Profile). The dashboard frame itself lives in
+/// Humans.Onboarding, the data export lives in Humans.Gdpr; these actions stay
 /// here because both call this section's own services (<see cref="ICommunicationPreferenceService"/>,
 /// <see cref="IAccountDeletionService"/>) directly.
 /// </summary>

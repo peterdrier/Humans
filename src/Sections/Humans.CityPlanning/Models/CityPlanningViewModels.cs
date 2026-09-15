@@ -13,8 +13,7 @@ internal sealed class BarrioContainerGroup
 {
     public Guid CampId { get; set; }
     public string CampName { get; set; } = string.Empty;
-    public string CampSlug { get; set; } = string.Empty;
-    public List<ContainerWithPlacementViewModel> Containers { get; set; } = [];
+    public List<ContainerWithPlacement> Containers { get; set; } = [];
 }
 
 internal sealed class ContainerMapViewModel

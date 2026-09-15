@@ -1,3 +1,4 @@
+using Humans.Users.Services;
 using CsvHelper;
 using Humans.Base.Csv;
 using Humans.Shifts.Contracts;
@@ -7,7 +8,7 @@ using Humans.Users.Contracts;
 namespace Humans.Application.Services.Users;
 
 internal sealed class UserParticipationBackfillService(
-    IUserService userService,
+    IUserServiceInternal userService,
     IBurnSettingsService burnSettings,
     IClock clock) : IUserParticipationBackfillService
 {

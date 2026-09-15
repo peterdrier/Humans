@@ -1,6 +1,6 @@
 ---
 name: Orchestrators own no tables and carry IOrchestrator (sibling of IApplicationService)
-description: An Orchestrator coordinates ≥2 sections, owns no tables, and injects no repository. Its marker IOrchestrator is a SIBLING of IApplicationService, never a child — IApplicationService grants own-lane repo access, which an orchestrator is banned from. Owns-a-table ⇒ it is a Section, not an orchestrator.
+description: An Orchestrator coordinates ≥2 sections, owns no tables or a repository. `IOrchestrator` is a sibling of `IApplicationService`, never a child — a table owner is a Section.
 ---
 
 Role vocabulary: [`CONTEXT.md`](../../CONTEXT.md) (Section / Crosscut / Orchestrator).

@@ -22,7 +22,7 @@ else
         <dd class="col-sm-8">@Model.TicketTypeName</dd>
 
         <dt class="col-sm-4">@Localizer["Scanner_Tickets_Status"]</dt>
-        <dd class="col-sm-8">@Model.Stub!.Status</dd>
+        <dd class="col-sm-8">@Localizer[$"Scanner_Tickets_Status_{Model.Stub!.Status}"]</dd>
 
         @if (Model.CheckedInAt is { } checkedInAt)
         {

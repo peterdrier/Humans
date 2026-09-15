@@ -1,4 +1,4 @@
-# Bug Hunt — Codex Autonomous Prompt
+# Bug Hunt — Autonomous Prompt (Codex and Claude)
 
 ## Mission
 
@@ -52,18 +52,14 @@ Key entry points:
 
 If you're unsure whether something is "unused" — it isn't. Skip it.
 
-## EXCLUSION ZONES — DO NOT TOUCH
+## PERSISTENCE AND EXCLUSION ZONES
 
-```
-src/Humans.Infrastructure/Data/HumansDbContext.cs
-src/Humans.Infrastructure/Data/EntityConfigurations/**
-src/Humans.Infrastructure/Migrations/**
-```
+Section-owned persistence, entity-model, configuration, and generated migrations are allowed when the fix needs them. Read and follow [section-migrations-in-maintenance](../memory/process/section-migrations-in-maintenance.md), including migration tooling, review, and existing approval requirements. Substantial architecture transitions get explicitly scoped tasks and dedicated PRs.
 
-Also do not modify:
-- **Entity classes** in `src/Humans.Domain/Entities/` — properties that appear unused are accessed via reflection
+Do not modify:
+- **Entity properties that appear unused** — they are accessed via reflection
 - **Any `[JsonPropertyName]`, `[JsonInclude]`, `[JsonConstructor]`, `[JsonPolymorphic]`, or `[JsonDerivedType]` attributes**
-- **Migration files**
+- **Shipped migration files** — generate new migrations in the owning section; never hand-edit migration history
 - **ConsentRecord** — append-only table with database triggers preventing UPDATE/DELETE
 - **Test files** in `tests/` — don't modify existing tests
 
@@ -119,6 +115,14 @@ This project uses **Font Awesome 6 only**. Bootstrap Icons are NOT loaded.
 **How to fix:**
 - Replace `bi bi-*` with the equivalent `fa-solid fa-*` icon
 
+### Resx HTML Escaping *(production incident — 15 entries across 4 locale files)*
+
+Resx files are XML. HTML inside `<value>` elements must be XML-escaped (`<p>` → `&lt;p&gt;`). Raw tags parse as child elements and are silently stripped — the localizer returns plain text with no links or structure, and the build stays green.
+
+**How to find them:** search every `*.resx` for `<value>` entries starting with a raw tag (`<value><[a-z]`); compare escaped-entry counts between the English file and each locale; email bodies (`Email_*_Body`) carry the most HTML.
+
+**How to fix:** escape `<`/`>` inside the `<value>` content only, keep it on one line matching the English template, and re-check the counts. See `memory/code/resx-structure-aware-edits.md`.
+
 ## Phase 2: Missing .Include() on EF Core Queries *(6+ historical fixes)*
 
 EF Core does NOT lazy-load. If a LINQ query materializes an entity and then accesses a navigation property that wasn't `.Include()`'d, it returns `null` — no exception, just silent missing data.
@@ -167,19 +171,11 @@ When a POST action fails validation and re-displays the form, all user input mus
 - Call it from both GET and POST actions before returning the view
 - Verify the model is passed back to the view so text inputs retain their values
 
-## Phase 5: EF Core Bool Sentinel Trap *(3+ historical fixes)*
+## Phase 5: EF Core Defaults and Sentinel Behavior
 
-EF Core uses `false` as the sentinel value for booleans. `HasDefaultValue(false)` in entity configuration means EF Core can't distinguish between "explicitly set to false" and "unset" — it treats both as the sentinel and sends the database default instead.
+Verify a suspected default/sentinel bug against the owning section's entity configuration and repository writes. Reproduce the incorrect persisted value before changing anything; a default value alone does not establish a bug.
 
-**How to find them:**
-1. Search `src/Humans.Infrastructure/Data/EntityConfigurations/` for `HasDefaultValue(false)` — but do NOT modify these files (exclusion zone). Just note which properties are affected.
-2. Search service code for where those boolean properties are set to `false` explicitly — these writes may be silently ignored by EF Core
-3. Also check for `HasDefaultValue(0)` on ints and `HasDefaultValue("")` on strings — same trap
-
-**How to fix:**
-- Do NOT modify entity configurations (exclusion zone)
-- Instead, fix the calling code: set the value on the tracked entity directly after creation, not relying on the default
-- Or document the issue as a comment in the service code if no behavioral bug is currently manifesting
+Fix the cause in that section's model/configuration or write path. Generate a section-owned migration if the model change requires one, following `memory/process/section-migrations-in-maintenance.md`. Do not work around an excluded configuration file or substitute a service comment for a needed fix.
 
 ## Phase 6: Authorization Gaps *(8+ historical fixes, partially addressed)*
 
@@ -317,7 +313,7 @@ Configuration bugs in environment handling, database connections, and external s
 
 Before every fix, verify:
 
-1. **Am I touching an EF entity, migration, or DbContext configuration?** → STOP, skip this fix.
+1. **Am I touching an EF entity, migration, or DbContext configuration?** → Allowed only in the owning section under `memory/process/section-migrations-in-maintenance.md`: generate the migration, inspect the snapshot diff, pass the review gate. Never hand-edit shipped migrations; storage drops and required columns still need Peter's per-case approval — skip those.
 2. **Am I removing a property that looks unused?** → STOP, it's likely used via reflection.
 3. **Am I removing a method, file, or controller action?** → STOP, that's not your job.
 4. **Am I changing authorization level?** → Verify the new level matches the original intent exactly.

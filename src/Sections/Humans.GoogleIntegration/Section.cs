@@ -29,7 +29,7 @@ namespace Humans.GoogleIntegration;
 /// <c>GoogleWorkspaceHealthCheck</c> followed the connectors into this section, the settings
 /// had no reader left outside it. <c>Configure&lt;GoogleWorkspaceOptions&gt;</c> stays in
 /// Shell's <c>InfrastructureServiceCollectionExtensions</c> — Camps' <c>CampRoleService</c>
-/// and Users' <c>ProfileController</c> still read it directly (Governance's rule: the section
+/// and Users' <c>ProfileEmailsController</c> still read it directly (Governance's rule: the section
 /// that owns the file is not always the section that owns the line). <see
 /// cref="ISection.Register"/> is handed no <c>IHostEnvironment</c>, so the guard reads
 /// <c>HostDefaults.EnvironmentKey</c> off the configuration it does get and fails closed —
@@ -134,7 +134,6 @@ public sealed class Section : ISection
         services.AddScoped<GoogleResourceReconciliationJob>();
         services.AddScoped<ProcessGoogleSyncOutboxJob>();
 
-        // Gauge-refresh loop split out of HumansMetricsService (nobodies-collective/Humans#1091).
         services.AddSingleton<GoogleIntegrationMetricsService>();
         services.AddHostedService(sp => sp.GetRequiredService<GoogleIntegrationMetricsService>());
     }

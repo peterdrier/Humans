@@ -151,10 +151,10 @@ internal sealed class ApplyHarness
     public void SetVerifiedMatch(string email, Guid userId)
     {
         _userEmails
-            .FindVerifiedEmailWithUserAsync(
+            .FindByAddressAsync(
                 Arg.Is<string>(e => string.Equals(e, email, StringComparison.OrdinalIgnoreCase)),
-                Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<UserEmailWithUser?>(new UserEmailWithUser(userId, email, null, null)));
+                true, true, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<UserEmailRowSnapshot>>([UserEmailFixtures.Row(userId, email)]));
     }
 
     /// <summary>Wires GetPreferenceOrNullAsync to return a Marketing pref with the given shape.</summary>

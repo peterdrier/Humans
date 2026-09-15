@@ -32,8 +32,8 @@ if [ "$CLAUDE_CODE_REMOTE" = "true" ]; then  # ephemeral single-session containe
   git checkout -b debt-sweep/$TS origin/main
   WORKTREE=$REPO_ROOT
 else
-  git worktree add $REPO_ROOT/.worktrees/debt-sweep-$TS -b debt-sweep/$TS origin/main
-  WORKTREE=$REPO_ROOT/.worktrees/debt-sweep-$TS  # EnterWorktree here; all commands run inside
+  git worktree add $REPO_ROOT/.claude/worktrees/debt-sweep-$TS -b debt-sweep/$TS origin/main
+  WORKTREE=$REPO_ROOT/.claude/worktrees/debt-sweep-$TS  # EnterWorktree here; all commands run inside
 fi
 ```
 
@@ -88,7 +88,7 @@ Until budget exhausted or theme drained, per item (one item or one tight cluster
 1. **Fix it right** — no surgical fixes (constitution). Reuse-first; match existing patterns (the theme's `notes` often names the reference implementation).
 2. `dotnet build Humans.slnx -v quiet`.
 3. Targeted tests: the touched section's tests + `--filter` the Architecture tests. Full `dotnet test Humans.slnx -v quiet` at minimum before each push.
-4. **EF model-drift gate** (themes touching entities, navs, or `Data/Configurations`): the sweep never creates migrations, so verify the fix didn't silently change the model. Each section owns its own `DbContext`, so the bare command errors — run `has-pending-model-changes --context <C>` for the touched entity's owning context per `memory/process/ef-multi-context-commands.md`. `<C>` and its `--project` must be a real pair from the `SECTION_DB_CONTEXTS` map in `.github/workflows/build.yml` — there is no shared `HumansDbContext` to fall back on, and the project name doesn't always give the context (`Humans.Consent` is `LegalDbContext`). E.g. `dotnet ef migrations has-pending-model-changes --context HoldedDbContext --project src/Sections/Humans.Holded --startup-project src/Humans.Web`. Pending changes → revert the item, classify it as schema work, record it (Phase 7 question or inbox).
+4. **EF verification** (items changing the persistent model): follow [section-migrations-in-maintenance](../../../memory/process/section-migrations-in-maintenance.md). Generate the owning context's migration with `dotnet ef`, inspect its snapshot diff, run `has-pending-model-changes` with that context and project, and pass the EF migration review gate before commit. Use `memory/process/ef-multi-context-commands.md` for the context/project pair. A migration is allowed only when the item set out to change the schema. Drift the item did not intend → revert the item, record it (Phase 7 question or inbox), continue; the unattended loop never generates a migration to absorb a surprise. Code-only changes that cannot alter the schema need no EF tooling.
 5. **Forbidden-move grep** on the item diff: `#pragma warning disable HUM`, `[SuppressMessage`, *new* `[Grandfathered]`, `// ReSharper disable`, visibility narrowing that dodges a rule rather than fixes it. Any hit → revert the item, record in report.
    Also forbidden (judgment, not grep): **splitting a controller method into controller-local helpers** (private methods, static helpers, local functions, VM factories) **to satisfy a per-method metric**. The metric is a proxy for "no business logic in controllers" — the fix is a service move, or an honest "this is presentation; the threshold is miscalibrated" finding (grandfather stays, record it). Rejected and reverted wholesale on 2026-06-12.
 6. **`review: panel` themes only:** dispatch a second-opinion reviewer subagent — opus-tier, read-only, score-blind, default-reject (refactor-swarm posture): "is this fix a good idea, not merely green — name the concept that improved in one sentence." Name it `debt-review-<item>-opus`, description tagged `(opus)`. Reject → rework once; persistent reject → revert, skip item, record.
@@ -96,7 +96,7 @@ Until budget exhausted or theme drained, per item (one item or one tight cluster
 
 Rules of the loop:
 
-- **Stop-and-ask classes are skip-and-ask classes here:** interface/public-surface additions (`interface-method-additions-are-debt`), DB schema work of any kind, privilege changes → skip the item, queue a Phase 7 question. Never block the loop waiting.
+- **Stop-and-ask classes are skip-and-ask classes here:** interface/public-surface additions (`interface-method-additions-are-debt`), required columns, privilege changes → skip the item, queue a Phase 7 question. A **storage drop is never a Phase 7 item**: `no-drops-until-prod-verified` gives every destructive migration its own PR, so an item whose migration would drop storage is skipped and recorded as separately scoped work, never bundled into the sweep PR on a Phase 7 yes. Substantial architecture transitions also go to explicit planning and dedicated PRs. Never block the loop waiting.
 - Off-theme debt discovered while working → append to an `inbox`: the owning section's file when one section owns the fix (any section — writing another's ledger is intended), the central ledger otherwise. Never chased.
 - Mechanical edit fan-out is allowed via edit-only subagent workers (sonnet, named `<task>-sonnet`, absolute `$WORKTREE` paths, no git/build); the orchestrator owns all git and build commands.
 - An item that can't be made green after a genuine attempt → revert it cleanly, record, continue. Never leave the branch red between commits.
@@ -160,12 +160,12 @@ Only after Phase 7 resolves: `cd $REPO_ROOT && git worktree remove $WORKTREE` (`
 
 ## Standing constraints
 
-- **No EF migrations, ever.** No schema changes, no snapshot edits, no `dotnet ef migrations add`. DTO/view-model/non-entity property drops are fine. The Phase 4 drift gate enforces this.
+- **Section-owned migrations are allowed** when the item needs them, under [section-migrations-in-maintenance](../../../memory/process/section-migrations-in-maintenance.md). Migrations and snapshots are generated; existing review and approval requirements remain. Substantial architecture transitions are explicitly scoped tasks, not sweep items.
 - **Never touch `[DontFix]`** — Peter-applied permanent exceptions; skip those sites entirely.
 - **No analyzer suppressions** in any form (`no-analyzer-suppressions`).
 - **No data migrations / backfills** (`no-data-backfills`).
 - Explicit subagent models, tagged in name + description (sonnet workers, opus-tier panel reviewers).
-- The sweep touches only: the theme's item files, `docs/architecture/debt-ledger.yml`, the `src/Sections/*/Docs/debt.yml` files whose items it worked, and `docs/debt/last-report.md`.
+- The sweep touches only: the theme's item files and their required section-owned migrations/snapshots, `docs/architecture/debt-ledger.yml`, the `src/Sections/*/Docs/debt.yml` files whose items it worked, and `docs/debt/last-report.md`.
 - After the run, update `docs/architecture/maintenance-log.md` per `maintenance-log-update` (separate from the sweep PR if needed).
 
 ## Failure modes
@@ -176,6 +176,6 @@ Only after Phase 7 resolves: `cd $REPO_ROOT && git worktree remove $WORKTREE` (`
 | `detect` command fails | Skip theme, pick next; record |
 | Item breaks build/tests, can't right it | Revert item, record, continue |
 | Panel rejects twice | Revert, skip, record |
-| EF drift gate fires | Revert item, classify as schema work, record |
+| Unintended EF model drift | Revert item, record, continue (intended schema changes carry their generated migration through the review gate) |
 | Budget hit mid-theme | Normal: commit what's done; ledger carries the remainder |
 | Push / PR fails | Worktree retained; fix manually |

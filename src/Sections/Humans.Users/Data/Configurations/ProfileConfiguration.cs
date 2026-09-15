@@ -105,9 +105,7 @@ internal sealed class ProfileConfiguration : IEntityTypeConfiguration<Profile>
         builder.HasIndex(p => p.UserId)
             .IsUnique();
 
-        // Issue #635 (§15i): inverse-side FK preservation after the User-side
-        // nav (User.Profile) was stripped. Configures the schema-level FK +
-        // cascade-delete that previously lived on UserConfiguration.HasOne.
+        // This config owns the cascade-delete FK from User to Profile.
         builder.HasOne<User>()
             .WithOne()
             .HasForeignKey<Profile>(p => p.UserId)
@@ -115,7 +113,6 @@ internal sealed class ProfileConfiguration : IEntityTypeConfiguration<Profile>
 
         builder.HasIndex(p => p.ConsentCheckStatus);
 
-        // Ignore computed properties
         builder.Ignore(p => p.FullName);
         builder.Ignore(p => p.HasCustomProfilePicture);
     }

@@ -1,6 +1,6 @@
 ---
 name: No concurrency tokens — single server, small user base
-description: HARD RULE. Don't add `IsConcurrencyToken()`, `[ConcurrencyCheck]`, or row versioning to any entity. At single-server scale, conflicts don't happen and optimistic concurrency only causes bugs. Never add without explicit user permission.
+description: HARD RULE. Never add `IsConcurrencyToken()`, `[ConcurrencyCheck]`, or row versioning to any entity — single-server scale means conflicts don't happen; ask Peter before adding any.
 ---
 
 **Do NOT** add `IsConcurrencyToken()`, `[ConcurrencyCheck]`, or row versioning to any entity. At single-server scale with a small user base, concurrency conflicts don't happen and optimistic concurrency only causes bugs.

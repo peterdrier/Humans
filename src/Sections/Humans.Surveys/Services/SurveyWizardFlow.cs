@@ -18,7 +18,7 @@ internal sealed record AnswerState(
     /// <summary>An empty/unanswered state.</summary>
     public static AnswerState None { get; } = new([], null, null);
 
-    /// <summary>True when at least one option, text, rating, or Grid cell is present.</summary>
+    /// <summary>True when any option, text, rating, Grid cell or ranked entry (including a rejection) is present.</summary>
     public bool IsAnswered =>
         Options.Any(s => !string.IsNullOrEmpty(s))
         || !string.IsNullOrWhiteSpace(Text)
@@ -41,7 +41,7 @@ internal static class SurveyWizardFlow
 
     /// <summary>
     /// Questions on <paramref name="page"/> whose <c>ShowIf</c> is satisfied by <paramref name="answers"/>,
-    /// in display order. Visibility sees the full answer state (options, text, rating) and cascades:
+    /// in display order. Visibility sees the full answer state and cascades:
     /// answers to questions that are themselves hidden are ignored, so a stale answer on a hidden
     /// branch cannot keep downstream questions visible.
     /// </summary>

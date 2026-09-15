@@ -1,3 +1,4 @@
+using Humans.Users.Services;
 using Humans.Auth.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -37,7 +38,7 @@ public class AccountControllerOAuthReconcileTests
 {
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IMagicLinkService _magicLinkService = Substitute.For<IMagicLinkService>();
-    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
     private readonly IStringLocalizer<Base.SharedResource> _localizer =
         Substitute.For<IStringLocalizer<Base.SharedResource>>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 11, 12, 0));

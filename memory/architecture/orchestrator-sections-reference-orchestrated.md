@@ -1,6 +1,6 @@
 ---
 name: orchestrator-sections-reference-orchestrated
-description: A section that orchestrates others (Search, Dashboard) referencing the sections it orchestrates is expected and fine — the only hard constraint is no cycles; don't flag the edge as a smell.
+description: A section that orchestrates others (Search, Dashboard) referencing those sections is expected and fine — the only hard constraint is no cycles; don't flag the edge as a smell.
 ---
 
 A section that orchestrates other sections referencing those sections is 100% fine and expected — for example `Humans.Search → Humans.Users`. The only hard constraint is **no cycles**.

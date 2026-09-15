@@ -1,6 +1,6 @@
 ---
 name: Coolify strips .git — never COPY .git in Dockerfile
-description: Coolify production deploys remove the `.git` directory from the build context. Use the `SOURCE_COMMIT` build arg instead.
+description: Coolify production deploys strip the `.git` directory from the build context. Use the `SOURCE_COMMIT` build arg instead.
 ---
 
 Coolify strips `.git` from the Docker build context. Do **NOT** use `COPY .git` in the Dockerfile — it will fail on production deploys.

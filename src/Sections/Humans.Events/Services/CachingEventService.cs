@@ -16,7 +16,7 @@ using Humans.Gdpr.Contracts;
 namespace Humans.Events.Services;
 
 /// <summary>
-/// T-03 — Singleton caching decorator for <see cref="IEventService"/>. Owns
+/// Singleton caching decorator for <see cref="IEventService"/>. Owns
 /// four split projections — per-event <see cref="ApprovedEventView"/>,
 /// flat <see cref="EventCategoryView"/> list, flat <see cref="EventVenueView"/>
 /// list, and the <see cref="EventGuideSettingsView"/> singleton. Composes
@@ -30,7 +30,7 @@ namespace Humans.Events.Services;
 /// inner <see cref="IEventService"/> then invalidates the affected slice.
 /// No <c>SaveChangesInterceptor</c> — every event_* write flows through
 /// <see cref="IEventService"/> by design, enforced by the
-/// <c>Only_EventRepository_Writes_Event_DbSets</c> architecture test.
+/// universal <c>HUM0025</c> analyzer (only <c>EventRepository</c> references the Event DbSets).
 /// </para>
 /// <para>
 /// The <c>GetAllEventsForDashboardAsync</c> moderator-only read passes
@@ -70,9 +70,7 @@ internal sealed class CachingEventService(
     /// <summary>Diagnostics surface for <c>/Debug/CacheStats</c>.</summary>
     public ICacheStats EventCacheStats => _eventCache;
 
-    // ==========================================================================
-    // Settings — singleton projection
-    // ==========================================================================
+    // ── Settings — singleton projection ──
 
     public Task<EventGuideSettingsView?> GetGuideSettingsAsync(CancellationToken ct = default) =>
         GetSettingsViewAsync(ct);
@@ -94,9 +92,7 @@ internal sealed class CachingEventService(
         await RefreshSettingsAsync(ct);
     }
 
-    // ==========================================================================
-    // Categories — flat list projection
-    // ==========================================================================
+    // ── Categories — flat list projection ──
 
     public async Task<IReadOnlyList<EventCategoryView>> GetActiveCategoriesAsync(CancellationToken ct = default)
     {
@@ -163,9 +159,7 @@ internal sealed class CachingEventService(
         await RefreshCategoriesAsync(ct);
     }
 
-    // ==========================================================================
-    // Venues — flat list projection
-    // ==========================================================================
+    // ── Venues — flat list projection ──
 
     public async Task<IReadOnlyList<EventVenueView>> GetActiveVenuesAsync(CancellationToken ct = default)
     {
@@ -222,9 +216,7 @@ internal sealed class CachingEventService(
         await RefreshVenuesAsync(ct);
     }
 
-    // ==========================================================================
-    // Submissions — pass-through (submitter scope, infrequent)
-    // ==========================================================================
+    // ── Submissions — pass-through (submitter scope, infrequent) ──
 
     public Task<IReadOnlyList<EventInfo>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default) =>
         WithInner(inner => inner.GetUserSubmissionsAsync(userId, ct));
@@ -290,9 +282,7 @@ internal sealed class CachingEventService(
         return result;
     }
 
-    // ==========================================================================
-    // Browse / API — cached snapshot with in-memory filter
-    // ==========================================================================
+    // ── Browse / API — cached snapshot with in-memory filter ──
 
     public async Task<IReadOnlyList<ApprovedEventView>> GetApprovedEventsAsync(
         Guid? campId, Guid? venueId, Guid? categoryId, string? q,
@@ -373,9 +363,7 @@ internal sealed class CachingEventService(
         return titleScore > 0 ? titleScore : view.Description.NameMatchScore(query) / 2;
     }
 
-    // ==========================================================================
-    // Favourites — per-user, pass-through (not in projection scope)
-    // ==========================================================================
+    // ── Favourites — per-user, pass-through (not in projection scope) ──
 
     public Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default) =>
         WithInner(inner => inner.GetFavouriteEventIdsAsync(userId, ct));
@@ -389,9 +377,7 @@ internal sealed class CachingEventService(
     public Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default) =>
         WithInner(inner => inner.RemoveFavouriteAsync(userId, eventId, dayOffset, ct));
 
-    // ==========================================================================
-    // Preferences — per-user, pass-through (not in projection scope)
-    // ==========================================================================
+    // ── Preferences — per-user, pass-through (not in projection scope) ──
 
     public Task<List<string>> GetExcludedCategorySlugsAsync(Guid userId, CancellationToken ct = default) =>
         WithInner(inner => inner.GetExcludedCategorySlugsAsync(userId, ct));
@@ -399,9 +385,7 @@ internal sealed class CachingEventService(
     public Task SavePreferenceAsync(Guid userId, List<string> slugs, CancellationToken ct = default) =>
         WithInner(inner => inner.SavePreferenceAsync(userId, slugs, ct));
 
-    // ==========================================================================
-    // Moderation — fresh-count critical, route past cache
-    // ==========================================================================
+    // ── Moderation — fresh-count critical, route past cache ──
 
     public Task<Dictionary<EventStatus, int>> GetEventStatusCountsAsync(CancellationToken ct = default) =>
         WithInner(inner => inner.GetEventStatusCountsAsync(ct));
@@ -427,9 +411,7 @@ internal sealed class CachingEventService(
         await RefreshEventEntryAsync(eventId, ct);
     }
 
-    // ==========================================================================
-    // Dashboard / Export — moderator-only, must show fresh pending count
-    // ==========================================================================
+    // ── Dashboard / Export — moderator-only, must show fresh pending count ──
 
     public Task<IReadOnlyList<EventInfo>> GetAllEventsForDashboardAsync(CancellationToken ct = default) =>
         // STAYS DIRECT DB — moderation dashboard needs current pending/rejected
@@ -439,16 +421,12 @@ internal sealed class CachingEventService(
     public Task<ApprovedEventsExportInfo> GetApprovedEventsForExportAsync(CancellationToken ct = default) =>
         WithInner(inner => inner.GetApprovedEventsForExportAsync(ct));
 
-    // ==========================================================================
-    // IEventViewInvalidator — external invalidation hooks (issue #719)
-    // ==========================================================================
+    // ── IEventViewInvalidator — external invalidation hooks (nobodies-collective/Humans#719) ──
 
     public Task InvalidateGuideSettingsAsync(CancellationToken ct = default) =>
         RefreshSettingsAsync(ct);
 
-    // ==========================================================================
-    // IUserDataContributor — GDPR export + erasure
-    // ==========================================================================
+    // ── IUserDataContributor — GDPR export + erasure ──
     // Carried by the decorator, not the inner service: erasure clears the person's
     // Host name on events that stay in the guide, and those rows are in _eventCache.
 
@@ -463,13 +441,11 @@ internal sealed class CachingEventService(
         await RefreshAllEventsAsync(ct);
     }
 
-    // ==========================================================================
-    // Warmup — composition forces the decorator to own IHostedService directly.
+    // ── Warmup — composition forces the decorator to own IHostedService directly. ──
     // _isLoaded / _loadLock guard all four projections together (events dict +
     // categories + venues + settings); the inner _eventCache passes
     // warmOnStartup: false because that single-dict view is not the warmup
     // unit here.
-    // ==========================================================================
 
     async Task IHostedService.StartAsync(CancellationToken cancellationToken)
     {
@@ -530,9 +506,7 @@ internal sealed class CachingEventService(
         await WarmAllAsync(ct);
     }
 
-    // ==========================================================================
-    // Refresh helpers — surgical re-loads after writes
-    // ==========================================================================
+    // ── Refresh helpers — surgical re-loads after writes ──
 
     private async Task<EventGuideSettingsView?> GetSettingsViewAsync(CancellationToken ct)
     {
@@ -543,7 +517,7 @@ internal sealed class CachingEventService(
     private async Task RefreshSettingsAsync(CancellationToken ct)
     {
         // The inner service stitches TimeZoneId from the Shifts-owned
-        // event_settings row via IBurnSettingsService (#719) and returns the
+        // event_settings row via IBurnSettingsService (nobodies-collective/Humans#719) and returns the
         // ready EventGuideSettingsView; cache it directly.
         _settings = await WithInner(inner => inner.GetGuideSettingsAsync(ct));
     }
@@ -600,9 +574,7 @@ internal sealed class CachingEventService(
             _eventCache.Set(id, view);
     }
 
-    // ==========================================================================
-    // Projection helpers
-    // ==========================================================================
+    // ── Projection helpers ──
 
     private static EventCategoryView ManageInfoToCategoryView(EventCategoryManageInfo c) => new(
         Id: c.Id,
@@ -620,9 +592,7 @@ internal sealed class CachingEventService(
         DisplayOrder: v.DisplayOrder,
         IsActive: v.IsActive);
 
-    // ==========================================================================
-    // Inner-service plumbing
-    // ==========================================================================
+    // ── Inner-service plumbing ──
 
     private async Task<T> WithInner<T>(Func<IEventService, Task<T>> work)
     {

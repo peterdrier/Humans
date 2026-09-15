@@ -39,10 +39,8 @@ internal sealed record NextConsentStepData(
     int TotalRequired);
 
 /// <summary>
-/// The intake funnel in full. <see cref="IOnboardingIntake"/> carries the two members
-/// consumed from outside the section; everything below it — the review queue, its detail
-/// view, the consent-check clear/flag pair and the widget's next-document resolver — has
-/// no consumer outside Onboarding and stays internal along with its DTOs.
+/// The intake funnel in full: <see cref="IOnboardingIntake"/>'s outward members plus the
+/// internal rest. The split and its reasoning live on the leaf.
 /// </summary>
 /// <remarks>
 /// The interface survives internalisation for the usual two reasons at once: it is where

@@ -4,8 +4,8 @@ namespace Humans.GoogleIntegration.Contracts;
 /// Shape-neutral projection of a Google Drive Activity API event, limited to
 /// the fields the permission-anomaly monitor cares about. Produced by
 /// <see cref="IGoogleDriveActivityClient.QueryActivityAsync"/>; consumed by
-/// <c>DriveActivityMonitorService</c>. The Application layer must never see
-/// <c>Google.Apis.*</c> types directly (design-rules §13).
+/// <c>DriveActivityMonitorService</c>, which must never see <c>Google.Apis.*</c> types
+/// (design-rules §13).
 /// </summary>
 /// <param name="Actors">Every actor associated with the event, in API order.</param>
 /// <param name="PermissionChange">

@@ -42,7 +42,8 @@ internal static class SurveyJsonExportBuilder
                     answer.SelectedValues.Count > 0 ? answer.SelectedValues : null,
                     answer.TextValue,
                     answer.RatingValue,
-                    answer.GridSelections is { Count: > 0 } ? answer.GridSelections : null))
+                    answer.GridSelections is { Count: > 0 } ? answer.GridSelections : null,
+                    answer.RankedBallot))
                     .ToList()))
                 .ToList());
 
@@ -71,5 +72,6 @@ internal static class SurveyJsonExportBuilder
         IReadOnlyList<string>? SelectedValues,
         string? TextValue,
         int? RatingValue,
-        IReadOnlyDictionary<string, IReadOnlyList<string>>? GridSelections);
+        IReadOnlyDictionary<string, IReadOnlyList<string>>? GridSelections,
+        SurveyRankedBallot? RankedBallot);
 }

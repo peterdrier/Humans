@@ -1,6 +1,6 @@
 ---
 name: Don't overuse LINQ at the DB layer — thick repos return materialized lists
-description: At our small scale, prefer hand-written repo methods that materialize at the boundary over IQueryable composed across services. LINQ-against-EF-mapped-properties scatters DB shape concerns and breaks badly when mappings change.
+description: Prefer hand-written repo methods materializing at the boundary over `IQueryable` composed across services — LINQ on EF-mapped properties scatters DB-shape concerns.
 ---
 
 Don't reach for LINQ-on-EF-entities (`db.Users.Where(u => u.Email.Contains(...))`, `db.Users.Select(u => u.Email)`) when designing service methods. Prefer **hand-written repository methods that materialize at the boundary** — the repo runs the query and returns a `List`/`IReadOnlyList` of plain DTOs (or domain objects with all needed data Include'd).

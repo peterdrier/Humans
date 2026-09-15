@@ -1,6 +1,6 @@
 ---
 name: Tier is derived from approved Application state, not a Profile concept
-description: A human exists. They either have an open Application or not. An Approved Application with active term *makes* them a Colaborador/Asociado. There is no separate "tier-locking" domain rule — that was a UI artifact of the initial-setup form combining two concerns. The only enforcement boundary is "no duplicate Submitted Applications", which lives on `IApplicationDecisionService.SubmitAsync`.
+description: Tier (Colaborador/Asociado) is derived from an Approved Application with an active term — no tier-locking domain rule; the only boundary is no-duplicate-Submitted on `SubmitAsync`.
 ---
 
 A human exists. They either have an open (`Submitted`) Application or they don't. An `Approved` Application with an active term *is* what makes someone a Colaborador or Asociado — there is no parallel "tier" state for the Application section to negotiate with.

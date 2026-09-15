@@ -506,7 +506,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     [HumansFact]
     public async Task EnsureStubProfileAsync_WithoutNames_InheritsBurnerNameAlreadySeededOnUser()
     {
-        // #1097 regression: OAuth/import account creation seeds User.BurnerName directly,
+        // OAuth/import account creation seeds User.BurnerName directly,
         // then calls EnsureStubProfileAsync with no names. The stub must inherit that
         // BurnerName, or the Profile->User mirror in UpdateUserStateFromProfileAsync wipes
         // it back to empty on the very same save.

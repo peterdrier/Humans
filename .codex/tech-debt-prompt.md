@@ -1,4 +1,4 @@
-# Tech Debt Reduction Loop — Codex Deep Autonomy Prompt
+# Tech Debt Reduction Loop — Autonomous Prompt (Codex and Claude)
 
 ## Mission
 
@@ -38,19 +38,21 @@ file's *Current state* instead of restarting discovery.
 
 ## Working rules
 
-- Launched via `.codex/run-weekly-bug-hunt.sh`, your branch and worktree already
-  exist — the wrapper's preamble says "Use the current git branch"; stay in that
-  checkout. Invoked directly, create branch `techdebt/YYYY-MM-DD-codex-N` in a
-  worktree at `.worktrees/<same-name>` off `origin/main`. Scratch notes under
+- Launched via `.codex/run-weekly-bug-hunt.sh` (Codex) or `.claude/run-autonomous.sh`
+  (Claude), your branch and worktree already exist — the wrapper's preamble says "Use
+  the current git branch"; stay in that checkout. Invoked directly, create branch
+  `techdebt/YYYY-MM-DD-<codex|claude>-N` in a
+  worktree at `.claude/worktrees/<same-name>` off `origin/main`. Scratch notes under
   `local/tech-debt-runs/<run-id>/` either way.
 - One coherent improvement per commit, each with a one-sentence architecture thesis
   that stands without score movement. Targeted section tests + build per change;
   full `dotnet test Humans.slnx -v quiet` before any push. `-v quiet` always.
 - Honor every boundary in the queue file's *Boundaries* section — especially: debt
   only (never feature follow-ups, even fully-specced ones), no authorization/privacy
-  shape changes, no reverting documented test-infrastructure decisions, no schema or
-  migration changes, new public surface goes to *Needs Peter* instead of into the code.
+  shape changes, no reverting documented test-infrastructure decisions, and new public surface goes to *Needs Peter* instead of into the code.
+- Section-owned persistence and generated migrations are allowed when the task needs them. Follow [section-migrations-in-maintenance](../memory/process/section-migrations-in-maintenance.md); substantial architecture transitions get explicitly scoped tasks and dedicated PRs.
 - Scan `memory/INDEX.md` when unsure whether a rule applies.
-- Push after verified progress; finish by rewriting the queue file's *Current state*
-  (baseline counts, surface baseline, blocked items, *Needs Peter*) and leaving the
-  worktree clean.
+- Push after verified progress and open the PR yourself
+  (`memory/process/always-open-a-pr.md`); finish by rewriting the queue file's
+  *Current state* (baseline counts, surface baseline, blocked items, *Needs Peter*)
+  in the same PR, leaving the worktree clean.

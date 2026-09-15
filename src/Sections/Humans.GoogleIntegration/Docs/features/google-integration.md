@@ -40,7 +40,7 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 - All API calls use `SupportsAllDrives = true`
 
 > The system does not create Drive folders. Linking is the only way a Drive
-> resource enters the system (`ITeamResourceService.LinkDriveFolderAsync`);
+> resource enters the system (`ITeamResourceService.LinkDriveResourceAsync`);
 > only Google Groups are provisioned automatically.
 
 ### US-7.2: Automatic Access Grants
@@ -73,7 +73,7 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 **So that** I can troubleshoot access issues and verify correctness
 
 **Acceptance Criteria:**
-- Sync status page at `/Teams/Sync` shows all active resources (accessible to TeamsAdmin, Board, Admin)
+- Sync status page at `/Google/Sync` shows all active resources (accessible to TeamsAdmin, Board, Admin)
 - Tabbed interface: Google Drive tab and Google Groups tab
 - Per-tab preview loads via AJAX (read-only API calls)
 - Summary cards per tab: Total Resources, In Sync, Drifted, Errors
@@ -432,8 +432,7 @@ Separate interface from IGoogleSyncService for linking/validation (not provision
 public interface ITeamResourceService
 {
     Task<IReadOnlyList<GoogleResource>> GetTeamResourcesAsync(Guid teamId, ...);
-    Task<LinkResourceResult> LinkDriveFolderAsync(Guid teamId, string folderUrl, ...);
-    Task<LinkResourceResult> LinkDriveFileAsync(Guid teamId, string fileUrl, ...);
+    Task<LinkResourceResult> LinkDriveResourceAsync(Guid teamId, string url, ...);
     Task<LinkResourceResult> LinkGroupAsync(Guid teamId, string groupEmail, ...);
     Task UnlinkResourceAsync(Guid resourceId, ...);
     Task<bool> CanManageTeamResourcesAsync(Guid teamId, Guid userId, ...);
@@ -509,7 +508,7 @@ Actions (on `TeamAdminController`, `src/Sections/Humans.Teams/Controllers/`):
 ## Sync Status Page
 
 ### Route: `/Google/Sync`
-Accessible to TeamsAdmin, Board, and Admin. Shows drift across all active resources with a tabbed interface (Google Drive / Google Groups). Formerly at `/Teams/Sync`.
+Accessible to TeamsAdmin, Board, and Admin. Shows drift across all active resources with a tabbed interface (Google Drive / Google Groups).
 
 | Route | Method | Auth | Action |
 |-------|--------|------|--------|
@@ -531,14 +530,12 @@ Drifted resources shown first, then in-sync.
 ### Sync Settings Page
 
 #### Route: `/Google/SyncSettings`
-Admin-only page for configuring per-service sync modes. Formerly at `/Google/SyncSettings`.
+Admin-only page for configuring per-service sync modes.
 
 | Route | Method | Action |
 |-------|--------|--------|
 | `/Google/SyncSettings` | GET | View current sync mode per service |
 | `/Google/SyncSettings` | POST | Update sync mode for a service |
-
-> **Note:** The legacy `/Admin/GoogleSync` route (combined sync preview/apply) has been removed. All sync operations are now at `/Google/Sync`.
 
 ## Stub Implementations
 
@@ -566,7 +563,7 @@ Process: Calls SyncResourcesByTypeAsync / ReconcileAllAsync with SyncAction.Exec
 
 **Per-phase fault isolation:** Each top-level phase (DriveFolder sync, DriveFile sync, Group membership reconcile, Drive folder path updates, Inherited access enforcement, Group settings check) runs independently. A failure in one phase does not abort the others. After all phases complete, the job records `google_resource_reconciliation / partial_failure` in metrics and dispatches a single `SyncError` Admin alert listing which phases failed. If all phases succeed, the metric is `success` and no error alert fires.
 
-**Drive folder path updates:** After permission sync, the job calls `UpdateDriveFolderPathsAsync` to fetch the current folder name and parent chain for each active Drive resource via the Drive API (`files.get` with `fields=name,parents`). If a folder has been renamed or moved, `GoogleResource.Name` is updated to reflect the full logical path (e.g. "Shared Drive / Department / Subfolder"). This keeps the `/Teams/Sync` page accurate without requiring manual intervention.
+**Drive folder path updates:** After permission sync, the job calls `UpdateDriveFolderPathsAsync` to fetch the current folder name and parent chain for each active Drive resource via the Drive API (`files.get` with `fields=name,parents`). If a folder has been renamed or moved, `GoogleResource.Name` is updated to reflect the full logical path (e.g. "Shared Drive / Department / Subfolder"). This keeps the `/Google/Sync` page accurate without requiring manual intervention.
 
 > Jobs are active but mode-gated: each service must have its sync mode set to AddOnly or AddAndRemove at `/Google/SyncSettings` before the job will modify Google resources.
 
@@ -614,7 +611,7 @@ On Google API error (resource sync):
 
 ### Failed-Sync Admin Meter
 
-Failed Google sync health surfaces to Admins as a notification meter (`NotificationMeterProvider`), backed by `IGoogleSyncServiceRead.GetFailedSyncEventCountAsync` — the count of unprocessed outbox events carrying a non-null `LastError`. The meter links to `/Google/Sync`. (There is no longer a daily admin digest reporting these counts; that job was retired.)
+Failed Google sync health surfaces to Admins as a notification meter (`NotificationMeterProvider`), backed by `IGoogleSyncServiceRead.GetFailedSyncEventCountAsync` — the count of unprocessed outbox events carrying a non-null `LastError`. The meter links to `/Google/Sync`.
 
 ## Security Considerations
 
@@ -671,4 +668,4 @@ Failed Google sync health surfaces to Admins as a notification meter (`Notificat
 - [Teams](../../../Humans.Teams/Docs/features/Teams-feature.md) - Triggers Google Group provisioning and access sync
 - [Background Jobs](../../../../../docs/features/global/background-jobs.md) - Resource sync job
 - [Authentication](../../../Humans.Auth/Docs/features/authentication.md) - User Google identity
-- [Drive Activity Monitoring](drive-activity-monitoring.md) - Anomalous permission detection
+- [Drive Activity Monitoring](../../../Humans.Monitor/Docs/features/drive-activity-monitoring.md) - Anomalous permission detection

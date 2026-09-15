@@ -5,8 +5,7 @@ namespace Humans.Users.Data.Repositories;
 
 /// <summary>
 /// Repository for the <c>account_merge_requests</c> table. The only non-test
-/// file that may write to this DbSet after the Profile-section §15 cleanup
-/// (issue #557).
+/// file that may write to this DbSet.
 /// </summary>
 /// <remarks>
 /// Read methods return the merge-request rows with scalar user IDs only.

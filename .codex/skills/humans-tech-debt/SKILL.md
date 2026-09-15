@@ -1,6 +1,6 @@
 ---
 name: humans-tech-debt
-description: Autonomous tech-debt reduction workflow for the Humans repository. Use when the user wants Codex to improve high-value code quality issues in a dedicated git worktree branched from origin/main, avoid database or migration changes, commit each improvement separately, push progress, and continue until diminishing returns.
+description: Autonomous tech-debt reduction workflow for the Humans repository. Use when the user wants Codex to improve high-value code quality issues in a dedicated git worktree branched from origin/main, commit each improvement separately, push progress, and continue until diminishing returns.
 ---
 
 # Humans Tech Debt
@@ -11,13 +11,13 @@ Run recurring autonomous tech-debt reduction passes in this repository.
 
 1. Confirm the repo root is the current Humans checkout.
 2. Resume an existing `techdebt/*` worktree and branch if the user is continuing prior work.
-3. Otherwise fetch `origin/main`, create a fresh branch `techdebt/YYYY-MM-DD-codex-N`, and attach a worktree at `.worktrees/techdebt-YYYY-MM-DD-codex-N`.
+3. Otherwise fetch `origin/main`, create a fresh branch `techdebt/YYYY-MM-DD-codex-N`, and attach a worktree at `.claude/worktrees/techdebt-YYYY-MM-DD-codex-N`.
 4. Keep scratch notes and temporary files under `local/tech-debt-runs/<run-id>/`.
 
 ## Non-Negotiable Limits
 
-- Do not touch database or storage behavior. Avoid per-section `Data/*DbContext*.cs`, `Data/Configurations/**`, and `Data/Migrations/**` (plus `src/Humans.Web/Migrations/**`), and any change that alters persistence, migrations, or schema configuration.
-- Do not modify entity shapes, migration files, or JSON serialization attributes.
+- Section-owned persistence and generated migrations are allowed when the task needs them. Follow [section-migrations-in-maintenance](../../../memory/process/section-migrations-in-maintenance.md); substantial architecture transitions get explicitly scoped tasks and dedicated PRs.
+- Preserve JSON serialization contracts unless the task authorizes changing them.
 - Do not delete files, remove controller actions, or remove public members as part of the cleanup.
 - Prefer structural simplification and consolidation over broad rewrites.
 - Treat Reforge or any score as a detector, not an objective. A score decrease alone never justifies a commit.

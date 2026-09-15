@@ -2,6 +2,7 @@
   src/Sections/Humans.Users/Services/**
   src/Sections/Humans.Gdpr/**
   src/Sections/Humans.Users/Controllers/ProfileController.cs
+  src/Sections/Humans.Users/Controllers/ProfileViewController.cs
   src/Sections/Humans.Users/Controllers/ProfileApiController.cs
   src/Sections/Humans.Users/Views/Profile/**
   src/Sections/Humans.Users/Domain/Profile.cs
@@ -110,7 +111,7 @@ Emergency contact fields are marked `[PersonalData]` and included in the data ex
 
 ## Membership Status
 
-`MembershipStatus` is no longer computed on `Profile` — it moved to Governance's `IMembershipCalculatorRead` (`Humans.Governance.Contracts.MembershipStatus`), computed from RoleAssignments and ConsentRecords:
+`MembershipStatus` is not stored on `Profile`; Governance's `IMembershipCalculatorRead` (`Humans.Governance.Contracts.MembershipStatus`) computes it from RoleAssignments and ConsentRecords:
 
 | Status | Description | Visual |
 |--------|-------------|--------|
@@ -287,15 +288,13 @@ Google permissions (Shared Drive access, Group memberships) are **not** revoked 
 
 This two-step approach ensures Google deprovisioning uses the same tested code path as any other team departure, rather than a separate deletion-specific implementation.
 
-> **Note:** The automated sync jobs are currently disabled during initial rollout. Google permissions are managed manually via the "Sync Now" button at `/Admin/GoogleSync` until automated sync is validated. Sync jobs must be able to add members reliably before removal logic is enabled.
-
 #### Routes
 
 | Route | Method | Purpose |
 |-------|--------|---------|
 | `/Profile/Me/Privacy` | GET | View deletion status, data export link |
 | `/Profile/Me/Privacy/RequestDeletion` | POST | Start 30-day deletion countdown |
-| `/User/Deletion/Cancel` | POST | Cancel pending deletion (moved to the User section) |
+| `/User/Deletion/Cancel` | POST | Cancel pending deletion (`UserController`) |
 | `/Profile/Me/DownloadData` | GET | Download personal data as JSON |
 
 ## Related Features

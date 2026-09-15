@@ -14,16 +14,16 @@ The account-merge surface (`AccountMergeService`, `DuplicateAccountService`,
 `AccountMergeRepository`) lives in the Users section — see
 [Users](#users) below; the `AccountMergeRequests` table is owned there, not
 by Profiles. `DuplicateAccountService` is detection-only (no repository, no
-DB access).
+DB access; its one write is the `DuplicateAccountFlagged` audit entry through
+`IAuditLogService`).
 
-The Profiles section's per-user persistence is consolidated into a single
-`IUserRepository`, which owns `Users`, `Profiles`, `UserEmails`,
-`ContactFields`, `ProfileLanguages`, `VolunteerHistoryEntries`,
-`EventParticipations`, and the ASP.NET-Identity `IdentityUserLogins`
-bridge. `IProfileService` is retired (now `IProfilePictureService` only)
-and the unified User+Profile read-model lives behind
-`IUserService.GetUserInfoAsync`. The Profiles repositories remain
-**Singletons** (`IDbContextFactory` pattern).
+Per-user persistence is a single `IUserRepository`, which owns `Users`,
+`Profiles`, `UserEmails`, `ContactFields`, `ProfileLanguages`,
+`VolunteerHistoryEntries`, `EventParticipations`, and the ASP.NET-Identity
+`IdentityUserLogins` bridge. `ProfileService` exposes only
+`IProfilePictureService`; the unified User+Profile read-model lives behind
+`IUserService.GetUserInfoAsync`. Repositories are **Singletons**
+(`IDbContextFactory` pattern).
 
 ### ProfileService (Scoped — `IProfilePictureService`)
 
@@ -78,7 +78,7 @@ Repository: `IUserRepository`.
 | Table | R/W |
 |-------|-----|
 | UserEmails | R/W |
-| Users | R/W (the only direct EF write to `Users.GoogleEmail` / `Users.Email`; also a read for `UserEmailWithUser` lookups). Google sync status is per-address on `UserEmails.GoogleEmailStatus` — `Users.GoogleEmailStatus` is deprecated/unwritten. |
+| Users | R/W (the only direct EF write to `Users.GoogleEmail` / `Users.Email`; also the `GetUserEmailsByAddressAsync` read behind the write paths). Google sync status is per-address on `UserEmails.GoogleEmailStatus` — `Users.GoogleEmailStatus` is deprecated/unwritten. |
 
 Cross-section calls via `IUserService`, plus ASP.NET `UserManager<User>` and
 `IServiceProvider` for lazy resolution. Implements `IUserMerge`. No
@@ -162,9 +162,11 @@ decorator inheriting `TrackedCache<Guid, UserInfo>`, in the section's
 own `Data/` folder) which holds the
 canonical `UserInfo` read-model spanning User + Profile sections. The
 decorator exposes the budgeted cross-section read surface as
-`IUserServiceRead`. Following the User+Profile section merge,
-`IUserService` absorbed the legacy `IProfileService` surface; the
-interface's `[SurfaceBudget]` remains intentionally suspended.
+`IUserServiceRead`. `IUserService` carries the writes other sections call;
+the section-only half of the write funnel (profile saves, deletion fields,
+`UserEmail` storage commands, merge tombstone) is the internal
+`IUserServiceInternal : IUserService`, registered as the same singleton.
+`IUserService`'s `[SurfaceBudget]` is intentionally suspended.
 
 ### UserService (Scoped — wrapped by CachingUserService Singleton decorator)
 
@@ -197,17 +199,16 @@ Cross-section calls via `IAdminAuthorizationService`. No direct
 |-------|------|------|-------|------------|
 | `TrackedCache<Guid, UserInfo>` (`User.UserInfo`, in-process, no `IMemoryCache`) | Per-User | yes | yes | yes (`IUserInfoInvalidator` — fired by UserService/ProfileService writes, by `IUserMerge` participants, and by `UserInfoSaveChangesInterceptor` for Identity-machinery writes) |
 
-Implements `IUserService`, `IUserServiceRead`, `IUserMerge`,
-`IUserInfoInvalidator`, and the Infrastructure-internal
+Implements `IUserServiceInternal` (hence `IUserService`, `IUserServiceRead`), `IUserMerge`,
+`IUserInfoInvalidator`, and the section-internal
 `IUserInfoSliceRefresher` (consumed by `UserInfoSaveChangesInterceptor` to
 catch OAuth/`UpdateAsync`/`LastLoginAt` writes that bypass the service
 surface). Surfaced on `/Debug/CacheStats`.
 
-`UserEmailService` (`GetUserIdByExactEmailAsync`,
-`GetDistinctVerifiedUserIdsAsync`, `GetUserIdByVerifiedEmailAsync`) and
-`UserService` (`GetByEmailOrAlternateAsync`) match verified addresses in
-memory against the cached `UserInfo` set instead of querying `UserEmails`
-directly. `CachingUserService.GetByEmailOrAlternateAsync` overrides the
+`UserEmailService.FindByAddressAsync` (the one address → rows lookup; callers
+pick aliasing, verification and cardinality) and
+`UserService.GetByEmailOrAlternateAsync` match addresses in memory against
+the cached `UserInfo` set instead of querying `UserEmails` directly. `CachingUserService.GetByEmailOrAlternateAsync` overrides the
 inner service to scan the warmed snapshot itself (no repeated
 `GetAllUserInfosAsync` fan-out per miss); the inner
 `UserService.GetByEmailOrAlternateAsync` is legacy-`GoogleEmail`-shadow-column-only,
@@ -227,7 +228,7 @@ Idempotent provisioning for import jobs. Uses ASP.NET `UserManager<User>`
 for password / identity primitives. Cross-section calls via
 `IUserEmailService`, `IUserService`, `IAuditLogService`. No cache.
 
-### AccountDeletionService (Scoped) — `Users/AccountLifecycle/`
+### AccountDeletionService (Scoped)
 
 No repository. GDPR right-to-deletion orchestrator. Fans out over
 `IUserService`, `IUserEmailService`, `ITeamService`,

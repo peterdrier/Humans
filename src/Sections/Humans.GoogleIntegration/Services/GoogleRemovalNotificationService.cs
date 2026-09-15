@@ -32,7 +32,9 @@ internal sealed class GoogleRemovalNotificationService(
         // Resolve recipient from the removed address. Orphan = no UserEmail
         // row; this captures user-deleted/anonymized and self-unlink cases
         // (the UserEmail row is gone before reconciliation runs).
-        var userId = await userEmailService.GetUserIdByVerifiedEmailAsync(removedEmail, cancellationToken);
+        var userId = (await userEmailService.FindByAddressAsync(
+                removedEmail, aliased: false, verifiedOnly: true, cancellationToken))
+            .FirstOrDefault()?.UserId;
         if (userId is null)
         {
             // Expected condition (deleted user, anonymized human, self-unlink,

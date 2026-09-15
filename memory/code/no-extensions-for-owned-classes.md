@@ -1,6 +1,6 @@
 ---
 name: No extension methods for classes we own
-description: Don't write extension methods on types defined in this repo. Add the method or computed property directly on the class. Extensions are only for types we don't control (BCL, third-party).
+description: Don't write extension methods for types this repo owns — add the method/property directly on the class. Extensions are only for BCL/third-party types.
 ---
 
 Don't add extension methods (`public static X Foo(this OwnedType ...)`) for classes the project owns. Add the method or computed property directly on the class itself.

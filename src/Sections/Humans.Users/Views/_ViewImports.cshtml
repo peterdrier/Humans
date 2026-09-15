@@ -21,10 +21,9 @@
 @using Microsoft.AspNetCore.Html
 @using Microsoft.Extensions.Localization
 @using NodaTime
-@* Users' 441 keys live in UsersResource since nobodies-collective/Humans#1050.
-   SharedLocalizer is for the prefixes the carve deliberately left behind — Common_, Nav_,
-   Dashboard_, Admin_, Validation_, Application*_, Teams_/MyTeams_/TeamDetail_, Privacy_,
-   Search_ and Enum_EmailOutboxStatus_ — each rendered by someone outside this section too.
+@* The section's keys live in UsersResource. SharedLocalizer is for prefixes shared with,
+   or rendered by, other sections — Common_, Nav_, Dashboard_, Admin_, Validation_,
+   Application*_, Teams_/MyTeams_/TeamDetail_, Privacy_, Search_, Enum_EmailOutboxStatus_.
    See UsersResource.cs for the per-key reasons. *@
 @inject IStringLocalizer<UsersResource> Localizer
 @inject IStringLocalizer<SharedResource> SharedLocalizer

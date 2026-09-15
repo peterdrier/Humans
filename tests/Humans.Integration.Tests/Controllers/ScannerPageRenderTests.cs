@@ -20,7 +20,7 @@ namespace Humans.Integration.Tests.Controllers;
 /// <c>@@using</c> or <c>@@addTagHelper</c> ships literal markup with a green build, and an
 /// unrendered <c>&lt;vc:…&gt;</c> element is inert text the browser simply drops. Scanner's
 /// ticket card is the case that forced <c>TicketStubViewComponent</c> down from
-/// <c>Humans.Web</c> into <c>Humans.UI</c>, which a section _can_ name.
+/// <c>Humans.Web</c> into <c>Humans.Tickets</c>, which a section _can_ reference.
 /// </description></item>
 /// <item><description>
 /// The resx carve moved 38 <c>Scanner_*</c> keys out of <c>SharedResource</c>. A key the carve
@@ -71,8 +71,8 @@ public class ScannerPageRenderTests(HumansTestDatabase database) : IntegrationTe
     public async Task The_ticket_card_renders_the_stub_component_the_section_can_actually_bind()
     {
         // /Scanner/Tickets/Card is the section's only partial, and the one place a section view
-        // uses <vc:ticket-stub>. The component moved from Humans.Web to Humans.UI for exactly
-        // this reason — a Shell-resident component is inert markup from a section view. The
+        // uses <vc:ticket-stub>. The component lives in Humans.Tickets for exactly this
+        // reason — a Shell-resident component is inert markup from a section view. The
         // not-found branch proves the partial renders at all; the found branch needs a seeded
         // ticket, which the section's unit tests cover against substituted reads.
         var ct = Xunit.TestContext.Current.CancellationToken;

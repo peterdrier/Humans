@@ -1,6 +1,6 @@
 ---
 name: Avoid magic strings — use nameof, constants, or enum references
-description: When a string literal refers to a code identifier (property, method, role, entity type), replace it with a compile-time reference. Magic strings break silently on rename.
+description: When a string literal refers to a code identifier (property, method, role, entity type), use `nameof()`/a constant/enum instead — never a magic string.
 ---
 
 Use `nameof()`, constants, or enum references instead of string literals that refer to code identifiers. Magic strings are fragile — they silently break on rename and can't be caught by the compiler.

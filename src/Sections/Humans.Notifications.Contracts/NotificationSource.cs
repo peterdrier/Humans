@@ -109,5 +109,8 @@ public enum NotificationSource
     RideshareInterestAccepted = 34,
 
     /// <summary>The posting owner declined a rideshare interest (neutral wording, no reason).</summary>
-    RideshareInterestDeclined = 35
+    RideshareInterestDeclined = 35,
+
+    /// <summary>An assembly vote opened and the roster was notified.</summary>
+    AssemblyVoteOpened = 36
 }

@@ -15,9 +15,9 @@
 
 ## Business Context
 
-The shared human picker (`<vc:human-search>`, used by barrio member setup, role-assignment, ticket-transfer admin, etc.) originally rendered each result row as a single line of burner/playa name. When multiple humans share a common Playa name — three "David"s in the same barrio is the canonical case — the picker can't be used to disambiguate without an out-of-band cross-check.
+The shared human picker (`<vc:human-search>`, used by barrio member setup, role-assignment, ticket-transfer admin, etc.) needs more than a burner/playa name per row: when multiple humans share a common Playa name — three "David"s in the same barrio is the canonical case — a name alone can't disambiguate without an out-of-band cross-check.
 
-This feature adds a second line of context to each row and an avatar thumbnail, picked per-viewer so privacy rules stay intact.
+Each row therefore carries a second line of context and an avatar thumbnail, picked per-viewer so privacy rules stay intact.
 
 ## User Stories
 
@@ -67,7 +67,7 @@ For each result row, the controller calls `GetSharedDetailAsync(userId, viewerUs
    The obsolete `ContactFieldType.Email` is skipped (`UserEmail` is the canonical email source).
 3. `null` — no second line is rendered.
 
-Legal name (`Profile.FirstName + Profile.LastName`) is deliberately **not** part of the priority order, even for self or board viewers. The branch was previously included but produced essentially no value in practice (only the tiny board cohort benefits) while costing a per-search `GetByUserIdsAsync` round-trip. Board members can still see legal name via the profile card on click-through. See `memory/architecture/no-business-logic-in-controllers.md` and the [PR #538 review thread](https://github.com/peterdrier/Humans/pull/538) for context.
+Legal name (`Profile.FirstName + Profile.LastName`) is deliberately **not** part of the priority order, even for self or board viewers — a settled decision. Board members see legal name via the profile card on click-through.
 
 ## Privacy Gating
 

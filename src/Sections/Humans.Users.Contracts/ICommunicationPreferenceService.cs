@@ -22,8 +22,7 @@ public enum TokenValidationStatus
 /// <summary>
 /// Manages per-user communication preferences and unsubscribe tokens.
 /// </summary>
-// COVERAGE REDUCED (G5 lane 3b, nobodies-collective/Humans#866): dropped ": IApplicationService".
-// Lost on the implementing class: HUM0027 (role-axis exclusivity). See Humans.Users.Contracts.csproj.
+// No marker interface — see Humans.Users.Contracts.csproj.
 public interface ICommunicationPreferenceService
 {
     /// <summary>

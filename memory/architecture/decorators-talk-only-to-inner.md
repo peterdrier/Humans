@@ -1,6 +1,6 @@
 ---
 name: decorators-talk-only-to-inner
-description: HARD RULE. A caching/wrapping decorator over interface I may only depend on I (via its keyed inner registration) and the cache plumbing. No sideways repository, service, or sibling-section injections — ever.
+description: HARD RULE. A caching decorator over interface I depends only on I (its keyed inner) and cache plumbing — no sideways repo, service, or sibling-section injections.
 ---
 
 A class that decorates interface `I` (e.g. `CachingXService : IX, IHostedService` over a keyed-Scoped inner `IX`) is allowed exactly two kinds of collaborator:

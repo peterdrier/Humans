@@ -1,6 +1,6 @@
 ---
 name: Check feature spec / section invariant docs after a fix, before commit
-description: After completing a fix or feature, review the owning section's `Docs/features/*.md` specs and its `Docs/<Section>.md` invariants, plus any `docs/features/global/` spec it touches. Update inline if behavior, auth, workflow, data model, or routes changed. Reduces churn from doc-only follow-up commits.
+description: After a fix or feature, review the section's `Docs/features/*.md` specs and `Docs/<Section>.md` invariants; update if behavior, auth, workflow, data, or routes changed.
 ---
 
 **After completing a fix or feature but before committing**, check the owning section's `Docs/features/` folder for the spec and `Docs/<Section>.md` for the invariants, plus `docs/features/global/` for a cross-section spec and `docs/sections/` for a section not yet moved into its own project. Update them if the change affects:

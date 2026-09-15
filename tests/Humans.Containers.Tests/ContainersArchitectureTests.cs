@@ -1,3 +1,4 @@
+using System.Reflection;
 using AwesomeAssertions;
 using Humans.Containers.Controllers;
 using Humans.Containers.Services;
@@ -5,12 +6,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Xunit;
 
 namespace Humans.Containers.Tests;
 
 /// <summary>
-/// Architecture tests enforcing the section shape for Containers
-/// (nobodies-collective/Humans#866, G5).
+/// Architecture tests enforcing the section shape for Containers.
 /// </summary>
 public class ContainersArchitectureTests
 {
@@ -29,6 +30,26 @@ public class ContainersArchitectureTests
         typeof(ContainerController).GetCustomAttributes(typeof(AuthorizeAttribute), inherit: false)
             .Should().ContainSingle(
                 because: "every container action is camp-scoped and authorized per resource");
+    }
+
+    [HumansTheory]
+    [InlineData(nameof(ContainerController.Create))]
+    [InlineData(nameof(ContainerController.Edit))]
+    public void ContainerWritePosts_CarryTheFiveImageRequestSizeLimit(string action)
+    {
+        // Kestrel's 30,000,000-byte default 413s a legitimate three-image upload before model
+        // binding, so the per-image validation never runs. 5 images × 10 MB plus multipart overhead.
+        var limit = typeof(ContainerController).GetMethod(action)!
+            .GetCustomAttributes(typeof(RequestSizeLimitAttribute), inherit: false)
+            .Cast<RequestSizeLimitAttribute>()
+            .Should().ContainSingle().Which;
+
+        // The attribute exposes its limit only through its filter; the backing field is the
+        // one place the number is readable without spinning up a filter pipeline.
+        var bytes = typeof(RequestSizeLimitAttribute)
+            .GetField("_bytes", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(limit);
+        bytes.Should().Be(55L * 1024 * 1024);
     }
 
     [HumansFact]
@@ -54,10 +75,7 @@ public class ContainersArchitectureTests
             && d.ImplementationType!.Name == "ContainerAuthorizationHandler");
     }
 
-    /// <summary>
-    /// The section's own DI registrations. Since G5 these come from
-    /// <see cref="Section.Register"/> rather than a Shell extension method.
-    /// </summary>
+    /// <summary>The section's own DI registrations, from <see cref="Section.Register"/>.</summary>
     private static ServiceCollection Registrations()
     {
         var services = new ServiceCollection();

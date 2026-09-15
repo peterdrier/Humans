@@ -30,6 +30,8 @@ public enum AuditAction
     TierApplicationApproved,
     TierApplicationRejected,
     TierDowngraded,
+    // An admin rewrote a stored term expiry from the temporary /Governance/Applications/Admin/TermExpiry screen.
+    TierTermExpiryCorrected,
     GoogleResourceDeactivated,
     FacilitatedMessageSent,
     TeamRoleDefinitionCreated,
@@ -250,4 +252,22 @@ public enum AuditAction
     ExpensePayeeIbanUpdated,
     // An admin set or changed a burn year's rideshare destination point and travel windows.
     RideshareSettingsUpdated,
+    // Assembly votes (nobodies-collective/Humans#86): lifecycle and ballot events for
+    // Governance's binding Asociado votes. See Docs/features/assembly-votes.md.
+    AssemblyVoteOpened,
+    AssemblyVoteStopped,
+    AssemblyVoteExtended,
+    AssemblyVoteCancelled,
+    AssemblyVoteClosed,
+    AssemblyVotePeeked,
+    AssemblyBallotCast,
+    AssemblyBallotChanged,
+    AssemblyBallotsViewed,
+    AssemblyVoteRosterMerged,
+    AssemblyVoteRemindersSent,
+
+    // The duplicate-account scan surfaced a pair of live accounts sharing an address. Written
+    // once per pair, the first time the scan sees it; the entity is the pair's lower id and the
+    // related entity the higher one.
+    DuplicateAccountFlagged,
 }

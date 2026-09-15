@@ -54,7 +54,7 @@
                     {
                         @foreach (var o in dayOccs)
                         {
-                            var localStart = o.OccurrenceStartUtc.InZone(zone).LocalDateTime;
+                            var localStart = o.OccurrenceStartUtc?.InZone(zone).LocalDateTime;
                             <div>
                                 <span class="badge bg-light text-dark">
                                     @switch (o.TimeLabelFor(day, zone))
@@ -66,7 +66,7 @@
                                             @Localizer["Calendar_AllDay"].Value
                                             break;
                                         default:
-                                            @DateFormattingExtensions.TimeOfDayPattern.Format(localStart.TimeOfDay)
+                                            @DateFormattingExtensions.TimeOfDayPattern.Format(localStart!.Value.TimeOfDay)
                                             break;
                                     }
                                 </span>

@@ -11,7 +11,7 @@ Run a higher-autonomy refactor pass for one Humans section. This is the v2 tech-
 
 1. Confirm the repo root is a Humans checkout.
 2. Read the current request carefully for target section, time budget, branch/PR expectations, and any overridden constraints.
-3. Fetch `origin/main`, create `refactor/YYYY-MM-DD-<section>-N`, and attach `.worktrees/refactor-YYYY-MM-DD-<section>-N`.
+3. Fetch `origin/main`, create `refactor/YYYY-MM-DD-<section>-N`, and attach `.claude/worktrees/refactor-YYYY-MM-DD-<section>-N`.
 4. Keep all scratch output under `local/refactor-runs/<run-id>/`.
 5. Run `reforge stop` before and after every Reforge call. Do not use daemon mode.
 
@@ -75,7 +75,7 @@ Two failed patches in a row are a signal that the search strategy is too shallow
 
 ## Hard Limits
 
-- Avoid database/storage changes unless the user explicitly asks for them: no migrations, no schema configuration changes, no entity persistence-shape changes, no JSON serialization attribute changes.
+- Section-owned persistence and generated migrations are allowed when the refactor needs them. Follow [section-migrations-in-maintenance](../../../memory/process/section-migrations-in-maintenance.md); substantial architecture transitions get explicitly scoped tasks and dedicated PRs. Preserve JSON serialization contracts unless the task authorizes changing them.
 - Do not revert user changes or unrelated work.
 - Do not move debt across sections to win points. Regressions outside the target section count against the change.
 - Public members may be removed when they are internal application surface and the call graph is updated. Preserve reflection/external contracts, Razor action routes, serialized DTO contracts, and public APIs that are intentionally consumed outside the repo.

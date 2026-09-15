@@ -1,6 +1,6 @@
 ---
 name: Cancellation-token propagation into external API calls
-description: An outbound call that MUTATES a third-party system never receives a request-scoped token (HttpContext.RequestAborted / a controller action CancellationToken). Read-only outbound GETs may keep it. Three-way distinction — request-scoped vs process-lifetime vs genuine caller cancellation. Enforced by HUM0033 + [ExternalWrite].
+description: Never pass a request-scoped `CancellationToken` into an outbound call mutating a third party — read-only GETs may keep it. HUM0033 + `[ExternalWrite]` enforce this.
 ---
 
 Never hand a **request-scoped** cancellation token to an outbound call that

@@ -1,6 +1,6 @@
 ---
 name: prefer-setup-work-for-trivial-usage
-description: When choosing between a heavier-setup abstraction with trivial call sites and a lighter-setup one with verbose call sites, prefer the heavier setup — call sites multiply, the abstraction is written once.
+description: Choosing heavier setup with trivial call sites vs. lighter setup with verbose call sites — prefer heavier setup; call sites multiply, the abstraction is written once.
 ---
 
 When designing an API/abstraction with N call sites, prefer the option that makes the call sites trivial — even if the setup (definition, registration, supporting types) is more work.

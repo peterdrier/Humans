@@ -46,10 +46,8 @@ internal sealed class DebugController(
     InMemoryLogSink logSink) : HumansControllerBase(userService)
 {
     /// <summary>
-    /// What the composition root knows about every section: what it owns, what it depends on,
-    /// which seams it implements, and which of guide page / agent doc / issue queue it has
-    /// (nobodies-collective/Humans#1509). The one place a hand-maintained section list that has
-    /// drifted off a rename becomes visible.
+    /// What the composition root knows about every section: what it owns, depends on, and
+    /// implements. Where a hand-maintained section list that drifted off a rename becomes visible.
     /// </summary>
     [HttpGet("Sections")]
     public IActionResult Sections() => View(sectionCatalog);
@@ -58,7 +56,7 @@ internal sealed class DebugController(
     [HttpGet("Logs")]
     public IActionResult Logs(int count = 1000, string? minLevel = null)
     {
-        count = Math.Clamp(count, 1, 1000);
+        count = count.ClampPageSize(1, 1000);
 
         LogEventLevel? minLogLevel = minLevel?.ToUpperInvariant() switch
         {
@@ -176,122 +174,86 @@ internal sealed class DebugController(
     [HttpGet("DbStats")]
     public IActionResult DbStats()
     {
-        try
+        var snapshot = queryStatistics.GetSnapshot();
+        var model = new DbStatsViewModel
         {
-            var snapshot = queryStatistics.GetSnapshot();
-            var model = new DbStatsViewModel
+            TotalQueryCount = queryStatistics.TotalCount,
+            Entries = snapshot.Select(e => new DbStatEntryViewModel
             {
-                TotalQueryCount = queryStatistics.TotalCount,
-                Entries = snapshot.Select(e => new DbStatEntryViewModel
-                {
-                    Operation = e.Operation,
-                    Table = e.Table,
-                    Count = e.Count,
-                    AverageMs = Math.Round(e.AverageMilliseconds, 2),
-                    MaxMs = Math.Round(e.MaxMilliseconds, 2),
-                    TotalMs = Math.Round(e.TotalMilliseconds, 2)
-                }).ToList()
-            };
-            return View(model);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error loading DB stats");
-            SetError("Failed to load database statistics.");
-            return RedirectToAction(nameof(Maintenance));
-        }
+                Operation = e.Operation,
+                Table = e.Table,
+                Count = e.Count,
+                AverageMs = Math.Round(e.AverageMilliseconds, 2),
+                MaxMs = Math.Round(e.MaxMilliseconds, 2),
+                TotalMs = Math.Round(e.TotalMilliseconds, 2)
+            }).ToList()
+        };
+        return View(model);
     }
 
     [HttpPost("DbStats/Reset")]
     [ValidateAntiForgeryToken]
     public IActionResult ResetDbStats()
     {
-        try
-        {
-            queryStatistics.Reset();
-            logger.LogInformation("Admin reset DB query statistics");
-            SetSuccess("Query statistics have been reset.");
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error resetting DB stats");
-            SetError("Failed to reset database statistics.");
-        }
-
+        queryStatistics.Reset();
+        logger.LogInformation("Admin reset DB query statistics");
+        SetSuccess("Query statistics have been reset.");
         return RedirectToAction(nameof(DbStats));
     }
 
     [HttpGet("CacheStats")]
     public IActionResult CacheStats()
     {
-        try
-        {
-            var snapshot = cacheStatsProvider.GetSnapshot();
-            var entryCounts = cacheStatsProvider.GetActiveEntryCounts();
+        var snapshot = cacheStatsProvider.GetSnapshot();
+        var entryCounts = cacheStatsProvider.GetActiveEntryCounts();
 
-            var model = new CacheStatsViewModel
-            {
-                TotalHits = cacheStatsProvider.TotalHits,
-                TotalMisses = cacheStatsProvider.TotalMisses,
-                TotalActiveEntries = cacheStatsProvider.TotalActiveEntries,
-                Entries = snapshot.Select(e =>
-                {
-                    entryCounts.TryGetValue(e.KeyType, out var activeCount);
-                    CacheKeys.Metadata.TryGetValue(e.KeyType, out var meta);
-                    return new CacheStatEntryViewModel
-                    {
-                        KeyType = e.KeyType,
-                        Hits = e.Hits,
-                        Misses = e.Misses,
-                        HitRatePercent = e.HitRatePercent,
-                        ActiveEntries = activeCount,
-                        Ttl = meta?.Ttl ?? "-",
-                        Type = meta?.Type.ToString() ?? "-"
-                    };
-                }).ToList(),
-                DecoratorEntries = decoratorCacheStats
-                    .OrderBy(s => s.Name, StringComparer.Ordinal)
-                    .Select(s => new DecoratorCacheStatEntryViewModel
-                    {
-                        Name = s.Name,
-                        Entries = s.Entries,
-                        Hits = s.Hits,
-                        Misses = s.Misses,
-                        KeyRemovals = s.KeyRemovals,
-                        BulkInvalidations = s.BulkInvalidations,
-                        HitRatePercent = s.HitRatePercent,
-                        IsWarmedUp = s.IsWarmedUp,
-                    })
-                    .ToList()
-            };
-            return View(model);
-        }
-        catch (Exception ex)
+        var model = new CacheStatsViewModel
         {
-            logger.LogError(ex, "Error loading cache stats");
-            SetError("Failed to load cache statistics.");
-            return RedirectToAction(nameof(Maintenance));
-        }
+            TotalHits = cacheStatsProvider.TotalHits,
+            TotalMisses = cacheStatsProvider.TotalMisses,
+            TotalActiveEntries = cacheStatsProvider.TotalActiveEntries,
+            Entries = snapshot.Select(e =>
+            {
+                entryCounts.TryGetValue(e.KeyType, out var activeCount);
+                CacheKeys.Metadata.TryGetValue(e.KeyType, out var meta);
+                return new CacheStatEntryViewModel
+                {
+                    KeyType = e.KeyType,
+                    Hits = e.Hits,
+                    Misses = e.Misses,
+                    HitRatePercent = e.HitRatePercent,
+                    ActiveEntries = activeCount,
+                    Ttl = meta?.Ttl ?? "-",
+                    Type = meta?.Type.ToString() ?? "-"
+                };
+            }).ToList(),
+            DecoratorEntries = decoratorCacheStats
+                .OrderBy(s => s.Name, StringComparer.Ordinal)
+                .Select(s => new DecoratorCacheStatEntryViewModel
+                {
+                    Name = s.Name,
+                    Entries = s.Entries,
+                    Hits = s.Hits,
+                    Misses = s.Misses,
+                    KeyRemovals = s.KeyRemovals,
+                    BulkInvalidations = s.BulkInvalidations,
+                    HitRatePercent = s.HitRatePercent,
+                    IsWarmedUp = s.IsWarmedUp,
+                })
+                .ToList()
+        };
+        return View(model);
     }
 
     [HttpPost("CacheStats/Reset")]
     [ValidateAntiForgeryToken]
     public IActionResult ResetCacheStats()
     {
-        try
-        {
-            cacheStatsProvider.Reset();
-            foreach (var s in decoratorCacheStats)
-                s.ResetCounters();
-            logger.LogInformation("Admin reset cache statistics");
-            SetSuccess("Cache statistics have been reset.");
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error resetting cache stats");
-            SetError("Failed to reset cache statistics.");
-        }
-
+        cacheStatsProvider.Reset();
+        foreach (var s in decoratorCacheStats)
+            s.ResetCounters();
+        logger.LogInformation("Admin reset cache statistics");
+        SetSuccess("Cache statistics have been reset.");
         return RedirectToAction(nameof(CacheStats));
     }
 

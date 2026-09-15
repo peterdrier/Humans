@@ -31,26 +31,6 @@ internal static class UserInfoStubHelpers
             [],
             []);
 
-    public static UserInfo MakeUserInfo(Guid userId, Profile? profile = null, string displayName = "User")
-        => UserInfoFactory.Create(
-            new User { Id = userId, PreferredLanguage = "en" },
-            [],
-            [],
-            [],
-            profile: profile ?? new Profile
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                BurnerName = displayName,
-                CreatedAt = NodaTime.SystemClock.Instance.GetCurrentInstant(),
-                UpdatedAt = NodaTime.SystemClock.Instance.GetCurrentInstant(),
-                IsApproved = true
-            },
-            [],
-            [],
-            [],
-            []);
-
     /// <summary>
     /// Stubs GetUserInfosAsync to read from the provided DbContext options (new context per call,
     /// includes UserEmails + Profile slice).

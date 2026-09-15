@@ -1,3 +1,8 @@
+---
+name: HUM0031 thresholds are frozen until 2027 — never propose changing them
+description: HARD RULE. HUM0031's 40/15 controller-method thresholds are frozen until 2027 — never propose tightening, unfreezing, or re-evaluating them, even as a question.
+---
+
 # HUM0031 thresholds are frozen until 2027 — never propose changing them
 
 `HUM0031` (`ControllerBusinessLogicAnalyzer`) fires at **> 40 statements** or **cyclomatic

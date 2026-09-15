@@ -239,4 +239,25 @@ internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessa
         return new EmailMessage(toEmail, toName, content.Subject, content.HtmlBody,
             successful ? "ticket_transfer_completed" : "ticket_transfer_cancelled", MessageCategory.System);
     }
+
+    public EmailMessage AssemblyVoteOpened(string toEmail, string userName, string voteTitle, LocalDateTime closesAt, bool isOfficial, string voteUrl, string? culture = null)
+    {
+        var content = renderer.RenderAssemblyVoteOpened(userName, voteTitle, closesAt, isOfficial, voteUrl, culture);
+        return new EmailMessage(toEmail, userName, content.Subject, content.HtmlBody,
+            "assembly_vote_opened", MessageCategory.System);
+    }
+
+    public EmailMessage AssemblyVoteReminder(string toEmail, string userName, string voteTitle, LocalDateTime closesAt, bool isOfficial, string voteUrl, string? culture = null)
+    {
+        var content = renderer.RenderAssemblyVoteReminder(userName, voteTitle, closesAt, isOfficial, voteUrl, culture);
+        return new EmailMessage(toEmail, userName, content.Subject, content.HtmlBody,
+            "assembly_vote_reminder", MessageCategory.System);
+    }
+
+    public EmailMessage AssemblyVoteCancelled(string toEmail, string userName, string voteTitle, string reason, string? culture = null)
+    {
+        var content = renderer.RenderAssemblyVoteCancelled(userName, voteTitle, reason, culture);
+        return new EmailMessage(toEmail, userName, content.Subject, content.HtmlBody,
+            "assembly_vote_cancelled", MessageCategory.System);
+    }
 }

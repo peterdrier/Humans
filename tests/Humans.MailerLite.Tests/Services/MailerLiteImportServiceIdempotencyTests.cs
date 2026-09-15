@@ -88,12 +88,8 @@ internal sealed class IdempotencyHarness
 
         // Pass 1: no verified human match → CreateContact path.
         _userEmails
-            .GetDistinctVerifiedUserIdsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<Guid>>([]));
-
-        _userEmails
-            .FindAnyEmailRowByAddressAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<(Guid, Guid)?>(null));
+            .FindByAddressAsync(Arg.Any<string>(), true, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<UserEmailRowSnapshot>>([]));
 
         // Provisioning creates the user on first call.
         var createdUser = new User { Id = _userId, MergedToUserId = null };
@@ -129,8 +125,9 @@ internal sealed class IdempotencyHarness
     public void PromoteToVerifiedUser()
     {
         _userEmails
-            .GetDistinctVerifiedUserIdsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<Guid>>([_userId]));
+            .FindByAddressAsync(Arg.Any<string>(), true, true, Arg.Any<CancellationToken>())
+            .Returns(ci => Task.FromResult<IReadOnlyList<UserEmailRowSnapshot>>(
+                [UserEmailFixtures.Row(_userId, (string)ci[0])]));
     }
 
     private void WirePrefsAlreadyMatching()

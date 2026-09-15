@@ -1,5 +1,6 @@
 using Humans.Calendar.Domain;
 using Humans.Calendar.Services.Dtos;
+using Humans.Base.Extensions;
 using Ical.Net.DataTypes;
 using Ical.Net.Evaluation;
 using NodaTime;
@@ -7,311 +8,193 @@ using IcalEvent = Ical.Net.CalendarComponents.CalendarEvent;
 
 namespace Humans.Calendar.Services;
 
-/// <summary>
-/// Pure expansion over prefiltered <see cref="CalendarEventInfo"/> rows for window <c>[from, to)</c>.
-/// Returns sorted <see cref="CalendarOccurrence"/> list with recurrence expansion + exception merge.
-/// No I/O — callable from the §15 caching decorator over cached projections.
-/// </summary>
+/// <summary>Pure date or instant recurrence expansion over the cached event projection.</summary>
 internal static class CalendarOccurrenceExpander
 {
     public static IReadOnlyList<CalendarOccurrence> Expand(
-        IReadOnlyList<CalendarEventInfo> events,
-        Instant from,
-        Instant to,
-        IReadOnlyDictionary<Guid, string> teamNamesById,
-        ILogger logger)
+        IReadOnlyList<CalendarEventInfo> events, Instant from, Instant to,
+        IReadOnlyDictionary<Guid, string> teamNamesById, ILogger logger)
     {
-        var expanded = new List<CalendarOccurrence>();
-
-        foreach (var e in events)
-        {
-            var owningTeamName = ResolveTeamName(teamNamesById, e.OwningTeamId);
-
-            if (string.IsNullOrWhiteSpace(e.RecurrenceRule))
-                AddSingleOccurrence(expanded, e, owningTeamName, from, to);
-            else
-                AddRecurringOccurrences(expanded, e, owningTeamName, from, to, logger);
-        }
-
-        var exceptionsByEvent = events
-            .ToDictionary(e => e.Id, e =>
-                e.Exceptions.ToDictionary(x => x.OriginalOccurrenceStartUtc));
-
-        var finalResults = ApplyExceptions(expanded, exceptionsByEvent, from, to, out var handledExceptionKeys);
-        AddMovedOverrides(finalResults, events, teamNamesById, handledExceptionKeys, from, to);
-
-        return finalResults.OrderBy(o => o.OccurrenceStartUtc).ToList();
-    }
-
-    private static void AddSingleOccurrence(
-        List<CalendarOccurrence> results,
-        CalendarEventInfo e,
-        string owningTeamName,
-        Instant from,
-        Instant to)
-    {
-        if (!OverlapsWindow(e.StartUtc, e.EndUtc, from, to)) return;
-
-        results.Add(CreateOccurrence(
-            e,
-            owningTeamName,
-            e.StartUtc,
-            e.EndUtc,
-            isRecurring: false,
-            originalStart: null));
-    }
-
-    private static void AddRecurringOccurrences(
-        List<CalendarOccurrence> results,
-        CalendarEventInfo e,
-        string owningTeamName,
-        Instant from,
-        Instant to,
-        ILogger logger)
-    {
-        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(e.RecurrenceTimezone!);
-        if (zone is null)
-        {
-            logger.LogWarning(
-                "CalendarEvent {Id} has unknown timezone {Tz}; skipping occurrence expansion",
-                e.Id, e.RecurrenceTimezone);
-            return;
-        }
-
-        var icalEv = CreateIcalEvent(e, zone);
-        var toLocal = to.InZone(zone).LocalDateTime.ToDateTimeUnspecified();
-        var fromCalDt = new CalDateTime(
-            from.InZone(zone).LocalDateTime.ToDateTimeUnspecified(),
-            e.RecurrenceTimezone,
-            hasTime: true);
-
-        foreach (var iocc in icalEv.GetOccurrences(fromCalDt, new EvaluationOptions())
-            .TakeWhile(o => o.Period.StartTime.Value < toLocal))
-        {
-            var startInstant = LocalDateTime
-                .FromDateTime(iocc.Period.StartTime.Value)
-                .InZoneLeniently(zone)
-                .ToInstant();
-            var endInstant = e.EndUtc is null
-                ? (Instant?)null
-                : startInstant.Plus(e.EndUtc.Value - e.StartUtc);
-
-            results.Add(CreateOccurrence(
-                e,
-                owningTeamName,
-                startInstant,
-                endInstant,
-                isRecurring: true,
-                originalStart: startInstant));
-        }
-    }
-
-    private static IcalEvent CreateIcalEvent(CalendarEventInfo e, DateTimeZone zone)
-    {
-        var duration = (e.EndUtc ?? e.StartUtc) - e.StartUtc;
-        var dtStartLocal = e.StartUtc.InZone(zone).LocalDateTime.ToDateTimeUnspecified();
-
-        var icalEv = new IcalEvent
-        {
-            DtStart = new CalDateTime(dtStartLocal, e.RecurrenceTimezone, hasTime: true),
-            Duration = Ical.Net.DataTypes.Duration.FromTimeSpanExact(
-                TimeSpan.FromTicks(duration.BclCompatibleTicks)),
-        };
-        icalEv.RecurrenceRule = new RecurrencePattern(e.RecurrenceRule!);
-        return icalEv;
-    }
-
-    private static List<CalendarOccurrence> ApplyExceptions(
-        IReadOnlyList<CalendarOccurrence> expanded,
-        IReadOnlyDictionary<Guid, Dictionary<Instant, CalendarEventExceptionInfo>> exceptionsByEvent,
-        Instant from,
-        Instant to,
-        out HashSet<(Guid EventId, Instant OriginalStart)> handledExceptionKeys)
-    {
-        var finalResults = new List<CalendarOccurrence>();
-        handledExceptionKeys = [];
-
-        foreach (var occ in expanded)
-        {
-            var exception = FindException(occ, exceptionsByEvent);
-            if (exception is null)
-            {
-                finalResults.Add(occ);
-                continue;
-            }
-
-            handledExceptionKeys.Add((occ.EventId, exception.OriginalOccurrenceStartUtc));
-
-            if (exception.IsCancelled) continue;
-
-            var overridden = ApplyOverride(occ, exception);
-            if (OverlapsWindow(overridden.OccurrenceStartUtc, overridden.OccurrenceEndUtc, from, to))
-                finalResults.Add(overridden);
-        }
-
-        return finalResults;
-    }
-
-    private static CalendarEventExceptionInfo? FindException(
-        CalendarOccurrence occ,
-        IReadOnlyDictionary<Guid, Dictionary<Instant, CalendarEventExceptionInfo>> exceptionsByEvent)
-    {
-        if (!occ.IsRecurring || occ.OriginalOccurrenceStartUtc is null) return null;
-
-        return exceptionsByEvent.TryGetValue(occ.EventId, out var perEvent) &&
-            perEvent.TryGetValue(occ.OriginalOccurrenceStartUtc.Value, out var ex)
-                ? ex
-                : null;
-    }
-
-    private static void AddMovedOverrides(
-        List<CalendarOccurrence> finalResults,
-        IReadOnlyList<CalendarEventInfo> events,
-        IReadOnlyDictionary<Guid, string> teamNamesById,
-        HashSet<(Guid EventId, Instant OriginalStart)> handledExceptionKeys,
-        Instant from,
-        Instant to)
-    {
+        var results = new List<CalendarOccurrence>();
+        // Calendar currently uses the organisation's viewer zone. Dates themselves never convert.
+        var viewerZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+        var fromDate = from.InZone(viewerZone).Date;
+        var toLocal = to.InZone(viewerZone).LocalDateTime;
+        var toDate = toLocal.TimeOfDay == LocalTime.Midnight ? toLocal.Date : toLocal.Date.PlusDays(1);
         foreach (var ev in events)
         {
-            var owningTeamName = ResolveTeamName(teamNamesById, ev.OwningTeamId);
-
-            foreach (var ex in ev.Exceptions)
+            var name = teamNamesById.GetValueOrDefault(ev.OwningTeamId, string.Empty);
+            var occurrences = new List<CalendarOccurrence>();
+            var recurring = !string.IsNullOrWhiteSpace(ev.RecurrenceRule);
+            if (!recurring)
+                occurrences.Add(CreateOccurrence(ev, name, ev.StartUtc, ev.EndUtc, ev.StartDate, ev.EndDateExclusive, false));
+            else if (ev.IsAllDay)
             {
-                if (!ShouldInjectMovedOverride(ev.Id, ex, handledExceptionKeys)) continue;
-                if (ex.OverrideStartUtc is not { } newStart) continue;
+                var days = NodaTime.Period.Between(ev.StartDate!.Value, ev.EndDateExclusive!.Value, PeriodUnits.Days).Days;
+                var ical = new IcalEvent
+                {
+                    DtStart = new CalDateTime(ev.StartDate.Value.ToDateTimeUnspecified(), hasTime: false),
+                    DtEnd = new CalDateTime(ev.EndDateExclusive.Value.ToDateTimeUnspecified(), hasTime: false),
+                    RecurrenceRule = new RecurrencePattern(ev.RecurrenceRule!),
+                };
+                var searchStart = new CalDateTime(fromDate.PlusDays(-days).ToDateTimeUnspecified(), hasTime: false);
+                foreach (var item in ical.GetOccurrences(searchStart, new EvaluationOptions())
+                    .TakeWhile(o => LocalDate.FromDateTime(o.Period.StartTime.Value) < toDate))
+                {
+                    var date = LocalDate.FromDateTime(item.Period.StartTime.Value);
+                    occurrences.Add(CreateOccurrence(ev, name, null, null, date, date.PlusDays(days), true));
+                }
+            }
+            else
+            {
+                var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(ev.RecurrenceTimezone!);
+                if (zone is null)
+                {
+                    logger.LogWarning("CalendarEvent {Id} has unknown timezone {Tz}; skipping occurrence expansion", ev.Id, ev.RecurrenceTimezone);
+                    continue;
+                }
+                var duration = (ev.EndUtc ?? ev.StartUtc!.Value) - ev.StartUtc!.Value;
+                var ical = new IcalEvent
+                {
+                    DtStart = new CalDateTime(ev.StartUtc.Value.InZone(zone).LocalDateTime.ToDateTimeUnspecified(), zone.Id, hasTime: true),
+                    Duration = Ical.Net.DataTypes.Duration.FromTimeSpanExact(TimeSpan.FromTicks(duration.BclCompatibleTicks)),
+                    RecurrenceRule = new RecurrencePattern(ev.RecurrenceRule!),
+                };
+                var searchStart = new CalDateTime(from.Minus(duration).InZone(zone).LocalDateTime.ToDateTimeUnspecified(), zone.Id, hasTime: true);
+                foreach (var item in ical.GetOccurrences(searchStart, new EvaluationOptions())
+                    .TakeWhile(o => o.Period.StartTime.Value < to.InZone(zone).LocalDateTime.ToDateTimeUnspecified()))
+                {
+                    var start = LocalDateTime.FromDateTime(item.Period.StartTime.Value).InZoneLeniently(zone).ToInstant();
+                    occurrences.Add(CreateOccurrence(ev, name, start, ev.EndUtc is null ? null : start.Plus(duration), null, null, true));
+                }
+            }
 
-                var newEnd = ResolveOverrideEnd(ev, ex, newStart);
-
-                if (!OverlapsWindow(newStart, newEnd, from, to)) continue;
-
-                finalResults.Add(CreateOccurrence(
-                    ev,
-                    owningTeamName,
-                    newStart,
-                    newEnd,
-                    isRecurring: true,
-                    originalStart: ex.OriginalOccurrenceStartUtc,
-                    title: ex.OverrideTitle,
-                    description: ex.OverrideDescription,
-                    location: ex.OverrideLocation,
-                    locationUrl: ex.OverrideLocationUrl));
+            var handled = new HashSet<Guid>();
+            foreach (var occurrence in occurrences)
+            {
+                var exception = recurring ? ev.Exceptions.FirstOrDefault(x => ev.IsAllDay
+                    ? x.OriginalOccurrenceDate == occurrence.OriginalOccurrenceDate
+                    : x.OriginalOccurrenceStartUtc == occurrence.OriginalOccurrenceStartUtc) : null;
+                if (exception is not null) handled.Add(exception.Id);
+                if (exception?.IsCancelled == true) continue;
+                var result = exception is null ? occurrence : ApplyOverride(occurrence, exception);
+                if (OverlapsWindow(result, from, to, fromDate, toDate)) results.Add(result);
+            }
+            // A moved occurrence can be outside the series' original window in either direction.
+            foreach (var exception in ev.Exceptions.Where(x => !handled.Contains(x.Id) && !x.IsCancelled))
+            {
+                if (!recurring) continue;
+                var date = exception.OriginalOccurrenceDate;
+                var start = exception.OriginalOccurrenceStartUtc;
+                var original = ev.IsAllDay
+                    ? CreateOccurrence(ev, name, null, null, date,
+                        date!.Value.PlusDays(NodaTime.Period.Between(ev.StartDate!.Value, ev.EndDateExclusive!.Value, PeriodUnits.Days).Days), true)
+                    : CreateOccurrence(ev, name, start,
+                        ev.EndUtc is null ? null : start!.Value.Plus(ev.EndUtc.Value - ev.StartUtc!.Value), null, null, true);
+                var result = ApplyOverride(original, exception);
+                if (OverlapsWindow(result, from, to, fromDate, toDate)) results.Add(result);
             }
         }
+        return results.OrderBy(o => o.StartDate ?? o.OccurrenceStartUtc!.Value.InZone(viewerZone).Date)
+            .ThenBy(o => o.OccurrenceStartUtc).ToList();
     }
 
-    private static bool ShouldInjectMovedOverride(
-        Guid eventId,
-        CalendarEventExceptionInfo ex,
-        HashSet<(Guid EventId, Instant OriginalStart)> handledExceptionKeys) =>
-        !handledExceptionKeys.Contains((eventId, ex.OriginalOccurrenceStartUtc)) &&
-        !ex.IsCancelled &&
-        ex.OverrideStartUtc is not null;
-
-    private static Instant? ResolveOverrideEnd(
-        CalendarEventInfo ev,
-        CalendarEventExceptionInfo ex,
-        Instant newStart)
+    private static CalendarOccurrence ApplyOverride(CalendarOccurrence occurrence, CalendarEventExceptionInfo ex)
     {
-        if (ex.OverrideEndUtc is { } overrideEnd) return overrideEnd;
-        if (ev.EndUtc is null) return null;
-
-        return newStart.Plus((ev.EndUtc.Value - ev.StartUtc));
-    }
-
-    private static CalendarOccurrence ApplyOverride(
-        CalendarOccurrence occurrence,
-        CalendarEventExceptionInfo ex) =>
-        occurrence with
+        var date = ex.OverrideStartDate ?? occurrence.StartDate;
+        var start = ex.OverrideStartUtc ?? occurrence.OccurrenceStartUtc;
+        return occurrence with
         {
-            OccurrenceStartUtc = ex.OverrideStartUtc ?? occurrence.OccurrenceStartUtc,
-            OccurrenceEndUtc = ex.OverrideEndUtc ?? occurrence.OccurrenceEndUtc,
+            StartDate = date,
+            EndDateExclusive = occurrence.IsAllDay ? ex.OverrideEndDateExclusive ?? date!.Value.PlusDays(
+                NodaTime.Period.Between(occurrence.StartDate!.Value, occurrence.EndDateExclusive!.Value, PeriodUnits.Days).Days) : null,
+            OccurrenceStartUtc = start,
+            OccurrenceEndUtc = ex.OverrideEndUtc ?? (occurrence.OccurrenceEndUtc is { } end
+                ? start!.Value.Plus(end - occurrence.OccurrenceStartUtc!.Value) : null),
             Title = ex.OverrideTitle ?? occurrence.Title,
             Description = ex.OverrideDescription ?? occurrence.Description,
             Location = ex.OverrideLocation ?? occurrence.Location,
             LocationUrl = ex.OverrideLocationUrl ?? occurrence.LocationUrl,
         };
-
-    private static CalendarOccurrence CreateOccurrence(
-        CalendarEventInfo ev,
-        string owningTeamName,
-        Instant start,
-        Instant? end,
-        bool isRecurring,
-        Instant? originalStart,
-        string? title = null,
-        string? description = null,
-        string? location = null,
-        string? locationUrl = null) =>
-        new(
-            EventId: ev.Id,
-            OccurrenceStartUtc: start,
-            OccurrenceEndUtc: end,
-            IsAllDay: ev.IsAllDay,
-            Title: title ?? ev.Title,
-            Description: description ?? ev.Description,
-            Location: location ?? ev.Location,
-            LocationUrl: locationUrl ?? ev.LocationUrl,
-            OwningTeamId: ev.OwningTeamId,
-            OwningTeamName: owningTeamName,
-            IsRecurring: isRecurring,
-            OriginalOccurrenceStartUtc: originalStart);
-
-    private static bool OverlapsWindow(Instant start, Instant? end, Instant from, Instant to) =>
-        start < to && (end ?? start) > from;
-
-    private static string ResolveTeamName(IReadOnlyDictionary<Guid, string> teamNamesById, Guid teamId) =>
-        teamNamesById.TryGetValue(teamId, out var name) ? name : string.Empty;
-
-    /// <summary>
-    /// The section's only window prefilter. It used to mirror a SQL one in
-    /// <c>CalendarRepository</c>; that query had no live caller once the decorator began
-    /// answering every window read from its snapshot, and was retired with it.
-    /// </summary>
-    public static List<CalendarEventInfo> FilterForWindow(
-        IEnumerable<CalendarEventInfo> snapshot,
-        Instant from,
-        Instant to,
-        Guid? teamId)
-    {
-        var result = new List<CalendarEventInfo>();
-        foreach (var e in snapshot)
-        {
-            if (e.StartUtc > to) continue;
-            if (e.RecurrenceUntilUtc is { } until && until < from) continue;
-            if (teamId is { } t && e.OwningTeamId != t) continue;
-            result.Add(e);
-        }
-        return result;
     }
 
+    private static CalendarOccurrence CreateOccurrence(CalendarEventInfo ev, string name,
+        Instant? start, Instant? end, LocalDate? date, LocalDate? endDate, bool recurring) => new(
+            ev.Id, start, end, ev.IsAllDay, ev.Title, ev.Description, ev.Location, ev.LocationUrl,
+            ev.OwningTeamId, name, recurring, recurring ? start : null,
+            date, endDate, recurring ? date : null);
+
+    private static bool OverlapsWindow(CalendarOccurrence o, Instant from, Instant to, LocalDate fromDate, LocalDate toDate) =>
+        o.IsAllDay ? o.StartDate < toDate && o.EndDateExclusive > fromDate
+            : o.OccurrenceStartUtc < to && (o.OccurrenceEndUtc ?? o.OccurrenceStartUtc) > from;
+
+    /// <summary>Conservative prefilter; exceptions may move occurrences beyond either series boundary.</summary>
+    public static List<CalendarEventInfo> FilterForWindow(IEnumerable<CalendarEventInfo> snapshot,
+        Instant from, Instant to, Guid? teamId)
+    {
+        var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+        return snapshot.Where(e => (teamId is null || e.OwningTeamId == teamId) &&
+            (e.Exceptions.Count > 0 || (e.IsAllDay
+                ? e.StartDate <= to.InZone(zone).Date && (e.RecurrenceUntilDate is null || e.RecurrenceUntilDate >= from.InZone(zone).Date)
+                : e.StartUtc <= to && (e.RecurrenceUntilUtc is null || e.RecurrenceUntilUtc >= from)))).ToList();
+    }
+
+    // Older date events may have a DATE-TIME UNTIL. Interpret it in their original zone once.
+    private static string? DateRule(string? rule, DateTimeZone zone) => rule is null ? null :
+        string.Join(';', rule.Split(';').Select(part =>
+        {
+            if (!part.StartsWith("UNTIL=", StringComparison.OrdinalIgnoreCase) || part.Length <= 14) return part;
+            var value = part[6..];
+            var local = DateFormattingExtensions.IcalBasicDateTimePattern.Parse(value.TrimEnd('Z')).Value;
+            var date = value.EndsWith('Z') ? local.InUtc().ToInstant().InZone(zone).Date : local.Date;
+            return "UNTIL=" + DateFormattingExtensions.IcalBasicDatePattern.Format(date);
+        }));
+
     /// <summary>Maps domain <c>CalendarEvent</c> (with Exceptions) to the immutable projection.</summary>
-    public static CalendarEventInfo ToInfo(CalendarEvent ev) => new(
-        Id: ev.Id,
-        Title: ev.Title,
-        Description: ev.Description,
-        Location: ev.Location,
-        LocationUrl: ev.LocationUrl,
-        OwningTeamId: ev.OwningTeamId,
-        StartUtc: ev.StartUtc,
-        EndUtc: ev.EndUtc,
-        IsAllDay: ev.IsAllDay,
-        RecurrenceRule: ev.RecurrenceRule,
-        RecurrenceTimezone: ev.RecurrenceTimezone,
-        RecurrenceUntilUtc: ev.RecurrenceUntilUtc,
-        CreatedByUserId: ev.CreatedByUserId,
-        CreatedAt: ev.CreatedAt,
-        UpdatedAt: ev.UpdatedAt,
-        Exceptions: ev.Exceptions
-            .Select(x => new CalendarEventExceptionInfo(
-                Id: x.Id,
-                OriginalOccurrenceStartUtc: x.OriginalOccurrenceStartUtc,
-                IsCancelled: x.IsCancelled,
-                OverrideStartUtc: x.OverrideStartUtc,
-                OverrideEndUtc: x.OverrideEndUtc,
-                OverrideTitle: x.OverrideTitle,
-                OverrideDescription: x.OverrideDescription,
-                OverrideLocation: x.OverrideLocation,
-                OverrideLocationUrl: x.OverrideLocationUrl))
-            .ToList());
+    public static CalendarEventInfo ToInfo(CalendarEvent ev)
+    {
+        // Legacy all-day instants are read as dates once, at the service boundary.
+        // New writes use only the date columns; the old columns remain for existing rows.
+        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(ev.RecurrenceTimezone ?? "Europe/Madrid")
+            ?? DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+        var startDate = ev.IsAllDay ? ev.StartDate ?? ev.StartUtc!.Value.InZone(zone).Date : (LocalDate?)null;
+        var endDate = ev.IsAllDay ? ev.EndDateExclusive ??
+            (ev.EndUtc is { } end ? end.Minus(NodaTime.Duration.FromNanoseconds(1)).InZone(zone).Date.PlusDays(1)
+                : startDate!.Value.PlusDays(1)) : (LocalDate?)null;
+        return new(
+            Id: ev.Id,
+            Title: ev.Title,
+            Description: ev.Description,
+            Location: ev.Location,
+            LocationUrl: ev.LocationUrl,
+            OwningTeamId: ev.OwningTeamId,
+            StartUtc: ev.IsAllDay ? null : ev.StartUtc,
+            EndUtc: ev.IsAllDay ? null : ev.EndUtc,
+            IsAllDay: ev.IsAllDay,
+            RecurrenceRule: ev.IsAllDay ? DateRule(ev.RecurrenceRule, zone) : ev.RecurrenceRule,
+            RecurrenceTimezone: ev.RecurrenceTimezone,
+            RecurrenceUntilUtc: ev.IsAllDay ? null : ev.RecurrenceUntilUtc,
+            CreatedByUserId: ev.CreatedByUserId,
+            CreatedAt: ev.CreatedAt,
+            UpdatedAt: ev.UpdatedAt,
+            Exceptions: ev.Exceptions
+                .Select(x => new CalendarEventExceptionInfo(
+                    Id: x.Id,
+                    OriginalOccurrenceStartUtc: ev.IsAllDay ? null : x.OriginalOccurrenceStartUtc,
+                    IsCancelled: x.IsCancelled,
+                    OverrideStartUtc: ev.IsAllDay ? null : x.OverrideStartUtc,
+                    OverrideEndUtc: ev.IsAllDay ? null : x.OverrideEndUtc,
+                    OverrideTitle: x.OverrideTitle,
+                    OverrideDescription: x.OverrideDescription,
+                    OverrideLocation: x.OverrideLocation,
+                    OverrideLocationUrl: x.OverrideLocationUrl,
+                    OriginalOccurrenceDate: ev.IsAllDay ? x.OriginalOccurrenceDate ?? x.OriginalOccurrenceStartUtc!.Value.InZone(zone).Date : null,
+                    OverrideStartDate: ev.IsAllDay ? x.OverrideStartDate ?? x.OverrideStartUtc?.InZone(zone).Date : null,
+                    OverrideEndDateExclusive: ev.IsAllDay ? x.OverrideEndDateExclusive ??
+                        x.OverrideEndUtc?.Minus(NodaTime.Duration.FromNanoseconds(1)).InZone(zone).Date.PlusDays(1) : null))
+                .ToList(),
+            StartDate: startDate,
+            EndDateExclusive: endDate,
+            RecurrenceUntilDate: ev.IsAllDay ? ev.RecurrenceUntilDate : null);
+    }
 }

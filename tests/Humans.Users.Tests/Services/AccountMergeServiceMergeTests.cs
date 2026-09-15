@@ -21,7 +21,7 @@ public class AccountMergeServiceMergeTests
     private readonly IUserRepository _userEmailRepo = Substitute.For<IUserRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
-    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
     private readonly IActiveTeamsCacheInvalidator _activeTeamsCacheInvalidator = Substitute.For<IActiveTeamsCacheInvalidator>();
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
     private readonly INotificationService _notify = Substitute.For<INotificationService>();
@@ -68,6 +68,14 @@ public class AccountMergeServiceMergeTests
         // survivor = tgt, archived = src.
         await BuildSut().MergeAsync(tgt, src, admin, ct: Xunit.TestContext.Current.CancellationToken);
 
+        // Ordered, not transactional: the tombstone lands after every fan-out reassign.
+        Received.InOrder(() =>
+        {
+            _ = merger.ReassignAsync(src, tgt, admin,
+                Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>());
+            _ = _userService.AnonymizeForMergeAsync(src, tgt,
+                Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>());
+        });
         await merger.Received(1).ReassignAsync(src, tgt, admin,
             Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>());
         await _userService.Received(1).AnonymizeForMergeAsync(src, tgt,

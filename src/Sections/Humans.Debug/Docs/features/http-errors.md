@@ -2,6 +2,7 @@
   src/Humans.Base/Interfaces/IClientStatsTracker.cs
   src/Humans.Web/Services/ClientStatsTracker.cs
   src/Humans.Web/Middleware/ClientStatsMiddleware.cs
+  src/Humans.Web/Program.cs
   src/Sections/Humans.Debug/**
 -->
 <!-- freshness:flag-on-change
@@ -19,11 +20,9 @@ classified User-Agent. All in-memory, no DB.
 
 ## Business Context
 
-`/Debug/ClientStats` showed ~1000 client errors (400/404/405/499) as bare counts —
-the status tally is fed by a `MeterListener` that only ever sees `(code, count)`,
-so the errors could not be attributed to bots, broken links, or real users. The
-project owner asked for a rolling buffer of the last 1000 such errors, "similar
-to `/Debug/Logs` in setup", with who (IP), when, code, URL, and User-Agent.
+`/Debug/ClientStats` shows client errors as bare counts — its tally is fed by a
+`MeterListener` that only ever sees `(code, count)` — so errors cannot be attributed
+to bots, broken links, or real users there. This buffer holds the per-request detail.
 
 Same constraint as [client-stats](client-stats.md): the container bounces daily
 or more often, so the buffer is "since this deploy", not historical. Acceptable
@@ -47,7 +46,7 @@ for a debug aid.
 - **Storage** — ring buffer (capacity 1000) on the existing `ClientStatsTracker`,
   enqueue-then-trim-under-lock like `InMemoryLogSink`. URL truncated to 200 chars,
   UA to 150; whole buffer stays under ~1 MB. Client label is derived by the
-  tracker at record time via `UserAgentClassifier` (Web never calls Infrastructure).
+  tracker at record time via `UserAgentClassifier`.
 - **Capture point** — `ClientStatsMiddleware` after `await next()`. Four special cases:
   - **Aborted requests record as 499** (nginx convention, matching ASP.NET Core's
     request metric), including aborts that surface as cancellation exceptions.

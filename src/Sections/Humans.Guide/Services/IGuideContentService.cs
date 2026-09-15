@@ -8,16 +8,22 @@ namespace Humans.Guide.Services;
 internal interface IGuideContentService : IApplicationService
 {
     /// <summary>
-    /// Returns the rendered, role-annotated HTML for a guide file. Triggers a
-    /// full refresh if the cache is cold. Throws <see cref="GuideContentUnavailableException"/>
-    /// when GitHub is unreachable and no stale content is available.
+    /// Returns the HTML for a guide file as this reader may see it: the cached segments are
+    /// filtered by role first, and only what survives is rendered. Triggers a full refresh if
+    /// the cache is cold. Throws <see cref="GuideContentUnavailableException"/> when this file
+    /// has no cached copy and its fetch fails — other files being cached does not rescue it —
+    /// and also when the surviving markdown cannot be rendered, so that a render failure reaches
+    /// the reader as the section's 503 view rather than an unhandled 500.
     /// </summary>
-    Task<string> GetRenderedAsync(string fileStem, CancellationToken cancellationToken = default);
+    Task<string> GetPageAsync(
+        string fileStem,
+        GuideRoleContext roleContext,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Re-fetches every known guide file from GitHub and overwrites its cache entry. Nothing is
-    /// evicted first: a file that fails to fetch keeps the copy already cached, so a GitHub
-    /// outage degrades to stale content rather than to an empty guide.
+    /// Re-fetches and re-segments every known guide file from GitHub and overwrites its cache
+    /// entry. Nothing is evicted first: a file that fails to fetch keeps the copy already
+    /// cached, so a GitHub outage degrades to stale content rather than to an empty guide.
     /// </summary>
     Task RefreshAllAsync(CancellationToken cancellationToken = default);
 }

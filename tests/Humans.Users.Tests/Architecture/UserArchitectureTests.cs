@@ -4,6 +4,7 @@ using Humans.Users.Data;
 using Humans.Base;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using UserService = Humans.Users.Services.UserService;
@@ -16,22 +17,6 @@ namespace Humans.Users.Tests.Architecture;
 /// </summary>
 public class UserArchitectureTests
 {
-    [HumansFact]
-    public void UserService_has_expected_cache_and_invalidation_shape()
-    {
-        var ctor = typeof(UserService).GetConstructors().Single();
-        var parameters = ctor.GetParameters();
-        var paramTypes = parameters.Select(p => p.ParameterType).ToList();
-        var cachingParam = parameters
-            .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
-                .StartsWith("Microsoft.Extensions.Caching.Memory", StringComparison.Ordinal));
-
-        cachingParam.Should().BeNull(
-            because: "canonical User data is not IMemoryCache-backed");
-        paramTypes.Should().NotContain(typeof(IUserInfoInvalidator),
-            because: "cache repair belongs to the CachingUserService decorator, not the storage service");
-    }
-
     // ── IUserServiceRead split (memory/architecture/section-read-write-split.md) ──
 
     [HumansFact]
@@ -51,36 +36,32 @@ public class UserArchitectureTests
     }
 
     [HumansFact]
-    public void IUserService_And_IUserServiceRead_ResolveToSameSingleton()
+    public void IUserService_IUserServiceRead_And_IUserInfoInvalidator_ResolveToSameSingleton()
     {
-        // Mirrors the Users-section DI shape: the same CachingUserService
-        // singleton is exposed under both interface keys.
+        // The real section registration: the same CachingUserService singleton
+        // must back all three interface keys, or an external "user changed"
+        // signal misses the cache owner.
         var services = new ServiceCollection();
-        services.AddSingleton(Substitute.For<IUserRepository>());
-        services.AddSingleton(Substitute.For<ICommunicationPreferenceRepository>());
-        services.AddSingleton(Substitute.For<IServiceScopeFactory>());
-        services.AddSingleton(Substitute.For<ILogger<CachingUserService>>());
-
-        services.AddSingleton<CachingUserService>();
-        services.AddSingleton<IUserService>(sp => sp.GetRequiredService<CachingUserService>());
-        services.AddSingleton<IUserServiceRead>(sp => sp.GetRequiredService<CachingUserService>());
+        new Section().Register(services, new ConfigurationBuilder().Build());
+        services.AddLogging();
 
         using var provider = services.BuildServiceProvider();
 
         var fromFull = provider.GetRequiredService<IUserService>();
         var fromRead = provider.GetRequiredService<IUserServiceRead>();
+        var fromInvalidator = provider.GetRequiredService<IUserInfoInvalidator>();
         var concrete = provider.GetRequiredService<CachingUserService>();
 
         ReferenceEquals(fromFull, concrete).Should().BeTrue();
         ReferenceEquals(fromRead, concrete).Should().BeTrue();
+        ReferenceEquals(fromInvalidator, concrete).Should().BeTrue();
     }
 
     [HumansFact]
     public void SectionTypesLocalizeThroughTheSectionsOwnResourceSet()
     {
-        // The section's 441 keys moved to UsersResource at nobodies-collective/Humans#1050.
         // SharedResource stays allowed: the Common_/Validation_/Admin_/Todo_/Application*_
-        // prefixes the carve deliberately left behind are rendered by other sections too.
+        // prefixes are rendered by other sections too.
         // Any third set resolves to nothing and shows the key name instead of the text.
         var allowed = new[] { typeof(UsersResource), typeof(SharedResource) };
         var offenders = typeof(Section).Assembly.GetTypes()

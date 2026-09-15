@@ -17,11 +17,10 @@ internal interface IIssuesService : IApplicationService, IIssuesRetention, IIssu
 {
     /// <summary>
     /// Count of Open + Triage issues whose section maps to a role the viewer holds, plus
-    /// their own non-terminal issues. Admins get the global non-terminal count.
+    /// their own. An Admin gets every Open + Triage issue. <c>InProgress</c> counts for
+    /// nobody.
     /// </summary>
-    Task<int> GetActionableCountForViewerAsync(
-        Guid viewerUserId, IReadOnlyList<string> viewerRoles, bool viewerIsAdmin,
-        CancellationToken ct = default);
+    Task<int> GetActionableCountForViewerAsync(IssueViewer viewer, CancellationToken ct = default);
 
     Task<Issue> SubmitIssueAsync(
         Guid reporterUserId,

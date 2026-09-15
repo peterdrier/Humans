@@ -1,6 +1,6 @@
 ---
 name: Every interface-method addition is long-term technical debt — default to reuse, not add
-description: Adding a method to ANY interface (budgeted or not) is durable technical debt, not a refactor. Methods accrete; they compound across interfaces; they take weeks to consolidate. Before adding any method, audit existing methods on that interface for one whose return shape already covers the need — most of the time a list-returning method + a short LINQ chain at the call site is the right answer. The long-term cost of every additional method outweighs the short-term gain of "a cleaner-feeling call site" nearly every time. Stop and ask Peter before adding.
+description: Adding a method to any interface is durable debt. Audit existing methods first — prefer a LINQ chain at the call site over a new method. Stop and ask Peter before adding one.
 ---
 
 Adding a method to an interface is **technical debt**, not a refactor. New methods accrete — they don't decay — and they compound across `IUserService` + `IUserEmailService` + `IProfileService` + `ITeamService` + `ICampService` + … into surfaces that take weeks of focused work to audit and consolidate.

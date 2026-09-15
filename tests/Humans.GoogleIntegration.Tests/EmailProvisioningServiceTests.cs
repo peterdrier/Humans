@@ -86,7 +86,7 @@ public class EmailProvisioningServiceTests
     // These tests verify that provisioning rejects prefixes already in use
     // by another human in our system BEFORE calling Workspace or writing DB.
     // All DB state is mocked at the IUserService / IUserEmailService / ITeamService
-    // boundary — the Application-layer service no longer touches DbContext.
+    // boundary — the service never touches DbContext.
 
     private sealed record ProvisioningFixture(
         EmailProvisioningService Service,
@@ -145,9 +145,9 @@ public class EmailProvisioningServiceTests
         var targetId = Guid.NewGuid();
 
         StubTargetUser(f, targetId);
-        f.UserEmailService.GetOtherUserIdHavingEmailAsync(
-                "alice@nobodies.team", targetId, Arg.Any<CancellationToken>())
-            .Returns(ownerId);
+        f.UserEmailService.FindByAddressAsync(
+                "alice@nobodies.team", false, false, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(ownerId, "alice@nobodies.team")]);
 
         var result = await f.Service.ProvisionNobodiesEmailAsync(targetId, "alice", targetId);
 

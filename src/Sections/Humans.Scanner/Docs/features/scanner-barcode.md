@@ -5,15 +5,15 @@
   Camera barcode decode (BarcodeDetector + ZXing fallback), /Scanner/Barcode tool, /Scanner/Tickets camera pane + manual entry field, and the never-a-check-in-tool invariant — review when ScannerController, the scanner views, or the scanner JS change.
 -->
 
-# Scanner — Barcode (Phase 1)
+# Scanner — Barcode
 
 ## Business Context
 
-TicketTailor issues ticket stubs carrying a barcode. Staff who want to confirm what's actually encoded on a stub currently have to bounce to the TicketTailor UI — there's no in-app way to read those barcodes. This tool gives them one, using nothing but the device camera and the browser's own APIs.
+TicketTailor issues ticket stubs carrying a barcode. Staff who want to confirm what a stub actually encodes can read it here with the device camera and the browser's own APIs, without opening the TicketTailor dashboard.
 
-**Explicitly not a check-in tool.** Humans do not enter the event by having their ticket scanned here. Nothing is written server-side. This exists to prove the camera + decode plumbing end-to-end, so future work (API verification against TicketTailor, ticket lookup, future scanner tools) can layer on top without re-doing the front-end.
+**Explicitly not a check-in tool.** Humans do not enter the event by having their ticket scanned here. Nothing is written server-side. The camera module (`wwwroot/js/scanner/barcode.js`) is shared with `/Scanner/Tickets`.
 
-Phase 1 stands up the section (`Scanner`) as its own top-level nav area because we expect future scanner tools to live there — ticket lookup, asset tags, etc. — and the role is cross-cutting, not Tickets-specific.
+Scanner is reached from the admin sidebar's Tickets group; its tools are for ticket staff, and the access policy is shared with the Gate section and the onsite roster.
 
 ## User Stories
 
@@ -47,21 +47,21 @@ Phase 1 stands up the section (`Scanner`) as its own top-level nav area because 
 
 ## Scope & Non-Goals
 
-### In Scope (Phase 1)
+### In Scope
 
-- New `ScannerController` with `/Scanner` index and `/Scanner/Barcode` tool, gated to `ScannerAccess` (TicketAdmin/Board/Admin roles or the shared gate-terminal account).
-- Nav entry in the main nav.
+- `ScannerController` with `/Scanner` index and `/Scanner/Barcode` tool, gated to `ScannerAccess` (TicketAdmin/Board/Admin roles or the shared gate-terminal account).
+- Nav entry in the admin sidebar (Tickets group).
 - Camera start/stop with feature-detect + ZXing fallback.
 - Decoded list rendered in the page, client-side only.
 - Localized copy across all six supported locales.
 - Section invariant doc (`src/Sections/Humans.Scanner/Docs/Scanner.md`) and this feature spec.
 
-### Out of Scope (explicitly, for phase 1)
+### Out of Scope
 
 - Check-in / attendance marking. Humans do not enter the event by having their ticket scanned here.
 - TicketTailor API calls to validate a decoded barcode. That's a follow-on.
 - Server-side storage of scan history. The list in the page is client-side only; refresh clears it.
-- Batch scanning / roster lookup / matching a barcode to a `TicketAttendee` row.
+- Batch scanning / roster lookup.
 - Any future check-in flow — if that ever ships, it's a different tool from this one.
 
 ## Implementation Notes
@@ -74,7 +74,7 @@ Phase 1 stands up the section (`Scanner`) as its own top-level nav area because 
 
 ## Follow-ups (Separate Issues)
 
-- **Shipped as `/Scanner/Tickets`:** matching a decoded (or manually typed) value against the locally-synced attendee rows and rendering the human's details inline, including door context — early-entry eligibility and sources, event check-in timestamp, pending consent documents, and a time-sorted "provides" list. Still read-only: it renders a card and writes nothing. See [`src/Sections/Humans.Scanner/Docs/Scanner.md`](../Scanner.md).
+- Ticket lookup shipped as `/Scanner/Tickets` — see [`Scanner.md`](../Scanner.md).
 - TicketTailor API verification — given a decoded value, ask TicketTailor whether the ticket is valid, refunded, already checked in, etc. (`/Scanner/Tickets` reads the local sync, not the vendor API.)
 - Offline mode / scan queue for poor-connectivity environments.
 - If a check-in flow is ever needed, it's a different tool from this one.

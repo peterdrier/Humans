@@ -1,6 +1,6 @@
 ---
 name: Crosscuts call no section; gather cross-lane data in an Orchestrator
-description: A Crosscut (Audit, Email, Notification, Metrics) owns its own data and carries no section-specific logic — it must never call into another section. When a crosscut operation needs cross-lane data, an Orchestrator gathers it and calls the crosscut WITH the data.
+description: A Crosscut (Audit, Email, Notification, Metrics) never calls into a section; when it needs cross-lane data, an Orchestrator gathers it and calls the crosscut with the data.
 ---
 
 Role vocabulary: [`CONTEXT.md`](../../CONTEXT.md) (Section / Crosscut / Orchestrator).

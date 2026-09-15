@@ -19,14 +19,13 @@ using Humans.Users.Tests.Infrastructure;
 namespace Humans.Users.Tests.Services;
 
 /// <summary>
-/// The body of the nightly non-compliance sweep, carved out of
-/// <c>SuspendNonCompliantMembersJob</c> into this section at G5 lane 4b-2d. The job class
+/// The body of the nightly non-compliance sweep. The job class
 /// itself stays in <c>Humans.Infrastructure</c> because Hangfire pins its serialized type
 /// name; what is left of it is a start log, a try/catch and a failure metric.
 /// </summary>
 public class NonCompliantMemberSuspensionTests : IDisposable
 {
-    private readonly IUserService _userService;
+    private readonly IUserServiceInternal _userService;
     private readonly ITeamService _teamService;
     private readonly IMembershipCalculatorRead _membershipCalculator;
     private readonly IEmailService _emailService;
@@ -45,7 +44,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
 
     public NonCompliantMemberSuspensionTests()
     {
-        _userService = Substitute.For<IUserService>();
+        _userService = Substitute.For<IUserServiceInternal>();
         _teamService = Substitute.For<ITeamService>();
         _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
         _emailService = Substitute.For<IEmailService>();

@@ -21,10 +21,6 @@ namespace Humans.GoogleIntegration.Data;
 /// </remarks>
 internal interface IGoogleResourceRepository : IRepository
 {
-    // ==========================================================================
-    // Reads
-    // ==========================================================================
-
     /// <summary>
     /// Loads a single <see cref="GoogleResource"/> by id. Read-only (AsNoTracking).
     /// Returns null if not found.
@@ -131,10 +127,6 @@ internal interface IGoogleResourceRepository : IRepository
         string normalizedGroupEmail,
         CancellationToken ct = default);
 
-    // ==========================================================================
-    // Writes
-    // ==========================================================================
-
     /// <summary>
     /// Inserts a new <see cref="GoogleResource"/> row.
     /// </summary>
@@ -195,12 +187,8 @@ internal interface IGoogleResourceRepository : IRepository
         GoogleResourceType? resourceType,
         CancellationToken ct = default);
 
-    // ==========================================================================
-    // §15 Part 2b — writes used by GoogleWorkspaceSyncService after the
-    // Application-layer migration (issue #575). These are narrow per-column
-    // mutations: the sync service no longer holds a tracked-entity graph, so
-    // the repo exposes an atomic update per field it needs to touch.
-    // ==========================================================================
+    // Narrow per-column mutations for GoogleWorkspaceSyncService: it holds no
+    // tracked-entity graph, so the repo exposes an atomic update per field.
 
     /// <summary>
     /// Stamps <see cref="GoogleResource.LastSyncedAt"/> and clears

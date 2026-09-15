@@ -8,10 +8,8 @@ using Humans.Teams.Contracts;
 namespace Humans.GoogleIntegration.Services;
 
 /// <summary>
-/// Application-layer service for Google Workspace admin operations:
-/// workspace account management, group linking, email backfill, account
-/// linking. Migrated to the §15 pattern as part of issue #554 — no DbContext
-/// dependency; all cross-section data access routes through the owning
+/// Workspace admin operations: account provisioning, suspend/reactivate, credential
+/// recovery, group linking, rename detection. All cross-section reads go through the owning
 /// services (<see cref="IUserService"/>, <see cref="IUserEmailService"/>,
 /// <see cref="ITeamService"/>, <see cref="ITeamResourceService"/>).
 /// </summary>
@@ -152,7 +150,7 @@ internal sealed class GoogleAdminService(
         // Check DB first: reject if the address is already tied to any human in our system.
         // Must run BEFORE the Workspace existence check so a stale/deleted Workspace account
         // cannot silently "move" the identity off its current human.
-        var emailInUse = await userEmailService.IsEmailLinkedToAnyUserAsync(fullEmail, ct);
+        var emailInUse = (await userEmailService.FindByAddressAsync(fullEmail, aliased: false, verifiedOnly: false, ct)).Count > 0;
         if (emailInUse)
         {
             logger.LogWarning(
@@ -515,7 +513,7 @@ internal sealed class GoogleAdminService(
                     ErrorMessage: "Human not found.");
             }
 
-            var alreadyLinked = await userEmailService.IsEmailLinkedToAnyUserAsync(email, ct);
+            var alreadyLinked = (await userEmailService.FindByAddressAsync(email, aliased: false, verifiedOnly: false, ct)).Count > 0;
             if (alreadyLinked)
             {
                 return new WorkspaceAccountActionResult(false,

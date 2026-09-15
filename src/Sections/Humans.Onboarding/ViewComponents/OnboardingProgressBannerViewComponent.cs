@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Humans.Onboarding.Contracts;
+using Humans.Onboarding.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Onboarding.ViewComponents;

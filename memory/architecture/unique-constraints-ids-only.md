@@ -1,6 +1,6 @@
 ---
 name: Unique constraints on IDs only — never Name, never slug
-description: HARD RULE (Peter, 2026-08-19, nobodies-collective/Humans#1027). Row identity and uniqueness rest on Id columns only, 100% of the time. Never a unique index on a name, slug, or any user-visible/editable string. Seed and system code reference rows by Id, never `WHERE Name = ...`.
+description: HARD RULE. Row identity/uniqueness rests on Id columns only — never a unique index on a name, slug, or any user-editable string; seed code finds rows by Id, never `WHERE Name = ...`.
 ---
 
 Row identity and uniqueness are **Id columns only, 100% of the time**. Never put a unique constraint on a name, a slug, or any other user-visible or editable string.
