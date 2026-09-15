@@ -31,8 +31,10 @@ from datetime import datetime, timezone
 
 ORIGIN_RE = re.compile(r"github\.com[:/]peterdrier/Humans(\.git)?$")
 BRANCH_RE = re.compile(r"^section-doctor/(.+)$")
-WORDS = {w: i + 2 for i, w in enumerate(
-    "two three four five six seven eight nine ten eleven twelve".split())}  # "one" is a pronoun too
+WORDS = {w: i + 1 for i, w in enumerate(
+    "one two three four five six seven eight nine ten eleven twelve".split())}
+# "one" is a pronoun as often as a numeral: it is a must-fix only when it counts the one row under it,
+# and never an advisory.
 NUM = r"(?:[0-9]+|" + "|".join(WORDS) + ")"
 # Must-fix: a count with a structural tell — it names the rows under it, or it is a total.
 STRUCTURAL_RE = re.compile(
@@ -180,7 +182,10 @@ def prose_gate_hits(diff, read_file):
                 file_lines = read_file(path).splitlines()
             rows = _rows_under(file_lines, lineno - 1)
             counted = (rows and _num(m.group(1)) == rows) or HEADING_RE.match(l)
-            (must if counted else advisory).append(tag)
+            if counted:
+                must.append(tag)
+            elif m.group(1).lower() != "one":
+                advisory.append(tag)
 
     lineno = 0
     for l in diff.splitlines():
@@ -382,7 +387,9 @@ def file_comments(path):
         text = worktree_file(path)
         rows = _block_comments(text, (("@*", "*@"), ("<!--", "-->"))) + _cs_comments(text)
         return sorted(set(rows))
-    return None
+    if path.endswith((".csproj", ".props", ".targets", ".xml", ".config", ".md", ".html")):
+        return _block_comments(worktree_file(path), (("<!--", "-->"),))
+    return None   # .resx: its only comments are the schema boilerplate every file repeats
 
 
 def cmd_comments(a):

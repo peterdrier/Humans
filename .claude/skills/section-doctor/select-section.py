@@ -161,17 +161,24 @@ def last_doctored(s):
 
 
 def churn_since(sha, s):
-    """Lines added+deleted under the section's paths on origin/main since sha (0 = unchanged).
-    A binary file (numstat `-`) counts as one line: changed, however little it weighs."""
+    """(any, code): lines added+deleted on origin/main since sha across everything the run
+    inventories (any; 0 = unchanged, a binary file counts as one line), and within the
+    .cs/.cshtml files of the section and its Contracts leaf (code) -- the scope LOC is measured
+    over, so the churn ratio compares like with like."""
     rc, out = run(["git", "diff", "--numstat", sha + "..origin/main", "--"] + section_paths(s))
     if rc != 0:
-        return 0
-    total = 0
+        return 0, 0
+    total, code = 0, 0
+    code_roots = tuple(section_paths(s)[:2])
     for line in out.splitlines():
         parts = line.split("\t")
-        if len(parts) == 3:
-            total += int(parts[0]) + int(parts[1]) if parts[0].isdigit() and parts[1].isdigit() else 1
-    return total
+        if len(parts) != 3:
+            continue
+        n = int(parts[0]) + int(parts[1]) if parts[0].isdigit() and parts[1].isdigit() else 1
+        total += n
+        if parts[2].startswith(code_roots) and parts[2].endswith((".cs", ".cshtml")):
+            code += n
+    return total, code
 
 
 def main():
@@ -259,13 +266,15 @@ def main():
     # Re-doctor tier: eligible only if the section changed since its last run merged;
     # ranked by age of that run plus how much of the section was rewritten since, ties by
     # lowest score.
-    churn = {s: churn_since(doctored[s][1], s) for s in redoctor if doctored[s]}
+    churned = {s: churn_since(doctored[s][1], s) for s in redoctor if doctored[s]}
+    churn = {s: churned[s][0] for s in churned}          # any change: eligibility
+    code_churn = {s: churned[s][1] for s in churned}     # code change: the ratio
     now_t = time.time()
 
     def priority(s):
         age_days = (now_t - doctored[s][0]) / 86400
         loc = max(score(s)[1], 1)
-        return age_days + CHURN_DAYS_PER_PERCENT * 100.0 * churn[s] / loc
+        return age_days + CHURN_DAYS_PER_PERCENT * 100.0 * code_churn[s] / loc
 
     stale = sorted((s for s in churn if churn[s]), key=lambda s: (-priority(s), score(s)))
 
