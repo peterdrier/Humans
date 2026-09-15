@@ -268,7 +268,7 @@ def cmd_check_run_file(a):
     if not re.search(r"Independence check: (pass|fail)", text):
         missing.append("Independence check: pass|fail line")
     for path, _ in inventory(a.section):
-        if not re.search(r"`" + re.escape(path) + r"`[^\n]*\b(reviewed|changed|generated)\b", text):
+        if not re.search(r"`?" + re.escape(path) + r"`?[^\n]*\b(reviewed|changed|generated)\b", text):
             missing.append(f"coverage row: {path}")
     for t in THREADS:
         if not re.search(r"^\|\s*" + re.escape(t) + r"\s*\|", text, re.M):

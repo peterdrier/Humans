@@ -164,7 +164,7 @@ Contracts leaf, its test project and its guide page, with `*.Designer.cs` and
 path to at least one thread; a file no thread claims is a hole in the thread set, not a file to
 skip. `check-run-file` (Phase 7) refuses a run file that leaves a path without a disposition.
 
-**3b Behaviour first, tool-free.** Read the section for what it *does*, in its user's words: the
+**3b Behavior first, tool-free.** Read the section for what it *does*, in its user's words: the
 external surface grouped into question-shapes (not listed — the grouping is what makes collapse
 items visible); owned tables, cross-section calls in and out, config it reads; what its docs, guide
 page and specs said it would be — stated-but-unbuilt and built-differently-than-stated are deltas
@@ -192,12 +192,12 @@ file it claims. Tool runs — reforge `surface-score --format compact --group <S
 `section-conformance.yml` detectors, InspectCode — execute as background commands on the main
 thread; their output is written under `$RUNDIR/assessment/` and handed to the thread that
 classifies it, never re-run inside a subagent. Reading threads dispatch (small main-thread context
-is worth more than any model swap); Shape and Behaviour & bugs stay on main.
+is worth more than any model swap); Shape and Behavior & bugs stay on main.
 
 | Thread | Runs as | Lens |
 |---|---|---|
 | Shape | main | `/simplify`'s method against the target: shape mismatches, duplicated pipelines, pass-throughs, over-general options, dead and over-exposed surface, per-method external-caller counts |
-| Behaviour & bugs | main | walk each flow against the invariants; run real shipped content (markdown, resx, templates, seed data) through the real pipeline; read the auth paths by hand |
+| Behavior & bugs | main | walk each flow against the invariants; run real shipped content (markdown, resx, templates, seed data) through the real pipeline; read the auth paths by hand |
 | Freshness | `doctor-reader` (opus low) | `threads/freshness.md` |
 | Conformance | detectors on main + haiku | `threads/conformance.md` |
 | Tests | `doctor-reader` (opus low) | `threads/tests.md` |
@@ -318,9 +318,9 @@ writes, in this PR:
   blocked; `## Retro`; `## Needs Peter` (`- [ ]` unanswered, `- [x]` applied, one per line, each
   `<finding #> — <the question, in a phrase>`, citing the number and adding no prose a ruling could
   invalidate); `## Sweep queue` (`debt:` / `memory:` bullets, each naming its target file path, for
-  a later run's sweep; nothing ever ticks them); `## File coverage` (a disposition per inventory
-  path: `reviewed` — every name the file carries resolves, not merely opened — `changed`, or
-  `generated`); `## Threads` (one row per thread: how it ran, model copied from
+  a later run's sweep; nothing ever ticks them); `## File coverage` (a table, one row per inventory
+  path, `| \`path\` | disposition |`, the disposition on the path's own line: `reviewed` — every
+  name the file carries resolves, not merely opened — `changed`, or `generated`); `## Threads` (one row per thread: how it ran, model copied from
   `$RUNDIR/assessment/threads.md`, findings count, why if it did not run). No cost column, no
   diff-size block, no line counts, no reforge score: the PR carries those.
   `doctor.py check-run-file <path> --section <X>` says what is missing.
