@@ -1595,7 +1595,12 @@ internal sealed class AssemblyVoteService(
 
         return roster
             .Where(r => r.UserId is not null
-                && infos.ContainsKey(r.UserId.Value) && addresses.ContainsKey(r.UserId.Value))
+                && infos.ContainsKey(r.UserId.Value) && addresses.ContainsKey(r.UserId.Value)
+                // A tombstone — merged away or GDPR-erased — is dropped rather than mailed.
+                // It keeps a sentinel `@merged.local` / erased address that satisfies Identity
+                // uniqueness and reaches nobody, so sending would bounce the association's
+                // domain rather than quietly do nothing.
+                && !infos[r.UserId.Value].IsTombstone)
             .Select(r => (r, infos[r.UserId!.Value], addresses[r.UserId!.Value]))
             .ToList();
     }

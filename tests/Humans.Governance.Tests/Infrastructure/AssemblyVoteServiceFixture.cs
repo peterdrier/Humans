@@ -140,11 +140,21 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
         UserEmails.GetNotificationTargetEmailsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(
-                new Dictionary<Guid, string> { [survivor] = survivor + "@example.org" }));
+                new Dictionary<Guid, string>
+                {
+                    [survivor] = survivor + "@example.org",
+                    // The real service falls back to User.Email when a user has no
+                    // notification-target row, and the merge scrubbed the tombstone's to a
+                    // sentinel — so asking for a tombstone's address yields one that reaches
+                    // nobody rather than nothing at all.
+                    [source] = TombstoneAddress(source)
+                }));
 
         Users.GetMergedSourceIdsAsync(survivor, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlySet<Guid>>(new HashSet<Guid> { source }));
     }
+
+    private static string TombstoneAddress(Guid id) => $"merged-{id:N}@merged.local";
 
     private UserInfo TombstoneInfo(Guid id, Guid? mergedTo) =>
         new User
@@ -152,7 +162,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
             Id = id,
             DisplayName = "Member " + id,
             UserName = id + "@example.org",
-            Email = id + "@example.org",
+            Email = mergedTo is null ? id + "@example.org" : TombstoneAddress(id),
             PreferredLanguage = "en",
             State = UserState.Active,
             MergedToUserId = mergedTo,

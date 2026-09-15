@@ -1595,6 +1595,27 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task RunLapseAndReminderSweepAsync_DoesNotMailARosterRowLeftOnAMergeTombstone()
+    {
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(12));
+        var mergedAway = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        _fx.StubMergedInto(mergedAway, survivor);
+        await _fx.AddRosterRowAsync(vote.Id, mergedAway, isOfficial: true, notified: false);
+
+        await _fx.Service.RunLapseAndReminderSweepAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        // The merge leaves the roster row where it is and scrubs the tombstone's address to
+        // a `@merged.local` sentinel that reaches nobody. Mailing it would bounce, so the row
+        // is dropped; the entitlement is unaffected and the survivor votes from the vote page.
+        _fx.Messages.DidNotReceive().AssemblyVoteReminder(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<LocalDateTime>(),
+            Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
     public async Task ReassignAsync_WhenBothAccountsVoted_LeavesBothRowsAndBothBallotsAsCast()
     {
         var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
