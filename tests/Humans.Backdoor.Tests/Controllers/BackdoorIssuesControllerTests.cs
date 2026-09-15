@@ -310,20 +310,6 @@ public class BackdoorIssuesControllerTests
     }
 
     [HumansFact]
-    public async Task UpdateStatus_records_the_key_owner_as_actor()
-    {
-        var issueId = Guid.NewGuid();
-        _issues.UpdateStatusAsync(issueId, Arg.Any<IssueViewer>(), IssueStatus.Resolved, KeyOwnerId, Arg.Any<CancellationToken>())
-            .Returns(Task.CompletedTask);
-
-        var result = await _sut.UpdateStatus(issueId, new UpdateIssueStatusModel { Status = IssueStatus.Resolved });
-
-        result.Should().BeOfType<OkObjectResult>();
-        await _issues.Received(1).UpdateStatusAsync(
-            issueId, Arg.Any<IssueViewer>(), IssueStatus.Resolved, actorUserId: KeyOwnerId, ct: Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
     public async Task UpdateStatus_returns_NotFound_when_service_throws_invalid_op()
     {
         var issueId = Guid.NewGuid();
@@ -356,13 +342,16 @@ public class BackdoorIssuesControllerTests
     // ==========================================================================
 
     /// <summary>
-    /// The queue is fetched as the key's owner, not as a full admin: a Board-only key holder
-    /// sees exactly what the Issues UI would show that person.
+    /// The queue is fetched as the key's owner, with the owner's own roles: a Board-only key
+    /// holder sees exactly what the Issues UI would show that person, and an admin's key
+    /// carries the claim Issues derives admin reach from.
     /// </summary>
-    [HumansFact]
-    public async Task List_reads_the_queue_as_the_key_owner()
+    [HumansTheory]
+    [InlineData("Board")]
+    [InlineData(RoleNames.Admin)]
+    public async Task List_reads_the_queue_as_the_key_owner(string role)
     {
-        WithRoles("Board");
+        WithRoles(role);
         StubList();
 
         await _sut.List(status: null, category: null, section: null, assignee: null);
@@ -371,22 +360,7 @@ public class BackdoorIssuesControllerTests
             Arg.Any<IssueListFilter>(),
             Arg.Is<IssueViewer>(v =>
                 v.UserId == KeyOwnerId
-                && v.Roles.SequenceEqual(new[] { "Board" })
-                && !v.IsAdmin),
-            Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task An_admin_key_owner_reads_the_queue_as_an_admin()
-    {
-        WithRoles(RoleNames.Admin);
-        StubList();
-
-        await _sut.List(status: null, category: null, section: null, assignee: null);
-
-        await _issues.Received(1).GetIssueListAsync(
-            Arg.Any<IssueListFilter>(),
-            Arg.Is<IssueViewer>(v => v.UserId == KeyOwnerId && v.IsAdmin),
+                && v.Roles.SequenceEqual(new[] { role })),
             Arg.Any<CancellationToken>());
     }
 
@@ -431,29 +405,11 @@ public class BackdoorIssuesControllerTests
         WithRoles("Board");
         var issueId = Guid.NewGuid();
 
-        await _sut.UpdateStatus(issueId, new UpdateIssueStatusModel { Status = IssueStatus.Resolved });
-
-        await _issues.Received(1).UpdateStatusAsync(
-            issueId, BoardKeyOwner(), IssueStatus.Resolved, KeyOwnerId, Arg.Any<CancellationToken>());
-    }
-
-    /// <summary>
-    /// Refusal is Issues' answer, not the controller's: an issue out of the key's reach comes
-    /// back from the service as "not found", and the patch pipeline turns that into a 404.
-    /// </summary>
-    [HumansFact]
-    public async Task A_patch_on_an_issue_out_of_reach_is_a_404()
-    {
-        WithRoles("Board");
-        var issueId = Guid.NewGuid();
-        _issues.UpdateStatusAsync(
-                issueId, Arg.Any<IssueViewer>(), Arg.Any<IssueStatus>(), Arg.Any<Guid?>(),
-                Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(new InvalidOperationException($"Issue {issueId} not found")));
-
         var result = await _sut.UpdateStatus(issueId, new UpdateIssueStatusModel { Status = IssueStatus.Resolved });
 
-        result.Should().BeOfType<NotFoundResult>();
+        result.Should().BeOfType<OkObjectResult>();
+        await _issues.Received(1).UpdateStatusAsync(
+            issueId, BoardKeyOwner(), IssueStatus.Resolved, actorUserId: KeyOwnerId, ct: Arg.Any<CancellationToken>());
     }
 
     /// <summary>The viewer <see cref="WithRoles"/>("Board") should produce.</summary>
