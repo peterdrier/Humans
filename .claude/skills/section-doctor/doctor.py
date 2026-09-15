@@ -10,13 +10,21 @@
     doctor.py resolve-check <sha>       the commit exists and is on origin/<current branch>
     doctor.py inventory <Section>       every tracked path of the section (Phase 3a), generated ones tagged
     doctor.py check-run-file <path> --section <Section>   the run file carries every required block and a disposition per inventory path
+    doctor.py runfile <Section> [--invocation TEXT] [--budget B]   create the run file, or refresh its coverage and thread tables
+    doctor.py comments <Section>    every comment in the section's code, path:line: text (the Comments thread's input)
+    doctor.py history <Section>     lines narrating a prior state across docs and comments (the History thread's candidates)
+    doctor.py trace <doc>…          the trace gate: every backticked name, route, path and file:line resolved against the tree
+    doctor.py blast <symbol>…       repo-wide word-bounded git grep per symbol (blast radius before a strike names one)
+    doctor.py review-pack <Section> <what> [--finding TEXT]   capture the uncommitted diff, its blast grep and file heads for the reviewer; name the reviewer agent
 
 Every subcommand derives the run's identity from the branch (`section-doctor/<TS>`), so nothing
 depends on shell state surviving between tool calls. Non-zero exit means "stop and look".
 """
 import argparse
+import glob
 import os
 import re
+import signal
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -290,7 +298,431 @@ def cmd_resolve_check(a):
     print(f"{a.sha} is on origin/{b}")
 
 
+# ---- Phase 3–4 extractors: what a thread or reviewer would otherwise read whole ----
+
+def _cs_comments(text):
+    """[(line, text)] of every comment in a C# file — `//`, `///`, `/* */` — with string and
+    char literals skipped, so a URL inside a string is not a comment."""
+    out, in_block = [], False
+    for n, line in enumerate(text.splitlines(), 1):
+        i, in_str, verbatim = 0, False, False
+        if in_block:
+            end = line.find("*/")
+            if end < 0:
+                out.append((n, line.strip()))
+                continue
+            out.append((n, line[:end].strip()))
+            i, in_block = end + 2, False
+        while i < len(line):
+            c = line[i]
+            if in_str:
+                if c == "\\" and not verbatim:
+                    i += 2
+                    continue
+                if c == '"':
+                    if verbatim and line[i + 1:i + 2] == '"':
+                        i += 2
+                        continue
+                    in_str = False
+                i += 1
+                continue
+            if c == '"':
+                in_str, verbatim = True, "@" in line[max(0, i - 2):i]
+                i += 1
+                continue
+            if c == "'":
+                j = line.find("'", i + 3 if line[i + 1:i + 2] == "\\" else i + 2)
+                i = j + 1 if j > 0 else i + 1
+                continue
+            if line.startswith("//", i):
+                out.append((n, line[i:].strip()))
+                break
+            if line.startswith("/*", i):
+                end = line.find("*/", i + 2)
+                if end < 0:
+                    out.append((n, line[i:].strip()))
+                    in_block = True
+                    break
+                out.append((n, line[i:end + 2].strip()))
+                i = end + 2
+                continue
+            i += 1
+    return [(n, t) for n, t in out if t]
+
+
+def _block_comments(text, pairs):
+    """[(line, text)] of block comments delimited by any of `pairs` ((open, close), …)."""
+    out, cur = [], None
+    for n, line in enumerate(text.splitlines(), 1):
+        i = 0
+        while i < len(line):
+            if cur:
+                end = line.find(cur[1], i)
+                if end < 0:
+                    out.append((n, line[i:].strip()))
+                    break
+                out.append((n, line[i:end].strip()))
+                i, cur = end + len(cur[1]), None
+                continue
+            starts = [(line.find(o, i), (o, c)) for o, c in pairs if line.find(o, i) >= 0]
+            if not starts:
+                break
+            pos, cur = min(starts)
+            i = pos + len(cur[0])
+    return [(n, t) for n, t in out if t]
+
+
+def file_comments(path):
+    """Comment rows of one inventory file, or None when the file type carries no comments."""
+    if path.endswith(".cs"):
+        return _cs_comments(worktree_file(path))
+    if path.endswith(".cshtml"):
+        return _block_comments(worktree_file(path), (("@*", "*@"), ("<!--", "-->")))
+    return None
+
+
+def cmd_comments(a):
+    """Every comment in the section's code, `path:line: text` — the Comments thread's whole
+    input, so it reads a few hundred lines instead of every source file."""
+    for path, gen in inventory(a.section):
+        rows = None if gen else file_comments(path)
+        for n, t in rows or ():
+            print(f"{path}:{n}: {t}")
+
+
+HISTORY_RE = re.compile(
+    r"\b(?:used to|previously|formerly|no longer|originally|historically|legacy|"
+    r"was (?:moved|renamed|removed|replaced|split|extracted|introduced)|renamed from|replaced by|"
+    r"migrated from|the first (?:section|to)|before 20\d\d|as of 20\d\d|post-mortem|retro|"
+    r"lane \d+|PR ?#?\d+|Humans#\d+)\b|\b20\d\d-\d\d-\d\d\b|(?<![\w&])#\d{3,5}\b",
+    re.IGNORECASE)
+
+
+def cmd_history(a):
+    """Lines that narrate a prior state — dates, PR numbers, 'used to', 'no longer' — across
+    the section's docs and code comments: the History thread's candidate list, not its verdict."""
+    for path, gen in inventory(a.section):
+        if gen:
+            continue
+        rows = file_comments(path)
+        if rows is None and path.endswith((".md", ".yml", ".yaml")):
+            rows = list(enumerate(worktree_file(path).splitlines(), 1))
+        for n, t in rows or ():
+            if HISTORY_RE.search(t):
+                print(f"{path}:{n}: {t.strip()}")
+
+
+CODE_GLOBS = ("*.cs", "*.cshtml", "*.resx", "*.json", "*.yml", "*.yaml", "*.js", "*.csproj",
+              "*.props", "*.sql", "*.sh", ":(exclude)docs/", ":(exclude).claude/", ":(exclude)memory/")
+BLAST_GLOBS = ("*.cs", "*.cshtml", "*.resx", "*.json", "*.yml", "*.yaml", "*.js", "*.csproj", "*.props",
+               "*.sql", "*.sh", "*.py", "*.md", ":(exclude)docs/reforge/")
+BLAST_CAP = 60
+BACKTICK_RE = re.compile(r"`([^`\n]+)`")
+LINE_REF_RE = re.compile(r"^([^\s:]+/[^\s:]+):(\d+)(?:-\d+)?$")
+IDENT_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{2,}")
+PROSE_TOKEN_RE = re.compile(r"^[a-z][a-z -]*$")   # `keep`, `not a defect`: words, not names
+PATH_TOKEN_RE = re.compile(r"^(?:src|tests|docs|memory|\.claude|\.github)/|\.[a-z0-9]{1,6}$")
+SECTION_ROOT_RE = re.compile(r"^(src/Sections/Humans\.[A-Za-z0-9]+)/")
+
+
+def grep_hits(needle, globs, word=True, exclude=()):
+    """Working-tree `git grep -n -F` lines for `needle` under `globs`, minus files in `exclude`;
+    hits under `src/` first, then `tests/`, so the first hit is the one worth citing."""
+    p = subprocess.run(["git", "grep", "-n", "-I", "-F"] + (["-w"] if word else []) + ["-e", needle, "--", *globs],
+                       capture_output=True, text=True)
+    hits = [h for h in p.stdout.splitlines() if h.split(":", 1)[0] not in exclude]
+    return sorted(hits, key=lambda h: (not h.startswith("src/"), not h.startswith("tests/")))
+
+
+def _path_candidates(tok, doc):
+    """A doc names paths relative to itself, its section root or `src/Sections/` as often as to the repo."""
+    tok = tok.rstrip("/")
+    root = SECTION_ROOT_RE.match(doc)
+    return ([tok, os.path.join(os.path.dirname(doc), tok), os.path.join("src/Sections", tok)]
+            + ([os.path.join(root.group(1), tok)] if root else []))
+
+
+def trace_token(tok, doc, exclude):
+    """(status, detail): ok / MISS / CHECK (a route whose literal is not in the code: read the
+    attribute by hand) / skip (a word or an extension, not a name)."""
+    m = LINE_REF_RE.match(tok)
+    if m:
+        for path in _path_candidates(m.group(1), doc):
+            if os.path.isfile(path):
+                n = len(worktree_file(path).splitlines())
+                return ("ok", f"{path}, {n} lines") if int(m.group(2)) <= n else ("MISS", f"{path} has {n} lines")
+        return "MISS", "no such file"
+    if " " in tok or PROSE_TOKEN_RE.match(tok) or (tok.startswith(".") and "/" not in tok) or not IDENT_RE.search(tok) \
+            or re.match(r"^[a-z]+:", tok) or "<" in tok or tok.startswith("$"):
+        return "skip", "a word, a placeholder, an extension or a URL, not a name"
+    if "*" in tok and "/" in tok and not tok.startswith("/"):
+        return ("ok", "glob") if any(glob.glob(c, recursive=True) for c in _path_candidates(tok, doc)) else ("MISS", "glob matches nothing")
+    if "*" in tok and not tok.startswith("/"):
+        hits = grep_hits(tok.split("*")[0], CODE_GLOBS, word=False, exclude=exclude)
+        return ("ok", f"prefix, {len(hits)} hit(s), first {hits[0]}") if hits else ("MISS", "prefix matches nothing")
+    if tok.startswith("/"):
+        literal = tok.rstrip("/*")
+        for needle in (literal, re.split(r"[{*]", literal)[0].rstrip("/")):
+            hits = grep_hits(needle, ("*.cs", "*.cshtml", "*.js"), word=False, exclude=exclude)
+            if hits:
+                return "ok", f"route, {len(hits)} hit(s) for {needle}, first {hits[0]}"
+        return "CHECK", "route literal not in code; read the attribute"
+    if PATH_TOKEN_RE.search(tok):
+        for c in _path_candidates(tok, doc):
+            if os.path.exists(c):
+                return "ok", c
+        return "MISS", "no such path"
+    hits = grep_hits(tok, CODE_GLOBS, word=False, exclude=exclude)
+    if hits:
+        return "ok", f"{len(hits)} hit(s), first {hits[0]}"
+    first, missing = None, []
+    for ident in IDENT_RE.findall(tok):
+        h = grep_hits(ident, CODE_GLOBS, word=True, exclude=exclude)
+        if not h:
+            missing.append(ident)
+        first = first or (h[0] if h else None)
+    if missing:
+        return "MISS", "no hit for " + ", ".join(missing)
+    return "ok", f"every segment hits, first {first}"
+
+
+def cmd_trace(a):
+    """The trace gate (3c, Phase 7): every backticked name, route, path and file:line in the
+    given docs, resolved against the tree. Prints one line per token; non-zero on any MISS."""
+    exclude, seen, misses = set(a.file), set(), 0
+    for doc in a.file:
+        for tok in BACKTICK_RE.findall(worktree_file(doc)):
+            tok = tok.strip()
+            if not tok or tok in seen or tok.startswith("-"):
+                continue
+            seen.add(tok)
+            status, detail = trace_token(tok, doc, exclude)
+            if status == "skip" and not a.all:
+                continue
+            misses += status == "MISS"
+            print(f"{status:5} {tok}  ({detail})")
+    if misses:
+        sys.exit(f"trace: {misses} name(s) do not resolve")
+    print("trace: every name resolves")
+
+
+def blast(symbol):
+    return grep_hits(symbol, BLAST_GLOBS, word=True)
+
+
+def print_blast(symbol, hits, out=print):
+    out(f"== {symbol}: {len(hits)} hit(s)")
+    for h in hits[:BLAST_CAP]:
+        out("  " + h)
+    if len(hits) > BLAST_CAP:
+        out(f"  ... {len(hits) - BLAST_CAP} more: git grep -n -w -F -e {symbol}")
+
+
+def cmd_blast(a):
+    """Repo-wide, word-bounded `git grep -n` per symbol across code and docs — the blast
+    radius a strike bounds before it names a symbol."""
+    for s in a.symbol:
+        print_blast(s, blast(s))
+
+
+# Reviewer tier per section: the cost of a wrong approval, not the section's size. A section
+# in neither set gets the middle tier. Peter moves sections between rows.
+REVIEW_TIERS = (
+    ("doctor-reviewer-critical", "fable high", {
+        "Users", "Auth", "Backdoor", "Gdpr", "Consent", "Governance", "Finance", "Stripe", "Holded",
+        "Tickets", "TicketTailor", "Teams", "Onboarding", "GoogleIntegration", "AuditLog", "Email"}),
+    ("doctor-reviewer-light", "opus medium", {
+        "Tour", "Guide", "Debug", "Development", "Feedback", "Rideshare", "CityPlanning", "Agent"}),
+)
+REVIEW_TIER_DEFAULT = ("doctor-reviewer", "opus high")
+SYMBOL_RE = re.compile(r"\b[A-Z][A-Za-z0-9]{2,}\b")
+UBIQUITOUS = 100   # a removed name with this many hits left is a framework word, not a sweep miss
+HEAD_LINES = 15
+
+
+def reviewer_for(section):
+    for agent, model, sections in REVIEW_TIERS:
+        if section in sections:
+            return agent, model
+    return REVIEW_TIER_DEFAULT
+
+
+def cmd_review_pack(a):
+    """Capture the strike for the reviewer gate: the uncommitted diff, the repo-wide blast grep
+    of every name the diff removes (run against the edited tree, so the hits are what the
+    sweep missed), the head of every touched file, and a brief. Prints the pack directory and
+    the reviewer agent to dispatch for this section."""
+    root = os.path.join(rundir(), "review")
+    os.makedirs(root, exist_ok=True)
+    slug = re.sub(r"[^A-Za-z0-9]+", "-", a.what).strip("-").lower()[:40]
+    pack = os.path.join(root, f"{len(os.listdir(root)) + 1:02d}-{slug}")
+    os.makedirs(pack)
+    diff = git("diff", "HEAD")
+    untracked = git("ls-files", "--others", "--exclude-standard").split()
+    for u in untracked:
+        p = subprocess.run(["git", "diff", "--no-index", "--", "/dev/null", u], capture_output=True, text=True)
+        diff += "\n" + p.stdout
+    if not diff.strip():
+        sys.exit("review-pack: the tree has no uncommitted change to review")
+    with open(os.path.join(pack, "diff.patch"), "w", encoding="utf-8") as f:
+        f.write(diff)
+    removed, added = set(), set()
+    for l in diff.splitlines():
+        if l.startswith("-") and not l.startswith("---"):
+            removed.update(SYMBOL_RE.findall(l))
+        elif l.startswith("+") and not l.startswith("+++"):
+            added.update(SYMBOL_RE.findall(l))
+    gone, live, ubiquitous = [], [], []
+    for s in sorted(removed - added):
+        hits = blast(s)
+        if not hits:
+            gone.append(s)
+        elif len(hits) > UBIQUITOUS:
+            ubiquitous.append(s)
+        else:
+            live.append((s, hits))
+    with open(os.path.join(pack, "blast.md"), "w", encoding="utf-8") as f:
+        w = lambda s="": f.write(s + "\n")
+        w("# Names the diff removes, grepped repo-wide against the edited tree")
+        w()
+        w("## Still referenced — what the sweep left, each one a question")
+        w()
+        for s, hits in live:
+            print_blast(s, hits, out=w)
+        w()
+        w("## No reference left: " + (", ".join(gone) or "none"))
+        w()
+        w("## Skipped as ubiquitous (over %d hits): " % UBIQUITOUS + (", ".join(ubiquitous) or "none"))
+    touched = git("diff", "--name-only", "HEAD").split() + untracked
+    with open(os.path.join(pack, "heads.md"), "w", encoding="utf-8") as f:
+        f.write("# The first %d lines of every touched file, after the edit\n" % HEAD_LINES)
+        for t in touched:
+            f.write(f"\n## {t}\n\n```\n")
+            if os.path.isfile(t):
+                f.write("\n".join(worktree_file(t).splitlines()[:HEAD_LINES]) + "\n")
+            else:
+                f.write("(deleted)\n")
+            f.write("```\n")
+    agent, model = reviewer_for(a.section)
+    top = git("rev-parse", "--show-toplevel")
+    with open(os.path.join(pack, "brief.md"), "w", encoding="utf-8") as f:
+        f.write(f"# Review: {a.what}\n\nSection: {a.section}\nFinding: {a.finding or '(see prompt)'}\n\n"
+                f"Rules: `{top}/.claude/skills/section-doctor/threads/review.md`.\n"
+                f"Read in this order: `diff.patch`, `blast.md`, `heads.md`; then the target shape at\n"
+                f"`{top}/src/Sections/Humans.{a.section}/Docs/health.md` (load-bearing weirdness) and\n"
+                f"`{top}/docs/architecture/code-review-rules.md` for the shape the change collapses into.\n")
+    print(f"PACK: {pack}")
+    print(f"REVIEWER: {agent} ({model})")
+
+
+# ---- The run file: header and the two mechanical tables ----
+
+RUN_FILE_HEAD_BLOCKS = ("## Assessment summary", "## Findings", "## Worked", "## Skipped", "## Retro",
+                        "## Needs Peter", "## Sweep queue")
+COVERAGE_ROW_RE = re.compile(r"^\|\s*`?([^`|]+?)`?\s*\|\s*([^|]*?)\s*\|")
+THREAD_ROW_RE = re.compile(r"^\|\s*([^|]+?)\s*\|\s*([^|]*?)\s*\|\s*([^|]*?)\s*\|\s*([^|]*?)\s*\|")
+MAIN_THREADS = ("Shape", "Behavior & bugs")
+
+
+def _block(text, heading):
+    """(start, end) of the block under `heading` up to the next `## `, or None."""
+    m = re.search(r"^" + re.escape(heading) + r"[ \t]*$", text, re.M)
+    if not m:
+        return None
+    nxt = re.search(r"^## ", text[m.end():], re.M)
+    return m.start(), (m.end() + nxt.start()) if nxt else len(text)
+
+
+def _replace_block(text, heading, body):
+    span = _block(text, heading)
+    block = heading + "\n\n" + body.rstrip("\n") + "\n\n"
+    if span is None:
+        return text.rstrip("\n") + "\n\n" + block
+    return text[:span[0]] + block + text[span[1]:]
+
+
+def _rows(text, heading, row_re):
+    span = _block(text, heading)
+    if span is None:
+        return {}
+    out = {}
+    for l in text[span[0]:span[1]].splitlines():
+        m = row_re.match(l)
+        if m and not set(m.group(2)) <= set("-: ") and m.group(1).lower() not in ("path", "thread"):
+            out[m.group(1)] = m.groups()[1:]
+    return out
+
+
+def coverage_table(section, existing):
+    """One row per inventory path. `generated` and `changed` (against the branch point,
+    uncommitted edits included) are read from git; `reviewed` is the run's own claim and is
+    kept where the run already wrote it."""
+    base = git("merge-base", "origin/main", "HEAD")
+    changed = set(git("diff", "--name-only", base).split()) | set(git("ls-files", "--others", "--exclude-standard").split())
+    rows = ["| Path | Disposition |", "|---|---|"]
+    for path, gen in inventory(section):
+        disp = "generated" if gen else "changed" if path in changed else (existing.get(path) or ("",))[0]
+        rows.append(f"| `{path}` | {disp} |")
+    return "\n".join(rows)
+
+
+def threads_table(existing):
+    """One row per thread: how it ran and on what, from the dispatch log; findings count kept
+    from the run's own row."""
+    dispatched = {}
+    log = os.path.join(rundir(), "assessment", "threads.md")
+    if os.path.exists(log):
+        for l in worktree_file(log).splitlines():
+            m = THREAD_ROW_RE.match(l)
+            if m and m.group(1).lower() != "thread" and not set(m.group(2)) <= set("-: "):
+                dispatched[m.group(1).lower().split()[0]] = (m.group(2), m.group(3))
+    rows = ["| Thread | How it ran | Model | Findings |", "|---|---|---|---|"]
+    for t in THREADS:
+        prev = existing.get(t, ("", "", ""))
+        d = dispatched.get(t.lower().split()[0])
+        if d:
+            how, model = (f"subagent (`{d[1]}`)" if d[1] != "-" else "subagent"), d[0]
+        elif t in MAIN_THREADS:
+            how, model = "main", prev[1]
+        else:
+            how, model = prev[0], prev[1]
+        rows.append(f"| {t} | {how} | {model} | {prev[2]} |")
+    return "\n".join(rows)
+
+
+def cmd_runfile(a):
+    """Create the run file (Phase 2) or refresh its mechanical tables (Phase 5). Idempotent:
+    the header and the prose blocks are written once and never touched again; `## File
+    coverage` and `## Threads` are regenerated from git and the dispatch log each call, keeping
+    the dispositions and findings counts the run wrote by hand."""
+    ts = BRANCH_RE.match(branch())
+    if not ts:
+        sys.exit(f"not on a section-doctor/<TS> branch ({branch()})")
+    ts, date = ts.group(1), ts.group(1)[:10]
+    marker = f"branch `section-doctor/{ts}`"
+    path = f"docs/health/runs/{date}-{a.section}.md"
+    if os.path.exists(path) and marker not in worktree_file(path):
+        path = f"docs/health/runs/{date}-{a.section}-{ts[11:15]}Z.md"
+    if os.path.exists(path):
+        text = worktree_file(path)
+    else:
+        anchor = git("rev-parse", "--short", git("merge-base", "origin/main", "HEAD"))
+        text = (f"# section-doctor — {a.section} — {date}\n\n"
+                f"- Invocation: {a.invocation}\n"
+                f"- Anchor commit: `{anchor}` (origin/main at branch point); {marker}.\n"
+                f"- Budget: {a.budget}.\n"
+                f"- PR: pending\n\n" + "".join(b + "\n\n" for b in RUN_FILE_HEAD_BLOCKS))
+    text = _replace_block(text, "## File coverage", coverage_table(a.section, _rows(text, "## File coverage", COVERAGE_ROW_RE)))
+    text = _replace_block(text, "## Threads", threads_table(_rows(text, "## Threads", THREAD_ROW_RE)))
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
+    print(path)
+
+
+
 def main():
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)   # `| head` is not an error
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("rundir"); s.add_argument("--ts"); s.set_defaults(fn=cmd_rundir)
@@ -305,6 +737,15 @@ def main():
     s = sub.add_parser("inventory"); s.add_argument("section"); s.set_defaults(fn=cmd_inventory)
     s = sub.add_parser("check-run-file"); s.add_argument("path"); s.add_argument("--section", required=True)
     s.set_defaults(fn=cmd_check_run_file)
+    s = sub.add_parser("runfile"); s.add_argument("section"); s.add_argument("--invocation", default="unattended daily run, no arguments")
+    s.add_argument("--budget", default="2.5h"); s.set_defaults(fn=cmd_runfile)
+    s = sub.add_parser("comments"); s.add_argument("section"); s.set_defaults(fn=cmd_comments)
+    s = sub.add_parser("history"); s.add_argument("section"); s.set_defaults(fn=cmd_history)
+    s = sub.add_parser("trace"); s.add_argument("file", nargs="+"); s.add_argument("--all", action="store_true", help="print skipped word tokens too")
+    s.set_defaults(fn=cmd_trace)
+    s = sub.add_parser("blast"); s.add_argument("symbol", nargs="+"); s.set_defaults(fn=cmd_blast)
+    s = sub.add_parser("review-pack"); s.add_argument("section"); s.add_argument("what"); s.add_argument("--finding")
+    s.set_defaults(fn=cmd_review_pack)
     a = p.parse_args()
     a.fn(a)
 

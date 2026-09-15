@@ -64,11 +64,11 @@ resx, code findings queue, the run file's header and the PR body say so.
 
 | File | Governs |
 |---|---|
-| `doctor.py` | the mechanics: `rundir`, `mark`, `push` (origin gate), `commit` (prose gate), `prose-gate`, `dispatch-log`, `inventory`, `check-run-file`, `resolve-check` |
+| `doctor.py` | the mechanics: `rundir`, `mark`, `push` (origin gate), `commit` (prose gate), `prose-gate`, `dispatch-log`, `inventory`, `runfile`, `check-run-file`, `resolve-check`; the extractors `comments`, `history`, `trace`, `blast`, `review-pack` — each replaces reading the tree for one question |
 | `select-section.py` | Phase 2's selection maths — never re-derived in-band |
 | `cost-report.py` | Phase 7's cost table from the phase log and the `thread:` markers |
 | `threads/CONTRACT.md` + `threads/<lens>.md` | what a dispatched thread reads and returns; one file per lens |
-| `.claude/agents/doctor-reader.md`, `doctor-reviewer.md` | the reading-thread and reviewer agent types (the only place effort is pinned) |
+| `.claude/agents/doctor-reader.md`, `doctor-reviewer*.md` | the reading-thread agent and the three reviewer tiers (the only place model and effort are pinned); `REVIEW_TIERS` in `doctor.py` maps a section to its tier |
 
 Every subcommand derives the run from its branch, so nothing depends on shell state surviving
 between tool calls. **Every commit is `doctor.py commit` and every push is `doctor.py push`** —
@@ -145,9 +145,10 @@ sections changed since their last run, ranked by age plus churn. It prints `SECT
 worktree). `--section` skips the pick but still runs `--blocked-only`; a blocked section stops
 the run. A low score is not evidence of health — it measures structure, never correctness.
 
-Then, before any reading: commit the run file's header alone
-(`docs/health/runs/<yyyy-mm-dd>-<Section>.md`: invocation, anchor commit, branch, budget,
-`PR: pending`) and `doctor.py push` — that file's path is how the next selector sees this run.
+Then, before any reading: `doctor.py runfile <Section> --invocation "<how this run was invoked>"`
+writes `docs/health/runs/<yyyy-mm-dd>-<Section>.md` (header, empty blocks, the coverage and
+thread tables); commit it alone and `doctor.py push` — that file's path is how the next selector
+sees this run.
 Rename the session `section-doctor: <Section> — <yyyy-mm-dd>` via `set_session_title` where the
 tool exists; skip silently otherwise.
 
@@ -178,10 +179,11 @@ reader would reach for and shouldn't, including ones Peter declined). Plus a loa
 list: essential complexity and settled decisions, with why — large-and-blessed code is recorded
 here, never as debt. No generated-by subtitle; the History table is the only dated content.
 
-*Trace gate, before 3d and again before Phase 4:* every identifier, route, policy, job id, audit
-action and path the target names is `git grep`ped against the tree; every invariant cites the
-`file:line` that enforces it — a bullet with no enforcement site is not an invariant and moves to
-seams, deliberately-not-done, or out. A claim taken from the section's own prose is traced like any
+*Trace gate, before 3d and again before Phase 4:* `doctor.py trace <health.md>` resolves every
+backticked name, route, path and `file:line` the target names against the tree — a `MISS` is a
+hard stop, a `CHECK` (a route whose literal is not in the code) is read by hand; every invariant
+cites the `file:line` that enforces it — a bullet with no enforcement site is not an invariant
+and moves to seams, deliberately-not-done, or out. A claim taken from the section's own prose is traced like any
 other. Part 1 never restates an invariant part 4 owns. A test this run adds that contradicts an
 invariant line is a hard stop: one of them is wrong, find out which. Regenerate the target every
 run and diff it against the previous one; the run file says whether the section moved or the
@@ -191,7 +193,9 @@ earlier target was wrong.
 file it claims. Tool runs — reforge `surface-score --format compact --group <Section>`, the
 `section-conformance.yml` detectors, InspectCode — execute as background commands on the main
 thread; their output is written under `$RUNDIR/assessment/` and handed to the thread that
-classifies it, never re-run inside a subagent. Reading threads dispatch (small main-thread context
+classifies it, never re-run inside a subagent. The same for the extractors: `doctor.py comments`
+and `doctor.py history` write the Comments and History threads' whole input there, so those
+threads read a few hundred lines instead of every source file. Reading threads dispatch (small main-thread context
 is worth more than any model swap); Shape and Behavior & bugs stay on main.
 
 | Thread | Runs as | Lens |
@@ -202,8 +206,8 @@ is worth more than any model swap); Shape and Behavior & bugs stay on main.
 | Conformance | detectors on main + haiku | `threads/conformance.md` |
 | Tests | `doctor-reader` (opus low) | `threads/tests.md` |
 | Prose & surface | background + haiku | `threads/prose-surface.md` |
-| History | `doctor-reader` (opus low) | `threads/history.md` |
-| Comments | `doctor-reader` (opus low) | `threads/comments.md` |
+| History | `doctor-reader` (opus low) | `threads/history.md`, over `doctor.py history <Section>` |
+| Comments | `doctor-reader` (opus low) | `threads/comments.md`, over `doctor.py comments <Section>` |
 | Inbox | fetch on main + `doctor-reader` (opus low) | `threads/inbox.md` |
 
 A dispatched prompt is short: line one `thread: <Name>`; the section; its inventory slice (members,
@@ -250,8 +254,8 @@ verifies every addition against the source as it would a review finding
 class, and records the kept ones in the run file beside the findings they extend. Judgment strikes
 — `collapse`, `rearch`, any deletion whose safety depends on cross-file context — stay on main.
 
-**Before a strike names a symbol,** bound its blast radius by repo-wide `git grep -n`, never by
-eye; a `dedup` greps the literal expression; a cut reads the whole file. A `dedup` or `collapse`
+**Before a strike names a symbol,** bound its blast radius with `doctor.py blast <symbol>`
+(repo-wide, word-bounded, code and docs), never by eye; a `dedup` greps the literal expression; a cut reads the whole file. A `dedup` or `collapse`
 checks the shape it collapses *into* against `docs/architecture/code-review-rules.md` and the
 section's load-bearing weirdness, and runs the linter that owns the shape (`.claude/razor-lint.sh`
 for views). Fix it right, reuse first, and name in the commit the `memory/` rule governing the shape
@@ -263,10 +267,16 @@ the solution build where there is none) after the last edit the commit carries; 
 job selects it: `Humans.Integration.Tests` is excluded from CI by design
 (`memory/process/integration-tests-are-not-ci-tests.md`) — a test that must run lives in
 `tests/Humans.<Section>.Tests/`, and one that runs nowhere is said to run nowhere. Non-mechanical
-changes (deletions beyond plainly-dead code, structural moves) go to the `doctor-reviewer` agent
-(`thread: review <what>`; a plain opus subagent with its prompt if the type is unavailable):
-score-blind, default-reject, reading the uncommitted diff. **No strike edits while a verdict is
-pending** — the reviewer judges the tree it was shown or its approval means nothing. Reject: rework
+changes (deletions beyond plainly-dead code, structural moves) go through the reviewer gate:
+`doctor.py review-pack <Section> "<what>" --finding "<checkpoint entry>"` captures the
+uncommitted diff, the blast grep of every name it removes and the head of every touched file
+under `$RUNDIR/review/`, and prints which reviewer this section gets — `doctor-reviewer-critical`
+(fable high) where a wrong approval costs the most, `doctor-reviewer` (opus high) by default,
+`doctor-reviewer-light` (opus medium) for small low-stakes sections. Dispatch that agent
+(`thread: review <what>`, the pack's absolute path; a plain subagent on the same model with
+`threads/review.md` if the type is unavailable): score-blind, default-reject, judging the pack.
+**No strike edits while a verdict is pending** — the reviewer judges the tree it was shown or its
+approval means nothing. Reject: rework
 once, then revert and record. APPROVE-with-correction is applied before the commit and named in
 the run file; an approval covers the claims the reviewer tested and nothing else, so say what it
 checked.
@@ -318,12 +328,12 @@ writes, in this PR:
   blocked; `## Retro`; `## Needs Peter` (`- [ ]` unanswered, `- [x]` applied, one per line, each
   `<finding #> — <the question, in a phrase>`, citing the number and adding no prose a ruling could
   invalidate); `## Sweep queue` (`debt:` / `memory:` bullets, each naming its target file path, for
-  a later run's sweep; nothing ever ticks them); `## File coverage` (a table, one row per inventory
-  path, `| \`path\` | disposition |`, the disposition on the path's own line: `reviewed` — every
-  name the file carries resolves, not merely opened — `changed`, or `generated`); `## Threads` (one row per thread: how it ran, model copied from
-  `$RUNDIR/assessment/threads.md`, findings count, why if it did not run). No cost column, no
-  diff-size block, no line counts, no reforge score: the PR carries those.
-  `doctor.py check-run-file <path> --section <X>` says what is missing.
+  a later run's sweep; nothing ever ticks them); `## File coverage` and `## Threads`: `doctor.py runfile <X>`
+  regenerates both from git and the dispatch log — `generated` and `changed` per path, how each
+  thread ran and on what — and keeps what the run wrote by hand: `reviewed` on a path (every name
+  the file carries resolves, not merely opened) and the findings count per thread, plus why a
+  thread did not run. No cost column, no diff-size block, no line counts, no reforge score: the
+  PR carries those. `doctor.py check-run-file <path> --section <X>` says what is missing.
 - **The sweep**, its own commit, the only place a run touches shared files: apply every
   `## Sweep queue` item in merged run files on `origin/main` — `debt:` to the owning section's
   `Docs/debt.yml` (or `docs/architecture/debt-ledger.yml` when no one section owns it), `memory:` to
@@ -347,8 +357,8 @@ this skill are not Needs-Peter items and not sweep items; the bar for them is be
 ### Phase 7: PR
 
 Self-review the run's own new prose against the gates: `doctor.py prose-gate --base origin/main`,
-the trace gate (every symbol, route and path resolves; every "only", "never" and "always" is
-checked), and the render rule (a claim about what a page shows traces to the `.cshtml`). Then
+`doctor.py trace <run file> <health.md>` (every symbol, route and path resolves; every "only",
+"never" and "always" is checked by hand), and the render rule (a claim about what a page shows traces to the `.cshtml`). Then
 `doctor.py check-run-file`, `dotnet format whitespace Humans.slnx --verify-no-changes`, the full
 test run, `doctor.py push`, and the PR against `peterdrier/Humans` `main`:
 

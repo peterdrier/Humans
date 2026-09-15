@@ -1,6 +1,8 @@
 # History
 
-Runs as a subagent, `opus low` (`doctor-reader`).
+Runs as a subagent, `opus low` (`doctor-reader`), over `$RUNDIR/assessment/history.txt` — the output
+of `doctor.py history <Section>`, `path:line: text`. Open a source file only where the verdict needs
+the code around the line.
 
 Prose narrating a prior state: a deleted/renamed project or type, a migration/lane number, "used
 to live in X", "the first section to Y", a dated run post-mortem, rationale for a decision no
