@@ -219,32 +219,26 @@ internal sealed class ConsentService(
             return await repo.GetExplicitlyConsentedVersionIdsForUsersAsync(distinctInputs, ct);
         }
 
-        // Build {target ∪ source ids} for the repo batch + reverse source→target map for re-keying.
+        // Build {inputs ∪ their source ids} for the repo batch.
         // HashSet dedup is required — repo's ToDictionary throws on duplicate keys.
         var allIdsSet = new HashSet<Guid>(userIds);
-        var sourceToTarget = new Dictionary<Guid, Guid>();
         foreach (var userId in userIds)
-        {
-            foreach (var sourceId in sourcesByTarget[userId])
-            {
-                allIdsSet.Add(sourceId);
-                sourceToTarget[sourceId] = userId;
-            }
-        }
+            allIdsSet.UnionWith(sourcesByTarget[userId]);
 
         var raw = await repo.GetExplicitlyConsentedVersionIdsForUsersAsync(allIdsSet.ToList(), ct);
 
+        // Each input unions its own sources. A reverse source→target map would not do:
+        // a batch holding both a survivor and one of its tombstones resolves both to the
+        // survivor's row, so both inputs carry the same source list and the last one
+        // written would take sole ownership of it.
         var result = new Dictionary<Guid, IReadOnlySet<Guid>>(userIds.Count);
         foreach (var userId in userIds)
         {
             var merged = new HashSet<Guid>(raw[userId]);
-            foreach (var (sourceId, targetId) in sourceToTarget)
+            foreach (var sourceId in sourcesByTarget[userId])
             {
-                if (targetId == userId && raw.TryGetValue(sourceId, out var sourceVersions))
-                {
-                    foreach (var versionId in sourceVersions)
-                        merged.Add(versionId);
-                }
+                if (raw.TryGetValue(sourceId, out var sourceVersions))
+                    merged.UnionWith(sourceVersions);
             }
             result[userId] = merged;
         }

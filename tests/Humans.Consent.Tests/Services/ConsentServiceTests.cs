@@ -622,6 +622,34 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         result.Should().ContainKey(unrelatedId);
     }
 
+    [HumansFact]
+    public async Task GetConsentMapForUsersAsync_TargetBeforeSource_TargetStillSeesTheSourcesConsent()
+    {
+        // Same batch, reversed. Both ids resolve to the target's row, so both carry the
+        // same MergedUserIds; a reverse source→target map let whichever input was written
+        // last own the source, and with the target written first it lost the source's
+        // consent — enough to fail a required-consent gate for the surviving human.
+        var sourceId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
+        SeedConsentRecord(sourceId, versionId);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var target = WrapInUserInfo(targetId, UserFixtures.Profile(
+            burnerName: "Burner", firstName: "First", lastName: "Last",
+            createdAt: Clock.GetCurrentInstant()));
+        var targetInfo = target with { MergedUserIds = [sourceId] };
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                ((IReadOnlyCollection<Guid>)call[0]).ToDictionary(id => id, _ => targetInfo)));
+
+        var result = await _service.GetConsentMapForUsersAsync([targetId, sourceId], Xunit.TestContext.Current.CancellationToken);
+
+        result[targetId].Should().Contain(versionId,
+            "the survivor keeps the consent signed under the id merged into it, whatever the batch order");
+    }
+
     // --- Helpers ---
 
     private Guid SeedDocument(Guid teamId, string name, bool isActive = true, bool isRequired = true, Instant? effectiveFrom = null)

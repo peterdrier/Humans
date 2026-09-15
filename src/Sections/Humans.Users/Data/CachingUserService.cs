@@ -56,17 +56,34 @@ internal sealed class CachingUserService(
     /// Derived index: for every id that has at least one row merged into it,
     /// transitively, the sorted ids of those rows. Null means dirty — see
     /// <see cref="OnMutated"/>. Rebuilt lazily on first read after a mutation;
-    /// two threads racing to rebuild produce the same answer, so the race is
-    /// harmless and the field is not locked.
+    /// two threads racing to rebuild off the same store produce the same answer,
+    /// so the rebuild is not locked — only its publication is guarded, by
+    /// <see cref="_mergeIndexVersion"/>.
     /// </summary>
     private volatile Dictionary<Guid, Guid[]>? _mergeIndex;
+
+    /// <summary>
+    /// Bumped by every mutation. A rebuild reads the live store, so one that started
+    /// before a mutation can finish after it and would otherwise publish a pre-mutation
+    /// index over the null <see cref="OnMutated"/> just wrote — leaving a newly merged
+    /// id invisible to consent reads and the GDPR fan-outs until the next mutation,
+    /// whenever that is. Carrying the version across the rebuild makes that case drop
+    /// its result instead, and the next reader rebuilds.
+    /// </summary>
+    private long _mergeIndexVersion;
 
     /// <summary>
     /// Any change to the raw store can change the merge graph — a merge lands as a
     /// per-entry <c>Set</c> via <c>RefreshEntryAsync</c>, not only at warmup — so the
     /// index is dropped on every mutation rather than built once after the snapshot loads.
     /// </summary>
-    protected override void OnMutated() => _mergeIndex = null;
+    protected override void OnMutated()
+    {
+        // Version first, so a rebuild that reads it after this point cannot also
+        // observe the stale index it is about to replace.
+        Interlocked.Increment(ref _mergeIndexVersion);
+        _mergeIndex = null;
+    }
 
     /// <inheritdoc cref="_mergeIndex" />
     private Dictionary<Guid, Guid[]> MergeIndex
@@ -74,6 +91,8 @@ internal sealed class CachingUserService(
         get
         {
             if (_mergeIndex is { } cached) return cached;
+
+            var version = Interlocked.Read(ref _mergeIndexVersion);
 
             // One pass: each tombstone walks forward to its terminus and registers
             // itself against every node on the way, so a survivor ends up carrying
@@ -105,7 +124,10 @@ internal sealed class CachingUserService(
                 index[id] = ids;
             }
 
-            _mergeIndex = index;
+            // Publish only if the store held still while we walked it; otherwise this
+            // index may already be missing a merge, and a stale one would outlive the
+            // mutation that should have dropped it.
+            if (Interlocked.Read(ref _mergeIndexVersion) == version) _mergeIndex = index;
             return index;
         }
     }
