@@ -3,8 +3,8 @@
 Runs as a subagent, `opus low` (`doctor-reader`).
 
 Section-tagged `debt-ledger.yml` items, open GitHub issues, in-app issues. Work or rank them —
-and **review** the open issues (below). Off-section finds go to the run's sweep queue as
-`debt:`, never written to the ledger directly.
+and **review** the open issues (below). Off-section finds are reported as findings; main writes
+them to the owning ledger.
 
 ## Open-issue review
 

@@ -461,7 +461,7 @@ issues. Replaced:
 - Precedence: hard and working rules, then the invoking prompt, then the skill (an emergency is
   fixed in the routine's prompt before the skill).
 - Unattended cloud runs never boot the app; the reviewer gate pauses striking while a verdict is
-  pending; a sweep-queue item names its target file.
+  pending.
 - The reading that is a lookup is scripted: `doctor.py comments` and `history` hand the Comments
   and History threads their input; `trace` is the trace gate; `blast` bounds a symbol; `runfile`
   writes the run file's header and its two mechanical tables; `review-pack` captures the diff,
@@ -469,3 +469,15 @@ issues. Replaced:
   re-reading the section. The reviewer runs in tiers by section (`REVIEW_TIERS`): fable
   high where a wrong approval costs the most, opus high by default, opus medium for small
   low-stakes sections.
+
+## Amendment, 2026-09-15 — no sweep; a run stays in its section
+
+The sweep queue and the sweep commit are gone. Every run re-applied every merged run's queue into
+shared ledgers, so parallel runs edited the same hunks and conflicted. Replaced:
+
+- Debt a run finds and does not fix is written once, in that run's PR, to the ledger that owns it
+  (a section's `Docs/debt.yml`, or `debt-ledger.yml` when no one section owns it). A durable rule
+  is written as its `memory/` atom plus INDEX line. No queue, no later writer.
+- A run reads only its own section's run files. Run files carry no `## Sweep queue` block;
+  existing ones are history and nothing applies them.
+- Decision 11's shared-file clause and the planner's anchor-window sweep are withdrawn.
