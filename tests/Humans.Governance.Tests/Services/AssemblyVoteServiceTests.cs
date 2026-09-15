@@ -1534,6 +1534,34 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
 
     [HumansFact]
+    public async Task CastBallotAsync_WhenAMergedAwayRowAlreadyVoted_AmendsThatBallotRatherThanCastingASecond()
+    {
+        var vote = await _fx.AddVoteAsync();
+        var mergedAway = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        _fx.StubMergedInto(mergedAway, survivor);
+        var votedRow = await _fx.AddRosterRowAsync(vote.Id, mergedAway, isOfficial: true);
+        var blankRow = await _fx.AddRosterRowAsync(vote.Id, survivor, isOfficial: true);
+        await _fx.AddBallotAsync(vote.Id, votedRow.Id, AssemblyBallotChoice.Yes);
+
+        var outcome = await _fx.Service.CastBallotAsync(
+            vote.Id, survivor, AssemblyBallotChoice.No, null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        // One human holding two rows on one vote is the merge's recorded defect. Resolving
+        // them to the blank row would let this member cast a second ballot into a binding
+        // tally; the row that already voted wins, so this is an amendment.
+        outcome.Should().Be(BallotSubmissionOutcome.Recorded);
+        var ballots = await _fx.Db.AssemblyBallots
+            .Where(b => b.VoteId == vote.Id)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        ballots.Should().HaveCount(1);
+        ballots[0].RosterId.Should().Be(votedRow.Id);
+        ballots[0].Choice.Should().Be(AssemblyBallotChoice.No);
+        blankRow.Id.Should().NotBe(votedRow.Id);
+    }
+
+    [HumansFact]
     public async Task CastBallotAsync_OnTheMergedAwayAccountsRosterRow_IsAccepted()
     {
         var vote = await _fx.AddVoteAsync();

@@ -1549,27 +1549,49 @@ internal sealed class AssemblyVoteService(
     /// An account merge deliberately leaves roster rows and ballots keyed to the merged-away
     /// id — they record who was entitled when the vote opened, not who holds the account
     /// today. Without this resolution the survivor of a merge reads as off-roster on a vote
-    /// their other account was enrolled in: no ballot, no amendment, no reminder. The record
+    /// their other account was enrolled in: no ballot, no amendment, no result. The record
     /// stays untouched and the chain is walked at read time instead.
     /// </para>
-    /// The survivor's own row wins when both accounts were enrolled, which is the row every
-    /// other read already agrees on.
+    /// <para>
+    /// A row that already carries a ballot wins over every other candidate, the viewer's own
+    /// included. One human can hold several rows on one vote — enrolled under two accounts,
+    /// or under three after an A→B→C chain — and handing them a blank row while one of their
+    /// others holds a ballot would let them cast a second one into a binding tally. Picking
+    /// the ballot-bearing row turns that into an amendment of the ballot they already cast.
+    /// Two rows both holding ballots is the double vote itself, already recorded and audited
+    /// by the merge; this resolves to the first of them by id so every read agrees on which.
+    /// </para>
     /// </summary>
     private async Task<AssemblyVoteRoster?> EffectiveRosterAsync(
         Guid voteId, Guid userId, CancellationToken ct, IReadOnlySet<Guid>? mergedSourceIds = null)
     {
-        if (await repository.GetRosterRowAsync(voteId, userId, ct) is { } own) return own;
+        var own = await repository.GetRosterRowAsync(voteId, userId, ct);
 
         mergedSourceIds ??= await users.GetMergedSourceIdsAsync(userId, ct);
-        foreach (var sourceId in mergedSourceIds)
+        if (mergedSourceIds.Count == 0) return own;
+
+        // Ordered by id, not by set enumeration: the set comes out of a cache and its order
+        // is not stable, and which row a member is shown must not vary between two reads.
+        var candidates = own is null ? [] : new List<AssemblyVoteRoster> { own };
+        foreach (var sourceId in mergedSourceIds.OrderBy(id => id))
         {
             if (await repository.GetRosterRowAsync(voteId, sourceId, ct) is { } inherited)
             {
-                return inherited;
+                candidates.Add(inherited);
             }
         }
 
-        return null;
+        if (candidates.Count <= 1) return candidates.FirstOrDefault();
+
+        foreach (var candidate in candidates)
+        {
+            if (await repository.GetBallotForRosterAsync(voteId, candidate.Id, ct) is not null)
+            {
+                return candidate;
+            }
+        }
+
+        return candidates[0];
     }
 
     /// <summary>
