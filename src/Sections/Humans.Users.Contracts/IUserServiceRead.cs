@@ -110,16 +110,6 @@ public interface IUserServiceRead
         int year, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the set of source-tombstone ids whose <c>MergedToUserId</c>
-    /// equals <paramref name="targetUserId"/>. Single canonical chain-follow
-    /// primitive: AuditLog, Consent, BudgetAuditLog reads call this rather
-    /// than each section reinventing the lookup. Set is small (typically
-    /// zero, usually one).
-    /// </summary>
-    Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(
-        Guid targetUserId, CancellationToken ct = default);
-
-    /// <summary>
     /// Get all participation records for a given year, projected to the slim
     /// <see cref="UserParticipationRow"/> shape (no EF entity leaves the
     /// section). Served from the caching decorator's <see cref="UserInfo"/>

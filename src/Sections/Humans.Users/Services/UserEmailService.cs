@@ -707,9 +707,9 @@ internal sealed class UserEmailService(
     {
         // Orphans are UserEmail rows whose UserId is missing or merged. Iterating UserInfo can't find rows for
         // non-existent users, so the repo's full-table scan is still required here.
+        // GetAllUserInfosAsync is already one entry per living human — tombstones are omitted.
         var allEmails = await repository.GetAllUserEmailsAsync(ct);
         var liveUserIds = (await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
-            .Where(u => u.MergedToUserId is null)
             .Select(u => u.Id)
             .ToHashSet();
 

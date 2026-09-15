@@ -162,8 +162,6 @@ public sealed class CachingConsentServiceTests
     {
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
-        _userService.GetMergedSourceIdsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns((IReadOnlySet<Guid>)new HashSet<Guid>());
         _inner.SubmitConsentAsync(userId, versionId, true, "1.2.3.4", "agent", Arg.Any<CancellationToken>())
             .Returns(new ConsentSubmitResult(true, "Privacy"));
         _inner.GetConsentedVersionIdsAsync(userId, Arg.Any<CancellationToken>())
@@ -189,8 +187,6 @@ public sealed class CachingConsentServiceTests
     {
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
-        _userService.GetMergedSourceIdsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns((IReadOnlySet<Guid>)new HashSet<Guid>());
         _inner.SubmitConsentAsync(userId, versionId, true, "1.2.3.4", "agent", Arg.Any<CancellationToken>())
             .Returns(new ConsentSubmitResult(false, ErrorKey: "Consent_AlreadyConsented"));
 

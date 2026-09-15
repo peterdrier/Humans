@@ -19,10 +19,6 @@ namespace Humans.Application.Services.Users.AccountLifecycle;
 [CrossSectionWrite("GDPR erasure revokes the user's team memberships and early-entry grants.")]
 internal sealed class AccountDeletionService(
     IUserServiceInternal userService,
-    // Merge-chain resolution goes through the read contract, matching every other caller of
-    // GetMergedSourceIdsAsync (AuditLog, Consent, Budget) — the primitive is only answerable
-    // by the caching decorator, which is what IUserServiceRead resolves to.
-    IUserServiceRead userServiceRead,
     IUserEmailService userEmailService,
     ITeamService teamService,
     IRoleAssignmentService roleAssignmentService,
@@ -226,26 +222,17 @@ internal sealed class AccountDeletionService(
 
     /// <summary>
     /// Every archived id folded into <paramref name="userId"/>, with the survivor itself
-    /// last. Walks transitively — an A→B→C chain leaves A pointing at B —
-    /// over the single canonical primitive
-    /// (<see cref="IUserServiceRead.GetMergedSourceIdsAsync"/>). Typically returns one id.
+    /// last. The order is the contract, not <see cref="UserInfo.MergedUserIds"/>'s: erasure
+    /// runs contributors per id and a contributor that throws partway must leave every id
+    /// before it erased, so the survivor goes last. Typically returns one archived id.
+    /// <para>
+    /// Read raw, not through the redirecting read: erasing a tombstone id directly must
+    /// erase that one row, not jump to the living survivor and take the whole human with it.
+    /// </para>
     /// </summary>
     private async Task<IReadOnlyList<Guid>> MergeChainAsync(Guid userId, CancellationToken ct)
     {
-        var sources = new List<Guid>();
-        var seen = new HashSet<Guid> { userId };
-        var frontier = new Queue<Guid>([userId]);
-
-        while (frontier.Count > 0)
-        {
-            foreach (var sourceId in await userServiceRead.GetMergedSourceIdsAsync(frontier.Dequeue(), ct))
-            {
-                if (!seen.Add(sourceId)) continue;
-                sources.Add(sourceId);
-                frontier.Enqueue(sourceId);
-            }
-        }
-
-        return [.. sources, userId];
+        var info = await userService.GetRawUserInfoAsync(userId, ct);
+        return info is null ? [userId] : [.. info.MergedUserIds, userId];
     }
 }

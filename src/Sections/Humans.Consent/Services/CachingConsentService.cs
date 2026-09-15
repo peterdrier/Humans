@@ -187,7 +187,7 @@ internal sealed class CachingConsentService(
         string ipAddress, string userAgent, CancellationToken ct = default)
     {
         ConsentSubmitResult result;
-        IReadOnlySet<Guid> sourceIds;
+        IReadOnlyList<Guid> sourceIds;
 
         // Resolve the merge-chain source ids OUTSIDE the submit so we know
         // every cache key affected by this write, then refresh all of them
@@ -197,7 +197,7 @@ internal sealed class CachingConsentService(
         await using (var scope = scopeFactory.CreateAsyncScope())
         {
             var userService = scope.ServiceProvider.GetRequiredService<IUserServiceRead>();
-            sourceIds = await userService.GetMergedSourceIdsAsync(userId, ct);
+            sourceIds = (await userService.GetUserInfoAsync(userId, ct))?.MergedUserIds ?? [];
 
             var inner = scope.ServiceProvider.GetRequiredKeyedService<IConsentService>(InnerServiceKey);
             result = await inner.SubmitConsentAsync(

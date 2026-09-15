@@ -26,14 +26,14 @@ internal sealed class ConsentService(
     IClock clock,
     ILogger<ConsentService> logger) : IConsentService, IUserDataContributor
 {
-    // Chain-follow read ids: always {userId ∪ merged-source-ids}. When userId is not a
-    // fold target the set is just [userId], so every consent read runs through the
+    // Read ids: always {userId ∪ the ids merged into it}. When nothing was merged into
+    // userId the set is just [userId], so every consent read runs through the
     // multi-id repository methods uniformly (the single-id repo overloads are exactly
     // these called with one id).
     private async Task<IReadOnlyCollection<Guid>> GetChainFollowIdsAsync(
         Guid userId, CancellationToken ct)
     {
-        var sourceIds = await userService.GetMergedSourceIdsAsync(userId, ct);
+        IReadOnlyList<Guid> sourceIds = (await userService.GetUserInfoAsync(userId, ct))?.MergedUserIds ?? [];
 
         var allIds = new List<Guid>(sourceIds.Count + 1) { userId };
         allIds.AddRange(sourceIds);
@@ -204,11 +204,11 @@ internal sealed class ConsentService(
         if (userIds.Count == 0)
             return new Dictionary<Guid, IReadOnlySet<Guid>>();
 
-        // TODO(perf): batch GetAllMergedSourceIdsByTargetsAsync(...) → single query. Negligible at our small scale.
-        var sourcesByTarget = new Dictionary<Guid, IReadOnlySet<Guid>>(userIds.Count);
+        var infos = await userService.GetUserInfosAsync(userIds, ct);
+        var sourcesByTarget = new Dictionary<Guid, IReadOnlyList<Guid>>(userIds.Count);
         foreach (var userId in userIds)
         {
-            sourcesByTarget[userId] = await userService.GetMergedSourceIdsAsync(userId, ct);
+            sourcesByTarget[userId] = infos.TryGetValue(userId, out var info) ? info.MergedUserIds : [];
         }
 
         var hasAnySources = sourcesByTarget.Values.Any(s => s.Count > 0);

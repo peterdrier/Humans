@@ -32,10 +32,7 @@ public class AuditLogServiceTests : IDisposable
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         var repo = new AuditLogRepository(new TestDbContextFactory<AuditLogDbContext>(options));
         _userService = Substitute.For<IUserService>();
-        // Default: no merge tombstones — chain-follow short-circuits to the
-        // single-id repo path.
-        _userService.GetMergedSourceIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid>());
+        // Default: nothing merged into anybody — reads take the single-id repo path.
         _service = new AuditLogService(repo, _userService, _clock, NullLogger<AuditLogService>.Instance);
     }
 
@@ -280,8 +277,8 @@ public class AuditLogServiceTests : IDisposable
         var source2 = Guid.NewGuid();
         var unrelated = Guid.NewGuid();
 
-        _userService.GetMergedSourceIdsAsync(targetId, Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid> { source1, source2 });
+        _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(WithMergedIds(targetId, source1, source2)));
 
         var now = _clock.GetCurrentInstant();
 
@@ -323,4 +320,10 @@ public class AuditLogServiceTests : IDisposable
         _dbContext.AuditLogEntries.Add(entry);
         return entry;
     }
+
+    /// <summary>A record listing the given ids as accounts merged into <paramref name="userId"/>.</summary>
+    private static UserInfo WithMergedIds(Guid userId, params Guid[] mergedUserIds) =>
+        UserInfo.Create(new User { Id = userId, PreferredLanguage = "en" }, [], [], [], null, [])
+            with { MergedUserIds = mergedUserIds };
+
 }

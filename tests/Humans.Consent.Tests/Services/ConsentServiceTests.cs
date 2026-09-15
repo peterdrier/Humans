@@ -73,11 +73,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
 
         var consentRepository = new ConsentRepository(LegalDbFactory);
 
-        // Default: no merge tombstones — chain-follow short-circuits to the
-        // single-id repo path.
-        _userService.GetMergedSourceIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid>());
-
+        // Default: nothing merged into anybody, so reads take the single-id repo path.
         // Default: requesting any user returns a UserInfo carrying an Active
         // profile with all required identity fields populated. Tests that need
         // a Stub-state (or missing) profile override this for the specific
@@ -600,14 +596,21 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         SeedConsentRecord(sourceId, versionId);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        // Target's chain-follow set includes the source.
-        _userService.GetMergedSourceIdsAsync(targetId, Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid> { sourceId });
-        // Source tombstone has no further sources.
-        _userService.GetMergedSourceIdsAsync(sourceId, Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid>());
-        _userService.GetMergedSourceIdsAsync(unrelatedId, Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid>());
+        // The source was merged into the target, so the target's record lists it. The source
+        // id still resolves to the target's record — that is the redirect (#1704) — and the
+        // unrelated id lists nothing.
+        var targetInfo = WrapInUserInfo(targetId, UserFixtures.Profile(
+            burnerName: "Burner", firstName: "First", lastName: "Last",
+            createdAt: Clock.GetCurrentInstant())) with { MergedUserIds = [sourceId] };
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                ((IReadOnlyCollection<Guid>)call[0]).ToDictionary(
+                    id => id,
+                    id => id == unrelatedId
+                        ? WrapInUserInfo(unrelatedId, UserFixtures.Profile(
+                            burnerName: "Burner", firstName: "First", lastName: "Last",
+                            createdAt: Clock.GetCurrentInstant()))
+                        : targetInfo)));
 
         // Input contains both source and target — duplicate-id risk path.
         var result = await _service.GetConsentMapForUsersAsync([sourceId, targetId, unrelatedId], Xunit.TestContext.Current.CancellationToken);

@@ -222,7 +222,7 @@ internal sealed class ClassifierHarness
     /// </summary>
     public Dictionary<string, IReadOnlyList<Guid>> VerifiedOwners { get; } = [];
 
-    /// <summary>userId → merged-to userId for tombstone chain.</summary>
+    /// <summary>userId → merged-to userId; the user read resolves the chain forward.</summary>
     public Dictionary<Guid, Guid> MergedToTargets { get; } = [];
 
     /// <summary>email → (userId, emailId) for unverified-row matches.</summary>
@@ -256,20 +256,17 @@ internal sealed class ClassifierHarness
                 return Task.FromResult<IReadOnlyList<UserEmailRowSnapshot>>([]);
             });
 
-        // IUserService.GetUserInfoAsync: returns a tombstoned user when there's an entry in MergedToTargets.
+        // IUserService.GetUserInfoAsync resolves merge chains forward itself (#1704): asking
+        // for a tombstone id hands back the surviving row, never the tombstone.
         _users
             .GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
                 var userId = (Guid)ci[0];
-                if (MergedToTargets.TryGetValue(userId, out var targetId))
-                    return new ValueTask<UserInfo?>(UserInfo.Create(
-                        new User { Id = userId, MergedToUserId = targetId },
-                        [], [], [], null, []));
-                // Live user — no tombstone.
+                while (MergedToTargets.TryGetValue(userId, out var targetId))
+                    userId = targetId;
                 return new ValueTask<UserInfo?>(UserInfo.Create(
-                    new User { Id = userId, MergedToUserId = null },
-                    [], [], [], null, []));
+                    new User { Id = userId }, [], [], [], null, []));
             });
 
         // Default: no pref row for any user. SetMarketingPref overrides per-user.

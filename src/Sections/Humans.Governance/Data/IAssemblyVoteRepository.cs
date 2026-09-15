@@ -245,8 +245,8 @@ internal interface IAssemblyVoteRepository : IRepository
     /// entitlement produced: both are evidence, not account state. Two accounts on one
     /// roster means one human was enrolled twice, and two ballots means they voted twice —
     /// a defect in the vote that the merge must not tidy away. The merge chain
-    /// (<c>IUserServiceRead.GetMergedSourceIdsAsync</c>) still resolves the survivor to
-    /// every id folded into it, which is how GDPR erasure already reaches these rows.
+    /// (<c>UserInfo.MergedUserIds</c>) still resolves the survivor to every id folded
+    /// into it, which is how GDPR erasure already reaches these rows.
     /// </para>
     /// Returns the votes the source account was rostered on, so the caller can audit that
     /// the merge saw those rows and left them alone.

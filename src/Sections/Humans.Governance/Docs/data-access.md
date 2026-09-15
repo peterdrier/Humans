@@ -80,7 +80,7 @@ tombstone keeps the turnout counts and the stored `ResultJson` valid.
 columns; roster rows and ballots stay on the merged-away id, audited per
 vote, because they are the record of the vote rather than account state.
 Member-facing reads resolve the chain instead — `EffectiveRosterAsync` for
-the roster row, and `GetMergedSourceIdsAsync` unioned into
+the roster row, and `UserInfo.MergedUserIds` unioned into
 `ContributeForUserAsync`.
 
 **The embargo is a data-access property, not a UI one.** Only

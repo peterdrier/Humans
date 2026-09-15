@@ -48,8 +48,7 @@ internal sealed class ICalFeedService(
     public async Task<string?> GetFeedIcsAsync(Guid userId, Guid token, CancellationToken ct = default)
     {
         var user = await users.GetUserInfoAsync(userId, ct);
-        if (user is null || user.MergedToUserId is not null
-            || user.ICalToken is null || user.ICalToken.Value != token)
+        if (user is null || user.ICalToken is null || user.ICalToken.Value != token)
         {
             return null;
         }

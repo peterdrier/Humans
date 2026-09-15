@@ -295,7 +295,7 @@ internal sealed class AttendeeContactImportService(
 
         if (verifiedUserIds.Count == 1)
         {
-            var liveTarget = await ResolveTombstoneAsync(verifiedUserIds[0], ct);
+            var liveTarget = (await users.GetUserInfoAsync(verifiedUserIds[0], ct))?.Id ?? verifiedUserIds[0];
             return new AttendeeImportDecision(
                 a.Id, a.AttendeeEmail, name, a.VendorTicketId,
                 AttendeeImportOutcome.AttachVerified,
@@ -331,19 +331,6 @@ internal sealed class AttendeeContactImportService(
             AmbiguousUserIds: null,
             AdditionalAttendeeIds: addl,
             ObservedNames: names);
-    }
-
-    private async Task<Guid> ResolveTombstoneAsync(Guid userId, CancellationToken ct)
-    {
-        var visited = new HashSet<Guid> { userId };
-        var current = userId;
-        while (true)
-        {
-            var user = await users.GetUserInfoAsync(current, ct);
-            if (user?.MergedToUserId is not Guid next) return current;
-            if (!visited.Add(next)) return current;
-            current = next;
-        }
     }
 
     private static string? ResolveDisplayName(TicketAttendee a) =>

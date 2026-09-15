@@ -2102,14 +2102,15 @@ internal sealed class SurveyService(
                 {
                     // "Logged in on or after the cutoff" = LastLoginAt >= cutoff; null LastLoginAt never
                     // matches (predates tracking). Deliberately no IsApproved filter — mid-onboarding
-                    // users belong in this audience (nobodies-collective/Humans#894) — but tombstones
-                    // (GDPR-anonymized/merged), deletion-pending users, and accounts walled off by
-                    // state (rejected/suspended — they can't reach the survey) are never invited.
+                    // users belong in this audience (nobodies-collective/Humans#894) — but
+                    // deletion-pending users and accounts walled off by state
+                    // (rejected/suspended — they can't reach the survey) are never invited.
+                    // Tombstones are already absent: GetAllUserInfosAsync omits them (#1704).
                     if (loggedInSince is null) return new HashSet<Guid>();
                     var users = await userService.GetAllUserInfosAsync(ct);
                     return users
                         .Where(u => u.LastLoginAt is { } lastLogin && lastLogin >= loggedInSince.Value)
-                        .Where(u => !u.IsGdprAnonymized && !u.IsDeletionPending && !u.IsMerged)
+                        .Where(u => !u.IsDeletionPending)
                         .Where(u => u.State is not (UserState.Rejected or UserState.Suspended or UserState.AdminSuspended))
                         .Select(u => u.Id)
                         .ToHashSet();
@@ -2127,7 +2128,7 @@ internal sealed class SurveyService(
     {
         var users = await userService.GetAllUserInfosAsync(ct);
         return users
-            .Where(u => u.IsApproved && !u.IsGdprAnonymized && !u.IsDeletionPending && !u.IsMerged)
+            .Where(u => u.IsApproved && !u.IsDeletionPending)
             .Select(u => u.Id)
             .ToList();
     }

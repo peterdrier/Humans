@@ -902,8 +902,8 @@ internal sealed class BudgetService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        // Chain-follow merge tombstones — GDPR export must include merged-source audit rows.
-        var sourceIds = await userService.GetMergedSourceIdsAsync(userId, ct);
+        // GDPR export must include audit rows left on accounts merged into this one.
+        IReadOnlyList<Guid> sourceIds = (await userService.GetUserInfoAsync(userId, ct))?.MergedUserIds ?? [];
         IReadOnlyList<BudgetAuditLog> entries;
         if (sourceIds.Count == 0)
         {

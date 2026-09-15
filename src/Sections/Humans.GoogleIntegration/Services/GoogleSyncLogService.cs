@@ -132,10 +132,10 @@ internal sealed class GoogleSyncLogService(
         await repo.DeleteByUserIdsAsync(await UserIdsWithMergedSourcesAsync(userId, ct), ct);
     }
 
-    /// <summary>Chain-follows merge tombstones so a merged human keeps their trail.</summary>
+    /// <summary>Includes accounts merged into this one, so a merged human keeps their trail.</summary>
     private async Task<List<Guid>> UserIdsWithMergedSourcesAsync(Guid userId, CancellationToken ct)
     {
-        var sourceIds = await userService.GetMergedSourceIdsAsync(userId, ct);
+        IReadOnlyList<Guid> sourceIds = (await userService.GetUserInfoAsync(userId, ct))?.MergedUserIds ?? [];
         var ids = new List<Guid>(sourceIds.Count + 1) { userId };
         ids.AddRange(sourceIds);
         return ids;

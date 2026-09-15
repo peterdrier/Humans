@@ -554,7 +554,7 @@ internal sealed class GoogleGroupSyncService(
         {
             if (!users.TryGetValue(userId, out var user))
                 continue;
-            if (user.GoogleEmailStatus == GoogleEmailStatus.Rejected || user.IsDeletionPending || user.MergedToUserId is not null)
+            if (user.GoogleEmailStatus == GoogleEmailStatus.Rejected || user.IsDeletionPending)
                 continue;
             if (user.IsSuspended)
                 continue;

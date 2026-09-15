@@ -71,9 +71,6 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
         UserEmails.GetNotificationTargetEmailsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(new Dictionary<Guid, string>()));
-        Users.GetMergedSourceIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlySet<Guid>>(new HashSet<Guid>()));
-
         Service = new AssemblyVoteService(
             Repository,
             Applications,
@@ -144,9 +141,6 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
                 ((IReadOnlyCollection<Guid>)call[0])
                     .Where(map.ContainsKey)
                     .ToDictionary(id => id, _ => survivor + "@example.org")));
-
-        Users.GetMergedSourceIdsAsync(survivor, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlySet<Guid>>(new HashSet<Guid> { source }));
     }
 
     private UserInfo TombstoneInfo(Guid id, Guid? mergedTo) =>

@@ -121,8 +121,8 @@ internal sealed class AuditLogService(
     /// <inheritdoc />
     public async Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default)
     {
-        // Chain-follow merge tombstones for source-id-attributed rows.
-        var sourceIds = await userService.GetMergedSourceIdsAsync(userId, ct);
+        // Rows attributed to an account merged into this one belong to the same human.
+        IReadOnlyList<Guid> sourceIds = (await userService.GetUserInfoAsync(userId, ct))?.MergedUserIds ?? [];
         if (sourceIds.Count == 0)
         {
             var entries = await repo.GetByUserAsync(userId, count, ct);
@@ -145,11 +145,12 @@ internal sealed class AuditLogService(
         int limit = 20,
         CancellationToken ct = default)
     {
-        // Chain-follow merge tombstones when userId is supplied.
+        // Rows attributed to an account merged into this one belong to the same human.
         IReadOnlyCollection<Guid>? userIds = null;
         if (userId.HasValue)
         {
-            var sourceIds = await userService.GetMergedSourceIdsAsync(userId.Value, ct);
+            IReadOnlyList<Guid> sourceIds =
+                (await userService.GetUserInfoAsync(userId.Value, ct))?.MergedUserIds ?? [];
             if (sourceIds.Count == 0)
             {
                 userIds = [userId.Value];
@@ -171,8 +172,8 @@ internal sealed class AuditLogService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        // Chain-follow merge tombstones for source-id-attributed rows.
-        var sourceIds = await userService.GetMergedSourceIdsAsync(userId, ct);
+        // Rows attributed to an account merged into this one belong to the same human.
+        IReadOnlyList<Guid> sourceIds = (await userService.GetUserInfoAsync(userId, ct))?.MergedUserIds ?? [];
         IReadOnlyList<AuditLogEntry> entries;
         if (sourceIds.Count == 0)
         {

@@ -20,7 +20,7 @@ namespace Humans.Integration.Tests.AccountMerge;
 /// Phase 6.3 of the AccountMergeService fold-into-target redesign:
 /// integration tests that verify per-user reads on AuditLog, Consent, and
 /// BudgetAuditLog correctly union source-tombstone ids via
-/// <c>IUserService.GetMergedSourceIdsAsync</c> after a fold.
+/// <c>UserInfo.MergedUserIds</c> after a fold.
 ///
 /// Each test seeds a source/target user pair plus a per-section row attached
 /// to the source, runs <c>AcceptAsync</c> (which sets

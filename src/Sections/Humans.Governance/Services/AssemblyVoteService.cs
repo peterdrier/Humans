@@ -111,7 +111,7 @@ internal sealed class AssemblyVoteService(
         // deletable. Members see a vote from the moment it opens, never before.
         // Resolved once for the whole list rather than per vote: a member with no roster row
         // of their own is the common case, and that is exactly the case that has to ask.
-        var mergedSourceIds = await users.GetMergedSourceIdsAsync(userId, ct);
+        IReadOnlyList<Guid> mergedSourceIds = (await users.GetUserInfoAsync(userId, ct))?.MergedUserIds ?? [];
 
         foreach (var vote in votes.Where(v => v.Status != AssemblyVoteStatus.Draft))
         {
@@ -1564,11 +1564,11 @@ internal sealed class AssemblyVoteService(
     /// </para>
     /// </summary>
     private async Task<AssemblyVoteRoster?> EffectiveRosterAsync(
-        Guid voteId, Guid userId, CancellationToken ct, IReadOnlySet<Guid>? mergedSourceIds = null)
+        Guid voteId, Guid userId, CancellationToken ct, IReadOnlyList<Guid>? mergedSourceIds = null)
     {
         var own = await repository.GetRosterRowAsync(voteId, userId, ct);
 
-        mergedSourceIds ??= await users.GetMergedSourceIdsAsync(userId, ct);
+        mergedSourceIds ??= (await users.GetUserInfoAsync(userId, ct))?.MergedUserIds ?? [];
         if (mergedSourceIds.Count == 0) return own;
 
         // Ordered by id, not by set enumeration: the set comes out of a cache and its order
@@ -1839,7 +1839,7 @@ internal sealed class AssemblyVoteService(
         // entitlement and a ballot that are unmistakably theirs — the erasure path beside
         // this one already follows the same chain.
         var record = await repository.GetVotingRecordForUserAsync(userId, ct);
-        foreach (var sourceId in await users.GetMergedSourceIdsAsync(userId, ct))
+        foreach (var sourceId in (await users.GetUserInfoAsync(userId, ct))?.MergedUserIds ?? [])
         {
             record = [.. record, .. await repository.GetVotingRecordForUserAsync(sourceId, ct)];
         }

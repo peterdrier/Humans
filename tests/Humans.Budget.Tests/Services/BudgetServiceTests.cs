@@ -44,9 +44,9 @@ public sealed class BudgetServiceTests
     {
         _repository = new BudgetRepository(BudgetDbFactory, NullLogger<BudgetRepository>.Instance);
         _teamService = Substitute.For<ITeamServiceRead>();
+        // Nothing merged into anybody: the substitute's GetUserInfoAsync returns null and
+        // the export reads the single id.
         var userService = Substitute.For<IUserService>();
-        userService.GetMergedSourceIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid>());
 
         _service = new BudgetServiceImpl(
             _repository,

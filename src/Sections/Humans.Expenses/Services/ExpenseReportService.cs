@@ -1526,11 +1526,12 @@ internal sealed class ExpenseReportService(
             throw new UnauthorizedAccessException("Actor is not a coordinator of the category's team.");
     }
 
-    /// <summary>User's reports (lines+attachment metadata), masked IBAN, audit. Chain-follows merge tombstones.</summary>
+    /// <summary>User's reports (lines+attachment metadata), masked IBAN, audit. Includes accounts merged into this one.</summary>
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(
         Guid userId, CancellationToken ct)
     {
-        var sourceIds = await userService.GetMergedSourceIdsAsync(userId, ct);
+        var user = await userService.GetUserInfoAsync(userId, ct);
+        IReadOnlyList<Guid> sourceIds = user?.MergedUserIds ?? [];
 
         var allIds = new List<Guid>(sourceIds.Count + 1);
         allIds.AddRange(sourceIds);
@@ -1543,7 +1544,7 @@ internal sealed class ExpenseReportService(
             allReports.AddRange(reports);
         }
 
-        var profile = (await userService.GetUserInfoAsync(userId, ct))?.Profile;
+        var profile = user?.Profile;
         var maskedIban = string.IsNullOrEmpty(profile?.Iban)
             ? null
             : IbanFormatter.Mask(profile.Iban);

@@ -24,12 +24,12 @@ internal sealed class DuplicateAccountService(
     {
         // Load all into memory — small user base; avoids complex SQL for gmail/googlemail equivalence.
         var allInfos = await userService.GetAllUserInfosAsync(ct);
+        // Tombstones are already absent — GetAllUserInfosAsync is one entry per living
+        // human (#1704). That matters here: a merged account still carries its pre-merge
+        // legacy User.Email column, so if one came through it would re-collide with its own
+        // survivor and the already-merged pair would reappear on the queue forever.
         var users = allInfos
-            // Exclude tombstones (merge-archived, GDPR-anonymized, or legacy .local
-            // sentinels): a merged account still carries its pre-merge legacy User.Email
-            // column, so without this it re-collides with its own survivor and the
-            // already-merged pair reappears on the queue forever.
-            .Where(u => !string.IsNullOrEmpty(u.Email) && !u.IsTombstone)
+            .Where(u => !string.IsNullOrEmpty(u.Email))
             .ToList();
 
         var emailToUsers = new Dictionary<string, List<(Guid UserId, string Source)>>(StringComparer.Ordinal);

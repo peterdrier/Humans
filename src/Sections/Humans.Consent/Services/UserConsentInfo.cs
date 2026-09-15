@@ -13,7 +13,7 @@ namespace Humans.Consent.Services;
 /// </para>
 /// <para>
 /// The chain-follow merge resolution (<see
-/// cref="Users.Contracts.IUserServiceRead.GetMergedSourceIdsAsync"/>) is applied at
+/// cref="Users.Contracts.UserInfo.MergedUserIds"/>) is applied at
 /// warm/refresh time, not at read time — every cache entry already
 /// represents the union of the target user's explicit consents plus
 /// those of any merged source tombstones. Invalidation must trigger on

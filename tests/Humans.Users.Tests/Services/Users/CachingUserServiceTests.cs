@@ -644,10 +644,10 @@ public class CachingUserServiceTests
         _inner.GetUserInfoAsync(info.Id, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(info));
         await sut.GetUserInfoAsync(info.Id, Xunit.TestContext.Current.CancellationToken);
-        // SearchUsersAsync / GetAllUserInfos / GetAllParticipationsForYearAsync /
-        // GetMergedSourceIdsAsync gate on IsWarmedUp — these search tests seed
-        // a single entry directly via GetUserInfoAsync instead of driving a
-        // full WarmAllAsync, so flip the flag manually here.
+        // SearchUsersAsync / GetAllUserInfos / GetAllParticipationsForYearAsync gate on
+        // IsWarmedUp — these search tests seed a single entry directly via
+        // GetUserInfoAsync instead of driving a full WarmAllAsync, so flip the flag
+        // manually here.
         sut.MarkWarmedForTesting();
     }
 
@@ -1264,46 +1264,6 @@ public class CachingUserServiceTests
     }
 
     // ==================================================================
-    // GetMergedSourceIdsAsync
-    // ==================================================================
-
-    [HumansFact]
-    public async Task GetMergedSourceIdsAsync_FollowsTransitiveChain()
-    {
-        // A merged into B, then B later merged into C: A's row still points
-        // at B (only B's row was rewritten to point at C), so a one-hop scan
-        // from C would miss A. The primitive must walk to a fixed point.
-        var aId = Guid.NewGuid();
-        var bId = Guid.NewGuid();
-        var cId = Guid.NewGuid();
-
-        var userA = UserInfoFactory.Create(
-            new User { Id = aId, PreferredLanguage = "en", MergedToUserId = bId },
-            userEmails: [], eventParticipations: [], externalLogins: [],
-            profile: null, contactFields: [], profileLanguages: [],
-            volunteerHistory: [], communicationPreferences: []);
-        var userB = UserInfoFactory.Create(
-            new User { Id = bId, PreferredLanguage = "en", MergedToUserId = cId },
-            userEmails: [], eventParticipations: [], externalLogins: [],
-            profile: null, contactFields: [], profileLanguages: [],
-            volunteerHistory: [], communicationPreferences: []);
-        var userC = UserInfoFactory.Create(
-            new User { Id = cId, PreferredLanguage = "en" },
-            userEmails: [], eventParticipations: [], externalLogins: [],
-            profile: null, contactFields: [], profileLanguages: [],
-            volunteerHistory: [], communicationPreferences: []);
-
-        _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<UserInfo> { userA, userB, userC });
-
-        var sut = CreateSut();
-
-        var ids = await sut.GetMergedSourceIdsAsync(cId, Xunit.TestContext.Current.CancellationToken);
-
-        ids.Should().BeEquivalentTo([aId, bId]);
-    }
-
-    // ==================================================================
     // Merge chain: MergedUserIds and the raw reads (#1704)
     // ==================================================================
 
@@ -1510,32 +1470,5 @@ public class CachingUserServiceTests
         var rowA = await sut.GetRawUserInfoAsync(a, Xunit.TestContext.Current.CancellationToken);
 
         rowA!.MergedUserIds.Should().Equal([b], "the cycle guard stops the walk, it does not hang");
-    }
-
-    [HumansFact]
-    public async Task GetMergedSourceIdsAsync_NoMerges_ReturnsEmpty()
-    {
-        var targetId = Guid.NewGuid();
-        var otherId = Guid.NewGuid();
-
-        var target = UserInfoFactory.Create(
-            new User { Id = targetId, PreferredLanguage = "en" },
-            userEmails: [], eventParticipations: [], externalLogins: [],
-            profile: null, contactFields: [], profileLanguages: [],
-            volunteerHistory: [], communicationPreferences: []);
-        var other = UserInfoFactory.Create(
-            new User { Id = otherId, PreferredLanguage = "en" },
-            userEmails: [], eventParticipations: [], externalLogins: [],
-            profile: null, contactFields: [], profileLanguages: [],
-            volunteerHistory: [], communicationPreferences: []);
-
-        _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<UserInfo> { target, other });
-
-        var sut = CreateSut();
-
-        var ids = await sut.GetMergedSourceIdsAsync(targetId, Xunit.TestContext.Current.CancellationToken);
-
-        ids.Should().BeEmpty();
     }
 }
