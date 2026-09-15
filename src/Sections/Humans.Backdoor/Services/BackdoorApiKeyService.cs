@@ -179,9 +179,7 @@ internal sealed class BackdoorApiKeyService(
     private static string Base64UrlEncode(byte[] bytes) =>
         Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
-    // ── User-data fan-outs (design-rules §8a) ───────────────────────────────
-    // backdoor_api_keys is user-keyed, so the section owes Article 15, Article 17 and the
-    // account-merge fold. The hash is never exported: it is the credential itself.
+    // The hash is never exported: it is the credential itself.
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {

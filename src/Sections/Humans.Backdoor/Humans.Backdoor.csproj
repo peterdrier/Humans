@@ -32,8 +32,7 @@
       contracts leaf (Issues) — HUM0034 keeps everything else in those assemblies internal,
       so the reference cannot widen past the published surface. Acyclic by construction:
       nothing references Backdoor. Debug is absent — /api/backdoor/logs reads
-      InMemoryLogSink, which is Base's; so is Humans.Issues itself, since every Issues type
-      named here resolves from the contracts leaf.
+      InMemoryLogSink, which is Base's.
     -->
     <ProjectReference Include="..\Humans.Agent\Humans.Agent.csproj" />
     <ProjectReference Include="..\Humans.Feedback\Humans.Feedback.csproj" />

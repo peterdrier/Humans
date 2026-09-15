@@ -104,7 +104,7 @@ internal sealed class BackdoorController(
 
         return new BackdoorKeysViewModel
         {
-            // Newest first — a display sort, so it lives here rather than in the repository.
+            // A display sort, so it lives here rather than in the repository.
             Keys = [.. rows.OrderByDescending(r => r.CreatedAt).Select(r => new BackdoorKeyListItem(
                 r.Id,
                 r.UserId,

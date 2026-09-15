@@ -131,10 +131,6 @@ internal sealed class BackdoorFeedbackController(
     /// field moved — a missing report to 404, a rejected move to 422 carrying the service's
     /// reason, anything else to 500.
     /// </summary>
-    /// <remarks>
-    /// Deliberately a twin of <c>BackdoorIssuesController.PatchAsync</c> rather than something
-    /// shared: the target shape collapses within a controller, not across them.
-    /// </remarks>
     private async Task<IActionResult> PatchAsync(Guid id, string field, Func<Task> apply)
     {
         try

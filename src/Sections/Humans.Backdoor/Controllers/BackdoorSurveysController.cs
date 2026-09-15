@@ -120,7 +120,6 @@ internal sealed class BackdoorSurveysController(ISurveyAnalysisRead surveys, IUs
             return Content(md, "text/markdown", Encoding.UTF8);
         }
 
-        // Offset-based opaque cursor over the filtered, time-ordered rows.
         var offset = DecodeCursor(cursor);
         var pageSize = Math.Clamp(limit, 1, MaxLimit);
         var page = filtered.Skip(offset).Take(pageSize).ToList();
@@ -199,7 +198,7 @@ internal sealed class BackdoorSurveysController(ISurveyAnalysisRead surveys, IUs
             culture = row.Culture,
             submittedAt = row.SubmittedAt is { } at ? SubmittedPattern.Format(at) : null,
             userId = row.UserId,        // null for non-Identified rows (enforced by the export DTO)
-            userName = row.UserName,    // null for non-Identified rows
+            userName = row.UserName,
             answers = questions
                 .Where(q => byQuestion.ContainsKey(q.QuestionId))
                 .Select(q =>
