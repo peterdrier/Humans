@@ -54,7 +54,11 @@ internal interface IWorkgroupService : IApplicationService
         bool asAdmin = false,
         CancellationToken ct = default);
 
-    /// <summary>Any signed-in human, once per group per seven days. Notifies the coordinators.</summary>
+    /// <summary>
+    /// Any signed-in human, as often as they like. Notifies the coordinators. Deliberately
+    /// unmetered: rationing how often a member may ask a group what it is doing would be the
+    /// section deciding a group has gone quiet, which is the Board's call alone.
+    /// </summary>
     Task RequestStatusAsync(Guid workgroupId, Guid actorUserId, string? question, CancellationToken ct = default);
 
     // ── Member work on the group page ─────────────────────────────────────
@@ -83,8 +87,9 @@ internal interface IWorkgroupService : IApplicationService
 
     /// <summary>
     /// Adds a member log entry (Update, Disclosure, StatusRequested or Note). System kinds are
-    /// refused. The log form offers Update, Disclosure and Note only; StatusRequested reaches
-    /// here from a hand-made post, and skips <see cref="RequestStatusAsync"/>'s cooldown.
+    /// refused. The log form offers Update, Disclosure and Note only; StatusRequested reaches here
+    /// from a hand-made post, which costs nothing that <see cref="RequestStatusAsync"/> does not
+    /// also allow — that path is unmetered too, and nothing downstream reads the entry.
     /// </summary>
     Task<Guid> AddLogEntryAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupLogEntrySave save, CancellationToken ct = default);

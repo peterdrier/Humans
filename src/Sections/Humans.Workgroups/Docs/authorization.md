@@ -15,7 +15,7 @@ independently enforce lifecycle and document rules; they do not authorize the ca
   A mismatch returns 404 before mutation, including form submissions.
 - Join, leave, status requests and posting comments do not require the Member operation.
   Their service rules enforce Active status, membership when leaving, the last-coordinator
-  replacement, request cooldown and the comment window.
+  replacement and the comment window. A status request is rate-limited by nothing.
 - Only Board/Admin can reach admin actions. Anonymous callers cannot reach any route.
 - Page controls use the same Member authorization result as POST actions.
 
