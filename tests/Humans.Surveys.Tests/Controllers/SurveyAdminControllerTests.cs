@@ -342,6 +342,44 @@ public sealed class SurveyAdminControllerTests
         model.IsBoardOrAdmin.Should().BeFalse("Open, Close, preview and recipient review are BoardOrAdmin");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(true, false, true)]
+    [Xunit.InlineData(true, true, true)]
+    [Xunit.InlineData(false, true, false)]
+    public async Task Builder_submit_control_matches_author_ownership(bool ownsSurvey, bool board, bool canSubmit)
+    {
+        var viewerId = Guid.NewGuid();
+        var surveyId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Survey"),
+                ownsSurvey ? viewerId : Guid.NewGuid()));
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: viewerId, isBoardOrAdmin: board);
+
+        var result = await sut.Edit(surveyId, Xunit.TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<SurveyBuilderViewModel>().Which;
+        model.CanSubmit.Should().Be(canSubmit);
+    }
+
+    [HumansFact]
+    public async Task Invalid_save_rebuilds_submit_control_from_the_stored_owner()
+    {
+        var viewerId = Guid.NewGuid();
+        var surveyId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Survey"), Guid.NewGuid()));
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: viewerId, isBoardOrAdmin: true);
+        sut.ModelState.AddModelError("Title", "Required");
+
+        var result = await sut.Save(new SurveyBuilderViewModel { Id = surveyId, CanSubmit = true }, null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<SurveyBuilderViewModel>().Which;
+        model.CanSubmit.Should().BeFalse();
+    }
+
     [HumansFact]
     public async Task Submit_denies_a_non_owner_by_id()
     {
