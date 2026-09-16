@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Shifts.Data;
 using Humans.Users.Contracts;
+using Microsoft.Extensions.Localization;
 
 namespace Humans.Shifts.Services;
 
@@ -30,7 +31,9 @@ internal sealed class ShiftSignupService(
     IEarlyEntryInvalidator earlyEntryInvalidator,
     IServiceProvider serviceProvider,
     IClock clock,
-    ILogger<ShiftSignupService> logger) : IShiftSignupService, IUserDataContributor, IUserMerge, ICalendarFeedContributor
+    ILogger<ShiftSignupService> logger,
+    IUserServiceRead users,
+    IStringLocalizer<ShiftsResource> localizer) : IShiftSignupService, IUserDataContributor, IUserMerge, ICalendarFeedContributor
 {
     // Lazy-resolved for notification coordinator / team-name lookups.
     private ITeamServiceRead TeamService => serviceProvider.GetRequiredService<ITeamServiceRead>();
@@ -41,6 +44,10 @@ internal sealed class ShiftSignupService(
         Guid? actorUserId = null,
         ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None)
     {
+        var user = await users.GetUserInfoAsync(userId);
+        if (user?.State != UserState.Active)
+            return SignupResult.Fail(localizer["Shifts_AccountCannotSignUp"]);
+
         var isPrivileged = flags.HasFlag(ShiftSignupRequestFlags.Privileged);
         var activeShiftIds = await repo.GetActiveShiftIdsForUserAsync(userId, [shiftId]);
         if (activeShiftIds.Contains(shiftId))
@@ -80,7 +87,7 @@ internal sealed class ShiftSignupService(
 
         var canApprove = await shiftMgmt.CanApproveSignupsAsync(userId, shift.Rota.TeamId);
 
-        // Public rotas auto-confirm at signup regardless of the volunteer's admission/consent
+        // For Active accounts, Public rotas auto-confirm regardless of admission/consent
         // status; only RequireApproval rotas park signups as Pending for coordinator review.
         var autoConfirm = shift.Rota.Policy == SignupPolicy.Public || canApprove;
 
@@ -523,6 +530,10 @@ internal sealed class ShiftSignupService(
         Guid? actorUserId = null,
         ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None)
     {
+        var user = await users.GetUserInfoAsync(userId);
+        if (user?.State != UserState.Active)
+            return SignupResult.Fail(localizer["Shifts_AccountCannotSignUp"]);
+
         var isPrivileged = flags.HasFlag(ShiftSignupRequestFlags.Privileged);
         var skipConflicts = flags.HasFlag(ShiftSignupRequestFlags.SkipConflicts);
         var rota = await repo.GetRotaAsync(rotaId, RotaReadShape.EventSettings | RotaReadShape.Shifts);

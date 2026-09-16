@@ -204,7 +204,7 @@ The **name gate** backstops the dispatcher app-wide: `NameRequiredFilter` (a glo
 
 ### Signup auto-confirm
 
-Shift signups created in Step 2 follow the rota's normal `Policy`: Public rotas auto-confirm at signup, RequireApproval rotas create `Pending` signups for coordinator review. The user's mid-widget (pre-consent) status does **not** change this — a Public-rota slot is Confirmed immediately, before any consents are signed. There is no post-admission promotion step; chasing down committed-but-unconsented volunteers is a business/coordinator concern handled out-of-band.
+Shift signups created in Step 2 follow the rota's normal `Policy`: Public rotas auto-confirm at signup, RequireApproval rotas create `Pending` signups for coordinator review. The user's mid-widget (pre-consent) status does **not** change this — a Public-rota slot is Confirmed immediately, before any consents are signed. There is no post-admission promotion step; chasing down committed-but-unconsented volunteers is a business/coordinator concern handled out-of-band. Both single and range signup require `UserState.Active`; the widget exemption does not let non-Active accounts create signups.
 
 ### Direct-POST safety
 

@@ -15,6 +15,8 @@ using Humans.Notifications.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
+using Humans.Users.Contracts;
+using Microsoft.Extensions.Localization;
 
 namespace Humans.Shifts.Tests.Services;
 
@@ -49,6 +51,9 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
             Clock);
 
         _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
+        var users = Substitute.For<IUserServiceRead>();
+        users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => UserInfoStubHelpers.MakeUserInfo(call.Arg<Guid>()) with { State = UserState.Active });
         _service = new ShiftSignupService(
             _repo,
             Substitute.For<IVolunteerTrackingRepository>(),
@@ -61,7 +66,9 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
             Substitute.For<IEarlyEntryInvalidator>(),
             serviceProvider,
             Clock,
-            NullLogger<ShiftSignupService>.Instance);
+            NullLogger<ShiftSignupService>.Instance,
+            users,
+            Substitute.For<IStringLocalizer<ShiftsResource>>());
     }
 
     [HumansFact]

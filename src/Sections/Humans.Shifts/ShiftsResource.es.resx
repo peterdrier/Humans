@@ -1182,4 +1182,5 @@
   <data name="Shifts_IcalRegenerated" xml:space="preserve"><value>URL de iCal regenerada.</value></data>
   <data name="Shifts_TagPreferencesSaved" xml:space="preserve"><value>Preferencias de etiquetas guardadas.</value></data>
   <data name="VolTrack_Msg_DayOffNotSet" xml:space="preserve"><value>No había ningún día libre marcado para ese día.</value></data>
+  <data name="Shifts_AccountCannotSignUp" xml:space="preserve"><value>Tu cuenta no puede inscribirse en turnos.</value></data>
 </root>
