@@ -58,9 +58,42 @@ server version. `humans-db` is the host used by preview routing; it is not proof
 container is the intended production or rehearsal target. The rest of this runbook calls
 the verified database container `$DB` and the app container `$APP`.
 
+Use a separate, temporary client container for **every restore and verification command**.
+Choose `PGCLIENT_IMAGE` for the archive's `pg_dump` version; `postgres:18` below is an example,
+not a statement about the target server. Set `PGPORT` to the verified database's internal
+PostgreSQL port, not its published host port. Enter that database's existing authorized
+`humans` password at the prompt; do not put it in shell history.
+
+Run the commands in the same Bash shell with the fail-fast settings below. If any command
+fails, stop and investigate before continuing; a failed drop/create must never be followed
+by a restore into the existing database.
+
+```bash
+set -euo pipefail
+PGCLIENT_IMAGE=postgres:18
+PGPORT=5432
+RESTORE_CLIENT="humans-restore-client-$(date -u +%Y%m%dT%H%M%SZ)-$$"
+read -rsp 'Password for the verified database: ' PGPASSWORD
+printf '\n'
+export PGPASSWORD
+docker run -d --rm --name "$RESTORE_CLIENT" --network "container:$DB" \
+  -e PGHOST=127.0.0.1 -e "PGPORT=$PGPORT" -e PGPASSWORD \
+  --entrypoint sleep "$PGCLIENT_IMAGE" infinity
+unset PGPASSWORD
+docker exec "$RESTORE_CLIENT" pg_restore --version
+docker exec "$RESTORE_CLIENT" psql -X -U humans -d postgres -v ON_ERROR_STOP=1 \
+  -c 'SELECT version(), inet_server_addr(), inet_server_port();'
+```
+
+This runs only client tools, sharing the verified database container's network stack.
+The password remains available to noninteractive commands in this temporary container;
+access to Docker already grants access to its environment. Keep the client until recovery
+finishes, then stop it as described in §3. Archive readability alone does not prove that a
+newer dump's SQL works on an older server: the actual scratch restore must succeed.
+
 ---
 
-## 1. Get the dump file onto the database container
+## 1. Get the dump file onto the restore client
 
 **From a pre-migration snapshot** (it is inside the *app* container, and snapshots are named
 `{database}-{UTC timestamp}.dump`). Use `docker cp` on the directory rather than
@@ -102,19 +135,25 @@ and `pg_restore` does not care what the file is called:
 
 ```bash
 cp "$SNAPSHOTS"/humans-20260805T155147Z.dump.unfinished ./restore.dump
-docker cp ./restore.dump $DB:/tmp/restore.dump
+docker cp ./restore.dump "$RESTORE_CLIENT":/tmp/restore.dump
 ```
 
 **From a Coolify backup:** download it from Coolify's storage to the host, then
 
 ```bash
-docker cp ./restore.dump $DB:/tmp/restore.dump
+docker cp ./restore.dump "$RESTORE_CLIENT":/tmp/restore.dump
 ```
 
 > **Name the file for its format and keep that name to the end.** Custom-format archives go to
 > `/tmp/restore.dump` and are restored with `pg_restore`; plain SQL goes to `/tmp/restore.sql`
 > and is restored with `psql -f`. §2 and §3 both have commands for each — use the same one in
 > both places. Pre-migration snapshots are always custom format.
+
+For a custom-format archive, confirm that the selected client can read it before proceeding:
+
+```bash
+docker exec "$RESTORE_CLIENT" pg_restore --list /tmp/restore.dump > restore-contents.txt
+```
 
 ---
 
@@ -124,9 +163,9 @@ Always do this before touching the live database. It proves the archive is reada
 you what you are about to get, and it costs one command.
 
 ```bash
-docker exec $DB psql -U humans -d postgres -c "DROP DATABASE IF EXISTS humans_restore"
-docker exec $DB psql -U humans -d postgres -c "CREATE DATABASE humans_restore OWNER humans"
-docker exec $DB pg_restore -U humans -d humans_restore --exit-on-error /tmp/restore.dump
+docker exec "$RESTORE_CLIENT" psql -X -U humans -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS humans_restore"
+docker exec "$RESTORE_CLIENT" psql -X -U humans -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE humans_restore OWNER humans"
+docker exec "$RESTORE_CLIENT" pg_restore -U humans -d humans_restore --exit-on-error /tmp/restore.dump
 ```
 
 `--exit-on-error` matters: without it `pg_restore` reports problems and carries on, and you get
@@ -135,7 +174,7 @@ a partial database that looks fine.
 Then verify — row counts per table:
 
 ```bash
-docker exec $DB psql -U humans -d humans_restore -c "
+docker exec "$RESTORE_CLIENT" psql -X -U humans -d humans_restore -v ON_ERROR_STOP=1 -c "
   SELECT table_name,
          (xpath('/row/cnt/text()', query_to_xml(format('select count(*) as cnt from %I.%I', table_schema, table_name), false, true, '')))[1]::text::bigint AS rows
   FROM information_schema.tables
@@ -150,13 +189,33 @@ looks fine until the app boots and starts applying that section's migrations fro
 all of them:
 
 ```bash
-docker exec $DB psql -U humans -d humans_restore -c "
+docker exec "$RESTORE_CLIENT" psql -X -U humans -d humans_restore -v ON_ERROR_STOP=1 -c "
   SELECT table_name,
          (xpath('/row/cnt/text()', query_to_xml(format('select count(*) as cnt from public.%I', table_name), false, true, '')))[1]::text::bigint AS migrations
   FROM information_schema.tables
   WHERE table_schema='public' AND table_name LIKE '\_\_EFMigrationsHistory%'
   ORDER BY table_name;"
 ```
+
+Then export the actual migration identities, ordered by history table and migration ID:
+
+```bash
+docker exec -i "$RESTORE_CLIENT" psql -X -U humans -d humans_restore \
+  -v ON_ERROR_STOP=1 -At -F $'\t' > restored-migrations.tsv <<'SQL'
+SELECT format(
+  'SELECT %L, "MigrationId" FROM %I.%I ORDER BY "MigrationId";',
+  table_name, table_schema, table_name)
+FROM information_schema.tables
+WHERE table_schema = 'public'
+  AND table_name LIKE '\_\_EFMigrationsHistory%'
+ORDER BY table_name
+\gexec
+SQL
+```
+
+Compare these table/ID pairs against the producing release's registered contexts and
+migration identities, not just the counts above. Retain the count check: an empty history
+has no identity rows, and an absent expected history must also be caught.
 
 Derive the expected histories from the release that produced the backup, including its
 registered section contexts and migration files. Current releases use per-section histories;
@@ -178,7 +237,7 @@ If the backup is plain SQL rather than custom format, you copied it to `/tmp/res
 Replace the `pg_restore` line with:
 
 ```bash
-docker exec $DB psql -U humans -d humans_restore -v ON_ERROR_STOP=1 -f /tmp/restore.sql
+docker exec "$RESTORE_CLIENT" psql -X -U humans -d humans_restore -v ON_ERROR_STOP=1 -f /tmp/restore.sql
 ```
 
 `ON_ERROR_STOP=1` is the plain-SQL equivalent of `--exit-on-error`. Without it psql prints
@@ -201,19 +260,19 @@ docker stop $APP
 
 ```bash
 # Kick any remaining sessions off the database
-docker exec $DB psql -U humans -d postgres -c \
+docker exec "$RESTORE_CLIENT" psql -X -U humans -d postgres -v ON_ERROR_STOP=1 -c \
   "SELECT pg_terminate_backend(pid) FROM pg_stat_activity
    WHERE datname='humans' AND pid <> pg_backend_pid()"
 
-docker exec $DB psql -U humans -d postgres -c "DROP DATABASE humans"
-docker exec $DB psql -U humans -d postgres -c "CREATE DATABASE humans OWNER humans"
-docker exec $DB pg_restore -U humans -d humans --exit-on-error /tmp/restore.dump
+docker exec "$RESTORE_CLIENT" psql -X -U humans -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE humans"
+docker exec "$RESTORE_CLIENT" psql -X -U humans -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE humans OWNER humans"
+docker exec "$RESTORE_CLIENT" pg_restore -U humans -d humans --exit-on-error /tmp/restore.dump
 ```
 
 **If the backup is plain SQL**, the last line is instead — same file, same flag as §2:
 
 ```bash
-docker exec $DB psql -U humans -d humans -v ON_ERROR_STOP=1 -f /tmp/restore.sql
+docker exec "$RESTORE_CLIENT" psql -X -U humans -d humans -v ON_ERROR_STOP=1 -f /tmp/restore.sql
 ```
 
 For rollback, `$APP` must use the previous known-good image before this start; starting the
@@ -248,9 +307,13 @@ they pass it is dead weight: a full second copy of the database sitting on the s
 at production size that is how an incident turns into a disk-full outage a week later.
 
 ```bash
-docker exec $DB psql -U humans -d postgres -c "DROP DATABASE IF EXISTS humans_restore"
+docker exec "$RESTORE_CLIENT" psql -X -U humans -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS humans_restore"
 docker exec $DB df -h /var/lib/postgresql/data     # confirm the space came back
+docker stop "$RESTORE_CLIENT"                  # --rm removes only this temporary client
 ```
+
+If you abandon the attempt after §2, stop this client after dropping the scratch database.
+Keep the original backup and verification output outside the temporary client.
 
 **If it says pending migrations instead of "up to date",** you restored a backup older than the
 running release. That is fine and expected — the app will apply the missing migrations on boot,
