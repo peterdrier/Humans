@@ -38,7 +38,8 @@ Repository: `IWorkgroupRepository`.
 
 Cross-section calls: `IUserServiceRead`, `IUserEmailService`, `IRoleAssignmentService`,
 `ITeamServiceRead`, `ISettingsService`, `IGoogleSyncService`, `INotificationService`,
-`IEmailService`, `IEmailMessageFactory`, `IAuditLogService`, `IClock` (NodaTime). The
+`IEmailService`, `IEmailMessageFactory`, `IAuditLogService`, `ISurveyAnalysisRead`,
+`IClock` (NodaTime). The
 inner service has no `IMemoryCache`.
 
 ### CachingWorkgroupService (Singleton, `Humans.Workgroups.Services`)
