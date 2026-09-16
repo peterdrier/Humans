@@ -27,8 +27,9 @@ administrative recognition, and every decision is a human's.
   every member may do member work.
 - The **Secretary** is a Board member; every Secretary action is `BoardOrAdmin`. No new role.
 - A **Member** is any signed-in human who joined. Joining is immediate (standing approval).
-- A **Meeting** is a dated session the group owns, optionally public, with minutes filled
-  in afterwards.
+- A **Meeting** is a dated session the group owns, optionally listed in the community
+  calendar, with minutes filled in afterwards. Everyone with app access can read
+  meetings and minutes on the group page; calendar listing does not change that access.
 - A **Log entry** is one dated line in the group's history. System kinds record lifecycle
   steps and never change; member kinds (Update, Disclosure, StatusRequested, Note) are
   written, edited and deleted by members.
@@ -87,13 +88,16 @@ Unique filtered `(WorkgroupId, UserId)` where `LeftAt IS NULL`.
 | Title | string(200) | |
 | StartUtc / EndUtc | Instant | |
 | Location / LocationUrl | string(500)? / string(2000)? | |
-| IsPublic | bool | Public meetings feed the community calendar |
+| IsPublic | bool | Adds the meeting to the community calendar; register visibility stays AppAccess |
 | Minutes | text? | Markdown, filled in afterwards |
 | CreatedByUserId | Guid? | Bare reference; nulled on erasure |
 | CreatedAt / UpdatedAt | Instant | |
 | DeletedAt | Instant? | Soft delete; excluded everywhere outside the repository |
 
 Index `(WorkgroupId, StartUtc)`.
+
+Meeting URLs accept up to 2000 characters. The service validates the limit for creates
+and edits; form failures preserve the entered values and show a localized error.
 
 ### WorkgroupLogEntry — `workgroup_log_entries`
 
@@ -113,6 +117,9 @@ Index `(WorkgroupId, StartUtc)`.
 Not §12 append-only by design: the log is a working record; the audit trail is the
 immutable one. Member entries are editable and hard-deletable by any member (audited).
 System entries never change.
+
+Member log bodies are limited to 16000 characters and lifecycle reasons to 4000.
+Forms advertise these bounds and the service rejects overflow before writing any state.
 
 `WorkgroupLogKind` — system: Applied, Registered, Referred, Refused, Withdrawn, Ended,
 Reactivated, CoordinatorChanged, ScopeChanged, MemberJoined, MemberLeft,
@@ -198,6 +205,9 @@ a clear error while unset.
 | `/Workgroups/Admin/*` | Secretary/Board queue and decisions; `BoardOrAdmin`, localization-exempt |
 
 See `authorization.md` for the auth policy per route.
+
+The Workgroups admin sidebar link stays visible with an empty queue so Board/Admin can reach
+Settings and Register an existing group on first setup or after clearing the queue.
 
 ## Actors & Roles
 

@@ -60,7 +60,7 @@ else
                                     </form>
                                 }
                                 <form method="post" asp-action="Refuse" asp-route-id="@w.Id" class="d-flex gap-1">
-                                    <input name="reasons" class="form-control form-control-sm" placeholder="Reasons" required style="min-width: 10rem;" />
+                                    <input name="reasons" maxlength="4000" class="form-control form-control-sm" placeholder="Reasons" required style="min-width: 10rem;" />
                                     <button type="submit" class="btn btn-sm btn-outline-danger">Refuse</button>
                                 </form>
                             </div>
@@ -159,12 +159,12 @@ else
                                 @if (w.IsCloseCandidate(Model.Now) || dormancyFlagged.Contains(w.Id))
                                 {
                                     <form method="post" asp-action="Close" asp-route-id="@w.Id" class="d-flex gap-1">
-                                        <input name="reasons" class="form-control form-control-sm" placeholder="Reasons" required style="min-width: 10rem;" />
+                                        <input name="reasons" maxlength="4000" class="form-control form-control-sm" placeholder="Reasons" required style="min-width: 10rem;" />
                                         <button type="submit" class="btn btn-sm btn-outline-danger">Close</button>
                                     </form>
                                 }
                                 <form method="post" asp-action="Withdraw" asp-route-id="@w.Id" class="d-flex gap-1">
-                                    <input name="reasons" class="form-control form-control-sm" placeholder="Reasons" required style="min-width: 10rem;" />
+                                    <input name="reasons" maxlength="4000" class="form-control form-control-sm" placeholder="Reasons" required style="min-width: 10rem;" />
                                     <button type="submit" class="btn btn-sm btn-outline-secondary">Withdraw</button>
                                 </form>
                                 @{ var wc = w.CoordinatorUserIds().ToList(); }

@@ -123,6 +123,8 @@ internal sealed partial class WorkgroupService
     {
         if (string.IsNullOrWhiteSpace(reasons))
             throw new WorkgroupRuleException(WorkgroupErrorKeys.ReasonsRequired);
+        if (reasons.Trim().Length > 4000)
+            throw new WorkgroupRuleException(WorkgroupErrorKeys.TextTooLong, 4000);
     }
 
     private static void ValidateApplication(WorkgroupApplication application) =>
@@ -144,6 +146,8 @@ internal sealed partial class WorkgroupService
             throw new WorkgroupRuleException(WorkgroupErrorKeys.NameRequired);
         if (save.EndUtc <= save.StartUtc)
             throw new WorkgroupRuleException(WorkgroupErrorKeys.WindowInvalid);
+        if (save.LocationUrl?.Trim().Length > 2000)
+            throw new WorkgroupRuleException(WorkgroupErrorKeys.TextTooLong, 2000);
     }
 
     // ── Field application ─────────────────────────────────────────────────
