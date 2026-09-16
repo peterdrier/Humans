@@ -153,6 +153,14 @@ error map.
 - **`WorkgroupLogKind.SurveySent` is declared and never written.** Only `SurveySubmitted` is
   (`Services/WorkgroupService.cs:449`). The send half of the survey lane is specified, reserved
   in the enum, and unbuilt.
+- **`WorkgroupOperationRequirement.Read` has no production caller.** The handler answers it
+  (`Authorization/WorkgroupAuthorizationHandler.cs:27`) and only the tests ask. The register is
+  gated at the controller by `PolicyNames.AppAccess` instead, so the resource-level read
+  question is defined and never asked.
+- **`UpdateMeetingAsync`, `DeleteMeetingAsync` and `UpdateLogEntryAsync` take `actorUserId` and
+  never use it.** `DeleteLogEntryAsync` takes the same parameter and writes an audit entry with
+  it (`Services/WorkgroupService.cs:425`). Either the edits owe an audit entry or the parameter
+  is surplus; the signatures currently promise an attribution nothing records.
 - **`IsAnnualReportDue` computes clause 5's yearly obligation
   (`Services/WorkgroupRhythm.cs:167`) and the daily pass does not act on it.** It reaches the
   group page as a badge only; no notice, no email, no Board queue row.
@@ -214,3 +222,4 @@ error map.
 
 | Date | Run | Headline |
 |---|---|---|
+| 2026-09-16 | section-doctor | First run. The invariant doc said the test project did not exist and denied the Surveys dependency it documents elsewhere; comments disagreed with the slug index and the member log kinds; the rhythm pass's per-group failure swallow was unpinned. |
