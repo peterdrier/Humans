@@ -11,6 +11,10 @@ using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
 using Humans.AuditLog.Contracts;
+using Humans.Camps.Authorization;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.DependencyInjection;
+using System.Security.Claims;
 
 namespace Humans.Camps.Tests.Services;
 
@@ -55,6 +59,43 @@ public sealed class CampServiceTests : CampsTestHarness
             Substitute.For<IUserServiceRead>(),
             Clock,
             NullLogger<CampService>.Instance);
+    }
+
+    [HumansFact]
+    public async Task CachedCamp_PriorSeasonLead_CanManagePendingRenewal()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        await SeedSpecialDefinitionAsync(CampSpecialRole.Lead);
+        var leadId = Guid.NewGuid();
+        var created = await _service.CreateCampAsync(leadId, "Returning Camp", "camp@example.com",
+            "+34600000000", null, null, false, 1, MakeSeasonData(), null, 2025, ct);
+        await _service.OptInToSeasonAsync(created.Id, 2026, ct);
+
+        var services = new ServiceCollection();
+        services.AddKeyedScoped<ICampService>(CachingCampService.InnerServiceKey, (_, _) => _service);
+        await using var provider = services.BuildServiceProvider();
+        var cached = new CachingCampService(provider.GetRequiredService<IServiceScopeFactory>(),
+            Clock, NullLogger<CachingCampService>.Instance);
+
+        // Warmup discovers the camp through 2026. Its lead belongs only to the 2025 season.
+        var directory = await cached.GetCampsForYearAsync(2026, ct);
+        directory.Single().Seasons.Should().ContainSingle(s => s.Year == 2026);
+        var camp = await cached.GetCampBySlugAsync(created.Slug, ct);
+        camp.Should().NotBeNull();
+        camp!.Seasons.Should().Contain(s => s.Year == 2025);
+        camp.Seasons.Single(s => s.Year == 2026).LeadUserIds.Should().BeEmpty();
+        (await cached.GetCampByIdAsync(created.Id, ct)).Should().BeSameAs(camp);
+
+        var handler = new CampAuthorizationHandler(cached);
+        foreach (var (viewerId, allowed) in new[] { (leadId, true), (Guid.NewGuid(), false) })
+        {
+            var viewer = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, viewerId.ToString())], "test"));
+            var context = new AuthorizationHandlerContext([CampOperationRequirement.Manage], viewer, camp);
+            await handler.HandleAsync(context);
+            context.HasSucceeded.Should().Be(allowed);
+        }
     }
 
     // ==========================================================================

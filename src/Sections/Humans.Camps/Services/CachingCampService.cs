@@ -515,7 +515,7 @@ internal sealed class CachingCampService(
     // Warmup / refresh
 
     /// <summary>
-    /// Populates the per-camp dict from PublicYear ∪ OpenSeasons ∪ currentYear.
+    /// Discovers camps in PublicYear ∪ OpenSeasons ∪ currentYear, then caches their full history.
     /// </summary>
     protected override async Task WarmAllAsync(CancellationToken ct)
     {
@@ -525,29 +525,22 @@ internal sealed class CachingCampService(
         foreach (var y in settings.OpenSeasons) years.Add(y);
         years.Add(SystemClockYear());
 
-        var byCampId = new Dictionary<Guid, CampInfo>();
+        var campIds = new HashSet<Guid>();
         foreach (var year in years)
         {
             var camps = await WithInner(inner => inner.GetCampsForYearAsync(year, ct));
             foreach (var camp in camps)
             {
-                if (byCampId.TryGetValue(camp.Id, out var existing))
-                {
-                    var mergedSeasons = existing.Seasons
-                        .Concat(camp.Seasons.Where(s => existing.Seasons.All(es => es.Id != s.Id)))
-                        .ToList();
-                    byCampId[camp.Id] = existing with { Seasons = mergedSeasons };
-                }
-                else
-                {
-                    byCampId[camp.Id] = camp;
-                }
+                campIds.Add(camp.Id);
             }
         }
 
-        foreach (var (campId, camp) in byCampId)
+        foreach (var campId in campIds)
         {
-            Set(campId, camp);
+            // Slug/id reads also authorize leads from earlier seasons. A year-filtered
+            // projection cannot serve as the canonical camp, even on a warm cache hit.
+            var camp = await WithInner(inner => inner.GetCampByIdAsync(campId, ct));
+            if (camp is not null) Set(campId, camp);
         }
 
         _warmYears = years;

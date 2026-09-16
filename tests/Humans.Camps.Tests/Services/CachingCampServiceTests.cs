@@ -39,6 +39,12 @@ public sealed class CachingCampServiceTests : CampsTestHarness
             .Returns(ci => LoadSettingsAsync(ci.Arg<CancellationToken>()));
         _innerSubstitute.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(ci => LoadCampsForYearAsync(ci.Arg<int>(), ci.Arg<CancellationToken>()));
+        _innerSubstitute.GetCampByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(async ci =>
+            {
+                var camp = await repo.GetByIdAsync(ci.Arg<Guid>(), ci.Arg<CancellationToken>());
+                return camp is null ? null : ProjectCampInfo(camp);
+            });
         var services = new ServiceCollection();
         services.AddKeyedScoped<ICampService>(
             CachingCampService.InnerServiceKey,
@@ -288,6 +294,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         };
         _innerSubstitute.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(cachedCamps);
+        _innerSubstitute.GetCampByIdAsync(campId, Arg.Any<CancellationToken>()).Returns(cachedCamps.Single());
 
         _ = await _service.GetCampsForYearAsync(2026, TestContext.Current.CancellationToken);
         _innerSubstitute.ClearReceivedCalls();
@@ -344,6 +351,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         };
         _innerSubstitute.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(cachedCamps);
+        _innerSubstitute.GetCampByIdAsync(campId, Arg.Any<CancellationToken>()).Returns(cachedCamps.Single());
 
         _ = await _service.GetCampsForYearAsync(2026, TestContext.Current.CancellationToken);
         _innerSubstitute.ClearReceivedCalls();
