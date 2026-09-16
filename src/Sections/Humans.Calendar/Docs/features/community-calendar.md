@@ -90,7 +90,7 @@ is a separate call on the same interface and is unaffected.
 - Edit button visible on every event detail page (no role gate)
 - Edit form prefilled with current values
 - Can change title, description, date/time, recurrence, owning team
-- Shortening or changing recurrence removes obsolete occurrences even if their text was edited. Explicitly rescheduled occurrences remain independently positioned.
+- Shortening or changing recurrence removes obsolete occurrences even if their text or end was edited. Only occurrences moved to a different start/date remain independently positioned; repeating the original start does not count as a move.
 - Delete button with confirmation
 - After save/delete, redirect to calendar view
 - Every change recorded in the audit log (actor + timestamp)

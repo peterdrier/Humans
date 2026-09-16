@@ -194,9 +194,11 @@ public sealed class CalendarOccurrenceExpanderTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
-    public void Expand_ShortenedSeries_DoesNotResurrectRetitledOccurrence(bool allDay)
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public void Expand_ShortenedSeries_DoesNotResurrectRetitledOccurrence(bool allDay, bool unchangedStart)
     {
         var first = new LocalDate(2026, 9, 1);
         var firstInstant = Instant.FromUtc(2026, 9, 1, 10, 0);
@@ -210,8 +212,8 @@ public sealed class CalendarOccurrenceExpanderTests
             StartDate = allDay ? first : null,
             EndDateExclusive = allDay ? first.PlusDays(1) : null,
             Exceptions = [new CalendarEventExceptionInfo(Guid.NewGuid(), allDay ? null : removedInstant,
-                false, null, null, "Edited title", null, null, null,
-                allDay ? first.PlusDays(28) : null)],
+                false, !allDay && unchangedStart ? removedInstant : null, null, "Edited title", null, null, null,
+                allDay ? first.PlusDays(28) : null, allDay && unchangedStart ? first.PlusDays(28) : null)],
         };
         var from = Instant.FromUtc(2026, 8, 31, 0, 0);
         var to = Instant.FromUtc(2026, 10, 1, 0, 0);
@@ -229,9 +231,11 @@ public sealed class CalendarOccurrenceExpanderTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
-    public void Expand_EndOnlyExtension_OverlapsWindowAfterOriginalDuration(bool allDay)
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public void Expand_EndOnlyExtension_OverlapsWindowAfterOriginalDuration(bool allDay, bool unchangedStart)
     {
         var date = new LocalDate(2026, 9, 1);
         var start = Instant.FromUtc(2026, 9, 1, 10, 0);
@@ -245,8 +249,8 @@ public sealed class CalendarOccurrenceExpanderTests
             StartDate = allDay ? date : null,
             EndDateExclusive = allDay ? date.PlusDays(1) : null,
             Exceptions = [new CalendarEventExceptionInfo(Guid.NewGuid(), allDay ? null : start,
-                false, null, allDay ? null : extendedEnd, null, null, null, null,
-                allDay ? date : null, null, allDay ? date.PlusDays(3) : null)],
+                false, !allDay && unchangedStart ? start : null, allDay ? null : extendedEnd, null, null, null, null,
+                allDay ? date : null, allDay && unchangedStart ? date : null, allDay ? date.PlusDays(3) : null)],
         };
 
         var result = CalendarOccurrenceExpander.Expand([info], Instant.FromUtc(2026, 9, 3, 10, 0),
@@ -262,6 +266,101 @@ public sealed class CalendarOccurrenceExpanderTests
         {
             result.OccurrenceStartUtc.Should().Be(start);
             result.OccurrenceEndUtc.Should().Be(extendedEnd);
+        }
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, "FREQ=WEEKLY;COUNT=2", false)]
+    [Xunit.InlineData(false, "FREQ=WEEKLY;COUNT=2", true)]
+    [Xunit.InlineData(false, "FREQ=WEEKLY;UNTIL=20260908T100000Z", false)]
+    [Xunit.InlineData(false, "FREQ=WEEKLY;UNTIL=20260908T100000Z", true)]
+    [Xunit.InlineData(false, "FREQ=WEEKLY;BYDAY=WE;COUNT=5", false)]
+    [Xunit.InlineData(false, "FREQ=WEEKLY;BYDAY=WE;COUNT=5", true)]
+    [Xunit.InlineData(true, "FREQ=WEEKLY;COUNT=2", false)]
+    [Xunit.InlineData(true, "FREQ=WEEKLY;COUNT=2", true)]
+    [Xunit.InlineData(true, "FREQ=WEEKLY;UNTIL=20260908", false)]
+    [Xunit.InlineData(true, "FREQ=WEEKLY;UNTIL=20260908", true)]
+    [Xunit.InlineData(true, "FREQ=WEEKLY;BYDAY=WE;COUNT=5", false)]
+    [Xunit.InlineData(true, "FREQ=WEEKLY;BYDAY=WE;COUNT=5", true)]
+    public void Expand_RecurrenceEdit_DropsEndExtensionsOfRemovedOccurrences(
+        bool allDay, string changedRule, bool unchangedStart)
+    {
+        var firstDate = new LocalDate(2026, 9, 1);
+        var first = Instant.FromUtc(2026, 9, 1, 10, 0);
+        var removedDate = firstDate.PlusDays(28);
+        var removed = first.Plus(Duration.FromDays(28));
+        var info = BuildInfo(start: first, end: first.Plus(Duration.FromHours(1)),
+            recurrenceRule: "FREQ=WEEKLY;COUNT=5") with
+        {
+            IsAllDay = allDay,
+            StartUtc = allDay ? null : first,
+            EndUtc = allDay ? null : first.Plus(Duration.FromHours(1)),
+            StartDate = allDay ? firstDate : null,
+            EndDateExclusive = allDay ? firstDate.PlusDays(1) : null,
+            Exceptions = [new CalendarEventExceptionInfo(Guid.NewGuid(), allDay ? null : removed,
+                false, !allDay && unchangedStart ? removed : null, allDay ? null : removed.Plus(Duration.FromDays(2)),
+                null, null, null, null, allDay ? removedDate : null,
+                allDay && unchangedStart ? removedDate : null, allDay ? removedDate.PlusDays(2) : null)],
+        };
+        var from = Instant.FromUtc(2026, 8, 31, 0, 0);
+        var to = Instant.FromUtc(2026, 10, 2, 0, 0);
+
+        var before = CalendarOccurrenceExpander.Expand([info], from, to,
+            new Dictionary<Guid, string>(), NullLogger.Instance);
+        before.Should().ContainSingle(o => allDay
+            ? o.OriginalOccurrenceDate == removedDate : o.OriginalOccurrenceStartUtc == removed);
+
+        var changed = info with { RecurrenceRule = changedRule };
+        var expected = CalendarOccurrenceExpander.Expand([changed with { Exceptions = [] }], from, to,
+            new Dictionary<Guid, string>(), NullLogger.Instance);
+        expected.Should().NotContain(o => allDay
+            ? o.OriginalOccurrenceDate == removedDate : o.OriginalOccurrenceStartUtc == removed);
+
+        var after = CalendarOccurrenceExpander.Expand([changed], from, to,
+            new Dictionary<Guid, string>(), NullLogger.Instance);
+
+        after.Should().BeEquivalentTo(expected);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public void Expand_RemovedOccurrenceWithMovedStart_SurvivesOutsideSeriesWindow(bool allDay)
+    {
+        var firstDate = new LocalDate(2026, 9, 1);
+        var first = Instant.FromUtc(2026, 9, 1, 10, 0);
+        var removedDate = firstDate.PlusDays(28);
+        var removed = first.Plus(Duration.FromDays(28));
+        var movedDate = new LocalDate(2026, 10, 5);
+        var moved = Instant.FromUtc(2026, 10, 5, 10, 0);
+        var info = BuildInfo(start: first, end: first.Plus(Duration.FromHours(1)),
+            recurrenceRule: "FREQ=WEEKLY;COUNT=2") with
+        {
+            IsAllDay = allDay,
+            StartUtc = allDay ? null : first,
+            EndUtc = allDay ? null : first.Plus(Duration.FromHours(1)),
+            StartDate = allDay ? firstDate : null,
+            EndDateExclusive = allDay ? firstDate.PlusDays(1) : null,
+            Exceptions = [new CalendarEventExceptionInfo(Guid.NewGuid(), allDay ? null : removed,
+                false, allDay ? null : moved, null, null, null, null, null,
+                allDay ? removedDate : null, allDay ? movedDate : null)],
+        };
+
+        var result = CalendarOccurrenceExpander.Expand([info], Instant.FromUtc(2026, 10, 5, 0, 0),
+            Instant.FromUtc(2026, 10, 7, 0, 0), new Dictionary<Guid, string>(), NullLogger.Instance)
+            .Should().ContainSingle().Subject;
+
+        if (allDay)
+        {
+            result.StartDate.Should().Be(movedDate);
+            result.EndDateExclusive.Should().Be(movedDate.PlusDays(1));
+            result.OriginalOccurrenceDate.Should().Be(removedDate);
+        }
+        else
+        {
+            result.OccurrenceStartUtc.Should().Be(moved);
+            result.OccurrenceEndUtc.Should().Be(moved.Plus(Duration.FromHours(1)));
+            result.OriginalOccurrenceStartUtc.Should().Be(removed);
         }
     }
 
