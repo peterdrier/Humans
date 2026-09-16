@@ -17,7 +17,9 @@ public sealed class WorkgroupInputValidationTests : WorkgroupsTestHarness
     {
         var model = new MeetingFormViewModel
         {
-            Slug = "planning", Title = "Meeting", LocationUrl = "https://example.org/".PadRight(2000, 'x')
+            Slug = "planning",
+            Title = "Meeting",
+            LocationUrl = "https://example.org/".PadRight(2000, 'x')
         };
         var errors = new List<ValidationResult>();
 

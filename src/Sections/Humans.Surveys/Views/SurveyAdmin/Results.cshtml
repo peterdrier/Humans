@@ -2,7 +2,6 @@
 
 @{
     ViewData["Title"] = Localizer["Survey_Admin_Results_Title"].Value;
-    var isBoardOrAdmin = Humans.Base.Authorization.RoleChecks.IsAdminOrBoard(User);
 
     static string StatusBadge(SurveyStatus s) => s switch
     {
@@ -15,15 +14,9 @@
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        @if (isBoardOrAdmin)
-        {
-            <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">@Localizer["Survey_Admin_Common_AdminBreadcrumb"]</a></li>
-        }
+        <li class="breadcrumb-item" authorize-policy="@Humans.Base.Authorization.PolicyNames.BoardOrAdmin"><a asp-controller="Admin" asp-action="Index">@Localizer["Survey_Admin_Common_AdminBreadcrumb"]</a></li>
         <li class="breadcrumb-item"><a asp-controller="SurveyAdmin" asp-action="Index">@Localizer["Survey_Admin_Index_Title"]</a></li>
-        @if (isBoardOrAdmin)
-        {
-            <li class="breadcrumb-item"><a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@Model.SurveyId">@(string.IsNullOrWhiteSpace(Model.Title) ? untitled : Model.Title)</a></li>
-        }
+        <li class="breadcrumb-item" authorize-policy="@Humans.Base.Authorization.PolicyNames.BoardOrAdmin"><a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@Model.SurveyId">@(string.IsNullOrWhiteSpace(Model.Title) ? untitled : Model.Title)</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Localizer["Survey_Admin_Results_Breadcrumb"]</li>
     </ol>
 </nav>
