@@ -16,9 +16,11 @@ Somebody with an idea fills in a short form: what the group is for, what it will
 whom, and by when. The Secretary looks at it and either recognises it or does not — nothing here
 decides that by itself. Once recognised, the group gets a page, a shared folder, and a place to
 write down what it is doing: minutes of its meetings, notes and updates in a running log,
-drafts of whatever it is producing. Anyone signed in can read all of that, join in, and say
-something while the group has a draft open for remarks. When the group is finished — or has gone
-quiet for two months — it is closed, and its page stays readable for good.
+drafts of whatever it is producing. The page, the roster, the log and the meetings are open to
+anyone with access to the app, and anyone may join; a draft is the group's own until it publishes
+it, so only its members and the Board see one. Once something is published, anyone may say
+something about it while its window for remarks is open. When the group is finished — or has been
+quiet long enough that the Secretary closes it — its page stays readable for good.
 
 Nothing on this page acts on its own. Once a day the system looks for groups that have gone
 quiet and applications nobody has answered, and it tells the people responsible. That is the
