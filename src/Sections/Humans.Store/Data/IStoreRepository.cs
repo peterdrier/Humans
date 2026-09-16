@@ -127,6 +127,13 @@ internal interface IStoreRepository : IRepository
     // Invoices
 
     /// <summary>
+    /// Returns the issued invoice of every order in <paramref name="orderIds"/> that has one.
+    /// Empty input returns an empty list without a round-trip. Feeds the accounting export's
+    /// invoice number (<c>IStoreAccountingRead</c>).
+    /// </summary>
+    Task<IReadOnlyList<Invoice>> GetInvoicesForOrdersAsync(IReadOnlyCollection<Guid> orderIds, CancellationToken ct = default);
+
+    /// <summary>
     /// Writes the issued <paramref name="invoice"/> and the now-frozen <paramref name="order"/>
     /// (state, <c>IssuedInvoiceId</c>, and the line snapshots repriced at issue time) in one
     /// <c>SaveChanges</c>. One method rather than two because the Store invariant is atomic-on-

@@ -26,9 +26,9 @@ Cross-section calls via `IRoleAssignmentService` (Admin/Board eligibility),
 `IUserMerge` (folds an eliminated account's keys onto the survivor).
 
 The `/api/backdoor/*` machine APIs that serve another section (`agent`,
-`issues`, `feedback`, `surveys`) are thin controller orchestrators over that
+`issues`, `feedback`, `store`, `surveys`) are thin controller orchestrators over that
 section's contracts interface (`IAgentTranscriptRead`, `IIssueTriage`,
-`IFeedbackTriage`, `ISurveyAnalysisRead`) — Backdoor's own repository is
+`IFeedbackTriage`, `IStoreAccountingRead`, `ISurveyAnalysisRead`) — Backdoor's own repository is
 never touched by them, and they carry no `###` heading here since each is
 documented in the section that owns the interface. The remaining one, `logs`, reads
 `InMemoryLogSink` from `Humans.Base` and owns no data either.

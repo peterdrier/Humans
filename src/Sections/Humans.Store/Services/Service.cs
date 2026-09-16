@@ -28,7 +28,7 @@ internal sealed class Service(
     IStripeService stripeService,
     IHoldedClient holdedClient,
     IOptions<StoreSectionOptions> options,
-    ILogger<Service> logger) : IApplicationService
+    ILogger<Service> logger) : IStoreAccountingRead
 {
     public Task<IndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default) =>
         BuildIndexDataAsync(userId, allCounterparties: false, ct);
@@ -1319,7 +1319,21 @@ internal sealed class Service(
     private sealed record InvoiceCounterparty(
         string Name, string TaxId, string Address, string? CountryCode, string? Email);
 
-    public async Task<SummaryDto> GetStoreSummaryAsync(int year, CancellationToken ct = default)
+    /// <summary>
+    /// One event year's orders, priced the way every year-wide view prices them: camp orders
+    /// through the year's camp seasons, team orders through the departments, and each order's
+    /// totals from <see cref="BalanceCalculator"/> over the year's catalog. Shared by the admin
+    /// summary and the accounting export so their totals cannot drift apart.
+    /// </summary>
+    private sealed record YearOrders(
+        IReadOnlyDictionary<Guid, CampSeasonInfo> SeasonsForYear,
+        IReadOnlyList<Product> Products,
+        IReadOnlyList<Order> CampOrders,
+        IReadOnlyList<Order> TeamOrders,
+        IReadOnlyDictionary<Guid, string> TeamNames,
+        IReadOnlyDictionary<Guid, BalanceCalculator.Result> TotalsByOrder);
+
+    private async Task<YearOrders> LoadYearOrdersAsync(int year, CancellationToken ct)
     {
         var seasonsForYear = (await campService.GetCampsForYearAsync(year, ct))
             .SelectMany(camp => camp.Seasons.Where(season => season.Year == year))
@@ -1345,8 +1359,6 @@ internal sealed class Service(
         var teamOrders = await repo.GetOrdersForTeamsWithLinesAsync(departmentIds, year, ct);
         var teamNames = allTeams.Values.ToDictionary(t => t.Id, t => t.Name);
 
-        var productNames = products.ToDictionary(p => p.Id, p => p.Name);
-
         // Reprice Open orders to the live catalog, exactly like the order page
         // (MapOrderAsync) — summing raw snapshots here made summary totals drift
         // from order totals whenever a catalog price changed after lines were added.
@@ -1359,6 +1371,15 @@ internal sealed class Service(
         var totalsByOrder = campOrdersInYear
             .Concat(teamOrders)
             .ToDictionary(o => o.Id, o => BalanceCalculator.Compute(o, currentPrices));
+
+        return new YearOrders(seasonsForYear, products, campOrdersInYear, teamOrders, teamNames, totalsByOrder);
+    }
+
+    public async Task<SummaryDto> GetStoreSummaryAsync(int year, CancellationToken ct = default)
+    {
+        var (seasonsForYear, products, campOrdersInYear, teamOrders, teamNames, totalsByOrder) =
+            await LoadYearOrdersAsync(year, ct);
+        var productNames = products.ToDictionary(p => p.Id, p => p.Name);
 
         var byCounterparty = new List<OrderSummaryDto>();
 
@@ -1457,6 +1478,97 @@ internal sealed class Service(
             byItem,
             new CrossTabDto(productColumns, counterpartyRows));
     }
+
+    // ── IStoreAccountingRead ────────────────────────────────────────────────
+
+    public async Task<IReadOnlyList<AccountingOrderLineDto>> GetOrderLinesAsync(int year, CancellationToken ct = default)
+    {
+        var (seasonsForYear, _, campOrders, teamOrders, teamNames, totalsByOrder) =
+            await LoadYearOrdersAsync(year, ct);
+        var orders = campOrders.Concat(teamOrders).ToList();
+
+        // Names and revenue accounts by id, not by year: a line may point at a product that
+        // was deactivated or re-homed since it was added, and the export still needs its name.
+        var products = (await repo.GetProductsByIdsAsync(
+                orders.SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct().ToList(), ct))
+            .ToDictionary(p => p.Id);
+        var invoiceNumbers = (await repo.GetInvoicesForOrdersAsync(
+                orders.Where(o => o.IssuedInvoiceId is not null).Select(o => o.Id).ToList(), ct))
+            .ToDictionary(i => i.OrderId, i => i.HoldedDocNumber);
+
+        var rows = new List<AccountingOrderLineDto>();
+        foreach (var o in orders)
+        {
+            var (counterpartyType, label) = CounterpartyOf(o, seasonsForYear, teamNames);
+            var totalsByLine = totalsByOrder[o.Id].Lines.ToDictionary(t => t.LineId);
+            foreach (var l in o.Lines)
+            {
+                var t = totalsByLine[l.Id];
+                products.TryGetValue(l.ProductId, out var product);
+                rows.Add(new AccountingOrderLineDto(
+                    year,
+                    o.Id,
+                    counterpartyType,
+                    label,
+                    o.CounterpartyName,
+                    o.CounterpartyVatId,
+                    o.CounterpartyCountryCode,
+                    o.State,
+                    invoiceNumbers.GetValueOrDefault(o.Id),
+                    l.Id,
+                    l.ProductId,
+                    product?.Name ?? "(unknown product)",
+                    product?.HoldedRevenueAccountNum,
+                    l.Qty,
+                    t.EffectiveUnitPrice,
+                    t.EffectiveVatRate,
+                    t.TotalEur,
+                    t.SubtotalEur,
+                    t.VatEur,
+                    t.DepositEur,
+                    l.AddedAt));
+            }
+        }
+        return rows;
+    }
+
+    public async Task<IReadOnlyList<AccountingPaymentDto>> GetPaymentsAsync(int year, CancellationToken ct = default)
+    {
+        // Team orders are non-billable and never carry payments, so only camp orders feed this.
+        var (seasonsForYear, _, campOrders, _, teamNames, _) = await LoadYearOrdersAsync(year, ct);
+
+        var rows = new List<AccountingPaymentDto>();
+        foreach (var o in campOrders)
+        {
+            var (counterpartyType, label) = CounterpartyOf(o, seasonsForYear, teamNames);
+            foreach (var p in o.Payments.Where(p => p.Status == PaymentStatus.Paid))
+            {
+                rows.Add(new AccountingPaymentDto(
+                    year,
+                    o.Id,
+                    counterpartyType,
+                    label,
+                    p.Id,
+                    p.AmountEur,
+                    p.Method.ToString(),
+                    p.StripePaymentIntentId,
+                    p.ExternalRef,
+                    p.ReceivedAt));
+            }
+        }
+        return rows;
+    }
+
+    private static (OrderCounterpartyType Type, string Label) CounterpartyOf(
+        Order o,
+        IReadOnlyDictionary<Guid, CampSeasonInfo> seasonsForYear,
+        IReadOnlyDictionary<Guid, string> teamNames) =>
+        o.TeamId is { } tid
+            ? (OrderCounterpartyType.Team, teamNames.GetValueOrDefault(tid, "(unknown team)"))
+            : (OrderCounterpartyType.Camp,
+                o.CampSeasonId is { } sid && seasonsForYear.TryGetValue(sid, out var season)
+                    ? season.Name
+                    : "(unknown camp)");
 
     private static ProductDto MapProduct(Product p) =>
         new(p.Id, p.Year, p.Name, p.Description, p.UnitPriceEur, p.VatRatePercent,
