@@ -116,7 +116,7 @@ internal sealed class WorkgroupsController(
     [HttpGet("{slug}/Edit")]
     public async Task<IActionResult> Edit(string slug, CancellationToken ct)
     {
-        var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
+        var (error, _) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
 
         if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
@@ -440,7 +440,7 @@ internal sealed class WorkgroupsController(
         string slug, CancellationToken ct, Func<WorkgroupInfo, TModel?> build, string viewName)
         where TModel : class
     {
-        var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
+        var (error, _) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
         if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
         if (!await MayDoMemberWorkAsync(workgroup)) return Forbid();
