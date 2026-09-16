@@ -25,8 +25,8 @@ This is the durable release ledger. Update each row with its disposition, regres
 | R04 | P2 / Camps | A lead assigned in a prior season must retain access to a pending renewal when cached years omit the assignment. Cache hits and misses must provide equivalent authorization facts. | Real repository/service/cache/authorization regression now passes; fix in [peterdrier/Humans#1712](https://github.com/peterdrier/Humans/pull/1712). |
 | R05 | P2 / Workgroups | A future scheduled meeting must not grant credit for activity that has not happened and suppress overdue update/dormancy actions. | Source trace produces negative silence for future meetings. In implementation. |
 | R06 | P2 / Base + Users | Shared Human avatar URLs must resolve to the moved ProfileView.Picture action. | Real MVC URL-generation regression now passes; fix in [peterdrier/Humans#1712](https://github.com/peterdrier/Humans/pull/1712). |
-| R07 | P2 / Scanner | Lookup A starts, B succeeds, A fails later. B's display must remain. Every asynchronous completion must apply only to the current lookup. | Actual baseline/candidate JS reproduces new stale-error overwrite. In implementation. |
-| R08 | P2 / Rideshare | Server-rendered list interest controls must work when MapLibre construction, map loading or GeoJSON fetch fails. | Actual JS probe: handlers attach on success, none after either failure. In implementation. |
+| R07 | P2 / Scanner | Lookup A starts, B succeeds, A fails later. B's display must remain. Every asynchronous completion must apply only to the current lookup. | Baseline failure and candidate success verified in real Chromium and module regressions. Fix in [peterdrier/Humans#1713](https://github.com/peterdrier/Humans/pull/1713), draft pending CI wiring. |
+| R08 | P2 / Rideshare | Server-rendered list interest controls must work when MapLibre construction, map loading or GeoJSON fetch fails. | Baseline failure and candidate success verified in real Chromium and module regressions. Fix in [peterdrier/Humans#1713](https://github.com/peterdrier/Humans/pull/1713), draft pending CI wiring. |
 | R09 | P2 / Workgroups | Settings and Register existing group must remain discoverable to authorized admins when the review queue is empty. | Tile returns null; no alternate navigation contribution. In implementation. |
 | R10 | P2 / Workgroups + Surveys | Reject excessive ordinary form input before persistence: Workgroup log body 16,000; lifecycle reasons 4,000; survey rejection note 4,000. Explain validation and preserve input. | UI/service/schema trace; PostgreSQL invalid-input fixture not run during review. In implementation. |
 | R11 | P2 / Surveys | Submit and ranked recalculation controls must reflect the actual resource authorization for their viewer. Server denials remain enforced. | Board sees Submit on others' drafts; authors see Board-only recalculation. Both return 403. In implementation. |
@@ -58,6 +58,18 @@ Parallel ownership: GoogleIntegration permissions; Users/Web/Base/Camps/Calendar
 - PR `peterdrier/Humans#1680` intentionally provides an audited Admin repair for existing term expiries. Review its intended use before assembly electorates rely on stored expiry values. No manual database repair.
 - No production promotion until Peter explicitly authorizes it.
 
+### Promotion rehearsal and recovery record
+
+Complete this against the final merged fork SHA before opening the production promotion:
+
+1. Restore a recent production backup into an isolated rehearsal database, using a PostgreSQL client compatible with the production server. Record the actual server/client versions, backup timestamp and source release; QA's PostgreSQL 16 rehearsal is not proof for the production server.
+2. Keep outbound integrations in their supported stub/disabled configuration. Start the candidate normally so its section migrations run through the same path as deployment. Record migration histories, relevant before/after row counts, startup logs and `/api/version`.
+3. Check existing Calendar all-day dates/recurrences and Email history across migration, plus newly introduced Governance/Workgroups data paths. Verify the supported term-expiry repair's intended use before freezing any assembly electorate.
+4. Restore the pre-upgrade backup into a second scratch database and boot the previous production image. Record a healthy boot and matching migration histories/data checks. Image rollback alone is insufficient after incompatible schema/data changes.
+5. Confirm the deployment snapshot location persists across container replacement and that the known-good image, database backup and uploads backup are available. Use the [database restore runbook](../database-restore-runbook.md), checking its commands against the current section catalog and actual server version.
+
+These are pending release gates, not completed evidence. No production database was copied or mutated during this fix run.
+
 ## Prior dispositions that remain binding
 
 Do not reopen accepted behavior without new evidence: Holded numberless-row failure; Gate enqueue/ledger ordering; concurrent-signup losing-request error; Rideshare previously declined lookup/cache, fallback geometry and notification choices; Survey export identifiers/timestamps; assembly merged-account recipient policy; Guide's retained parser debt. Existing vendor-resync PII and Holded job-visibility debt were not introduced by this candidate.
@@ -74,5 +86,5 @@ Earlier reviewed PR context includes `peterdrier/Humans#1575`, `peterdrier/Human
 
 - peterdrier/Humans#1712 passed full solution build/tests with serial project scheduling. Independent review caught and corrected a valid end-only Calendar extension regression before publication. No schema/interface additions.
 - Scanner/Rideshare Node regressions pass and independent review accepted their source changes. Authenticated Chromium on preview1711 reproduced baseline failures, then passed using the candidate scripts with controlled network/map failures. Rideshare fixtures were created through ordinary forms on that isolated preview; no database edits. This is candidate-script verification on existing rendered pages, not a deployed-fix claim.
-- Scanner/Rideshare full build passed; the first solution test run had timeout-only failures, and an unchanged full retry passed. No timeout changes or test exclusions. Publishing its CI step awaits the GitHub token's missing `workflow` scope; source/test implementation is complete locally.
+- Scanner/Rideshare full build passed; the first solution test run had timeout-only failures, and an unchanged full retry passed. No timeout changes or test exclusions. Its source/tests are published in draft PR1713; adding the prepared CI step awaits the GitHub token's missing `workflow` scope. Run the new regressions locally with `node --test 'tests/Humans.*.Tests/Browser/*.test.*'`.
 - Cross-review found that new Workgroups/Surveys bounds rejected invalid input correctly but two admin redirects discarded the submitted text. Those failure paths are being corrected to preserve it.
