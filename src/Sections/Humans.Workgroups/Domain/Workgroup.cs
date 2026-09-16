@@ -14,7 +14,10 @@ internal sealed class Workgroup
     /// <summary>Register name; year instances carry the year in the name.</summary>
     public string Name { get; set; } = string.Empty;
 
-    /// <summary>Unique; generated from <see cref="Name"/>, admin-editable.</summary>
+    /// <summary>
+    /// Generated from <see cref="Name"/>, admin-editable. The index is plain: uniqueness is
+    /// the service's reservation loop, not a constraint.
+    /// </summary>
     public string Slug { get; set; } = string.Empty;
 
     /// <summary>Markdown, sanitized on render.</summary>

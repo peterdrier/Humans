@@ -81,7 +81,11 @@ internal interface IWorkgroupService : IApplicationService
 
     Task DeleteMeetingAsync(Guid meetingId, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Adds a member log entry (Update, Disclosure or Note). System kinds are refused.</summary>
+    /// <summary>
+    /// Adds a member log entry (Update, Disclosure, StatusRequested or Note). System kinds are
+    /// refused. The log form offers Update, Disclosure and Note only; StatusRequested reaches
+    /// here from a hand-made post, and skips <see cref="RequestStatusAsync"/>'s cooldown.
+    /// </summary>
     Task<Guid> AddLogEntryAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupLogEntrySave save, CancellationToken ct = default);
 

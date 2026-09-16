@@ -137,7 +137,7 @@ internal sealed record WorkgroupMeetingSave(
     bool IsPublic,
     string? Minutes);
 
-/// <param name="Kind">A member kind only — Update, Disclosure or Note. System kinds are the section's to write.</param>
+/// <param name="Kind">A member kind only — Update, Disclosure, StatusRequested or Note. System kinds are the section's to write.</param>
 internal sealed record WorkgroupLogEntrySave(
     WorkgroupLogKind Kind,
     LocalDate OccurredOn,
