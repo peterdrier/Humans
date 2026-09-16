@@ -520,7 +520,6 @@ internal sealed class WorkgroupsController(
 
     private string? ActionName() => ControllerContext.ActionDescriptor.ActionName;
 
-    // View names for the shared forms, so the string lives once.
     private const string MeetingForm = "MeetingForm";
     private const string LogEntryForm = "LogEntryForm";
     private const string DocumentForm = "DocumentForm";

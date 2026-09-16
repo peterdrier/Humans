@@ -24,7 +24,7 @@ administrative recognition, and every decision is a human's.
 - The **deliverable sentence** is "By [TargetDate] we will deliver [Deliverable] to
   [Audience]."
 - A **Coordinator** is one of the one or two people named on the register
-  (`WorkgroupMemberRole.Coordinator`). Register-facing, not permission-facing in v1 —
+  (`WorkgroupMemberRole.Coordinator`). Register-facing, not permission-facing —
   every member may do member work.
 - The **Secretary** is a Board member; every Secretary action is `BoardOrAdmin`. No new role.
 - A **Member** is any signed-in human who joined. Joining is immediate (standing approval).
@@ -209,7 +209,7 @@ See `authorization.md` for the auth policy per route.
 |-------|--------------|
 | Any signed-in human with an approved profile | Browse the register and every group page; read Published/Delivered documents, meetings and the log; join or leave a group; comment during an open window; request a status update; apply to form a group |
 | Workgroup member | Additionally: read Draft documents; edit register fields; create/edit meetings and minutes; post Update, Disclosure and Note entries; create/edit/publish/deliver documents; open/close comment periods; respond to and dispose of comments; hide a comment with a reason; link an authored survey; mark the group done |
-| Coordinator | Everything a member can. Named on the register; addressee of notifications; may hand coordination to another member. Register-facing distinction, not a separate permission level in v1 |
+| Coordinator | Everything a member can. Named on the register; addressee of notifications; may hand coordination to another member. Register-facing distinction, not a separate permission level |
 | Board, Admin (`BoardOrAdmin`) | Register, refer, refuse, withdraw, close, reactivate; set coordinators (override); register on behalf (bootstrapping); record a document's disposition; view the admin queue; edit any group; set the root Drive folder |
 
 ## Invariants

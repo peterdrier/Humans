@@ -156,10 +156,7 @@ internal sealed class WorkgroupsAdminController(
 
     // ── Plumbing ──────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Admin POSTs all land back on the queue. Messages are plain English on purpose: these
-    /// pages are localization-exempt (§19).
-    /// </summary>
+    /// <summary>Admin POSTs all land back on the queue.</summary>
     private async Task<IActionResult> ActAsync(Func<Guid, Task> action, string success, CancellationToken ct)
     {
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
