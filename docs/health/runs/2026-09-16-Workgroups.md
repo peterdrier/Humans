@@ -112,26 +112,47 @@ line rather than by the trace gate, which only checks that the file exists and i
 Cites are worth re-reading one by one.
 
 ## Needs Peter
-1. **A member can plant a status request that skips the cooldown.** The log form offers Update,
-   Disclosure and Note, but `Kind` is model-bound and `RequireMemberKind` admits
-   `StatusRequested`, so a hand-made post writes one directly — bypassing
-   `RequestStatusAsync`'s per-person seven-day cooldown and the coordinator notification, and
-   driving the overdue badge and the things-to-do entry. Gated to members of an Active group, so
-   the blast is small. Narrow `RequireMemberKind` for the write path, or accept the two doors?
-2. **Three service methods take an actor they never spend.** `UpdateMeetingAsync`,
-   `DeleteMeetingAsync` and `UpdateLogEntryAsync` accept `actorUserId` and ignore it, while
-   `DeleteLogEntryAsync` takes the same parameter and audits with it. Either the edit paths owe
-   an audit entry or the parameter is surplus. Both are one-line fixes in opposite directions,
-   so neither was made.
-3. **Clause 5's annual report is computed and nobody acts on it.** `IsAnnualReportDue` reaches
-   the group page as a badge; the daily pass does not read it, no notice goes out, and the Board
-   gets no queue row. The obligation is real and the surface is missing.
-4. **Does this section owe an `Architecture/` test folder?** The test project exists and has
-   none. `no-tests-for-absences` says the run may not assert one is owed, so the question is
-   yours. The doc's old claim that the project did not exist is now corrected either way.
-5. **Workgroups is absent from the repo-wide ledgers.** No row in
-   `docs/architecture/freshness-catalog.yml` and none in `docs/architecture/dependency-graph.md`.
-   Outside this section's lane, so nothing was added.
+
+All five answered by Peter on 2026-09-16 and applied on this branch, except where noted.
+
+1. ~~**A member can plant a status request that skips the cooldown.**~~ **Answered: strike the
+   cooldown.** "It's not for you to decide/track cooldown/etc." The seven-day per-person cooldown,
+   the overdue clock and the things-to-do row are gone, so there is no longer a rule for the second
+   door to bypass. Asking for a status is now an unmetered member action that notifies the
+   coordinators and nothing else.
+2. ~~**Three service methods take an actor they never spend.**~~ **Answered: "add it."**
+   `UpdateMeetingAsync`, `DeleteMeetingAsync` and `UpdateLogEntryAsync` now write audit entries
+   with the actor, matching `DeleteLogEntryAsync`. Three new `AuditAction` members and a
+   `WorkgroupMeeting` entity type; three tests, each verified red with the audit call removed.
+3. ~~**Clause 5's annual report is computed and nobody acts on it.**~~ **Answered: strike it.**
+   "I never asked for that tracking. Fundamentally work groups are not intended to run for more
+   than a year — 6 months is the stated intention." The IsAnnualReportDue predicate and its
+   one-year period constant are gone, with the admin badge. `WorkgroupDocumentKind.AnnualReport` stays: it is a document a
+   group may still choose to file, and the enum is stored as a string.
+4. ~~**Does this section owe an `Architecture/` test folder?**~~ **Answered: the question should
+   not have been asked.** "If we needed/had arch tests they go in the arch folder. If there's no
+   tests, no folder — don't look for things that don't need to exist. Absence isn't a problem."
+   Captured in [`no-tests-for-absences`](../../../memory/architecture/no-tests-for-absences.md):
+   an absence is not a Needs-Peter item without a concrete failure attached.
+5. ~~**Workgroups is absent from the repo-wide ledgers.**~~ **Answered: do not add.** "Sections are
+   independent, we shouldn't have app wide listings of them. The skills need to be able to discover
+   them dynamically." Captured in
+   [`section-list-from-di`](../../../memory/architecture/section-list-from-di.md).
+
+**Still open — one new item, raised by the work above:**
+
+6. **The `DormantSince` column on `workgroups` is now dead and the drop needs your approval.**
+   Nothing reads or writes it after ruling 1; the property is kept on the entity, commented as
+   dead, so the model still matches the shipped schema. Dropping the column is a destructive
+   migration under
+   [`no-drops-until-prod-verified`](../../../memory/architecture/no-drops-until-prod-verified.md):
+   per-case written approval, and its own PR. Evidence gathered: one commit ever introduced it
+   (`0da42ed31`, #1650, five days before this run) and one writer ever set it non-null
+   (the dormancy-flagging step of the daily pass), which needed sixty days of silence — unreachable for a normally-registered
+   group in a five-day-old section. Not provably empty, though: `RegisterExistingAsync` backdates
+   `RegisteredAt`, so a bootstrapped group with no Update or meeting could have been flagged by one
+   of the job's ~5 runs. Confirming that needs a look at QA/prod data, which this run had no access
+   to.
 
 ## File coverage
 
@@ -155,7 +176,7 @@ Cites are worth re-reading one by one.
 | `src/Sections/Humans.Workgroups/Data/WorkgroupRepository.cs` | reviewed |
 | `src/Sections/Humans.Workgroups/Data/WorkgroupsDbContext.cs` | reviewed |
 | `src/Sections/Humans.Workgroups/Data/WorkgroupsDbContextFactory.cs` | reviewed |
-| `src/Sections/Humans.Workgroups/Docs/2026-09-10-workgroups-section-design.md` | reviewed |
+| `src/Sections/Humans.Workgroups/Docs/2026-09-10-workgroups-section-design.md` | changed |
 | `src/Sections/Humans.Workgroups/Docs/Workgroups.md` | changed |
 | `src/Sections/Humans.Workgroups/Docs/authorization.md` | reviewed |
 | `src/Sections/Humans.Workgroups/Docs/data-access.md` | changed |
@@ -170,63 +191,63 @@ Cites are worth re-reading one by one.
 | `src/Sections/Humans.Workgroups/Domain/WorkgroupMember.cs` | reviewed |
 | `src/Sections/Humans.Workgroups/Humans.Workgroups.csproj` | reviewed |
 | `src/Sections/Humans.Workgroups/Jobs/WorkgroupRhythmJob.cs` | reviewed |
-| `src/Sections/Humans.Workgroups/Models/WorkgroupViewModels.cs` | reviewed |
+| `src/Sections/Humans.Workgroups/Models/WorkgroupViewModels.cs` | changed |
 | `src/Sections/Humans.Workgroups/Properties/AssemblyInfo.cs` | reviewed |
 | `src/Sections/Humans.Workgroups/Section.cs` | changed |
 | `src/Sections/Humans.Workgroups/SectionAdminTiles.cs` | reviewed |
 | `src/Sections/Humans.Workgroups/SectionChrome.cs` | changed |
 | `src/Sections/Humans.Workgroups/SectionJobs.cs` | reviewed |
 | `src/Sections/Humans.Workgroups/SectionMemberDashboard.cs` | reviewed |
-| `src/Sections/Humans.Workgroups/SectionThingsToDo.cs` | reviewed |
-| `src/Sections/Humans.Workgroups/Services/AuditEntityTypes.cs` | reviewed |
+| `src/Sections/Humans.Workgroups/SectionThingsToDo.cs` | changed |
+| `src/Sections/Humans.Workgroups/Services/AuditEntityTypes.cs` | changed |
 | `src/Sections/Humans.Workgroups/Services/CachingWorkgroupService.cs` | reviewed |
 | `src/Sections/Humans.Workgroups/Services/Contributors/WorkgroupCalendarContributor.cs` | reviewed |
 | `src/Sections/Humans.Workgroups/Services/Contributors/WorkgroupDriveAccessSource.cs` | reviewed |
 | `src/Sections/Humans.Workgroups/Services/Dtos/WorkgroupDtos.cs` | changed |
 | `src/Sections/Humans.Workgroups/Services/IWorkgroupService.cs` | changed |
-| `src/Sections/Humans.Workgroups/Services/WorkgroupErrorKeys.cs` | reviewed |
-| `src/Sections/Humans.Workgroups/Services/WorkgroupRhythm.cs` | reviewed |
+| `src/Sections/Humans.Workgroups/Services/WorkgroupErrorKeys.cs` | changed |
+| `src/Sections/Humans.Workgroups/Services/WorkgroupRhythm.cs` | changed |
 | `src/Sections/Humans.Workgroups/Services/WorkgroupRuleException.cs` | reviewed |
 | `src/Sections/Humans.Workgroups/Services/WorkgroupService.Documents.cs` | reviewed |
 | `src/Sections/Humans.Workgroups/Services/WorkgroupService.Gdpr.cs` | reviewed |
-| `src/Sections/Humans.Workgroups/Services/WorkgroupService.Helpers.cs` | reviewed |
-| `src/Sections/Humans.Workgroups/Services/WorkgroupService.Lifecycle.cs` | reviewed |
-| `src/Sections/Humans.Workgroups/Services/WorkgroupService.Rhythm.cs` | reviewed |
-| `src/Sections/Humans.Workgroups/Services/WorkgroupService.cs` | reviewed |
+| `src/Sections/Humans.Workgroups/Services/WorkgroupService.Helpers.cs` | changed |
+| `src/Sections/Humans.Workgroups/Services/WorkgroupService.Lifecycle.cs` | changed |
+| `src/Sections/Humans.Workgroups/Services/WorkgroupService.Rhythm.cs` | changed |
+| `src/Sections/Humans.Workgroups/Services/WorkgroupService.cs` | changed |
 | `src/Sections/Humans.Workgroups/ViewComponents/GovernanceWorkgroupsViewComponent.cs` | reviewed |
 | `src/Sections/Humans.Workgroups/ViewComponents/MyWorkgroupsViewComponent.cs` | reviewed |
-| `src/Sections/Humans.Workgroups/Views/Shared/Components/GovernanceWorkgroups/Default.cshtml` | reviewed |
+| `src/Sections/Humans.Workgroups/Views/Shared/Components/GovernanceWorkgroups/Default.cshtml` | changed |
 | `src/Sections/Humans.Workgroups/Views/Shared/Components/MyWorkgroups/Default.cshtml` | reviewed |
 | `src/Sections/Humans.Workgroups/Views/Workgroups/Apply.cshtml` | reviewed |
-| `src/Sections/Humans.Workgroups/Views/Workgroups/Details.cshtml` | reviewed |
+| `src/Sections/Humans.Workgroups/Views/Workgroups/Details.cshtml` | changed |
 | `src/Sections/Humans.Workgroups/Views/Workgroups/Document.cshtml` | reviewed |
 | `src/Sections/Humans.Workgroups/Views/Workgroups/DocumentForm.cshtml` | reviewed |
 | `src/Sections/Humans.Workgroups/Views/Workgroups/Edit.cshtml` | reviewed |
-| `src/Sections/Humans.Workgroups/Views/Workgroups/Index.cshtml` | reviewed |
+| `src/Sections/Humans.Workgroups/Views/Workgroups/Index.cshtml` | changed |
 | `src/Sections/Humans.Workgroups/Views/Workgroups/LogEntryForm.cshtml` | reviewed |
 | `src/Sections/Humans.Workgroups/Views/Workgroups/MeetingForm.cshtml` | reviewed |
-| `src/Sections/Humans.Workgroups/Views/WorkgroupsAdmin/Index.cshtml` | reviewed |
+| `src/Sections/Humans.Workgroups/Views/WorkgroupsAdmin/Index.cshtml` | changed |
 | `src/Sections/Humans.Workgroups/Views/WorkgroupsAdmin/RegisterExisting.cshtml` | reviewed |
 | `src/Sections/Humans.Workgroups/Views/WorkgroupsAdmin/Settings.cshtml` | reviewed |
 | `src/Sections/Humans.Workgroups/Views/WorkgroupsAdmin/_ViewStart.cshtml` | reviewed |
 | `src/Sections/Humans.Workgroups/Views/_ViewImports.cshtml` | reviewed |
-| `src/Sections/Humans.Workgroups/WorkgroupsResource.ca.resx` | reviewed |
+| `src/Sections/Humans.Workgroups/WorkgroupsResource.ca.resx` | changed |
 | `src/Sections/Humans.Workgroups/WorkgroupsResource.cs` | reviewed |
-| `src/Sections/Humans.Workgroups/WorkgroupsResource.de.resx` | reviewed |
-| `src/Sections/Humans.Workgroups/WorkgroupsResource.es.resx` | reviewed |
-| `src/Sections/Humans.Workgroups/WorkgroupsResource.fr.resx` | reviewed |
-| `src/Sections/Humans.Workgroups/WorkgroupsResource.it.resx` | reviewed |
-| `src/Sections/Humans.Workgroups/WorkgroupsResource.resx` | reviewed |
+| `src/Sections/Humans.Workgroups/WorkgroupsResource.de.resx` | changed |
+| `src/Sections/Humans.Workgroups/WorkgroupsResource.es.resx` | changed |
+| `src/Sections/Humans.Workgroups/WorkgroupsResource.fr.resx` | changed |
+| `src/Sections/Humans.Workgroups/WorkgroupsResource.it.resx` | changed |
+| `src/Sections/Humans.Workgroups/WorkgroupsResource.resx` | changed |
 | `tests/Humans.Workgroups.Tests/Authorization/WorkgroupAuthorizationHandlerTests.cs` | changed |
 | `tests/Humans.Workgroups.Tests/Controllers/WorkgroupsControllerAuthorizationTests.cs` | changed |
 | `tests/Humans.Workgroups.Tests/Humans.Workgroups.Tests.csproj` | reviewed |
-| `tests/Humans.Workgroups.Tests/Infrastructure/WorkgroupsTestHarness.cs` | reviewed |
+| `tests/Humans.Workgroups.Tests/Infrastructure/WorkgroupsTestHarness.cs` | changed |
 | `tests/Humans.Workgroups.Tests/Services/Contributors/WorkgroupCalendarContributorTests.cs` | reviewed |
 | `tests/Humans.Workgroups.Tests/Services/Contributors/WorkgroupDriveAccessSourceTests.cs` | reviewed |
 | `tests/Humans.Workgroups.Tests/Services/WorkgroupServiceDocumentTests.cs` | reviewed |
 | `tests/Humans.Workgroups.Tests/Services/WorkgroupServiceGdprTests.cs` | reviewed |
 | `tests/Humans.Workgroups.Tests/Services/WorkgroupServiceLifecycleTests.cs` | reviewed |
-| `tests/Humans.Workgroups.Tests/Services/WorkgroupServiceMembershipTests.cs` | reviewed |
+| `tests/Humans.Workgroups.Tests/Services/WorkgroupServiceMembershipTests.cs` | changed |
 | `tests/Humans.Workgroups.Tests/Services/WorkgroupServiceRegistrationTests.cs` | reviewed |
 | `tests/Humans.Workgroups.Tests/Services/WorkgroupServiceRhythmTests.cs` | changed |
 
@@ -235,7 +256,7 @@ Cites are worth re-reading one by one.
 | Thread | How it ran | Model | Findings |
 |---|---|---|---|
 | Shape | main | opus (main thread) | Two helpers binding an unused user; the duplicate error map, judged not worth collapsing; `Read` with no production caller; `UpcomingMeetings` with one caller |
-| Behavior & bugs | main | opus (main thread) | The `StatusRequested` second door; three methods taking an actor they never spend; `IsAnnualReportDue` computed and unread — all three reported, not struck |
+| Behavior & bugs | main | opus (main thread) | The `StatusRequested` second door; three methods taking an actor they never spend; the annual-report predicate computed and unread — all three reported, not struck |
 | Freshness | subagent (`doctor-reader`) | opus-low | The test-project claim, the denied Surveys dependency, both call lists, the index lines; the design record's migration path and the missing ledger rows |
 | Conformance | subagent (`doctor-reader`) | haiku | clean |
 | Tests | subagent (`doctor-reader`) | opus-low | Two names claiming more than their bodies, a redundant pair, a weak deny-path sibling, and the coverage matrices behind the unpinned list |

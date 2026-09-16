@@ -61,7 +61,6 @@ administrative recognition, and every decision is a human's.
 | Reasons | string(4000)? | Refusal, withdrawal, or Quiet-close reasons |
 | AppliedByUserId | Guid? | Bare cross-section reference; nulled on erasure |
 | AppliedAt / RegisteredAt / EndedAt | Instant / Instant? / Instant? | |
-| DormantSince | Instant? | Set by the job at 60 days' silence; cleared by the next Update/Meeting. Distinct from Dormant status — it is the inquiry flag |
 | CreatedAt / UpdatedAt | Instant | |
 
 Indexes: `Slug`; `Status`; `DriveFolderId` unique filtered non-null (one group per folder — a Google-assigned opaque id, not editable display data).
@@ -123,6 +122,10 @@ Reactivated, CoordinatorChanged, ScopeChanged, MemberJoined, MemberLeft,
 DormancyInquiry, DocumentPublished, CommentPeriodOpened, CommentPeriodClosed, Delivered,
 DispositionRecorded, SurveySubmitted, SurveySent. Member: Update, Disclosure,
 StatusRequested, Note.
+
+`DormancyInquiry` is no longer written by anything. The member stays because `Kind` is
+stored as a string and a group bootstrapped with a backdated `RegisteredAt` may already
+carry rows the old daily job wrote; dropping it would break reading those.
 
 **Linking a survey writes a trusted record, so the id is checked first.** `LinkSurveyAsync`
 reads the posted survey through `ISurveyAnalysisRead.GetSummariesAsync` and rejects
@@ -229,10 +232,11 @@ See `authorization.md` for the auth policy per route.
 - Registration creates the Drive subfolder before the status flips; a folder-creation
   failure leaves the group Applied so the Secretary can retry. Application and both
   registration paths run to completion independently of request cancellation.
-- Reactivation reverses Dormant fully: status, Drive access (write again), and
-  `DormantSince`/`Reasons` cleared.
-- The 14-day application clock and the 60-day/74-day silence clocks are highlights and
-  notifications only — see the daily rhythm below. Nothing auto-registers or auto-closes.
+- Reactivation reverses Dormant fully: status, Drive access (write again), and `Reasons`
+  cleared.
+- The 14-day application clock and the 30-day update clock are notices only — see the daily
+  rhythm below. Nothing auto-registers or auto-closes, and nothing tracks whether a group
+  has gone quiet: ending a group is the Board's decision on its own reading of the register.
 - Every lifecycle transition writes a system log entry and an `AuditLogEntry`
   (`relatedEntityId`/`Type` = the workgroup) via `AuditAsync`.
 - A document's comment window may only be set on a Published document with at least one
@@ -242,9 +246,6 @@ See `authorization.md` for the auth policy per route.
 - Delivered freezes a document's body (`UpdateDocumentAsync` refuses further edits); a
   disposition may only be recorded on a Delivered document. Deferred remains in the
   awaiting-disposition queue until a final reply is recorded.
-- The nightly dormancy flag is written last: the log entry, the audit record and the notices
-  go out first, so a failure in any of them leaves `DormantSince` unset and the next run
-  retries the whole step rather than latching the flag with no audit trail.
 - Ending the group is gated the same way: `MarkDoneAsync` refuses while any of the group's
   documents still has a comment window open.
 - A comment window must end before delivery: `DeliverDocumentAsync` refuses while
@@ -282,8 +283,6 @@ See `authorization.md` for the auth policy per route.
   notified/emailed; Withdraw and Reactivate also request a Drive sync (write access changes).
 - Join/Leave: system log entry (`MemberJoined`/`MemberLeft`), Drive sync requested; a
   forced coordinator handover on last-coordinator leave also writes `CoordinatorChanged`.
-- A new Update log entry or a new meeting clears `DormantSince` — the only two
-  activity kinds §13 counts as a sign of life.
 - Publish/OpenComments/CloseComments/Deliver: system log entry; Publish and OpenComments
   notify current members; Deliver notifies and emails the Board.
 - RecordDisposition: system log entry, audit entry, members notified, coordinators emailed.
@@ -303,14 +302,15 @@ anything — every action here is a notice, a flag, or a record; a human still h
 | Condition | Action |
 |-----------|--------|
 | Active, no Update/meeting in 30 days | Notify coordinators, in-app, once per 30-day window |
-| Active, no Update/meeting in 60 days, `DormantSince` null | Set `DormantSince`, write `DormancyInquiry`, notify+email coordinators, notify Board |
-| `DormantSince` ≥ 14 days old, still silent | Notify Board "close candidate" |
 | Applied/Referred, ≥ 14 days old | Notify Board once |
 
-Status-overdue and disposition-overdue are read-time badges computed by `WorkgroupRhythm`
-against the caller's clock, not job actions — a cached register can never show a stale
-badge. "Request a status update" is a member action (any signed-in human, once per group
-per 7 days), not part of the job.
+Disposition-overdue is a read-time badge computed by `WorkgroupRhythm` against the caller's
+clock, not a job action — a cached register can never show a stale badge. "Request a status
+update" is a member action (any signed-in human, as often as they like), not part of the job.
+
+The job does not measure how long a group has been quiet, and there is no dormancy flag. A
+group that stops reporting keeps getting the 30-day nudge; whether that group should end is
+the Board's decision, taken on the register in front of them.
 
 ## Cross-Section Dependencies
 

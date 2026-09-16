@@ -1,6 +1,6 @@
 ---
 name: The section list comes from DI — don't hand-maintain another one
-description: Before hand-writing a list of section names, inject `ISectionCatalog` — Shell publishes the real set at startup. A deliberate subset publishes `ISectionAnnotations` so drift shows.
+description: Before hand-writing a list of section names — in code, in a doc, or in a skill's ledger — inject `ISectionCatalog` or glob `src/Sections/Humans.*`. A deliberate subset publishes `ISectionAnnotations` so drift shows.
 ---
 
 **Don't hand-maintain a list of section names.** `ISectionCatalog` is a singleton in `Humans.Base.Interfaces`, built by `SectionCatalogBuilder` from the same dependency-graph walk that registers the sections, so it cannot drift from what the app runs. Inject it. It carries, per section, everything derived from the assembly: `IsActive`, `DependsOn`, `Seams`, `DbContexts`, `ServiceInterfaces`, `Repositories`, `HasContracts`, `HasResources`. `TryResolve` canonicalizes casing, which is what you want before building a path, a cache key or a stored column value.
@@ -15,4 +15,22 @@ description: Before hand-writing a list of section names, inject `ISectionCatalo
 - Drift is a **warning, never a startup failure**. Nothing fails at runtime on a stale entry, and throwing would make a section rename un-shippable.
 - Validating a stored section string → validate against the list that owns the *behaviour* (`IssueSectionRouting` for an issue's queue), not against the catalog. The set of sections and the set of queues are not the same set.
 
-**Related:** [`design-rules.md` §8b](../../docs/architecture/design-rules.md) (the seam table), [`base-ui-registries-are-section-populated`](base-ui-registries-are-section-populated.md).
+## Docs and skill ledgers: same rule, no catalog
+
+Sections are independent, so there is no app-wide roster of them in prose either. Do not add a
+section row to `docs/architecture/freshness-catalog.yml`, `docs/architecture/dependency-graph.md`,
+or any other repo-wide listing just because a section exists and is missing from it — a missing row
+is not a defect, and filling one in is not maintenance. Peter, 2026-09-16: "sections are
+independent, we shouldn't have app wide listings of them. the skills need to be able to discover
+them dynamically. `/sections/Humans.*/foo` definitely do not add."
+
+**How to apply:**
+- A skill or script that needs every section → glob `src/Sections/Humans.*` (and the per-section
+  path under it, e.g. `src/Sections/Humans.*/Docs/<Section>.md`). Never a checked-in name list.
+- Noticed a section absent from a repo-wide ledger → that is the ledger's design, not a finding.
+  Don't add the row, don't raise it ([`no-tests-for-absences`](no-tests-for-absences.md) covers
+  why absence is not a question).
+- A ledger row that *carries state* the glob cannot derive — a last-swept date, an opt-out — is a
+  deliberate subset and keeps its row; it is the bare "this section exists" roster that is banned.
+
+**Related:** [`design-rules.md` §8b](../../docs/architecture/design-rules.md) (the seam table), [`base-ui-registries-are-section-populated`](base-ui-registries-are-section-populated.md), [`no-tests-for-absences`](no-tests-for-absences.md).

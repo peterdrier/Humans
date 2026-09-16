@@ -95,18 +95,13 @@ error map.
   `Services/WorkgroupService.Lifecycle.cs:21`, `Services/WorkgroupService.Lifecycle.cs:146`), and
   the folder call is made with an explicitly uncancellable token
   (`Services/WorkgroupService.Lifecycle.cs:248`).
-- **Reactivation undoes Dormant completely.** Status, reason, end date, the dormancy flag and the
-  written reasons all clear in one write (`Services/WorkgroupService.Lifecycle.cs:127`), and the
-  folder goes writable again through a sync request
-  (`Services/WorkgroupService.Lifecycle.cs:140`).
-- **The dormancy flag is written after everything it justifies.** The log entry, the audit
-  record and the notices go out first; the flag lands last
-  (`Services/WorkgroupService.Rhythm.cs:99`), so a failure anywhere above leaves the flag unset
-  and the next pass retries the whole step rather than latching it with no trail.
-- **The daily pass never changes a group's status.** Its only writes are log entries, audit
-  entries, notifications and the dormancy flag
-  (`Services/WorkgroupService.Rhythm.cs:18`); a status assignment inside that file is a
-  violation.
+- **Reactivation undoes Dormant completely.** Status, reason, end date and the written reasons
+  all clear in one write (`Services/WorkgroupService.Lifecycle.cs:125`), and the folder goes
+  writable again through a sync request (`Services/WorkgroupService.Lifecycle.cs:138`).
+- **The daily pass never changes a group's status, and never measures silence.** Its only
+  writes are log entries, audit entries and notifications
+  (`Services/WorkgroupService.Rhythm.cs:17`); a status assignment inside that file is a
+  violation, and so is anything that decides a group has gone quiet.
 - **A promised comment window is never cut short.** Delivering refuses while the window is still
   in the future (`Services/WorkgroupService.Documents.cs:162`), and so does a member ending the
   group (`Services/WorkgroupService.cs:471`). Closing early moves the end of the window to now
@@ -159,13 +154,6 @@ error map.
   (`Authorization/WorkgroupAuthorizationHandler.cs:27`) and only the tests ask. The register is
   gated at the controller by `PolicyNames.AppAccess` instead, so the resource-level read
   question is defined and never asked.
-- **`UpdateMeetingAsync`, `DeleteMeetingAsync` and `UpdateLogEntryAsync` take `actorUserId` and
-  never use it.** `DeleteLogEntryAsync` takes the same parameter and writes an audit entry with
-  it (`Services/WorkgroupService.cs:425`). Either the edits owe an audit entry or the parameter
-  is surplus; the signatures currently promise an attribution nothing records.
-- **`IsAnnualReportDue` computes clause 5's yearly obligation
-  (`Services/WorkgroupRhythm.cs:167`) and the daily pass does not act on it.** It reaches the
-  group page as a badge only; no notice, no email, no Board queue row.
 
 ## 6. Deliberately not done
 
@@ -199,17 +187,13 @@ error map.
   Apply, Register and RegisterExisting create a Drive folder and write rows that must not be
   half-done; the parameter is kept so the signature matches every sibling, and overwritten so a
   disconnecting browser cannot tear the write in half.
-- **The dormancy flag is both the flag and the once-only latch.** `DormantSince` means "we have
-  asked"; it is not the Dormant status. Any Update entry or meeting clears it
-  (`Services/WorkgroupService.Helpers.cs:407`), and clearing it restarts the clock. Reading it as
-  a status is the mistake this section invites.
 - **The nudge fires on exact multiples of the thirty-day window**
   (`Services/WorkgroupService.Rhythm.cs:59`). A pass that does not run on the right day skips
   that nudge entirely; the register badge is the durable signal and the notification is not.
 - **A member may write a `StatusRequested` log entry directly.** `RequireMemberKind` admits it
-  (`Services/WorkgroupService.Helpers.cs:115`) because the form's own kinds are member kinds,
-  while the dedicated route (`Services/WorkgroupService.cs:194`) is the one that enforces the
-  per-person cooldown and notifies the coordinators. Two ways in, one of them quiet.
+  (`Services/WorkgroupService.Helpers.cs:112`) because the form's own kinds are member kinds,
+  while the dedicated route (`Services/WorkgroupService.cs:194`) also notifies the coordinators.
+  Two ways in; neither is rate-limited, and nothing downstream reads the entry.
 - **`NoticeResources` is a hand-built `ResourceManager`, not the injected localizer**
   (`Services/WorkgroupService.Helpers.cs:279`). Notification titles are resolved per recipient
   language inside a background job where no request culture exists; a key that does not resolve

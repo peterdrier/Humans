@@ -35,9 +35,19 @@ shipped twice from `/section-doctor` runs: nobodies-collective/Humans#1465 (Onbo
 tests written, deleted again here) and peterdrier/Humans#1480 (Development, caught before
 the write).
 
+**Nor is an absence a question for Peter.** "Does this section owe an `Architecture/` folder?",
+"should there be a test project here?", "is this enum member missing on purpose?" — asking costs
+Peter a decision on something that is not a problem. If we needed it we would have it; if you find
+a reason we need it, say what breaks without it. Peter, 2026-09-16: "if we needed/had arch tests
+they go in the arch folder. if there's no tests, no folder, don't look for things that don't need
+to exist. absence isn't a problem." A missing thing goes in a Needs-Peter queue only with a
+concrete failure attached.
+
 **How to apply:**
 - About to assert `BeEmpty()` / `BeNull()` / `NotContain()` / `BeEquivalentTo([…])` over what
   a section's types, constructors, dependencies, entities or exports *are not*? Stop.
+- About to *ask* whether a section is missing something? Same stop — unless you can name what
+  goes wrong today because it is missing.
 - Doc claims a pinning test that isn't there? Fix the doc, not the test file.
 - Genuinely need it enforced? Enforce it **once, universally**, keyed off convention — never a
   per-section test. An analyzer whenever one can express the rule (Peter's hard rule: analyzers

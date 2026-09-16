@@ -6,6 +6,14 @@
 
 > One point is still marked `Implementer decides`; everything else is Peter's call and not up for re-litigation.
 
+> **Partly superseded, 2026-09-16.** Peter struck the silence machinery this document
+> specifies: §13's sixty-day dormancy inquiry, the fourteen-day close-candidate notice, the
+> `DormantSince` field, the seven-day status-request cooldown, and clause 5's annual-report
+> tracking. A group going quiet is not the section's to notice and ending one is the Board's
+> decision alone; working groups are meant to run about six months, so a yearly obligation
+> does not apply. The rows of §13 that remain are the thirty-day update nudge and clause 1's
+> fourteen-day application notice. `Docs/Workgroups.md` is the invariants of record.
+
 ---
 
 ## 1. Purpose
