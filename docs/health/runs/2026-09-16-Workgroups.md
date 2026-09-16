@@ -3,7 +3,7 @@
 - Invocation: unattended daily run (cloud), no arguments; Phase 8 skipped per the stored prompt
 - Anchor commit: `f1298b228` (origin/main at branch point); branch `section-doctor/2026-09-16T011651Z`.
 - Budget: 2.5h.
-- PR: pending
+- PR: peterdrier/Humans#1710
 
 ## Assessment summary
 Workgroups is the register of association-level working groups and the record of what each
