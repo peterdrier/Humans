@@ -17,6 +17,7 @@ using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 
 using Humans.Base.Enums;
+using Humans.Base.Authorization;
 using Humans.Base;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
@@ -31,6 +32,7 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Xunit;
 
 using Humans.GoogleIntegration.Contracts;
 
@@ -86,7 +88,8 @@ public class ProfileViewControllerPopoverTests
             _authorizationService);
 
         var identity = new ClaimsIdentity([
-            new Claim(ClaimTypes.NameIdentifier, _viewerId.ToString())
+            new Claim(ClaimTypes.NameIdentifier, _viewerId.ToString()),
+            new Claim(RoleChecks.UserStateClaimType, UserState.Active.ToString()),
         ], authenticationType: "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
@@ -219,6 +222,30 @@ public class ProfileViewControllerPopoverTests
             .Model.Should().BeOfType<ProfileSummaryViewModel>().Subject;
         vm.CampName.Should().Be("Camp Funhouse");
         vm.CampRoles.Should().Equal("Camp Lead", "Greeter");
+    }
+
+    [HumansTheory]
+    [InlineData(UserState.Suspended)]
+    [InlineData(UserState.AdminSuspended)]
+    public async Task Popover_ActiveViewer_CanSeeSuspendedTargetsBasicIdentity(UserState targetState)
+    {
+        var id = Guid.NewGuid();
+        var user = new User { Id = id, DisplayName = "Suspended Human", State = targetState };
+        var profile = new Profile
+        {
+            Id = Guid.NewGuid(), UserId = id, MembershipTier = MembershipTier.Volunteer,
+            City = "Madrid", CountryCode = "ES",
+        };
+        _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
+            .Returns(BuildUserInfo(user, profile, userEmails: null));
+
+        var result = await _controller.Popover(id, Xunit.TestContext.Current.CancellationToken);
+
+        var vm = result.Should().BeOfType<PartialViewResult>().Subject
+            .Model.Should().BeOfType<ProfileSummaryViewModel>().Subject;
+        vm.DisplayName.Should().Be("Suspended Human");
+        vm.City.Should().Be("Madrid");
+        vm.IsSuspended.Should().BeTrue();
     }
 
     [HumansFact]

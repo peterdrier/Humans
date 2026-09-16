@@ -12,8 +12,8 @@ namespace Humans.Web.Authorization;
 /// Global filter routing authenticated users by their stored <see cref="UserState"/>:
 /// only <see cref="UserState.Active"/> reaches the app. <see cref="UserState.Bare"/> → name entry;
 /// <see cref="UserState.DeletePending"/> → the cancel-deletion screen; Suspended/AdminSuspended/
-/// Rejected/Deleted/Merged → the account-status wall. Exempt controllers are public/self-gated pages, the onboarding
-/// surface, and the redirect targets themselves (so non-Active users can reach their landing).
+/// Rejected/Deleted/Merged → the account-status wall. Exempt controllers/actions are public/self-gated
+/// pages, the onboarding surface, and the redirect targets themselves (so non-Active users can reach their landing).
 /// </summary>
 public class MembershipRequiredFilter : IAsyncActionFilter
 {
@@ -23,9 +23,6 @@ public class MembershipRequiredFilter : IAsyncActionFilter
     {
         "Account",          // Login/logout/OAuth
         "OnboardingWidget", // Guided onboarding (name entry) — the Bare landing target
-        "Profile",          // Profile setup (onboarding surface)
-        "ProfileEmails",    // Own email management (extracted from Profile)
-        "ProfileView",      // Authenticated profile viewing (extracted from Profile)
         "Consent",          // Sign required legal documents (onboarding surface)
         "User",             // Account-status wall + cancel-deletion landing (redirect targets)
         "Language",         // Language switching
@@ -38,6 +35,37 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         "Notifications",    // Notification inbox — any logged-in user
         "Survey",           // Tokenised survey answering — invited non-Active users must still reach it ([AllowAnonymous])
     };
+
+    // Own-profile maintenance remains available outside Active membership. Other humans'
+    // profiles, messaging, search and admin email actions still require Active membership.
+    // Public picture/popover and email-verification actions use [AllowAnonymous].
+    private static readonly HashSet<(string Controller, string Action)> ExemptActions =
+    [
+        ("Profile", "Index"),
+        ("Profile", "Me"),
+        ("Profile", "Edit"),
+        ("Profile", "DeclareNotAttending"),
+        ("Profile", "UndoNotAttending"),
+        ("Profile", "MyOutbox"),
+        ("Profile", "Privacy"),
+        ("Profile", "RequestDeletion"),
+        ("Profile", "DietaryMedical"),
+        ("Profile", "CommunicationPreferences"),
+        ("Profile", "UpdatePreference"),
+        ("Profile", "Notifications"),
+        ("Profile", "DownloadData"),
+        ("ProfileEmails", "Emails"),
+        ("ProfileEmails", "AddEmail"),
+        ("ProfileEmails", "SetPrimary"),
+        ("ProfileEmails", "SetEmailVisibility"),
+        ("ProfileEmails", "DeleteEmail"),
+        ("ProfileEmails", "SetGoogle"),
+        ("ProfileEmails", "ClearGoogle"),
+        ("ProfileEmails", "ClearPrimary"),
+        ("ProfileEmails", "Link"),
+        ("ProfileEmails", "Unlink"),
+        ("ProfileEmails", "UnlinkLinkedAccount"),
+    ];
 
     public Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
@@ -64,10 +92,14 @@ public class MembershipRequiredFilter : IAsyncActionFilter
             return next();
         }
 
-        if (context.Controller is Controller controller &&
-            ExemptControllers.Contains(controller.ControllerContext.ActionDescriptor.ControllerName))
+        if (context.Controller is Controller controller)
         {
-            return next();
+            var descriptor = controller.ControllerContext.ActionDescriptor;
+            if (ExemptControllers.Contains(descriptor.ControllerName) ||
+                ExemptActions.Contains((descriptor.ControllerName, descriptor.ActionName)))
+            {
+                return next();
+            }
         }
 
         // Access is the stored UserState (stamped on the principal by

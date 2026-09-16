@@ -5,6 +5,7 @@ using Humans.Backdoor.Contracts;
 using Humans.Base.Constants;
 using Humans.Web.Authorization;
 using Humans.Web.Controllers;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
@@ -116,6 +117,7 @@ public class MembershipRequiredFilterTests
     }
 
     [HumansTheory]
+    [InlineData(UserState.Bare)]
     [InlineData(UserState.Suspended)]
     [InlineData(UserState.AdminSuspended)]
     [InlineData(UserState.Rejected)]
@@ -126,17 +128,110 @@ public class MembershipRequiredFilterTests
         // filter sees even though their public URLs still belong to the Profile surface.
         foreach (var (type, action) in new[]
         {
+            (typeof(ProfileController), nameof(ProfileController.Index)),
+            (typeof(ProfileController), nameof(ProfileController.Me)),
+            (typeof(ProfileController), nameof(ProfileController.Edit)),
+            (typeof(ProfileController), nameof(ProfileController.DeclareNotAttending)),
+            (typeof(ProfileController), nameof(ProfileController.UndoNotAttending)),
+            (typeof(ProfileController), nameof(ProfileController.MyOutbox)),
+            (typeof(ProfileController), nameof(ProfileController.Privacy)),
+            (typeof(ProfileController), nameof(ProfileController.DietaryMedical)),
+            (typeof(ProfileController), nameof(ProfileController.CommunicationPreferences)),
+            (typeof(ProfileController), nameof(ProfileController.UpdatePreference)),
+            (typeof(ProfileController), nameof(ProfileController.Notifications)),
+            (typeof(ProfileController), nameof(ProfileController.DownloadData)),
+            (typeof(ProfileController), nameof(ProfileController.RequestDeletion)),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.Emails)),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.AddEmail)),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.SetPrimary)),
+            (typeof(ProfileEmailsController), nameof(ProfileEmailsController.SetEmailVisibility)),
+            (typeof(ProfileEmailsController), nameof(ProfileEmailsController.DeleteEmail)),
+            (typeof(ProfileEmailsController), nameof(ProfileEmailsController.SetGoogle)),
+            (typeof(ProfileEmailsController), nameof(ProfileEmailsController.ClearGoogle)),
+            (typeof(ProfileEmailsController), nameof(ProfileEmailsController.ClearPrimary)),
+            (typeof(ProfileEmailsController), nameof(ProfileEmailsController.Link)),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.Unlink)),
-            (typeof(ProfileViewController), nameof(ProfileViewController.ViewProfile)),
+            (typeof(ProfileEmailsController), nameof(ProfileEmailsController.UnlinkLinkedAccount)),
         })
         {
-            var (result, nextCalled) = await RunAsync(type.Name[..^"Controller".Length], action, state);
-            Assert.True(nextCalled, $"{state} must still reach {type.Name}.{action}");
+            foreach (var method in type.GetMethods().Where(m => string.Equals(m.Name, action, StringComparison.Ordinal)))
+            {
+                var (result, nextCalled) = await RunAsync(
+                    type.Name[..^"Controller".Length], action, state, actionMethod: method);
+                Assert.True(nextCalled, $"{state} must still reach {type.Name}.{action}");
+                Assert.Null(result);
+            }
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(UserState.Bare, "ProfileEmails", "Index", "OnboardingWidget")]
+    [InlineData(UserState.Suspended, "ProfileEmails", "Status", "User")]
+    [InlineData(UserState.AdminSuspended, "ProfileEmails", "Status", "User")]
+    [InlineData(UserState.Rejected, "ProfileEmails", "Status", "User")]
+    [InlineData(UserState.Deleted, "ProfileEmails", "Status", "User")]
+    [InlineData(UserState.Merged, "ProfileEmails", "Status", "User")]
+    [InlineData(UserState.DeletePending, "ProfileEmails", "Deletion", "User")]
+    [InlineData(UserState.Bare, "ProfileView", "Index", "OnboardingWidget")]
+    [InlineData(UserState.Suspended, "ProfileView", "Status", "User")]
+    [InlineData(UserState.AdminSuspended, "ProfileView", "Status", "User")]
+    [InlineData(UserState.Rejected, "ProfileView", "Status", "User")]
+    [InlineData(UserState.Deleted, "ProfileView", "Status", "User")]
+    [InlineData(UserState.Merged, "ProfileView", "Status", "User")]
+    [InlineData(UserState.DeletePending, "ProfileView", "Deletion", "User")]
+    public async Task Non_active_users_cannot_view_other_profiles_send_messages_or_administer_emails(
+        UserState state, string controllerName, string redirectAction, string redirectController)
+    {
+        var actions = controllerName switch
+        {
+            "ProfileEmails" => typeof(ProfileEmailsController).GetMethods()
+                .Where(m => m.Name.StartsWith("Admin", StringComparison.Ordinal)).ToList(),
+            _ => typeof(ProfileViewController).GetMethods()
+                .Where(m => m.DeclaringType == typeof(ProfileViewController)
+                    && !m.IsDefined(typeof(AllowAnonymousAttribute), true)).ToList(),
+        };
+        Assert.NotEmpty(actions);
+
+        foreach (var method in actions)
+        foreach (var role in new[] { null, RoleNames.Admin, RoleNames.HumanAdmin, RoleNames.Board })
+        {
+            var (result, nextCalled) = await RunAsync(
+                method.DeclaringType!.Name[..^"Controller".Length], method.Name, state,
+                role: role, actionMethod: method);
+
+            Assert.False(nextCalled, $"{state} ({role ?? "member"}) must not reach {method}");
+            AssertRedirect(result, redirectAction, redirectController);
+        }
+    }
+
+    [HumansFact]
+    public async Task Active_users_reach_profile_action_authorization()
+    {
+        foreach (var method in typeof(ProfileEmailsController).GetMethods()
+            .Where(m => m.Name.StartsWith("Admin", StringComparison.Ordinal))
+            .Concat(typeof(ProfileViewController).GetMethods()
+                .Where(m => m.DeclaringType == typeof(ProfileViewController)
+                    && !m.IsDefined(typeof(AllowAnonymousAttribute), true))))
+        {
+            var (result, nextCalled) = await RunAsync(
+                method.DeclaringType!.Name[..^"Controller".Length], method.Name,
+                UserState.Active, actionMethod: method);
+
+            Assert.True(nextCalled, $"Active users must reach {method}'s role/ownership checks");
             Assert.Null(result);
         }
+    }
+
+    [HumansTheory]
+    [InlineData("ProfileEmails", nameof(ProfileEmailsController.VerifyEmail))]
+    [InlineData("ProfileView", nameof(ProfileViewController.Picture))]
+    [InlineData("ProfileView", nameof(ProfileViewController.PublicPopover))]
+    public async Task Public_profile_actions_remain_reachable_for_suspended_users(string controller, string action)
+    {
+        var (result, nextCalled) = await RunAsync(controller, action, UserState.AdminSuspended);
+
+        Assert.True(nextCalled);
+        Assert.Null(result);
     }
 
     [HumansFact]
@@ -154,10 +249,11 @@ public class MembershipRequiredFilterTests
         UserState? state,
         bool authenticated = true,
         string? role = null,
-        string authenticationType = "test")
+        string authenticationType = "test",
+        MethodInfo? actionMethod = null)
     {
         var sut = new MembershipRequiredFilter();
-        var ctx = BuildExecutingContext(controllerName, actionName, authenticated, state, role, authenticationType);
+        var ctx = BuildExecutingContext(controllerName, actionName, authenticated, state, role, authenticationType, actionMethod);
         var nextCalled = false;
 
         await sut.OnActionExecutionAsync(ctx, () =>
@@ -197,7 +293,8 @@ public class MembershipRequiredFilterTests
         bool authenticated,
         UserState? state,
         string? role,
-        string authenticationType)
+        string authenticationType,
+        MethodInfo? actionMethod)
     {
         ClaimsIdentity identity;
         if (authenticated)
@@ -228,6 +325,7 @@ public class MembershipRequiredFilterTests
         var controllerType = controllerName switch
         {
             "OnboardingWidget" => OnboardingWidgetControllerType,
+            "Profile" => typeof(ProfileController),
             "ProfileEmails" => typeof(ProfileEmailsController),
             "ProfileView" => typeof(ProfileViewController),
             _ => typeof(HomeController),
@@ -237,7 +335,7 @@ public class MembershipRequiredFilterTests
             ControllerName = controllerName,
             ActionName = actionName,
             ControllerTypeInfo = controllerType.GetTypeInfo(),
-            MethodInfo = controllerType.GetMethods()
+            MethodInfo = actionMethod ?? controllerType.GetMethods()
                 .FirstOrDefault(m => string.Equals(m.Name, actionName, StringComparison.Ordinal))
                 ?? typeof(MembershipRequiredFilterTests).GetMethod(nameof(BuildExecutingContext),
                     BindingFlags.NonPublic | BindingFlags.Static)!,
