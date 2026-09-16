@@ -252,6 +252,9 @@ internal interface ITicketRepository : IRepository
 
     Task<IReadOnlyList<PaidOrderSalesRow>> GetPaidOrderSalesRowsAsync(CancellationToken ct = default);
 
+    /// <summary>Refunded orders (purchase instant + gross) for the monthly recap.</summary>
+    Task<IReadOnlyList<RefundedOrderRow>> GetRefundedOrderRowsAsync(CancellationToken ct = default);
+
     Task<IReadOnlyList<PaidAttendeeTypePriceRow>> GetPaidAttendeeTypePriceRowsAsync(CancellationToken ct = default);
 
     Task<IReadOnlyList<DiscountCodeOrderRow>> GetOrdersWithDiscountCodesAsync(CancellationToken ct = default);

@@ -171,6 +171,7 @@ internal sealed class TicketSalesAggregatesViewModel
 {
     public List<WeeklySalesRow> WeeklySales { get; set; } = [];
     public List<QuarterlySalesRow> QuarterlySales { get; set; } = [];
+    public List<MonthlySalesRow> MonthlySales { get; set; } = [];
     public List<TicketTypeSalesRow> ByTicketType { get; set; } = [];
     public List<DiscountCampaignRow> ByDiscountCampaign { get; set; } = [];
     public string Currency { get; set; } = "EUR";
@@ -205,6 +206,20 @@ internal sealed class WeeklySalesRow
     public decimal Donations { get; set; }
     public decimal VatAmount { get; set; }
     public decimal VipDonations { get; set; }
+}
+
+internal sealed class MonthlySalesRow
+{
+    public string MonthLabel { get; set; } = string.Empty; // "2026-03"
+    public int OrderCount { get; set; }
+    public int TicketsSold { get; set; }
+    public decimal GrossRevenue { get; set; }
+    public decimal Donations { get; set; }
+    public decimal VipDonations { get; set; }
+    public decimal VatAmount { get; set; }
+    public decimal StripeFees { get; set; }
+    public decimal ApplicationFees { get; set; }
+    public decimal RefundedGross { get; set; }
 }
 
 internal sealed class QuarterlySalesRow

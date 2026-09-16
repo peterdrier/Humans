@@ -76,6 +76,90 @@
     </div>
 
     <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="fa-solid fa-file-invoice"></i> Monthly Income for Accountant</span>
+            <a asp-action="ExportAccountantReport" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-download"></i> Export CSV</a>
+        </div>
+        <div class="card-body p-0">
+            @if (Model.MonthlySales.Count > 0)
+            {
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th class="text-end">Orders</th>
+                            <th class="text-end">Tickets</th>
+                            <th class="text-end">Gross (@Model.Currency)</th>
+                            <th class="text-end">Donations</th>
+                            <th class="text-end">VIP Donations</th>
+                            <th class="text-end">Ticket Income incl VAT</th>
+                            <th class="text-end">VAT 10%</th>
+                            <th class="text-end">Ticket Income ex VAT</th>
+                            <th class="text-end">Stripe Fees</th>
+                            <th class="text-end">TT Fees</th>
+                            <th class="text-end">Refunded Gross</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var m in Model.MonthlySales)
+                        {
+                            var inclVat = m.GrossRevenue - m.Donations - m.VipDonations;
+                            <tr>
+                                <td>@m.MonthLabel</td>
+                                <td class="text-end">@m.OrderCount.ToString("N0")</td>
+                                <td class="text-end">@m.TicketsSold.ToString("N0")</td>
+                                <td class="text-end">@m.GrossRevenue.ToString("N2")</td>
+                                <td class="text-end">@m.Donations.ToString("N2")</td>
+                                <td class="text-end">@m.VipDonations.ToString("N2")</td>
+                                <td class="text-end">@inclVat.ToString("N2")</td>
+                                <td class="text-end">@m.VatAmount.ToString("N2")</td>
+                                <td class="text-end">@((inclVat - m.VatAmount).ToString("N2"))</td>
+                                <td class="text-end">@m.StripeFees.ToString("N2")</td>
+                                <td class="text-end">@m.ApplicationFees.ToString("N2")</td>
+                                <td class="text-end">@m.RefundedGross.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        @{
+                            var mGross = Model.MonthlySales.Sum(m => m.GrossRevenue);
+                            var mDonations = Model.MonthlySales.Sum(m => m.Donations);
+                            var mVip = Model.MonthlySales.Sum(m => m.VipDonations);
+                            var mVat = Model.MonthlySales.Sum(m => m.VatAmount);
+                            var mInclVat = mGross - mDonations - mVip;
+                        }
+                        <tr class="fw-bold">
+                            <td>Total</td>
+                            <td class="text-end">@Model.MonthlySales.Sum(m => m.OrderCount).ToString("N0")</td>
+                            <td class="text-end">@Model.MonthlySales.Sum(m => m.TicketsSold).ToString("N0")</td>
+                            <td class="text-end">@mGross.ToString("N2")</td>
+                            <td class="text-end">@mDonations.ToString("N2")</td>
+                            <td class="text-end">@mVip.ToString("N2")</td>
+                            <td class="text-end">@mInclVat.ToString("N2")</td>
+                            <td class="text-end">@mVat.ToString("N2")</td>
+                            <td class="text-end">@((mInclVat - mVat).ToString("N2"))</td>
+                            <td class="text-end">@Model.MonthlySales.Sum(m => m.StripeFees).ToString("N2")</td>
+                            <td class="text-end">@Model.MonthlySales.Sum(m => m.ApplicationFees).ToString("N2")</td>
+                            <td class="text-end">@Model.MonthlySales.Sum(m => m.RefundedGross).ToString("N2")</td>
+                        </tr>
+                    </tfoot>
+                </table>
+                <div class="px-3 py-2">
+                    <small class="text-muted">
+                        <i class="fa-solid fa-circle-info"></i>
+                        Paid orders by purchase month. Refunded Gross is the original amount of orders since refunded,
+                        by purchase month, so the row reconciles against the Stripe statement.
+                    </small>
+                </div>
+            }
+            else
+            {
+                <div class="text-muted text-center py-3">No paid orders yet.</div>
+            }
+        </div>
+    </div>
+
+    <div class="card mb-4">
         <div class="card-header">
             <i class="fa-solid fa-chart-pie"></i> Quarterly Sales (Spanish Tax Quarters)
         </div>

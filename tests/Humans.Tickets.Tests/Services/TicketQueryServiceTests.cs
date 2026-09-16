@@ -162,6 +162,49 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
+    public async Task GetSalesAggregatesAsync_MonthlySales_SplitsPerMonthWithFeesAndRefundedGross()
+    {
+        var march = MakeOrder("ord_mar", TicketPaymentStatus.Paid, Instant.FromUtc(2026, 3, 2, 10, 0), 500m, 25m, 28.64m, 1, 85m);
+        march.StripeFee = 5.50m;
+        march.ApplicationFee = 2m;
+        var april = MakeOrder("ord_apr", TicketPaymentStatus.Paid, Instant.FromUtc(2026, 4, 20, 10, 0), 315m, 0m, 28.64m, 1, 0m);
+        april.StripeFee = 3m;
+        april.ApplicationFee = 1m;
+        await TicketsDb.TicketOrders.AddRangeAsync(
+            march,
+            april,
+            MakeOrder("ord_mar_refund", TicketPaymentStatus.Refunded, Instant.FromUtc(2026, 3, 9, 10, 0), 200m, 0m, 0m, 1, 0m),
+            MakeOrder("ord_may_refund", TicketPaymentStatus.Refunded, Instant.FromUtc(2026, 5, 1, 10, 0), 315m, 0m, 0m, 1, 0m),
+            MakeOrder("ord_cancelled", TicketPaymentStatus.Cancelled, Instant.FromUtc(2026, 3, 3, 12, 0), 888m, 0m, 0m, 1, 0m));
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _service.GetSalesAggregatesAsync();
+
+        result.MonthlySales.Select(m => m.MonthLabel).Should().Equal("2026-03", "2026-04", "2026-05");
+
+        var mar = result.MonthlySales[0];
+        mar.OrderCount.Should().Be(1);
+        mar.TicketsSold.Should().Be(1);
+        mar.GrossRevenue.Should().Be(500m);
+        mar.Donations.Should().Be(25m);
+        mar.VipDonations.Should().Be(85m);
+        mar.VatAmount.Should().Be(28.64m);
+        mar.StripeFees.Should().Be(5.50m);
+        mar.ApplicationFees.Should().Be(2m);
+        mar.RefundedGross.Should().Be(200m);
+
+        var apr = result.MonthlySales[1];
+        apr.GrossRevenue.Should().Be(315m);
+        apr.StripeFees.Should().Be(3m);
+        apr.RefundedGross.Should().Be(0m);
+
+        var may = result.MonthlySales[2];
+        may.OrderCount.Should().Be(0);
+        may.GrossRevenue.Should().Be(0m);
+        may.RefundedGross.Should().Be(315m);
+    }
+
+    [HumansFact]
     public async Task GetSalesAggregatesAsync_GroupsByTicketTypeAndPrice()
     {
         var orderId = Guid.NewGuid();

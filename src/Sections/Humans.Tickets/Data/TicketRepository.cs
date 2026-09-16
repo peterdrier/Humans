@@ -571,7 +571,20 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                         (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn) &&
                         a.Price > TicketConstants.VipThresholdEuros)
                     .Sum(a => a.Price - TicketConstants.VipThresholdEuros),
+                StripeFee = o.StripeFee,
+                ApplicationFee = o.ApplicationFee,
             })
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<RefundedOrderRow>> GetRefundedOrderRowsAsync(
+        CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.TicketOrders
+            .AsNoTracking()
+            .Where(o => o.PaymentStatus == TicketPaymentStatus.Refunded)
+            .Select(o => new RefundedOrderRow { PurchasedAt = o.PurchasedAt, TotalAmount = o.TotalAmount })
             .ToListAsync(ct);
     }
 

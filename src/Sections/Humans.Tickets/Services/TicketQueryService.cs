@@ -301,6 +301,12 @@ internal sealed class TicketQueryService(
         };
     }
 
+    private static (int Year, int Month) MonthKey(Instant purchasedAt)
+    {
+        var d = purchasedAt.InUtc().Date;
+        return (d.Year, d.Month);
+    }
+
     public async Task<TicketSalesAggregates> GetSalesAggregatesAsync()
     {
         var orders = await ticketRepository.GetPaidOrderSalesRowsAsync();
@@ -352,6 +358,32 @@ internal sealed class TicketQueryService(
             })
             .ToList();
 
+        var refunded = await ticketRepository.GetRefundedOrderRowsAsync();
+        var refundedByMonth = refunded
+            .GroupBy(r => MonthKey(r.PurchasedAt))
+            .ToDictionary(g => g.Key, g => g.Sum(r => r.TotalAmount));
+        var paidByMonth = orders.GroupBy(o => MonthKey(o.PurchasedAt)).ToDictionary(g => g.Key, g => g.ToList());
+        var monthlySales = paidByMonth.Keys.Union(refundedByMonth.Keys)
+            .OrderBy(k => k)
+            .Select(k =>
+            {
+                var paid = paidByMonth.GetValueOrDefault(k) ?? [];
+                return new MonthlySalesAggregate
+                {
+                    MonthLabel = $"{k.Year:D4}-{k.Month:D2}",
+                    OrderCount = paid.Count,
+                    TicketsSold = paid.Sum(o => o.AttendeeCount),
+                    GrossRevenue = paid.Sum(o => o.TotalAmount),
+                    Donations = paid.Sum(o => o.DonationAmount),
+                    VipDonations = paid.Sum(o => o.VipDonations),
+                    VatAmount = paid.Sum(o => o.VatAmount),
+                    StripeFees = paid.Sum(o => o.StripeFee ?? 0m),
+                    ApplicationFees = paid.Sum(o => o.ApplicationFee ?? 0m),
+                    RefundedGross = refundedByMonth.GetValueOrDefault(k),
+                };
+            })
+            .ToList();
+
         var attendees = await ticketRepository.GetPaidAttendeeTypePriceRowsAsync();
 
         var byTicketType = attendees
@@ -370,6 +402,7 @@ internal sealed class TicketQueryService(
         {
             WeeklySales = weeklySales,
             QuarterlySales = quarterlySales,
+            MonthlySales = monthlySales,
             ByTicketType = byTicketType,
             ByDiscountCampaign = await BuildDiscountCampaignAggregatesAsync(),
         };
