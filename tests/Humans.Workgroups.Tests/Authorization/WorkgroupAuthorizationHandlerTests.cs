@@ -83,20 +83,13 @@ public sealed class WorkgroupAuthorizationHandlerTests
         result.Should().BeFalse();
     }
 
-    [HumansFact]
-    public async Task Administer_Board_Succeeds()
+    [HumansTheory]
+    [Xunit.InlineData(RoleNames.Board)]
+    [Xunit.InlineData(RoleNames.Admin)]
+    public async Task Administer_BoardAndAdmin_Succeed(string role)
     {
         var result = await EvaluateAsync(
-            SignedInWithRole(RoleNames.Board), ActiveWorkgroup(), WorkgroupOperationRequirement.Administer);
-
-        result.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task Administer_Admin_Succeeds()
-    {
-        var result = await EvaluateAsync(
-            SignedInWithRole(RoleNames.Admin), ActiveWorkgroup(), WorkgroupOperationRequirement.Administer);
+            SignedInWithRole(role), ActiveWorkgroup(), WorkgroupOperationRequirement.Administer);
 
         result.Should().BeTrue();
     }

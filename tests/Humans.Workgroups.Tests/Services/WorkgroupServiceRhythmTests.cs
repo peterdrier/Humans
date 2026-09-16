@@ -47,7 +47,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task SixtyDaysSilent_FlagsDormancy_SetsDormantSinceOnce_AndAudits()
+    public async Task SixtyDaysSilent_FlagsDormancy_AndAudits()
     {
         var workgroup = await SeedWorkgroupAsync(registeredAt: Clock.GetCurrentInstant().Minus(Duration.FromDays(60)));
 
@@ -193,20 +193,21 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
     [HumansFact]
     public async Task OneGroupsFailure_DoesNotStopThePassForTheRest()
     {
-        // A group with no coordinators at all still has to be walked without throwing.
-        var quiet = await SeedWorkgroupAsync(
+        var failing = await SeedWorkgroupAsync(
             name: "Silent", driveFolderId: "folder-silent",
             registeredAt: Clock.GetCurrentInstant().Minus(Duration.FromDays(30)));
         var alsoQuiet = await SeedWorkgroupAsync(
             name: "Also Silent", driveFolderId: "folder-also-silent",
             registeredAt: Clock.GetCurrentInstant().Minus(Duration.FromDays(30)));
 
+        // The first group's turn throws mid-action; the pass has to swallow it and carry on.
+        AuditLog.When(x => x.LogAsync(
+                Arg.Any<AuditAction>(), Arg.Any<string>(), failing.Id, Arg.Any<string>(), Arg.Any<string>()))
+            .Do(_ => throw new InvalidOperationException("the audit log is down for this group"));
+
         var act = () => NewService().RunDailyRhythmAsync(Ct);
 
         await act.Should().NotThrowAsync();
-        await AuditLog.Received(1).LogAsync(
-            AuditAction.WorkgroupUpdateDueNotified, AuditEntityTypes.Workgroup, quiet.Id,
-            Arg.Any<string>(), WorkgroupService.WorkgroupRhythmJobName);
         await AuditLog.Received(1).LogAsync(
             AuditAction.WorkgroupUpdateDueNotified, AuditEntityTypes.Workgroup, alsoQuiet.Id,
             Arg.Any<string>(), WorkgroupService.WorkgroupRhythmJobName);

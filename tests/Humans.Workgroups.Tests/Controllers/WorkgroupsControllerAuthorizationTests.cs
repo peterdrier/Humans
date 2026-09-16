@@ -84,10 +84,13 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
     public async Task NonMember_SettingCoordinators_IsForbidden()
     {
         var (controller, workgroup) = await BuildAsync(asMember: false);
+        var outsider = Guid.NewGuid();
 
-        var result = await controller.Coordinators(workgroup.Slug, [Guid.NewGuid()], Ct);
+        var result = await controller.Coordinators(workgroup.Slug, [outsider], Ct);
 
         result.Should().BeOfType<ForbidResult>();
+        (await OpenContext().Members.AnyAsync(m => m.WorkgroupId == workgroup.Id && m.UserId == outsider, Ct))
+            .Should().BeFalse();
     }
 
     [HumansFact]
