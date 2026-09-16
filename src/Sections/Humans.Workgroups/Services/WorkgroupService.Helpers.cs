@@ -95,6 +95,16 @@ internal sealed partial class WorkgroupService
         await repository.GetWorkgroupAsync(workgroupId, ct)
             ?? throw new WorkgroupRuleException(WorkgroupErrorKeys.NotFound);
 
+    /// <summary>
+    /// A soft-deleted meeting is gone as far as member work goes. The row stays so the roster's
+    /// history holds, not so a replayed POST can edit it or delete it twice — and since both of
+    /// those now audit, a second pass would put an event in the trail that never happened.
+    /// </summary>
+    private async Task<WorkgroupMeeting> RequireLiveMeetingAsync(Guid meetingId, CancellationToken ct) =>
+        await repository.GetMeetingAsync(meetingId, ct) is { DeletedAt: null } meeting
+            ? meeting
+            : throw new WorkgroupRuleException(WorkgroupErrorKeys.NotFound);
+
     /// <summary>Member mutations are frozen before registration and once the group ends.</summary>
     private static void RequireAcceptsMemberWork(Workgroup w)
     {

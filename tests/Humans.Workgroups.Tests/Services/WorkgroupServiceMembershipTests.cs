@@ -288,4 +288,50 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
             AuditAction.WorkgroupMeetingDeleted, AuditEntityTypes.WorkgroupMeeting, meetingId,
             Arg.Any<string>(), member, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
+
+    [HumansFact]
+    public async Task ReplayingADelete_IsRefused_AndAuditedOnce()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var member = workgroup.Members.Single().UserId;
+        var now = Clock.GetCurrentInstant();
+        var meetingId = await NewService().CreateMeetingAsync(
+            workgroup.Id, member,
+            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null), Ct);
+        await NewService().DeleteMeetingAsync(meetingId, member, Ct);
+
+        // The tombstoned row is still readable, so a double-submitted form used to re-stamp it and
+        // audit a second deletion — an event the trail would have claimed happened, and did not.
+        var replay = async () => await NewService().DeleteMeetingAsync(meetingId, member, Ct);
+
+        (await replay.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+            .Should().Be(WorkgroupErrorKeys.NotFound);
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.WorkgroupMeetingDeleted, AuditEntityTypes.WorkgroupMeeting, meetingId,
+            Arg.Any<string>(), member, Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task EditingADeletedMeeting_IsRefused()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var member = workgroup.Members.Single().UserId;
+        var now = Clock.GetCurrentInstant();
+        var meetingId = await NewService().CreateMeetingAsync(
+            workgroup.Id, member,
+            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null), Ct);
+        await NewService().DeleteMeetingAsync(meetingId, member, Ct);
+
+        // Same unfiltered read, same class of bug: a deleted meeting must not be editable either.
+        var edit = async () => await NewService().UpdateMeetingAsync(
+            meetingId, member,
+            new WorkgroupMeetingSave("Back from the dead", now, now.Plus(Duration.FromHours(1)),
+                null, null, false, null), Ct);
+
+        (await edit.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+            .Should().Be(WorkgroupErrorKeys.NotFound);
+        await AuditLog.DidNotReceive().LogAsync(
+            AuditAction.WorkgroupMeetingUpdated, AuditEntityTypes.WorkgroupMeeting, meetingId,
+            Arg.Any<string>(), member, Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
 }

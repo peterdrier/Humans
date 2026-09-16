@@ -331,8 +331,7 @@ internal sealed partial class WorkgroupService(
         Guid meetingId, Guid actorUserId, WorkgroupMeetingSave save, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(save);
-        var meeting = await repository.GetMeetingAsync(meetingId, ct)
-            ?? throw new WorkgroupRuleException(WorkgroupErrorKeys.NotFound);
+        var meeting = await RequireLiveMeetingAsync(meetingId, ct);
         var workgroup = await RequireAsync(meeting.WorkgroupId, ct);
         RequireAcceptsMemberWork(workgroup);
         ValidateMeeting(save);
@@ -350,8 +349,7 @@ internal sealed partial class WorkgroupService(
 
     public async Task DeleteMeetingAsync(Guid meetingId, Guid actorUserId, CancellationToken ct = default)
     {
-        var meeting = await repository.GetMeetingAsync(meetingId, ct)
-            ?? throw new WorkgroupRuleException(WorkgroupErrorKeys.NotFound);
+        var meeting = await RequireLiveMeetingAsync(meetingId, ct);
         var workgroup = await RequireAsync(meeting.WorkgroupId, ct);
         RequireAcceptsMemberWork(workgroup);
 
