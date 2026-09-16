@@ -27,6 +27,31 @@ namespace Humans.Surveys.Tests.Controllers;
 public sealed class SurveyAdminControllerTests
 {
     [HumansFact]
+    public async Task Reject_invalid_note_renders_queue_with_original_text_and_error()
+    {
+        var surveyId = Guid.NewGuid();
+        var note = new string('x', 4001);
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.GetPendingApprovalQueueAsync(Arg.Any<CancellationToken>())
+            .Returns([new SurveyPendingApprovalItem(surveyId, "Survey", Guid.NewGuid(), "Author", null)]);
+        surveys.RejectAsync(surveyId, Arg.Any<SurveyViewer>(), note, Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new InvalidOperationException("A rejection note must be 4000 characters or fewer."));
+        var sut = CreateController(surveys, isBoardOrAdmin: true);
+
+        var result = await sut.Reject(surveyId, note, Xunit.TestContext.Current.CancellationToken);
+
+        var view = result.Should().BeOfType<ViewResult>().Subject;
+        view.ViewName.Should().Be(nameof(SurveyAdminController.Queue));
+        view.Model.Should().BeOfType<SurveyPendingApprovalViewModel>().Subject.Items
+            .Should().ContainSingle().Which.Id.Should().Be(surveyId);
+        view.ViewData[$"RejectionNote:{surveyId}"].Should().Be(note);
+        sut.ModelState.IsValid.Should().BeFalse();
+        sut.ModelState[string.Empty]!.Errors.Should().ContainSingle()
+            .Which.ErrorMessage.Should().Contain("4000");
+        sut.TempData.Should().BeEmpty("oversized text must not enter the TempData cookie");
+    }
+
+    [HumansFact]
     public async Task Preview_renders_a_draft_survey_through_the_respondent_intro()
     {
         var surveyId = Guid.NewGuid();

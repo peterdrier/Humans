@@ -57,7 +57,7 @@ internal sealed class SurveyAdminController(
     public async Task<IActionResult> Queue(CancellationToken ct)
     {
         var items = await surveyService.GetPendingApprovalQueueAsync(ct);
-        return View(new SurveyPendingApprovalViewModel { Items = items });
+        return View(nameof(Queue), new SurveyPendingApprovalViewModel { Items = items });
     }
 
     [HttpPost("Approve/{id:guid}")]
@@ -99,7 +99,9 @@ internal sealed class SurveyAdminController(
         catch (InvalidOperationException ex)
         {
             logger.LogWarning("Survey rejection rejected for {SurveyId}: {Reason}", id, ex.Message);
-            SetError(ex.Message);
+            ModelState.AddModelError(string.Empty, ex.Message);
+            ViewData[$"RejectionNote:{id}"] = note;
+            return await Queue(ct);
         }
         return RedirectToAction(nameof(Queue));
     }

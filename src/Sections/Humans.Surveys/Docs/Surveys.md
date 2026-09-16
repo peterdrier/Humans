@@ -42,7 +42,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 | PublicStartedCount | int | slug-path "started" funnel counter (no per-person anchor) |
 | CreatedByUserId | Guid | bare FK → User — **FK only**, no nav, resolved via `IUserServiceRead` |
 | SubmittedAt | Instant? | stamped entering PendingApproval; cleared on approve/reject |
-| RejectionNote | string? | max 4000; validated before rejection persists; Board/Admin's note when a submission is rejected back to Draft; cleared on resubmit/approve |
+| RejectionNote | string? | max 4000; validated before rejection persists; invalid notes remain in the queue form for correction; Board/Admin's note when a submission is rejected back to Draft; cleared on resubmit/approve |
 | CreatedAt / UpdatedAt | Instant | |
 
 **Indexes:** `Status`; `PublicSlug` unique (filtered to non-null).

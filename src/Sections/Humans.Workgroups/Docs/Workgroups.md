@@ -120,6 +120,8 @@ System entries never change.
 
 Member log bodies are limited to 16000 characters and lifecycle reasons to 4000.
 Forms advertise these bounds and the service rejects overflow before writing any state.
+Validation failures re-render the submitted form; admin lifecycle reasons remain in the
+failed item's queue form, while successful decisions redirect back to the queue.
 
 `WorkgroupLogKind` — system: Applied, Registered, Referred, Refused, Withdrawn, Ended,
 Reactivated, CoordinatorChanged, ScopeChanged, MemberJoined, MemberLeft,
