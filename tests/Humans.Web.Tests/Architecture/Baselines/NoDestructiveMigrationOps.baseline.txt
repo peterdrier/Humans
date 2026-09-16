@@ -114,3 +114,26 @@ src/Sections/Humans.Users/Data/Migrations/20260820215726_DropProfileState.cs:Dro
 # index or build the dedup it was added for, answered "2 drop column".
 src/Sections/Humans.Email/Data/Migrations/20260911025722_DropEmailOutboxShiftSignupId.cs:DropIndex(name=IX_email_outbox_messages_ShiftSignupId_TemplateName,table=email_outbox_messages)#1
 src/Sections/Humans.Email/Data/Migrations/20260911025722_DropEmailOutboxShiftSignupId.cs:DropColumn(name=ShiftSignupId,table=email_outbox_messages)#1
+
+# Workgroups: the `DormantSince` column on `workgroups`. Peter struck the section's silence
+# machinery — the sixty-day dormancy inquiry and the fourteen-day close-candidate notice — so
+# nothing sets, clears or reads the field any more; ending a group is the Board's decision, taken
+# on the Board's own reading of the register, not something the section tracks.
+# Evidence: the container clones shallow, so this was unshallowed before searching —
+# `git rev-parse --is-shallow-repository` is false and the searches below ran on full history.
+# Every commit touching the token is one of the following:
+#   - 0da42ed31 (nobodies-collective/Humans#1650, "Workgroups: the working-groups register"), which
+#     introduced the property and the DB column in 20260911012653_AddWorkgroups;
+#   - the commits on this branch, which remove it.
+# Outside the migration folders every reference on origin/main lives inside Humans.Workgroups or its
+# test project; the sole non-Workgroups hit is a prose comment in AuditAction.cs, not a read.
+# The only assignment that ever wrote a non-null value is WorkgroupService.Rhythm.cs
+# (`workgroup.DormantSince = now;`) in the daily rhythm job; every other assignment writes null.
+# This branch deletes that job's dormancy pass, so nothing on the branch writes the column at all.
+# No migration backfills it: no `migrationBuilder.Sql`, UPDATE or INSERT line in any Workgroups
+# migration mentions it. The section has never been deployed to production (Peter, below), so the
+# only rows that can exist are QA's.
+# Down() re-adds the column as nullable, so the rollback runs.
+# Approval: Peter, 2026-09-16 — asked which column was being dropped before approving, then
+# answered "it's not in production yet, you can drop that column."
+src/Sections/Humans.Workgroups/Data/Migrations/20260916163259_DropWorkgroupDormantSince.cs:DropColumn(name=DormantSince,table=workgroups)#1
