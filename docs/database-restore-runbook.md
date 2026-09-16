@@ -11,10 +11,11 @@ Observed output and timings are quoted verbatim in [Drill record](#drill-record-
 along with what the drill did *not* cover. Everything that could not be verified without the
 Coolify console is called out explicitly rather than assumed.
 
-- **Server version:** PostgreSQL 16 (`docker-compose.yml` → `image: postgres:16`). Restore
-  with a client at least as new as the `pg_dump` that produced the file; an older `pg_restore`
-  rejects a newer archive outright. The `postgres:16` container's own client is the safe
-  default, which is why every command here runs inside it.
+- **Server and client versions:** the historical drill and QA compose file use PostgreSQL 16;
+  the runtime image installs client 18 for production. Check the actual database server and
+  `pg_dump`/`pg_restore` versions before choosing a restore container. Match the rehearsal
+  server to production and verify the selected `pg_restore` can read the archive with
+  `pg_restore --list`. Do not assume the QA container's client can read a production snapshot.
 - **The database work does not need the application running** — restores go container →
   database — but §3 requires the app *stopped*, because its open connections block
   `DROP DATABASE`.
@@ -52,10 +53,10 @@ Find the containers you will be working with:
 docker ps --format '{{.Names}}\t{{.Image}}'
 ```
 
-The database container is the `postgres:16` one (named `humans-db` in the deployed
-environment — that is the host `docker-entrypoint.sh` points preview databases at); the app
-container is the one built from this repo. The rest of this runbook calls them `$DB` and
-`$APP`.
+Identify the database container by the deployed connection configuration and confirm its
+server version. `humans-db` is the host used by preview routing; it is not proof that a
+container is the intended production or rehearsal target. The rest of this runbook calls
+the verified database container `$DB` and the app container `$APP`.
 
 ---
 
@@ -86,13 +87,13 @@ always a second attempt:
 
 | Situation | File | Why |
 |-----------|------|-----|
-| **The migration failed** — app crash-looping, §4 | the one ending **`.unfinished`** | The suffix means the deploy that took it never finished migrating, so it is the last state before that deploy touched the schema. There is at most one. |
-| **The deploy succeeded but was wrong** — bad data, wrong schema, and you want the previous release's state back | the **newest plain `.dump`** | A completed deploy's snapshot loses the suffix, so the newest `.dump` is the state immediately before the most recent schema-changing deploy. |
+| **The migration failed** — app crash-looping, §4 | The snapshot named in this deployment's `Pre-migration snapshot written` or `Reusing pre-migration snapshot` log | Correlate its timestamp, source release and `.migrations` sidecar with the failed deployment. An `.unfinished` suffix alone is insufficient: stale markers can survive completed deploys. |
+| **The deploy succeeded but was wrong** — bad data, wrong schema, and you want the previous release's state back | The verified snapshot from immediately before that deploy | It normally has a plain `.dump` suffix; failed marker cleanup can leave `.unfinished`. Match the boot record rather than choosing only by filename order. |
 
 Both are counterintuitive in the same way, so check the timestamps in `ls -lt` output against
 when the deploy happened rather than trusting the ordering. If the deploy you are undoing was
-code-only it took no snapshot at all — the database is not the problem and rolling the image back
-is the whole fix.
+code-only it took no migration snapshot. Image rollback repairs the code; it is sufficient only
+when the schema remains compatible and application writes have not damaged persistent data.
 
 A **`.writing`** file is never a restore candidate: that is an aborted dump. See §5.
 
@@ -157,11 +158,15 @@ docker exec $DB psql -U humans -d humans_restore -c "
   ORDER BY table_name;"
 ```
 
-Expect the main `__EFMigrationsHistory` plus one per section context. The boot log quoted in the
-[drill record](#drill-record-2026-08-05) names the section contexts of that release — there were
-seven, so eight history tables. A section table that is **absent or empty** is the failure this
-check exists to catch. The main table's count must also match the migration count of the release
-you are running.
+Derive the expected histories from the release that produced the backup, including its
+registered section contexts and migration files. Current releases use per-section histories;
+older backups may also contain the former shared `__EFMigrationsHistory`. Compare migration
+identities as well as counts. A history expected for that release being absent or empty needs
+investigation; a history introduced only by the candidate is not expected in an older backup.
+Record expectations separately before and after upgrading. Boot the candidate normally so
+the migration host performs its section-baseline reconciliation; a direct EF update does not
+exercise that startup path. The [drill record](#drill-record-2026-08-05) is historical evidence,
+not the current context inventory.
 
 If those look wrong, **stop** — you have the wrong backup, and you have not damaged anything.
 Drop `humans_restore` before you walk away, though: the end of §3 says why, and it applies just
@@ -211,15 +216,17 @@ docker exec $DB pg_restore -U humans -d humans --exit-on-error /tmp/restore.dump
 docker exec $DB psql -U humans -d humans -v ON_ERROR_STOP=1 -f /tmp/restore.sql
 ```
 
-Then start the app and confirm it comes up:
+For rollback, `$APP` must use the previous known-good image before this start; starting the
+failed candidate would apply its migrations again. Then start the app and confirm it comes up:
 
 ```bash
 docker start $APP
 docker logs -f $APP
 ```
 
-You are looking for the migration breadcrumb, which is logged at Warning level so it survives
-production log filtering:
+Check migration completion for every registered context. Older releases logged the shared
+database breadcrumb below; use the current release's section startup messages rather than
+expecting this historical count:
 
 ```
 Database humans: 130 applied migrations, 0 pending
@@ -260,15 +267,15 @@ a bad migration means the container crash-loops.
 1. **Read the logs before doing anything.** `docker logs $APP | tail -100`. The line
    `Applying pending migration: <name>` immediately before the exception names the culprit.
 2. **Find the snapshot.** `SNAPSHOTS=$(mktemp -d) && docker cp $APP:/app/db-snapshots/.
-   "$SNAPSHOTS" && ls -lt "$SNAPSHOTS"` — the file ending **`.unfinished`** is from this deploy,
-   taken *before* the failed migration ran. (`docker cp` rather than `docker exec`: a
+   "$SNAPSHOTS" && ls -lt "$SNAPSHOTS"` — match the snapshot path in the failed deployment's
+   boot logs and verify its timestamp/source release and migration sidecar. (`docker cp` rather than `docker exec`: a
    crash-looping container is usually not in a state you can exec into. The fresh directory and
    the trailing `/.` both matter on a second attempt — see §1.)
-   - **Take the `.unfinished` one, not the newest one.** The crash loop keeps restarting the
-     app, and each restart re-runs the migration against a schema the earlier attempts may have
-     already part-changed. The suffix marks the snapshot from *before* any of that; the app
-     carries it forward untouched across restarts rather than dumping over it, which is exactly
-     why it is still the right file on the tenth restart.
+   - **A suffix is not a deployment identity.** The app carries a failed deploy's snapshot
+     forward across restarts, but stale `.unfinished` markers can also remain after completed
+     deploys. The `.migrations` sidecar records which migrations were pending when the dump was
+     taken. If markers are multiple, stale or missing their sidecars, establish the matching
+     rollback point from deployment/backup records before restoring. Never edit marker state.
    - The app container survives a crash-loop (Docker restarts the same container, it does not
      replace it), so the file is still there. If the container has been *recreated* since, find
      the volume with `docker volume ls | grep db_snapshots` and read the file from its
@@ -278,14 +285,17 @@ a bad migration means the container crash-loops.
 4. **Restore the snapshot** using steps 1–3 above.
 5. **File the bug** before redeploying. The migration will re-run on the next deploy.
 
-**If there is no snapshot for this deploy,** the deploy did not change the schema — so the
-database is not the problem, and rolling the image back is a complete fix.
+**If there is no snapshot for this deploy, do not infer that the schema is unchanged.** A
+container replacement can lose snapshots when the volume was not persistent. Inspect the
+migration logs and storage history. Image rollback alone is sufficient only when the deploy
+was code-only or logs establish that it stopped before schema changes, and no persistent data
+recovery is needed. Otherwise recover a known-good backup with its matching application image.
 
 ---
 
 ## 5. The pre-deploy snapshot
 
-Implemented in `src/Humans.Infrastructure/Hosting/PreMigrationSnapshot.cs`
+Implemented in `src/Humans.Base/Hosting/PreMigrationSnapshot.cs`
 (nobodies-collective/Humans#845).
 
 - **What triggers it:** the startup migration path — the only thing committed to this repo that
@@ -295,17 +305,18 @@ Implemented in `src/Humans.Infrastructure/Hosting/PreMigrationSnapshot.cs`
 - **Where the file goes:** `/app/db-snapshots/{database}-{UTC timestamp}.dump`, custom format,
   on the `db_snapshots` volume. It is deliberately **not** under `wwwroot` — that directory is
   web-served.
-- **The `.unfinished` suffix:** the snapshot earns it when `pg_dump` exits successfully and loses
-  it only once a boot gets all the way through its migrations. So a file still carrying the
-  suffix means "the deploy that took this never finished" — it is the live rollback point, and it
-  is the file §4 tells you to restore. While it is there, later boots reuse it instead of taking a
-  new dump (log line: `Reusing pre-migration snapshot …`), which is what stops a crash loop from
-  archiving a part-migrated schema over the good one. It is also never pruned.
+- **The `.unfinished` suffix:** the snapshot earns it when `pg_dump` succeeds. Successful
+  migration completion normally removes it; failed cleanup can leave a stale marker. The
+  `.migrations` sidecar records the pending migration identities at capture. Later boots retire
+  markers whose recorded migrations have finished and carry forward a still-pending marker,
+  logging its exact path. Missing/unreadable sidecars are conservatively carried forward, so
+  the suffix alone does not prove a snapshot belongs to the current deploy. Unfinished markers
+  are not pruned; identify the restore candidate as described in §4.
 - **A `.writing` file is not a backup.** That is the name a dump in flight is written under; it
   is renamed to `.unfinished` only once `pg_dump` succeeds, so a dump that failed or was killed
   can never be mistaken for a rollback point. The next dump attempt deletes it. If you see one,
-  the deploy that made it aborted before migrating — the schema is untouched and rolling the
-  image back is a complete fix.
+  the dump did not finish. Correlate it with boot logs before concluding that this deployment
+  stopped before schema changes; the file alone is not a recovery plan.
 - **Retention:** the newest 10 completed snapshots are kept; older ones are deleted after a
   successful dump. These are a fast local rollback point, not the archive — Coolify's scheduled
   backups are the off-host copy.
@@ -313,8 +324,8 @@ Implemented in `src/Humans.Infrastructure/Hosting/PreMigrationSnapshot.cs`
   Development, the integration-test host — runs against a disposable local database and skips
   it.
 - **If the dump fails, startup aborts and the migration does not run.** This is on purpose:
-  the schema is left exactly as the previous release left it, so rolling the image back is a
-  complete recovery. Fix the cause (usually the volume mount or a missing `pg_dump`) and
+  this boot leaves the schema as it found it. Image rollback recovers that startup failure;
+  any earlier data damage still needs its own recovery. Fix the cause (usually the volume mount or a missing `pg_dump`) and
   redeploy — do not work around it. `postgresql-client-18` is installed in the runtime image by
   the `Dockerfile`; the volume is declared in `docker-compose.yml`.
 - **The client major tracks production's server, not `docker-compose.yml`'s.** `pg_dump` refuses
@@ -465,9 +476,9 @@ means an empty diff, not a spot check.
 
 ### What running it changed
 
-- **Every command is `docker exec` into the database container, not a host command.** The
-  drill machine had no `pg_dump`/`pg_restore` on the host at all. Assume the same on the
-  server: the client binaries you can rely on are the ones inside the `postgres:16` container.
+- **The drill used `docker exec` into its database container.** It had no host PostgreSQL
+  client. For a new restore, verify the chosen container's client against the actual server
+  and archive versions; the historical `postgres:16` image is not a production default.
 - **Restore is ~18× slower than backup** (373 ms dump vs 6.9 s restore) because the restore
   rebuilds every index. That ratio, not the dump time, is what an outage estimate should be
   based on.
