@@ -125,7 +125,7 @@ Own project `Humans.Workgroups`, own `WorkgroupsDbContext`, migrations under `Mi
 | Reasons | string (4000)? | Refusal or withdrawal reasons |
 | AppliedByUserId | Guid? | Bare Guid; nulled on erasure |
 | AppliedAt / RegisteredAt / EndedAt | Instant / Instant? / Instant? | |
-| DormantSince | Instant? | Set by the job on 60 days' silence, cleared by the next Update or Meeting; distinct from the Dormant status |
+| DormantSince | Instant? | Set by the job on 60 days' silence, cleared by an Update or a meeting that has started since the inquiry; distinct from the Dormant status |
 | CreatedAt / UpdatedAt | Instant | |
 
 Indexes: `Slug` unique; `Status`; `DriveFolderId` unique filtered non-null.
@@ -283,7 +283,11 @@ One Hangfire job (`SectionJobs` seam), daily, Active groups only. Every action i
 | Applied older than 14 days | Queue row red; notify Board once |
 | Delivered document with no disposition, older than 60 days | Queue row highlighted |
 
-Any Update or Meeting clears `DormantSince`. No automatic closing.
+An Update or a meeting that has started at or after the inquiry clears `DormantSince`.
+Scheduling a future meeting does not count as activity or clear an inquiry. The daily
+pass recognizes it when its start arrives. A past meeting before the inquiry does not
+answer it. Clearing is persisted before `WorkgroupDormancyCleared` is audited; repeated
+successful passes do not repeat the transition. No automatic closing.
 
 "Request a status update" is a button any signed-in human may press once per group per 7 days; it writes StatusRequested with an optional one-line question and notifies the coordinators.
 

@@ -126,8 +126,8 @@ public abstract class WorkgroupsTestHarness : IDisposable
     private protected static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
 
     /// <summary>The undecorated service over the real repository and the substitutes above.</summary>
-    private protected WorkgroupService NewService() => new(
-        new WorkgroupRepository(DbFactory), Users, Surveys, UserEmails, Roles, Settings, GoogleSync,
+    private protected WorkgroupService NewService(IWorkgroupRepository? repository = null) => new(
+        repository ?? new WorkgroupRepository(DbFactory), Users, Surveys, UserEmails, Roles, Settings, GoogleSync,
         Notifications, Email, EmailFactory, AuditLog, Clock, Logger);
 
     /// <summary>A fresh context over the same store — what a test reads back through.</summary>

@@ -1,6 +1,7 @@
 using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Constants;
+using Humans.Base.Extensions;
 using Humans.Base.Helpers;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
@@ -407,15 +408,22 @@ internal sealed partial class WorkgroupService
 
     // ── Shared transitions ────────────────────────────────────────────────
 
-    /// <summary>Any sign of life clears the dormancy inquiry flag (§13).</summary>
-    private async Task ClearDormancyFlagAsync(Workgroup w, Instant now, CancellationToken ct)
+    /// <summary>Activity since the inquiry clears its flag once it has actually occurred (§13).</summary>
+    private async Task ClearDormancyFlagAsync(
+        Workgroup w, Instant activityAt, Instant now, Guid? actorUserId, CancellationToken ct)
     {
-        if (w.DormantSince is null)
+        if (w.DormantSince is not { } flaggedAt || activityAt < flaggedAt || activityAt > now)
             return;
 
         w.DormantSince = null;
         w.UpdatedAt = now;
         await repository.UpdateWorkgroupAsync(w, ct);
+
+        var description = $"Cleared the dormancy inquiry from {flaggedAt.ToIso8601()} after activity at {activityAt.ToIso8601()}";
+        if (actorUserId is { } actor)
+            await AuditAsync(AuditAction.WorkgroupDormancyCleared, w, description, actor);
+        else
+            await AuditJobAsync(AuditAction.WorkgroupDormancyCleared, w, description);
     }
 
     /// <summary>
