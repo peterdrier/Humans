@@ -536,7 +536,7 @@ Stored as string via `HasConversion<string>()`. `IsAlwaysOn()` covers System and
 
 ## Routing
 
-Self-service profile functionality lives under `/Profile`, split by shape across `ProfileController` (own profile), `ProfileEmailsController` (own and admin email grids) and `ProfileViewController` (other members' profiles, messaging, search), each `[Authorize]` class-wide; human administration lives under `/Users/Admin`. GET unless noted; POSTs carry an anti-forgery token.
+Self-service profile functionality lives under `/Profile`, split by shape across `ProfileController` (own profile), `ProfileEmailsController` (own and admin email grids) and `ProfileViewController` (other members' profiles, messaging, search), each `[Authorize]` class-wide; human administration lives under `/Users/Admin`. All three Profile controllers retain their membership-state exemption: suspension, rejection, or pending deletion does not block these authenticated routes. Action-specific ownership and admin checks still apply. GET unless noted; POSTs carry an anti-forgery token.
 
 | Route | Purpose |
 |-------|---------|
@@ -605,7 +605,7 @@ Admin-only flows for the section's cross-account hygiene (the `/Profile/Admin/*`
 | Actor | Capabilities |
 |-------|--------------|
 | Any authenticated human | View and edit own profile, manage own emails, manage own contact fields, upload profile picture, set notification and communication preferences, request data export (GDPR Article 15), request account deletion |
-| Any active human | View other active humans' profiles (contact fields restricted by per-field visibility). Send facilitated messages to other humans. Search for humans |
+| Any authenticated human | View other active humans' profiles (contact fields restricted by per-field visibility). Send facilitated messages to other humans. Search for humans |
 | Coordinator (any team) or PrivilegedSignupApprover | On another human's `/Profile/{id}`, view the **Sent messages** panel — a history of in-platform messages sent to that human (`AuditAction.FacilitatedMessageSent`, up to 50 entries), rendered by `<vc:audit-log layout="table">` with `column-labels` carrying the page's own `Common_Date`/`Common_Sender`/`Common_Preview` — the controller decides visibility, AuditLog owns the read, Profile owns the copy. Not shown on own-profile views. |
 | HumanAdmin, Board, Admin | View any profile with full detail. Manage humans via admin pages (suspend, unsuspend, approve volunteer, reject signup, view audit log, add or end role assignments). (Membership tier changes go through tier applications in Governance, not the profile admin page.) |
 | Admin | Review duplicate-account candidates and approve/reject `AccountMergeRequest`s at the unified `/Users/Admin/AccountMerges` queue (`PolicyNames.AdminOnly`; **Users** section — see [Part 1 — Users / Identity](#part-1--users--identity). |

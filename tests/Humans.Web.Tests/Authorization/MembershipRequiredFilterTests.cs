@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Routing;
 using Xunit;
 using Humans.Users.Contracts;
+using Humans.Users.Controllers;
 
 namespace Humans.Web.Tests.Authorization;
 
@@ -114,6 +115,30 @@ public class MembershipRequiredFilterTests
         AssertRedirect(result, "Index", "OnboardingWidget");
     }
 
+    [HumansTheory]
+    [InlineData(UserState.Suspended)]
+    [InlineData(UserState.AdminSuspended)]
+    [InlineData(UserState.Rejected)]
+    [InlineData(UserState.DeletePending)]
+    public async Task Non_active_users_retain_profile_and_email_self_service(UserState state)
+    {
+        // Resolve the actual extracted actions; their controller identity is what the global
+        // filter sees even though their public URLs still belong to the Profile surface.
+        foreach (var (type, action) in new[]
+        {
+            (typeof(ProfileEmailsController), nameof(ProfileEmailsController.Emails)),
+            (typeof(ProfileEmailsController), nameof(ProfileEmailsController.AddEmail)),
+            (typeof(ProfileEmailsController), nameof(ProfileEmailsController.SetPrimary)),
+            (typeof(ProfileEmailsController), nameof(ProfileEmailsController.Unlink)),
+            (typeof(ProfileViewController), nameof(ProfileViewController.ViewProfile)),
+        })
+        {
+            var (result, nextCalled) = await RunAsync(type.Name[..^"Controller".Length], action, state);
+            Assert.True(nextCalled, $"{state} must still reach {type.Name}.{action}");
+            Assert.Null(result);
+        }
+    }
+
     [HumansFact]
     public async Task Anonymous_request_passes_through()
     {
@@ -203,6 +228,8 @@ public class MembershipRequiredFilterTests
         var controllerType = controllerName switch
         {
             "OnboardingWidget" => OnboardingWidgetControllerType,
+            "ProfileEmails" => typeof(ProfileEmailsController),
+            "ProfileView" => typeof(ProfileViewController),
             _ => typeof(HomeController),
         };
         var actionDescriptor = new ControllerActionDescriptor

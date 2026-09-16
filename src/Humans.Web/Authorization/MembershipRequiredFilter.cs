@@ -24,6 +24,8 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         "Account",          // Login/logout/OAuth
         "OnboardingWidget", // Guided onboarding (name entry) — the Bare landing target
         "Profile",          // Profile setup (onboarding surface)
+        "ProfileEmails",    // Own email management (extracted from Profile)
+        "ProfileView",      // Authenticated profile viewing (extracted from Profile)
         "Consent",          // Sign required legal documents (onboarding surface)
         "User",             // Account-status wall + cancel-deletion landing (redirect targets)
         "Language",         // Language switching
