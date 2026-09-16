@@ -139,20 +139,24 @@ All five answered by Peter on 2026-09-16 and applied on this branch, except wher
    them dynamically." Captured in
    [`section-list-from-di`](../../../memory/architecture/section-list-from-di.md).
 
-**Still open — one new item, raised by the work above:**
+**A sixth item was raised by the work above and answered the same day:**
 
-6. **The `DormantSince` column on `workgroups` is now dead and the drop needs your approval.**
-   Nothing reads or writes it after ruling 1; the property is kept on the entity, commented as
-   dead, so the model still matches the shipped schema. Dropping the column is a destructive
-   migration under
-   [`no-drops-until-prod-verified`](../../../memory/architecture/no-drops-until-prod-verified.md):
-   per-case written approval, and its own PR. Evidence gathered: one commit ever introduced it
-   (`0da42ed31`, #1650, five days before this run) and one writer ever set it non-null
-   (the dormancy-flagging step of the daily pass), which needed sixty days of silence — unreachable for a normally-registered
-   group in a five-day-old section. Not provably empty, though: `RegisterExistingAsync` backdates
-   `RegisteredAt`, so a bootstrapped group with no Update or meeting could have been flagged by one
-   of the job's ~5 runs. Confirming that needs a look at QA/prod data, which this run had no access
-   to.
+6. ~~**The `DormantSince` column on `workgroups` is now dead and the drop needs your
+   approval.**~~ **Answered: "it's not in production yet, you can drop that column."** Nothing
+   reads or writes the field after ruling 1. The drop is a destructive migration under
+   [`no-drops-until-prod-verified`](../../../memory/architecture/no-drops-until-prod-verified.md),
+   so it ships with its locator and evidence in
+   `tests/Humans.Web.Tests/Architecture/Baselines/NoDestructiveMigrationOps.baseline.txt`, where
+   the ratchet's approval test can see it. `Down()` re-adds the column as nullable.
+
+   Two corrections to what was first written here. The evidence was gathered in a shallow clone
+   and was not trustworthy as stated; it was re-gathered after `git fetch --unshallow` and the
+   claims held — the column was introduced by
+   nobodies-collective/Humans#1650 and the only non-null writer was the dormancy pass this branch
+   deletes. And the atom asks for a destructive migration to get its own PR, which this one does
+   not get. Splitting it is the more dangerous option, not the safer one: a PR branched off main
+   would drop a column that main's daily job still writes. The drop rides the commit series that
+   stops the writing.
 
 ## File coverage
 
@@ -172,6 +176,8 @@ All five answered by Peter on 2026-09-16 and applied on this branch, except wher
 | `src/Sections/Humans.Workgroups/Data/IWorkgroupRepository.cs` | reviewed |
 | `src/Sections/Humans.Workgroups/Data/Migrations/20260911012653_AddWorkgroups.Designer.cs` | generated |
 | `src/Sections/Humans.Workgroups/Data/Migrations/20260911012653_AddWorkgroups.cs` | reviewed |
+| `src/Sections/Humans.Workgroups/Data/Migrations/20260916163259_DropWorkgroupDormantSince.Designer.cs` | generated |
+| `src/Sections/Humans.Workgroups/Data/Migrations/20260916163259_DropWorkgroupDormantSince.cs` | generated |
 | `src/Sections/Humans.Workgroups/Data/Migrations/WorkgroupsDbContextModelSnapshot.cs` | generated |
 | `src/Sections/Humans.Workgroups/Data/WorkgroupRepository.cs` | reviewed |
 | `src/Sections/Humans.Workgroups/Data/WorkgroupsDbContext.cs` | reviewed |
