@@ -81,9 +81,13 @@ internal static class CalendarOccurrenceExpander
                 if (OverlapsWindow(result, from, to, fromDate, toDate)) results.Add(result);
             }
             // A moved occurrence can be outside the series' original window in either direction.
+            // Text-only overrides apply only to generated occurrences, not identities removed by a rule edit.
             foreach (var exception in ev.Exceptions.Where(x => !handled.Contains(x.Id) && !x.IsCancelled))
             {
-                if (!recurring) continue;
+                if (!recurring || (ev.IsAllDay
+                    ? exception.OverrideStartDate is null && exception.OverrideEndDateExclusive is null
+                    : exception.OverrideStartUtc is null && exception.OverrideEndUtc is null))
+                    continue;
                 var date = exception.OriginalOccurrenceDate;
                 var start = exception.OriginalOccurrenceStartUtc;
                 var original = ev.IsAllDay
