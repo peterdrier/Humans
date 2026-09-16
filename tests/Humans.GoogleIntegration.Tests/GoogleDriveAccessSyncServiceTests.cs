@@ -455,7 +455,10 @@ public sealed class GoogleDriveAccessSyncServiceTests
     {
         var permission = new Google.Apis.Drive.v3.Data.Permission
         {
-            Id = "perm-1", Type = "user", Role = directRole, EmailAddress = "alice@nobodies.team",
+            Id = "perm-1",
+            Type = "user",
+            Role = directRole,
+            EmailAddress = "alice@nobodies.team",
             PermissionDetails =
             [
                 .. inheritedRoles.Select(role => new Google.Apis.Drive.v3.Data.Permission.PermissionDetailsData

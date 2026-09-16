@@ -286,7 +286,7 @@ public class SyncPreviewResult
 All Drive resources in this system are on Shared Drives. This has important implications for permission management:
 
 ### Inherited vs Direct Permissions
-- **Inherited permissions** come from the Shared Drive itself (e.g., all drive members get access to all folders). These are NOT managed by this system and are excluded from drift detection and sync.
+- **Inherited permissions** come from the Shared Drive or parent folders. The system preserves this access; the source-claimed reconciler tracks its role as the minimum permitted role when updating a mixed grant.
 - **Direct permissions** are set on individual folders within the Shared Drive. These ARE managed by this system.
 
 ### Permission Filtering Logic
@@ -297,9 +297,10 @@ When listing permissions, the system uses `permissionDetails` from the Drive API
 // 2. Role is not "owner"
 // 3. Has a valid email address
 // 4. Is not a service account (.iam.gserviceaccount.com)
-// 5. Has NO inherited component (permissionDetails.Any(d => d.Inherited) == false) —
-//    a permission with a mix of direct and inherited detail entries is excluded
-//    too, since Drive still 403s deleting it at this level (#945)
+// 5. Legacy Teams-keyed path: has NO inherited component.
+//    Source-claimed path: has a direct component; mixed grants require a known
+//    inherited floor and are updated in place, never deleted at the child
+//    (nobodies-collective/Humans#945). Floor-only grants need no mutation.
 ```
 
 ### API Requirements
