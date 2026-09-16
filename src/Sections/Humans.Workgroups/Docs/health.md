@@ -98,10 +98,13 @@ error map.
 - **Reactivation undoes Dormant completely.** Status, reason, end date and the written reasons
   all clear in one write (`Services/WorkgroupService.Lifecycle.cs:125`), and the folder goes
   writable again through a sync request (`Services/WorkgroupService.Lifecycle.cs:138`).
-- **The daily pass never changes a group's status, and never measures silence.** Its only
-  writes are log entries, audit entries and notifications
-  (`Services/WorkgroupService.Rhythm.cs:17`); a status assignment inside that file is a
-  violation, and so is anything that decides a group has gone quiet.
+- **The daily pass never changes a group's status, and never persists a judgement about
+  silence.** It measures elapsed quiet — `NudgeForUpdateAsync` reads `SilenceFor(now)` to decide
+  whether the thirtieth day has come round (`Services/WorkgroupService.Rhythm.cs:50`) — and then
+  only notifies and audits (`Services/WorkgroupService.Rhythm.cs:17`). What it must never do is
+  turn that reading into state: a status assignment inside that file is a violation, and so is a
+  column, a log entry or a flag recording that a group has gone quiet. Deciding a quiet group is
+  finished is the Board's, on its own reading of the register.
 - **A promised comment window is never cut short.** Delivering refuses while the window is still
   in the future (`Services/WorkgroupService.Documents.cs:162`), and so does a member ending the
   group (`Services/WorkgroupService.cs:471`). Closing early moves the end of the window to now
@@ -178,8 +181,9 @@ error map.
 - **No time-derived value inside the cached snapshot.** Everything that depends on "now" is an
   extension method computed at read time; a cached register therefore cannot carry a stale badge.
 - **No architecture test project entry.** `tests/Humans.Workgroups.Tests` has no
-  `Architecture/` folder. Whether one is owed is a question for Peter, not an absence to assert
-  ([`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md)).
+  `Architecture/` folder, and none is owed. Arch tests live in the arch folder; where there are
+  none there is no folder, and the absence is not a finding, a test to write or a question for
+  Peter ([`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md)).
 
 ## Load-bearing weirdness
 
