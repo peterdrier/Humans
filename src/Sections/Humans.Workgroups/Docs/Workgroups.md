@@ -308,9 +308,11 @@ Disposition-overdue is a read-time badge computed by `WorkgroupRhythm` against t
 clock, not a job action — a cached register can never show a stale badge. "Request a status
 update" is a member action (any signed-in human, as often as they like), not part of the job.
 
-The job does not measure how long a group has been quiet, and there is no dormancy flag. A
-group that stops reporting keeps getting the 30-day nudge; whether that group should end is
-the Board's decision, taken on the register in front of them.
+The job reads how long a group has been quiet — that is how the 30-day nudge knows whether
+its window has come round again — but it never persists a judgement about it: no flag, no
+column, no log entry, and no move to `Dormant` or any other status. Only a human sets a
+group Dormant. A group that stops reporting keeps getting the nudge; whether that group
+should end is the Board's decision, taken on the register in front of them.
 
 ## Cross-Section Dependencies
 
