@@ -47,70 +47,23 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task SixtyDaysSilent_FlagsDormancy_AndAudits()
+    public async Task SixtyDaysSilent_NudgesAndNothingElse()
     {
         var workgroup = await SeedWorkgroupAsync(registeredAt: Clock.GetCurrentInstant().Minus(Duration.FromDays(60)));
 
         await NewService().RunDailyRhythmAsync(Ct);
 
-        await using var ctx = OpenContext();
-        var reloaded = await ctx.Workgroups.SingleAsync(w => w.Id == workgroup.Id, Ct);
-        reloaded.DormantSince.Should().Be(Clock.GetCurrentInstant());
-        // Sixty days is also a multiple of thirty, so the monthly nudge fires the same pass.
-        await AuditLog.Received(1).LogAsync(
-            AuditAction.WorkgroupDormancyFlagged, AuditEntityTypes.Workgroup, workgroup.Id,
-            Arg.Any<string>(), WorkgroupService.WorkgroupRhythmJobName);
+        // Sixty days is a multiple of thirty, so the monthly nudge fires — and that is the
+        // whole of it. Going quiet is not the section's to notice; ending a group is the
+        // Board's decision, taken on the Board's own reading of the register.
         await AuditLog.Received(1).LogAsync(
             AuditAction.WorkgroupUpdateDueNotified, AuditEntityTypes.Workgroup, workgroup.Id,
             Arg.Any<string>(), WorkgroupService.WorkgroupRhythmJobName);
 
-        // The job never decides the group's fate — only a human closes it.
-        reloaded.Status.Should().Be(WorkgroupStatus.Active);
-    }
-
-    [HumansFact]
-    public async Task DormancyFlag_DoesNotFireTwice()
-    {
-        var now = Clock.GetCurrentInstant();
-        var workgroup = await SeedWorkgroupAsync(
-            registeredAt: now.Minus(Duration.FromDays(90)), dormantSince: now.Minus(Duration.FromDays(1)));
-
-        await NewService().RunDailyRhythmAsync(Ct);
-
-        await AuditLog.DidNotReceive().LogAsync(
-            AuditAction.WorkgroupDormancyFlagged, Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<string>(), Arg.Any<string>());
-    }
-
-    [HumansFact]
-    public async Task FourteenDaysAfterDormancyFlag_StillSilent_RaisesACloseCandidate()
-    {
-        var now = Clock.GetCurrentInstant();
-        var workgroup = await SeedWorkgroupAsync(
-            registeredAt: now.Minus(Duration.FromDays(90)), dormantSince: now.Minus(Duration.FromDays(14)));
-
-        await NewService().RunDailyRhythmAsync(Ct);
-
-        await AuditLog.Received(1).LogAsync(
-            AuditAction.WorkgroupCloseCandidateFlagged, AuditEntityTypes.Workgroup, workgroup.Id,
-            Arg.Any<string>(), WorkgroupService.WorkgroupRhythmJobName);
-
         await using var ctx = OpenContext();
-        (await ctx.Workgroups.SingleAsync(w => w.Id == workgroup.Id, Ct)).Status.Should().Be(WorkgroupStatus.Active);
-    }
-
-    [HumansFact]
-    public async Task CloseCandidate_DoesNotFireAgainTheDayAfter()
-    {
-        var now = Clock.GetCurrentInstant();
-        var workgroup = await SeedWorkgroupAsync(
-            registeredAt: now.Minus(Duration.FromDays(90)), dormantSince: now.Minus(Duration.FromDays(15)));
-
-        await NewService().RunDailyRhythmAsync(Ct);
-
-        await AuditLog.DidNotReceive().LogAsync(
-            AuditAction.WorkgroupCloseCandidateFlagged, Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<string>(), Arg.Any<string>());
+        var reloaded = await ctx.Workgroups.SingleAsync(w => w.Id == workgroup.Id, Ct);
+        reloaded.Status.Should().Be(WorkgroupStatus.Active);
+        (await ctx.LogEntries.AnyAsync(e => e.WorkgroupId == workgroup.Id, Ct)).Should().BeFalse();
     }
 
     [HumansFact]
@@ -141,53 +94,6 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
         await AuditLog.DidNotReceive().LogAsync(
             AuditAction.WorkgroupApplicationOverdue, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<string>());
-    }
-
-    // ── DormantSince clears on a sign of life ────────────────────────────
-
-    [HumansFact]
-    public async Task AnUpdateEntry_ClearsTheDormancyFlag()
-    {
-        var now = Clock.GetCurrentInstant();
-        var workgroup = await SeedWorkgroupAsync(dormantSince: now.Minus(Duration.FromDays(1)));
-        var member = workgroup.Members.Single().UserId;
-
-        await NewService().AddLogEntryAsync(
-            workgroup.Id, member,
-            new WorkgroupLogEntrySave(WorkgroupLogKind.Update, now.InUtc().Date, null, "Making progress"), Ct);
-
-        await using var ctx = OpenContext();
-        (await ctx.Workgroups.SingleAsync(w => w.Id == workgroup.Id, Ct)).DormantSince.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task ANoteEntry_DoesNotClearTheDormancyFlag()
-    {
-        var now = Clock.GetCurrentInstant();
-        var workgroup = await SeedWorkgroupAsync(dormantSince: now.Minus(Duration.FromDays(1)));
-        var member = workgroup.Members.Single().UserId;
-
-        await NewService().AddLogEntryAsync(
-            workgroup.Id, member,
-            new WorkgroupLogEntrySave(WorkgroupLogKind.Note, now.InUtc().Date, null, "Just a note"), Ct);
-
-        await using var ctx = OpenContext();
-        (await ctx.Workgroups.SingleAsync(w => w.Id == workgroup.Id, Ct)).DormantSince.Should().NotBeNull();
-    }
-
-    [HumansFact]
-    public async Task AMeeting_ClearsTheDormancyFlag()
-    {
-        var now = Clock.GetCurrentInstant();
-        var workgroup = await SeedWorkgroupAsync(dormantSince: now.Minus(Duration.FromDays(1)));
-        var member = workgroup.Members.Single().UserId;
-
-        await NewService().CreateMeetingAsync(
-            workgroup.Id, member,
-            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null), Ct);
-
-        await using var ctx = OpenContext();
-        (await ctx.Workgroups.SingleAsync(w => w.Id == workgroup.Id, Ct)).DormantSince.Should().BeNull();
     }
 
     [HumansFact]

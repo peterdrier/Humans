@@ -118,7 +118,6 @@
   <data name="Workgroups_Error_CoordinatorCount" xml:space="preserve"><value>Un grupo necesita uno o dos coordinadores.</value></data>
   <data name="Workgroups_Error_CoordinatorsMustBeMembers" xml:space="preserve"><value>Los coordinadores ya deben ser miembros.</value></data>
   <data name="Workgroups_Error_LastCoordinatorNeedsReplacement" xml:space="preserve"><value>Eres el último coordinador; nombra un reemplazo antes de salir.</value></data>
-  <data name="Workgroups_Error_StatusRequestOnCooldown" xml:space="preserve"><value>Ya pediste una actualización de estado recientemente; espera antes de volver a pedirla.</value></data>
   <data name="Workgroups_Error_RootFolderNotConfigured" xml:space="preserve"><value>La carpeta raíz de Drive de Grupos de trabajo aún no está configurada.</value></data>
   <data name="Workgroups_Error_DriveFolderCreationFailed" xml:space="preserve"><value>No se pudo crear la carpeta de Drive del grupo; inténtalo de nuevo.</value></data>
   <data name="Workgroups_Error_WrongStatus" xml:space="preserve"><value>Eso no es posible en el estado actual del grupo o del documento.</value></data>
@@ -141,8 +140,6 @@
   <data name="Workgroups_Todo_UpdateDue_Description" xml:space="preserve"><value>{0} no ha publicado una actualización en 30 días.</value></data>
   <data name="Workgroups_Todo_UpdateDue_Action" xml:space="preserve"><value>Publicar una actualización</value></data>
   <data name="Workgroups_Todo_StatusRequested_Title" xml:space="preserve"><value>Actualización de estado solicitada</value></data>
-  <data name="Workgroups_Todo_StatusRequested_Description" xml:space="preserve"><value>Alguien pidió a {0} una actualización de estado.</value></data>
-  <data name="Workgroups_Todo_StatusRequested_Action" xml:space="preserve"><value>Responder</value></data>
 
   <!-- Controller success messages -->
   <data name="Workgroups_Applied" xml:space="preserve"><value>Solicitud enviada. La Secretaría la revisará.</value></data>
@@ -185,8 +182,6 @@
   <data name="Workgroups_NoTargetDate" xml:space="preserve"><value>una fecha por determinar</value></data>
   <data name="Workgroups_OpenForComment" xml:space="preserve"><value>Abierto a comentarios</value></data>
   <data name="Workgroups_UpdateDue" xml:space="preserve"><value>Actualización pendiente</value></data>
-  <data name="Workgroups_StatusOverdue" xml:space="preserve"><value>Estado con retraso</value></data>
-  <data name="Workgroups_Quiet" xml:space="preserve"><value>Inactivo</value></data>
   <data name="Workgroups_RegistrationOverdue" xml:space="preserve"><value>Con retraso</value></data>
 
   <!-- Apply / Edit -->

@@ -159,7 +159,6 @@ public abstract class WorkgroupsTestHarness : IDisposable
         Instant? appliedAt = null,
         Instant? registeredAt = null,
         string? driveFolderId = "group-folder",
-        Instant? dormantSince = null,
         WorkgroupDormantReason? dormantReason = null)
     {
         var now = Clock.GetCurrentInstant();
@@ -184,7 +183,6 @@ public abstract class WorkgroupsTestHarness : IDisposable
             EndedAt = status is WorkgroupStatus.Dormant or WorkgroupStatus.Withdrawn or WorkgroupStatus.Refused
                 ? now
                 : null,
-            DormantSince = dormantSince,
             CreatedAt = now,
             UpdatedAt = now
         };

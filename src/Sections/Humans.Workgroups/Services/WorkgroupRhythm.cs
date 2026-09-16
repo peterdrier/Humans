@@ -15,26 +15,11 @@ internal static class WorkgroupRhythm
     /// <summary>Monthly update due after this long without an Update entry or a meeting.</summary>
     public static readonly Duration UpdateDueAfter = Duration.FromDays(30);
 
-    /// <summary>Dormancy inquiry after this long without an Update entry or a meeting.</summary>
-    public static readonly Duration DormancyInquiryAfter = Duration.FromDays(60);
-
-    /// <summary>How long a flagged group stays silent before the Board sees it as a close candidate.</summary>
-    public static readonly Duration CloseCandidateAfter = Duration.FromDays(14);
-
-    /// <summary>A status request the group has not answered in this long is overdue.</summary>
-    public static readonly Duration StatusRequestOverdueAfter = Duration.FromDays(7);
-
-    /// <summary>One status request per group per this long, per person.</summary>
-    public static readonly Duration StatusRequestCooldown = Duration.FromDays(7);
-
     /// <summary>The Secretary has this long to act on an application (clause 1's fourteen days).</summary>
     public static readonly Duration RegistrationDueAfter = Duration.FromDays(14);
 
     /// <summary>A delivered document with no disposition after this long is highlighted for the Board.</summary>
     public static readonly Duration DispositionOverdueAfter = Duration.FromDays(60);
-
-    /// <summary>Clause 5: an annual report is due a year after registration, then yearly.</summary>
-    public static readonly Duration AnnualReportPeriod = Duration.FromDays(365);
 
     /// <summary>Current members — a soft leave keeps the row but drops off the roster.</summary>
     public static IEnumerable<WorkgroupMemberInfo> CurrentMembers(this WorkgroupInfo w) =>
@@ -99,44 +84,6 @@ internal static class WorkgroupRhythm
         && w.SilenceFor(now) is { } silence
         && silence >= UpdateDueAfter;
 
-    /// <summary>Sixty days silent and not yet flagged: the job sets DormantSince and asks.</summary>
-    public static bool NeedsDormancyInquiry(this WorkgroupInfo w, Instant now) =>
-        w.Status == WorkgroupStatus.Active
-        && w.DormantSince is null
-        && w.SilenceFor(now) is { } silence
-        && silence >= DormancyInquiryAfter;
-
-    /// <summary>Flagged, still silent, and past the grace period: the Board is asked to close it.</summary>
-    public static bool IsCloseCandidate(this WorkgroupInfo w, Instant now) =>
-        w.Status == WorkgroupStatus.Active
-        && w.DormantSince is { } since
-        && now - since >= CloseCandidateAfter
-        && (w.LastActivityAt() is null || w.LastActivityAt() < since);
-
-    /// <summary>The most recent status request nobody has answered with a later Update.</summary>
-    public static Instant? UnansweredStatusRequestAt(this WorkgroupInfo w)
-    {
-        var lastRequest = w.LogEntries
-            .Where(e => e.Kind == WorkgroupLogKind.StatusRequested)
-            .Select(e => (Instant?)e.CreatedAt)
-            .Max();
-        if (lastRequest is null)
-            return null;
-
-        var answered = w.LogEntries.Any(e => e.Kind == WorkgroupLogKind.Update && e.CreatedAt > lastRequest);
-        return answered ? null : lastRequest;
-    }
-
-    public static bool IsStatusOverdue(this WorkgroupInfo w, Instant now) =>
-        w.UnansweredStatusRequestAt() is { } requested
-        && now - requested >= StatusRequestOverdueAfter;
-
-    /// <summary>True when this person asked for a status update too recently to ask again.</summary>
-    public static bool StatusRequestOnCooldownFor(this WorkgroupInfo w, Guid userId, Instant now) =>
-        w.LogEntries.Any(e => e.Kind == WorkgroupLogKind.StatusRequested
-            && e.AuthorUserId == userId
-            && now - e.CreatedAt < StatusRequestCooldown);
-
     public static bool IsRegistrationOverdue(this WorkgroupInfo w, Instant now) =>
         w.Status is WorkgroupStatus.Applied or WorkgroupStatus.Referred
         && now - w.AppliedAt >= RegistrationDueAfter;
@@ -159,16 +106,4 @@ internal static class WorkgroupRhythm
 
     public static bool HasOverdueDisposition(this WorkgroupInfo w, Instant now) =>
         w.AwaitingDisposition().Any(d => d.DeliveredAt is { } at && now - at >= DispositionOverdueAfter);
-
-    /// <summary>
-    /// Clause 5: an Active group registered more than a year ago with no annual report
-    /// published in the last twelve months.
-    /// </summary>
-    public static bool IsAnnualReportDue(this WorkgroupInfo w, Instant now) =>
-        w.Status == WorkgroupStatus.Active
-        && w.RegisteredAt is { } registered
-        && now - registered >= AnnualReportPeriod
-        && !w.Documents.Any(d => d.Kind == WorkgroupDocumentKind.AnnualReport
-            && d.Status != WorkgroupDocumentStatus.Draft
-            && now - d.UpdatedAt < AnnualReportPeriod);
 }

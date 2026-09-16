@@ -1,16 +1,18 @@
 using Xunit;
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
 using Humans.Workgroups.Domain;
 using Humans.Workgroups.Services;
 using Humans.Workgroups.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using NSubstitute;
 using NodaTime;
 
 namespace Humans.Workgroups.Tests.Services;
 
 /// <summary>
-/// Coordinators (1-2, current members only, the last one needs a replacement) and the
-/// seven-day status-request cooldown (design §5, §7, §13, §20).
+/// Coordinators (1-2, current members only, the last one needs a replacement), status
+/// requests, and the audit trail behind edits that overwrite a row (design §5, §7, §20).
 /// </summary>
 public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
 {
@@ -150,31 +152,18 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
             .Should().Be(WorkgroupErrorKeys.AlreadyAMember);
     }
 
-    // ── Status request cooldown (§13, §20) ───────────────────────────────
+    // ── Status requests ──────────────────────────────────────────────────
 
     [HumansFact]
-    public async Task RequestStatus_TwiceWithinSevenDays_SecondThrows()
+    public async Task RequestStatus_TwiceInARow_BothLand()
     {
         var workgroup = await SeedWorkgroupAsync();
         var requester = SeedUser("Curious");
         await NewService().RequestStatusAsync(workgroup.Id, requester, "How's it going?", Ct);
 
-        var act = () => NewService().RequestStatusAsync(workgroup.Id, requester, "Again?", Ct);
-
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
-            .Should().Be(WorkgroupErrorKeys.StatusRequestOnCooldown);
-    }
-
-    [HumansFact]
-    public async Task RequestStatus_AfterSevenDays_Succeeds()
-    {
-        var workgroup = await SeedWorkgroupAsync();
-        var requester = SeedUser("Curious");
-        await NewService().RequestStatusAsync(workgroup.Id, requester, "How's it going?", Ct);
-
-        Clock.Advance(Duration.FromDays(7));
         await NewService().RequestStatusAsync(workgroup.Id, requester, "Again?", Ct);
 
+        // Asking is not rate-limited: the section does not track who asked when.
         await using var ctx = OpenContext();
         (await ctx.LogEntries.CountAsync(
                 e => e.WorkgroupId == workgroup.Id && e.Kind == WorkgroupLogKind.StatusRequested, Ct))
@@ -182,7 +171,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task RequestStatus_TwoDifferentPeople_BothWithinSevenDays_BothSucceed()
+    public async Task RequestStatus_TwoDifferentPeople_BothSucceed()
     {
         var workgroup = await SeedWorkgroupAsync();
         var first = SeedUser("First");
@@ -238,5 +227,65 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
 
         (await act.Should().ThrowAsync<WorkgroupRuleException>())
             .Which.Key.Should().Be(WorkgroupErrorKeys.SurveyNotYours);
+    }
+
+    // ── Edits that overwrite a row leave an audit entry ──────────────────
+
+    [HumansFact]
+    public async Task EditingALogEntry_IsAudited()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var member = workgroup.Members.Single().UserId;
+        var today = Clock.GetCurrentInstant().InUtc().Date;
+        var entryId = await NewService().AddLogEntryAsync(
+            workgroup.Id, member,
+            new WorkgroupLogEntrySave(WorkgroupLogKind.Note, today, null, "First wording"), Ct);
+
+        await NewService().UpdateLogEntryAsync(
+            entryId, member,
+            new WorkgroupLogEntrySave(WorkgroupLogKind.Note, today, null, "Second wording"), Ct);
+
+        // The row is overwritten in place, so the audit entry is the only trace that the
+        // members read something else before.
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.WorkgroupLogEntryUpdated, AuditEntityTypes.WorkgroupLogEntry, entryId,
+            Arg.Any<string>(), member, Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task EditingAMeeting_IsAudited()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var member = workgroup.Members.Single().UserId;
+        var now = Clock.GetCurrentInstant();
+        var meetingId = await NewService().CreateMeetingAsync(
+            workgroup.Id, member,
+            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null), Ct);
+
+        await NewService().UpdateMeetingAsync(
+            meetingId, member,
+            new WorkgroupMeetingSave("Sync, moved", now.Plus(Duration.FromDays(1)),
+                now.Plus(Duration.FromDays(1)).Plus(Duration.FromHours(1)), null, null, false, null), Ct);
+
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.WorkgroupMeetingUpdated, AuditEntityTypes.WorkgroupMeeting, meetingId,
+            Arg.Any<string>(), member, Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task DeletingAMeeting_IsAudited()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var member = workgroup.Members.Single().UserId;
+        var now = Clock.GetCurrentInstant();
+        var meetingId = await NewService().CreateMeetingAsync(
+            workgroup.Id, member,
+            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null), Ct);
+
+        await NewService().DeleteMeetingAsync(meetingId, member, Ct);
+
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.WorkgroupMeetingDeleted, AuditEntityTypes.WorkgroupMeeting, meetingId,
+            Arg.Any<string>(), member, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 }

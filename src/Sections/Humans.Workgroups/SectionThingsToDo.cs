@@ -43,20 +43,6 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
             });
         }
 
-        foreach (var workgroup in coordinated.Where(w => w.UnansweredStatusRequestAt() is not null))
-        {
-            entries.Add(new ThingsToDoEntry($"workgroup-status-{workgroup.Id}",
-                localizer["Workgroups_Todo_StatusRequested_Title"].Value,
-                "fa-solid fa-circle-question",
-                RawHref: $"/Workgroups/{workgroup.Slug}", Weight: 46,
-                Severity: workgroup.IsStatusOverdue(now) ? TileSeverity.Warning : TileSeverity.Normal)
-            {
-                Description = string.Format(CultureInfo.CurrentCulture,
-                    localizer["Workgroups_Todo_StatusRequested_Description"].Value, workgroup.Name),
-                ActionText = localizer["Workgroups_Todo_StatusRequested_Action"].Value,
-            });
-        }
-
         return entries;
     }
 }

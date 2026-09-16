@@ -36,7 +36,6 @@ internal sealed partial class WorkgroupService
         w.AppliedAt,
         w.RegisteredAt,
         w.EndedAt,
-        w.DormantSince,
         w.Members
             .OrderBy(m => m.Role == WorkgroupMemberRole.Coordinator ? 0 : 1)
             .ThenBy(m => m.JoinedAt)
@@ -403,17 +402,6 @@ internal sealed partial class WorkgroupService
 
     // ── Shared transitions ────────────────────────────────────────────────
 
-    /// <summary>Any sign of life clears the dormancy inquiry flag (§13).</summary>
-    private async Task ClearDormancyFlagAsync(Workgroup w, Instant now, CancellationToken ct)
-    {
-        if (w.DormantSince is null)
-            return;
-
-        w.DormantSince = null;
-        w.UpdatedAt = now;
-        await repository.UpdateWorkgroupAsync(w, ct);
-    }
-
     /// <summary>
     /// The one place a group ends, whether a member marked it done or the Secretary closed
     /// it: Dormant with a reason, the log entry, the audit entry, the coordinators told, and
@@ -431,7 +419,6 @@ internal sealed partial class WorkgroupService
         w.DormantReason = reason;
         w.Reasons = Trimmed(reasons) ?? w.Reasons;
         w.EndedAt = now;
-        w.DormantSince = null;
         w.UpdatedAt = now;
         await repository.UpdateWorkgroupAsync(w, ct);
 

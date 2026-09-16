@@ -283,6 +283,13 @@ public enum AuditAction
     // A member deleted a log entry — the log is a working record, so the audit trail is
     // where the deletion stays visible.
     WorkgroupLogEntryDeleted,
+    // A member edited a log entry. The row is overwritten in place, so the audit trail is
+    // the only record that the earlier text existed.
+    WorkgroupLogEntryUpdated,
+    // A member changed a meeting's details after it was announced.
+    WorkgroupMeetingUpdated,
+    // A member soft-deleted a meeting; the row stays, the roster stops showing it.
+    WorkgroupMeetingDeleted,
     // A member hid a comment on a published document, with a reason.
     WorkgroupCommentHidden,
     // An admin set the root Drive folder every group's subfolder is created under.

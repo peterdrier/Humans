@@ -120,7 +120,7 @@ public sealed class WorkgroupAuthorizationHandlerTests
         WorkgroupDeliverableKind.Report, WorkgroupAudience.Board, null, status,
         status == WorkgroupStatus.Dormant ? WorkgroupDormantReason.Quiet : null,
         null, null, null, null, Instant.FromUtc(2026, 1, 1, 0, 0),
-        Instant.FromUtc(2026, 1, 1, 0, 0), null, null,
+        Instant.FromUtc(2026, 1, 1, 0, 0), null,
         [new WorkgroupMemberInfo(Guid.NewGuid(), MemberId, WorkgroupMemberRole.Coordinator,
             Instant.FromUtc(2026, 1, 1, 0, 0), null)],
         [], [], []);

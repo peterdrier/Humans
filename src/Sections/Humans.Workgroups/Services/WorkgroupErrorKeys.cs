@@ -18,7 +18,6 @@ internal static class WorkgroupErrorKeys
     public const string CoordinatorCount = "Workgroups_Error_CoordinatorCount";
     public const string CoordinatorsMustBeMembers = "Workgroups_Error_CoordinatorsMustBeMembers";
     public const string LastCoordinatorNeedsReplacement = "Workgroups_Error_LastCoordinatorNeedsReplacement";
-    public const string StatusRequestOnCooldown = "Workgroups_Error_StatusRequestOnCooldown";
     public const string RootFolderNotConfigured = "Workgroups_Error_RootFolderNotConfigured";
     public const string DriveFolderCreationFailed = "Workgroups_Error_DriveFolderCreationFailed";
     public const string WrongStatus = "Workgroups_Error_WrongStatus";

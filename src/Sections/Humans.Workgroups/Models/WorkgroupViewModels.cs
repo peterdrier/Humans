@@ -289,15 +289,6 @@ internal sealed class AdminQueueViewModel
             .SelectMany(w => w.AwaitingDisposition().Select(d => (Workgroup: w, Document: d)))
             .OrderBy(x => x.Document.DeliveredAt);
 
-    public IEnumerable<WorkgroupInfo> DormancyFlagged =>
-        Active.Where(w => w.DormantSince is not null);
-
-    public IEnumerable<WorkgroupInfo> AnnualReportDue =>
-        Active.Where(w => w.IsAnnualReportDue(Now));
-
-    public IEnumerable<WorkgroupInfo> StatusOverdue =>
-        Active.Where(w => w.IsStatusOverdue(Now));
-
     public string DisplayName(Guid? userId) =>
         userId is { } id && People.TryGetValue(id, out var info) ? info.BurnerName : "—";
 }

@@ -94,7 +94,6 @@ internal sealed partial class WorkgroupService
         workgroup.DormantReason = null;
         workgroup.Reasons = reasons.Trim();
         workgroup.EndedAt = now;
-        workgroup.DormantSince = null;
         workgroup.UpdatedAt = now;
         await repository.UpdateWorkgroupAsync(workgroup, ct);
 
@@ -127,7 +126,6 @@ internal sealed partial class WorkgroupService
         workgroup.Status = WorkgroupStatus.Active;
         workgroup.DormantReason = null;
         workgroup.EndedAt = null;
-        workgroup.DormantSince = null;
         workgroup.Reasons = null;
         workgroup.UpdatedAt = now;
         await repository.UpdateWorkgroupAsync(workgroup, ct);

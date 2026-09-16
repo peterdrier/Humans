@@ -110,9 +110,6 @@ else
 <h2 class="h5 mt-4">Active groups</h2>
 @{
     var active = Model.Active.ToList();
-    var dormancyFlagged = Model.DormancyFlagged.Select(w => w.Id).ToHashSet();
-    var annualDue = Model.AnnualReportDue.Select(w => w.Id).ToHashSet();
-    var statusOverdue = Model.StatusOverdue.Select(w => w.Id).ToHashSet();
 }
 @if (active.Count == 0)
 {
@@ -137,32 +134,17 @@ else
                         <td><a asp-controller="Workgroups" asp-action="Details" asp-route-slug="@w.Slug">@w.Name</a></td>
                         <td>@string.Join(", ", w.CoordinatorUserIds().Select(id => Model.DisplayName(id)))</td>
                         <td>
-                            @if (dormancyFlagged.Contains(w.Id))
+                            @if (w.IsUpdateDue(Model.Now))
                             {
-                                <span class="badge bg-secondary">Quiet since @w.DormantSince?.ToDate()</span>
-                            }
-                            @if (w.IsCloseCandidate(Model.Now))
-                            {
-                                <span class="badge bg-danger">Close candidate</span>
-                            }
-                            @if (annualDue.Contains(w.Id))
-                            {
-                                <span class="badge bg-warning text-dark">Annual report due</span>
-                            }
-                            @if (statusOverdue.Contains(w.Id))
-                            {
-                                <span class="badge bg-danger">Status overdue</span>
+                                <span class="badge bg-warning text-dark">Update due</span>
                             }
                         </td>
                         <td class="text-end">
                             <div class="d-flex gap-1 justify-content-end flex-wrap">
-                                @if (w.IsCloseCandidate(Model.Now) || dormancyFlagged.Contains(w.Id))
-                                {
-                                    <form method="post" asp-action="Close" asp-route-id="@w.Id" class="d-flex gap-1">
-                                        <input name="reasons" class="form-control form-control-sm" placeholder="Reasons" required style="min-width: 10rem;" />
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">Close</button>
-                                    </form>
-                                }
+                                <form method="post" asp-action="Close" asp-route-id="@w.Id" class="d-flex gap-1">
+                                    <input name="reasons" class="form-control form-control-sm" placeholder="Reasons" required style="min-width: 10rem;" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Close</button>
+                                </form>
                                 <form method="post" asp-action="Withdraw" asp-route-id="@w.Id" class="d-flex gap-1">
                                     <input name="reasons" class="form-control form-control-sm" placeholder="Reasons" required style="min-width: 10rem;" />
                                     <button type="submit" class="btn btn-sm btn-outline-secondary">Withdraw</button>

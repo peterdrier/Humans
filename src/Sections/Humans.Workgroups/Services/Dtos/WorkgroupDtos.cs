@@ -28,7 +28,6 @@ internal sealed record WorkgroupInfo(
     Instant AppliedAt,
     Instant? RegisteredAt,
     Instant? EndedAt,
-    Instant? DormantSince,
     IReadOnlyList<WorkgroupMemberInfo> Members,
     IReadOnlyList<WorkgroupMeetingInfo> Meetings,
     IReadOnlyList<WorkgroupLogEntryInfo> LogEntries,

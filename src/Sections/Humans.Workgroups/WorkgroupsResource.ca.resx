@@ -118,7 +118,6 @@
   <data name="Workgroups_Error_CoordinatorCount" xml:space="preserve"><value>Un grup necessita un o dos coordinadors.</value></data>
   <data name="Workgroups_Error_CoordinatorsMustBeMembers" xml:space="preserve"><value>Els coordinadors ja han de ser membres.</value></data>
   <data name="Workgroups_Error_LastCoordinatorNeedsReplacement" xml:space="preserve"><value>Ets l'últim coordinador; anomena un substitut abans de marxar.</value></data>
-  <data name="Workgroups_Error_StatusRequestOnCooldown" xml:space="preserve"><value>Ja has demanat una actualització d'estat recentment; espera abans de tornar-ho a demanar.</value></data>
   <data name="Workgroups_Error_RootFolderNotConfigured" xml:space="preserve"><value>La carpeta arrel de Drive de Grups de treball encara no està configurada.</value></data>
   <data name="Workgroups_Error_DriveFolderCreationFailed" xml:space="preserve"><value>No s'ha pogut crear la carpeta de Drive del grup; torna-ho a provar.</value></data>
   <data name="Workgroups_Error_WrongStatus" xml:space="preserve"><value>Això no és possible en l'estat actual del grup o del document.</value></data>
@@ -141,8 +140,6 @@
   <data name="Workgroups_Todo_UpdateDue_Description" xml:space="preserve"><value>{0} no ha publicat cap actualització en 30 dies.</value></data>
   <data name="Workgroups_Todo_UpdateDue_Action" xml:space="preserve"><value>Publica una actualització</value></data>
   <data name="Workgroups_Todo_StatusRequested_Title" xml:space="preserve"><value>Actualització d'estat sol·licitada</value></data>
-  <data name="Workgroups_Todo_StatusRequested_Description" xml:space="preserve"><value>Algú ha demanat a {0} una actualització d'estat.</value></data>
-  <data name="Workgroups_Todo_StatusRequested_Action" xml:space="preserve"><value>Respon</value></data>
 
   <!-- Controller success messages -->
   <data name="Workgroups_Applied" xml:space="preserve"><value>Sol·licitud enviada. La Secretaria la revisarà.</value></data>
@@ -185,8 +182,6 @@
   <data name="Workgroups_NoTargetDate" xml:space="preserve"><value>una data per determinar</value></data>
   <data name="Workgroups_OpenForComment" xml:space="preserve"><value>Obert a comentaris</value></data>
   <data name="Workgroups_UpdateDue" xml:space="preserve"><value>Actualització pendent</value></data>
-  <data name="Workgroups_StatusOverdue" xml:space="preserve"><value>Estat endarrerit</value></data>
-  <data name="Workgroups_Quiet" xml:space="preserve"><value>Inactiu</value></data>
   <data name="Workgroups_RegistrationOverdue" xml:space="preserve"><value>Endarrerit</value></data>
 
   <!-- Apply / Edit -->

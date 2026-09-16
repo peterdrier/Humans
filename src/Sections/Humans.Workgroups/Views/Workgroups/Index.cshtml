@@ -44,14 +44,6 @@ else
                             {
                                 <span class="badge bg-warning text-dark">@Localizer["Workgroups_UpdateDue"]</span>
                             }
-                            @if (w.IsStatusOverdue(Model.Now))
-                            {
-                                <span class="badge bg-danger">@Localizer["Workgroups_StatusOverdue"]</span>
-                            }
-                            @if (w.DormantSince is not null)
-                            {
-                                <span class="badge bg-secondary">@Localizer["Workgroups_Quiet"]</span>
-                            }
                         </div>
                     </div>
                     <div class="mt-2">@Localizer["Workgroups_DeliverableSentence", w.TargetDate?.ToDate() ?? Localizer["Workgroups_NoTargetDate"].Value, w.Deliverable, Localizer.EnumDisplay(w.Audience)]</div>

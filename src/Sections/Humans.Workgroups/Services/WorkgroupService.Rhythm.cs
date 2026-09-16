@@ -1,6 +1,4 @@
-using System.Globalization;
 using Humans.AuditLog.Contracts;
-using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Workgroups.Domain;
 using NodaTime;
@@ -8,10 +6,11 @@ using NodaTime;
 namespace Humans.Workgroups.Services;
 
 /// <summary>
-/// One pass of the reporting rhythm of design §13. It notifies, flags and records; it
-/// never registers, closes or refuses anything — a human does that. The two remaining
-/// rows of the §13 table (status overdue, disposition overdue) are read-time badges
-/// computed by <see cref="WorkgroupRhythm"/>, not job actions, so they are not here.
+/// One pass of the reporting rhythm of design §13: the monthly update nudge to a group's
+/// coordinators, and clause 1's fourteen-day notice to the Board about an application
+/// nobody has decided. It notifies and records; it never registers, closes or refuses
+/// anything, and it does not track whether a group has gone quiet — ending a group is the
+/// Board's decision alone, taken on the Board's own reading of the register.
 /// </summary>
 internal sealed partial class WorkgroupService
 {
@@ -31,8 +30,6 @@ internal sealed partial class WorkgroupService
                 if (info.Status == WorkgroupStatus.Active)
                 {
                     await NudgeForUpdateAsync(workgroup, info, now, ct);
-                    await FlagDormancyAsync(workgroup, info, now, ct);
-                    await FlagCloseCandidateAsync(workgroup, info, now, ct);
                 }
                 else if (info.Status is WorkgroupStatus.Applied or WorkgroupStatus.Referred)
                 {
@@ -64,61 +61,6 @@ internal sealed partial class WorkgroupService
             "Workgroups_Todo_UpdateDue_Title", info, body: null, ct);
         await AuditJobAsync(AuditAction.WorkgroupUpdateDueNotified,
             workgroup, $"Notified the coordinators that an update is due after {days} days of silence");
-    }
-
-    /// <summary>
-    /// Sixty days silent: the group is flagged, asked whether it is still going, and the
-    /// Board is told. <c>DormantSince</c> is the flag itself, so this fires once — any
-    /// Update or meeting clears it and the clock starts again.
-    /// </summary>
-    private async Task FlagDormancyAsync(
-        Workgroup workgroup, WorkgroupInfo info, Instant now, CancellationToken ct)
-    {
-        if (!info.NeedsDormancyInquiry(now))
-            return;
-
-        var days = (int)(info.SilenceFor(now)?.TotalDays ?? 0);
-
-        // DormantSince is both the flag and the once-only latch, so it is written last: a
-        // failure in the log entry, the audit record or the notices leaves the flag unset and
-        // the next nightly run retries the whole step. Persisting it first would make
-        // NeedsDormancyInquiry false forever with the audit trail missing.
-        await AddSystemEntryAsync(workgroup, WorkgroupLogKind.DormancyInquiry, now,
-            $"No update or meeting for {days} days.", ct);
-        await AuditJobAsync(AuditAction.WorkgroupDormancyFlagged,
-            workgroup, $"Flagged as dormant after {days} days of silence");
-
-        var coordinators = info.CoordinatorUserIds();
-        await NotifyAsync(coordinators, NotificationSource.WorkgroupReportingDue,
-            "Enum_WorkgroupLogKind_DormancyInquiry", info, body: null, ct);
-        await EmailAsync(coordinators, WorkgroupNoticeKind.DormancyInquiry, info, days.ToString(CultureInfo.InvariantCulture), ct);
-        await NotifyBoardAsync(NotificationSource.WorkgroupReportingDue,
-            $"Dormancy flagged: {workgroup.Name}", info,
-            $"No update or meeting for {days} days; the coordinators have been asked.", ct);
-
-        workgroup.DormantSince = now;
-        workgroup.UpdatedAt = now;
-        await repository.UpdateWorkgroupAsync(workgroup, ct);
-    }
-
-    /// <summary>
-    /// Fourteen days after the flag with still nothing: the Board is asked to close it. No
-    /// automatic close — the Secretary does that with written reasons.
-    /// </summary>
-    private async Task FlagCloseCandidateAsync(
-        Workgroup workgroup, WorkgroupInfo info, Instant now, CancellationToken ct)
-    {
-        if (!info.IsCloseCandidate(now) || !JustCrossed(now - info.DormantSince!.Value,
-                WorkgroupRhythm.CloseCandidateAfter))
-        {
-            return;
-        }
-
-        await AuditJobAsync(AuditAction.WorkgroupCloseCandidateFlagged,
-            workgroup, "Raised as a close candidate: still silent 14 days after the dormancy inquiry");
-        await NotifyBoardAsync(NotificationSource.WorkgroupReportingDue,
-            $"Close candidate: {workgroup.Name}", info,
-            "The group has not answered the dormancy inquiry. Close it with reasons, or leave it running.", ct);
     }
 
     /// <summary>Clause 1's fourteen days: the Board is told once; the queue keeps showing it.</summary>

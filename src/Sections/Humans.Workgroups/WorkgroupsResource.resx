@@ -118,7 +118,6 @@
   <data name="Workgroups_Error_CoordinatorCount" xml:space="preserve"><value>A group needs one or two coordinators.</value></data>
   <data name="Workgroups_Error_CoordinatorsMustBeMembers" xml:space="preserve"><value>Coordinators must already be members.</value></data>
   <data name="Workgroups_Error_LastCoordinatorNeedsReplacement" xml:space="preserve"><value>You are the last coordinator; name a replacement before leaving.</value></data>
-  <data name="Workgroups_Error_StatusRequestOnCooldown" xml:space="preserve"><value>You already asked for a status update recently; please wait before asking again.</value></data>
   <data name="Workgroups_Error_RootFolderNotConfigured" xml:space="preserve"><value>The Workgroups root Drive folder is not configured yet.</value></data>
   <data name="Workgroups_Error_DriveFolderCreationFailed" xml:space="preserve"><value>Creating the group's Drive folder failed; please try again.</value></data>
   <data name="Workgroups_Error_WrongStatus" xml:space="preserve"><value>That isn't possible in the group's or document's current status.</value></data>
@@ -141,8 +140,6 @@
   <data name="Workgroups_Todo_UpdateDue_Description" xml:space="preserve"><value>{0} hasn't posted an update in 30 days.</value></data>
   <data name="Workgroups_Todo_UpdateDue_Action" xml:space="preserve"><value>Post an update</value></data>
   <data name="Workgroups_Todo_StatusRequested_Title" xml:space="preserve"><value>Status update requested</value></data>
-  <data name="Workgroups_Todo_StatusRequested_Description" xml:space="preserve"><value>Someone asked {0} for a status update.</value></data>
-  <data name="Workgroups_Todo_StatusRequested_Action" xml:space="preserve"><value>Answer</value></data>
 
   <!-- Controller success messages -->
   <data name="Workgroups_Applied" xml:space="preserve"><value>Application submitted. The Secretary will review it.</value></data>
@@ -185,8 +182,6 @@
   <data name="Workgroups_NoTargetDate" xml:space="preserve"><value>a date to be set</value></data>
   <data name="Workgroups_OpenForComment" xml:space="preserve"><value>Open for comment</value></data>
   <data name="Workgroups_UpdateDue" xml:space="preserve"><value>Update due</value></data>
-  <data name="Workgroups_StatusOverdue" xml:space="preserve"><value>Status overdue</value></data>
-  <data name="Workgroups_Quiet" xml:space="preserve"><value>Quiet</value></data>
   <data name="Workgroups_RegistrationOverdue" xml:space="preserve"><value>Overdue</value></data>
 
   <!-- Apply / Edit -->

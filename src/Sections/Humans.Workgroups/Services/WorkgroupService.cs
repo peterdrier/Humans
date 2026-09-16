@@ -199,8 +199,6 @@ internal sealed partial class WorkgroupService(
 
         var now = clock.GetCurrentInstant();
         var info = ToInfo(workgroup);
-        if (info.StatusRequestOnCooldownFor(actorUserId, now))
-            throw new WorkgroupRuleException(WorkgroupErrorKeys.StatusRequestOnCooldown);
 
         await repository.AddLogEntryAsync(new WorkgroupLogEntry
         {
@@ -326,8 +324,6 @@ internal sealed partial class WorkgroupService(
         ApplyMeetingFields(meeting, save);
         await repository.AddMeetingAsync(meeting, ct);
 
-        // A meeting is a sign of life: it clears the dormancy flag like an Update does.
-        await ClearDormancyFlagAsync(workgroup, now, ct);
         return meeting.Id;
     }
 
@@ -344,6 +340,12 @@ internal sealed partial class WorkgroupService(
         ApplyMeetingFields(meeting, save);
         meeting.UpdatedAt = clock.GetCurrentInstant();
         await repository.UpdateMeetingAsync(meeting, ct);
+
+        // The row is overwritten, so the audit entry is the only record that the meeting
+        // the members were told about is not the one on the page now.
+        await AuditAsync(AuditAction.WorkgroupMeetingUpdated, workgroup,
+            $"Edited the meeting of {meeting.StartUtc.InUtc().Date.ToInvariantDate()}", actorUserId,
+            AuditEntityTypes.WorkgroupMeeting, meeting.Id);
     }
 
     public async Task DeleteMeetingAsync(Guid meetingId, Guid actorUserId, CancellationToken ct = default)
@@ -357,6 +359,10 @@ internal sealed partial class WorkgroupService(
         meeting.DeletedAt = now;
         meeting.UpdatedAt = now;
         await repository.UpdateMeetingAsync(meeting, ct);
+
+        await AuditAsync(AuditAction.WorkgroupMeetingDeleted, workgroup,
+            $"Deleted the meeting of {meeting.StartUtc.InUtc().Date.ToInvariantDate()}", actorUserId,
+            AuditEntityTypes.WorkgroupMeeting, meeting.Id);
     }
 
     public async Task<Guid> AddLogEntryAsync(
@@ -384,9 +390,6 @@ internal sealed partial class WorkgroupService(
         };
         await repository.AddLogEntryAsync(entry, ct);
 
-        if (save.Kind == WorkgroupLogKind.Update)
-            await ClearDormancyFlagAsync(workgroup, now, ct);
-
         return entry.Id;
     }
 
@@ -410,6 +413,12 @@ internal sealed partial class WorkgroupService(
         entry.Body = save.Body.Trim();
         entry.UpdatedAt = clock.GetCurrentInstant();
         await repository.UpdateLogEntryAsync(entry, ct);
+
+        // The log keeps no history of its own, so an edit is as invisible as a deletion
+        // without this.
+        await AuditAsync(AuditAction.WorkgroupLogEntryUpdated, workgroup,
+            $"Edited the {entry.Kind} entry of {entry.OccurredOn.ToInvariantDate()}", actorUserId,
+            AuditEntityTypes.WorkgroupLogEntry, entryId);
     }
 
     public async Task DeleteLogEntryAsync(Guid entryId, Guid actorUserId, CancellationToken ct = default)

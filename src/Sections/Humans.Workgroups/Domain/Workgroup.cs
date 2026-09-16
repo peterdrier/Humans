@@ -56,9 +56,10 @@ internal sealed class Workgroup
     public Instant? EndedAt { get; set; }
 
     /// <summary>
-    /// Set by the daily job on sixty days' silence and cleared by the next Update or
-    /// Meeting. Distinct from the Dormant <see cref="Status"/>: this is the inquiry flag,
-    /// not the end of the group.
+    /// Dead: the daily job that set this was removed when dormancy tracking was struck.
+    /// Nothing reads or writes it. The property stays only to keep the model matching the
+    /// shipped schema — dropping the column needs Peter's per-case approval and its own PR
+    /// (memory/architecture/no-drops-until-prod-verified.md).
     /// </summary>
     public Instant? DormantSince { get; set; }
 
