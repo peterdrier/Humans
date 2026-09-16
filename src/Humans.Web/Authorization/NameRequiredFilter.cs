@@ -94,6 +94,14 @@ public sealed class NameRequiredFilter(IUserServiceRead userService) : IAsyncAct
             }
         }
 
+        // Anonymization deliberately clears names. Let the membership gate route
+        // terminal accounts to their status wall instead of offering name entry again.
+        if (RoleAssignmentClaimsTransformation.GetUserState(user) is UserState.Deleted or UserState.Merged)
+        {
+            await next();
+            return;
+        }
+
         var raw = user.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(raw, out var userId))
         {

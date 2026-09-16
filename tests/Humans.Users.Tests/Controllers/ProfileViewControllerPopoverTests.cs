@@ -233,8 +233,11 @@ public class ProfileViewControllerPopoverTests
         var user = new User { Id = id, DisplayName = "Suspended Human", State = targetState };
         var profile = new Profile
         {
-            Id = Guid.NewGuid(), UserId = id, MembershipTier = MembershipTier.Volunteer,
-            City = "Madrid", CountryCode = "ES",
+            Id = Guid.NewGuid(),
+            UserId = id,
+            MembershipTier = MembershipTier.Volunteer,
+            City = "Madrid",
+            CountryCode = "ES",
         };
         _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
             .Returns(BuildUserInfo(user, profile, userEmails: null));

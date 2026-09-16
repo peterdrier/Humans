@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Routing;
+using NSubstitute;
 using Xunit;
 using Humans.Users.Contracts;
 using Humans.Users.Controllers;
@@ -36,6 +37,8 @@ public class MembershipRequiredFilterTests
             .FirstOrDefault(t => t is not null)
         ?? throw new InvalidOperationException(
             "Humans.Onboarding.Controllers.OnboardingWidgetController not found in any section assembly.");
+    private static readonly Type UserControllerType = typeof(ProfileController).Assembly
+        .GetType("Humans.Users.Controllers.UserController", throwOnError: true)!;
     [HumansFact]
     public async Task Active_user_reaches_a_non_exempt_controller()
     {
@@ -165,6 +168,58 @@ public class MembershipRequiredFilterTests
     }
 
     [HumansTheory]
+    [InlineData(UserState.Deleted, false)]
+    [InlineData(UserState.Deleted, true)]
+    [InlineData(UserState.Merged, false)]
+    [InlineData(UserState.Merged, true)]
+    public async Task Terminal_accounts_cannot_use_recovery_exemptions(UserState state, bool hasNames)
+    {
+        // Exercise both filters in their registered order. Anonymization clears names;
+        // it must never send a tombstone back through the editable onboarding form.
+        foreach (var type in new[]
+        {
+            typeof(ProfileController), typeof(ProfileEmailsController),
+            OnboardingWidgetControllerType, UserControllerType,
+        })
+        {
+            var methods = type.GetMethods().Where(m => m.DeclaringType == type
+                && !m.IsDefined(typeof(AllowAnonymousAttribute), true)
+                && !(type == UserControllerType && string.Equals(m.Name, "Status", StringComparison.Ordinal)));
+            foreach (var method in methods)
+            {
+                var (result, nextCalled) = await RunAsync(
+                    type.Name[..^"Controller".Length], method.Name, state,
+                    role: RoleNames.Admin, actionMethod: method, nameGateHasNames: hasNames);
+
+                Assert.False(nextCalled, $"{state} must not reach {method}");
+                AssertRedirect(result, "Status", "User");
+            }
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(UserState.Deleted)]
+    [InlineData(UserState.Merged)]
+    public async Task Terminal_accounts_can_reach_status_and_session_routes_without_names(UserState state)
+    {
+        foreach (var (controller, action) in new[]
+        {
+            ("User", "Status"),
+            ("Account", nameof(AccountController.Logout)),
+            ("Language", nameof(LanguageController.SetLanguage)),
+            ("ProfileView", nameof(ProfileViewController.PublicPopover)),
+            ("ProfileEmails", nameof(ProfileEmailsController.VerifyEmail)),
+        })
+        {
+            var (result, nextCalled) = await RunAsync(
+                controller, action, state, nameGateHasNames: false);
+
+            Assert.True(nextCalled, $"{state} must still reach {controller}.{action}");
+            Assert.Null(result);
+        }
+    }
+
+    [HumansTheory]
     [InlineData(UserState.Bare, "ProfileEmails", "Index", "OnboardingWidget")]
     [InlineData(UserState.Suspended, "ProfileEmails", "Status", "User")]
     [InlineData(UserState.AdminSuspended, "ProfileEmails", "Status", "User")]
@@ -193,15 +248,15 @@ public class MembershipRequiredFilterTests
         Assert.NotEmpty(actions);
 
         foreach (var method in actions)
-        foreach (var role in new[] { null, RoleNames.Admin, RoleNames.HumanAdmin, RoleNames.Board })
-        {
-            var (result, nextCalled) = await RunAsync(
-                method.DeclaringType!.Name[..^"Controller".Length], method.Name, state,
-                role: role, actionMethod: method);
+            foreach (var role in new[] { null, RoleNames.Admin, RoleNames.HumanAdmin, RoleNames.Board })
+            {
+                var (result, nextCalled) = await RunAsync(
+                    method.DeclaringType!.Name[..^"Controller".Length], method.Name, state,
+                    role: role, actionMethod: method);
 
-            Assert.False(nextCalled, $"{state} ({role ?? "member"}) must not reach {method}");
-            AssertRedirect(result, redirectAction, redirectController);
-        }
+                Assert.False(nextCalled, $"{state} ({role ?? "member"}) must not reach {method}");
+                AssertRedirect(result, redirectAction, redirectController);
+            }
     }
 
     [HumansFact]
@@ -250,17 +305,39 @@ public class MembershipRequiredFilterTests
         bool authenticated = true,
         string? role = null,
         string authenticationType = "test",
-        MethodInfo? actionMethod = null)
+        MethodInfo? actionMethod = null,
+        bool? nameGateHasNames = null)
     {
         var sut = new MembershipRequiredFilter();
         var ctx = BuildExecutingContext(controllerName, actionName, authenticated, state, role, authenticationType, actionMethod);
         var nextCalled = false;
 
-        await sut.OnActionExecutionAsync(ctx, () =>
+        Task<ActionExecutedContext> ExecuteAction()
         {
             nextCalled = true;
             return Task.FromResult<ActionExecutedContext>(null!);
-        });
+        }
+
+        if (nameGateHasNames is { } hasNames)
+        {
+            var users = Substitute.For<IUserServiceRead>();
+            var profile = UserFixtures.Profile(
+                burnerName: hasNames ? "Member" : "", firstName: "Deleted", lastName: "User");
+            var info = UserInfo.Create(
+                new User { Id = Guid.NewGuid(), State = state!.Value },
+                [], [], [], profile, []);
+            users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(info);
+            var nameFilter = new NameRequiredFilter(users);
+            await nameFilter.OnActionExecutionAsync(ctx, async () =>
+            {
+                await sut.OnActionExecutionAsync(ctx, ExecuteAction);
+                return null!;
+            });
+        }
+        else
+        {
+            await sut.OnActionExecutionAsync(ctx, ExecuteAction);
+        }
 
         return (ctx.Result, nextCalled);
     }
@@ -328,6 +405,9 @@ public class MembershipRequiredFilterTests
             "Profile" => typeof(ProfileController),
             "ProfileEmails" => typeof(ProfileEmailsController),
             "ProfileView" => typeof(ProfileViewController),
+            "Account" => typeof(AccountController),
+            "Language" => typeof(LanguageController),
+            "User" => UserControllerType,
             _ => typeof(HomeController),
         };
         var actionDescriptor = new ControllerActionDescriptor

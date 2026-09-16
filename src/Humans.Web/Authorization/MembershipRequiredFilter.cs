@@ -36,8 +36,9 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         "Survey",           // Tokenised survey answering — invited non-Active users must still reach it ([AllowAnonymous])
     };
 
-    // Own-profile maintenance remains available outside Active membership. Other humans'
+    // Live accounts retain own-profile maintenance outside Active membership. Other humans'
     // profiles, messaging, search and admin email actions still require Active membership.
+    // Deleted/Merged accounts are handled before these recovery exemptions.
     // Public picture/popover and email-verification actions use [AllowAnonymous].
     private static readonly HashSet<(string Controller, string Action)> ExemptActions =
     [
@@ -92,6 +93,23 @@ public class MembershipRequiredFilter : IAsyncActionFilter
             return next();
         }
 
+        // A lingering cookie must not turn an anonymized account into an editable profile.
+        // Terminal accounts retain the status wall and session/language routes, but none
+        // of the onboarding or self-service exemptions for recoverable accounts below.
+        var state = RoleAssignmentClaimsTransformation.GetUserState(user);
+        if (state is UserState.Deleted or UserState.Merged)
+        {
+            if (context.ActionDescriptor is ControllerActionDescriptor terminalAction
+                && (terminalAction.ControllerName is "Account" or "Language"
+                    || terminalAction is { ControllerName: "User", ActionName: "Status" }))
+            {
+                return next();
+            }
+
+            context.Result = new RedirectToActionResult("Status", "User", null);
+            return Task.CompletedTask;
+        }
+
         if (context.Controller is Controller controller)
         {
             var descriptor = controller.ControllerContext.ActionDescriptor;
@@ -104,7 +122,6 @@ public class MembershipRequiredFilter : IAsyncActionFilter
 
         // Access is the stored UserState (stamped on the principal by
         // RoleAssignmentClaimsTransformation). Only Active reaches the app.
-        var state = RoleAssignmentClaimsTransformation.GetUserState(user);
         if (state == UserState.Active)
         {
             return next();
@@ -114,7 +131,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         {
             UserState.DeletePending => new RedirectToActionResult("Deletion", "User", null),
             UserState.Suspended or UserState.AdminSuspended
-                or UserState.Rejected or UserState.Deleted or UserState.Merged
+                or UserState.Rejected
                 => new RedirectToActionResult("Status", "User", null),
             // Bare or null (not yet named / unseeded) → name entry.
             _ => new RedirectToActionResult("Index", "OnboardingWidget", null),
