@@ -10,7 +10,7 @@ namespace Humans.Workgroups.Authorization;
 /// <remarks>
 /// Three operations, because §5 has three answers: everyone reads the register, members do
 /// the work, the Board and Admin decide. There is deliberately no Coordinator operation —
-/// in v1 the coordinator distinction is register-facing, not permission-facing.
+/// the coordinator distinction is register-facing, not permission-facing.
 /// </remarks>
 internal sealed class WorkgroupOperationRequirement : IAuthorizationRequirement
 {

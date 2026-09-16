@@ -23,7 +23,6 @@ internal sealed class WorkgroupMeeting
 
     public string? LocationUrl { get; set; }
 
-    /// <summary>Public meetings appear on the community calendar for everyone.</summary>
     public bool IsPublic { get; set; }
 
     /// <summary>Markdown, sanitized on render.</summary>

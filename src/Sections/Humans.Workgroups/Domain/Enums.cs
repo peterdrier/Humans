@@ -63,7 +63,7 @@ internal enum WorkgroupAudience
 }
 
 /// <summary>
-/// Register-facing role, not a permission level: in v1 every member may edit
+/// Register-facing role, not a permission level: every member may edit
 /// (design §5). Coordinators are the people named on the register and the
 /// addressees of notifications.
 /// </summary>

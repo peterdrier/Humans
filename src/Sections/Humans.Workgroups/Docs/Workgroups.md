@@ -1,5 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Workgroups/**
+  tests/Humans.Workgroups.Tests/**
 -->
 <!-- freshness:flag-on-change
   Lifecycle transitions and the Dormant freeze, the one-or-two-coordinators rule, the
@@ -23,7 +24,7 @@ administrative recognition, and every decision is a human's.
 - The **deliverable sentence** is "By [TargetDate] we will deliver [Deliverable] to
   [Audience]."
 - A **Coordinator** is one of the one or two people named on the register
-  (`WorkgroupMemberRole.Coordinator`). Register-facing, not permission-facing in v1 —
+  (`WorkgroupMemberRole.Coordinator`). Register-facing, not permission-facing —
   every member may do member work.
 - The **Secretary** is a Board member; every Secretary action is `BoardOrAdmin`. No new role.
 - A **Member** is any signed-in human who joined. Joining is immediate (standing approval).
@@ -93,7 +94,8 @@ Unique filtered `(WorkgroupId, UserId)` where `LeftAt IS NULL`.
 | CreatedAt / UpdatedAt | Instant | |
 | DeletedAt | Instant? | Soft delete; excluded everywhere outside the repository |
 
-Index `(WorkgroupId, StartUtc)`.
+Indexes `(WorkgroupId, StartUtc)` and `CreatedByUserId` filtered non-null — the erasure
+predicate reads that column.
 
 ### WorkgroupLogEntry — `workgroup_log_entries`
 
@@ -109,6 +111,8 @@ Index `(WorkgroupId, StartUtc)`.
 | DocumentId | Guid? | FK → WorkgroupDocument, SetNull |
 | SurveyId | Guid? | Bare reference to a survey in Surveys |
 | CreatedAt / UpdatedAt | Instant | |
+
+Indexes `(WorkgroupId, OccurredOn)` and `AuthorUserId` filtered non-null.
 
 Not §12 append-only by design: the log is a working record; the audit trail is the
 immutable one. Member entries are editable and hard-deletable by any member (audited).
@@ -144,7 +148,7 @@ log could name somebody else's survey, or none at all.
 | CreatedByUserId / UpdatedByUserId | Guid? | Bare references; nulled on erasure |
 | CreatedAt / UpdatedAt | Instant | |
 
-Index `(WorkgroupId, Status)`.
+Indexes `(WorkgroupId, Status)` and `CreatedByUserId` filtered non-null.
 
 ### WorkgroupDocumentComment — `workgroup_document_comments`
 
@@ -161,7 +165,7 @@ Index `(WorkgroupId, Status)`.
 | RespondedByUserId / RespondedAt | Guid? / Instant? | Bare reference; nulled on erasure |
 | HiddenAt / HiddenByUserId / HiddenReason | Instant? / Guid? / string(500)? | Moderation; hidden reads "hidden by the group" to non-admins, full text to admins |
 
-Index `(DocumentId, Category)`.
+Indexes `(DocumentId, Category)` and `AuthorUserId` filtered non-null.
 
 ### Enums
 
@@ -205,7 +209,7 @@ See `authorization.md` for the auth policy per route.
 |-------|--------------|
 | Any signed-in human with an approved profile | Browse the register and every group page; read Published/Delivered documents, meetings and the log; join or leave a group; comment during an open window; request a status update; apply to form a group |
 | Workgroup member | Additionally: read Draft documents; edit register fields; create/edit meetings and minutes; post Update, Disclosure and Note entries; create/edit/publish/deliver documents; open/close comment periods; respond to and dispose of comments; hide a comment with a reason; link an authored survey; mark the group done |
-| Coordinator | Everything a member can. Named on the register; addressee of notifications; may hand coordination to another member. Register-facing distinction, not a separate permission level in v1 |
+| Coordinator | Everything a member can. Named on the register; addressee of notifications; may hand coordination to another member. Register-facing distinction, not a separate permission level |
 | Board, Admin (`BoardOrAdmin`) | Register, refer, refuse, withdraw, close, reactivate; set coordinators (override); register on behalf (bootstrapping); record a document's disposition; view the admin queue; edit any group; set the root Drive folder |
 
 ## Invariants
@@ -321,7 +325,8 @@ per 7 days), not part of the job.
   grants are revoked. Calls `IGoogleSyncService.CreateSubfolderAsync` (registration) and
   `RequestSyncAsync` (every access-relevant change) outbound.
 - **Settings**: `ISettingsService` — the root Drive folder id.
-- **Surveys**: none directly — a group links a survey it authored by id; Surveys never references Workgroups.
+- **Surveys**: `ISurveyAnalysisRead` — `LinkSurveyAsync` reads the posted survey to check the
+  actor authored it before writing the log entry. One-way: Surveys never references Workgroups.
 - **Notifications, Email, AuditLog**: crosscuts, per Triggers above. Member notifications
   use existing localized labels, grouped by recipient language; authored content is unchanged.
 - **Gdpr**: `IUserDataContributor`, `IUserMerge` — see GDPR below.
@@ -373,7 +378,6 @@ per 7 days), not part of the job.
 - **Display stitching** — `IUserServiceRead.GetUserInfosAsync` for burner names and tiers.
 - **Cross-section calls** — `IUserServiceRead`, `IUserEmailService`,
   `IRoleAssignmentService`, `ITeamServiceRead`, `ISettingsService`, `IGoogleSyncService`,
-  `INotificationService`, `IEmailService`, `IEmailMessageFactory`, `IAuditLogService`, `IClock`.
-- **Architecture test** — none yet; `tests/Humans.Workgroups.Tests` does not exist on
-  disk as of this doc. Add `Architecture/WorkgroupsArchitectureTests.cs` per the
-  pattern in other (A) sections when the test project is created.
+  `INotificationService`, `IEmailService`, `IEmailMessageFactory`, `IAuditLogService`,
+  `ISurveyAnalysisRead`, `IClock`.
+- **Architecture test** — `tests/Humans.Workgroups.Tests` carries no `Architecture/` folder.

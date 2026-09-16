@@ -42,7 +42,6 @@ public sealed class Section : ISection
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CachingWorkgroupService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<CachingWorkgroupService>());
 
-        // Surface the register cache on /Debug/CacheStats.
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingWorkgroupService>().RegisterCacheStats);
 
         // Inbound fan-outs: Calendar and GoogleIntegration name nothing of ours.
