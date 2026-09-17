@@ -35,16 +35,6 @@ internal partial interface IUserRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Finds a user whose legacy <c>GoogleEmail</c> shadow column matches the given
-    /// normalized address (case-insensitive). If <paramref name="alternateEmail"/>
-    /// is non-null, also matches the alternate form. Canonical
-    /// <c>user_emails</c> matching is owned by the UserEmail methods on this repository.
-    /// Read-only.
-    /// </summary>
-    Task<User?> GetByEmailOrAlternateAsync(
-        string normalizedEmail, string? alternateEmail, CancellationToken ct = default);
-
     // ==========================================================================
     // Writes — User (atomic field updates)
     // ==========================================================================

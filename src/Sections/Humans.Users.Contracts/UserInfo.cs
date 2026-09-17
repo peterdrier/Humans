@@ -327,10 +327,12 @@ public sealed record UserInfo(
     /// or blank required names. Callers writing consents must block on this.</summary>
     public bool IsStub => State == UserState.Bare;
 
-    /// <summary>Has a profile and is not rejected. Does NOT require <see cref="ProfileInfo.IsApproved"/>
-    /// (separate Consent Coordinator gate). Reads rejection off the stored <see cref="State"/>.</summary>
+    /// <summary>Has a profile, is not rejected, and is not a merge/deletion tombstone (a tombstone
+    /// keeps its anonymized Profile row, so that check alone isn't enough — peterdrier/Humans#1707).
+    /// Does NOT require <see cref="ProfileInfo.IsApproved"/> (separate Consent Coordinator gate).
+    /// Reads rejection off the stored <see cref="State"/>.</summary>
     public bool IsActive =>
-        Profile is not null && State != UserState.Rejected;
+        Profile is not null && State != UserState.Rejected && !IsTombstone;
 
     /// <summary>Canonical "suspended" predicate — see memory/code/no-issuspended.md. Derives from the
     /// stored <see cref="State"/>, which is where suspension itself lives.</summary>
@@ -353,10 +355,10 @@ public sealed record UserInfo(
         && !string.IsNullOrWhiteSpace(Profile.FirstName)
         && !string.IsNullOrWhiteSpace(Profile.LastName);
 
-    /// <summary>In CC review queue: active, named, not yet approved, and not a merged/deleted
-    /// tombstone. Shared by queue list + nav badge + admin dashboard so they cannot drift.</summary>
+    /// <summary>In CC review queue: active (which excludes merged/deleted tombstones), named, and not
+    /// yet approved. Shared by queue list + nav badge + admin dashboard so they cannot drift.</summary>
     public bool NeedsConsentReview =>
-        IsActive && HasRequiredNameFields && !Profile!.IsApproved && !IsTombstone;
+        IsActive && HasRequiredNameFields && !Profile!.IsApproved;
 
     /// <summary>
     /// Carries an unresolved Flagged consent check. Excludes rejected profiles — those have already

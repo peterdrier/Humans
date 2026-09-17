@@ -129,12 +129,10 @@ public interface IUserServiceRead
         Instant now, CancellationToken ct = default);
 
     /// <summary>
-    /// Finds the user whose <c>Email</c> or <c>GoogleEmail</c> matches the given
-    /// address (case-insensitive) and returns the cached <see cref="UserInfo"/>
-    /// read-model for them. Also checks the gmail/googlemail alternate when
-    /// applicable, and falls back to the legacy <c>User.GoogleEmail</c> shadow
-    /// column for pre-issue-687 users whose <c>UserEmail.IsGoogle</c> rows are
-    /// unset. Returns null if no match.
+    /// Finds the user with a <b>verified</b> <c>user_emails</c> address matching the given
+    /// address (case-insensitive), also checking the gmail/googlemail alternate form, and
+    /// returns the cached <see cref="UserInfo"/> read-model for them. An unverified address
+    /// never resolves. Returns null if no match.
     /// </summary>
     Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default);
 }

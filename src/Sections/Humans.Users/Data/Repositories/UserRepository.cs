@@ -39,36 +39,6 @@ internal sealed partial class UserRepository : IUserRepository
             .ToListAsync(ct);
     }
 
-    public async Task<User?> GetByEmailOrAlternateAsync(
-        string normalizedEmail, string? alternateEmail, CancellationToken ct = default)
-    {
-        // ILIKE: escape '_' / '%' in input or alex_smith@... matches alexXsmith@...
-        // Canonical UserEmail lookup is owned by the UserEmail methods on this
-        // repository; this is the legacy GoogleEmail shadow-column fallback only.
-        var escapedEmail = EscapeLikePattern(normalizedEmail);
-        var escapedAlternate = alternateEmail is null ? null : EscapeLikePattern(alternateEmail);
-
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-
-        if (escapedAlternate is null)
-        {
-            return await ctx.Users
-                .AsNoTracking()
-                .FirstOrDefaultAsync(u =>
-                    EF.Property<string?>(u, "GoogleEmail") != null
-                    && EF.Functions.ILike(EF.Property<string?>(u, "GoogleEmail")!, escapedEmail, "\\"),
-                    ct);
-        }
-
-        return await ctx.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u =>
-                EF.Property<string?>(u, "GoogleEmail") != null && (
-                    EF.Functions.ILike(EF.Property<string?>(u, "GoogleEmail")!, escapedEmail, "\\") ||
-                    EF.Functions.ILike(EF.Property<string?>(u, "GoogleEmail")!, escapedAlternate, "\\")),
-                ct);
-    }
-
     private static string EscapeLikePattern(string value)
         => value
             .Replace("\\", "\\\\")

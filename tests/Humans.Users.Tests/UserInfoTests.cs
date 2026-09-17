@@ -312,6 +312,73 @@ public class UserInfoTests
         info.BurnerName.Should().Be("Test");
     }
 
+    // IsActive excludes tombstones (nobodies-collective/Humans#1707) — merged, GDPR-anonymized,
+    // and legacy @merged.local/@deleted.local rows all keep a Profile row but must not read active.
+
+    [HumansFact]
+    public void IsActive_false_for_merged_tombstone()
+    {
+        var userId = Guid.NewGuid();
+        var user = MinimalUser(userId);
+        user.MergedAt = Instant.FromUtc(2026, 1, 1, 0, 0);
+
+        var info = UserInfoFactory.Create(
+            user, [], [], [], NamedProfile(userId, "Merged"), [], [], [], []);
+
+        info.IsActive.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void IsActive_false_for_gdpr_anonymized_tombstone()
+    {
+        var userId = Guid.NewGuid();
+        var user = MinimalUser(userId);
+        user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
+
+        var info = UserInfoFactory.Create(
+            user, [], [], [], NamedProfile(userId, "Deleted User"), [], [], [], []);
+
+        info.IsActive.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void IsActive_false_for_legacy_local_email_tombstone()
+    {
+        var userId = Guid.NewGuid();
+        var user = MinimalUser(userId);
+        user.Email = "someone@merged.local";
+
+        var info = UserInfoFactory.Create(
+            user, [], [], [], NamedProfile(userId, "Merged"), [], [], [], []);
+
+        info.IsActive.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void IsActive_true_for_ordinary_profiled_non_rejected_row()
+    {
+        var userId = Guid.NewGuid();
+        var user = MinimalUser(userId);
+
+        var info = UserInfoFactory.Create(
+            user, [], [], [], NamedProfile(userId, "Test"), [], [], [], []);
+
+        info.IsActive.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public void IsActive_false_for_rejected_row()
+    {
+        var userId = Guid.NewGuid();
+        var user = MinimalUser(userId);
+        user.State = UserState.Rejected;
+
+        var info = UserInfoFactory.Create(
+            user, [], [], [], NamedProfile(userId, "Test"), [], [], [], []);
+
+        info.IsActive.Should().BeFalse();
+    }
+
     private static Profile NamedProfile(Guid userId, string burnerName) => new()
     {
         Id = Guid.NewGuid(),

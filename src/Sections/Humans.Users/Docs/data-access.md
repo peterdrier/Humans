@@ -217,13 +217,13 @@ tombstone id forward to the surviving row before stamping; `GetRawUserInfoAsync`
 `GetAllRawUserInfosAsync` stamp without resolving.
 
 `UserEmailService.FindByAddressAsync` (the one address → rows lookup; callers
-pick aliasing, verification and cardinality) and
-`UserService.GetByEmailOrAlternateAsync` match addresses in memory against
-the cached `UserInfo` set instead of querying `UserEmails` directly. `CachingUserService.GetByEmailOrAlternateAsync` overrides the
-inner service to scan the warmed snapshot itself (no repeated
-`GetAllUserInfosAsync` fan-out per miss); the inner
-`UserService.GetByEmailOrAlternateAsync` is legacy-`GoogleEmail`-shadow-column-only,
-reached only on a snapshot miss. Gmail/googlemail aliasing is preserved via
+pick aliasing, verification and cardinality) is the general-purpose lookup.
+`CachingUserService.GetByEmailOrAlternateAsync` scans the warmed `UserInfo`
+snapshot for a verified match first (no repeated `GetAllUserInfosAsync`
+fan-out per miss); on a miss it falls through to the inner
+`UserService.GetByEmailOrAlternateAsync`, which runs one targeted verified
+`UserEmails` query (`IUserRepository.GetUserEmailsByAddressAsync`) — canonical,
+not a legacy fallback. Gmail/googlemail aliasing is preserved via
 `EmailNormalization.EmailsMatch` on the alias-aware methods; exact-match
 methods keep their no-aliasing contract.
 
