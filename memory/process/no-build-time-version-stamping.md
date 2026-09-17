@@ -1,6 +1,6 @@
 ---
 name: No build-time version stamping
-description: Never add a package or target that stamps generated build inputs (version, git tag, timestamp) from state a design-time build lacks; `dotnet format` and IDE loads then force a full recompile.
+description: Never stamp generated build inputs (version, git tag, timestamp) from state a design-time build lacks; `dotnet format` and IDE loads then force a full recompile.
 ---
 
 Do not add build-time stamping of generated compile inputs (`AssemblyInfo.cs`, version files) from git tags, commit height, or the clock. The only build identity Humans carries is the commit hash, set by the `SourceRevisionId` target in `Directory.Build.props` for `Humans.Web` alone.
