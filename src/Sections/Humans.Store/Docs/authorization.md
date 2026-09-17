@@ -7,6 +7,8 @@
 | `StoreAdminController` | Class | `StoreAdmin, FinanceAdmin, Admin` | `PolicyNames.StoreCatalogAdmin` |
 | `StoreAdminController.Payments` | Action | `StoreAdmin, FinanceAdmin, Admin` inherited (`[HttpGet("Payments")]`) | `PolicyNames.StoreCatalogAdmin` (Stripe ↔ Store ledger reconciliation report) |
 | `StoreAdminController.RecordMissingPayments` | Action | `StoreAdmin, FinanceAdmin, Admin` inherited (`[HttpPost("Payments/RecordMissing")]`) | `PolicyNames.StoreCatalogAdmin` (records missing Stripe payments) |
+| `StoreAdminController.OrderYears` | Action | `StoreAdmin, FinanceAdmin, Admin` inherited (`[HttpGet("OrderYears")]`) | `PolicyNames.StoreCatalogAdmin` (reviews legacy order-year repairs) |
+| `StoreAdminController.RepairOrderYears` | Action | `StoreAdmin, FinanceAdmin, Admin` inherited (`[HttpPost("OrderYears/Repair")]`) | `PolicyNames.StoreCatalogAdmin` (repairs reviewed legacy order years) |
 | `StoreStripeWebhookController` | Class | `AllowAnonymous` (Stripe signature-verified) | — |
 
 `Delete` and `IssueInvoice` are Store-admin-only on every order — no camp lead, department

@@ -96,6 +96,14 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
             .FirstOrDefaultAsync(o => o.Id == orderId, ct);
     }
 
+    public async Task<IReadOnlyList<Order>> GetOrdersWithMissingYearAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.Orders.AsNoTracking()
+            .Where(o => o.Year == 0)
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<Order>> GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
         IReadOnlyCollection<Guid> campSeasonIds,
         CancellationToken ct = default)

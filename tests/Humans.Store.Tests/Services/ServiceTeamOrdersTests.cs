@@ -191,6 +191,14 @@ public class ServiceTeamOrdersTests
         await _repo.Received(1).UpdateOrderAsync(
             Arg.Is<Order>(o => o.Year == 2025),
             Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            AuditAction.StoreOrderYearBackfilled,
+            AuditEntityTypes.Order,
+            orderId,
+            Arg.Any<string>(),
+            Arg.Any<Guid>(),
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
     }
 
     // ==========================================================================

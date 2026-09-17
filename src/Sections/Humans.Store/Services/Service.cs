@@ -324,10 +324,87 @@ internal sealed class Service(
     {
         var o = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
         if (o is null) return null;
+        await ResolveLegacyOrderYearAsync(o, null, nameof(GetOrderAsync), ct);
         var productIds = o.Lines.Select(l => l.ProductId).Distinct().ToList();
         var productNames = await LoadProductNamesAsync(productIds, ct);
         var currentPrices = await LoadCurrentPricesAsync(ct);
         return await MapOrderAsync(o, productNames, currentPrices, ct);
+    }
+
+    public async Task<OrderYearRepairReport> GetOrderYearRepairReportAsync(CancellationToken ct = default)
+    {
+        var orders = await repo.GetOrdersWithMissingYearAsync(ct);
+        var rows = new List<OrderYearRepairRow>(orders.Count);
+        foreach (var order in orders)
+        {
+            var season = order.CampSeasonId is { } seasonId
+                ? await campService.GetCampSeasonByIdAsync(seasonId, ct)
+                : null;
+            rows.Add(new OrderYearRepairRow(
+                order.Id,
+                order.CampSeasonId,
+                season?.Name,
+                season?.Year));
+        }
+
+        return new OrderYearRepairReport(rows);
+    }
+
+    public async Task<int> RepairOrderYearsAsync(Guid actorUserId, CancellationToken ct = default)
+    {
+        var orders = await repo.GetOrdersWithMissingYearAsync(ct);
+        var repaired = 0;
+        foreach (var order in orders)
+        {
+            if (await ResolveLegacyOrderYearAsync(order, actorUserId, nameof(RepairOrderYearsAsync), ct))
+                repaired++;
+        }
+
+        return repaired;
+    }
+
+    private async Task<bool> ResolveLegacyOrderYearAsync(
+        Order order,
+        Guid? actorUserId,
+        string source,
+        CancellationToken ct)
+    {
+        if (order.Year != 0 || order.CampSeasonId is not { } seasonId)
+            return false;
+
+        var season = await campService.GetCampSeasonByIdAsync(seasonId, ct);
+        if (season is null)
+            return false;
+
+        order.Year = season.Year;
+        order.UpdatedAt = clock.GetCurrentInstant();
+        await repo.UpdateOrderAsync(order, ct);
+        var description = $"Resolved legacy store order year as {season.Year} from camp season {seasonId}";
+        if (actorUserId is { } actor)
+        {
+            await audit.LogAsync(
+                AuditAction.StoreOrderYearBackfilled,
+                AuditEntityTypes.Order,
+                order.Id,
+                description,
+                actor);
+        }
+        else
+        {
+            await audit.LogAsync(
+                AuditAction.StoreOrderYearBackfilled,
+                AuditEntityTypes.Order,
+                order.Id,
+                description,
+                source);
+        }
+        logger.LogInformation(
+            "Resolved legacy Store order {OrderId} year as {Year} from camp season {CampSeasonId} via {Source}",
+            order.Id,
+            season.Year,
+            seasonId,
+            source);
+        return true;
     }
 
     public async Task<Guid> CreateOrderAsync(Guid campSeasonId, Guid actorUserId, CancellationToken ct = default)
@@ -465,17 +542,7 @@ internal sealed class Service(
         };
         await repo.AddLineAsync(line, ct);
 
-        // Lazy backfill of Year on legacy camp orders that pre-date the Year column.
-        if (order.Year == 0 && order.CampSeasonId is { } seasonIdForBackfill)
-        {
-            var season = await campService.GetCampSeasonByIdAsync(seasonIdForBackfill, ct);
-            if (season is not null)
-            {
-                order.Year = season.Year;
-                order.UpdatedAt = clock.GetCurrentInstant();
-                await repo.UpdateOrderAsync(order, ct);
-            }
-        }
+        await ResolveLegacyOrderYearAsync(order, actorUserId, nameof(AddLineAsync), ct);
 
         await audit.LogAsync(
             AuditAction.StoreLineAdded, AuditEntityTypes.OrderLine, line.Id,

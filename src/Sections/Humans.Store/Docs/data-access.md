@@ -44,6 +44,11 @@ orders reprice live against the single active event-year catalog
 All surfaces read/write only Store-owned tables through `IStoreRepository`;
 reconciliation reads live Stripe sessions via `IStripeService`.
 
+Legacy `StoreOrders.Year = 0` rows are reviewed and repaired through
+`/Store/Admin/OrderYears`. `IStoreRepository.GetOrdersWithMissingYearAsync` reads the
+Store-owned candidates; `StoreService` resolves each cross-section season through
+`ICampServiceRead`, updates only resolvable rows, and audits every confirmed repair.
+
 `IssueInvoiceAsync` is the section's only outbound write: it reprices the order's line
 snapshots from the live catalog, builds one Holded line per order line (plus a tax-0 line
 per deposit), creates **and approves** the document, then writes `StoreInvoices` and the
@@ -55,5 +60,4 @@ an order must never be `InvoiceIssued` without its invoice row.
 Stateless calculator — no DI dependencies, no DB access.
 
 ---
-
 

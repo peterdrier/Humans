@@ -11,7 +11,8 @@ internal sealed class SectionAdminNav : ISectionAdminNav
         new("Money", [
             new("Store catalog",  "StoreAdmin", "Catalog",  null, null, "fa-solid fa-tags",         PolicyNames.StoreCatalogAdmin, Weight: 30),
             new("Store summary",  "StoreAdmin", "Summary",  null, null, "fa-solid fa-chart-column", PolicyNames.StoreCatalogAdmin, Weight: 40),
-            new("Store payments", "StoreAdmin", "Payments", null, null, "fa-solid fa-credit-card",  PolicyNames.StoreCatalogAdmin, Weight: 50)
+            new("Store payments", "StoreAdmin", "Payments", null, null, "fa-solid fa-credit-card",  PolicyNames.StoreCatalogAdmin, Weight: 50),
+            new("Store order years", "StoreAdmin", "OrderYears", null, null, "fa-solid fa-calendar-check", PolicyNames.StoreCatalogAdmin, Weight: 60)
         ], Weight: 50)
     ];
 }

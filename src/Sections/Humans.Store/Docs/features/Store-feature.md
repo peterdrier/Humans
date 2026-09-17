@@ -43,7 +43,7 @@ The section invariant doc is [`Store.md`](../Store.md).
 - `AddLineAsync` rejects with a clear message if (a) the order is not `Open` or (b) the product is deactivated. The `OrderableUntil` deadline is **not** enforced by the service — it is enforced at the **authorization layer**: `OrderAuthorizationHandler` denies non-admin line edits once today's event-zone date has passed the product's deadline (using the `OrderLineContext` resource). Store admins are exempt and may add/remove lines on any Open order regardless of deadline. The service only annotates the audit entry with `(past order deadline …)` when a line is written past the deadline.
 - Remove-line form posts to `/Store/Order/{id}/RemoveLine` and is gated identically to AddLine on order state and product deadline.
 - Counterparty fields (name, VAT id, address, country code, email) are editable while the order is `Open`; `FinanceAdmin` can edit them in any state.
-- Audit-logged: `StoreOrderCreated`, `StoreLineAdded`, `StoreLineRemoved`, `StoreCounterpartyEdited`.
+- Audit-logged: `StoreOrderCreated`, `StoreOrderYearBackfilled`, `StoreLineAdded`, `StoreLineRemoved`, `StoreCounterpartyEdited`.
 
 ### US-30.3: Pay Online via Stripe Checkout (Camp Lead)
 
