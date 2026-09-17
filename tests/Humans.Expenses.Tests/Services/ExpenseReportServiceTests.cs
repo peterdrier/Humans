@@ -2190,6 +2190,53 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
+    public async Task DrainHoldedOutboxAsync_MergedSubmitter_BindsAndNumbersTheSurvivor()
+    {
+        // Arrange — the report was submitted under an id that has since been merged into a survivor.
+        var (_, category) = SetupActiveYear();
+        var tombstoneId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(tombstoneId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(survivorId, UserFixtures.Profile(
+                firstName: "Maria", lastName: "Garcia", iban: "ES9121000418450200051332")));
+        var reportId = await SeedApprovedReportWithAttachmentAsync(tombstoneId, category.Id);
+        var line = (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!.Lines[0];
+
+        _holdedFinance.EnsureCreditorContactAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns("contact-123");
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns("doc-1");
+        _holdedClient.GetContactAsync("contact-123", Arg.Any<CancellationToken>())
+            .Returns(new HoldedContactDto { Id = "contact-123", SupplierAccountNum = 40000007 });
+        _holdedClient.GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new HoldedPurchaseDocumentDto
+            {
+                Id = "doc-1", DocNumber = "", Subtotal = 0m, Tax = 0m, Total = 0m,
+                PaymentsTotal = 0m, PaymentsPending = 0m,
+            });
+        _fileStorage.TryReadAsync(
+                ExpenseReportService.AttachmentKey(line.Attachment!.Id, line.Attachment.Extension),
+                Arg.Any<CancellationToken>())
+            .Returns(new byte[] { 1, 2, 3 });
+        _budgetService.GetCategoryByIdAsync(category.Id).Returns(
+            MakeCategorySnapshot(category.Id, teamId: null, "Test Category"));
+
+        // Act
+        await _sut.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
+
+        // Assert — both the binding and its account number land on the survivor, never the tombstone.
+        await _holdedFinance.Received(1).EnsureCreditorContactAsync(
+            survivorId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
+        await _holdedFinance.Received(1).SetCreditorAccountNumAsync(
+            survivorId, 40000007, Arg.Any<CancellationToken>());
+        await _holdedFinance.DidNotReceive().SetCreditorAccountNumAsync(
+            tombstoneId, Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task DrainHoldedOutboxAsync_DelegatesContactEnrichmentToFinance_PersistsContactLink()
     {
         // Arrange — active year + user with distinct legal name and burner
