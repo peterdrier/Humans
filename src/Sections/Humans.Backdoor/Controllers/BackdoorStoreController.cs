@@ -1,9 +1,9 @@
 using Humans.Backdoor.Filters;
 using Humans.Base.Controllers;
+using Humans.Base.Extensions;
 using Humans.Store.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
-using NodaTime.Text;
 
 namespace Humans.Backdoor.Controllers;
 
@@ -23,8 +23,6 @@ namespace Humans.Backdoor.Controllers;
 internal sealed class BackdoorStoreController(IStoreAccountingRead store, IUserServiceRead users)
     : ApiControllerBase(users)
 {
-    private static readonly InstantPattern InstantFormat = InstantPattern.General; // ISO-8601 UTC, invariant.
-
     /// <summary>One object per order line of <paramref name="year"/>, camp and team orders both.</summary>
     [HttpGet("order-lines")]
     public async Task<IActionResult> OrderLines([FromQuery] int? year, CancellationToken ct)
@@ -58,7 +56,7 @@ internal sealed class BackdoorStoreController(IStoreAccountingRead store, IUserS
                 lineNet = l.LineNet,
                 lineVat = l.LineVat,
                 depositAmount = l.DepositAmount,
-                addedAt = InstantFormat.Format(l.AddedAt),
+                addedAt = l.AddedAt.ToIso8601(),
             }));
     }
 
@@ -83,7 +81,7 @@ internal sealed class BackdoorStoreController(IStoreAccountingRead store, IUserS
                 method = p.Method,
                 stripePaymentIntentId = p.StripePaymentIntentId,
                 externalRef = p.ExternalRef,
-                receivedAt = InstantFormat.Format(p.ReceivedAt),
+                receivedAt = p.ReceivedAt.ToIso8601(),
             }));
     }
 }

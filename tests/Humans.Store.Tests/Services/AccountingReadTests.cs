@@ -52,13 +52,27 @@ public class AccountingReadTests
         // Live catalog for 2026: ice was repriced after the camp line was added.
         var ice = new Product
         {
-            Id = IceId, Year = 2026, Name = "Ice", Description = "x", UnitPriceEur = 4m, VatRatePercent = 10m,
-            HoldedRevenueAccountNum = 75900002, OrderableUntil = new LocalDate(2026, 12, 31), IsActive = true,
+            Id = IceId,
+            Year = 2026,
+            Name = "Ice",
+            Description = "x",
+            UnitPriceEur = 4m,
+            VatRatePercent = 10m,
+            HoldedRevenueAccountNum = 75900002,
+            OrderableUntil = new LocalDate(2026, 12, 31),
+            IsActive = true,
         };
         var pallet = new Product
         {
-            Id = PalletId, Year = 2026, Name = "Pallet", Description = "x", UnitPriceEur = 10m, VatRatePercent = 21m,
-            DepositAmountEur = 5m, OrderableUntil = new LocalDate(2026, 12, 31), IsActive = true,
+            Id = PalletId,
+            Year = 2026,
+            Name = "Pallet",
+            Description = "x",
+            UnitPriceEur = 10m,
+            VatRatePercent = 21m,
+            DepositAmountEur = 5m,
+            OrderableUntil = new LocalDate(2026, 12, 31),
+            IsActive = true,
         };
         _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([ice, pallet]);
         _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -68,8 +82,13 @@ public class AccountingReadTests
 
         var campOrder = new Order
         {
-            Id = CampOrderId, CampSeasonId = SeasonId, Year = 2026, State = OrderState.Open,
-            CounterpartyName = "Alpha SL", CounterpartyVatId = "B12345678", CounterpartyCountryCode = "ES",
+            Id = CampOrderId,
+            CampSeasonId = SeasonId,
+            Year = 2026,
+            State = OrderState.Open,
+            CounterpartyName = "Alpha SL",
+            CounterpartyVatId = "B12345678",
+            CounterpartyCountryCode = "ES",
             Lines =
             {
                 new OrderLine { Id = Guid.NewGuid(), OrderId = CampOrderId, ProductId = IceId, Qty = 3, UnitPriceSnapshot = 3m, VatRateSnapshot = 10m, AddedAt = Instant.FromUtc(2026, 6, 1, 0, 0) },
@@ -89,7 +108,10 @@ public class AccountingReadTests
 
         var teamOrder = new Order
         {
-            Id = TeamOrderId, TeamId = DeptId, Year = 2026, State = OrderState.Open,
+            Id = TeamOrderId,
+            TeamId = DeptId,
+            Year = 2026,
+            State = OrderState.Open,
             Lines = { new OrderLine { Id = Guid.NewGuid(), OrderId = TeamOrderId, ProductId = IceId, Qty = 5, UnitPriceSnapshot = 3m, VatRateSnapshot = 10m } },
         };
         _repo.GetOrdersForTeamsWithLinesAsync(
