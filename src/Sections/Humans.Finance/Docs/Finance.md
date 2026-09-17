@@ -136,7 +136,7 @@ Fields: `LastSyncAt`, `Status` (`Idle / Running / Error` string), `LastError`, `
 | Amount | numeric(12,2) | EUR. |
 | BookedAt | Instant? | When the payment was booked into Holded. Null **is** the "not booked" state — there is no status column. |
 | BookedByUserId | Guid? | The finance admin who booked it. Bare FK, no nav (cross-section). |
-| HoldedPaymentRefs | string(512)? | Comma-joined Holded payment ids, one per purchase document the amount was allocated across. Written even when the allocation failed part-way. |
+| HoldedPaymentRefs | string(512)? | Comma-joined Holded refs: one payment id per purchase document the amount was allocated across, then `entry:<id>` when a journal entry settled the remainder (the only ref on a balance with no documents). Written even when the allocation failed part-way. |
 
 **Cross-section FKs:** `UserId` and `BookedByUserId` → `User` (Users) — FK only, no navigation property.
 
