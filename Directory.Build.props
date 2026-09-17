@@ -1,7 +1,6 @@
 <Project>
 
   <PropertyGroup>
-    <MinVerTagPrefix>v</MinVerTagPrefix>
     <NeutralLanguage>en</NeutralLanguage>
   </PropertyGroup>
 
@@ -102,13 +101,6 @@
       <Output TaskParameter="ConsoleOutput" PropertyName="SourceRevisionId" />
     </Exec>
   </Target>
-
-  <!-- Versioning -->
-  <ItemGroup>
-    <PackageReference Include="MinVer">
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-  </ItemGroup>
 
   <!--
     NuGet audit suppressions for Magick.NET-Q8-AnyCPU 14.13.1.
