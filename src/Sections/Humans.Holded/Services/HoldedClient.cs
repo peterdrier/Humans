@@ -212,6 +212,8 @@ internal sealed class HoldedClient : IHoldedClient
         CancellationToken ct = default)
     {
         // Same wire rule as payments: amounts are decimal strings, accounts are ledger numbers.
+        // The date goes out ISO — DD/MM/YYYY is only how ledger-entries *reads* come back. Verified
+        // live 2026-09: entries POSTed as 2026-03-31 read back as 31/03/2026.
         var money = amount.ToString("F2", CultureInfo.InvariantCulture);
         var payload = new
         {
