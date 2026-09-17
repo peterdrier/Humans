@@ -42,7 +42,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 | PublicStartedCount | int | slug-path "started" funnel counter (no per-person anchor) |
 | CreatedByUserId | Guid | bare FK → User — **FK only**, no nav, resolved via `IUserServiceRead` |
 | SubmittedAt | Instant? | stamped entering PendingApproval; cleared on approve/reject |
-| RejectionNote | string? | max 4000; Board/Admin's note when a submission is rejected back to Draft; cleared on resubmit/approve |
+| RejectionNote | string? | max 4000; validated before rejection persists; invalid notes remain in the queue form for correction; Board/Admin's note when a submission is rejected back to Draft; cleared on resubmit/approve |
 | CreatedAt / UpdatedAt | Instant | |
 
 **Indexes:** `Status`; `PublicSlug` unique (filtered to non-null).
@@ -235,6 +235,9 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 - Logged-out public-slug requests **cannot** carry identity or a non-Anonymous tier. Logged-in public requests cannot attach identity without the respondent's explicit tier choice; CompletionTracked/Anonymous response rows cannot carry identity. `/Survey/Admin` and `/Survey/Answer` **cannot** be claimed as a public slug.
 - The `LoggedInSince` audience **cannot** include GDPR-anonymized, deletion-pending, or merged users, or users in `Rejected`/`Suspended`/`AdminSuspended` state — status-walled accounts that can't reach the survey are never invited, even if they logged in after the cutoff (nobodies-collective/Humans#1099).
 - A non-owner, non-Board/Admin Human **cannot** view, edit, submit, view results/export, or discover in the index any survey they didn't author — enforced by `SurveyAuthorizationHandler` on direct GET/POST by id, not by view filtering. An author **cannot** see their own results/export before their survey closes, and **cannot** see anyone else's survey at all.
+- Submit controls appear only for the owner of a Draft, including when a Board/Admin
+  edits another author's draft. Ranked availability controls and admin breadcrumbs appear
+  only for Board/Admin; authors keep access to their closed results and exports.
 
 ## Triggers
 

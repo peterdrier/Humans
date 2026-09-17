@@ -46,6 +46,7 @@
 - Door context is read only when the ticket has a matched Human; otherwise every per-person field is null. The check-in timestamp is read for the active event year only.
 - **The ticket card must never mark check-in, write `EventParticipation`, or mutate ticket state.** Scanner is not an attendance gateway.
 - No database tables are owned by this section.
+- Only the latest ticket lookup may replace the displayed card, including when older requests fail or finish reading their response body later. The latest lookup still displays its own failure.
 - The camera stream is released (`MediaStreamTrack.stop()` on every track) on Stop, on `pagehide` and on `beforeunload`.
 
 ## Negative Access Rules

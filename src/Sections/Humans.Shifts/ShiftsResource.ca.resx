@@ -1184,4 +1184,5 @@
   <data name="Shifts_IcalRegenerated" xml:space="preserve"><value>URL d'iCal regenerada.</value></data>
   <data name="Shifts_TagPreferencesSaved" xml:space="preserve"><value>Preferències d'etiquetes desades.</value></data>
   <data name="VolTrack_Msg_DayOffNotSet" xml:space="preserve"><value>No hi havia cap dia lliure marcat per a aquest dia.</value></data>
+  <data name="Shifts_AccountCannotSignUp" xml:space="preserve"><value>El teu compte no pot inscriure's en torns.</value></data>
 </root>

@@ -211,7 +211,7 @@
   <data name="Workgroups_DiscordChannel" xml:space="preserve"><value>Discord channel</value></data>
   <data name="Workgroups_DriveFolder" xml:space="preserve"><value>Drive folder</value></data>
   <data name="Workgroups_NextMeeting" xml:space="preserve"><value>Next meeting</value></data>
-  <data name="Workgroups_PublicMeeting" xml:space="preserve"><value>Public</value></data>
+  <data name="Workgroups_PublicMeeting" xml:space="preserve"><value>Community calendar</value></data>
   <data name="Workgroups_Roster" xml:space="preserve"><value>Roster</value></data>
   <data name="Workgroups_Board" xml:space="preserve"><value>Board</value></data>
   <data name="Workgroups_Field_ReplacementCoordinator" xml:space="preserve"><value>Replacement coordinator (you're the last one)</value></data>
@@ -246,8 +246,8 @@
   <data name="Workgroups_Field_TimesAreUtc" xml:space="preserve"><value>Times are UTC.</value></data>
   <data name="Workgroups_Field_Location" xml:space="preserve"><value>Location</value></data>
   <data name="Workgroups_Field_LocationUrl" xml:space="preserve"><value>Location URL</value></data>
-  <data name="Workgroups_Field_IsPublic" xml:space="preserve"><value>Public meeting</value></data>
-  <data name="Workgroups_Field_IsPublicHelp" xml:space="preserve"><value>Public meetings appear on everyone's community calendar; otherwise only members see it.</value></data>
+  <data name="Workgroups_Field_IsPublic" xml:space="preserve"><value>Show on community calendar</value></data>
+  <data name="Workgroups_Field_IsPublicHelp" xml:space="preserve"><value>Everyone with access to the app can read the meeting and minutes on this group's page. This option also lists the meeting on the community calendar.</value></data>
   <data name="Workgroups_Field_Minutes" xml:space="preserve"><value>Minutes</value></data>
 
   <!-- Log entry form -->
@@ -300,4 +300,5 @@
   <data name="Workgroups_Error_SurveyNotYours" xml:space="preserve">
     <value>You can only link a survey you created yourself.</value>
   </data>
+  <data name="Workgroups_Error_TextTooLong" xml:space="preserve"><value>Use {0} characters or fewer.</value></data>
 </root>

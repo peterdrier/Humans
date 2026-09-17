@@ -57,7 +57,7 @@ internal sealed class SurveyAdminController(
     public async Task<IActionResult> Queue(CancellationToken ct)
     {
         var items = await surveyService.GetPendingApprovalQueueAsync(ct);
-        return View(new SurveyPendingApprovalViewModel { Items = items });
+        return View(nameof(Queue), new SurveyPendingApprovalViewModel { Items = items });
     }
 
     [HttpPost("Approve/{id:guid}")]
@@ -99,7 +99,9 @@ internal sealed class SurveyAdminController(
         catch (InvalidOperationException ex)
         {
             logger.LogWarning("Survey rejection rejected for {SurveyId}: {Reason}", id, ex.Message);
-            SetError(ex.Message);
+            ModelState.AddModelError(string.Empty, ex.Message);
+            ViewData[$"RejectionNote:{id}"] = note;
+            return await Queue(ct);
         }
         return RedirectToAction(nameof(Queue));
     }
@@ -176,6 +178,8 @@ internal sealed class SurveyAdminController(
         var vm = SurveyBuilderViewModel.FromDetail(detail, await LoadTeamsAsync(ct), Zone);
         vm.HasSavedAnswers = await surveyService.HasSavedAnswersAsync(id, ct);
         vm.IsBoardOrAdmin = RoleChecks.IsAdminOrBoard(User);
+        vm.CanSubmit = (await authorizationService.AuthorizeAsync(
+            User, detail, new SurveyOperationRequirement(SurveyOperation.Submit))).Succeeded;
         return View("Builder", vm);
     }
 
@@ -609,6 +613,9 @@ internal sealed class SurveyAdminController(
         model.HasSavedAnswers = model.Id is { } id
             && await surveyService.HasSavedAnswersAsync(id, ct);
         model.IsBoardOrAdmin = RoleChecks.IsAdminOrBoard(User);
+        var detail = model.Id.HasValue ? await surveyService.GetForEditAsync(model.Id.Value, ct) : null;
+        model.CanSubmit = detail is not null && (await authorizationService.AuthorizeAsync(
+            User, detail, new SurveyOperationRequirement(SurveyOperation.Submit))).Succeeded;
     }
 
 }

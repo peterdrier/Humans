@@ -217,6 +217,43 @@ public class HoldedClientTests
         id.Should().Be("unconfirmed:doc-123");
     }
 
+    [HumansFact]
+    public async Task PostLedgerEntryAsync_PostsTwoBalancedLinesAsStringsAndReturnsTheEntryId()
+    {
+        string? capturedBody = null;
+        var handler = new StubHandler(req =>
+        {
+            req.Method.Method.Should().Be("POST");
+            req.RequestUri!.PathAndQuery.Should().Be("/api/v2/ledger-entries");
+            capturedBody = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return Respond(HttpStatusCode.Created, """{"id":"entry-7"}""");
+        });
+
+        var id = await Make(handler).PostLedgerEntryAsync(
+            new LocalDate(2026, 9, 18), 40000004, 57200001, 20m, "SEPA payout E1",
+            Xunit.TestContext.Current.CancellationToken);
+
+        id.Should().Be("entry-7");
+        capturedBody.Should().Contain("\"date\":\"2026-09-18\"");
+        capturedBody.Should().Contain("\"notes\":\"SEPA payout E1\"");
+        // Accounts go as ledger numbers, amounts as decimal strings — the shape v2 accepts.
+        capturedBody.Should().Contain("\"account\":40000004").And.Contain("\"debit\":\"20.00\",\"credit\":\"0.00\"");
+        capturedBody.Should().Contain("\"account\":57200001").And.Contain("\"debit\":\"0.00\",\"credit\":\"20.00\"");
+    }
+
+    [HumansFact]
+    public async Task PostLedgerEntryAsync_ResponseWithoutAnId_ReturnsAnUnconfirmedRef()
+    {
+        // A 2xx means the entry posted; throwing would let the caller post it twice.
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.Created, "{}"));
+
+        var id = await Make(handler).PostLedgerEntryAsync(
+            new LocalDate(2026, 9, 18), 40000004, 57200001, 20m, "SEPA payout E1",
+            Xunit.TestContext.Current.CancellationToken);
+
+        id.Should().Be("unconfirmed:entry");
+    }
+
     private static HttpResponseMessage Respond(HttpStatusCode status, string body) =>
         new(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
 

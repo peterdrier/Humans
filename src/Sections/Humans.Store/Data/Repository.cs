@@ -136,6 +136,20 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Order>> GetOrdersForYearWithLinesAndPaymentsAsync(
+        int year,
+        IReadOnlyCollection<Guid> campSeasonIds,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.Orders.AsNoTracking()
+            .Where(o => o.Year == year
+                || (o.Year == 0 && o.CampSeasonId.HasValue && campSeasonIds.Contains(o.CampSeasonId.Value)))
+            .Include(o => o.Lines)
+            .Include(o => o.Payments)
+            .ToListAsync(ct);
+    }
+
     public async Task AddOrderAsync(Order order, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -250,6 +264,19 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
     // ==========================================================================
     // Invoices
     // ==========================================================================
+
+    public async Task<IReadOnlyList<Invoice>> GetInvoicesForOrdersAsync(
+        IReadOnlyCollection<Guid> orderIds,
+        CancellationToken ct = default)
+    {
+        if (orderIds.Count == 0)
+            return Array.Empty<Invoice>();
+
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.Invoices.AsNoTracking()
+            .Where(i => orderIds.Contains(i.OrderId))
+            .ToListAsync(ct);
+    }
 
     public async Task SaveIssuedInvoiceAsync(Invoice invoice, Order order, CancellationToken ct = default)
     {

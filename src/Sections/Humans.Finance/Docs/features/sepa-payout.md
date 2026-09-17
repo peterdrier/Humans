@@ -11,9 +11,9 @@ download a Norma 34-14 / **pain.001.001.09** SEPA Credit Transfer file to upload
 status, no member flag and no `Paid` state exists or moves.
 
 `/Finance/Sepa` is the other half: every generated file with its transfers, and per transfer a
-**Book** button that posts the payment into Holded against the member's open purchase documents. The
-next ledger sync then zeroes the creditor balance. Booking is the only thing that moves a transfer
-out of `Generated`.
+**Book** button that settles the transfer in Holded: payments against the member's open purchase
+documents, and one journal entry for whatever those do not cover. The next ledger sync then zeroes
+the creditor balance. Booking is the only thing that moves a transfer out of `Generated`.
 
 A partial payout is legitimate. The remainder stays on the balance and stays visible as owed.
 
@@ -27,6 +27,7 @@ A partial payout is legitimate. The remainder stays on the balance and stays vis
 | `Sepa:CreditorBic` | no | → `DbtrAgt/FinInstnId/BICFI`; omitted entirely when unset |
 | `Sepa:MaxPayoutPerTransfer` | no | Per-transfer cap **prefill default**, **50**; the admin can raise or lower it per batch on the screen |
 | `Sepa:TreasuryAccountId` | for booking | The Holded treasury account a booked payout is paid from → `treasury_id`. Unset, `/Finance/Sepa` says so and offers no Book buttons. Never inferred: Holded would otherwise fall back to whichever account it defaults to. |
+| `Sepa:TreasuryLedgerAccount` | for booking | The ledger account number behind that treasury (Sabadell's `572xxxxx`) → the credit side of the journal entry that settles what open documents do not cover. Unset, `/Finance/Sepa` says so and offers no Book buttons. |
 
 The names are the pre-existing `Sepa:*` keys. "Creditor" is their historical spelling; in a payout
 the organisation is the *debtor*, and that is where the values land. With any required key unset the
@@ -74,10 +75,9 @@ Any failure at any step refuses the **whole** batch with a message and persists 
 
 `/Finance/Sepa` lists the files newest first with their transfers, each `Generated` or `Booked`.
 
-1. `Service.GetSepaPayoutsAsync` reads the transfer rows, the creditor bindings and — once for the
-   whole screen — Holded's purchase documents, and fills in per row why it cannot be booked. A
-   vendor failure there costs the pre-check only: the row still offers the button and the booking
-   re-derives coverage itself.
+1. `Service.GetSepaPayoutsAsync` reads the transfer rows and the creditor bindings and fills in per
+   row why it cannot be booked. It does not call Holded: there is no coverage to pre-check, because
+   whatever the documents do not cover books as a journal entry.
 2. `POST /Finance/Sepa/Book` (`FinanceAdminOrAdmin`, antiforgery) calls
    `Service.BookSepaTransferAsync`, which takes **no `CancellationToken`** — once a payment has been
    posted to Holded the rest of the allocation has to finish whether or not the admin is still
@@ -87,8 +87,14 @@ Any failure at any step refuses the **whole** batch with a message and persists 
    `POST /api/v2/purchases/{id}/payments` on the configured treasury account. The payment date is
    the booking date (Holded's bank-feed reconciliation matches on amount + date) and the description
    is `SEPA payout E<transfer id>`, the file's own `EndToEndId`.
-4. `BookedAt`, the acting admin and the comma-joined Holded payment ids land on the transfer row,
-   then one `AuditAction.SepaPayoutTransferBooked` entry follows.
+4. Whatever the documents did not cover is settled by one journal entry via
+   `POST /api/v2/ledger-entries`: debit the transfer's creditor account, credit
+   `Sepa:TreasuryLedgerAccount`, same date and description. A balance is whatever built it — a
+   loan the member made, a bank line reconciled straight to the account — and the transfer paid
+   the balance, so nothing is refused for lacking a document behind it. Its ref is stored as
+   `entry:<id>` beside the payment ids.
+5. `BookedAt`, the acting admin and the comma-joined Holded refs land on the transfer row, then one
+   `AuditAction.SepaPayoutTransferBooked` entry follows.
 
 Open means **approved** (`draft: false`) and `payments_pending > 0`. A draft books nothing to the
 ledger, so paying one would post against a document that does not exist for accounting.
@@ -97,32 +103,30 @@ ledger, so paying one would post against a document that does not exist for acco
 
 | Condition | Shown as |
 |-----------|----------|
-| `Sepa:*` identity or `Sepa:TreasuryAccountId` unset | one banner for the whole screen; no buttons |
+| `Sepa:*` identity, `Sepa:TreasuryAccountId` or `Sepa:TreasuryLedgerAccount` unset | one banner for the whole screen; no buttons |
 | Already booked | the row renders as `Booked`; a re-POST pays nothing and says so |
 | Partially booked (refs, no `BookedAt`) | the reason and the accepted ids, in place of the button; never re-bookable |
 | Member has no `HoldedCreditorContact` binding | the reason, in place of the button |
 | The binding's `SupplierAccountNum` no longer matches the transfer's | the reason, in place of the button |
-| Open documents cover less than the transfer amount | the reason, with the shortfall |
 | Holded unreadable at booking time | an error; nothing is posted |
 
-### When Holded accepts one payment and refuses the next
+### When Holded accepts one posting and refuses the next
 
-The payment ids already created are persisted and `BookedAt` stays **null** — nothing claims the
-transfer settled — and one `AuditAction.SepaPayoutTransferBooked` entry follows, labelled `PARTIAL`
-with the accepted ids.
+Whether the refused posting is a document payment or the journal entry, the ids already created are
+persisted and `BookedAt` stays **null** — nothing claims the transfer settled — and one
+`AuditAction.SepaPayoutTransferBooked` entry follows, labelled `PARTIAL` with the accepted ids.
 
-That state is **terminal**: `HoldedPaymentRefs` with a null `BookedAt` refuses re-booking on its own,
-before coverage is even looked at. Coverage cannot stand in for it — a member owed more than the
-per-transfer cap still has enough pending after a partial failure, so a retry would pass the coverage
-check and post the full amount a second time. The screen shows the row as partially booked with the
-ids and no button; the remainder is finished in Holded by hand, and there is no affordance to mark a
-transfer booked without paying through it.
+That state is **terminal**: `HoldedPaymentRefs` with a null `BookedAt` refuses re-booking on its own.
+Nothing else could tell a retry from a first attempt, so a retry would post the full amount a second
+time. The screen shows the row as partially booked with the ids and no button; the remainder is
+finished in Holded by hand, and there is no affordance to mark a transfer booked without paying
+through it.
 
-A payment Holded **accepted** but gave no readable id for is not a failure at all: the client returns
-`"unconfirmed:{documentId}"`, the allocation continues, and the transfer books normally. The sentinel
-lands in `HoldedPaymentRefs` and in the audit entry, naming the document the treasurer has to eyeball
-in Holded. Throwing there would have lost a real payment from the record and left the transfer
-retryable — so reaching the catch on the *first* payment means Holded refused it.
+A posting Holded **accepted** but gave no readable id for is not a failure at all: the client returns
+`"unconfirmed:{documentId}"` (or `"unconfirmed:entry"`), the allocation continues, and the transfer
+books normally. The sentinel lands in `HoldedPaymentRefs` and in the audit entry, naming what the
+treasurer has to eyeball in Holded. Throwing there would have lost a real posting from the record and
+left the transfer retryable — so reaching the catch on the *first* posting means Holded refused it.
 
 ## The file
 
@@ -202,13 +206,14 @@ has already proved schema conformance — there is no separate validation test.
 posted cap governs, not the config default), partial amounts, missing IBAN, the masked-only audit
 entry, two contacts on one account paying the bound one, and the masked Article 15 slice — plus the
 booking gates (already booked, partially booked, unbound member, rebound member, unconfigured
-treasury, thin coverage), the oldest-first allocation, the mid-allocation failure and its audit
-entry, and what `/Finance/Sepa` renders in each case.
+treasury and ledger account), the oldest-first allocation, the journal entry for the uncovered
+remainder and for a balance with no documents at all, the mid-allocation failure on either posting
+and its audit entry, and what `/Finance/Sepa` renders in each case.
 `FinanceControllerTests.cs` covers the posted-cap parsing: unparseable or non-positive refuses
 before the service is called, a valid cap is parsed invariantly and passed through — and the SEPA
 screen's file grouping. `RepositoryTests.cs` pins the booking stamp and the screen's flattened read;
 `Humans.Holded.Tests` pins the payment POST's decimal-string amount, the omitted-`treasury_id`
-shape, and the unreadable-response-is-permanent rule.
+shape, the ledger-entry POST's two balanced lines, and the unreadable-response-is-permanent rule.
 
 ## Not done here
 

@@ -207,6 +207,53 @@ internal sealed class HoldedClient : IHoldedClient
         return UnconfirmedPaymentRefPrefix + documentId;
     }
 
+    public async Task<string> PostLedgerEntryAsync(
+        LocalDate date, int debitAccount, int creditAccount, decimal amount, string description,
+        CancellationToken ct = default)
+    {
+        // Same wire rule as payments: amounts are decimal strings, accounts are ledger numbers.
+        // The date goes out ISO — DD/MM/YYYY is only how ledger-entries *reads* come back. Verified
+        // live 2026-09: entries POSTed as 2026-03-31 read back as 31/03/2026.
+        var money = amount.ToString("F2", CultureInfo.InvariantCulture);
+        var payload = new
+        {
+            date = LocalDatePattern.Iso.Format(date),
+            notes = description,
+            lines = new[]
+            {
+                new { account = debitAccount, description, debit = money, credit = "0.00" },
+                new { account = creditAccount, description, debit = "0.00", credit = money },
+            },
+        };
+
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/v2/ledger-entries")
+        { Content = JsonContent.Create(payload, options: OmitNulls) };
+        AttachAuth(req);
+
+        using var resp = await SendAsync(req, ct);
+        var body = await resp.Content.ReadAsStringAsync(ct);
+        string? id = null;
+        try
+        {
+            id = JsonNode.Parse(body)?["id"]?.GetValue<string>();
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or FormatException or OverflowException)
+        {
+            _logger.LogWarning(ex,
+                "Holded accepted a ledger entry (debit {Debit}, credit {Credit}, {Amount}) but its response could not be parsed.",
+                debitAccount, creditAccount, money);
+        }
+
+        if (!string.IsNullOrWhiteSpace(id)) return id;
+
+        // Posted, like the payment case: a throw here would let the caller post it again.
+        _logger.LogWarning(
+            "Holded accepted a ledger entry (debit {Debit}, credit {Credit}, {Amount}) without a readable id; recording it as unconfirmed.",
+            debitAccount, creditAccount, money);
+        return UnconfirmedPaymentRefPrefix + "entry";
+    }
+
     public async Task<IReadOnlyList<HoldedExpenseAccountDto>> ListExpenseAccountsAsync(
         CancellationToken ct = default)
     {

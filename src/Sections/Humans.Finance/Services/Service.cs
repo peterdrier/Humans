@@ -995,24 +995,6 @@ internal sealed class Service(
         // UserId is the one column the DB keeps unique, so this cannot throw.
         var bindingByUser = (await repo.GetCreditorContactsAsync(ct)).ToDictionary(c => c.UserId);
 
-        // One pull for the whole screen — the same full list the doc sync already walks. A vendor
-        // failure leaves coverage unknown, and an unknown coverage still offers the button: the
-        // booking re-derives it and refuses there rather than hiding the action behind a bad read.
-        IReadOnlyList<HoldedPurchaseDocListItemDto>? openDocs = null;
-        try
-        {
-            openDocs = OpenDocs(await client.ListPurchaseDocumentsAsync(ct));
-        }
-        catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
-        {
-            logger.LogWarning(ex, "Holded purchase documents unavailable; /Finance/Sepa cannot pre-check coverage.");
-        }
-
-        var pendingByContact = openDocs?
-            .Where(d => !string.IsNullOrEmpty(d.ContactId))
-            .GroupBy(d => d.ContactId!, StringComparer.Ordinal)
-            .ToDictionary(g => g.Key, g => g.Sum(d => d.PaymentsPending), StringComparer.Ordinal);
-
         return (rows.Select(r => r with { NotBookableReason = NotBookableReason(r) }).ToList(), null);
 
         string? NotBookableReason(SepaPayoutTransferRow row)
@@ -1026,11 +1008,7 @@ internal sealed class Service(
                 return "the member has no Holded contact binding";
             if (binding.SupplierAccountNum != row.SupplierAccountNum)
                 return "the member's Holded binding changed since this file was generated — book it by hand";
-            if (pendingByContact is null) return null;   // coverage unknown — let the booking decide
-            var pending = pendingByContact.GetValueOrDefault(binding.HoldedContactId);
-            return pending < row.Amount
-                ? $"open Holded documents cover only {Euros(pending)} of {Euros(row.Amount)}"
-                : null;
+            return null;
         }
     }
 
@@ -1053,10 +1031,9 @@ internal sealed class Service(
             return new SepaBookingResult(false,
                 $"Transfer to {transfer.IbanMasked} is already booked — nothing was posted to Holded.");
 
-        // Payment refs without a BookedAt is the partial-booking state, and it is terminal. The
-        // coverage check below cannot stand in for this: a member owed more than the per-transfer
-        // cap still has enough pending after a partial failure, so a retry would pass coverage and
-        // post the FULL amount a second time.
+        // Payment refs without a BookedAt is the partial-booking state, and it is terminal: nothing
+        // below can tell a retry from a first attempt, so a retry would post the FULL amount a
+        // second time.
         if (PaymentRefs(transfer.HoldedPaymentRefs) is { Count: > 0 } priorRefs)
             return new SepaBookingResult(false,
                 $"Transfer to {transfer.IbanMasked} was partially booked earlier — {priorRefs.Count} "
@@ -1094,12 +1071,6 @@ internal sealed class Service(
             return new SepaBookingResult(false, "Holded's purchase documents could not be read — nothing was posted.");
         }
 
-        var coverage = open.Sum(d => d.PaymentsPending);
-        if (coverage < transfer.Amount)
-            return new SepaBookingResult(false,
-                $"The member's open Holded documents cover only {Euros(coverage)} of the "
-                + $"{Euros(transfer.Amount)} transfer — book the remainder in Holded by hand.");
-
         var now = clock.GetCurrentInstant();
         var paymentDate = now.InZone(MadridZone).Date;
         // The file's EndToEndId, so a Holded payment line traces back to one persisted transfer.
@@ -1107,6 +1078,11 @@ internal sealed class Service(
         var refs = new List<string>();
         var remaining = transfer.Amount;
 
+        // The transfer paid the balance, and the balance is whatever built it. Open documents are
+        // paid first, oldest first, so the accountant sees the invoices as paid; whatever they do
+        // not cover — a loan the member made, a bank line reconciled straight to the account — is
+        // settled by one journal entry, debit the creditor account, credit the bank. Nothing is
+        // refused for lacking a document behind it.
         foreach (var doc in open)
         {
             if (remaining <= 0m) break;
@@ -1120,66 +1096,92 @@ internal sealed class Service(
             }
             catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
             {
-                // Whatever Holded already accepted is real money and is kept; BookedAt stays null so
-                // nothing claims the transfer settled. The refs also make the row non-retryable —
-                // this is a terminal state, finished in Holded by hand.
-                if (refs.Count > 0)
-                {
-                    await repo.SaveSepaTransferBookingAsync(
-                        transfer.Id, null, null, string.Join(',', refs), ct);
-
-                    // Payments an admin caused, so they get an audit row on this path too — same
-                    // action as a completed booking, labelled PARTIAL.
-                    await audit.LogAsync(
-                        AuditAction.SepaPayoutTransferBooked, SepaTransferEntityType, transfer.Id,
-                        $"PARTIAL SEPA booking of {Euros(transfer.Amount)} to {transfer.IbanMasked} on "
-                        + $"creditor account {transfer.SupplierAccountNum}: Holded accepted "
-                        + $"{refs.Count} payment(s) (payments {string.Join(", ", refs)}) and then "
-                        + "refused one. The transfer is NOT booked and cannot be re-booked here.",
-                        actorUserId, transfer.UserId, nameof(User));
-                }
-
-                logger.LogError(ex,
-                    "Booking SEPA transfer {TransferId} failed after {Posted} payment(s) on Holded document {DocId}.",
-                    transferId, refs.Count, doc.Id);
-
-                if (refs.Count > 0)
-                    return new SepaBookingResult(false,
-                        $"Holded accepted {refs.Count} payment(s) and then refused one; the transfer is "
-                        + "NOT marked booked and cannot be re-booked here. Finish it in Holded and "
-                        + "check for a double payment.");
-
-                // An accepted-but-unreadable payment comes back as an "unconfirmed:" ref rather than
-                // an exception, so reaching here on the first payment means Holded really refused it.
-                return new SepaBookingResult(false, "Holded refused the payment — nothing was posted.");
+                return await RefusedMidBookingAsync(ex, "payment", "Holded document " + doc.Id);
             }
 
             remaining -= amount;
         }
 
+        var docsPaid = refs.Count;
+        if (remaining > 0m)
+        {
+            try
+            {
+                refs.Add("entry:" + await client.PostLedgerEntryAsync(
+                    paymentDate, transfer.SupplierAccountNum, sepa.Value.TreasuryLedgerAccount!.Value,
+                    remaining, description, ct));
+            }
+            catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
+            {
+                return await RefusedMidBookingAsync(
+                    ex, "journal entry", "creditor account " + transfer.SupplierAccountNum);
+            }
+        }
+
         await repo.SaveSepaTransferBookingAsync(
             transfer.Id, now, actorUserId, string.Join(',', refs), ct);
+
+        var entryPart = remaining > 0m ? $" and a journal entry for {Euros(remaining)}" : "";
 
         // After the save, per IAuditLogService's contract.
         await audit.LogAsync(
             AuditAction.SepaPayoutTransferBooked, SepaTransferEntityType, transfer.Id,
             $"Booked SEPA payout {Euros(transfer.Amount)} to {transfer.IbanMasked} on creditor account "
-            + $"{transfer.SupplierAccountNum} against {refs.Count} Holded document(s) "
-            + $"(payments {string.Join(", ", refs)}).",
+            + $"{transfer.SupplierAccountNum}: {docsPaid} Holded document payment(s){entryPart} "
+            + $"({string.Join(", ", refs)}).",
             actorUserId, transfer.UserId, nameof(User));
 
         return new SepaBookingResult(true,
-            $"Booked {Euros(transfer.Amount)} against {refs.Count} Holded document(s).");
+            $"Booked {Euros(transfer.Amount)}: {docsPaid} Holded document payment(s){entryPart}.");
+
+        // Whatever Holded already accepted is real money and is kept; BookedAt stays null so nothing
+        // claims the transfer settled. The refs also make the row non-retryable — this is a
+        // terminal state, finished in Holded by hand.
+        async Task<SepaBookingResult> RefusedMidBookingAsync(Exception ex, string what, string where)
+        {
+            if (refs.Count > 0)
+            {
+                await repo.SaveSepaTransferBookingAsync(
+                    transfer.Id, null, null, string.Join(',', refs), ct);
+
+                // Postings an admin caused, so they get an audit row on this path too — same
+                // action as a completed booking, labelled PARTIAL.
+                await audit.LogAsync(
+                    AuditAction.SepaPayoutTransferBooked, SepaTransferEntityType, transfer.Id,
+                    $"PARTIAL SEPA booking of {Euros(transfer.Amount)} to {transfer.IbanMasked} on "
+                    + $"creditor account {transfer.SupplierAccountNum}: Holded accepted "
+                    + $"{refs.Count} posting(s) ({string.Join(", ", refs)}) and then refused the "
+                    + $"{what}. The transfer is NOT booked and cannot be re-booked here.",
+                    actorUserId, transfer.UserId, nameof(User));
+            }
+
+            logger.LogError(ex,
+                "Booking SEPA transfer {TransferId} failed after {Posted} posting(s), on the {What} for {Where}.",
+                transferId, refs.Count, what, where);
+
+            if (refs.Count > 0)
+                return new SepaBookingResult(false,
+                    $"Holded accepted {refs.Count} posting(s) and then refused the {what}; the transfer "
+                    + "is NOT marked booked and cannot be re-booked here. Finish it in Holded and "
+                    + "check for a double payment.");
+
+            // An accepted-but-unreadable posting comes back as an "unconfirmed:" ref rather than an
+            // exception, so reaching here on the first one means Holded really refused it.
+            return new SepaBookingResult(false, $"Holded refused the {what} — nothing was posted.");
+        }
     }
 
     /// <summary>Why booking is unavailable for every row at once, or null. The organisation's SEPA
     /// identity is required because it is what generated the transfers; the treasury account because
-    /// omitting it lets Holded pay from whichever account it defaults to.</summary>
+    /// omitting it lets Holded pay from whichever account it defaults to; its ledger account because
+    /// the journal entry for an uncovered remainder has to credit the same bank.</summary>
     private string? BookingUnavailableReason()
     {
         if (GetSepaPayoutSettings().UnavailableReason is { } sepaMissing) return sepaMissing;
-        return string.IsNullOrWhiteSpace(sepa.Value.TreasuryAccountId)
-            ? "Booking is unavailable — Sepa:TreasuryAccountId is not configured."
+        if (string.IsNullOrWhiteSpace(sepa.Value.TreasuryAccountId))
+            return "Booking is unavailable — Sepa:TreasuryAccountId is not configured.";
+        return sepa.Value.TreasuryLedgerAccount is null
+            ? "Booking is unavailable — Sepa:TreasuryLedgerAccount is not configured."
             : null;
     }
 

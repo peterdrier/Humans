@@ -646,6 +646,8 @@ internal sealed class SurveyService(
 
         var now = clock.GetCurrentInstant();
         var trimmedNote = note.Trim();
+        if (trimmedNote.Length > 4000)
+            throw new InvalidOperationException("A rejection note must be 4000 characters or fewer.");
         await repo.RejectAsync(surveyId, trimmedNote, now, ct);
         await auditLog.LogAsync(AuditAction.SurveyRejected, AuditEntityTypes.Survey, surveyId,
             $"Rejected survey '{survey.Title.Resolve(survey.DefaultCulture, survey.DefaultCulture)}': {trimmedNote}",

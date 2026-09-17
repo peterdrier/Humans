@@ -3,7 +3,7 @@
   src/Sections/Humans.Gdpr/**
   src/Sections/Humans.Gdpr.Contracts/**
   src/Sections/Humans.Users/Controllers/ProfileController.cs
-  src/Sections/Humans.Onboarding/Controllers/GuestController.cs
+  src/Sections/Humans.Users/Services/AccountDeletionService.cs
   src/Sections/Humans.Users/Services/ProfileService.cs
   src/Sections/Humans.Users/Services/UserService.cs
   src/Sections/Humans.Consent/Services/ConsentService.cs
@@ -29,6 +29,8 @@
   src/Sections/Humans.MailerLite/Services/MailerLiteGdprContributor.cs
   src/Sections/Humans.Email/Services/EmailOutboxService.cs
   src/Sections/Humans.Backdoor/Services/BackdoorApiKeyService.cs
+  src/Sections/Humans.Rideshare/Services/**
+  src/Sections/Humans.Workgroups/Services/**
 -->
 <!-- freshness:flag-on-change
   Contributor list, JSON section names/shapes, or fan-out orchestration may have shifted; per-section table must stay in sync with each contributor's slice.
@@ -62,7 +64,7 @@ change.
 ```
 ┌─────────────────────────┐
 │ ProfileController /     │
-│ GuestController         │
+│ GuestDataController     │
 └────────────┬────────────┘
              │
              ▼  ExportForUserAsync(userId)
@@ -76,25 +78,27 @@ change.
 └──────┬──────────────────────────────────────────┘
        │
        ▼  ContributeForUserAsync(userId)
-┌──────────────────────────────────────────────────┐
-│  Section services, each implementing              │
-│  IUserDataContributor:                            │
-│                                                   │
-│    UserService               AccountMergeService  │
-│    ApplicationDecisionService ConsentService      │
-│    TeamService               RoleAssignmentService│
-│    ShiftSignupService        FeedbackService      │
-│    NotificationInboxService  TicketQueryService   │
-│    CampaignService           CampService          │
-│    AuditLogService           BudgetService        │
-│    SurveyService             AgentService         │
-│    CachingEventService       IssuesService        │
-│    ExpenseReportService      Finance.Service      │
-│    GateService               GoogleSyncLogService │
-│    EmailOutboxService                             │
-│    MailerLiteGdprContributor BackdoorApiKeyService │
-└──────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│  Every section service that owns user-scoped    │
+│  tables, each implementing IUserDataContributor │
+│  — the Contributor column of the table below is │
+│  the roster of everything the export can hold.  │
+└─────────────────────────────────────────────────┘
 ```
+
+The contributor named in that column is the type **registered** as
+`IUserDataContributor`, and whether that is a cached section's decorator or its inner
+service is the registering section's own call: `CachingEventService`,
+`CachingRideshareService` and `CachingWorkgroupService` bind the decorator, while Consent,
+Teams, Camps and Auth have decorators and bind the inner service. Whichever is registered
+is the type that carries `ErasureDeclaration`.
+
+**The Article 17 roster is one wider than this table.** `MailerLiteGdprContributor`
+(`src/Sections/Humans.MailerLite/Services/MailerLiteGdprContributor.cs`) is registered as a
+contributor and returns no slices, so it has no row and never appears in an export; its
+erasure deletes the person's MailerLite subscriber outright, declared under
+`GdprExportSections.MailerLiteSubscriber`. Auditing the deletion fan-out means this table
+plus that one.
 
 ### Why sequential fan-out (not `Task.WhenAll`)
 
@@ -163,13 +167,20 @@ service has no data for this user are omitted.
 | `HoldedCreditorAccount` | `Finance.Service` | Single object `{ SupplierAccountNum, HoldedContactId, Source }` — the user's Holded creditor account binding; null when no binding exists. |
 | `SepaPayouts` | `Finance.Service` | Array of `{ GeneratedAt, FileName, SupplierAccountNum, CreditorName, Iban (masked), Amount }` — every SEPA credit transfer paid to the user, oldest first; empty when they have never been paid. Retained after erasure on the fiscal basis. |
 | `SurveyResponses` | `SurveyService` | Array of `{ Survey, SubmittedAt, Culture, Answers[] }` where each answer has `{ Question, SelectedLabels, TextValue, RatingValue }`. |
+| `AuthoredSurveys` | `SurveyService` | Array of `{ Survey, Status, RejectionNote, CreatedAt, QuestionCount }` — surveys the human wrote, Drafts nobody else can see included, since authoring is open to any approved human. Retained after erasure with the authorship link dropped and the rejection note deleted. |
 | `GateScans` | `GateService` | Array of `{ OccurredAt, Verdict, Role, LaneId }` — the user's own gate activity, as guest or as scanner (`Role` is "Guest" or "Scanner"). Data-minimized: no barcode, no other person's identifiers. |
 | `GoogleSyncLog` | `GoogleSyncLogService` | Array of `{ Action, OccurredAt, Description, ResourceName, UserEmail, Role, Source, Success, ErrorMessage }` — every Workspace sync row attributed to the human, merge tombstones followed. |
 | `EmailOutbox` | `EmailOutboxService` | Array of `{ RecipientEmail, RecipientName, Subject, HtmlBody, TemplateName, Status, CreatedAt, SentAt }` — the same per-user outbox history the human reads at `/Profile/Me/Outbox`. |
 | `BackdoorApiKeys` | `BackdoorApiKeyService` | Array of `{ Label, DisplayPrefix, CreatedAt, LastUsedAt, RevokedAt }` — the machine-API keys allocated to the human; null when they hold none. The stored hash is never exported: it is the credential itself. |
-| `RideshareTrips` | `RideshareService` | Array of `{ Id, Year, Direction, MemberPlaceLabel, MemberLatitude, MemberLongitude, Waypoints[], DepartureDate, ExpectedDurationDays, OvernightPlan, VehicleType, SeatsOffered, LuggageCapacity, CapacityNote, Restrictions, WillingToDetour, CostSharing, CostNote, LinkedTripId, Status, CreatedAt, UpdatedAt }` — the human's ride offers, oldest first. |
-| `RideshareRequests` | `RideshareService` | Array of `{ Id, Year, Direction, PickupPlaceLabel, PickupLatitude, PickupLongitude, DesiredDate, PartySize, LuggageLoad, CanContributeToFuel, Notes, Status, CreatedAt, UpdatedAt }` — the human's ride requests, oldest first. |
-| `RideshareInterests` | `RideshareService` | Array of `{ Id, TripId, RequestId, Seats, Message, Status, CreatedAt, RespondedAt }` — interests the human expressed (as rider, or as driver answering a request), oldest first. |
+| `RideshareTrips` | `CachingRideshareService` | Array of `{ Id, Year, Direction, MemberPlaceLabel, MemberLatitude, MemberLongitude, Waypoints[], DepartureDate, ExpectedDurationDays, OvernightPlan, VehicleType, SeatsOffered, LuggageCapacity, CapacityNote, Restrictions, WillingToDetour, CostSharing, CostNote, LinkedTripId, Status, CreatedAt, UpdatedAt }` — the human's ride offers, oldest first. |
+| `RideshareRequests` | `CachingRideshareService` | Array of `{ Id, Year, Direction, PickupPlaceLabel, PickupLatitude, PickupLongitude, DesiredDate, PartySize, LuggageLoad, CanContributeToFuel, Notes, Status, CreatedAt, UpdatedAt }` — the human's ride requests, oldest first. |
+| `RideshareInterests` | `CachingRideshareService` | Array of `{ Id, TripId, RequestId, Seats, Message, Status, CreatedAt, RespondedAt }` — interests the human expressed (as rider, or as driver answering a request), oldest first. |
+| `WorkgroupApplications` | `CachingWorkgroupService` | Array of `{ Workgroup, Status, Purpose, AppliedAt, RegisteredAt }` — the groups the human proposed. Retained after erasure with the applicant attribution dropped: a registered group outlives whoever proposed it. |
+| `WorkgroupMemberships` | `CachingWorkgroupService` | Array of `{ Workgroup, Role, JoinedAt, LeftAt }`. Erased in full. |
+| `WorkgroupLogEntries` | `CachingWorkgroupService` | Array of `{ Workgroup, Kind, OccurredOn, Title, Body, CreatedAt }` — the group's written record of how it worked. Retained, authorship dropped. |
+| `WorkgroupMeetings` | `CachingWorkgroupService` | Array of `{ Workgroup, Title, StartUtc, EndUtc, Location, IsPublic, Minutes, CreatedAt }`. Retained, creator attribution dropped. |
+| `WorkgroupDocuments` | `CachingWorkgroupService` | Array of `{ Workgroup, Title, Kind, Status, Authored, Edited, DispositionRecorded, CreatedAt, UpdatedAt }` — the three booleans say which attribution this row carries for this person. Retained, attributions dropped. |
+| `WorkgroupComments` | `CachingWorkgroupService` | Array of `{ Workgroup, Document, Category, Body, Authored, Responded, HiddenByThisPerson, Disposition, Response, Hidden, HiddenReason, CreatedAt }`. Retained, author attribution dropped: the record of what was heard and decided against. |
 | `AssemblyVotes` | `AssemblyVoteService` | Array of `{ Vote, Status, ClosesAt, Entitlement ("Official"/"Indicative"), Tier, IsBoardMember, Ballot: { Choice, Ranking[], Revision, CastAt, UpdatedAt, History: [{ Revision, Choice, Ranking[], RecordedAt }] }? }` — every assembly vote the human was on the roster for, with their current ballot and each revision of it; `Ballot` is null when they did not vote. Retained after erasure, unlinked: the vote is the association's record of a decision. |
 | `AssemblyVoteActions` | `AssemblyVoteService` | Single object `{ RanVotes: [{ Vote, Status, Roles[] ("Drafted"/"Opened"/"Closed"), CreatedAt, OpenedAt, ClosedAt }], Peeks: [{ Vote, PeekedAt }] }` — the votes the human ran and the live tallies they peeked at. Declared as retained: the acta names the closer and the results page publishes the early-view list. |
 

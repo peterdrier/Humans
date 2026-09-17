@@ -15,10 +15,11 @@
 
 <p class="text-muted">
     Every payout file generated from <a asp-action="Creditors">Creditor Accounts</a>, and the credit
-    transfers inside it. <strong>Book</strong> pays the member's open Holded purchase documents —
-    oldest first, partial allocation allowed — from the configured treasury account, up to the
-    transfer amount. Booking is what closes the loop after the file has been uploaded to the bank; a
-    booked transfer cannot be booked again.
+    transfers inside it. <strong>Book</strong> settles the transfer in Holded: the member's open
+    purchase documents are paid oldest first from the configured treasury account, and whatever they
+    do not cover — a loan the member made, say — is posted as one journal entry, debit the creditor
+    account, credit the bank. Booking is what closes the loop after the file has been uploaded to the
+    bank; a booked transfer cannot be booked again.
 </p>
 
 @if (Model.UnavailableReason is { } unavailable)
@@ -100,7 +101,7 @@
                         else
                         {
                             <form asp-action="BookSepaTransfer" method="post"
-                                  data-confirm="Book @t.Row.Amount.ToEuro() to @t.MemberName into Holded? This posts real payments.">
+                                  data-confirm="Book @t.Row.Amount.ToEuro() to @t.MemberName into Holded? This posts real payments, and a journal entry for anything the member's documents do not cover.">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="transferId" value="@t.Row.TransferId" />
                                 <button type="submit" class="btn btn-sm btn-primary">

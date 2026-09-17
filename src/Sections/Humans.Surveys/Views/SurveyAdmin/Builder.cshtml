@@ -21,7 +21,7 @@
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">@Localizer["Survey_Admin_Common_AdminBreadcrumb"]</a></li>
+        <li class="breadcrumb-item" authorize-policy="@Humans.Base.Authorization.PolicyNames.BoardOrAdmin"><a asp-controller="Admin" asp-action="Index">@Localizer["Survey_Admin_Common_AdminBreadcrumb"]</a></li>
         <li class="breadcrumb-item"><a asp-controller="SurveyAdmin" asp-action="Index">@Localizer["Survey_Admin_Index_Title"]</a></li>
         <li class="breadcrumb-item active" aria-current="page">@ViewData["Title"]</li>
     </ol>
@@ -37,7 +37,7 @@
                 <partial name="_SurveyPreviewMenu" model="@Model.Id!.Value" />
             }
             <span class="badge @(Model.Status == SurveyStatus.Open ? "bg-success" : Model.Status == SurveyStatus.Closed ? "bg-secondary" : Model.Status == SurveyStatus.PendingApproval ? "bg-info text-dark" : "bg-warning text-dark")">@Model.Status</span>
-            @if (Model.Status == SurveyStatus.Draft)
+            @if (Model.CanSubmit)
             {
                 <form asp-controller="SurveyAdmin" asp-action="Submit" asp-route-id="@Model.Id" method="post" class="d-inline">
                     @Html.AntiForgeryToken()

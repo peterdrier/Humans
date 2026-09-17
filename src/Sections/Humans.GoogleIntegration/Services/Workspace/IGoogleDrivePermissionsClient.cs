@@ -43,6 +43,17 @@ internal interface IGoogleDrivePermissionsClient
         CancellationToken ct = default);
 
     /// <summary>
+    /// Changes a permission's role in place. Unlike delete/recreate, this supports
+    /// reducing a direct elevation on a mixed permission to its inherited floor.
+    /// Returns null on success or the Google API error on failure.
+    /// </summary>
+    Task<GoogleClientError?> UpdatePermissionAsync(
+        string fileId,
+        string permissionId,
+        string role,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Deletes the permission identified by <paramref name="permissionId"/>
     /// from <paramref name="fileId"/>.
     /// </summary>
@@ -134,16 +145,22 @@ internal sealed record DrivePermissionListResult(
 /// this item and also inherited from a parent folder), and Drive's
 /// <c>permissions.delete</c> still 403s on those as "cannot delete an
 /// inherited permission." Only a permission with zero inherited components
-/// is safely deletable at this level — the system must skip any permission
-/// with an inherited component during reconciliation, not just fully-
-/// inherited ones.
+/// is safely deletable at this level. Direct elevations on a mixed permission
+/// can instead be updated without reducing the inherited role.
 /// </param>
 internal sealed record DrivePermission(
     string? Id,
     string? Type,
     string? Role,
     string? EmailAddress,
-    bool HasInheritedComponent);
+    bool HasInheritedComponent)
+{
+    /// <summary>Whether Google reports a grant made directly on this item.</summary>
+    public bool HasDirectComponent { get; init; } = !HasInheritedComponent;
+
+    /// <summary>The inherited role floor comes from these components, not the effective Role.</summary>
+    public IReadOnlyList<string?> InheritedRoles { get; init; } = HasInheritedComponent ? [Role] : [];
+}
 
 /// <summary>
 /// Outcome of <see cref="IGoogleDrivePermissionsClient.CreatePermissionAsync"/>.

@@ -14,6 +14,8 @@ using Humans.Notifications.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Data;
+using Humans.Users.Contracts;
+using Microsoft.Extensions.Localization;
 
 namespace Humans.Shifts.Tests.Services;
 
@@ -53,7 +55,9 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ShiftsTestHarness
             Substitute.For<IEarlyEntryInvalidator>(),
             serviceProvider,
             Clock,
-            NullLogger<ShiftSignupService>.Instance);
+            NullLogger<ShiftSignupService>.Instance,
+            Substitute.For<IUserServiceRead>(),
+            Substitute.For<IStringLocalizer<ShiftsResource>>());
     }
 
     private (EventSettings es, Rota rota, Shift shift) SeedShiftScenario()

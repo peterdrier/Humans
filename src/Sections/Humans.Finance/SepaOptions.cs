@@ -30,4 +30,10 @@ internal sealed class SepaOptions
     /// account default, which is not necessarily the bank account the SEPA file drew on. Unset means
     /// <c>/Finance/Sepa</c> says so instead of offering Book buttons.</summary>
     public string TreasuryAccountId { get; set; } = "";
+
+    /// <summary>The ledger account number behind <see cref="TreasuryAccountId"/> (Sabadell's
+    /// <c>572xxxxx</c>) — the credit side of the journal entry that settles whatever a member's open
+    /// purchase documents do not cover. Never inferred, for the same reason. Unset means
+    /// <c>/Finance/Sepa</c> says so instead of offering Book buttons.</summary>
+    public int? TreasuryLedgerAccount { get; set; }
 }

@@ -30,6 +30,11 @@ internal sealed partial class WorkgroupService
             {
                 if (info.Status == WorkgroupStatus.Active)
                 {
+                    if (workgroup.DormantSince is not null && info.LastActivityAt(now) is { } activityAt)
+                    {
+                        await ClearDormancyFlagAsync(workgroup, activityAt, now, actorUserId: null, ct);
+                        info = ToInfo(workgroup);
+                    }
                     await NudgeForUpdateAsync(workgroup, info, now, ct);
                     await FlagDormancyAsync(workgroup, info, now, ct);
                     await FlagCloseCandidateAsync(workgroup, info, now, ct);

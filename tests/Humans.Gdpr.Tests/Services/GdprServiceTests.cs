@@ -223,8 +223,9 @@ public class GdprServiceTests
     [HumansFact]
     public async Task EraseForUserAsync_PropagatesContributorFailureAndStopsBeforeAccount()
     {
-        // A throwing contributor aborts the run — the Account identity collapse never
-        // happens, so the caller's deletion markers stay set and tomorrow's job retries.
+        // A throwing contributor aborts the run before the Account identity collapse.
+        // What the caller then does with its deletion markers is Users' concern, not this
+        // orchestrator's, and nothing here observes it.
         var boom = new RecordingContributor("Issues") { Throw = new InvalidOperationException("boom") };
         var account = new RecordingContributor(GdprExportSections.Account);
         var service = CreateService(boom, account);
@@ -329,12 +330,7 @@ public class GdprServiceTests
         public IReadOnlyDictionary<string, string?> ErasureDeclaration =>
             _slices.ToDictionary(s => s.SectionName, _ => (string?)null, StringComparer.Ordinal);
 
-        public Guid? ErasedUserId { get; private set; }
-
-        public Task EraseForUserAsync(Guid userId, CancellationToken ct)
-        {
-            ErasedUserId = userId;
-            return Task.CompletedTask;
-        }
+        // Export-only fake: erasure is exercised through RecordingContributor.
+        public Task EraseForUserAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
     }
 }

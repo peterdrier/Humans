@@ -130,6 +130,30 @@ internal sealed class GoogleDrivePermissionsClient(
         }
     }
 
+    public async Task<GoogleClientError?> UpdatePermissionAsync(
+        string fileId,
+        string permissionId,
+        string role,
+        CancellationToken ct = default)
+    {
+        using var _ = logger.TimeOperation();
+        try
+        {
+            var drive = await GetDriveServiceAsync(ct);
+            var request = drive.Permissions.Update(new SdkPermission { Role = role }, fileId, permissionId);
+            request.SupportsAllDrives = true;
+            await request.ExecuteAsync(ct);
+            return null;
+        }
+        catch (Google.GoogleApiException ex)
+        {
+            logger.LogDebug(ex,
+                "Google API error updating permission {PermissionId} to {Role} on {FileId}: Code={Code} Message={Message}",
+                permissionId, role, fileId, ex.Error?.Code, ex.Error?.Message);
+            return new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message);
+        }
+    }
+
     public async Task<DrivePermissionDeleteResult> DeletePermissionAsync(
         string fileId,
         string permissionId,
@@ -384,7 +408,15 @@ internal sealed class GoogleDrivePermissionsClient(
             Type: p.Type,
             Role: p.Role,
             EmailAddress: p.EmailAddress,
-            HasInheritedComponent: hasInheritedComponent);
+            HasInheritedComponent: hasInheritedComponent)
+        {
+            HasDirectComponent = p.PermissionDetails is not { Count: > 0 } ||
+                p.PermissionDetails.Any(d => d.Inherited == false),
+            InheritedRoles = p.PermissionDetails?
+                .Where(d => d.Inherited == true)
+                .Select(d => d.Role)
+                .ToArray() ?? []
+        };
     }
 
     private async Task<DriveService> GetDriveServiceAsync(CancellationToken ct)

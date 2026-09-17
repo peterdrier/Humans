@@ -115,6 +115,27 @@ internal sealed class StubGoogleDrivePermissionsClient(ILogger<StubGoogleDrivePe
         }
     }
 
+    public Task<GoogleClientError?> UpdatePermissionAsync(
+        string fileId,
+        string permissionId,
+        string role,
+        CancellationToken ct = default)
+    {
+        logger.LogInformation("[STUB] Update permission {PermId} to {Role} on {FileId}", permissionId, role, fileId);
+        lock (_gate)
+        {
+            if (!_permissionsByFile.TryGetValue(fileId, out var perms))
+                return Task.FromResult<GoogleClientError?>(new GoogleClientError(404, "file not found"));
+
+            var index = perms.FindIndex(p => string.Equals(p.Id, permissionId, StringComparison.Ordinal));
+            if (index < 0)
+                return Task.FromResult<GoogleClientError?>(new GoogleClientError(404, "permission not found"));
+
+            perms[index] = perms[index] with { Role = role };
+            return Task.FromResult<GoogleClientError?>(null);
+        }
+    }
+
     public Task<DrivePermissionDeleteResult> DeletePermissionAsync(
         string fileId,
         string permissionId,

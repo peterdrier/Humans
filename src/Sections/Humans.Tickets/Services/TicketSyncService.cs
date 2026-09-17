@@ -365,8 +365,9 @@ internal sealed class TicketSyncService(
 
     /// <summary>
     /// Compute VAT for a single order based on its attendees' prices.
-    /// For each attendee: the taxable portion is min(Price, VipThreshold).
-    /// VAT = taxable / (1 + VatRate) * VatRate (VAT-inclusive calculation).
+    /// Ticket base = sum of min(Price, VipThreshold) over live attendees, minus the order's
+    /// discount (codes reduce the ticket part, never the VIP donation), floored at zero.
+    /// VAT = base * VatRate / (1 + VatRate) (VAT-inclusive), rounded once per order.
     /// VIP premiums (price above threshold) and standalone donations are VAT-free.
     /// </summary>
     internal static decimal ComputeOrderVat(TicketOrder order)
@@ -374,21 +375,14 @@ internal sealed class TicketSyncService(
         if (order.PaymentStatus != TicketPaymentStatus.Paid)
             return 0m;
 
-        var totalVat = 0m;
+        var ticketBase = order.Attendees
+            .Where(a => a.Status is TicketAttendeeStatus.Valid or TicketAttendeeStatus.CheckedIn)
+            .Sum(a => Math.Min(a.Price, TicketConstants.VipThresholdEuros));
 
-        foreach (var attendee in order.Attendees)
-        {
-            if (attendee.Status is not (TicketAttendeeStatus.Valid or TicketAttendeeStatus.CheckedIn))
-                continue;
+        var taxableAmount = Math.Max(0m, ticketBase - (order.DiscountAmount ?? 0m));
 
-            var taxableAmount = Math.Min(attendee.Price, TicketConstants.VipThresholdEuros);
-
-            // VAT-inclusive: VAT = taxableAmount * rate / (1 + rate)
-            var vat = Math.Round(taxableAmount * TicketConstants.VatRate / (1 + TicketConstants.VatRate), 2);
-            totalVat += vat;
-        }
-
-        return Math.Round(totalVat, 2);
+        // VAT-inclusive: VAT = taxableAmount * rate / (1 + rate)
+        return Math.Round(taxableAmount * TicketConstants.VatRate / (1 + TicketConstants.VatRate), 2);
     }
 
     public async Task<bool> IsInErrorStateAsync(CancellationToken ct = default)

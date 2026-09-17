@@ -306,4 +306,7 @@ public enum AuditAction
     // once per pair, the first time the scan sees it; the entity is the pair's lower id and the
     // related entity the higher one.
     DuplicateAccountFlagged,
+
+    // An Update or a meeting that has started cleared a workgroup's dormancy inquiry.
+    WorkgroupDormancyCleared,
 }

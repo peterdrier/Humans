@@ -189,6 +189,10 @@ internal sealed class SurveyBuilderViewModel
     /// </summary>
     public bool IsBoardOrAdmin { get; set; }
 
+    /// <summary>Computed from the stored survey and its Submit authorization on every render.</summary>
+    [Microsoft.AspNetCore.Mvc.ModelBinding.BindNever]
+    public bool CanSubmit { get; set; }
+
     public bool IsNew => Id is null;
     public bool IsDefinitionLocked => !IsNew && IsAsociadoVote && Status != SurveyStatus.Draft;
 
