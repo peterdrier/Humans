@@ -192,18 +192,17 @@ internal sealed class UserService(
         var normalized = EmailNormalization.NormalizeForComparison(email);
         var alternate = GetAlternateEmail(normalized);
 
+        // The alternate is passed to the query because its ILIKE matches the literal stored
+        // string; the in-memory re-check needs only one pass, since EmailsMatch folds
+        // gmail/googlemail on both sides (same reasoning as UserEmailService.FindByAddressAsync).
         var rows = await repo.GetUserEmailsByAddressAsync(normalized, alternate, ct);
-        var verified = rows.Where(r => r.IsVerified).ToList();
 
-        var candidates = verified.Where(r => EmailNormalization.EmailsMatch(r.Email, normalized)).ToList();
-        if (candidates.Count == 0 && alternate is not null)
-            candidates = verified.Where(r => EmailNormalization.EmailsMatch(r.Email, alternate)).ToList();
+        var match = rows
+            .Where(r => r.IsVerified && EmailNormalization.EmailsMatch(r.Email, normalized))
+            .OrderByDescending(r => r.IsPrimary)
+            .FirstOrDefault();
 
-        var match = candidates.OrderByDescending(r => r.IsPrimary).FirstOrDefault();
-        if (match is null)
-            return null;
-
-        return await GetUserInfoAsync(match.UserId, ct);
+        return match is null ? null : await GetUserInfoAsync(match.UserId, ct);
     }
 
     public Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(

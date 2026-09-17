@@ -78,7 +78,7 @@ Repository: `IUserRepository`.
 | Table | R/W |
 |-------|-----|
 | UserEmails | R/W |
-| Users | R/W (the only direct EF write to `Users.GoogleEmail` / `Users.Email`; also the `GetUserEmailsByAddressAsync` read behind the write paths). Google sync status is per-address on `UserEmails.GoogleEmailStatus` — `Users.GoogleEmailStatus` is deprecated/unwritten. |
+| Users | R/W (the only direct EF write to `Users.Email`). The `Users.GoogleEmail` shadow column has no reader or writer left (nobodies-collective/Humans#1102); the mapping survives only until the drop PR. Google sync status is per-address on `UserEmails.GoogleEmailStatus` — `Users.GoogleEmailStatus` is deprecated/unwritten. |
 
 Cross-section calls via `IUserService`, plus ASP.NET `UserManager<User>` and
 `IServiceProvider` for lazy resolution. Implements `IUserMerge`. No

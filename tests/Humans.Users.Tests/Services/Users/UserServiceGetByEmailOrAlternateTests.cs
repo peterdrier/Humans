@@ -96,6 +96,10 @@ public sealed class UserServiceGetByEmailOrAlternateTests : ServiceTestHarness
     public async Task GetByEmailOrAlternateAsync_OnlyUnverifiedRowMatches_ReturnsNull()
     {
         var userId = Guid.NewGuid();
+        // Stub the reads GetUserInfoAsync would need, so the ONLY thing standing between
+        // this row and a resolved UserInfo is the IsVerified filter. Without this the test
+        // would pass even if the filter were deleted.
+        StubUserInfoReads(userId);
         _repo.GetUserEmailsByAddressAsync("alice@example.com", null, Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<UserEmail>)
             [

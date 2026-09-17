@@ -160,9 +160,11 @@ internal sealed class GoogleAdminService(
                 ErrorMessage: $"{fullEmail} is already in use by another human.");
         }
 
-        // Belt-and-suspenders: GetByEmailOrAlternateAsync also checks the
-        // gmail/googlemail alternate form against verified user_emails rows,
-        // catching users whose stored address uses the other alias domain.
+        // Belt-and-suspenders, and not redundant with the check above: FindByAddressAsync
+        // reads GetAllUserInfosAsync, which omits tombstones, while this one scans the
+        // decorator's whole warmed snapshot — so it is what catches an address owned by a
+        // merge/deletion tombstone. (The alternate form cannot fire here: fullEmail is
+        // always @nobodies.team, and GetAlternateEmail returns null off gmail/googlemail.)
         var existingUser = await userService.GetByEmailOrAlternateAsync(fullEmail, ct);
         if (existingUser is not null)
         {
