@@ -164,17 +164,24 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     [HumansFact]
     public async Task GetSalesAggregatesAsync_MonthlySales_SplitsPerMonthWithFeesAndRefundedGross()
     {
-        var march = MakeOrder("ord_mar", TicketPaymentStatus.Paid, Instant.FromUtc(2026, 3, 2, 10, 0), 500m, 25m, 28.64m, 1, 85m);
+        // 400 seat + 25 standalone donation = 425 gross; VAT base is min(400, 315) = 315.
+        var march = MakeOrder("ord_mar", TicketPaymentStatus.Paid, Instant.FromUtc(2026, 3, 2, 10, 0), 425m, 25m, 28.64m, 1, 85m);
         march.StripeFee = 5.50m;
         march.ApplicationFee = 2m;
         var april = MakeOrder("ord_apr", TicketPaymentStatus.Paid, Instant.FromUtc(2026, 4, 20, 10, 0), 315m, 0m, 28.64m, 1, 0m);
         april.StripeFee = 3m;
         april.ApplicationFee = 1m;
+        var marchRefund = MakeOrder("ord_mar_refund", TicketPaymentStatus.Refunded, Instant.FromUtc(2026, 3, 9, 10, 0), 200m, 0m, 0m, 1, 0m);
+        marchRefund.StripeFee = 4m;
+        marchRefund.ApplicationFee = 1.50m;
+        var mayRefund = MakeOrder("ord_may_refund", TicketPaymentStatus.Refunded, Instant.FromUtc(2026, 5, 1, 10, 0), 315m, 0m, 0m, 1, 0m);
+        mayRefund.StripeFee = 6m;
+        mayRefund.ApplicationFee = 2.50m;
         await TicketsDb.TicketOrders.AddRangeAsync(
             march,
             april,
-            MakeOrder("ord_mar_refund", TicketPaymentStatus.Refunded, Instant.FromUtc(2026, 3, 9, 10, 0), 200m, 0m, 0m, 1, 0m),
-            MakeOrder("ord_may_refund", TicketPaymentStatus.Refunded, Instant.FromUtc(2026, 5, 1, 10, 0), 315m, 0m, 0m, 1, 0m),
+            marchRefund,
+            mayRefund,
             MakeOrder("ord_cancelled", TicketPaymentStatus.Cancelled, Instant.FromUtc(2026, 3, 3, 12, 0), 888m, 0m, 0m, 1, 0m));
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -185,23 +192,79 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         var mar = result.MonthlySales[0];
         mar.OrderCount.Should().Be(1);
         mar.TicketsSold.Should().Be(1);
-        mar.GrossRevenue.Should().Be(500m);
+        mar.GrossRevenue.Should().Be(425m);
         mar.Donations.Should().Be(25m);
         mar.VipDonations.Should().Be(85m);
         mar.VatAmount.Should().Be(28.64m);
-        mar.StripeFees.Should().Be(5.50m);
-        mar.ApplicationFees.Should().Be(2m);
+        mar.TicketIncomeInclVat.Should().Be(315m);
+        mar.TicketIncomeExVat.Should().Be(315m - 28.64m);
+        // Refunds return the gross, not the fees already charged.
+        mar.StripeFees.Should().Be(5.50m + 4m);
+        mar.ApplicationFees.Should().Be(2m + 1.50m);
         mar.RefundedGross.Should().Be(200m);
 
         var apr = result.MonthlySales[1];
         apr.GrossRevenue.Should().Be(315m);
+        apr.TicketIncomeInclVat.Should().Be(315m);
+        apr.TicketIncomeExVat.Should().Be(315m - 28.64m);
         apr.StripeFees.Should().Be(3m);
         apr.RefundedGross.Should().Be(0m);
 
         var may = result.MonthlySales[2];
         may.OrderCount.Should().Be(0);
         may.GrossRevenue.Should().Be(0m);
+        may.TicketIncomeInclVat.Should().Be(0m);
         may.RefundedGross.Should().Be(315m);
+        may.StripeFees.Should().Be(6m);
+        may.ApplicationFees.Should().Be(2.50m);
+    }
+
+    [HumansFact]
+    public async Task GetSalesAggregatesAsync_MonthlySales_BucketsByMadridMonthNotUtc()
+    {
+        // 23:30 UTC on 31 Dec is 00:30 on 1 Jan in Europe/Madrid (UTC+1) — January's books.
+        TicketsDb.TicketOrders.Add(
+            MakeOrder("ord_ny", TicketPaymentStatus.Paid, Instant.FromUtc(2025, 12, 31, 23, 30), 315m, 0m, 28.64m, 1, 0m));
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _service.GetSalesAggregatesAsync();
+
+        result.MonthlySales.Select(m => m.MonthLabel).Should().Equal("2026-01");
+    }
+
+    [HumansFact]
+    public async Task GetSalesAggregatesAsync_MonthlySales_TicketIncomeExcludesVoidSeatsLikeTheVatBase()
+    {
+        var orderId = Guid.NewGuid();
+        TicketsDb.TicketOrders.Add(new TicketOrder
+        {
+            Id = orderId,
+            VendorOrderId = "ord_void_seat",
+            BuyerName = "Buyer",
+            BuyerEmail = "buyer@example.com",
+            TotalAmount = 200m,
+            DonationAmount = 0m,
+            VatAmount = 9.09m,
+            Currency = "EUR",
+            PaymentStatus = TicketPaymentStatus.Paid,
+            VendorEventId = "ev_test",
+            PurchasedAt = Instant.FromUtc(2026, 3, 2, 10, 0),
+            SyncedAt = Instant.FromUtc(2026, 3, 2, 10, 0),
+            Attendees =
+            [
+                MakePricedAttendee(orderId, "tkt_live", "Full Week", 100m, TicketAttendeeStatus.Valid),
+                MakePricedAttendee(orderId, "tkt_void", "Full Week", 100m, TicketAttendeeStatus.Void)
+            ]
+        });
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var month = (await _service.GetSalesAggregatesAsync()).MonthlySales.Single();
+
+        month.GrossRevenue.Should().Be(200m);
+        month.TicketsSold.Should().Be(1);
+        // The VAT was charged on the one live seat; ticket income must be that same base.
+        month.TicketIncomeInclVat.Should().Be(100m);
+        month.TicketIncomeExVat.Should().Be(100m - 9.09m);
     }
 
     [HumansFact]

@@ -114,6 +114,16 @@ internal sealed class MonthlySalesAggregate
     public decimal StripeFees { get; init; }
     public decimal ApplicationFees { get; init; }
     public decimal RefundedGross { get; init; }
+
+    /// <summary>
+    /// Taxable ticket income, VAT included: gross less standalone donations, VIP premiums
+    /// and the gross of seats the VAT base excludes (anything not Valid/CheckedIn), so it
+    /// is the base <see cref="VatAmount"/> was charged on.
+    /// </summary>
+    public decimal TicketIncomeInclVat { get; init; }
+
+    /// <summary>Taxable ticket income net of the VAT it carries.</summary>
+    public decimal TicketIncomeExVat => TicketIncomeInclVat - VatAmount;
 }
 
 internal sealed class TicketTypeSalesAggregate
@@ -324,15 +334,27 @@ internal sealed class PaidOrderSalesRow
     public decimal VatAmount { get; init; }
     public int AttendeeCount { get; init; }
     public decimal VipDonations { get; init; }
+
+    /// <summary>
+    /// Sum of <c>Price</c> over the order's seats that are neither Valid nor CheckedIn —
+    /// the part of <see cref="TotalAmount"/> that <see cref="VipDonations"/> and the VAT
+    /// base leave out.
+    /// </summary>
+    public decimal VoidedSeatGross { get; init; }
     public decimal? StripeFee { get; init; }
     public decimal? ApplicationFee { get; init; }
 }
 
-/// <summary>Refunded order's purchase instant and gross, for the monthly recap.</summary>
+/// <summary>
+/// Refunded order's purchase instant, gross and processing fees, for the monthly recap:
+/// a refund does not return the fees already charged, so they still belong in the totals.
+/// </summary>
 internal sealed class RefundedOrderRow
 {
     public Instant PurchasedAt { get; init; }
     public decimal TotalAmount { get; init; }
+    public decimal? StripeFee { get; init; }
+    public decimal? ApplicationFee { get; init; }
 }
 
 /// <summary>

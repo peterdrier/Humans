@@ -253,6 +253,8 @@ internal sealed class TicketController(
                 StripeFees = m.StripeFees,
                 ApplicationFees = m.ApplicationFees,
                 RefundedGross = m.RefundedGross,
+                TicketIncomeInclVat = m.TicketIncomeInclVat,
+                TicketIncomeExVat = m.TicketIncomeExVat,
             }).ToList(),
             ByTicketType = aggregates.ByTicketType.Select(t => new TicketTypeSalesRow
             {
@@ -407,21 +409,21 @@ internal sealed class TicketController(
             foreach (var m in months)
             {
                 WriteAccountantRow(csv, m.MonthLabel, m.OrderCount, m.TicketsSold, m.GrossRevenue, m.Donations,
-                    m.VipDonations, m.VatAmount, m.StripeFees, m.ApplicationFees, m.RefundedGross);
+                    m.VipDonations, m.TicketIncomeInclVat, m.VatAmount, m.TicketIncomeExVat, m.StripeFees,
+                    m.ApplicationFees, m.RefundedGross);
             }
             WriteAccountantRow(csv, "Total", months.Sum(m => m.OrderCount), months.Sum(m => m.TicketsSold),
                 months.Sum(m => m.GrossRevenue), months.Sum(m => m.Donations), months.Sum(m => m.VipDonations),
-                months.Sum(m => m.VatAmount), months.Sum(m => m.StripeFees), months.Sum(m => m.ApplicationFees),
-                months.Sum(m => m.RefundedGross));
+                months.Sum(m => m.TicketIncomeInclVat), months.Sum(m => m.VatAmount),
+                months.Sum(m => m.TicketIncomeExVat), months.Sum(m => m.StripeFees),
+                months.Sum(m => m.ApplicationFees), months.Sum(m => m.RefundedGross));
         });
         return File(bytes, "text/csv", "ticket-income-by-month.csv");
     }
 
     private static void WriteAccountantRow(CsvWriter csv, string label, int orders, int tickets, decimal gross,
-        decimal donations, decimal vipDonations, decimal vat, decimal stripeFees, decimal ttFees, decimal refundedGross)
-    {
-        var ticketIncomeInclVat = gross - donations - vipDonations;
-        csv.WriteRow(label, orders, tickets, gross, donations, vipDonations,
-            ticketIncomeInclVat, vat, ticketIncomeInclVat - vat, stripeFees, ttFees, refundedGross);
-    }
+        decimal donations, decimal vipDonations, decimal ticketIncomeInclVat, decimal vat,
+        decimal ticketIncomeExVat, decimal stripeFees, decimal ttFees, decimal refundedGross)
+        => csv.WriteRow(label, orders, tickets, gross, donations, vipDonations,
+            ticketIncomeInclVat, vat, ticketIncomeExVat, stripeFees, ttFees, refundedGross);
 }

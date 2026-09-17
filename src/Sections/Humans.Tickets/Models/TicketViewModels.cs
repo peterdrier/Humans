@@ -220,6 +220,12 @@ internal sealed class MonthlySalesRow
     public decimal StripeFees { get; set; }
     public decimal ApplicationFees { get; set; }
     public decimal RefundedGross { get; set; }
+
+    /// <summary>Taxable ticket income with VAT in it — the base the VAT was charged on.</summary>
+    public decimal TicketIncomeInclVat { get; set; }
+
+    /// <summary>Taxable ticket income net of VAT.</summary>
+    public decimal TicketIncomeExVat { get; set; }
 }
 
 internal sealed class QuarterlySalesRow

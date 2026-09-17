@@ -301,9 +301,15 @@ internal sealed class TicketQueryService(
         };
     }
 
+    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+
+    /// <summary>
+    /// Accounting month of a purchase, in Europe/Madrid — the zone the association books in,
+    /// so a 00:30 UTC purchase on the 1st is not reported against the previous month.
+    /// </summary>
     private static (int Year, int Month) MonthKey(Instant purchasedAt)
     {
-        var d = purchasedAt.InUtc().Date;
+        var d = purchasedAt.InZone(MadridZone).Date;
         return (d.Year, d.Month);
     }
 
@@ -361,13 +367,14 @@ internal sealed class TicketQueryService(
         var refunded = await ticketRepository.GetRefundedOrderRowsAsync();
         var refundedByMonth = refunded
             .GroupBy(r => MonthKey(r.PurchasedAt))
-            .ToDictionary(g => g.Key, g => g.Sum(r => r.TotalAmount));
+            .ToDictionary(g => g.Key, g => g.ToList());
         var paidByMonth = orders.GroupBy(o => MonthKey(o.PurchasedAt)).ToDictionary(g => g.Key, g => g.ToList());
         var monthlySales = paidByMonth.Keys.Union(refundedByMonth.Keys)
             .OrderBy(k => k)
             .Select(k =>
             {
                 var paid = paidByMonth.GetValueOrDefault(k) ?? [];
+                var refundedRows = refundedByMonth.GetValueOrDefault(k) ?? [];
                 return new MonthlySalesAggregate
                 {
                     MonthLabel = $"{k.Year:D4}-{k.Month:D2}",
@@ -377,9 +384,15 @@ internal sealed class TicketQueryService(
                     Donations = paid.Sum(o => o.DonationAmount),
                     VipDonations = paid.Sum(o => o.VipDonations),
                     VatAmount = paid.Sum(o => o.VatAmount),
-                    StripeFees = paid.Sum(o => o.StripeFee ?? 0m),
-                    ApplicationFees = paid.Sum(o => o.ApplicationFee ?? 0m),
-                    RefundedGross = refundedByMonth.GetValueOrDefault(k),
+                    // Void seats stay in TotalAmount but out of the VAT base and VipDonations,
+                    // so drop them here too or the taxable income would not match the VAT.
+                    TicketIncomeInclVat = paid.Sum(o =>
+                        o.TotalAmount - o.DonationAmount - o.VipDonations - o.VoidedSeatGross),
+                    // A refund returns the gross, never the processing fees already charged.
+                    StripeFees = paid.Sum(o => o.StripeFee ?? 0m) + refundedRows.Sum(r => r.StripeFee ?? 0m),
+                    ApplicationFees = paid.Sum(o => o.ApplicationFee ?? 0m)
+                                      + refundedRows.Sum(r => r.ApplicationFee ?? 0m),
+                    RefundedGross = refundedRows.Sum(r => r.TotalAmount),
                 };
             })
             .ToList();
