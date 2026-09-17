@@ -11,9 +11,9 @@ namespace Humans.Gdpr.Contracts;
 public interface IGdprService : IOrchestrator
 {
     /// <summary>
-    /// Builds a complete GDPR export document for <paramref name="userId"/> by
-    /// calling every registered contributor and merging their slices by section
-    /// name.
+    /// Article 15 half. Takes only an id, and does not resolve a merge chain — a
+    /// contributor holding rows on a merged-away account resolves the chain itself
+    /// or the export omits them.
     /// </summary>
     Task<GdprExport> ExportForUserAsync(Guid userId, CancellationToken ct = default);
 
