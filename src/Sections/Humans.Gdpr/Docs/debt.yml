@@ -5,3 +5,6 @@ inbox:
   - added: 2026-08-27
     what: "GuestDataController has no test, anywhere. Deliberately not written this run: apart from its catch-and-redirect on contributor failure — whose disposition sits with Users, since ProfileController has no catch for the same failure — the action is logic-free, and a test now would pin behaviour that decision may change. Write it once the two routes agree on failure handling. Found by /section-doctor on Gdpr 2026-08-27."
     review: light
+  - added: 2026-09-17
+    what: "The 'logged' half of complete-or-fail is unpinned in both fan-outs. GdprService logs an error naming the failing contributor before re-throwing, in export and in erasure alike, and the invariant doc states it — but CreateService injects NullLogger, so every failure test observes only the re-throw. A contributor failure that stopped naming itself in the log would pass the suite, and that log line is the only way an operator learns which section broke a download or an erasure. Needs a capturing logger in the fixture. Found by /section-doctor on Gdpr 2026-09-17."
+    review: light
