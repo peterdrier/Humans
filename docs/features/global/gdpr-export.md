@@ -82,14 +82,23 @@ change.
 │  Every section service that owns user-scoped    │
 │  tables, each implementing IUserDataContributor │
 │  — the Contributor column of the table below is │
-│  the roster, and the only one.                  │
+│  the roster of everything the export can hold.  │
 └─────────────────────────────────────────────────┘
 ```
 
 The contributor named in that column is the type **registered** as
-`IUserDataContributor`, which for a cached section is the decorator, not the inner
-service — `CachingEventService`, `CachingRideshareService`, `CachingWorkgroupService`.
-It is the decorator that carries `ErasureDeclaration`.
+`IUserDataContributor`, and whether that is a cached section's decorator or its inner
+service is the registering section's own call: `CachingEventService`,
+`CachingRideshareService` and `CachingWorkgroupService` bind the decorator, while Consent,
+Teams, Camps and Auth have decorators and bind the inner service. Whichever is registered
+is the type that carries `ErasureDeclaration`.
+
+**The Article 17 roster is one wider than this table.** `MailerLiteGdprContributor`
+(`src/Sections/Humans.MailerLite/Services/MailerLiteGdprContributor.cs`) is registered as a
+contributor and returns no slices, so it has no row and never appears in an export; its
+erasure deletes the person's MailerLite subscriber outright, declared under
+`GdprExportSections.MailerLiteSubscriber`. Auditing the deletion fan-out means this table
+plus that one.
 
 ### Why sequential fan-out (not `Task.WhenAll`)
 
