@@ -88,14 +88,14 @@ internal sealed class ContainerController(
 
         if (!ModelState.IsValid)
         {
-            SetError(localizer["Container_ValidationErrors"].Value);
+            SetError(localizer["Containers_ValidationErrors"].Value);
             return RedirectToAction(nameof(Index), new { slug });
         }
 
         return await TryRunContainerWriteAsync(
             () => containerService.CreateAsync(model.ToContainerData(camp.Id), user.Id, ct),
             slug,
-            localizer["Container_Added"].Value);
+            localizer["Containers_Added"].Value);
     }
 
     [HttpPost("{id}/Edit")]
@@ -111,14 +111,14 @@ internal sealed class ContainerController(
 
         if (!ModelState.IsValid)
         {
-            SetError(localizer["Container_ValidationErrors"].Value);
+            SetError(localizer["Containers_ValidationErrors"].Value);
             return RedirectToAction(nameof(Index), new { slug });
         }
 
         return await TryRunContainerWriteAsync(
             () => containerService.UpdateAsync(id, model.ToContainerData(container!.CampId), user.Id, ct),
             slug,
-            localizer["Container_Updated"].Value);
+            localizer["Containers_Updated"].Value);
     }
 
     [HttpPost("{id}/Delete")]
@@ -132,7 +132,7 @@ internal sealed class ContainerController(
         if (notFound is not null) return notFound;
 
         await containerService.DeleteAsync(id, user.Id, ct);
-        SetSuccess(localizer["Container_Deleted"].Value);
+        SetSuccess(localizer["Containers_Deleted"].Value);
         return RedirectToAction(nameof(Index), new { slug });
     }
 

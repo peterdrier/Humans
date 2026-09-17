@@ -24,7 +24,7 @@
             @c.Name
             @if (Model.IsPlaced)
             {
-                <span class="badge bg-success fw-normal" style="font-size:10px;">@Localizer["ContainerMap_Placed"]</span>
+                <span class="badge bg-success fw-normal" style="font-size:10px;">@Localizer["Containers_MapPlaced"]</span>
             }
         </div>
         @if (!string.IsNullOrEmpty(c.Description))
@@ -39,7 +39,7 @@
                     data-bs-toggle="modal" data-bs-target="#placementInfoModal-@c.Id"
                 >
                 <i class="fa-solid fa-circle-info"></i>
-                @Localizer["Container_PlacementNotes_ButtonLabel"]
+                @Localizer["Containers_PlacementNotes_ButtonLabel"]
             </button>
         }
         <button type="button" class="btn btn-outline-secondary btn-sm"
@@ -52,7 +52,7 @@
               method="post" class="d-inline">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-outline-danger btn-sm"
-                    data-confirm="@string.Format(Localizer["Container_DeleteConfirm"], c.Name)"
+                    data-confirm="@string.Format(Localizer["Containers_DeleteConfirm"], c.Name)"
                     title="@SharedLocalizer["Common_Delete"]">
                 <i class="fa-solid fa-trash"></i>
             </button>

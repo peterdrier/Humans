@@ -46,7 +46,7 @@
     <div id="container-sidebar" class="border-end d-flex flex-column overflow-hidden flex-shrink-0">
         <div class="px-3 py-2 border-bottom d-flex flex-column align-items-center gap-2">
             <div>
-                <div class="fw-semibold">@ContainersLocalizer["Container_Breadcrumb"] @Model.Year</div>
+                <div class="fw-semibold">@ContainersLocalizer["Containers_Breadcrumb"] @Model.Year</div>
                 @if (!string.IsNullOrEmpty(Model.CampName))
                 {
                     <div class="small text-muted">@Model.CampName</div>
@@ -67,10 +67,10 @@
         </div>
         <div class="overflow-auto">
             <div id="sidebar-unplaced" class="list-group list-group-flush">
-                <div class="sidebar-section-label list-group-item py-1 text-uppercase text-muted small fw-semibold bg-body-tertiary">@ContainersLocalizer["ContainerMap_Unplaced"]</div>
+                <div class="sidebar-section-label list-group-item py-1 text-uppercase text-muted small fw-semibold bg-body-tertiary">@ContainersLocalizer["Containers_MapUnplaced"]</div>
             </div>
             <div id="sidebar-placed" class="list-group list-group-flush border-top">
-                <div class="sidebar-section-label list-group-item py-1 text-uppercase text-muted small fw-semibold bg-body-tertiary">@ContainersLocalizer["ContainerMap_Placed"]</div>
+                <div class="sidebar-section-label list-group-item py-1 text-uppercase text-muted small fw-semibold bg-body-tertiary">@ContainersLocalizer["Containers_MapPlaced"]</div>
             </div>
         </div>
     </div>
@@ -79,8 +79,8 @@
              data-year="@Model.Year"
              data-is-map-admin="@Model.IsMapAdmin.ToString().ToLower()"
              data-user-camp-id="@Model.UserCampId"
-             data-i18n-clear-placement="@ContainersLocalizer["ContainerMap_ClearPlacement"]"
-             data-i18n-confirm-clear="@ContainersLocalizer["ContainerMap_ConfirmClear"]"></div>
+             data-i18n-clear-placement="@ContainersLocalizer["Containers_MapClearPlacement"]"
+             data-i18n-confirm-clear="@ContainersLocalizer["Containers_MapConfirmClear"]"></div>
         <div id="rotation-handle"><i class="fa-solid fa-rotate"></i></div>
         <div id="map-toast" class="alert alert-danger py-2 px-3 mb-0 shadow-sm" role="alert"></div>
         <div class="position-absolute top-0 end-0 m-3 d-grid gap-3 city-map-controls">
@@ -90,15 +90,15 @@
             })
             <div class="card shadow-sm">
                 <div class="card-body py-2 px-3 city-map-legend">
-                    <div class="fw-semibold mb-1 text-muted text-uppercase city-map-panel-label">@ContainersLocalizer["ContainerMap_Legend_Title"]</div>
+                    <div class="fw-semibold mb-1 text-muted text-uppercase city-map-panel-label">@ContainersLocalizer["Containers_MapLegend_Title"]</div>
                     <div class="d-flex align-items-center gap-2 mb-1">
                       <svg width="36" height="18" viewBox="0 0 36 18" class="city-map-legend-swatch">
                           <polygon points="0,0 0,18 24,18 24,13.5 30,9 24,4.5 24,0" class="city-map-container-body" />
                           <polygon points="24,4.5 30,9 24,13.5" class="city-map-container-door" />
                       </svg>
                       <ul class="list-unstyled mb-0">
-                        <li>@ContainersLocalizer["ContainerMap_Legend_Body"]</li>
-                        <li>@ContainersLocalizer["ContainerMap_Legend_Door"]</li>
+                        <li>@ContainersLocalizer["Containers_MapLegend_Body"]</li>
+                        <li>@ContainersLocalizer["Containers_MapLegend_Door"]</li>
                       </ul>
                     </div>
                 </div>
@@ -113,7 +113,7 @@
             <form id="placementNotesForm" enctype="multipart/form-data">
                 <div class="modal-header">
                     <h5 class="modal-title">
-                        <span data-role="title-prefix">@ContainersLocalizer["Container_PlacementNotes_Title"]</span> —
+                        <span data-role="title-prefix">@ContainersLocalizer["Containers_PlacementNotes_Title"]</span> —
                         <span data-role="container-name"></span>
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -122,18 +122,18 @@
                     <div class="alert alert-danger d-none" data-role="error"></div>
                     <fieldset data-role="fields">
                         <div class="mb-3">
-                            <label class="form-label">@ContainersLocalizer["Container_FieldPlacementNotes"]</label>
+                            <label class="form-label">@ContainersLocalizer["Containers_FieldPlacementNotes"]</label>
                             <textarea name="PlacementNotes" class="form-control" rows="5" maxlength="5000"
-                                      placeholder="@ContainersLocalizer["Container_PlacementNotesPlaceholder"]"></textarea>
+                                      placeholder="@ContainersLocalizer["Containers_PlacementNotesPlaceholder"]"></textarea>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">@ContainersLocalizer["Container_FieldPlacementImage"]</label>
+                            <label class="form-label">@ContainersLocalizer["Containers_FieldPlacementImage"]</label>
                             <div class="mb-2 d-none" data-role="existing-image-wrap">
                                 <img data-role="existing-image" alt="" class="city-map-image-thumb" />
                             </div>
                             <div class="form-check mb-2 d-none" data-role="remove-image-wrap">
                                 <input type="checkbox" name="RemovePlacementImage" value="true" class="form-check-input" id="removePlacementImageMap" />
-                                <label class="form-check-label" for="removePlacementImageMap">@ContainersLocalizer["Container_RemovePlacementImage_Label"]</label>
+                                <label class="form-check-label" for="removePlacementImageMap">@ContainersLocalizer["Containers_RemovePlacementImage_Label"]</label>
                             </div>
                             <input type="file" name="PlacementImage" class="form-control" accept="image/jpeg,image/png,image/webp" />
                         </div>

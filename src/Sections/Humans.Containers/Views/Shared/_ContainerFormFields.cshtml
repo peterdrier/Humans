@@ -5,15 +5,15 @@
 }
 <h6 class="text-muted text-uppercase small mb-3">@SharedLocalizer["Common_General"]</h6>
 <div class="mb-3">
-    <label class="form-label">@Localizer["Container_FieldName"] <span class="text-danger">*</span></label>
-    <input name="Name" class="form-control" value="@c?.Name" maxlength="256" required placeholder="@Localizer["Container_NamePlaceholder"]" />
+    <label class="form-label">@Localizer["Containers_FieldName"] <span class="text-danger">*</span></label>
+    <input name="Name" class="form-control" value="@c?.Name" maxlength="256" required placeholder="@Localizer["Containers_NamePlaceholder"]" />
 </div>
 <div class="mb-3">
-    <label class="form-label">@Localizer["Container_FieldDescription"]</label>
-    <textarea name="Description" class="form-control" rows="3" maxlength="2000" placeholder="@Localizer["Container_DescPlaceholder"]">@c?.Description</textarea>
+    <label class="form-label">@Localizer["Containers_FieldDescription"]</label>
+    <textarea name="Description" class="form-control" rows="3" maxlength="2000" placeholder="@Localizer["Containers_DescPlaceholder"]">@c?.Description</textarea>
 </div>
 <div class="mb-4">
-    <label class="form-label">@Localizer["Container_FieldImages"]</label>
+    <label class="form-label">@Localizer["Containers_FieldImages"]</label>
     @if (c is not null && c.Images.Count > 0)
     {
         <div class="d-flex flex-wrap gap-3 mb-2">
@@ -23,7 +23,7 @@
                     <img src="@img.Url" alt="@img.FileName" style="height:64px;object-fit:cover;border-radius:4px;" />
                     <div class="form-check text-start small mt-1">
                         <input type="checkbox" name="RemoveImageIds" value="@img.Id" class="form-check-input" id="removeImage-@idSuffix-@img.Id" />
-                        <label class="form-check-label" for="removeImage-@idSuffix-@img.Id">@Localizer["Container_RemoveImage_Label"]</label>
+                        <label class="form-check-label" for="removeImage-@idSuffix-@img.Id">@Localizer["Containers_RemoveImage_Label"]</label>
                     </div>
                 </div>
             }
