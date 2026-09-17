@@ -183,13 +183,9 @@ jobs:
           path: pr-surface-report.md
           if-no-files-found: error
 
-      # One-migration-per-chain is a discipline for authored feature PRs. A
-      # batched promotion PR (peterdrier:main → nobodies-collective:main)
-      # legitimately aggregates several fork PRs' migrations, so the same chain
-      # can gain two sequenced migrations between promotions; each already passed
-      # this gate on its own fork PR. The report still runs there — only the
-      # count gate is scoped out. Matched by full repo identity, not head_ref
-      # alone: a contributor PR from their own fork's `main` must stay gated.
+      # Promotion PRs (peterdrier:main → nobodies-collective:main) batch fork PRs
+      # whose migrations each passed this gate individually, so one chain may advance
+      # twice. Matched by repo identity so another fork's `main` stays gated.
       - name: Enforce migration count
         if: >
           always() &&
