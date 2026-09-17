@@ -431,7 +431,7 @@ internal sealed class ExpenseReportService(
                 catch
                 {
                     // The form retries the whole add, so a line left behind here would duplicate.
-                    await repo.RemoveLineAsync(reportId, lineId, ct);
+                    await repo.RemoveLineAsync(reportId, lineId, CancellationToken.None);
                     throw;
                 }
             }

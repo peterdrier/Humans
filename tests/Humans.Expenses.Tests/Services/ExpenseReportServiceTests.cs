@@ -712,6 +712,37 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
+    public async Task AddLineWithResultAsync_CancelledUpload_RollsBackWithLiveToken()
+    {
+        var (_, category) = SetupActiveYear();
+        var member = Guid.NewGuid();
+        var admin = Guid.NewGuid();
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var id = await _sut.CreateDraftAsync(member, member, category.Id, null, ct);
+        using var uploadCancellation = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                await uploadCancellation.CancelAsync();
+                await Task.FromCanceled(call.Arg<CancellationToken>());
+            });
+
+        using var content = new MemoryStream([1, 2, 3]);
+        var result = await _sut.AddLineWithResultAsync(
+            id, admin, true, "Timber", 40m,
+            file: new ExpenseFileUpload("receipt.pdf", "application/pdf", content),
+            ct: uploadCancellation.Token);
+
+        result.Succeeded.Should().BeFalse();
+        var loaded = await _sut.GetAsync(id, ct);
+        loaded!.Lines.Should().BeEmpty();
+        await AuditLog.DidNotReceive().LogAsync(
+            AuditAction.ExpenseEditedOnBehalf,
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
     public async Task AddLineWithResultAsync_WithBadFile_CreatesNothing()
     {
         var (_, category) = SetupActiveYear();
