@@ -347,7 +347,7 @@ internal sealed class GoogleGroupSyncService(
 
         // An extra member is a human who left the team, so their id is only reachable
         // from the address Google still holds — without it the revocation row is
-        // invisible to /Monitor/Human/{id} and to their GDPR export.
+        // invisible to /Google/Human/{id} and to their GDPR export.
         var extraUserIdByEmail = await ResolveExtraMemberUserIdsAsync(extraEmails, ct);
 
         foreach (var email in extraEmails)

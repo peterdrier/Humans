@@ -1,5 +1,6 @@
 using Humans.Base.Interfaces;
 using Humans.Base.Attributes;
+using Humans.Base.Enums;
 
 namespace Humans.GoogleIntegration.Contracts;
 
@@ -16,11 +17,13 @@ public interface IGoogleSyncService : IGoogleSyncServiceRead, IApplicationServic
     /// type, then optionally executes adds/removes based on the action. Google Group
     /// membership is handled by <see cref="IGoogleGroupSync"/>.
     /// </summary>
+    /// <param name="syncSource">The trigger recorded on any Drive sync-log rows.</param>
     [ExternalWrite]
     Task<SyncPreviewResult> SyncResourcesByTypeAsync(
         GoogleResourceType resourceType,
         SyncAction action,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        GoogleSyncSource syncSource = GoogleSyncSource.ManualSync);
 
     /// <summary>
     /// Syncs a single Google resource by ID. Drive resources are reconciled here;
@@ -38,8 +41,13 @@ public interface IGoogleSyncService : IGoogleSyncServiceRead, IApplicationServic
     /// <param name="teamId">The team ID.</param>
     /// <param name="userId">The user ID.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="syncSource">The trigger recorded on any Drive sync-log rows.</param>
     [ExternalWrite]
-    Task AddUserToTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken cancellationToken = default);
+    Task AddUserToTeamResourcesAsync(
+        Guid teamId,
+        Guid userId,
+        CancellationToken cancellationToken = default,
+        GoogleSyncSource syncSource = GoogleSyncSource.ManualSync);
 
     /// <summary>
     /// Removes a user from all Google resources associated with a team.

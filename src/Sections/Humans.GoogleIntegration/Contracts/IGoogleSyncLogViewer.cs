@@ -9,9 +9,7 @@ namespace Humans.GoogleIntegration.Contracts;
 /// </summary>
 /// <remarks>
 /// This project's <c>Contracts/</c> folder, not the <c>Humans.GoogleIntegration.Contracts</c>
-/// leaf: the only out-of-section consumer is Monitor's <c>SyncAudit</c> page, which already
-/// references <c>Humans.GoogleIntegration</c> for the <c>&lt;vc:google-sync-log&gt;</c> tag
-/// helper. Public only because <c>GoogleSyncLogViewComponent</c> is — the write path
+/// leaf. Public because <c>GoogleSyncLogViewComponent</c> is — the write path
 /// (<c>IGoogleSyncLogService</c>) stays internal. Same arrangement AuditLog uses for
 /// <c>IAuditViewerService</c>.
 /// </remarks>

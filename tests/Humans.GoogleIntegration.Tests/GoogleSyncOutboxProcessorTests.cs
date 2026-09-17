@@ -8,6 +8,7 @@ using NSubstitute;
 using Humans.Teams.Contracts;
 using Humans.GoogleIntegration.Data;
 using Humans.Base.Interfaces;
+using Humans.Base.Enums;
 using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Tests.Infrastructure;
 using Humans.Users.Contracts;
@@ -84,7 +85,8 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
         await _googleSyncService.Received(1).AddUserToTeamResourcesAsync(
             outboxEvent.TeamId,
             outboxEvent.UserId,
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(),
+            GoogleSyncSource.TeamMemberJoined);
 
         var updatedEvent = await _dbContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         updatedEvent.ProcessedAt.Should().Be(_clock.GetCurrentInstant());

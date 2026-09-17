@@ -8,7 +8,6 @@ using Humans.Base.Configuration;
 using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Humans.Base.Interfaces;
 
 namespace Humans.GoogleIntegration;
@@ -24,16 +23,13 @@ namespace Humans.GoogleIntegration;
 /// <c>GoogleWorkspaceInfrastructureExtensions</c> (the connector graph).
 /// </para>
 /// <para>
-/// <c>Configure&lt;GoogleWorkspaceSettings&gt;</c> and its "Production must have Google
-/// credentials" guard moved in here too (nobodies-collective/Humans#1091): once
-/// <c>GoogleWorkspaceHealthCheck</c> followed the connectors into this section, the settings
-/// had no reader left outside it. <c>Configure&lt;GoogleWorkspaceOptions&gt;</c> stays in
+/// <c>Configure&lt;GoogleWorkspaceSettings&gt;</c> moved in here under
+/// nobodies-collective/Humans#1091: once <c>GoogleWorkspaceHealthCheck</c> followed the
+/// connectors into this section, the settings had no reader left outside it.
+/// <c>Configure&lt;GoogleWorkspaceOptions&gt;</c> stays in
 /// Shell's <c>InfrastructureServiceCollectionExtensions</c> — Camps' <c>CampRoleService</c>
 /// and Users' <c>ProfileEmailsController</c> still read it directly (Governance's rule: the section
-/// that owns the file is not always the section that owns the line). <see
-/// cref="ISection.Register"/> is handed no <c>IHostEnvironment</c>, so the guard reads
-/// <c>HostDefaults.EnvironmentKey</c> off the configuration it does get and fails closed —
-/// the same mechanism Development's section uses.
+/// that owns the file is not always the section that owns the line).
 /// </para>
 /// <para>
 /// The two recurring jobs live in this project's <c>Contracts/</c> folder; their registration
@@ -49,15 +45,6 @@ public sealed class Section : ISection
         var googleWorkspaceConfig = configuration.GetSection(GoogleWorkspaceSettings.SectionName);
         var hasGoogleCredentials = !string.IsNullOrEmpty(googleWorkspaceConfig["ServiceAccountKeyPath"]) ||
                                    !string.IsNullOrEmpty(googleWorkspaceConfig["ServiceAccountKeyJson"]);
-
-        var environmentName = configuration[HostDefaults.EnvironmentKey];
-        if (!hasGoogleCredentials
-            && string.Equals(environmentName, Environments.Production, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException(
-                "Google Workspace credentials are required in production. " +
-                "Set GoogleWorkspace:ServiceAccountKeyPath or GoogleWorkspace:ServiceAccountKeyJson.");
-        }
 
         services.AddSectionDbContext<GoogleIntegrationDbContext>(sentinelTable: "google_resources");
 
@@ -89,9 +76,8 @@ public sealed class Section : ISection
 
         services.AddScoped<ITeamResourceService, TeamResourceService>();
 
-        // Real Google clients when a service-account key is configured, stubs otherwise. The
-        // "otherwise" arm is unreachable in Production — the guard above throws before this
-        // runs.
+        // Real Google clients when a service-account key is configured, stubs otherwise.
+        // The health check reports the missing configuration as Degraded in every environment.
         if (hasGoogleCredentials)
         {
             services.AddScoped<IGoogleSyncService, GoogleWorkspaceSyncService>();

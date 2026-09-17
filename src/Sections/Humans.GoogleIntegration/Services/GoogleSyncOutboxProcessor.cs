@@ -1,4 +1,5 @@
 using Humans.Base.Attributes;
+using Humans.Base.Enums;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Base.Interfaces;
 using Humans.GoogleIntegration.Data;
@@ -70,7 +71,8 @@ internal sealed class GoogleSyncOutboxProcessor(
                         await googleSyncService.AddUserToTeamResourcesAsync(
                             outboxEvent.TeamId,
                             outboxEvent.UserId,
-                            cancellationToken);
+                            cancellationToken,
+                            GoogleSyncSource.TeamMemberJoined);
                         break;
 
                     case GoogleSyncOutboxEventTypes.RemoveUserFromTeamResources:

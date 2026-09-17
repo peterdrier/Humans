@@ -198,11 +198,11 @@ DriveFile    = 3  // Individual file within a Shared Drive (Google Sheets, Docs,
 public interface IGoogleSyncService
 {
     // Drive resource sync (Groups are delegated to IGoogleGroupSync)
-    Task<SyncPreviewResult> SyncResourcesByTypeAsync(GoogleResourceType resourceType, SyncAction action, CancellationToken ct = default);
+    Task<SyncPreviewResult> SyncResourcesByTypeAsync(GoogleResourceType resourceType, SyncAction action, CancellationToken ct = default, GoogleSyncSource syncSource = GoogleSyncSource.ManualSync);
     Task<ResourceSyncDiff> SyncSingleResourceAsync(Guid resourceId, SyncAction action, CancellationToken ct = default);
 
     // Team membership changes
-    Task AddUserToTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default);
+    Task AddUserToTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default, GoogleSyncSource syncSource = GoogleSyncSource.ManualSync);
     Task RemoveUserFromTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default);
 
     // Google Group lifecycle
@@ -558,7 +558,7 @@ Stub vs. real implementation is selected automatically based on whether `GoogleW
 ```
 Schedule: 3:00 AM daily (mode-gated via SyncSettings)
 Purpose: Full reconciliation of all Google resources with DB state
-Process: Calls SyncResourcesByTypeAsync / ReconcileAllAsync with SyncAction.Execute
+Process: Calls `SyncResourcesByTypeAsync` / `ReconcileAllAsync` with `SyncAction.Execute`; Drive sync receives `GoogleSyncSource.ScheduledSync` so its log records the scheduled trigger.
          for every service; each service checks its own persisted SyncMode
          internally to decide whether adds/removes actually apply
 ```

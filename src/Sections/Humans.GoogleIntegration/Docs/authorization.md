@@ -3,6 +3,8 @@
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
 | `GoogleController` | Class | `[Route("Google")]` only — no class-level `[Authorize]` | — |
+| `GoogleController.Resource` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
+| `GoogleController.Human` | Action | `HumanAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` |
 | `GoogleController.SyncSettings` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleController.UpdateSyncSetting` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleController.SyncSystemTeams` | Action | `Admin` | `PolicyNames.AdminOnly` |

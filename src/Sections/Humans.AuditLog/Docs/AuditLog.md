@@ -87,15 +87,15 @@ All Audit Log routes are owned by `AuditLogController` (`[Route("AuditLog")]`).
 |-------|--------|------------|
 | `GET /AuditLog` | `AuditLogController.Index` | `BoardOrAdmin` |
 
-These three moved to the **Monitor** section at nobodies-collective/Humans#866 — two of them
-injected GoogleIntegration services, and a horizontal may not reference a vertical
-(`peters-hard-rules.md`). See [Monitor.md](../../Humans.Monitor/Docs/Monitor.md):
+Drive-activity checks belong to [Monitor](../../Humans.Monitor/Docs/Monitor.md).
+Per-resource and per-human sync audits belong to
+[GoogleIntegration](../../Humans.GoogleIntegration/Docs/GoogleIntegration.md):
 
 | Route | Now |
 |---|---|
 | `POST /Monitor/CheckDriveActivity` | `MonitorController.CheckDriveActivity`, `BoardOrAdmin` |
-| `GET /Monitor/Resource/{id}` | `MonitorController.Resource`, `BoardOrAdmin` |
-| `GET /Monitor/Human/{id}` | `MonitorController.Human`, `HumanAdminBoardOrAdmin` |
+| `GET /Google/Resource/{id}` | `GoogleController.Resource`, `BoardOrAdmin` |
+| `GET /Google/Human/{id}` | `GoogleController.Human`, `HumanAdminBoardOrAdmin` |
 
 `AuditLogController` injects `IAuditViewerService` — no controller touches `IAuditLogService` or any repository directly.
 

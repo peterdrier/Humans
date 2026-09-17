@@ -7,6 +7,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Humans.Base.Constants;
+using Humans.Base.Enums;
 using Humans.Base.Interfaces;
 using Humans.GoogleIntegration.Tests.Infrastructure;
 using Humans.Notifications.Contracts;
@@ -56,11 +57,23 @@ public class GoogleResourceReconciliationJobTests : IDisposable
         await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _googleSyncService.Received(1)
-            .SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, Arg.Any<CancellationToken>());
+            .SyncResourcesByTypeAsync(
+                GoogleResourceType.DriveFolder,
+                SyncAction.Execute,
+                Arg.Any<CancellationToken>(),
+                GoogleSyncSource.ScheduledSync);
         await _googleSyncService.Received(1)
-            .SyncResourcesByTypeAsync(GoogleResourceType.DriveFile, SyncAction.Execute, Arg.Any<CancellationToken>());
+            .SyncResourcesByTypeAsync(
+                GoogleResourceType.DriveFile,
+                SyncAction.Execute,
+                Arg.Any<CancellationToken>(),
+                GoogleSyncSource.ScheduledSync);
         await _googleSyncService.DidNotReceive()
-            .SyncResourcesByTypeAsync(GoogleResourceType.Group, Arg.Any<SyncAction>(), Arg.Any<CancellationToken>());
+            .SyncResourcesByTypeAsync(
+                GoogleResourceType.Group,
+                Arg.Any<SyncAction>(),
+                Arg.Any<CancellationToken>(),
+                Arg.Any<GoogleSyncSource>());
         await _googleGroupSync.Received(1)
             .ReconcileAllAsync(SyncAction.Execute, Arg.Any<CancellationToken>());
         await _googleDriveSync.Received(1)
@@ -92,7 +105,11 @@ public class GoogleResourceReconciliationJobTests : IDisposable
     [HumansFact]
     public async Task ExecuteAsync_PropagatesCancellation_InsteadOfTreatingItAsPhaseFailure()
     {
-        _googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, Arg.Any<CancellationToken>())
+        _googleSyncService.SyncResourcesByTypeAsync(
+                GoogleResourceType.DriveFolder,
+                SyncAction.Execute,
+                Arg.Any<CancellationToken>(),
+                GoogleSyncSource.ScheduledSync)
             .ThrowsAsync(new OperationCanceledException());
 
         Func<Task> act = () => _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);

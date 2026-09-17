@@ -30,12 +30,12 @@ section's own sync log, which other pages render for a resource or a person.
 | "Remove this person from a team's resources now" | Users (suspension), Teams | `IGoogleSyncService.RemoveUserFromTeamResourcesAsync` / `AddUserToTeamResourcesAsync` |
 | "Reconcile every group" (the system-team sync) | Teams | `IGoogleGroupSync.ReconcileAllAsync` |
 | "Who is supposed to be in group X?" — asked *by* this section | answered by Teams and Camps | `IGoogleGroupMembershipSource.GetExpectedAsync` |
-| "Which resources does this team have?" / "Link, unlink, change level, deactivate" | Teams' team and team-admin pages, Monitor | `ITeamResourceService` |
+| "Which resources does this team have?" / "Link, unlink, change level, deactivate" | Teams' pages and this section's audit page | `ITeamResourceService` |
 | "Provision `name@nobodies.team` for this person" | Teams' team-admin page | `IEmailProvisioningService.ProvisionNobodiesEmailAsync` |
 | "What happened in these Drive folders since T?" | Monitor | `IGoogleDriveActivityClient` + `ITeamResourceService.GetActiveDriveFoldersAsync` |
 | "Translate this text" | Surveys | `IGoogleTranslationService.TranslateAsync` |
 | "How many sync events have failed?" | Notifications' admin meter | `IGoogleSyncServiceRead.GetFailedSyncEventCountAsync` (the pending count beside it is asked only by the section's own metrics service) |
-| "What did sync do to this resource / person?" | Monitor's sync-audit page via `<vc:google-sync-log>` | `IGoogleSyncLogViewer` |
+| "What did sync do to this resource / person?" | `/Google/Resource/{id}` and `/Google/Human/{id}` | `IGoogleSyncLogViewer` |
 | "Which Google resources are mine?" | the member dashboard slot | `MyGoogleResourcesViewComponent` (own) |
 | Everything an admin does by hand: modes, outbox, accounts, groups, renames, flags, checks | the section's own `/Google/*` screens | `GoogleController` → internal services |
 | Nightly: reconcile, settings, inheritance, paths; every 10 min: drain the queue | Hangfire | `GoogleResourceReconciliationJob`, `ProcessGoogleSyncOutboxJob` |
@@ -88,6 +88,9 @@ The shapes imply:
   failure); account, rename and group-settings writes leave audit entries instead. The
   account and rename entries name the acting admin; a manual sync or settings remediation
   does not (see §5).
+- **Drive sync-log source matches the trigger**: scheduled reconciliation records
+  `ScheduledSync`, membership outbox joins record `TeamMemberJoined`, and direct controller
+  calls default to `ManualSync`.
 - **A removal notifies the person exactly once, and never an orphan address** (no
   `UserEmail` row → suppressed and logged).
 - **The person's Google-email status is only set from sync when Google actually answered**:
@@ -114,10 +117,6 @@ The shapes imply:
   the health check are shaped by it.
 - **`SyncExecute` reconciles inline on the request thread** (`debt-ledger.yml`); the
   queued shape is "enqueue and return".
-- **`Section.cs` throws in Production without Google credentials** (moved there under
-  nobodies-collective/Humans#1091). That is a startup guard, against `no-startup-guards`;
-  the target is to boot stubbed and let the health check report it
-  (nobodies-collective/Humans#1179).
 - **Manual sync and group-settings remediation carry no actor**: `SyncExecute`,
   `SyncExecuteAll` and `RemediateGroupSettings` pass no acting user, `IGoogleSyncLogService`
   has no actor parameter, and the remediation audit names the service. Propagating the

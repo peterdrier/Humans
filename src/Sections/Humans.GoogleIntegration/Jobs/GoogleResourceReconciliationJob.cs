@@ -2,6 +2,7 @@ using Hangfire;
 using NodaTime;
 using Humans.Base.Interfaces;
 using Humans.Base.Constants;
+using Humans.Base.Enums;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Notifications.Contracts;
 
@@ -38,7 +39,11 @@ public class GoogleResourceReconciliationJob(
 
         try
         {
-            await googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, cancellationToken);
+            await googleSyncService.SyncResourcesByTypeAsync(
+                GoogleResourceType.DriveFolder,
+                SyncAction.Execute,
+                cancellationToken,
+                GoogleSyncSource.ScheduledSync);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -50,7 +55,11 @@ public class GoogleResourceReconciliationJob(
         // meant soft-deleted teams with linked files kept Google permissions indefinitely.
         try
         {
-            await googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFile, SyncAction.Execute, cancellationToken);
+            await googleSyncService.SyncResourcesByTypeAsync(
+                GoogleResourceType.DriveFile,
+                SyncAction.Execute,
+                cancellationToken,
+                GoogleSyncSource.ScheduledSync);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

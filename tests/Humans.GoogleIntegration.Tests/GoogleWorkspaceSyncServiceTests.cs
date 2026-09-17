@@ -249,7 +249,11 @@ public sealed class GoogleWorkspaceSyncServiceTests
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
 
-        await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, Xunit.TestContext.Current.CancellationToken);
+        await _syncService.AddUserToTeamResourcesAsync(
+            TestTeamId,
+            TestUserId,
+            Xunit.TestContext.Current.CancellationToken,
+            GoogleSyncSource.TeamMemberJoined);
 
         await _drivePermissions.DidNotReceive()
             .CreatePermissionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -422,7 +426,11 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .CreatePermissionAsync(TestGoogleFolderId, TestUserEmail, Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Created, null));
 
-        await _syncService.AddUserToTeamResourcesAsync(TestTeamId, archivedId, Xunit.TestContext.Current.CancellationToken);
+        await _syncService.AddUserToTeamResourcesAsync(
+            TestTeamId,
+            archivedId,
+            Xunit.TestContext.Current.CancellationToken,
+            GoogleSyncSource.TeamMemberJoined);
 
         await _userEmailService.DidNotReceive()
             .GetEntitiesByUserIdAsync(archivedId, Arg.Any<CancellationToken>());
@@ -433,7 +441,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             Arg.Any<string>(),
             TestUserEmail,
             Arg.Any<string>(),
-            Arg.Any<GoogleSyncSource>(),
+            GoogleSyncSource.TeamMemberJoined,
             success: true,
             errorMessage: Arg.Any<string?>(),
             userId: TestUserId,
@@ -493,7 +501,11 @@ public sealed class GoogleWorkspaceSyncServiceTests
                 DrivePermissionCreateOutcome.Failed,
                 new GoogleClientError(500, "Internal error")));
 
-        await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, Xunit.TestContext.Current.CancellationToken);
+        await _syncService.AddUserToTeamResourcesAsync(
+            TestTeamId,
+            TestUserId,
+            Xunit.TestContext.Current.CancellationToken,
+            GoogleSyncSource.TeamMemberJoined);
 
         await _googleSyncLog.Received(1).LogAsync(
             GoogleSyncLogAction.AccessGranted,
@@ -502,7 +514,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             Arg.Any<string>(),
             TestUserEmail,
             Arg.Any<string>(),
-            Arg.Any<GoogleSyncSource>(),
+            GoogleSyncSource.TeamMemberJoined,
             success: false,
             errorMessage: Arg.Any<string?>(),
             userId: TestUserId,
@@ -764,7 +776,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             Arg.Any<string>(),
             extraEmail,
             Arg.Any<string>(),
-            Arg.Any<GoogleSyncSource>(),
+            GoogleSyncSource.ManualSync,
             success: false,
             errorMessage: Arg.Any<string?>(),
             userId: Arg.Any<Guid?>(),
@@ -893,7 +905,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
     {
         // nobodies-collective/Humans#1101: Drive reports the canonical Gmail address while the
         // only user_emails row is a dotted "+tag" alias. Without an alias-keyed lookup the id
-        // is dropped and the revocation is invisible to /Monitor/Human/{id} and the GDPR export.
+        // is dropped and the revocation is invisible to /Google/Human/{id} and the GDPR export.
         var departed = Guid.NewGuid();
         _syncSettingsService
             .GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
