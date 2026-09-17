@@ -29,7 +29,7 @@
   src/Sections/Humans.MailerLite/Services/MailerLiteGdprContributor.cs
   src/Sections/Humans.Email/Services/EmailOutboxService.cs
   src/Sections/Humans.Backdoor/Services/BackdoorApiKeyService.cs
-  src/Sections/Humans.Rideshare/Services/CachingRideshareService.cs
+  src/Sections/Humans.Rideshare/Services/**
   src/Sections/Humans.Workgroups/Services/**
 -->
 <!-- freshness:flag-on-change
