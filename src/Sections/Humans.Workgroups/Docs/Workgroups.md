@@ -302,8 +302,8 @@ Settings and Register an existing group on first setup or after clearing the que
   "hidden by the group" to everyone else.
 - Erasure of a group's only coordinator on an Active group notifies the Board role that
   the group has no coordinator (`WorkgroupService.Gdpr`).
-- The daily rhythm job (below) — every action it takes writes a log entry, an audit entry
-  (attributed to the job, not a human), and a notification.
+- The daily rhythm job (below) — every action it takes writes an audit entry (attributed to
+  the job, not a human) and a notification; it writes no log entries.
 
 ## Daily Rhythm (design §13)
 
