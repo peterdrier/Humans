@@ -14,6 +14,7 @@
 </nav>
 
 <h1 class="mb-3">@Localizer["Survey_Admin_Queue_Title"]</h1>
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
 @if (Model.Items.Count == 0)
 {
@@ -60,7 +61,7 @@ else
                                         </div>
                                         <div class="modal-body">
                                             <label class="form-label" for="note-@item.Id">@Localizer["Survey_Admin_Queue_RejectNoteLabel"]</label>
-                                            <textarea class="form-control" id="note-@item.Id" name="note" rows="3" required></textarea>
+                                            <textarea class="form-control" id="note-@item.Id" name="note" rows="3" required maxlength="4000">@(ViewData[$"RejectionNote:{item.Id}"])</textarea>
                                             <div class="form-text text-danger">@Localizer["Survey_Admin_Queue_RejectNoteRequired"]</div>
                                         </div>
                                         <div class="modal-footer">

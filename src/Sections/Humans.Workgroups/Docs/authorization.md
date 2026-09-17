@@ -11,6 +11,8 @@ independently enforce lifecycle and document rules; they do not authorize the ca
 
 - Non-members cannot edit a group, its meetings, log, documents or comment responses.
 - Draft documents require membership or Board/Admin; other documents require AppAccess.
+- Meetings and minutes on the group page require AppAccess, regardless of `IsPublic`.
+  That flag controls listing in the community calendar, not privacy on the register.
 - Nested meeting, log, document and comment IDs must belong to the route's group.
   A mismatch returns 404 before mutation, including form submissions.
 - Join, leave, status requests and posting comments do not require the Member operation.

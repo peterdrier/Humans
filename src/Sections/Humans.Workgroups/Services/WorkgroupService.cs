@@ -326,8 +326,7 @@ internal sealed partial class WorkgroupService(
         ApplyMeetingFields(meeting, save);
         await repository.AddMeetingAsync(meeting, ct);
 
-        // A meeting is a sign of life: it clears the dormancy flag like an Update does.
-        await ClearDormancyFlagAsync(workgroup, now, ct);
+        await ClearDormancyFlagAsync(workgroup, meeting.StartUtc, now, actorUserId, ct);
         return meeting.Id;
     }
 
@@ -344,6 +343,7 @@ internal sealed partial class WorkgroupService(
         ApplyMeetingFields(meeting, save);
         meeting.UpdatedAt = clock.GetCurrentInstant();
         await repository.UpdateMeetingAsync(meeting, ct);
+        await ClearDormancyFlagAsync(workgroup, meeting.StartUtc, meeting.UpdatedAt, actorUserId, ct);
     }
 
     public async Task DeleteMeetingAsync(Guid meetingId, Guid actorUserId, CancellationToken ct = default)
@@ -368,6 +368,8 @@ internal sealed partial class WorkgroupService(
         RequireMemberKind(save.Kind);
         if (string.IsNullOrWhiteSpace(save.Body))
             throw new WorkgroupRuleException(WorkgroupErrorKeys.BodyRequired);
+        if (save.Body.Trim().Length > 16000)
+            throw new WorkgroupRuleException(WorkgroupErrorKeys.TextTooLong, 16000);
 
         var now = clock.GetCurrentInstant();
         var entry = new WorkgroupLogEntry
@@ -385,7 +387,7 @@ internal sealed partial class WorkgroupService(
         await repository.AddLogEntryAsync(entry, ct);
 
         if (save.Kind == WorkgroupLogKind.Update)
-            await ClearDormancyFlagAsync(workgroup, now, ct);
+            await ClearDormancyFlagAsync(workgroup, now, now, actorUserId, ct);
 
         return entry.Id;
     }
@@ -403,6 +405,8 @@ internal sealed partial class WorkgroupService(
         RequireMemberKind(save.Kind);
         if (string.IsNullOrWhiteSpace(save.Body))
             throw new WorkgroupRuleException(WorkgroupErrorKeys.BodyRequired);
+        if (save.Body.Trim().Length > 16000)
+            throw new WorkgroupRuleException(WorkgroupErrorKeys.TextTooLong, 16000);
 
         entry.Kind = save.Kind;
         entry.OccurredOn = save.OccurredOn;

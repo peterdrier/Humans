@@ -128,7 +128,7 @@ internal sealed class GoogleDriveAccessSyncService(
             var mode = await syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, ct);
             if (mode != SyncMode.None)
             {
-                await ApplyMissingAndChangedAsync(claim, plan, ct);
+                await ApplyMissingAndChangedAsync(claim, plan, mode, ct);
 
                 if (mode == SyncMode.AddAndRemove)
                     await ApplyExtraAsync(claim, plan, ct);
@@ -200,6 +200,7 @@ internal sealed class GoogleDriveAccessSyncService(
         var directEmails = new HashSet<string>(NormalizingEmailComparer.Instance);
         var roleByEmail = new Dictionary<string, string>(NormalizingEmailComparer.Instance);
         var idByEmail = new Dictionary<string, string>(NormalizingEmailComparer.Instance);
+        var inheritedLevelByEmail = new Dictionary<string, DrivePermissionLevel>(NormalizingEmailComparer.Instance);
 
         foreach (var perm in permissions)
         {
@@ -210,7 +211,13 @@ internal sealed class GoogleDriveAccessSyncService(
             allEmails.Add(email);
             if (!string.IsNullOrEmpty(perm.Role))
                 roleByEmail[email] = perm.Role;
-            if (IsDirectManagedPermission(perm) && perm.Id is not null)
+            // Keep the inherited floor separate from the effective role: the latter
+            // can include a direct elevation that this folder must later revoke.
+            var inheritedLevels = perm.InheritedRoles.Select(ParseApiRole).ToArray();
+            if (inheritedLevels.Length > 0 && inheritedLevels.All(level => level.HasValue))
+                inheritedLevelByEmail[email] = inheritedLevels.Max()!.Value;
+            if (IsDirectManagedPermission(perm) && perm.Id is not null &&
+                (!perm.HasInheritedComponent || inheritedLevelByEmail.ContainsKey(email)))
             {
                 directEmails.Add(email);
                 idByEmail[email] = perm.Id;
@@ -221,7 +228,8 @@ internal sealed class GoogleDriveAccessSyncService(
         foreach (var member in expectedMembers.Values)
         {
             roleByEmail.TryGetValue(member.Email, out var currentRole);
-            var expectedRole = member.Level.ToApiRole();
+            inheritedLevelByEmail.TryGetValue(member.Email, out var inheritedLevel);
+            var expectedRole = (inheritedLevel > member.Level ? inheritedLevel : member.Level).ToApiRole();
 
             MemberSyncState state;
             if (!allEmails.Contains(member.Email))
@@ -237,9 +245,11 @@ internal sealed class GoogleDriveAccessSyncService(
                     ? MemberSyncState.Missing
                     : MemberSyncState.Inherited;
             else
-                state = string.Equals(currentRole, expectedRole, StringComparison.Ordinal)
-                    ? MemberSyncState.Correct
-                    : MemberSyncState.WrongRole;
+                state = inheritedLevel >= member.Level && ParseApiRole(currentRole) == inheritedLevel
+                    ? MemberSyncState.Inherited
+                    : string.Equals(currentRole, expectedRole, StringComparison.Ordinal)
+                        ? MemberSyncState.Correct
+                        : MemberSyncState.WrongRole;
 
             members.Add(new MemberSyncStatus(
                 member.Email, member.DisplayName, state, [],
@@ -250,22 +260,32 @@ internal sealed class GoogleDriveAccessSyncService(
         foreach (var email in extraEmails)
         {
             roleByEmail.TryGetValue(email, out var extraRole);
-            members.Add(new MemberSyncStatus(email, email, MemberSyncState.Extra, [], extraRole));
+            var inheritedRole = inheritedLevelByEmail.TryGetValue(email, out var inheritedLevel)
+                ? inheritedLevel.ToApiRole()
+                : null;
+            // A mixed permission already reduced to its inherited floor grants
+            // nothing beyond the parent. It cannot be deleted here (#945).
+            if (inheritedRole is not null && ParseApiRole(extraRole) <= inheritedLevel)
+                continue;
+            members.Add(new MemberSyncStatus(email, email, MemberSyncState.Extra, [], extraRole, inheritedRole));
         }
 
         return new DrivePlan(members, idByEmail);
     }
 
-    private async Task ApplyMissingAndChangedAsync(FolderClaim claim, DrivePlan plan, CancellationToken ct)
+    private async Task ApplyMissingAndChangedAsync(FolderClaim claim, DrivePlan plan, SyncMode mode, CancellationToken ct)
     {
         foreach (var member in plan.Members.Where(m => m.State is MemberSyncState.Missing or MemberSyncState.WrongRole))
         {
-            // A role change has no direct "update" — the permission is
-            // removed and re-created at the new level (Drive's
-            // permissions.create is idempotent, not an upsert-by-role).
-            if (member.State == MemberSyncState.WrongRole && plan.PermissionIdByEmail.TryGetValue(member.Email, out var oldPermissionId))
+            if (member.State == MemberSyncState.WrongRole && plan.PermissionIdByEmail.TryGetValue(member.Email, out var permissionId))
             {
-                await DeleteAndLogAsync(claim, member.Email, member.UserId, oldPermissionId, ct);
+                // AddOnly can elevate access but cannot reduce it. Unknown roles also
+                // wait for AddAndRemove rather than assuming a change is an elevation.
+                if (mode == SyncMode.AddOnly &&
+                    !(ParseApiRole(member.CurrentRole) < ParseApiRole(member.ExpectedRole)))
+                    continue;
+                await UpdateAndLogAsync(claim, member, permissionId, ct);
+                continue;
             }
 
             var role = member.ExpectedRole!;
@@ -303,11 +323,39 @@ internal sealed class GoogleDriveAccessSyncService(
             if (!plan.PermissionIdByEmail.TryGetValue(member.Email, out var permissionId))
                 continue;
 
+            if (member.ExpectedRole is not null)
+            {
+                // This is a mixed permission: only the direct elevation is extra.
+                // Preserve the inherited floor and do not claim all access was removed.
+                await UpdateAndLogAsync(claim, member, permissionId, ct);
+                continue;
+            }
+
             // Telling someone their access was removed when the delete failed (or the
             // permission turned out to be inherited and untouchable) is a false notice.
             if (await DeleteAndLogAsync(claim, member.Email, member.UserId, permissionId, ct))
                 await NotifyRemovalAsync(member.Email, claim.FolderId, ct);
         }
+    }
+
+    private async Task UpdateAndLogAsync(FolderClaim claim, MemberSyncStatus member, string permissionId, CancellationToken ct)
+    {
+        var role = member.ExpectedRole!;
+        var error = await drivePermissions.UpdatePermissionAsync(claim.FolderId, permissionId, role, ct);
+        var action = ParseApiRole(member.CurrentRole) > ParseApiRole(role)
+            ? GoogleSyncLogAction.AccessRevoked
+            : GoogleSyncLogAction.AccessGranted;
+        var description = error is null
+            ? $"Changed Drive access for {member.Email} from {member.CurrentRole} to {role} ({claim.FolderId})"
+            : $"Google Drive role change failed for {member.Email} (HTTP {error.StatusCode}): {error.RawMessage}";
+        if (error is not null)
+            logger.LogWarning("Google Drive access sync failed for {FolderId} member {Email}: {Error}",
+                claim.FolderId, member.Email, description);
+
+        await googleSyncLog.LogAsync(
+            action, Guid.Empty, description, nameof(GoogleDriveAccessSyncService),
+            member.Email, role, GoogleSyncSource.ScheduledSync, success: error is null,
+            errorMessage: error is null ? null : description, userId: member.UserId, ct: ct);
     }
 
     /// <summary>Deletes one permission and logs the outcome. True only when Drive actually removed it.</summary>
@@ -407,9 +455,9 @@ internal sealed class GoogleDriveAccessSyncService(
         if (string.Equals(perm.Role, "owner", StringComparison.OrdinalIgnoreCase))
             return false;
 
-        // #945: any inherited component makes a permission undeletable at
-        // this level — exclude it from the managed set up front.
-        return !perm.HasInheritedComponent;
+        // Mixed permissions cannot be deleted (#945), but their direct elevation
+        // can be updated down to the inherited floor.
+        return perm.HasDirectComponent;
     }
 
     private sealed record FolderClaim(string FolderId, int ClaimCount, string[] SourceNames, Dictionary<Guid, DrivePermissionLevel> Access)

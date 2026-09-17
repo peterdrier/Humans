@@ -24,6 +24,7 @@ internal static class WorkgroupErrorKeys
     public const string WrongStatus = "Workgroups_Error_WrongStatus";
     public const string SystemLogEntry = "Workgroups_Error_SystemLogEntry";
     public const string BodyRequired = "Workgroups_Error_BodyRequired";
+    public const string TextTooLong = "Workgroups_Error_TextTooLong";
     public const string DocumentFrozen = "Workgroups_Error_DocumentFrozen";
     public const string NotPublished = "Workgroups_Error_NotPublished";
     public const string CategoriesRequired = "Workgroups_Error_CategoriesRequired";

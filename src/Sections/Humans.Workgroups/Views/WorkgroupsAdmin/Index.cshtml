@@ -1,4 +1,5 @@
 @model AdminQueueViewModel
+@using Humans.Workgroups.Controllers
 @{
     ViewData["Title"] = "Workgroups";
 }
@@ -10,6 +11,8 @@
         <a asp-action="Settings" class="btn btn-outline-secondary btn-sm">Settings</a>
     </div>
 </div>
+
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
 @if (string.IsNullOrWhiteSpace(Model.RootDriveFolderId))
 {
@@ -60,7 +63,7 @@ else
                                     </form>
                                 }
                                 <form method="post" asp-action="Refuse" asp-route-id="@w.Id" class="d-flex gap-1">
-                                    <input name="reasons" class="form-control form-control-sm" placeholder="Reasons" required style="min-width: 10rem;" />
+                                    <input name="reasons" value="@(ViewData[$"Reasons:{w.Id}:{nameof(WorkgroupsAdminController.Refuse)}"])" maxlength="4000" class="form-control form-control-sm" placeholder="Reasons" required style="min-width: 10rem;" />
                                     <button type="submit" class="btn btn-sm btn-outline-danger">Refuse</button>
                                 </form>
                             </div>
@@ -156,15 +159,16 @@ else
                         </td>
                         <td class="text-end">
                             <div class="d-flex gap-1 justify-content-end flex-wrap">
-                                @if (w.IsCloseCandidate(Model.Now) || dormancyFlagged.Contains(w.Id))
+                                @if (w.IsCloseCandidate(Model.Now) || dormancyFlagged.Contains(w.Id)
+                                    || ViewData[$"Reasons:{w.Id}:{nameof(WorkgroupsAdminController.Close)}"] is not null)
                                 {
                                     <form method="post" asp-action="Close" asp-route-id="@w.Id" class="d-flex gap-1">
-                                        <input name="reasons" class="form-control form-control-sm" placeholder="Reasons" required style="min-width: 10rem;" />
+                                        <input name="reasons" value="@(ViewData[$"Reasons:{w.Id}:{nameof(WorkgroupsAdminController.Close)}"])" maxlength="4000" class="form-control form-control-sm" placeholder="Reasons" required style="min-width: 10rem;" />
                                         <button type="submit" class="btn btn-sm btn-outline-danger">Close</button>
                                     </form>
                                 }
                                 <form method="post" asp-action="Withdraw" asp-route-id="@w.Id" class="d-flex gap-1">
-                                    <input name="reasons" class="form-control form-control-sm" placeholder="Reasons" required style="min-width: 10rem;" />
+                                    <input name="reasons" value="@(ViewData[$"Reasons:{w.Id}:{nameof(WorkgroupsAdminController.Withdraw)}"])" maxlength="4000" class="form-control form-control-sm" placeholder="Reasons" required style="min-width: 10rem;" />
                                     <button type="submit" class="btn btn-sm btn-outline-secondary">Withdraw</button>
                                 </form>
                                 @{ var wc = w.CoordinatorUserIds().ToList(); }

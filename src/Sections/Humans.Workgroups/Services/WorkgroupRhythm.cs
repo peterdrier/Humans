@@ -67,13 +67,13 @@ internal static class WorkgroupRhythm
     /// The last time the group showed a sign of life: an Update entry or a meeting.
     /// A Note or a Disclosure is not activity — §13 counts Update or Meeting only.
     /// </summary>
-    public static Instant? LastActivityAt(this WorkgroupInfo w)
+    public static Instant? LastActivityAt(this WorkgroupInfo w, Instant now)
     {
         var lastUpdate = w.LogEntries
             .Where(e => e.Kind == WorkgroupLogKind.Update)
             .Select(e => (Instant?)e.CreatedAt)
             .Max();
-        var lastMeeting = w.Meetings.Select(m => (Instant?)m.StartUtc).Max();
+        var lastMeeting = w.Meetings.Where(m => m.StartUtc <= now).Select(m => (Instant?)m.StartUtc).Max();
 
         return (lastUpdate, lastMeeting) switch
         {
@@ -90,7 +90,7 @@ internal static class WorkgroupRhythm
     /// </summary>
     public static Duration? SilenceFor(this WorkgroupInfo w, Instant now)
     {
-        var since = w.LastActivityAt() ?? w.RegisteredAt;
+        var since = w.LastActivityAt(now) ?? w.RegisteredAt;
         return since is null ? null : now - since.Value;
     }
 
@@ -111,7 +111,7 @@ internal static class WorkgroupRhythm
         w.Status == WorkgroupStatus.Active
         && w.DormantSince is { } since
         && now - since >= CloseCandidateAfter
-        && (w.LastActivityAt() is null || w.LastActivityAt() < since);
+        && (w.LastActivityAt(now) is null || w.LastActivityAt(now) < since);
 
     /// <summary>The most recent status request nobody has answered with a later Update.</summary>
     public static Instant? UnansweredStatusRequestAt(this WorkgroupInfo w)
