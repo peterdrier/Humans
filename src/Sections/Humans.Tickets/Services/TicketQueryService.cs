@@ -384,10 +384,12 @@ internal sealed class TicketQueryService(
                     Donations = paid.Sum(o => o.DonationAmount),
                     VipDonations = paid.Sum(o => o.VipDonations),
                     VatAmount = paid.Sum(o => o.VatAmount),
-                    // Void seats stay in TotalAmount but out of the VAT base and VipDonations,
-                    // so drop them here too or the taxable income would not match the VAT.
+                    // Built over the live seats the way TicketSyncService.ComputeOrderVat builds
+                    // the VAT base — Σ min(price, threshold) less the discount, floored per order.
+                    // TotalAmount cannot stand in: a transfer voids a seat and adds a live
+                    // replacement at the same price without changing the order total.
                     TicketIncomeInclVat = paid.Sum(o =>
-                        o.TotalAmount - o.DonationAmount - o.VipDonations - o.VoidedSeatGross),
+                        Math.Max(0m, o.LiveSeatGross - o.VipDonations - o.DiscountAmount)),
                     // A refund returns the gross, never the processing fees already charged.
                     StripeFees = paid.Sum(o => o.StripeFee ?? 0m) + refundedRows.Sum(r => r.StripeFee ?? 0m),
                     ApplicationFees = paid.Sum(o => o.ApplicationFee ?? 0m)

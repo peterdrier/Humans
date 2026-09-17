@@ -268,6 +268,42 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
+    public async Task GetSalesAggregatesAsync_MonthlySales_TicketIncomeCountsATransferredSeatOnce()
+    {
+        // An automated transfer voids the original seat and adds a Valid replacement at the
+        // same price on the same order; TotalAmount never moves. The month must report one seat.
+        var orderId = Guid.NewGuid();
+        TicketsDb.TicketOrders.Add(new TicketOrder
+        {
+            Id = orderId,
+            VendorOrderId = "ord_transferred",
+            BuyerName = "Buyer",
+            BuyerEmail = "buyer@example.com",
+            TotalAmount = 315m,
+            DonationAmount = 0m,
+            VatAmount = 28.64m,
+            Currency = "EUR",
+            PaymentStatus = TicketPaymentStatus.Paid,
+            VendorEventId = "ev_test",
+            PurchasedAt = Instant.FromUtc(2026, 3, 2, 10, 0),
+            SyncedAt = Instant.FromUtc(2026, 3, 2, 10, 0),
+            Attendees =
+            [
+                MakePricedAttendee(orderId, "tkt_original", "Full Week", 315m, TicketAttendeeStatus.Void),
+                MakePricedAttendee(orderId, "tkt_reissued", "Full Week", 315m, TicketAttendeeStatus.Valid)
+            ]
+        });
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var month = (await _service.GetSalesAggregatesAsync()).MonthlySales.Single();
+
+        month.TicketsSold.Should().Be(1);
+        month.TicketIncomeInclVat.Should().Be(315m);
+        month.TicketIncomeExVat.Should().Be(315m - 28.64m);
+        month.TicketIncomeExVat.Should().BeGreaterThanOrEqualTo(0m);
+    }
+
+    [HumansFact]
     public async Task GetSalesAggregatesAsync_GroupsByTicketTypeAndPrice()
     {
         var orderId = Guid.NewGuid();

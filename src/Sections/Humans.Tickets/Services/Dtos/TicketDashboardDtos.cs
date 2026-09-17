@@ -116,9 +116,9 @@ internal sealed class MonthlySalesAggregate
     public decimal RefundedGross { get; init; }
 
     /// <summary>
-    /// Taxable ticket income, VAT included: gross less standalone donations, VIP premiums
-    /// and the gross of seats the VAT base excludes (anything not Valid/CheckedIn), so it
-    /// is the base <see cref="VatAmount"/> was charged on.
+    /// Taxable ticket income, VAT included — built the way the VAT base is, per order:
+    /// Σ min(price, VIP threshold) over Valid/CheckedIn seats less the order discount,
+    /// floored at zero. So it is the base <see cref="VatAmount"/> was charged on.
     /// </summary>
     public decimal TicketIncomeInclVat { get; init; }
 
@@ -336,11 +336,12 @@ internal sealed class PaidOrderSalesRow
     public decimal VipDonations { get; init; }
 
     /// <summary>
-    /// Sum of <c>Price</c> over the order's seats that are neither Valid nor CheckedIn —
-    /// the part of <see cref="TotalAmount"/> that <see cref="VipDonations"/> and the VAT
-    /// base leave out.
+    /// Sum of <c>Price</c> over the order's Valid/CheckedIn seats — the seat set the VAT base
+    /// is taken over. Not derivable from <see cref="TotalAmount"/>: a transfer voids the
+    /// original seat and adds a live replacement at the same price on the same order.
     /// </summary>
-    public decimal VoidedSeatGross { get; init; }
+    public decimal LiveSeatGross { get; init; }
+    public decimal DiscountAmount { get; init; }
     public decimal? StripeFee { get; init; }
     public decimal? ApplicationFee { get; init; }
 }

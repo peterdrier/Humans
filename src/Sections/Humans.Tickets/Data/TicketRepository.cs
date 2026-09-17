@@ -571,10 +571,11 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                         (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn) &&
                         a.Price > TicketConstants.VipThresholdEuros)
                     .Sum(a => a.Price - TicketConstants.VipThresholdEuros),
-                VoidedSeatGross = o.Attendees
+                LiveSeatGross = o.Attendees
                     .Where(a =>
-                        a.Status != TicketAttendeeStatus.Valid && a.Status != TicketAttendeeStatus.CheckedIn)
+                        a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn)
                     .Sum(a => a.Price),
+                DiscountAmount = o.DiscountAmount ?? 0m,
                 StripeFee = o.StripeFee,
                 ApplicationFee = o.ApplicationFee,
             })
