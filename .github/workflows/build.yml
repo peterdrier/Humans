@@ -97,6 +97,14 @@ jobs:
     - name: Build
       run: dotnet build Humans.slnx --no-restore --configuration Release
 
+    - name: Setup Node for browser module tests
+      uses: actions/setup-node@v7
+      with:
+        node-version: '24'
+
+    - name: Test section browser modules
+      run: node --test 'tests/Humans.*.Tests/Browser/*.test.*'
+
     - name: Test
       # --blame-hang-timeout 2m is the CI hang guard: if the test host stalls
       # for 2+ minutes we dump and fail the run rather than burning the whole

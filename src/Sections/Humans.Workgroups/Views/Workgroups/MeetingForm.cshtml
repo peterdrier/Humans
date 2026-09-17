@@ -56,6 +56,7 @@
                 <div class="col-md-6">
                     <label asp-for="LocationUrl" class="form-label">@Localizer["Workgroups_Field_LocationUrl"]</label>
                     <input asp-for="LocationUrl" class="form-control" maxlength="2000" placeholder="https://…" />
+                    <span asp-validation-for="LocationUrl" class="text-danger"></span>
                 </div>
             </div>
 

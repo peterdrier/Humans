@@ -35,6 +35,22 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
+    public async Task FutureMeeting_DoesNotPostponeTheUpdateNudge()
+    {
+        var now = Clock.GetCurrentInstant();
+        var workgroup = await SeedWorkgroupAsync(registeredAt: now.Minus(Duration.FromDays(90)));
+        await AddMeetingAsync(workgroup.Id, now.Plus(Duration.FromDays(90)));
+
+        await NewService().RunDailyRhythmAsync(Ct);
+
+        // Only a meeting that has actually started counts as a sign of life: a group cannot
+        // put the nudge off by scheduling something three months out.
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.WorkgroupUpdateDueNotified, AuditEntityTypes.Workgroup, workgroup.Id,
+            Arg.Any<string>(), WorkgroupService.WorkgroupRhythmJobName);
+    }
+
+    [HumansFact]
     public async Task TwentyNineDaysSilent_DoesNotNudge()
     {
         await SeedWorkgroupAsync(registeredAt: Clock.GetCurrentInstant().Minus(Duration.FromDays(29)));

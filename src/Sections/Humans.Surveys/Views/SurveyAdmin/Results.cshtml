@@ -14,9 +14,9 @@
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">@Localizer["Survey_Admin_Common_AdminBreadcrumb"]</a></li>
+        <li class="breadcrumb-item" authorize-policy="@Humans.Base.Authorization.PolicyNames.BoardOrAdmin"><a asp-controller="Admin" asp-action="Index">@Localizer["Survey_Admin_Common_AdminBreadcrumb"]</a></li>
         <li class="breadcrumb-item"><a asp-controller="SurveyAdmin" asp-action="Index">@Localizer["Survey_Admin_Index_Title"]</a></li>
-        <li class="breadcrumb-item"><a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@Model.SurveyId">@(string.IsNullOrWhiteSpace(Model.Title) ? untitled : Model.Title)</a></li>
+        <li class="breadcrumb-item" authorize-policy="@Humans.Base.Authorization.PolicyNames.BoardOrAdmin"><a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@Model.SurveyId">@(string.IsNullOrWhiteSpace(Model.Title) ? untitled : Model.Title)</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Localizer["Survey_Admin_Results_Breadcrumb"]</li>
     </ol>
 </nav>
@@ -239,7 +239,8 @@ else
 
                         @if (Model.Status == SurveyStatus.Closed)
                         {
-                            <form asp-action="RankedAvailability" asp-route-id="@Model.SurveyId" method="post">
+                            <form asp-action="RankedAvailability" asp-route-id="@Model.SurveyId" method="post"
+                                  authorize-policy="@Humans.Base.Authorization.PolicyNames.BoardOrAdmin">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="questionId" value="@q.QuestionId" />
                                 <fieldset>

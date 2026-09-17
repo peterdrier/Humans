@@ -372,6 +372,8 @@ internal sealed partial class WorkgroupService(
         RequireMemberKind(save.Kind);
         if (string.IsNullOrWhiteSpace(save.Body))
             throw new WorkgroupRuleException(WorkgroupErrorKeys.BodyRequired);
+        if (save.Body.Trim().Length > 16000)
+            throw new WorkgroupRuleException(WorkgroupErrorKeys.TextTooLong, 16000);
 
         var now = clock.GetCurrentInstant();
         var entry = new WorkgroupLogEntry
@@ -404,6 +406,8 @@ internal sealed partial class WorkgroupService(
         RequireMemberKind(save.Kind);
         if (string.IsNullOrWhiteSpace(save.Body))
             throw new WorkgroupRuleException(WorkgroupErrorKeys.BodyRequired);
+        if (save.Body.Trim().Length > 16000)
+            throw new WorkgroupRuleException(WorkgroupErrorKeys.TextTooLong, 16000);
 
         entry.Kind = save.Kind;
         entry.OccurredOn = save.OccurredOn;

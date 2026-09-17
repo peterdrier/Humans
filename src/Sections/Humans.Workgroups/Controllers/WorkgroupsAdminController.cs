@@ -31,7 +31,7 @@ internal sealed class WorkgroupsAdminController(
     public async Task<IActionResult> Index(CancellationToken ct)
     {
         var register = await workgroups.GetRegisterAsync(ct);
-        return View(new AdminQueueViewModel
+        return View(nameof(Index), new AdminQueueViewModel
         {
             Now = clock.GetCurrentInstant(),
             Register = register,
@@ -55,17 +55,17 @@ internal sealed class WorkgroupsAdminController(
     [HttpPost("{id:guid}/Refuse")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Refuse(Guid id, string reasons, CancellationToken ct) =>
-        ActAsync(actor => workgroups.RefuseAsync(id, actor, reasons, ct), "Registration refused", ct);
+        ActAsync(actor => workgroups.RefuseAsync(id, actor, reasons, ct), "Registration refused", ct, (id, reasons));
 
     [HttpPost("{id:guid}/Withdraw")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Withdraw(Guid id, string reasons, CancellationToken ct) =>
-        ActAsync(actor => workgroups.WithdrawAsync(id, actor, reasons, ct), "Registration withdrawn", ct);
+        ActAsync(actor => workgroups.WithdrawAsync(id, actor, reasons, ct), "Registration withdrawn", ct, (id, reasons));
 
     [HttpPost("{id:guid}/Close")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Close(Guid id, string reasons, CancellationToken ct) =>
-        ActAsync(actor => workgroups.CloseAsync(id, actor, reasons, ct), "Group closed", ct);
+        ActAsync(actor => workgroups.CloseAsync(id, actor, reasons, ct), "Group closed", ct, (id, reasons));
 
     [HttpPost("{id:guid}/Reactivate")]
     [ValidateAntiForgeryToken]
@@ -156,8 +156,13 @@ internal sealed class WorkgroupsAdminController(
 
     // ── Plumbing ──────────────────────────────────────────────────────────
 
-    /// <summary>Admin POSTs all land back on the queue.</summary>
-    private async Task<IActionResult> ActAsync(Func<Guid, Task> action, string success, CancellationToken ct)
+    /// <summary>
+    /// Admin POSTs all land back on the queue. A rule failure on a reasons form re-renders
+    /// the queue with the text still in the box instead of discarding it.
+    /// </summary>
+    private async Task<IActionResult> ActAsync(
+        Func<Guid, Task> action, string success, CancellationToken ct,
+        (Guid Id, string Reasons)? submittedReasons = null)
     {
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
@@ -177,6 +182,12 @@ internal sealed class WorkgroupsAdminController(
         {
             logger.LogInformation(ex, "Workgroups admin {Action}: rule {Rule}",
                 ControllerContext.ActionDescriptor.ActionName, ex.Key);
+            if (submittedReasons is { } submitted)
+            {
+                ModelState.AddModelError(string.Empty, localizer[ex.Key, ex.Args]);
+                ViewData[$"Reasons:{submitted.Id}:{ControllerContext.ActionDescriptor.ActionName}"] = submitted.Reasons;
+                return await Index(ct);
+            }
             SetError(localizer[ex.Key, ex.Args]);
         }
 

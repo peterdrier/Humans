@@ -1,4 +1,5 @@
 using Humans.Base.Hosting;
+using Humans.Base.Authorization;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Base.Models.Tables;
@@ -22,8 +23,16 @@ namespace Humans.Workgroups;
 /// Workgroups' DI entry point, at the project root by convention. Discovered by Shell —
 /// nothing names it, so it needs no section prefix.
 /// </summary>
-public sealed class Section : ISection
+public sealed class Section : ISection, ISectionAdminNav
 {
+    IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
+    [
+        new("Governance", [
+            new("Workgroups", "WorkgroupsAdmin", "Index", null, null,
+                "fa-solid fa-people-group", PolicyNames.BoardOrAdmin, Weight: 40)
+        ], Weight: 70)
+    ];
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSectionDbContext<WorkgroupsDbContext>(sentinelTable: "workgroups");

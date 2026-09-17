@@ -27,6 +27,31 @@ namespace Humans.Surveys.Tests.Controllers;
 public sealed class SurveyAdminControllerTests
 {
     [HumansFact]
+    public async Task Reject_invalid_note_renders_queue_with_original_text_and_error()
+    {
+        var surveyId = Guid.NewGuid();
+        var note = new string('x', 4001);
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.GetPendingApprovalQueueAsync(Arg.Any<CancellationToken>())
+            .Returns([new SurveyPendingApprovalItem(surveyId, "Survey", Guid.NewGuid(), "Author", null)]);
+        surveys.RejectAsync(surveyId, Arg.Any<SurveyViewer>(), note, Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new InvalidOperationException("A rejection note must be 4000 characters or fewer."));
+        var sut = CreateController(surveys, isBoardOrAdmin: true);
+
+        var result = await sut.Reject(surveyId, note, Xunit.TestContext.Current.CancellationToken);
+
+        var view = result.Should().BeOfType<ViewResult>().Subject;
+        view.ViewName.Should().Be(nameof(SurveyAdminController.Queue));
+        view.Model.Should().BeOfType<SurveyPendingApprovalViewModel>().Subject.Items
+            .Should().ContainSingle().Which.Id.Should().Be(surveyId);
+        view.ViewData[$"RejectionNote:{surveyId}"].Should().Be(note);
+        sut.ModelState.IsValid.Should().BeFalse();
+        sut.ModelState[string.Empty]!.Errors.Should().ContainSingle()
+            .Which.ErrorMessage.Should().Contain("4000");
+        sut.TempData.Should().BeEmpty("oversized text must not enter the TempData cookie");
+    }
+
+    [HumansFact]
     public async Task Preview_renders_a_draft_survey_through_the_respondent_intro()
     {
         var surveyId = Guid.NewGuid();
@@ -340,6 +365,44 @@ public sealed class SurveyAdminControllerTests
         var model = result.Should().BeOfType<ViewResult>().Which.Model
             .Should().BeOfType<SurveyBuilderViewModel>().Which;
         model.IsBoardOrAdmin.Should().BeFalse("Open, Close, preview and recipient review are BoardOrAdmin");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(true, false, true)]
+    [Xunit.InlineData(true, true, true)]
+    [Xunit.InlineData(false, true, false)]
+    public async Task Builder_submit_control_matches_author_ownership(bool ownsSurvey, bool board, bool canSubmit)
+    {
+        var viewerId = Guid.NewGuid();
+        var surveyId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Survey"),
+                ownsSurvey ? viewerId : Guid.NewGuid()));
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: viewerId, isBoardOrAdmin: board);
+
+        var result = await sut.Edit(surveyId, Xunit.TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<SurveyBuilderViewModel>().Which;
+        model.CanSubmit.Should().Be(canSubmit);
+    }
+
+    [HumansFact]
+    public async Task Invalid_save_rebuilds_submit_control_from_the_stored_owner()
+    {
+        var viewerId = Guid.NewGuid();
+        var surveyId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Survey"), Guid.NewGuid()));
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: viewerId, isBoardOrAdmin: true);
+        sut.ModelState.AddModelError("Title", "Required");
+
+        var result = await sut.Save(new SurveyBuilderViewModel { Id = surveyId, CanSubmit = true }, null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<SurveyBuilderViewModel>().Which;
+        model.CanSubmit.Should().BeFalse();
     }
 
     [HumansFact]

@@ -154,7 +154,6 @@ internal sealed class MeetingFormViewModel
     [StringLength(200)]
     public string? Location { get; set; }
 
-    [StringLength(500)]
     public string? LocationUrl { get; set; }
 
     /// <summary>A public meeting reaches everyone's community calendar through Calendar's fan-out.</summary>
