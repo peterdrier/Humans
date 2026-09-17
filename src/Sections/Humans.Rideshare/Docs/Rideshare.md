@@ -220,6 +220,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 
 ## Invariants
 
+- **The list works independently of the map.** Interest forms remain usable from the server-rendered cards when the map library, WebGL, map load or board data request fails.
+
 - **No anonymous postings.** Every trip, request, and interest is bound to a real Humans profile (`UserId`/`FromUserId`).
 - **Members-only board.** Every route requires `AppAccess` or `RideshareAdminOrAdmin`; there is no anonymous or public access.
 - **Interest always anchors to a trip.** `RideshareInterest.TripId` is required on both the rider→offer and driver→request-pin paths; `RequestId` is an optional origin pointer only, never the anchor.

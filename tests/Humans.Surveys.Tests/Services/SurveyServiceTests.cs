@@ -4096,6 +4096,35 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task RejectAsync_rejects_an_oversized_note_without_persisting_or_auditing()
+    {
+        var survey = SurveyWith(SurveyStatus.PendingApproval, null, null);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var act = async () => await CreateService().RejectAsync(
+            survey.Id, new SurveyViewer(Guid.NewGuid(), IsBoardOrAdmin: true), new string('x', 4001),
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*4000*");
+        await _repo.DidNotReceive().RejectAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task RejectAsync_accepts_a_trimmed_note_at_the_storage_limit()
+    {
+        var survey = SurveyWith(SurveyStatus.PendingApproval, null, null);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        var note = new string('x', 4000);
+
+        await CreateService().RejectAsync(
+            survey.Id, new SurveyViewer(Guid.NewGuid(), IsBoardOrAdmin: true), "  " + note + "  ",
+            TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).RejectAsync(survey.Id, note, _clock.GetCurrentInstant(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task RejectAsync_throws_for_a_non_boardOrAdmin_viewer()
     {
         var survey = SurveyWith(SurveyStatus.PendingApproval, null, null);

@@ -99,6 +99,34 @@ public class StubGoogleDrivePermissionsClientTests
     }
 
     [HumansFact]
+    public async Task UpdatePermissionAsync_ExistingPermission_PreservesIdentityAndChangesRole()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var folderId = _client.SeedFolder("Team A");
+        await _client.CreatePermissionAsync(folderId, "alice@nobodies.team", "writer", ct);
+        var before = (await _client.ListPermissionsAsync(folderId, ct)).Permissions!.Single();
+
+        var error = await _client.UpdatePermissionAsync(folderId, before.Id!, "reader", ct);
+
+        error.Should().BeNull();
+        var after = (await _client.ListPermissionsAsync(folderId, ct)).Permissions!.Single();
+        after.Id.Should().Be(before.Id);
+        after.EmailAddress.Should().Be(before.EmailAddress);
+        after.Role.Should().Be("reader");
+    }
+
+    [HumansFact]
+    public async Task UpdatePermissionAsync_MissingFileOrPermission_Returns404()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var folderId = _client.SeedFolder("Team A");
+
+        (await _client.UpdatePermissionAsync("no-file", "no-permission", "reader", ct))!.StatusCode.Should().Be(404);
+        (await _client.UpdatePermissionAsync(folderId, "no-permission", "reader", ct))!.StatusCode.Should().Be(404);
+        (await _client.ListPermissionsAsync(folderId, ct)).Permissions.Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task GetFileAsync_AfterCreateFolder_ReturnsFolderMetadata()
     {
         var folderId = _client.SeedFolder("Team A");

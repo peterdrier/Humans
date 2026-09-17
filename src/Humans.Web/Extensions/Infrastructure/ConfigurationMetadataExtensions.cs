@@ -77,6 +77,12 @@ internal static class ConfigurationMetadataExtensions
             configuration.GetOptionalSetting(configRegistry, "Sepa:ChargeBearer", "SEPA");
             // Hard per-transfer ceiling; defaults to €50 when unset.
             configuration.GetOptionalSetting(configRegistry, "Sepa:MaxPayoutPerTransfer", "SEPA");
+            // Booking on /Finance/Sepa: the Holded treasury the payout left from and that bank's
+            // ledger account number. Either unset, the screen offers no Book buttons.
+            configuration.GetOptionalSetting(configRegistry, "Sepa:TreasuryAccountId", "SEPA",
+                importance: ConfigurationImportance.Recommended);
+            configuration.GetOptionalSetting(configRegistry, "Sepa:TreasuryLedgerAccount", "SEPA",
+                importance: ConfigurationImportance.Recommended);
 
             // City Planning team slug — without it, only admins can edit polygons.
             configuration.GetOptionalSetting(configRegistry, "CityPlanning:CityPlanningTeamSlug", "City Planning");

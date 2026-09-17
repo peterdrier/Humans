@@ -72,6 +72,19 @@ internal interface IStoreRepository : IRepository
         int year,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns every <see cref="Order"/> of <paramref name="year"/> by its persisted
+    /// <see cref="Order.Year"/>, plus legacy rows still at <c>Year = 0</c> whose
+    /// <c>CampSeasonId</c> is in <paramref name="campSeasonIds"/>, with <c>Lines</c> and
+    /// <c>Payments</c> eager-loaded. Selection does not go through the counterparty, so an
+    /// order whose camp was since deleted or whose team was reparented is still returned —
+    /// the accounting export must never lose a row that carries money.
+    /// </summary>
+    Task<IReadOnlyList<Order>> GetOrdersForYearWithLinesAndPaymentsAsync(
+        int year,
+        IReadOnlyCollection<Guid> campSeasonIds,
+        CancellationToken ct = default);
+
     Task AddOrderAsync(Order order, CancellationToken ct = default);
     Task UpdateOrderAsync(Order order, CancellationToken ct = default);
     /// <summary>
@@ -125,6 +138,13 @@ internal interface IStoreRepository : IRepository
     Task<IReadOnlyList<RecordedStripePayment>> GetRecordedStripePaymentsAsync(CancellationToken ct = default);
 
     // Invoices
+
+    /// <summary>
+    /// Returns the issued invoice of every order in <paramref name="orderIds"/> that has one.
+    /// Empty input returns an empty list without a round-trip. Feeds the accounting export's
+    /// invoice number (<c>IStoreAccountingRead</c>).
+    /// </summary>
+    Task<IReadOnlyList<Invoice>> GetInvoicesForOrdersAsync(IReadOnlyCollection<Guid> orderIds, CancellationToken ct = default);
 
     /// <summary>
     /// Writes the issued <paramref name="invoice"/> and the now-frozen <paramref name="order"/>

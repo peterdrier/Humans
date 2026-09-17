@@ -49,7 +49,7 @@ Workgroups are **intentionally time-bound**, unlike Teams (departments), which r
 - A **Coordinator** is one of the one or two people named on the register; the Board appoints whoever the group proposes (clause 3). Technically: a member row with `Role = Coordinator`.
 - The **Secretary** is a Board member; every Secretary action is available to `BoardOrAdmin`. No new role.
 - A **Member** is any signed-in human who joined. Standing approval (clause 3) means joining is immediate.
-- A **Meeting** is a dated session the group owns, optionally public, with minutes filled in afterwards.
+- A **Meeting** is a dated session the group owns, optionally listed in the community calendar, with minutes filled in afterwards. Everyone with app access can read meetings and minutes on the group page regardless of calendar listing.
 - A **Log entry** is one dated line in the group's history. System kinds record lifecycle steps; member kinds record updates, scope changes, disclosures, status requests and notes.
 - A **Document** is a Markdown artefact with a Draft → Published → Delivered life, an optional comment period, and, once delivered, the Board's disposition.
 - A **Comment** is a signed-in human's remark on a published document during its comment period, tagged with one of the document's categories, and answered by the group with a disposition and response.
@@ -125,7 +125,7 @@ Own project `Humans.Workgroups`, own `WorkgroupsDbContext`, migrations under `Mi
 | Reasons | string (4000)? | Refusal or withdrawal reasons |
 | AppliedByUserId | Guid? | Bare Guid; nulled on erasure |
 | AppliedAt / RegisteredAt / EndedAt | Instant / Instant? / Instant? | |
-| DormantSince | Instant? | Set by the job on 60 days' silence, cleared by the next Update or Meeting; distinct from the Dormant status |
+| DormantSince | Instant? | Set by the job on 60 days' silence, cleared by an Update or a meeting that has started since the inquiry; distinct from the Dormant status |
 | CreatedAt / UpdatedAt | Instant | |
 
 Indexes: `Slug` unique; `Status`; `DriveFolderId` unique filtered non-null.
@@ -152,7 +152,7 @@ Unique filtered `(WorkgroupId, UserId)` where `LeftAt is null`. Invariant: an Ac
 | Title | string (200) | |
 | StartUtc / EndUtc | Instant | |
 | Location / LocationUrl | string (500)? / string (2000)? | |
-| IsPublic | bool | Public meetings appear on everyone's community calendar; otherwise members only |
+| IsPublic | bool | Adds the meeting to everyone's community calendar. Without it, only group members receive it in their personal calendar; everyone with app access can still read the meeting and minutes in the register |
 | Minutes | string? | Markdown, filled in afterwards; "minutes or summarised transcripts" per the guidance |
 | CreatedByUserId | Guid? | Bare Guid |
 | CreatedAt / UpdatedAt | Instant | |
@@ -283,7 +283,11 @@ One Hangfire job (`SectionJobs` seam), daily, Active groups only. Every action i
 | Applied older than 14 days | Queue row red; notify Board once |
 | Delivered document with no disposition, older than 60 days | Queue row highlighted |
 
-Any Update or Meeting clears `DormantSince`. No automatic closing.
+An Update or a meeting that has started at or after the inquiry clears `DormantSince`.
+Scheduling a future meeting does not count as activity or clear an inquiry. The daily
+pass recognizes it when its start arrives. A past meeting before the inquiry does not
+answer it. Clearing is persisted before `WorkgroupDormancyCleared` is audited; repeated
+successful passes do not repeat the transition. No automatic closing.
 
 "Request a status update" is a button any signed-in human may press once per group per 7 days; it writes StatusRequested with an optional one-line question and notifies the coordinators.
 
@@ -349,6 +353,8 @@ Authorization per design-rules §11: `WorkgroupAuthorizationHandler` + `Workgrou
 - **"My workgroups"** on the member home dashboard through the existing `ISectionMemberDashboard` seam: groups the user belongs to, with update-due and open-comment badges; empty state links to the register.
 - `ISectionThingsToDo`: "monthly update due" and "status update requested" for coordinators.
 - Admin tile "Workgroups" through `ISectionAdminTiles` for `BoardOrAdmin`.
+- A Workgroups link in the Governance admin sidebar group through `ISectionAdminNav`,
+  visible to `BoardOrAdmin` even with an empty queue so initial setup stays reachable.
 
 The `governance-scope` memory atom is updated in this PR: Governance is the layer that runs the association itself (statutes, tiers, Board voting, assemblies, working groups), above the event layer everything else serves. Board usage is still audience, not ownership; Workgroups stays its own section and reaches the Governance page only through the seam.
 

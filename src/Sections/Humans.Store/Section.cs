@@ -27,10 +27,12 @@ public sealed class Section : ISection
         // §15b repository pattern: Repository uses IDbContextFactory<StoreDbContext>
         // so it can be Singleton; every method opens its own short-lived DbContext.
         services.AddSingleton<IStoreRepository, Repository>();
-        // Store publishes no cross-section read contract. It had one — IStoreServiceRead, added
-        // for the admin dashboard tile (nobodies-collective/Humans#1264) — but the only caller
-        // was ever this section's own SectionAdminTiles, which resolves Service directly now.
+        // Store's one cross-section contract is the accounting read behind /api/backdoor/store
+        // (peterdrier/Humans#1719). The earlier IStoreServiceRead, added for the admin dashboard
+        // tile (nobodies-collective/Humans#1264), was retired: its only caller was ever this
+        // section's own SectionAdminTiles, which resolves Service directly.
         services.AddScoped<Service>();
+        services.AddScoped<IStoreAccountingRead>(sp => sp.GetRequiredService<Service>());
 
         // Resource-based handler; the StoreCatalogAdmin *policy* stays in Shell (design §8).
         services.AddScoped<IAuthorizationHandler, OrderAuthorizationHandler>();

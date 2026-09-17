@@ -156,6 +156,12 @@ Collision handling is fail-closed. If more than one source claims the same group
 
 Group sync requests use Hangfire instead of in-process retry. Team membership and email changes commit first, then enqueue scoped group reconciliation by group key. This keeps Google API failures outside the Teams transaction and makes retries visible and independently executable.
 
+## Source-Owned Drive Access
+
+`GoogleDriveAccessSyncService` reconciles folder claims from `IGoogleDriveAccessSource`, including Workgroups. A Google permission can combine inherited access with a direct grant. This path preserves both components and updates direct role changes in place. Desired access never falls below the highest inherited role; dormancy, departure and retirement reduce excess direct access to that floor. An equal-floor permission needs no further mutation whether Google returns it as mixed or purely inherited.
+
+Pure direct extras are deleted. Mixed grants are never deleted and their role reduction does not send a total-removal notice. Role updates record success or failure in the Google sync log. Preview and `None` make no changes; `AddOnly` permits additions and elevations, while downgrades and removals require `AddAndRemove`. The legacy Teams Drive path retains its inherited-permission exclusion.
+
 ## Data Model
 
 ### GoogleResource Entity
@@ -280,7 +286,7 @@ public class SyncPreviewResult
 All Drive resources in this system are on Shared Drives. This has important implications for permission management:
 
 ### Inherited vs Direct Permissions
-- **Inherited permissions** come from the Shared Drive itself (e.g., all drive members get access to all folders). These are NOT managed by this system and are excluded from drift detection and sync.
+- **Inherited permissions** come from the Shared Drive or parent folders. The system preserves this access; the source-claimed reconciler tracks its role as the minimum permitted role when updating a mixed grant.
 - **Direct permissions** are set on individual folders within the Shared Drive. These ARE managed by this system.
 
 ### Permission Filtering Logic
@@ -291,9 +297,10 @@ When listing permissions, the system uses `permissionDetails` from the Drive API
 // 2. Role is not "owner"
 // 3. Has a valid email address
 // 4. Is not a service account (.iam.gserviceaccount.com)
-// 5. Has NO inherited component (permissionDetails.Any(d => d.Inherited) == false) —
-//    a permission with a mix of direct and inherited detail entries is excluded
-//    too, since Drive still 403s deleting it at this level (#945)
+// 5. Legacy Teams-keyed path: has NO inherited component.
+//    Source-claimed path: has a direct component; mixed grants require a known
+//    inherited floor and are updated in place, never deleted at the child
+//    (nobodies-collective/Humans#945). Floor-only grants need no mutation.
 ```
 
 ### API Requirements
@@ -607,7 +614,7 @@ On Google API error (resource sync):
 | Invalid email (400) | Permanent — mark user email rejected |
 | Permission denied (403) | Permanent — no Google account for address, mark rejected |
 | Folder not found | Resource marked inactive — an admin re-links the folder |
-| Inherited permission delete | Excluded from the removal set before the delete is ever attempted — any permission with an inherited component (not just fully-inherited ones) is skipped. If Drive still 403s on a race (inheritance changed between list and delete), the failure is classified terminal, logged once, and not retried until the next reconciliation pass (#945) |
+| Inherited permission delete | Any permission with an inherited component is excluded from deletion. Source-owned Drive reconciliation can instead reduce a direct elevation to the inherited floor, as described above. If Drive still 403s on a delete race (inheritance changed between list and delete), the failure is classified terminal, logged once, and not retried until the next reconciliation pass (nobodies-collective/Humans#945) |
 
 ### Failed-Sync Admin Meter
 

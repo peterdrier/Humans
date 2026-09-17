@@ -211,7 +211,7 @@
   <data name="Workgroups_DiscordChannel" xml:space="preserve"><value>Canal Discord</value></data>
   <data name="Workgroups_DriveFolder" xml:space="preserve"><value>Dossier Drive</value></data>
   <data name="Workgroups_NextMeeting" xml:space="preserve"><value>Prochaine réunion</value></data>
-  <data name="Workgroups_PublicMeeting" xml:space="preserve"><value>Public</value></data>
+  <data name="Workgroups_PublicMeeting" xml:space="preserve"><value>Calendrier communautaire</value></data>
   <data name="Workgroups_Roster" xml:space="preserve"><value>Membres</value></data>
   <data name="Workgroups_Board" xml:space="preserve"><value>Conseil</value></data>
   <data name="Workgroups_Field_ReplacementCoordinator" xml:space="preserve"><value>Coordinateur remplaçant (vous êtes le dernier)</value></data>
@@ -246,8 +246,8 @@
   <data name="Workgroups_Field_TimesAreUtc" xml:space="preserve"><value>Les heures sont en UTC.</value></data>
   <data name="Workgroups_Field_Location" xml:space="preserve"><value>Lieu</value></data>
   <data name="Workgroups_Field_LocationUrl" xml:space="preserve"><value>URL du lieu</value></data>
-  <data name="Workgroups_Field_IsPublic" xml:space="preserve"><value>Réunion publique</value></data>
-  <data name="Workgroups_Field_IsPublicHelp" xml:space="preserve"><value>Les réunions publiques apparaissent sur le calendrier communautaire de tous ; sinon, seuls les membres la voient.</value></data>
+  <data name="Workgroups_Field_IsPublic" xml:space="preserve"><value>Afficher dans le calendrier communautaire</value></data>
+  <data name="Workgroups_Field_IsPublicHelp" xml:space="preserve"><value>Toute personne ayant accès à l'application peut consulter la réunion et son compte rendu sur la page du groupe. Cette option affiche aussi la réunion dans le calendrier communautaire.</value></data>
   <data name="Workgroups_Field_Minutes" xml:space="preserve"><value>Compte rendu</value></data>
 
   <!-- Log entry form -->
@@ -300,4 +300,5 @@
   <data name="Workgroups_Error_SurveyNotYours" xml:space="preserve">
     <value>Vous ne pouvez lier qu’un questionnaire que vous avez créé vous-même.</value>
   </data>
+  <data name="Workgroups_Error_TextTooLong" xml:space="preserve"><value>Utilisez au maximum {0} caractères.</value></data>
 </root>

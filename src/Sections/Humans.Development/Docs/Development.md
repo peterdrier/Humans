@@ -14,6 +14,7 @@ The section existed as a decision before it existed as code - the 2026-08-03 inv
 
 - **Persona** - a named, deterministic dev user. `DevPersonaSeeder.PersonaGuid(slug)` is a SHA-256 of `dev-persona:{slug}`, so the same slug is the same user id across restarts and machines, and seeding is idempotent. Every `RoleNames` constant becomes a persona automatically (`PascalToKebab`), plus seven hand-written ones: `guest`, `no-name`, `volunteer`, `barrio-1-lead`, `barrio-2-lead`, `coordinator`, `city-planning`.
 - **Fixture seeder** - a dev-only writer that builds realistic demo data through *other* sections' service interfaces. Three live here (personas, camp roles, the coordinator dashboard); a fourth, `DevelopmentBudgetSeeder`, lives in `Humans.Budget` behind `IBudgetDemoSeeder` because it drives Budget's whole write surface.
+- Dashboard fixtures save complete names through `IProfileEditorService` before self-signup, after their Identity timestamp updates. This derives Active account state through the normal Users path and prevents stale Identity instances from overwriting it.
 - **Dev-auth gate** - `DevAuth:Enabled` (a `ConfigurationRegistry` setting in the `Development` category) **and** a non-Production host environment. Both are required; the dashboard seed additionally requires `ASPNETCORE_ENVIRONMENT=Development` exactly.
 - **Admin opt-in** - `DevAuth:AllowAdmin` (same category), which re-admits the Admin persona and Admin impersonation on a deployed host. Set only on per-PR previews, by `docker-entrypoint.sh`.
 

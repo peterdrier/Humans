@@ -9,17 +9,19 @@ using Humans.Shifts.Services;
 using Humans.Shifts.Tests.Infrastructure;
 using Humans.Base.Enums;
 using Humans.Shifts.Data;
+using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Xunit;
+using Microsoft.Extensions.Localization;
 
 namespace Humans.Shifts.Tests.Services;
 
 /// <summary>
-/// Public-rota signups auto-confirm at creation regardless of the volunteer's
+/// Active accounts' Public-rota signups auto-confirm regardless of their
 /// admission/consent status; only RequireApproval rotas park signups as Pending.
 /// </summary>
 public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTestHarness
@@ -27,6 +29,8 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
     private readonly ShiftManagementService _shiftMgmt;
     private readonly ShiftRepository _repo;
     private readonly ShiftSignupService _service;
+    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly UserInfo _userInfo;
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
@@ -35,12 +39,20 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
     public ShiftSignupServiceAutoConfirmIgnoresConsentTests()
         : base(TestNow)
     {
+        _userInfo = UserInfoStubHelpers.MakeUserInfo(_userId) with
+        {
+            State = UserState.Active,
+            Profile = UserFixtures.Profile(
+                burnerName: "New Human", firstName: "New", lastName: "Human", isApproved: false),
+        };
+        _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(_userInfo);
         var teamService = Substitute.For<ITeamService>();
         var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
         var serviceProvider = new ServiceLocatorBuilder()
             .With(teamService)
             .With<ITeamServiceRead>(teamService)
             .With(roleAssignmentService)
+            .With(_users)
             .Build();
 
         var shiftRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
@@ -67,12 +79,16 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
             Substitute.For<IEarlyEntryInvalidator>(),
             serviceProvider,
             Clock,
-            NullLogger<ShiftSignupService>.Instance);
+            NullLogger<ShiftSignupService>.Instance,
+            _users,
+            Substitute.For<IStringLocalizer<ShiftsResource>>());
     }
 
     [HumansFact]
     public async Task SignUp_PublicRota_UserMissingConsents_ReturnsConfirmed()
     {
+        Assert.True(_userInfo.HasRequiredNameFields);
+        Assert.False(_userInfo.IsApproved);
         var (_, shift) = SeedShiftScenario(SignupPolicy.Public);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
@@ -83,8 +99,13 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
     }
 
     [HumansFact]
-    public async Task SignUp_PublicRota_UserWithConsents_ReturnsConfirmed()
+    public async Task SignUp_PublicRota_ApprovedUser_ReturnsConfirmed()
     {
+        _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(_userInfo with
+            {
+                Profile = _userInfo.Profile! with { IsApproved = true, ConsentCheckStatus = ConsentCheckStatus.Cleared },
+            });
         var (_, shift) = SeedShiftScenario(SignupPolicy.Public);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 

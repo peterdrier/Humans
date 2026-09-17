@@ -1,6 +1,6 @@
 namespace Humans.Store.Contracts;
 
-internal enum OrderState
+public enum OrderState
 {
     Open = 0,
     InvoiceIssued = 1

@@ -9,6 +9,13 @@ const COLOR_OTHER = '#198754';
 const COLOR_REQUEST = '#fd7e14';
 const COLOR_DESTINATION = '#dc3545';
 
+// The list already has the IDs and seat counts needed by the forms. Keep it usable
+// even when the map library, WebGL, map load or board request fails.
+document.querySelectorAll('.js-interest-btn').forEach(btn =>
+    btn.addEventListener('click', () => openInterest(btn.dataset.tripId, Number(btn.dataset.seatsRemaining))));
+document.querySelectorAll('.js-take-btn').forEach(btn =>
+    btn.addEventListener('click', () => openTake(btn.dataset.requestId, Number(btn.dataset.partySize))));
+
 const el = document.getElementById('map');
 if (el) init(el).catch(err => console.error('Rideshare board init failed:', err));
 
@@ -94,11 +101,6 @@ async function init(el) {
         });
     });
 
-    // The accessible list under the map shares the modals.
-    document.querySelectorAll('.js-interest-btn').forEach(btn =>
-        btn.addEventListener('click', () => openInterest(btn.dataset.tripId, Number(btn.dataset.seatsRemaining))));
-    document.querySelectorAll('.js-take-btn').forEach(btn =>
-        btn.addEventListener('click', () => openTake(btn.dataset.requestId, Number(btn.dataset.partySize))));
 }
 
 function tripPopupHtml(t, i18n) {

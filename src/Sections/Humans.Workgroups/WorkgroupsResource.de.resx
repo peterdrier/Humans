@@ -211,7 +211,7 @@
   <data name="Workgroups_DiscordChannel" xml:space="preserve"><value>Discord-Kanal</value></data>
   <data name="Workgroups_DriveFolder" xml:space="preserve"><value>Drive-Ordner</value></data>
   <data name="Workgroups_NextMeeting" xml:space="preserve"><value>Nächstes Treffen</value></data>
-  <data name="Workgroups_PublicMeeting" xml:space="preserve"><value>Öffentlich</value></data>
+  <data name="Workgroups_PublicMeeting" xml:space="preserve"><value>Community-Kalender</value></data>
   <data name="Workgroups_Roster" xml:space="preserve"><value>Mitgliederliste</value></data>
   <data name="Workgroups_Board" xml:space="preserve"><value>Vorstand</value></data>
   <data name="Workgroups_Field_ReplacementCoordinator" xml:space="preserve"><value>Nachfolger als Koordinator (du bist der letzte)</value></data>
@@ -246,8 +246,8 @@
   <data name="Workgroups_Field_TimesAreUtc" xml:space="preserve"><value>Zeiten sind UTC.</value></data>
   <data name="Workgroups_Field_Location" xml:space="preserve"><value>Ort</value></data>
   <data name="Workgroups_Field_LocationUrl" xml:space="preserve"><value>Orts-URL</value></data>
-  <data name="Workgroups_Field_IsPublic" xml:space="preserve"><value>Öffentliches Treffen</value></data>
-  <data name="Workgroups_Field_IsPublicHelp" xml:space="preserve"><value>Öffentliche Treffen erscheinen im Community-Kalender aller; sonst sehen es nur Mitglieder.</value></data>
+  <data name="Workgroups_Field_IsPublic" xml:space="preserve"><value>Im Community-Kalender anzeigen</value></data>
+  <data name="Workgroups_Field_IsPublicHelp" xml:space="preserve"><value>Alle mit Zugang zur App können das Treffen und das Protokoll auf der Gruppenseite lesen. Diese Option zeigt das Treffen zusätzlich im Community-Kalender.</value></data>
   <data name="Workgroups_Field_Minutes" xml:space="preserve"><value>Protokoll</value></data>
 
   <!-- Log entry form -->
@@ -300,4 +300,5 @@
   <data name="Workgroups_Error_SurveyNotYours" xml:space="preserve">
     <value>Du kannst nur eine Umfrage verknüpfen, die du selbst erstellt hast.</value>
   </data>
+  <data name="Workgroups_Error_TextTooLong" xml:space="preserve"><value>Verwende höchstens {0} Zeichen.</value></data>
 </root>

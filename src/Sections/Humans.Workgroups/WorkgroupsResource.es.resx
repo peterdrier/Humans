@@ -211,7 +211,7 @@
   <data name="Workgroups_DiscordChannel" xml:space="preserve"><value>Canal de Discord</value></data>
   <data name="Workgroups_DriveFolder" xml:space="preserve"><value>Carpeta de Drive</value></data>
   <data name="Workgroups_NextMeeting" xml:space="preserve"><value>Próxima reunión</value></data>
-  <data name="Workgroups_PublicMeeting" xml:space="preserve"><value>Pública</value></data>
+  <data name="Workgroups_PublicMeeting" xml:space="preserve"><value>Calendario comunitario</value></data>
   <data name="Workgroups_Roster" xml:space="preserve"><value>Miembros</value></data>
   <data name="Workgroups_Board" xml:space="preserve"><value>Junta</value></data>
   <data name="Workgroups_Field_ReplacementCoordinator" xml:space="preserve"><value>Coordinador de reemplazo (eres el último)</value></data>
@@ -246,8 +246,8 @@
   <data name="Workgroups_Field_TimesAreUtc" xml:space="preserve"><value>Las horas están en UTC.</value></data>
   <data name="Workgroups_Field_Location" xml:space="preserve"><value>Ubicación</value></data>
   <data name="Workgroups_Field_LocationUrl" xml:space="preserve"><value>URL de la ubicación</value></data>
-  <data name="Workgroups_Field_IsPublic" xml:space="preserve"><value>Reunión pública</value></data>
-  <data name="Workgroups_Field_IsPublicHelp" xml:space="preserve"><value>Las reuniones públicas aparecen en el calendario comunitario de todos; en caso contrario, solo la ven los miembros.</value></data>
+  <data name="Workgroups_Field_IsPublic" xml:space="preserve"><value>Mostrar en el calendario comunitario</value></data>
+  <data name="Workgroups_Field_IsPublicHelp" xml:space="preserve"><value>Cualquier persona con acceso a la aplicación puede leer la reunión y las actas en la página del grupo. Esta opción también muestra la reunión en el calendario comunitario.</value></data>
   <data name="Workgroups_Field_Minutes" xml:space="preserve"><value>Acta</value></data>
 
   <!-- Log entry form -->
@@ -300,4 +300,5 @@
   <data name="Workgroups_Error_SurveyNotYours" xml:space="preserve">
     <value>Solo puedes enlazar una encuesta creada por ti.</value>
   </data>
+  <data name="Workgroups_Error_TextTooLong" xml:space="preserve"><value>Usa como máximo {0} caracteres.</value></data>
 </root>

@@ -215,6 +215,9 @@ Settled; do not re-litigate.
   number resolution, and it is the only place those members are bindable.
 - **The treasury account is never inferred.** With `Sepa:TreasuryAccountId` unset the Book buttons do
   not render; Holded would otherwise pay from whatever it defaults to, and that money is real.
+- **Booking settles the balance, not the documents.** Open documents are paid first so the accountant
+  sees them paid; the rest is one journal entry against `Sepa:TreasuryLedgerAccount`. Unset, no Book
+  buttons either.
 - **`Sepa:Creditor*` names the debtor.** The config keys predate the payout feature; in a payout the
   organisation is the debtor, and that is where the values land. Renaming the keys is a deploy
   change for a spelling.

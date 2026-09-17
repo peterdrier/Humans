@@ -13,17 +13,20 @@ export function initTicketScanner(refs) {
         card.replaceChildren(alert);
     };
 
+    let currentLookup = 0;
     const lookup = async (value) => {
+        const request = ++currentLookup;
         try {
             const resp = await fetch(`${cardUrl}?barcode=${encodeURIComponent(value)}`);
             if (resp.ok) {
-                card.innerHTML = await resp.text();
-            } else {
+                const html = await resp.text();
+                if (request === currentLookup) card.innerHTML = html;
+            } else if (request === currentLookup) {
                 showLookupFailed();
             }
         } catch (err) {
             console.error('Scanner: ticket lookup failed', err);
-            showLookupFailed();
+            if (request === currentLookup) showLookupFailed();
         }
     };
 

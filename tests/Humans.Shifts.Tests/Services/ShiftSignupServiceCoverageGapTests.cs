@@ -15,6 +15,8 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
+using Humans.Users.Contracts;
+using Microsoft.Extensions.Localization;
 
 namespace Humans.Shifts.Tests.Services;
 
@@ -71,7 +73,9 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
             Substitute.For<IEarlyEntryInvalidator>(),
             serviceProvider,
             Clock,
-            NullLogger<ShiftSignupService>.Instance);
+            NullLogger<ShiftSignupService>.Instance,
+            Substitute.For<IUserServiceRead>(),
+            Substitute.For<IStringLocalizer<ShiftsResource>>());
     }
 
     [HumansFact]

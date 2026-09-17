@@ -399,4 +399,5 @@
   <data name="Shifts_IcalRegenerated" xml:space="preserve"><value>iCal URL regenerated.</value></data>
   <data name="Shifts_TagPreferencesSaved" xml:space="preserve"><value>Tag preferences saved.</value></data>
   <data name="VolTrack_Msg_DayOffNotSet" xml:space="preserve"><value>No day off was set for that day.</value></data>
+  <data name="Shifts_AccountCannotSignUp" xml:space="preserve"><value>Your account cannot sign up for shifts.</value></data>
 </root>

@@ -42,6 +42,15 @@ public interface IHoldedClient
         string documentId, decimal amount, string? treasuryId, LocalDate date, string? description,
         CancellationToken ct = default);
 
+    /// <summary>Posts a two-line manual journal entry — debit one account, credit the other, one
+    /// amount — and returns the new entry id. Accounts are ledger account <em>numbers</em>
+    /// (<c>57200001</c>), not Holded ids. Same rule as <see cref="PayPurchaseDocumentAsync"/> for an
+    /// unreadable success: the entry is already posted, so it returns <c>"unconfirmed:entry"</c>
+    /// rather than throwing.</summary>
+    Task<string> PostLedgerEntryAsync(
+        LocalDate date, int debitAccount, int creditAccount, decimal amount, string description,
+        CancellationToken ct = default);
+
     /// <summary>Lists all P&L expense accounts (id + number + name).</summary>
     Task<IReadOnlyList<HoldedExpenseAccountDto>> ListExpenseAccountsAsync(
         CancellationToken ct = default);

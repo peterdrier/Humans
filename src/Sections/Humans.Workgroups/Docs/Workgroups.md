@@ -27,8 +27,9 @@ administrative recognition, and every decision is a human's.
   every member may do member work.
 - The **Secretary** is a Board member; every Secretary action is `BoardOrAdmin`. No new role.
 - A **Member** is any signed-in human who joined. Joining is immediate (standing approval).
-- A **Meeting** is a dated session the group owns, optionally public, with minutes filled
-  in afterwards.
+- A **Meeting** is a dated session the group owns, optionally listed in the community
+  calendar, with minutes filled in afterwards. Everyone with app access can read
+  meetings and minutes on the group page; calendar listing does not change that access.
 - A **Log entry** is one dated line in the group's history. System kinds record lifecycle
   steps and never change; member kinds (Update, Disclosure, StatusRequested, Note) are
   written, edited and deleted by members.
@@ -60,7 +61,7 @@ administrative recognition, and every decision is a human's.
 | Reasons | string(4000)? | Refusal, withdrawal, or Quiet-close reasons |
 | AppliedByUserId | Guid? | Bare cross-section reference; nulled on erasure |
 | AppliedAt / RegisteredAt / EndedAt | Instant / Instant? / Instant? | |
-| DormantSince | Instant? | Set by the job at 60 days' silence; cleared by the next Update/Meeting. Distinct from Dormant status — it is the inquiry flag |
+| DormantSince | Instant? | Set by the job at 60 days' silence; cleared by an Update or a meeting that has started since the inquiry. Distinct from Dormant status — it is the inquiry flag |
 | CreatedAt / UpdatedAt | Instant | |
 
 Indexes: `Slug`; `Status`; `DriveFolderId` unique filtered non-null (one group per folder — a Google-assigned opaque id, not editable display data).
@@ -87,13 +88,16 @@ Unique filtered `(WorkgroupId, UserId)` where `LeftAt IS NULL`.
 | Title | string(200) | |
 | StartUtc / EndUtc | Instant | |
 | Location / LocationUrl | string(500)? / string(2000)? | |
-| IsPublic | bool | Public meetings feed the community calendar |
+| IsPublic | bool | Adds the meeting to the community calendar; register visibility stays AppAccess |
 | Minutes | text? | Markdown, filled in afterwards |
 | CreatedByUserId | Guid? | Bare reference; nulled on erasure |
 | CreatedAt / UpdatedAt | Instant | |
 | DeletedAt | Instant? | Soft delete; excluded everywhere outside the repository |
 
 Index `(WorkgroupId, StartUtc)`.
+
+Meeting URLs accept up to 2000 characters. The service validates the limit for creates
+and edits; form failures preserve the entered values and show a localized error.
 
 ### WorkgroupLogEntry — `workgroup_log_entries`
 
@@ -113,6 +117,11 @@ Index `(WorkgroupId, StartUtc)`.
 Not §12 append-only by design: the log is a working record; the audit trail is the
 immutable one. Member entries are editable and hard-deletable by any member (audited).
 System entries never change.
+
+Member log bodies are limited to 16000 characters and lifecycle reasons to 4000.
+Forms advertise these bounds and the service rejects overflow before writing any state.
+Validation failures re-render the submitted form; admin lifecycle reasons remain in the
+failed item's queue form, while successful decisions redirect back to the queue.
 
 `WorkgroupLogKind` — system: Applied, Registered, Referred, Refused, Withdrawn, Ended,
 Reactivated, CoordinatorChanged, ScopeChanged, MemberJoined, MemberLeft,
@@ -199,6 +208,9 @@ a clear error while unset.
 
 See `authorization.md` for the auth policy per route.
 
+The Workgroups admin sidebar link stays visible with an empty queue so Board/Admin can reach
+Settings and Register an existing group on first setup or after clearing the queue.
+
 ## Actors & Roles
 
 | Actor | Capabilities |
@@ -278,8 +290,10 @@ See `authorization.md` for the auth policy per route.
   notified/emailed; Withdraw and Reactivate also request a Drive sync (write access changes).
 - Join/Leave: system log entry (`MemberJoined`/`MemberLeft`), Drive sync requested; a
   forced coordinator handover on last-coordinator leave also writes `CoordinatorChanged`.
-- A new Update log entry or a new meeting clears `DormantSince` — the only two
-  activity kinds §13 counts as a sign of life.
+- An Update or a meeting that has started at or after the inquiry clears `DormantSince`.
+  Creating or editing a future meeting leaves the flag intact. A meeting entered with
+  a date before the inquiry does not answer it. Clearing persists first, then records
+  `WorkgroupDormancyCleared` in the immutable audit trail with the member or job actor.
 - Publish/OpenComments/CloseComments/Deliver: system log entry; Publish and OpenComments
   notify current members; Deliver notifies and emails the Board.
 - RecordDisposition: system log entry, audit entry, members notified, coordinators emailed.
@@ -287,8 +301,9 @@ See `authorization.md` for the auth policy per route.
   "hidden by the group" to everyone else.
 - Erasure of a group's only coordinator on an Active group notifies the Board role that
   the group has no coordinator (`WorkgroupService.Gdpr`).
-- The daily rhythm job (below) — every action it takes writes a log entry, an audit entry
-  (attributed to the job, not a human), and a notification.
+- The daily rhythm job (below) records its notices and flag changes in the audit trail,
+  attributed to the job. Raising an inquiry also writes a log entry and sends notices;
+  clearing an answered inquiry needs only the audit record.
 
 ## Daily Rhythm (design §13)
 
@@ -296,8 +311,14 @@ One Hangfire job (`workgroups-rhythm`, 06:00 daily), calling
 `IWorkgroupService.RunDailyRhythmAsync`. **It never registers, closes, or refuses
 anything — every action here is a notice, a flag, or a record; a human still has to act.**
 
+Only meetings whose start has arrived count as activity. The daily pass clears answered
+inquiries before calculating silence and any new inquiry. A failed state save leaves
+the inquiry for a later pass and emits no clear audit; successful repeated passes do
+not clear or audit it again. Audit persistence follows the shared best-effort contract.
+
 | Condition | Action |
 |-----------|--------|
+| Active, flagged, Update or meeting has occurred since the inquiry | Clear `DormantSince`, audit `WorkgroupDormancyCleared` |
 | Active, no Update/meeting in 30 days | Notify coordinators, in-app, once per 30-day window |
 | Active, no Update/meeting in 60 days, `DormantSince` null | Set `DormantSince`, write `DormancyInquiry`, notify+email coordinators, notify Board |
 | `DormantSince` ≥ 14 days old, still silent | Notify Board "close candidate" |

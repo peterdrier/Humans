@@ -50,7 +50,6 @@ internal sealed class GdprService(
 
                 if (sections.ContainsKey(slice.SectionName))
                 {
-                    // Duplicate section = programming error — fail loudly.
                     logger.LogError(
                         "GDPR export has duplicate section {SectionName} from contributor {Contributor}",
                         slice.SectionName,

@@ -44,7 +44,7 @@
 
             <div class="mb-3">
                 <label asp-for="Body" class="form-label">@Localizer["Workgroups_Field_LogBody"]</label>
-                <markdown-editor asp-for="Body" rows="8" />
+                <markdown-editor asp-for="Body" rows="8" maxlength="16000" />
                 <span asp-validation-for="Body" class="text-danger"></span>
             </div>
 

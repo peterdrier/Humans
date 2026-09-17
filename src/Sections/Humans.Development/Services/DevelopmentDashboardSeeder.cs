@@ -36,6 +36,7 @@ internal sealed class DevelopmentDashboardSeeder(
     ITeamSeeding teamSeeding,
     IUserEmailService userEmailService,
     IUserService userService,
+    IProfileEditorService profileEditor,
     UserManager<User> userManager,
     IClock clock,
     ILogger<DevelopmentDashboardSeeder> logger)
@@ -306,6 +307,22 @@ internal sealed class DevelopmentDashboardSeeder(
                     // the same team; ignore duplicate membership (it's just demo data).
                 }
             }
+        }
+
+        // Complete Identity fixture updates before profile saves derive Active state.
+        // The original User instances must not overwrite that state afterward.
+        foreach (var user in users)
+        {
+            var burnerName = user.BurnerName!; // Assigned for every fixture above.
+            await profileEditor.SaveProfileAsync(user.Id, burnerName, new ProfileSaveRequest(
+                BurnerName: burnerName, FirstName: "Dev", LastName: "Human",
+                City: null, CountryCode: null, Latitude: null, Longitude: null, PlaceId: null,
+                Bio: null, Pronouns: null, ContributionInterests: null, BoardNotes: null,
+                BirthdayMonth: null, BirthdayDay: null,
+                EmergencyContactName: null, EmergencyContactPhone: null, EmergencyContactRelationship: null,
+                NoPriorBurnExperience: false,
+                ProfilePictureData: null, ProfilePictureContentType: null, RemoveProfilePicture: false),
+                cancellationToken);
         }
 
         // Per-user team assignments: ~80% stick to a single parent team, ~20% switch

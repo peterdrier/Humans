@@ -25,19 +25,18 @@
   plus a payload. **`GdprExportSections`** holds those names as constants, so
   the document's top-level keys survive a contributor moving between services.
 - **`GdprExport`** is the envelope — an ISO-8601 UTC timestamp and the merged
-  section bag, which is what the two controllers serialize to the download.
+  section bag, which is what each download route serializes to the file.
 - **Erasure shares the contract *and* the orchestrator.** `IUserDataContributor`
   also carries `ErasureDeclaration` (a static `GdprExportSections` →
   retention-reason table; `null` = erased in full) and `EraseForUserAsync`, so a
   section cannot export a category without accounting for its deletion. Both
   loops live here: `IGdprService.EraseForUserAsync` runs the erasure fan-out
   (every contributor for one id) beside the export one. The **deletion
-  lifecycle** stays under Users — `IAccountDeletionService` /
-  `AccountDeletionService`, driven by `ProcessAccountDeletionsJob`, owns the
-  30-day grace period, ticket hold, audit entries and confirmation email. Users
-  resolves the merge chain and calls `EraseForUserAsync` per id, invalidating
-  each archived id's cache as its erasure completes. The loop moved to Gdpr, its
-  Users-only dependencies (the merge primitive, cache invalidation) did not.
+  lifecycle** — grace period, ticket hold, audit entries, confirmation email,
+  merge-chain walk and cache invalidation — stays under Users
+  (`AccountDeletionService`, driven by `ProcessAccountDeletionsJob`); its own
+  doc owns the detail. The loop moved to Gdpr, its Users-only dependencies did
+  not.
 
 ## Routing
 
@@ -148,10 +147,12 @@ sealed`) behind the public `IGdprService` on the leaf, exposing both
 - `src/Sections/Humans.Gdpr` — one internal service, one `Section.cs`, this
   doc. No `Data/`, no migrations, no `Humans.Infrastructure` reference and no
   `Humans.UI` reference: nothing to persist and nothing to render.
-- `src/Sections/Humans.Gdpr.Contracts` — the whole outward surface, and the
-  reason the leaf is a *project* rather than a folder is stronger than the usual
-  consumer-in-Base test: Base does not merely call this section, it
-  **implements** its contract.
+- `src/Sections/Humans.Gdpr.Contracts` — the whole outward surface. It is a
+  *project* rather than a folder because this contract is implemented from
+  outside: every section owning user-scoped tables implements
+  `IUserDataContributor`, and a folder would make all of them reference
+  `Humans.Gdpr` itself — the internal orchestrator and the controller included —
+  to reach an interface.
 - No `Resources/` folder and no `GdprResource`: the section has no page copy at
   all, so no type here takes `IStringLocalizer<T>` for any `T` — documentation,
   not a pinned assertion ([`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md)).
