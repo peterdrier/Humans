@@ -13,8 +13,10 @@ namespace Humans.Store.Contracts;
 /// Read-only by design — nothing in Store is written over the API. Line amounts are the
 /// same effective prices <c>/Store/Admin/Summary</c> shows (live catalog for an Open order,
 /// frozen snapshot once InvoiceIssued), so an order's <see cref="AccountingOrderLineDto.LineGross"/>
-/// rows sum to the total the summary reports. Camp and team labels are stitched here, never
-/// by the caller.
+/// rows sum to the total the summary reports. Orders are selected by their persisted year,
+/// not through the counterparty, so a row whose camp or team has since gone is still
+/// exported, labelled <c>(unknown camp)</c> / <c>(unknown team)</c>. Labels are stitched
+/// here, never by the caller.
 /// </remarks>
 public interface IStoreAccountingRead : IApplicationService
 {

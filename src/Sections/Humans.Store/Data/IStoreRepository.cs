@@ -72,6 +72,19 @@ internal interface IStoreRepository : IRepository
         int year,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns every <see cref="Order"/> of <paramref name="year"/> by its persisted
+    /// <see cref="Order.Year"/>, plus legacy rows still at <c>Year = 0</c> whose
+    /// <c>CampSeasonId</c> is in <paramref name="campSeasonIds"/>, with <c>Lines</c> and
+    /// <c>Payments</c> eager-loaded. Selection does not go through the counterparty, so an
+    /// order whose camp was since deleted or whose team was reparented is still returned —
+    /// the accounting export must never lose a row that carries money.
+    /// </summary>
+    Task<IReadOnlyList<Order>> GetOrdersForYearWithLinesAndPaymentsAsync(
+        int year,
+        IReadOnlyCollection<Guid> campSeasonIds,
+        CancellationToken ct = default);
+
     Task AddOrderAsync(Order order, CancellationToken ct = default);
     Task UpdateOrderAsync(Order order, CancellationToken ct = default);
     /// <summary>

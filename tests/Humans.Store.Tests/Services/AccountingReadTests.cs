@@ -117,6 +117,10 @@ public class AccountingReadTests
         _repo.GetOrdersForTeamsWithLinesAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(DeptId)), 2026, Arg.Any<CancellationToken>())
             .Returns([teamOrder]);
+
+        // The export selects by persisted Year, not through the counterparty.
+        _repo.GetOrdersForYearWithLinesAndPaymentsAsync(2026, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns([campOrder, teamOrder]);
     }
 
     [HumansFact]
@@ -211,11 +215,40 @@ public class AccountingReadTests
     }
 
     [HumansFact]
+    public async Task Orders_whose_camp_was_deleted_since_still_export_with_their_money()
+    {
+        // The camp is gone (seasons cascade; Store keeps the bare CampSeasonId), so it is
+        // absent from GetCampsForYearAsync — the order must still appear, unlabeled.
+        var orphanId = Guid.NewGuid();
+        var orphan = new Order
+        {
+            Id = orphanId,
+            CampSeasonId = Guid.NewGuid(),
+            Year = 2026,
+            State = OrderState.Open,
+            Lines = { new OrderLine { Id = Guid.NewGuid(), OrderId = orphanId, ProductId = IceId, Qty = 1, UnitPriceSnapshot = 3m, VatRateSnapshot = 10m } },
+            Payments = { new Payment { Id = Guid.NewGuid(), OrderId = orphanId, AmountEur = 4.40m, Method = PaymentMethod.Stripe, Status = PaymentStatus.Paid, StripePaymentIntentId = "pi_orphan" } },
+        };
+        _repo.GetOrdersForYearWithLinesAndPaymentsAsync(2026, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns([orphan]);
+
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var line = (await _service.GetOrderLinesAsync(2026, ct)).Single();
+        var payment = (await _service.GetPaymentsAsync(2026, ct)).Single();
+
+        line.OrderId.Should().Be(orphanId);
+        line.CounterpartyType.Should().Be(OrderCounterpartyType.Camp);
+        line.CounterpartyLabel.Should().Be("(unknown camp)");
+        payment.StripePaymentIntentId.Should().Be("pi_orphan");
+        payment.CounterpartyLabel.Should().Be("(unknown camp)");
+    }
+
+    [HumansFact]
     public async Task Empty_year_returns_no_rows()
     {
         _camps.GetCampsForYearAsync(2025, Arg.Any<CancellationToken>()).Returns([]);
         _repo.GetAllProductsForYearAsync(2025, Arg.Any<CancellationToken>()).Returns([]);
-        _repo.GetOrdersForTeamsWithLinesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), 2025, Arg.Any<CancellationToken>())
+        _repo.GetOrdersForYearWithLinesAndPaymentsAsync(2025, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
         var ct = Xunit.TestContext.Current.CancellationToken;
