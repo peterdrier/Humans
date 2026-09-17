@@ -11,6 +11,11 @@ public class IbanValidatorTests
     [InlineData("DE89370400440532013000")]
     [InlineData("NL91ABNA0417164300")]
     [InlineData("FR1420041010050500013M02606")]
+    [InlineData("AL47212110090000000235698741")]
+    [InlineData("MD24AG000225100013104168")]
+    [InlineData("ME25505000012345678951")]
+    [InlineData("MK07250120000058984")]
+    [InlineData("VA59001123000012345678")]
     public void IsValid_AcceptsRealIbans(string iban)
     {
         IbanValidator.IsValid(iban).Should().BeTrue();
@@ -19,13 +24,18 @@ public class IbanValidatorTests
     [HumansTheory]
     [InlineData("ES9121000418450200051333")]
     [InlineData("ES912100041845")]
-    [InlineData("XX9121000418450200051332")]
     [InlineData("")]
     [InlineData(null)]
     [InlineData("ES91 2100 0418 45")]
     public void IsValid_RejectsBadInputs(string? iban)
     {
         IbanValidator.IsValid(iban).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void IsValid_RejectsUnknownCountryPrefix()
+    {
+        IbanValidator.IsValid("XX9121000418450200051332").Should().BeFalse();
     }
 
     [HumansFact]

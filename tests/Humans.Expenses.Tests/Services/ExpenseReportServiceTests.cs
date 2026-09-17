@@ -659,12 +659,13 @@ public sealed class ExpenseReportServiceTests
     public async Task AddLineWithResultAsync_WithFile_CreatesLineAndAttachment_InOneCall()
     {
         var (_, category) = SetupActiveYear();
-        var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var member = Guid.NewGuid();
+        var admin = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(member, member, category.Id, null, Xunit.TestContext.Current.CancellationToken);
 
         using var content = new MemoryStream([1, 2, 3]);
         var result = await _sut.AddLineWithResultAsync(
-            id, submitter, false, "Timber", 40m,
+            id, admin, true, "Timber", 40m,
             file: new ExpenseFileUpload("receipt.pdf", "application/pdf", content),
             ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -673,20 +674,28 @@ public sealed class ExpenseReportServiceTests
         var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
         loaded!.Lines.Single().AttachmentId.Should().NotBeNull();
         loaded.Lines.Single().Attachment!.OriginalFileName.Should().Be("receipt.pdf");
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.ExpenseEditedOnBehalf,
+            AuditEntityTypes.Report, id,
+            Arg.Is<string>(description => description.StartsWith("Added line")),
+            admin,
+            member,
+            AuditEntityTypes.User);
     }
 
     [HumansFact]
     public async Task AddLineWithResultAsync_RollsBackLine_WhenUploadFailsAfterCreation()
     {
         var (_, category) = SetupActiveYear();
-        var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var member = Guid.NewGuid();
+        var admin = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(member, member, category.Id, null, Xunit.TestContext.Current.CancellationToken);
         _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new IOException("disk full"));
 
         using var content = new MemoryStream([1, 2, 3]);
         var result = await _sut.AddLineWithResultAsync(
-            id, submitter, false, "Timber", 40m,
+            id, admin, true, "Timber", 40m,
             file: new ExpenseFileUpload("receipt.pdf", "application/pdf", content),
             ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -696,6 +705,10 @@ public sealed class ExpenseReportServiceTests
         var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
         loaded!.Lines.Should().BeEmpty();
         loaded.Total.Should().Be(0m);
+        await AuditLog.DidNotReceive().LogAsync(
+            AuditAction.ExpenseEditedOnBehalf,
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
