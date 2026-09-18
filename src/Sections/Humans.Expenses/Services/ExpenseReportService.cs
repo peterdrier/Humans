@@ -357,6 +357,21 @@ internal sealed class ExpenseReportService(
         Guid? parentLineId = null,
         CancellationToken ct = default)
     {
+        var (lineId, report) = await AddLineWithoutAuditAsync(
+            reportId, actorUserId, actorIsFinanceAdmin,
+            description, amount, lineType, parentLineId, ct);
+
+        await AuditOnBehalfEditAsync(report, actorUserId,
+            $"Added {(parentLineId is null ? "line" : "proof row")} \"{description}\" €{amount}", ct);
+
+        return lineId;
+    }
+
+    private async Task<(Guid LineId, ExpenseReportDto Report)> AddLineWithoutAuditAsync(
+        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
+        string description, decimal amount, ExpenseLineType lineType,
+        Guid? parentLineId, CancellationToken ct)
+    {
         var report = await RequireEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
 
         if (parentLineId is { } parentId)
@@ -382,10 +397,7 @@ internal sealed class ExpenseReportService(
         var ok = await repo.AddLineAsync(reportId, line, ct);
         if (!ok) throw new InvalidOperationException("Failed to add line.");
 
-        await AuditOnBehalfEditAsync(report, actorUserId,
-            $"Added {(parentLineId is null ? "line" : "proof row")} \"{description}\" €{amount}", ct);
-
-        return line.Id;
+        return (line.Id, report);
     }
 
     public async Task<ExpenseAddLineResult> AddLineWithResultAsync(
@@ -406,8 +418,9 @@ internal sealed class ExpenseReportService(
             if (file is not null)
                 ValidateAttachmentUpload(file.FileName, file.ContentType, file.Content);
 
-            var lineId = await AddLineAsync(
-                reportId, actorUserId, actorIsFinanceAdmin, description, amount, lineType, parentLineId, ct);
+            var (lineId, report) = await AddLineWithoutAuditAsync(
+                reportId, actorUserId, actorIsFinanceAdmin,
+                description, amount, lineType, parentLineId, ct);
             if (file is not null)
             {
                 try
@@ -418,10 +431,12 @@ internal sealed class ExpenseReportService(
                 catch
                 {
                     // The form retries the whole add, so a line left behind here would duplicate.
-                    await repo.RemoveLineAsync(reportId, lineId, ct);
+                    await repo.RemoveLineAsync(reportId, lineId, CancellationToken.None);
                     throw;
                 }
             }
+            await AuditOnBehalfEditAsync(report, actorUserId,
+                $"Added {(parentLineId is null ? "line" : "proof row")} \"{description}\" €{amount}", ct);
             return new ExpenseAddLineResult(true, null, lineId);
         }
         catch (ExpenseValidationException ex)
@@ -588,8 +603,9 @@ internal sealed class ExpenseReportService(
 
         var report = await RequireEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
 
-        if (!report.Lines.Any(l => l.Id == lineId))
-            throw new UnauthorizedAccessException("Line does not belong to the specified report.");
+        var line = report.Lines.FirstOrDefault(l => l.Id == lineId)
+            ?? throw new UnauthorizedAccessException("Line does not belong to the specified report.");
+        var previousAttachmentId = line.AttachmentId;
 
         var attachmentId = Guid.NewGuid();
         await fileStorage.SaveAsync(AttachmentKey(attachmentId, extension), content, ct);
@@ -606,16 +622,54 @@ internal sealed class ExpenseReportService(
             UploadedByUserId = actorUserId,
             UploadedAt = clock.GetCurrentInstant()
         };
-        await repo.AddAttachmentAsync(attachment, ct);
-        await repo.SetLineAttachmentAsync(lineId, attachmentId, ct);
+        try
+        {
+            await repo.AddAttachmentAsync(attachment, ct);
+            await repo.SetLineAttachmentAsync(lineId, attachmentId, ct);
 
-        await auditLogService.LogAsync(
-            AuditAction.ExpenseAttachmentUploaded,
-            AuditEntityTypes.Report, reportId,
-            $"Attachment uploaded to line {lineId}.",
-            actorUserId,
-            relatedEntityId: report.SubmitterUserId,
-            relatedEntityType: AuditEntityTypes.User);
+            await auditLogService.LogAsync(
+                AuditAction.ExpenseAttachmentUploaded,
+                AuditEntityTypes.Report, reportId,
+                $"Attachment uploaded to line {lineId}.",
+                actorUserId,
+                relatedEntityId: report.SubmitterUserId,
+                relatedEntityType: AuditEntityTypes.User);
+        }
+        catch
+        {
+            var metadataRemoved = true;
+            try
+            {
+                // Both repository operations are idempotent. Run them even when the failed write
+                // may have committed before throwing, and put any replaced attachment back.
+                await repo.SetLineAttachmentAsync(lineId, previousAttachmentId, CancellationToken.None);
+                await repo.RemoveAttachmentAsync(attachmentId, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                metadataRemoved = false;
+                logger.LogError(ex,
+                    "Could not roll back attachment metadata {AttachmentId} for line {LineId}",
+                    attachmentId, lineId);
+            }
+
+            if (metadataRemoved)
+            {
+                try
+                {
+                    await fileStorage.DeleteAsync(
+                        AttachmentKey(attachmentId, extension), CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex,
+                        "Could not delete attachment file {AttachmentId} after upload rollback",
+                        attachmentId);
+                }
+            }
+
+            throw;
+        }
 
         return attachmentId;
     }

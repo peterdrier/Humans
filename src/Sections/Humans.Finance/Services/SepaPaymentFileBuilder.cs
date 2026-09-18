@@ -4,6 +4,7 @@ using System.Xml;
 using System.Xml.Linq;
 using Humans.Base.Extensions;
 using Humans.Base.Helpers;
+using Humans.Finance.Models;
 using NodaTime;
 
 namespace Humans.Finance.Services;
@@ -15,25 +16,6 @@ internal sealed class SepaPaymentFileException : Exception
     public SepaPaymentFileException(string message) : base(message) { }
     public SepaPaymentFileException(string message, Exception inner) : base(message, inner) { }
 }
-
-/// <summary>The organisation's side of the transfer — every field configuration-bound.</summary>
-internal sealed record SepaDebtor(string Name, string Iban, string? Bic, string PresenterId);
-
-/// <summary>One recipient. <paramref name="EndToEndId"/> comes from the persisted transfer row, and
-/// <paramref name="SupplierAccountNum"/> is the 400000xx the remittance text is prefixed with so the
-/// treasurer can tie a bank line to a creditor account without opening the file.</summary>
-internal sealed record SepaTransfer(
-    string EndToEndId, string CreditorName, string Iban, decimal Amount, int SupplierAccountNum);
-
-/// <summary>Everything the file is built from. Pure data — the builder does no IO.</summary>
-internal sealed record SepaPaymentFileRequest(
-    string MsgId,
-    string PmtInfId,
-    Instant CreatedAt,
-    LocalDate RequestedExecutionDate,
-    SepaDebtor Debtor,
-    decimal MaxAmountPerTransfer,
-    IReadOnlyList<SepaTransfer> Transfers);
 
 /// <summary>
 /// Builds a Norma 34-14 / pain.001.001.09 SEPA Credit Transfer file. Pure: no IO, no clock, no
@@ -90,7 +72,9 @@ internal static class SepaPaymentFileBuilder
                 new XElement(ns + "CstmrCdtTrfInitn",
                     new XElement(ns + "GrpHdr",
                         new XElement(ns + "MsgId", request.MsgId),
-                        new XElement(ns + "CreDtTm", request.CreatedAt.ToDateTimeUtc().ToSepaDateTime()),
+                        new XElement(ns + "CreDtTm",
+                            request.CreatedAt.InZone(request.CreationTimeZone)
+                                .ToDateTimeUnspecified().ToSepaDateTime()),
                         new XElement(ns + "NbOfTxs", count),
                         new XElement(ns + "CtrlSum", controlSum),
                         new XElement(ns + "InitgPty",
