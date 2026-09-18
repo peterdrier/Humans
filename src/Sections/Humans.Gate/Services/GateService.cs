@@ -4,6 +4,7 @@ using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Base.Constants;
@@ -19,7 +20,7 @@ namespace Humans.Gate.Services;
 /// <summary>
 /// The Gate (admissions) section service. Evaluates scans against
 /// <see cref="GateAdmissionRules"/> using cross-section reads (Tickets,
-/// EarlyEntry, BurnSettings), records the agent's decision as an append-only
+/// EarlyEntry, Settings), records the agent's decision as an append-only
 /// <c>gate_scan_events</c> row through <see cref="IGateRepository"/>, and reads
 /// back leaderboard/settings. The cutoff is always evaluated against the server
 /// clock (<see cref="IClock"/>), never a device clock.
@@ -29,7 +30,7 @@ internal sealed class GateService(
     IGateRepository repository,
     ITicketServiceRead tickets,
     IEarlyEntryService earlyEntry,
-    IBurnSettingsService burnSettings,
+    ISettingsService eventSettings,
     IShiftManagementServiceRead shifts,
     IRoleAssignmentService roles,
     IUserService users,
@@ -62,7 +63,7 @@ internal sealed class GateService(
 
         var settings = await repository.GetSettingsAsync(ct);
         var priorAdmit = await repository.GetAdmitForBarcodeAsync(code, ct);
-        var burn = await burnSettings.GetActiveAsync(ct);
+        var burn = await eventSettings.GetActiveEventSettingsAsync(ct);
         var now = clock.GetCurrentInstant();
         var zone = EventZone(burn?.TimeZoneId);
         var today = now.InZone(zone).Date;
@@ -152,7 +153,7 @@ internal sealed class GateService(
         // same fact). Log and move on; the next sync converges the row.
         try
         {
-            var activeEvent = await burnSettings.GetActiveAsync();
+            var activeEvent = await eventSettings.GetActiveEventSettingsAsync();
             if (activeEvent is null || activeEvent.Year == 0)
                 return;
 
@@ -241,7 +242,7 @@ internal sealed class GateService(
     public async Task<IReadOnlyList<GateRosterEntry>> GetShiftRosterAsync(
         Guid rosterTeamId, CancellationToken ct = default)
     {
-        var activeEvent = await burnSettings.GetActiveAsync(ct);
+        var activeEvent = await eventSettings.GetActiveEventSettingsAsync(ct);
         if (activeEvent is null)
             return [];
 

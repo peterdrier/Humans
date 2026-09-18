@@ -32,7 +32,7 @@ even though it takes seven cross-section reads to assemble: the card is the unit
 reads.
 
 Vocabulary: none of its own. The card speaks Tickets' `TicketStubInfo`/`TicketAttendeeStatus`,
-EarlyEntry's `UserEarlyEntry`, Calendar's `CalendarFeedItem`, and Shifts' `BurnSettingsInfo`.
+EarlyEntry's `UserEarlyEntry`, Calendar's `CalendarFeedItem`, and Settings' `EventSettingsInfo`.
 
 ## 3. Structure
 
@@ -72,9 +72,9 @@ them. That needs a read method on Events' contract, so it is a seam, not a strik
 - **Events-owned provide items.** A read on `IEventServiceRead` returning the feed items for
   events a member is hosting would let `GetProvideItemsAsync` shrink to two calls and a
   merge, and delete this section's copy of Events' occurrence-to-feed-item rule.
-- **Event-cycle cutover.** `IBurnSettingsService.GetActiveAsync` is the Shifts-owned twin of
-  Settings' staged `IEventSettingsInfo` (nobodies-collective/Humans#1104). The card's year
-  and time zone move with that cutover; nothing here should be shaped around Shifts.
+- **Event-cycle cutover.** Done: the card's year and time zone come from Settings'
+  `ISettingsService.GetActiveEventSettingsAsync` (peterdrier/Humans#1629), not from the
+  Shifts-owned twin. Nothing here is shaped around Shifts any more.
 - **Vendor verification.** The barcode spec's follow-up — ask the vendor whether a ticket is
   valid or already used — is unbuilt. It would be a new tool with its own route, never a
   server round-trip added to `/Scanner/Barcode`.
