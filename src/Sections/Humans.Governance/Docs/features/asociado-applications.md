@@ -1,5 +1,11 @@
 <!-- freshness:triggers
-  src/Sections/Humans.Governance/**
+  src/Sections/Humans.Governance/Domain/Application.cs
+  src/Sections/Humans.Governance/Domain/ApplicationStateHistory.cs
+  src/Sections/Humans.Governance/Services/ApplicationDecisionService.cs
+  src/Sections/Humans.Governance/Services/TermExpiryCalculator.cs
+  src/Sections/Humans.Governance/Data/ApplicationRepository.cs
+  src/Sections/Humans.Governance/Controllers/GovernanceApplicationsController.cs
+  src/Sections/Humans.Governance/Jobs/TermRenewalReminderJob.cs
   src/Sections/Humans.Governance.Contracts/**
 -->
 <!-- freshness:flag-on-change
