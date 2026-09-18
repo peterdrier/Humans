@@ -236,7 +236,7 @@ graph LR
     %% Cantina
     Cantina --> ShiftMgmt
     Cantina --> User
-    Cantina --> BurnSettings
+    Cantina --> SettingsSvc
 
     %% CityPlanning
     CityPlan --> Camp
@@ -494,7 +494,7 @@ graph LR
     %% Gate
     Gate --> TicketQ
     Gate --> EarlyEntry
-    Gate --> BurnSettings
+    Gate --> SettingsSvc
     Gate --> ShiftMgmt
     Gate --> Role
     Gate --> User
@@ -515,13 +515,13 @@ graph LR
     MailerLiteImport --> AcctProv
     MailerLiteImport --> CommPref
     MailerLiteImport --> Audit
-    EventSvc --> BurnSettings
+    EventSvc --> SettingsSvc
     EventSvc --> User
     EventSvc --> Email
 
     %% Rideshare
     Rideshare --> User
-    Rideshare --> BurnSettings
+    Rideshare --> SettingsSvc
     Rideshare --> NotifEmitter
     Rideshare --> Audit
 
@@ -546,7 +546,10 @@ graph LR
     GSyncLog --> User
     GSyncLog --> UEmail
 
-    %% Settings → Shifts
+    %% Settings → Shifts. The only two edges left into BurnSettings after
+    %% peterdrier/Humans#1629: the carry screen's source, and SaveEventSettings'
+    %% guard that the id exists in the Shifts-owned row. Both retire with
+    %% peterdrier/Humans#1631.
     SettingsSvc --> BurnSettings
 
     %% Surveys → Users / Email
