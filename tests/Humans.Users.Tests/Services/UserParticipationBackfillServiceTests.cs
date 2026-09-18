@@ -1,6 +1,6 @@
 using Humans.Users.Services;
 using AwesomeAssertions;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Application.Services.Users;
 using NodaTime;
 using NodaTime.Testing;
@@ -12,7 +12,7 @@ namespace Humans.Users.Tests.Services;
 public sealed class UserParticipationBackfillServiceTests
 {
     private readonly IUserServiceInternal _users = Substitute.For<IUserServiceInternal>();
-    private readonly IBurnSettingsService _shifts = Substitute.For<IBurnSettingsService>();
+    private readonly ISettingsService _eventSettings = Substitute.For<ISettingsService>();
     private List<(Guid UserId, ParticipationStatus Status)>? _captured;
 
     private UserParticipationBackfillService CreateService()
@@ -24,7 +24,7 @@ public sealed class UserParticipationBackfillServiceTests
             .Returns(ci => ((List<(Guid UserId, ParticipationStatus Status)>)ci[1]).Count);
 
         return new UserParticipationBackfillService(
-            _users, _shifts, new FakeClock(Instant.FromUtc(2026, 6, 11, 0, 0)));
+            _users, _eventSettings, new FakeClock(Instant.FromUtc(2026, 6, 11, 0, 0)));
     }
 
     [HumansFact]

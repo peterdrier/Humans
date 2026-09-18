@@ -67,7 +67,7 @@
         Gdpr          — UserService and AccountMergeService are Article 15 contributors.
         Notifications — merge requests and email problems notify the human.
         Onboarding    — profile editing reports onboarding progress.
-        Shifts        — participation backfill reads the burn settings.
+        Settings      — participation backfill reads the active event settings.
         Teams         — account merge folds team memberships.
         Tickets       — participation is derived from ticket sync.
     -->
@@ -112,6 +112,7 @@
     <ProjectReference Include="..\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <!--
       The section project, not its Contracts leaf, because Views/Profile/Index.cshtml and
