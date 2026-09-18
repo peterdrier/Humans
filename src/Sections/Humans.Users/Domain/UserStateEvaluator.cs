@@ -50,11 +50,11 @@ internal static class UserStateEvaluator
     /// only place the tombstone can live; it is null for a live user whose address lives only in
     /// <c>UserEmail</c> rows, so a null value is never treated as erased.
     /// </summary>
-    private static bool IsGdprTombstoned(User user) =>
+    internal static bool IsGdprTombstoned(User user) =>
         (user.IdentityEmailColumn is { } email && email.EndsWith(DeletedEmailSuffix, StringComparison.OrdinalIgnoreCase))
         || IsLegacyGdprTombstone(user);
 
-    private const string DeletedEmailSuffix = "@deleted.local";
+    internal const string DeletedEmailSuffix = "@deleted.local";
 
     /// <summary>
     /// Legacy-only: rows anonymized before the email scrub was added to the erasure path may still

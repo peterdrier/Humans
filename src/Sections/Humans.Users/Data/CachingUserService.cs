@@ -496,8 +496,10 @@ internal sealed class CachingUserService(
         return current with
         {
             BurnerName = ResolveBurnerName(user.BurnerName, legacyDisplayName),
-            IsGdprAnonymized = string.Equals(
-                legacyDisplayName, UserInfo.GdprAnonymizedBurnerName, StringComparison.Ordinal),
+            // nobodies-collective/Humans#1742: never infer erasure from a user-editable name.
+            // Shares UserStateEvaluator's predicate so this projection and User.State cannot
+            // disagree; UserInfo.Create carries the same rule for the Contracts-side factory.
+            IsGdprAnonymized = UserStateEvaluator.IsGdprTombstoned(user),
             PreferredLanguage = user.PreferredLanguage,
             FallbackPictureUrl = user.ProfilePictureUrl,
             CreatedAt = user.CreatedAt,

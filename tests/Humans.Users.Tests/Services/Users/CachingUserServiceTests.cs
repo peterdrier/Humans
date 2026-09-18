@@ -1277,6 +1277,9 @@ public class CachingUserServiceTests
                 Id = id,
                 PreferredLanguage = "en",
                 DisplayName = gdprErased ? UserInfo.GdprAnonymizedBurnerName : "Row",
+                // The minted tombstone email ApplyExpiredDeletionAnonymizationAsync writes —
+                // the real post-erasure shape, not the user-editable DisplayName sentinel alone.
+                Email = gdprErased ? $"deleted-{id:N}@deleted.local" : null,
                 MergedToUserId = mergedTo,
                 // GDPR erasure reuses MergedAt while leaving MergedToUserId null.
                 MergedAt = mergedTo is not null || gdprErased ? Instant.FromUtc(2026, 1, 1, 0, 0) : null,
@@ -1382,6 +1385,37 @@ public class CachingUserServiceTests
         erased!.Id.Should().Be(d);
         erased.State.Should().Be(UserState.Deleted);
         erased.IsGdprAnonymized.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task GetUserInfoAsync_DoesNotTreatALiveMemberNamedDeletedUserAsErased()
+    {
+        // nobodies-collective/Humans#1742: a burner/display name a member typed themselves
+        // ("Deleted User") must never read as GDPR-erased — only the minted tombstone email
+        // or the complete legacy name tombstone does.
+        var userId = Guid.NewGuid();
+        var user = new User
+        {
+            Id = userId,
+            PreferredLanguage = "en",
+            BurnerName = "Deleted User",
+            DisplayName = "Deleted User",
+            FirstName = "Alice",
+            LastName = "Smith",
+            Email = "alice@example.com",
+        };
+        var info = UserInfoFactory.Create(
+            user, userEmails: [], eventParticipations: [], externalLogins: [],
+            profile: SampleProfile(userId, "Deleted User"), contactFields: [],
+            profileLanguages: [], volunteerHistory: [], communicationPreferences: []);
+        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(info));
+        var sut = CreateSut();
+
+        var live = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        live!.IsGdprAnonymized.Should().BeFalse();
+        live.IsTombstone.Should().BeFalse();
     }
 
     [HumansFact]

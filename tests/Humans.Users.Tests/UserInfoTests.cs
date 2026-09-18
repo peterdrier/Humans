@@ -371,6 +371,9 @@ public class UserInfoTests
         var userId = Guid.NewGuid();
         var user = MinimalUser(userId);
         user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
+        // The minted tombstone email ApplyExpiredDeletionAnonymizationAsync writes — the
+        // real post-erasure shape, not the user-editable DisplayName sentinel alone.
+        user.Email = $"deleted-{userId:N}@deleted.local";
 
         var info = UserInfoFactory.Create(
             user, [], [], [], NamedProfile(userId, "Deleted User"), [], [], [], []);
@@ -406,6 +409,62 @@ public class UserInfoTests
             user, [], [], [], NamedProfile(userId, "Merged"), [], [], [], []);
 
         info.IsActive.Should().BeFalse();
+    }
+
+    // IsGdprAnonymized recognition (nobodies-collective/Humans#1742) — keyed on the minted
+    // deleted-<id>@deleted.local email or, legacy-only, the complete DisplayName+FirstName+LastName
+    // tombstone, never a user-editable name field alone.
+
+    [HumansFact]
+    public void IsGdprAnonymized_false_for_a_live_member_named_Deleted_User()
+    {
+        // A burner name a member typed themselves must never read as erased.
+        var userId = Guid.NewGuid();
+        var user = MinimalUser(userId);
+        user.BurnerName = "Deleted User";
+        user.DisplayName = "Deleted User";
+        user.FirstName = "Alice";
+        user.LastName = "Smith";
+        user.Email = "alice@example.com";
+
+        var info = UserInfoFactory.Create(
+            user, [], [], [], NamedProfile(userId, "Deleted User"), [], [], [], []);
+
+        info.IsGdprAnonymized.Should().BeFalse();
+        info.IsTombstone.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void IsGdprAnonymized_true_for_a_genuinely_erased_user()
+    {
+        // The minted tombstone email ApplyExpiredDeletionAnonymizationAsync writes.
+        var userId = Guid.NewGuid();
+        var user = MinimalUser(userId);
+        user.Email = $"deleted-{userId:N}@deleted.local";
+
+        var info = UserInfoFactory.Create(
+            user, [], [], [], profile: null, [], [], [], []);
+
+        info.IsGdprAnonymized.Should().BeTrue();
+        info.IsTombstone.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public void IsGdprAnonymized_true_for_the_legacy_name_only_tombstone()
+    {
+        // Rows anonymized before the email scrub joined the erasure path lack the tombstoned
+        // email, so the complete legacy name tombstone (all three columns) must still count.
+        var userId = Guid.NewGuid();
+        var user = MinimalUser(userId);
+        user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
+        user.FirstName = "Deleted";
+        user.LastName = "User";
+        user.Email = "legacy-erased@example.com"; // ordinary email — pre-scrub shape
+
+        var info = UserInfoFactory.Create(
+            user, [], [], [], profile: null, [], [], [], []);
+
+        info.IsGdprAnonymized.Should().BeTrue();
     }
 
     [HumansFact]

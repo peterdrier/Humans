@@ -134,9 +134,13 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         var deletedUser = new User
         {
             Id = deletedId,
-            DisplayName = "Deleted User", // GDPR-anonymized sentinel → IsGdprAnonymized → IsTombstone
+            DisplayName = "Deleted User",
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            // The minted tombstone email ApplyExpiredDeletionAnonymizationAsync writes →
+            // IsGdprAnonymized → IsTombstone. The DisplayName sentinel alone is user-editable
+            // and no longer sufficient (nobodies-collective/Humans#1742).
+            Email = $"deleted-{deletedId:N}@deleted.local",
         };
         AddInfo(deletedUser.ToUserInfo(
             userEmails: [Email(deletedId, "deleted-1@deleted.local", isVerified: false)],

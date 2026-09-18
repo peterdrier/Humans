@@ -342,6 +342,10 @@ public class EmailProvisioningServiceTests
             {
                 Id = userId,
                 DisplayName = UserInfo.GdprAnonymizedBurnerName,
+                // The erasure path's minted tombstone address — what marks a row erased
+                // (nobodies-collective/Humans#1742); the name sentinel alone is a name a
+                // member could type.
+                Email = $"deleted-{userId:N}@deleted.local",
                 PreferredLanguage = "en",
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             },

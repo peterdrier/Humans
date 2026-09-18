@@ -413,8 +413,7 @@ public sealed record UserInfo(
 
         var legacyDisplayName = user.DisplayName;
         var burnerName = ResolveBurnerName(user.BurnerName, legacyDisplayName);
-        var isGdprAnonymized = string.Equals(
-            legacyDisplayName, GdprAnonymizedBurnerName, StringComparison.Ordinal);
+        var isGdprAnonymized = IsGdprTombstone(user);
 
         var info = new UserInfo(
             Id: user.Id,
@@ -458,6 +457,30 @@ public sealed record UserInfo(
     /// fallback — it retires once the #1102 migration drops the <c>DisplayName</c> column.
     /// <c>CachingUserService.ResolveBurnerName</c> is the cache-refresh twin of this.
     /// </summary>
+    /// <summary>
+    /// A row erased via GDPR Article 17. Keyed on the <c>deleted-&lt;id&gt;@deleted.local</c>
+    /// address <see cref="Humans.Base.Interfaces.Repositories.IUserRepository.ApplyExpiredDeletionAnonymizationAsync"/>
+    /// mints, never on a name a member can type (nobodies-collective/Humans#1742: a member whose
+    /// burner name is literally "Deleted User" was read as erased, which made
+    /// <see cref="IsTombstone"/> true and dropped them out of every listing and search).
+    /// Reads <see cref="User.IdentityEmailColumn"/> rather than <see cref="User.Email"/>: erasure
+    /// removes the <c>UserEmail</c> rows first, so the raw Identity column is the only place the
+    /// tombstone survives. Null there means a live user whose address lives only in
+    /// <c>UserEmail</c> rows, never an erased one.
+    ///
+    /// Deliberate twin of <c>Humans.Users.Domain.UserStateEvaluator.IsGdprTombstoned</c>: that
+    /// type is internal to the section and this project may not grow public surface (see the
+    /// csproj), so the rule is stated twice rather than exported. Change both together.
+    /// </summary>
+    private static bool IsGdprTombstone(User user) =>
+        (user.IdentityEmailColumn is { } email
+            && email.EndsWith("@deleted.local", StringComparison.OrdinalIgnoreCase))
+        // Legacy-only: rows anonymized before the email scrub existed carry the complete
+        // name tombstone instead. All three columns, never the display name alone.
+        || (string.Equals(user.DisplayName, GdprAnonymizedBurnerName, StringComparison.Ordinal)
+            && string.Equals(user.FirstName, "Deleted", StringComparison.Ordinal)
+            && string.Equals(user.LastName, "User", StringComparison.Ordinal));
+
     private static string ResolveBurnerName(string? userBurnerName, string legacyDisplayName)
     {
         if (!string.IsNullOrWhiteSpace(userBurnerName))
