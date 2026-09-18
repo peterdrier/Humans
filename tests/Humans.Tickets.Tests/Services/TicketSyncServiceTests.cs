@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Campaigns.Contracts;
 using Humans.Tickets.Data;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
 using Microsoft.EntityFrameworkCore;
@@ -22,7 +22,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     private readonly IStripeService _stripeService;
     private readonly ICampaignService _campaignService;
     private readonly IUserService _userService;
-    private readonly IBurnSettingsService _shiftManagementService;
+    private readonly ISettingsService _eventSettingsService;
     private readonly ITicketRepository _ticketRepository;
     private readonly ITicketVendorCacheInvalidator _vendorCache;
     private readonly TicketSyncService _service;
@@ -45,7 +45,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         _userService.GetAllParticipationsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([]);
         _campaignService = Substitute.For<ICampaignService>();
-        _shiftManagementService = Substitute.For<IBurnSettingsService>();
+        _eventSettingsService = Substitute.For<ISettingsService>();
 
         _ticketRepository = new TicketRepository(TicketsDbFactory, Clock);
         _vendorCache = Substitute.For<ITicketVendorCacheInvalidator>();
@@ -63,7 +63,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             _userService,
             _userService,
             _campaignService,
-            _shiftManagementService);
+            _eventSettingsService);
 
         // Seed the singleton TicketSyncState row
         TicketsDb.TicketSyncStates.Add(new TicketSyncState
@@ -336,7 +336,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             _userService,
             Substitute.For<IUserService>(),
             Substitute.For<ICampaignService>(),
-            Substitute.For<IBurnSettingsService>());
+            Substitute.For<ISettingsService>());
 
         var result = await service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -565,8 +565,8 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _shiftManagementService.GetActiveAsync()
-            .Returns(BurnFixtures.Burn(year: 2026));
+        _eventSettingsService.GetActiveEventSettingsAsync()
+            .Returns(EventFixtures.Event(year: 2026));
 
         var checkInInstant = Instant.FromUtc(2026, 7, 8, 14, 30);
 
@@ -600,8 +600,8 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _shiftManagementService.GetActiveAsync()
-            .Returns(BurnFixtures.Burn(year: 2026));
+        _eventSettingsService.GetActiveEventSettingsAsync()
+            .Returns(EventFixtures.Event(year: 2026));
 
         var earlier = Instant.FromUtc(2026, 7, 8, 10, 0);
         var later = Instant.FromUtc(2026, 7, 8, 18, 0);
@@ -636,8 +636,8 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _shiftManagementService.GetActiveAsync()
-            .Returns(BurnFixtures.Burn(year: 2026));
+        _eventSettingsService.GetActiveEventSettingsAsync()
+            .Returns(EventFixtures.Event(year: 2026));
 
         _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new List<VendorOrderDto> { MakeOrderDto("ord_v", "Alice", "alice@example.com") });
@@ -665,8 +665,8 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _shiftManagementService.GetActiveAsync()
-            .Returns(BurnFixtures.Burn(year: 2026));
+        _eventSettingsService.GetActiveEventSettingsAsync()
+            .Returns(EventFixtures.Event(year: 2026));
 
         _userService.GetAllParticipationsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new List<UserParticipationRow>
@@ -701,8 +701,8 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _shiftManagementService.GetActiveAsync()
-            .Returns(BurnFixtures.Burn(year: 2026));
+        _eventSettingsService.GetActiveEventSettingsAsync()
+            .Returns(EventFixtures.Event(year: 2026));
 
         _userService.GetAllParticipationsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new List<UserParticipationRow>
