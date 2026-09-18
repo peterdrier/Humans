@@ -66,7 +66,7 @@ A camp's order against a season.
 
 **Cross-section linkage:** `CampSeasonId` and `TeamId` are bare `Guid?` columns — no FK constraint, no navigation property (per `memory/architecture/no-cross-section-ef-joins.md`). Resolved at the service layer via `ICampServiceRead.GetCampSeasonByIdAsync` / `ITeamServiceRead.GetTeamAsync`.
 
-**Year repair rule:** new writes always populate `Year`. `/Store/Admin/OrderYears` lists every legacy `Year = 0` row and resolves its camp season before an operator confirms the repair. The POST rescans current rows, persists the season's year, and writes `StoreOrderYearBackfilled` per repaired order. Rows whose camp season no longer exists remain visible and unchanged. `GetOrderAsync` and `AddLineAsync` also perform the same idempotent correction when a resolvable legacy order is touched, with an audit entry and structured application log line.
+**Year repair rule:** new writes always populate `Year`. `/Store/Admin/OrderYears` lists every legacy `Year = 0` row and resolves its camp season before an operator confirms the repair. The POST rescans current rows, persists the season's year, and writes `StoreOrderYearBackfilled` per repaired order. Rows whose camp season no longer exists remain visible and unchanged. `AddLineAsync` also performs the same idempotent correction, with an audit entry and structured application log line. `GetOrderAsync` remains read-only because callers load the order before authorizing access.
 
 **Aggregate-local navs:** `Order.Lines`, `Order.Payments`.
 

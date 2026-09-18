@@ -324,7 +324,6 @@ internal sealed class Service(
     {
         var o = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
         if (o is null) return null;
-        await ResolveLegacyOrderYearAsync(o, null, nameof(GetOrderAsync), ct);
         var productIds = o.Lines.Select(l => l.ProductId).Distinct().ToList();
         var productNames = await LoadProductNamesAsync(productIds, ct);
         var currentPrices = await LoadCurrentPricesAsync(ct);
@@ -365,7 +364,7 @@ internal sealed class Service(
 
     private async Task<bool> ResolveLegacyOrderYearAsync(
         Order order,
-        Guid? actorUserId,
+        Guid actorUserId,
         string source,
         CancellationToken ct)
     {
@@ -380,24 +379,12 @@ internal sealed class Service(
         order.UpdatedAt = clock.GetCurrentInstant();
         await repo.UpdateOrderAsync(order, ct);
         var description = $"Resolved legacy store order year as {season.Year} from camp season {seasonId}";
-        if (actorUserId is { } actor)
-        {
-            await audit.LogAsync(
-                AuditAction.StoreOrderYearBackfilled,
-                AuditEntityTypes.Order,
-                order.Id,
-                description,
-                actor);
-        }
-        else
-        {
-            await audit.LogAsync(
-                AuditAction.StoreOrderYearBackfilled,
-                AuditEntityTypes.Order,
-                order.Id,
-                description,
-                source);
-        }
+        await audit.LogAsync(
+            AuditAction.StoreOrderYearBackfilled,
+            AuditEntityTypes.Order,
+            order.Id,
+            description,
+            actorUserId);
         logger.LogInformation(
             "Resolved legacy Store order {OrderId} year as {Year} from camp season {CampSeasonId} via {Source}",
             order.Id,

@@ -325,7 +325,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetOrderAsync_resolves_legacy_year_from_camp_season()
+    public async Task GetOrderAsync_does_not_repair_legacy_year_before_caller_authorizes_order()
     {
         var orderId = Guid.NewGuid();
         var seasonId = Guid.NewGuid();
@@ -342,18 +342,11 @@ public class ServiceTests
 
         var result = await _service.GetOrderAsync(orderId, TestContext.Current.CancellationToken);
 
-        result!.Year.Should().Be(2025);
-        await _repo.Received(1).UpdateOrderAsync(
-            Arg.Is<Order>(candidate => candidate.Id == orderId && candidate.Year == 2025),
+        result!.Year.Should().Be(0);
+        await _repo.DidNotReceive().UpdateOrderAsync(
+            Arg.Any<Order>(),
             Arg.Any<CancellationToken>());
-        await _audit.Received(1).LogAsync(
-            AuditAction.StoreOrderYearBackfilled,
-            AuditEntityTypes.Order,
-            orderId,
-            Arg.Any<string>(),
-            nameof(Service.GetOrderAsync),
-            Arg.Any<Guid?>(),
-            Arg.Any<string?>());
+        _audit.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
