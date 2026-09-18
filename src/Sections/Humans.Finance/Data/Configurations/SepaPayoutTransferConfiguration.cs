@@ -12,6 +12,7 @@ internal sealed class SepaPayoutTransferConfiguration : IEntityTypeConfiguration
         b.HasKey(x => x.Id);
         b.HasIndex(x => x.FileId);
         b.HasIndex(x => x.UserId);
+        b.Property(x => x.HoldedContactId).HasMaxLength(64);
         b.Property(x => x.CreditorName).HasMaxLength(70);
         b.Property(x => x.Iban).HasMaxLength(34);
         b.Property(x => x.IbanMasked).HasMaxLength(34);

@@ -130,6 +130,7 @@ Fields: `LastSyncAt`, `Status` (`Idle / Running / Error` string), `LastError`, `
 | FileId | Guid | The file it belongs to. Indexed; intra-section, no nav property. |
 | UserId | Guid | The member paid. Bare FK, no nav (cross-section). Indexed. |
 | SupplierAccountNum | int | The creditor account the balance was read from. |
+| HoldedContactId | string(64)? | The Holded contact whose recipient details this transfer actually paid, captured at generation — Holded lets two contacts share one account, so this is what the booking guard checks alongside `SupplierAccountNum`. Null on a row generated before nobodies-collective/Humans#1146; those keep the account-only guard. |
 | CreditorName | string(70) | As written into `Cdtr/Nm` — already SEPA-normalized. |
 | Iban | string(34) | **Unmasked.** Stored as written into the XML. |
 | IbanMasked | string(34) | What logs, audit entries and cross-section rows use instead. |

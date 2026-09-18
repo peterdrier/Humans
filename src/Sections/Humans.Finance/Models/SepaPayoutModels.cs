@@ -81,6 +81,7 @@ internal sealed record SepaPayoutExportRow(
     Instant GeneratedAt,
     string FileName,
     int SupplierAccountNum,
+    string? HoldedContactId,
     string CreditorName,
     string IbanMasked,
     decimal Amount,
