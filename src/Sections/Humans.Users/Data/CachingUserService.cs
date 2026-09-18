@@ -495,7 +495,7 @@ internal sealed class CachingUserService(
         var legacyDisplayName = user.DisplayName;
         return current with
         {
-            BurnerName = ResolveBurnerName(user.BurnerName, legacyDisplayName, current.Profile),
+            BurnerName = ResolveBurnerName(user.BurnerName, legacyDisplayName),
             IsGdprAnonymized = string.Equals(
                 legacyDisplayName, UserInfo.GdprAnonymizedBurnerName, StringComparison.Ordinal),
             PreferredLanguage = user.PreferredLanguage,
@@ -521,18 +521,18 @@ internal sealed class CachingUserService(
     }
 
     /// <summary>
-    /// #1097 resolution order: <c>User.BurnerName</c> → <c>Profile.BurnerName</c> → the legacy
-    /// <c>User.DisplayName</c>. Cache-refresh twin of the same order in <c>UserInfo.Create</c>.
+    /// nobodies-collective/Humans#1098: <c>User.BurnerName</c> is the sole source, with narrow
+    /// tombstone recognition for legacy anonymized rows. Cache-refresh twin of
+    /// <c>UserInfo.ResolveBurnerName</c> — see that doc comment for the detail.
     /// </summary>
-    private static string ResolveBurnerName(
-        string? userBurnerName, string legacyDisplayName, ProfileInfo? profile)
+    private static string ResolveBurnerName(string? userBurnerName, string legacyDisplayName)
     {
         if (!string.IsNullOrWhiteSpace(userBurnerName))
             return userBurnerName;
 
-        return profile is not null && !string.IsNullOrWhiteSpace(profile.BurnerName)
-            ? profile.BurnerName
-            : legacyDisplayName;
+        return string.Equals(legacyDisplayName, UserInfo.GdprAnonymizedBurnerName, StringComparison.Ordinal)
+            ? UserInfo.GdprAnonymizedBurnerName
+            : string.Empty;
     }
 
     // ==========================================================================

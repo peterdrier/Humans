@@ -268,10 +268,13 @@ public class UserInfoTests
         info.HasTicket.Should().BeFalse();
     }
 
-    // Resolution order: User.BurnerName → Profile.BurnerName → legacy DisplayName.
+    // nobodies-collective/Humans#1098: User.BurnerName is the sole source. The Profile.BurnerName
+    // and legacy-DisplayName fallback chain is gone — the one exception is narrow recognition of
+    // the GDPR-erasure sentinel on rows anonymized before this change (see the tombstone tests
+    // below).
 
     [HumansFact]
-    public void BurnerName_prefers_the_User_column_over_the_Profile()
+    public void BurnerName_reads_only_the_User_column()
     {
         var userId = Guid.NewGuid();
         var user = MinimalUser(userId);
@@ -287,7 +290,7 @@ public class UserInfoTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void BurnerName_falls_back_to_the_Profile_when_the_User_column_is_blank(string? userBurnerName)
+    public void BurnerName_does_not_fall_back_to_the_Profile_when_the_User_column_is_blank(string? userBurnerName)
     {
         var userId = Guid.NewGuid();
         var user = MinimalUser(userId);
@@ -296,20 +299,54 @@ public class UserInfoTests
         var info = UserInfoFactory.Create(
             user, [], [], [], NamedProfile(userId, "From Profile"), [], [], [], []);
 
-        info.BurnerName.Should().Be("From Profile");
+        info.BurnerName.Should().BeEmpty();
     }
 
     [HumansFact]
-    public void BurnerName_falls_back_to_DisplayName_when_both_names_are_blank()
+    public void BurnerName_does_not_fall_back_to_a_non_sentinel_DisplayName()
     {
+        // The fallback is gone: a blank BurnerName with an ordinary (non-sentinel) legacy
+        // DisplayName must render blank, not the stale legacy name.
         var userId = Guid.NewGuid();
-        var user = MinimalUser(userId);
+        var user = MinimalUser(userId); // DisplayName = "Test", not the GDPR sentinel.
         user.BurnerName = null;
 
         var info = UserInfoFactory.Create(
-            user, [], [], [], NamedProfile(userId, ""), [], [], [], []);
+            user, [], [], [], profile: null, [], [], [], []);
 
-        info.BurnerName.Should().Be("Test");
+        info.BurnerName.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public void BurnerName_resolves_the_sentinel_for_a_freshly_erased_user()
+    {
+        // Mirrors UserRepository.ApplyExpiredDeletionAnonymizationAsync, which now dual-writes
+        // the sentinel into BurnerName directly (nobodies-collective/Humans#1098).
+        var userId = Guid.NewGuid();
+        var user = MinimalUser(userId);
+        user.BurnerName = UserInfo.GdprAnonymizedBurnerName;
+        user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
+
+        var info = UserInfoFactory.Create(
+            user, [], [], [], profile: null, [], [], [], []);
+
+        info.BurnerName.Should().Be(UserInfo.GdprAnonymizedBurnerName);
+    }
+
+    [HumansFact]
+    public void BurnerName_resolves_the_sentinel_for_a_legacy_erased_row()
+    {
+        // Legacy shape from before #1098: erasure only nulled BurnerName and left the sentinel
+        // in DisplayName. Narrow tombstone recognition must still surface it, not blank.
+        var userId = Guid.NewGuid();
+        var user = MinimalUser(userId);
+        user.BurnerName = null;
+        user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
+
+        var info = UserInfoFactory.Create(
+            user, [], [], [], profile: null, [], [], [], []);
+
+        info.BurnerName.Should().Be(UserInfo.GdprAnonymizedBurnerName);
     }
 
     // IsActive excludes tombstones (nobodies-collective/Humans#1707) — merged, GDPR-anonymized,
@@ -339,6 +376,23 @@ public class UserInfoTests
             user, [], [], [], NamedProfile(userId, "Deleted User"), [], [], [], []);
 
         info.IsActive.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void IsActive_false_for_legacy_shaped_gdpr_anonymized_tombstone()
+    {
+        // Legacy shape from before #1098: BurnerName null, sentinel only in DisplayName.
+        // Must still classify as a tombstone (and resolve BurnerName to the sentinel).
+        var userId = Guid.NewGuid();
+        var user = MinimalUser(userId);
+        user.BurnerName = null;
+        user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
+
+        var info = UserInfoFactory.Create(
+            user, [], [], [], profile: null, [], [], [], []);
+
+        info.IsActive.Should().BeFalse();
+        info.BurnerName.Should().Be(UserInfo.GdprAnonymizedBurnerName);
     }
 
     [HumansFact]

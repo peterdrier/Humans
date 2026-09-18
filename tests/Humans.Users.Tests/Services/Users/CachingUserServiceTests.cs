@@ -41,7 +41,7 @@ public class CachingUserServiceTests
         string displayName = "Alice",
         IReadOnlyList<EventParticipation>? eventParticipations = null) =>
         UserInfoFactory.Create(
-            new User { Id = userId, PreferredLanguage = "en" },
+            new User { Id = userId, BurnerName = displayName, PreferredLanguage = "en" },
             userEmails: [],
             eventParticipations: eventParticipations ?? [],
             externalLogins: [],
@@ -266,6 +266,7 @@ public class CachingUserServiceTests
         var user = new User
         {
             Id = userId,
+            BurnerName = "Octa",
             PreferredLanguage = "es",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             ICalToken = Guid.NewGuid(),
@@ -570,6 +571,7 @@ public class CachingUserServiceTests
         var user = new User
         {
             Id = userId,
+            BurnerName = burnerName,
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             State = isRejected ? UserState.Rejected
@@ -893,7 +895,7 @@ public class CachingUserServiceTests
 
     private static UserInfo UserInfoFor(Guid userId, Profile? profile) =>
         UserInfoFactory.Create(
-            new User { Id = userId, PreferredLanguage = "en" },
+            new User { Id = userId, BurnerName = profile?.BurnerName, PreferredLanguage = "en" },
             userEmails: [],
             eventParticipations: [],
             externalLogins: [],

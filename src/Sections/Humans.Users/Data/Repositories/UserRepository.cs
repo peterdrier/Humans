@@ -417,9 +417,10 @@ internal sealed partial class UserRepository : IUserRepository
 
         user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
 
-        // #1097: mirror AnonymizeProfileInternalAsync's erasure labels — a blank BurnerName
-        // lets the legacy "Deleted User" DisplayName resolve through, as it does today.
-        user.BurnerName = null;
+        // nobodies-collective/Humans#1098: dual-write the sentinel into BurnerName too, mirroring
+        // AnonymizeForMergeAsync's "Merged User" tombstone — the resolver now reads User.BurnerName
+        // only, so a blank BurnerName would render empty instead of the "Deleted User" tombstone.
+        user.BurnerName = UserInfo.GdprAnonymizedBurnerName;
         user.FirstName = "Deleted";
         user.LastName = "User";
 

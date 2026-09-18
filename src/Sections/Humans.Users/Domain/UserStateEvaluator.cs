@@ -27,10 +27,17 @@ internal static class UserStateEvaluator
             && !string.IsNullOrWhiteSpace(profile.BurnerName)
             && !string.IsNullOrWhiteSpace(profile.FirstName)
             && !string.IsNullOrWhiteSpace(profile.LastName);
+        // nobodies-collective/Humans#1098: the erasure path now dual-writes the sentinel into
+        // BurnerName too (mirroring the merge tombstone), so recognise it there as well as the
+        // legacy DisplayName column — this catches both freshly-erased and legacy-anonymized rows.
         var isGdprDeleted = string.Equals(
-            user.DisplayName,
-            UserStateClassifier.GdprAnonymizedDisplayName,
-            StringComparison.Ordinal);
+                user.DisplayName,
+                UserStateClassifier.GdprAnonymizedDisplayName,
+                StringComparison.Ordinal)
+            || string.Equals(
+                user.BurnerName,
+                UserStateClassifier.GdprAnonymizedDisplayName,
+                StringComparison.Ordinal);
         return UserStateClassifier.Classify(
             hasRequiredNameFields: hasName,
             isSuspended: isSuspended,

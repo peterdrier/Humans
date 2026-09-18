@@ -32,14 +32,14 @@ public class UnsubscribeServiceTests
     private void SeedUser(Guid userId, string displayName)
     {
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(CreateUserInfo(new User { Id = userId, DisplayName = displayName }));
+            .Returns(CreateUserInfo(new User { Id = userId, BurnerName = displayName, DisplayName = displayName }));
     }
 
     // The resolving read hands a merged-away id its survivor.
     private void SeedMergedUser(Guid mergedId, Guid survivorId, string survivorName)
     {
         _userService.GetUserInfoAsync(mergedId, Arg.Any<CancellationToken>())
-            .Returns(CreateUserInfo(new User { Id = survivorId, DisplayName = survivorName }));
+            .Returns(CreateUserInfo(new User { Id = survivorId, BurnerName = survivorName, DisplayName = survivorName }));
     }
 
     private static UserInfo CreateUserInfo(User user) =>

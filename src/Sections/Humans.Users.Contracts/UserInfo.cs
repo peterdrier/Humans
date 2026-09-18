@@ -412,7 +412,7 @@ public sealed record UserInfo(
             .ToList();
 
         var legacyDisplayName = user.DisplayName;
-        var burnerName = ResolveBurnerName(user.BurnerName, legacyDisplayName, profile);
+        var burnerName = ResolveBurnerName(user.BurnerName, legacyDisplayName);
         var isGdprAnonymized = string.Equals(
             legacyDisplayName, GdprAnonymizedBurnerName, StringComparison.Ordinal);
 
@@ -450,18 +450,21 @@ public sealed record UserInfo(
     }
 
     /// <summary>
-    /// #1097 resolution order: <c>User.BurnerName</c> → <c>Profile.BurnerName</c> → the legacy
-    /// <c>User.DisplayName</c>. Monotonic — no user renders blank at any backfill state.
+    /// nobodies-collective/Humans#1098: <c>User.BurnerName</c> is the sole source — the
+    /// <c>Profile.BurnerName</c> / legacy <c>DisplayName</c> fallback chain is gone.
+    /// The one exception is narrow tombstone recognition: a row anonymized before #1098 has
+    /// a blank <c>BurnerName</c> with the erasure sentinel still sitting in <c>DisplayName</c>
+    /// (the old #1097 erasure path only nulled <c>BurnerName</c>). This is NOT a general
+    /// fallback — it retires once the #1102 migration drops the <c>DisplayName</c> column.
     /// <c>CachingUserService.ResolveBurnerName</c> is the cache-refresh twin of this.
     /// </summary>
-    private static string ResolveBurnerName(
-        string? userBurnerName, string legacyDisplayName, ProfileInfo? profile)
+    private static string ResolveBurnerName(string? userBurnerName, string legacyDisplayName)
     {
         if (!string.IsNullOrWhiteSpace(userBurnerName))
             return userBurnerName;
 
-        return profile is not null && !string.IsNullOrWhiteSpace(profile.BurnerName)
-            ? profile.BurnerName
-            : legacyDisplayName;
+        return string.Equals(legacyDisplayName, GdprAnonymizedBurnerName, StringComparison.Ordinal)
+            ? GdprAnonymizedBurnerName
+            : string.Empty;
     }
 }

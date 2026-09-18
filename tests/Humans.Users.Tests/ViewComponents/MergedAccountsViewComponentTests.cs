@@ -111,6 +111,7 @@ public class MergedAccountsViewComponentTests
         var user = new User
         {
             Id = id,
+            BurnerName = name ?? "Test Human",
             DisplayName = name ?? "Test Human",
             PreferredLanguage = "en",
             CreatedAt = Now,

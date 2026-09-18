@@ -52,8 +52,8 @@ Extends `IdentityUser<Guid>` with project-specific columns.
 |----------|------|---------|
 | Id | Guid | PK |
 | Email | string | Computed from `UserEmails` (first verified, primary-preferred); falls back to `base.Email` when collection is not loaded. Override — not a plain column. |
-| DisplayName | string | User-provided display name (max 256, required). Name of last resort — see `BurnerName`. |
-| BurnerName | string? | The name we render (max 256). Dual-written from `Profile.BurnerName` on every profile save; null on rows not yet backfilled. Resolution order into `UserInfo.BurnerName` is `User.BurnerName` → `Profile.BurnerName` → `DisplayName`. |
+| DisplayName | string | `[Obsolete]` legacy Identity column (max 256, required). Legitimate consumers only: creation-time seed, merge/purge/GDPR tombstone labels, GDPR export, debug screens. Column drop is nobodies-collective/Humans#1102. |
+| BurnerName | string? | The name we render (max 256), and the sole source for `UserInfo.BurnerName` (nobodies-collective/Humans#1098). Dual-written from `Profile.BurnerName` on every profile save; null on rows not yet backfilled. The only fallback left is narrow legacy-tombstone recognition (blank `BurnerName` + the GDPR sentinel in `DisplayName`), which retires with the #1102 column drop. |
 | FirstName | string? | Legal given name (max 256). Dual-written from `Profile.FirstName`; `Profile` is still the read source. |
 | LastName | string? | Legal family name (max 256). Dual-written from `Profile.LastName`; `Profile` is still the read source. |
 | PreferredLanguage | string | UI / email locale, default `"en"` (max 10) |

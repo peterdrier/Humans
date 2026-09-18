@@ -456,6 +456,7 @@ public class AccountDeletionServiceTests
             Id = userId,
             Email = email,
             UserName = email,
+            BurnerName = displayName,
             DisplayName = displayName,
             PreferredLanguage = preferredLanguage,
         };

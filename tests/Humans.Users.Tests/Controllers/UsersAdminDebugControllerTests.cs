@@ -46,6 +46,7 @@ public class UsersAdminDebugControllerTests
             {
                 Id = id,
                 DisplayName = displayName,
+                BurnerName = displayName,
                 PreferredLanguage = "en",
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             },

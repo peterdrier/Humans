@@ -109,6 +109,18 @@ public class UserStateClassifierTests
         UserStateEvaluator.Classify(gdprDeleted, profile: null).Should().Be(UserState.Deleted);
     }
 
+    [HumansFact]
+    public void Classify_entity_recognises_the_gdpr_sentinel_dual_written_into_BurnerName()
+    {
+        // nobodies-collective/Humans#1098: ApplyExpiredDeletionAnonymizationAsync now dual-writes
+        // the sentinel into BurnerName too — the classifier must catch it there, not only on the
+        // legacy DisplayName column.
+        var user = NewUser(displayName: "Real Name");
+        user.BurnerName = UserStateClassifier.GdprAnonymizedDisplayName;
+
+        UserStateEvaluator.Classify(user, profile: null).Should().Be(UserState.Deleted);
+    }
+
     private static User NewUser(string displayName) => new()
     {
         Id = Guid.NewGuid(),

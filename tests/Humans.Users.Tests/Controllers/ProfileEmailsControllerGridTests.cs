@@ -339,7 +339,7 @@ public class ProfileEmailsControllerGridTests
                 return $"/Profile/Me/Emails/Verify?userId={routeValues["userId"]}&token={routeValues["token"]}";
             });
 
-        var targetUser = new User { Id = targetUserId, DisplayName = "Target User", PreferredLanguage = "es" };
+        var targetUser = new User { Id = targetUserId, BurnerName = "Target User", DisplayName = "Target User", PreferredLanguage = "es" };
         _userManager.FindByIdAsync(targetUserId.ToString())
             .Returns(targetUser);
         _userService.GetUserInfoAsync(targetUserId, Arg.Any<CancellationToken>())
