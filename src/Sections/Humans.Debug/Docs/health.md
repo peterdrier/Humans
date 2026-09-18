@@ -83,7 +83,7 @@ The shapes imply a section with no data layer at all:
 
 ## 5. Seams
 
-- **`IBurnSettingsService` is already the read contract.** The widget gallery and the
+- **`ISettingsService` is already the read contract.** The widget gallery and the
   dashboard card ask it one question ("what is the active event?"), and the interface
   publishes reads only — mutations of `event_settings` stay inside Shifts on
   `IShiftManagementService`. There is no read-split left to make here.

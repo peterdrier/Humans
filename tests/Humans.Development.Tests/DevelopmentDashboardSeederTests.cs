@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Base.Enums;
 using Humans.Development.Services;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
@@ -78,7 +79,7 @@ public class DevelopmentDashboardSeederTests
             .Returns(_ => SignupResult.Ok(Guid.NewGuid()));
 
         var sut = new DevelopmentDashboardSeeder(
-            shifts, Substitute.For<IBurnSettingsService>(), signups,
+            shifts, Substitute.For<ISettingsService>(), signups,
             Substitute.For<ITeamService>(), teams, Substitute.For<IUserEmailService>(),
             Substitute.For<IUserService>(), profileEditor, userManager, new FakeClock(now),
             NullLogger<DevelopmentDashboardSeeder>.Instance);
