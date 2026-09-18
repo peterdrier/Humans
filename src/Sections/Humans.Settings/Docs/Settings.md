@@ -32,7 +32,13 @@ of the app-wide event values (nobodies-collective/Humans#1104).
   for `PolicyNames.AdminOnly`, read-only (event name, gate date, build/event/strike
   windows as text) for every other authenticated member. `/Settings/Admin` itself now
   redirects there — a GET is a redirect, not a second live page
-  (`memory/product/no-url-aliases.md`); the POST is unchanged.
+  (`memory/product/no-url-aliases.md`); the POST is unchanged. Reached from the signed-in
+  user menu via the `user-menu` chrome slot (`SectionChrome` → `SettingsUserMenuViewComponent`),
+  since nothing else links to it. Its member-facing strings live in `SettingsResource`; the
+  `/Settings/Admin` and carry screens stay admin-exempt
+  (`memory/code/localization-admin-exempt.md`); the tab label and empty-state text render
+  through Shell's `SettingsTabs` component, so they live in `SharedResource` instead
+  (`Settings_TabEvent`, `Settings_NoTabs`).
 
 ## Data Model
 
@@ -149,7 +155,8 @@ entries on event-settings saves), `EventSettingsCarryService`
 **Status:** (A) — own project, own context, repository-only data access; no
 caching decorator (low-traffic key reads, admin-only screens).
 **Contributes:** `SectionSettings : ISectionSettings` — the `/Settings#event`
-tab, rendered by `EventSettingsTabViewComponent`.
+tab, rendered by `EventSettingsTabViewComponent`; `SectionChrome : ISectionChrome` —
+the `/Settings` link in the signed-in user menu (`user-menu` slot).
 
 Detail on the repository surface and both invariants:
 [`data-access.md`](data-access.md).

@@ -9,12 +9,13 @@ namespace Humans.Settings;
 /// <see cref="SettingsTab.Policy"/> is deliberately null: /Settings must never 404 for a
 /// plain authenticated member, so the tab is offered to everyone and decides for itself
 /// (in <c>EventSettingsTabViewComponent</c>) whether the viewer gets the editable form or
-/// a read-only view.
+/// a read-only view. The label is a SharedResource key (<c>Settings_TabEvent</c>) — Shell's
+/// <c>SettingsTabs</c> view component renders it, so it cannot see this section's own set.
 /// </remarks>
 internal sealed class SectionSettings : ISectionSettings
 {
     public IEnumerable<SettingsTab> Tabs() =>
     [
-        new SettingsTab("event", "Event", "EventSettingsTab")
+        new SettingsTab("event", "Settings_TabEvent", "EventSettingsTab")
     ];
 }

@@ -1,11 +1,11 @@
 @using Humans.Base.Interfaces
+@using Microsoft.Extensions.Localization
 @model IReadOnlyList<SettingsTab>
+@inject IStringLocalizer<Humans.Base.SharedResource> TabsLocalizer
 
-@* Empty-state plumbing text, no resx key: this renders only while nothing has
-   contributed a tab yet. *@
 @if (Model.Count == 0)
 {
-    <p class="text-muted">No settings are available yet.</p>
+    <p class="text-muted">@TabsLocalizer["Settings_NoTabs"]</p>
 }
 else
 {
@@ -19,7 +19,7 @@ else
                         data-bs-toggle="tab" data-bs-target="#settingsTabs-panel-@tab.Key" type="button"
                         role="tab" aria-controls="settingsTabs-panel-@tab.Key"
                         aria-selected="@(isActive ? "true" : "false")">
-                    @tab.Label
+                    @TabsLocalizer[tab.Label]
                 </button>
             </li>
         }

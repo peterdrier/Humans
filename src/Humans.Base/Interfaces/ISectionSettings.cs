@@ -4,6 +4,7 @@ namespace Humans.Base.Interfaces;
 /// <remarks>
 /// <paramref name="Key"/> is the URL fragment and the merge identity — two sections
 /// contributing the same <paramref name="Key"/> collapse to one tab, first contributor wins.
+/// <paramref name="Label"/> is a SharedResource key; a key with no entry renders as itself.
 /// <paramref name="ComponentName"/> names a view component the owning section ships; it
 /// renders the tab's panel body. <paramref name="Policy"/> null means every authenticated
 /// user sees the tab — the tab decides for itself whether that user gets a read-only or

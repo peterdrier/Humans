@@ -10,3 +10,6 @@
 The Event tab's editable/read-only split is not a route gate: `EventSettingsTabViewComponent`
 calls `IAuthorizationService.AuthorizeAsync(user, null, PolicyNames.AdminOnly)` and renders
 the shared form only when it succeeds, else a read-only view with no `<form>` (#1628).
+
+`/Settings` is reachable from the signed-in user menu (`SectionChrome` contributes it to the
+`user-menu` chrome slot, unconditionally — same gate as the page's own `[Authorize]`).

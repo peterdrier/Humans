@@ -1,11 +1,9 @@
 @using Humans.Settings.ViewComponents
 @model EventSettingsTabViewModel
 
-@* Member-visible tab, no resx key today — tracked separately from this issue
-   (peterdrier/Humans#1628). *@
 @if (Model.Settings is null)
 {
-    <p class="text-muted">No event is configured yet.</p>
+    <p class="text-muted">@Localizer["Settings_NoEventConfigured"]</p>
 }
 else if (Model.CanEdit)
 {
@@ -14,19 +12,19 @@ else if (Model.CanEdit)
 else
 {
     <dl class="row mb-0">
-        <dt class="col-sm-4 col-lg-3">Event name</dt>
+        <dt class="col-sm-4 col-lg-3">@Localizer["Settings_EventName"]</dt>
         <dd class="col-sm-8 col-lg-9">@Model.Settings.EventName</dd>
 
-        <dt class="col-sm-4 col-lg-3">Gate opening date</dt>
+        <dt class="col-sm-4 col-lg-3">@Localizer["Settings_GateOpeningDate"]</dt>
         <dd class="col-sm-8 col-lg-9">@Model.Settings.GateOpeningDate</dd>
 
-        <dt class="col-sm-4 col-lg-3">Build window</dt>
-        <dd class="col-sm-8 col-lg-9">Day @Model.Settings.BuildStartOffset to day 0 (gates open)</dd>
+        <dt class="col-sm-4 col-lg-3">@Localizer["Settings_BuildWindow"]</dt>
+        <dd class="col-sm-8 col-lg-9">@Localizer["Settings_BuildRange", Model.Settings.BuildStartOffset]</dd>
 
-        <dt class="col-sm-4 col-lg-3">Event window</dt>
-        <dd class="col-sm-8 col-lg-9">Day 0 to day @Model.Settings.EventEndOffset</dd>
+        <dt class="col-sm-4 col-lg-3">@Localizer["Settings_EventWindow"]</dt>
+        <dd class="col-sm-8 col-lg-9">@Localizer["Settings_EventRange", Model.Settings.EventEndOffset]</dd>
 
-        <dt class="col-sm-4 col-lg-3">Strike window</dt>
-        <dd class="col-sm-8 col-lg-9">Day @(Model.Settings.EventEndOffset + 1) to day @Model.Settings.StrikeEndOffset</dd>
+        <dt class="col-sm-4 col-lg-3">@Localizer["Settings_StrikeWindow"]</dt>
+        <dd class="col-sm-8 col-lg-9">@Localizer["Settings_StrikeRange", Model.Settings.EventEndOffset + 1, Model.Settings.StrikeEndOffset]</dd>
     </dl>
 }
