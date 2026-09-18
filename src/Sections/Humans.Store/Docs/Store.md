@@ -55,7 +55,7 @@ A camp's order against a season.
 | Id | Guid | PK |
 | CampSeasonId | Guid? | FK only — no nav. Set for camp orders; null for team orders. |
 | TeamId | Guid? | FK only — no nav. Set for team orders; null for camp orders. |
-| Year | int | Event year the catalog draws from. Always set on write; lazy-backfilled from `CampSeason.Year` for legacy camp rows. |
+| Year | int | Event year the catalog draws from. Always set on write; resolved from `CampSeason.Year` for legacy camp rows. |
 | Label | string(100)? | `[Obsolete]` — removed from the UI (#816) and from every DTO and code path since; the column ships, nothing reads or writes it |
 | State | OrderState (int) | Open or InvoiceIssued; team orders stay Open |
 | CounterpartyName / CounterpartyVatId / CounterpartyAddress / CounterpartyCountryCode / CounterpartyEmail | string? | Editable by Camp Lead while Open; FinanceAdmin always. Never populated on team orders. |
@@ -66,7 +66,7 @@ A camp's order against a season.
 
 **Cross-section linkage:** `CampSeasonId` and `TeamId` are bare `Guid?` columns — no FK constraint, no navigation property (per `memory/architecture/no-cross-section-ef-joins.md`). Resolved at the service layer via `ICampServiceRead.GetCampSeasonByIdAsync` / `ITeamServiceRead.GetTeamAsync`.
 
-**Year backfill rule:** new writes always populate `Year`. Pre-existing camp rows may carry `Year = 0` until they're next saved through the service, at which point the column is backfilled from `CampSeason.Year`.
+**Year repair rule:** new writes always populate `Year`. `/Store/Admin/OrderYears` lists every legacy `Year = 0` row and resolves its camp season before an operator confirms the repair. The POST rescans current rows, persists the season's year, and writes `StoreOrderYearBackfilled` per repaired order. Rows whose camp season no longer exists remain visible and unchanged. `AddLineAsync` also performs the same idempotent correction, with an audit entry and structured application log line. `GetOrderAsync` remains read-only because callers load the order before authorizing access.
 
 **Aggregate-local navs:** `Order.Lines`, `Order.Payments`.
 
@@ -181,6 +181,8 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 - `/Store/Admin/Summary` — FinanceAdmin/StoreAdmin/Admin aggregate report: by-counterparty (with Type column distinguishing Camp / Team), by-item (sums lines from both camp and team orders for supplier aggregation), counterparties × products cross-tab for a given year. **Totals use effective pricing** — Open orders are repriced to the live catalog (matching the order-page behavior), InvoiceIssued orders use their frozen snapshots. Reuses `PolicyNames.StoreCatalogAdmin`.
 - `/Store/Admin/Payments` — FinanceAdmin/StoreAdmin/Admin Stripe payment reconciliation screen: webhook/checkout health banner, every Store Checkout Session matched to its order with a status (Recorded / Missing / Unmatched / Unpaid), and orphan recorded payments. Reuses `PolicyNames.StoreCatalogAdmin`. Linked from the Store-admin button group on `/Store` and the admin sidebar (**Store → Store payments**).
 - `/Store/Admin/Payments/RecordMissing` — POST: records every paid, order-matched, not-yet-recorded session via the idempotent `RecordStripePaymentAsync` path.
+- `/Store/Admin/OrderYears` — review every legacy order whose stored year is zero, including rows whose camp season can no longer be resolved.
+- `/Store/Admin/OrderYears/Repair` — POST: after explicit confirmation, rescan and repair every resolvable row; each save emits `StoreOrderYearBackfilled` with the operator as actor.
 - `/Store/StripeWebhook` — anonymous endpoint for Stripe checkout-session events (`StoreStripeWebhookController`).
 
 ## Actors & Roles
@@ -238,7 +240,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 ## Triggers
 
 **Live:**
-- Order create, line add/remove, counterparty edit, and Stripe payment record emit audit log entries via `IAuditLogService` (`StoreOrderCreated`, `StoreLineAdded`, `StoreLineRemoved`, `StoreCounterpartyEdited`, `StorePaymentRecorded`). Async-payment transitions emit `StorePaymentSettled` (Pending → Paid), `StorePaymentFailed` (Pending → Failed), and `StorePaymentExpired` (orphan Pending removed on session expiry), all with the `StripeWebhook` job actor.
+- Order create, legacy-year repair, line add/remove, counterparty edit, and Stripe payment record emit audit log entries via `IAuditLogService` (`StoreOrderCreated`, `StoreOrderYearBackfilled`, `StoreLineAdded`, `StoreLineRemoved`, `StoreCounterpartyEdited`, `StorePaymentRecorded`). Async-payment transitions emit `StorePaymentSettled` (Pending → Paid), `StorePaymentFailed` (Pending → Failed), and `StorePaymentExpired` (orphan Pending removed on session expiry), all with the `StripeWebhook` job actor.
 - Product create, update, and deactivate emit `StoreProductCreated`, `StoreProductUpdated`, `StoreProductDeactivated`. A product update that changes the unit price additionally emits a dedicated, queryable `StoreProductPriceChanged` entry (#816); the order page surfaces these for an order's products since it was created and the catalog edit page shows per-product price history — both through `<vc:audit-log>`, never a Store-side audit read.
 - The Stripe webhook controller (`StoreStripeWebhookController`) verifies the request signature via `IStripeService.ParseStoreCheckoutEvent` and dispatches to `Service.HandleStripeCheckoutWebhookEventAsync`, which handles all four `checkout.session.*` events (completed + the async-payment state machine above). Idempotent on `StripePaymentIntentId`.
 - `/Store/Admin/Payments/RecordMissing` reconciles Stripe → ledger on demand (admin-triggered), recording missing paid sessions via the same idempotent path and emitting one `StorePaymentsReconciled` summary audit entry (with the human actor) plus the per-payment `StorePaymentRecorded` entries. The webhook is therefore no longer the *sole* writer of Stripe payments — but it remains the only automatic one.

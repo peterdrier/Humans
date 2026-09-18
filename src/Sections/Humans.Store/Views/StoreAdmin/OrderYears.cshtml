@@ -1,0 +1,68 @@
+@using Microsoft.AspNetCore.Html
+@model OrderYearRepairReport
+@{
+    ViewData["Title"] = "Store order year repair";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Store order year repair</h1>
+    <div class="btn-group">
+        <a asp-action="Catalog" class="btn btn-outline-secondary">Catalog</a>
+        <a asp-action="Summary" class="btn btn-outline-secondary">Summary</a>
+        <a asp-controller="Store" asp-action="Index" class="btn btn-outline-secondary">Back to Store</a>
+    </div>
+</div>
+
+<p class="text-muted">
+    Review every legacy order whose stored year is zero. Resolvable rows take their year from the
+    camp season shown below; unresolved rows are left unchanged.
+</p>
+
+@if (Model.Rows.Count == 0)
+{
+    <div class="alert alert-success">No legacy order years need repair.</div>
+}
+else
+{
+    @if (Model.ResolvableCount > 0)
+    {
+        <form asp-action="RepairOrderYears" method="post" class="mb-3">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-warning"
+                    data-confirm="Set the year on @Model.ResolvableCount legacy Store order(s) from their camp seasons?">
+                Repair @Model.ResolvableCount resolvable order(s)
+            </button>
+        </form>
+    }
+
+    Func<OrderYearRepairRow, IHtmlContent> orderCell = @<text>
+        <a asp-controller="Store" asp-action="Order" asp-route-id="@item.OrderId"><code>@item.OrderId</code></a>
+    </text>;
+    Func<OrderYearRepairRow, IHtmlContent> seasonCell = @<text>
+        @if (item.CampSeasonId is { } seasonId)
+        {
+            <code>@seasonId</code>
+        }
+        else
+        {
+            <span class="text-danger">Missing camp season id</span>
+        }
+    </text>;
+    Func<OrderYearRepairRow, IHtmlContent> resolutionCell = @<text>
+        @if (item.ResolvedYear is { } year)
+        {
+            <span class="text-success">@item.CampName — @year</span>
+        }
+        else
+        {
+            <span class="text-danger">Camp season no longer exists</span>
+        }
+    </text>;
+    var rows = Model.Rows.OrderBy(row => row.ResolvedYear).ThenBy(row => row.CampName).ToList();
+    var table = TableModel.For(rows)
+        .Template("Order", orderCell)
+        .Template("Camp season", seasonCell)
+        .Template("Resolution", resolutionCell)
+        .Build();
+    <partial name="_Table" model="table" />
+}

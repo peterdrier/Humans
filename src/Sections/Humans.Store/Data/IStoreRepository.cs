@@ -45,6 +45,11 @@ internal interface IStoreRepository : IRepository
     Task<Order?> GetOrderByIdAsync(Guid orderId, CancellationToken ct = default);
     Task<Order?> GetOrderWithLinesAndPaymentsAsync(Guid orderId, CancellationToken ct = default);
     /// <summary>
+    /// Returns every legacy camp order whose persisted year has not been resolved.
+    /// Feeds the operator review screen; cross-section season resolution stays in the service.
+    /// </summary>
+    Task<IReadOnlyList<Order>> GetOrdersWithMissingYearAsync(CancellationToken ct = default);
+    /// <summary>
     /// Returns every <see cref="Order"/> whose <c>CampSeasonId</c> is in
     /// <paramref name="campSeasonIds"/>, with <c>Lines</c> and <c>Payments</c>
     /// eager-loaded. Empty input returns an empty list without a round-trip.

@@ -82,6 +82,29 @@ public sealed class RepositoryTests
     }
 
     [HumansFact]
+    public async Task GetOrdersWithMissingYearAsync_returns_only_year_zero_orders()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var missing = new Order
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = Guid.NewGuid(),
+            Year = 0,
+        };
+        await _repo.AddOrderAsync(missing, ct);
+        await _repo.AddOrderAsync(new Order
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = Guid.NewGuid(),
+            Year = 2026,
+        }, ct);
+
+        var results = await _repo.GetOrdersWithMissingYearAsync(ct);
+
+        results.Should().ContainSingle().Which.Id.Should().Be(missing.Id);
+    }
+
+    [HumansFact]
     public async Task SaveIssuedInvoiceAsync_does_not_write_back_a_payment_settled_mid_issuance()
     {
         // The order is read before several slow Holded calls; a Stripe webhook can settle a payment

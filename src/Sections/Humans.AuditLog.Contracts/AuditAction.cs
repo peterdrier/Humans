@@ -316,4 +316,6 @@ public enum AuditAction
 
     // An Update or a meeting that has started cleared a workgroup's dormancy inquiry.
     WorkgroupDormancyCleared,
+    // A Store correction path resolved a legacy order's persisted year from its camp season.
+    StoreOrderYearBackfilled,
 }

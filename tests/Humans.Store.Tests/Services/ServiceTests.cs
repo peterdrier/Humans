@@ -324,6 +324,134 @@ public class ServiceTests
         result.BalanceEur.Should().Be(60.50m);
     }
 
+    [HumansFact]
+    public async Task GetOrderAsync_does_not_repair_legacy_year_before_caller_authorizes_order()
+    {
+        var orderId = Guid.NewGuid();
+        var seasonId = Guid.NewGuid();
+        var order = new Order
+        {
+            Id = orderId,
+            CampSeasonId = seasonId,
+            Year = 0,
+            State = OrderState.Open,
+        };
+        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
+        _campService.GetCampSeasonByIdAsync(seasonId, Arg.Any<CancellationToken>())
+            .Returns(MakeCampSeasonInfo(seasonId, "Camp Alpha", 2025));
+
+        var result = await _service.GetOrderAsync(orderId, TestContext.Current.CancellationToken);
+
+        result!.Year.Should().Be(0);
+        await _repo.DidNotReceive().UpdateOrderAsync(
+            Arg.Any<Order>(),
+            Arg.Any<CancellationToken>());
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetOrderYearRepairReportAsync_lists_resolved_and_unresolved_rows()
+    {
+        var resolvedOrderId = Guid.NewGuid();
+        var resolvedSeasonId = Guid.NewGuid();
+        var missingOrderId = Guid.NewGuid();
+        var missingSeasonId = Guid.NewGuid();
+        _repo.GetOrdersWithMissingYearAsync(Arg.Any<CancellationToken>()).Returns([
+            new Order { Id = resolvedOrderId, CampSeasonId = resolvedSeasonId, Year = 0 },
+            new Order { Id = missingOrderId, CampSeasonId = missingSeasonId, Year = 0 },
+        ]);
+        _campService.GetCampSeasonByIdAsync(resolvedSeasonId, Arg.Any<CancellationToken>())
+            .Returns(MakeCampSeasonInfo(resolvedSeasonId, "Camp Alpha", 2025));
+        _campService.GetCampSeasonByIdAsync(missingSeasonId, Arg.Any<CancellationToken>())
+            .Returns((CampSeasonInfo?)null);
+
+        var report = await _service.GetOrderYearRepairReportAsync(TestContext.Current.CancellationToken);
+
+        report.Rows.Should().HaveCount(2);
+        report.ResolvableCount.Should().Be(1);
+        report.Rows.Should().Contain(row => row.OrderId == resolvedOrderId
+            && row.CampName == "Camp Alpha"
+            && row.ResolvedYear == 2025);
+        report.Rows.Should().Contain(row => row.OrderId == missingOrderId
+            && row.ResolvedYear == null);
+        await _repo.DidNotReceive().UpdateOrderAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
+        await _audit.DidNotReceive().LogAsync(
+            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task RepairOrderYearsAsync_updates_and_audits_each_resolvable_row()
+    {
+        var actorId = Guid.NewGuid();
+        var firstOrderId = Guid.NewGuid();
+        var firstSeasonId = Guid.NewGuid();
+        var secondOrderId = Guid.NewGuid();
+        var secondSeasonId = Guid.NewGuid();
+        var unresolvedOrderId = Guid.NewGuid();
+        var unresolvedSeasonId = Guid.NewGuid();
+        _repo.GetOrdersWithMissingYearAsync(Arg.Any<CancellationToken>()).Returns([
+            new Order { Id = firstOrderId, CampSeasonId = firstSeasonId, Year = 0 },
+            new Order { Id = secondOrderId, CampSeasonId = secondSeasonId, Year = 0 },
+            new Order { Id = unresolvedOrderId, CampSeasonId = unresolvedSeasonId, Year = 0 },
+        ]);
+        _campService.GetCampSeasonByIdAsync(firstSeasonId, Arg.Any<CancellationToken>())
+            .Returns(MakeCampSeasonInfo(firstSeasonId, "Camp Alpha", 2025));
+        _campService.GetCampSeasonByIdAsync(secondSeasonId, Arg.Any<CancellationToken>())
+            .Returns(MakeCampSeasonInfo(secondSeasonId, "Camp Beta", 2026));
+        _campService.GetCampSeasonByIdAsync(unresolvedSeasonId, Arg.Any<CancellationToken>())
+            .Returns((CampSeasonInfo?)null);
+
+        var repaired = await _service.RepairOrderYearsAsync(actorId, TestContext.Current.CancellationToken);
+
+        repaired.Should().Be(2);
+        await _repo.Received(1).UpdateOrderAsync(
+            Arg.Is<Order>(order => order.Id == firstOrderId && order.Year == 2025),
+            Arg.Any<CancellationToken>());
+        await _repo.Received(1).UpdateOrderAsync(
+            Arg.Is<Order>(order => order.Id == secondOrderId && order.Year == 2026),
+            Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().UpdateOrderAsync(
+            Arg.Is<Order>(order => order.Id == unresolvedOrderId),
+            Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            AuditAction.StoreOrderYearBackfilled,
+            AuditEntityTypes.Order,
+            firstOrderId,
+            Arg.Any<string>(),
+            actorId,
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
+        await _audit.Received(1).LogAsync(
+            AuditAction.StoreOrderYearBackfilled,
+            AuditEntityTypes.Order,
+            secondOrderId,
+            Arg.Any<string>(),
+            actorId,
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task RepairOrderYearsAsync_is_idempotent_after_candidates_are_gone()
+    {
+        var orderId = Guid.NewGuid();
+        var seasonId = Guid.NewGuid();
+        _repo.GetOrdersWithMissingYearAsync(Arg.Any<CancellationToken>())
+            .Returns(
+                [new Order { Id = orderId, CampSeasonId = seasonId, Year = 0 }],
+                []);
+        _campService.GetCampSeasonByIdAsync(seasonId, Arg.Any<CancellationToken>())
+            .Returns(MakeCampSeasonInfo(seasonId, "Camp Alpha", 2025));
+
+        var first = await _service.RepairOrderYearsAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var second = await _service.RepairOrderYearsAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        first.Should().Be(1);
+        second.Should().Be(0);
+        await _repo.Received(1).UpdateOrderAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
+    }
+
     // ==========================================================================
     // Write paths (Task 2.4)
     // ==========================================================================
@@ -1407,6 +1535,11 @@ public class ServiceTests
                     LeadUserIds = [leadUserId]
                 }
             ]);
+
+    private static CampSeasonInfo MakeCampSeasonInfo(Guid seasonId, string name, int year) =>
+        new(seasonId, Guid.NewGuid(), "camp", year, null, name, string.Empty, string.Empty, [],
+            CampSeasonStatus.Active, YesNoMaybe.Yes, YesNoMaybe.No, AdultPlayspacePolicy.No,
+            0, null, null, null, 0, null, null);
 
     private static OrderDto MakeOrderDto(
         decimal balanceEur,

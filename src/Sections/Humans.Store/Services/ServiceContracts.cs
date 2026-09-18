@@ -30,3 +30,14 @@ internal sealed record CatalogSaveResult(
 
     public static CatalogSaveResult Failure(string? field, string message) => new(false, false, field, message);
 }
+
+internal sealed record OrderYearRepairRow(
+    Guid OrderId,
+    Guid? CampSeasonId,
+    string? CampName,
+    int? ResolvedYear);
+
+internal sealed record OrderYearRepairReport(IReadOnlyList<OrderYearRepairRow> Rows)
+{
+    public int ResolvableCount => Rows.Count(row => row.ResolvedYear.HasValue);
+}

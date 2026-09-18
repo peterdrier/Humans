@@ -56,6 +56,28 @@ internal sealed class StoreAdminController(
         return View(new PaymentsReconciliationViewModel { Report = report, Rows = rows });
     }
 
+    [HttpGet("OrderYears")]
+    public async Task<IActionResult> OrderYears(CancellationToken ct)
+    {
+        var report = await storeService.GetOrderYearRepairReportAsync(ct);
+        return View(report);
+    }
+
+    [HttpPost("OrderYears/Repair")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RepairOrderYears(CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var repaired = await storeService.RepairOrderYearsAsync(user.Id, ct);
+        if (repaired == 0)
+            SetInfo("No resolvable legacy order years remain.");
+        else
+            SetSuccess($"Repaired {repaired} legacy order year(s).");
+        return RedirectToAction(nameof(OrderYears));
+    }
+
     [HttpPost("Payments/RecordMissing")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RecordMissingPayments(CancellationToken ct)
