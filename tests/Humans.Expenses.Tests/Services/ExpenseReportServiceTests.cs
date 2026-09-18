@@ -743,6 +743,84 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
+    public async Task AddLineWithResultAsync_AttachmentAuditFailure_DeletesStoredFile()
+    {
+        var (_, category) = SetupActiveYear();
+        var member = Guid.NewGuid();
+        var admin = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(member, member, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        string? storedKey = null;
+        _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                storedKey = call.Arg<string>();
+                return Task.CompletedTask;
+            });
+        AuditLog.LogAsync(
+                AuditAction.ExpenseAttachmentUploaded,
+                Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<Guid?>(), Arg.Any<string?>())
+            .ThrowsAsync(new IOException("audit unavailable"));
+
+        using var content = new MemoryStream([1, 2, 3]);
+        var result = await _sut.AddLineWithResultAsync(
+            id, admin, true, "Timber", 40m,
+            file: new ExpenseFileUpload("receipt.pdf", "application/pdf", content),
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Lines.Should().BeEmpty();
+        await _fileStorage.Received(1).DeleteAsync(
+            storedKey!, CancellationToken.None);
+        await AuditLog.DidNotReceive().LogAsync(
+            AuditAction.ExpenseEditedOnBehalf,
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task AttachFileToLineAsync_FailedReplacement_RestoresPreviousAttachment()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineId = await _sut.AddLineAsync(id, submitter, false, "Timber", 40m, ct: Xunit.TestContext.Current.CancellationToken);
+        var previousAttachment = MakeAttachment(submitter);
+        await _expenseRepo.AddAttachmentAsync(previousAttachment, Xunit.TestContext.Current.CancellationToken);
+        await _expenseRepo.SetLineAttachmentAsync(lineId, previousAttachment.Id, Xunit.TestContext.Current.CancellationToken);
+        string? replacementKey = null;
+        _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                replacementKey = call.Arg<string>();
+                return Task.CompletedTask;
+            });
+        AuditLog.LogAsync(
+                AuditAction.ExpenseAttachmentUploaded,
+                Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<Guid?>(), Arg.Any<string?>())
+            .ThrowsAsync(new IOException("audit unavailable"));
+
+        using var content = new MemoryStream([1, 2, 3]);
+        var result = await _sut.AttachFileToLineWithResultAsync(
+            id, submitter, false, lineId,
+            "replacement.pdf", "application/pdf", content,
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Lines.Single().AttachmentId.Should().Be(previousAttachment.Id);
+        await using var ctx = new ExpensesDbContext(_expensesOptions);
+        (await ctx.ExpenseAttachments.ToListAsync(Xunit.TestContext.Current.CancellationToken))
+            .Should().ContainSingle(attachment => attachment.Id == previousAttachment.Id);
+        await _fileStorage.Received(1).DeleteAsync(replacementKey!, CancellationToken.None);
+        await _fileStorage.DidNotReceive().DeleteAsync(
+            ExpenseReportService.AttachmentKey(previousAttachment.Id, previousAttachment.Extension),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task AddLineWithResultAsync_WithBadFile_CreatesNothing()
     {
         var (_, category) = SetupActiveYear();

@@ -603,8 +603,9 @@ internal sealed class ExpenseReportService(
 
         var report = await RequireEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
 
-        if (!report.Lines.Any(l => l.Id == lineId))
-            throw new UnauthorizedAccessException("Line does not belong to the specified report.");
+        var line = report.Lines.FirstOrDefault(l => l.Id == lineId)
+            ?? throw new UnauthorizedAccessException("Line does not belong to the specified report.");
+        var previousAttachmentId = line.AttachmentId;
 
         var attachmentId = Guid.NewGuid();
         await fileStorage.SaveAsync(AttachmentKey(attachmentId, extension), content, ct);
@@ -621,16 +622,54 @@ internal sealed class ExpenseReportService(
             UploadedByUserId = actorUserId,
             UploadedAt = clock.GetCurrentInstant()
         };
-        await repo.AddAttachmentAsync(attachment, ct);
-        await repo.SetLineAttachmentAsync(lineId, attachmentId, ct);
+        try
+        {
+            await repo.AddAttachmentAsync(attachment, ct);
+            await repo.SetLineAttachmentAsync(lineId, attachmentId, ct);
 
-        await auditLogService.LogAsync(
-            AuditAction.ExpenseAttachmentUploaded,
-            AuditEntityTypes.Report, reportId,
-            $"Attachment uploaded to line {lineId}.",
-            actorUserId,
-            relatedEntityId: report.SubmitterUserId,
-            relatedEntityType: AuditEntityTypes.User);
+            await auditLogService.LogAsync(
+                AuditAction.ExpenseAttachmentUploaded,
+                AuditEntityTypes.Report, reportId,
+                $"Attachment uploaded to line {lineId}.",
+                actorUserId,
+                relatedEntityId: report.SubmitterUserId,
+                relatedEntityType: AuditEntityTypes.User);
+        }
+        catch
+        {
+            var metadataRemoved = true;
+            try
+            {
+                // Both repository operations are idempotent. Run them even when the failed write
+                // may have committed before throwing, and put any replaced attachment back.
+                await repo.SetLineAttachmentAsync(lineId, previousAttachmentId, CancellationToken.None);
+                await repo.RemoveAttachmentAsync(attachmentId, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                metadataRemoved = false;
+                logger.LogError(ex,
+                    "Could not roll back attachment metadata {AttachmentId} for line {LineId}",
+                    attachmentId, lineId);
+            }
+
+            if (metadataRemoved)
+            {
+                try
+                {
+                    await fileStorage.DeleteAsync(
+                        AttachmentKey(attachmentId, extension), CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex,
+                        "Could not delete attachment file {AttachmentId} after upload rollback",
+                        attachmentId);
+                }
+            }
+
+            throw;
+        }
 
         return attachmentId;
     }
