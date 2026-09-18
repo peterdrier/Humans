@@ -3,7 +3,7 @@
 - Invocation: unattended daily run, no arguments (scheduled routine); Phase 8 skipped per prompt
 - Anchor commit: `c654a568` (origin/main at branch point); branch `section-doctor/2026-09-18T011545Z`.
 - Budget: 2.5h.
-- PR: pending
+- PR: peterdrier/Humans#1739
 - Target: [`src/Sections/Humans.Governance/Docs/health.md`](../../../src/Sections/Humans.Governance/Docs/health.md)
 
 ## Assessment summary
@@ -159,7 +159,7 @@ order to say what it cut.
 
 ## Worked
 
-Run branch `section-doctor/2026-09-18T011545Z`, anchored at `c654a568`; PR pending. Findings 1-22
+Run branch `section-doctor/2026-09-18T011545Z`, anchored at `c654a568`; PR peterdrier/Humans#1739. Findings 1-22
 above; 23-27 are queued for Peter rather than struck. Both reviewer gates ran as
 `doctor-reviewer-critical` (fable high) and both returned APPROVE-with-correction; the corrections
 are recorded against the commits that carry them.
