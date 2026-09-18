@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Settings.Data;
 using Humans.Settings.Domain;
@@ -18,14 +19,16 @@ namespace Humans.Settings.Tests;
 public sealed class ServiceTests
 {
     private static readonly Instant Now = Instant.FromUtc(2026, 8, 21, 10, 0);
+    private static readonly Guid Actor = Guid.NewGuid();
 
     private readonly ISettingsRepository _repository = Substitute.For<ISettingsRepository>();
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
+    private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly IClock _clock = Substitute.For<IClock>();
 
     public ServiceTests() => _clock.GetCurrentInstant().Returns(Now);
 
-    private Service BuildSut() => new(_repository, _burnSettings, _clock);
+    private Service BuildSut() => new(_repository, _burnSettings, _auditLog, _clock);
 
     /// <summary>Makes <paramref name="id"/> an id Shifts' event_settings knows.</summary>
     private void ShiftsKnows(Guid id) =>
@@ -180,7 +183,7 @@ public sealed class ServiceTests
             EarlyEntryClose: null,
             Status: EventSettingsStatus.Inactive);
 
-        await BuildSut().SaveEventSettingsAsync(dto, TestContext.Current.CancellationToken);
+        await BuildSut().SaveEventSettingsAsync(dto, Actor, TestContext.Current.CancellationToken);
 
         await _repository.Received(1).UpsertEventSettingsAsync(
             Arg.Is<EventSettings>(e =>
@@ -202,6 +205,37 @@ public sealed class ServiceTests
                 && e.Status == EventSettingsStatus.Inactive),
             Now,
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SaveEventSettingsAsync_WritesAnAuditEntryNamingTheActorAndTheSavedValues()
+    {
+        var id = Guid.NewGuid();
+        ShiftsKnows(id);
+        var dto = new EventSettingsInfo(
+            Id: id,
+            EventName: "Nowhere 2027",
+            Year: 2027,
+            TimeZoneId: "Atlantic/Canary",
+            GateOpeningDate: new LocalDate(2027, 7, 8),
+            BuildStartOffset: -20,
+            EventEndOffset: 5,
+            StrikeEndOffset: 8,
+            FirstCrewStartOffset: -20,
+            SetupWeekStartOffset: -14,
+            PreEventWeekStartOffset: -8,
+            FinishingWeekendStartOffset: -3,
+            EarlyEntryCapacity: new Dictionary<int, int>(),
+            BarriosEarlyEntryAllocation: null,
+            EarlyEntryClose: null,
+            Status: EventSettingsStatus.Inactive);
+
+        await BuildSut().SaveEventSettingsAsync(dto, Actor, TestContext.Current.CancellationToken);
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.EventSettingsUpdated, AuditEntityTypes.EventSettings, id,
+            Arg.Is<string>(d => d.Contains("Nowhere 2027") && d.Contains("2027-07-08")),
+            Actor, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     // ── The at-most-one-Active invariant.
@@ -233,12 +267,14 @@ public sealed class ServiceTests
         _repository.AnyOtherActiveEventSettingsAsync(id, Arg.Any<CancellationToken>()).Returns(true);
 
         var act = () => BuildSut().SaveEventSettingsAsync(
-            MakeDto(id, EventSettingsStatus.Active), TestContext.Current.CancellationToken);
+            MakeDto(id, EventSettingsStatus.Active), Actor, TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("Only one event settings row can be Active*");
         await _repository.DidNotReceive().UpsertEventSettingsAsync(
             Arg.Any<EventSettings>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        // A refused save is not audited — nothing happened for the Board to see.
+        await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
     }
 
     [HumansFact]
@@ -251,7 +287,7 @@ public sealed class ServiceTests
         _repository.AnyOtherActiveEventSettingsAsync(id, Arg.Any<CancellationToken>()).Returns(false);
 
         await BuildSut().SaveEventSettingsAsync(
-            MakeDto(id, EventSettingsStatus.Active), TestContext.Current.CancellationToken);
+            MakeDto(id, EventSettingsStatus.Active), Actor, TestContext.Current.CancellationToken);
 
         await _repository.Received(1).UpsertEventSettingsAsync(
             Arg.Is<EventSettings>(e => e.Status == EventSettingsStatus.Active),
@@ -266,7 +302,7 @@ public sealed class ServiceTests
         ShiftsKnows(id);
 
         await BuildSut().SaveEventSettingsAsync(
-            MakeDto(id, EventSettingsStatus.Inactive), TestContext.Current.CancellationToken);
+            MakeDto(id, EventSettingsStatus.Inactive), Actor, TestContext.Current.CancellationToken);
 
         await _repository.DidNotReceive().AnyOtherActiveEventSettingsAsync(
             Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -284,7 +320,7 @@ public sealed class ServiceTests
         _burnSettings.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns((BurnSettingsInfo?)null);
 
         var act = () => BuildSut().SaveEventSettingsAsync(
-            MakeDto(id, EventSettingsStatus.Inactive), TestContext.Current.CancellationToken);
+            MakeDto(id, EventSettingsStatus.Inactive), Actor, TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage($"No Shifts event row has id {id}*");
@@ -301,7 +337,7 @@ public sealed class ServiceTests
             .Returns(MakeEntity(id, isActive: false));
 
         await BuildSut().SaveEventSettingsAsync(
-            MakeDto(id, EventSettingsStatus.Inactive), TestContext.Current.CancellationToken);
+            MakeDto(id, EventSettingsStatus.Inactive), Actor, TestContext.Current.CancellationToken);
 
         await _burnSettings.DidNotReceive().GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await _repository.Received(1).UpsertEventSettingsAsync(

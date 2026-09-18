@@ -48,10 +48,13 @@ internal interface IEventSettingsCarryService : IApplicationService
     /// <c>EventGuideSettings.EventSettingsId</c> still resolve, and reconciles the
     /// Active/Inactive status of rows already here against the current Shifts cycle.
     /// Values the operator has edited on <c>/Settings/Admin</c> are left alone —
-    /// a reconcile touches status only. Returns how many rows were written;
-    /// re-runnable, and a no-op once everything agrees.
+    /// a reconcile touches status only. Each written row goes through
+    /// <see cref="ISettingsWriteService.SaveEventSettingsAsync"/>, so it is audited
+    /// against <paramref name="actorUserId"/> — the operator who ran the carry.
+    /// Returns how many rows were written; re-runnable, and a no-op once everything
+    /// agrees.
     /// </summary>
-    Task<int> CarryAsync(CancellationToken ct = default);
+    Task<int> CarryAsync(Guid actorUserId, CancellationToken ct = default);
 }
 
 internal sealed class EventSettingsCarryService(
@@ -74,7 +77,7 @@ internal sealed class EventSettingsCarryService(
         return new EventSettingsCarrySnapshot(rows);
     }
 
-    public async Task<int> CarryAsync(CancellationToken ct = default)
+    public async Task<int> CarryAsync(Guid actorUserId, CancellationToken ct = default)
     {
         // BurnSettingsInfo has no active flag, so the one active cycle is
         // identified by id. Everything else is Inactive — copying them all as
@@ -87,10 +90,10 @@ internal sealed class EventSettingsCarryService(
         // cycle has to step down before the incoming one can take over.
         var written = 0;
         foreach (var src in sources.Where(s => s.Id != activeId))
-            written += await WriteIfStaleAsync(src, EventSettingsStatus.Inactive, ct) ? 1 : 0;
+            written += await WriteIfStaleAsync(src, EventSettingsStatus.Inactive, actorUserId, ct) ? 1 : 0;
 
         foreach (var src in sources.Where(s => s.Id == activeId))
-            written += await WriteIfStaleAsync(src, EventSettingsStatus.Active, ct) ? 1 : 0;
+            written += await WriteIfStaleAsync(src, EventSettingsStatus.Active, actorUserId, ct) ? 1 : 0;
 
         return written;
     }
@@ -104,19 +107,19 @@ internal sealed class EventSettingsCarryService(
     /// /Settings/Admin, not on the Shifts screen — so a reconcile never re-copies them.
     /// </summary>
     private async Task<bool> WriteIfStaleAsync(
-        BurnSettingsInfo src, EventSettingsStatus status, CancellationToken ct)
+        BurnSettingsInfo src, EventSettingsStatus status, Guid actorUserId, CancellationToken ct)
     {
         var existing = await settings.GetEventSettingsByIdAsync(src.Id, ct);
         if (existing is null)
         {
-            await settings.SaveEventSettingsAsync(ToInfo(src, status), ct);
+            await settings.SaveEventSettingsAsync(ToInfo(src, status), actorUserId, ct);
             return true;
         }
 
         if (existing.Status == status)
             return false;
 
-        await settings.SaveEventSettingsAsync(existing with { Status = status }, ct);
+        await settings.SaveEventSettingsAsync(existing with { Status = status }, actorUserId, ct);
         return true;
     }
 

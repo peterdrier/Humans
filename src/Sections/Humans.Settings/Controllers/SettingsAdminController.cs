@@ -25,23 +25,15 @@ internal sealed class SettingsAdminController(
     IUserServiceRead userService) : HumansControllerBase(userService)
 {
     /// <summary>
-    /// Edits one row: the active one by default, or <paramref name="id"/> when the
-    /// caller names it. Inactive rows stay reachable that way — the carry screen
-    /// links every carried row here, and a save redirects back with its own id.
+    /// Superseded by the <c>/Settings#event</c> tab (peterdrier/Humans#1628) — one
+    /// canonical URL per page (memory/product/no-url-aliases.md), so a GET here always
+    /// redirects there rather than staying a second live page. <paramref name="id"/> is
+    /// forwarded as <c>?event={id}</c> so a link or save naming a specific (possibly
+    /// inactive) row still lands on that row, not on whichever one is active.
     /// </summary>
     [HttpGet("")]
-    public async Task<IActionResult> Index(Guid? id, CancellationToken ct = default)
-    {
-        var settings = id is null
-            ? await settingsService.GetActiveEventSettingsAsync(ct)
-            : await settingsService.GetEventSettingsByIdAsync(id.Value, ct);
-
-        // No blank creatable form: event ids belong to the Shifts rows until the
-        // old columns are dropped, so a row is born by the carry, never here.
-        return settings is null
-            ? View("NoEvent")
-            : View(EventSettingsFormMapper.ToViewModel(settings));
-    }
+    public IActionResult Index(Guid? id) =>
+        Redirect(id is { } rowId ? $"/Settings?event={rowId}#event" : "/Settings#event");
 
     [HttpPost("")]
     [ValidateAntiForgeryToken]
@@ -59,9 +51,11 @@ internal sealed class SettingsAdminController(
             return View(model);
         }
 
+        if (GetCurrentUserId() is not { } actorId) return Challenge();
+
         try
         {
-            await settingsService.SaveEventSettingsAsync(parsed.Settings!, ct);
+            await settingsService.SaveEventSettingsAsync(parsed.Settings!, actorId, ct);
         }
         catch (InvalidOperationException ex)
         {

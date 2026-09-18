@@ -316,4 +316,10 @@ public enum AuditAction
 
     // An Update or a meeting that has started cleared a workgroup's dormancy inquiry.
     WorkgroupDormancyCleared,
+
+    // An event cycle's app-wide values (name, gate-opening date, build/event/strike
+    // windows) were saved — from /Settings/Admin or the /Settings#event tab's edit form
+    // (peterdrier/Humans#1628). Written on every successful SaveEventSettingsAsync call,
+    // including the reconcile writes made by the Settings carry screen.
+    EventSettingsUpdated,
 }

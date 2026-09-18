@@ -1,0 +1,32 @@
+@using Humans.Settings.ViewComponents
+@model EventSettingsTabViewModel
+
+@* Member-visible tab, no resx key today — tracked separately from this issue
+   (peterdrier/Humans#1628). *@
+@if (Model.Settings is null)
+{
+    <p class="text-muted">No event is configured yet.</p>
+}
+else if (Model.CanEdit)
+{
+    <partial name="_EventSettingsForm" model="Model.Settings" />
+}
+else
+{
+    <dl class="row mb-0">
+        <dt class="col-sm-4 col-lg-3">Event name</dt>
+        <dd class="col-sm-8 col-lg-9">@Model.Settings.EventName</dd>
+
+        <dt class="col-sm-4 col-lg-3">Gate opening date</dt>
+        <dd class="col-sm-8 col-lg-9">@Model.Settings.GateOpeningDate</dd>
+
+        <dt class="col-sm-4 col-lg-3">Build window</dt>
+        <dd class="col-sm-8 col-lg-9">Day @Model.Settings.BuildStartOffset to day 0 (gates open)</dd>
+
+        <dt class="col-sm-4 col-lg-3">Event window</dt>
+        <dd class="col-sm-8 col-lg-9">Day 0 to day @Model.Settings.EventEndOffset</dd>
+
+        <dt class="col-sm-4 col-lg-3">Strike window</dt>
+        <dd class="col-sm-8 col-lg-9">Day @(Model.Settings.EventEndOffset + 1) to day @Model.Settings.StrikeEndOffset</dd>
+    </dl>
+}

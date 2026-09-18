@@ -26,6 +26,11 @@ outside Settings writes the event values, so the write lives on
 `EventSettingsCarryService` inject. Why the key/value `SetValueAsync` does stay
 on the cross-section interface: see `ISettingsService`.
 
+Every `SaveEventSettingsAsync` call also writes one `IAuditLogService` entry
+(`AuditAction.EventSettingsUpdated`, peterdrier/Humans#1628) naming the actor and the
+saved values — the write is otherwise unchanged, so this is Audit's crosscut
+table, not a new table this section owns.
+
 | Table | R/W |
 |-------|-----|
 | `system_settings` | R/W (`GetValueAsync` / `SetValueAsync`, by key) |

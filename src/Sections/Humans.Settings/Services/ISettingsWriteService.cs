@@ -16,12 +16,16 @@ namespace Humans.Settings.Services;
 internal interface ISettingsWriteService : ISettingsService
 {
     /// <summary>
-    /// Inserts or updates the row identified by <see cref="EventSettingsInfo.Id"/>.
-    /// Idempotent: saving the same values twice leaves the row unchanged.
+    /// Inserts or updates the row identified by <see cref="EventSettingsInfo.Id"/>, and
+    /// writes an <c>AuditAction.EventSettingsUpdated</c> entry naming
+    /// <paramref name="actorUserId"/> (peterdrier/Humans#1628 — the Board must be able to
+    /// see who changed the event dates). Idempotent: saving the same values twice leaves
+    /// the row unchanged, but still audits each call.
     /// </summary>
     /// <exception cref="InvalidOperationException">
     /// Another row is already <c>Active</c>, or the row is new and its id names no
     /// Shifts event — new event ids come from the carry, not from here.
     /// </exception>
-    Task SaveEventSettingsAsync(EventSettingsInfo settings, CancellationToken cancellationToken = default);
+    Task SaveEventSettingsAsync(
+        EventSettingsInfo settings, Guid actorUserId, CancellationToken cancellationToken = default);
 }

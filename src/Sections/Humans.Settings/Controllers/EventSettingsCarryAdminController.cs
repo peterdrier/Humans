@@ -27,7 +27,9 @@ internal sealed class EventSettingsCarryAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Run(CancellationToken ct = default)
     {
-        var carried = await carryService.CarryAsync(ct);
+        if (GetCurrentUserId() is not { } actorId) return Challenge();
+
+        var carried = await carryService.CarryAsync(actorId, ct);
         if (carried == 0)
             SetSuccess("Every event row is already here and in step — nothing to do.");
         else
