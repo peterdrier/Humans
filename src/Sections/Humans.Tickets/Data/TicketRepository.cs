@@ -184,12 +184,20 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
             if (existing.TryGetValue(order.VendorOrderId, out var tracked))
             {
                 // Copy mutable fields (Id, VendorOrderId are init-only).
-                // nobodies-collective/Humans#1178: once GDPR-erased, never let a sync
-                // write the buyer name/email back in — every other field still syncs.
-                if (tracked.PiiErasedAt is null)
+                // nobodies-collective/Humans#1178: once GDPR-erased, never let a sync write
+                // the buyer name/email back in — every other field still syncs. The tombstone
+                // check covers rows erased before PiiErasedAt existed (NULL on migration).
+                if (tracked.PiiErasedAt is null
+                    && !TicketPiiTombstone.IsTombstoned(tracked.BuyerName, tracked.BuyerEmail))
                 {
                     tracked.BuyerName = order.BuyerName;
                     tracked.BuyerEmail = order.BuyerEmail;
+                }
+                else
+                {
+                    // Self-heal rows erased before PiiErasedAt existed: the tombstone is the
+                    // older, equally authoritative record of the same erasure.
+                    tracked.PiiErasedAt ??= clock.GetCurrentInstant();
                 }
                 tracked.TotalAmount = order.TotalAmount;
                 tracked.Currency = order.Currency;
@@ -229,12 +237,21 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         {
             if (existing.TryGetValue(attendee.VendorTicketId, out var tracked))
             {
-                // nobodies-collective/Humans#1178: once GDPR-erased, never let a sync
-                // write the attendee name/email back in — every other field still syncs.
-                if (tracked.PiiErasedAt is null)
+                // nobodies-collective/Humans#1178: once GDPR-erased, never let a sync write
+                // the attendee name/email back in — every other field still syncs. The
+                // tombstone check covers rows erased before PiiErasedAt existed (NULL on
+                // migration).
+                if (tracked.PiiErasedAt is null
+                    && !TicketPiiTombstone.IsTombstoned(tracked.AttendeeName, tracked.AttendeeEmail))
                 {
                     tracked.AttendeeName = attendee.AttendeeName;
                     tracked.AttendeeEmail = attendee.AttendeeEmail;
+                }
+                else
+                {
+                    // Self-heal rows erased before PiiErasedAt existed: the tombstone is the
+                    // older, equally authoritative record of the same erasure.
+                    tracked.PiiErasedAt ??= clock.GetCurrentInstant();
                 }
                 tracked.TicketTypeName = attendee.TicketTypeName;
                 tracked.Price = attendee.Price;

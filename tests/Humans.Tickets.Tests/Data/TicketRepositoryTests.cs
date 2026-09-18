@@ -756,6 +756,103 @@ public sealed class TicketRepositoryTests : IDisposable
             .SingleAsync(o => o.VendorOrderId == "ord_not_erased", Xunit.TestContext.Current.CancellationToken);
         reloaded.BuyerName.Should().Be("New Vendor Name");
         reloaded.BuyerEmail.Should().Be("newvendor@example.com");
+        reloaded.PiiErasedAt.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task UpsertOrdersAsync_LegacyTombstonedRow_KeepsTombstoneAndStampsPiiErasedAt()
+    {
+        // Regression for nobodies-collective/Humans#1178: a row erased before PiiErasedAt
+        // existed lands with the column NULL on migration. The guard must still recognise
+        // the tombstone via name/email and self-heal the column, not read it as never-erased.
+        var userId = Guid.NewGuid();
+        _dbContext.TicketOrders.Add(new TicketOrder
+        {
+            Id = Guid.NewGuid(),
+            VendorOrderId = "ord_legacy_erased",
+            BuyerName = TicketPiiTombstone.Name,
+            BuyerEmail = TicketPiiTombstone.EmailFor(userId),
+            Currency = "EUR",
+            PaymentStatus = TicketPaymentStatus.Paid,
+            VendorEventId = "ev_1",
+            PiiErasedAt = null,
+            PurchasedAt = _clock.GetCurrentInstant(),
+            SyncedAt = _clock.GetCurrentInstant(),
+        });
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var vendorPayload = new TicketOrder
+        {
+            Id = Guid.NewGuid(),
+            VendorOrderId = "ord_legacy_erased",
+            BuyerName = "Real Vendor Name",
+            BuyerEmail = "real@example.com",
+            Currency = "EUR",
+            PaymentStatus = TicketPaymentStatus.Refunded,
+            VendorEventId = "ev_1",
+            PurchasedAt = _clock.GetCurrentInstant(),
+            SyncedAt = _clock.GetCurrentInstant(),
+        };
+        await _repo.UpsertOrdersAsync([vendorPayload], Xunit.TestContext.Current.CancellationToken);
+
+        var reloaded = await _dbContext.TicketOrders.AsNoTracking()
+            .SingleAsync(o => o.VendorOrderId == "ord_legacy_erased", Xunit.TestContext.Current.CancellationToken);
+        reloaded.BuyerName.Should().Be(TicketPiiTombstone.Name);
+        reloaded.BuyerEmail.Should().Be(TicketPiiTombstone.EmailFor(userId));
+        reloaded.PiiErasedAt.Should().Be(_clock.GetCurrentInstant(), "the guard must self-heal the missing marker");
+        reloaded.PaymentStatus.Should().Be(TicketPaymentStatus.Refunded, "non-PII fields must keep syncing");
+    }
+
+    [HumansFact]
+    public async Task UpsertAttendeesAsync_LegacyTombstonedRow_KeepsTombstoneAndStampsPiiErasedAt()
+    {
+        var userId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+        _dbContext.TicketOrders.Add(new TicketOrder
+        {
+            Id = orderId,
+            VendorOrderId = "ord_for_legacy_attendee",
+            BuyerEmail = "b@e.com",
+            BuyerName = "B",
+            Currency = "EUR",
+            PaymentStatus = TicketPaymentStatus.Paid,
+            VendorEventId = "ev_1",
+            PurchasedAt = _clock.GetCurrentInstant(),
+            SyncedAt = _clock.GetCurrentInstant(),
+        });
+        _dbContext.TicketAttendees.Add(new TicketAttendee
+        {
+            Id = Guid.NewGuid(),
+            VendorTicketId = "tkt_legacy_erased",
+            TicketOrderId = orderId,
+            AttendeeName = TicketPiiTombstone.Name,
+            AttendeeEmail = TicketPiiTombstone.EmailFor(userId),
+            VendorEventId = "ev_1",
+            Status = TicketAttendeeStatus.Valid,
+            PiiErasedAt = null,
+            SyncedAt = _clock.GetCurrentInstant(),
+        });
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var vendorPayload = new TicketAttendee
+        {
+            Id = Guid.NewGuid(),
+            VendorTicketId = "tkt_legacy_erased",
+            TicketOrderId = orderId,
+            AttendeeName = "Real Attendee",
+            AttendeeEmail = "attendee@example.com",
+            VendorEventId = "ev_1",
+            Status = TicketAttendeeStatus.CheckedIn,
+            SyncedAt = _clock.GetCurrentInstant(),
+        };
+        await _repo.UpsertAttendeesAsync([vendorPayload], Xunit.TestContext.Current.CancellationToken);
+
+        var reloaded = await _dbContext.TicketAttendees.AsNoTracking()
+            .SingleAsync(a => a.VendorTicketId == "tkt_legacy_erased", Xunit.TestContext.Current.CancellationToken);
+        reloaded.AttendeeName.Should().Be(TicketPiiTombstone.Name);
+        reloaded.AttendeeEmail.Should().Be(TicketPiiTombstone.EmailFor(userId));
+        reloaded.PiiErasedAt.Should().Be(_clock.GetCurrentInstant(), "the guard must self-heal the missing marker");
+        reloaded.Status.Should().Be(TicketAttendeeStatus.CheckedIn, "non-PII fields must keep syncing");
     }
 
     [HumansFact]
