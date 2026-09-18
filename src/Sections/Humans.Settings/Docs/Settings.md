@@ -3,7 +3,7 @@
   src/Sections/Humans.Settings.Contracts/**
 -->
 <!-- freshness:flag-on-change
-  The at-most-one-Active and id-coordination invariants, and the "nothing reads settings_event yet" staging claim — re-read all three when the section's code changes.
+  The at-most-one-Active and id-coordination invariants, and the list of sections reading settings_event — re-read all three when the section's code changes.
 -->
 
 # Settings — Section Invariants
@@ -109,9 +109,14 @@ Both admin controllers are `PolicyNames.AdminOnly` (pinned in
   `AuditAction.EventSettingsUpdated` naming the actor and the saved values
   (peterdrier/Humans#1628) — both the form save and the carry's reconcile writes go
   through this one method, so both are covered.
-- **Nothing reads `settings_event` yet.** Every section still reads the event
-  values off the Shifts-owned row via `IBurnSettingsService`; `/Shifts/Settings`
-  is the live editor until the nobodies-collective/Humans#1104 cutover. Both screens say so.
+- **`settings_event` is the read path for every section outside Shifts.** Agent,
+  Cantina, Debug, Events, Gate, Rideshare, Scanner, Store, Teams, Tickets and Users
+  read it through `ISettingsService` (peterdrier/Humans#1629). Still on the
+  Shifts-owned row: Shifts itself, Onboarding (its DTO feeds a Shifts view
+  component — peterdrier/Humans#1630), Development (it seeds and deletes the row
+  through Shifts, so its existence check must read the store it mutates), and this
+  section's own two calls below. `/Shifts/Settings` remains the live editor until
+  the nobodies-collective/Humans#1104 cutover; both screens say so.
 - **Writes to `settings_event` stay inside the section.**
   `SaveEventSettingsAsync` lives on the internal `ISettingsWriteService`, not on
   the `ISettingsService` contract.
@@ -146,7 +151,7 @@ writes one `AuditAction.EventSettingsUpdated` audit entry — see Invariants.
 
 | Direction | Section | Through |
 |---|---|---|
-| out | Shifts | `IBurnSettingsService` (carry source + insert id check) — retires with the carry |
+| out | Shifts | `IBurnSettingsService` (carry source + insert id check) — retires with the carry (peterdrier/Humans#1631) |
 | out | Users | `IUserServiceRead` (platform base-controller dependency only) |
 | in | Email | `ISettingsService` (`IsEmailSendingPaused`) |
 | in | Monitor | `ISettingsService` (`DriveActivityMonitor:LastRunAt`) |

@@ -1,7 +1,6 @@
 using Humans.Base.Attributes;
 using Humans.Base.Helpers;
 using Humans.Users.Contracts;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Microsoft.AspNetCore.Identity;
@@ -31,7 +30,7 @@ internal sealed record DashboardResetResult(
 [CrossSectionWrite("Dev teardown deletes the seeded teams and users.")]
 internal sealed class DevelopmentDashboardSeeder(
     IShiftSeeding shiftManagementService,
-    ISettingsService eventSettings,
+    IBurnSettingsService burnSettings,
     IShiftSignupSeeding shiftSignupService,
     ITeamService teamService,
     ITeamSeeding teamSeeding,
@@ -81,7 +80,7 @@ internal sealed class DevelopmentDashboardSeeder(
 
     public async Task<DashboardSeedResult> SeedAsync(CancellationToken cancellationToken)
     {
-        var existing = await eventSettings.GetEventSettingsByIdAsync(SeededEventId, cancellationToken);
+        var existing = await burnSettings.GetByIdAsync(SeededEventId, cancellationToken);
         if (existing is not null)
         {
             logger.LogInformation("Dashboard seed already applied (event '{EventName}' exists).", SeededEventName);

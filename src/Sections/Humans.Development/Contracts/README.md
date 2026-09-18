@@ -13,8 +13,7 @@ sections' surfaces:
 - **Auth:** `IRoleAssignmentService`.
 - **Teams:** `ITeamService`, `ITeamSeeding`, `ISystemTeamSync`.
 - **Camps:** `ICampServiceRead`, `ICampSeeding`, `ICampRoleSeeding`.
-- **Shifts:** `IShiftSeeding`, `IShiftSignupSeeding`.
-- **Settings:** `ISettingsService`.
+- **Shifts:** `IShiftSeeding`, `IBurnSettingsService`, `IShiftSignupSeeding`.
 - **AuditLog:** `IAuditLogService`.
 - **Consent (leaf):** `IConsentSubmission`.
 - **Governance (leaf):** `IMembershipCalculatorRead`.
