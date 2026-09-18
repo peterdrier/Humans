@@ -12,9 +12,10 @@ namespace Humans.Governance.Services;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Exists to break a circular DI graph: <see cref="ITeamServiceRead"/> and
-/// <see cref="IRoleAssignmentService"/> both inject <c>ISystemTeamSync</c>,
-/// whose implementation (<c>SystemTeamSyncJob</c>) injects
+/// Exists to break a circular DI graph. Both services reach <c>ISystemTeamSync</c> —
+/// <see cref="IRoleAssignmentService"/> injects it, and <see cref="ITeamServiceRead"/>'s
+/// implementation resolves it lazily through <c>IServiceProvider</c> for this same reason —
+/// and its implementation (<c>SystemTeamSyncJob</c>) injects
 /// <see cref="Humans.Governance.Contracts.IMembershipCalculatorRead"/> back. Injecting the full team / role
 /// services into the calculator closes that cycle and trips
 /// <c>ValidateOnBuild</c>.
