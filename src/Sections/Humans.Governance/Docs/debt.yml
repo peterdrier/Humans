@@ -20,3 +20,18 @@ inbox:
   - added: 2026-09-02
     what: "The Nav_Governance label points at two different destinations: the member-dashboard tile uses it for GovernanceApplications/Index, the user dropdown and profile page use it for Governance/Index. Pick one destination for the label, or give them distinct labels (finding 28, /section-doctor on Governance 2026-09-02)."
     review: light
+  - added: 2026-09-18
+    what: "GovernanceVotesAdminController's action-level AdminOnly overrides are unpinned by any test, and the project has no controller test at all — the same gap the 2026-09-02 entry records for the applications and board-voting controllers, widened by the assembly-votes lane (finding 4's neighbourhood, /section-doctor on Governance 2026-09-18)."
+    review: light
+  - added: 2026-09-18
+    what: "The applications lane has no test for account merge (ApplicationRepository.ReassignApplicationsToUserAsync), GDPR export, the renewal-nudge path (GetExpiringApplicationsNeedingReminderAsync, MarkRenewalReminderSentAsync, GetPendingApplicationUserTiersAsync, TermRenewalReminderJob) or CastBoardVoteAsync, and several IApplicationServiceRead members are unpinned — the vote lane is thoroughly tested and this half is not (/section-doctor on Governance 2026-09-18)."
+    review: panel
+  - added: 2026-09-18
+    what: "Most GovernanceResource keys carry no Governance_ prefix, and the Votes_* keys the assembly-votes lane added are new debt of the same kind; resource-key-prefix is report-only because renaming them touches every call site and all six cultures (/section-doctor on Governance 2026-09-18)."
+    review: panel
+  - added: 2026-09-18
+    what: "Humans.Governance.Tests aliases the Application entity as MemberApplication in some files and as Application in others, so a grep for either name misses call sites in the other half — the alias exists to dodge the Humans.Application.* namespace collision (/section-doctor on Governance 2026-09-18)."
+    review: light
+  - added: 2026-09-18
+    what: "Vote finalization's atomicity cannot be observed by this project's tests: the in-memory fixture ignores TransactionIgnoredWarning, so an assertion that the stored result and the status move together passes whether or not a transaction wraps them (finding 27, /section-doctor on Governance 2026-09-18)."
+    review: panel

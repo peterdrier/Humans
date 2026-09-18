@@ -265,3 +265,4 @@ Settled decisions. Do not re-litigate.
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | 1 | 2026-09-02 | Term expiry shown wrong on both member pages; dead `/Governance/MyApplications` notification link; dead surface removed; doc and comment truth | peterdrier/Humans#1580 |
+| 2 | 2026-09-18 | Assembly votes reached the member guide, the routing table and `authorization.md`; tier plural fixed in four cultures; dead members and resource keys cut | peterdrier/Humans#pending |
