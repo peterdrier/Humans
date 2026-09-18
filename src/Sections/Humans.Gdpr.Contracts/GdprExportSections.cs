@@ -75,6 +75,26 @@ public static class GdprExportSections
     public const string WorkgroupComments = "WorkgroupComments";
     public const string WorkgroupApplications = "WorkgroupApplications";
 
+    /// <summary>
+    /// Association calendar entries the person scheduled. Attribution only: the calendar row is the
+    /// association's record of when something happens, and the only personal datum on it is the bare
+    /// creator FK (nobodies-collective/Humans#1116).
+    /// </summary>
+    public const string CalendarEvents = "CalendarEvents";
+
+    /// <summary>
+    /// City-plan polygon edits attributed to the person. Attribution only, same shape as
+    /// <see cref="CalendarEvents"/> (nobodies-collective/Humans#1116).
+    /// </summary>
+    public const string CityPlanningEdits = "CityPlanningEdits";
+
+    /// <summary>
+    /// Store records the person issued, added or recorded as an operator. These are the
+    /// association's accounting records, not the person's own purchases
+    /// (nobodies-collective/Humans#1116).
+    /// </summary>
+    public const string StoreRecords = "StoreRecords";
+
     public const string AssemblyVotes = "AssemblyVotes";
 
     /// <summary>
