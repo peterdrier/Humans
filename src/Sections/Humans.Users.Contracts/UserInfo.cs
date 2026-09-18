@@ -475,9 +475,12 @@ public sealed record UserInfo(
     private static bool IsGdprTombstone(User user) =>
         (user.IdentityEmailColumn is { } email
             && email.EndsWith("@deleted.local", StringComparison.OrdinalIgnoreCase))
-        // Legacy-only: rows anonymized before the email scrub existed carry the complete
-        // name tombstone instead. All three columns, never the display name alone.
-        || (string.Equals(user.DisplayName, GdprAnonymizedBurnerName, StringComparison.Ordinal)
+        // Legacy-only: rows anonymized before the email scrub existed carry the name tombstone
+        // instead. The blank BurnerName is what a member cannot reproduce — erasure clears it and
+        // only wrote the sentinel there from #1098 on, while a member who types these names carries
+        // their burner name in every column. A guard, not the shape; see the twin's remarks.
+        || (string.IsNullOrWhiteSpace(user.BurnerName)
+            && string.Equals(user.DisplayName, GdprAnonymizedBurnerName, StringComparison.Ordinal)
             && string.Equals(user.FirstName, "Deleted", StringComparison.Ordinal)
             && string.Equals(user.LastName, "User", StringComparison.Ordinal));
 

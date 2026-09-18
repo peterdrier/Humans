@@ -57,13 +57,22 @@ internal static class UserStateEvaluator
     internal const string DeletedEmailSuffix = "@deleted.local";
 
     /// <summary>
-    /// Legacy-only: rows anonymized before the email scrub was added to the erasure path may still
-    /// lack the tombstoned email, so recognise the complete pre-email tombstone shape instead — all
-    /// three name columns, not the display/burner name alone. Narrower than pre-#1742 recognition on
-    /// purpose; retires with the #1102 DisplayName column drop.
+    /// Legacy-only: rows anonymized before the email scrub was added to the erasure path lack the
+    /// tombstoned email, so recognise the pre-email tombstone shape instead. The blank BurnerName
+    /// is what makes the shape unreachable by a member: erasure clears it
+    /// (<c>AnonymizeProfileInternalAsync</c> sets <c>Profile.BurnerName = string.Empty</c> and
+    /// mirrors it onto the User row), and it was only from #1098 onward that erasure wrote the
+    /// sentinel there instead. A member who types "Deleted User" / "Deleted" / "User" carries
+    /// their burner name in all three columns, so they never match.
+    ///
+    /// This arm is a guard, not the shape: the three name columns it reads are all member-editable
+    /// and only the blank BurnerName keeps it safe. The shape fix is to delete it and key erasure
+    /// solely on the minted email, which is gated on confirming no pre-scrub erased rows survive in
+    /// production (nobodies-collective/Humans#1742). Retires with the #1102 DisplayName column drop.
     /// </summary>
     private static bool IsLegacyGdprTombstone(User user) =>
-        string.Equals(user.DisplayName, UserStateClassifier.GdprAnonymizedDisplayName, StringComparison.Ordinal)
+        string.IsNullOrWhiteSpace(user.BurnerName)
+        && string.Equals(user.DisplayName, UserStateClassifier.GdprAnonymizedDisplayName, StringComparison.Ordinal)
         && string.Equals(user.FirstName, "Deleted", StringComparison.Ordinal)
         && string.Equals(user.LastName, "User", StringComparison.Ordinal);
 }

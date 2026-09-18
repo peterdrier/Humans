@@ -459,12 +459,37 @@ public class UserInfoTests
         user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
         user.FirstName = "Deleted";
         user.LastName = "User";
+        // Erasure clears BurnerName (AnonymizeProfileInternalAsync) and only wrote the sentinel
+        // there from #1098 on, so blank is the pre-scrub shape — and the part a member cannot
+        // reproduce. Set explicitly: it is load-bearing, not incidental.
+        user.BurnerName = string.Empty;
         user.Email = "legacy-erased@example.com"; // ordinary email — pre-scrub shape
 
         var info = UserInfoFactory.Create(
             user, [], [], [], profile: null, [], [], [], []);
 
         info.IsGdprAnonymized.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public void IsGdprAnonymized_false_for_a_live_member_who_types_the_whole_tombstone_shape()
+    {
+        // nobodies-collective/Humans#1742: DisplayName, FirstName and LastName are all copied
+        // from what a member types, so the legacy arm must not fire on names alone. Their
+        // burner name is populated; a genuinely erased row's is blank.
+        var userId = Guid.NewGuid();
+        var user = MinimalUser(userId);
+        user.BurnerName = "Deleted User";
+        user.DisplayName = "Deleted User";
+        user.FirstName = "Deleted";
+        user.LastName = "User";
+        user.Email = "real.member@example.com";
+
+        var info = UserInfoFactory.Create(
+            user, [], [], [], NamedProfile(userId, "Deleted User"), [], [], [], []);
+
+        info.IsGdprAnonymized.Should().BeFalse();
+        info.IsTombstone.Should().BeFalse();
     }
 
     [HumansFact]
