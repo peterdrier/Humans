@@ -75,9 +75,9 @@ While your application is still **Submitted**, you can withdraw it from the appl
 
 About 90 days before your term expires, a renewal reminder email and in-app notification go out, and a reminder appears on your dashboard. A renewal creates a new application for the same tier and goes through the normal Board vote. Board and Admin see the same upcoming expirations on the Board voting dashboard, so renewals can be prompted or processed proactively. If you do not renew before the term ends, the next hourly system-team sync removes you from the Colaboradors or Asociados system team, so you lose the access tied to that membership. Your profile's tier label is updated at the same time — back to another tier you still hold, or to Volunteer if you hold none. Volunteer access is unaffected.
 
-## As a member of the association
-
 ### Vote in an assembly vote
+
+Assembly votes are the association's binding decisions. They are the Asociados' to make, but the Board can invite Colaboradores and sometimes every active Volunteer to cast an *indicative* ballot alongside them, and the list of votes is visible to every logged-in member either way.
 
 When the Board opens a vote, everyone entitled to take part gets an email in their own language with the motion's title, the closing time, whether their ballot is official or indicative, and a link to the ballot page. An open vote also shows up in your things-to-do list and on your dashboard until you have voted.
 
