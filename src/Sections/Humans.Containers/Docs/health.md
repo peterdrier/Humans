@@ -87,7 +87,7 @@ A DTO field carrying a URL is named as a URL (`PlacementImageUrl`).
 - The `Contracts/` folder is wide (form model, card model, page models) because City Planning
   drives container CRUD from its own pages and renders this section's partials.
 - The three partials live in this section, not Base, so they can localize from
-  `ContainersResource`; the `ContainerMap_*` keys live here too because the map page is City
+  `ContainersResource`; the `Containers_Map*` keys live here too because the map page is City
   Planning's URL over Containers' vocabulary.
 - Audit entity types are persisted literals, not `nameof` — `Camp` is not even nameable here.
 - `Service.ValidateName` and `ContainerFormModel`'s regex enforce the same character ban on

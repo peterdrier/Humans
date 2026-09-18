@@ -165,8 +165,14 @@ Inbound (other sections → Notifications):
 | POST | `/Notifications/BulkResolve` | Bulk-resolve actionable rows from `selectedIds` |
 | POST | `/Notifications/BulkDismiss` | Bulk-dismiss informational rows from `selectedIds` |
 | GET  | `/Notifications/ClickThrough/{id}` | Mark read + redirect to `ActionUrl` (LocalUrl-checked) |
+| GET  | `/api/notifications` | Read-only unread notifications and role-scoped meters for the configured API user |
 
 All POST routes are `[ValidateAntiForgeryToken]`. Authorization is "must be a recipient", enforced in `INotificationRepository`. On `Resolve` and `Dismiss` a non-recipient gets `Forbidden`, which the controller maps to `Forbid()` and the cookie scheme turns into a redirect to `/Account/AccessDenied`. On `MarkRead` and `ClickThrough` the same user gets `NotFound` instead — those two look up the recipient row by `(NotificationId, UserId)`, so "not yours" and "does not exist" are indistinguishable to them by construction.
+
+The API route uses `NotificationApiKeyAuthFilter`, which maps the configured key to one configured
+user and supplies that user's active roles to `NotificationMeterProvider`. Missing or invalid
+configuration and missing or wrong keys return 401. The endpoint has no mutation actions; see
+[`features/notification-api.md`](features/notification-api.md) for operator setup and response shape.
 
 ### Touch-and-clean guidance
 

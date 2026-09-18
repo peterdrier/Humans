@@ -18,7 +18,7 @@
 @using NodaTime
 @inject IStringLocalizer<CityPlanningResource> Localizer
 @* Genuinely shared strings (Common_*) stay in SharedResource — copying them into each
-   section's .resx would duplicate them ~35 times. Container_* / ContainerMap_* are
+   section's .resx would duplicate them ~35 times. Containers_* keys are
    Containers' vocabulary and stay in its set: the barrio container list and the container
    map are City Planning's URLs over Containers' data, so both localizers are bound and
    which set a key comes from is visible at the call site. *@

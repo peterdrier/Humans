@@ -5,6 +5,7 @@ using Humans.Notifications.Contracts;
 using Humans.Notifications.Data;
 using Humans.Notifications.Jobs;
 using Humans.Notifications.Services;
+using Humans.Notifications.Filters;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;
@@ -46,6 +47,10 @@ public sealed class Section : ISection
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<NotificationInboxService>());
 
         services.AddScoped<NotificationMeterProvider>();
+
+        services.Configure<NotificationApiOptions>(
+            configuration.GetSection(NotificationApiOptions.SectionName));
+        services.AddScoped<NotificationApiKeyAuthFilter>();
 
         services.AddScoped<CleanupNotificationsJob>();
     }
