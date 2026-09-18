@@ -182,6 +182,21 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - **Users/Identity:** `IUserServiceRead.GetUserInfosAsync` — `LastModifiedByUser` / `ModifiedByUser` display names (replaces prior cross-domain `.Include`).
 - **AuditLog (crosscut):** `IAuditLogService.LogAsync` — the `CityPlanning*` actions on every settings write that names an actor.
 
+## GDPR
+
+- **Export** (`ContributeForUserAsync`): always empty. The section carries no read path for
+  "polygons or history rows edited by this user" (reads are all scoped by camp season id,
+  never by editor), and one is not added solely to populate an export slice.
+- **Erasure** (`EraseForUserAsync`): no-op. `CampPolygon.LastModifiedByUserId` and
+  `CampPolygonHistory.ModifiedByUserId` are bare attribution FKs, not personal data of their
+  own — the polygon and its history are the association's record of how the city plan
+  changed. `CampPolygonHistory.Note` is free text but describes the edit, not a person.
+  Users' own Article 17 erasure anonymizes the account those ids point at, so the row keeps
+  naming an edit and an editor, just an anonymized one (`GdprExportSections.CityPlanningEdits`,
+  nobodies-collective/Humans#1116).
+- **Consent**: nothing new is gated — editing a polygon is a team-membership/lead action, not
+  a personal-data submission.
+
 ## Architecture
 
 **Owning services:** `CityPlanningService` (`Humans.CityPlanning.Services`)

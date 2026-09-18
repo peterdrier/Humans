@@ -3,6 +3,7 @@ using Humans.CityPlanning.Data;
 using Humans.CityPlanning.Services;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
+using Humans.Gdpr.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -34,5 +35,9 @@ public sealed class Section : ISection
         services.AddScoped<CityPlanningService>();
         services.AddScoped<ICityPlanningService>(sp => sp.GetRequiredService<CityPlanningService>());
         services.AddScoped<ICityPlanningServiceRead>(sp => sp.GetRequiredService<CityPlanningService>());
+
+        // GDPR fan-out (nobodies-collective/Humans#1116). No dependencies of its own.
+        services.AddScoped<CityPlanningGdprContributor>();
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CityPlanningGdprContributor>());
     }
 }

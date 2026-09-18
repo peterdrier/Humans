@@ -1,5 +1,6 @@
 using Humans.Base.Interfaces;
 using Humans.Base.Hosting;
+using Humans.Gdpr.Contracts;
 using Humans.Store.Authorization;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
@@ -36,5 +37,8 @@ public sealed class Section : ISection
 
         // Resource-based handler; the StoreCatalogAdmin *policy* stays in Shell (design §8).
         services.AddScoped<IAuthorizationHandler, OrderAuthorizationHandler>();
+
+        services.AddScoped<StoreGdprContributor>();
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<StoreGdprContributor>());
     }
 }

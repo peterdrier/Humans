@@ -30,6 +30,15 @@ decorator (`ITeamServiceRead`), on the read path the inner does not serve.
 Recurrence expansion is in-section and static (`CalendarOccurrenceExpander`),
 not an injected dependency.
 
+### CalendarGdprContributor (Scoped, `Humans.Calendar.Services`)
+
+No repository, no dependencies. Implements `IUserDataContributor`
+(nobodies-collective/Humans#1116): `ContributeForUserAsync` returns `[]` (no
+read path for "events created by this user" exists, and none is added just
+for this); `ErasureDeclaration` retains `GdprExportSections.CalendarEvents`
+(the bare `CreatedByUserId` FK survives, pointing at whatever Users'
+own erasure leaves behind); `EraseForUserAsync` is a no-op.
+
 ### CachingCalendarService (Singleton, `Humans.Calendar.Services`)
 
 | Cache | Type | Read | Write | Invalidate |

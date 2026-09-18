@@ -4,6 +4,7 @@ using Humans.Calendar.Contracts;
 using Humans.Calendar.Data;
 using Humans.Calendar.Services;
 using Humans.Base.Hosting;
+using Humans.Gdpr.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -39,5 +40,9 @@ public sealed class Section : ISection
         // The contributors themselves are registered by the sections that implement
         // the interface (Shifts, Events), so Calendar never names them.
         services.AddScoped<IICalFeedService, ICalFeedService>();
+
+        // GDPR fan-out (nobodies-collective/Humans#1116). No dependencies of its own.
+        services.AddScoped<CalendarGdprContributor>();
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CalendarGdprContributor>());
     }
 }

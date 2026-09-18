@@ -22,6 +22,14 @@ Cross-section calls via `ICampServiceRead`, `ITeamServiceRead`,
 `IUserServiceRead`, plus the `IAuditLogService` crosscut for settings
 writes. Uses `CityPlanningOptions`. No `IMemoryCache`.
 
+### CityPlanningGdprContributor (Scoped)
+
+No repository, no cache, no dependencies. Implements `IUserDataContributor` —
+`ContributeForUserAsync` (Article 15) always returns empty (no by-editor read
+path exists); `EraseForUserAsync` (Article 17) is a no-op — the section's only
+user-scoped columns are bare attribution FKs, retained per
+`Docs/CityPlanning.md`'s GDPR section.
+
 ---
 
 

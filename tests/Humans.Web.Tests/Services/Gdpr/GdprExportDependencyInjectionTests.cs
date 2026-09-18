@@ -87,7 +87,13 @@ public class GdprExportDependencyInjectionTests
         // The caching decorator, not RideshareService: erasure empties cached rows.
         SectionType("Humans.Rideshare.Services.CachingRideshareService"),
         // Likewise the decorator, not WorkgroupService: erasure and the merge fold change cached rows.
-        SectionType("Humans.Workgroups.Services.CachingWorkgroupService")
+        SectionType("Humans.Workgroups.Services.CachingWorkgroupService"),
+        // Retention-only contributors: these sections keep user-linked rows past
+        // erasure (see each section's Docs) and declare why, so the export and
+        // erasure paths are explicit rather than silently absent.
+        SectionType("Humans.Calendar.Services.CalendarGdprContributor"),
+        SectionType("Humans.CityPlanning.Services.CityPlanningGdprContributor"),
+        SectionType("Humans.Store.Services.StoreGdprContributor")
     ];
 
     /// <summary>
