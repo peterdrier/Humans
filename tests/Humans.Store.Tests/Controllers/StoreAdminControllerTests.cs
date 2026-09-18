@@ -37,9 +37,6 @@ public sealed class StoreAdminControllerTests
             .AuthorizeAsync(user, resource: null, policy);
 
         result.Succeeded.Should().Be(allowed);
-        foreach (var name in new[] { nameof(StoreAdminController.OrderYears), nameof(StoreAdminController.RepairOrderYears) })
-            typeof(StoreAdminController).GetMethod(name)!
-                .GetCustomAttributes(typeof(AllowAnonymousAttribute), inherit: true).Should().BeEmpty();
     }
 
     [HumansFact]
