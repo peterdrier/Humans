@@ -98,21 +98,11 @@ internal sealed class AssemblyVote
     /// <summary>Authored options; RankedChoice only. Aggregate-local navigation.</summary>
     public ICollection<AssemblyVoteOption> Options { get; } = [];
 
-    /// <summary>True once the vote has reached a terminal state.</summary>
-    public bool IsTerminal =>
-        Status is AssemblyVoteStatus.Closed or AssemblyVoteStatus.Cancelled;
-
     /// <summary>
-    /// True when the vote should be treated as closed at <paramref name="now"/> — either it
-    /// already is, or it is Open and its deadline has passed. The embargo and the ballot
-    /// gate both read this, so a lapsed vote never accepts a ballot nor hides its result
-    /// while waiting for the hourly job.
+    /// True when a ballot may be cast or changed at <paramref name="now"/>. The embargo and the
+    /// ballot gate both read this, so a lapsed vote stops accepting ballots on its deadline
+    /// rather than when the hourly job gets to it.
     /// </summary>
-    public bool IsClosedAt(Instant now) =>
-        Status == AssemblyVoteStatus.Closed ||
-        (Status == AssemblyVoteStatus.Open && now >= ClosesAt);
-
-    /// <summary>True when a ballot may be cast or changed at <paramref name="now"/>.</summary>
     public bool AcceptsBallotsAt(Instant now) =>
         Status == AssemblyVoteStatus.Open && now < ClosesAt;
 }
