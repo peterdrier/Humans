@@ -73,4 +73,7 @@
   <data name="Settings_StrikeRange" xml:space="preserve">
     <value>Tag {0} bis Tag {1}</value>
   </data>
+  <data name="Settings_NoTabs" xml:space="preserve">
+    <value>Es sind noch keine Einstellungen verfügbar.</value>
+  </data>
 </root>

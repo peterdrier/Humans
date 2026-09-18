@@ -42,4 +42,5 @@
   <data name="Settings_BuildRange" xml:space="preserve"><value>Day {0} to day 0 (gates open)</value></data>
   <data name="Settings_EventRange" xml:space="preserve"><value>Day 0 to day {0}</value></data>
   <data name="Settings_StrikeRange" xml:space="preserve"><value>Day {0} to day {1}</value></data>
+  <data name="Settings_NoTabs" xml:space="preserve"><value>No settings are available yet.</value></data>
 </root>

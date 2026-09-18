@@ -1,15 +1,15 @@
-using Humans.Base.Interfaces;
+using Humans.Settings.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Humans.Web.ViewComponents;
+namespace Humans.Settings.ViewComponents;
 
 /// <summary>
 /// Renders the /Settings tab strip: every section's <see cref="ISectionSettings"/>
 /// contribution, merged by <see cref="SettingsTabComposition"/>. An empty result renders a
 /// plain empty state rather than an error, so /Settings never 404s.
 /// </summary>
-public sealed class SettingsTabsViewComponent(
+internal sealed class SettingsTabsViewComponent(
     IEnumerable<ISectionSettings> contributors,
     IAuthorizationService authorization) : ViewComponent
 {

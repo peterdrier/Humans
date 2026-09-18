@@ -9,9 +9,11 @@ namespace Humans.Settings;
 /// type's namespace determines the manifest prefix.
 ///
 /// <para>
-/// <c>Settings_TabEvent</c> and <c>Settings_NoTabs</c> stay in <c>SharedResource</c> instead —
-/// the Shell's <c>SettingsTabs</c> view component renders both, and a key rendered outside
-/// the section cannot see the section's set (design §15 step 3b, carve by renderer).
+/// <c>Settings_TabEvent</c> stays in <c>SharedResource</c> instead — it is a tab label, and a
+/// label may come from any contributing section, not just this one, so it must resolve
+/// against the one resource set every section can reach (design §15 step 3b, carve by
+/// renderer). <c>Settings_NoTabs</c> is this section's own empty-state string, rendered by
+/// this section's own <c>SettingsTabsViewComponent</c>, so it lives here.
 /// </para>
 /// </summary>
 public sealed class SettingsResource;

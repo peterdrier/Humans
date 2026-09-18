@@ -1,16 +1,16 @@
 using System.Security.Claims;
-using Humans.Base.Interfaces;
+using Humans.Settings.Contracts;
 using Microsoft.AspNetCore.Authorization;
 
-namespace Humans.Web.ViewComponents;
+namespace Humans.Settings.ViewComponents;
 
 /// <summary>
 /// The /Settings tab strip as rendered: every section's <see cref="ISectionSettings"/>
-/// contribution, ordered and policy-filtered. Unlike <see cref="AdminNavComposition"/> there
+/// contribution, ordered and policy-filtered. Unlike Shell's <c>AdminNavComposition</c> there
 /// are no groups to merge — one section cannot claim a <see cref="SettingsTab.Key"/> another
 /// already holds, so a duplicate is dropped rather than merged.
 /// </summary>
-public static class SettingsTabComposition
+internal static class SettingsTabComposition
 {
     public static async Task<IReadOnlyList<SettingsTab>> ComposeAsync(
         IEnumerable<ISectionSettings> contributors,

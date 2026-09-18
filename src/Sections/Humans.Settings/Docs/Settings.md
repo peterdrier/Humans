@@ -27,18 +27,24 @@ of the app-wide event values (nobodies-collective/Humans#1104).
   into `settings_event`, keeping ids. Transitional; retires with the nobodies-collective/Humans#1104
   cutover.
 - **`/Settings`** (peterdrier/Humans#1628) is the member-facing settings page: it renders
-  whatever tabs sections contribute through `ISectionSettings`. This section contributes
+  whatever tabs sections contribute through `ISectionSettings` (`Humans.Settings.Contracts`
+  — not every section has settings, so the seam lives on the `.Contracts` leaf a
+  contributor already references to opt in, not on Base). This section contributes
   the **Event** tab (`/Settings#event`), which wraps the `/Settings/Admin` form: editable
   for `PolicyNames.AdminOnly`, read-only (event name, gate date, build/event/strike
   windows as text) for every other authenticated member. `/Settings/Admin` itself now
   redirects there — a GET is a redirect, not a second live page
   (`memory/product/no-url-aliases.md`); the POST is unchanged. Reached from the signed-in
   user menu via the `user-menu` chrome slot (`SectionChrome` → `SettingsUserMenuViewComponent`),
-  since nothing else links to it. Its member-facing strings live in `SettingsResource`; the
-  `/Settings/Admin` and carry screens stay admin-exempt
-  (`memory/code/localization-admin-exempt.md`); the tab label and empty-state text render
-  through Shell's `SettingsTabs` component, so they live in `SharedResource` instead
-  (`Settings_TabEvent`, `Settings_NoTabs`).
+  since nothing else links to it. Its member-facing strings live in `SettingsResource`,
+  including the empty state (`Settings_NoTabs`); the `/Settings/Admin` and carry screens
+  stay admin-exempt (`memory/code/localization-admin-exempt.md`). Settings owns tab
+  composition end to end (`SettingsTabComposition`, `SettingsTabsViewComponent`) — a
+  domain-owning section composes contributions into its own domain, unlike navigational
+  composition, which stays in the Shell — but a **tab label** is different: it may come
+  from any contributing section, so it stays in `SharedResource` (`Settings_TabEvent`),
+  carved by renderer: the composer cannot see any contributor's private resource set,
+  including a `.Contracts` leaf's, which carries no localized strings today anyway.
 
 ## Data Model
 
@@ -156,7 +162,10 @@ entries on event-settings saves), `EventSettingsCarryService`
 caching decorator (low-traffic key reads, admin-only screens).
 **Contributes:** `SectionSettings : ISectionSettings` — the `/Settings#event`
 tab, rendered by `EventSettingsTabViewComponent`; `SectionChrome : ISectionChrome` —
-the `/Settings` link in the signed-in user menu (`user-menu` slot).
+the `/Settings` link in the signed-in user menu (`user-menu` slot). Also owns
+composing every section's `ISectionSettings` contributions into the `/Settings`
+tab strip (`SettingsTabComposition`, `SettingsTabsViewComponent`) — Settings
+owns all of settings management, contributed tabs included, not just its own.
 
 Detail on the repository surface and both invariants:
 [`data-access.md`](data-access.md).

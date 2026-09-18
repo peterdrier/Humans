@@ -73,4 +73,7 @@
   <data name="Settings_StrikeRange" xml:space="preserve">
     <value>Dia {0} al dia {1}</value>
   </data>
+  <data name="Settings_NoTabs" xml:space="preserve">
+    <value>Encara no hi ha cap configuració disponible.</value>
+  </data>
 </root>

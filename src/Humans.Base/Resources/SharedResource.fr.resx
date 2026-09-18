@@ -1383,11 +1383,8 @@
   <data name="Todo_AssemblyVote_Done" xml:space="preserve"><value>Votre vote sur « {0} » est enregistré. Vous pouvez le modifier jusqu’à la clôture.</value><comment>{0} = vote title</comment></data>
   <data name="Todo_AssemblyVote_Action" xml:space="preserve"><value>Voter</value></data>
 
-  <!-- Settings tabs (Shell-rendered: SettingsTabs view component) -->
+  <!-- Settings tab label: a SharedResource key because SettingsTabsViewComponent cannot see a contributing section's own resource set -->
   <data name="Settings_TabEvent" xml:space="preserve">
     <value>Événement</value>
-  </data>
-  <data name="Settings_NoTabs" xml:space="preserve">
-    <value>Aucun paramètre n'est encore disponible.</value>
   </data>
 </root>

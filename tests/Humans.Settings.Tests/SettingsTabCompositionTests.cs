@@ -1,11 +1,11 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Base.Interfaces;
-using Humans.Web.ViewComponents;
+using Humans.Settings.Contracts;
+using Humans.Settings.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
 using NSubstitute;
 
-namespace Humans.Web.Tests.ViewComponents;
+namespace Humans.Settings.Tests;
 
 public class SettingsTabCompositionTests
 {
