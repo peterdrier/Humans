@@ -750,24 +750,11 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
     // --- GetFilteredApplicationsAsync ---
 
+    // These two are the service's own behaviour, not the repository's: the admin form posts
+    // the filters as strings and this layer is where they become enums. The null/int
+    // pass-through cases are covered by ApplicationRepositoryTests over the same query.
     [HumansFact]
-    public async Task GetFilteredApplicationsAsync_DefaultsToSubmitted()
-    {
-        var submittedApp = await SeedSubmittedApplicationAsync(Guid.NewGuid());
-        var approvedApp = await SeedSubmittedApplicationAsync(Guid.NewGuid());
-        approvedApp.Approve(Guid.NewGuid(), "ok", Clock);
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var (items, totalCount) = await _service.GetFilteredApplicationsAsync(null, null, 1, 10, Xunit.TestContext.Current.CancellationToken);
-
-        totalCount.Should().Be(1);
-        items.Should().HaveCount(1);
-        items[0].Id.Should().Be(submittedApp.Id);
-        items[0].Status.Should().Be(ApplicationStatus.Submitted);
-    }
-
-    [HumansFact]
-    public async Task GetFilteredApplicationsAsync_FiltersByStatus()
+    public async Task GetFilteredApplicationsAsync_ParsesTheStatusFilterString()
     {
         await SeedSubmittedApplicationAsync(Guid.NewGuid());
         var approvedApp = await SeedSubmittedApplicationAsync(Guid.NewGuid());
@@ -779,10 +766,11 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         totalCount.Should().Be(1);
         items.Should().HaveCount(1);
         items[0].Id.Should().Be(approvedApp.Id);
+        items[0].Status.Should().Be(ApplicationStatus.Approved);
     }
 
     [HumansFact]
-    public async Task GetFilteredApplicationsAsync_FiltersByTier()
+    public async Task GetFilteredApplicationsAsync_ParsesTheTierFilterString()
     {
         await SeedSubmittedApplicationAsync(Guid.NewGuid());
         await SeedSubmittedApplicationAsync(Guid.NewGuid(), MembershipTier.Asociado);
@@ -791,18 +779,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         totalCount.Should().Be(1);
         items[0].MembershipTier.Should().Be(MembershipTier.Asociado);
-    }
-
-    [HumansFact]
-    public async Task GetFilteredApplicationsAsync_Pagination()
-    {
-        for (var i = 0; i < 3; i++)
-            await SeedSubmittedApplicationAsync(Guid.NewGuid());
-
-        var (items, totalCount) = await _service.GetFilteredApplicationsAsync(null, null, 1, 2, Xunit.TestContext.Current.CancellationToken);
-
-        totalCount.Should().Be(3);
-        items.Should().HaveCount(2);
     }
 
     [HumansFact]

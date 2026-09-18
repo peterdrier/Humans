@@ -498,9 +498,8 @@ internal sealed class AssemblyVoteService(
     /// means nothing re-enters that path — so a throw from here would strand whatever the
     /// caller still had to do (the closure audit, the cancellation audit and its roster
     /// email) with no retry, permanently. That is worth more than a tidy notification
-    /// meter, so the failure is logged and swallowed. Both `CloseAsync` and `CancelAsync`
-    /// lost exactly this, one round apart; it lives here now so a third end-of-vote path
-    /// cannot lose it again.
+    /// meter, so the failure is logged and swallowed. It lives here rather than at each
+    /// end-of-vote path so the next one cannot be written without it.
     /// </para>
     /// </summary>
     private Task ClearOpenNotificationAsync(
@@ -516,10 +515,8 @@ internal sealed class AssemblyVoteService(
     /// a throw from notification or email work leaves the vote in its new state with the
     /// audit entry, the roster email or the notification permanently missing.
     /// <para>
-    /// Every such call goes through here. Three separate paths lost this one at a time —
-    /// the close audit, the cancel audit and roster email, then recipient resolution on both
-    /// — so the guarantee lives in one place rather than in a try/catch per call site that
-    /// the fourth path will forget.
+    /// Every such call goes through here, so the guarantee lives in one place rather than in
+    /// a try/catch per call site that the next path to be written will forget.
     /// </para>
     /// </summary>
     private async Task AfterTransitionAsync(
@@ -689,11 +686,6 @@ internal sealed class AssemblyVoteService(
     }
 
     /// <summary>
-    /// The acta block: a plain-text summary the Secretary pastes into the minutes. Deliberately
-    /// unlocalized and unstyled — it goes into a Spanish legal document, and the numbers are
-    /// what statutes Art. 8.6 requires.
-    /// </summary>
-    /// <summary>
     /// The name of the admin who stopped the vote, for the acta. Null when the vote lapsed
     /// at its announced time (nobody closed it) or when the account no longer resolves —
     /// the acta says "an administrator" then rather than inventing a name.
@@ -705,6 +697,11 @@ internal sealed class AssemblyVoteService(
         return infos.TryGetValue(closerId, out var info) ? info.BurnerName : null;
     }
 
+    /// <summary>
+    /// The acta block: a plain-text summary the Secretary pastes into the minutes. Deliberately
+    /// unlocalized and unstyled — it goes into a Spanish legal document, and the numbers are
+    /// what statutes Art. 8.6 requires.
+    /// </summary>
     private static string BuildActa(
         AssemblyVote vote, AssemblyVoteResult result, string? closedByName)
     {
