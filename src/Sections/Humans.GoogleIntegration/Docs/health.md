@@ -59,12 +59,13 @@ The shapes imply:
   (nobodies-collective/Humans#1180).
 - **One outbox service + one processor**: remember, then drain. The processor owns the
   retry and permanent-failure rules and marks the person's Google email valid or rejected.
+  Without credentials it leaves the batch pending and reports the job as skipped.
 - **One reconciler per resource kind**: groups (with the Hangfire-scheduled single-group
   path) and Drive permissions, both fed by the membership sources and both writing the
   sync log through one logging service.
 - **One workspace-admin facade** (accounts, renames, domain groups, group settings) and
   **one Drive activity client**, each behind an internal client interface so the stubbed,
-  credential-less configuration runs the same code paths.
+  credential-less configuration remains resolvable without making external calls.
 - **One email-provisioning orchestration**, **one removal-notification decision**, **one
   translation client**, **one settings service** (the per-service mode).
 - **Repositories** over the section's tables (resources, outbox, sync log, service
@@ -80,8 +81,9 @@ The shapes imply:
 - **Only direct permissions are ever removed** on Drive resources; inherited Shared Drive
   permissions are never touched. A removal that drops an inherited grant is a bug.
 - **A membership change is never lost**: it is written to the outbox before the caller
-  returns, drained in order, retried up to ten times, and a permanent failure (HTTP 400,
-  403, 404) is parked visibly with a per-event retry, never silently dropped.
+  returns, left pending while credentials are absent, drained in order once configured,
+  retried up to ten times, and a permanent failure (HTTP 400, 403, 404) is parked visibly
+  with a per-event retry, never silently dropped.
 - **Sync mode gates every Execute, scheduled and manual alike**: `None` means no writes;
   `AddOnly` means adds only; an admin's "Sync Now" has no bypass.
 - **Every Drive/Group permission grant or revocation leaves a sync-log row** (success or
@@ -89,8 +91,8 @@ The shapes imply:
   account and rename entries name the acting admin; a manual sync or settings remediation
   does not (see §5).
 - **Drive sync-log source matches the trigger**: scheduled reconciliation records
-  `ScheduledSync`, membership outbox joins record `TeamMemberJoined`, and direct controller
-  calls default to `ManualSync`.
+  `ScheduledSync`, membership outbox joins record `TeamMemberJoined`, admin rerun events
+  record `ManualSync`, and direct controller calls default to `ManualSync`.
 - **A removal notifies the person exactly once, and never an orphan address** (no
   `UserEmail` row → suppressed and logged).
 - **The person's Google-email status is only set from sync when Google actually answered**:
@@ -99,7 +101,8 @@ The shapes imply:
   any address already bound to another human or to a team's group, and audits the act.
 - **Without credentials the section boots, stubbed**: registration swaps real clients for
   stubs by configuration alone, in every environment; the missing credentials surface
-  through the health check, never as a refusal to start (`no-startup-guards`).
+  through the health check, never as a refusal to start (`no-startup-guards`). The outbox
+  processor leaves events pending instead of acknowledging stub calls.
 - **The reconciliation job never stops mid-list**: one resource's failure is recorded
   against that resource and the walk continues.
 - **Every `/Google/*` screen and action denies Volunteers and Coordinators**: the sync

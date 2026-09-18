@@ -591,6 +591,12 @@ When system teams are synced, Google permissions are also updated:
 
 The `ProcessGoogleSyncOutboxJob` classifies Google API errors into two categories:
 
+When Google Workspace credentials are absent, processing is reported as skipped and the
+batch remains pending. Stub dispatch is never treated as successful and cannot mark a Google
+email valid. Admin rerun events are distinguished by their existing `admin-resync:`
+deduplication-key prefix and record `ManualSync`; membership add events record
+`TeamMemberJoined`.
+
 **Permanent failures (HTTP 400, 403, 404):** User-level errors — invalid email format, no Google account for that address, or user not found. The outbox event is marked `FailedPermanently = true` and the user's `GoogleEmailStatus` is set to `Rejected`. While rejected, no new sync events are enqueued for that user and the user is excluded from all sync paths (reconciliation, outbox, direct add). Failures surface via the "Failed Google sync events" meter and the `/Google/SyncOutbox` admin page (per-event Retry). The user must update their Google email (Profile → Emails), which resets `GoogleEmailStatus` to `Unknown` and triggers re-sync for all current team memberships. Permanently-failed outbox events can be requeued individually via `POST /Google/SyncOutbox/{id}/Requeue` or in bulk via `POST /Google/SyncOutbox/RequeueAll`.
 
 **Transient failures (all other errors including 429, 5xx):** Retried up to 10 times with exponential backoff. When the retry budget is exhausted (dead-lettered), the event is marked `FailedPermanently` and surfaces via the "Failed Google sync events" meter and the `/Google/SyncOutbox` admin page with Retry.
