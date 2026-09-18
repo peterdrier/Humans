@@ -72,7 +72,7 @@
   <data name="Governance_Asociados" xml:space="preserve"><value>Asociados</value></data>
   <data name="MyApplications_Title" xml:space="preserve"><value>My Applications</value></data>
   <data name="GovernanceCreate_NewApplication" xml:space="preserve"><value>New Application</value></data>
-  <data name="GovernanceCreate_Lead" xml:space="preserve"><value>Colaboradors and Asociados take on governance responsibilities. Choose the tier that best fits your involvement level.</value></data>
+  <data name="GovernanceCreate_Lead" xml:space="preserve"><value>Colaboradores and Asociados take on governance responsibilities. Choose the tier that best fits your involvement level.</value></data>
   <data name="GovernanceCreate_MotivationPlaceholder" xml:space="preserve"><value>Please share your motivation for joining...</value></data>
   <data name="GovernanceCreate_MotivationHelp" xml:space="preserve"><value>Minimum 50 characters. Tell us about yourself and why you want to be part of the collective.</value></data>
   <data name="GovernanceCreate_AdditionalInfoPlaceholder" xml:space="preserve"><value>Any additional information you'd like to share...</value></data>

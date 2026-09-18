@@ -152,7 +152,7 @@
     <value>Neuer Antrag</value>
   </data>
   <data name="GovernanceCreate_Lead" xml:space="preserve">
-    <value>Colaboradors und Asociados übernehmen Governance-Verantwortung. Wähle die Stufe, die am besten zu deinem Engagement passt.</value>
+    <value>Colaboradores und Asociados übernehmen Governance-Verantwortung. Wähle die Stufe, die am besten zu deinem Engagement passt.</value>
   </data>
   <data name="GovernanceCreate_MotivationPlaceholder" xml:space="preserve">
     <value>Bitte teilen Sie Ihre Motivation für den Beitritt mit...</value>

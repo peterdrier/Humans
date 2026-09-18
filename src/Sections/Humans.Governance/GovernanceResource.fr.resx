@@ -152,7 +152,7 @@
     <value>Nouvelle candidature</value>
   </data>
   <data name="GovernanceCreate_Lead" xml:space="preserve">
-    <value>Les Colaboradors et Asociados assument des responsabilités de gouvernance. Choisissez le niveau qui correspond le mieux à votre implication.</value>
+    <value>Les Colaboradores et Asociados assument des responsabilités de gouvernance. Choisissez le niveau qui correspond le mieux à votre implication.</value>
   </data>
   <data name="GovernanceCreate_MotivationPlaceholder" xml:space="preserve">
     <value>Veuillez partager votre motivation pour nous rejoindre...</value>
