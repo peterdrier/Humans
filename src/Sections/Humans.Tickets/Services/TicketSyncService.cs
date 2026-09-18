@@ -26,6 +26,7 @@ internal sealed class TicketSyncService(
     IOptions<TicketVendorSettings> settings,
     ILogger<TicketSyncService> logger,
     ITicketCacheInvalidator ticketCache,
+    ITicketVendorCacheInvalidator vendorCache,
     IUserServiceRead userServiceRead,
     IUserService userService,
     ICampaignService campaignService,
@@ -55,9 +56,11 @@ internal sealed class TicketSyncService(
 
         try
         {
-            var orders = await vendorService.GetOrdersAsync(syncState.LastSyncAt, eventId, ct);
-            var tickets = await vendorService.GetIssuedTicketsAsync(syncState.LastSyncAt, eventId, ct);
-            var checkIns = await vendorService.GetCheckInsAsync(syncState.LastSyncAt, eventId, ct);
+            // nobodies-collective/Humans#946: a sync finishes or defers to the next run — it is never abandoned
+            // mid-pagination just because the caller who triggered it went away.
+            var orders = await vendorService.GetOrdersAsync(syncState.LastSyncAt, eventId, CancellationToken.None);
+            var tickets = await vendorService.GetIssuedTicketsAsync(syncState.LastSyncAt, eventId, CancellationToken.None);
+            var checkIns = await vendorService.GetCheckInsAsync(syncState.LastSyncAt, eventId, CancellationToken.None);
 
             var emailLookup = await BuildEmailLookupAsync(ct);
 
@@ -142,7 +145,7 @@ internal sealed class TicketSyncService(
             syncState.LastError = null;
             await ticketRepository.PersistSyncStateAsync(syncState, ct);
 
-            ticketCache.InvalidateVendorEventSummary(eventId);
+            vendorCache.InvalidateEventSummary(eventId);
             ticketCache.InvalidateAll();
 
             var result = new TicketSyncResult(ordersSynced, attendeesSynced,
@@ -163,11 +166,19 @@ internal sealed class TicketSyncService(
                 "Ticket sync: TicketTailor returned {StatusCode} for event {EventId}, will retry next run",
                 (int?)ex.StatusCode, eventId);
 
-            syncState.SyncStatus = TicketSyncStatus.Idle;
-            syncState.StatusChangedAt = clock.GetCurrentInstant();
-            await ticketRepository.PersistSyncStateAsync(syncState, CancellationToken.None);
+            return await DeferSyncAsync(syncState);
+        }
+        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+        {
+            // Transient: HttpClient.Timeout fired on a vendor call (nobodies-collective/Humans#946). An inner TimeoutException
+            // is HttpClient's own signal for this — a genuine cancellation (e.g. Hangfire shutdown)
+            // carries no such inner exception and falls through to the generic handler below, where
+            // it is logged at Error, not mistaken for a slow vendor.
+            logger.LogWarning(
+                "Ticket sync: TicketTailor request timed out for event {EventId}, will retry next run",
+                eventId);
 
-            return new TicketSyncResult(0, 0, 0, 0, 0);
+            return await DeferSyncAsync(syncState);
         }
         catch (Exception ex)
         {
@@ -180,6 +191,16 @@ internal sealed class TicketSyncService(
 
             throw;
         }
+    }
+
+    /// <summary>Shared transient-failure tail (nobodies-collective/Humans#946): leave sync Idle, preserve LastSyncAt, retry next run.</summary>
+    private async Task<TicketSyncResult> DeferSyncAsync(TicketSyncState syncState)
+    {
+        syncState.SyncStatus = TicketSyncStatus.Idle;
+        syncState.StatusChangedAt = clock.GetCurrentInstant();
+        await ticketRepository.PersistSyncStateAsync(syncState, CancellationToken.None);
+
+        return new TicketSyncResult(0, 0, 0, 0, 0);
     }
 
     public async Task ResetSyncStateForFullResyncAsync()

@@ -66,7 +66,7 @@ public class TicketVendorPortArchitectureTests
     }
 
     [HumansFact]
-    public void TheVendorPortHasExactlyOneAdapter()
+    public void TheVendorPortHasExactlyOneAdapterPlusTicketsOwnCachingDecorator()
     {
         var impls = SectionDiscoveryExtensions.SectionAssemblies()
             .SelectMany(a => a.GetTypes())
@@ -77,8 +77,9 @@ public class TicketVendorPortArchitectureTests
             .ToList();
 
         impls.Should().BeEquivalentTo(
-            ["Humans.TicketTailor.Services.StubTicketVendorService",
+            ["Humans.Tickets.Services.Stores.CachingTicketVendorService",
+             "Humans.TicketTailor.Services.StubTicketVendorService",
              "Humans.TicketTailor.Services.TicketTailorService"],
-            because: "the port's implementations all live in the adapter section, so replacing the vendor is one project deleted and one added");
+            because: "the adapter section holds the one live/stub pair, so replacing the vendor is one project deleted and one added; the caching decorator lives beside the port in Tickets so the swap doesn't touch it");
     }
 }

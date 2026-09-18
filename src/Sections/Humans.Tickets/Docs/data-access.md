@@ -59,8 +59,8 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 
 | Table | R/W |
 |-------|-----|
-| TicketOrders | R/W (W: GDPR Art. 17 erasure tombstones `BuyerName`/`BuyerEmail`) |
-| TicketAttendees | R/W (W: GDPR Art. 17 erasure tombstones `AttendeeName`/`AttendeeEmail`) |
+| TicketOrders | R/W (W: GDPR Art. 17 erasure tombstones `BuyerName`/`BuyerEmail` and stamps `PiiErasedAt`, which sync then never clears) |
+| TicketAttendees | R/W (W: GDPR Art. 17 erasure tombstones `AttendeeName`/`AttendeeEmail` and stamps `PiiErasedAt`, which sync then never clears) |
 | TicketSyncStates | R |
 | TicketTransferRequests | R/W (R: approved transfers joined into the orders projection — void attendees carry recipient/decided-at; W: GDPR erasure scrubs receiver name/email + free-text reason/notes, via `ITicketTransferRepository.ErasePiiForUserAsync`) |
 
@@ -112,7 +112,6 @@ has an automated TicketTailor void(-to-hold)+reissue path
 |-------|------|------|-------|------------|
 | `TrackedCache<Guid, TicketOrderInfo>` (`Tickets.Orders`, warmed on startup) | Per-Entity | yes | yes (warm + lazy) | `ITicketCacheInvalidator` (clear-all on transfer / contact-import / merge / sync) |
 | `TrackedCache<Guid, CachedUserTicketHoldings>` (`Tickets.UserHoldings`, lazy, 5-min freshness inside value) | Per-User | yes | yes (lazy load) | `ITicketCacheInvalidator` (per-user evict on transfer/merge; clear-all on contact import) |
-| `TicketEventSummary:{eventId}` (`IMemoryCache`) | 15 min | (removed by `InvalidateVendorEventSummary`) | | `ITicketCacheInvalidator.InvalidateVendorEventSummary` |
 
 Implements `ITicketService`, `ITicketServiceRead`, `ITicketCacheInvalidator`,
 `IHostedService` (its `StartAsync` warms the orders slice). Resolves the keyed
@@ -120,6 +119,17 @@ Scoped inner per-call via `IServiceScopeFactory`. Both `TrackedCache`
 instances are surfaced on `/Debug/CacheStats`.
 `GetDashboardStatsAsync` is a straight pass-through to the inner (compute-only,
 no read-through cache — see `TicketDashboardStats` note in the Cache Inventory).
+
+### CachingTicketVendorService (Singleton, `Humans.Tickets.Services.Stores`)
+
+| Cache | Type | Read | Write | Invalidate |
+|-------|------|------|-------|------------|
+| `TrackedCache<string, CachedVendorEventSummary>` (`Tickets.VendorEventSummary`, lazy, 15-min freshness inside value) | Per-Entity | yes | yes (lazy load) | `ITicketVendorCacheInvalidator.InvalidateEventSummary` |
+
+Implements `ITicketVendorService`, `ITicketVendorCacheInvalidator`. Wraps the
+keyed vendor-port inner, resolved via `IServiceScopeFactory`; every other port
+member forwards through uncached. `TicketSyncService` is the sole caller of
+`InvalidateEventSummary`.
 
 ### TicketSyncService (Scoped)
 
@@ -134,7 +144,7 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 
 | Cache Key | TTL | Read | Write | Invalidate |
 |-----------|-----|------|-------|------------|
-| `TicketEventSummary:{eventId}` (via `ITicketCacheInvalidator.InvalidateVendorEventSummary`) | 15 min | | | yes (per event) |
+| `TicketEventSummary:{eventId}` (via `ITicketVendorCacheInvalidator.InvalidateEventSummary`) | 15 min | | | yes (per event) |
 | `Tickets.Orders` / `Tickets.UserHoldings` tracked slices (via `ITicketCacheInvalidator`) | per-process | | | yes |
 
 Cross-section calls via `ITicketVendorService`, `IStripeService`,

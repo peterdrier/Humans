@@ -1,11 +1,43 @@
 using System.Net;
 using AwesomeAssertions;
+using Humans.Base.Diagnostics;
 using NodaTime;
 
 namespace Humans.TicketTailor.Tests.Services;
 
 public class TicketTailorServiceTests
 {
+    [HumansFact]
+    public async Task GetOrdersAsync_TimesEachPageSeparately_NotTheWholeLoop()
+    {
+        // nobodies-collective/Humans#946: HttpClient.Timeout applies per request and the timing extension's Error
+        // threshold is calibrated for one request — timing the whole paginated loop instead
+        // falsely trips Error on a long multi-page sync. A timing scope recorded once per
+        // page (not once for the whole call) is the fix; verify it via the shared registry,
+        // since forcing the real 30s+ elapsed time this threshold judges isn't practical here.
+        var handler = new RecordingHttpHandler();
+        handler.EnqueueResponse(HttpStatusCode.OK, new
+        {
+            data = new[] { new { id = "ord_1", total = 100, status = "completed", created_at = 1716811200L } },
+            links = new { next = "more" }
+        });
+        handler.EnqueueResponse(HttpStatusCode.OK, new
+        {
+            data = new[] { new { id = "ord_2", total = 100, status = "completed", created_at = 1716811200L } },
+            links = new { next = (string?)null }
+        });
+
+        var registry = OperationTimingRegistry.Instance;
+        const string key = "TicketTailorService.GetOrdersAsync";
+        var before = registry.GetTimings().FirstOrDefault(t => string.Equals(t.Key, key, StringComparison.Ordinal))?.Count ?? 0;
+
+        var service = TicketTailorTestHost.CreateService(handler);
+        await service.GetOrdersAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
+
+        var after = registry.GetTimings().Single(t => string.Equals(t.Key, key, StringComparison.Ordinal)).Count;
+        (after - before).Should().Be(2, "one timing scope should be recorded per page, not once for the whole call");
+    }
+
     [HumansFact]
     public async Task GetOrdersAsync_ParsesOrderResponse()
     {
@@ -268,6 +300,25 @@ public class TicketTailorServiceTests
         summary.TotalCapacity.Should().Be(2000);
         summary.TicketsSold.Should().Be(96);
         summary.TicketsRemaining.Should().Be(1904);
+    }
+
+    [HumansFact]
+    public async Task GetEventSummaryAsync_FallsBackToTicketTypeTotalsWhenNoGroups()
+    {
+        var handler = new RecordingHttpHandler();
+        handler.EnqueueResponse(HttpStatusCode.OK, new
+        {
+            name = "Elsewhere 2026",
+            total_issued_tickets = 10,
+            ticket_types = new[] { new { quantity_total = 300 }, new { quantity_total = 200 } },
+            ticket_groups = Array.Empty<object>()
+        });
+
+        var service = TicketTailorTestHost.CreateService(handler);
+        var summary = await service.GetEventSummaryAsync("ev_test", Xunit.TestContext.Current.CancellationToken);
+
+        summary.TotalCapacity.Should().Be(500);
+        summary.TicketsRemaining.Should().Be(490);
     }
 
     [HumansFact]

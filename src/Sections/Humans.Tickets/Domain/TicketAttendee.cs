@@ -26,6 +26,13 @@ internal sealed class TicketAttendee
     /// <summary>Ticket holder's email (may not always be provided by vendor).</summary>
     public string? AttendeeEmail { get; set; }
 
+    /// <summary>
+    /// When GDPR erasure tombstoned this attendee's <see cref="AttendeeName"/>
+    /// and <see cref="AttendeeEmail"/>. Null until erased. While non-null, sync
+    /// must never write those two fields again. Issue nobodies-collective/Humans#1178.
+    /// </summary>
+    public Instant? PiiErasedAt { get; set; }
+
     /// <summary>Short scannable code printed on the ticket / encoded in its QR
     /// (Ticket Tailor <c>issued_ticket.barcode</c>, e.g. "xyz34Qy5"). Distinct from
     /// VendorTicketId (the ti_… object id). Null until a sync repopulates the row.</summary>

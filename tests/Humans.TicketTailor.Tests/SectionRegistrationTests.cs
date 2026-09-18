@@ -5,10 +5,16 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using NodaTime;
 
 namespace Humans.TicketTailor.Tests;
 
-/// <summary>The environment name decides the binding, never the presence of a key.</summary>
+/// <summary>
+/// The environment name decides the binding, never the presence of a key. This section
+/// registers only the keyed live/stub inner under <see cref="TicketVendorServiceKeys.InnerServiceKey"/>
+/// — the unkeyed <see cref="ITicketVendorService"/> forward onto the caching decorator is
+/// Humans.Tickets' own registration (<c>tests/Humans.Tickets.Tests</c>).
+/// </summary>
 public class SectionRegistrationTests
 {
     [HumansFact]
@@ -16,7 +22,8 @@ public class SectionRegistrationTests
     {
         using var provider = Build("Production");
 
-        provider.GetRequiredService<ITicketVendorService>().Should().BeOfType<TicketTailorService>();
+        provider.GetRequiredKeyedService<ITicketVendorService>(TicketVendorServiceKeys.InnerServiceKey)
+            .Should().BeOfType<TicketTailorService>();
     }
 
     [HumansTheory]
@@ -28,7 +35,8 @@ public class SectionRegistrationTests
     {
         using var provider = Build(environment);
 
-        provider.GetRequiredService<ITicketVendorService>().Should().BeOfType<StubTicketVendorService>();
+        provider.GetRequiredKeyedService<ITicketVendorService>(TicketVendorServiceKeys.InnerServiceKey)
+            .Should().BeOfType<StubTicketVendorService>();
 
         var settings = provider.GetRequiredService<IOptions<TicketVendorSettings>>().Value;
         settings.EventId.Should().Be("stub-event");
@@ -42,7 +50,8 @@ public class SectionRegistrationTests
         using var provider = Build("Development", services =>
             services.Configure<TicketVendorSettings>(o => o.ApiKey = "sk_live_real"));
 
-        provider.GetRequiredService<ITicketVendorService>().Should().BeOfType<StubTicketVendorService>();
+        provider.GetRequiredKeyedService<ITicketVendorService>(TicketVendorServiceKeys.InnerServiceKey)
+            .Should().BeOfType<StubTicketVendorService>();
         provider.GetRequiredService<IOptions<TicketVendorSettings>>().Value.ApiKey.Should().Be("sk_live_real");
     }
 
@@ -52,6 +61,7 @@ public class SectionRegistrationTests
         services.AddLogging();
         services.AddMemoryCache();
         services.AddOptions();
+        services.AddSingleton<IClock>(SystemClock.Instance);
         configure?.Invoke(services);
 
         var config = new ConfigurationBuilder()

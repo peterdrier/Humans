@@ -48,10 +48,4 @@ internal interface ITicketCacheInvalidator : IInvalidator
     /// Drops per-user entries for both users affected by an account-merge fold.
     /// </summary>
     void InvalidateAfterUserMerge(Guid sourceUserId, Guid targetUserId);
-
-    /// <summary>
-    /// Drops the cached vendor event summary keyed on
-    /// <paramref name="vendorEventId"/>.
-    /// </summary>
-    void InvalidateVendorEventSummary(string vendorEventId);
 }

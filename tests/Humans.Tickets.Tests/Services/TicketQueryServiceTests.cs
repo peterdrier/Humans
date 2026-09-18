@@ -30,7 +30,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
     public TicketQueryServiceTests()
     {
-        _repo = new TicketRepository(TicketsDbFactory);
+        _repo = new TicketRepository(TicketsDbFactory, Clock);
 
         _transferRepo.GetByStatusAsync(Arg.Any<TicketTransferStatus>(), Arg.Any<CancellationToken>())
             .Returns([]);

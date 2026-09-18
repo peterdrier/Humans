@@ -86,9 +86,11 @@ public static class MemoryCacheExtensions
     //
     // Ticket-cache invalidation extensions were retired in T-07. Eviction is
     // now owned by CachingTicketQueryService (Infrastructure decorator) and
-    // reached through ITicketCacheInvalidator. Per-user holdings live in that
-    // decorator's TrackedCache; the only remaining IMemoryCache ticket key the
-    // decorator removes directly is TicketEventSummary.
+    // reached through ITicketCacheInvalidator. Per-user holdings and the vendor
+    // event summary both live in TrackedCache instances now (the latter on the
+    // separate CachingTicketVendorService decorator, reached through
+    // ITicketVendorCacheInvalidator) — no ticket key is removed from
+    // IMemoryCache directly any more.
 
     public static void InvalidateCampContactRateLimit(this IMemoryCache cache, Guid userId, Guid campId) =>
         cache.Remove(CacheKeys.CampContactRateLimit(userId, campId));
