@@ -373,7 +373,9 @@ public class CantinaDailyRosterServiceTests
         var dict = profiles.ToDictionary(
             p => p.UserId,
             p => UserInfo.Create(
-                user: new User { Id = p.UserId, DisplayName = p.Profile.BurnerName, PreferredLanguage = "en" },
+                // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
+                // UserInfo.BurnerName reads User.BurnerName only (#1098).
+                user: new User { Id = p.UserId, DisplayName = p.Profile.BurnerName, BurnerName = p.Profile.BurnerName, PreferredLanguage = "en" },
                 userEmails: [],
                 eventParticipations: [],
                 externalLogins: [],

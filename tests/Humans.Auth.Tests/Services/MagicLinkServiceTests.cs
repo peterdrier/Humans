@@ -81,6 +81,9 @@ public sealed class MagicLinkServiceTests : IDisposable
             UserName = "alice@gmail.com",
             Email = "alice@gmail.com",
             DisplayName = "Alice",
+            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
+            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            BurnerName = "Alice",
             CreatedAt = Clock.GetCurrentInstant()
         };
 
@@ -110,6 +113,9 @@ public sealed class MagicLinkServiceTests : IDisposable
         {
             Id = userId,
             DisplayName = "Alice",
+            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
+            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            BurnerName = "Alice",
             CreatedAt = Clock.GetCurrentInstant()
         };
 

@@ -405,8 +405,10 @@ public sealed class CampRoleServiceTests : CampsTestHarness
 
         var users = new Dictionary<Guid, User>
         {
-            [member1.UserId] = new() { Id = member1.UserId, DisplayName = "Member One" },
-            [member2.UserId] = new() { Id = member2.UserId, DisplayName = "Member Two" },
+            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
+            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            [member1.UserId] = new() { Id = member1.UserId, DisplayName = "Member One", BurnerName = "Member One" },
+            [member2.UserId] = new() { Id = member2.UserId, DisplayName = "Member Two", BurnerName = "Member Two" },
         };
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(

@@ -751,6 +751,9 @@ public sealed class RotaCoordinatorMessageServiceTests
         {
             Id = id,
             DisplayName = displayName,
+            // Mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
+            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            BurnerName = displayName,
             PreferredLanguage = "en",
             Email = email,
             EmailConfirmed = true,

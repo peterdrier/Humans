@@ -206,7 +206,10 @@ public abstract class ShiftsTestHarness : IDisposable
             Id = userId,
             UserName = $"test-{userId}@test.com",
             Email = $"test-{userId}@test.com",
-            PreferredLanguage = "en"
+            PreferredLanguage = "en",
+            // Mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
+            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            BurnerName = displayName,
         };
         LegacyDisplayNameProperty.SetValue(user, displayName);
         Db.Users.Add(user);

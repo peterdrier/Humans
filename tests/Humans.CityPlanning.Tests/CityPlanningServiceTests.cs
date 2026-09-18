@@ -745,7 +745,9 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var userId = NewUserId();
 
         // Stub the user service — replaces the old cross-domain .Include(h => h.ModifiedByUser).
-        var testUser = new User { Id = userId, UserName = "test@test.com", Email = "test@test.com", DisplayName = "Test User" };
+        // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
+        // UserInfo.BurnerName reads User.BurnerName only (#1098).
+        var testUser = new User { Id = userId, UserName = "test@test.com", Email = "test@test.com", DisplayName = "Test User", BurnerName = "Test User" };
         _userService.GetUserInfosAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
             Arg.Any<CancellationToken>())

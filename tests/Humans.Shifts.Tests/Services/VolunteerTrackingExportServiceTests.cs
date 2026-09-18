@@ -91,6 +91,9 @@ public sealed class VolunteerTrackingExportServiceTests
             {
                 Id = userId,
                 DisplayName = burnerName,
+                // UserInfo.BurnerName reads User.BurnerName only (#1098); mirrors
+                // CopyNamesToUser's dual-write from Profile onto User (#1097).
+                BurnerName = burnerName,
                 PreferredLanguage = "en",
                 CreatedAt = TestNow,
             },

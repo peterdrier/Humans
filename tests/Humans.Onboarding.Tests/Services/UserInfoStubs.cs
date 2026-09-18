@@ -31,7 +31,9 @@ internal static class UserInfoStubs
     {
         var info = profile ?? UserFixtures.Profile(burnerName: displayName, isApproved: true);
         return UserInfo.Create(
-            new User { Id = userId, PreferredLanguage = "en", State = UserFixtures.StateFor(info) },
+            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
+            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            new User { Id = userId, PreferredLanguage = "en", BurnerName = info.BurnerName, State = UserFixtures.StateFor(info) },
             [],
             [],
             [],

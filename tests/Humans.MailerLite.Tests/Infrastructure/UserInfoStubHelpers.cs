@@ -29,13 +29,18 @@ internal static class UserInfoStubHelpers
             []);
 
     public static UserInfo MakeUserInfo(Guid userId, ProfileInfo? profile = null, string displayName = "User")
-        => UserInfo.Create(
-            new User { Id = userId, PreferredLanguage = "en" },
+    {
+        var resolvedProfile = profile ?? UserFixtures.Profile(
+            burnerName: displayName,
+            isApproved: true);
+        return UserInfo.Create(
+            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
+            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            new User { Id = userId, PreferredLanguage = "en", BurnerName = resolvedProfile.BurnerName },
             [],
             [],
             [],
-            profile: profile ?? UserFixtures.Profile(
-                burnerName: displayName,
-                isApproved: true),
+            profile: resolvedProfile,
             []);
+    }
 }

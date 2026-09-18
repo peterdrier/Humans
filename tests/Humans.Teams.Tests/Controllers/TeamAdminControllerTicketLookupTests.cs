@@ -89,7 +89,9 @@ public class TeamAdminControllerTicketLookupTests
 
     private static UserInfo ActiveHuman(Guid id, string burnerName) =>
         UserInfoFactory.Create(
-            new User { Id = id, PreferredLanguage = "en" },
+            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
+            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            new User { Id = id, PreferredLanguage = "en", BurnerName = burnerName },
             userEmails: [],
             eventParticipations: [],
             externalLogins: [],

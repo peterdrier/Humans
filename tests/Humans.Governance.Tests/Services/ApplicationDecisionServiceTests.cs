@@ -443,6 +443,9 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         {
             Id = userId,
             DisplayName = "Alice",
+            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
+            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            BurnerName = "Alice",
             UserName = "alice@test.com",
             Email = "alice@test.com",
             PreferredLanguage = "en"
@@ -473,6 +476,9 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         {
             Id = userId,
             DisplayName = "Bob",
+            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
+            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            BurnerName = "Bob",
             UserName = "bob",
             Email = null,
             PreferredLanguage = "en"
@@ -508,6 +514,9 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         {
             Id = userId,
             DisplayName = "Carol",
+            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
+            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            BurnerName = "Carol",
             UserName = "carol",
             Email = null,
             PreferredLanguage = "en"
@@ -681,6 +690,9 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         {
             Id = reviewerId,
             DisplayName = "Reviewer",
+            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
+            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            BurnerName = "Reviewer",
             UserName = "r@t.com",
             Email = "r@t.com"
         };
@@ -802,6 +814,9 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         {
             Id = userId,
             DisplayName = "Applicant",
+            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
+            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            BurnerName = "Applicant",
             UserName = "a@t.com",
             Email = "a@t.com"
         };
@@ -829,6 +844,9 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         {
             Id = applicantId,
             DisplayName = "Applicant",
+            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
+            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            BurnerName = "Applicant",
             UserName = "a@t.com",
             Email = "a@t.com",
             ProfilePictureUrl = "https://example.com/pic.png"
@@ -837,6 +855,9 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         {
             Id = reviewerId,
             DisplayName = "Admin",
+            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
+            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            BurnerName = "Admin",
             UserName = "r@t.com",
             Email = "r@t.com"
         };

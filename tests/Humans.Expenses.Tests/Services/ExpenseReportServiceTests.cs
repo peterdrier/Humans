@@ -90,6 +90,9 @@ public sealed class ExpenseReportServiceTests
         {
             Id = userId,
             DisplayName = profile.BurnerName,
+            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
+            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            BurnerName = profile.BurnerName,
             PreferredLanguage = "en",
             CreatedAt = FakeNow,
         },
