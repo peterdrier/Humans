@@ -154,7 +154,7 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
                       where t.UserId == userId
                       orderby f.GeneratedAt
                       select new SepaPayoutExportRow(
-                          f.GeneratedAt, f.FileName, t.SupplierAccountNum,
+                          f.GeneratedAt, f.FileName, t.SupplierAccountNum, t.HoldedContactId,
                           t.CreditorName, t.IbanMasked, t.Amount, t.BookedAt))
             .ToListAsync(ct);
     }
@@ -167,7 +167,8 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
                       join f in ctx.SepaPayoutFiles on t.FileId equals f.Id
                       select new SepaPayoutTransferRow(
                           t.Id, f.Id, f.FileName, f.GeneratedAt, f.GeneratedByUserId,
-                          t.UserId, t.SupplierAccountNum, t.CreditorName, t.IbanMasked, t.Amount,
+                          t.UserId, t.SupplierAccountNum, t.HoldedContactId,
+                          t.CreditorName, t.IbanMasked, t.Amount,
                           t.BookedAt, t.BookedByUserId, t.HoldedPaymentRefs, null))
             .ToListAsync(ct);
     }
