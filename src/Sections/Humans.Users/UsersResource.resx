@@ -350,6 +350,8 @@
   <data name="SendMessage_Send" xml:space="preserve"><value>Send Message</value></data>
   <data name="SendMessage_Success" xml:space="preserve"><value>Your message has been sent to {0}.</value><comment>{0} = recipient name</comment></data>
   <data name="SendMessage_Button" xml:space="preserve"><value>Send {0} a message</value><comment>{0} = display name</comment></data>
+  <data name="SendMessage_FromTeamButton" xml:space="preserve"><value>Send {0} a message from {1}</value><comment>{0} = recipient name; {1} = team name</comment></data>
+  <data name="SendMessage_FromTeamNotice" xml:space="preserve"><value>You are sending on behalf of {0}. Replies will go to {1}.</value><comment>{0} = team name; {1} = team email</comment></data>
 
   <!-- ======================== -->
   <!-- Email verification       -->

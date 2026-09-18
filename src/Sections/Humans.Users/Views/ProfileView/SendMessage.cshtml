@@ -20,6 +20,14 @@
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="RecipientId" />
             <input type="hidden" asp-for="RecipientDisplayName" />
+            <input type="hidden" asp-for="SendAsTeamId" />
+
+            @if (Model.SendAsTeamId is not null)
+            {
+                <div class="alert alert-info">
+                    @Localizer["SendMessage_FromTeamNotice", Model.SendAsTeamName ?? string.Empty, Model.TeamReplyToEmail ?? string.Empty]
+                </div>
+            }
 
             <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
 

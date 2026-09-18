@@ -57,6 +57,7 @@ internal sealed class ProfileViewController(
     IStringLocalizer<UsersResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer,
     ITeamServiceRead teamService,
+    ITeamResourceService teamResourceService,
     ICampServiceRead campService,
     IAuthorizationService authorizationService) : HumansControllerBase(userService)
 {
@@ -112,6 +113,10 @@ internal sealed class ProfileViewController(
                 User, PolicyNames.TicketAdminBoardOrAdmin)).Succeeded;
 
         var canViewSentMessages = await CanViewSentMessagesAsync(viewer.Id, isOwnProfile);
+        var teamMessageOptions = !isOwnProfile
+            && await commPrefService.AcceptsFacilitatedMessagesAsync(id, ct)
+                ? await GetTeamMessageOptionsAsync(viewer.Id, ct)
+                : [];
 
         var viewModel = new ProfileViewModel
         {
@@ -127,6 +132,7 @@ internal sealed class ProfileViewController(
                 : null,
             CanViewOnsiteChip = canViewOnsiteChip,
             CanViewSentMessages = canViewSentMessages,
+            TeamMessageOptions = teamMessageOptions,
         };
 
         // Index.cshtml is shared with ProfileController.Me; both render the same page shape.
@@ -274,33 +280,43 @@ internal sealed class ProfileViewController(
     }
 
     [HttpGet("{id:guid}/SendMessage")]
-    public async Task<IActionResult> SendMessage(Guid id)
+    public async Task<IActionResult> SendMessage(Guid id, Guid? teamId, CancellationToken ct)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(ct);
         if (currentUser is null)
             return NotFound();
 
         if (currentUser.Id == id)
             return RedirectToAction(nameof(ViewProfile), new { id });
 
-        var targetInfo = await _userService.GetUserInfoAsync(id);
+        var targetInfo = await _userService.GetUserInfoAsync(id, ct);
         if (targetInfo is null)
             return NotFound();
         id = targetInfo.Id;
         if (currentUser.Id == id)
             return RedirectToAction(nameof(ViewProfile), new { id });
 
-        if (!await commPrefService.AcceptsFacilitatedMessagesAsync(id))
+        if (!await commPrefService.AcceptsFacilitatedMessagesAsync(id, ct))
         {
             SetError("This human has opted out of receiving messages.");
             return RedirectToAction(nameof(ViewProfile), new { id });
         }
 
+        var teamSender = teamId is null
+            ? null
+            : (await GetTeamMessageOptionsAsync(currentUser.Id, ct))
+                .FirstOrDefault(t => t.TeamId == teamId.Value);
+        if (teamId is not null && teamSender is null)
+            return Forbid();
+
         var viewModel = new SendMessageViewModel
         {
             RecipientId = id,
             RecipientDisplayName = targetInfo.BurnerName,
-            SenderEmail = currentUser.Email ?? string.Empty
+            SenderEmail = currentUser.Email ?? string.Empty,
+            SendAsTeamId = teamSender?.TeamId,
+            SendAsTeamName = teamSender?.TeamName,
+            TeamReplyToEmail = teamSender?.GoogleGroupEmail,
         };
 
         return View(viewModel);
@@ -308,9 +324,9 @@ internal sealed class ProfileViewController(
 
     [HttpPost("{id:guid}/SendMessage")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SendMessage(Guid id, SendMessageViewModel model)
+    public async Task<IActionResult> SendMessage(Guid id, SendMessageViewModel model, CancellationToken ct)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(ct);
         if (currentUser is null)
             return NotFound();
 
@@ -318,14 +334,14 @@ internal sealed class ProfileViewController(
             return RedirectToAction(nameof(ViewProfile), new { id });
 
         // Bulk-fetch via section service, not cross-domain nav.
-        var participants = await _userService.GetUserInfosAsync([id, currentUser.Id]);
+        var participants = await _userService.GetUserInfosAsync([id, currentUser.Id], ct);
         if (!participants.TryGetValue(id, out var targetUser))
             return NotFound();
         id = targetUser.Id;
         if (currentUser.Id == id)
             return RedirectToAction(nameof(ViewProfile), new { id });
 
-        if (!await commPrefService.AcceptsFacilitatedMessagesAsync(id))
+        if (!await commPrefService.AcceptsFacilitatedMessagesAsync(id, ct))
         {
             SetError("This human has opted out of receiving messages.");
             return RedirectToAction(nameof(ViewProfile), new { id });
@@ -334,6 +350,16 @@ internal sealed class ProfileViewController(
         model.RecipientId = id;
         model.RecipientDisplayName = targetUser.BurnerName;
         model.SenderEmail = currentUser.Email ?? string.Empty;
+
+        var teamSender = model.SendAsTeamId is null
+            ? null
+            : (await GetTeamMessageOptionsAsync(currentUser.Id, ct))
+                .FirstOrDefault(t => t.TeamId == model.SendAsTeamId.Value);
+        if (model.SendAsTeamId is not null && teamSender is null)
+            return Forbid();
+
+        model.SendAsTeamName = teamSender?.TeamName;
+        model.TeamReplyToEmail = teamSender?.GoogleGroupEmail;
 
         if (!ModelState.IsValid)
             return View(model);
@@ -348,26 +374,90 @@ internal sealed class ProfileViewController(
             return View(model);
         }
 
-        await emailService.SendAsync(emailMessages.FacilitatedMessage(
+        var message = WithTeamReplyTo(emailMessages.FacilitatedMessage(
             request.RecipientEmail,
             request.RecipientDisplayName,
             request.SenderDisplayName,
             request.CleanMessage,
             request.IncludeContactInfo,
             request.SenderEmail,
-            request.RecipientPreferredLanguage));
+            request.RecipientPreferredLanguage), teamSender);
+
+        await emailService.SendAsync(message, CancellationToken.None);
 
         await auditLogService.LogAsync(
             AuditAction.FacilitatedMessageSent,
             nameof(User), targetUser.Id,
-            $"Message sent to {targetUser.BurnerName} (contact info shared: {(model.IncludeContactInfo ? "yes" : "no")})",
-            currentUser.Id);
+            DescribeFacilitatedMessage(targetUser.BurnerName, model.IncludeContactInfo, teamSender),
+            currentUser.Id,
+            relatedEntityId: teamSender?.TeamId,
+            relatedEntityType: teamSender is null ? null : "Team");
 
         SetSuccess(string.Format(
             localizer["SendMessage_Success"].Value,
             targetUser.BurnerName));
 
         return RedirectToAction(nameof(ViewProfile), new { id });
+    }
+
+    private static EmailMessage WithTeamReplyTo(EmailMessage message, TeamMessageOption? teamSender) =>
+        teamSender is null ? message : message with { ReplyTo = teamSender.GoogleGroupEmail };
+
+    private static string DescribeFacilitatedMessage(
+        string recipientName,
+        bool includeContactInfo,
+        TeamMessageOption? teamSender)
+    {
+        var contactInfo = includeContactInfo ? "yes" : "no";
+        return teamSender is null
+            ? $"Message sent to {recipientName} (contact info shared: {contactInfo})"
+            : $"Message sent to {recipientName} from team {teamSender.TeamName} (contact info shared: {contactInfo})";
+    }
+
+    private async Task<IReadOnlyList<TeamMessageOption>> GetTeamMessageOptionsAsync(
+        Guid viewerId,
+        CancellationToken ct)
+    {
+        var coordinatedTeams = (await teamService.GetTeamsAsync(ct)).Values
+            .Where(t => t.IsActive
+                && t.GoogleGroupEmail is not null
+                && t.Members.Any(m => m.UserId == viewerId && m.Role == TeamMemberRole.Coordinator))
+            .ToList();
+        if (coordinatedTeams.Count == 0)
+            return [];
+
+        var resourcesByTeam = await teamResourceService.GetResourcesByTeamIdsAsync(
+            coordinatedTeams.Select(t => t.Id).ToList(), ct);
+
+        return coordinatedTeams
+            .Where(t => resourcesByTeam.GetValueOrDefault(t.Id, [])
+                .Any(r => IsSyncedGroup(r, t.GoogleGroupEmail!)))
+            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(t => new TeamMessageOption(t.Id, t.Name, t.GoogleGroupEmail!))
+            .ToList();
+    }
+
+    private static bool IsSyncedGroup(GoogleResourceSnapshot resource, string groupEmail)
+    {
+        if (resource.ResourceType != GoogleResourceType.Group
+            || !resource.IsActive
+            || resource.LastSyncedAt is null
+            || resource.ErrorMessage is not null)
+            return false;
+
+        if (string.Equals(resource.Name, groupEmail, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(resource.GoogleId, groupEmail, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        var separator = groupEmail.IndexOf('@');
+        if (separator <= 0 || separator == groupEmail.Length - 1)
+            return false;
+
+        var expectedUrl = $"https://groups.google.com/a/{groupEmail[(separator + 1)..]}/g/{groupEmail[..separator]}";
+        return string.Equals(
+            resource.Url?.TrimEnd('/'),
+            expectedUrl,
+            StringComparison.OrdinalIgnoreCase);
     }
 
     // ─── Search ──────────────────────────────────────────────────────
