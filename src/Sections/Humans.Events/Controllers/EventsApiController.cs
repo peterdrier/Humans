@@ -1,7 +1,6 @@
 using Humans.Base.Controllers;
 using Humans.Camps.Contracts;
 using Humans.Events.Services;
-using Humans.Shifts.Contracts;
 using Humans.Events.Filters;
 using Humans.Events.Helpers;
 using Humans.Events.Models;

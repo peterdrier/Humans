@@ -4,7 +4,7 @@ using Humans.Events.Contracts;
 using Humans.Events.Data;
 using Humans.Events.Domain;
 using Humans.Events.Services;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -20,7 +20,7 @@ public class EventServiceCalendarFeedTests
     private static readonly Instant EventStart = Instant.FromUtc(2026, 7, 1, 17, 0);
 
     private readonly IEventRepository _repo = Substitute.For<IEventRepository>();
-    private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
+    private readonly ISettingsService _burnSettings = Substitute.For<ISettingsService>();
     private readonly EventService _service;
 
     public EventServiceCalendarFeedTests()
@@ -84,24 +84,23 @@ public class EventServiceCalendarFeedTests
             UpdatedAt = FixedNow,
         };
         _repo.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(guideSettings);
-        _burnSettings.GetByIdAsync(guideSettings.EventSettingsId, Arg.Any<CancellationToken>())
-            .Returns(new BurnSettingsInfo(
-                Id: guideSettings.EventSettingsId,
-                EventName: "Test Event 2026",
-                Year: 2026,
-                TimeZoneId: "Europe/Madrid",
-                GateOpeningDate: new LocalDate(2026, 7, 1),
-                BuildStartOffset: -14,
-                EventEndOffset: 6,
-                StrikeEndOffset: 9,
-                FirstCrewStartOffset: -14,
-                SetupWeekStartOffset: -7,
-                PreEventWeekStartOffset: -3,
-                FinishingWeekendStartOffset: -2,
-                EarlyEntryCapacity: new Dictionary<int, int>(),
-                BarriosEarlyEntryAllocation: null,
-                EarlyEntryClose: null,
-                IsShiftBrowsingOpen: false));
+        _burnSettings.GetEventSettingsByIdAsync(guideSettings.EventSettingsId, Arg.Any<CancellationToken>())
+            .Returns(EventFixtures.Event(
+                id: guideSettings.EventSettingsId,
+                eventName: "Test Event 2026",
+                year: 2026,
+                timeZoneId: "Europe/Madrid",
+                gateOpeningDate: new LocalDate(2026, 7, 1),
+                buildStartOffset: -14,
+                eventEndOffset: 6,
+                strikeEndOffset: 9,
+                firstCrewStartOffset: -14,
+                setupWeekStartOffset: -7,
+                preEventWeekStartOffset: -3,
+                finishingWeekendStartOffset: -2,
+                earlyEntryCapacity: new Dictionary<int, int>(),
+                barriosEarlyEntryAllocation: null,
+                earlyEntryClose: null));
     }
 
     [HumansFact]

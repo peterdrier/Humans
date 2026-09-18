@@ -7,7 +7,7 @@ using Humans.Events.Domain;
 using Humans.Events.Services;
 using Humans.Events.Services.Dtos;
 using Humans.Gdpr.Contracts;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -21,7 +21,7 @@ public sealed class EventServiceTests
 {
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 5, 12, 0));
     private readonly FakeEventRepository _repo = new();
-    private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
+    private readonly ISettingsService _burnSettings = Substitute.For<ISettingsService>();
     private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
@@ -60,23 +60,22 @@ public sealed class EventServiceTests
     public async Task SaveGuideSettingsAsync_CreatesSettingsUsingEventTimezone()
     {
         var eventSettingsId = Guid.NewGuid();
-        _burnSettings.GetByIdAsync(eventSettingsId, Arg.Any<CancellationToken>()).Returns(new BurnSettingsInfo(
-            Id: eventSettingsId,
-            EventName: "Nowhere 2026",
-            Year: 2026,
-            TimeZoneId: "Europe/Madrid",
-            GateOpeningDate: new LocalDate(2026, 7, 1),
-            BuildStartOffset: -14,
-            EventEndOffset: 7,
-            StrikeEndOffset: 10,
-            FirstCrewStartOffset: -25,
-            SetupWeekStartOffset: -16,
-            PreEventWeekStartOffset: -9,
-            FinishingWeekendStartOffset: -4,
-            EarlyEntryCapacity: new Dictionary<int, int>(),
-            BarriosEarlyEntryAllocation: null,
-            EarlyEntryClose: null,
-            IsShiftBrowsingOpen: false));
+        _burnSettings.GetEventSettingsByIdAsync(eventSettingsId, Arg.Any<CancellationToken>()).Returns(EventFixtures.Event(
+            id: eventSettingsId,
+            eventName: "Nowhere 2026",
+            year: 2026,
+            timeZoneId: "Europe/Madrid",
+            gateOpeningDate: new LocalDate(2026, 7, 1),
+            buildStartOffset: -14,
+            eventEndOffset: 7,
+            strikeEndOffset: 10,
+            firstCrewStartOffset: -25,
+            setupWeekStartOffset: -16,
+            preEventWeekStartOffset: -9,
+            finishingWeekendStartOffset: -4,
+            earlyEntryCapacity: new Dictionary<int, int>(),
+            barriosEarlyEntryAllocation: null,
+            earlyEntryClose: null));
 
         await _service.SaveGuideSettingsAsync(
             existingId: null,

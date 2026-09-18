@@ -2,7 +2,7 @@ using Humans.Events.Services.Dtos;
 using Humans.Events.Services;
 using Humans.Base.Extensions;
 using Humans.Camps.Contracts;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Events.Domain;
 using Humans.Base.Authorization;
 using Humans.Events.Filters;
@@ -494,7 +494,7 @@ internal sealed class EventsController(
     private bool IsSubmissionOpen(EventGuideSettingsView? settings) =>
         settings?.IsSubmissionOpenAt(clock.GetCurrentInstant()) ?? false;
 
-    private async Task<IndividualEventFormViewModel> BuildFormAsync(BurnSettingsInfo burn)
+    private async Task<IndividualEventFormViewModel> BuildFormAsync(EventSettingsInfo burn)
     {
         var model = new IndividualEventFormViewModel
         {
@@ -504,7 +504,7 @@ internal sealed class EventsController(
         return model;
     }
 
-    private async Task PopulateDropdownsAsync(IndividualEventFormViewModel model, BurnSettingsInfo burn)
+    private async Task PopulateDropdownsAsync(IndividualEventFormViewModel model, EventSettingsInfo burn)
     {
         var categories = await guide.GetActiveCategoriesAsync();
         var venues = await guide.GetActiveVenuesAsync();
@@ -790,7 +790,7 @@ internal sealed class EventsController(
     // camp is non-null at every call site; Slug is always set, so a name always resolves.
     private static string ResolveCampDisplayName(CampInfo camp) => ResolveCampName(camp)!;
 
-    private async Task<CampEventFormViewModel> BuildBarrioFormAsync(string slug, CampInfo camp, BurnSettingsInfo burn)
+    private async Task<CampEventFormViewModel> BuildBarrioFormAsync(string slug, CampInfo camp, EventSettingsInfo burn)
     {
         var model = new CampEventFormViewModel
         {
@@ -803,7 +803,7 @@ internal sealed class EventsController(
         return model;
     }
 
-    private async Task PopulateBarrioDropdownsAsync(CampEventFormViewModel model, BurnSettingsInfo burn)
+    private async Task PopulateBarrioDropdownsAsync(CampEventFormViewModel model, EventSettingsInfo burn)
     {
         var categories = await guide.GetActiveCategoriesAsync();
         model.Categories = categories.Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList();
