@@ -2738,6 +2738,45 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
+    public async Task GetSepaPayouts_ReboundToSiblingContactOnSameAccount_SaysWhyInsteadOfOfferingTheButton()
+    {
+        // The account number still matches, so the check above passes; only the contact moved.
+        // Without mirroring BookSepaTransferAsync's guard here the button renders live and fails
+        // on click (nobodies-collective/Humans#1146).
+        ConfigureSepa();
+        var userId = SeedTransferRows(holdedContactId: "c1");
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = userId, HoldedContactId = "c2", SupplierAccountNum = 40000004 },
+        });
+
+        var (rows, _) = await MakeService().GetSepaPayoutsAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        var row = rows.Should().ContainSingle().Subject;
+        row.CanBook.Should().BeFalse();
+        row.NotBookableReason.Should().Contain("rebound to a different Holded contact");
+    }
+
+    [HumansFact]
+    public async Task GetSepaPayouts_RowWithoutAContactId_KeepsAccountOnlyBehaviour()
+    {
+        // A row generated before the contact id was captured. Account matches, so it stays
+        // bookable — the new guard must not retire rows it has no evidence about.
+        ConfigureSepa();
+        var userId = SeedTransferRows(holdedContactId: null);
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = userId, HoldedContactId = "c2", SupplierAccountNum = 40000004 },
+        });
+
+        var (rows, _) = await MakeService().GetSepaPayoutsAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        rows.Should().ContainSingle().Which.CanBook.Should().BeTrue();
+    }
+
+    [HumansFact]
     public async Task GetSepaPayouts_BoundAndUnbooked_OffersTheButtonWithoutReadingHoldedDocuments()
     {
         // The screen no longer pre-checks document coverage: whatever the documents do not cover
@@ -2756,15 +2795,20 @@ public class HoldedFinanceServiceTests
         await _client.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync(default);
     }
 
-    /// <summary>One unbooked €30 transfer row on the screen. Returns the member it paid.</summary>
-    private Guid SeedTransferRows(string? paymentRefs = null)
+    /// <summary>
+    /// One unbooked €30 transfer row on the screen, generated against contact
+    /// <paramref name="holdedContactId"/>. Pass null for a row from before
+    /// nobodies-collective/Humans#1146 shipped. Returns the member it paid.
+    /// </summary>
+    private Guid SeedTransferRows(string? paymentRefs = null, string? holdedContactId = "c1")
     {
         var userId = Guid.NewGuid();
         _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>()).Returns(
             new List<SepaPayoutTransferRow>
             {
                 new(BookableTransferId, Guid.NewGuid(), "payout.xml", FixedNow, Guid.NewGuid(),
-                    userId, 40000004, "Ana Ruiz", "ES79****789", 30m, null, null, paymentRefs, null),
+                    userId, 40000004, holdedContactId, "Ana Ruiz", "ES79****789", 30m,
+                    null, null, paymentRefs, null),
             });
         return userId;
     }

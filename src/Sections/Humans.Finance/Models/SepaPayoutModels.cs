@@ -37,6 +37,7 @@ internal sealed record SepaPayoutTransferRow(
     Guid GeneratedByUserId,
     Guid UserId,
     int SupplierAccountNum,
+    string? HoldedContactId,
     string CreditorName,
     string IbanMasked,
     decimal Amount,

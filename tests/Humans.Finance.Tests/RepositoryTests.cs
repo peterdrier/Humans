@@ -245,6 +245,7 @@ public class RepositoryTests
             [new SepaPayoutTransfer
             {
                 Id = transferId, FileId = fileId, UserId = userId, SupplierAccountNum = 40000004,
+                HoldedContactId = "c1",
                 CreditorName = "Ana Ruiz", Iban = "ES7921000813610123456789",
                 IbanMasked = "ES79****789", Amount = 30m,
             }], Ct);
@@ -257,6 +258,7 @@ public class RepositoryTests
         row.BookedAt.Should().Be(Now);
         row.BookedByUserId.Should().Be(actor);
         row.HoldedPaymentRefs.Should().Be("pay-a,pay-b");
+        row.HoldedContactId.Should().Be("c1");
         row.IsBooked.Should().BeTrue();
     }
 
