@@ -3,7 +3,7 @@ using Humans.Consent.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Events.Contracts;
 using Humans.Calendar.Contracts;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Scanner.Controllers;
 using Humans.Scanner.Models;
@@ -28,7 +28,7 @@ public class ScannerControllerTests
         IConsentServiceRead? consents = null,
         IICalFeedService? calendarFeed = null,
         IEventServiceRead? events = null,
-        IBurnSettingsService? burnSettings = null)
+        ISettingsService? eventSettings = null)
     {
         var ctrl = new ScannerController(
             tickets,
@@ -37,7 +37,7 @@ public class ScannerControllerTests
             consents ?? Substitute.For<IConsentServiceRead>(),
             calendarFeed ?? Substitute.For<IICalFeedService>(),
             events ?? Substitute.For<IEventServiceRead>(),
-            burnSettings ?? Substitute.For<IBurnSettingsService>());
+            eventSettings ?? Substitute.For<ISettingsService>());
 
         var services = new ServiceCollection();
         services.AddLogging();
@@ -86,23 +86,17 @@ public class ScannerControllerTests
         MatchedUserId: matchedUserId,
         Barcode: "xyz34Qy5");
 
-    private static BurnSettingsInfo ActiveBurn(int year = 2026) => new(
-        Id: Guid.NewGuid(),
-        EventName: "Elsewhere",
-        Year: year,
-        TimeZoneId: "Europe/Madrid",
-        GateOpeningDate: new LocalDate(year, 6, 17),
-        BuildStartOffset: -10,
-        EventEndOffset: 5,
-        StrikeEndOffset: 10,
-        FirstCrewStartOffset: -14,
-        SetupWeekStartOffset: -7,
-        PreEventWeekStartOffset: -3,
-        FinishingWeekendStartOffset: 3,
-        EarlyEntryCapacity: new Dictionary<int, int>(),
-        BarriosEarlyEntryAllocation: null,
-        EarlyEntryClose: null,
-        IsShiftBrowsingOpen: false);
+    private static EventSettingsInfo ActiveBurn(int year = 2026) => EventFixtures.Event(
+        eventName: "Elsewhere",
+        year: year,
+        gateOpeningDate: new LocalDate(year, 6, 17),
+        buildStartOffset: -10,
+        eventEndOffset: 5,
+        strikeEndOffset: 10,
+        firstCrewStartOffset: -14,
+        setupWeekStartOffset: -7,
+        preEventWeekStartOffset: -3,
+        finishingWeekendStartOffset: 3);
 
     private static ApprovedEventView OfferedEvent(
         Guid submitterUserId, Guid? campId, string title, Instant startAt,
@@ -280,8 +274,8 @@ public class ScannerControllerTests
         consents.GetPendingDocumentNamesAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new[] { "Liability Waiver" });
 
-        var burnSettings = Substitute.For<IBurnSettingsService>();
-        burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ActiveBurn());
+        var eventSettings = Substitute.For<ISettingsService>();
+        eventSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ActiveBurn());
 
         var users = Substitute.For<IUserServiceRead>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfo.Create(
@@ -327,7 +321,7 @@ public class ScannerControllerTests
                 OfferedEvent(Guid.NewGuid(), campId: null, "Other Human's Talk", Instant.FromUtc(2026, 6, 18, 17, 0)),
             });
 
-        var ctrl = NewController(tickets, users, earlyEntry, consents, calendarFeed, events, burnSettings);
+        var ctrl = NewController(tickets, users, earlyEntry, consents, calendarFeed, events, eventSettings);
 
         var result = await ctrl.Card("xyz34Qy5", Xunit.TestContext.Current.CancellationToken);
 

@@ -42,9 +42,9 @@ This tightens the Art. 9 boundary: cantina coordinators don't need health data a
 
 ## Week Boundary
 
-A **week** is Monday 00:00 through Sunday 23:59 in the **active event's timezone** (`BurnSettingsInfo.TimeZoneId`). The week is identified by a single integer:
+A **week** is Monday 00:00 through Sunday 23:59 in the **active event's timezone** (`EventSettingsInfo.TimeZoneId`). The week is identified by a single integer:
 
-> `weekStartOffset` = the day-offset (relative to `BurnSettingsInfo.GateOpeningDate`) of that week's Monday.
+> `weekStartOffset` = the day-offset (relative to `EventSettingsInfo.GateOpeningDate`) of that week's Monday.
 
 Examples (gate opening on a Friday, `DayOffset = 0`):
 
@@ -77,7 +77,7 @@ If there is no active event, the service returns an empty DTO with `WeekStartDat
   - **Unanswered cohort:** prominent count of unique humans with no `DietaryPreference`.
 - Below the aggregates, a **per-day mini-summary table** with 7 rows (Mon–Sun): each row shows the day's calendar date, `TotalOnSite` (count of distinct humans on-site that day, including arrival-day humans), and `UnansweredOnDay` (count of that day's on-site humans with no `DietaryPreference`). Each of the three cells links into that day's drill-down (US-36.5).
 - The weekly page shows **no per-person rows** — names live on the drill-down and in the CSV. The page carries no `MedicalConditions` under any role, in any view.
-- If there is no active event (no `BurnSettingsInfo` resolvable via `IBurnSettingsService.GetActiveAsync`), the page renders an empty-state message ("no active event") instead of throwing.
+- If there is no active event (no `EventSettingsInfo` resolvable via `ISettingsService.GetActiveEventSettingsAsync`), the page renders an empty-state message ("no active event") instead of throwing.
 
 ### US-36.2: Coordinator navigates to another week
 **As a** cantina coordinator planning ahead (or looking back)
@@ -179,7 +179,7 @@ Reads:
 | `Profile.Intolerances` (`List<string>`) | Intolerance chips + roll-up | Same read path |
 | `Profile.IntoleranceOtherText` | "Other (N): …" list, deduped across the week | Same read path |
 | `UserInfo.BurnerName` | Row label on the drill-down matrix and in both CSVs | Already resolved by Users (`User.BurnerName` → `Profile.BurnerName` → legacy display name, nobodies-collective/Humans#1097); `"(unknown)"` covers a user id the cohort read did not return |
-| `BurnSettingsInfo.GateOpeningDate`, `BurnSettingsInfo.TimeZoneId` | Compute calendar dates for each day in the week + default week | Existing, via `IBurnSettingsService` |
+| `EventSettingsInfo.GateOpeningDate`, `EventSettingsInfo.TimeZoneId` | Compute calendar dates for each day in the week + default week | Existing, via `ISettingsService` |
 
 At our small scale, the service issues 7 sequential per-day cohort queries (`GetOnSiteUserIdsForDayAsync`, one per day) plus a single batched `IUserServiceRead.GetUserInfosAsync` for the week's unique cohort (dietary + names from the cached `UserInfo`). For the arrival-day rule it additionally scans per-day cohorts from build start up to the window's end (capped at strike end) to find each human's first confirmed shift.
 
@@ -237,7 +237,7 @@ This feature lives in the `Cantina/` section and reads **only through section se
 - **Shifts (read, on-site cohort):** `IShiftManagementServiceRead.GetOnSiteUserIdsForDayAsync`, called in a 7-day loop and unioned into the unique-humans cohort.
 - **Users/Identity (read, dietary + names):** `IUserServiceRead.GetUserInfosAsync` — batched, cached `UserInfo`. Dietary lives on `Profile`; `CantinaRosterService` never reads `MedicalConditions`.
 - **Users/Identity (read, burner names):** `IUserServiceRead.GetUserInfosAsync` — batched, cached `UserInfo`. No entity reads, no new surface.
-- **Event settings:** `IBurnSettingsService.GetActiveAsync` for `GateOpeningDate` / `TimeZoneId` (week-boundary computation and per-day calendar labels).
+- **Event settings:** `ISettingsService.GetActiveEventSettingsAsync` for `GateOpeningDate` / `TimeZoneId` (week-boundary computation and per-day calendar labels).
 - **Authorization:** the `CantinaAdminOrAdmin` policy (Admin or the grantable `CantinaAdmin` role). No team-name heuristic, no bespoke access service.
 - **No new Domain entity, no schema change, no migration.**
 
@@ -245,7 +245,7 @@ New / updated components:
 
 | Layer | Component | Purpose |
 |---|---|---|
-| Application | `CantinaRosterService` | Build weekly aggregates + per-day mini-summary + unique-humans table; reads via `IShiftManagementServiceRead`, `IBurnSettingsService` + `IUserServiceRead` |
+| Application | `CantinaRosterService` | Build weekly aggregates + per-day mini-summary + unique-humans table; reads via `IShiftManagementServiceRead`, `ISettingsService` + `IUserServiceRead` |
 | Application | `WeeklyRosterDto`, `DailyMatrixDto`, `DayRosterSummaryDto`, `RosterPersonDto`, `DailyPersonRowDto`, `RollupItemDto` | Payload contracts; no `MedicalConditions` field |
 | Base | `RoleNames.CantinaAdmin` | Grantable admin role; wired into `RoleNames.All` + `AnyAdminRole` + the `CantinaAdminOrAdmin` policy |
 | Section | `CantinaController` | `[Authorize(Policy = CantinaAdminOrAdmin)]`; `GET /Cantina/Roster(/Csv)` + `/Roster/Day(/Csv)` |

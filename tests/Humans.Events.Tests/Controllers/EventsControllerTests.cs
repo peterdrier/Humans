@@ -7,7 +7,7 @@ using Humans.Events.Controllers;
 using Humans.Events.Domain;
 using Humans.Events.Models;
 using Humans.Events.Services;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -153,23 +153,21 @@ public class EventsControllerTests
         };
     }
 
-    private static BurnSettingsInfo MakeBurnSettings() => new(
-        Id: Guid.NewGuid(),
-        EventName: "Test Burn",
-        Year: 2026,
-        TimeZoneId: "Europe/Madrid",
-        GateOpeningDate: new LocalDate(2026, 8, 1),
-        BuildStartOffset: 0,
-        EventEndOffset: 2,
-        StrikeEndOffset: 0,
-        FirstCrewStartOffset: 0,
-        SetupWeekStartOffset: 0,
-        PreEventWeekStartOffset: 0,
-        FinishingWeekendStartOffset: 0,
-        EarlyEntryCapacity: new Dictionary<int, int>(),
-        BarriosEarlyEntryAllocation: null,
-        EarlyEntryClose: null,
-        IsShiftBrowsingOpen: false);
+    private static EventSettingsInfo MakeBurnSettings() => EventFixtures.Event(
+        eventName: "Test Burn",
+        year: 2026,
+        timeZoneId: "Europe/Madrid",
+        gateOpeningDate: new LocalDate(2026, 8, 1),
+        buildStartOffset: 0,
+        eventEndOffset: 2,
+        strikeEndOffset: 0,
+        firstCrewStartOffset: 0,
+        setupWeekStartOffset: 0,
+        preEventWeekStartOffset: 0,
+        finishingWeekendStartOffset: 0,
+        earlyEntryCapacity: new Dictionary<int, int>(),
+        barriosEarlyEntryAllocation: null,
+        earlyEntryClose: null);
 
     private static Event MakeEvent(Guid? campId, Guid submitterId, EventStatus status) => new()
     {

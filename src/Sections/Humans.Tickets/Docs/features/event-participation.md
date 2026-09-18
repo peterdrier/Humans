@@ -1,11 +1,11 @@
 <!-- freshness:triggers
   src/Sections/Humans.Tickets/**
-  src/Sections/Humans.Shifts/Services/BurnSettingsService.cs
+  src/Sections/Humans.Settings/Services/Service.cs
   src/Sections/Humans.Gate/Services/GateService.cs
   src/Sections/Humans.Users.Contracts/EventParticipation.cs
-  src/Sections/Humans.Shifts/Domain/EventSettings.cs
+  src/Sections/Humans.Settings/Domain/EventSettings.cs
   src/Sections/Humans.Users/Data/Configurations/EventParticipationConfiguration.cs
-  src/Sections/Humans.Shifts/Data/Configurations/EventSettingsConfiguration.cs
+  src/Sections/Humans.Settings/Data/Configurations/EventSettingsConfiguration.cs
 -->
 <!-- freshness:flag-on-change
   EventParticipation entity, status lifecycle transitions, or "Who Hasn't Bought" exclusion rule may have shifted.

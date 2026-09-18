@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 
 using Humans.Tickets.Controllers;
 using Humans.Tickets.Models;
@@ -19,10 +19,10 @@ public class TicketsOnsiteAdminControllerTests
 {
     private static TicketsOnsiteAdminController NewController(
         IUserService users,
-        IBurnSettingsService shifts,
+        ISettingsService eventSettings,
         IOnsiteRosterService roster)
     {
-        var ctrl = new TicketsOnsiteAdminController(users, shifts, roster);
+        var ctrl = new TicketsOnsiteAdminController(users, eventSettings, roster);
 
         var services = new ServiceCollection();
         services.AddLogging();
@@ -41,14 +41,14 @@ public class TicketsOnsiteAdminControllerTests
     public async Task Index_NoActiveEvent_DispatchesYearZero_AndReturnsEmpty()
     {
         var users = Substitute.For<IUserService>();
-        var shifts = Substitute.For<IBurnSettingsService>();
-        shifts.GetActiveAsync().Returns((BurnSettingsInfo?)null);
+        var eventSettings = Substitute.For<ISettingsService>();
+        eventSettings.GetActiveEventSettingsAsync().Returns((EventSettingsInfo?)null);
 
         var roster = Substitute.For<IOnsiteRosterService>();
         roster.GetRosterAsync(0, null, null, null, Arg.Any<CancellationToken>())
             .Returns(new OnsiteRosterResult([], [], [], []));
 
-        var ctrl = NewController(users, shifts, roster);
+        var ctrl = NewController(users, eventSettings, roster);
 
         var result = await ctrl.Index(camp: null, team: null, role: null, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -69,8 +69,8 @@ public class TicketsOnsiteAdminControllerTests
         var later = Instant.FromUtc(2026, 7, 8, 18, 0);
 
         var users = Substitute.For<IUserService>();
-        var shifts = Substitute.For<IBurnSettingsService>();
-        shifts.GetActiveAsync().Returns(BurnFixtures.Burn(year: 2026));
+        var eventSettings = Substitute.For<ISettingsService>();
+        eventSettings.GetActiveEventSettingsAsync().Returns(EventFixtures.Event(year: 2026));
 
         var roster = Substitute.For<IOnsiteRosterService>();
         roster.GetRosterAsync(2026, null, null, null, Arg.Any<CancellationToken>())
@@ -84,7 +84,7 @@ public class TicketsOnsiteAdminControllerTests
                 AvailableTeams: [],
                 AvailableRoles: []));
 
-        var ctrl = NewController(users, shifts, roster);
+        var ctrl = NewController(users, eventSettings, roster);
 
         var result = await ctrl.Index(camp: null, team: null, role: null, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -99,14 +99,14 @@ public class TicketsOnsiteAdminControllerTests
     public async Task Index_ForwardsFilterParamsToService()
     {
         var users = Substitute.For<IUserService>();
-        var shifts = Substitute.For<IBurnSettingsService>();
-        shifts.GetActiveAsync().Returns(BurnFixtures.Burn(year: 2026));
+        var eventSettings = Substitute.For<ISettingsService>();
+        eventSettings.GetActiveEventSettingsAsync().Returns(EventFixtures.Event(year: 2026));
 
         var roster = Substitute.For<IOnsiteRosterService>();
         roster.GetRosterAsync(2026, "Cosmic Camp", "Gate", "Board", Arg.Any<CancellationToken>())
             .Returns(new OnsiteRosterResult([], [], [], []));
 
-        var ctrl = NewController(users, shifts, roster);
+        var ctrl = NewController(users, eventSettings, roster);
 
         await ctrl.Index(camp: "Cosmic Camp", team: "Gate", role: "Board", ct: Xunit.TestContext.Current.CancellationToken);
 

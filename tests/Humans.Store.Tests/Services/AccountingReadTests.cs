@@ -3,7 +3,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Base.Enums;
 using Humans.Camps.Contracts;
 using Humans.Holded.Contracts;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
@@ -41,7 +41,7 @@ public class AccountingReadTests
     {
         _service = new Service(
             _repo, Substitute.For<IAuditLogService>(), _camps, _teams,
-            new FakeClock(Instant.FromUtc(2026, 9, 1, 12, 0)), Substitute.For<IBurnSettingsService>(),
+            new FakeClock(Instant.FromUtc(2026, 9, 1, 12, 0)), Substitute.For<ISettingsService>(),
             Substitute.For<IStripeService>(), Substitute.For<IHoldedClient>(),
             Options.Create(new StoreSectionOptions()), NullLogger<Service>.Instance);
 

@@ -5,7 +5,7 @@ using Humans.Rideshare.Data;
 using Humans.Rideshare.Domain;
 using Humans.Rideshare.Services;
 using Humans.Rideshare.Services.Routing;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -57,9 +57,9 @@ public abstract class RideshareTestHarness : IDisposable
                     _burnerNames.TryGetValue(id, out var name) ? UserInfoFor(id, name) : null);
             });
 
-        BurnSettings = Substitute.For<IBurnSettingsService>();
-        BurnSettings.GetActiveAsync(Arg.Any<CancellationToken>())
-            .Returns(BurnFixtures.Burn(year: Year));
+        EventSettings = Substitute.For<ISettingsService>();
+        EventSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(EventFixtures.Event(year: Year));
 
         Notifications = Substitute.For<INotificationEmitter>();
         AuditLog = Substitute.For<IAuditLogService>();
@@ -77,7 +77,7 @@ public abstract class RideshareTestHarness : IDisposable
     private protected TestDbContextFactory<RideshareDbContext> DbFactory { get; }
     private protected FakeClock Clock { get; }
     private protected IUserServiceRead Users { get; }
-    private protected IBurnSettingsService BurnSettings { get; }
+    private protected ISettingsService EventSettings { get; }
     private protected INotificationEmitter Notifications { get; }
     private protected IAuditLogService AuditLog { get; }
     private protected IRouteProvider RouteProvider { get; }
@@ -87,7 +87,7 @@ public abstract class RideshareTestHarness : IDisposable
 
     /// <summary>The undecorated service over the real repository and the substitutes above.</summary>
     private protected RideshareService NewService() => new(
-        new RideshareRepository(DbFactory), RouteProvider, BurnSettings, Users,
+        new RideshareRepository(DbFactory), RouteProvider, EventSettings, Users,
         Notifications, AuditLog, Clock, Logger);
 
     /// <summary>A fresh context over the same store — what a test reads back through, so it never sees <see cref="Db"/>'s stale tracked rows.</summary>

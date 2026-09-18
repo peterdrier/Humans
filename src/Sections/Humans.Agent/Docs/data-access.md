@@ -35,7 +35,7 @@ only on process restart): `AgentSectionDocReader` (`agent:section:{key}`),
 (`agent:preload:{config}`). `AgentPreloadAugmentor` itself is pure
 static-content formatting — no cache, no DB.
 `AgentToolDispatcher` also reads `IAuditViewerService`, `IShiftView`,
-`IBurnSettingsService` for its tool surface.
+`ISettingsService` for its tool surface.
 
 ### AgentService (Scoped, `Humans.Agent.Services`)
 
@@ -83,7 +83,7 @@ backed in-memory by `AgentSettingsStore`. The others are stateless
 adapters or fan-out over public service interfaces (`ITeamServiceRead`,
 `IUserServiceRead`, `IRoleAssignmentService`, `IConsentServiceRead`,
 `IFeedbackServiceRead`, `ITicketServiceRead`, `IShiftView`,
-`IBurnSettingsService`, `IAuditViewerService`, etc.) for the agent's
+`ISettingsService`, `IAuditViewerService`, etc.) for the agent's
 tool-dispatch and user-snapshot surfaces. No `IMemoryCache`.
 
 ### AnthropicClient (`Services/Anthropic/`)
