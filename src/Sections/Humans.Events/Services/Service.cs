@@ -376,17 +376,17 @@ internal sealed class EventService(
     public async Task<byte[]> BuildBulkUploadTemplateAsync(Guid campId, string campName, CancellationToken ct = default)
     {
         var guideSettings = await GetGuideSettingsAsync(ct);
-        var eventSettings = guideSettings != null
+        var guideEventSettings = guideSettings != null
             ? await GetEventSettingsByIdAsync(guideSettings.EventSettingsId, ct)
             : null;
 
         var campEvents = await GetCampSubmissionsAsync(campId, ct);
         var categories = await GetActiveCategoriesAsync(ct);
 
-        DateTimeZone? tz = eventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
+        DateTimeZone? tz = guideEventSettings != null
+            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(guideEventSettings.TimeZoneId)
             : null;
-        LocalDate? gateDate = eventSettings?.GateOpeningDate;
+        LocalDate? gateDate = guideEventSettings?.GateOpeningDate;
 
         var categoryNames = string.Join(", ", categories.Select(c => c.Name));
 
