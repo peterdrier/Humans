@@ -154,6 +154,11 @@ public class SystemTeamSyncJobBarrioLeadsTests
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 0),
             Arg.Any<Instant>(),
             Arg.Any<CancellationToken>());
+        await _googleSyncService.Received(1).AddUserToTeamResourcesAsync(
+            team.Id,
+            userId,
+            Arg.Any<CancellationToken>(),
+            GoogleSyncSource.SystemTeamSync);
     }
 
     [HumansFact]

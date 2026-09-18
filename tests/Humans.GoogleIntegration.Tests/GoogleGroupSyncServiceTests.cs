@@ -652,7 +652,7 @@ public sealed class GoogleGroupSyncServiceTests
 
         await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
-        // Without the id the row is invisible to /Monitor/Human/{id} and to the GDPR export.
+        // Without the id the row is invisible to /Google/Human/{id} and to the GDPR export.
         await _googleSyncLog.Received(1).LogAsync(
             GoogleSyncLogAction.AccessGranted,
             Arg.Any<Guid>(),

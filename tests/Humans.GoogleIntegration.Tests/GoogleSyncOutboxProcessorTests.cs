@@ -8,6 +8,7 @@ using NSubstitute;
 using Humans.Teams.Contracts;
 using Humans.GoogleIntegration.Data;
 using Humans.Base.Interfaces;
+using Humans.Base.Enums;
 using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Tests.Infrastructure;
 using Humans.Users.Contracts;
@@ -23,6 +24,7 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
     private readonly IUserService _userService;
     private readonly ITeamService _teamService;
     private readonly IGoogleSyncService _googleSyncService;
+    private readonly IGoogleDriveActivityClient _googleClient;
     private readonly FakeClock _clock;
     private readonly IHumansMetrics _metrics;
     private readonly GoogleSyncOutboxProcessor _processor;
@@ -53,6 +55,8 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
             .GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
         _googleSyncService = Substitute.For<IGoogleSyncService>();
+        _googleClient = Substitute.For<IGoogleDriveActivityClient>();
+        _googleClient.IsConfigured.Returns(true);
         _clock = new FakeClock(Instant.FromUtc(2026, 2, 15, 20, 0));
         _metrics = TestMetrics.Create();
         var logger = Substitute.For<ILogger<GoogleSyncOutboxProcessor>>();
@@ -63,6 +67,7 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
             _userService,
             _teamService,
             _googleSyncService,
+            _googleClient,
             _metrics,
             _clock,
             logger);
@@ -84,12 +89,60 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
         await _googleSyncService.Received(1).AddUserToTeamResourcesAsync(
             outboxEvent.TeamId,
             outboxEvent.UserId,
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(),
+            GoogleSyncSource.TeamMemberJoined);
 
         var updatedEvent = await _dbContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         updatedEvent.ProcessedAt.Should().Be(_clock.GetCurrentInstant());
         updatedEvent.RetryCount.Should().Be(0);
         updatedEvent.LastError.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task ProcessQueuedAsync_AdminResyncEvent_RecordsManualSource()
+    {
+        var outboxEvent = await SeedOutboxEventAsync(
+            GoogleSyncOutboxEventTypes.AddUserToTeamResources,
+            deduplicationKey: $"admin-resync:{Guid.NewGuid()}");
+
+        await _processor.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _googleSyncService.Received(1).AddUserToTeamResourcesAsync(
+            outboxEvent.TeamId,
+            outboxEvent.UserId,
+            Arg.Any<CancellationToken>(),
+            GoogleSyncSource.ManualSync);
+    }
+
+    [HumansFact]
+    public async Task ProcessQueuedAsync_WithoutCredentials_LeavesEventsPending()
+    {
+        _googleClient.IsConfigured.Returns(false);
+        var outboxEvent = await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.AddUserToTeamResources);
+        _resourceRepository
+            .GetActiveByTeamIdAsync(outboxEvent.TeamId, Arg.Any<CancellationToken>())
+            .Returns([new GoogleResource
+            {
+                Id = Guid.NewGuid(),
+                TeamId = outboxEvent.TeamId,
+                ResourceType = GoogleResourceType.DriveFolder,
+                GoogleId = "folder",
+                Name = "Folder",
+                IsActive = true
+            }]);
+
+        await _processor.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var pending = await _dbContext.GoogleSyncOutboxEvents
+            .AsNoTracking()
+            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        pending.ProcessedAt.Should().BeNull();
+        pending.RetryCount.Should().Be(0);
+        pending.FailedPermanently.Should().BeFalse();
+        await _googleSyncService.DidNotReceiveWithAnyArgs()
+            .AddUserToTeamResourcesAsync(default, default);
+        await _userService.DidNotReceiveWithAnyArgs()
+            .TrySetGoogleEmailStatusFromSyncAsync(default, default);
     }
 
     [HumansFact]
@@ -135,7 +188,10 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
         updatedEvent.ProcessedAt.Should().Be(_clock.GetCurrentInstant());
     }
 
-    private async Task<GoogleSyncOutboxEvent> SeedOutboxEventAsync(string eventType, int retryCount = 0)
+    private async Task<GoogleSyncOutboxEvent> SeedOutboxEventAsync(
+        string eventType,
+        int retryCount = 0,
+        string? deduplicationKey = null)
     {
         var outboxEvent = new GoogleSyncOutboxEvent
         {
@@ -145,7 +201,7 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
             UserId = Guid.NewGuid(),
             OccurredAt = _clock.GetCurrentInstant(),
             RetryCount = retryCount,
-            DeduplicationKey = $"{Guid.NewGuid()}:{eventType}"
+            DeduplicationKey = deduplicationKey ?? $"{Guid.NewGuid()}:{eventType}"
         };
 
         _dbContext.GoogleSyncOutboxEvents.Add(outboxEvent);

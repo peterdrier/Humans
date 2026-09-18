@@ -80,8 +80,8 @@ public class EndpointAuthorizationTests
         // AuditLog is a horizontal, which peters-hard-rules.md forbids. Retargeted rather than
         // dropped — the policies are unchanged and a deleted row reads as "no longer critical".
         { SectionType("Humans.Monitor.Controllers.MonitorController"), "CheckDriveActivity", "BoardOrAdmin" },
-        { SectionType("Humans.Monitor.Controllers.MonitorController"), "Resource", "BoardOrAdmin" },
-        { SectionType("Humans.Monitor.Controllers.MonitorController"), "Human", "HumanAdminBoardOrAdmin" },
+        { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "Resource", "BoardOrAdmin" },
+        { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "Human", "HumanAdminBoardOrAdmin" },
         { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "SyncSettings", "AdminOnly" },
         { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "UpdateSyncSetting", "AdminOnly" },
         { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "SyncSystemTeams", "AdminOnly" },

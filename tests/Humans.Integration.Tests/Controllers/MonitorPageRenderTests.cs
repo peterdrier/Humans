@@ -9,9 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Integration.Tests.Controllers;
 
 /// <summary>
-/// Renders Monitor's pages through the real app, as the standing form of the §15 step 12
-/// check for the section's carve-out of <c>Humans.AuditLog</c>
-/// (nobodies-collective/Humans#866, G5).
+/// Renders GoogleIntegration's sync-audit pages through the real app.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -26,13 +24,9 @@ namespace Humans.Integration.Tests.Controllers;
 /// so it cannot see a ReSharper rename that rewrites the tag out of the source.
 /// </para>
 /// <para>
-/// The three actions moved here from <c>AuditLogController</c> because two of them inject
-/// GoogleIntegration services and AuditLog is a *horizontal*: <c>peters-hard-rules.md</c>
-/// forbids a horizontal from referencing a vertical section. The third came with them
-/// because all three render the same <c>GoogleSync</c> view. So this asserts an internal
-/// controller in a new assembly, routed by <c>SectionControllerFeatureProvider</c>, over
-/// GoogleIntegration's <c>IGoogleSyncLogViewer</c>, with its policy still in Shell's
-/// <c>AuthorizationPolicyExtensions</c> (step 6's asymmetry).
+/// These pages live beside GoogleIntegration's sync-log component. This asserts the internal
+/// controller is routed by <c>SectionControllerFeatureProvider</c>, the component renders, and
+/// the policies registered in Shell still apply.
 /// </para>
 /// </remarks>
 public class MonitorPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
@@ -43,14 +37,14 @@ public class MonitorPageRenderTests(HumansTestDatabase database) : IntegrationTe
         var ct = Xunit.TestContext.Current.CancellationToken;
         var adminId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
-        var url = $"/Monitor/Human/{adminId}";
+        var url = $"/Google/Human/{adminId}";
         var response = await Client.GetAsync(url, ct);
         response.StatusCode.Should().Be(HttpStatusCode.OK, $"GET {url} must render");
 
         var html = await response.Content.ReadAsStringAsync(ct);
         html.Should().Contain("Google Sync Audit", $"GET {url} must render its own copy");
 
-        // Monitor ships no resource set, so the raw-key probe does not apply. The probe that
+        // The admin page uses English copy, so the raw-key probe does not apply. The probe that
         // replaces it is the <page-header> tag helper the view opens with: an unbound tag
         // helper neither throws nor degrades — it survives into the response as its own start
         // tag (step 12, Debug's case). This is what a missing @addTagHelper in the section's
@@ -64,11 +58,8 @@ public class MonitorPageRenderTests(HumansTestDatabase database) : IntegrationTe
     /// literal tag.
     /// </summary>
     /// <remarks>
-    /// Monitor reads neither log itself: the page emits <c>&lt;vc:google-sync-log&gt;</c> and
-    /// the GoogleIntegration section owns the read. Missing
-    /// <c>@addTagHelper *, Humans.GoogleIntegration</c> in Monitor's own
-    /// <c>_ViewImports.cshtml</c> is silent — the element ships as inert literal markup with
-    /// a green build — so asserting a seeded marker is the only probe that catches it.
+    /// The page emits <c>&lt;vc:google-sync-log&gt;</c>; asserting a seeded marker proves the
+    /// component resolved and rendered its section-owned data.
     /// </remarks>
     [HumansFact(Timeout = 120000)]
     public async Task Google_sync_rows_reach_the_page_through_the_sync_log_view_component()
@@ -93,7 +84,7 @@ public class MonitorPageRenderTests(HumansTestDatabase database) : IntegrationTe
                 ct: ct);
         }
 
-        var url = $"/Monitor/Human/{adminId}";
+        var url = $"/Google/Human/{adminId}";
         var response = await Client.GetAsync(url, ct);
         response.StatusCode.Should().Be(HttpStatusCode.OK, $"GET {url} must render");
 
@@ -113,19 +104,19 @@ public class MonitorPageRenderTests(HumansTestDatabase database) : IntegrationTe
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
-        var response = await Client.GetAsync($"/Monitor/Resource/{Guid.NewGuid()}", ct);
+        var response = await Client.GetAsync($"/Google/Resource/{Guid.NewGuid()}", ct);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound,
             "the action must run and report the resource missing");
     }
 
     [HumansFact(Timeout = 120000)]
-    public async Task Monitor_is_closed_to_a_non_privileged_human()
+    public async Task Google_sync_audit_is_closed_to_a_non_privileged_human()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var volunteerId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 
-        var response = await Client.GetAsync($"/Monitor/Human/{volunteerId}", ct);
+        var response = await Client.GetAsync($"/Google/Human/{volunteerId}", ct);
 
         // Cookie authentication redirects an authenticated-but-unauthorized request to
         // Program.cs's AccessDeniedPath app-wide; HumanAdminBoardOrAdmin is not a 403 here.

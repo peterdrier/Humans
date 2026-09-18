@@ -1,6 +1,7 @@
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Data;
 using Humans.GoogleIntegration.Services.Workspace;
+using Humans.Base.Enums;
 
 namespace Humans.GoogleIntegration.Services;
 
@@ -42,7 +43,11 @@ internal sealed class StubGoogleSyncService(
         return Task.CompletedTask;
     }
 
-    public Task AddUserToTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken cancellationToken = default)
+    public Task AddUserToTeamResourcesAsync(
+        Guid teamId,
+        Guid userId,
+        CancellationToken cancellationToken = default,
+        GoogleSyncSource syncSource = GoogleSyncSource.ManualSync)
     {
         logger.LogInformation("[STUB] Would add user {UserId} to team {TeamId} Google resources", userId, teamId);
         return Task.CompletedTask;
@@ -87,7 +92,8 @@ internal sealed class StubGoogleSyncService(
     public Task<SyncPreviewResult> SyncResourcesByTypeAsync(
         GoogleResourceType resourceType,
         SyncAction action,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        GoogleSyncSource syncSource = GoogleSyncSource.ManualSync)
     {
         logger.LogInformation("[STUB] Would sync resources of type {ResourceType} with action {Action}", resourceType, action);
         return Task.FromResult(new SyncPreviewResult());

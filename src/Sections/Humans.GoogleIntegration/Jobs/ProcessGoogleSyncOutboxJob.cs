@@ -18,6 +18,7 @@ namespace Humans.GoogleIntegration.Jobs;
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class ProcessGoogleSyncOutboxJob(
     IGoogleSyncOutboxProcessor outbox,
+    IGoogleDriveActivityClient googleClient,
     IHumansMetrics metrics,
     ILogger<ProcessGoogleSyncOutboxJob> logger) : IRecurringJob
 {
@@ -27,7 +28,9 @@ public class ProcessGoogleSyncOutboxJob(
         {
             await outbox.ProcessQueuedAsync(cancellationToken);
 
-            metrics.RecordJobRun("process_google_sync_outbox", "success");
+            metrics.RecordJobRun(
+                "process_google_sync_outbox",
+                googleClient.IsConfigured ? "success" : "skipped");
         }
         catch (Exception ex)
         {

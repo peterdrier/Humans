@@ -48,6 +48,7 @@ internal sealed class GoogleWorkspaceSyncService(
         string userEmail,
         Guid? userId,
         DrivePermissionLevel? permissionLevelOverride,
+        GoogleSyncSource syncSource,
         CancellationToken cancellationToken)
     {
         var mode = await syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, cancellationToken);
@@ -77,7 +78,7 @@ internal sealed class GoogleWorkspaceSyncService(
                     GoogleSyncLogAction.AccessGranted, resource.Id,
                     $"Granted Drive access ({effectiveLevel}) to {userEmail} ({resource.Name})",
                     nameof(GoogleWorkspaceSyncService),
-                    userEmail, apiRole, GoogleSyncSource.ManualSync, success: true,
+                    userEmail, apiRole, syncSource, success: true,
                     userId: userId, ct: cancellationToken);
                 break;
 
@@ -99,7 +100,7 @@ internal sealed class GoogleWorkspaceSyncService(
                     $"Failed to grant Drive access ({effectiveLevel}) to {userEmail} ({resource.Name}): " +
                     $"HTTP {result.Error?.StatusCode} — {result.Error?.RawMessage}",
                     nameof(GoogleWorkspaceSyncService),
-                    userEmail, apiRole, GoogleSyncSource.ManualSync, success: false,
+                    userEmail, apiRole, syncSource, success: false,
                     errorMessage: result.Error?.RawMessage,
                     userId: userId, ct: cancellationToken);
                 await HandleDriveAddFailureAsync(resource, userEmail, result.Error, cancellationToken);
@@ -173,6 +174,7 @@ internal sealed class GoogleWorkspaceSyncService(
         string permissionId,
         string userEmail,
         Guid? userId,
+        GoogleSyncSource syncSource,
         CancellationToken cancellationToken,
         SyncRemovalReason reason = SyncRemovalReason.Reconciliation)
     {
@@ -213,7 +215,7 @@ internal sealed class GoogleWorkspaceSyncService(
                     $"Failed to remove Drive access for {userEmail} ({resource.Name}): " +
                     $"HTTP {result.Error?.StatusCode} — {result.Error?.RawMessage}",
                     nameof(GoogleWorkspaceSyncService),
-                    userEmail, resource.DrivePermissionLevel.ToApiRole(), GoogleSyncSource.ManualSync, success: false,
+                    userEmail, resource.DrivePermissionLevel.ToApiRole(), syncSource, success: false,
                     errorMessage: result.Error?.RawMessage,
                     userId: userId, ct: cancellationToken);
                 return;
@@ -223,7 +225,7 @@ internal sealed class GoogleWorkspaceSyncService(
             GoogleSyncLogAction.AccessRevoked, resource.Id,
             $"Removed Drive access for {userEmail} ({resource.Name})",
             nameof(GoogleWorkspaceSyncService),
-            userEmail, resource.DrivePermissionLevel.ToApiRole(), GoogleSyncSource.ManualSync, success: true,
+            userEmail, resource.DrivePermissionLevel.ToApiRole(), syncSource, success: true,
             userId: userId, ct: cancellationToken);
 
         // Issue peterdrier/Humans#639 — notify only on confirmed delete.
@@ -249,7 +251,8 @@ internal sealed class GoogleWorkspaceSyncService(
     public async Task AddUserToTeamResourcesAsync(
         Guid teamId,
         Guid userId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        GoogleSyncSource syncSource = GoogleSyncSource.ManualSync)
     {
         // Issue #635 (§15i): read UserEmails through the owning section
         // service (design-rules §2c) instead of traversing user.UserEmails
@@ -315,7 +318,7 @@ internal sealed class GoogleWorkspaceSyncService(
 
             var level = await ResolvePermissionLevelForUserAsync(
                 resource.GoogleId, userId, cancellationToken);
-            await AddUserToDriveAsync(resource, googleEmail, userId, level, cancellationToken);
+            await AddUserToDriveAsync(resource, googleEmail, userId, level, syncSource, cancellationToken);
         }
 
         // Subteam member rollup: also add to parent department resources.
@@ -333,7 +336,7 @@ internal sealed class GoogleWorkspaceSyncService(
 
                 var level = await ResolvePermissionLevelForUserAsync(
                     resource.GoogleId, userId, cancellationToken);
-                await AddUserToDriveAsync(resource, googleEmail, userId, level, cancellationToken);
+                await AddUserToDriveAsync(resource, googleEmail, userId, level, syncSource, cancellationToken);
             }
         }
     }
@@ -374,7 +377,8 @@ internal sealed class GoogleWorkspaceSyncService(
     public async Task<SyncPreviewResult> SyncResourcesByTypeAsync(
         GoogleResourceType resourceType,
         SyncAction action,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        GoogleSyncSource syncSource = GoogleSyncSource.ManualSync)
     {
         logger.LogInformation("SyncResourcesByType: type={ResourceType}, action={Action}", resourceType, action);
 
@@ -423,7 +427,8 @@ internal sealed class GoogleWorkspaceSyncService(
                 allMembers[r.TeamId] = primaryMembersByTeam.GetValueOrDefault(r.TeamId, []).ToList();
                 allChildMembers[r.TeamId] = childMembersByParent.GetValueOrDefault(r.TeamId, []).ToList();
             }
-            diffs.Add(await SyncDriveResourceGroupAsync(list, teamsById, action, now, allMembers, allChildMembers, cancellationToken));
+            diffs.Add(await SyncDriveResourceGroupAsync(
+                list, teamsById, action, now, allMembers, allChildMembers, syncSource, cancellationToken));
         }
 
         if (action == SyncAction.Execute)
@@ -514,7 +519,9 @@ internal sealed class GoogleWorkspaceSyncService(
         var allMembers = teamIds.ToDictionary(id => id, id => primary.GetValueOrDefault(id, []).ToList());
         var allChildMembers = teamIds.ToDictionary(id => id, id => childBy.GetValueOrDefault(id, []).ToList());
 
-        return await SyncDriveResourceGroupAsync(allWithSameGoogleId, teamsById, action, now, allMembers, allChildMembers, cancellationToken);
+        return await SyncDriveResourceGroupAsync(
+            allWithSameGoogleId, teamsById, action, now, allMembers, allChildMembers,
+            GoogleSyncSource.ManualSync, cancellationToken);
     }
 
     private async Task<ResourceSyncDiff> ReconcileGroupResourceAsync(
@@ -548,6 +555,7 @@ internal sealed class GoogleWorkspaceSyncService(
         Instant now,
         Dictionary<Guid, List<TeamActiveMemberSnapshot>> membersByTeam,
         Dictionary<Guid, List<TeamActiveMemberSnapshot>> childMembersByTeam,
+        GoogleSyncSource syncSource,
         CancellationToken cancellationToken)
     {
         var primary = resources[0];
@@ -591,7 +599,8 @@ internal sealed class GoogleWorkspaceSyncService(
 
             if (action == SyncAction.Execute)
             {
-                await ApplyDriveResourceChangesAsync(primary, resources, permissions, members, now, cancellationToken);
+                await ApplyDriveResourceChangesAsync(
+                    primary, resources, permissions, members, now, syncSource, cancellationToken);
             }
 
             return BuildDriveSyncDiff(primary, linkedTeams, members);
@@ -867,16 +876,17 @@ internal sealed class GoogleWorkspaceSyncService(
         IReadOnlyList<DrivePermission> permissions,
         IReadOnlyList<MemberSyncStatus> members,
         Instant now,
+        GoogleSyncSource syncSource,
         CancellationToken cancellationToken)
     {
         foreach (var member in members.Where(m => m.State is MemberSyncState.Missing or MemberSyncState.WrongRole))
         {
-            await GrantDriveAccessAsync(primary, member, cancellationToken);
+            await GrantDriveAccessAsync(primary, member, syncSource, cancellationToken);
         }
 
         foreach (var member in members.Where(m => m.State == MemberSyncState.Extra))
         {
-            await RemoveExtraDriveAccessAsync(primary, permissions, member, cancellationToken);
+            await RemoveExtraDriveAccessAsync(primary, permissions, member, syncSource, cancellationToken);
         }
 
         await resourceRepository.MarkSyncedManyAsync(resources.Select(r => r.Id).ToList(), now, cancellationToken);
@@ -885,12 +895,14 @@ internal sealed class GoogleWorkspaceSyncService(
     private async Task GrantDriveAccessAsync(
         GoogleResource primary,
         MemberSyncStatus member,
+        GoogleSyncSource syncSource,
         CancellationToken cancellationToken)
     {
         try
         {
             var memberLevel = ParseApiRole(member.ExpectedRole) ?? DrivePermissionLevel.Contributor;
-            await AddUserToDriveAsync(primary, member.Email, member.UserId, memberLevel, cancellationToken);
+            await AddUserToDriveAsync(
+                primary, member.Email, member.UserId, memberLevel, syncSource, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -903,6 +915,7 @@ internal sealed class GoogleWorkspaceSyncService(
         GoogleResource primary,
         IEnumerable<DrivePermission> permissions,
         MemberSyncStatus member,
+        GoogleSyncSource syncSource,
         CancellationToken cancellationToken)
     {
         try
@@ -925,7 +938,8 @@ internal sealed class GoogleWorkspaceSyncService(
                 return;
             }
 
-            await RemoveUserFromDriveAsync(primary, permissionToRemove.Id, member.Email, member.UserId, cancellationToken);
+            await RemoveUserFromDriveAsync(
+                primary, permissionToRemove.Id, member.Email, member.UserId, syncSource, cancellationToken);
         }
         catch (Exception ex)
         {

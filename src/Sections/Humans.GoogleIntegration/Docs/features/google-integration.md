@@ -198,11 +198,11 @@ DriveFile    = 3  // Individual file within a Shared Drive (Google Sheets, Docs,
 public interface IGoogleSyncService
 {
     // Drive resource sync (Groups are delegated to IGoogleGroupSync)
-    Task<SyncPreviewResult> SyncResourcesByTypeAsync(GoogleResourceType resourceType, SyncAction action, CancellationToken ct = default);
+    Task<SyncPreviewResult> SyncResourcesByTypeAsync(GoogleResourceType resourceType, SyncAction action, CancellationToken ct = default, GoogleSyncSource syncSource = GoogleSyncSource.ManualSync);
     Task<ResourceSyncDiff> SyncSingleResourceAsync(Guid resourceId, SyncAction action, CancellationToken ct = default);
 
     // Team membership changes
-    Task AddUserToTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default);
+    Task AddUserToTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default, GoogleSyncSource syncSource = GoogleSyncSource.ManualSync);
     Task RemoveUserFromTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default);
 
     // Google Group lifecycle
@@ -558,7 +558,7 @@ Stub vs. real implementation is selected automatically based on whether `GoogleW
 ```
 Schedule: 3:00 AM daily (mode-gated via SyncSettings)
 Purpose: Full reconciliation of all Google resources with DB state
-Process: Calls SyncResourcesByTypeAsync / ReconcileAllAsync with SyncAction.Execute
+Process: Calls `SyncResourcesByTypeAsync` / `ReconcileAllAsync` with `SyncAction.Execute`; Drive sync receives `GoogleSyncSource.ScheduledSync` so its log records the scheduled trigger.
          for every service; each service checks its own persisted SyncMode
          internally to decide whether adds/removes actually apply
 ```
@@ -590,6 +590,12 @@ When system teams are synced, Google permissions are also updated:
 ### Outbox Sync Error Classification
 
 The `ProcessGoogleSyncOutboxJob` classifies Google API errors into two categories:
+
+When Google Workspace credentials are absent, processing is reported as skipped and the
+batch remains pending. Stub dispatch is never treated as successful and cannot mark a Google
+email valid. Admin rerun events are distinguished by their existing `admin-resync:`
+deduplication-key prefix and record `ManualSync`; membership add events record
+`TeamMemberJoined`.
 
 **Permanent failures (HTTP 400, 403, 404):** User-level errors — invalid email format, no Google account for that address, or user not found. The outbox event is marked `FailedPermanently = true` and the user's `GoogleEmailStatus` is set to `Rejected`. While rejected, no new sync events are enqueued for that user and the user is excluded from all sync paths (reconciliation, outbox, direct add). Failures surface via the "Failed Google sync events" meter and the `/Google/SyncOutbox` admin page (per-event Retry). The user must update their Google email (Profile → Emails), which resets `GoogleEmailStatus` to `Unknown` and triggers re-sync for all current team memberships. Permanently-failed outbox events can be requeued individually via `POST /Google/SyncOutbox/{id}/Requeue` or in bulk via `POST /Google/SyncOutbox/RequeueAll`.
 

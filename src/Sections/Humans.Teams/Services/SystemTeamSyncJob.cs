@@ -554,7 +554,11 @@ internal sealed class SystemTeamSyncJob(
             step?.Added(userId, userName);
             addedAudits.Add((userId, userName));
 
-            await googleSyncService.AddUserToTeamResourcesAsync(team.Id, userId, cancellationToken);
+            await googleSyncService.AddUserToTeamResourcesAsync(
+                team.Id,
+                userId,
+                cancellationToken,
+                GoogleSyncSource.SystemTeamSync);
         }
 
         var removedAudits = new List<(Guid UserId, string UserName)>();

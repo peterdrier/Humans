@@ -32,7 +32,7 @@ All Drive resources are on **Shared Drives only** (no personal My Drive), and th
 - **Sync settings** (`/Google/SyncSettings`) — per-service sync mode (None / AddOnly / AddAndRemove).
 - **All Groups** (`/Google/AllGroups`) — every Google Group in the domain, linked or not.
 - **Workspace accounts** (`/Google/Accounts`) — every `@nobodies.team` account, with link-to-human search.
-- **Sync audit** — per-human (`/Monitor/Human/{id}`) and per-resource (`/Monitor/Resource/{id}`).
+- **Sync audit** — per-human (`/Google/Human/{id}`) and per-resource (`/Google/Resource/{id}`).
 - **Team resources** (`/Teams/{slug}/Resources`) — where coordinators link, unlink, and sync a team's Drive folders, files, and Groups.
 - **Drive activity** — anomalous changes land in `/AuditLog` under the "Anomalous Permissions" filter.
 
@@ -103,7 +103,7 @@ To re-enqueue all sync events for a specific user across their current teams (fo
 
 ### Sync audit
 
-`/Monitor/Human/{id}` shows every sync event for a given human — useful when access is missing. `/Monitor/Resource/{id}` does the same for one resource.
+`/Google/Human/{id}` shows every sync event for a given human — useful when access is missing. `/Google/Resource/{id}` does the same for one resource.
 
 ## Related sections
 

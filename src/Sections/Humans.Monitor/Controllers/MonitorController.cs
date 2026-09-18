@@ -1,7 +1,5 @@
-using Humans.GoogleIntegration.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Monitor.Contracts;
-using Humans.Monitor.Models;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
@@ -11,13 +9,9 @@ using Humans.Users.Contracts;
 namespace Humans.Monitor.Controllers;
 
 /// <summary>
-/// Operator-facing monitoring of the Google Workspace estate: the on-demand Drive-activity
-/// anomaly scan, and the Google-sync audit trail for one resource or one human.
+/// Operator-facing monitoring of the Google Workspace estate through the on-demand
+/// Drive-activity anomaly scan.
 /// </summary>
-/// <remarks>
-/// The sync-log rows are not read here: the page emits <c>&lt;vc:google-sync-log&gt;</c> and
-/// the GoogleIntegration section owns the read and the render.
-/// </remarks>
 [Route("Monitor")]
 internal sealed class MonitorController(
     IUserServiceRead userService,
@@ -48,45 +42,5 @@ internal sealed class MonitorController(
         }
 
         return RedirectToAction("Index", "AuditLog", new { filter = nameof(AuditAction.AnomalousPermissionDetected) });
-    }
-
-    [HttpGet("Resource/{id:guid}")]
-    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
-    public async Task<IActionResult> Resource(
-        Guid id,
-        [FromServices] ITeamResourceService teamResourceService)
-    {
-        var resource = await teamResourceService.GetResourceByIdAsync(id);
-
-        if (resource is null)
-        {
-            return NotFound();
-        }
-
-        return View("SyncAudit", new SyncAuditViewModel(
-            $"Sync Audit: {resource.Name}",
-            Url.Action("Sync", "Google"),
-            "Back to Sync Status",
-            ResourceId: id,
-            UserId: null));
-    }
-
-    [HttpGet("Human/{id:guid}")]
-    [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
-    public async Task<IActionResult> Human(Guid id)
-    {
-        var user = await FindUserInfoByIdAsync(id);
-
-        if (user is null)
-        {
-            return NotFound();
-        }
-
-        return View("SyncAudit", new SyncAuditViewModel(
-            $"Google Sync Audit: {user.BurnerName}",
-            Url.Action("AdminDetail", "UsersAdmin", new { id }),
-            "Back to Human Detail",
-            ResourceId: null,
-            UserId: id));
     }
 }

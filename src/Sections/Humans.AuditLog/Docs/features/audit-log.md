@@ -130,9 +130,9 @@ Accessible to Board and Admin. Displays all audit log entries with filtering by 
 
 POST action on `MonitorController` (moved from `AuditLogController` at nobodies-collective/Humans#866 — see [`AuditLog.md`](../AuditLog.md#routing)). Manual trigger for the Drive Activity monitor. Redirects to `/AuditLog?filter=AnomalousPermissionDetected` after completion.
 
-### Google sync pages (`/Monitor/Resource/{id}`, `/Monitor/Human/{id}`)
+### Google sync pages (`/Google/Resource/{id}`, `/Google/Human/{id}`)
 
-Not audit pages any more — they render `<vc:google-sync-log>` over GoogleIntegration's `google_sync_log`. Documented in [Monitor.md](../../../Humans.Monitor/Docs/Monitor.md).
+These GoogleIntegration pages render `<vc:google-sync-log>` over its `google_sync_log`. Documented in [GoogleIntegration.md](../../../Humans.GoogleIntegration/Docs/GoogleIntegration.md).
 
 ### Per-User Audit View (MemberDetail page)
 

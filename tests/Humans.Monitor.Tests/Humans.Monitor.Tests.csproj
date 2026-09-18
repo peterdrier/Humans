@@ -10,15 +10,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- MonitorController's operator-safe catch path is a CI invariant, so this test project
+         takes the shared ASP.NET Core framework needed to construct the controller directly. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- FakeClock: the service stamps its last-run marker off IClock. -->
     <PackageReference Include="NodaTime.Testing" />
   </ItemGroup>
 
-  <!--
-    No FrameworkReference: nothing here constructs MonitorController. Its routes are covered
-    by MonitorPageRenderTests in Humans.Integration.Tests, which CI never runs
-    (build.yml filters that assembly out) — so those are local-only assertions.
-    No EF Core: Monitor owns no tables, so there is no DbContext to fixture.
-  -->
+  <!-- No EF Core: Monitor owns no tables, so there is no DbContext to fixture. -->
 
 </Project>

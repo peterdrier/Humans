@@ -51,6 +51,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
     private readonly ISyncSettingsService _syncSettingsService = Substitute.For<ISyncSettingsService>();
     private readonly IGoogleRemovalNotificationService _removalNotifications = Substitute.For<IGoogleRemovalNotificationService>();
     private readonly ITeamResourceGoogleClient _teamResourceClient = Substitute.For<ITeamResourceGoogleClient>();
+    private readonly IGoogleSyncLogService _syncLog = Substitute.For<IGoogleSyncLogService>();
 
     private readonly GoogleWorkspaceSyncService _syncService;
 
@@ -110,7 +111,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
             _userEmailService,
             Substitute.For<IGoogleGroupSync>(),
             AuditLog,
-            Substitute.For<IGoogleSyncLogService>(),
+            _syncLog,
             _syncSettingsService,
             _removalNotifications,
             Substitute.For<IGoogleDriveAccessSyncScheduler>(),
@@ -142,7 +143,10 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
         StubTeams((teamId, IsActive: false, Members: []));
 
         var result = await _syncService.SyncResourcesByTypeAsync(
-            GoogleResourceType.DriveFolder, SyncAction.Execute, ct);
+            GoogleResourceType.DriveFolder,
+            SyncAction.Execute,
+            ct,
+            GoogleSyncSource.ScheduledSync);
 
         result.Diffs.Should().ContainSingle(d => d.ErrorMessage == null);
 
@@ -155,6 +159,18 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
         await _removalNotifications.Received(1).NotifyRemovalAsync(
             extraEmail, GoogleResourceType.DriveFolder, "Doomed Folder", Arg.Any<string?>(),
             Arg.Any<SyncRemovalReason>(), Arg.Any<CancellationToken>());
+        await _syncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessRevoked,
+            resourceId,
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            extraEmail,
+            Arg.Any<string>(),
+            GoogleSyncSource.ScheduledSync,
+            success: true,
+            errorMessage: Arg.Any<string?>(),
+            userId: Arg.Any<Guid?>(),
+            ct: Arg.Any<CancellationToken>());
     }
 
     // ==========================================================================

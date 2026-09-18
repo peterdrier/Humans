@@ -5,9 +5,8 @@ namespace Humans.GoogleIntegration.ViewComponents;
 
 /// <summary>
 /// <c>&lt;vc:google-sync-log&gt;</c> — renders the Google sync trail for one resource or one
-/// human. Consuming assemblies need <c>@addTagHelper *, Humans.GoogleIntegration</c>: a
-/// <c>&lt;vc:&gt;</c> tag with no matching tag helper ships as inert literal markup with a
-/// green build and no runtime error.
+/// human. The host views live in this section so Razor discovers the component in the same
+/// application part.
 /// </summary>
 public sealed class GoogleSyncLogViewComponent(
     IGoogleSyncLogViewer syncLog,

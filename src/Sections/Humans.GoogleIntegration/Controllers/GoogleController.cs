@@ -22,6 +22,38 @@ internal sealed class GoogleController(
     IGoogleAdminService googleAdminService,
     ILogger<GoogleController> logger) : HumansControllerBase(userService)
 {
+    [HttpGet("Resource/{id:guid}")]
+    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
+    public async Task<IActionResult> Resource(Guid id)
+    {
+        var resource = await teamResourceService.GetResourceByIdAsync(id);
+        if (resource is null)
+            return NotFound();
+
+        return View("SyncAudit", new SyncAuditViewModel(
+            $"Sync Audit: {resource.Name}",
+            Url.Action(nameof(Sync)),
+            "Back to Sync Status",
+            ResourceId: id,
+            UserId: null));
+    }
+
+    [HttpGet("Human/{id:guid}")]
+    [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
+    public async Task<IActionResult> Human(Guid id)
+    {
+        var user = await FindUserInfoByIdAsync(id);
+        if (user is null)
+            return NotFound();
+
+        return View("SyncAudit", new SyncAuditViewModel(
+            $"Google Sync Audit: {user.BurnerName}",
+            Url.Action("AdminDetail", "UsersAdmin", new { id }),
+            "Back to Human Detail",
+            ResourceId: null,
+            UserId: id));
+    }
+
     [HttpGet("SyncSettings")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SyncSettings(

@@ -1,4 +1,5 @@
 using Humans.Base.Attributes;
+using Humans.Base.Enums;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Base.Interfaces;
 using Humans.GoogleIntegration.Data;
@@ -23,6 +24,7 @@ internal sealed class GoogleSyncOutboxProcessor(
     IUserService userService,
     ITeamServiceRead teamService,
     IGoogleSyncService googleSyncService,
+    IGoogleDriveActivityClient googleClient,
     IHumansMetrics metrics,
     IClock clock,
     ILogger<GoogleSyncOutboxProcessor> logger) : IGoogleSyncOutboxProcessor
@@ -47,6 +49,14 @@ internal sealed class GoogleSyncOutboxProcessor(
             return;
         }
 
+        if (!googleClient.IsConfigured)
+        {
+            logger.LogWarning(
+                "Skipping {Count} Google sync outbox event(s) because Google Workspace is not configured; events remain pending",
+                pendingEvents.Count);
+            return;
+        }
+
         var userIds = pendingEvents.Select(e => e.UserId).Distinct().ToList();
         var teamIds = pendingEvents.Select(e => e.TeamId).Distinct().ToList();
         var users = await userService.GetUserInfosAsync(userIds, cancellationToken);
@@ -67,10 +77,15 @@ internal sealed class GoogleSyncOutboxProcessor(
                 switch (outboxEvent.EventType)
                 {
                     case GoogleSyncOutboxEventTypes.AddUserToTeamResources:
+                        var syncSource = outboxEvent.DeduplicationKey.StartsWith(
+                            "admin-resync:", StringComparison.Ordinal)
+                            ? GoogleSyncSource.ManualSync
+                            : GoogleSyncSource.TeamMemberJoined;
                         await googleSyncService.AddUserToTeamResourcesAsync(
                             outboxEvent.TeamId,
                             outboxEvent.UserId,
-                            cancellationToken);
+                            cancellationToken,
+                            syncSource);
                         break;
 
                     case GoogleSyncOutboxEventTypes.RemoveUserFromTeamResources:
