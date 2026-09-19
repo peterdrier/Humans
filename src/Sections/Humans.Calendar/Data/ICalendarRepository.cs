@@ -64,8 +64,12 @@ internal interface ICalendarRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Upserts the exception row for
-    /// <c>(<paramref name="eventId"/>, <paramref name="originalOccurrenceStartUtc"/>)</c>.
+    /// Upserts the exception row identifying the occurrence. An occurrence of an all-day
+    /// series is named by <paramref name="originalDate"/>, one of a timed series by
+    /// <paramref name="originalOccurrenceStartUtc"/>; exactly one is set, and
+    /// <c>calendar_event_exceptions</c> carries a unique index over each pairing with
+    /// <paramref name="eventId"/>. A row keeps whichever column named it, so a series that
+    /// changed storage never matches on the stale one.
     /// When no row exists, a new one is created using <paramref name="createdByUserId"/>
     /// and <paramref name="now"/> for audit stamps. When a row exists, only
     /// <c>UpdatedAt</c> is refreshed. The caller's <paramref name="apply"/>
