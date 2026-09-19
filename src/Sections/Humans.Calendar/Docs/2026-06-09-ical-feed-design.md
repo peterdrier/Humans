@@ -13,9 +13,12 @@
 > now `src/Sections/Humans.Users.Contracts/User.cs`. No `src/Humans.Application/`,
 > `src/Humans.Web/` or `src/Humans.Domain/` path named below still resolves.
 > Beyond the paths, what else no longer holds: `ShiftsController.EnsureICalUrlAsync`
-> is gone — `Mine` mints the token inline through `IUserService.SetICalTokenAsync` — and the
+> is gone — `Mine` mints the token inline through `IUserService.SetICalTokenAsync` — the
 > Community Calendar contributor listed as out of scope shipped, as
-> `ICalendarFeedContributor.GetPublicItemsForWindowAsync`. Every other decision still holds.
+> `ICalendarFeedContributor.GetPublicItemsForWindowAsync`, and the per-request cost below
+> predates the fan-out: every contributor is called per request, and Workgroups' reads the
+> whole register through `IWorkgroupService`, which loads it on a cold cache. Every other
+> decision still holds.
 
 ## Summary
 
