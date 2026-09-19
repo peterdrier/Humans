@@ -28,9 +28,3 @@ references none of them. Its only outbound section edge is `Humans.Users.Contrac
 in Base — Shifts, Events, Workgroups, Scanner, Users and Debug are all above it in the graph. The view component also
 derives from ASP.NET's `ViewComponent` and lives with the Razor views it renders, which belong to
 the section project.
-
-This paragraph used to end "…which a framework-free leaf could not carry anyway". G5 lane 3c
-measured that false (2026-08-15): a leaf that references `Humans.Interfaces` resolves
-`Microsoft.AspNetCore.App` transitively — `FrameworkReference` flows through `ProjectReference` —
-so a hypothetical `Humans.Calendar.Contracts` could have named `ViewComponent`. The reason to stay
-a folder is the one in the paragraph above: no cycle forces a leaf here.
