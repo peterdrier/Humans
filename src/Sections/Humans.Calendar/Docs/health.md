@@ -92,7 +92,7 @@ Stated so a violation is recognisable.
    renders only that (`Views/Shared/Components/UserCalendar/Default.cshtml:10`).
 4. Every mutation writes an audit entry naming the actor. Entry-level mutations also name
    the owning team (`Services/CalendarService.cs:89`); occurrence-level ones do not
-   (`Services/CalendarService.cs:466`).
+   (`Services/CalendarService.cs:464`).
 5. A failed audit write never rolls back or hides a committed change, and never passes
    silently (`Services/CalendarService.cs:93`).
 6. On a timed entry, `RecurrenceRule` and `RecurrenceTimezone` are both set or both null —
@@ -101,7 +101,7 @@ Stated so a violation is recognisable.
 7. A malformed RRULE (`Services/CalendarService.cs:131`) or an unknown IANA zone
    (`Services/CalendarService.cs:145`) is rejected at write time, so no read can fail
    expanding a stored row. An all-day rule that would introduce a time of day is rejected
-   with them (`Services/CalendarService.cs:234`).
+   with them (`Services/CalendarService.cs:235`).
 8. `RecurrenceUntilUtc` bounds a timed series and `RecurrenceUntilDate` an all-day one, each
    the last point the rule can produce or null for open-ended rules, and
    `CalendarOccurrenceExpander.FilterForWindow` — the only prefilter — reads them as that
@@ -118,7 +118,7 @@ Stated so a violation is recognisable.
     its exception rows (`Data/Configurations/CalendarEventExceptionConfiguration.cs:30`) from
     every read. The one deliberate exception is the upsert's existence lookup, which must see
     a row orphaned by a concurrent soft-delete or it violates the unique index
-    (`Data/CalendarRepository.cs:93`).
+    (`Data/CalendarRepository.cs:95`).
 12. At most one exception row per occurrence identity: unique on
     `(EventId, OriginalOccurrenceStartUtc)` for a timed series
     (`Data/Configurations/CalendarEventExceptionConfiguration.cs:19`) and on
@@ -126,7 +126,7 @@ Stated so a violation is recognisable.
 13. An exception row either cancels its occurrence or overrides at least one field
     (`Domain/CalendarEventException.cs:41`).
 14. A series that already has exceptions cannot switch between all-day and timed — its saved
-    occurrence identities would stop naming anything (`Services/CalendarService.cs:267`).
+    occurrence identities would stop naming anything (`Services/CalendarService.cs:268`).
 15. An occurrence's identity in a URL is an ISO date for an all-day series and an ISO instant
     for a timed one, and the controller parses only the one the series is
     (`Controllers/CalendarController.cs:339`).
@@ -134,10 +134,10 @@ Stated so a violation is recognisable.
     writes refresh the parent entry, because there is no exception cache row
     (`Services/CachingCalendarService.cs:156`).
 17. Contributor items reach the community window only when no team filter is applied — they
-    belong to no team (`Services/CachingCalendarService.cs:39`). A contributor that throws
+    belong to no team (`Services/CachingCalendarService.cs:37`). A contributor that throws
     costs the community calendar its items and nothing else
-    (`Services/CachingCalendarService.cs:66`); one that throws on the personal feed fails the
-    whole feed rather than serve a short one (`Services/ICalFeedService.cs:40`).
+    (`Services/CachingCalendarService.cs:67`); one that throws on the personal feed fails the
+    whole feed rather than serve a short one (`Services/ICalFeedService.cs:39`).
 18. Any authenticated person may change any entry on any team. This is the policy, not an
     oversight — the audit trail is what replaces the gate
     (`Controllers/CalendarController.cs:157`).
@@ -207,3 +207,4 @@ Settled decisions. Later runs should stop re-litigating these.
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | 1 | 2026-09-01 | List view rendered all-day and multi-day events wrong; documented-but-unpinned invariants given tests; false crefs and a phantom `OwningTeam` nav cut | peterdrier/Humans#1578 |
+| 2 | 2026-09-19 | Workgroups' contributor named in the six places that claimed Shifts + Events only; six comments describing code that is not there corrected; resolved debt rows and dead prose cut | peterdrier/Humans#pending |
