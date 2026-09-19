@@ -16,8 +16,8 @@ fan-out), moved in from Base by G5 lane 4b-2c (nobodies-collective/Humans#866):
 
 | Type | Who consumes it |
 |---|---|
-| `ICalendarFeedContributor` | implemented by `Humans.Shifts` (`ShiftSignupService`) and `Humans.Events` (`EventService`) |
-| `CalendarFeedItem` | the item both contributors return; `Humans.Scanner` renders it on the ticket card |
+| `ICalendarFeedContributor` | implemented by `Humans.Shifts` (`ShiftSignupService`), `Humans.Events` (`EventService`) and `Humans.Workgroups` (`WorkgroupCalendarContributor`) |
+| `CalendarFeedItem` | the item every contributor returns; `Humans.Scanner` renders it on the ticket card |
 | `IICalFeedService` | `Humans.Scanner`'s ticket card; the section's own `ICalFeedApiController` |
 | `UserCalendarViewComponent` / `UserCalendarViewModel` | `<vc:user-calendar>` in Shell's widget gallery; `Component.InvokeAsync("UserCalendar", …)` in Users' admin detail |
 
@@ -25,7 +25,7 @@ fan-out), moved in from Base by G5 lane 4b-2c (nobodies-collective/Humans#866):
 contributor fan-out inverts the arrow: the implementers reference Calendar, Calendar
 references none of them. Its only outbound section edge is `Humans.Users.Contracts`
 (`IUserServiceRead`, for the stored `ICalToken` check), and no consumer of this folder lives
-in Base — Shifts, Events, Scanner and Shell are all above it in the graph. The view component also
+in Base — Shifts, Events, Workgroups, Scanner and Shell are all above it in the graph. The view component also
 derives from ASP.NET's `ViewComponent` and lives with the Razor views it renders, which belong to
 the section project.
 

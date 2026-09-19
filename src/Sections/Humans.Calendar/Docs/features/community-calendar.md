@@ -37,7 +37,8 @@ The following are explicitly deferred to future slices:
 `ICalendarFeedContributor.GetPublicItemsForWindowAsync` lets another section feed the
 month grid, list, and agenda with its own public items, merged in memory with
 `calendar_events` occurrences and marked by `Source`. Shifts and Events implement
-the method today but return an empty list — nothing public to contribute yet.
+the method but return an empty list — nothing public to contribute yet; Workgroups
+returns the public meetings of its active workgroups.
 Contributor items carry no team, so they only appear on the unfiltered
 (`?teamId` absent) calendar; a team-filtered view or the per-team page shows
 Calendar's own events only. The personal iCal feed (`GetCalendarItemsForUserAsync`)

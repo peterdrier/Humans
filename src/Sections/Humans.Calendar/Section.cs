@@ -37,7 +37,7 @@ public sealed class Section : ISection
 
         // iCal feed orchestrator — pure fan-out over every ICalendarFeedContributor.
         // The contributors themselves are registered by the sections that implement
-        // the interface (Shifts, Events), so Calendar never names them.
+        // the interface (Shifts, Events, Workgroups), so Calendar never names them.
         services.AddScoped<IICalFeedService, ICalFeedService>();
     }
 }
