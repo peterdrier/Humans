@@ -12,7 +12,7 @@
 > (there is no `ICalFeedSectionExtensions`). The `User` entity carrying `ICalToken` is
 > now `src/Sections/Humans.Users.Contracts/User.cs`. No `src/Humans.Application/`,
 > `src/Humans.Web/` or `src/Humans.Domain/` path named below still resolves.
-> Two things below are no longer true beyond the paths: `ShiftsController.EnsureICalUrlAsync`
+> Beyond the paths, what else no longer holds: `ShiftsController.EnsureICalUrlAsync`
 > is gone — `Mine` mints the token inline through `IUserService.SetICalTokenAsync` — and the
 > Community Calendar contributor listed as out of scope shipped, as
 > `ICalendarFeedContributor.GetPublicItemsForWindowAsync`. Every other decision still holds.

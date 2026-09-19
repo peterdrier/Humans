@@ -87,7 +87,9 @@ internal sealed class CalendarRepository(IDbContextFactory<CalendarDbContext> fa
         // Match on whichever column names the occurrence: OriginalOccurrenceDate for an
         // all-day series, OriginalOccurrenceStartUtc for a timed one. Each pairing with
         // EventId carries its own unique index, so missing the existing row here is a
-        // duplicate-insert failure, not a second row.
+        // duplicate-insert failure, not a second row. A caller migrating a pre-date-columns
+        // all-day row passes both: the stale instant is what finds it, and the write below
+        // moves it onto date identity.
         //
         // Bypass the soft-delete query filter on the existence lookup so that if the parent
         // event was soft-deleted between the caller's pre-check and this upsert, the
