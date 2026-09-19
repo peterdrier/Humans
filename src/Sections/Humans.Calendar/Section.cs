@@ -22,7 +22,7 @@ public sealed class Section : ISection
     {
         services.AddSectionDbContext<CalendarDbContext>(sentinelTable: "calendar_events");
 
-        // §15 repository pattern (issue #569). Singleton + IDbContextFactory: the repo owns
+        // §15 repository pattern (nobodies-collective/Humans#569). Singleton + IDbContextFactory: the repo owns
         // the context lifetime.
         services.AddSingleton<ICalendarRepository, CalendarRepository>();
         services.AddKeyedScoped<ICalendarService, CalendarService>(
@@ -37,7 +37,7 @@ public sealed class Section : ISection
 
         // iCal feed orchestrator — pure fan-out over every ICalendarFeedContributor.
         // The contributors themselves are registered by the sections that implement
-        // the interface (Shifts, Events), so Calendar never names them.
+        // the interface (Shifts, Events, Workgroups), so Calendar never names them.
         services.AddScoped<IICalFeedService, ICalFeedService>();
     }
 }

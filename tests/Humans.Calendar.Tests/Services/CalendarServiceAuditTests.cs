@@ -54,9 +54,8 @@ public class CalendarServiceAuditTests
             teamId, AuditEntityTypes.Team);
     }
 
-    // Update was the mutation this suite originally missed, so its LogAsync call stayed
-    // deletable with everything else pinned. The team it names is the one the update *sets*,
-    // which is what keeps a moved event auditable under its new team rather than its old.
+    // The team the entry names is the one the update *sets*, which is what keeps a moved
+    // event auditable under its new team rather than its old.
     [HumansFact]
     public async Task UpdateEventWithResultAsync_WritesOneAuditEntry_RelatedToTheOwningTeam()
     {

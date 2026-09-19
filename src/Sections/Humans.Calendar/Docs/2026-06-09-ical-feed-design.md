@@ -12,7 +12,13 @@
 > (there is no `ICalFeedSectionExtensions`). The `User` entity carrying `ICalToken` is
 > now `src/Sections/Humans.Users.Contracts/User.cs`. No `src/Humans.Application/`,
 > `src/Humans.Web/` or `src/Humans.Domain/` path named below still resolves.
-> Every decision and contract below still holds — only the file locations changed.
+> Beyond the paths, what else no longer holds: `ShiftsController.EnsureICalUrlAsync`
+> is gone — `Mine` mints the token inline through `IUserService.SetICalTokenAsync` — the
+> Community Calendar contributor listed as out of scope shipped, as
+> `ICalendarFeedContributor.GetPublicItemsForWindowAsync`, and the per-request cost below
+> predates the fan-out: every contributor is called per request, and Workgroups' reads the
+> whole register through `IWorkgroupService`, which loads it on a cold cache. Every other
+> decision still holds.
 
 ## Summary
 
@@ -20,9 +26,9 @@ A per-user iCal subscription feed at `GET /api/ical/{userId:guid}/{token:guid}.i
 
 ## Decisions made
 
-- **Token scheme: stored `User.ICalToken`** (existing `Guid?`, src/Humans.Domain/Entities/User.cs). A derivable token (Data Protection or HMAC, like email unsubscribe links) was rejected: calendar URLs are handed to third parties (Google fetches server-side) and live for years, so per-user revocation matters; a derivable scheme can only revoke by rotating the server secret, breaking every subscriber. The stored token already ships with lazy minting (`ShiftsController.EnsureICalUrlAsync`), a regenerate button (`RegenerateIcal`), and clearing on GDPR-delete and account merge.
+- **Token scheme: stored `User.ICalToken`** (existing `Guid?`, src/Humans.Domain/Entities/User.cs). A derivable token (Data Protection or HMAC, like email unsubscribe links) was rejected: calendar URLs are handed to third parties (Google fetches server-side) and live for years, so per-user revocation matters; a derivable scheme can only revoke by rotating the server secret, breaking every subscriber. The stored token already ships with lazy minting (in `ShiftsController.Mine`), a regenerate button (`RegenerateIcal`), and clearing on GDPR-delete and account merge.
 - **URL shape: `/api/ical/{userId}/{token}.ics`** — uid in the URL makes validation a cached `IUserServiceRead` lookup by id + token compare; no lookup-by-token query or index. The previously displayed `/ICal/{token}.ics` shape was never served, so changing it breaks nothing.
-- **Shift scope: Confirmed + Pending** signups only. Issue #161's "cancelled/bailed/noshow history in descriptions" is deliberately out of scope (note this on the issue).
+- **Shift scope: Confirmed + Pending** signups only. nobodies-collective/Humans#161's "cancelled/bailed/noshow history in descriptions" is deliberately out of scope (note this on the issue).
 - **No caching** of feed output. ~500 users; a request is two cached lookups and two indexed queries.
 
 ## Fanout contract
@@ -69,7 +75,7 @@ DI: new `ICalFeedSectionExtensions` in `src/Humans.Web/Extensions/Sections/` mir
 
 New thin `ICalFeedApiController` in `src/Humans.Web/Controllers/Api/`: anonymous `GET /api/ical/{userId:guid}/{token:guid}.ics` → `GetFeedIcsAsync` → 404 or `File(utf8Bytes, "text/calendar")` with a filename. Try/catch with logging per project error-handling rule.
 
-`ShiftsController.EnsureICalUrlAsync` updates to emit the two-segment URL. Token minting/regeneration/clearing lifecycles are untouched.
+`ShiftsController.Mine` emits the two-segment URL. Token minting/regeneration/clearing lifecycles are untouched.
 
 ## Contributors
 
@@ -96,7 +102,7 @@ Placement: `Views/UsersAdmin/AdminDetail.cshtml` (after `<vc:shift-signups>`), p
 
 ## Out of scope
 
-- CSV exports and stats dashboard from #161.
+- CSV exports and stats dashboard from nobodies-collective/Humans#161.
 - Cancelled/bailed/noshow shift history in the feed.
-- Community Calendar contributor.
+- Community Calendar contributor (shipped later; see the banner).
 - Feed output caching.

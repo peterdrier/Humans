@@ -70,6 +70,7 @@ sections in each section's own `Section.cs`):
 
 - **`ShiftSignupService`** (Shifts) — the user's Confirmed **and** Pending shift signups (pending get a "(pending)" summary suffix); Cancelled/Bailed/NoShow history is excluded. `GetPublicItemsForWindowAsync` returns `[]` — nothing public yet.
 - **`EventService`** (Events) — approved event-guide entries the user has favourited (moderation un-approval drops an event from the feed without touching the favourite row). No hosting/ownership path. `GetPublicItemsForWindowAsync` returns `[]` — nothing public yet.
+- **`WorkgroupCalendarContributor`** (Workgroups) — meetings of the active workgroups the user belongs to; dormant groups are excluded. `GetPublicItemsForWindowAsync` returns the `IsPublic` meetings of active workgroups that overlap the window.
 
 `GetPublicItemsForWindowAsync` results are consumed by `CachingCalendarService.GetOccurrencesInWindowAsync`
 (Calendar section, above), not by `ICalFeedService` — the two fan-outs share the
