@@ -32,6 +32,11 @@ re-reads its whole context at its own rate (about $0.12 a wake at 120k context o
 prefer a few fat workers to many thin ones, batch small related tasks into one worker, and don't
 spawn for anything smaller than the overhead. `/spend` shows a run's real numbers.
 
+Resuming a running agent is not the cheap way round this. Its context isn't paid for once — every
+wake re-reads all of it at its own rate, so an agent five rounds deep can cost more to wake than a
+fresh haiku costs to spawn. Reuse it when the follow-up genuinely needs what it already knows;
+otherwise spawn fresh, or do it yourself.
+
 ## Spawning
 
 - Agents: `orch-haiku`, `orch-sonnet-{low,medium,high}`, `orch-opus-{low,medium,high}`,

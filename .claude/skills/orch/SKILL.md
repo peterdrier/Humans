@@ -22,7 +22,9 @@ recover from.
 - **Delegated:** everything else — reading source, searching, builds, tests, diffs, logs, web
   fetches, edits. If you can't bound the output before running it, it isn't yours to run. "I'll
   just peek at the file" is how a context fills.
-- **Exception:** a task smaller than its own brief (a one-line edit to a known file). Just do it.
+- **Exception:** a task smaller than its own brief (a copy, a one-line edit to a known file, a
+  short git sequence). Just do it — writing the brief costs more than the work, whether the
+  worker is new or already running.
 
 ## Loop
 
@@ -32,8 +34,11 @@ recover from.
    `id · tier · agent name · status · result pointer`. Update it on every dispatch and return.
    After a compaction or resume, re-read it before anything else — it is the state; your memory
    isn't.
-3. **Dispatch** independent tasks in a single message so they run in parallel. Follow-ups go to
-   the same agent via SendMessage — its context is already paid for.
+3. **Dispatch** independent tasks in a single message so they run in parallel. A substantial
+   follow-up goes to the agent that already knows the ground, via SendMessage — but waking it
+   re-reads its whole accumulated context at its rate, so a grown agent is the *expensive*
+   option for something small. Cheap-looking reuse is the trap: a `cp`, a one-line edit, a short
+   git sequence are yours, not a worker's.
 4. **Verify** claims (tests pass, bug gone) with a separate haiku worker in a clean context that
    runs the check and returns pass/fail plus failing names. Workers grading themselves echo what
    they expected to see.
