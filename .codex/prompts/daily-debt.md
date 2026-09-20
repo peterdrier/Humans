@@ -84,19 +84,30 @@ These come straight from this repo's own rules
 6. Watch the clock. With ~10 minutes left, stop starting anything new, make
    sure the working tree is clean and green, and end your turn.
 
-<!-- TARGET: pending design decision -->
-
 ## Target selection
 
-**Not yet decided.** The rest of this file's guardrails apply regardless of
-what tonight's target ends up being; this section is a placeholder until
-Peter picks a targeting strategy (e.g. rotate through
-`docs/architecture/debt-ledger.yml` themes like `/debt-sweep` does, or a
-fixed section rotation, or something else).
+Target is [`debt-ladder.md`](./debt-ladder.md): a standing, ordered list of
+work *types* (rungs), worked top-down, degrading gracefully as top rungs
+drain. It is not a per-night checklist — most nights you'll land partway
+down it.
 
-Until this section is filled in: pick the single most clearly safe,
-in-scope, real improvement you can find under `docs/architecture/debt-ledger.yml`
-or a live architecture baseline
-(`tests/Humans.Web.Tests/Architecture/Baselines/`) that fits one theme and
-one section, and say in your final message what you picked and why — that
-choice is itself feedback for finalizing this section.
+**Protocol:**
+
+1. Start at rung 1. Run its **Finds** command. If it returns live,
+   in-scope, safe work, do it — one item, one theme, per this file's
+   guardrails — and stop there for tonight.
+2. If a rung's Finds command returns nothing (or only work its own
+   **Drained when** condition excludes, e.g. blocked on Peter's approval),
+   say so and move to the next rung. Don't skip a rung with available work
+   just because a lower one looks more interesting.
+3. Rungs 1 and 10 never fully drain (recurring by design) — still try lower
+   rungs after a quick pass on them if time remains.
+4. A rung's own **Done-check** is the local test/build gate; run it before
+   moving to the next item or rung.
+5. If every rung is drained or every candidate needs a skip, exit without
+   committing — that's success, not failure.
+
+**PR body must state:** which rung you worked and why (rung N+1 only after
+confirming rung N had nothing safe), which items you closed (ledger
+file + `what:` first line, or `file:line`), and everything you skipped with
+the reason (public surface, Peter's-call, blocked, out of budget).
