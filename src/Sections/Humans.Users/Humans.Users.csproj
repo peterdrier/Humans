@@ -113,6 +113,7 @@
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
     <!--
       The section project, not its Contracts leaf, because Views/Profile/Index.cshtml and
       Views/UsersAdmin/AdminDetail.cshtml render <vc:shift-signups>: the tag helper binds at

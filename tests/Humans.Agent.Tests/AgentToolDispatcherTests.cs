@@ -4,6 +4,7 @@ using Humans.Agent.Services;
 using Humans.Agent.Services.Anthropic;
 using Humans.Agent.Services.Preload;
 
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Xunit;
 using Humans.Agent.Contracts;
@@ -143,8 +144,8 @@ public class AgentToolDispatcherTests
 
         var shiftView = MakeViewFor(viewer, signups);
 
-        var burnSettings = Substitute.For<IBurnSettingsService>();
-        burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
+        var burnSettings = Substitute.For<ISettingsService>();
+        burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
         var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
 
@@ -174,8 +175,8 @@ public class AgentToolDispatcherTests
 
         var shiftView = MakeViewFor(viewer, [signup]);
 
-        var burnSettings = Substitute.For<IBurnSettingsService>();
-        burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
+        var burnSettings = Substitute.For<ISettingsService>();
+        burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
         var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
 
@@ -199,8 +200,8 @@ public class AgentToolDispatcherTests
 
         var shiftView = MakeViewFor(viewer, []);
 
-        var burnSettings = Substitute.For<IBurnSettingsService>();
-        burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
+        var burnSettings = Substitute.For<ISettingsService>();
+        burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
         var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
 
@@ -227,8 +228,8 @@ public class AgentToolDispatcherTests
         // Viewer has zero signups in their cached view.
         var shiftView = MakeViewFor(viewer, []);
 
-        var burnSettings = Substitute.For<IBurnSettingsService>();
-        burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
+        var burnSettings = Substitute.For<ISettingsService>();
+        burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
         var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
 
@@ -254,7 +255,7 @@ public class AgentToolDispatcherTests
         result.Content.Should().Contain("must be a valid GUID");
     }
 
-    private static BurnSettingsInfo MakeEventSettings() => new(
+    private static EventSettingsInfo MakeEventSettings() => new(
         Id: Guid.NewGuid(),
         EventName: "Test",
         Year: 2026,
@@ -269,8 +270,7 @@ public class AgentToolDispatcherTests
         FinishingWeekendStartOffset: 0,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
-        EarlyEntryClose: null,
-        IsShiftBrowsingOpen: false);
+        EarlyEntryClose: null);
 
     /// <summary>The rota fields get_shift_details renders, without the entity.</summary>
     private sealed record RotaStub(string Name, string? PracticalInfo = null, string? Description = null);
@@ -485,7 +485,7 @@ public class AgentToolDispatcherTests
     private static AgentToolDispatcher MakeDispatcher(
         Humans.AuditLog.Contracts.IAuditViewerService? auditViewer = null,
         IShiftView? shiftView = null,
-        IBurnSettingsService? burnSettings = null,
+        ISettingsService? burnSettings = null,
         Humans.Base.Interfaces.IGuideContentSource? source = null)
     {
         var cache = new Microsoft.Extensions.Caching.Memory.MemoryCache(
@@ -510,7 +510,7 @@ public class AgentToolDispatcherTests
             community,
             auditViewer ?? new StubAuditViewer(),
             shiftView ?? Substitute.For<IShiftView>(),
-            burnSettings ?? Substitute.For<IBurnSettingsService>(),
+            burnSettings ?? Substitute.For<ISettingsService>(),
             logger);
     }
 

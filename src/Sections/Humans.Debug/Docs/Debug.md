@@ -75,7 +75,7 @@ The telemetry trackers are fed passively by `ClientStatsMiddleware` (page views;
 
 Debug consumes in-memory telemetry trackers (`IClientStatsTracker`, `IHttpStatusTracker`, query/cache statistics), the configuration registry, `IAdminDatabaseDiagnosticsService` for migration status and Hangfire lock cleanup, and `ISectionCatalog` (`Humans.Base.Interfaces`, published by Shell at startup) to render `/Debug/Sections`. That page names no section: everything on it arrives through the catalog.
 
-The widget gallery and the dashboard card read other sections through their contracts: `ITeamServiceRead`, `ICampServiceRead`, `IShiftManagementServiceRead`, `IEventServiceRead`, `IUserServiceRead`, `IShiftView`, and `IBurnSettingsService` (Shifts' read-only supplier of the active event). The gallery also references the section assemblies whose public view components it renders as `<vc:>` tag helpers (Camps, Users, Tickets, Shifts, Calendar, AuditLog, Teams, Events); that fan-in is the page's job and is opened in `Views/_ViewImports.cshtml`.
+The widget gallery and the dashboard card read other sections through their contracts: `ITeamServiceRead`, `ICampServiceRead`, `IShiftManagementServiceRead`, `IEventServiceRead`, `IUserServiceRead`, `IShiftView`, and `ISettingsService` (Shifts' read-only supplier of the active event). The gallery also references the section assemblies whose public view components it renders as `<vc:>` tag helpers (Camps, Users, Tickets, Shifts, Calendar, AuditLog, Teams, Events); that fan-in is the page's job and is opened in `Views/_ViewImports.cshtml`.
 
 ## Architecture
 

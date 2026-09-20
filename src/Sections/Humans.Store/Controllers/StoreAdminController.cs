@@ -1,4 +1,4 @@
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Store.Services;
 using Humans.Store.Services.Dtos;
 using Humans.Store.Models;
@@ -17,7 +17,7 @@ namespace Humans.Store.Controllers;
 [Route("Store/Admin")]
 internal sealed class StoreAdminController(
     Service storeService,
-    IBurnSettingsService burnSettings,
+    ISettingsService settingsService,
     IClock clock,
     IUserServiceRead userService,
     ILogger<StoreAdminController> logger) : HumansControllerBase(userService)
@@ -186,7 +186,7 @@ internal sealed class StoreAdminController(
 
     private async Task<int> GetDefaultCatalogYearAsync()
     {
-        var activeEvent = await burnSettings.GetActiveAsync();
+        var activeEvent = await settingsService.GetActiveEventSettingsAsync();
         return activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
     }
 }

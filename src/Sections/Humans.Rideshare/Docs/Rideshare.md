@@ -278,7 +278,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
   then drops interests the fold made self-interest (rider on their own trip, driver answering
   their own request) and duplicate pending interests on one trip/request (earliest wins).
   Idempotent; the decorator clears the snapshot cache afterwards.
-- **Shifts**: `IBurnSettingsService.GetActiveAsync()` — the active year settings anchor to
+- **Shifts**: `ISettingsService.GetActiveEventSettingsAsync()` — the active year settings anchor to
   (`GetActiveYearAsync` falls back to the clock's UTC year when no active burn is set).
 - **Notifications**: `INotificationEmitter.SendAsync` — interest created/accepted/declined
   notifications, plain English (not localized), `actionUrl: "/Rideshare/Mine"`.
@@ -311,7 +311,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
   cache at this scale, cleared on any write, is acceptable rather than tracking per-year
   invalidation keys.
 - **Display stitching** — cross-section display data resolves through `IUserServiceRead.GetUserInfosAsync`.
-- **Cross-section calls** — `IUserServiceRead`, `IBurnSettingsService`, `INotificationEmitter`, `IAuditLogService`, `IClock` (NodaTime).
+- **Cross-section calls** — `IUserServiceRead`, `ISettingsService`, `INotificationEmitter`, `IAuditLogService`, `IClock` (NodaTime).
 - **Architecture test** — `tests/Humans.Rideshare.Tests/RideshareArchitectureTests.cs` pins the service/repository split, the canonical `Rideshare` / `api/rideshare` route names, and the caching-decorator shape.
 
 ### Routing provider

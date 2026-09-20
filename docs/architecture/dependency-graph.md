@@ -218,6 +218,7 @@ graph LR
     Team --> Audit
     Team --> AdminAuth
     TPage --> ShiftMgmt
+    TPage --> SettingsSvc
     TPage --> User
     TRes --> Audit
 
@@ -236,7 +237,7 @@ graph LR
     %% Cantina
     Cantina --> ShiftMgmt
     Cantina --> User
-    Cantina --> BurnSettings
+    Cantina --> SettingsSvc
 
     %% CityPlanning
     CityPlan --> Camp
@@ -303,9 +304,11 @@ graph LR
     TicketQ --> UEmail
     TicketQ --> Team
     TicketQ --> ShiftMgmt
+    TicketQ --> SettingsSvc
     TicketSync --> User
     TicketSync --> Campaign
     TicketSync --> ShiftMgmt
+    TicketSync --> SettingsSvc
     TicketBudget --> Budget
     TicketTransfer --> User
     TicketTransfer --> UEmail
@@ -315,6 +318,7 @@ graph LR
     AttendeeImport --> User
     AttendeeImport --> UEmail
     AttendeeImport --> ShiftMgmt
+    AttendeeImport --> SettingsSvc
     AttendeeImport --> Audit
     OnsiteRoster --> User
     OnsiteRoster --> Camp
@@ -375,6 +379,7 @@ graph LR
     OnboardWidget --> ShiftView
     OnboardWidget --> MembershipCalc
     OnboardWidget --> ShiftMgmt
+    OnboardWidget --> SettingsSvc
     OnboardWidget --> Consent
     HumanLifecycle --> User
     HumanLifecycle --> NotifEmitter
@@ -402,6 +407,7 @@ graph LR
     AcctProv --> Audit
     Unsub --> CommPref
     UserParticipationBackfill --> ShiftMgmt
+    UserParticipationBackfill --> SettingsSvc
     UEmailProvBackfill --> Audit
     AcctDel --> UEmail
     AcctDel --> Team
@@ -478,6 +484,7 @@ graph LR
     Store --> Camp
     Store --> Team
     Store --> ShiftMgmt
+    Store --> SettingsSvc
     Store --> Holded
     Store --> Audit
 
@@ -494,7 +501,7 @@ graph LR
     %% Gate
     Gate --> TicketQ
     Gate --> EarlyEntry
-    Gate --> BurnSettings
+    Gate --> SettingsSvc
     Gate --> ShiftMgmt
     Gate --> Role
     Gate --> User
@@ -515,13 +522,13 @@ graph LR
     MailerLiteImport --> AcctProv
     MailerLiteImport --> CommPref
     MailerLiteImport --> Audit
-    EventSvc --> BurnSettings
+    EventSvc --> SettingsSvc
     EventSvc --> User
     EventSvc --> Email
 
     %% Rideshare
     Rideshare --> User
-    Rideshare --> BurnSettings
+    Rideshare --> SettingsSvc
     Rideshare --> NotifEmitter
     Rideshare --> Audit
 

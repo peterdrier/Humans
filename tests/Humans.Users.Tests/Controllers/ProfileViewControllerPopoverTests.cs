@@ -13,6 +13,7 @@ using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 
@@ -79,7 +80,7 @@ public class ProfileViewControllerPopoverTests
             Substitute.For<ICommunicationPreferenceService>(),
             Substitute.For<IAuditLogService>(),
             Substitute.For<IShiftSignups>(),
-            Substitute.For<IBurnSettingsService>(),
+            Substitute.For<ISettingsService>(),
             Substitute.For<IShiftManagementServiceRead>(),
             localizer,
             sharedLocalizer,

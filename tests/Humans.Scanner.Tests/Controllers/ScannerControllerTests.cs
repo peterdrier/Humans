@@ -3,7 +3,7 @@ using Humans.Consent.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Events.Contracts;
 using Humans.Calendar.Contracts;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Scanner.Controllers;
 using Humans.Scanner.Models;
@@ -28,7 +28,7 @@ public class ScannerControllerTests
         IConsentServiceRead? consents = null,
         IICalFeedService? calendarFeed = null,
         IEventServiceRead? events = null,
-        IBurnSettingsService? burnSettings = null)
+        ISettingsService? burnSettings = null)
     {
         var ctrl = new ScannerController(
             tickets,
@@ -37,7 +37,7 @@ public class ScannerControllerTests
             consents ?? Substitute.For<IConsentServiceRead>(),
             calendarFeed ?? Substitute.For<IICalFeedService>(),
             events ?? Substitute.For<IEventServiceRead>(),
-            burnSettings ?? Substitute.For<IBurnSettingsService>());
+            burnSettings ?? Substitute.For<ISettingsService>());
 
         var services = new ServiceCollection();
         services.AddLogging();
@@ -86,7 +86,7 @@ public class ScannerControllerTests
         MatchedUserId: matchedUserId,
         Barcode: "xyz34Qy5");
 
-    private static BurnSettingsInfo ActiveBurn(int year = 2026) => new(
+    private static EventSettingsInfo ActiveBurn(int year = 2026) => new(
         Id: Guid.NewGuid(),
         EventName: "Elsewhere",
         Year: year,
@@ -101,8 +101,7 @@ public class ScannerControllerTests
         FinishingWeekendStartOffset: 3,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
-        EarlyEntryClose: null,
-        IsShiftBrowsingOpen: false);
+        EarlyEntryClose: null);
 
     private static ApprovedEventView OfferedEvent(
         Guid submitterUserId, Guid? campId, string title, Instant startAt,
@@ -280,8 +279,8 @@ public class ScannerControllerTests
         consents.GetPendingDocumentNamesAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new[] { "Liability Waiver" });
 
-        var burnSettings = Substitute.For<IBurnSettingsService>();
-        burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ActiveBurn());
+        var burnSettings = Substitute.For<ISettingsService>();
+        burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ActiveBurn());
 
         var users = Substitute.For<IUserServiceRead>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfo.Create(

@@ -5,7 +5,7 @@ using Humans.Rideshare.Data;
 using Humans.Rideshare.Domain;
 using Humans.Rideshare.Services;
 using Humans.Rideshare.Services.Routing;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -57,8 +57,8 @@ public abstract class RideshareTestHarness : IDisposable
                     _burnerNames.TryGetValue(id, out var name) ? UserInfoFor(id, name) : null);
             });
 
-        BurnSettings = Substitute.For<IBurnSettingsService>();
-        BurnSettings.GetActiveAsync(Arg.Any<CancellationToken>())
+        BurnSettings = Substitute.For<ISettingsService>();
+        BurnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(BurnFixtures.Burn(year: Year));
 
         Notifications = Substitute.For<INotificationEmitter>();
@@ -77,7 +77,7 @@ public abstract class RideshareTestHarness : IDisposable
     private protected TestDbContextFactory<RideshareDbContext> DbFactory { get; }
     private protected FakeClock Clock { get; }
     private protected IUserServiceRead Users { get; }
-    private protected IBurnSettingsService BurnSettings { get; }
+    private protected ISettingsService BurnSettings { get; }
     private protected INotificationEmitter Notifications { get; }
     private protected IAuditLogService AuditLog { get; }
     private protected IRouteProvider RouteProvider { get; }

@@ -5,7 +5,7 @@ using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
 using Humans.Camps.Contracts;
 using Humans.Holded.Contracts;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
@@ -24,7 +24,7 @@ internal sealed class Service(
     ICampServiceRead campService,
     ITeamServiceRead teamService,
     IClock clock,
-    IBurnSettingsService burnSettings,
+    ISettingsService settingsService,
     IStripeService stripeService,
     IHoldedClient holdedClient,
     IOptions<StoreSectionOptions> options,
@@ -645,7 +645,7 @@ internal sealed class Service(
 
     private async Task<LocalDate> TodayInEventZoneAsync()
     {
-        var activeEvent = await burnSettings.GetActiveAsync();
+        var activeEvent = await settingsService.GetActiveEventSettingsAsync();
         var tz = activeEvent is null
             ? DateTimeZone.Utc
             : DateTimeZoneProviders.Tzdb.GetZoneOrNull(activeEvent.TimeZoneId) ?? DateTimeZone.Utc;
@@ -655,7 +655,7 @@ internal sealed class Service(
     /// <summary>Returns the active event's catalog year, falling back to the current UTC year before it exists.</summary>
     private async Task<int> GetCurrentEventYearAsync()
     {
-        var activeEvent = await burnSettings.GetActiveAsync();
+        var activeEvent = await settingsService.GetActiveEventSettingsAsync();
         return activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
     }
 

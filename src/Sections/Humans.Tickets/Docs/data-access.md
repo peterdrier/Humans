@@ -68,7 +68,7 @@ The inner service holds no cache — invalidation methods are no-ops on the
 inner; `CachingTicketQueryService` intercepts. Cross-section calls via
 `IBudgetServiceRead`, `ICampaignServiceRead` (read-split surface), `IUserServiceRead`,
 `IUserEmailService`, `ITeamServiceRead` (read-split surface),
-`IBurnSettingsService`, plus `IClock`. Implements
+`ISettingsService`, plus `IClock`. Implements
 `IUserDataContributor` (the GDPR contributor is the inner, one per section):
 `EraseForUserAsync` erases via `ITicketRepository.EraseUserPiiAsync` +
 `ITicketTransferRepository.ErasePiiForUserAsync` (order/attendee/transfer rows
@@ -149,7 +149,7 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 
 Cross-section calls via `ITicketVendorService`, `IStripeService`,
 `IUserServiceRead`, `IUserService`, `ICampaignService`,
-`IBurnSettingsService`, `ITicketCacheInvalidator`. Implements
+`ISettingsService`, `ITicketCacheInvalidator`. Implements
 `ITicketSyncService`, `IUserMerge`. `BuildEmailLookupAsync` builds the
 verified-email → user-id map by fanning out over `IUserServiceRead.GetAllUserInfosAsync`.
 
@@ -191,7 +191,7 @@ Repository: `ITicketRepository`.
 | TicketAttendees | R |
 
 Cross-section calls via `IUserEmailService`, `IAccountProvisioningService`,
-`IUserService`, `IBurnSettingsService`, `ITicketCacheInvalidator`,
+`IUserService`, `ISettingsService`, `ITicketCacheInvalidator`,
 `IAuditLogService`. Imports attendee contact data into the system; clears
 ticket caches via `InvalidateAfterContactImport`. No `IMemoryCache` directly.
 
@@ -200,7 +200,7 @@ ticket caches via `InvalidateAfterContactImport`. No `IMemoryCache` directly.
 No repository. "Who's onsite" roster orchestrator. Pure read
 orchestration over `IUserServiceRead`, `ICampServiceRead`, `ITeamServiceRead`,
 `IRoleAssignmentService` (the controller resolves the active year via
-`IBurnSettingsService`). Implements
+`ISettingsService`). Implements
 `IOnsiteRosterService`, `IApplicationService`. No direct DB access, no cache.
 
 `TicketAttendeeOwnership` is a stateless helper (current-owner predicate),

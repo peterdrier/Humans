@@ -3,6 +3,7 @@
   src/Sections/Humans.Tickets.Contracts/**
   src/Sections/Humans.EarlyEntry/**
   src/Sections/Humans.Shifts.Contracts/**
+  src/Sections/Humans.Settings.Contracts/**
   src/Sections/Humans.Users.Contracts/**
   src/Sections/Humans.Auth.Contracts/**
   tests/Humans.Integration.Tests/Controllers/GatePageRenderTests.cs
@@ -191,7 +192,7 @@ nobodies-collective/Humans#933.)
   transferred, or refunded at the door won't scan correctly until the next Tickets sync. The window
   is the Tickets cache/sync interval, not real-time.
 - **Early Entry** — `IEarlyEntryService.GetForUserAsync`.
-- **Shifts** — `IBurnSettingsService.GetActiveAsync` (event time zone for "today"; also the active
+- **Shifts** — `ISettingsService.GetActiveEventSettingsAsync` (event time zone for "today"; also the active
   event/year for the shift roster pre-fill and the Attended-participation write — `GateService`
   reads the active event via BurnSettings, not Shifts); and `IShiftManagementServiceRead.GetBrowseShiftsAsync`
   from `GateService`: `GetShiftRosterAsync` pre-fills the claim screen with the gate-shift roster

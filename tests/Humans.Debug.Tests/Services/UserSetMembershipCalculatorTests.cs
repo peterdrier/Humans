@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Debug.Services;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;
@@ -10,12 +11,12 @@ namespace Humans.Debug.Tests.Services;
 /// <summary>Unit tests for the Venn/UpSet set-membership mask math.</summary>
 public class UserSetMembershipCalculatorTests
 {
-    private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
+    private readonly ISettingsService _burnSettings = Substitute.For<ISettingsService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
 
     public UserSetMembershipCalculatorTests()
     {
-        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(MakeBurnSettings(2026));
+        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(MakeBurnSettings(2026));
     }
 
     [HumansFact]
@@ -108,7 +109,7 @@ public class UserSetMembershipCalculatorTests
         AbsoluteStart: Instant.FromUtc(2026, 8, 1, 0, 0),
         AbsoluteEnd: Instant.FromUtc(2026, 8, 1, 8, 0));
 
-    private static BurnSettingsInfo MakeBurnSettings(int year) => new(
+    private static EventSettingsInfo MakeBurnSettings(int year) => new(
         Id: Guid.NewGuid(),
         EventName: "Elsewhere " + year,
         Year: year,
@@ -123,8 +124,7 @@ public class UserSetMembershipCalculatorTests
         FinishingWeekendStartOffset: 6,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
-        EarlyEntryClose: null,
-        IsShiftBrowsingOpen: true);
+        EarlyEntryClose: null);
 
     private static UserInfo MakeUserInfo(bool hasProfile, int? ticketYear, bool? marketingOptedOut)
     {

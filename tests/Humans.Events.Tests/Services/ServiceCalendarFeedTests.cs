@@ -4,7 +4,7 @@ using Humans.Events.Contracts;
 using Humans.Events.Data;
 using Humans.Events.Domain;
 using Humans.Events.Services;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -20,7 +20,7 @@ public class EventServiceCalendarFeedTests
     private static readonly Instant EventStart = Instant.FromUtc(2026, 7, 1, 17, 0);
 
     private readonly IEventRepository _repo = Substitute.For<IEventRepository>();
-    private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
+    private readonly ISettingsService _burnSettings = Substitute.For<ISettingsService>();
     private readonly EventService _service;
 
     public EventServiceCalendarFeedTests()
@@ -84,8 +84,8 @@ public class EventServiceCalendarFeedTests
             UpdatedAt = FixedNow,
         };
         _repo.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(guideSettings);
-        _burnSettings.GetByIdAsync(guideSettings.EventSettingsId, Arg.Any<CancellationToken>())
-            .Returns(new BurnSettingsInfo(
+        _burnSettings.GetEventSettingsByIdAsync(guideSettings.EventSettingsId, Arg.Any<CancellationToken>())
+            .Returns(new EventSettingsInfo(
                 Id: guideSettings.EventSettingsId,
                 EventName: "Test Event 2026",
                 Year: 2026,
@@ -100,8 +100,7 @@ public class EventServiceCalendarFeedTests
                 FinishingWeekendStartOffset: -2,
                 EarlyEntryCapacity: new Dictionary<int, int>(),
                 BarriosEarlyEntryAllocation: null,
-                EarlyEntryClose: null,
-                IsShiftBrowsingOpen: false));
+                EarlyEntryClose: null));
     }
 
     [HumansFact]

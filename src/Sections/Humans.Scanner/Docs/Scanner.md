@@ -42,7 +42,7 @@
 - All scanner routes require the `ScannerAccess` policy (`TicketAdmin`, `Board`, or `Admin` role — or the gate-terminal account by well-known id). Enforced by `[Authorize(Policy = PolicyNames.ScannerAccess)]` on `ScannerController`; pinned by `EndpointAuthorizationTests` in `tests/Humans.Web.Tests`.
 - `/Scanner/Barcode` is client-only: no data from a decoded barcode is sent to the server; all decode logic runs in the browser.
 - `/Scanner/Tickets/Card` searches only orders flagged `IsCurrentEvent`; a blank or unknown barcode renders the not-found card (blank: without echoing a code).
-- `/Scanner/Tickets` performs cross-section reads via `ITicketServiceRead`, `IEarlyEntryService`, `IConsentServiceRead`, `IUserServiceRead`, `IICalFeedService`, `IEventServiceRead`, and `IBurnSettingsService` to render the ticket card plus door context for matched Humans. It is strictly read-only and must never write server-side state.
+- `/Scanner/Tickets` performs cross-section reads via `ITicketServiceRead`, `IEarlyEntryService`, `IConsentServiceRead`, `IUserServiceRead`, `IICalFeedService`, `IEventServiceRead`, and `ISettingsService` to render the ticket card plus door context for matched Humans. It is strictly read-only and must never write server-side state.
 - Door context is read only when the ticket has a matched Human; otherwise every per-person field is null. The check-in timestamp is read for the active event year only.
 - **The ticket card must never mark check-in, write `EventParticipation`, or mutate ticket state.** Scanner is not an attendance gateway.
 - No database tables are owned by this section.
@@ -69,7 +69,7 @@ Project references (`Humans.Scanner.csproj`): `Humans.Base`, `Humans.Events.Cont
 - **Consent**: `IConsentServiceRead.GetPendingDocumentNamesAsync` — names of unsigned required consent documents for the matched Human.
 - **Users**: `IUserServiceRead.GetUserInfoAsync` — event participations (check-in timestamp for the active event year).
 - **Events**: `IEventServiceRead.GetApprovedEventsAsync` — events the matched Human is offering (`SubmitterUserId` match, non-camp, expanded per occurrence for recurring events).
-- **Shifts / Calendar**: `IBurnSettingsService.GetActiveAsync` for the active event year and time zone; `IICalFeedService.GetFeedItemsAsync` for the Human's shift commitments (`Shifts`-sourced items only).
+- **Shifts / Calendar**: `ISettingsService.GetActiveEventSettingsAsync` for the active event year and time zone; `IICalFeedService.GetFeedItemsAsync` for the Human's shift commitments (`Shifts`-sourced items only).
 - **Issues**: feedback filed from `/Scanner/*` routes to `IssueSectionRouting.Scanner`, whose queue TicketAdmin and Board handlers see. Scanner does not call `IIssuesService`.
 
 ## Architecture

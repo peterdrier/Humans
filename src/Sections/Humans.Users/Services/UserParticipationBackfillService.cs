@@ -1,7 +1,7 @@
 using Humans.Users.Services;
 using CsvHelper;
 using Humans.Base.Csv;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using NodaTime;
 using Humans.Users.Contracts;
 
@@ -9,12 +9,12 @@ namespace Humans.Application.Services.Users;
 
 internal sealed class UserParticipationBackfillService(
     IUserServiceInternal userService,
-    IBurnSettingsService burnSettings,
+    ISettingsService settingsService,
     IClock clock) : IUserParticipationBackfillService
 {
     public async Task<int> GetDefaultYearAsync(CancellationToken ct = default)
     {
-        var activeEvent = await burnSettings.GetActiveAsync();
+        var activeEvent = await settingsService.GetActiveEventSettingsAsync();
         return activeEvent?.Year ?? clock.GetCurrentInstant().InUtc().Year;
     }
 

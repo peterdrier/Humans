@@ -1,3 +1,4 @@
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Cantina.Services.Dtos;
 using NodaTime;
@@ -21,7 +22,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
     private const int DaysPerWeek = 7;
 
     private readonly IShiftManagementServiceRead _shiftMgmt;
-    private readonly IBurnSettingsService _burnSettings;
+    private readonly ISettingsService _settingsService;
     private readonly IUserServiceRead _userRead;
     private readonly IClock _clock;
 
@@ -31,25 +32,25 @@ internal sealed class CantinaRosterService : ICantinaRosterService
 
     public CantinaRosterService(
         IShiftManagementServiceRead shiftMgmt,
-        IBurnSettingsService burnSettings,
+        ISettingsService settingsService,
         IUserServiceRead userRead,
         IClock clock)
     {
         _shiftMgmt = shiftMgmt;
-        _burnSettings = burnSettings;
+        _settingsService = settingsService;
         _userRead = userRead;
         _clock = clock;
     }
 
     public async Task<WeeklyRosterDto> GetWeeklyRosterAsync(int? weekStartOffset = null, CancellationToken ct = default)
     {
-        var burn = await _burnSettings.GetActiveAsync(ct).ConfigureAwait(false);
+        var burn = await _settingsService.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
         return await BuildWeeklyRosterAsync(
             burn, weekStartOffset ?? CurrentWeekStartOffset(burn), ct).ConfigureAwait(false);
     }
 
     private async Task<WeeklyRosterDto> BuildWeeklyRosterAsync(
-        BurnSettingsInfo? burn, int weekStartOffset, CancellationToken ct)
+        EventSettingsInfo? burn, int weekStartOffset, CancellationToken ct)
     {
         var weekStartDate = burn is null
             ? (LocalDate?)null
@@ -195,7 +196,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
     /// The offset of the Monday of the week containing today, in the event's
     /// timezone. Zero without an active event — nothing to be relative to.
     /// </summary>
-    private int CurrentWeekStartOffset(BurnSettingsInfo? burn)
+    private int CurrentWeekStartOffset(EventSettingsInfo? burn)
     {
         if (burn is null || GetEventTodayDate(burn) is not { } today)
             return 0;
@@ -206,20 +207,20 @@ internal sealed class CantinaRosterService : ICantinaRosterService
     }
 
     /// <summary>Today's offset in the event's timezone; zero without an active event.</summary>
-    private int CurrentDayOffset(BurnSettingsInfo? burn)
+    private int CurrentDayOffset(EventSettingsInfo? burn)
         => burn is not null && GetEventTodayDate(burn) is { } today
             ? Period.Between(burn.GateOpeningDate, today, PeriodUnits.Days).Days
             : 0;
 
     public async Task<DailyMatrixDto> GetDailyRosterAsync(int? dayOffset = null, CancellationToken ct = default)
     {
-        var burn = await _burnSettings.GetActiveAsync(ct).ConfigureAwait(false);
+        var burn = await _settingsService.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
         return await BuildDailyRosterAsync(
             burn, dayOffset ?? CurrentDayOffset(burn), ct).ConfigureAwait(false);
     }
 
     private async Task<DailyMatrixDto> BuildDailyRosterAsync(
-        BurnSettingsInfo? burn, int dayOffset, CancellationToken ct)
+        EventSettingsInfo? burn, int dayOffset, CancellationToken ct)
     {
         var calendarDate = burn is null
             ? (LocalDate?)null
@@ -343,7 +344,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
     }
 
     private async Task<List<(int DayOffset, IReadOnlyList<Guid> UserIds)>> LoadWeeklyOnSiteUsersAsync(
-        BurnSettingsInfo? burn,
+        EventSettingsInfo? burn,
         int weekStartOffset,
         Dictionary<int, IReadOnlyList<Guid>> onSiteByOffset,
         CancellationToken ct)
@@ -392,7 +393,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
     /// which the caller discards anyway, so scanning past it is wasted DB work.
     /// </summary>
     private async Task<Dictionary<Guid, int>> BuildFirstConfirmedOffsetByUserAsync(
-        BurnSettingsInfo burn,
+        EventSettingsInfo burn,
         int scanThroughOffset,
         Dictionary<int, IReadOnlyList<Guid>> onSiteByOffset,
         CancellationToken ct)
@@ -545,7 +546,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         return noShift;
     }
 
-    private LocalDate? GetEventTodayDate(BurnSettingsInfo? burn)
+    private LocalDate? GetEventTodayDate(EventSettingsInfo? burn)
     {
         if (burn is null)
             return null;
