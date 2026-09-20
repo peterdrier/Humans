@@ -49,8 +49,13 @@ spawn for anything smaller than the overhead. `/spend` shows a run's real number
     absolute path of the deliverable's worktree (yours, or one you create under
     `.claude/worktrees/`) and have it use absolute paths throughout. Parallel only when their
     file sets don't overlap, otherwise in sequence. One owner for git — you, or the last worker.
-  - *One deliverable, several workers, same files:* isolate each, then merge their branches into
-    the deliverable branch yourself (merge output is small); hand any conflict to a worker.
+  - *One deliverable, several workers, same files — or work in waves:* no isolation flag (it
+    always branches from `origin/main`, never from your branch — tested 2026-09-20). Create the
+    feature branch, then cut each worker its own worktree from it:
+    `git worktree add .claude/worktrees/<task> -b <feature>-<task> <feature>`, and give the worker
+    that absolute path. Merge each sub-branch back into the feature branch yourself — it's all
+    local, merge output is small — and hand any conflict to a worker. Later waves then start from
+    what earlier ones merged.
 
 ## Return contract
 
