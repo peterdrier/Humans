@@ -30,14 +30,6 @@ internal sealed class AdminAgentController(
         return View("~/Views/Admin/Agent/Status.cshtml", vm);
     }
 
-    /// <summary>
-    /// Superseded by the /Settings#agent tab (peterdrier/Humans#1634) — one canonical
-    /// URL per page (memory/product/no-url-aliases.md), so a GET here always redirects
-    /// there rather than staying a second live page.
-    /// </summary>
-    [HttpGet("Settings")]
-    public IActionResult Settings() => Redirect("/Settings#agent");
-
     [HttpPost("Settings")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Settings(AdminAgentSettingsViewModel vm, CancellationToken ct)
@@ -58,7 +50,7 @@ internal sealed class AdminAgentController(
             s.RetentionDays = vm.RetentionDays;
         }, ct);
         SetSuccess("Settings saved.");
-        return RedirectToAction(nameof(Settings));
+        return Redirect("/Settings#agent");
     }
 
     [HttpPost("ReloadKnowledgeBase")]

@@ -45,43 +45,15 @@ public sealed class SettingsAdminControllerTests
     };
 
     [HumansFact]
-    public void Index_Get_WithoutAnId_RedirectsToTheSettingsPageEventTab()
-    {
-        // peterdrier/Humans#1628: the screen is superseded by the /Settings#event tab —
-        // one canonical URL per page (memory/product/no-url-aliases.md).
-        var result = BuildSut().Index(id: null);
-
-        result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#event");
-    }
-
-    [HumansFact]
-    public void Index_Get_WithAnId_ForwardsItToTheSettingsPageEventTab()
-    {
-        // A carried, possibly-inactive row named by id must still resolve to that
-        // row, not to whichever one the tab shows by default.
-        var id = Guid.NewGuid();
-
-        var result = BuildSut().Index(id);
-
-        result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be($"/Settings?event={id}#event");
-    }
-
-    [HumansFact]
     public async Task Index_Post_RedirectsBackToTheRowItJustSaved()
     {
-        // Deactivating takes the row off the bare GET; without the id it would be
+        // Deactivating takes the row off the tab's default; without the id it would be
         // stranded and the next save would mint another one.
         var id = Guid.NewGuid();
 
         var result = await BuildSut().Index(MakeForm(id, isActive: false), TestContext.Current.CancellationToken);
 
-        var redirect = result.Should().BeOfType<RedirectToActionResult>().Which;
-        redirect.ActionName.Should().Be(nameof(SettingsAdminController.Index));
-        redirect.RouteValues!["id"].Should().Be(id);
-        // The GET action now accepts that same id and forwards it, so this redirect
-        // resolves to the row that was just saved, not the active one.
-        BuildSut().Index((Guid?)redirect.RouteValues["id"]).Should().BeOfType<RedirectResult>()
-            .Which.Url.Should().Be($"/Settings?event={id}#event");
+        result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be($"/Settings?event={id}#event");
         await _settings.Received(1).SaveEventSettingsAsync(
             Arg.Is<EventSettingsInfo>(s => s.Id == id && s.Status == EventSettingsStatus.Inactive),
             Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -94,7 +66,7 @@ public sealed class SettingsAdminControllerTests
 
         var result = await sut.Index(MakeForm(id: null, isActive: false), TestContext.Current.CancellationToken);
 
-        result.Should().BeOfType<RedirectToActionResult>();
+        result.Should().BeOfType<RedirectResult>();
         await _settings.Received(1).SaveEventSettingsAsync(
             Arg.Is<EventSettingsInfo>(s => s.Id != Guid.Empty), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }

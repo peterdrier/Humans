@@ -54,15 +54,6 @@ internal sealed class GoogleController(
             UserId: id));
     }
 
-    /// <summary>
-    /// Superseded by the /Settings#google-sync tab (peterdrier/Humans#1634) — one
-    /// canonical URL per page, so a GET here always redirects there rather than
-    /// staying a second live page.
-    /// </summary>
-    [HttpGet("SyncSettings")]
-    [Authorize(Policy = PolicyNames.AdminOnly)]
-    public IActionResult SyncSettings() => Redirect("/Settings#google-sync");
-
     [HttpPost("SyncSettings")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
@@ -79,7 +70,7 @@ internal sealed class GoogleController(
             currentUser.Id, serviceType, mode);
 
         SetSuccess($"Sync mode for {SyncServiceNameFormatter.Format(serviceType)} updated to {mode}.");
-        return RedirectToAction(nameof(SyncSettings));
+        return Redirect("/Settings#google-sync");
     }
 
     [HttpPost("SyncSystemTeams")]
