@@ -29,6 +29,11 @@ public static class SanitizedMarkdownRenderer
         sanitizer.AllowedAttributes.Add("checked");
         sanitizer.AllowedAttributes.Add("disabled");
 
+        // User Markdown never needs inline CSS, and a style attribute's url(...) (e.g.
+        // background-image) is not covered by the https-only <img> rule below — it would be a
+        // tracking-pixel path the https-only rule doesn't close. Disallow style outright.
+        sanitizer.AllowedAttributes.Remove("style");
+
         if (!allowImages)
         {
             sanitizer.AllowedTags.Remove("img");

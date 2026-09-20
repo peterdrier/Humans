@@ -76,4 +76,23 @@ public sealed class SanitizedMarkdownRendererTests
 
         html.Should().Contain("href=\"http://example.com\"");
     }
+
+    [HumansFact]
+    public void Render_strips_style_attributes()
+    {
+        var html = SanitizedMarkdownRenderer.Render("<p style=\"color:red\">Body</p>");
+
+        html.Should().NotContain("style=");
+        html.Should().Contain("Body");
+    }
+
+    [HumansFact]
+    public void Render_strips_style_attribute_tracking_pixel_via_css_url()
+    {
+        var html = SanitizedMarkdownRenderer.Render(
+            "<p style=\"background-image:url(http://tracker.example.com/pixel.png)\">Body</p>");
+
+        html.Should().NotContain("style=");
+        html.Should().NotContain("tracker.example.com");
+    }
 }
