@@ -238,7 +238,8 @@ public class MarkdownEditorTagHelper(
     function createEditor(el) {{
         if (!el || el.dataset.mdeInitialized === 'true') {{ return; }}
         try {{
-            new EasyMDE({{
+            var maxLength = parseInt(el.getAttribute('maxlength'), 10);
+            var mde = new EasyMDE({{
                 element: el,
                 autoDownloadFontAwesome: false,
                 spellChecker: false,
@@ -267,6 +268,18 @@ public class MarkdownEditorTagHelper(
                     }}, className: 'fa-solid fa-circle-question', title: 'Markdown help' }}
                 ]
             }});
+            if (!isNaN(maxLength) && maxLength > 0) {{
+                mde.codemirror.on('beforeChange', function(cm, change) {{
+                    if (change.update === undefined) {{ return; }}
+                    var removed = cm.getRange(change.from, change.to).length;
+                    var added = (change.text || []).join('\n').length;
+                    var over = cm.getValue().length - removed + added - maxLength;
+                    if (over > 0) {{
+                        var text = (change.text || []).join('\n');
+                        change.update(change.from, change.to, [text.slice(0, Math.max(0, text.length - over))]);
+                    }}
+                }});
+            }}
             el.dataset.mdeInitialized = 'true';
         }} catch (e) {{
             // Leave the bare textarea in place on failure.
