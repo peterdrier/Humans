@@ -242,7 +242,6 @@ public sealed class ServiceTests
     public async Task SaveEventSettingsAsync_RefusesEarlyEntryStartOffset_BeforeBuildStart()
     {
         var id = Guid.NewGuid();
-        ShiftsKnows(id);
 
         // BuildStartOffset is -25 on MakeDto; -26 is earlier still.
         var act = () => BuildSut().SaveEventSettingsAsync(
@@ -259,7 +258,6 @@ public sealed class ServiceTests
     public async Task SaveEventSettingsAsync_RefusesEarlyEntryStartOffset_AtOrAfterZero()
     {
         var id = Guid.NewGuid();
-        ShiftsKnows(id);
 
         var act = () => BuildSut().SaveEventSettingsAsync(
             MakeDto(id, EventSettingsStatus.Inactive, earlyEntryStartOffset: 0),
@@ -275,7 +273,6 @@ public sealed class ServiceTests
     public async Task SaveEventSettingsAsync_AcceptsEarlyEntryStartOffset_WithinRange()
     {
         var id = Guid.NewGuid();
-        ShiftsKnows(id);
 
         await BuildSut().SaveEventSettingsAsync(
             MakeDto(id, EventSettingsStatus.Inactive, earlyEntryStartOffset: -7),
@@ -289,7 +286,6 @@ public sealed class ServiceTests
     public async Task SaveEventSettingsAsync_AllowsNullEarlyEntryStartOffset()
     {
         var id = Guid.NewGuid();
-        ShiftsKnows(id);
 
         await BuildSut().SaveEventSettingsAsync(
             MakeDto(id, EventSettingsStatus.Inactive), Actor, TestContext.Current.CancellationToken);
