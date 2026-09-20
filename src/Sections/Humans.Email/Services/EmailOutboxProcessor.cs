@@ -105,13 +105,12 @@ internal sealed class EmailOutboxProcessor(
 
                 // Update campaign grant status if applicable — routed via
                 // ICampaignService so the Campaigns section owns campaign_grants.
+                // Bookkeeping only: a failure here must never fall into the catch
+                // below and re-tally an already-sent message as failed.
                 if (message.CampaignGrantId.HasValue)
                 {
-                    await campaignService.UpdateGrantEmailStatusAsync(
-                        message.CampaignGrantId.Value,
-                        EmailOutboxStatus.Sent,
-                        now,
-                        cancellationToken);
+                    await TryUpdateGrantEmailStatusAsync(
+                        message.CampaignGrantId.Value, EmailOutboxStatus.Sent, now, message.Id, cancellationToken);
                 }
 
                 // Throttle: 1 second delay between sends to avoid SMTP rate limits
@@ -145,6 +144,29 @@ internal sealed class EmailOutboxProcessor(
 
         var pendingCount = await outboxRepo.GetPendingCountAsync(_settings.OutboxMaxRetries, cancellationToken);
         _outboxPendingMeter.Set(pendingCount);
+    }
+
+    /// <summary>
+    /// The campaign grant mirror is bookkeeping, not delivery state: a write
+    /// failure here must never surface as a delivery failure. Left uncaught, it
+    /// would fall into the per-message catch above, flip an already-<c>Sent</c>
+    /// message to <c>Failed</c> and double-tally both the metric and the daily
+    /// send count for the one delivery attempt.
+    /// </summary>
+    private async Task TryUpdateGrantEmailStatusAsync(
+        Guid campaignGrantId, EmailOutboxStatus status, Instant now, Guid messageId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await campaignService.UpdateGrantEmailStatusAsync(campaignGrantId, status, now, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                ex,
+                "Failed updating campaign grant {CampaignGrantId} email status to {Status} for message {MessageId}",
+                campaignGrantId, status, messageId);
+        }
     }
 
     /// <summary>

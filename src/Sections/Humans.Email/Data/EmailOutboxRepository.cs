@@ -263,8 +263,8 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.EmailOutboxMessages
             .AsNoTracking()
-            .Where(m => (m.Status == EmailOutboxStatus.Sent || m.Status == EmailOutboxStatus.Failed)
-                && m.CreatedAt >= since)
+            .Where(m => (m.Status == EmailOutboxStatus.Sent && m.SentAt >= since)
+                || (m.Status == EmailOutboxStatus.Failed && m.CreatedAt >= since))
             .ToListAsync(ct);
     }
 }

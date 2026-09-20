@@ -195,9 +195,12 @@ internal interface IEmailOutboxRepository : IRepository
         IReadOnlyList<EmailDailySendCount> rows, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns every <c>Sent</c> or <c>Failed</c> outbox row created at or after
-    /// <paramref name="since"/>, read-only — the backfill's source data. Queued
-    /// rows are excluded: they were never attempted.
+    /// Returns every <c>Sent</c> row sent at or after <paramref name="since"/>, plus
+    /// every <c>Failed</c> row created at or after it, read-only — the backfill's
+    /// source data. <c>Sent</c> rows are filtered by <see cref="EmailOutboxMessage.SentAt"/>
+    /// so this matches the retention cutoff (which deletes by <c>SentAt</c>), not
+    /// <see cref="EmailOutboxMessage.CreatedAt"/>. Queued rows are excluded: they
+    /// were never attempted.
     /// </summary>
     Task<IReadOnlyList<EmailOutboxMessage>> GetSentOrFailedSinceAsync(
         Instant since, CancellationToken ct = default);

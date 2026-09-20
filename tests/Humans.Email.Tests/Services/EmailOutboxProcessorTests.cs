@@ -235,6 +235,29 @@ public class EmailOutboxProcessorTests : IDisposable
         row.FailedCount.Should().Be(0);
     }
 
+    [HumansFact(Timeout = 10000)]
+    public async Task ProcessQueuedAsync_GrantStatusUpdateFailure_DoesNotDoubleTallyDelivery()
+    {
+        var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
+        message.CampaignGrantId = Guid.NewGuid();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        _campaignService.UpdateGrantEmailStatusAsync(
+            message.CampaignGrantId.Value, EmailOutboxStatus.Sent, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("grant update failed"));
+
+        await _job.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+
+        // Transport delivered — the message stays Sent, not re-tallied as Failed
+        // just because the post-delivery grant mirror threw.
+        var updated = await FreshQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        updated.Status.Should().Be(EmailOutboxStatus.Sent);
+
+        var row = await FreshCountsQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        row.SentCount.Should().Be(1);
+        row.FailedCount.Should().Be(0);
+    }
+
     [HumansFact]
     public async Task ProcessQueuedAsync_IncrementsDailyFailedCountOnFailure()
     {
