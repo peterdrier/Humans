@@ -1,7 +1,6 @@
 using Humans.Calendar.Services.Dtos;
 using Humans.Calendar.Services;
 using Humans.Teams.Contracts;
-using Humans.Base.Attributes;
 using Humans.Base.Controllers;
 using Humans.Calendar.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -16,18 +15,18 @@ namespace Humans.Calendar.Controllers;
 // Changes are captured in the audit log (IAuditLogService) rather than gated upfront.
 [Authorize]
 [Route("Calendar")]
-[CrossSectionWrite("Mints and rotates the viewer's User.ICalToken for the personal iCal feed card.")]
 internal sealed class CalendarController : HumansControllerBase
 {
     private readonly ICalendarServiceRead _calendarRead;
     private readonly ICalendarService _calendar;
     private readonly ITeamServiceRead _teams;
-    private readonly IUserService _users;
+    private readonly ICalendarFeedTokenService _feedTokens;
     private readonly IClock _clock;
     private readonly Microsoft.Extensions.Localization.IStringLocalizer<CalendarResource> _localizer;
 
     public CalendarController(
-        IUserService userService,
+        IUserServiceRead userService,
+        ICalendarFeedTokenService feedTokens,
         ICalendarServiceRead calendarRead,
         ICalendarService calendar,
         ITeamServiceRead teams,
@@ -35,7 +34,7 @@ internal sealed class CalendarController : HumansControllerBase
         Microsoft.Extensions.Localization.IStringLocalizer<CalendarResource> localizer)
         : base(userService)
     {
-        _users = userService;
+        _feedTokens = feedTokens;
         _calendarRead = calendarRead;
         _calendar = calendar;
         _teams = teams;
@@ -56,23 +55,16 @@ internal sealed class CalendarController : HumansControllerBase
         // A viewer with no UserInfo row (merged away) simply gets no card rather
         // than a broken calendar.
         var user = await GetCurrentUserInfoAsync(ct);
-        return View(user is null ? model : model with { ICalUrl = await EnsureICalUrlAsync(user, ct) });
+        return View(user is null ? model : model with { ICalUrl = await FeedUrlAsync(user, ct) });
     }
 
     /// <summary>
-    /// The viewer's personal feed URL, minting <c>User.ICalToken</c> on first view.
-    /// Index is the only page that renders the feed card, so it is the only place
-    /// the token is created.
+    /// The viewer's personal feed URL. Index is the only page that renders the card,
+    /// so it is the only caller that may mint.
     /// </summary>
-    private async Task<string> EnsureICalUrlAsync(UserInfo user, CancellationToken ct)
+    private async Task<string> FeedUrlAsync(UserInfo user, CancellationToken ct)
     {
-        var token = user.ICalToken;
-        if (token is null)
-        {
-            token = Guid.NewGuid();
-            await _users.SetICalTokenAsync(user.Id, token.Value, ct);
-        }
-
+        var token = await _feedTokens.EnsureAsync(user.Id, ct);
         return $"{Request.Scheme}://{Request.Host}/api/ical/{user.Id}/{token}.ics";
     }
 
@@ -83,7 +75,7 @@ internal sealed class CalendarController : HumansControllerBase
         var (errorResult, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (errorResult is not null) return errorResult;
 
-        await _users.SetICalTokenAsync(user.Id, Guid.NewGuid(), ct);
+        await _feedTokens.RotateAsync(user.Id, ct);
         SetSuccess(_localizer["Calendar_IcalRegenerated"].Value);
         return RedirectToAction(nameof(Index));
     }

@@ -248,11 +248,6 @@ internal sealed class UserService(
         await repo.SetPreferredLanguageAsync(userId, preferredLanguage, ct);
     }
 
-    public async Task SetICalTokenAsync(Guid userId, Guid token, CancellationToken ct = default)
-    {
-        await repo.SetICalTokenAsync(userId, token, ct);
-    }
-
     public async Task RecordLoginAsync(Guid userId, CancellationToken ct = default)
     {
         await repo.SetLastLoginAsync(userId, clock.GetCurrentInstant(), ct);

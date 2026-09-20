@@ -7,7 +7,7 @@ namespace Humans.Calendar.Data;
 /// <summary>
 /// EF-backed implementation of <see cref="ICalendarRepository"/>. The only
 /// non-test file that touches the Calendar-owned DbSets
-/// (<c>CalendarEvents</c>, <c>CalendarEventExceptions</c>). Uses
+/// (<c>CalendarEvents</c>, <c>CalendarEventExceptions</c>, <c>CalendarFeedTokens</c>). Uses
 /// <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>CalendarDbContext</c> remains Scoped.
 /// The owning team is a bare Guid — not in this model at all.
@@ -129,6 +129,46 @@ internal sealed class CalendarRepository(IDbContextFactory<CalendarDbContext> fa
             throw new InvalidOperationException("Exception is invalid: " + string.Join("; ", errors));
         }
 
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<Guid?> GetFeedTokenAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var row = await ctx.CalendarFeedTokens
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.UserId == userId, ct);
+        return row?.Token;
+    }
+
+    public async Task SetFeedTokenAsync(Guid userId, Guid token, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var row = await ctx.CalendarFeedTokens.FirstOrDefaultAsync(t => t.UserId == userId, ct);
+        if (row is null)
+        {
+            ctx.CalendarFeedTokens.Add(new CalendarFeedToken { UserId = userId, Token = token });
+        }
+        else
+        {
+            row.Token = token;
+        }
+
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task DeleteFeedTokenAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        // Load+remove rather than ExecuteDeleteAsync: the in-memory provider the
+        // section's tests run on does not support the latter.
+        var row = await ctx.CalendarFeedTokens.FirstOrDefaultAsync(t => t.UserId == userId, ct);
+        if (row is null)
+        {
+            return;
+        }
+
+        ctx.CalendarFeedTokens.Remove(row);
         await ctx.SaveChangesAsync(ct);
     }
 }

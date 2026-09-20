@@ -924,7 +924,6 @@ public class SurveyServiceTests
             DeletionScheduledFor: null,
             DeletionEligibleAfter: null,
             UnsubscribedFromCampaigns: false,
-            ICalToken: null,
             SuppressScheduleChangeEmails: false,
             MagicLinkSentAt: null,
             ContactSource: null,
@@ -1636,7 +1635,7 @@ public class SurveyServiceTests
 
     private static UserInfo UserInfoWithName(Guid id, string burnerName, string culture = "en") => new(
         id, burnerName, false, culture, null, Instant.MinValue, null, null, null, null, null,
-        false, null, false, null, null, null, null, null, null,
+        false, false, null, null, null, null, null, null,
         [], [], [], null, []);
 
     // ── Answering (wizard entry) ───────────────────────────────────────────────

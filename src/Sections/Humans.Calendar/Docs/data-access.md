@@ -5,7 +5,8 @@
 Project: `src/Sections/Humans.Calendar` — services under `Services/`,
 repository under `Data/`. **DbContext:** `CalendarDbContext`.
 `CalendarRepository` injects `IDbContextFactory<CalendarDbContext>`
-directly. Owns `CalendarEvents`, `CalendarEventExceptions`. The inner
+directly. Owns `CalendarEvents`, `CalendarEventExceptions`,
+`CalendarFeedTokens`. The inner
 `ICalendarService` is wrapped by
 `Humans.Calendar.Services.CachingCalendarService` (Singleton decorator
 inheriting `TrackedCache<Guid, CalendarEventInfo>`, warmed on startup).
@@ -52,20 +53,33 @@ Folder: `src/Sections/Humans.Calendar/Services/`, with `ICalendarFeedContributor
 (the feed is Calendar-owned, not a section of its own). Personal iCal feed
 orchestrator. Owns no DB tables; fans
 out over `IEnumerable<ICalendarFeedContributor>` implementations registered by other
-sections. Requires a valid `User.ICalToken` stored in the `Users` table (accessed
-read-only through `IUserServiceRead`). The token itself is minted and rotated by
-`CalendarController` through `IUserService.SetICalTokenAsync` — Users still owns the
-row; Calendar owns the feature.
+sections. Requires a valid token in this section's own `CalendarFeedTokens`
+table, reached through the internal `ICalendarFeedTokenService`.
 
 ### ICalFeedService (Scoped)
 
-No repository. Injects `IUserServiceRead` (token validation and user guard —
-reads `UserInfo.ICalToken` from the `CachingUserService` TrackedCache) and
-`IEnumerable<ICalendarFeedContributor>`.
+No repository. Injects `ICalendarFeedTokenService` (token validation),
+`IUserServiceRead` (the user guard — a missing or merged user is a 404 before
+the token is ever compared) and `IEnumerable<ICalendarFeedContributor>`.
 
 | Table | R/W |
 |-------|-----|
-| _(none — token check via `IUserServiceRead.GetUserInfoAsync`, no direct DB access)_ | — |
+| _(none — token check via `ICalendarFeedTokenService`, no direct DB access)_ | — |
+
+### CalendarFeedTokenService (Singleton, `Humans.Calendar.Services`)
+
+Repository: `ICalendarRepository`. Internal: the token's whole lifecycle stays
+inside the section, and the only part that leaves it is
+`IICalFeedService.HasFeedAsync` (a bool for the admin widget, never the token).
+
+| Table | R/W |
+|-------|-----|
+| CalendarFeedTokens | R/W |
+
+Also the section's `IUserDataContributor` (GDPR export slice
+`CalendarFeedToken` — feed existence only, never the secret — plus the erasure
+path) and its `IUserMerge` (deletes the eliminated account's row; the survivor
+keeps their own token and the dead account's feed URL stops working).
 
 Current `ICalendarFeedContributor` implementations (registered by their owning
 sections in each section's own `Section.cs`):

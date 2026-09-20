@@ -18,12 +18,14 @@ namespace Humans.Calendar.Tests.Controllers;
 
 /// <summary>
 /// The personal iCal feed card lives below the month grid on <c>/Calendar</c> (it used to be
-/// on <c>/Shifts/Mine</c>). Covers what the controller decides: minting the token on first
-/// view, rotating it, and that both act on the viewer's own id and nobody else's.
+/// on <c>/Shifts/Mine</c>). Covers what the controller decides: asking for the token on first
+/// view, rotating it, and that both act on the viewer's own id and nobody else's. The token's
+/// own lifecycle is <see cref="CalendarFeedTokenService"/>'s and is tested there.
 /// </summary>
 public class CalendarControllerICalTests
 {
-    private readonly IUserService _users = Substitute.For<IUserService>();
+    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly ICalendarFeedTokenService _feedTokens = Substitute.For<ICalendarFeedTokenService>();
     private readonly ICalendarServiceRead _calendarRead = Substitute.For<ICalendarServiceRead>();
     private readonly ICalendarService _calendar = Substitute.For<ICalendarService>();
     private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
@@ -41,27 +43,27 @@ public class CalendarControllerICalTests
     }
 
     [HumansFact]
-    public async Task Index_mints_a_feed_token_for_a_viewer_who_has_none()
+    public async Task Index_asks_for_the_viewers_token_and_renders_it_as_the_feed_url()
     {
-        StubViewer(iCalToken: null);
+        StubViewer();
+        var token = Guid.NewGuid();
+        _feedTokens.EnsureAsync(_viewer, Arg.Any<CancellationToken>()).Returns(token);
 
         var model = await IndexModelAsync();
 
-        await _users.Received(1).SetICalTokenAsync(_viewer, Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        model.ICalUrl.Should().Contain($"/api/ical/{_viewer}/");
+        await _feedTokens.Received(1).EnsureAsync(_viewer, Arg.Any<CancellationToken>());
+        model.ICalUrl.Should().EndWith($"/api/ical/{_viewer}/{token}.ics");
     }
 
     [HumansFact]
-    public async Task Index_reuses_the_stored_token_and_mints_nothing()
+    public async Task Index_never_rotates_the_token_it_renders()
     {
-        var token = Guid.NewGuid();
-        StubViewer(token);
+        StubViewer();
+        _feedTokens.EnsureAsync(_viewer, Arg.Any<CancellationToken>()).Returns(Guid.NewGuid());
 
-        var model = await IndexModelAsync();
+        await IndexModelAsync();
 
-        await _users.DidNotReceive().SetICalTokenAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        model.ICalUrl.Should().EndWith($"/api/ical/{_viewer}/{token}.ics");
+        await _feedTokens.DidNotReceive().RotateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -73,22 +75,17 @@ public class CalendarControllerICalTests
         var model = await IndexModelAsync();
 
         model.ICalUrl.Should().BeNull();
-        await _users.DidNotReceive().SetICalTokenAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _feedTokens.DidNotReceive().EnsureAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task RegenerateIcal_replaces_the_viewers_own_token_and_returns_to_the_grid()
+    public async Task RegenerateIcal_rotates_the_viewers_own_token_and_returns_to_the_grid()
     {
-        var oldToken = Guid.NewGuid();
-        StubViewer(oldToken);
+        StubViewer();
 
         var result = await CreateController().RegenerateIcal(Xunit.TestContext.Current.CancellationToken);
 
-        await _users.Received(1).SetICalTokenAsync(
-            _viewer,
-            Arg.Is<Guid>(t => t != oldToken && t != Guid.Empty),
-            Arg.Any<CancellationToken>());
+        await _feedTokens.Received(1).RotateAsync(_viewer, Arg.Any<CancellationToken>());
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be(nameof(CalendarController.Index));
     }
@@ -102,14 +99,13 @@ public class CalendarControllerICalTests
         var result = await CreateController().RegenerateIcal(Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<ChallengeResult>();
-        await _users.DidNotReceive().SetICalTokenAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _feedTokens.DidNotReceive().RotateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
-    private void StubViewer(Guid? iCalToken) =>
+    private void StubViewer() =>
         _users.GetUserInfoAsync(_viewer, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
-                new User { Id = _viewer, State = UserState.Active, PreferredLanguage = "en", ICalToken = iCalToken },
+                new User { Id = _viewer, State = UserState.Active, PreferredLanguage = "en" },
                 [], [], [], profile: null, [])));
 
     private async Task<CalendarMonthViewModel> IndexModelAsync()
@@ -135,6 +131,7 @@ public class CalendarControllerICalTests
 
         return new CalendarController(
             _users,
+            _feedTokens,
             _calendarRead,
             _calendar,
             _teams,

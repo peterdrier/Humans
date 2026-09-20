@@ -62,7 +62,6 @@ Extends `IdentityUser<Guid>` with project-specific columns.
 | LastLoginAt | Instant? | Most recent login timestamp — distinguishes imported contacts (`null`) from active users |
 | MagicLinkSentAt | Instant? | Rate-limit anchor for magic-link sends (see Auth invariants) |
 | LastConsentReminderSentAt | Instant? | Rate-limit anchor for the re-consent reminder email |
-| ICalToken | Guid? | Token in the user's personal iCal feed URL; regeneratable |
 | SuppressScheduleChangeEmails | bool | Per-user opt-out for schedule-change notifications |
 | UnsubscribedFromCampaigns | bool | Legacy campaign opt-out flag. **Not** flipped by the current unsubscribe flow — the per-category `CommunicationPreference` table is the live source of truth. |
 | GoogleEmailStatus | GoogleEmailStatus | **Deprecated.** Google sync status is per-address on `UserEmail.GoogleEmailStatus` (the address Google actually rejected), not the user. This column is retained on disk pending a deferred drop migration; `[Obsolete]`, no live reader/writer. |

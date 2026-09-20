@@ -171,7 +171,6 @@ internal sealed class UserInfoSaveChangesInterceptor(
             DeletionScheduledFor = user.DeletionScheduledFor,
             DeletionEligibleAfter = user.DeletionEligibleAfter,
             UnsubscribedFromCampaigns = user.UnsubscribedFromCampaigns,
-            ICalToken = user.ICalToken,
             SuppressScheduleChangeEmails = user.SuppressScheduleChangeEmails,
             MagicLinkSentAt = user.MagicLinkSentAt,
             // GoogleEmailStatus removed — now per-address on UserEmail; UserInfo derives it from

@@ -8,8 +8,8 @@ using Humans.Users.Contracts;
 namespace Humans.Calendar.Controllers;
 
 /// <summary>
-/// Anonymous personal iCal feed. The secret is the user's stored
-/// <c>ICalToken</c>; uid-in-URL makes validation a cached user load + compare
+/// Anonymous personal iCal feed. The secret is the member's row in this section's
+/// <c>calendar_feed_tokens</c>; uid-in-URL makes validation a keyed load + compare
 /// (no lookup-by-token query). All failure modes are a plain 404 — no oracle
 /// distinguishing unknown user from wrong token.
 /// </summary>

@@ -74,19 +74,6 @@ internal sealed partial class UserRepository : IUserRepository
         return true;
     }
 
-    public async Task<bool> SetICalTokenAsync(
-        Guid userId, Guid token, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var user = await ctx.Users.FindAsync([userId], ct);
-        if (user is null)
-            return false;
-
-        user.ICalToken = token;
-        await ctx.SaveChangesAsync(ct);
-        return true;
-    }
-
     public async Task<bool> SetLastLoginAsync(
         Guid userId, Instant at, CancellationToken ct = default)
     {
@@ -211,8 +198,6 @@ internal sealed partial class UserRepository : IUserRepository
         user.LockoutEnabled = true;
         user.LockoutEnd = DateTimeOffset.MaxValue;
         user.SecurityStamp = Guid.NewGuid().ToString();
-
-        user.ICalToken = null;
 
         await ResyncStateInContextAsync(ctx, user, ct);
         await ctx.SaveChangesAsync(ct);
@@ -453,8 +438,6 @@ internal sealed partial class UserRepository : IUserRepository
         user.LockoutEnabled = true;
         user.LockoutEnd = DateTimeOffset.MaxValue;
         user.SecurityStamp = Guid.NewGuid().ToString();
-
-        user.ICalToken = null;
 
         await ResyncStateInContextAsync(ctx, user, ct);
         await ctx.SaveChangesAsync(ct);

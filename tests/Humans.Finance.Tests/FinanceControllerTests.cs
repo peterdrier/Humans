@@ -359,7 +359,6 @@ public class FinanceControllerTests
         DeletionScheduledFor: null,
         DeletionEligibleAfter: null,
         UnsubscribedFromCampaigns: false,
-        ICalToken: null,
         SuppressScheduleChangeEmails: false,
         MagicLinkSentAt: null,
         ContactSource: null,
