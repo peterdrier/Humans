@@ -2,6 +2,7 @@ using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using NodaTime;
 
 namespace Humans.Shifts.Data;
@@ -154,19 +155,24 @@ internal partial interface IShiftManagementRepository
 
     /// <summary>
     /// All eligible Build-period signups for the event: rows where
-    /// Shift.DayOffset ∈ [BuildStartOffset, 0), the rota's period
-    /// is Build or All, and Status ∈ {Confirmed, Pending}.
+    /// Shift.DayOffset ∈ [<paramref name="buildStartOffset"/>, 0), the rota's period
+    /// is Build or All, and Status ∈ {Confirmed, Pending}. <paramref name="buildStartOffset"/>
+    /// is the caller's Settings-sourced calendar value (nobodies-collective/Humans#1630) —
+    /// a repository must not read app-wide calendar fields itself.
     /// </summary>
     Task<IReadOnlyList<EligibleBuildSignup>> GetEligibleBuildSignupsAsync(
-        Guid eventSettingsId, CancellationToken ct = default);
+        Guid eventSettingsId, int buildStartOffset, CancellationToken ct = default);
 
     /// <summary>
     /// Returns confirmed shift signups whose [StartsAtUtc, EndsAtUtc) overlaps the date range
     /// (in event-local time). When <paramref name="departmentId"/> is non-null, restricts to
-    /// shifts whose rota belongs to that team.
+    /// shifts whose rota belongs to that team. <paramref name="calendar"/> is the caller's
+    /// Settings-sourced calendar for <paramref name="eventSettingsId"/>
+    /// (nobodies-collective/Humans#1630) — a repository must not read app-wide calendar fields itself.
     /// </summary>
     Task<IReadOnlyList<ConfirmedShiftRow>> GetConfirmedShiftsInRangeAsync(
         Guid eventSettingsId,
+        IEventSettingsInfo calendar,
         LocalDate startDate,
         LocalDate endDate,
         Guid? departmentId,

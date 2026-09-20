@@ -1,5 +1,8 @@
 using AwesomeAssertions;
+using Humans.Shifts.Contracts;
+using Humans.Shifts.Domain;
 using Humans.Shifts.Models;
+using NodaTime;
 
 namespace Humans.Shifts.Tests.Models;
 
@@ -68,4 +71,70 @@ public sealed class EventSettingsFormMapperTests
         result.Success.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.FieldName == nameof(EventSettingsViewModel.BarriosEarlyEntryAllocationJson));
     }
+
+    /// <summary>
+    /// The calendar (app-wide fields) is sourced from Settings via
+    /// <c>ISettingsService</c>/<c>IBurnSettingsService</c>, never from this row's own
+    /// columns, once one has been carried (nobodies-collective/Humans#1630).
+    /// </summary>
+    [HumansFact]
+    public void ToViewModel_CalendarPresent_UsesCalendarNotEntityColumns()
+    {
+        var es = MakeEntity(eventName: "Stale Local Name", timeZoneId: "UTC");
+        var calendar = MakeCalendar(es.Id, eventName: "Nowhere 2026", timeZoneId: "Europe/Madrid");
+
+        var vm = EventSettingsFormMapper.ToViewModel(es, calendar);
+
+        vm.EventName.Should().Be("Nowhere 2026");
+        vm.TimeZoneId.Should().Be("Europe/Madrid");
+        vm.IsShiftBrowsingOpen.Should().Be(es.IsShiftBrowsingOpen);
+        vm.GlobalVolunteerCap.Should().Be(es.GlobalVolunteerCap);
+        vm.ReminderLeadTimeHours.Should().Be(es.ReminderLeadTimeHours);
+    }
+
+    /// <summary>
+    /// A brand-new row Settings hasn't carried yet has no calendar counterpart —
+    /// the form falls back to the row's own columns only in that case.
+    /// </summary>
+    [HumansFact]
+    public void ToViewModel_NoCalendar_FallsBackToEntityColumns()
+    {
+        var es = MakeEntity(eventName: "Brand New Burn", timeZoneId: "America/Los_Angeles");
+
+        var vm = EventSettingsFormMapper.ToViewModel(es, null);
+
+        vm.EventName.Should().Be("Brand New Burn");
+        vm.TimeZoneId.Should().Be("America/Los_Angeles");
+    }
+
+    private static EventSettings MakeEntity(string eventName, string timeZoneId) => new()
+    {
+        Id = Guid.NewGuid(),
+        EventName = eventName,
+        Year = 2026,
+        TimeZoneId = timeZoneId,
+        GateOpeningDate = new LocalDate(2026, 7, 1),
+        IsShiftBrowsingOpen = true,
+        GlobalVolunteerCap = 300,
+        ReminderLeadTimeHours = 24,
+        IsActive = true,
+    };
+
+    private static BurnSettingsInfo MakeCalendar(Guid id, string eventName, string timeZoneId) => new(
+        Id: id,
+        EventName: eventName,
+        Year: 2026,
+        TimeZoneId: timeZoneId,
+        GateOpeningDate: new LocalDate(2026, 7, 1),
+        BuildStartOffset: -14,
+        EventEndOffset: 6,
+        StrikeEndOffset: 9,
+        FirstCrewStartOffset: -10,
+        SetupWeekStartOffset: -7,
+        PreEventWeekStartOffset: -5,
+        FinishingWeekendStartOffset: -4,
+        EarlyEntryCapacity: new Dictionary<int, int>(),
+        BarriosEarlyEntryAllocation: null,
+        EarlyEntryClose: null,
+        IsShiftBrowsingOpen: true);
 }

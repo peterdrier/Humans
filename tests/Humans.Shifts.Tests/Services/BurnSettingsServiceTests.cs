@@ -1,6 +1,7 @@
 using Humans.Shifts.Data;
 using Humans.Shifts.Domain;
 using AwesomeAssertions;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Services;
 using NodaTime;
 using NSubstitute;
@@ -10,11 +11,25 @@ namespace Humans.Shifts.Tests.Services;
 public sealed class BurnSettingsServiceTests
 {
     private readonly IShiftManagementRepository _repo = Substitute.For<IShiftManagementRepository>();
+    private readonly ISettingsService _settingsService = Substitute.For<ISettingsService>();
     private readonly BurnSettingsService _service;
 
     public BurnSettingsServiceTests()
     {
-        _service = new BurnSettingsService(_repo);
+        _service = new BurnSettingsService(_repo, new EventCalendarResolver(_settingsService));
+    }
+
+    /// <summary>
+    /// Wires the calendar mock to answer for <paramref name="entity"/>'s id (and as the
+    /// active row, if it's the active one) — a separate mock from <c>_repo</c>, same as
+    /// production where the calendar comes from Settings, not from this section's repo.
+    /// </summary>
+    private void StubSettings(EventSettings entity)
+    {
+        var info = ToEventSettingsInfo(entity);
+        _settingsService.GetEventSettingsByIdAsync(entity.Id, Arg.Any<CancellationToken>()).Returns(info);
+        if (entity.IsActive)
+            _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(info);
     }
 
     [HumansFact]
@@ -23,6 +38,7 @@ public sealed class BurnSettingsServiceTests
         var id = Guid.NewGuid();
         var entity = NewEventSettings(id);
         _repo.GetEventSettingsByIdAsync(id, Arg.Any<CancellationToken>()).Returns(entity);
+        StubSettings(entity);
 
         var result = await _service.GetByIdAsync(id, Xunit.TestContext.Current.CancellationToken);
 
@@ -50,6 +66,7 @@ public sealed class BurnSettingsServiceTests
     {
         var entity = NewEventSettings(Guid.NewGuid());
         _repo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(entity);
+        StubSettings(entity);
 
         var result = await _service.GetActiveAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -75,6 +92,7 @@ public sealed class BurnSettingsServiceTests
         entity.EarlyEntryCapacity[-10] = 5;
         entity.EarlyEntryCapacity[-5] = 12;
         _repo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(entity);
+        StubSettings(entity);
 
         var result = await _service.GetActiveAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -97,4 +115,22 @@ public sealed class BurnSettingsServiceTests
         CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
     };
+
+    private static EventSettingsInfo ToEventSettingsInfo(EventSettings src) => new(
+        Id: src.Id,
+        EventName: src.EventName,
+        Year: src.Year,
+        TimeZoneId: src.TimeZoneId,
+        GateOpeningDate: src.GateOpeningDate,
+        BuildStartOffset: src.BuildStartOffset,
+        EventEndOffset: src.EventEndOffset,
+        StrikeEndOffset: src.StrikeEndOffset,
+        FirstCrewStartOffset: src.FirstCrewStartOffset,
+        SetupWeekStartOffset: src.SetupWeekStartOffset,
+        PreEventWeekStartOffset: src.PreEventWeekStartOffset,
+        FinishingWeekendStartOffset: src.FinishingWeekendStartOffset,
+        EarlyEntryCapacity: new Dictionary<int, int>(src.EarlyEntryCapacity),
+        BarriosEarlyEntryAllocation: src.BarriosEarlyEntryAllocation is null
+            ? null : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),
+        EarlyEntryClose: src.EarlyEntryClose);
 }

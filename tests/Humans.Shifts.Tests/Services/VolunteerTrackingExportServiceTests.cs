@@ -1,6 +1,7 @@
 using Humans.Shifts.Data;
 using Humans.Shifts.Domain;
 using AwesomeAssertions;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
@@ -44,7 +45,7 @@ public sealed class VolunteerTrackingExportServiceTests
     {
         var repo = Substitute.For<IShiftManagementRepository>();
         repo.GetConfirmedShiftsInRangeAsync(
-            Arg.Any<Guid>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            Arg.Any<Guid>(), Arg.Any<IEventSettingsInfo>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .Returns(shifts);
 
         var shiftMgmt = Substitute.For<IShiftManagementService>();
@@ -201,7 +202,7 @@ public sealed class VolunteerTrackingExportServiceTests
         // Day3 colored, Day4 empty, arrival = Day2 (day before TeamA's first shift).
         var teamAOnly = new[] { ShiftRow(Bob, TeamA, Day1.PlusDays(2), 9, 17) };
         var repo = Substitute.For<IShiftManagementRepository>();
-        repo.GetConfirmedShiftsInRangeAsync(EventId, Day1, Day7, TeamA, Arg.Any<CancellationToken>())
+        repo.GetConfirmedShiftsInRangeAsync(EventId, Arg.Any<IEventSettingsInfo>(), Day1, Day7, TeamA, Arg.Any<CancellationToken>())
             .Returns(teamAOnly);
         var shiftMgmt = Substitute.For<IShiftManagementService>();
         var burnSettings = Substitute.For<IBurnSettingsService>();
@@ -282,7 +283,7 @@ public sealed class VolunteerTrackingExportServiceTests
         model.Groups.Should().HaveCount(1);
         // The service does not call any status filter on the rows it receives.
         await repo.Received(1).GetConfirmedShiftsInRangeAsync(
-            Arg.Any<Guid>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), Arg.Any<IEventSettingsInfo>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 
     private static readonly Guid Carol = Guid.Parse("c0000000-0000-0000-0000-000000000003");

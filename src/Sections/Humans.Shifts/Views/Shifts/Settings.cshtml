@@ -27,38 +27,49 @@
                     <input type="hidden" asp-for="Id" />
                 }
 
+                @{
+                    // The calendar (app-wide fields) is minted here only for a brand-new
+                    // event row; once one exists, it's edited at /Settings#event and this
+                    // form only echoes it read-only (nobodies-collective/Humans#1630).
+                    var calendarReadOnly = Model.Id.HasValue ? "readonly" : null;
+                }
+
                 <div class="card mb-4">
                     <div class="card-header"><h5 class="mb-0">General</h5></div>
                     <div class="card-body">
+                        @if (Model.Id.HasValue)
+                        {
+                            <p class="small text-muted">Calendar fields below are set at <a href="/Settings#event">Settings</a> — this form no longer edits them.</p>
+                        }
                         <div class="mb-3">
                             <label asp-for="EventName" class="form-label">Event Name</label>
-                            <input asp-for="EventName" class="form-control" placeholder="e.g., Nowhere 2026" />
+                            <input asp-for="EventName" class="form-control" placeholder="e.g., Nowhere 2026" readonly="@calendarReadOnly" />
                             <span asp-validation-for="EventName" class="text-danger"></span>
                         </div>
                         <div class="mb-3">
                             <label asp-for="TimeZoneId" class="form-label">Timezone (IANA)</label>
-                            <input asp-for="TimeZoneId" class="form-control" placeholder="e.g., Europe/Madrid" />
+                            <input asp-for="TimeZoneId" class="form-control" placeholder="e.g., Europe/Madrid" readonly="@calendarReadOnly" />
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label asp-for="GateOpeningDate" class="form-label">Gate Opening Date</label>
-                                <input asp-for="GateOpeningDate" type="date" class="form-control" />
+                                <input asp-for="GateOpeningDate" type="date" class="form-control" readonly="@calendarReadOnly" />
                                 <span asp-validation-for="GateOpeningDate" class="text-danger"></span>
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label asp-for="BuildStartOffset" class="form-label">Build Start Offset</label>
-                                <input asp-for="BuildStartOffset" type="number" class="form-control" />
+                                <input asp-for="BuildStartOffset" type="number" class="form-control" readonly="@calendarReadOnly" />
                                 <small class="form-text text-muted">Negative number (e.g., -14)</small>
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label asp-for="EventEndOffset" class="form-label">Event End Offset</label>
-                                <input asp-for="EventEndOffset" type="number" class="form-control" />
+                                <input asp-for="EventEndOffset" type="number" class="form-control" readonly="@calendarReadOnly" />
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label asp-for="StrikeEndOffset" class="form-label">Strike End Offset</label>
-                                <input asp-for="StrikeEndOffset" type="number" class="form-control" />
+                                <input asp-for="StrikeEndOffset" type="number" class="form-control" readonly="@calendarReadOnly" />
                             </div>
                         </div>
                         <hr />
@@ -66,22 +77,22 @@
                         <div class="row">
                             <div class="col-md-3 mb-3">
                                 <label asp-for="FirstCrewStartOffset" class="form-label">First Crew Start</label>
-                                <input asp-for="FirstCrewStartOffset" type="number" min="-365" max="-1" class="form-control" />
+                                <input asp-for="FirstCrewStartOffset" type="number" min="-365" max="-1" class="form-control" readonly="@calendarReadOnly" />
                                 <small class="form-text text-muted">e.g., -25</small>
                             </div>
                             <div class="col-md-3 mb-3">
                                 <label asp-for="SetupWeekStartOffset" class="form-label">Set-up Week Start</label>
-                                <input asp-for="SetupWeekStartOffset" type="number" min="-365" max="-1" class="form-control" />
+                                <input asp-for="SetupWeekStartOffset" type="number" min="-365" max="-1" class="form-control" readonly="@calendarReadOnly" />
                                 <small class="form-text text-muted">e.g., -16</small>
                             </div>
                             <div class="col-md-3 mb-3">
                                 <label asp-for="PreEventWeekStartOffset" class="form-label">Pre-event Week Start</label>
-                                <input asp-for="PreEventWeekStartOffset" type="number" min="-365" max="-1" class="form-control" />
+                                <input asp-for="PreEventWeekStartOffset" type="number" min="-365" max="-1" class="form-control" readonly="@calendarReadOnly" />
                                 <small class="form-text text-muted">e.g., -9</small>
                             </div>
                             <div class="col-md-3 mb-3">
                                 <label asp-for="FinishingWeekendStartOffset" class="form-label">Finishing Weekend Start</label>
-                                <input asp-for="FinishingWeekendStartOffset" type="number" min="-365" max="-1" class="form-control" />
+                                <input asp-for="FinishingWeekendStartOffset" type="number" min="-365" max="-1" class="form-control" readonly="@calendarReadOnly" />
                                 <small class="form-text text-muted">e.g., -4</small>
                             </div>
                         </div>
@@ -93,16 +104,16 @@
                     <div class="card-body">
                         <div class="mb-3">
                             <label asp-for="EarlyEntryCapacityJson" class="form-label">EE Capacity (JSON: day offset → total capacity)</label>
-                            <textarea asp-for="EarlyEntryCapacityJson" class="form-control font-monospace" rows="4" placeholder='{"day_offset": capacity, ...}'></textarea>
+                            <textarea asp-for="EarlyEntryCapacityJson" class="form-control font-monospace" rows="4" placeholder='{"day_offset": capacity, ...}' readonly="@calendarReadOnly"></textarea>
                             <small class="form-text text-muted">Step function: e.g., {"-14": 50, "-7": 100, "-3": 200}</small>
                         </div>
                         <div class="mb-3">
                             <label asp-for="BarriosEarlyEntryAllocationJson" class="form-label">Barrios EE Allocation (JSON, optional)</label>
-                            <textarea asp-for="BarriosEarlyEntryAllocationJson" class="form-control font-monospace" rows="3"></textarea>
+                            <textarea asp-for="BarriosEarlyEntryAllocationJson" class="form-control font-monospace" rows="3" readonly="@calendarReadOnly"></textarea>
                         </div>
                         <div class="mb-3">
                             <label asp-for="EarlyEntryClose" class="form-label">EE Close (UTC instant, optional)</label>
-                            <input asp-for="EarlyEntryClose" class="form-control" placeholder="2026-07-04T12:00:00Z" />
+                            <input asp-for="EarlyEntryClose" class="form-control" placeholder="2026-07-04T12:00:00Z" readonly="@calendarReadOnly" />
                         </div>
                     </div>
                 </div>

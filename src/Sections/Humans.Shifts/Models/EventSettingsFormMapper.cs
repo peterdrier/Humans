@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
 using NodaTime;
 using NodaTime.Text;
@@ -36,6 +37,38 @@ internal sealed record EventSettingsDraft(
 
 internal static class EventSettingsFormMapper
 {
+    /// <summary>
+    /// Maps a Shifts-owned <see cref="EventSettings"/> row plus its Settings-sourced
+    /// calendar to the admin form's view model. The calendar (app-wide fields) is
+    /// read-only display sourced from Settings; falling back to the row's own columns
+    /// only covers a brand-new row Settings hasn't carried yet (nobodies-collective/Humans#1630).
+    /// </summary>
+    internal static EventSettingsViewModel ToViewModel(EventSettings es, BurnSettingsInfo? calendar) => new()
+    {
+        Id = es.Id,
+        EventName = calendar?.EventName ?? es.EventName,
+        TimeZoneId = calendar?.TimeZoneId ?? es.TimeZoneId,
+        GateOpeningDate = LocalDatePattern.Iso.Format(calendar?.GateOpeningDate ?? es.GateOpeningDate),
+        BuildStartOffset = calendar?.BuildStartOffset ?? es.BuildStartOffset,
+        EventEndOffset = calendar?.EventEndOffset ?? es.EventEndOffset,
+        StrikeEndOffset = calendar?.StrikeEndOffset ?? es.StrikeEndOffset,
+        FirstCrewStartOffset = calendar?.FirstCrewStartOffset ?? es.FirstCrewStartOffset,
+        SetupWeekStartOffset = calendar?.SetupWeekStartOffset ?? es.SetupWeekStartOffset,
+        PreEventWeekStartOffset = calendar?.PreEventWeekStartOffset ?? es.PreEventWeekStartOffset,
+        FinishingWeekendStartOffset = calendar?.FinishingWeekendStartOffset ?? es.FinishingWeekendStartOffset,
+        EarlyEntryCapacityJson = JsonSerializer.Serialize(calendar?.EarlyEntryCapacity ?? es.EarlyEntryCapacity),
+        BarriosEarlyEntryAllocationJson = (calendar?.BarriosEarlyEntryAllocation ?? es.BarriosEarlyEntryAllocation) is { } barrios
+            ? JsonSerializer.Serialize(barrios)
+            : null,
+        EarlyEntryClose = (calendar?.EarlyEntryClose ?? es.EarlyEntryClose) is { } earlyEntryClose
+            ? InstantPattern.General.Format(earlyEntryClose)
+            : null,
+        IsShiftBrowsingOpen = es.IsShiftBrowsingOpen,
+        GlobalVolunteerCap = es.GlobalVolunteerCap,
+        ReminderLeadTimeHours = es.ReminderLeadTimeHours,
+        IsActive = es.IsActive,
+    };
+
     internal static EventSettingsFormParseResult Parse(EventSettingsViewModel model)
     {
         var errors = new List<EventSettingsFormError>();

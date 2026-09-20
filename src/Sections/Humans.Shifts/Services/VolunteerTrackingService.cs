@@ -1,5 +1,6 @@
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
+using Humans.Settings.Contracts;
 using NodaTime;
 using Humans.Shifts.Data;
 using Humans.Shifts.Services.Dtos;
@@ -10,6 +11,7 @@ namespace Humans.Shifts.Services;
 internal sealed class VolunteerTrackingService(
     IVolunteerTrackingRepository trackingRepo,
     IShiftManagementRepository shiftManagement,
+    EventCalendarResolver calendarResolver,
     IUserServiceRead userService,
     IShiftViewInvalidator viewInvalidator,
     IClock clock) : IVolunteerTrackingService, IUserMerge
@@ -61,7 +63,7 @@ internal sealed class VolunteerTrackingService(
 
     public async Task<VolunteerTrackingViewModel> GetTrackingDataAsync(CancellationToken ct = default)
     {
-        var es = await shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
+        var es = await calendarResolver.GetActiveAsync(ct).ConfigureAwait(false);
         if (es is null)
             return new VolunteerTrackingViewModel(false, 0, default, default, [], []);
 
@@ -69,7 +71,7 @@ internal sealed class VolunteerTrackingService(
         var today = clock.GetCurrentInstant().InZone(zone).Date;
         var todayOffset = OffsetOf(es, today);
 
-        var signups = await shiftManagement.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
+        var signups = await shiftManagement.GetEligibleBuildSignupsAsync(es.Id, es.BuildStartOffset, ct).ConfigureAwait(false);
         var users = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
         var statusMap = BuildParticipationStatusMap(users, es.Year);
         var perUserSignups = BuildPerUserSignupMap(signups);
@@ -127,7 +129,7 @@ internal sealed class VolunteerTrackingService(
                             .ToList())));
 
     private static List<VolunteerHeatmapRow> BuildMainCohortRows(
-        EventSettings es,
+        EventSettingsInfo es,
         IReadOnlyDictionary<Guid, Dictionary<int, VolunteerDaySignup>> perUserSignups,
         IReadOnlyDictionary<Guid, ParticipationStatus> statusMap,
         IReadOnlyDictionary<Guid, VolunteerBuildStatus> bsByUser)
@@ -158,7 +160,7 @@ internal sealed class VolunteerTrackingService(
     }
 
     private static MainCohortCells BuildMainCohortCells(
-        EventSettings es,
+        EventSettingsInfo es,
         IReadOnlyDictionary<int, VolunteerDaySignup> daySignups,
         VolunteerBuildStatus? bs,
         int firstSignupDay,
@@ -209,7 +211,7 @@ internal sealed class VolunteerTrackingService(
     }
 
     private static List<VolunteerCohortRow> BuildUnbookedCohortRows(
-        EventSettings es,
+        EventSettingsInfo es,
         int todayOffset,
         IReadOnlyDictionary<Guid, ParticipationStatus> statusMap,
         IReadOnlyDictionary<Guid, Dictionary<int, VolunteerDaySignup>> perUserSignups,
@@ -252,7 +254,7 @@ internal sealed class VolunteerTrackingService(
     }
 
     private static UnbookedCohortCells BuildUnbookedCohortCells(
-        EventSettings es,
+        EventSettingsInfo es,
         IReadOnlySet<int> inBuild,
         int todayOffset,
         int? setupOffset)
@@ -288,7 +290,7 @@ internal sealed class VolunteerTrackingService(
             : VolunteerCellState.NotAvailable;
     }
 
-    private static int? GetSetupOffset(EventSettings es, VolunteerBuildStatus? buildStatus) =>
+    private static int? GetSetupOffset(EventSettingsInfo es, VolunteerBuildStatus? buildStatus) =>
         buildStatus?.BarrioSetupStartDate is { } date
             ? OffsetOf(es, date)
             : null;
@@ -310,7 +312,7 @@ internal sealed class VolunteerTrackingService(
             return new SetCampSetupResult(false, "VolTrack_Err_SetupAtOrAfterGateOpen", null);
         }
 
-        var signups = await shiftManagement.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
+        var signups = await shiftManagement.GetEligibleBuildSignupsAsync(es.Id, es.BuildStartOffset, ct).ConfigureAwait(false);
         int? firstSignup = signups
             .Where(s => s.UserId == targetUserId)
             .Select(s => (int?)s.DayOffset)
@@ -362,7 +364,7 @@ internal sealed class VolunteerTrackingService(
             return new SetDayOffResult(false, "VolTrack_Err_DayOffOutsideBuild");
         }
 
-        var signups = await shiftManagement.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
+        var signups = await shiftManagement.GetEligibleBuildSignupsAsync(es.Id, es.BuildStartOffset, ct).ConfigureAwait(false);
         var hasSignupThatDay = signups.Any(s => s.UserId == targetUserId && s.DayOffset == dayOffset);
         if (hasSignupThatDay)
         {
@@ -402,13 +404,13 @@ internal sealed class VolunteerTrackingService(
     public async Task<VolunteerBuildStripDto?> GetUserBuildStripAsync(
         Guid userId, CancellationToken ct = default)
     {
-        var es = await shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
+        var es = await calendarResolver.GetActiveAsync(ct).ConfigureAwait(false);
         if (es is null) return null;
 
         var zone = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
         var todayOffset = OffsetOf(es, clock.GetCurrentInstant().InZone(zone).Date);
 
-        var signups = await shiftManagement.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
+        var signups = await shiftManagement.GetEligibleBuildSignupsAsync(es.Id, es.BuildStartOffset, ct).ConfigureAwait(false);
         var daySignups = signups
             .Where(s => s.UserId == userId)
             .GroupBy(s => s.DayOffset)
@@ -486,11 +488,11 @@ internal sealed class VolunteerTrackingService(
         viewInvalidator.InvalidateUser(targetUserId);
     }
 
-    private async Task<EventSettings> RequireActiveEventAsync(CancellationToken ct) =>
-        await shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false)
+    private async Task<EventSettingsInfo> RequireActiveEventAsync(CancellationToken ct) =>
+        await calendarResolver.GetActiveAsync(ct).ConfigureAwait(false)
             ?? throw new InvalidOperationException("No active event");
 
-    private static int OffsetOf(EventSettings es, LocalDate date) =>
+    private static int OffsetOf(EventSettingsInfo es, LocalDate date) =>
         Period.Between(es.GateOpeningDate, date, PeriodUnits.Days).Days;
 
     private sealed record VolunteerDaySignup(

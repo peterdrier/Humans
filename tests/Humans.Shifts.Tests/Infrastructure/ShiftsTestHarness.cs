@@ -3,8 +3,11 @@ using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Base.Enums;
 using Humans.Notifications.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
+using Humans.Shifts.Domain;
+using Humans.Shifts.Services;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -161,6 +164,57 @@ public abstract class ShiftsTestHarness : IDisposable
         }
         GC.SuppressFinalize(this);
     }
+
+    /// <summary>
+    /// A fresh <see cref="EventCalendarResolver"/> backed by a fake <see cref="ISettingsService"/>
+    /// that mirrors whichever <see cref="EventSettings"/> rows are seeded in <see cref="ShiftsDb"/>
+    /// at call time (nobodies-collective/Humans#1630) — tests seed the section's own
+    /// <c>EventSettings</c> row with its (still-present) app-wide columns, same as before, and this
+    /// resolver serves those same values back as the calendar every production caller now goes
+    /// through <c>ISettingsService</c> for. One resolver per <c>ShiftManagementService</c>-family
+    /// instance, matching the Scoped-per-request lifetime in production DI.
+    /// </summary>
+    private protected EventCalendarResolver NewCalendarResolver()
+    {
+        var settingsService = Substitute.For<ISettingsService>();
+
+        settingsService.GetEventSettingsByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var id = ci.Arg<Guid>();
+                var local = ShiftsDb.EventSettings.Local.FirstOrDefault(e => e.Id == id)
+                    ?? ShiftsDb.EventSettings.FirstOrDefault(e => e.Id == id);
+                return Task.FromResult(local is null ? null : ToEventSettingsInfo(local));
+            });
+
+        settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                var local = ShiftsDb.EventSettings.Local.FirstOrDefault(e => e.IsActive)
+                    ?? ShiftsDb.EventSettings.FirstOrDefault(e => e.IsActive);
+                return Task.FromResult(local is null ? null : ToEventSettingsInfo(local));
+            });
+
+        return new EventCalendarResolver(settingsService);
+    }
+
+    private static EventSettingsInfo ToEventSettingsInfo(EventSettings src) => new(
+        Id: src.Id,
+        EventName: src.EventName,
+        Year: src.Year,
+        TimeZoneId: src.TimeZoneId,
+        GateOpeningDate: src.GateOpeningDate,
+        BuildStartOffset: src.BuildStartOffset,
+        EventEndOffset: src.EventEndOffset,
+        StrikeEndOffset: src.StrikeEndOffset,
+        FirstCrewStartOffset: src.FirstCrewStartOffset,
+        SetupWeekStartOffset: src.SetupWeekStartOffset,
+        PreEventWeekStartOffset: src.PreEventWeekStartOffset,
+        FinishingWeekendStartOffset: src.FinishingWeekendStartOffset,
+        EarlyEntryCapacity: new Dictionary<int, int>(src.EarlyEntryCapacity),
+        BarriosEarlyEntryAllocation: src.BarriosEarlyEntryAllocation is null
+            ? null : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),
+        EarlyEntryClose: src.EarlyEntryClose);
 
     /// <summary>
     /// An <see cref="IUserServiceRead"/> substitute whose batch read projects this

@@ -35,7 +35,9 @@ Event shifts, rotas, signups, range blocks, event settings, general availability
 
 Singleton per event — dates (gate-opening date, build/event/strike offsets, build sub-period offsets), timezone, early-entry capacity (step function), barrios EE allocation, early-entry close instant, global volunteer cap, reminder lead time hours, shift browsing toggle, IsActive flag, and event name/year.
 
-The build period is split into four named sub-phases via four day-offset fields on EventSettings: `FirstCrewStartOffset` (default -25), `SetupWeekStartOffset` (-16), `PreEventWeekStartOffset` (-9), `FinishingWeekendStartOffset` (-4). Offsets are inclusive starts; the next sub-period's start is the exclusive end. All four must be negative and ascending: `BuildStartOffset ≤ FirstCrew ≤ Set-up week ≤ Pre-event week ≤ Finishing weekend < 0`. Coordinators reconfigure per event so the absolute calendar dates auto-shift with `GateOpeningDate`.
+**The app-wide calendar fields (EventName, Year, TimeZoneId, GateOpeningDate, every offset, EE fields) are vestigial reads on this entity as of nobodies-collective/Humans#1630.** Settings (`ISettingsService`, `Humans.Settings.Contracts`) is now the calendar's source of truth; Shifts internals resolve it per-rota via `Rota.EventSettingsId` (or the active row for active-event paths) through an internal `EventCalendarResolver`, never off these columns directly. The columns themselves are not yet dropped (nobodies-collective/Humans#1631) — this row remains the sole minting point for a brand-new event cycle's id and initial calendar until that issue moves minting to Settings, so `/Shifts/Settings`'s create path still writes them. `GlobalVolunteerCap`, `ReminderLeadTimeHours`, `IsShiftBrowsingOpen` and `IsActive` remain Shifts-owned and are the only fields the admin form edits once a row exists.
+
+The build period is split into four named sub-phases via four day-offset fields on EventSettings: `FirstCrewStartOffset` (default -25), `SetupWeekStartOffset` (-16), `PreEventWeekStartOffset` (-9), `FinishingWeekendStartOffset` (-4). Offsets are inclusive starts; the next sub-period's start is the exclusive end. All four must be negative and ascending: `BuildStartOffset ≤ FirstCrew ≤ Set-up week ≤ Pre-event week ≤ Finishing weekend < 0`. Coordinators reconfigure per event so the absolute calendar dates auto-shift with `GateOpeningDate`. Sub-period classification (`BuildSubPeriodClassifier`) and shift absolute-time helpers (`Shift.GetAbsoluteStart/End`) now take `IEventSettingsInfo` (Settings-sourced), not the entity.
 
 **Table:** `event_settings`
 
@@ -173,8 +175,8 @@ Selected routes:
 | `POST /Shifts/Mine/Availability` | Save general availability |
 | `POST /Shifts/Mine/RegenerateIcal` | Regenerate iCal subscription |
 | `POST /Shifts/Preferences/Tags` | Save volunteer tag preferences |
-| `GET /Shifts/Settings` | Admin: view event settings |
-| `POST /Shifts/Settings` | Admin: update event settings |
+| `GET /Shifts/Settings` | Admin: view event settings — calendar fields read-only (source: `/Settings#event`) once a row exists; full form only when minting a brand-new event (nobodies-collective/Humans#1630) |
+| `POST /Shifts/Settings` | Admin: update the Shifts-owned fields (`IsShiftBrowsingOpen`, `GlobalVolunteerCap`, `ReminderLeadTimeHours`, `IsActive`) on an existing row, or mint a brand-new event with its full calendar |
 | `GET /Shifts/OrphanSignups` | Admin: signups without audit log entries (AdminOnly) |
 | `GET /Shifts/Summary` | Read-only Shift Summary by Camp — global scope (all teams) (`ShiftDepartmentManager` policy) |
 | `GET /Shifts/Summary/{teamSlug}` | Shift Summary scoped to a team-set (the team + its non-promoted sub-teams) |
@@ -316,7 +318,7 @@ declared `internal`; they serve the section's own call sites by inheriting the l
 
 | Leaf interface | What it carries |
 |---|---|
-| `IBurnSettingsService` → `BurnSettingsInfo` | **The only way to read the active burn from outside.** `Year`, `TimeZoneId`, `GateOpeningDate` and the build calendar; never the `EventSettings` entity. |
+| `IBurnSettingsService` → `BurnSettingsInfo` | **The only way to read the active burn from outside.** `Year`, `TimeZoneId`, `GateOpeningDate` and the build calendar; never the `EventSettings` entity. Kept intact for external consumers (nobodies-collective/Humans#1630); internally, Shifts itself now resolves the calendar via `ISettingsService`/`EventCalendarResolver`, not this service. |
 | `IShiftManagementServiceRead` | Pure reads with an external caller — coordinator/department lookups, browse + urgent shifts, staffing snapshot, coverage, rota search, and one rota by id. |
 | `IShiftVolunteerProfiles` | The volunteer's own shift profile and tag preferences (reads *and* writes — hence not a `…Read` name). |
 | `IShiftSignups` | Sign up, sign up a range, no-show history, cancel-all-for-user. |
@@ -342,6 +344,7 @@ section and is not on the leaf.
 - **GDPR:** `ShiftSignupService` implements `IUserDataContributor` (export of signups, volunteer event profile, general availability, tag preferences) and `CancelActiveSignupsForUserAsync` (deletion).
 - **iCal feed:** `ShiftSignupService` implements `Humans.Calendar.Contracts.ICalendarFeedContributor` (`Humans.Shifts` references `Humans.Calendar` for the contributor interface) — contributes the user's Confirmed and Pending shift signups (with rota/team name, shift description, and practical info) to the personal iCal feed assembled by `IICalFeedService`. Only active commitments (Confirmed + Pending) are exported; Cancelled/Bailed/NoShow history is excluded.
 - **Users (account merge):** `ShiftManagementService`, `ShiftSignupService` and `VolunteerTrackingService` each register as `IUserMerge`; `AccountMergeService.AcceptAsync` fans out to them to re-FK Shifts-owned user-scoped rows from source to target (see Triggers).
+- **Settings:** `ISettingsService` (`Humans.Settings.Contracts`) — the calendar authority as of nobodies-collective/Humans#1630. Internal `EventCalendarResolver` wraps it (memoized per request) and resolves the calendar by `Rota.EventSettingsId` via `GetEventSettingsByIdAsync`, or `GetActiveEventSettingsAsync` for active-event paths. No fallback to this section's own `EventSettings` columns when the calendar can't be resolved — the one exception is `/Shifts/Settings` GET's display, which falls back only for a brand-new row Settings hasn't carried yet.
 - **Early Entry contributor:** `VolunteerTrackingExportService` implements `IEarlyEntryProvider` — derives EE grants (earliest confirmed build-shift day − 1, source = that shift's team) for the cross-source EE roster. `ShiftSignupService` evicts the per-user EE cache via `IEarlyEntryInvalidator` on every build-shift confirm/bail/remove/reassign path.
 
 ## Architecture

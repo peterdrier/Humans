@@ -122,7 +122,7 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
 
         await shiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await sut.GetEligibleBuildSignupsAsync(es.Id, TestContext.Current.CancellationToken);
+        var result = await sut.GetEligibleBuildSignupsAsync(es.Id, es.BuildStartOffset, TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(1);
         result[0].UserId.Should().Be(userId);

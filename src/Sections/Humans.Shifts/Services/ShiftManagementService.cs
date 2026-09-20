@@ -8,6 +8,7 @@ using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Base.Constants;
 using Humans.Shifts.Domain;
+using Humans.Settings.Contracts;
 using Humans.Base.Enums;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,6 +33,7 @@ internal sealed class ShiftManagementService(
     IServiceProvider serviceProvider,
     IMemoryCache cache,
     IShiftViewInvalidator viewInvalidator,
+    EventCalendarResolver calendarResolver,
     IClock clock) : IShiftManagementService, IShiftAuthorizationInvalidator, IUserMerge
 {
     private static readonly TimeSpan AuthCacheDuration = TimeSpan.FromSeconds(60);
@@ -544,7 +546,7 @@ internal sealed class ShiftManagementService(
 
     public async Task<ShiftGenerationResult> CreateBuildStrikeShiftsAsync(ConfigureBuildStrikeStaffingInput input)
     {
-        var rota = await repo.GetRotaAsync(input.RotaId, RotaReadShape.EventSettings);
+        var rota = await repo.GetRotaAsync(input.RotaId, RotaReadShape.None);
         if (rota is null || rota.TeamId != input.TeamId)
             return ShiftGenerationResult.Failure("Rota not found.");
 
@@ -563,7 +565,9 @@ internal sealed class ShiftManagementService(
         if (dailyStaffing.Values.Any(d => d.Min > d.Max))
             return ShiftGenerationResult.Failure("MinVolunteers cannot exceed MaxVolunteers.");
 
-        var es = rota.EventSettings;
+        var es = await calendarResolver.GetAsync(rota.EventSettingsId);
+        if (es is null)
+            return ShiftGenerationResult.Failure("Event calendar not configured.");
 
         foreach (var dayOffset in dailyStaffing.Keys)
         {
@@ -609,14 +613,16 @@ internal sealed class ShiftManagementService(
 
     public async Task<ShiftGenerationResult> GenerateEventShiftsAsync(GenerateEventShiftsInput input)
     {
-        var rota = await repo.GetRotaAsync(input.RotaId, RotaReadShape.EventSettings);
+        var rota = await repo.GetRotaAsync(input.RotaId, RotaReadShape.None);
         if (rota is null || rota.TeamId != input.TeamId)
             return ShiftGenerationResult.Failure("Rota not found.");
 
         if (rota.Period != RotaPeriod.Event)
             return ShiftGenerationResult.Failure("Event shift generation is only for Event-period rotas.");
 
-        var es = rota.EventSettings;
+        var es = await calendarResolver.GetAsync(rota.EventSettingsId);
+        if (es is null)
+            return ShiftGenerationResult.Failure("Event calendar not configured.");
         if (input.StartDayOffset < 0 ||
             input.EndDayOffset > es.EventEndOffset ||
             input.StartDayOffset > input.EndDayOffset)
@@ -662,11 +668,13 @@ internal sealed class ShiftManagementService(
 
     public async Task<ShiftMutationResult> CreateShiftAsync(CreateShiftInput input)
     {
-        var rota = await repo.GetRotaAsync(input.RotaId, RotaReadShape.EventSettings);
+        var rota = await repo.GetRotaAsync(input.RotaId, RotaReadShape.None);
         if (rota is null || rota.TeamId != input.TeamId)
             return ShiftMutationResult.Failure("Rota not found.");
 
-        var es = rota.EventSettings;
+        var es = await calendarResolver.GetAsync(rota.EventSettingsId);
+        if (es is null)
+            return ShiftMutationResult.Failure("Event calendar not configured.");
         var (periodStart, periodEnd) = GetRotaDayOffsetBounds(rota.Period, es);
         if (input.DayOffset < periodStart || input.DayOffset > periodEnd)
             return ShiftMutationResult.Failure("Shift date must fall within the rota's period.");
@@ -696,7 +704,7 @@ internal sealed class ShiftManagementService(
         return ShiftMutationResult.Success("Shift created.", shift.Id);
     }
 
-    private static (int Start, int End) GetRotaDayOffsetBounds(RotaPeriod period, EventSettings es) =>
+    private static (int Start, int End) GetRotaDayOffsetBounds(RotaPeriod period, EventSettingsInfo es) =>
         period switch
         {
             RotaPeriod.Build => (es.BuildStartOffset, -1),
@@ -707,11 +715,13 @@ internal sealed class ShiftManagementService(
 
     public async Task<ShiftMutationResult> UpdateShiftAsync(UpdateShiftInput input)
     {
-        var shift = await repo.GetShiftAsync(input.ShiftId, ShiftReadShape.Rota | ShiftReadShape.EventSettings);
+        var shift = await repo.GetShiftAsync(input.ShiftId, ShiftReadShape.Rota);
         if (shift is null || shift.Rota.TeamId != input.TeamId)
             return ShiftMutationResult.Failure("Shift not found.");
 
-        var es = shift.Rota.EventSettings;
+        var es = await calendarResolver.GetAsync(shift.Rota.EventSettingsId);
+        if (es is null)
+            return ShiftMutationResult.Failure("Event calendar not configured.");
         var (periodStart, periodEnd) = GetRotaDayOffsetBounds(shift.Rota.Period, es);
         if (input.DayOffset < periodStart || input.DayOffset > periodEnd)
             return ShiftMutationResult.Failure("Shift date must fall within the rota's period.");
@@ -764,7 +774,7 @@ internal sealed class ShiftManagementService(
 
     /// <summary>Resolves (period, subPeriod) to inclusive day-offset bounds. subPeriod only narrows when period is Build.</summary>
     private static (int? MinDayOffset, int? MaxDayOffset) GetDayOffsetBounds(
-        ShiftPeriod? period, BuildSubPeriod? subPeriod, EventSettings es)
+        ShiftPeriod? period, BuildSubPeriod? subPeriod, EventSettingsInfo es)
     {
         int? minDayOffset = null;
         int? maxDayOffset = null;
@@ -799,7 +809,7 @@ internal sealed class ShiftManagementService(
     /// Iteration-list counterpart to <see cref="GetDayOffsetBounds"/>.
     /// </summary>
     private static List<int> BuildDayOffsetList(
-        ShiftPeriod? period, BuildSubPeriod? subPeriod, EventSettings es)
+        ShiftPeriod? period, BuildSubPeriod? subPeriod, EventSettingsInfo es)
     {
         var offsets = new List<int>();
         if (period is null or ShiftPeriod.Build)
@@ -825,7 +835,7 @@ internal sealed class ShiftManagementService(
         ShiftPeriod? period = null,
         BuildSubPeriod? subPeriod = null)
     {
-        var es = await repo.GetEventSettingsByIdAsync(eventSettingsId);
+        var es = await calendarResolver.GetAsync(eventSettingsId);
         if (es is null) return [];
 
         var (minDayOffset, maxDayOffset) = GetDayOffsetBounds(period, subPeriod, es);
@@ -883,7 +893,7 @@ internal sealed class ShiftManagementService(
 
     public async Task<IReadOnlyList<UrgentShiftInfo>> GetBrowseShiftsAsync(ShiftBrowseQuery query)
     {
-        var es = await repo.GetEventSettingsByIdAsync(query.EventSettingsId);
+        var es = await calendarResolver.GetAsync(query.EventSettingsId);
         if (es is null) return [];
 
         int? fromOffset = query.FromDate.HasValue
@@ -997,7 +1007,7 @@ internal sealed class ShiftManagementService(
     /// </summary>
     private static UrgentShiftInfo ToUrgentShiftInfo(
         Shift shift,
-        EventSettings es,
+        EventSettingsInfo es,
         double score,
         int confirmedCount,
         int remainingSlots,
@@ -1042,7 +1052,7 @@ internal sealed class ShiftManagementService(
             rota.IsVisibleToVolunteers,
             rota.Tags.Select(t => new ShiftTagSummary(t.Id, t.Name)).ToList());
 
-    internal double CalculateScore(Shift shift, int confirmedCount, EventSettings eventSettings)
+    internal double CalculateScore(Shift shift, int confirmedCount, EventSettingsInfo eventSettings)
     {
         var remainingSlots = Math.Max(0, shift.MaxVolunteers - confirmedCount);
         if (remainingSlots == 0) return 0;
@@ -1106,7 +1116,7 @@ internal sealed class ShiftManagementService(
         Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null,
         BuildSubPeriod? subPeriod = null)
     {
-        var es = await repo.GetEventSettingsByIdAsync(eventSettingsId);
+        var es = await calendarResolver.GetAsync(eventSettingsId);
         if (es is null) return ShiftStaffingSnapshot.Empty;
 
         var tz = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
@@ -1218,7 +1228,7 @@ internal sealed class ShiftManagementService(
         LocalDate? toDate = null,
         CancellationToken ct = default)
     {
-        var es = await repo.GetEventSettingsByIdAsync(eventSettingsId, ct);
+        var es = await calendarResolver.GetAsync(eventSettingsId, ct);
         if (es is null) return [];
 
         var teamIdsWithRotas = await repo.GetTeamIdsWithRotasInEventAsync(eventSettingsId, ct);
@@ -1341,7 +1351,7 @@ internal sealed class ShiftManagementService(
 
     private async Task<DashboardOverview> ComputeDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod)
     {
-        var es = await repo.GetEventSettingsByIdAsync(eventSettingsId);
+        var es = await calendarResolver.GetAsync(eventSettingsId);
         if (es is null)
             return new DashboardOverview(0, 0, 0, 0, new PeriodBreakdown(0, 0, 0), 0, 0, 0, 0, []);
 
@@ -1422,7 +1432,7 @@ internal sealed class ShiftManagementService(
     private static List<DepartmentStaffingRow> BuildDepartmentRows(
         IReadOnlyList<Shift> shifts,
         Dictionary<Guid, int> confirmedCounts,
-        EventSettings es,
+        EventSettingsInfo es,
         IReadOnlyDictionary<Guid, TeamInfo> teamLookup)
     {
         Guid DeptIdOf(Shift s)
@@ -1500,7 +1510,7 @@ internal sealed class ShiftManagementService(
     }
 
     private static (int Total, int Filled, int TotalSlots, int FilledSlots, int Remaining, PeriodStaffing Build, PeriodStaffing Event, PeriodStaffing Strike)
-        AggregateShifts(List<Shift> shifts, Dictionary<Guid, int> confirmedCounts, EventSettings es)
+        AggregateShifts(List<Shift> shifts, Dictionary<Guid, int> confirmedCounts, EventSettingsInfo es)
     {
         int total = shifts.Count;
         int filled = 0;
@@ -1566,7 +1576,7 @@ internal sealed class ShiftManagementService(
 
         if (period is not null)
         {
-            var es = await repo.GetEventSettingsByIdAsync(eventSettingsId);
+            var es = await calendarResolver.GetAsync(eventSettingsId);
             if (es is null) return [];
             (minDayOffset, maxDayOffset) = GetDayOffsetBounds(period, subPeriod, es);
         }
@@ -1687,7 +1697,11 @@ internal sealed class ShiftManagementService(
     private async Task<IReadOnlyList<DashboardTrendPoint>> ComputeDashboardTrendsAsync(
         Guid eventSettingsId, TrendWindow window, ShiftPeriod? period, BuildSubPeriod? subPeriod)
     {
-        var es = await repo.GetEventSettingsByIdAsync(eventSettingsId);
+        // CreatedAt is Shifts-owned (not on the Settings-sourced calendar), so the local
+        // row is fetched alongside the calendar for TrendWindow.All's start date.
+        var local = await repo.GetEventSettingsByIdAsync(eventSettingsId);
+        if (local is null) return [];
+        var es = await calendarResolver.GetAsync(eventSettingsId);
         if (es is null) return [];
 
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId) ?? DateTimeZone.Utc;
@@ -1699,7 +1713,7 @@ internal sealed class ShiftManagementService(
             TrendWindow.Last7Days => today.PlusDays(-6),
             TrendWindow.Last30Days => today.PlusDays(-29),
             TrendWindow.Last90Days => today.PlusDays(-89),
-            TrendWindow.All => es.CreatedAt.InZone(tz).Date,
+            TrendWindow.All => local.CreatedAt.InZone(tz).Date,
             _ => today.PlusDays(-29),
         };
 
@@ -1751,7 +1765,7 @@ internal sealed class ShiftManagementService(
         if (period is not (ShiftPeriod.Build or ShiftPeriod.Strike))
             return [];
 
-        var es = await repo.GetEventSettingsByIdAsync(eventSettingsId);
+        var es = await calendarResolver.GetAsync(eventSettingsId);
         if (es is null) return [];
 
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId) ?? DateTimeZone.Utc;
@@ -1823,7 +1837,7 @@ internal sealed class ShiftManagementService(
             [],
             []);
 
-        var es = await repo.GetEventSettingsByIdAsync(eventSettingsId);
+        var es = await calendarResolver.GetAsync(eventSettingsId);
         if (es is null) return empty;
 
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId) ?? DateTimeZone.Utc;
@@ -1960,7 +1974,7 @@ internal sealed class ShiftManagementService(
     {
         if (period is null) return [];
 
-        var es = await repo.GetEventSettingsByIdAsync(eventSettingsId);
+        var es = await calendarResolver.GetAsync(eventSettingsId);
         if (es is null) return [];
 
         var allShifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
@@ -2070,9 +2084,10 @@ internal sealed class ShiftManagementService(
         Guid userId,
         CancellationToken ct = default)
     {
-        // Fail closed when no event is active — the nudge would be meaningless
-        // (no shifts to attend means no cantina meals to plan for).
-        var eventSettings = await repo.GetActiveEventSettingsAsync(ct);
+        // Fail closed when no event is active (or its calendar isn't in Settings yet) —
+        // the nudge would be meaningless (no shifts to attend means no cantina meals to
+        // plan for).
+        var eventSettings = await calendarResolver.GetActiveAsync(ct);
         if (eventSettings is null)
             return false;
 
@@ -2106,7 +2121,7 @@ internal sealed class ShiftManagementService(
         Guid eventSettingsId,
         CancellationToken ct = default)
     {
-        var es = await repo.GetEventSettingsByIdAsync(eventSettingsId, ct);
+        var es = await calendarResolver.GetAsync(eventSettingsId, ct);
         if (es is null)
             return null;
 

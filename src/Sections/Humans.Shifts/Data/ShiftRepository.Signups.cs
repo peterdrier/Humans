@@ -2,6 +2,7 @@ using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
+using Humans.Settings.Contracts;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
@@ -240,15 +241,8 @@ internal sealed partial class ShiftRepository
     }
 
     public async Task<IReadOnlyList<EligibleBuildSignup>> GetEligibleBuildSignupsAsync(
-        Guid eventSettingsId, CancellationToken ct = default)
+        Guid eventSettingsId, int buildStartOffset, CancellationToken ct = default)
     {
-        var es = await _dbContext.EventSettings
-            .Where(x => x.Id == eventSettingsId)
-            .Select(x => new { x.BuildStartOffset })
-            .FirstOrDefaultAsync(ct);
-
-        if (es is null) return [];
-
         // SignupStatus and RotaPeriod are stored as strings via
         // HasConversion<string>(). Per memory/code/no-enum-compare-in-ef.md, we
         // avoid `>=`/`<=` on those enums and use an explicit `||` chain so the
@@ -256,7 +250,7 @@ internal sealed partial class ShiftRepository
         // DayOffset is an int — direct numeric comparison is safe.
         return await _dbContext.ShiftSignups
             .Where(s => s.Status == SignupStatus.Confirmed || s.Status == SignupStatus.Pending)
-            .Where(s => s.Shift.DayOffset >= es.BuildStartOffset && s.Shift.DayOffset < 0)
+            .Where(s => s.Shift.DayOffset >= buildStartOffset && s.Shift.DayOffset < 0)
             .Where(s => s.Shift.Rota.Period == RotaPeriod.Build || s.Shift.Rota.Period == RotaPeriod.All)
             .Where(s => s.Shift.Rota.EventSettingsId == eventSettingsId)
             .Select(s => new EligibleBuildSignup(
@@ -266,21 +260,20 @@ internal sealed partial class ShiftRepository
 
     public async Task<IReadOnlyList<ConfirmedShiftRow>> GetConfirmedShiftsInRangeAsync(
         Guid eventSettingsId,
+        IEventSettingsInfo calendar,
         LocalDate startDate,
         LocalDate endDate,
         Guid? departmentId,
         CancellationToken ct)
     {
-        // Look up the event so we can resolve absolute shift times in memory.
         // Shift.StartsAtUtc / EndsAtUtc are NOT stored columns: absolute times are
         // computed from (GateOpeningDate + DayOffset + StartTime + Duration) via
         // Shift.GetAbsoluteStart / GetAbsoluteEnd, which involve a NodaTime zone
         // conversion that cannot be translated to SQL. We narrow in SQL by
-        // DayOffset and finalise the overlap check in memory.
-        var settings = await _dbContext.EventSettings
-            .AsNoTracking()
-            .FirstOrDefaultAsync(e => e.Id == eventSettingsId, ct)
-            ?? throw new InvalidOperationException($"EventSettings {eventSettingsId} not found.");
+        // DayOffset and finalise the overlap check in memory. The calendar comes
+        // from the caller's Settings-sourced resolution, not this section's own row
+        // (nobodies-collective/Humans#1630).
+        var settings = calendar;
 
         var zone = DateTimeZoneProviders.Tzdb[settings.TimeZoneId];
         var rangeStartUtc = startDate.AtStartOfDayInZone(zone).ToInstant();

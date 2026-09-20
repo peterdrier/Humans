@@ -63,6 +63,7 @@
                         resource marker is a section type (CityPlanning's rule, design
                         §15 step 3b). Acyclic: Humans.Onboarding names only
                         Humans.Shifts.Contracts.
+        Settings      — ISettingsService: the app-wide event calendar (nobodies-collective/Humans#1630).
         Teams         — a rota's department is a team row. The *section* project, not
                         only the leaf: ShiftAdminController derives from
                         HumansTeamControllerBase, which Teams ships public under its own
@@ -71,6 +72,7 @@
         Tickets       — early entry gates on the volunteer holding a ticket.
     -->
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <!--
       Calendar owns the personal iCal feed; ShiftSignupService implements its

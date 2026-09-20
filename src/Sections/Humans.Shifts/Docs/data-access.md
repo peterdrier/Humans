@@ -78,7 +78,8 @@ Repositories: `IShiftManagementRepository`, `IVolunteerTrackingRepository`.
 | GeneralAvailability | R/W (via `IVolunteerTrackingRepository`; R for GDPR export, W for GDPR erasure) |
 | VolunteerBuildStatuses | W (via `IVolunteerTrackingRepository`, GDPR erasure) |
 
-Cross-section calls via `IShiftManagementService`, `IBurnSettingsService`,
+Cross-section calls via `IShiftManagementService`, `ISettingsService` (via
+`EventCalendarResolver`, nobodies-collective/Humans#1630),
 `IAuditLogService`, `INotificationEmitter`, `IAdminAuthorizationService`,
 `IShiftViewInvalidator`, `IEarlyEntryInvalidator`, plus `IServiceProvider`
 (lazy-resolves `ITeamServiceRead` for coordinator/team-name lookups).

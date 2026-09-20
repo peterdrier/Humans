@@ -65,6 +65,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             serviceProvider,
             Cache,
             _viewInvalidator,
+            NewCalendarResolver(),
             Clock);
     }
 

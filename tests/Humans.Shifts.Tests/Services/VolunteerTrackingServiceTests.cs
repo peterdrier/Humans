@@ -1,6 +1,7 @@
 using Humans.Shifts.Data;
 using Humans.Shifts.Domain;
 using AwesomeAssertions;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Services;
 using NodaTime;
@@ -722,10 +723,15 @@ public class VolunteerTrackingServiceTests
         var clock = new FakeClock(now ?? TestNow);
 
         var shiftMgmt = Substitute.For<IShiftManagementRepository>();
-        shiftMgmt.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(activeEvent);
-        shiftMgmt.GetEligibleBuildSignupsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        shiftMgmt.GetEligibleBuildSignupsAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(signups ?? []);
+
+        var settingsService = Substitute.For<ISettingsService>();
+        var calendar = activeEvent is null ? null : ToEventSettingsInfo(activeEvent);
+        settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(calendar);
+        settingsService.GetEventSettingsByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ci => calendar is not null && calendar.Id == ci.Arg<Guid>() ? calendar : null);
+        var calendarResolver = new EventCalendarResolver(settingsService);
 
         var userService = Substitute.For<IUserServiceRead>();
         userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
@@ -758,8 +764,26 @@ public class VolunteerTrackingServiceTests
             availabilities ?? []);
 
         return new VolunteerTrackingService(
-            trackingRepo, shiftMgmt, userService, Substitute.For<IShiftViewInvalidator>(), clock);
+            trackingRepo, shiftMgmt, calendarResolver, userService, Substitute.For<IShiftViewInvalidator>(), clock);
     }
+
+    private static EventSettingsInfo ToEventSettingsInfo(EventSettings src) => new(
+        Id: src.Id,
+        EventName: src.EventName,
+        Year: src.Year,
+        TimeZoneId: src.TimeZoneId,
+        GateOpeningDate: src.GateOpeningDate,
+        BuildStartOffset: src.BuildStartOffset,
+        EventEndOffset: src.EventEndOffset,
+        StrikeEndOffset: src.StrikeEndOffset,
+        FirstCrewStartOffset: src.FirstCrewStartOffset,
+        SetupWeekStartOffset: src.SetupWeekStartOffset,
+        PreEventWeekStartOffset: src.PreEventWeekStartOffset,
+        FinishingWeekendStartOffset: src.FinishingWeekendStartOffset,
+        EarlyEntryCapacity: new Dictionary<int, int>(src.EarlyEntryCapacity),
+        BarriosEarlyEntryAllocation: src.BarriosEarlyEntryAllocation is null
+            ? null : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),
+        EarlyEntryClose: src.EarlyEntryClose);
 
     private static EventSettings MakeEvent(int buildStartOffset = -5, LocalDate? gateOpening = null)
         => new()

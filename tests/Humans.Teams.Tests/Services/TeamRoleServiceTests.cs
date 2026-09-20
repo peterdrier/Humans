@@ -10,6 +10,7 @@ using Humans.Email.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Data;
 using Humans.GoogleIntegration.Services;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
 using Humans.Shifts.Services;
@@ -68,6 +69,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             serviceProvider,
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
+            new EventCalendarResolver(Substitute.For<ISettingsService>()),
             Clock);
         _service = new TeamService(
             new TeamRepository(TeamsDbFactory),

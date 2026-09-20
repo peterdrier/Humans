@@ -50,6 +50,9 @@ public sealed class Section : ISection
         // Cross-section DTO supplier so Events/Camps/Tickets/Notifications consume BurnSettingsInfo without Shifts-internal EventSettings.
         services.AddScoped<IBurnSettingsService, BurnSettingsService>();
 
+        // Per-request memoized calendar lookup off Settings (nobodies-collective/Humans#1630).
+        services.AddScoped<EventCalendarResolver>();
+
         services.AddScoped<ShiftSignupService>();
         services.AddScoped<IShiftSignupService>(sp => sp.GetRequiredService<ShiftSignupService>());
         services.AddScoped<IShiftSignups>(sp => sp.GetRequiredService<ShiftSignupService>());

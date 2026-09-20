@@ -136,6 +136,7 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
             serviceProvider,
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
+            NewCalendarResolver(),
             Clock);
     }
 
