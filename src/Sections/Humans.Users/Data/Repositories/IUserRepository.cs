@@ -50,11 +50,6 @@ internal partial interface IUserRepository : IRepository
     Task<bool> SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default);
 
     /// <summary>
-    /// Sets <c>User.ICalToken</c>. Returns false if the user does not exist.
-    /// </summary>
-    Task<bool> SetICalTokenAsync(Guid userId, Guid token, CancellationToken ct = default);
-
-    /// <summary>
     /// Stamps <c>User.LastLoginAt</c>. Returns false if the user does not exist.
     /// </summary>
     Task<bool> SetLastLoginAsync(Guid userId, Instant at, CancellationToken ct = default);

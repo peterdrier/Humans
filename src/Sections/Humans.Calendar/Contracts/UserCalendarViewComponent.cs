@@ -27,7 +27,7 @@ public sealed class UserCalendarViewComponent(
         {
             var ct = HttpContext.RequestAborted;
             var user = await users.GetUserInfoAsync(userId, ct);
-            model.HasFeedToken = user?.ICalToken is not null;
+            model.HasFeedToken = await feed.HasFeedAsync(user?.Id ?? userId, ct);
             model.Items = await feed.GetFeedItemsAsync(user?.Id ?? userId, ct);
         }
         catch (Exception ex)

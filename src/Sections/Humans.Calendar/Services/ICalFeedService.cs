@@ -14,6 +14,7 @@ namespace Humans.Calendar.Services;
 /// </summary>
 internal sealed class ICalFeedService(
     IUserServiceRead users,
+    ICalendarFeedTokenService tokens,
     IEnumerable<ICalendarFeedContributor> contributors,
     ILogger<ICalFeedService> logger) : IICalFeedService
 {
@@ -45,6 +46,9 @@ internal sealed class ICalFeedService(
         return items.OrderBy(i => i.Start).ToList();
     }
 
+    public async Task<bool> HasFeedAsync(Guid userId, CancellationToken ct = default) =>
+        await tokens.GetAsync(userId, ct) is not null;
+
     public async Task<string?> GetFeedIcsAsync(Guid userId, Guid token, CancellationToken ct = default)
     {
         // #1704: the read resolves merges forward, so a tombstone id answers with the survivor.
@@ -52,7 +56,12 @@ internal sealed class ICalFeedService(
         // merged user's feed is a 404 — no oracle telling the holder of an old URL who absorbed
         // the account, and no feed served under an id that no longer names a human.
         var user = await users.GetUserInfoAsync(userId, ct);
-        if (user is null || user.Id != userId || user.ICalToken is null || user.ICalToken.Value != token)
+        if (user is null || user.Id != userId)
+        {
+            return null;
+        }
+
+        if (await tokens.GetAsync(userId, ct) is not { } stored || stored != token)
         {
             return null;
         }

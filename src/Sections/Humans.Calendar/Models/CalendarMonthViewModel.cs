@@ -8,6 +8,14 @@ internal sealed record CalendarMonthViewModel(
     IReadOnlyList<CalendarOccurrence> Occurrences,
     Guid? FilterTeamId,
     IReadOnlyList<TeamOption> TeamOptions,
-    string ViewerTimezoneLabel);
+    string ViewerTimezoneLabel)
+{
+    /// <summary>
+    /// The viewer's personal iCal subscription URL, rendered as a card below the
+    /// month grid. Null on List/Team, which reuse this model but not the card, and
+    /// for a viewer with no <c>UserInfo</c> row.
+    /// </summary>
+    public string? ICalUrl { get; init; }
+}
 
 internal sealed record TeamOption(Guid Id, string Name);

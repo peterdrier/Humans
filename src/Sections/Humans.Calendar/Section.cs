@@ -3,6 +3,8 @@ using Humans.Base.Interfaces.Caching;
 using Humans.Calendar.Contracts;
 using Humans.Calendar.Data;
 using Humans.Calendar.Services;
+using Humans.Gdpr.Contracts;
+using Humans.Users.Contracts;
 using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,6 +36,14 @@ public sealed class Section : ISection
 
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingCalendarService>());
         services.AddHostedService(sp => sp.GetRequiredService<CachingCalendarService>());
+
+        // The feed credential: Calendar's own table, so its whole lifecycle — mint,
+        // rotate, GDPR erase, merge — is registered here and nothing outside the
+        // section writes it. Singleton to match the repository it wraps.
+        services.AddSingleton<CalendarFeedTokenService>();
+        services.AddSingleton<ICalendarFeedTokenService>(sp => sp.GetRequiredService<CalendarFeedTokenService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CalendarFeedTokenService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<CalendarFeedTokenService>());
 
         // iCal feed orchestrator — pure fan-out over every ICalendarFeedContributor.
         // The contributors themselves are registered by the sections that implement

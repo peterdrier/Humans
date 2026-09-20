@@ -11,9 +11,10 @@ namespace Humans.Calendar.Tests.Services;
 public class ICalFeedServiceTests
 {
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly ICalendarFeedTokenService _tokens = Substitute.For<ICalendarFeedTokenService>();
 
     private ICalFeedService CreateService(params ICalendarFeedContributor[] contributors) =>
-        new(_users, contributors, NullLogger<ICalFeedService>.Instance);
+        new(_users, _tokens, contributors, NullLogger<ICalFeedService>.Instance);
 
     private static CalendarFeedItem MakeItem(string uid, string source, Instant start) =>
         new(
@@ -39,8 +40,11 @@ public class ICalFeedServiceTests
             DisplayName = "Test Human",
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            ICalToken = icalToken,
         };
+
+        // The token is Calendar's own row now, keyed by the id asked for — not a field
+        // that travels with the merge-resolved user row.
+        _tokens.GetAsync(requestedId, Arg.Any<CancellationToken>()).Returns(icalToken);
         var info = UserInfo.Create(
             user: user,
             userEmails: [],

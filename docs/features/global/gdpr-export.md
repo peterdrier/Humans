@@ -31,6 +31,7 @@
   src/Sections/Humans.Backdoor/Services/BackdoorApiKeyService.cs
   src/Sections/Humans.Rideshare/Services/**
   src/Sections/Humans.Workgroups/Services/**
+  src/Sections/Humans.Calendar/Services/CalendarFeedTokenService.cs
 -->
 <!-- freshness:flag-on-change
   Contributor list, JSON section names/shapes, or fan-out orchestration may have shifted; per-section table must stay in sync with each contributor's slice.
@@ -194,6 +195,7 @@ id alone. Asking with either id has to reach the same record.
 | `WorkgroupApplications` | `CachingWorkgroupService` | Array of `{ Workgroup, Status, Purpose, AppliedAt, RegisteredAt }` — the groups the human proposed. Retained after erasure with the applicant attribution dropped: a registered group outlives whoever proposed it. |
 | `WorkgroupMemberships` | `CachingWorkgroupService` | Array of `{ Workgroup, Role, JoinedAt, LeftAt }`. Erased in full. |
 | `WorkgroupLogEntries` | `CachingWorkgroupService` | Array of `{ Workgroup, Kind, OccurredOn, Title, Body, CreatedAt }` — the group's written record of how it worked. Retained, authorship dropped. |
+| `CalendarFeedToken` | `CalendarFeedTokenService` | `{ HasFeed }` — whether the human has ever minted a personal iCal feed. The token itself is never exported: it is a live credential and an export file gets forwarded; the human reads their URL off `/Calendar`, the one place it is shown. Erased in full: the row is deleted. |
 | `WorkgroupMeetings` | `CachingWorkgroupService` | Array of `{ Workgroup, Title, StartUtc, EndUtc, Location, IsPublic, Minutes, CreatedAt }`. Retained, creator attribution dropped. |
 | `WorkgroupDocuments` | `CachingWorkgroupService` | Array of `{ Workgroup, Title, Kind, Status, Authored, Edited, DispositionRecorded, CreatedAt, UpdatedAt }` — the three booleans say which attribution this row carries for this person. Retained, attributions dropped. |
 | `WorkgroupComments` | `CachingWorkgroupService` | Array of `{ Workgroup, Document, Category, Body, Authored, Responded, HiddenByThisPerson, Disposition, Response, Hidden, HiddenReason, CreatedAt }`. Retained, author attribution dropped: the record of what was heard and decided against. |
