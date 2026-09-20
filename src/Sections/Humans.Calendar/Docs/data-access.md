@@ -53,7 +53,9 @@ Folder: `src/Sections/Humans.Calendar/Services/`, with `ICalendarFeedContributor
 orchestrator. Owns no DB tables; fans
 out over `IEnumerable<ICalendarFeedContributor>` implementations registered by other
 sections. Requires a valid `User.ICalToken` stored in the `Users` table (accessed
-read-only through `IUserServiceRead`).
+read-only through `IUserServiceRead`). The token itself is minted and rotated by
+`CalendarController` through `IUserService.SetICalTokenAsync` — Users still owns the
+row; Calendar owns the feature.
 
 ### ICalFeedService (Scoped)
 

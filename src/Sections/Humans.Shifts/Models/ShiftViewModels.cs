@@ -293,7 +293,6 @@ internal sealed class MyShiftsViewModel
     public List<MySignupItem> Upcoming { get; set; } = [];
     public List<MySignupItem> Pending { get; set; } = [];
     public List<MySignupItem> Past { get; set; } = [];
-    public string? ICalUrl { get; set; }
     public List<int> AvailableDayOffsets { get; set; } = [];
 
     /// <summary>

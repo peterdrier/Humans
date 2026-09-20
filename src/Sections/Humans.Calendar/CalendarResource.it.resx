@@ -128,4 +128,10 @@
   <data name="Calendar_CannotChangeEventType" xml:space="preserve">
     <value>Questa serie contiene occorrenze modificate. Mantieni il tipo a giornata intera o con orari, oppure crea una nuova serie.</value>
   </data>
+  <data name="Calendar_IcalFeedTitle" xml:space="preserve"><value>Feed iCal</value></data>
+  <data name="Calendar_IcalFeedHelp" xml:space="preserve"><value>Iscriviti ai tuoi turni ed eventi salvati nella tua app calendario:</value></data>
+  <data name="Calendar_IcalCopy" xml:space="preserve"><value>Copia</value></data>
+  <data name="Calendar_IcalRegenerateConfirm" xml:space="preserve"><value>Questo invaliderà l'URL attuale. Continuare?</value></data>
+  <data name="Calendar_IcalRegenerate" xml:space="preserve"><value>Rigenera URL</value></data>
+  <data name="Calendar_IcalRegenerated" xml:space="preserve"><value>URL iCal rigenerato.</value></data>
 </root>
