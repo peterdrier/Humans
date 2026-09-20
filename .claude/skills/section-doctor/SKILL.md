@@ -131,23 +131,20 @@ or a quoted heredoc. Environment caveats are dated per-session lines in the run 
 
 ```bash
 gh pr list --repo peterdrier/Humans --state open --limit 200 --json number,headRefName,title > "$RUNDIR/prs.json"
-# run_in_background: the selector scores the whole solution with reforge (ten minutes in the cloud) and
-# outruns a foreground Bash call. Wait for the background task to finish, then read both files.
-python .claude/skills/section-doctor/select-section.py --prs "$RUNDIR/prs.json" > "$RUNDIR/selection.txt" 2>&1; echo $? > "$RUNDIR/selection.rc"
+python .claude/skills/section-doctor/select-section.py --prs "$RUNDIR/prs.json" | tee "$RUNDIR/selection.txt"
+exit "${PIPESTATUS[0]}"
 ```
 
-Run that in the background from the start, never in the foreground: a timed-out foreground call
-leaves `selection.txt` partial, and re-invoking pays for the scan twice. Read
-`selection.txt` and `selection.rc` only after the background task has exited. (Without `gh`,
-write the same `[{number, headRefName, title}]` shape from the GitHub MCP tools; the script reads
-each PR's files from git itself.) The script computes the blocked set (sections
-with an open `section-doctor/` PR or a recent pushed branch), the feature-active down-rank, the
-tiers, the scores, and the pick: never-doctored tier by median score, then previously-doctored
-sections changed since their last run, ranked by age plus churn. It prints `SECTION:` / `TIER:` /
+(Without `gh`, write the same `[{number, headRefName, title}]` shape from the GitHub MCP tools;
+the script reads each PR's files from git itself.) The script needs only git — no build, no
+reforge — and computes the blocked set (sections with an open `section-doctor/` PR or a recent
+pushed branch), the feature-active down-rank, and the pick: the section changed since its last
+run with the highest age-plus-churn priority. A section with no run yet ranks from the commit
+that created it, the whole section as churn, after a one-week cool-down. It prints `SECTION:` /
 `BASE:` / `RATIONALE:` / `UPCOMING:`. Obey its verdicts — never pick by judgment: `ALL BLOCKED`
-(exit 3) and `NOTHING CHANGED` (exit 2, both read from `selection.rc`) end the run with nothing written (locally, remove the
+(exit 3) and `NOTHING CHANGED` (exit 2) end the run with nothing written (locally, remove the
 worktree). `--section` skips the pick but still runs `--blocked-only`; a blocked section stops
-the run. A low score is not evidence of health — it measures structure, never correctness.
+the run.
 
 Then, before any reading: `doctor.py runfile <Section> --invocation "<how this run was invoked>"`
 writes `docs/health/runs/<yyyy-mm-dd>-<Section>.md` (header, empty blocks, the coverage and

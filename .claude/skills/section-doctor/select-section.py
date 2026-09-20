@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """Section selection for a section-doctor run (Phase 2).
 
-Usage: python select-section.py --prs <open-prs.json> [--no-build] [--blocked-only]
+Usage: python select-section.py --prs <open-prs.json> [--blocked-only]
 
 Computes everything mechanical about selection: blocked set, pool, feature-active
-down-rank, tiers, reforge scores, the middle-out median pick for the never-doctored
-tier, and the changed-since-last-run rule for the re-doctor tier. Prints
-SECTION:/TIER:/RATIONALE: (plus BASE: for a re-doctor). Exit 2 = NOTHING CHANGED
-(every eligible section was doctored and untouched since); exit 3 = ALL BLOCKED.
+down-rank, and the changed-since-last-run ranking. Prints SECTION:/BASE:/RATIONALE:.
+Exit 2 = NOTHING CHANGED (every eligible section is untouched since its last run);
+exit 3 = ALL BLOCKED. No build and no reforge: the ranking needs only git and a line count.
 
 <open-prs.json> is the open-PR list as JSON: [{number, headRefName, title}, ...].
 Locally that is one `gh pr list --repo peterdrier/Humans --state open --limit 200
@@ -17,9 +16,11 @@ API: `refs/pull/<n>/head` is fetched and diffed against origin/main (the API's f
 list carries patch bodies and silently caps at 100 files). A fetch that fails stops
 the selector: it cannot see in-flight work, so it must not pick.
 
-Re-doctor ranking: age of the last run in days plus the share of the section
-rewritten since it (CHURN_DAYS_PER_PERCENT days per percent of LOC changed), so a
-heavy recent rewrite can outrank an older quiet run. Ties by lowest score.
+Ranking: age of the last run in days plus the share of the section rewritten since
+it (CHURN_DAYS_PER_PERCENT days per percent of LOC changed), so a heavy recent rewrite
+can outrank an older quiet run. A section with no run yet ranks from the commit that
+created it, the whole section as churn, once it is NEW_SECTION_COOLDOWN_DAYS old — a
+section doctored the week it lands is reviewed mid-flight.
 
 The blocked set also reads `origin`'s `section-doctor/*` branches directly (git,
 not gh): a run that has pushed its Phase 2 marker but not yet opened its PR is
@@ -38,6 +39,7 @@ REPO_ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file
 SECTIONS_DIR = os.path.join(REPO_ROOT, "src", "Sections")
 BRANCH_MAX_AGE_DAYS = 3
 CHURN_DAYS_PER_PERCENT = 1.0   # one percent of a section's LOC changed since its last run == one day of age
+NEW_SECTION_COOLDOWN_DAYS = 7
 RUN_FILE_RE = re.compile(r"docs/health/runs/\d{4}-\d{2}-\d{2}-([A-Za-z0-9]+)")
 
 
@@ -79,37 +81,17 @@ def run(cmd):
     return p.returncode, p.stdout + p.stderr
 
 
-def reforge_scores():
-    """{section: (score, loc)} from surface-score compact output, or None."""
-    rc, out = run(["reforge", "surface-score", "--solution", "Humans.slnx", "--format", "compact"])
-    partial = False
-    if rc != 0:
-        rc, out = run(["reforge", "surface-score", "--solution", "Humans.slnx", "--format", "compact", "--allow-degraded"])
-        partial = True
-    if rc != 0:
-        return None, out.strip().splitlines()[-1] if out.strip() else "reforge failed with no output"
-    scores = {}
-    for m in re.finditer(r"^\s{2}(\S+)\s+(\d+)\s+loc=(\d+)\b", out, re.M):
-        scores[m.group(1)] = (int(m.group(2)), int(m.group(3)))
-    if not scores:
-        return None, "no per-section score lines in reforge output"
-    return scores, "PARTIAL (solution did not compile cleanly)" if partial else "clean"
-
-
-def loc_fallback(sections):
-    """{section: (loc-as-score, loc)} counting .cs/.cshtml lines -- proxy when reforge is unavailable."""
-    scores = {}
-    for s in sections:
-        loc = 0
-        for suffix in ("", ".Contracts"):
-            for root, dirs, files in os.walk(os.path.join(SECTIONS_DIR, "Humans." + s + suffix)):
-                dirs[:] = [d for d in dirs if d not in ("bin", "obj")]
-                for f in files:
-                    if f.endswith((".cs", ".cshtml")):
-                        with open(os.path.join(root, f), encoding="utf-8", errors="ignore") as fh:
-                            loc += sum(1 for line in fh if line.strip())
-        scores[s] = (loc, loc)
-    return scores
+def section_loc(s):
+    """Non-blank .cs/.cshtml lines of the section and its Contracts leaf -- the churn ratio's denominator."""
+    loc = 0
+    for suffix in ("", ".Contracts"):
+        for root, dirs, files in os.walk(os.path.join(SECTIONS_DIR, "Humans." + s + suffix)):
+            dirs[:] = [d for d in dirs if d not in ("bin", "obj")]
+            for f in files:
+                if f.endswith((".cs", ".cshtml")):
+                    with open(os.path.join(root, f), encoding="utf-8", errors="ignore") as fh:
+                        loc += sum(1 for line in fh if line.strip())
+    return loc
 
 
 def branch_blocked(pr_heads, warnings):
@@ -144,19 +126,21 @@ def branch_blocked(pr_heads, warnings):
 
 
 def last_doctored(s):
-    """(unix-time, sha) of the origin/main commit that added the section's newest run file --
+    """(unix-time, sha, new?) of the origin/main commit that added the section's newest run file --
     a doctor run is exactly that; any other edit to health.md is not one. Falls back to the
-    last commit to health.md for a section with no run file."""
+    last commit to health.md, then (new=True) to the parent of the commit that created the
+    section, so the whole section counts as churn."""
     queries = (
-        ["--diff-filter=A", "origin/main", "--",
+        ["-1", "--diff-filter=A", "origin/main", "--",
          "docs/health/runs/????-??-??-%s.md" % s, "docs/health/runs/????-??-??-%s-*.md" % s],
-        ["origin/main", "--", "src/Sections/Humans.%s/Docs/health.md" % s],
+        ["-1", "origin/main", "--", "src/Sections/Humans.%s/Docs/health.md" % s],
+        ["--reverse", "--diff-filter=A", "origin/main", "--", "src/Sections/Humans.%s" % s],
     )
-    for q in queries:
-        rc, out = run(["git", "log", "-1", "--format=%ct %H"] + q)
+    for i, q in enumerate(queries):
+        rc, out = run(["git", "log", "--format=%ct %H"] + q)
         if rc == 0 and out.strip():
-            t, sha = out.split()
-            return int(t), sha
+            t, sha = out.strip().splitlines()[0].split()
+            return int(t), sha + ("^" if i == 2 else ""), i == 2
     return None
 
 
@@ -184,12 +168,19 @@ def churn_since(sha, s):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--prs", required=True)
-    ap.add_argument("--no-build", action="store_true")
     ap.add_argument("--blocked-only", action="store_true", help="print the blocked set and exit (for --section runs)")
     args = ap.parse_args()
 
     with open(args.prs, encoding="utf-8") as f:
         prs = json.load(f)
+
+    # Every rank below is a git log over origin/main; a shallow clone (cloud containers) sees the
+    # boundary commit as the birth of every file and would cool-down or drop the oldest sections.
+    rc, out = run(["git", "rev-parse", "--is-shallow-repository"])
+    if out.strip() == "true":
+        rc, out = run(["git", "fetch", "--quiet", "--unshallow", "origin", "main"])
+        if rc != 0:
+            sys.exit("shallow clone and `git fetch --unshallow origin main` failed -- ranking would be wrong; stop\n" + out.strip())
 
     pool = sorted(
         d[len("Humans."):]
@@ -244,93 +235,53 @@ def main():
             print("  %s -- %s" % (s, n))
         return 3
 
-    build = "skipped (--no-build)"
-    if not args.no_build:
-        rc, _ = run(["dotnet", "build", "Humans.slnx", "-v", "quiet"])
-        build = "ok" if rc == 0 else "FAILED -- reforge scores may under-report"
-
-    scores, source = reforge_scores()
-    if scores is None:
-        scores, source = loc_fallback(eligible), "loc-fallback (reforge unavailable: %s)" % source
-    else:
-        # A section reforge prints no line for has nothing to report: score 0, not unknown.
-        for s, (_, loc) in loc_fallback([s for s in eligible if s not in scores]).items():
-            scores[s] = (0, loc)
-
-    def score(s):
-        return scores.get(s, (sys.maxsize, sys.maxsize))
-
-    never = [s for s in eligible if not os.path.exists(os.path.join(SECTIONS_DIR, "Humans." + s, "Docs", "health.md"))]
-    redoctor = [s for s in eligible if s not in never]
-    doctored = {s: last_doctored(s) for s in redoctor}
-    # Re-doctor tier: eligible only if the section changed since its last run merged;
-    # ranked by age of that run plus how much of the section was rewritten since, ties by
-    # lowest score.
-    churned = {s: churn_since(doctored[s][1], s) for s in redoctor if doctored[s]}
+    doctored = {s: last_doctored(s) for s in eligible}
+    now_t = time.time()
+    cooling = sorted(s for s in eligible if doctored[s] and doctored[s][2]
+                     and now_t - doctored[s][0] < NEW_SECTION_COOLDOWN_DAYS * 86400)
+    ranked_pool = [s for s in eligible if doctored[s] and s not in cooling]
+    # Eligible only if the section changed since its last run merged (a new section: since it
+    # landed); ranked by age of that run plus how much of the section was rewritten since.
+    churned = {s: churn_since(doctored[s][1], s) for s in ranked_pool}
     churn = {s: churned[s][0] for s in churned}          # any change: eligibility
     code_churn = {s: churned[s][1] for s in churned}     # code change: the ratio
-    now_t = time.time()
+    loc = {s: section_loc(s) for s in ranked_pool}
 
     def priority(s):
         age_days = (now_t - doctored[s][0]) / 86400
-        loc = max(score(s)[1], 1)
-        return age_days + CHURN_DAYS_PER_PERCENT * 100.0 * code_churn[s] / loc
+        return age_days + CHURN_DAYS_PER_PERCENT * 100.0 * code_churn[s] / max(loc[s], 1)
 
-    stale = sorted((s for s in churn if churn[s]), key=lambda s: (-priority(s), score(s)))
+    stale = sorted((s for s in churn if churn[s]), key=lambda s: -priority(s))
 
-    print("select-section: build=%s, score source=%s" % (build, source))
     for w in warnings:
         print("WARNING: " + w)
-    print("pool=%d blocked=%s feature-active=%s" % (len(pool), blocked_text(), ", ".join(active) or "none"))
-    for label, tier in (("never-doctored", never), ("previously-doctored", redoctor)):
-        if tier:
-            print("tier %s (%d):" % (label, len(tier)))
-            for s in sorted(tier, key=score):
-                sc = scores.get(s)
-                print("  %-24s %-24s%s%s" % (s,
-                                             "score=%-6d loc=%-7d" % sc if sc else "score=n/a    loc=n/a",
-                                             " [feature-active]" if s in active else "",
-                                             (" last-run=%s%s" % (time.strftime("%Y-%m-%d", time.gmtime(doctored[s][0])),
-                                                                  " churn=%d priority=%.0f" % (churn[s], priority(s)) if s in stale else " unchanged"))
-                                             if s in doctored and doctored[s] else ""))
-
-    # Feature-active sections sink to the tier bottom: median over the rest, unless only they remain.
-    def median_pick(tier):
-        ranked = sorted((s for s in tier if s not in active), key=score) or sorted(tier, key=score)
-        return ranked[(len(ranked) - 1) // 2]
+    print("pool=%d blocked=%s feature-active=%s cooling-down=%s"
+          % (len(pool), blocked_text(), ", ".join(active) or "none", ", ".join(cooling) or "none"))
+    for s in sorted(ranked_pool, key=lambda s: (s not in stale, -priority(s) if s in stale else 0)):
+        print("  %-24s loc=%-7d%s last-run=%s%s%s" % (
+            s, loc[s], " [feature-active]" if s in active else "",
+            "new " if doctored[s][2] else "", time.strftime("%Y-%m-%d", time.gmtime(doctored[s][0])),
+            " churn=%d priority=%.0f" % (churn[s], priority(s)) if s in stale else " unchanged"))
 
     def first_pick(ordered):
         return next((s for s in ordered if s not in active), ordered[0])
 
-    if never:
-        pick = median_pick(never)
-        print("\nSECTION: %s" % pick)
-        print("TIER: never-doctored")
-        print("RATIONALE: median (lower-middle) of %d never-doctored section(s) by %s after setting"
-              % (len([s for s in never if s not in active]) or len(never),
-                 "reforge score" if "fallback" not in source else "loc"))
-        print("  aside %d feature-active; pool %d, blocked %d." % (len([s for s in never if s in active]), len(pool), len(blocked)))
-    elif stale:
+    if stale:
         pick = first_pick(stale)
         print("\nSECTION: %s" % pick)
-        print("TIER: re-doctor")
         print("BASE: %s" % doctored[pick][1])
-        print("RATIONALE: highest age-plus-churn priority among previously-doctored sections changed "
-              "since their last run merged (last run %s, %d lines churned); Phase 3 diffs against BASE."
-              % (time.strftime("%Y-%m-%d", time.gmtime(doctored[pick][0])), churn[pick]))
+        print("RATIONALE: highest age-plus-churn priority among sections changed since their last run "
+              "merged (%s %s, %d lines churned); Phase 3 diffs against BASE."
+              % ("landed" if doctored[pick][2] else "last run",
+                 time.strftime("%Y-%m-%d", time.gmtime(doctored[pick][0])), churn[pick]))
     else:
-        print("\nNOTHING CHANGED: every eligible section is previously-doctored and unchanged since its last run.")
+        print("\nNOTHING CHANGED: every eligible section is unchanged since its last run.")
         return 2
 
     # Non-binding forecast: the next 4 picks if nothing else changes (each pick blocks itself).
     # Purely informational for the PR body; never stored, and later runs recompute from scratch.
-    upcoming, future = [], [s for s in never if s != pick]
-    while len(upcoming) < 4 and future:
-        nxt = median_pick(future)
-        upcoming.append(nxt)
-        future.remove(nxt)
-    upcoming += [s for s in stale if s != pick and s not in upcoming][: 4 - len(upcoming)]
-    print("UPCOMING: %s" % (", ".join(upcoming) or "none -- nothing else is never-doctored or changed"))
+    upcoming = [s for s in stale if s != pick][:4]
+    print("UPCOMING: %s" % (", ".join(upcoming) or "none -- nothing else changed since its last run"))
     return 0
 
 
