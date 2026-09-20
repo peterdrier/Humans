@@ -28,8 +28,8 @@ internal sealed class Order
     /// <summary>
     /// Event year the order's catalog draws from. Always set on write. For camp orders
     /// this mirrors <c>CampSeason.Year</c>; for team orders it is the active event year
-    /// at create time. Legacy rows at <c>0</c> are resolved from the camp season on read
-    /// or through the operator repair screen.
+    /// at create time. Legacy rows at <c>0</c> are resolved from the camp season through
+    /// the operator repair screen or the next add-line write; reads never repair.
     /// </summary>
     public int Year { get; set; }
 
