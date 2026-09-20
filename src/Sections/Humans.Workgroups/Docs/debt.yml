@@ -1,4 +1,5 @@
 version: 1
+next_id: 1
 inbox: []
 # Emptied 2026-09-14: the one entry here asked for grant revocation when
 # SettingKeys.WorkgroupsRootDriveFolderId is replaced. Peter, on

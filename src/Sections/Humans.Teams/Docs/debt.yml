@@ -1,25 +1,29 @@
 # Section debt ledger for Humans.Teams. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
+next_id: 7
 inbox:
   - added: 2026-09-05
+    id: TEAMS-1
     what: "Controllers/TeamAdminController.cs LookupTicket holds ticket/barcode matching logic (and its controller tests pin it there); controllers translate only, so the matching belongs in a service (finding 12, /section-doctor on Teams 2026-09-05)."
     review: panel
   - added: 2026-09-05
+    id: TEAMS-2
     what: "Services/TeamService.cs is the section's largest class (reforge largeClass), with UpdateTeamAsync its most complex method over a long parameter list, and Data/Configurations/TeamConfiguration.cs Configure is a single long method. The target shape blesses one inner service; recorded so the score is not mistaken for unexamined debt (finding 12, /section-doctor on Teams 2026-09-05)."
     review: panel
   - added: 2026-09-05
+    id: TEAMS-3
     what: "Views/TeamAdmin/EditTeam.cshtml carries hardcoded English strings on a member-facing coordinator route (/Teams/{slug}/Edit is not in localization-admin-exempt's list); each needs a TeamsResource key in every supported culture (finding 12, /section-doctor on Teams 2026-09-05)."
     review: light
   - added: 2026-09-05
+    id: TEAMS-4
     what: "Most TeamsResource keys lack the Teams_ prefix (TeamDetail_*, TeamAdmin_*, MyTeams_*, AdminEditTeam_*); pre-existing baseline, report only — a rename is a six-culture sweep plus every view binding (finding 12, /section-doctor on Teams 2026-09-05)."
     review: panel
   - added: 2026-09-14
+    id: TEAMS-5
     what: "TeamService.DeleteTeamAsync deactivates a team by closing every live membership through TeamRepository.DeactivateTeamAsync, which stamps LeftAt and saves with no audit entry — only an ILogger line. An admin action ending members' memberships is invisible to the Board, against AGENTS.md's audit rule. Auditing it needs a call: a new AuditAction on the AuditLog leaf (public surface, Peter's approval) or one TeamMemberRemoved row per closed membership. Found by Codex reviewing peterdrier/Humans#1594."
     review: panel
   - added: 2026-09-14
+    id: TEAMS-6
     what: "CachingTeamService.GetTeamDirectoryAsync resolves IRoleAssignmentService sideways through its scope factory; memory/architecture/decorators-talk-only-to-inner.md forbids any collaborator beyond the keyed inner service and cache plumbing. Found by Codex reviewing peterdrier/Humans#1670; fix is a service-side move (the directory build belongs in TeamService or an orchestrator), not a decorator tweak."
     review: panel
-  - added: 2026-09-14
-    what: "Docs/data-access.md names IShiftManagementService twice; Teams consumes the read leaf, IShiftManagementServiceRead (finding N18, /section-doctor on Shifts 2026-09-05; swept in by /section-doctor on Issues 2026-09-14)."
-    review: light
