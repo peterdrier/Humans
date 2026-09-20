@@ -12,8 +12,12 @@
 > (there is no `ICalFeedSectionExtensions`). The `User` entity carrying `ICalToken` is
 > now `src/Sections/Humans.Users.Contracts/User.cs`. No `src/Humans.Application/`,
 > `src/Humans.Web/` or `src/Humans.Domain/` path named below still resolves.
-> Beyond the paths, what else no longer holds: `ShiftsController.EnsureICalUrlAsync`
-> is gone — `Mine` mints the token inline through `IUserService.SetICalTokenAsync` — the
+> Beyond the paths, what else no longer holds: the subscription card, the feed URL and
+> token rotation moved off `/Shifts/Mine` to `/Calendar`, which now owns the feature end
+> to end — `CalendarController.Index` mints `User.ICalToken` lazily through
+> `IUserService.SetICalTokenAsync`, `POST /Calendar/Ical/Regenerate` rotates it, and
+> `ShiftsController.EnsureICalUrlAsync` and `RegenerateIcal` are gone, leaving Shifts a
+> feed *contributor* only — the
 > Community Calendar contributor listed as out of scope shipped, as
 > `ICalendarFeedContributor.GetPublicItemsForWindowAsync`, and the per-request cost below
 > predates the fan-out: every contributor is called per request, and Workgroups' reads the
@@ -75,7 +79,7 @@ DI: new `ICalFeedSectionExtensions` in `src/Humans.Web/Extensions/Sections/` mir
 
 New thin `ICalFeedApiController` in `src/Humans.Web/Controllers/Api/`: anonymous `GET /api/ical/{userId:guid}/{token:guid}.ics` → `GetFeedIcsAsync` → 404 or `File(utf8Bytes, "text/calendar")` with a filename. Try/catch with logging per project error-handling rule.
 
-`ShiftsController.Mine` emits the two-segment URL. Token minting/regeneration/clearing lifecycles are untouched.
+`CalendarController.Index` emits the two-segment URL, below the month grid. Minting and regeneration live there and on `POST /Calendar/Ical/Regenerate`; clearing on GDPR-delete and account merge is untouched.
 
 ## Contributors
 
