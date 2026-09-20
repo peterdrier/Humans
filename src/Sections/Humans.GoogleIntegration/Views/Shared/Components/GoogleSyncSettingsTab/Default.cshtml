@@ -1,18 +1,9 @@
-@model Humans.GoogleIntegration.Models.SyncSettingsViewModel
-@{
-    ViewData["Title"] = "Sync Settings";
-}
+@model SyncSettingsViewModel
 
-<nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">Google</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Sync Settings</li>
-    </ol>
-</nav>
-
-<h2>Sync Settings</h2>
+@* Shared with the old /Google/SyncSettings screen only in spirit — that GET now
+   redirects here (peterdrier/Humans#1634), so the explicit asp-controller/asp-action
+   route lets this form post to GoogleController from /Settings. *@
 <p class="text-muted">Configure how automated sync jobs handle each service.</p>
-
 
 <div class="row g-4">
     @foreach (var setting in Model.Settings)
@@ -33,7 +24,7 @@
                     <span class="badge @badgeClass">@setting.CurrentMode</span>
                 </div>
                 <div class="card-body">
-                    <form method="post" asp-action="UpdateSyncSetting">
+                    <form method="post" asp-controller="Google" asp-action="UpdateSyncSetting">
                         <input type="hidden" name="serviceType" value="@setting.ServiceType" />
                         <div class="mb-3">
                             <label class="form-label">Sync Mode</label>

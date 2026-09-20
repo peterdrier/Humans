@@ -73,8 +73,8 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 | Route | Auth | Controller action |
 |-------|------|-------------------|
 | `GET /Email/EmailOutbox` | `AdminOnly` | `EmailController.EmailOutbox` — outbox dashboard |
-| `POST /Email/EmailOutbox/Pause` | `AdminOnly` | `EmailController.PauseEmailSending` |
-| `POST /Email/EmailOutbox/Resume` | `AdminOnly` | `EmailController.ResumeEmailSending` |
+| `POST /Email/EmailOutbox/Pause` | `AdminOnly` | `EmailController.PauseEmailSending` — posted from the `/Settings#email` tab (peterdrier/Humans#1634) |
+| `POST /Email/EmailOutbox/Resume` | `AdminOnly` | `EmailController.ResumeEmailSending` — posted from the `/Settings#email` tab |
 | `POST /Email/EmailOutbox/Retry/{id}` | `AdminOnly` | `EmailController.RetryEmailOutboxMessage` |
 | `POST /Email/EmailOutbox/Discard/{id}` | `AdminOnly` | `EmailController.DiscardEmailOutboxMessage` |
 | `GET /Email/EmailPreview` | `AdminOnly` | `EmailController.EmailPreview` — rendered template gallery |
@@ -86,7 +86,7 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 | Actor | Capabilities |
 |-------|--------------|
 | Any service / job | Build a fully-rendered `EmailMessage` via a typed `IEmailMessageFactory` method (e.g. `AccessSuspended`, `ApplicationApproved`, `CampaignCode`) and hand it to the single `IEmailService.SendAsync(message, ct)`. The default `IEmailService` is `OutboxEmailService`, which writes the row to `email_outbox_messages`. |
-| Admin (`AdminOnly` policy) | Pause / resume outbox. Retry a failed message (re-queue). Discard a failed message (delete). View the outbox dashboard at `/Email/EmailOutbox`. Preview rendered templates at `/Email/EmailPreview`. |
+| Admin (`AdminOnly` policy) | Pause / resume outbox at `/Settings#email` (peterdrier/Humans#1634). Retry a failed message (re-queue). Discard a failed message (delete). View the outbox dashboard at `/Email/EmailOutbox`. Preview rendered templates at `/Email/EmailPreview`. |
 | Any authenticated human | View own outbox (`GET /Profile/Me/Outbox`) — emails where `UserId` matches the signed-in user. |
 | HumanAdmin, Board, Admin (`HumanAdminBoardOrAdmin` policy) | View another human's outbox (`GET /Users/Admin/{id}/Outbox`). |
 

@@ -811,4 +811,7 @@
 
   <!-- Settings tab label: a SharedResource key because SettingsTabsViewComponent cannot see a contributing section's own resource set -->
   <data name="Settings_TabEvent" xml:space="preserve"><value>Event</value></data>
+  <data name="Settings_TabAgent" xml:space="preserve"><value>Agent</value></data>
+  <data name="Settings_TabGoogleSync" xml:space="preserve"><value>Google Sync</value></data>
+  <data name="Settings_TabEmail" xml:space="preserve"><value>Email</value></data>
 </root>

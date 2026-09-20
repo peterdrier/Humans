@@ -37,7 +37,9 @@ public class GoogleIntegrationPageRenderTests(HumansTestDatabase database) : Int
     private static readonly string[] AdminPages =
     [
         "/Google",
-        "/Google/SyncSettings",
+        // /Google/SyncSettings is deliberately absent: it now redirects to
+        // /Settings#google-sync for every viewer (peterdrier/Humans#1634), admin included,
+        // so it belongs with the redirect-only routes below, not the render check.
         "/Google/Sync",
         "/Google/AllGroups",
         "/Google/Accounts",

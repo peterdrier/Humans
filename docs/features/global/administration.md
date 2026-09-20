@@ -114,7 +114,7 @@ Google sync, settings, account provisioning, and audit routes have been extracte
 
 | Route | Auth | Description |
 |-------|------|-------------|
-| `/Google/SyncSettings` | Admin | GET/POST: Per-service sync mode configuration |
+| `/Google/SyncSettings` | Admin | GET: redirects to `/Settings#google-sync` (peterdrier/Humans#1634); POST: per-service sync mode configuration |
 | `/Google/SyncSystemTeams` | Admin | POST: Manually trigger `SystemTeamSyncJob`, recalculating Volunteers/Coordinators/Board membership (button on `/Google` Overview) |
 | `/Google/SyncResults` | Admin | GET: Results of last sync check |
 | `/Google/CheckGroupSettings` | Admin | POST: Check Google Group settings for drift |

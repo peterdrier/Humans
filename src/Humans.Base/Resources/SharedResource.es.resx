@@ -1387,4 +1387,16 @@
   <data name="Settings_TabEvent" xml:space="preserve">
     <value>Evento</value>
   </data>
+
+  <data name="Settings_TabAgent" xml:space="preserve">
+    <value>Agente</value>
+  </data>
+
+  <data name="Settings_TabGoogleSync" xml:space="preserve">
+    <value>Sincronización de Google</value>
+  </data>
+
+  <data name="Settings_TabEmail" xml:space="preserve">
+    <value>Correo</value>
+  </data>
 </root>

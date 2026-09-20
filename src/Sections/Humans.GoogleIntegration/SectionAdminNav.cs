@@ -13,7 +13,6 @@ internal sealed class SectionAdminNav : ISectionAdminNav
     [
         new("Google", System: true, Items: [
             new("Overview",              "Google", "Index",        null, null, "fa-brands fa-google",           PolicyNames.AdminOnly),
-            new("Sync settings",         "Google", "SyncSettings", null, null, "fa-solid fa-sliders",           PolicyNames.AdminOnly),
             new("Resource sync",         "Google", "Sync",         null, null, "fa-solid fa-arrows-rotate",     PolicyNames.TeamsAdminBoardOrAdmin),
             new("All domain groups",     "Google", "AllGroups",    null, null, "fa-solid fa-globe",             PolicyNames.AdminOnly),
             new("Workspace accounts",    "Google", "Accounts",     null, null, "fa-solid fa-at",                PolicyNames.AdminOnly),

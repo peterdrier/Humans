@@ -41,6 +41,7 @@ internal sealed class EmailController(
         return View(viewModel);
     }
 
+    /// <summary>Posted from the /Settings#email tab (peterdrier/Humans#1634).</summary>
     [HttpPost("EmailOutbox/Pause")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> PauseEmailSending()
@@ -48,9 +49,10 @@ internal sealed class EmailController(
         await outboxService.SetEmailPausedAsync(true);
         logger.LogInformation("Admin {AdminId} paused email sending", User.Identity?.Name);
         SetSuccess("Email sending paused.");
-        return RedirectToAction(nameof(EmailOutbox));
+        return Redirect("/Settings#email");
     }
 
+    /// <summary>Posted from the /Settings#email tab (peterdrier/Humans#1634).</summary>
     [HttpPost("EmailOutbox/Resume")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ResumeEmailSending()
@@ -58,7 +60,7 @@ internal sealed class EmailController(
         await outboxService.SetEmailPausedAsync(false);
         logger.LogInformation("Admin {AdminId} resumed email sending", User.Identity?.Name);
         SetSuccess("Email sending resumed.");
-        return RedirectToAction(nameof(EmailOutbox));
+        return Redirect("/Settings#email");
     }
 
     [HttpPost("EmailOutbox/Retry/{id:guid}")]

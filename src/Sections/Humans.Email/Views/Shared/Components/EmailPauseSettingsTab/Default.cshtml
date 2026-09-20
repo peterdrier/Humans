@@ -1,0 +1,34 @@
+@model Humans.Email.ViewComponents.EmailPauseSettingsTabViewModel
+
+@* Moved from the /Email/EmailOutbox dashboard header (peterdrier/Humans#1634). Explicit
+   asp-controller/asp-action so this form posts to EmailController from /Settings. *@
+<div class="d-flex justify-content-between align-items-center">
+    <div>
+        @if (Model.IsPaused)
+        {
+            <span class="text-warning fw-semibold"><i class="fa-solid fa-circle-pause me-1"></i>Sending paused</span>
+        }
+        else
+        {
+            <span class="text-success fw-semibold"><i class="fa-solid fa-circle-check me-1"></i>Sending active</span>
+        }
+    </div>
+    @if (Model.IsPaused)
+    {
+        <form method="post" asp-controller="Email" asp-action="ResumeEmailSending">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-success">
+                <i class="fa-solid fa-play me-1"></i>Resume Sending
+            </button>
+        </form>
+    }
+    else
+    {
+        <form method="post" asp-controller="Email" asp-action="PauseEmailSending">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-danger">
+                <i class="fa-solid fa-pause me-1"></i>Pause All Sending
+            </button>
+        </form>
+    }
+</div>
