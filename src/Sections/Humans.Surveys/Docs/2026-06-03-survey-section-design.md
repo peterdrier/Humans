@@ -348,6 +348,11 @@ In-app theme clustering, sentiment, summarisation, auto-generated infographics/c
 
 **Deferred to a fast-follow (decided 2026-06-04 — planned, not abandoned):**
 
+> **Historical snapshot.** This subsection records the v1 scope decision as taken on 2026-06-04.
+> The Google translation slice has since shipped: the section consumes `IGoogleTranslationService`
+> for the builder's translation pre-fill, so the "no Google data egress" and "manual per-culture
+> only" statements below describe v1, not the section today. `Surveys.md` is the live description.
+
 - **Google translation client (whole slice).** The `IGoogleTranslationClient`/`IGoogleTranslationService` in GoogleIntegration is deferred, which defers **both** §6.1 authoring "pre-fill translations" **and** §6.2 free-text answer translate-on-read (they share that one client). v1 authoring is **manual per-culture** only; v1 results/API serve free-text **as-submitted** (no translate toggle, no `?translateFreeText`). All Google-translation features land together as one later slice. **Consequence:** v1 has **no Google data egress** — the only external data flow in v1 is the §13.3 analysis API/export to Claude.
 **Permanently out of scope:**
 

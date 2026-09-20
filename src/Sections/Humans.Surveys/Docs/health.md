@@ -59,14 +59,12 @@ Written fresh, not as today's layout with fixes.
 - **Authoring is open, sending is not.** The admin controller's class policy is app access, and
   the Board-only verbs carry their own policy; the index is scoped to what the viewer authored.
   The service, not the view, decides who sees which surveys.
-- **A resource handler holds the per-survey rules, and the service holds them again for the
-  operations that change status.** The handler is the browser's copy — it decides whether to
-  render a button; the service is the enforcing copy and refuses regardless. Neither is redundant:
-  one is a view concern, one is the invariant. Today that second copy is partial — Submit checks
-  the author, Approve and Reject check Board/Admin, and the admin list scopes itself, but
-  `UpdateCoreAsync` takes `actorUserId` only to audit with and never compares it to
-  `CreatedByUserId`. Editing someone else's Draft is refused by the controller's handler call
-  alone, so this line is where the section is going, not where it is.
+- **A resource handler holds the per-survey rules, and the service holds them again.** The handler
+  is the browser's copy — it decides whether to render a button; the service is the enforcing copy
+  and refuses regardless. Neither is redundant: one is a view concern, one is the invariant. Submit
+  checks the author, Approve and Reject check Board/Admin, the admin list scopes itself, and every
+  edit path — `UpdateCoreAsync`, translation pre-fill, ranked availability — takes a `SurveyViewer`
+  and compares it to `CreatedByUserId`, so an edit the handler refuses the service refuses too.
 - **One page flow.** Both entry paths differ only in how the session is keyed and where the
   redirects land; that difference is one small route record, and everything else is shared.
 - **Pure helpers hold the rules that can be decided without the database**: branch visibility,
@@ -88,83 +86,88 @@ the line that enforces it.
 
 - **Identity is written onto a response only for the Identified tier**; the other two tiers leave
   no link, and nothing downstream — results, export, API, drill-down — can re-attach one:
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1170` writes it, `:1191` and `:1219`
-  refuse to, and the read paths honour the tier at `:1622` and `:1667`.
+  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1188` writes it, `:1209` and `:1237`
+  refuse to, and the read paths honour the tier at `:1640` and `:1685`.
 - **No completion timestamp for a tracked-but-unlinked answer, and no `UpdatedAt` on the ledger**
   — a time is a join key: `src/Sections/Humans.Surveys/Domain/SurveyInvitation.cs:15`, with the
   shared epoch that keeps a public start uncorrelated at
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:997`.
+  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1015`.
 - **Branching is decided on the server at submit**; a hidden question's answer never lands:
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1132`, over the effective-state pass at
-  `:2138`.
+  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1150`, over the effective-state pass at
+  `:2193`.
 - **Sending is additive and idempotent** — the same audience resolved twice invites nobody twice,
-  and never revokes: `src/Sections/Humans.Surveys/Services/SurveyService.cs:698`, with the
-  re-queue-not-re-create branch at `:721`.
+  and never revokes: `src/Sections/Humans.Surveys/Services/SurveyService.cs:716`, with the
+  re-queue-not-re-create branch at `:739`.
 - **Exactly one reminder per invitee, anchored on `ReminderSentAt`**:
   `src/Sections/Humans.Surveys/Data/SurveyRepository.cs:238` selects only the unstamped,
   `:250` stamps them.
 - **Individual submissions are never audit-logged; survey lifecycle, sends and availability
   recounts always are**: the lifecycle writes sit at
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:539`, `:549`, `:769` and `:863`, and the
-  submit path at `:1161`–`:1218` has no `auditLog` call at all.
+  `src/Sections/Humans.Surveys/Services/SurveyService.cs:544`, `:559`, `:787` and `:881`, and the
+  submit path at `:1179`–`:1236` has no `auditLog` call at all.
 - **Preview writes nothing to this section's tables** — no invitation, response, draft, reminder
   or funnel event. The rendering previews build view models and call no writing service method:
-  `src/Sections/Humans.Surveys/Controllers/SurveyAdminController.cs:235` through
+  `src/Sections/Humans.Surveys/Controllers/SurveyAdminController.cs:242` through
   `src/Sections/Humans.Surveys/Models/SurveyPageViewModelFactory.cs:27`. The one preview action
   that writes anywhere is send-preview-to-self, which queues a single email to the requester
   through the Email crosscut and still creates no Surveys row
   (`src/Sections/Humans.Surveys/Services/SurveyPreviewEmailService.cs:44`).
-- **A submitted survey leaves PendingApproval through approval, rejection, or Close.** A Draft is
+- **A submitted survey leaves PendingApproval only through approval or rejection.** A Draft is
   submitted by its author and by nobody else
-  (`src/Sections/Humans.Surveys/Services/SurveyService.cs:599`); once pending it cannot be opened
-  by the generic Open action (`:528`); approval validates the audience configuration, records who
-  approved, and sends in the same step (`:610`). Close is the third exit and nothing stops it:
-  `CloseAsync` (`:542`) refuses only an already-Closed survey, and a closed non-vote reopens
-  (`:530`) — so a pending survey can reach Open with no approval recorded and no invitations sent.
-  That route and the pre-existing direct Draft → Open path are both `BoardOrAdmin`-only, so neither
-  is an escalation; whether Close should be restricted to Open surveys is a Needs-Peter question on
-  peterdrier/Humans#1747.
+  (`src/Sections/Humans.Surveys/Services/SurveyService.cs:609`); once pending it can be reached by
+  neither of the two status verbs that would walk it back out — Open refuses it (`:533`) and Close
+  refuses it (`:556`), so the `PendingApproval → Closed → Open` route to an unapproved Open survey
+  does not exist. Board/Admin keep the pre-existing direct Draft → Open path, which the gate does
+  not touch.
+- **Approval cannot open a survey that has nobody to invite.** Approve-and-send checks the audience
+  *configuration* and then resolves it to real recipients, both before the approval is persisted, so
+  a Team audience whose team has been deleted fails while the survey is still in the queue where the
+  Board can reject it back to its author. It records who approved and sends in the same step:
+  `src/Sections/Humans.Surveys/Services/SurveyService.cs:632` checks the configuration, `:638`
+  resolves it to recipients, and `:644` persists the approval.
 - **A rejection carries a reason.** An empty note is refused, the note is trimmed and bounded, and
   the rejection is audited against the author:
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:642`, `:650`–`:652` and `:656`.
+  `src/Sections/Humans.Surveys/Services/SurveyService.cs:660`, `:668`–`:670` and `:674`.
 - **An author sees only what they wrote; the Board sees everything.** The scoping is in the
-  service, not the view: `src/Sections/Humans.Surveys/Services/SurveyService.cs:555`, with the
+  service, not the view: `src/Sections/Humans.Surveys/Services/SurveyService.cs:565`, with the
   browser-side copy of the same state machine at
   `src/Sections/Humans.Surveys/Authorization/SurveyAuthorizationHandler.cs:30`.
 - **An Asociado vote is CompletionTracked only, targets the Asociados audience only, and checks
   eligibility at entry, on every page, and again at submit** — current status, not status at send:
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:953`, `:1251` and `:1113`.
+  `src/Sections/Humans.Surveys/Services/SurveyService.cs:971`, `:1269` and `:1131`.
 - **Eligibility requires the stored id to be the live one.** A merged-away id resolves to an
   eligible survivor, and answering under it would give one Asociado two ballots:
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:939`.
+  `src/Sections/Humans.Surveys/Services/SurveyService.cs:957`.
 - **While an Asociado vote is Open, nothing answer-derived leaves the service**: results, both
   exports, the analysis API and the drill-down all return participation only:
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1456`, `:1633` and `:1667`.
+  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1474`, `:1651` and `:1685`.
 - **After close, a ballot is shown without name, id, participation id or timestamp, and exported
   without name or user id**, including any legacy Identified row:
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1484` and `:1488`.
+  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1502` and `:1506`.
 - **An Asociado vote's definition and audience are frozen once it opens; a ranked question's
   counting settings freeze at the first saved answer of any survey**; the only post-close mutable
   input is ranked-option availability, which never rewrites a stored ballot:
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:250` and `:421` for the vote,
-  `:285` over `:2732` for the ranked settings.
+  `src/Sections/Humans.Surveys/Services/SurveyService.cs:255` and `:426` for the vote,
+  `:290` over `:2787` for the ranked settings.
 - **A closed Asociado vote does not reopen**:
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:534`.
+  `src/Sections/Humans.Surveys/Services/SurveyService.cs:539`.
 - **The official ranked method is Ranked Pairs**; authored option order is the disclosed final
   tie-break; every other method is sensitivity analysis and never the headline:
   `src/Sections/Humans.Surveys/Domain/RankedQuestionSettings.cs:14` is what the builder writes,
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1556` is what the results page calls
+  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1574` is what the results page calls
   official.
 - **A person leaving takes their answers and their authorship with them, and neither takes the
   survey with it.** Erasure anonymises responses and blanks authorship;
   an account merge moves authorship to the survivor:
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1817`, `:1818` and `:1827`, over
-  `src/Sections/Humans.Surveys/Data/SurveyRepository.cs:479` and `:495`.
-- **Two slices are exported**: the person's own Identified responses and the surveys they authored
-  (`src/Sections/Humans.Surveys/Services/SurveyService.cs:1790` and `:1791`). The invitation ledger
-  is personal data and is *not* among them, so a member who was only invited has nothing exported —
-  an Article 15 gap carried in `debt.yml`, not a property of the target. Erasure does reach those
-  rows: `src/Sections/Humans.Surveys/Data/SurveyRepository.cs:458` deletes them.
+  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1872`, `:1873` and `:1882`, over
+  `src/Sections/Humans.Surveys/Data/SurveyRepository.cs:488` and `:504`.
+- **Three slices are exported**: the person's own Identified responses, the surveys they authored,
+  and their invitation ledger (`src/Sections/Humans.Surveys/Services/SurveyService.cs:1841`, `:1842`
+  and `:1843`). The ledger is what a member who was only invited, or who answered under completion
+  tracking, gets — their response carries no `UserId`, so without it they would have nothing
+  exported at all. It carries invitation-side timestamps only, which say nothing about when an
+  anonymous answer arrived. Erasure deletes those rows outright:
+  `src/Sections/Humans.Surveys/Data/SurveyRepository.cs:467`.
 
 ## 5. Seams
 

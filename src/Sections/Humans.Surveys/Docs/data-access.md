@@ -53,10 +53,13 @@ enqueue), `IEmailMessageFactory` (invite and reminder templates),
 helper), `IAuditLogService`, `IFileStorage` (Information-block images under
 `uploads/surveys/`).
 
-Implements `IUserDataContributor` (two GDPR export slices:
+Implements `IUserDataContributor` (three GDPR export slices:
 `GdprExportSections.SurveyResponses` — identified responses only; anonymous
-and CompletionTracked rows carry no `UserId` and are excluded — and
-`GdprExportSections.AuthoredSurveys`, the surveys the person wrote). Implements
+and CompletionTracked rows carry no `UserId` and are excluded —
+`GdprExportSections.AuthoredSurveys`, the surveys the person wrote, and
+`GdprExportSections.SurveyInvitations`, the invitation ledger, which is the
+only record of someone who was only invited or answered CompletionTracked).
+Implements
 `IUserMerge`: authorship follows the surviving account. No `IMemoryCache`.
 
 A `LoggedInSince` audience type (`surveys.AudienceLoggedInSince` cutoff
