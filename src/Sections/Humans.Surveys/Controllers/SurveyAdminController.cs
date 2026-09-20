@@ -19,7 +19,8 @@ namespace Humans.Surveys.Controllers;
 /// <summary>
 /// Survey authoring: any signed-in Human with an approved profile may create and edit a Draft
 /// survey they own, and submit it for approval; Board/Admin additionally get the index of every
-/// survey, the approval queue, open/close, preview, send, results and CSV/JSON export.
+/// survey, the approval queue, open/close, preview and send. Results and CSV/JSON export are
+/// not Board-only: the author reads their own survey's results once it closes.
 /// Author-scoped visibility and per-survey ownership are enforced via <see cref="SurveyAuthorizationHandler"/>
 /// (design-rules §11) — never by filtering in the view. Controllers parse → call the service →
 /// format; sorting and VM↔DTO mapping live here (hard rule).

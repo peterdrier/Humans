@@ -8,7 +8,8 @@ namespace Humans.Surveys.Contracts;
 /// <summary>
 /// Renders an already-filtered set of <see cref="SurveyExportRow"/>s as a GitHub-flavoured Markdown
 /// table — the token-lean shape an agent reads when scanning the bulk of a survey's responses. Columns
-/// mirror <c>SurveyCsvExportBuilder</c>: leading <c>anonymity</c> + <c>input_method</c> + identity
+/// are <c>SurveyCsvExportBuilder</c>'s without the join keys (no <c>response_id</c>, no
+/// <c>user_id</c>): leading <c>anonymity</c> + <c>input_method</c> + identity
 /// (<c>user_name</c>, populated only for Identified rows — already enforced by the export DTO), then one
 /// column per question (header = resolved prompt). Choice cells flatten to the stable option
 /// <b>values</b> (<c>a|b</c>), not labels, so the table joins cleanly against the definition endpoint.

@@ -41,6 +41,8 @@ internal sealed class SurveyService(
     private const int InvitationEmailMessageMaxLength = 4000;
     private const int MaxInformationImages = 5;
     private const long MaxInformationImageBytes = 10 * 1024 * 1024;
+    // A shared epoch, not the real time: a CompletionTracked public start's real CreatedAt would
+    // correlate with the unlinked response's SubmittedAt and unmask the respondent.
     private static readonly Instant NonCorrelatablePublicParticipationCreatedAt =
         Instant.FromUtc(1970, 1, 1, 0, 0);
     private static readonly HashSet<string> AllowedInformationImageContentTypes =
@@ -2281,7 +2283,7 @@ internal sealed class SurveyService(
                     // users belong in this audience (nobodies-collective/Humans#894) — but
                     // deletion-pending users and accounts walled off by state
                     // (rejected/suspended — they can't reach the survey) are never invited.
-                    // Tombstones are already absent: GetAllUserInfosAsync omits them (#1704).
+                    // Tombstones are already absent: GetAllUserInfosAsync omits them (peterdrier/Humans#1704).
                     if (loggedInSince is null) return new HashSet<Guid>();
                     var users = await userService.GetAllUserInfosAsync(ct);
                     return users

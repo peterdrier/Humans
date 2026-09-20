@@ -934,7 +934,7 @@ public class SurveyServiceTests
     [HumansFact]
     public async Task PreviewAudienceCountAsync_does_not_count_a_survivor_whose_archived_id_was_already_invited()
     {
-        // #1704: invitations are never re-pointed on merge. The team lists the survivor's live
+        // peterdrier/Humans#1704: invitations are never re-pointed on merge. The team lists the survivor's live
         // id; the invitation sits under the archived one. Same human, not a net-new invitee.
         var teamId = Guid.NewGuid();
         Guid archived = Guid.NewGuid(), survivor = Guid.NewGuid(), newA = Guid.NewGuid();
@@ -952,7 +952,7 @@ public class SurveyServiceTests
         count.Should().Be(1);
     }
 
-    // ── issue #1065: an unhandled audience type resolves to nobody, warned not silent ──
+    // ── nobodies-collective/Humans#1065: an unhandled audience type resolves to nobody, warned not silent ──
 
     [HumansFact]
     public async Task PreviewAudienceCountAsync_unknown_audience_type_warns_and_resolves_to_nobody()
@@ -2765,7 +2765,7 @@ public class SurveyServiceTests
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
-    // ── Results aggregation (Task 6.1) ─────────────────────────────────────────
+    // ── Results aggregation ────────────────────────────────────────────────────
 
     private static SurveyQuestion ChoiceQuestion(Guid id, Guid surveyId, SurveyQuestionType type, int order, params (string Value, string Label, int Order)[] opts) => new()
     {
@@ -3287,7 +3287,7 @@ public class SurveyServiceTests
         result.Funnel.SlugFinished.Should().Be(2);   // two anonymous slug responses
     }
 
-    // ── Raw per-response export (Task 6.2) ─────────────────────────────────────
+    // ── Raw per-response export ────────────────────────────────────────────────
 
     [HumansFact]
     public async Task GetResponseExportAsync_returns_null_when_survey_missing()
@@ -3509,7 +3509,7 @@ public class SurveyServiceTests
         export!.Rows.Select(r => r.ResponseId).Should().ContainInOrder(early.Id, late.Id);
     }
 
-    // ── GDPR export contributor (Task 7.1) ─────────────────────────────────────
+    // ── GDPR export contributor ────────────────────────────────────────────────
 
     [HumansFact]
     public async Task ContributeForUserAsync_returns_survey_responses_slice_with_title_and_answers()
@@ -4266,7 +4266,7 @@ public class SurveyServiceTests
     [HumansFact]
     public async Task IsEligibleAsociadoAsync_rejects_a_stored_id_that_resolves_to_another_user()
     {
-        // #1704: every caller passes an id a draft, invitation or response is stored under. An
+        // peterdrier/Humans#1704: every caller passes an id a draft, invitation or response is stored under. An
         // archived id resolves to an eligible survivor, but answering under it would give one
         // Asociado two ballots.
         var archived = Guid.NewGuid();

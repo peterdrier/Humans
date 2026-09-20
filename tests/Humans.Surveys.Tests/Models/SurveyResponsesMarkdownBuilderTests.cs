@@ -127,7 +127,7 @@ public sealed class SurveyResponsesMarkdownBuilderTests
         lines[0].Should().Contain("user_name");
         // Data row: | CompletionTracked | UserSpecificLink | <ts> |  | hi |  — user_name cell is empty.
         var cells = lines[2].Split('|');
-        cells[4].Trim().Should().BeEmpty();   // user_name column
+        cells[4].Trim().Should().BeEmpty();
     }
 
     [HumansFact]
