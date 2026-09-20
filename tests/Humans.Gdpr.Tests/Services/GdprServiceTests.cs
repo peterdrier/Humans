@@ -1,9 +1,11 @@
 using AwesomeAssertions;
 using Humans.Gdpr.Contracts;
 using Humans.Gdpr.Services;
+using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
+using NSubstitute;
 
 namespace Humans.Gdpr.Tests.Services;
 
@@ -12,10 +14,57 @@ public class GdprServiceTests
     private static readonly Instant FixedNow = Instant.FromUtc(2026, 4, 15, 10, 30);
 
     private static GdprService CreateService(params IUserDataContributor[] contributors) =>
+        CreateService(users: null, contributors);
+
+    private static GdprService CreateService(
+        IUserServiceRead? users, params IUserDataContributor[] contributors) =>
         new(
             contributors,
+            users ?? Substitute.For<IUserServiceRead>(),
             new FakeClock(FixedNow),
             NullLogger<GdprService>.Instance);
+
+    /// <summary>
+    /// Stubs the one read the orchestrator makes: every id in <paramref name="mergedFrom"/>
+    /// plus <paramref name="survivor"/> reads back as the survivor's record, which is how
+    /// Users reports a merged account.
+    /// </summary>
+    private static IUserServiceRead StubMerged(Guid survivor, params Guid[] mergedFrom)
+    {
+        var resolved = MinimalUserInfo(survivor) with { MergedUserIds = mergedFrom };
+        var users = Substitute.For<IUserServiceRead>();
+        users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => new ValueTask<UserInfo?>(
+                (Guid)call[0] == survivor || mergedFrom.Contains((Guid)call[0]) ? resolved : null));
+        return users;
+    }
+
+    private static UserInfo MinimalUserInfo(Guid id) => new(
+        Id: id,
+        BurnerName: "Nobody",
+        IsGdprAnonymized: false,
+        PreferredLanguage: "en",
+        FallbackPictureUrl: null,
+        CreatedAt: FixedNow,
+        LastLoginAt: null,
+        LastConsentReminderSentAt: null,
+        DeletionRequestedAt: null,
+        DeletionScheduledFor: null,
+        DeletionEligibleAfter: null,
+        UnsubscribedFromCampaigns: false,
+        ICalToken: null,
+        SuppressScheduleChangeEmails: false,
+        MagicLinkSentAt: null,
+        ContactSource: null,
+        ExternalSourceId: null,
+        MergedToUserId: null,
+        MergedAt: null,
+        IdentityEmailColumn: null,
+        UserEmails: [],
+        EventParticipations: [],
+        ExternalLogins: [],
+        Profile: null,
+        CommunicationPreferences: []);
 
     [HumansFact]
     public async Task ExportForUserAsync_StampsExportedAtFromClock()
@@ -25,6 +74,50 @@ public class GdprServiceTests
         var export = await service.ExportForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         export.ExportedAt.Should().Be("2026-04-15T10:30:00Z");
+    }
+
+    [HumansFact]
+    public async Task ExportForUserAsync_RequestedUnderMergedAwayId_NamesTheSurvivorAndItsArchivedIds()
+    {
+        // The key that makes the section slices legible: rows stay keyed to the archived id on
+        // purpose (audit entries, consent records, roster rows, ballots), so without this the
+        // reader of an export for the survivor sees rows carrying a stranger's id.
+        var survivor = Guid.NewGuid();
+        var archived = Guid.NewGuid();
+        var service = CreateService(
+            StubMerged(survivor, archived),
+            new FakeContributor("Profile", new { Name = "Jane" }));
+
+        var export = await service.ExportForUserAsync(archived, Xunit.TestContext.Current.CancellationToken);
+
+        export.UserId.Should().Be(survivor, "the export belongs to the account that survived the merge");
+        export.MergedFromUserIds.Should().Equal(archived);
+    }
+
+    [HumansFact]
+    public async Task ExportForUserAsync_UnmergedAccount_CarriesNoArchivedIds()
+    {
+        var userId = Guid.NewGuid();
+        var service = CreateService(
+            StubMerged(userId),
+            new FakeContributor("Profile", new { Name = "Jane" }));
+
+        var export = await service.ExportForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        export.UserId.Should().Be(userId);
+        export.MergedFromUserIds.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task ExportForUserAsync_UnknownUser_FallsBackToTheRequestedId()
+    {
+        var userId = Guid.NewGuid();
+        var service = CreateService(new FakeContributor("Profile", new { Name = "Jane" }));
+
+        var export = await service.ExportForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        export.UserId.Should().Be(userId);
+        export.MergedFromUserIds.Should().BeEmpty();
     }
 
     [HumansFact]

@@ -247,38 +247,11 @@
   <data name="AdminAppDetail_ApplicationReview" xml:space="preserve">
     <value>Esame della domanda</value>
   </data>
-  <data name="AdminAppDetail_ViewProfile" xml:space="preserve">
-    <value>Visualizza profilo</value>
-  </data>
   <data name="AdminAppDetail_Motivation" xml:space="preserve">
     <value>Motivazione</value>
   </data>
   <data name="AdminAppDetail_Reviewer" xml:space="preserve">
     <value>Revisore</value>
-  </data>
-  <data name="AdminAppDetail_StartReview" xml:space="preserve">
-    <value>Inizia esame</value>
-  </data>
-  <data name="AdminAppDetail_NotesLabel" xml:space="preserve">
-    <value>Note (obbligatorie per rifiuto/richiesta info)</value>
-  </data>
-  <data name="AdminAppDetail_NotesPlaceholder" xml:space="preserve">
-    <value>Aggiungi note...</value>
-  </data>
-  <data name="AdminAppDetail_ApproveConfirm" xml:space="preserve">
-    <value>Approvare questa domanda?</value>
-  </data>
-  <data name="AdminAppDetail_Approve" xml:space="preserve">
-    <value>Approva</value>
-  </data>
-  <data name="AdminAppDetail_RejectConfirm" xml:space="preserve">
-    <value>Rifiutare questa domanda?</value>
-  </data>
-  <data name="AdminAppDetail_Reject" xml:space="preserve">
-    <value>Rifiuta</value>
-  </data>
-  <data name="AdminAppDetail_RequestMoreInfo" xml:space="preserve">
-    <value>Richiedi ulteriori informazioni</value>
   </data>
   <data name="AdminAppDetail_Language" xml:space="preserve">
     <value>Lingua</value>

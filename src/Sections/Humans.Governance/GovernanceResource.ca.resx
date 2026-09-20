@@ -247,38 +247,11 @@
   <data name="AdminAppDetail_ApplicationReview" xml:space="preserve">
     <value>Revisió de sol·licitud</value>
   </data>
-  <data name="AdminAppDetail_ViewProfile" xml:space="preserve">
-    <value>Veure perfil</value>
-  </data>
   <data name="AdminAppDetail_Motivation" xml:space="preserve">
     <value>Motivació</value>
   </data>
   <data name="AdminAppDetail_Reviewer" xml:space="preserve">
     <value>Revisor</value>
-  </data>
-  <data name="AdminAppDetail_StartReview" xml:space="preserve">
-    <value>Iniciar revisió</value>
-  </data>
-  <data name="AdminAppDetail_NotesLabel" xml:space="preserve">
-    <value>Notes (obligatòries per rebutjar/sol·licitar informació)</value>
-  </data>
-  <data name="AdminAppDetail_NotesPlaceholder" xml:space="preserve">
-    <value>Afegeix notes...</value>
-  </data>
-  <data name="AdminAppDetail_ApproveConfirm" xml:space="preserve">
-    <value>Aprova aquesta sol·licitud?</value>
-  </data>
-  <data name="AdminAppDetail_Approve" xml:space="preserve">
-    <value>Aprova</value>
-  </data>
-  <data name="AdminAppDetail_RejectConfirm" xml:space="preserve">
-    <value>Rebutja aquesta sol·licitud?</value>
-  </data>
-  <data name="AdminAppDetail_Reject" xml:space="preserve">
-    <value>Rebutja</value>
-  </data>
-  <data name="AdminAppDetail_RequestMoreInfo" xml:space="preserve">
-    <value>Sol·licitar més informació</value>
   </data>
   <data name="AdminAppDetail_Language" xml:space="preserve">
     <value>Idioma</value>

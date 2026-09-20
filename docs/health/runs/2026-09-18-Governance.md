@@ -214,16 +214,34 @@ malformed `git grep` and had to be redone from scratch as an identifier-token sw
 
 ## Needs Peter
 
-- [ ] 23 — resolve the GDPR actor slice through `GetUserInfoAsync` like the voter slice, or leave
-      the raw id?
-- [ ] 24 — close peterdrier/Humans#1698 as already fixed?
-- [ ] 25 — relabel peterdrier/Humans#1623 off the Governance inbox?
-- [ ] 26 — keep the `AdminAppDetail_*` seam, or cut and re-add when the page is built?
-- [ ] 27 — accept that finalization atomicity is unpinned here, or move that test somewhere it can
-      run against a real transaction?
-- [ ] 12 — `ca` Catalanizes the tier names file-wide; and the system team is spelled
-      "Colaboradors" while Governance's member-facing copy says "Colaboradores". Which spelling wins
-      where?
+Answered 2026-09-20; the dispositions are in this branch.
+
+- [x] 23 — **fix, and say why the ids differ.** The actor slice now resolves forward and the export
+      envelope carries the merge lineage (`GdprExport.UserId` + `MergedFromUserIds`), so a slice
+      keyed to an archived id reads as this person's row instead of a stranger's. Peter's framing:
+      ballots are immutable and keep the id they were cast under, so the export explains the id
+      rather than rewriting it. Lineage resolved once in `GdprService`; contributors still resolve
+      for themselves, because the two directions are both correct — rows the merge left behind read
+      `AllUserIds`, columns `ReassignAsync` moved read the survivor alone.
+- [x] 24 — **close peterdrier/Humans#1698.**
+- [x] 25 — **withdrawn, the finding was wrong.** `section:auth` marks the *owning* section, and Auth
+      owns the role registry; fanning out to every section is not a second label. It surfaced in this
+      inbox because the issue body names `Governance.md` in its docs step and the listing matched on
+      text, not on a label. Nothing to relabel.
+- [x] 26 — **cut**, and the finding overstated it: nine of the thirteen `AdminAppDetail_*` keys were
+      dead (the approve/reject/notes/start-review/view-profile/request-more-info action bar, which
+      `AdminDetail.cshtml` never had — it links out to Board voting instead). Those nine are gone
+      from all six cultures. The four the page does read stay.
+- [x] 27 — **accept it unpinned.** Already in `Docs/debt.yml`; the only destination that runs a real
+      transaction self-skips in CI and on cloud runs.
+- [x] 12 — **"Colaboradores"; "Colaboradors" is the typo**, verified against the association's own
+      statutes (`nobodies-collective/legal`, `Estatutos/ESTATUTOS NOBODIES.md`, Cap. IV and Arts.
+      24–25): the Spanish text says *Colaboradores* throughout and never *Colaboradors*. The rename
+      of `SystemTeamType.Colaboradors`, `SystemTeamIds.Colaboradors`, the seeded team name and the
+      `colaboradors` slug is its own issue — the slug is a live URL and needs a redirect decision.
+      `ca` keeps its Catalan rendering: the Catalan statutes say *Col·laboradors*, so the resource
+      file matches the official text, and that spelling is the likely origin of the bare
+      "Colaboradors" elsewhere.
 
 ## File coverage
 

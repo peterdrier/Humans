@@ -247,38 +247,11 @@
   <data name="AdminAppDetail_ApplicationReview" xml:space="preserve">
     <value>Antragsprüfung</value>
   </data>
-  <data name="AdminAppDetail_ViewProfile" xml:space="preserve">
-    <value>Profil anzeigen</value>
-  </data>
   <data name="AdminAppDetail_Motivation" xml:space="preserve">
     <value>Motivation</value>
   </data>
   <data name="AdminAppDetail_Reviewer" xml:space="preserve">
     <value>Prüfer</value>
-  </data>
-  <data name="AdminAppDetail_StartReview" xml:space="preserve">
-    <value>Prüfung starten</value>
-  </data>
-  <data name="AdminAppDetail_NotesLabel" xml:space="preserve">
-    <value>Notizen (erforderlich für Ablehnung/Rückfrage)</value>
-  </data>
-  <data name="AdminAppDetail_NotesPlaceholder" xml:space="preserve">
-    <value>Notizen hinzufügen...</value>
-  </data>
-  <data name="AdminAppDetail_ApproveConfirm" xml:space="preserve">
-    <value>Diesen Antrag genehmigen?</value>
-  </data>
-  <data name="AdminAppDetail_Approve" xml:space="preserve">
-    <value>Genehmigen</value>
-  </data>
-  <data name="AdminAppDetail_RejectConfirm" xml:space="preserve">
-    <value>Diesen Antrag ablehnen?</value>
-  </data>
-  <data name="AdminAppDetail_Reject" xml:space="preserve">
-    <value>Ablehnen</value>
-  </data>
-  <data name="AdminAppDetail_RequestMoreInfo" xml:space="preserve">
-    <value>Weitere Informationen anfordern</value>
   </data>
   <data name="AdminAppDetail_Language" xml:space="preserve">
     <value>Sprache</value>

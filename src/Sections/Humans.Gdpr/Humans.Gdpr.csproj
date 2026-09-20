@@ -25,11 +25,12 @@
     <!--
       No Humans.Infrastructure and no Humans.UI reference: Gdpr owns no tables, so there is
       no DbContext, no repository and no AddSectionDbContext call, and it has no views. The
-      orchestrator injects IEnumerable<IUserDataContributor> from its own leaf, IClock and
-      ILogger — nothing else.
+      orchestrator injects IEnumerable<IUserDataContributor> from its own leaf, IUserServiceRead
+      for the merge lineage the export envelope carries, IClock and ILogger — nothing else.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

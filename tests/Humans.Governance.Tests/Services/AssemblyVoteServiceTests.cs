@@ -1708,6 +1708,33 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task ContributeForUserAsync_AskedWithAMergedAwayId_StillReturnsTheVotesTheyRan()
+    {
+        var mergedAway = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        _fx.StubMergedInto(mergedAway, survivor);
+        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
+
+        var tracked = await _fx.Db.AssemblyVotes.SingleAsync(
+            v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        tracked.OpenedByUserId = survivor;
+        tracked.ClosedByUserId = survivor;
+        await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var slices = await _fx.Service.ContributeForUserAsync(
+            mergedAway, Xunit.TestContext.Current.CancellationToken);
+
+        // The mirror image of the ballot slice: ReassignAsync moves the actor columns onto the
+        // survivor, so the archived id owns none and the raw id returns an empty slice. The
+        // roster read walks the chain, this one resolves forward — asking with either id has
+        // to reach the same officer's record.
+        var json = System.Text.Json.JsonSerializer.Serialize(
+            slices.Single(x => string.Equals(
+                x.SectionName, GdprExportSections.AssemblyVoteActions, StringComparison.Ordinal)).Data);
+        json.Should().Contain("Opened").And.Contain("Closed");
+    }
+
+    [HumansFact]
     public async Task RunLapseAndReminderSweepAsync_RemindsTheSurvivorOfARosterRowLeftOnATombstone()
     {
         var vote = await _fx.AddVoteAsync(

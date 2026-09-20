@@ -1861,12 +1861,14 @@ internal sealed class AssemblyVoteService(
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(
         Guid userId, CancellationToken ct)
     {
+        var info = await users.GetUserInfoAsync(userId, ct);
+
         // Plus every account merged into this one. The merge leaves roster rows and ballots
         // on the merged-away id, so the survivor's download would otherwise omit an
         // entitlement and a ballot that are unmistakably theirs — the erasure path beside
         // this one already follows the same chain.
         IReadOnlyList<(AssemblyVoteRoster Roster, AssemblyVote Vote, AssemblyBallot? Ballot)> record = [];
-        foreach (var id in (await users.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId])
+        foreach (var id in info?.AllUserIds ?? [userId])
         {
             record = [.. record, .. await repository.GetVotingRecordForUserAsync(id, ct)];
         }
@@ -1903,7 +1905,11 @@ internal sealed class AssemblyVoteService(
             })
             .ToList();
 
-        var (acted, peeks) = await repository.GetActorRecordForUserAsync(userId, ct);
+        // The survivor's id alone, not AllUserIds — the mirror image of the roster read above.
+        // ReassignAsync moves the actor columns onto the survivor at merge time, so a merged-away
+        // id owns no actor rows and asking with the raw id returns an empty slice.
+        var actorId = info?.Id ?? userId;
+        var (acted, peeks) = await repository.GetActorRecordForUserAsync(actorId, ct);
 
         var actions = acted
             .Select(v => new
@@ -1912,9 +1918,9 @@ internal sealed class AssemblyVoteService(
                 v.Status,
                 Roles = new[]
                     {
-                        v.CreatedByUserId == userId ? "Drafted" : null,
-                        v.OpenedByUserId == userId ? "Opened" : null,
-                        v.ClosedByUserId == userId ? "Closed" : null
+                        v.CreatedByUserId == actorId ? "Drafted" : null,
+                        v.OpenedByUserId == actorId ? "Opened" : null,
+                        v.ClosedByUserId == actorId ? "Closed" : null
                     }
                     .OfType<string>()
                     .ToList(),

@@ -895,7 +895,9 @@ internal sealed class ProfileController(
     {
         var payload = new Dictionary<string, object?>(StringComparer.Ordinal)
         {
-            ["ExportedAt"] = export.ExportedAt
+            ["ExportedAt"] = export.ExportedAt,
+            ["UserId"] = export.UserId,
+            ["MergedFromUserIds"] = export.MergedFromUserIds
         };
         foreach (var (section, data) in export.Sections)
         {
