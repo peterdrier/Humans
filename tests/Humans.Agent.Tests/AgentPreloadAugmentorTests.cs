@@ -13,7 +13,29 @@ namespace Humans.Agent.Tests;
 /// </summary>
 public class AgentPreloadAugmentorTests
 {
-    private static string Faq() => new AgentPreloadAugmentor().BuildFaqMarkdown();
+    private static string Faq() => Augmentor().BuildFaqMarkdown();
+
+    /// <summary>
+    /// The augmentor renders whatever <see cref="ISectionHelp"/> contributions DI hands it, so
+    /// the glossary tests below supply their own: the real content now lives in ten sections,
+    /// pinned in each section's own test project, and asserting it here would need Agent to
+    /// reference them all. What is Agent's to get right is the folding, grouping and heading
+    /// resolution these exercise.
+    /// </summary>
+    private static AgentPreloadAugmentor Augmentor(params ISectionHelp[] helpContributions) =>
+        new(helpContributions);
+
+    private sealed class StubHelp(params SectionHelpEntry[] entries) : ISectionHelp
+    {
+        public IReadOnlyList<SectionHelpEntry> HelpEntries => entries;
+    }
+
+    /// <summary>A glossary entry in the shape the real ones have: a page heading, then a term table.</summary>
+    private static SectionHelpEntry Glossary(string key, int order, string page, params string[] rows) =>
+        new(key, order, Guide: null, Glossary: string.Join('\n',
+            ["## " + page + " Glossary", "", "| Term | Definition |", "|------|-----------|", .. rows]));
+
+    private const string HumanRow = "| **Human** | A member of Nobodies Collective. |";
 
     [HumansFact]
     public void Faq_points_to_self_service_ticket_transfer()
@@ -41,24 +63,59 @@ public class AgentPreloadAugmentorTests
         faq.Should().Contain("https://nobodies.team/");      // external comms channels
     }
 
+    /// <summary>
+    /// A row defined identically on more than one page is folded into "Shared Terms" and dropped
+    /// from the per-page tables — the agent must not meet the same definition twice.
+    /// </summary>
     [HumansFact]
-    public void Glossaries_define_Human_exactly_once()
+    public void Glossaries_define_a_term_shared_across_pages_exactly_once()
     {
-        var glossaries = new AgentPreloadAugmentor().BuildGlossariesMarkdown();
+        var glossaries = Augmentor(
+            new StubHelp(Glossary("Teams", 10, "Teams", HumanRow, "| **Team** | A group of humans. |")),
+            new StubHelp(Glossary("Shifts", 20, "Shifts", HumanRow, "| **Rota** | A schedule of shifts. |")))
+            .BuildGlossariesMarkdown();
+
         glossaries.Split('\n').Count(l => l.StartsWith("| **Human** |", StringComparison.Ordinal)).Should().Be(1);
+        glossaries.Should().Contain("## Shared Terms");
     }
 
     [HumansFact]
     public void Glossaries_keep_every_term_and_definition()
     {
-        var glossaries = new AgentPreloadAugmentor().BuildGlossariesMarkdown();
-        foreach (var (_, body) in SectionHelpContent.AllGlossaries())
+        SectionHelpEntry[] contributed =
+        [
+            Glossary("Teams", 10, "Teams", HumanRow, "| **Team** | A group of humans. |"),
+            Glossary("Shifts", 20, "Shifts", HumanRow, "| **Rota** | A schedule of shifts. |"),
+        ];
+        var glossaries = Augmentor(new StubHelp(contributed)).BuildGlossariesMarkdown();
+
+        foreach (var row in contributed.SelectMany(e => e.Glossary!.Split('\n'))
+                     .Select(l => l.TrimEnd())
+                     .Where(l => l.StartsWith("| **", StringComparison.Ordinal)))
         {
-            foreach (var row in body.Split('\n').Select(l => l.TrimEnd()).Where(l => l.StartsWith("| **", StringComparison.Ordinal)))
-            {
-                glossaries.Should().Contain(row);
-            }
+            glossaries.Should().Contain(row);
         }
+    }
+
+    /// <summary>
+    /// The corpus is whatever DI discovered, not a list Base or the Agent keeps: every
+    /// contribution is rendered, and the order is the one the entries declare — several
+    /// sections' pages interleave, so registration order would reshuffle the corpus.
+    /// </summary>
+    [HumansFact]
+    public void Glossaries_render_every_contribution_in_declared_entry_order()
+    {
+        var glossaries = Augmentor(
+            new StubHelp(Glossary("Teams", 20, "Teams", "| **Team** | A group of humans. |")),
+            new StubHelp(
+                Glossary("Camps", 10, "Camps", "| **Camp** | A barrio. |"),
+                Glossary("Shifts", 30, "Shifts", "| **Rota** | A schedule of shifts. |")))
+            .BuildGlossariesMarkdown();
+
+        glossaries.Split('\n')
+            .Select(l => l.TrimEnd())
+            .Where(l => l.EndsWith(" Glossary", StringComparison.Ordinal))
+            .Should().Equal("## Camps Glossary", "## Teams Glossary", "## Shifts Glossary");
     }
 
     /// <summary>
@@ -70,7 +127,12 @@ public class AgentPreloadAugmentorTests
     [HumansFact]
     public void Every_glossary_heading_is_a_fetchable_section_key()
     {
-        var glossaries = new AgentPreloadAugmentor().BuildGlossariesMarkdown();
+        var glossaries = Augmentor(
+            new StubHelp(
+                // "Profile" is a help key, not a section key — it must come out resolved to "Users".
+                Glossary("Profile", 10, "Profile", "| **Burner name** | The name you go by. |"),
+                Glossary("Teams", 20, "Teams", "| **Team** | A group of humans. |")))
+            .BuildGlossariesMarkdown();
 
         var headings = glossaries.Split('\n')
             .Select(l => l.TrimEnd())
@@ -100,8 +162,17 @@ public class AgentPreloadAugmentorTests
     [HumansFact]
     public void No_glossary_table_defines_the_same_term_twice()
     {
+        // Two pages under one section key that define the same term differently — the case the
+        // per-page tables exist for.
+        var markdown = Augmentor(new StubHelp(
+                Glossary("CityPlanningOverview", 10, "City Planning Overview",
+                    "| **Barrio Lead** | The lead who places the barrio on the map. |"),
+                Glossary("CityPlanningBarrioMap", 20, "Barrio Placement",
+                    "| **Barrio Lead** | The lead who owns the barrio's polygon. |")))
+            .BuildGlossariesMarkdown();
+
         var terms = new List<string>();
-        foreach (var line in new AgentPreloadAugmentor().BuildGlossariesMarkdown().Split('\n').Select(l => l.TrimEnd()))
+        foreach (var line in markdown.Split('\n').Select(l => l.TrimEnd()))
         {
             if (line.StartsWith("| Term |", StringComparison.Ordinal))
             {
@@ -135,7 +206,7 @@ public class AgentPreloadAugmentorTests
     [HumansFact]
     public void AccessMatrix_keeps_every_allowed_and_limited_role_fact_grouped_by_section()
     {
-        var matrix = new AgentPreloadAugmentor().BuildAccessMatrixMarkdown();
+        var matrix = Augmentor().BuildAccessMatrixMarkdown();
         foreach (var section in AccessMatrixDefinitions.Sections.Values)
         {
             matrix.Should().Contain($"## {section.SectionName}");
@@ -161,7 +232,7 @@ public class AgentPreloadAugmentorTests
     [HumansFact]
     public void AccessMatrix_collapses_features_sharing_a_role_set_onto_one_line()
     {
-        var matrix = new AgentPreloadAugmentor().BuildAccessMatrixMarkdown();
+        var matrix = Augmentor().BuildAccessMatrixMarkdown();
         matrix.Split('\n').Should().Contain(l =>
             l.Contains("Browse shifts", StringComparison.Ordinal) &&
             l.Contains("Sign up for shifts", StringComparison.Ordinal) &&
