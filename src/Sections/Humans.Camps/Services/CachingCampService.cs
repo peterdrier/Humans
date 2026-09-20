@@ -4,6 +4,7 @@ using NodaTime;
 using Humans.Base.Caching;
 using Humans.Base.Extensions;
 using Humans.EarlyEntry.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Camps.Services;
@@ -15,6 +16,7 @@ namespace Humans.Camps.Services;
 /// </summary>
 internal sealed class CachingCampService(
     IServiceScopeFactory scopeFactory,
+    ISettingsService settingsService,
     IClock clock,
     ILogger<CachingCampService> logger) : TrackedCache<Guid, CampInfo>("Camp.CampInfo", warmOnStartup: true, logger),
     ICampService, ICampLeadDirectory, ICampSeeding, ICampRoleCampAccess, IUserMerge, ICampInfoInvalidator, IEarlyEntryProvider
@@ -85,13 +87,14 @@ internal sealed class CachingCampService(
 
     public async Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct)
     {
-        var settings = await GetSettingsAsync(ct);
-        if (settings.EeStartDate is not { } eeStartDate)
+        var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
+        if (activeEvent?.EarlyEntryStartOffset is not { } offset)
         {
             return [];
         }
 
-        var year = settings.PublicYear;
+        var eeStartDate = activeEvent.GateOpeningDate.PlusDays(offset);
+        var year = activeEvent.Year;
         var camps = await GetCampsForYearAsync(year, ct);
         return camps
             .SelectMany(camp => camp.Seasons.Where(season => season.Year == year))
@@ -322,12 +325,6 @@ internal sealed class CachingCampService(
         await InvalidateCampAsync(campId, cancellationToken);
     }
 
-    public async Task SetPublicYearAsync(int year, CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.SetPublicYearAsync(year, cancellationToken));
-        await InvalidateSettingsAsync(cancellationToken);
-    }
-
     public async Task OpenSeasonAsync(int year, CancellationToken cancellationToken = default)
     {
         await WithInner(inner => inner.OpenSeasonAsync(year, cancellationToken));
@@ -426,14 +423,6 @@ internal sealed class CachingCampService(
         if (result.Succeeded)
             RefreshAll();
         return result;
-    }
-
-    public async Task SetEeStartDateAsync(
-        LocalDate? eeStartDate, Guid actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.SetEeStartDateAsync(eeStartDate, actorUserId, cancellationToken));
-        await InvalidateSettingsAsync(cancellationToken);
     }
 
     public async Task SetCampSeasonEeSlotCountAsync(

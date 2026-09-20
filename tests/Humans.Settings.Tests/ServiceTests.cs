@@ -241,7 +241,7 @@ public sealed class ServiceTests
     // ── The at-most-one-Active invariant.
     //    No DB constraint backs it, so the service is where it holds.
 
-    private static EventSettingsInfo MakeDto(Guid id, EventSettingsStatus status) => new(
+    private static EventSettingsInfo MakeDto(Guid id, EventSettingsStatus status, int? earlyEntryStartOffset = null) => new(
         Id: id,
         EventName: "Nowhere 2026",
         Year: 2026,
@@ -257,7 +257,70 @@ public sealed class ServiceTests
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
         EarlyEntryClose: null,
-        Status: status);
+        Status: status,
+        EarlyEntryStartOffset: earlyEntryStartOffset);
+
+    // ── The EarlyEntryStartOffset invariant: BuildStartOffset ≤ offset < 0.
+
+    [HumansFact]
+    public async Task SaveEventSettingsAsync_RefusesEarlyEntryStartOffset_BeforeBuildStart()
+    {
+        var id = Guid.NewGuid();
+        ShiftsKnows(id);
+
+        // BuildStartOffset is -25 on MakeDto; -26 is earlier still.
+        var act = () => BuildSut().SaveEventSettingsAsync(
+            MakeDto(id, EventSettingsStatus.Inactive, earlyEntryStartOffset: -26),
+            Actor, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("Early entry start offset must be between build start and 0*");
+        await _repository.DidNotReceive().UpsertEventSettingsAsync(
+            Arg.Any<EventSettings>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SaveEventSettingsAsync_RefusesEarlyEntryStartOffset_AtOrAfterZero()
+    {
+        var id = Guid.NewGuid();
+        ShiftsKnows(id);
+
+        var act = () => BuildSut().SaveEventSettingsAsync(
+            MakeDto(id, EventSettingsStatus.Inactive, earlyEntryStartOffset: 0),
+            Actor, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("Early entry start offset must be between build start and 0*");
+        await _repository.DidNotReceive().UpsertEventSettingsAsync(
+            Arg.Any<EventSettings>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SaveEventSettingsAsync_AcceptsEarlyEntryStartOffset_WithinRange()
+    {
+        var id = Guid.NewGuid();
+        ShiftsKnows(id);
+
+        await BuildSut().SaveEventSettingsAsync(
+            MakeDto(id, EventSettingsStatus.Inactive, earlyEntryStartOffset: -7),
+            Actor, TestContext.Current.CancellationToken);
+
+        await _repository.Received(1).UpsertEventSettingsAsync(
+            Arg.Is<EventSettings>(e => e.EarlyEntryStartOffset == -7), Now, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SaveEventSettingsAsync_AllowsNullEarlyEntryStartOffset()
+    {
+        var id = Guid.NewGuid();
+        ShiftsKnows(id);
+
+        await BuildSut().SaveEventSettingsAsync(
+            MakeDto(id, EventSettingsStatus.Inactive), Actor, TestContext.Current.CancellationToken);
+
+        await _repository.Received(1).UpsertEventSettingsAsync(
+            Arg.Is<EventSettings>(e => e.EarlyEntryStartOffset == null), Now, Arg.Any<CancellationToken>());
+    }
 
     [HumansFact]
     public async Task SaveEventSettingsAsync_RefusesToActivateWhileAnotherRowIsActive()

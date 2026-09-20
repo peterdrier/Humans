@@ -47,6 +47,13 @@ internal sealed class Service(
                 "Only one event settings row can be Active at a time — deactivate the current one first.");
         }
 
+        if (settings.EarlyEntryStartOffset is { } eeStartOffset
+            && (eeStartOffset < settings.BuildStartOffset || eeStartOffset >= 0))
+        {
+            throw new InvalidOperationException(
+                "Early entry start offset must be between build start and 0 (exclusive).");
+        }
+
         // Transitional: Rota.EventSettingsId and EventGuideSettings.EventSettingsId still
         // resolve against the Shifts-owned event_settings, so a row born here with an id
         // Shifts does not have is an event that can never hold a rota. Retires with the carry.
@@ -87,7 +94,8 @@ internal sealed class Service(
         BarriosEarlyEntryAllocation: src.BarriosEarlyEntryAllocation is null
             ? null : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),
         EarlyEntryClose: src.EarlyEntryClose,
-        Status: src.Status);
+        Status: src.Status,
+        EarlyEntryStartOffset: src.EarlyEntryStartOffset);
 
     private static EventSettings ToEntity(EventSettingsInfo src) => new()
     {
@@ -108,5 +116,6 @@ internal sealed class Service(
             ? null : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),
         EarlyEntryClose = src.EarlyEntryClose,
         Status = src.Status,
+        EarlyEntryStartOffset = src.EarlyEntryStartOffset,
     };
 }

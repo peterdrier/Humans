@@ -23,7 +23,7 @@ public sealed class ContainerPlacementPhaseTests : CityPlanningTestBase
     {
         _campService = Substitute.For<ICampServiceRead>();
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(new CampSettingsInfo(PublicYear: 2026, OpenSeasons: [], EeStartDate: null));
+            .Returns(new CampSettingsInfo(PublicYear: 2026, OpenSeasons: []));
         var repo = new CityPlanningRepository(CityPlanningDbFactory);
         var options = new CityPlanningOptions { CityPlanningTeamSlug = "city-planning" };
         _sut = new CityPlanningService(

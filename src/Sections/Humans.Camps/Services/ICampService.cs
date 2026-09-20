@@ -63,7 +63,6 @@ internal interface ICampService : ICampServiceRead, IApplicationService
     Task ReorderImagesAsync(Guid campId, List<Guid> imageIdsInOrder, CancellationToken cancellationToken = default);
 
     // Settings (CampAdmin)
-    Task SetPublicYearAsync(int year, CancellationToken cancellationToken = default);
     Task OpenSeasonAsync(int year, CancellationToken cancellationToken = default);
     Task CloseSeasonAsync(int year, CancellationToken cancellationToken = default);
     Task SetNameLockDateAsync(int year, LocalDate lockDate, CancellationToken cancellationToken = default);
@@ -121,14 +120,6 @@ internal interface ICampService : ICampServiceRead, IApplicationService
     // ==========================================================================
     // Early Entry (issue nobodies-collective#490)
     // ==========================================================================
-
-    /// <summary>
-    /// Sets the global Early Entry start date in CampSettings. CampAdmin/Admin only;
-    /// authorization enforced at the controller layer.
-    /// </summary>
-    Task SetEeStartDateAsync(
-        LocalDate? eeStartDate, Guid actorUserId,
-        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Sets the EE slot cap for a given camp season. CampAdmin/Admin only.

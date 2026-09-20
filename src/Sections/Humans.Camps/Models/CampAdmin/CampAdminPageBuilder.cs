@@ -36,7 +36,6 @@ internal sealed class CampAdminPageBuilder(
             NameLockDates = settings.NameLockDates.ToDictionary(kv => kv.Key, kv => kv.Value),
             AllCampSummaries = summaries,
             RegistrationInfo = registrationInfo,
-            EeStartDate = settings.EeStartDate,
             PendingCamps = BuildCampCards(allCamps, settings.PublicYear, CampSeasonStatus.Pending)
         };
     }

@@ -110,4 +110,39 @@ public sealed class EventSettingsViewModelTests
         parsed.Settings.PreEventWeekStartOffset.Should().Be(carried.PreEventWeekStartOffset);
         parsed.Settings.FinishingWeekendStartOffset.Should().Be(carried.FinishingWeekendStartOffset);
     }
+
+    // ── EarlyEntryStartOffset: BuildStartOffset ≤ offset < 0, null until configured.
+
+    [HumansFact]
+    public void NullEarlyEntryStartOffset_IsAccepted()
+    {
+        Validate(new EventSettingsViewModel { EarlyEntryStartOffset = null }).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public void EarlyEntryStartOffset_BeforeBuildStart_IsRejected()
+    {
+        // BuildStartOffset defaults to -25.
+        var model = new EventSettingsViewModel { EarlyEntryStartOffset = -26 };
+
+        Validate(model).Should().ContainSingle()
+            .Which.MemberNames.Should().ContainSingle(nameof(EventSettingsViewModel.EarlyEntryStartOffset));
+    }
+
+    [HumansFact]
+    public void EarlyEntryStartOffset_AtZero_IsRejected()
+    {
+        var model = new EventSettingsViewModel { EarlyEntryStartOffset = 0 };
+
+        Validate(model).Should().ContainSingle()
+            .Which.MemberNames.Should().ContainSingle(nameof(EventSettingsViewModel.EarlyEntryStartOffset));
+    }
+
+    [HumansFact]
+    public void EarlyEntryStartOffset_WithinRange_IsAccepted()
+    {
+        var model = new EventSettingsViewModel { EarlyEntryStartOffset = -7 };
+
+        Validate(model).Should().BeEmpty();
+    }
 }

@@ -38,6 +38,13 @@ internal sealed class EventSettings : IEventSettingsInfo
     /// <summary>Offset for the last strike day (inclusive).</summary>
     public int StrikeEndOffset { get; set; }
 
+    /// <summary>
+    /// Negative day offset from <see cref="GateOpeningDate"/> from which humans holding an
+    /// EE grant may enter the site. Null until configured for the cycle. Validation:
+    /// <see cref="BuildStartOffset"/> ≤ value &lt; 0.
+    /// </summary>
+    public int? EarlyEntryStartOffset { get; set; }
+
     // ------------------------------------------------------------------
     // Build-phase sub-period boundaries — the build period is split into
     // four named sub-periods so the shift dashboard can filter per phase.

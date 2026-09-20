@@ -37,7 +37,7 @@ public sealed class CityPlanningControllerSettingsRedirectTests : CityPlanningTe
     public CityPlanningControllerSettingsRedirectTests()
     {
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(new CampSettingsInfo(2026, [], null));
+            .Returns(new CampSettingsInfo(2026, []));
 
         _service = new CityPlanningService(
             new CityPlanningRepository(CityPlanningDbFactory), Clock,

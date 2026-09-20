@@ -156,7 +156,7 @@ public class NotificationMeterProviderTests : IDisposable
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo>()));
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(new CampSettingsInfo(2026, [2026], null));
+            .Returns(new CampSettingsInfo(2026, [2026]));
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns([MakeCampInfoWithPendingRequest(leadUserId)]);
 
@@ -179,7 +179,7 @@ public class NotificationMeterProviderTests : IDisposable
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo>()));
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(new CampSettingsInfo(2026, [2027], null));
+            .Returns(new CampSettingsInfo(2026, [2027]));
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns([MakeCampInfoWithPendingRequest(Guid.NewGuid())]);
         _campService.GetCampsForYearAsync(2027, Arg.Any<CancellationToken>())

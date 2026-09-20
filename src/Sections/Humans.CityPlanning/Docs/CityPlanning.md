@@ -22,7 +22,7 @@ Interactive map surface: a read-only overview, barrio polygon editing, and conta
 
 ### CityPlanningSettings
 
-Per-year singleton controlling the placement phase and map overlays. Auto-created from `CampSettings.PublicYear`.
+Per-year singleton controlling the placement phase and map overlays. Auto-created from `CampSettingsInfo.PublicYear` (Camps' active event year, sourced from Settings, falling back to the clock year).
 
 **Table:** `city_planning_settings`
 
@@ -38,7 +38,7 @@ Per-year singleton controlling the placement phase and map overlays. Auto-create
 | ContainerPlacementClosedAt | Instant? | When container placement was last closed |
 | PlacementOpensAt | LocalDateTime? | Informational scheduled open (not enforced) |
 | PlacementClosesAt | LocalDateTime? | Informational scheduled close (not enforced) |
-| RegistrationInfo | text? | Admin-editable markdown shown at the top of `/Barrios/Register`. Null/empty = hidden. Keyed to the highest open season year (falling back to `PublicYear`), not to `CampSettings.PublicYear` like the other fields. |
+| RegistrationInfo | text? | Admin-editable markdown shown at the top of `/Barrios/Register`. Null/empty = hidden. Keyed to the highest open season year (falling back to `PublicYear`), not to `CampSettingsInfo.PublicYear` like the other fields. |
 | LimitZoneGeoJson | text? | GeoJSON FeatureCollection — site boundary |
 | OfficialZonesGeoJson | text? | GeoJSON FeatureCollection — named overlay zones |
 | UpdatedAt | Instant | Last modification |
@@ -152,7 +152,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - CampPolygonHistory is append-only — edits and restores always create a new history entry (design-rules §12).
 - Camp leads can only edit their own camp's polygon when barrio placement is open. City-planning team members and CampAdmin are exempt.
 - Camp leads can only add/edit/delete their camp's containers when container placement is open. City-planning team members and CampAdmin are exempt.
-- CityPlanningSettings row is auto-created per year from `CampSettings.PublicYear`.
+- CityPlanningSettings row is auto-created per year from `CampSettingsInfo.PublicYear`.
 - SignalR broadcasts polygon updates to all connected clients in real time.
 - The container placement map deliberately has **no SignalR channel and no MapboxDraw control** — placement saves are fire-and-forget per drop (single-user workflow is sufficient at this scale) and containers use a custom drag-to-move / drag-handle-to-rotate interaction. Only the barrio polygon map broadcasts real-time updates via `CityPlanningHub`.
 - Limit zone and official zones are stored as GeoJSON on CityPlanningSettings; out-of-bounds and overlap detection is client-side.

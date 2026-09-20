@@ -2,6 +2,7 @@ using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
 using Humans.Base.Caching;
 using Humans.Base.Enums;
+using Humans.Settings.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -124,6 +125,7 @@ public class CampsArchitectureTests
         var services = new ServiceCollection();
         services.AddSingleton(Substitute.For<ICampRepository>());
         services.AddSingleton(Substitute.For<IServiceScopeFactory>());
+        services.AddSingleton(Substitute.For<ISettingsService>());
         services.AddSingleton(Substitute.For<IClock>());
         services.AddSingleton(Substitute.For<ILogger<CachingCampService>>());
 

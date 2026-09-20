@@ -147,8 +147,9 @@ a field when it is `Sources.Count > 1`.
   resolve itself.
 - **Shifts derives one grant per person from their earliest confirmed build shift**, entry date
   = that shift's local day minus one, so a shift-derived date is never later than the day
-  before the person's first shift. Camps grants a single global `EeStartDate` per member;
-  Teams grants a per-grant date.
+  before the person's first shift. Camps grants a single global date, resolved from
+  `EventSettings.EarlyEntryStartOffset` (nobodies-collective/Humans#1633), per member; Teams
+  grants a per-grant date.
 - **`Views/_ViewImports.cshtml` is not inherited from the Shell.** A missing `@using` there
   ships broken markup with a green build.
 

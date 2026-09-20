@@ -403,7 +403,7 @@ public class CampControllerTests
     private void StubCampReadModel(IReadOnlyList<CampInfo> camps)
     {
         _camps.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new CampSettingsInfo(2026, [2026], null)));
+            .Returns(Task.FromResult(new CampSettingsInfo(2026, [2026])));
         _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(camps));
     }

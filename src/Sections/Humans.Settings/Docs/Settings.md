@@ -74,6 +74,7 @@ of the app-wide event values (nobodies-collective/Humans#1104).
 | EarlyEntryCapacity | JSON `Dictionary<int,int>` | Step function, day offset → capacity |
 | BarriosEarlyEntryAllocation | JSON, nullable | |
 | EarlyEntryClose | Instant, nullable | |
+| EarlyEntryStartOffset | int?, nullable | Negative day offset from `GateOpeningDate`; null until configured. Validated `BuildStartOffset ≤ value < 0`. Resolved date = `GateOpeningDate.PlusDays(offset)`. Moved from Camps' `CampSettings.EeStartDate` (nobodies-collective#1633); Camps' `IEarlyEntryProvider` reads it via `ISettingsService`. No data carried across sections — an admin re-enters the value here after the cutover. |
 | Status | EventSettingsStatus | |
 | CreatedAt / UpdatedAt | Instant | Stamped by the repository upsert |
 
@@ -118,6 +119,10 @@ Both admin controllers are `PolicyNames.AdminOnly` (pinned in
 - **The build window partitions.**
   `BuildStartOffset ≤ FirstCrew < SetupWeek < PreEvent < FinishingWeekend < 0`,
   validated by `EventSettingsViewModel` (`EventSettingsViewModelTests`).
+- **`EarlyEntryStartOffset`, when set, stays inside the build window.**
+  `BuildStartOffset ≤ EarlyEntryStartOffset < 0`, enforced in both
+  `Service.SaveEventSettingsAsync` and `EventSettingsViewModel` (`ServiceTests`,
+  `EventSettingsViewModelTests`); null (not yet configured) always passes.
 - EF entities never leave the section; the cross-section surface is the
   `Humans.Settings.Contracts` leaf (`ISettingsService`, `EventSettingsInfo`,
   `SettingKeys`), referenced by consuming sections without referencing

@@ -33,7 +33,8 @@ public static class BurnFixtures
         int finishingWeekendStartOffset = -2,
         IReadOnlyDictionary<int, int>? earlyEntryCapacity = null,
         IReadOnlyDictionary<int, int>? barriosEarlyEntryAllocation = null,
-        Instant? earlyEntryClose = null) =>
+        Instant? earlyEntryClose = null,
+        int? earlyEntryStartOffset = null) =>
         new(
             Id: id ?? Guid.NewGuid(),
             EventName: eventName,
@@ -49,5 +50,6 @@ public static class BurnFixtures
             FinishingWeekendStartOffset: finishingWeekendStartOffset,
             EarlyEntryCapacity: earlyEntryCapacity ?? new Dictionary<int, int>(),
             BarriosEarlyEntryAllocation: barriosEarlyEntryAllocation,
-            EarlyEntryClose: earlyEntryClose);
+            EarlyEntryClose: earlyEntryClose,
+            EarlyEntryStartOffset: earlyEntryStartOffset);
 }

@@ -24,7 +24,7 @@ public sealed class CampAuthorizationHandlerTests
     {
         _handler = new CampAuthorizationHandler(_campService);
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(new CampSettingsInfo(2026, [], null));
+            .Returns(new CampSettingsInfo(2026, []));
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new List<CampInfo>
             {

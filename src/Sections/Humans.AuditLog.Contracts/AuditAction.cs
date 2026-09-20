@@ -143,7 +143,6 @@ public enum AuditAction
     CampEarlyEntryGranted,
     CampEarlyEntryRevoked,
     CampSeasonEeSlotCountChanged,
-    CampSettingsEeStartDateChanged,
     ExpenseSubmit,
     ExpenseEndorse,
     ExpenseCoordinatorReject,

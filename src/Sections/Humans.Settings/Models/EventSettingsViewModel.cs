@@ -48,6 +48,9 @@ internal sealed class EventSettingsViewModel : IValidatableObject
 
     public string? EarlyEntryClose { get; set; }
 
+    /// <summary>Negative day offset from <see cref="GateOpeningDate"/>; null until configured.</summary>
+    public int? EarlyEntryStartOffset { get; set; }
+
     /// <summary>
     /// The form's view of <see cref="EventSettingsStatus"/>: the checkbox maps to
     /// Active/Inactive and never reaches <see cref="EventSettingsStatus.Deleted"/> —
@@ -80,6 +83,14 @@ internal sealed class EventSettingsViewModel : IValidatableObject
                     nameof(PreEventWeekStartOffset),
                     nameof(FinishingWeekendStartOffset)
                 ]);
+        }
+
+        if (EarlyEntryStartOffset is { } eeStartOffset
+            && (eeStartOffset < BuildStartOffset || eeStartOffset >= 0))
+        {
+            yield return new ValidationResult(
+                "Early entry start offset must be between build start and 0 (exclusive).",
+                [nameof(EarlyEntryStartOffset)]);
         }
     }
 }
@@ -120,6 +131,7 @@ internal static class EventSettingsFormMapper
             ? InstantPattern.General.Format(src.EarlyEntryClose.Value)
             : null,
         IsActive = src.Status == EventSettingsStatus.Active,
+        EarlyEntryStartOffset = src.EarlyEntryStartOffset,
     };
 
     internal static EventSettingsParseResult Parse(EventSettingsViewModel model)
@@ -185,7 +197,8 @@ internal static class EventSettingsFormMapper
                 EarlyEntryClose: earlyEntryClose,
                 Status: model.IsActive
                     ? EventSettingsStatus.Active
-                    : EventSettingsStatus.Inactive),
+                    : EventSettingsStatus.Inactive,
+                EarlyEntryStartOffset: model.EarlyEntryStartOffset),
             []);
     }
 

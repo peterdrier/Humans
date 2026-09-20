@@ -32,7 +32,8 @@ public sealed record EventSettingsInfo(
     IReadOnlyDictionary<int, int> EarlyEntryCapacity,
     IReadOnlyDictionary<int, int>? BarriosEarlyEntryAllocation,
     Instant? EarlyEntryClose,
-    EventSettingsStatus Status = EventSettingsStatus.Active) : IEventSettingsInfo
+    EventSettingsStatus Status = EventSettingsStatus.Active,
+    int? EarlyEntryStartOffset = null) : IEventSettingsInfo
 {
     /// <summary>
     /// Step-function lookup: returns the cumulative EE capacity for the

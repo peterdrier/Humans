@@ -259,9 +259,9 @@ CampSeason
 ```
 CampSettings
 ├── Id: Guid
-├── PublicYear: int
+├── PublicYear: int [dead column (nobodies-collective#1632); year now resolves from Settings' active event]
 ├── OpenSeasons: List<int> [JSON]
-└── EeStartDate: LocalDate? [global Early Entry start date; null until set by CampAdmin]
+└── EeStartDate: LocalDate? [dead column (nobodies-collective#1633); replaced by EventSettings.EarlyEntryStartOffset]
 ```
 
 ### Supporting Entities
@@ -483,14 +483,12 @@ Note: `Full` is informational only — it does not gate join requests. A camp le
 | `POST /Camps/Admin/Reject/{seasonId}` | Reject season |
 | `POST /Camps/Admin/OpenSeason` | Open season (year as form field) |
 | `POST /Camps/Admin/CloseSeason/{year}` | Close season |
-| `POST /Camps/Admin/SetPublicYear` | Set public year |
 | `POST /Camps/Admin/SetNameLockDate` | Set name lock date |
 | `GET /Camps/Admin/Export` | Export camps CSV |
 | `POST /Camps/Admin/UpdateRegistrationInfo` | Update the registration-info banner shown on the registration form |
 | `POST /Camps/Admin/Delete` | Delete camp (Admin only; campId as form field) |
 | `POST /Camps/Admin/Reactivate/{seasonId}` | CampAdmin reactivates a Full season to Active |
 | `POST /Camps/Admin/SetCampSeasonEeSlotCount/{seasonId}` | Set a season's Early Entry slot cap |
-| `POST /Camps/Admin/SetEeStartDate` | Set the global Early Entry start date |
 | `GET /Camps/Admin/Roles` | List role definitions |
 | `GET /Camps/Admin/Roles/{slug}` | Cross-camp roster for one role definition (assignees + mailto to the derived group email) |
 | `GET/POST /Camps/Admin/Roles/Create` | Create role definition |
