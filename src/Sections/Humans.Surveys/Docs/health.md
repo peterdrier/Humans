@@ -156,9 +156,11 @@ the line that enforces it.
   an account merge moves authorship to the survivor:
   `src/Sections/Humans.Surveys/Services/SurveyService.cs:1815`, `:1816` and `:1825`, over
   `src/Sections/Humans.Surveys/Data/SurveyRepository.cs:479` and `:495`.
-- **Everything personal the section holds is exported**: the person's own Identified responses and
-  the surveys they authored: `src/Sections/Humans.Surveys/Services/SurveyService.cs:1718` and
-  `:1789`.
+- **Two slices are exported**: the person's own Identified responses and the surveys they authored
+  (`src/Sections/Humans.Surveys/Services/SurveyService.cs:1718` and `:1789`). The invitation ledger
+  is personal data and is *not* among them, so a member who was only invited has nothing exported —
+  an Article 15 gap carried in `debt.yml`, not a property of the target. Erasure does reach those
+  rows: `src/Sections/Humans.Surveys/Data/SurveyRepository.cs:458` deletes them.
 
 ## 5. Seams
 
