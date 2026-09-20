@@ -763,8 +763,8 @@ def cmd_runfile(a):
     the header and the prose blocks are written once and never touched again; `## File
     coverage` and `## Threads` are regenerated from git and the dispatch log each call, keeping
     the dispositions and findings counts the run wrote by hand."""
-    if not os.path.isdir(f"src/Sections/Humans.{a.section}"):
-        sys.exit(f"runfile takes a section name, not a path: no src/Sections/Humans.{a.section}")
+    if not re.fullmatch(r"[A-Za-z0-9]+", a.section) or not os.path.isdir(f"src/Sections/Humans.{a.section}"):
+        sys.exit(f"runfile takes a section name (src/Sections/Humans.<Name>), not a path or a Contracts leaf: {a.section}")
     ts = BRANCH_RE.match(branch())
     if not ts:
         sys.exit(f"not on a section-doctor/<TS> branch ({branch()})")

@@ -337,8 +337,8 @@ writes, in this PR:
   regenerates both from git and the dispatch log — `generated` and `changed` per path, how each
   thread ran and on what — and keeps what the run wrote by hand: `reviewed` on a path (every name
   the file carries resolves, not merely opened) and the findings count per thread, plus why a
-  thread did not run. A disposition is `reviewed`, `changed` or `generated` and nothing else;
-  `check-run-file` rejects any other word. No cost column, no diff-size block, no line counts, no reforge score: the
+  thread did not run. A disposition contains `reviewed`, `changed` or `generated` (a qualifier
+  like `changed (new)` is fine); `check-run-file` rejects a row with none of them. No cost column, no diff-size block, no line counts, no reforge score: the
   PR carries those. `doctor.py check-run-file <path> --section <X>` says what is missing.
 
 The prose gate runs inside every `doctor.py commit` (`memory/process/no-derived-aggregates-in-docs.md`):
