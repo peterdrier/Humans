@@ -19,10 +19,12 @@ namespace Humans.Calendar.Services.Dtos;
 /// <para>
 /// Exception writes (<c>CancelOccurrenceAsync</c> / <c>OverrideOccurrenceAsync</c>)
 /// upsert into the <c>calendar_event_exceptions</c> child table but the cache
-/// is keyed by the <em>parent</em> event id — these writes evict the parent
-/// <see cref="CalendarEventInfo"/> entry, NOT a separate exception row. The
-/// next read repopulates the parent (with its refreshed <see cref="Exceptions"/>
-/// list) through <see cref="ICalendarService.GetEventInfoAsync"/>.
+/// is keyed by the <em>parent</em> event id — there is no separate exception
+/// row to refresh. Every mutation path replaces the parent
+/// <see cref="CalendarEventInfo"/> eagerly, re-reading it (with its refreshed
+/// <see cref="Exceptions"/> list) through
+/// <see cref="ICalendarService.GetEventInfoAsync"/> before the call returns;
+/// nothing here is lazily repopulated on the next read.
 /// </para>
 /// <para>
 /// The projection must stay well under the §15 50 MB-per-projection budget.

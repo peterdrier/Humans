@@ -20,11 +20,13 @@ internal sealed class CalendarController : HumansControllerBase
     private readonly ICalendarServiceRead _calendarRead;
     private readonly ICalendarService _calendar;
     private readonly ITeamServiceRead _teams;
+    private readonly ICalendarFeedTokenService _feedTokens;
     private readonly IClock _clock;
     private readonly Microsoft.Extensions.Localization.IStringLocalizer<CalendarResource> _localizer;
 
     public CalendarController(
         IUserServiceRead userService,
+        ICalendarFeedTokenService feedTokens,
         ICalendarServiceRead calendarRead,
         ICalendarService calendar,
         ITeamServiceRead teams,
@@ -32,6 +34,7 @@ internal sealed class CalendarController : HumansControllerBase
         Microsoft.Extensions.Localization.IStringLocalizer<CalendarResource> localizer)
         : base(userService)
     {
+        _feedTokens = feedTokens;
         _calendarRead = calendarRead;
         _calendar = calendar;
         _teams = teams;
@@ -44,8 +47,38 @@ internal sealed class CalendarController : HumansControllerBase
         [FromQuery] int? year,
         [FromQuery] int? month,
         [FromQuery] Guid? teamId,
-        CancellationToken ct) =>
-        View(await BuildMonthViewAsync(year, month, teamId, ct));
+        CancellationToken ct)
+    {
+        var model = await BuildMonthViewAsync(year, month, teamId, ct);
+
+        // The personal iCal feed card renders below the grid, on this page only.
+        // A viewer with no UserInfo row (merged away) simply gets no card rather
+        // than a broken calendar.
+        var user = await GetCurrentUserInfoAsync(ct);
+        return View(user is null ? model : model with { ICalUrl = await FeedUrlAsync(user, ct) });
+    }
+
+    /// <summary>
+    /// The viewer's personal feed URL. Index is the only page that renders the card,
+    /// so it is the only caller that may mint.
+    /// </summary>
+    private async Task<string> FeedUrlAsync(UserInfo user, CancellationToken ct)
+    {
+        var token = await _feedTokens.EnsureAsync(user.Id, ct);
+        return $"{Request.Scheme}://{Request.Host}/api/ical/{user.Id}/{token}.ics";
+    }
+
+    [HttpPost("Ical/Regenerate")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RegenerateIcal(CancellationToken ct)
+    {
+        var (errorResult, user) = await ResolveCurrentUserOrChallengeAsync(ct);
+        if (errorResult is not null) return errorResult;
+
+        await _feedTokens.RotateAsync(user.Id, ct);
+        SetSuccess(_localizer["Calendar_IcalRegenerated"].Value);
+        return RedirectToAction(nameof(Index));
+    }
 
     [HttpGet("List")]
     public async Task<IActionResult> List(

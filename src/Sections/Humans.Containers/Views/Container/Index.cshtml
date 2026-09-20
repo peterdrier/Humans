@@ -1,6 +1,6 @@
 @model Humans.Containers.Contracts.ContainerIndexViewModel
 @{
-    ViewData["Title"] = $"{Localizer["Container_Breadcrumb"]} — {Model.CampName}";
+    ViewData["Title"] = $"{Localizer["Containers_Breadcrumb"]} — {Model.CampName}";
 
     var routeValues = new Dictionary<string, string>(StringComparer.Ordinal)
     {
@@ -22,12 +22,12 @@
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Index">@SharedLocalizer["Camp_Plural"]</a></li>
         <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Details" asp-route-slug="@Model.CampSlug">@Model.CampName</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["Container_Breadcrumb"]</li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Containers_Breadcrumb"]</li>
     </ol>
 </nav>
 
 <div class="d-flex align-items-center gap-2 mb-4">
-    <h1 class="mb-0">@Localizer["Container_Breadcrumb"] <small class="text-muted">@Model.CampName</small></h1>
+    <h1 class="mb-0">@Localizer["Containers_Breadcrumb"] <small class="text-muted">@Model.CampName</small></h1>
     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addContainerModal">
         <i class="fa-solid fa-plus me-1"></i> @SharedLocalizer["Common_Add"]
     </button>
@@ -35,7 +35,7 @@
     {
         <a asp-controller="CityPlanning" asp-action="ContainerMap" asp-route-year="@Model.CurrentYear"
            class="btn btn-outline-primary btn-sm ms-auto">
-            <i class="fa-solid fa-map-location-dot me-1"></i> @Localizer["ContainerMap_PlaceOnMap"]
+            <i class="fa-solid fa-map-location-dot me-1"></i> @Localizer["Containers_MapPlaceOnMap"]
         </a>
     }
 </div>
@@ -45,13 +45,13 @@
 {
     <div class="alert alert-info mb-3">
         <i class="fa-solid fa-lock me-1"></i>
-        @Localizer["Container_PlacementClosed"]
+        @Localizer["Containers_PlacementClosed"]
     </div>
 }
 
 @if (Model.Containers.Count == 0)
 {
-    <div class="alert alert-secondary">@Localizer["Container_Empty"]</div>
+    <div class="alert alert-secondary">@Localizer["Containers_Empty"]</div>
 }
 else
 {
@@ -67,7 +67,7 @@ else
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">@Localizer["Container_AddModal_Title"]</h5>
+                <h5 class="modal-title">@Localizer["Containers_AddModal_Title"]</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form asp-action="Create" asp-route-slug="@Model.CampSlug"

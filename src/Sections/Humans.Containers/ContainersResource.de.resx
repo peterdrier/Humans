@@ -32,101 +32,101 @@
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
 
-  <data name="Container_AddModal_Title" xml:space="preserve">
+  <data name="Containers_AddModal_Title" xml:space="preserve">
     <value>Container Hinzufügen</value>
   </data>
-  <data name="Container_Breadcrumb" xml:space="preserve">
+  <data name="Containers_Breadcrumb" xml:space="preserve">
     <value>Container</value>
   </data>
-  <data name="Container_DeleteConfirm" xml:space="preserve">
+  <data name="Containers_DeleteConfirm" xml:space="preserve">
     <value>Container {0} löschen?</value>
   </data>
-  <data name="Container_DescPlaceholder" xml:space="preserve">
+  <data name="Containers_DescPlaceholder" xml:space="preserve">
     <value>Größe, Typ, besondere Anforderungen…</value>
   </data>
-  <data name="Container_EditModal_Title" xml:space="preserve">
+  <data name="Containers_EditModal_Title" xml:space="preserve">
     <value>Container Bearbeiten</value>
   </data>
-  <data name="Container_Empty" xml:space="preserve">
+  <data name="Containers_Empty" xml:space="preserve">
     <value>Noch keine Container für diese Saison registriert.</value>
   </data>
-  <data name="Container_FieldDescription" xml:space="preserve">
+  <data name="Containers_FieldDescription" xml:space="preserve">
     <value>Beschreibung</value>
   </data>
-  <data name="Container_FieldImages" xml:space="preserve">
+  <data name="Containers_FieldImages" xml:space="preserve">
     <value>Bilder — bis zu 5 (JPEG, PNG oder WebP — max. 10 MB je Bild)</value>
   </data>
-  <data name="Container_FieldName" xml:space="preserve">
+  <data name="Containers_FieldName" xml:space="preserve">
     <value>Name</value>
   </data>
-  <data name="Container_FieldPlacementImage" xml:space="preserve">
+  <data name="Containers_FieldPlacementImage" xml:space="preserve">
     <value>Platzierungsskizze (JPEG, PNG oder WebP — max. 10 MB)</value>
   </data>
-  <data name="Container_FieldPlacementNotes" xml:space="preserve">
+  <data name="Containers_FieldPlacementNotes" xml:space="preserve">
     <value>Platzierungshinweise</value>
   </data>
-  <data name="Container_NamePlaceholder" xml:space="preserve">
+  <data name="Containers_NamePlaceholder" xml:space="preserve">
     <value>z.B. Container #1</value>
   </data>
-  <data name="Container_PlacementClosed" xml:space="preserve">
+  <data name="Containers_PlacementClosed" xml:space="preserve">
     <value>Die Container-Platzierung ist derzeit geschlossen. Du kannst deine Container verwalten, sie aber noch nicht auf der Karte platzieren.</value>
   </data>
-  <data name="Container_PlacementNotesPlaceholder" xml:space="preserve">
+  <data name="Containers_PlacementNotesPlaceholder" xml:space="preserve">
     <value>Einschränkungen, Zugriffsanforderungen, Ausrichtung…</value>
   </data>
-  <data name="Container_PlacementNotes_ButtonLabel" xml:space="preserve">
+  <data name="Containers_PlacementNotes_ButtonLabel" xml:space="preserve">
     <value>Platzierungshinweise</value>
   </data>
-  <data name="Container_PlacementNotes_Title" xml:space="preserve">
+  <data name="Containers_PlacementNotes_Title" xml:space="preserve">
     <value>Platzierungshinweise</value>
   </data>
-  <data name="Container_RemoveImage_Label" xml:space="preserve">
+  <data name="Containers_RemoveImage_Label" xml:space="preserve">
     <value>Entfernen</value>
   </data>
-  <data name="Container_RemovePlacementImage_Label" xml:space="preserve">
+  <data name="Containers_RemovePlacementImage_Label" xml:space="preserve">
     <value>Platzierungsbild entfernen</value>
   </data>
 
-  <data name="ContainerMap_Unplaced" xml:space="preserve">
+  <data name="Containers_MapUnplaced" xml:space="preserve">
     <value>Nicht platziert</value>
   </data>
-  <data name="ContainerMap_Placed" xml:space="preserve">
+  <data name="Containers_MapPlaced" xml:space="preserve">
     <value>Platziert</value>
   </data>
-  <data name="ContainerMap_ClearPlacement" xml:space="preserve">
+  <data name="Containers_MapClearPlacement" xml:space="preserve">
     <value>Platzierung entfernen</value>
   </data>
-  <data name="ContainerMap_PlaceOnMap" xml:space="preserve">
+  <data name="Containers_MapPlaceOnMap" xml:space="preserve">
     <value>Auf Karte platzieren</value>
   </data>
-  <data name="ContainerMap_ConfirmClear" xml:space="preserve">
+  <data name="Containers_MapConfirmClear" xml:space="preserve">
     <value>Platzierung für «{0}» entfernen? Diese Aktion kann nicht rückgängig gemacht werden.</value>
   </data>
-  <data name="ContainerMap_Legend_Title" xml:space="preserve">
+  <data name="Containers_MapLegend_Title" xml:space="preserve">
     <value>Container-Legende</value>
   </data>
-  <data name="ContainerMap_Legend_Body" xml:space="preserve">
+  <data name="Containers_MapLegend_Body" xml:space="preserve">
     <value>Körper 6 m × 2,4 m</value>
   </data>
-  <data name="ContainerMap_Legend_Door" xml:space="preserve">
+  <data name="Containers_MapLegend_Door" xml:space="preserve">
     <value>Dreieck = Türseite</value>
   </data>
-  <data name="Container_ValidationErrors" xml:space="preserve">
+  <data name="Containers_ValidationErrors" xml:space="preserve">
     <value>Bitte korrigiere die Validierungsfehler.</value>
   </data>
-  <data name="Container_Added" xml:space="preserve">
+  <data name="Containers_Added" xml:space="preserve">
     <value>Container hinzugefügt.</value>
   </data>
-  <data name="Container_Updated" xml:space="preserve">
+  <data name="Containers_Updated" xml:space="preserve">
     <value>Container aktualisiert.</value>
   </data>
-  <data name="Container_Deleted" xml:space="preserve">
+  <data name="Containers_Deleted" xml:space="preserve">
     <value>Container gelöscht.</value>
   </data>
-  <data name="Container_Carousel_Previous" xml:space="preserve">
+  <data name="Containers_Carousel_Previous" xml:space="preserve">
     <value>Zurück</value>
   </data>
-  <data name="Container_Carousel_Next" xml:space="preserve">
+  <data name="Containers_Carousel_Next" xml:space="preserve">
     <value>Weiter</value>
   </data>
 </root>

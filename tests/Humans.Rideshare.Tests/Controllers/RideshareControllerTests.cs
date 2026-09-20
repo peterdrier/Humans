@@ -172,6 +172,6 @@ public sealed class RideshareControllerTests
 
     private static UserInfo User(Guid id) => new(
         id, "Ada", false, "en", null, Now,
-        null, null, null, null, null, false, null, false, null, null, null,
+        null, null, null, null, null, false, false, null, null, null,
         null, null, null, [], [], [], null, []);
 }

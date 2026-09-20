@@ -124,9 +124,6 @@ namespace Humans.Users.Data.Migrations
                         .HasColumnType("character varying(50)")
                         .HasDefaultValue("Unknown");
 
-                    b.Property<Guid?>("ICalToken")
-                        .HasColumnType("uuid");
-
                     b.Property<Instant?>("LastConsentReminderSentAt")
                         .HasColumnType("timestamp with time zone");
 

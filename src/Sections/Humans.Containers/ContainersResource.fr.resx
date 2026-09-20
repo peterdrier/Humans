@@ -32,101 +32,101 @@
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
 
-  <data name="Container_AddModal_Title" xml:space="preserve">
+  <data name="Containers_AddModal_Title" xml:space="preserve">
     <value>Ajouter Conteneur</value>
   </data>
-  <data name="Container_Breadcrumb" xml:space="preserve">
+  <data name="Containers_Breadcrumb" xml:space="preserve">
     <value>Conteneurs</value>
   </data>
-  <data name="Container_DeleteConfirm" xml:space="preserve">
+  <data name="Containers_DeleteConfirm" xml:space="preserve">
     <value>Supprimer le conteneur {0} ?</value>
   </data>
-  <data name="Container_DescPlaceholder" xml:space="preserve">
+  <data name="Containers_DescPlaceholder" xml:space="preserve">
     <value>Taille, type, exigences spéciales…</value>
   </data>
-  <data name="Container_EditModal_Title" xml:space="preserve">
+  <data name="Containers_EditModal_Title" xml:space="preserve">
     <value>Modifier Conteneur</value>
   </data>
-  <data name="Container_Empty" xml:space="preserve">
+  <data name="Containers_Empty" xml:space="preserve">
     <value>Pas encore de conteneurs enregistrés pour cette saison.</value>
   </data>
-  <data name="Container_FieldDescription" xml:space="preserve">
+  <data name="Containers_FieldDescription" xml:space="preserve">
     <value>Description</value>
   </data>
-  <data name="Container_FieldImages" xml:space="preserve">
+  <data name="Containers_FieldImages" xml:space="preserve">
     <value>Images — jusqu'à 5 (JPEG, PNG ou WebP — max 10 Mo chacune)</value>
   </data>
-  <data name="Container_FieldName" xml:space="preserve">
+  <data name="Containers_FieldName" xml:space="preserve">
     <value>Nom</value>
   </data>
-  <data name="Container_FieldPlacementImage" xml:space="preserve">
+  <data name="Containers_FieldPlacementImage" xml:space="preserve">
     <value>Croquis de placement (JPEG, PNG ou WebP — max 10 Mo)</value>
   </data>
-  <data name="Container_FieldPlacementNotes" xml:space="preserve">
+  <data name="Containers_FieldPlacementNotes" xml:space="preserve">
     <value>Notes de placement</value>
   </data>
-  <data name="Container_NamePlaceholder" xml:space="preserve">
+  <data name="Containers_NamePlaceholder" xml:space="preserve">
     <value>ex. Conteneur #1</value>
   </data>
-  <data name="Container_PlacementClosed" xml:space="preserve">
+  <data name="Containers_PlacementClosed" xml:space="preserve">
     <value>Le placement des conteneurs est actuellement fermé. Vous pouvez gérer vos conteneurs, mais pas encore les placer sur la carte.</value>
   </data>
-  <data name="Container_PlacementNotesPlaceholder" xml:space="preserve">
+  <data name="Containers_PlacementNotesPlaceholder" xml:space="preserve">
     <value>Contraintes, accès requis, orientation…</value>
   </data>
-  <data name="Container_PlacementNotes_ButtonLabel" xml:space="preserve">
+  <data name="Containers_PlacementNotes_ButtonLabel" xml:space="preserve">
     <value>Notes de placement</value>
   </data>
-  <data name="Container_PlacementNotes_Title" xml:space="preserve">
+  <data name="Containers_PlacementNotes_Title" xml:space="preserve">
     <value>Notes de placement</value>
   </data>
-  <data name="Container_RemoveImage_Label" xml:space="preserve">
+  <data name="Containers_RemoveImage_Label" xml:space="preserve">
     <value>Supprimer</value>
   </data>
-  <data name="Container_RemovePlacementImage_Label" xml:space="preserve">
+  <data name="Containers_RemovePlacementImage_Label" xml:space="preserve">
     <value>Supprimer l'image de placement</value>
   </data>
 
-  <data name="ContainerMap_Unplaced" xml:space="preserve">
+  <data name="Containers_MapUnplaced" xml:space="preserve">
     <value>Non placé</value>
   </data>
-  <data name="ContainerMap_Placed" xml:space="preserve">
+  <data name="Containers_MapPlaced" xml:space="preserve">
     <value>Placé</value>
   </data>
-  <data name="ContainerMap_ClearPlacement" xml:space="preserve">
+  <data name="Containers_MapClearPlacement" xml:space="preserve">
     <value>Retirer le placement</value>
   </data>
-  <data name="ContainerMap_PlaceOnMap" xml:space="preserve">
+  <data name="Containers_MapPlaceOnMap" xml:space="preserve">
     <value>Placer sur la carte</value>
   </data>
-  <data name="ContainerMap_ConfirmClear" xml:space="preserve">
+  <data name="Containers_MapConfirmClear" xml:space="preserve">
     <value>Retirer le placement de «{0}» ? Cette action est irréversible.</value>
   </data>
-  <data name="ContainerMap_Legend_Title" xml:space="preserve">
+  <data name="Containers_MapLegend_Title" xml:space="preserve">
     <value>Légende des conteneurs</value>
   </data>
-  <data name="ContainerMap_Legend_Body" xml:space="preserve">
+  <data name="Containers_MapLegend_Body" xml:space="preserve">
     <value>Corps 6 m × 2,4 m</value>
   </data>
-  <data name="ContainerMap_Legend_Door" xml:space="preserve">
+  <data name="Containers_MapLegend_Door" xml:space="preserve">
     <value>Triangle = côté porte</value>
   </data>
-  <data name="Container_ValidationErrors" xml:space="preserve">
+  <data name="Containers_ValidationErrors" xml:space="preserve">
     <value>Veuillez corriger les erreurs de validation.</value>
   </data>
-  <data name="Container_Added" xml:space="preserve">
+  <data name="Containers_Added" xml:space="preserve">
     <value>Conteneur ajouté.</value>
   </data>
-  <data name="Container_Updated" xml:space="preserve">
+  <data name="Containers_Updated" xml:space="preserve">
     <value>Conteneur mis à jour.</value>
   </data>
-  <data name="Container_Deleted" xml:space="preserve">
+  <data name="Containers_Deleted" xml:space="preserve">
     <value>Conteneur supprimé.</value>
   </data>
-  <data name="Container_Carousel_Previous" xml:space="preserve">
+  <data name="Containers_Carousel_Previous" xml:space="preserve">
     <value>Précédent</value>
   </data>
-  <data name="Container_Carousel_Next" xml:space="preserve">
+  <data name="Containers_Carousel_Next" xml:space="preserve">
     <value>Suivant</value>
   </data>
 </root>

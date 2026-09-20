@@ -796,6 +796,12 @@
   <data name="SendMessage_Button" xml:space="preserve">
     <value>Invia un messaggio a {0}</value>
   </data>
+  <data name="SendMessage_FromTeamButton" xml:space="preserve">
+    <value>Invia un messaggio a {0} da {1}</value>
+  </data>
+  <data name="SendMessage_FromTeamNotice" xml:space="preserve">
+    <value>Stai inviando per conto di {0}. Le risposte saranno inviate a {1}.</value>
+  </data>
 
   <!-- ======================== -->
   <!-- Email verification       -->

@@ -4,6 +4,9 @@
     <ProjectReference Include="..\..\src\Sections\Humans.Gdpr\Humans.Gdpr.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Humans.Base\Humans.Base.csproj" />
+    <!-- The export envelope names the surviving account and the ids merged into it, so the
+         orchestrator resolves through IUserServiceRead and the test stubs that one call. -->
+    <ProjectReference Include="..\..\src\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

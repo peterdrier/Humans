@@ -35,8 +35,6 @@ using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
 
-using Humans.GoogleIntegration.Contracts;
-
 namespace Humans.Users.Tests.Controllers;
 
 public class ProfileViewControllerPopoverTests
@@ -45,6 +43,12 @@ public class ProfileViewControllerPopoverTests
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IProfilePictureService _profilePictureService = Substitute.For<IProfilePictureService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly ITeamMessageOptionsProvider _teamMessageOptions = Substitute.For<ITeamMessageOptionsProvider>();
+    private readonly IEmailService _emailService = Substitute.For<IEmailService>();
+    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
+    private readonly ICommunicationPreferenceService _commPrefService = Substitute.For<ICommunicationPreferenceService>();
+    private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
+    private readonly IShiftManagementServiceRead _shiftManagement = Substitute.For<IShiftManagementServiceRead>();
     private readonly IAuthorizationService _authorizationService = Substitute.For<IAuthorizationService>();
     private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
     private readonly ProfileViewController _controller;
@@ -75,16 +79,17 @@ public class ProfileViewControllerPopoverTests
         _controller = new ProfileViewController(
             _userService,
             _profilePictureService,
-            Substitute.For<IEmailService>(),
-            Substitute.For<IEmailMessageFactory>(),
-            Substitute.For<ICommunicationPreferenceService>(),
-            Substitute.For<IAuditLogService>(),
+            _emailService,
+            _emailMessages,
+            _commPrefService,
+            _auditLogService,
             Substitute.For<IShiftSignups>(),
             Substitute.For<ISettingsService>(),
-            Substitute.For<IShiftManagementServiceRead>(),
+            _shiftManagement,
             localizer,
             sharedLocalizer,
             _teamService,
+            _teamMessageOptions,
             _campService,
             _authorizationService);
 
@@ -266,6 +271,141 @@ public class ProfileViewControllerPopoverTests
         var result = await _controller.ViewProfile(id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<NotFoundResult>();
+    }
+
+    [HumansFact]
+    public async Task ViewProfile_TeamOfferedToViewer_GetsTeamSendOption()
+    {
+        var targetId = Guid.NewGuid();
+        var option = new TeamMessageOption(Guid.NewGuid(), "Infrastructure", "infra@nobodies.team");
+        var viewer = BuildActiveUserInfo(_viewerId, "Coordinator", "coordinator@example.com");
+        var target = BuildActiveUserInfo(targetId, "Target", "target@example.com");
+        _userService.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(viewer);
+        _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>()).Returns(target);
+        _commPrefService.AcceptsFacilitatedMessagesAsync(targetId, Arg.Any<CancellationToken>()).Returns(true);
+        _shiftManagement.GetCoordinatorTeamIdsAsync(_viewerId).Returns([]);
+        _teamMessageOptions.GetOptionsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns([option]);
+
+        var result = await _controller.ViewProfile(targetId, Xunit.TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>().Subject.Model
+            .Should().BeOfType<ProfileViewModel>().Subject;
+        model.TeamMessageOptions.Should().ContainSingle().Which.Should().Be(option);
+    }
+
+    [HumansFact]
+    public async Task ViewProfile_RecipientOptedOut_DoesNotAskForTeamOptions()
+    {
+        var targetId = Guid.NewGuid();
+        var viewer = BuildActiveUserInfo(_viewerId, "Coordinator", "coordinator@example.com");
+        var target = BuildActiveUserInfo(targetId, "Target", "target@example.com");
+        _userService.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(viewer);
+        _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>()).Returns(target);
+        _commPrefService.AcceptsFacilitatedMessagesAsync(targetId, Arg.Any<CancellationToken>()).Returns(false);
+        _shiftManagement.GetCoordinatorTeamIdsAsync(_viewerId).Returns([]);
+
+        var result = await _controller.ViewProfile(targetId, Xunit.TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>().Subject.Model
+            .Should().BeOfType<ProfileViewModel>().Subject;
+        model.TeamMessageOptions.Should().BeEmpty();
+        await _teamMessageOptions.DidNotReceiveWithAnyArgs().GetOptionsAsync(default, default);
+    }
+
+    [HumansFact]
+    public async Task SendMessageGet_TeamNotOfferedToViewer_IsForbidden()
+    {
+        var targetId = Guid.NewGuid();
+        var viewer = BuildActiveUserInfo(_viewerId, "Viewer", "viewer@example.com");
+        var target = BuildActiveUserInfo(targetId, "Target", "target@example.com");
+        _userService.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(viewer);
+        _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>()).Returns(target);
+        _commPrefService.AcceptsFacilitatedMessagesAsync(targetId, Arg.Any<CancellationToken>()).Returns(true);
+        _teamMessageOptions.GetOptionsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns([]);
+
+        var result = await _controller.SendMessage(targetId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ForbidResult>();
+    }
+
+    [HumansFact]
+    public async Task SendMessagePost_TeamNotOfferedToViewer_IsForbiddenAndDoesNotSend()
+    {
+        var targetId = Guid.NewGuid();
+        var otherTeam = new TeamMessageOption(Guid.NewGuid(), "Other", "other@nobodies.team");
+        var viewer = BuildActiveUserInfo(_viewerId, "Viewer", "viewer@example.com");
+        var target = BuildActiveUserInfo(targetId, "Target", "target@example.com");
+        _userService.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(viewer);
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [_viewerId] = viewer, [targetId] = target });
+        _commPrefService.AcceptsFacilitatedMessagesAsync(targetId, Arg.Any<CancellationToken>()).Returns(true);
+        _teamMessageOptions.GetOptionsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns([otherTeam]);
+
+        var result = await _controller.SendMessage(targetId, new SendMessageViewModel
+        {
+            Message = "Hello",
+            SendAsTeamId = Guid.NewGuid()
+        }, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ForbidResult>();
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
+    }
+
+    [HumansFact]
+    public async Task SendMessagePost_TeamOfferedToViewer_UsesGroupReplyToAndAudits()
+    {
+        var targetId = Guid.NewGuid();
+        var teamId = Guid.NewGuid();
+        var viewer = BuildActiveUserInfo(_viewerId, "Coordinator", "coordinator@example.com");
+        var target = BuildActiveUserInfo(targetId, "Target", "target@example.com");
+        _userService.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(viewer);
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [_viewerId] = viewer, [targetId] = target });
+        _commPrefService.AcceptsFacilitatedMessagesAsync(targetId, Arg.Any<CancellationToken>()).Returns(true);
+        _teamMessageOptions.GetOptionsAsync(_viewerId, Arg.Any<CancellationToken>())
+            .Returns([new TeamMessageOption(teamId, "Infrastructure", "infra@nobodies.team")]);
+        _emailMessages.FacilitatedMessage(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<string?>())
+            .Returns(new EmailMessage("target@example.com", "Target", "Subject", "Body", "facilitated_message"));
+
+        var result = await _controller.SendMessage(targetId, new SendMessageViewModel
+        {
+            Message = "Hello",
+            SendAsTeamId = teamId
+        }, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.ReplyTo == "infra@nobodies.team"),
+            Arg.Any<CancellationToken>());
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.FacilitatedMessageSent,
+            nameof(User),
+            targetId,
+            Arg.Is<string>(d => d.Contains("from team Infrastructure", StringComparison.Ordinal)
+                && !d.Contains("infra@nobodies.team", StringComparison.Ordinal)),
+            _viewerId,
+            teamId,
+            "Team");
+    }
+
+    private static UserInfo BuildActiveUserInfo(Guid id, string displayName, string email)
+    {
+        var user = new User { Id = id, DisplayName = displayName, State = UserState.Active, PreferredLanguage = "en" };
+        var profile = new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = id,
+            BurnerName = displayName,
+            MembershipTier = MembershipTier.Volunteer,
+            IsApproved = true
+        };
+        var emails = new List<UserEmail>
+        {
+            new() { Id = Guid.NewGuid(), UserId = id, Email = email, IsVerified = true, IsPrimary = true }
+        };
+        return BuildUserInfo(user, profile, emails);
     }
 
     private static UserInfo BuildUserInfo(User user, Profile? profile, IReadOnlyList<UserEmail>? userEmails) =>

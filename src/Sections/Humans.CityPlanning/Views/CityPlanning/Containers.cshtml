@@ -1,6 +1,6 @@
 @model OrgContainerIndexViewModel
 @{
-    ViewData["Title"] = $"{ContainersLocalizer["Container_Breadcrumb"]} {Model.Year}";
+    ViewData["Title"] = $"{ContainersLocalizer["Containers_Breadcrumb"]} {Model.Year}";
 
     ContainerCardModel CardFor(ContainerWithPlacement c) => new()
     {
@@ -16,18 +16,18 @@
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="Admin">City Planning Admin</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@ContainersLocalizer["Container_Breadcrumb"] @Model.Year</li>
+        <li class="breadcrumb-item active" aria-current="page">@ContainersLocalizer["Containers_Breadcrumb"] @Model.Year</li>
     </ol>
 </nav>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>@ContainersLocalizer["Container_Breadcrumb"] <small class="text-muted">@Model.Year</small></h1>
+    <h1>@ContainersLocalizer["Containers_Breadcrumb"] <small class="text-muted">@Model.Year</small></h1>
     <div class="d-flex gap-2">
         <a href="/api/city-planning/containers/@Model.Year/export.geojson" class="btn btn-outline-secondary btn-sm">
             <i class="fa-solid fa-download me-1"></i> @SharedLocalizer["Common_ExportGeoJson"]
         </a>
         <a asp-action="ContainerMap" asp-route-year="@Model.Year" class="btn btn-outline-primary btn-sm">
-            <i class="fa-solid fa-map-location-dot me-1"></i> @ContainersLocalizer["ContainerMap_PlaceOnMap"]
+            <i class="fa-solid fa-map-location-dot me-1"></i> @ContainersLocalizer["Containers_MapPlaceOnMap"]
         </a>
     </div>
 </div>

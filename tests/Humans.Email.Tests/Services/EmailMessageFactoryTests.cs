@@ -161,9 +161,11 @@ public sealed class EmailMessageFactoryTests
     {
         var userId = Guid.NewGuid();
         var grantId = Guid.NewGuid();
+        var campaignId = Guid.NewGuid();
         var request = new CampaignCodeEmailRequest(
             UserId: userId,
             CampaignGrantId: grantId,
+            CampaignId: campaignId,
             RecipientEmail: "zoe@x.com",
             RecipientName: "Zoe",
             Subject: "S {{Name}}",
@@ -179,6 +181,7 @@ public sealed class EmailMessageFactoryTests
         msg.ReplyTo.Should().Be("reply@x.com");
         msg.UserId.Should().Be(userId);
         msg.CampaignGrantId.Should().Be(grantId);
+        msg.CampaignId.Should().Be(campaignId);
         _renderer.Received(1).RenderCampaignCode("S {{Name}}", "Hi {{Name}} {{Code}}", "ABC", "Zoe");
     }
 

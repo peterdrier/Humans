@@ -131,6 +131,8 @@ public sealed class Section : ISection
         services.AddScoped<IAccountDeletionService, AccountDeletionService>();
         services.AddScoped<IExternalLoginService, ExternalLoginService>();
         services.AddScoped<IUserParticipationBackfillService, UserParticipationBackfillService>();
+        // Which teams a coordinator may send a facilitated message for (Teams + GoogleIntegration).
+        services.AddScoped<ITeamMessageOptionsProvider, TeamMessageOptionsProvider>();
 
         services.AddScoped<ProcessAccountDeletionsJob>();
         services.AddScoped<SuspendNonCompliantMembersJob>();

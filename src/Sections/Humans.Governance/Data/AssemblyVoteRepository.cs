@@ -582,28 +582,20 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
         // tombstone, so they move too — otherwise the acta loses the closer's name, the
         // published peek list credits "Merged User" instead of the surviving human, and the
         // GDPR export stops finding the votes this person drafted.
-        var authored = await ctx.AssemblyVotes
-            .Where(v => v.CreatedByUserId == sourceUserId)
+        // All three actor columns in one pass. A fourth joins the predicate and the loop
+        // together; ReassignAsync_MovesEachActorColumn_WhenItIsTheOnlyOneOnTheVote is what
+        // catches the two drifting apart, because a vote with one actor column set has only
+        // that one way into the result set.
+        var acted = await ctx.AssemblyVotes
+            .Where(v => v.CreatedByUserId == sourceUserId
+                || v.ClosedByUserId == sourceUserId
+                || v.OpenedByUserId == sourceUserId)
             .ToListAsync(ct);
-        foreach (var vote in authored)
+        foreach (var vote in acted)
         {
-            vote.CreatedByUserId = targetUserId;
-        }
-
-        var closed = await ctx.AssemblyVotes
-            .Where(v => v.ClosedByUserId == sourceUserId)
-            .ToListAsync(ct);
-        foreach (var vote in closed)
-        {
-            vote.ClosedByUserId = targetUserId;
-        }
-
-        var opened = await ctx.AssemblyVotes
-            .Where(v => v.OpenedByUserId == sourceUserId)
-            .ToListAsync(ct);
-        foreach (var vote in opened)
-        {
-            vote.OpenedByUserId = targetUserId;
+            if (vote.CreatedByUserId == sourceUserId) vote.CreatedByUserId = targetUserId;
+            if (vote.ClosedByUserId == sourceUserId) vote.ClosedByUserId = targetUserId;
+            if (vote.OpenedByUserId == sourceUserId) vote.OpenedByUserId = targetUserId;
         }
 
         var peeks = await ctx.AssemblyVotePeeks

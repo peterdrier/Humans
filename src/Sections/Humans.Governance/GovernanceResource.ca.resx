@@ -79,9 +79,6 @@
   <data name="Governance_UnderReviewMessage" xml:space="preserve">
     <value>La teva sol·licitud està sent revisada. Et notificarem per correu electrònic quan es prengui una decisió.</value>
   </data>
-  <data name="Governance_ApprovedMessage" xml:space="preserve">
-    <value>Benvingut/da! Ara ets associat de Nobodies Collective.</value>
-  </data>
   <data name="Governance_ApprovedMessageColaborador" xml:space="preserve">
     <value>Ets un/a Col·laborador/a aprovat/da de Nobodies Collective.</value>
   </data>
@@ -250,47 +247,17 @@
   <data name="AdminAppDetail_ApplicationReview" xml:space="preserve">
     <value>Revisió de sol·licitud</value>
   </data>
-  <data name="AdminAppDetail_ViewProfile" xml:space="preserve">
-    <value>Veure perfil</value>
-  </data>
   <data name="AdminAppDetail_Motivation" xml:space="preserve">
     <value>Motivació</value>
   </data>
   <data name="AdminAppDetail_Reviewer" xml:space="preserve">
     <value>Revisor</value>
   </data>
-  <data name="AdminAppDetail_StartReview" xml:space="preserve">
-    <value>Iniciar revisió</value>
-  </data>
-  <data name="AdminAppDetail_NotesLabel" xml:space="preserve">
-    <value>Notes (obligatòries per rebutjar/sol·licitar informació)</value>
-  </data>
-  <data name="AdminAppDetail_NotesPlaceholder" xml:space="preserve">
-    <value>Afegeix notes...</value>
-  </data>
-  <data name="AdminAppDetail_ApproveConfirm" xml:space="preserve">
-    <value>Aprova aquesta sol·licitud?</value>
-  </data>
-  <data name="AdminAppDetail_Approve" xml:space="preserve">
-    <value>Aprova</value>
-  </data>
-  <data name="AdminAppDetail_RejectConfirm" xml:space="preserve">
-    <value>Rebutja aquesta sol·licitud?</value>
-  </data>
-  <data name="AdminAppDetail_Reject" xml:space="preserve">
-    <value>Rebutja</value>
-  </data>
-  <data name="AdminAppDetail_RequestMoreInfo" xml:space="preserve">
-    <value>Sol·licitar més informació</value>
-  </data>
   <data name="AdminAppDetail_Language" xml:space="preserve">
     <value>Idioma</value>
   </data>
   <data name="BoardVoting_Title" xml:space="preserve">
     <value>Tauler de votació de la Junta</value>
-  </data>
-  <data name="BoardVoting_DetailTitle" xml:space="preserve">
-    <value>Votació: {0}</value>
   </data>
   <data name="BoardVoting_NoApplications" xml:space="preserve">
     <value>No hi ha sol·licituds pendents de votació.</value>
@@ -357,9 +324,6 @@
   </data>
   <data name="BoardVoting_ApplicationNotVotable" xml:space="preserve">
     <value>Aquesta sol·licitud ja no està oberta a votació.</value>
-  </data>
-  <data name="BoardVoting_ApplicationNotVotable_WithStatus" xml:space="preserve">
-    <value>No es pot votar aquesta sol·licitud (estat actual: {0}).</value>
   </data>
   <data name="BoardVoting_ApplicationNotFound" xml:space="preserve">
     <value>Sol·licitud no trobada.</value>

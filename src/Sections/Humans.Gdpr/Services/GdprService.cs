@@ -1,5 +1,6 @@
 using Humans.Base.Extensions;
 using Humans.Gdpr.Contracts;
+using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 
@@ -16,11 +17,18 @@ namespace Humans.Gdpr.Services;
 /// </summary>
 internal sealed class GdprService(
     IEnumerable<IUserDataContributor> contributors,
+    IUserServiceRead users,
     IClock clock,
     ILogger<GdprService> logger) : IGdprService
 {
     public async Task<GdprExport> ExportForUserAsync(Guid userId, CancellationToken ct = default)
     {
+        // Resolved once, here, rather than per contributor: the envelope names the surviving
+        // account and the ids merged into it, so a slice keyed to an archived id reads as this
+        // person's row instead of a stranger's. Contributors still resolve for themselves —
+        // each one decides whether its rows follow the chain or moved with the merge.
+        var info = await users.GetUserInfoAsync(userId, ct);
+
         var sections = new Dictionary<string, object?>(StringComparer.Ordinal);
 
         foreach (var contributor in contributors)
@@ -69,6 +77,8 @@ internal sealed class GdprService(
 
         return new GdprExport(
             ExportedAt: clock.GetCurrentInstant().ToIso8601(),
+            UserId: info?.Id ?? userId,
+            MergedFromUserIds: info?.MergedUserIds ?? [],
             Sections: sections);
     }
 

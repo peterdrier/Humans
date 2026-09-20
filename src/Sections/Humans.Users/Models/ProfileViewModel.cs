@@ -299,7 +299,12 @@ internal sealed class ProfileViewModel
     /// True when the viewer is a coordinator or has a privileged shift-management role.
     /// </summary>
     public bool CanViewSentMessages { get; set; }
+
+    /// <summary>Verified Google Groups the viewer coordinates and may send replies through.</summary>
+    public IReadOnlyList<TeamMessageOption> TeamMessageOptions { get; set; } = [];
 }
+
+internal sealed record TeamMessageOption(Guid TeamId, string TeamName, string GoogleGroupEmail);
 
 internal sealed class TeamMembershipViewModel
 {

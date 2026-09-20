@@ -11,10 +11,15 @@ repository under `Data/`. **DbContext:**
 `AssemblyVotes`, `AssemblyVoteOptions`, `AssemblyVoteRosterEntries`,
 `AssemblyBallots`, `AssemblyBallotHistories`, `AssemblyVotePeeks`.
 
-`IApplicationDecisionService` extends `IApplicationServiceRead`; external
-readers (`GovernanceIndexService`, `OnboardingService`,
-`NotificationMeterProvider`, `AdminDashboardService`)
-inject the narrow `IApplicationServiceRead` rather than the full decision
+Both repositories are registered **Singleton** (`Section.cs:28`, `:41`); they hold no state
+and take an `IDbContextFactory`. The services below are Scoped.
+
+`IApplicationDecisionService` extends `IApplicationServiceRead`, and every reader outside
+this section injects the narrow read surface rather than the full decision service —
+`OnboardingService`, `NotificationMeterProvider`, `SystemTeamSyncJob` and
+`UsersAdminController`. `ProfileController` is the one exception: it injects
+`IApplicationDecisionService` because it submits and updates drafts.
+
 Cross-section reads inside the section go through the read surfaces
 (`IUserServiceRead`, `ITeamServiceRead`, `IConsentServiceRead`).
 

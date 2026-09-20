@@ -48,7 +48,7 @@ public class CityPlanningPageRenderTests(HumansTestDatabase database) : Integrat
         ("/CityPlanning", "Barrio zones"),                                          // CityPlanning_BarrioZones
         ("/CityPlanning/BarrioMap", "Barrio placement map"),                        // CityPlanning_BarrioMapTitle
         ("/CityPlanning/BarrioMap/Admin", "Barrio Map Admin"),                      // CityPlanning_Admin_Title
-        ($"/CityPlanning/ContainerMap/{Year}", "Container legend"),                 // ContainerMap_Legend_Title
+        ($"/CityPlanning/ContainerMap/{Year}", "Container legend"),                 // Containers_MapLegend_Title
         ($"/CityPlanning/BarrioMap/Admin/Containers/{Year}", "Container placement"),   // CityPlanning_Admin_ContainerPlacement
     ];
 
@@ -68,7 +68,7 @@ public class CityPlanningPageRenderTests(HumansTestDatabase database) : Integrat
 
             // The fallback for a key the carve missed is the key itself.
             html.Should().NotContain("CityPlanning_", $"GET {url} rendered a raw resource key");
-            html.Should().NotContain("ContainerMap_", $"GET {url} rendered a raw resource key");
+            html.Should().NotContain("Containers_Map", $"GET {url} rendered a raw resource key");
         }
     }
 

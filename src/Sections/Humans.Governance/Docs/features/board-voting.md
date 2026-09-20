@@ -1,5 +1,9 @@
 <!-- freshness:triggers
-  src/Sections/Humans.Governance/**
+  src/Sections/Humans.Governance/Domain/BoardVote.cs
+  src/Sections/Humans.Governance/Domain/Application.cs
+  src/Sections/Humans.Governance/Services/ApplicationDecisionService.cs
+  src/Sections/Humans.Governance/Data/ApplicationRepository.cs
+  src/Sections/Humans.Governance/Controllers/GovernanceBoardVotingController.cs
   src/Sections/Humans.Governance.Contracts/**
 -->
 <!-- freshness:flag-on-change

@@ -28,6 +28,12 @@ namespace Humans.Email.Contracts;
 /// because the grant's user — not an email lookup — is authoritative.
 /// </param>
 /// <param name="CampaignGrantId">Links a campaign-code email to its grant for status tracking.</param>
+/// <param name="CampaignId">
+/// The campaign a campaign-code email belongs to — stable across every grant in the
+/// campaign, unlike <see cref="CampaignGrantId"/> (one per recipient). Feeds the
+/// campaign component of the Feedback-ID header so Google Postmaster can aggregate
+/// by campaign.
+/// </param>
 /// <param name="DoNotPersist">
 /// When true the message is handed straight to the transport and no
 /// <c>email_outbox_messages</c> row is written — so it is never retried, and the
@@ -49,4 +55,5 @@ public sealed record EmailMessage(
     bool TriggerImmediate = false,
     Guid? UserId = null,
     Guid? CampaignGrantId = null,
+    Guid? CampaignId = null,
     bool DoNotPersist = false);

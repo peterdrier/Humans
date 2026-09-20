@@ -48,7 +48,6 @@
   <data name="Governance_Submitted" xml:space="preserve"><value>Submitted</value></data>
   <data name="Governance_Resolved" xml:space="preserve"><value>Resolved</value></data>
   <data name="Governance_UnderReviewMessage" xml:space="preserve"><value>Your application is being reviewed. We'll notify you by email once a decision is made.</value></data>
-  <data name="Governance_ApprovedMessage" xml:space="preserve"><value>Welcome! You are now an asociado of Nobodies Collective.</value></data>
   <data name="Governance_ApprovedMessageColaborador" xml:space="preserve"><value>You are an approved Colaborador of Nobodies Collective.</value></data>
   <data name="Governance_ApprovedMessageAsociado" xml:space="preserve"><value>Welcome! You are now an Asociado of Nobodies Collective.</value></data>
   <data name="Governance_Tier" xml:space="preserve"><value>Tier</value></data>
@@ -73,7 +72,7 @@
   <data name="Governance_Asociados" xml:space="preserve"><value>Asociados</value></data>
   <data name="MyApplications_Title" xml:space="preserve"><value>My Applications</value></data>
   <data name="GovernanceCreate_NewApplication" xml:space="preserve"><value>New Application</value></data>
-  <data name="GovernanceCreate_Lead" xml:space="preserve"><value>Colaboradors and Asociados take on governance responsibilities. Choose the tier that best fits your involvement level.</value></data>
+  <data name="GovernanceCreate_Lead" xml:space="preserve"><value>Colaboradores and Asociados take on governance responsibilities. Choose the tier that best fits your involvement level.</value></data>
   <data name="GovernanceCreate_MotivationPlaceholder" xml:space="preserve"><value>Please share your motivation for joining...</value></data>
   <data name="GovernanceCreate_MotivationHelp" xml:space="preserve"><value>Minimum 50 characters. Tell us about yourself and why you want to be part of the collective.</value></data>
   <data name="GovernanceCreate_AdditionalInfoPlaceholder" xml:space="preserve"><value>Any additional information you'd like to share...</value></data>
@@ -105,20 +104,10 @@
   <data name="AdminApplications_Title" xml:space="preserve"><value>Asociado Applications</value></data>
   <data name="AdminApplicationDetail_Title" xml:space="preserve"><value>Review Application</value></data>
   <data name="AdminAppDetail_ApplicationReview" xml:space="preserve"><value>Application Review</value></data>
-  <data name="AdminAppDetail_ViewProfile" xml:space="preserve"><value>View Profile</value></data>
   <data name="AdminAppDetail_Motivation" xml:space="preserve"><value>Motivation</value></data>
   <data name="AdminAppDetail_Reviewer" xml:space="preserve"><value>Reviewer</value></data>
-  <data name="AdminAppDetail_StartReview" xml:space="preserve"><value>Start Review</value></data>
-  <data name="AdminAppDetail_NotesLabel" xml:space="preserve"><value>Notes (required for reject/request info)</value></data>
-  <data name="AdminAppDetail_NotesPlaceholder" xml:space="preserve"><value>Add notes...</value></data>
-  <data name="AdminAppDetail_ApproveConfirm" xml:space="preserve"><value>Approve this application?</value></data>
-  <data name="AdminAppDetail_Approve" xml:space="preserve"><value>Approve</value></data>
-  <data name="AdminAppDetail_RejectConfirm" xml:space="preserve"><value>Reject this application?</value></data>
-  <data name="AdminAppDetail_Reject" xml:space="preserve"><value>Reject</value></data>
-  <data name="AdminAppDetail_RequestMoreInfo" xml:space="preserve"><value>Request More Info</value></data>
   <data name="AdminAppDetail_Language" xml:space="preserve"><value>Language</value></data>
   <data name="BoardVoting_Title" xml:space="preserve"><value>Board Voting Dashboard</value></data>
-  <data name="BoardVoting_DetailTitle" xml:space="preserve"><value>Board Vote: {0}</value></data>
   <data name="BoardVoting_NoApplications" xml:space="preserve"><value>No applications are pending board vote.</value></data>
   <data name="BoardVoting_Applicant" xml:space="preserve"><value>Applicant</value></data>
   <data name="BoardVoting_Tier" xml:space="preserve"><value>Tier</value></data>
@@ -141,7 +130,6 @@
   <data name="BoardVoting_RejectConfirm" xml:space="preserve"><value>This will reject the application. Continue?</value></data>
   <data name="BoardVoting_Finalized" xml:space="preserve"><value>Application decision has been finalized.</value></data>
   <data name="BoardVoting_ApplicationNotVotable" xml:space="preserve"><value>This application is no longer open for voting.</value></data>
-  <data name="BoardVoting_ApplicationNotVotable_WithStatus" xml:space="preserve"><value>This application cannot be voted on (current status: {0}).</value><comment>{0} = current application status</comment></data>
   <data name="BoardVoting_ApplicationNotFound" xml:space="preserve"><value>Application not found.</value></data>
   <data name="BoardVoting_AdditionalInfo" xml:space="preserve"><value>Additional Information</value></data>
   <data name="BoardVoting_NoVotes" xml:space="preserve"><value>Cannot finalize: at least one board vote is required.</value></data>

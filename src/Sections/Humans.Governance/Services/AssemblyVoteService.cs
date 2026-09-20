@@ -498,9 +498,8 @@ internal sealed class AssemblyVoteService(
     /// means nothing re-enters that path — so a throw from here would strand whatever the
     /// caller still had to do (the closure audit, the cancellation audit and its roster
     /// email) with no retry, permanently. That is worth more than a tidy notification
-    /// meter, so the failure is logged and swallowed. Both `CloseAsync` and `CancelAsync`
-    /// lost exactly this, one round apart; it lives here now so a third end-of-vote path
-    /// cannot lose it again.
+    /// meter, so the failure is logged and swallowed. It lives here rather than at each
+    /// end-of-vote path so the next one cannot be written without it.
     /// </para>
     /// </summary>
     private Task ClearOpenNotificationAsync(
@@ -516,10 +515,8 @@ internal sealed class AssemblyVoteService(
     /// a throw from notification or email work leaves the vote in its new state with the
     /// audit entry, the roster email or the notification permanently missing.
     /// <para>
-    /// Every such call goes through here. Three separate paths lost this one at a time —
-    /// the close audit, the cancel audit and roster email, then recipient resolution on both
-    /// — so the guarantee lives in one place rather than in a try/catch per call site that
-    /// the fourth path will forget.
+    /// Every such call goes through here, so the guarantee lives in one place rather than in
+    /// a try/catch per call site that the next path to be written will forget.
     /// </para>
     /// </summary>
     private async Task AfterTransitionAsync(
@@ -689,11 +686,6 @@ internal sealed class AssemblyVoteService(
     }
 
     /// <summary>
-    /// The acta block: a plain-text summary the Secretary pastes into the minutes. Deliberately
-    /// unlocalized and unstyled — it goes into a Spanish legal document, and the numbers are
-    /// what statutes Art. 8.6 requires.
-    /// </summary>
-    /// <summary>
     /// The name of the admin who stopped the vote, for the acta. Null when the vote lapsed
     /// at its announced time (nobody closed it) or when the account no longer resolves —
     /// the acta says "an administrator" then rather than inventing a name.
@@ -705,6 +697,11 @@ internal sealed class AssemblyVoteService(
         return infos.TryGetValue(closerId, out var info) ? info.BurnerName : null;
     }
 
+    /// <summary>
+    /// The acta block: a plain-text summary the Secretary pastes into the minutes. Deliberately
+    /// unlocalized and unstyled — it goes into a Spanish legal document, and the numbers are
+    /// what statutes Art. 8.6 requires.
+    /// </summary>
     private static string BuildActa(
         AssemblyVote vote, AssemblyVoteResult result, string? closedByName)
     {
@@ -1864,12 +1861,14 @@ internal sealed class AssemblyVoteService(
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(
         Guid userId, CancellationToken ct)
     {
+        var info = await users.GetUserInfoAsync(userId, ct);
+
         // Plus every account merged into this one. The merge leaves roster rows and ballots
         // on the merged-away id, so the survivor's download would otherwise omit an
         // entitlement and a ballot that are unmistakably theirs — the erasure path beside
         // this one already follows the same chain.
         IReadOnlyList<(AssemblyVoteRoster Roster, AssemblyVote Vote, AssemblyBallot? Ballot)> record = [];
-        foreach (var id in (await users.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId])
+        foreach (var id in info?.AllUserIds ?? [userId])
         {
             record = [.. record, .. await repository.GetVotingRecordForUserAsync(id, ct)];
         }
@@ -1906,7 +1905,11 @@ internal sealed class AssemblyVoteService(
             })
             .ToList();
 
-        var (acted, peeks) = await repository.GetActorRecordForUserAsync(userId, ct);
+        // The survivor's id alone, not AllUserIds — the mirror image of the roster read above.
+        // ReassignAsync moves the actor columns onto the survivor at merge time, so a merged-away
+        // id owns no actor rows and asking with the raw id returns an empty slice.
+        var actorId = info?.Id ?? userId;
+        var (acted, peeks) = await repository.GetActorRecordForUserAsync(actorId, ct);
 
         var actions = acted
             .Select(v => new
@@ -1915,9 +1918,9 @@ internal sealed class AssemblyVoteService(
                 v.Status,
                 Roles = new[]
                     {
-                        v.CreatedByUserId == userId ? "Drafted" : null,
-                        v.OpenedByUserId == userId ? "Opened" : null,
-                        v.ClosedByUserId == userId ? "Closed" : null
+                        v.CreatedByUserId == actorId ? "Drafted" : null,
+                        v.OpenedByUserId == actorId ? "Opened" : null,
+                        v.ClosedByUserId == actorId ? "Closed" : null
                     }
                     .OfType<string>()
                     .ToList(),

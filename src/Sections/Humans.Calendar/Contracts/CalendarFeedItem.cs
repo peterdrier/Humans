@@ -8,10 +8,11 @@ namespace Humans.Calendar.Contracts;
 /// <param name="Uid">
 /// Stable across fetches so calendar clients update rather than duplicate:
 /// <c>shift-{signupId}@humans.nobodies.team</c>,
-/// <c>event-{eventId}-{occurrenceDate:yyyyMMdd}@humans.nobodies.team</c>.
+/// <c>event-{eventId}-{occurrenceDate:yyyyMMdd}@humans.nobodies.team</c>,
+/// <c>workgroup-meeting-{meetingId}@humans.nobodies.team</c>.
 /// </param>
 /// <param name="Source">
-/// Contributing section ("Shifts", "Events"). Emitted as ICS CATEGORIES and
+/// Contributing section ("Shifts", "Events", "Workgroups"). Emitted as ICS CATEGORIES and
 /// shown as a badge in the admin widget.
 /// </param>
 /// <param name="Url">

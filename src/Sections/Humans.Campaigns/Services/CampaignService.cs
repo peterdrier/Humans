@@ -525,7 +525,7 @@ internal sealed class CampaignService(
                 grant.CampaignEmailSubject,
                 grant.CampaignEmailBodyTemplate,
                 grant.CampaignReplyToAddress,
-                user, recipientEmail, grant.CodeString, grant.GrantId)),
+                user, recipientEmail, grant.CodeString, grant.GrantId, grant.CampaignId)),
             ct);
 
         logger.LogInformation("Resent campaign email for grant {GrantId}", grantId);
@@ -630,7 +630,7 @@ internal sealed class CampaignService(
                         grant.CampaignEmailSubject,
                         grant.CampaignEmailBodyTemplate,
                         grant.CampaignReplyToAddress,
-                        user, recipientEmail, grant.CodeString, grant.GrantId)),
+                        user, recipientEmail, grant.CodeString, grant.GrantId, campaignId)),
                     ct);
             }
             catch (Exception ex)
@@ -660,6 +660,7 @@ internal sealed class CampaignService(
         return new CampaignCodeEmailRequest(
             UserId: user.Id,
             CampaignGrantId: grantId,
+            CampaignId: campaign.Id,
             RecipientEmail: recipientEmail,
             RecipientName: user.BurnerName,
             Subject: campaign.EmailSubject,
@@ -670,11 +671,12 @@ internal sealed class CampaignService(
 
     private static CampaignCodeEmailRequest BuildCampaignCodeRequest(
         string emailSubject, string emailBody, string? replyToAddress,
-        UserInfo user, string recipientEmail, string code, Guid grantId)
+        UserInfo user, string recipientEmail, string code, Guid grantId, Guid campaignId)
     {
         return new CampaignCodeEmailRequest(
             UserId: user.Id,
             CampaignGrantId: grantId,
+            CampaignId: campaignId,
             RecipientEmail: recipientEmail,
             RecipientName: user.BurnerName,
             Subject: emailSubject,

@@ -45,10 +45,11 @@ public sealed class Section : ISection
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<AssemblyVoteService>());
         services.AddScoped<AssemblyVoteLapseJob>();
 
-        // Query adapter breaks the circular DI graph between MembershipCalculator
-        // and ITeamServiceRead / IRoleAssignmentService (both of which inject
-        // ISystemTeamSync, whose implementation injects IMembershipCalculatorRead back).
-        // Only MembershipCalculator depends on the query adapter.
+        // Query adapter breaks the circular DI graph between MembershipCalculator and
+        // ITeamServiceRead / IRoleAssignmentService, both of which reach ISystemTeamSync —
+        // RoleAssignmentService injects it, TeamService resolves it lazily through
+        // IServiceProvider for this same reason — and whose implementation injects
+        // IMembershipCalculatorRead back. Only MembershipCalculator depends on the adapter.
         services.AddScoped<IMembershipQuery, MembershipQuery>();
         services.AddScoped<MembershipCalculator>();
         services.AddScoped<IMembershipCalculatorRead>(sp => sp.GetRequiredService<MembershipCalculator>());

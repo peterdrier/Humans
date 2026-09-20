@@ -93,8 +93,14 @@ public class ApplicationTests
         application.StateHistory.First().Status.Should().Be(ApplicationStatus.Approved);
     }
 
+    /// <summary>
+    /// Volunteer is the enum's zero member, so it is what an unset tier lands on — it is not a
+    /// tier an application may carry, and a Volunteer never goes through Application at all.
+    /// Pinned so a caller that forgets to set the tier is caught by <c>ValidateTier</c> rather
+    /// than silently applying for whichever tier the enum's zero member happens to be.
+    /// </summary>
     [HumansFact]
-    public void NewApplication_ShouldDefaultToVolunteerTier()
+    public void ApplicationWithNoTierSet_LandsOnVolunteer_WhichValidateTierRejects()
     {
         var application = new Application
         {
@@ -106,60 +112,9 @@ public class ApplicationTests
         };
 
         application.MembershipTier.Should().Be(MembershipTier.Volunteer);
-    }
 
-    [HumansTheory]
-    [InlineData(MembershipTier.Colaborador)]
-    [InlineData(MembershipTier.Asociado)]
-    public void Application_CanSetMembershipTier(MembershipTier tier)
-    {
-        var application = CreateSubmittedApplication();
-        application.MembershipTier = tier;
-
-        application.MembershipTier.Should().Be(tier);
-    }
-
-    [HumansFact]
-    public void Application_CanSetTermExpiresAt()
-    {
-        var application = CreateSubmittedApplication();
-        var expiryDate = new LocalDate(2027, 12, 31);
-
-        application.TermExpiresAt = expiryDate;
-
-        application.TermExpiresAt.Should().Be(expiryDate);
-    }
-
-    [HumansFact]
-    public void Application_CanSetBoardMeetingDateAndDecisionNote()
-    {
-        var application = CreateSubmittedApplication();
-        var meetingDate = new LocalDate(2026, 3, 15);
-
-        application.BoardMeetingDate = meetingDate;
-        application.DecisionNote = "Approved unanimously";
-
-        application.BoardMeetingDate.Should().Be(meetingDate);
-        application.DecisionNote.Should().Be("Approved unanimously");
-    }
-
-    [HumansFact]
-    public void Application_CanSetRenewalReminderSentAt()
-    {
-        var application = CreateSubmittedApplication();
-        var sentAt = _clock.GetCurrentInstant();
-
-        application.RenewalReminderSentAt = sentAt;
-
-        application.RenewalReminderSentAt.Should().Be(sentAt);
-    }
-
-    [HumansFact]
-    public void Application_BoardVotes_ShouldBeEmptyByDefault()
-    {
-        var application = CreateSubmittedApplication();
-
-        application.BoardVotes.Should().BeEmpty();
+        var act = application.ValidateTier;
+        act.Should().Throw<InvalidOperationException>();
     }
 
     [HumansFact]

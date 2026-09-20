@@ -38,11 +38,11 @@
                             </div>
                             <button class="carousel-control-prev" type="button" data-bs-target="#@carouselId" data-bs-slide="prev">
                                 <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                                <span class="visually-hidden">@Localizer["Container_Carousel_Previous"]</span>
+                                <span class="visually-hidden">@Localizer["Containers_Carousel_Previous"]</span>
                             </button>
                             <button class="carousel-control-next" type="button" data-bs-target="#@carouselId" data-bs-slide="next">
                                 <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                                <span class="visually-hidden">@Localizer["Container_Carousel_Next"]</span>
+                                <span class="visually-hidden">@Localizer["Containers_Carousel_Next"]</span>
                             </button>
                         </div>
                     }
@@ -58,7 +58,7 @@
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">@Localizer["Container_PlacementNotes_Title"] — @c.Name</h5>
+                    <h5 class="modal-title">@Localizer["Containers_PlacementNotes_Title"] — @c.Name</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -85,7 +85,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">@Localizer["Container_EditModal_Title"]</h5>
+                <h5 class="modal-title">@Localizer["Containers_EditModal_Title"]</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form asp-controller="@Model.FormController" asp-action="@Model.EditAction"

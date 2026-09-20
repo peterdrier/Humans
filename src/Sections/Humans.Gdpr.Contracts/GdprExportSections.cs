@@ -72,6 +72,12 @@ public static class GdprExportSections
     /// key to declare — required by <c>GdprErasureCoverageTests</c>.
     /// </summary>
     public const string MailerLiteSubscriber = "MailerLiteSubscriber";
+    /// <summary>
+    /// Whether the member has a personal iCal feed. The token itself is never exported —
+    /// it is a live credential and an export file gets forwarded; the member reads their
+    /// URL off <c>/Calendar</c>, the one place it is shown.
+    /// </summary>
+    public const string CalendarFeedToken = "CalendarFeedToken";
     public const string BackdoorApiKeys = "BackdoorApiKeys";
     public const string RideshareTrips = "RideshareTrips";
     public const string RideshareRequests = "RideshareRequests";

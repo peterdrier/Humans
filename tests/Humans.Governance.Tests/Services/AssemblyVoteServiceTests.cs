@@ -1053,6 +1053,67 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             "the peek list is published on the results page and must name the surviving human");
     }
 
+    /// <summary>
+    /// One actor column per vote, which is the shape a real merge meets: a motion is usually
+    /// drafted by one admin, opened by another and stopped by a third. The test above puts the
+    /// merged account in all three columns of one row, so it passes even if the query that
+    /// selects the rows stops looking at one of the columns — that row still loads through
+    /// another. Here each row has exactly one way in.
+    /// </summary>
+    [HumansFact]
+    public async Task ReassignAsync_MovesEachActorColumn_WhenItIsTheOnlyOneOnTheVote()
+    {
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        var other = Guid.NewGuid();
+
+        var drafted = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
+        var opened = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
+        var closed = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
+
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        var draftedRow = await _fx.Db.AssemblyVotes.SingleAsync(v => v.Id == drafted.Id, ct);
+        draftedRow.CreatedByUserId = source;
+        draftedRow.OpenedByUserId = other;
+        draftedRow.ClosedByUserId = other;
+
+        var openedRow = await _fx.Db.AssemblyVotes.SingleAsync(v => v.Id == opened.Id, ct);
+        openedRow.CreatedByUserId = other;
+        openedRow.OpenedByUserId = source;
+        openedRow.ClosedByUserId = null;
+
+        var closedRow = await _fx.Db.AssemblyVotes.SingleAsync(v => v.Id == closed.Id, ct);
+        closedRow.CreatedByUserId = other;
+        closedRow.OpenedByUserId = null;
+        closedRow.ClosedByUserId = source;
+
+        await _fx.Db.SaveChangesAsync(ct);
+        _fx.Db.ChangeTracker.Clear();
+
+        await _fx.Service.ReassignAsync(
+            source, target, Guid.NewGuid(), _fx.Clock.GetCurrentInstant(), ct);
+
+        var storedDrafted = await _fx.Db.AssemblyVotes.AsNoTracking()
+            .SingleAsync(v => v.Id == drafted.Id, ct);
+        storedDrafted.CreatedByUserId.Should().Be(target);
+        storedDrafted.OpenedByUserId.Should().Be(other, "only the merged account's columns move");
+        storedDrafted.ClosedByUserId.Should().Be(other);
+
+        var storedOpened = await _fx.Db.AssemblyVotes.AsNoTracking()
+            .SingleAsync(v => v.Id == opened.Id, ct);
+        storedOpened.OpenedByUserId.Should().Be(target);
+        storedOpened.CreatedByUserId.Should().Be(other);
+        storedOpened.ClosedByUserId.Should().BeNull();
+
+        var storedClosed = await _fx.Db.AssemblyVotes.AsNoTracking()
+            .SingleAsync(v => v.Id == closed.Id, ct);
+        storedClosed.ClosedByUserId.Should().Be(target,
+            "otherwise the acta loses the closer's name on exactly the votes a real merge touches");
+        storedClosed.CreatedByUserId.Should().Be(other);
+        storedClosed.OpenedByUserId.Should().BeNull();
+    }
+
     // ==========================================================================
     // A snapshot taken before somebody else's transition never undoes it
     // ==========================================================================
@@ -1644,6 +1705,33 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             slices.Single(x => string.Equals(
                 x.SectionName, GdprExportSections.AssemblyVotes, StringComparison.Ordinal)).Data);
         json.Should().Contain("\"Choice\":");
+    }
+
+    [HumansFact]
+    public async Task ContributeForUserAsync_AskedWithAMergedAwayId_StillReturnsTheVotesTheyRan()
+    {
+        var mergedAway = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        _fx.StubMergedInto(mergedAway, survivor);
+        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
+
+        var tracked = await _fx.Db.AssemblyVotes.SingleAsync(
+            v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        tracked.OpenedByUserId = survivor;
+        tracked.ClosedByUserId = survivor;
+        await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var slices = await _fx.Service.ContributeForUserAsync(
+            mergedAway, Xunit.TestContext.Current.CancellationToken);
+
+        // The mirror image of the ballot slice: ReassignAsync moves the actor columns onto the
+        // survivor, so the archived id owns none and the raw id returns an empty slice. The
+        // roster read walks the chain, this one resolves forward — asking with either id has
+        // to reach the same officer's record.
+        var json = System.Text.Json.JsonSerializer.Serialize(
+            slices.Single(x => string.Equals(
+                x.SectionName, GdprExportSections.AssemblyVoteActions, StringComparison.Ordinal)).Data);
+        json.Should().Contain("Opened").And.Contain("Closed");
     }
 
     [HumansFact]

@@ -16,8 +16,14 @@ namespace Humans.Events;
 /// Events' DI entry point, at the project root by convention. Discovered by Shell —
 /// nothing names it, so it needs no section prefix.
 /// </summary>
-public sealed class Section : ISection
+public sealed class Section : ISection, IUserPart
 {
+    ValueTask<IEnumerable<UserPart>> IUserPart.PartsAsync(
+        IServiceProvider services,
+        System.Security.Claims.ClaimsPrincipal viewer,
+        Guid userId) =>
+        ValueTask.FromResult<IEnumerable<UserPart>>([new("EventsCard")]);
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSectionDbContext<EventGuideDbContext>(sentinelTable: "events");

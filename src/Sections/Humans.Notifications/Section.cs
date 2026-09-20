@@ -46,6 +46,8 @@ public sealed class Section : ISection
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<NotificationInboxService>());
 
         services.AddScoped<NotificationMeterProvider>();
+        // The one cross-section read: Backdoor serves /api/backdoor/notifications from it.
+        services.AddScoped<INotificationInboxRead, NotificationInboxRead>();
 
         services.AddScoped<CleanupNotificationsJob>();
     }

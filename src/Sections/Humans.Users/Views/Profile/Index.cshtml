@@ -72,13 +72,28 @@
         }
         <vc:profile-card user-id="@Model.UserId" view-mode="@cardViewMode" />
 
+        @if (Model.TeamMessageOptions.Count > 0)
+        {
+            <div class="d-flex flex-wrap gap-2 mb-4">
+                @foreach (var team in Model.TeamMessageOptions)
+                {
+                    <a asp-controller="ProfileView" asp-action="SendMessage"
+                       asp-route-id="@Model.UserId" asp-route-teamId="@team.TeamId"
+                       class="btn btn-outline-primary">
+                        <i class="fa-solid fa-envelope me-1"></i>
+                        @Localizer["SendMessage_FromTeamButton", Model.DisplayName, team.TeamName]
+                    </a>
+                }
+            </div>
+        }
+
         @if (Model.IsOwnProfile)
         {
             <vc:my-camps />
         }
 
-        @* Approved personal (non-camp) events this human submitted this edition (auto-hidden when empty); camp events show on the camp's page *@
-        <vc:events-card user-id="@Model.UserId" />
+        @* Section-contributed parts (IUserPart), e.g. the Events card; each auto-hides when empty *@
+        <vc:user-parts user-id="@Model.UserId" />
 
         @if (!Model.IsOwnProfile && Model.CanViewShiftSignups)
         {

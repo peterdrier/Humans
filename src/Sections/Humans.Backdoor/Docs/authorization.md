@@ -7,6 +7,7 @@
 | `BackdoorFeedbackController` | Class | `[ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]` (personal-key auth) | `BackdoorApiKeyAuthFilter` (key-authed read+write API at `/api/backdoor/feedback`; reads and triages `Humans.Feedback` through `IFeedbackTriage`) |
 | `BackdoorIssuesController` | Class | `[ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]` (personal-key auth) | `BackdoorApiKeyAuthFilter` (key-authed read+write API at `/api/backdoor/issues`; reads and triages `Humans.Issues` through `IIssueTriage`) |
 | `BackdoorLogsController` | Class | `[ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]` (personal-key auth) | `BackdoorApiKeyAuthFilter` (key-authed log-tail read API at `/api/backdoor/logs`; reads `InMemoryLogSink`, `Humans.Base`) |
+| `BackdoorNotificationsController` | Class | `[ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]` (personal-key auth) | `BackdoorApiKeyAuthFilter` (key-authed read API at `/api/backdoor/notifications`; reads `Humans.Notifications` through `INotificationInboxRead`, scoped to the key's owner) |
 | `BackdoorStoreController` | Class | `[ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]` (personal-key auth) | `BackdoorApiKeyAuthFilter` (key-authed read API at `/api/backdoor/store`; reads `Humans.Store` through `IStoreAccountingRead`) |
 | `BackdoorSurveysController` | Class | `[ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]` (personal-key auth) | `BackdoorApiKeyAuthFilter` (key-authed read API at `/api/backdoor/surveys`; reads `Humans.Surveys` through `ISurveyAnalysisRead`) |
 
