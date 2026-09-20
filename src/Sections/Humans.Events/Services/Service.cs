@@ -841,15 +841,17 @@ internal sealed class EventService(
             }
         };
 
-        return [new UserDataSlice(GdprExportSections.Events, shaped)];
+        return [new UserDataSlice(Events, shaped)];
     }
+
+    internal const string Events = "Events";
 
     // internal: CachingEventService carries IUserDataContributor and returns this table
     // from an uninitialized instance, so it has to be static and reachable from there.
     internal static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.Events] =
+            [Events] =
                 "Partially retained: favourites and the category-exclusion preference are deleted " +
                 "outright. An event the person submitted stays in the guide as the programme " +
                 "record of what ran — GDPR Art. 17(3)(b): it is a listing other people " +

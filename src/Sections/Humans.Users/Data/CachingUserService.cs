@@ -509,7 +509,6 @@ internal sealed class CachingUserService(
             DeletionScheduledFor = user.DeletionScheduledFor,
             DeletionEligibleAfter = user.DeletionEligibleAfter,
             UnsubscribedFromCampaigns = user.UnsubscribedFromCampaigns,
-            ICalToken = user.ICalToken,
             SuppressScheduleChangeEmails = user.SuppressScheduleChangeEmails,
             MagicLinkSentAt = user.MagicLinkSentAt,
             // GoogleEmailStatus is computed from the canonical Google UserEmail row (#687) —
@@ -629,12 +628,6 @@ internal sealed class CachingUserService(
     public async Task SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default)
     {
         await WithInnerAsync(inner => inner.SetPreferredLanguageAsync(userId, preferredLanguage, ct));
-        await RefreshEntryAsync(userId, ct);
-    }
-
-    public async Task SetICalTokenAsync(Guid userId, Guid token, CancellationToken ct = default)
-    {
-        await WithInnerAsync(inner => inner.SetICalTokenAsync(userId, token, ct));
         await RefreshEntryAsync(userId, ct);
     }
 

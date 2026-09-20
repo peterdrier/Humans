@@ -130,7 +130,7 @@
         <div class="text-muted mb-1" style="font-size: 0.75rem;">
             <strong>@msg.SenderName</strong> · @msg.CreatedAt.ToMonthDayTime()
         </div>
-        <div class="p-2 rounded border-start border-3 @borderClass bg-body-tertiary" style="white-space: pre-wrap;">@msg.Content</div>
+        <div class="p-2 rounded border-start border-3 @borderClass bg-body-tertiary">@Html.SanitizedMarkdown(msg.Content)</div>
     </div>
 }
 

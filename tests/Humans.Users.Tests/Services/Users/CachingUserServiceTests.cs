@@ -269,7 +269,6 @@ public class CachingUserServiceTests
             BurnerName = "Octa",
             PreferredLanguage = "es",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            ICalToken = Guid.NewGuid(),
         };
         var userEmail = new UserEmail
         {

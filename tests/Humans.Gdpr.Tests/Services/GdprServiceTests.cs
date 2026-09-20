@@ -1,9 +1,13 @@
 using AwesomeAssertions;
 using Humans.Gdpr.Contracts;
 using Humans.Gdpr.Services;
+using Humans.Testing;
+using Humans.Users.Contracts;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
+using NSubstitute;
 
 namespace Humans.Gdpr.Tests.Services;
 
@@ -12,10 +16,60 @@ public class GdprServiceTests
     private static readonly Instant FixedNow = Instant.FromUtc(2026, 4, 15, 10, 30);
 
     private static GdprService CreateService(params IUserDataContributor[] contributors) =>
+        CreateService(users: null, contributors);
+
+    private static GdprService CreateService(
+        IUserServiceRead? users, params IUserDataContributor[] contributors) =>
+        CreateService(users, NullLogger<GdprService>.Instance, contributors);
+
+    private static GdprService CreateService(
+        IUserServiceRead? users, ILogger<GdprService> logger, params IUserDataContributor[] contributors) =>
         new(
             contributors,
+            users ?? Substitute.For<IUserServiceRead>(),
             new FakeClock(FixedNow),
-            NullLogger<GdprService>.Instance);
+            logger);
+
+    /// <summary>
+    /// Stubs the one read the orchestrator makes: every id in <paramref name="mergedFrom"/>
+    /// plus <paramref name="survivor"/> reads back as the survivor's record, which is how
+    /// Users reports a merged account.
+    /// </summary>
+    private static IUserServiceRead StubMerged(Guid survivor, params Guid[] mergedFrom)
+    {
+        var resolved = MinimalUserInfo(survivor) with { MergedUserIds = mergedFrom };
+        var users = Substitute.For<IUserServiceRead>();
+        users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => new ValueTask<UserInfo?>(
+                (Guid)call[0] == survivor || mergedFrom.Contains((Guid)call[0]) ? resolved : null));
+        return users;
+    }
+
+    private static UserInfo MinimalUserInfo(Guid id) => new(
+        Id: id,
+        BurnerName: "Nobody",
+        IsGdprAnonymized: false,
+        PreferredLanguage: "en",
+        FallbackPictureUrl: null,
+        CreatedAt: FixedNow,
+        LastLoginAt: null,
+        LastConsentReminderSentAt: null,
+        DeletionRequestedAt: null,
+        DeletionScheduledFor: null,
+        DeletionEligibleAfter: null,
+        UnsubscribedFromCampaigns: false,
+        SuppressScheduleChangeEmails: false,
+        MagicLinkSentAt: null,
+        ContactSource: null,
+        ExternalSourceId: null,
+        MergedToUserId: null,
+        MergedAt: null,
+        IdentityEmailColumn: null,
+        UserEmails: [],
+        EventParticipations: [],
+        ExternalLogins: [],
+        Profile: null,
+        CommunicationPreferences: []);
 
     [HumansFact]
     public async Task ExportForUserAsync_StampsExportedAtFromClock()
@@ -25,6 +79,50 @@ public class GdprServiceTests
         var export = await service.ExportForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         export.ExportedAt.Should().Be("2026-04-15T10:30:00Z");
+    }
+
+    [HumansFact]
+    public async Task ExportForUserAsync_RequestedUnderMergedAwayId_NamesTheSurvivorAndItsArchivedIds()
+    {
+        // The key that makes the section slices legible: rows stay keyed to the archived id on
+        // purpose (audit entries, consent records, roster rows, ballots), so without this the
+        // reader of an export for the survivor sees rows carrying a stranger's id.
+        var survivor = Guid.NewGuid();
+        var archived = Guid.NewGuid();
+        var service = CreateService(
+            StubMerged(survivor, archived),
+            new FakeContributor("Profile", new { Name = "Jane" }));
+
+        var export = await service.ExportForUserAsync(archived, Xunit.TestContext.Current.CancellationToken);
+
+        export.UserId.Should().Be(survivor, "the export belongs to the account that survived the merge");
+        export.MergedFromUserIds.Should().Equal(archived);
+    }
+
+    [HumansFact]
+    public async Task ExportForUserAsync_UnmergedAccount_CarriesNoArchivedIds()
+    {
+        var userId = Guid.NewGuid();
+        var service = CreateService(
+            StubMerged(userId),
+            new FakeContributor("Profile", new { Name = "Jane" }));
+
+        var export = await service.ExportForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        export.UserId.Should().Be(userId);
+        export.MergedFromUserIds.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task ExportForUserAsync_UnknownUser_FallsBackToTheRequestedId()
+    {
+        var userId = Guid.NewGuid();
+        var service = CreateService(new FakeContributor("Profile", new { Name = "Jane" }));
+
+        var export = await service.ExportForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        export.UserId.Should().Be(userId);
+        export.MergedFromUserIds.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -87,6 +185,38 @@ public class GdprServiceTests
     }
 
     [HumansFact]
+    public async Task ExportForUserAsync_LogsAndContinuesWhenExportedSectionHasNoErasureDeclaration()
+    {
+        var logger = new CapturingLogger<GdprService>();
+        var service = CreateService(
+            users: null,
+            logger,
+            new UndeclaredErasureContributor(),
+            new FakeContributor("Consents", new { Document = "Code of Conduct" }));
+
+        var export = await service.ExportForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        export.Sections.Should().ContainKey("Profile", "the undeclared slice is still the person's data");
+        export.Sections.Should().ContainKey("Consents", "other contributors still complete");
+        logger.Entries.Should().Contain(e =>
+            e.Level == LogLevel.Error &&
+            e.Message.Contains("Profile") &&
+            e.Message.Contains("UndeclaredErasureContributor"));
+    }
+
+    private sealed class UndeclaredErasureContributor : IUserDataContributor
+    {
+        public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<UserDataSlice>>([new UserDataSlice("Profile", new { Name = "Jane" })]);
+
+        // Deliberately empty: "Profile" is exported but never declared for erasure.
+        public IReadOnlyDictionary<string, string?> ErasureDeclaration =>
+            new Dictionary<string, string?>(StringComparer.Ordinal);
+
+        public Task EraseForUserAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
+    }
+
+    [HumansFact]
     public async Task ExportForUserAsync_PropagatesContributorFailure()
     {
         var boom = new InvalidOperationException("boom");
@@ -130,8 +260,7 @@ public class GdprServiceTests
     public async Task ExportForUserAsync_EmptyCollectionSliceSurvivesAsEmptyList()
     {
         // Empty collections MUST round-trip to "[]" in the JSON: a collection key
-        // is always present even when the user has no records, and downstream
-        // consumers depend on that.
+        // is always present, never omitted, even when the user has no records.
         var emptyConsents = Array.Empty<object>();
         var service = CreateService(
             new FakeContributor("Profile", new { Name = "Jane" }),
@@ -205,29 +334,30 @@ public class GdprServiceTests
     }
 
     [HumansFact]
-    public async Task EraseForUserAsync_ErasesAccountIdentityLast()
+    public async Task EraseForUserAsync_ErasesTheErasesLastContributorLast()
     {
         // Sections that must reach an external processor (the Workspace suspend) need the
-        // human's addresses, which the Account contributor is about to drop. Registration
-        // order is Account-first here on purpose: ordering is derived from the declaration.
+        // human's addresses, which the identity contributor is about to drop. Registration
+        // order is identity-first here on purpose: ordering is derived from ErasesLast, not
+        // registration order.
         var order = new List<string>();
-        var account = new RecordingContributor(GdprExportSections.Account, order);
-        var section = new RecordingContributor(GdprExportSections.Issues, order);
+        var account = new RecordingContributor("Account", order) { ErasesLast = true };
+        var section = new RecordingContributor("Issues", order);
         var service = CreateService(account, section);
 
         await service.EraseForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
-        order.Should().Equal(GdprExportSections.Issues, GdprExportSections.Account);
+        order.Should().Equal("Issues", "Account");
     }
 
     [HumansFact]
     public async Task EraseForUserAsync_PropagatesContributorFailureAndStopsBeforeAccount()
     {
-        // A throwing contributor aborts the run before the Account identity collapse.
+        // A throwing contributor aborts the run before the identity collapse.
         // What the caller then does with its deletion markers is Users' concern, not this
         // orchestrator's, and nothing here observes it.
         var boom = new RecordingContributor("Issues") { Throw = new InvalidOperationException("boom") };
-        var account = new RecordingContributor(GdprExportSections.Account);
+        var account = new RecordingContributor("Account") { ErasesLast = true };
         var service = CreateService(boom, account);
 
         var act = async () => await service.EraseForUserAsync(
@@ -240,6 +370,7 @@ public class GdprServiceTests
     private sealed class RecordingContributor(string section, List<string>? order = null) : IUserDataContributor
     {
         public Exception? Throw { get; init; }
+        public bool ErasesLast { get; init; }
         public List<Guid> ErasedIds { get; } = [];
 
         public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>

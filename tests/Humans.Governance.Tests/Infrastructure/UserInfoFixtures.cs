@@ -17,13 +17,10 @@ namespace Humans.Governance.Tests.Infrastructure;
 /// </remarks>
 internal static class UserInfoFixtures
 {
-    public static UserInfo ToUserInfo(
-        this User user,
-        IReadOnlyList<UserEmail>? userEmails = null,
-        ProfileInfo? profile = null)
+    public static UserInfo ToUserInfo(this User user, ProfileInfo? profile = null)
         => UserInfo.Create(
             user,
-            userEmails ?? user.UserEmails?.ToList() ?? [],
+            user.UserEmails?.ToList() ?? [],
             [],
             [],
             profile: profile,

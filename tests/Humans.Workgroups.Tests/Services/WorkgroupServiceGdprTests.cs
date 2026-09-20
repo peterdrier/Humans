@@ -1,8 +1,8 @@
 using AwesomeAssertions;
 using Humans.Base.Constants;
-using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Workgroups.Domain;
+using Humans.Workgroups.Services;
 using Humans.Workgroups.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
@@ -17,7 +17,7 @@ namespace Humans.Workgroups.Tests.Services;
 public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
 {
     [HumansFact]
-    public async Task Export_ReturnsOneSlicePerRowType_NamedByGdprExportSections()
+    public async Task Export_ReturnsOneSlicePerRowType_NamedByContributorConstants()
     {
         var workgroup = await SeedWorkgroupAsync();
         var author = workgroup.Members.Single().UserId;
@@ -29,12 +29,12 @@ public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
 
         slices.Select(s => s.SectionName).Should().BeEquivalentTo(
         [
-            GdprExportSections.WorkgroupApplications,
-            GdprExportSections.WorkgroupMemberships,
-            GdprExportSections.WorkgroupLogEntries,
-            GdprExportSections.WorkgroupMeetings,
-            GdprExportSections.WorkgroupDocuments,
-            GdprExportSections.WorkgroupComments
+            WorkgroupService.WorkgroupApplications,
+            WorkgroupService.WorkgroupMemberships,
+            WorkgroupService.WorkgroupLogEntries,
+            WorkgroupService.WorkgroupMeetings,
+            WorkgroupService.WorkgroupDocuments,
+            WorkgroupService.WorkgroupComments
         ]);
         slices.Should().OnlyContain(s => s.Data != null);
         comment.AuthorUserId.Should().Be(author);
@@ -53,7 +53,7 @@ public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
         var slices = await NewService().ContributeForUserAsync(applicant, Ct);
 
         var applications = slices.Single(s =>
-            string.Equals(s.SectionName, GdprExportSections.WorkgroupApplications, StringComparison.Ordinal));
+            string.Equals(s.SectionName, WorkgroupService.WorkgroupApplications, StringComparison.Ordinal));
         applications.Data.Should().NotBeNull();
         System.Text.Json.JsonSerializer.Serialize(applications.Data).Should().Contain(workgroup.Name);
 
@@ -61,7 +61,7 @@ public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
 
         var erased = await NewService().ContributeForUserAsync(applicant, Ct);
         erased.Single(s =>
-                string.Equals(s.SectionName, GdprExportSections.WorkgroupApplications, StringComparison.Ordinal))
+                string.Equals(s.SectionName, WorkgroupService.WorkgroupApplications, StringComparison.Ordinal))
             .Data.Should().BeEquivalentTo(Array.Empty<object>());
     }
 
@@ -87,7 +87,7 @@ public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
         var slices = await NewService().ContributeForUserAsync(moderator, Ct);
 
         var comments = slices.Single(s =>
-            string.Equals(s.SectionName, GdprExportSections.WorkgroupComments, StringComparison.Ordinal)).Data;
+            string.Equals(s.SectionName, WorkgroupService.WorkgroupComments, StringComparison.Ordinal)).Data;
         comments.Should().NotBeNull();
         ((System.Collections.IEnumerable)comments!).Cast<object>().Should().ContainSingle();
     }

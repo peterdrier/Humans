@@ -23,6 +23,8 @@ internal sealed class NotificationInboxService(
     IClock clock,
     IMemoryCache cache) : INotificationInboxService, IUserDataContributor
 {
+    internal const string Notifications = "Notifications";
+
     public async Task<NotificationInboxResult> GetInboxAsync(
         Guid userId, string? search, string filter, string tab,
         CancellationToken ct = default)
@@ -233,13 +235,13 @@ internal sealed class NotificationInboxService(
             ResolvedAt = nr.Notification.ResolvedAt.ToIso8601()
         }).ToList();
 
-        return [new UserDataSlice(GdprExportSections.Notifications, shaped)];
+        return [new UserDataSlice(Notifications, shaped)];
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.Notifications] = null
+            [Notifications] = null
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;

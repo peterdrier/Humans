@@ -315,25 +315,6 @@
                 </form>
             </div>
         </div>
-
-        @if (Model.ICalUrl != null)
-        {
-            <div class="card mb-4">
-                <div class="card-header"><h5 class="mb-0">@Localizer["Shifts_IcalFeedTitle"]</h5></div>
-                <div class="card-body">
-                    <p class="text-muted">@Localizer["Shifts_IcalFeedHelp"]</p>
-                    <div class="input-group mb-2">
-                        <input type="text" class="form-control" id="icalUrl" value="@Model.ICalUrl" readonly />
-                        <button class="btn btn-outline-secondary" type="button" id="copyIcalBtn">@Localizer["Shifts_IcalCopy"]</button>
-                    </div>
-                    <form asp-action="RegenerateIcal" method="post" class="d-inline">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-sm btn-outline-warning"
-                                data-confirm="@Localizer["Shifts_IcalRegenerateConfirm"]">@Localizer["Shifts_IcalRegenerate"]</button>
-                    </form>
-                </div>
-            </div>
-        }
     }
 </div>
 
@@ -356,13 +337,6 @@
 
 <script>
 (function() {
-    var copyBtn = document.getElementById('copyIcalBtn');
-    if (copyBtn) {
-        copyBtn.addEventListener('click', function() {
-            navigator.clipboard.writeText(document.getElementById('icalUrl').value);
-        });
-    }
-
     // Availability calendar grid — click to toggle
     var form = document.getElementById('availabilityForm');
     if (form) {

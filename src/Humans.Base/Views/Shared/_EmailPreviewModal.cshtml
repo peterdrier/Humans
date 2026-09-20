@@ -4,8 +4,10 @@
    more than one instance at once (survey invitation's per-culture tabs) or supply this once at
    page level for a composer that instead renders inside an AJAX-injected partial whose own copy
    never executes (Feedback/Issues detail panels). Defines window.HumansEmailComposer.preview(
-   subject, body, category, modalId) and .wire(root), which POSTs to /Email/PreviewMarkdown and
-   shows the exact branded, sanitized email in a sandboxed iframe — no outbox row is created. *@
+   subject, body, category, modalId) and .wire(root), which POSTs to the Email section's
+   "EmailPreviewMarkdown" named route (resolved server-side below, never a hardcoded Email URL —
+   Base is the bottom of the dependency graph and must not know section routes) and shows the
+   exact branded, sanitized email in a sandboxed iframe — no outbox row is created. *@
 @{
     var modalId = Model;
     var labelId = $"{modalId}Label";
@@ -42,6 +44,7 @@
 (function () {
     var loadingHtml = @Html.Raw(JsonSerializer.Serialize("<p class=\"text-muted p-3\">" + Localizer["EmailComposer_PreviewLoading"].Value + "</p>"));
     var errorText = @Html.Raw(JsonSerializer.Serialize(Localizer["EmailComposer_PreviewError"].Value));
+    var previewUrl = @Html.Raw(JsonSerializer.Serialize(Url.RouteUrl("EmailPreviewMarkdown")));
 
     window.HumansEmailComposer = window.HumansEmailComposer || {};
 
@@ -67,7 +70,7 @@
         form.append('category', category || '');
         form.append('__RequestVerificationToken', getRequestVerificationToken());
 
-        fetch('/Email/PreviewMarkdown', {
+        fetch(previewUrl, {
             method: 'POST',
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
             body: form

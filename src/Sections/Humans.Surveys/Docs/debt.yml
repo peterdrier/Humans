@@ -1,10 +1,15 @@
 # Section debt ledger for Humans.Surveys. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
+next_id: 3
 inbox:
   - added: 2026-08-28
+    id: SURVEYS-1
     what: "SurveyService is the solution's largest class by reforge's largeClass rule and grew again with ranked-choice voting. Deliberate per the section's target shape (one aggregate, one anonymity contract, now one embargo), but recorded so the score is not mistaken for unexamined debt (/section-doctor on Surveys 2026-08-27, re-examined 2026-09-07; the measurements live in those run files)."
     review: light
+    status: needs-detail
+    blocked_on: "Name the split wanted (or retire the row): this records an accepted design, not a defect, so no check can go green."
   - added: 2026-09-07
+    id: SURVEYS-2
     what: "Surveys.md invariants with no test that pins them: individual submissions are never audit-logged; Close is audit-logged; eligibility is re-checked on every wizard page; a SentAt = null ledger row is excluded from invited counts, status and reminders; Article 17 erasure unlinks a response (the service call is pinned, the UserId blanking in SurveyRepository.AnonymizeResponsesForUserAsync is not); ballots in the drill-down are ordered by response id. Found by /section-doctor's Tests thread on 2026-09-07; its sibling gaps were closed in that run. Narrowed 2026-09-20: 'exactly one reminder per invitee' is now pinned at service level (SurveyServiceTests.cs:1381), leaving only the repository-side ReminderSentAt filter and stamp untested."
     review: light

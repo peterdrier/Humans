@@ -89,8 +89,6 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<bool> SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<bool> SetICalTokenAsync(Guid userId, Guid token, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<bool> SetLastLoginAsync(Guid userId, Instant at, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<bool> SetDeletionPendingAsync(

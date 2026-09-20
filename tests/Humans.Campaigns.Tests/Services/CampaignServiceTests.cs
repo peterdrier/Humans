@@ -6,6 +6,7 @@ using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Campaigns.Data;
 using Humans.Campaigns.Domain;
+using Humans.Campaigns.Services;
 using Humans.Base.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -405,6 +406,7 @@ public sealed class CampaignServiceTests
         _emailMessages.Received(1).CampaignCode(
             Arg.Is<CampaignCodeEmailRequest>(r =>
                 r.CampaignGrantId == grants[0].Id
+                && r.CampaignId == campaign.Id
                 && r.UserId == user.Id
                 && r.RecipientEmail == user.Email
                 && r.Code == "CODE-A"));
@@ -550,7 +552,7 @@ public sealed class CampaignServiceTests
         await _service.ResendToGrantAsync(grant.Id, Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.Received(1).CampaignCode(
-            Arg.Is<CampaignCodeEmailRequest>(r => r.CampaignGrantId == grant.Id));
+            Arg.Is<CampaignCodeEmailRequest>(r => r.CampaignGrantId == grant.Id && r.CampaignId == campaign.Id));
 
         ClearAllTrackers();
         var updatedGrant = await CampaignsDb.CampaignGrants.FindAsync(grant.Id, Xunit.TestContext.Current.CancellationToken);
@@ -581,7 +583,7 @@ public sealed class CampaignServiceTests
 
         // Only the failed grant should be re-enqueued.
         _emailMessages.Received(1).CampaignCode(
-            Arg.Is<CampaignCodeEmailRequest>(r => r.CampaignGrantId == grants[0].Id));
+            Arg.Is<CampaignCodeEmailRequest>(r => r.CampaignGrantId == grants[0].Id && r.CampaignId == campaign.Id));
 
         ClearAllTrackers();
         var retriedGrant = await CampaignsDb.CampaignGrants.FindAsync(grants[0].Id, Xunit.TestContext.Current.CancellationToken);
@@ -679,7 +681,7 @@ public sealed class CampaignServiceTests
         var slices = await _service.ContributeForUserAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
 
         slices.Should().ContainSingle();
-        slices[0].SectionName.Should().Be(Humans.Gdpr.Contracts.GdprExportSections.CampaignGrants);
+        slices[0].SectionName.Should().Be(CampaignService.CampaignGrants);
         var rows = (System.Collections.IEnumerable)slices[0].Data!;
         rows.Cast<object>().Should().ContainSingle();
     }

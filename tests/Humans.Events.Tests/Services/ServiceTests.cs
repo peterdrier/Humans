@@ -6,7 +6,6 @@ using Humans.Events.Data;
 using Humans.Events.Domain;
 using Humans.Events.Services;
 using Humans.Events.Services.Dtos;
-using Humans.Gdpr.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -430,7 +429,7 @@ public sealed class EventServiceTests
         var slices = await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
 
         slices.Should().ContainSingle();
-        slices[0].SectionName.Should().Be(GdprExportSections.Events);
+        slices[0].SectionName.Should().Be(EventService.Events);
         slices[0].Data.Should().NotBeNull();
     }
 
@@ -440,7 +439,7 @@ public sealed class EventServiceTests
         var slices = await _service.ContributeForUserAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         slices.Should().ContainSingle();
-        slices[0].SectionName.Should().Be(GdprExportSections.Events);
+        slices[0].SectionName.Should().Be(EventService.Events);
         slices[0].Data.Should().NotBeNull();
     }
 
@@ -748,7 +747,7 @@ public sealed class EventServiceTests
     [HumansFact]
     public void ErasureDeclaration_StatesWhatSurvivesRatherThanClaimingFullErasure()
     {
-        _service.ErasureDeclaration[GdprExportSections.Events]
+        _service.ErasureDeclaration[EventService.Events]
             .Should().NotBeNull().And.Contain("Host");
     }
 

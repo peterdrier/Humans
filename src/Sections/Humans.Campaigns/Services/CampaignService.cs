@@ -1,7 +1,6 @@
 using Humans.Base.Attributes;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
-using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
@@ -11,6 +10,7 @@ using Humans.Campaigns.Data;
 using Humans.Campaigns.Domain;
 using Humans.Campaigns.Services.Dtos;
 using Humans.Base.Enums;
+using Humans.Gdpr.Contracts;
 using NodaTime;
 
 namespace Humans.Campaigns.Services;
@@ -32,6 +32,9 @@ internal sealed class CampaignService(
     IClock clock,
     ILogger<CampaignService> logger) : ICampaignService, IUserDataContributor, IUserMerge
 {
+    /// <summary>GDPR export JSON key for this contributor's data.</summary>
+    internal const string CampaignGrants = "CampaignGrants";
+
     public async Task<CampaignCreateResult> CreateAsync(string title, string? description,
         string emailSubject, string emailBodyTemplate, string? replyToAddress,
         Guid createdByUserId, CancellationToken ct = default)
@@ -525,7 +528,7 @@ internal sealed class CampaignService(
                 grant.CampaignEmailSubject,
                 grant.CampaignEmailBodyTemplate,
                 grant.CampaignReplyToAddress,
-                user, recipientEmail, grant.CodeString, grant.GrantId)),
+                user, recipientEmail, grant.CodeString, grant.GrantId, grant.CampaignId)),
             ct);
 
         logger.LogInformation("Resent campaign email for grant {GrantId}", grantId);
@@ -630,7 +633,7 @@ internal sealed class CampaignService(
                         grant.CampaignEmailSubject,
                         grant.CampaignEmailBodyTemplate,
                         grant.CampaignReplyToAddress,
-                        user, recipientEmail, grant.CodeString, grant.GrantId)),
+                        user, recipientEmail, grant.CodeString, grant.GrantId, campaignId)),
                     ct);
             }
             catch (Exception ex)
@@ -660,6 +663,7 @@ internal sealed class CampaignService(
         return new CampaignCodeEmailRequest(
             UserId: user.Id,
             CampaignGrantId: grantId,
+            CampaignId: campaign.Id,
             RecipientEmail: recipientEmail,
             RecipientName: user.BurnerName,
             Subject: campaign.EmailSubject,
@@ -670,11 +674,12 @@ internal sealed class CampaignService(
 
     private static CampaignCodeEmailRequest BuildCampaignCodeRequest(
         string emailSubject, string emailBody, string? replyToAddress,
-        UserInfo user, string recipientEmail, string code, Guid grantId)
+        UserInfo user, string recipientEmail, string code, Guid grantId, Guid campaignId)
     {
         return new CampaignCodeEmailRequest(
             UserId: user.Id,
             CampaignGrantId: grantId,
+            CampaignId: campaignId,
             RecipientEmail: recipientEmail,
             RecipientName: user.BurnerName,
             Subject: emailSubject,
@@ -696,13 +701,13 @@ internal sealed class CampaignService(
             EmailStatus = g.LatestEmailStatus?.ToString()
         }).ToList();
 
-        return [new UserDataSlice(GdprExportSections.CampaignGrants, shaped)];
+        return [new UserDataSlice(CampaignGrants, shaped)];
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.CampaignGrants] = null
+            [CampaignGrants] = null
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;

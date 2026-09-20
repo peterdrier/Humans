@@ -39,7 +39,7 @@ public sealed class SurveyPreviewEmailServiceTests
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new UserInfo(
                 userId, "Tester", false, "en", null, Instant.FromUnixTimeSeconds(0),
-                null, null, null, null, null, false, null, false, null, null, null,
+                null, null, null, null, null, false, false, null, null, null,
                 null, null, null, [], [], [], null, []));
         var rendered = new EmailMessage(
             "tester@example.com", "Tester", "Choose our gathering dates",
@@ -92,7 +92,7 @@ public sealed class SurveyPreviewEmailServiceTests
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new UserInfo(
                 userId, "Tester", false, "fr", null, Instant.FromUnixTimeSeconds(0),
-                null, null, null, null, null, false, null, false, null, null, null,
+                null, null, null, null, null, false, false, null, null, null,
                 null, null, null, [], [], [], null, []));
         string? capturedToken = null;
         var rendered = new EmailMessage(
@@ -167,7 +167,7 @@ public sealed class SurveyPreviewEmailServiceTests
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new UserInfo(
                 userId, "Tester", false, "fr", null, Instant.FromUnixTimeSeconds(0),
-                null, null, null, null, null, false, null, false, null, null, null,
+                null, null, null, null, null, false, false, null, null, null,
                 null, null, null, [], [], [], null, []));
         var rendered = new EmailMessage(
             "tester@example.com", "Tester", "Standard French subject", "<p>Standard French body</p>",

@@ -18,7 +18,7 @@ internal sealed class EmailPreviewController(
     IUserServiceRead userService,
     IEmailPreviewServiceRead emailPreviews) : ApiControllerBase(userService)
 {
-    [HttpPost("PreviewMarkdown")]
+    [HttpPost("PreviewMarkdown", Name = "EmailPreviewMarkdown")]
     [ValidateAntiForgeryToken]
     public IActionResult PreviewMarkdown([FromForm] string? subject, [FromForm] string? body, [FromForm] string? category)
     {

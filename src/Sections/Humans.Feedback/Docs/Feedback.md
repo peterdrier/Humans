@@ -146,7 +146,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 - **Notifications:** `INotificationEmitter.SendAsync` — `NotificationSource.FeedbackResponse` in-app notification dispatched after an admin reply is persisted.
 - **Audit Log:** `IAuditLogService.LogAsync` — status, assignment and GitHub-link changes (`AuditAction.FeedbackStatusChanged`, `AuditAction.FeedbackAssignmentChanged`, `AuditAction.FeedbackGitHubLinked`).
 - **Caching:** the actionable badge count is cached inline in `FeedbackService.GetActionableCountAsync` (`CacheKeys.FeedbackBadgeCount`, 2-min TTL, Static) and invalidated via `INavBadgeCacheInvalidator` whenever the count could have changed.
-- **GDPR:** implements `IUserDataContributor` to export the reporter's feedback reports and message contents under `GdprExportSections.FeedbackReports`.
+- **GDPR:** implements `IUserDataContributor` to export the reporter's feedback reports and message contents under `FeedbackService.FeedbackReports`.
 - **Agent:** `AgentConversationId` is a plain FK column on `feedback_reports` (no EF FK constraint). Reports with `Source = AgentUnresolved` originate from the agent's retired `route_to_feedback` tool. Transcript resolution goes through the Agent section's services when needed. `IFeedbackServiceRead.GetOpenFeedbackIdsForUserAsync` still feeds `AgentUserSnapshotProvider`.
 
 ## Architecture

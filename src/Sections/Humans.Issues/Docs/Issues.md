@@ -157,7 +157,7 @@ Two controllers serve this section:
 - **Notifications:** `INotificationEmitter` — `NotificationSource.IssueSubmitted`, `NotificationSource.IssueComment`, `NotificationSource.IssueStatusChanged`, `NotificationSource.IssueAssigned` in-app notifications; `INotificationAutoResolve` — resolves the `IssueSubmitted` notifications when the issue goes terminal.
 - **Audit Log:** `IAuditLogService.LogAsync` — every mutation (`AuditAction.IssueCreated`, `AuditAction.IssueStatusChanged`, `AuditAction.IssueAssigneeChanged`, `AuditAction.IssueSectionChanged`, `AuditAction.IssueGitHubLinked`).
 - **Caching:** `INavBadgeCacheInvalidator` (global nav count) and `IIssuesBadgeCacheInvalidator` (per-viewer actionable count) — both invalidated whenever the actionable count for a viewer could have changed.
-- **GDPR:** implements `IUserDataContributor` to export the user's reported issues and their comments under `GdprExportSections.Issues`.
+- **GDPR:** implements `IUserDataContributor` to export the user's reported issues and their comments under the export key declared as `IssuesService.Issues`.
 
 ## Architecture
 

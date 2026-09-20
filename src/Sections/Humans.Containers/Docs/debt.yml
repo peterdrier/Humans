@@ -1,10 +1,14 @@
 # Section debt ledger for Humans.Containers. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
+next_id: 3
 inbox:
   - added: 2026-09-08
+    id: CONT-1
     what: "No controller tests for ContainerController (finding 13, /section-doctor on Containers 2026-09-08): the 403 on /Camp/{slug}/Containers for a non-lead, the Forbid on Create/Edit/Delete, the NotFound on an unknown slug or id, and the ModelState → flash → redirect path are unpinned end to end; the handler is unit-tested by hand-built context only. Needs the controller-test scaffolding other sections use (HumansControllerBase + IAuthorizationService substitute)."
     review: panel
+    root: CENTRAL-56
   - added: 2026-09-14
+    id: CONT-2
     what: "Service validation failures reach the member untranslated: ContainerController's catch hands ex.Message to SetError, so \"A container can have at most 5 images.\" and the name-character message render in English in every culture (finding 5, /section-doctor on Containers 2026-09-08). Peter 2026-09-14: accept English for now, do the error-key pass later — Service throws a key the controller localizes against ContainersResource, rather than a formatted sentence. The two messages live in Service.ValidateName and the image-count guard."
     review: light

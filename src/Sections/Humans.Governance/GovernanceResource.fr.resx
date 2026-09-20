@@ -79,9 +79,6 @@
   <data name="Governance_UnderReviewMessage" xml:space="preserve">
     <value>Votre candidature est en cours d'examen. Vous serez notifié par e-mail dès qu'une décision sera prise.</value>
   </data>
-  <data name="Governance_ApprovedMessage" xml:space="preserve">
-    <value>Bienvenue ! Vous êtes désormais asociado de Nobodies Collective.</value>
-  </data>
   <data name="Governance_ApprovedMessageColaborador" xml:space="preserve">
     <value>Vous êtes un/e Colaborador/a approuvé/e de Nobodies Collective.</value>
   </data>
@@ -155,7 +152,7 @@
     <value>Nouvelle candidature</value>
   </data>
   <data name="GovernanceCreate_Lead" xml:space="preserve">
-    <value>Les Colaboradors et Asociados assument des responsabilités de gouvernance. Choisissez le niveau qui correspond le mieux à votre implication.</value>
+    <value>Les Colaboradores et Asociados assument des responsabilités de gouvernance. Choisissez le niveau qui correspond le mieux à votre implication.</value>
   </data>
   <data name="GovernanceCreate_MotivationPlaceholder" xml:space="preserve">
     <value>Veuillez partager votre motivation pour nous rejoindre...</value>
@@ -250,47 +247,17 @@
   <data name="AdminAppDetail_ApplicationReview" xml:space="preserve">
     <value>Examen de la candidature</value>
   </data>
-  <data name="AdminAppDetail_ViewProfile" xml:space="preserve">
-    <value>Voir le profil</value>
-  </data>
   <data name="AdminAppDetail_Motivation" xml:space="preserve">
     <value>Motivation</value>
   </data>
   <data name="AdminAppDetail_Reviewer" xml:space="preserve">
     <value>Examinateur</value>
   </data>
-  <data name="AdminAppDetail_StartReview" xml:space="preserve">
-    <value>Démarrer l'examen</value>
-  </data>
-  <data name="AdminAppDetail_NotesLabel" xml:space="preserve">
-    <value>Notes (obligatoires pour refuser/demander des informations)</value>
-  </data>
-  <data name="AdminAppDetail_NotesPlaceholder" xml:space="preserve">
-    <value>Ajouter des notes...</value>
-  </data>
-  <data name="AdminAppDetail_ApproveConfirm" xml:space="preserve">
-    <value>Approuver cette candidature ?</value>
-  </data>
-  <data name="AdminAppDetail_Approve" xml:space="preserve">
-    <value>Approuver</value>
-  </data>
-  <data name="AdminAppDetail_RejectConfirm" xml:space="preserve">
-    <value>Refuser cette candidature ?</value>
-  </data>
-  <data name="AdminAppDetail_Reject" xml:space="preserve">
-    <value>Refuser</value>
-  </data>
-  <data name="AdminAppDetail_RequestMoreInfo" xml:space="preserve">
-    <value>Demander plus d'informations</value>
-  </data>
   <data name="AdminAppDetail_Language" xml:space="preserve">
     <value>Langue</value>
   </data>
   <data name="BoardVoting_Title" xml:space="preserve">
     <value>Tableau de bord des votes du Conseil</value>
-  </data>
-  <data name="BoardVoting_DetailTitle" xml:space="preserve">
-    <value>Vote : {0}</value>
   </data>
   <data name="BoardVoting_NoApplications" xml:space="preserve">
     <value>Aucune candidature en attente de vote.</value>
@@ -357,9 +324,6 @@
   </data>
   <data name="BoardVoting_ApplicationNotVotable" xml:space="preserve">
     <value>Cette candidature n'est plus ouverte au vote.</value>
-  </data>
-  <data name="BoardVoting_ApplicationNotVotable_WithStatus" xml:space="preserve">
-    <value>Impossible de voter sur cette candidature (statut actuel : {0}).</value>
   </data>
   <data name="BoardVoting_ApplicationNotFound" xml:space="preserve">
     <value>Candidature introuvable.</value>

@@ -170,6 +170,7 @@ internal interface ICampaignRepository : IRepository
 internal sealed record GrantWithSendContext(
     Guid GrantId,
     Guid UserId,
+    Guid CampaignId,
     string CodeString,
     string CampaignEmailSubject,
     string CampaignEmailBodyTemplate,

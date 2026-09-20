@@ -673,10 +673,10 @@ public class MembershipCalculatorTests
     // --- Seed helpers ---
 
     /// <summary>
-    /// Stand-ins for the <c>Team</c> / <c>TeamMember</c> entities the seed maps used to hold.
-    /// Both turned internal to <c>Humans.Teams</c> at that section's G5; the substitutes only
-    /// ever read the four members below, and keeping the property names identical leaves every
-    /// call site in the test bodies unchanged (design §15 step 8, Campaigns' "rewrite the stub").
+    /// Stand-ins for the <c>Team</c> / <c>TeamMember</c> entities, which are internal to
+    /// <c>Humans.Teams</c> and so cannot be named here. The substitutes read only the four
+    /// members below, and keeping the property names identical leaves every call site in the
+    /// test bodies unchanged.
     /// </summary>
     private sealed record SeedTeamRow(Guid Id, string Name, SystemTeamType SystemTeamType);
 

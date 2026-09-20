@@ -79,9 +79,6 @@
   <data name="Governance_UnderReviewMessage" xml:space="preserve">
     <value>Ihr Antrag wird geprüft. Wir benachrichtigen Sie per E-Mail, sobald eine Entscheidung getroffen wurde.</value>
   </data>
-  <data name="Governance_ApprovedMessage" xml:space="preserve">
-    <value>Willkommen! Sie sind jetzt Asociado von Nobodies Collective.</value>
-  </data>
   <data name="Governance_ApprovedMessageColaborador" xml:space="preserve">
     <value>Sie sind ein/e genehmigte/r Colaborador/a von Nobodies Collective.</value>
   </data>
@@ -155,7 +152,7 @@
     <value>Neuer Antrag</value>
   </data>
   <data name="GovernanceCreate_Lead" xml:space="preserve">
-    <value>Colaboradors und Asociados übernehmen Governance-Verantwortung. Wähle die Stufe, die am besten zu deinem Engagement passt.</value>
+    <value>Colaboradores und Asociados übernehmen Governance-Verantwortung. Wähle die Stufe, die am besten zu deinem Engagement passt.</value>
   </data>
   <data name="GovernanceCreate_MotivationPlaceholder" xml:space="preserve">
     <value>Bitte teilen Sie Ihre Motivation für den Beitritt mit...</value>
@@ -250,47 +247,17 @@
   <data name="AdminAppDetail_ApplicationReview" xml:space="preserve">
     <value>Antragsprüfung</value>
   </data>
-  <data name="AdminAppDetail_ViewProfile" xml:space="preserve">
-    <value>Profil anzeigen</value>
-  </data>
   <data name="AdminAppDetail_Motivation" xml:space="preserve">
     <value>Motivation</value>
   </data>
   <data name="AdminAppDetail_Reviewer" xml:space="preserve">
     <value>Prüfer</value>
   </data>
-  <data name="AdminAppDetail_StartReview" xml:space="preserve">
-    <value>Prüfung starten</value>
-  </data>
-  <data name="AdminAppDetail_NotesLabel" xml:space="preserve">
-    <value>Notizen (erforderlich für Ablehnung/Rückfrage)</value>
-  </data>
-  <data name="AdminAppDetail_NotesPlaceholder" xml:space="preserve">
-    <value>Notizen hinzufügen...</value>
-  </data>
-  <data name="AdminAppDetail_ApproveConfirm" xml:space="preserve">
-    <value>Diesen Antrag genehmigen?</value>
-  </data>
-  <data name="AdminAppDetail_Approve" xml:space="preserve">
-    <value>Genehmigen</value>
-  </data>
-  <data name="AdminAppDetail_RejectConfirm" xml:space="preserve">
-    <value>Diesen Antrag ablehnen?</value>
-  </data>
-  <data name="AdminAppDetail_Reject" xml:space="preserve">
-    <value>Ablehnen</value>
-  </data>
-  <data name="AdminAppDetail_RequestMoreInfo" xml:space="preserve">
-    <value>Weitere Informationen anfordern</value>
-  </data>
   <data name="AdminAppDetail_Language" xml:space="preserve">
     <value>Sprache</value>
   </data>
   <data name="BoardVoting_Title" xml:space="preserve">
     <value>Abstimmungsübersicht des Vorstands</value>
-  </data>
-  <data name="BoardVoting_DetailTitle" xml:space="preserve">
-    <value>Abstimmung: {0}</value>
   </data>
   <data name="BoardVoting_NoApplications" xml:space="preserve">
     <value>Keine Anträge warten auf Abstimmung.</value>
@@ -357,9 +324,6 @@
   </data>
   <data name="BoardVoting_ApplicationNotVotable" xml:space="preserve">
     <value>Dieser Antrag ist nicht mehr zur Abstimmung offen.</value>
-  </data>
-  <data name="BoardVoting_ApplicationNotVotable_WithStatus" xml:space="preserve">
-    <value>Über diesen Antrag kann nicht abgestimmt werden (aktueller Status: {0}).</value>
   </data>
   <data name="BoardVoting_ApplicationNotFound" xml:space="preserve">
     <value>Antrag nicht gefunden.</value>

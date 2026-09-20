@@ -23,7 +23,7 @@ Anyone signed in can browse the calendar, add events to any team, and edit or ca
 - **Month view** (`/Calendar`) — the main calendar grid for the current month; filter by team with `?teamId`
 - **List view** (`/Calendar/List`) — the same month as a simple list
 - **Agenda** (`/Calendar/Agenda`) — what's coming up, from today onwards (the next 60 days by default)
-- **One team's calendar** (`/Calendar/Team/{teamId}`) — the month grid for a single team
+- **One team's calendar** (`/Calendar/Team/{teamId}`) — one team's month, day by day, as a list
 - **Event detail** (`/Calendar/Event/{id}`) — full details, including the next few times a repeating event happens
 - **Add an event** (`/Calendar/Event/Create`) — the new-event form
 - **Edit an event** (`/Calendar/Event/{id}/Edit`) — change an event or a whole repeating series

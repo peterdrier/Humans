@@ -18,6 +18,7 @@ pause flag).
 | Table | R/W |
 |-------|-----|
 | EmailOutboxMessages | R/W (via `IEmailOutboxRepository`) |
+| EmailDailySendCounts | R/W (dashboard reads; backfill inserts — never overwrites, #1195) |
 | system_settings | R/W (key `IsEmailSendingPaused`, **via `ISettingsService`** — the Settings section owns the table) |
 
 `IsEmailPausedAsync` / `SetEmailPausedAsync` read/write the
@@ -31,6 +32,7 @@ Repository: `IEmailOutboxRepository`.
 | Table | R/W |
 |-------|-----|
 | EmailOutboxMessages | R/W |
+| EmailDailySendCounts | W (increments once per send attempt, #1195) |
 
 Drains the outbox queue (the G5 playbook, step 6b): claims a processing batch,
 sends via the section-internal `IEmailTransport`, and records each outcome.

@@ -1640,7 +1640,7 @@ public class HoldedFinanceServiceTests
             userId, Xunit.TestContext.Current.CancellationToken);
 
         var slice = slices.Should()
-            .ContainSingle(s => s.SectionName == GdprExportSections.HoldedCreditorAccount).Subject;
+            .ContainSingle(s => s.SectionName == Service.HoldedCreditorAccount).Subject;
         slice.Data.Should().NotBeNull();
         var json = JsonSerializer.Serialize(slice.Data);
         json.Should().Contain("40000004").And.Contain("contact-9").And.Contain("Manual");
@@ -1659,7 +1659,7 @@ public class HoldedFinanceServiceTests
             Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         var slice = slices.Should()
-            .ContainSingle(s => s.SectionName == GdprExportSections.HoldedCreditorAccount).Subject;
+            .ContainSingle(s => s.SectionName == Service.HoldedCreditorAccount).Subject;
         slice.Data.Should().BeNull();
     }
 
@@ -1677,7 +1677,7 @@ public class HoldedFinanceServiceTests
             userId, Xunit.TestContext.Current.CancellationToken);
 
         var slice = slices.Should()
-            .ContainSingle(s => s.SectionName == GdprExportSections.SepaPayouts).Subject;
+            .ContainSingle(s => s.SectionName == Service.SepaPayouts).Subject;
         var json = JsonSerializer.Serialize(slice.Data);
         json.Should().Contain("ES79****789").And.Contain("12.34").And.Contain("BookedAt")
             .And.NotContain(AnaIban, "the export masks the IBAN even though the payout row keeps it raw");
@@ -1695,9 +1695,9 @@ public class HoldedFinanceServiceTests
         await svc.EraseForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         await _repo.Received(1).DeleteCreditorContactAsync(userId, Arg.Any<CancellationToken>());
-        svc.ErasureDeclaration.Should().ContainKey(GdprExportSections.HoldedCreditorAccount)
+        svc.ErasureDeclaration.Should().ContainKey(Service.HoldedCreditorAccount)
             .WhoseValue.Should().BeNull("the binding is erased in full");
-        svc.ErasureDeclaration.Should().ContainKey(GdprExportSections.SepaPayouts)
+        svc.ErasureDeclaration.Should().ContainKey(Service.SepaPayouts)
             .WhoseValue.Should().Contain("Art. 17(3)(b)");
     }
 

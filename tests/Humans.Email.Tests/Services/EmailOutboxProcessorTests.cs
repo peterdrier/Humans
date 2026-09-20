@@ -17,6 +17,7 @@ using Humans.Base.Interfaces;
 using Humans.Base.Services.Metering;
 using Humans.Settings.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
+using Xunit;
 
 namespace Humans.Email.Tests.Services;
 
@@ -220,6 +221,162 @@ public class EmailOutboxProcessorTests : IDisposable
         updated.SentAt.Should().Be(_clock.GetCurrentInstant());
     }
 
+    [HumansFact(Timeout = 10000)]
+    public async Task ProcessQueuedAsync_IncrementsDailySentCountOnSuccess()
+    {
+        var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
+
+        await _job.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var row = await FreshCountsQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        row.Date.Should().Be(_clock.GetCurrentInstant().InUtc().Date);
+        row.TemplateName.Should().Be(message.TemplateName);
+        row.SentCount.Should().Be(1);
+        row.FailedCount.Should().Be(0);
+    }
+
+    [HumansFact(Timeout = 10000)]
+    public async Task ProcessQueuedAsync_GrantStatusUpdateFailure_DoesNotDoubleTallyDelivery()
+    {
+        var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
+        message.CampaignGrantId = Guid.NewGuid();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        _campaignService.UpdateGrantEmailStatusAsync(
+            message.CampaignGrantId.Value, EmailOutboxStatus.Sent, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("grant update failed"));
+
+        await _job.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+
+        // Transport delivered — the message stays Sent, not re-tallied as Failed
+        // just because the post-delivery grant mirror threw.
+        var updated = await FreshQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        updated.Status.Should().Be(EmailOutboxStatus.Sent);
+
+        var row = await FreshCountsQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        row.SentCount.Should().Be(1);
+        row.FailedCount.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task ProcessQueuedAsync_IncrementsDailyFailedCountOnFailure()
+    {
+        await SeedMessageAsync(EmailOutboxStatus.Queued);
+        _transport.SendAsync(
+            Arg.Any<string>(), Arg.Any<string?>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(),
+            Arg.Any<string?>(), Arg.Any<IDictionary<string, string>?>(),
+            Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("SMTP timeout"));
+
+        await _job.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var row = await FreshCountsQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        row.SentCount.Should().Be(0);
+        row.FailedCount.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task ProcessQueuedAsync_TallyFailureDoesNotFlipDeliveredMessageToFailed()
+    {
+        // A daily-count write failure is analytics-layer noise, not a delivery
+        // failure — it must never flip an already-sent message back to Failed
+        // and queue it for a duplicate resend (Codex #1758 finding).
+        var message = new EmailOutboxMessage
+        {
+            Id = Guid.NewGuid(),
+            RecipientEmail = "test@example.com",
+            Subject = "Test Subject",
+            HtmlBody = "<p>Hello</p>",
+            TemplateName = "test_template",
+            Status = EmailOutboxStatus.Queued,
+            CreatedAt = _clock.GetCurrentInstant() - Duration.FromMinutes(10)
+        };
+
+        var repo = Substitute.For<IEmailOutboxRepository>();
+        repo.GetProcessingBatchAsync(
+                Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([message]);
+        repo.MarkSentAsync(message.Id, Arg.Any<Instant>(), Arg.Any<CancellationToken>()).Returns(true);
+        repo.IncrementDailySendCountAsync(
+                Arg.Any<LocalDate>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("daily count write failed"));
+
+        var processor = new EmailOutboxProcessor(
+            repo, _outboxService, _campaignService, _transport, _metrics, _meters, _clock, _settings,
+            NullLogger<EmailOutboxProcessor>.Instance);
+
+        await processor.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await repo.Received(1).MarkSentAsync(message.Id, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        await repo.DidNotReceive().MarkFailedAsync(
+            Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact(Timeout = 10000)]
+    public async Task ProcessQueuedAsync_TalliesEachOutcomeUnderItsOwnClockRead_NotBatchStartTime()
+    {
+        // Batch starts just before midnight UTC; the throttle delay between sends
+        // pushes later messages in the same batch past midnight. Each outcome must
+        // be tallied under the day it actually landed on, not the batch's start
+        // day (Codex #1758 finding).
+        var clock = new FakeClock(Instant.FromUtc(2026, 3, 14, 23, 59, 0))
+        {
+            AutoAdvance = Duration.FromSeconds(40)
+        };
+        var outboxService = new EmailOutboxService(_repo, _settingsStore, _settings, clock);
+        var processor = new EmailOutboxProcessor(
+            _repo, outboxService, _campaignService, _transport, _metrics, _meters, clock, _settings,
+            NullLogger<EmailOutboxProcessor>.Instance);
+
+        var message1 = new EmailOutboxMessage
+        {
+            Id = Guid.NewGuid(),
+            RecipientEmail = "a@example.com",
+            Subject = "Subject",
+            HtmlBody = "<p>Hi</p>",
+            TemplateName = "test_template",
+            Status = EmailOutboxStatus.Queued,
+            CreatedAt = Instant.FromUtc(2026, 3, 14, 23, 0, 0)
+        };
+        var message2 = new EmailOutboxMessage
+        {
+            Id = Guid.NewGuid(),
+            RecipientEmail = "b@example.com",
+            Subject = "Subject",
+            HtmlBody = "<p>Hi</p>",
+            TemplateName = "test_template",
+            Status = EmailOutboxStatus.Queued,
+            CreatedAt = Instant.FromUtc(2026, 3, 14, 23, 0, 0)
+        };
+        await _dbContext.EmailOutboxMessages.AddRangeAsync(
+            [message1, message2], Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await processor.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var rows = await FreshCountsQuery().OrderBy(r => r.Date).ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        rows.Should().HaveCount(2);
+        rows[0].Date.Should().Be(new LocalDate(2026, 3, 14));
+        rows[1].Date.Should().Be(new LocalDate(2026, 3, 15));
+        rows.Sum(r => r.SentCount).Should().Be(2);
+    }
+
+    [HumansTheory]
+    [InlineData("skipped@localhost")]
+    [InlineData("skipped@ticketstub.local")]
+    public async Task ProcessQueuedAsync_DoesNotCountTestAddresses(string testAddress)
+    {
+        var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
+        message.RecipientEmail = testAddress;
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _job.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var counts = await FreshCountsQuery().ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        counts.Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task ProcessQueuedAsync_SkipsFutureRetry()
     {
@@ -247,6 +404,12 @@ public class EmailOutboxProcessorTests : IDisposable
     {
         var ctx = new EmailDbContext(_options);
         return ctx.EmailOutboxMessages.AsNoTracking();
+    }
+
+    private IQueryable<EmailDailySendCount> FreshCountsQuery()
+    {
+        var ctx = new EmailDbContext(_options);
+        return ctx.EmailDailySendCounts.AsNoTracking();
     }
 
     private EmailOutboxProcessor NewProcessor(IOptions<EmailSettings> settings) => new(

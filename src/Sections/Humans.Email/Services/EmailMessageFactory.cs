@@ -187,7 +187,8 @@ internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessa
         var content = renderer.RenderCampaignCode(request.Subject, request.MarkdownBody, request.Code, request.RecipientName);
         return new EmailMessage(request.RecipientEmail, request.RecipientName, content.Subject, content.HtmlBody,
             "campaign_code", MessageCategory.CampaignCodes,
-            ReplyTo: request.ReplyTo, UserId: request.UserId, CampaignGrantId: request.CampaignGrantId);
+            ReplyTo: request.ReplyTo, UserId: request.UserId, CampaignGrantId: request.CampaignGrantId,
+            CampaignId: request.CampaignId);
     }
 
     public EmailMessage EventLifecycle(EventLifecycleNotification request, string userEmail)

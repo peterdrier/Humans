@@ -1,16 +1,34 @@
 # Section debt ledger for Humans.Events. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
+next_id: 8
 inbox:
   - added: 2026-08-24
+    id: EVENTS-1
     what: "GetOccurrenceInstants is hand-mirrored across Domain/Event.cs, Services/Dtos/EventInfo.cs and Humans.Events.Contracts/ApprovedEventView.cs — each copy labelled 'Mirrors …' in its own doc comment. The null-guard around them (gateOpeningDate.HasValue && tz != null ? e.GetOccurrenceInstants(gate, tz) : [e.StartAt]) is then written out at every call site (EventsApiController, EventsExportController, EventsDashboardController, EventsController, EventOccurrenceExpander, the Services/Service.cs calendar feed) and cannot be deduped mechanically because those types share no shape. Collapsing needs a shared interface or a common base on public DTOs, so it is Peter's call, not a run's. Found by /section-doctor on Events 2026-08-24; call-site list refreshed 2026-09-09."
     review: panel
   - added: 2026-08-24
+    id: EVENTS-2
     what: "EventService (Services/Service.cs) is over the section's maxClassLoc of 740 and holds the section's highest-complexity methods — ValidateBulkRows and BulkImportAsync — plus the long BuildBulkUploadTemplateAsync. The bulk-import trio is one cohesive concern (parse, validate all-or-nothing, write the template back out) and splits cleanly out of the service without touching the remaining question-shapes. Found by /section-doctor on Events 2026-08-24."
     review: panel
   - added: 2026-09-09
-    what: "Invariants in Docs/health.md unpinned at the enforcement site: (4) favourites/preferences self-scoping — no test touches the [Authorize] API actions (GetFavourites/AddFavourite/RemoveFavourite/GetPreferences/UpdatePreferences) or their Unauthorized path; (5) the submission window — pinned only as the EventGuideSettings.IsSubmissionOpenAt predicate, none of EventsController's closed-window guards is tested; barrio-event camp authorization (CampOperationRequirement.SubmitEvent via ResolveCampEventManagementAsync) and owner-or-admin on barrio Edit/Update have no deny test; (8) EventsApiController's day-offset path always runs with tz == null because every API test stubs guide settings to null. Found by /section-doctor on Events 2026-09-09."
+    id: EVENTS-3
+    what: "Favourites/preferences self-scoping is unpinned: no test touches EventsApiController's [Authorize] actions GetFavourites/AddFavourite/RemoveFavourite/GetPreferences/UpdatePreferences or their Unauthorized path (service-level tests exist, controller-level do not). Found by /section-doctor on Events 2026-09-09. (split 2026-09-20 from the bundled row of the same date; one row per independently-fixable defect.)"
+    review: light
+    root: CENTRAL-56
+  - added: 2026-09-09
+    id: EVENTS-4
+    what: "The submission window is pinned only as the EventGuideSettings.IsSubmissionOpenAt predicate; none of EventsController's closed-window guards is tested (private IsSubmissionOpen, EventsController.cs:494, called at several sites). Found by /section-doctor on Events 2026-09-09. (split 2026-09-20 from the bundled row of the same date; one row per independently-fixable defect.)"
     review: light
   - added: 2026-09-09
+    id: EVENTS-5
+    what: "Barrio-event camp authorization has no deny test: CampOperationRequirement.SubmitEvent via ResolveCampEventManagementAsync, and owner-or-admin on barrio Edit/Update, are referenced by no test under tests/Humans.Events.Tests. Found by /section-doctor on Events 2026-09-09. (split 2026-09-20 from the bundled row of the same date; one row per independently-fixable defect.)"
+    review: light
+  - added: 2026-09-09
+    id: EVENTS-6
+    what: "EventsApiController's day-offset path always runs with tz == null because the shared test ctor stubs guide settings to null (EventsApiControllerTests.cs:28-32), so the non-null branch is never executed. Found by /section-doctor on Events 2026-09-09. (split 2026-09-20 from the bundled row of the same date; one row per independently-fixable defect.)"
+    review: light
+  - added: 2026-09-09
+    id: EVENTS-7
     what: "Member-facing views ship hardcoded English: Views/Events/IndividualEventForm.cshtml (no Localizer reference at all), Views/Events/BarrioEventForm.cshtml (a stray Localizer reference aside, its labels, hints and buttons are literals) and Views/Shared/Components/EventsCard/Default.cshtml ('Events' header, 'Recurring event' tooltip). Browse, Schedule and MySubmissions are fully localized; the submit forms never were. Fix is a resx backfill across every supported culture plus the view edits — its own PR, not a side effect. Found by /section-doctor on Events 2026-09-09."
     review: light

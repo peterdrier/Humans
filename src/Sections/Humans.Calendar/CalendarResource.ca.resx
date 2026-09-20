@@ -128,4 +128,10 @@
   <data name="Calendar_CannotChangeEventType" xml:space="preserve">
     <value>Aquesta sèrie té ocurrències modificades. Conserva el tipus de dia complet o amb hores, o crea una sèrie nova.</value>
   </data>
+  <data name="Calendar_IcalFeedTitle" xml:space="preserve"><value>Feed iCal</value></data>
+  <data name="Calendar_IcalFeedHelp" xml:space="preserve"><value>Subscriu-te als teus torns i esdeveniments desats a la teva app de calendari:</value></data>
+  <data name="Calendar_IcalCopy" xml:space="preserve"><value>Copiar</value></data>
+  <data name="Calendar_IcalRegenerateConfirm" xml:space="preserve"><value>Això invalidarà l'URL actual. Continuar?</value></data>
+  <data name="Calendar_IcalRegenerate" xml:space="preserve"><value>Regenerar l'URL</value></data>
+  <data name="Calendar_IcalRegenerated" xml:space="preserve"><value>URL d'iCal regenerada.</value></data>
 </root>

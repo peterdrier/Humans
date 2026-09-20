@@ -257,7 +257,8 @@ def cmd_dispatch_log(a):
 GENERATED_RE = re.compile(r"(\.Designer\.cs|DbContextModelSnapshot\.cs)$")
 THREADS = ("Shape", "Behavior & bugs", "Freshness", "Conformance", "Tests", "Prose & surface",
            "History", "Comments", "Inbox")
-RUN_FILE_BLOCKS = ("## Assessment summary", "## Findings", "## Worked", "## Skipped", "## Retro", "## Needs Peter",
+RUN_FILE_BLOCKS = ("## Assessment summary", "## Findings", "## Debt verified", "## Worked", "## Skipped",
+                   "## Retro", "## Needs Peter",
                    "## File coverage", "## Threads")  # "## Ranked findings" is accepted for Findings
 
 
@@ -685,8 +686,8 @@ def cmd_review_pack(a):
 
 # ---- The run file: header and the two mechanical tables ----
 
-RUN_FILE_HEAD_BLOCKS = ("## Assessment summary", "## Findings", "## Worked", "## Skipped", "## Retro",
-                        "## Needs Peter")
+RUN_FILE_HEAD_BLOCKS = ("## Assessment summary", "## Findings", "## Debt verified", "## Worked", "## Skipped",
+                        "## Retro", "## Needs Peter")
 COVERAGE_ROW_RE = re.compile(r"^\|\s*`?([^`|]+?)`?\s*\|\s*([^|]*?)\s*\|")
 THREAD_ROW_RE = re.compile(r"^\|\s*([^|]+?)\s*\|\s*([^|]*?)\s*\|\s*([^|]*?)\s*\|\s*([^|]*?)\s*\|")
 MAIN_THREADS = ("Shape", "Behavior & bugs")

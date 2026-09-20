@@ -155,7 +155,7 @@ Only after Phase 7 resolves: `cd $REPO_ROOT && git worktree remove $WORKTREE` (`
 ## Adding debt to the ledger (any session, any time)
 
 - **Recurring class** → append a `themes:` entry with `last_swept: never` (rotation serves it next automatically). Pick `review:` honestly: `light` only when the fix is rule-prescribed and the verifier is mechanical.
-- **One-off item** → append to an `inbox:` with `added: <date>` and a one-line `what:` — `src/Sections/Humans.<X>/Docs/debt.yml` when the fix lives in one section, `docs/architecture/debt-ledger.yml` otherwise (`memory/process/debt-ledger-additions.md`).
+- **One-off item** → append to an `inbox:` with `added: <date>`, an `id:` allocated from that file's `next_id:` header (bump `next_id:` in the same edit), and a one-line `what:` — `src/Sections/Humans.<X>/Docs/debt.yml` when the fix lives in one section, `docs/architecture/debt-ledger.yml` otherwise. Match the entry shape and id format in `memory/process/debt-ledger-additions.md` exactly — read it before writing the row.
 - Ledger-only changes ride the discovery PR or go direct to `origin/main` per `no-direct-to-main`.
 
 ## Standing constraints

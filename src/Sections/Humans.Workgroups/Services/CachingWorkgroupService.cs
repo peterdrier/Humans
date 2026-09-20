@@ -240,23 +240,23 @@ internal sealed class CachingWorkgroupService(
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.WorkgroupApplications] =
+            [WorkgroupService.WorkgroupApplications] =
                 "Partially retained: the applicant attribution is dropped (AppliedByUserId " +
                 "nulled), the working group itself stays. A registered group is the " +
                 "association's own body and outlives whoever proposed it.",
-            [GdprExportSections.WorkgroupMemberships] = null,
-            [GdprExportSections.WorkgroupLogEntries] =
+            [WorkgroupService.WorkgroupMemberships] = null,
+            [WorkgroupService.WorkgroupLogEntries] =
                 "Partially retained: the authorship is dropped (AuthorUserId nulled), the entry " +
                 "itself stays. The log is the register's written record of how a working group " +
                 "went about its work — GDPR Art. 17(3)(b) — and is no longer attributable.",
-            [GdprExportSections.WorkgroupMeetings] =
+            [WorkgroupService.WorkgroupMeetings] =
                 "Partially retained: the creator attribution is dropped; the meeting and its " +
                 "minutes stay as the group's record of what it decided.",
-            [GdprExportSections.WorkgroupDocuments] =
+            [WorkgroupService.WorkgroupDocuments] =
                 "Partially retained: the created-by and updated-by attributions are dropped; the " +
                 "document stays, as it may have been delivered to the Board or the Assembly and " +
                 "acted on.",
-            [GdprExportSections.WorkgroupComments] =
+            [WorkgroupService.WorkgroupComments] =
                 "Partially retained: the author attribution is dropped; the comment body and the " +
                 "group's answer stay. The resolution's obligation to show what was heard and " +
                 "decided against is this record, and it is no longer attributable to anyone."

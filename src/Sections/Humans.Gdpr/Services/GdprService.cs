@@ -1,5 +1,6 @@
 using Humans.Base.Extensions;
 using Humans.Gdpr.Contracts;
+using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 
@@ -16,11 +17,18 @@ namespace Humans.Gdpr.Services;
 /// </summary>
 internal sealed class GdprService(
     IEnumerable<IUserDataContributor> contributors,
+    IUserServiceRead users,
     IClock clock,
     ILogger<GdprService> logger) : IGdprService
 {
     public async Task<GdprExport> ExportForUserAsync(Guid userId, CancellationToken ct = default)
     {
+        // Resolved once, here, rather than per contributor: the envelope names the surviving
+        // account and the ids merged into it, so a slice keyed to an archived id reads as this
+        // person's row instead of a stranger's. Contributors still resolve for themselves —
+        // each one decides whether its rows follow the chain or moved with the merge.
+        var info = await users.GetUserInfoAsync(userId, ct);
+
         var sections = new Dictionary<string, object?>(StringComparer.Ordinal);
 
         foreach (var contributor in contributors)
@@ -43,6 +51,14 @@ internal sealed class GdprService(
 
             foreach (var slice in slices)
             {
+                if (!contributor.ErasureDeclaration.ContainsKey(slice.SectionName))
+                {
+                    logger.LogError(
+                        "GDPR export section {SectionName} from contributor {Contributor} has no erasure declaration",
+                        slice.SectionName,
+                        contributor.GetType().Name);
+                }
+
                 if (slice.Data is null)
                 {
                     continue;
@@ -69,6 +85,8 @@ internal sealed class GdprService(
 
         return new GdprExport(
             ExportedAt: clock.GetCurrentInstant().ToIso8601(),
+            UserId: info?.Id ?? userId,
+            MergedFromUserIds: info?.MergedUserIds ?? [],
             Sections: sections);
     }
 
@@ -76,10 +94,10 @@ internal sealed class GdprService(
     {
         // The contributor that owns the Account identity runs last, so the sections that
         // need the human's addresses to reach an external processor (the Workspace suspend)
-        // can still resolve them. Ordering is derived from the declarations, not from a
-        // pinned type list.
+        // can still resolve them. Ordering is derived from each contributor's own
+        // ErasesLast declaration, not from a pinned type list.
         var ordered = contributors
-            .OrderBy(c => c.ErasureDeclaration.ContainsKey(GdprExportSections.Account) ? 1 : 0);
+            .OrderBy(c => c.ErasesLast ? 1 : 0);
 
         foreach (var contributor in ordered)
         {

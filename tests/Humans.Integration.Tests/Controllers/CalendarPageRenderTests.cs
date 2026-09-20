@@ -226,7 +226,7 @@ public class CalendarPageRenderTests(HumansTestDatabase database) : IntegrationT
         var html = await response.Content.ReadAsStringAsync(ct);
         html.Should().Contain("Calendar Feed", "the component renders its own card header");
         html.Should().Contain("feed not provisioned",
-            "the persona has no ICalToken, and that line comes from the moved view");
+            "the persona has never minted a feed token, and that line comes from the moved view");
     }
 
     private static string? ExtractAntiForgeryToken(string html)

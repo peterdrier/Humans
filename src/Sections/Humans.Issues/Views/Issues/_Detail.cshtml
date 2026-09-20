@@ -62,7 +62,7 @@
                             </span>
                             <span>@ev.At.ToDateTime()</span>
                         </div>
-                        <div class="mt-1" style="white-space: pre-wrap;">@ev.Content</div>
+                        <div class="mt-1">@Html.SanitizedMarkdown(ev.Content)</div>
                     </div>
                 }
                 else

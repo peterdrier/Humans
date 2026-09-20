@@ -165,6 +165,19 @@ namespace Humans.Calendar.Data.Migrations
                     b.ToTable("calendar_event_exceptions", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Calendar.Domain.CalendarFeedToken", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Token")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("calendar_feed_tokens", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Calendar.Domain.CalendarEventException", b =>
                 {
                     b.HasOne("Humans.Calendar.Domain.CalendarEvent", "Event")

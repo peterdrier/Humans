@@ -164,3 +164,11 @@ __pycache__/
 # tell them apart from the files it does mean to stage. Ignored so it cannot happen again.
 /.phase-log
 /.prs.json
+
+# Daily Codex tech-debt runner config (paths + secrets). Real file is
+# machine-local; .codex/cron/debt-runner.env.example is the committed template.
+/.codex/cron/debt-runner.env
+
+# Marker the daily debt runner touches in its own dedicated clone (never in a
+# real checkout) to prove that clone is safe to hard-reset/clean.
+/.codex-runner-clone

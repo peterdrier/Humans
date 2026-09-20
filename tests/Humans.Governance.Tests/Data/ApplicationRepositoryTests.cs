@@ -86,7 +86,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task AnySubmittedForUserAsync_ReturnsTrueOnlyForSubmittedStatus()
+    public async Task AnySubmittedForUserAsync_MatchesOnlyTheApplicantsOwnRow()
     {
         var userId = Guid.NewGuid();
         SeedApp(userId);
@@ -96,7 +96,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task AnySubmittedForUserAsync_DoesNotMatchApprovedOrWithdrawn()
+    public async Task AnySubmittedForUserAsync_DoesNotMatchAnApprovedApplication()
     {
         var userId = Guid.NewGuid();
         var approved = SeedApp(userId);

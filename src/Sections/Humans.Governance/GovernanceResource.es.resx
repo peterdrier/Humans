@@ -79,9 +79,6 @@
   <data name="Governance_UnderReviewMessage" xml:space="preserve">
     <value>Su solicitud está siendo revisada. Le notificaremos por correo electrónico cuando se tome una decisión.</value>
   </data>
-  <data name="Governance_ApprovedMessage" xml:space="preserve">
-    <value>¡Bienvenido/a! Ahora es asociado de Nobodies Collective.</value>
-  </data>
   <data name="Governance_ApprovedMessageColaborador" xml:space="preserve">
     <value>Es un/a Colaborador/a aprobado/a de Nobodies Collective.</value>
   </data>
@@ -250,47 +247,17 @@
   <data name="AdminAppDetail_ApplicationReview" xml:space="preserve">
     <value>Revisión de solicitud</value>
   </data>
-  <data name="AdminAppDetail_ViewProfile" xml:space="preserve">
-    <value>Ver perfil</value>
-  </data>
   <data name="AdminAppDetail_Motivation" xml:space="preserve">
     <value>Motivación</value>
   </data>
   <data name="AdminAppDetail_Reviewer" xml:space="preserve">
     <value>Revisor</value>
   </data>
-  <data name="AdminAppDetail_StartReview" xml:space="preserve">
-    <value>Iniciar revisión</value>
-  </data>
-  <data name="AdminAppDetail_NotesLabel" xml:space="preserve">
-    <value>Notas (obligatorias para rechazar/solicitar información)</value>
-  </data>
-  <data name="AdminAppDetail_NotesPlaceholder" xml:space="preserve">
-    <value>Añadir notas...</value>
-  </data>
-  <data name="AdminAppDetail_ApproveConfirm" xml:space="preserve">
-    <value>¿Aprobar esta solicitud?</value>
-  </data>
-  <data name="AdminAppDetail_Approve" xml:space="preserve">
-    <value>Aprobar</value>
-  </data>
-  <data name="AdminAppDetail_RejectConfirm" xml:space="preserve">
-    <value>¿Rechazar esta solicitud?</value>
-  </data>
-  <data name="AdminAppDetail_Reject" xml:space="preserve">
-    <value>Rechazar</value>
-  </data>
-  <data name="AdminAppDetail_RequestMoreInfo" xml:space="preserve">
-    <value>Solicitar más información</value>
-  </data>
   <data name="AdminAppDetail_Language" xml:space="preserve">
     <value>Idioma</value>
   </data>
   <data name="BoardVoting_Title" xml:space="preserve">
     <value>Panel de votación de la Junta</value>
-  </data>
-  <data name="BoardVoting_DetailTitle" xml:space="preserve">
-    <value>Votación: {0}</value>
   </data>
   <data name="BoardVoting_NoApplications" xml:space="preserve">
     <value>No hay solicitudes pendientes de votación.</value>
@@ -357,9 +324,6 @@
   </data>
   <data name="BoardVoting_ApplicationNotVotable" xml:space="preserve">
     <value>Esta solicitud ya no está abierta para votación.</value>
-  </data>
-  <data name="BoardVoting_ApplicationNotVotable_WithStatus" xml:space="preserve">
-    <value>No se puede votar esta solicitud (estado actual: {0}).</value>
   </data>
   <data name="BoardVoting_ApplicationNotFound" xml:space="preserve">
     <value>Solicitud no encontrada.</value>

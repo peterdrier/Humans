@@ -26,6 +26,8 @@ internal sealed class ConsentService(
     IClock clock,
     ILogger<ConsentService> logger) : IConsentService, IUserDataContributor
 {
+    internal const string Consents = "Consents";
+
     // Read ids: every id the human behind userId has held. The read resolves a merge
     // tombstone forward, so the list is the resolved record's (its own id plus the ids
     // merged into it), never [userId ∪ …]: asked with an archived id, that would leave
@@ -295,13 +297,13 @@ internal sealed class ConsentService(
             c.UserAgent
         }).ToList();
 
-        return [new UserDataSlice(GdprExportSections.Consents, shaped)];
+        return [new UserDataSlice(Consents, shaped)];
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.Consents] =
+            [Consents] =
                 "Retained: the consent ledger (including the IP address and user agent captured " +
                 "at the moment of consent) is the evidence that processing had a lawful basis " +
                 "— GDPR Art. 7(1) accountability and Art. 17(3)(e) legal claims. The ledger is " +

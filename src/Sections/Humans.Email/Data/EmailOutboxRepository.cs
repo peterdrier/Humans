@@ -206,4 +206,65 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
         return toDelete.Count;
     }
 
+    // ==========================================================================
+    // Daily send counts (#1195)
+    // ==========================================================================
+
+    public async Task IncrementDailySendCountAsync(
+        LocalDate date, string templateName, bool succeeded, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var row = await ctx.EmailDailySendCounts.FindAsync([date, templateName], ct);
+        if (row is null)
+        {
+            row = new EmailDailySendCount { Date = date, TemplateName = templateName };
+            ctx.EmailDailySendCounts.Add(row);
+        }
+
+        if (succeeded) row.SentCount += 1;
+        else row.FailedCount += 1;
+
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<EmailDailySendCount>> GetDailySendCountsSinceAsync(
+        LocalDate since, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.EmailDailySendCounts
+            .AsNoTracking()
+            .Where(c => c.Date >= since)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlySet<(LocalDate Date, string TemplateName)>> GetDailySendCountKeysAsync(
+        CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var rows = await ctx.EmailDailySendCounts
+            .AsNoTracking()
+            .Select(c => new { c.Date, c.TemplateName })
+            .ToListAsync(ct);
+        return rows.Select(r => (r.Date, r.TemplateName)).ToHashSet();
+    }
+
+    public async Task AddDailySendCountsAsync(
+        IReadOnlyList<EmailDailySendCount> rows, CancellationToken ct = default)
+    {
+        if (rows.Count == 0) return;
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.EmailDailySendCounts.AddRange(rows);
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<EmailOutboxMessage>> GetSentOrFailedSinceAsync(
+        Instant since, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.EmailOutboxMessages
+            .AsNoTracking()
+            .Where(m => (m.Status == EmailOutboxStatus.Sent && m.SentAt >= since)
+                || (m.Status == EmailOutboxStatus.Failed && m.CreatedAt >= since))
+            .ToListAsync(ct);
+    }
 }

@@ -79,9 +79,6 @@
   <data name="Governance_UnderReviewMessage" xml:space="preserve">
     <value>La Sua domanda è in fase di esame. La informeremo via email non appena verrà presa una decisione.</value>
   </data>
-  <data name="Governance_ApprovedMessage" xml:space="preserve">
-    <value>Benvenuto/a! Ora è asociado di Nobodies Collective.</value>
-  </data>
   <data name="Governance_ApprovedMessageColaborador" xml:space="preserve">
     <value>È un/a Colaborador/a approvato/a di Nobodies Collective.</value>
   </data>
@@ -155,7 +152,7 @@
     <value>Nuova domanda</value>
   </data>
   <data name="GovernanceCreate_Lead" xml:space="preserve">
-    <value>Colaboradors e Asociados assumono responsabilità di governance. Scegli il livello che meglio si adatta al tuo coinvolgimento.</value>
+    <value>Colaboradores e Asociados assumono responsabilità di governance. Scegli il livello che meglio si adatta al tuo coinvolgimento.</value>
   </data>
   <data name="GovernanceCreate_MotivationPlaceholder" xml:space="preserve">
     <value>Condivida la Sua motivazione per l'adesione...</value>
@@ -250,47 +247,17 @@
   <data name="AdminAppDetail_ApplicationReview" xml:space="preserve">
     <value>Esame della domanda</value>
   </data>
-  <data name="AdminAppDetail_ViewProfile" xml:space="preserve">
-    <value>Visualizza profilo</value>
-  </data>
   <data name="AdminAppDetail_Motivation" xml:space="preserve">
     <value>Motivazione</value>
   </data>
   <data name="AdminAppDetail_Reviewer" xml:space="preserve">
     <value>Revisore</value>
   </data>
-  <data name="AdminAppDetail_StartReview" xml:space="preserve">
-    <value>Inizia esame</value>
-  </data>
-  <data name="AdminAppDetail_NotesLabel" xml:space="preserve">
-    <value>Note (obbligatorie per rifiuto/richiesta info)</value>
-  </data>
-  <data name="AdminAppDetail_NotesPlaceholder" xml:space="preserve">
-    <value>Aggiungi note...</value>
-  </data>
-  <data name="AdminAppDetail_ApproveConfirm" xml:space="preserve">
-    <value>Approvare questa domanda?</value>
-  </data>
-  <data name="AdminAppDetail_Approve" xml:space="preserve">
-    <value>Approva</value>
-  </data>
-  <data name="AdminAppDetail_RejectConfirm" xml:space="preserve">
-    <value>Rifiutare questa domanda?</value>
-  </data>
-  <data name="AdminAppDetail_Reject" xml:space="preserve">
-    <value>Rifiuta</value>
-  </data>
-  <data name="AdminAppDetail_RequestMoreInfo" xml:space="preserve">
-    <value>Richiedi ulteriori informazioni</value>
-  </data>
   <data name="AdminAppDetail_Language" xml:space="preserve">
     <value>Lingua</value>
   </data>
   <data name="BoardVoting_Title" xml:space="preserve">
     <value>Pannello votazioni del Consiglio</value>
-  </data>
-  <data name="BoardVoting_DetailTitle" xml:space="preserve">
-    <value>Votazione: {0}</value>
   </data>
   <data name="BoardVoting_NoApplications" xml:space="preserve">
     <value>Nessuna domanda in attesa di votazione.</value>
@@ -357,9 +324,6 @@
   </data>
   <data name="BoardVoting_ApplicationNotVotable" xml:space="preserve">
     <value>Questa domanda non è più aperta al voto.</value>
-  </data>
-  <data name="BoardVoting_ApplicationNotVotable_WithStatus" xml:space="preserve">
-    <value>Non è possibile votare questa domanda (stato attuale: {0}).</value>
   </data>
   <data name="BoardVoting_ApplicationNotFound" xml:space="preserve">
     <value>Domanda non trovata.</value>

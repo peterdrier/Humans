@@ -23,6 +23,28 @@ namespace Humans.Email.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Humans.Email.Domain.EmailDailySendCount", b =>
+                {
+                    b.Property<LocalDate>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<string>("TemplateName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("FailedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SentCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Date", "TemplateName");
+
+                    b.HasIndex("Date");
+
+                    b.ToTable("email_daily_send_counts", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Email.Domain.EmailOutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")

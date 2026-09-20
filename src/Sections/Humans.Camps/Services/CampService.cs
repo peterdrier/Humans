@@ -16,6 +16,9 @@ namespace Humans.Camps.Services;
 /// <summary>Application-layer <see cref="ICampService"/>; cache-unaware (decorator owns §15 caching).</summary>
 internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeeding, ICampRoleCampAccess, IUserDataContributor, IUserMerge
 {
+    /// <summary>GDPR export JSON key for this contributor's data.</summary>
+    internal const string CampRoleAssignments = "CampRoleAssignments";
+
     private readonly ICampRepository _repo;
     private readonly IAuditLogService _auditLog;
     private readonly ISystemTeamSync _systemTeamSync;
@@ -1466,13 +1469,13 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             a.AssignedByUserId
         }).ToList();
 
-        return [new UserDataSlice(GdprExportSections.CampRoleAssignments, shapedRoles)];
+        return [new UserDataSlice(CampRoleAssignments, shapedRoles)];
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.CampRoleAssignments] = null
+            [CampRoleAssignments] = null
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
