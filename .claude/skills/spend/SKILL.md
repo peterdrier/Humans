@@ -12,8 +12,12 @@ nothing to produce.
 ## Run it
 
 ```bash
-python ~/.claude/skills/spend/scripts/spend.py [<session-id> | <transcript-path>] [--log]
+python .claude/skills/spend/scripts/spend.py [<session-id> | <transcript-path>] [--log]
 ```
+
+That is the repo's own copy — the only one that exists in a cloud run or a fresh
+clone. If this skill came from a personal install instead, the script sits at
+`~/.claude/skills/spend/scripts/spend.py`; use whichever path is actually there.
 
 No argument: reports the most recent session for the current working directory's
 project (run from the project root). Add `--log` after an orchestrated run to
