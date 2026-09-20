@@ -190,7 +190,7 @@
             }
             else
             {
-                Func<Humans.Email.Services.DailySendCountRow, IHtmlContent> dayCell = @<text>@item.Date</text>;
+                Func<Humans.Email.Services.DailySendCountRow, IHtmlContent> dayCell = @<text>@item.Date.ToInvariantDate()</text>;
                 Func<Humans.Email.Services.DailySendCountRow, IHtmlContent> sentCell = @<text><span class="text-success">@item.SentCount</span></text>;
                 Func<Humans.Email.Services.DailySendCountRow, IHtmlContent> failedCell = @<text><span class="text-danger">@item.FailedCount</span></text>;
                 var dailyTable = TableModel.For(Model.DailyCounts)

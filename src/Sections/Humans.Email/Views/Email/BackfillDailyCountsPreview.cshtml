@@ -26,7 +26,7 @@ else
 {
     <div class="alert alert-warning">
         This would add <strong>@Model.RowsToAdd</strong> row(s), covering
-        <strong>@Model.EarliestDate</strong> through <strong>@Model.LatestDate</strong> (UTC).
+        <strong>@Model.EarliestDate.ToInvariantDate()</strong> through <strong>@Model.LatestDate.ToInvariantDate()</strong> (UTC).
     </div>
 
     <div class="card mb-3">
@@ -45,7 +45,7 @@ else
                     @foreach (var row in Model.Sample)
                     {
                         <tr>
-                            <td>@row.Date</td>
+                            <td>@row.Date.ToInvariantDate()</td>
                             <td><code class="small">@row.TemplateName</code></td>
                             <td class="text-success">@row.SentCount</td>
                             <td class="text-danger">@row.FailedCount</td>
