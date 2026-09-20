@@ -15,9 +15,14 @@ touch ~/.humans-debt-runner/clone/.codex-runner-clone   # marker: "safe to hard-
 # 2. Config
 cd ~/.humans-debt-runner/clone/.codex/cron
 cp debt-runner.env.example debt-runner.env
-$EDITOR debt-runner.env   # fill in REPO_URL, OPENAI_API_KEY at minimum
+$EDITOR debt-runner.env   # REPO_URL is the only value you must set
 
-# 3. gh auth — the runner uses gh's already-logged-in credentials for both
+# 3. codex sign-in — plan quota, not an API key. Sign in as the SAME user
+#    the timer runs as, or the timer won't see the credential.
+codex login
+codex login status   # expect a signed-in result
+
+# 4. gh auth — the runner uses gh's already-logged-in credentials for both
 #    push and PR creation. Do this as the same user the timer will run as.
 gh auth status || gh auth login
 
@@ -78,7 +83,7 @@ journalctl --user -u humans-debt.service -f
 
 A short `TIME_BUDGET` almost always ends in `no-op` (codex won't get far
 enough to commit) — that's expected and confirms the plumbing works. Watch
-for the preflight checks (codex on PATH, `OPENAI_API_KEY` set, `gh auth
+for the preflight checks (codex on PATH, codex signed in, `gh auth
 status`) passing before codex even starts.
 
 ## Logs
@@ -107,7 +112,7 @@ resume. To remove entirely, also delete
   ready-for-review PR against `origin/main`, or produces nothing.
 - Never pushes if `dotnet build` or `dotnet test` fails after codex's pass —
   the failure is logged, the branch stays local, exit code is non-zero.
-- Never runs codex at all if `gh auth status`, `OPENAI_API_KEY`, or `codex`
+- Never runs codex at all if `gh auth status`, the codex sign-in, or `codex`
   on `PATH` fail preflight — fails in seconds, before spending anything.
 - One branch/PR per calendar day (`$BRANCH_PREFIX/YYYY-MM-DD`); a second run
   the same day is a no-op if that day's branch already exists on origin.

@@ -27,6 +27,20 @@
 
 set -euo pipefail
 
+# Is codex signed in? Prefer asking codex itself; fall back to the stored
+# credential when this CLI version has no `login status` subcommand.
+codex_auth_ok() {
+  if codex login status >/dev/null 2>&1; then
+    return 0
+  fi
+  # `login status` may not exist on this version — distinguish "no such
+  # subcommand" from "genuinely signed out" by looking for the credential.
+  if codex login --help >/dev/null 2>&1 && codex login status 2>&1 | grep -qi "not logged in\|signed out"; then
+    return 1
+  fi
+  [[ -s "${CODEX_HOME:-$HOME/.codex}/auth.json" ]]
+}
+
 main() {
   # ============================================================
   # CONFIG — every machine-specific value, sourced from
@@ -85,9 +99,14 @@ main() {
     write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
     exit 1
   fi
-  if [[ -z "${OPENAI_API_KEY:-}" ]]; then
-    exit_reason="preflight-failed-no-api-key"
-    log "ERROR: OPENAI_API_KEY is not set — refusing to run codex"
+  # We run on Codex plan quota via a ChatGPT sign-in, not an API key. That
+  # credential is stored on disk by `codex login` and can expire, and a
+  # refresh needs an interactive login that a 06:00 timer cannot perform.
+  # So check it here: a stale credential must cost a log line, not the window.
+  if ! codex_auth_ok >>"$log_file" 2>&1; then
+    exit_reason="preflight-failed-codex-auth"
+    log "ERROR: codex is not signed in (or the saved credential has expired)."
+    log "       Run 'codex login' as $(id -un) on this machine, then re-run."
     write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
     exit 1
   fi
@@ -103,7 +122,7 @@ main() {
     write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
     exit 1
   fi
-  log "preflight ok: codex on PATH, OPENAI_API_KEY set, gh authenticated"
+  log "preflight ok: codex on PATH and signed in, gh authenticated"
 
   # ---- assert this is a dedicated, disposable clone ----------------------
   if [[ ! -d "$WORK_DIR/.git" ]]; then
