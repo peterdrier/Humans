@@ -98,7 +98,7 @@ internal sealed class CityPlanningController(
 
         await cityPlanningService.OpenPlacementAsync(user!.Id, cancellationToken);
         SetSuccess("Placement phase opened.");
-        return RedirectToAction(nameof(Admin));
+        return Redirect("/Settings#city-planning");
     }
 
     [HttpPost("BarrioMap/Admin/ClosePlacement")]
@@ -110,7 +110,7 @@ internal sealed class CityPlanningController(
 
         await cityPlanningService.ClosePlacementAsync(user!.Id, cancellationToken);
         SetSuccess("Placement phase closed.");
-        return RedirectToAction(nameof(Admin));
+        return Redirect("/Settings#city-planning");
     }
 
     [HttpPost("BarrioMap/Admin/OpenContainerPlacement")]
@@ -178,11 +178,23 @@ internal sealed class CityPlanningController(
         if (!result.Success)
         {
             SetError(PlacementDateErrorMessage(result.ErrorKey));
-            return RedirectToAction(nameof(Admin));
+            return Redirect("/Settings#city-planning");
         }
 
         SetSuccess("Placement dates updated.");
-        return RedirectToAction(nameof(Admin));
+        return Redirect("/Settings#city-planning");
+    }
+
+    [HttpPost("BarrioMap/Admin/UpdateRegistrationInfo")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateRegistrationInfo(string? registrationInfo, CancellationToken cancellationToken)
+    {
+        var (error, _) = await RequireMapAdminAsync(cancellationToken);
+        if (error is not null) return error;
+
+        await cityPlanningService.UpdateRegistrationInfoAsync(registrationInfo, cancellationToken);
+        SetSuccess("Registration info updated.");
+        return Redirect("/Settings#city-planning");
     }
 
     private static string PlacementDateErrorMessage(string? errorKey) => errorKey switch

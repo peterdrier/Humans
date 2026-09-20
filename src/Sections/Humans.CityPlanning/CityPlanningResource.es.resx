@@ -89,6 +89,9 @@
   <data name="CityPlanning_Admin_ViewMap" xml:space="preserve">
     <value>Ver Mapa</value>
   </data>
+  <data name="CityPlanning_Admin_SettingsMoved" xml:space="preserve">
+    <value>Las ventanas de colocación, los horarios programados y la información de inscripción se movieron a</value>
+  </data>
   <data name="CityPlanning_Admin_PlacementPhaseCard" xml:space="preserve">
     <value>Fase de Colocación</value>
   </data>

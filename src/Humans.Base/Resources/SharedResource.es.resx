@@ -1399,4 +1399,13 @@
   <data name="Settings_TabEmail" xml:space="preserve">
     <value>Correo</value>
   </data>
+  <data name="Settings_TabCityPlanning" xml:space="preserve">
+    <value>Mapa de Barrios</value>
+  </data>
+  <data name="Settings_TabGate" xml:space="preserve">
+    <value>Puerta</value>
+  </data>
+  <data name="Settings_TabEventGuide" xml:space="preserve">
+    <value>Guía de eventos</value>
+  </data>
 </root>
