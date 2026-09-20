@@ -137,3 +137,25 @@ src/Sections/Humans.Email/Data/Migrations/20260911025722_DropEmailOutboxShiftSig
 # Approval: Peter, 2026-09-16 — asked which column was being dropped before approving, then
 # answered "it's not in production yet, you can drop that column."
 src/Sections/Humans.Workgroups/Data/Migrations/20260916163259_DropWorkgroupDormantSince.cs:DropColumn(name=DormantSince,table=workgroups)#1
+
+# Users: the `ICalToken` column on `users`. The personal iCal feed moved to Calendar, which now
+# owns the credential in its own `calendar_feed_tokens` table, so after this change no code reads
+# or writes `users.ICalToken`.
+# Evidence: this is NOT a dead column, which is the point of spelling it out. The clone was
+# unshallowed first (`git rev-parse --is-shallow-repository` is false) and full history searched.
+# `git log -S 'ICalToken =' --pickaxe-regex origin/main -- src` returns eleven commits, reaching
+# back to #135; the surviving writers on main are UserRepository.SetICalTokenAsync (mint and
+# rotate) plus the two anonymization sweeps that null it, AnonymizeForMergeAsync and
+# ApplyExpiredDeletionAnonymizationAsync. The column therefore holds live tokens for every member
+# who ever opened the feed card, and dropping it destroys that data: each existing subscription
+# URL stops resolving and the subscriber's calendar silently stops updating. Nothing is backfilled
+# into `calendar_feed_tokens`; members mint a fresh token by opening /Calendar once.
+# Approval: Peter, 2026-09-20, asked for exactly this outcome in these words: "existing calendar
+# subs can break.. we're in the off season and maybe had 2 people using it of which I'm one.. so
+# the old one dies, the data gets deleted for ical token, and calendar section gets the new bits".
+# Down() re-adds ICalToken as a nullable uuid so the rollback runs, but it comes back empty and
+# the tokens it held are gone.
+# Step 4 deviation: the rule asks a destructive migration to ship in its own PR. This one ships
+# inside peterdrier/Humans#1760 on Peter's instruction to finish the ownership move there rather
+# than leave the cross-section write behind as debt.
+src/Sections/Humans.Users/Data/Migrations/20260920195114_DropUserICalToken.cs:DropColumn(name=ICalToken,table=users)#1

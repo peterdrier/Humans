@@ -87,7 +87,9 @@ public class GdprExportDependencyInjectionTests
         // The caching decorator, not RideshareService: erasure empties cached rows.
         SectionType("Humans.Rideshare.Services.CachingRideshareService"),
         // Likewise the decorator, not WorkgroupService: erasure and the merge fold change cached rows.
-        SectionType("Humans.Workgroups.Services.CachingWorkgroupService")
+        SectionType("Humans.Workgroups.Services.CachingWorkgroupService"),
+        // Owns calendar_feed_tokens, so it owes an export slice and an erasure path.
+        SectionType("Humans.Calendar.Services.CalendarFeedTokenService")
     ];
 
     /// <summary>

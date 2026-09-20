@@ -61,13 +61,19 @@ internal sealed class OutboxEmailService(
         }
 
         string? unsubscribeUrl = null;
-        string? extraHeadersJson = null;
+        var headers = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["Feedback-ID"] = BuildFeedbackId(message, category)
+        };
         if (optOutEligible && userId.HasValue)
         {
-            var headers = commPrefService.GenerateUnsubscribeHeaders(userId.Value, category!.Value);
-            extraHeadersJson = JsonSerializer.Serialize(headers);
+            foreach (var (name, value) in commPrefService.GenerateUnsubscribeHeaders(userId.Value, category!.Value))
+            {
+                headers[name] = value;
+            }
             unsubscribeUrl = commPrefService.GenerateBrowserUnsubscribeUrl(userId.Value, category.Value);
         }
+        var extraHeadersJson = JsonSerializer.Serialize(headers);
 
         var (wrappedHtml, plainText) = bodyComposer.Compose(message.HtmlBody, unsubscribeUrl);
 
@@ -78,7 +84,7 @@ internal sealed class OutboxEmailService(
             // address for the same reason.
             await transport.SendAsync(
                 message.RecipientEmail, message.RecipientName, message.Subject,
-                wrappedHtml, plainText, message.ReplyTo, cancellationToken: cancellationToken);
+                wrappedHtml, plainText, message.ReplyTo, headers, cancellationToken: cancellationToken);
 
             metrics.RecordEmailQueued(message.TemplateName);
             logger.LogInformation(
@@ -114,4 +120,14 @@ internal sealed class OutboxEmailService(
             logger.LogInformation("Triggered immediate outbox processing for {TemplateName}", message.TemplateName);
         }
     }
+
+    /// <summary>
+    /// Google Postmaster Feedback-ID: <c>templateName:campaignId-or-none:category:humans-nobodies</c>.
+    /// Template name is the primary identifier; campaign id (shared by every grant in
+    /// the campaign — <see cref="EmailMessage.CampaignGrantId"/> is per-recipient and
+    /// would not aggregate) and category refine it. SenderId (<c>humans-nobodies</c>,
+    /// 15 chars — within Google's 5-15 char SenderId requirement) is last and constant.
+    /// </summary>
+    private static string BuildFeedbackId(EmailMessage message, MessageCategory? category) =>
+        $"{message.TemplateName}:{message.CampaignId?.ToString() ?? "none"}:{category?.ToString() ?? "none"}:humans-nobodies";
 }

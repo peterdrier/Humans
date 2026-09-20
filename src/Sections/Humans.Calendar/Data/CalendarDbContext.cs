@@ -6,7 +6,8 @@ namespace Humans.Calendar.Data;
 
 /// <summary>
 /// Per-section database context for the Calendar section: maps only
-/// <c>calendar_events</c> and <c>calendar_event_exceptions</c>, with its own
+/// <c>calendar_events</c>, <c>calendar_event_exceptions</c> and
+/// <c>calendar_feed_tokens</c>, with its own
 /// <c>__EFMigrationsHistory_Calendar</c> table and migrations under
 /// <c>Data/Migrations/</c>. Same database, same connection — the split is a
 /// code-side partition of the EF model.
@@ -22,6 +23,7 @@ internal sealed class CalendarDbContext(DbContextOptions<CalendarDbContext> opti
 {
     public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();
     public DbSet<CalendarEventException> CalendarEventExceptions => Set<CalendarEventException>();
+    public DbSet<CalendarFeedToken> CalendarFeedTokens => Set<CalendarFeedToken>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -29,5 +31,6 @@ internal sealed class CalendarDbContext(DbContextOptions<CalendarDbContext> opti
 
         builder.ApplyConfiguration(new CalendarEventConfiguration());
         builder.ApplyConfiguration(new CalendarEventExceptionConfiguration());
+        builder.ApplyConfiguration(new CalendarFeedTokenConfiguration());
     }
 }

@@ -94,12 +94,6 @@ public interface IUserService : IUserServiceRead, IUserMerge
     Task SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default);
 
     /// <summary>
-    /// Sets <c>User.ICalToken</c>. Invalidates the UserInfo cache on success.
-    /// No-op if the user does not exist.
-    /// </summary>
-    Task SetICalTokenAsync(Guid userId, Guid token, CancellationToken ct = default);
-
-    /// <summary>
     /// Stamps <c>User.LastLoginAt = now</c> after a successful sign-in (any
     /// method: OAuth, magic link, gate terminal) and refreshes the cached
     /// UserInfo. The single owner of the login-stamp rule — sign-in flows must

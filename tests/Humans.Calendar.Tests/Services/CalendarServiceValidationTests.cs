@@ -15,7 +15,7 @@ using Xunit;
 namespace Humans.Calendar.Tests.Services;
 
 /// <summary>
-/// Unit tests for the write-time validation helpers that support PR #562.
+/// Unit tests for the write-time validation helpers that support nobodies-collective/Humans#562.
 ///
 /// <para>Covers:</para>
 /// <list type="bullet">
@@ -78,7 +78,7 @@ public class CalendarServiceValidationTests
 
     // The three tests below document the NodaTime Tzdb contract the CalendarController
     // timezone guard depends on — GetZoneOrNull returns null for unknown IDs, while the
-    // indexer throws (which was the original #562 bug). Pin the contract so a NodaTime
+    // indexer throws (the original nobodies-collective/Humans#562 bug). Pin the contract so a NodaTime
     // upgrade that changes either behavior is caught at test time.
 
     [HumansTheory]

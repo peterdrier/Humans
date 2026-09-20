@@ -128,4 +128,10 @@
   <data name="Calendar_CannotChangeEventType" xml:space="preserve">
     <value>Cette série contient des occurrences modifiées. Conservez son type journée entière ou avec horaires, ou créez une nouvelle série.</value>
   </data>
+  <data name="Calendar_IcalFeedTitle" xml:space="preserve"><value>Flux iCal</value></data>
+  <data name="Calendar_IcalFeedHelp" xml:space="preserve"><value>Abonne-toi à tes créneaux et événements enregistrés dans ton application de calendrier :</value></data>
+  <data name="Calendar_IcalCopy" xml:space="preserve"><value>Copier</value></data>
+  <data name="Calendar_IcalRegenerateConfirm" xml:space="preserve"><value>Cela invalidera l'URL actuelle. Continuer ?</value></data>
+  <data name="Calendar_IcalRegenerate" xml:space="preserve"><value>Régénérer l'URL</value></data>
+  <data name="Calendar_IcalRegenerated" xml:space="preserve"><value>URL iCal régénérée.</value></data>
 </root>

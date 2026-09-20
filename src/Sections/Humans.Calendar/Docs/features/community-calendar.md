@@ -19,7 +19,7 @@ Nobodies Collective teams coordinate through meetings, workshops, and gatherings
 - Cancel or override individual occurrences without deleting the entire series
 - Team-owned events; any authenticated human can create, edit, or delete events for any team
 - Changes captured in the audit log (who / when / what) rather than gated by upfront authorization
-- NodaTime and IANA timezone-aware recurrence expansion (occurrences expand in their configured timezone and render in the viewer's browser timezone)
+- NodaTime and IANA timezone-aware recurrence expansion (occurrences expand in their configured timezone and render in the org default, `Europe/Madrid`; a per-viewer zone is not built)
 
 ## Out of Scope — Post-v1 Slices
 
@@ -37,7 +37,8 @@ The following are explicitly deferred to future slices:
 `ICalendarFeedContributor.GetPublicItemsForWindowAsync` lets another section feed the
 month grid, list, and agenda with its own public items, merged in memory with
 `calendar_events` occurrences and marked by `Source`. Shifts and Events implement
-the method today but return an empty list — nothing public to contribute yet.
+the method but return an empty list — nothing public to contribute yet; Workgroups
+returns the public meetings of its active workgroups.
 Contributor items carry no team, so they only appear on the unfiltered
 (`?teamId` absent) calendar; a team-filtered view or the per-team page shows
 Calendar's own events only. The personal iCal feed (`GetCalendarItemsForUserAsync`)
@@ -176,7 +177,7 @@ Every timed recurring event is tied to an IANA timezone (e.g., `"Europe/Madrid"`
 1. Recurrence rule is expanded in the event's configured timezone using `Ical.Net`
 2. Each occurrence start/end is calculated in that timezone, respecting DST transitions
 3. Occurrences are stored/queried in UTC (`StartUtc`, `EndUtc`)
-4. When rendering to the user's browser, occurrences are converted to their local timezone (via JavaScript or `NodaTime` if server-rendered)
+4. Rendering converts back with `NodaTime`, server-side, into the org default `Europe/Madrid` (`CalendarController.GetViewerZone`) — every viewer sees Madrid time, labelled as such. Deriving the zone from the browser or the profile is an unbuilt seam.
 
 This ensures a recurring "19:00 weekly on Monday" stays at 19:00 local time even when daylight saving changes occur.
 

@@ -24,9 +24,9 @@ internal sealed class OccurrenceOverrideFormViewModel
     public string RecurrenceTimezone { get; set; } = "Europe/Madrid";
 
     /// <summary>
-    /// Parses the <c>{originalStartUtc}</c> route segment, or null when it is not a
-    /// valid ISO-8601 instant. Null means the URL names no occurrence, so callers
-    /// answer 404 — a hand-typed or truncated segment is a missing page, not a fault.
+    /// Builds the override DTO from the posted form. Returns <c>false</c> when an all-day
+    /// field carries a time of day — the form offers dates there, so a non-zero time means
+    /// the post did not come from the form and the caller re-renders rather than saving.
     /// </summary>
     public bool TryBuildOverride(DateTimeZone zone, out Humans.Calendar.Services.Dtos.OverrideOccurrenceDto dto)
     {

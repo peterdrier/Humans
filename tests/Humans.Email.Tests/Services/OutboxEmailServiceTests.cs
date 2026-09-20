@@ -87,9 +87,10 @@ public sealed class OutboxEmailServiceTests : IDisposable
         bool triggerImmediate = false,
         Guid? userId = null,
         Guid? campaignGrantId = null,
+        Guid? campaignId = null,
         bool doNotPersist = false) =>
         new(recipient, name, subject, html, template, category, replyTo, triggerImmediate, userId,
-            campaignGrantId, doNotPersist);
+            campaignGrantId, campaignId, doNotPersist);
 
     [HumansFact]
     public async Task SendAsync_CreatesOutboxRowWithCorrectFields()
@@ -177,7 +178,8 @@ public sealed class OutboxEmailServiceTests : IDisposable
         await _service.SendAsync(Message(category: null), Xunit.TestContext.Current.CancellationToken);
 
         var msg = await _emailDb.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
-        msg.ExtraHeaders.Should().BeNull("always-send mail carries no List-Unsubscribe headers");
+        msg.ExtraHeaders.Should().NotContain("List-Unsubscribe", "always-send mail carries no List-Unsubscribe headers");
+        msg.ExtraHeaders.Should().Contain("Feedback-ID");
         await _commPrefService.DidNotReceive()
             .IsOptedOutAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<CancellationToken>());
         _commPrefService.DidNotReceive().GenerateUnsubscribeHeaders(Arg.Any<Guid>(), Arg.Any<MessageCategory>());
@@ -193,9 +195,52 @@ public sealed class OutboxEmailServiceTests : IDisposable
         await _service.SendAsync(Message(template: "signup_rejected", category: MessageCategory.System), Xunit.TestContext.Current.CancellationToken);
 
         var msg = await _emailDb.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
-        msg.ExtraHeaders.Should().BeNull();
+        msg.ExtraHeaders.Should().NotContain("List-Unsubscribe");
+        msg.ExtraHeaders.Should().Contain("Feedback-ID");
         await _commPrefService.DidNotReceive()
             .IsOptedOutAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SendAsync_StampsFeedbackIdWithTemplateCategoryAndCampaign()
+    {
+        var grantId = Guid.NewGuid();
+        var campaignId = Guid.NewGuid();
+        await _service.SendAsync(Message(
+            template: "campaign_code", category: MessageCategory.CampaignCodes,
+            campaignGrantId: grantId, campaignId: campaignId),
+            Xunit.TestContext.Current.CancellationToken);
+
+        var msg = await _emailDb.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var headers = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(msg.ExtraHeaders!);
+        headers!["Feedback-ID"].Should().Be($"campaign_code:{campaignId}:CampaignCodes:humans-nobodies");
+    }
+
+    [HumansFact]
+    public async Task SendAsync_StampsFeedbackIdWithNoneWhenCampaignIdMissing()
+    {
+        var grantId = Guid.NewGuid();
+        await _service.SendAsync(Message(
+            template: "campaign_code", category: MessageCategory.CampaignCodes, campaignGrantId: grantId),
+            Xunit.TestContext.Current.CancellationToken);
+
+        var msg = await _emailDb.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var headers = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(msg.ExtraHeaders!);
+        headers!["Feedback-ID"].Should().Be($"campaign_code:none:CampaignCodes:humans-nobodies");
+    }
+
+    [HumansFact]
+    public async Task SendAsync_DoNotPersist_PassesFeedbackIdToTransport()
+    {
+        await _service.SendAsync(
+            Message(template: "account_deleted", doNotPersist: true),
+            Xunit.TestContext.Current.CancellationToken);
+
+        await _transport.Received(1).SendAsync(
+            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Is<IDictionary<string, string>?>(h => h != null && h["Feedback-ID"] == "account_deleted:none:none:humans-nobodies"),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -278,7 +323,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
             template: "campaign_code", category: MessageCategory.CampaignCodes, userId: userId), Xunit.TestContext.Current.CancellationToken);
 
         var msg = await _emailDb.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
-        msg.ExtraHeaders.Should().BeNull("campaign codes are always-on; there is no opt-out to advertise");
+        msg.ExtraHeaders.Should().NotContain("List-Unsubscribe", "campaign codes are always-on; there is no opt-out to advertise");
         await _commPrefService.DidNotReceive()
             .IsOptedOutAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<CancellationToken>());
         _commPrefService.DidNotReceive().GenerateUnsubscribeHeaders(Arg.Any<Guid>(), Arg.Any<MessageCategory>());

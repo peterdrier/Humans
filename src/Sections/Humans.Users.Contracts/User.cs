@@ -119,9 +119,6 @@ public class User : IdentityUser<Guid>
 
     public bool UnsubscribedFromCampaigns { get; set; }
 
-    /// <summary>Regeneratable token for the personal iCal feed URL.</summary>
-    public Guid? ICalToken { get; set; }
-
     public bool SuppressScheduleChangeEmails { get; set; }
 
     /// <summary>When the last magic link login email was sent (rate limiting).</summary>

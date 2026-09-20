@@ -1,4 +1,3 @@
-using Humans.Base.Attributes;
 using Humans.Base.Controllers;
 using System.Globalization;
 using System.Text.Json;
@@ -23,7 +22,6 @@ namespace Humans.Shifts.Controllers;
 
 [Authorize]
 [Route("Shifts")]
-[CrossSectionWrite("Rotates the user iCal token from the shifts calendar page.")]
 internal sealed class ShiftsController(
     IShiftManagementService shiftMgmt,
     IBurnSettingsService burnSettings,
@@ -32,7 +30,7 @@ internal sealed class ShiftsController(
     IShiftRowView shiftView,
     ITeamServiceRead teamService,
     IAuditLogService auditLogService,
-    IUserService userService,
+    IUserServiceRead userService,
     IStringLocalizer<ShiftsResource> localizer,
     // The name-gate message is Onboarding's copy, rendered from here (design §15 step 3b).
     IStringLocalizer<OnboardingResource> onboardingLocalizer,
@@ -40,7 +38,7 @@ internal sealed class ShiftsController(
     ShiftBrowsePageBuilder browsePageBuilder,
     ILogger<ShiftsController> logger) : HumansControllerBase(userService)
 {
-    private readonly IUserService _userService = userService;
+    private readonly IUserServiceRead _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(Guid? departmentId, string? fromDate, string? toDate, string? period, string? day = null, bool showFull = false, [FromQuery(Name = "tags")] List<Guid>? tagIds = null, string? sort = null, [FromQuery(Name = "periods")] List<string>? periods = null)
@@ -383,15 +381,6 @@ internal sealed class ShiftsController(
         if (es is not null && userView.Availability is not null)
             model.AvailableDayOffsets = userView.Availability.AvailableDayOffsets.ToList();
 
-        var token = user.ICalToken;
-        if (token is null)
-        {
-            token = Guid.NewGuid();
-            await _userService.SetICalTokenAsync(user.Id, token.Value);
-        }
-
-        model.ICalUrl = $"{Request.Scheme}://{Request.Host}/api/ical/{user.Id}/{token}.ics";
-
         return View(model);
     }
 
@@ -410,23 +399,6 @@ internal sealed class ShiftsController(
 
         await volunteerTrackingService.SetAvailabilityAsync(user.Id, es.Id, dayOffsets ?? []);
         SetSuccess(localizer["Shifts_AvailabilityUpdated"].Value);
-        return RedirectToAction(nameof(Mine));
-    }
-
-    [HttpPost("Mine/RegenerateIcal")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> RegenerateIcal()
-    {
-        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
-        if (currentUserNotFound is not null)
-        {
-            return currentUserNotFound;
-        }
-
-        var newToken = Guid.NewGuid();
-        await _userService.SetICalTokenAsync(user.Id, newToken);
-
-        SetSuccess(localizer["Shifts_IcalRegenerated"].Value);
         return RedirectToAction(nameof(Mine));
     }
 
@@ -584,9 +556,9 @@ internal sealed class ShiftsController(
     }
 
     private static async Task<IReadOnlyDictionary<Guid, UserInfo>> ResolveOrphanActorsAsync(
-        IReadOnlyList<OrphanSignupSnapshot> orphans, IUserService userService, CancellationToken ct)
+        IReadOnlyList<OrphanSignupSnapshot> orphans, IUserServiceRead userService, CancellationToken ct)
     {
-        // §2c: names via IUserService (this isn't a render-the-audit-log view).
+        // §2c: names via IUserServiceRead (this isn't a render-the-audit-log view).
         var userIds = orphans
             .Select(s => s.UserId)
             .Distinct()

@@ -36,7 +36,7 @@ Transactional email outbox: queue, render, deliver, retry, pause/resume. Backs c
 | UserId | Guid? | Bare cross-section id (optional) — no FK constraint, no nav |
 | CampaignGrantId | Guid? | Bare cross-section id (CampaignGrant, Campaigns) — no FK constraint, no nav; status mirroring writes through `ICampaignService` |
 | ReplyTo | string? | Reply-To header value |
-| ExtraHeaders | string? | JSON-encoded additional headers (e.g., `List-Unsubscribe`) |
+| ExtraHeaders | string? | JSON-encoded additional headers (e.g., `List-Unsubscribe`, `Feedback-ID`) |
 | Status | EmailOutboxStatus | Queued / Sent / Failed |
 | CreatedAt | Instant | When queued |
 | PickedUpAt | Instant? | When first picked up by the job |
@@ -113,7 +113,7 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 
 ## Triggers
 
-- **On enqueue (`OutboxEmailService`):** row inserted with `Status = Queued`, `CreatedAt = now`, `RetryCount = 0`, `NextRetryAt = null`, `PickedUpAt = null`. For categories that are opt-outable, the row is suppressed entirely if the recipient has opted out; otherwise unsubscribe headers (`List-Unsubscribe`, `List-Unsubscribe-Post`) are serialised into `ExtraHeaders` and a footer link is wrapped into the body.
+- **On enqueue (`OutboxEmailService`):** row inserted with `Status = Queued`, `CreatedAt = now`, `RetryCount = 0`, `NextRetryAt = null`, `PickedUpAt = null`. Every message gets a `Feedback-ID` header (`<templateName>:<campaignId-or-none>:<category-or-none>:humans-nobodies`) serialised into `ExtraHeaders`, so Google Postmaster's spam-rate feedback loop can be attributed per template/category/campaign. For categories that are opt-outable, the row is suppressed entirely if the recipient has opted out; otherwise unsubscribe headers (`List-Unsubscribe`, `List-Unsubscribe-Post`) join `Feedback-ID` in `ExtraHeaders` and a footer link is wrapped into the body. `DoNotPersist` messages get the same `Feedback-ID` on the direct-to-transport path (no outbox row).
 - **On enqueue of a message the factory marked `TriggerImmediate`:** after the row is added, `IImmediateOutboxProcessor.TriggerImmediate()` is called to run the processor without waiting for the next minute tick. That flag is set per message by `EmailMessageFactory` and is *not* derived from `TimeSensitiveTemplates.Names`: the names on `TimeSensitiveTemplates` (`email_verification`, `magic_link_login`, `magic_link_signup`, `workspace_credentials`) get both the immediate run and the batch-priority ordering, while `EventLifecycle` sets `TriggerImmediate` on a template that is not on that list, so it gets the immediate run but no priority once the drain starts. See the batch-ordering bullet above.
 - **On batch pick-up:** rows in the batch are stamped `PickedUpAt = now` (block window 5 minutes).
 - **On successful delivery:** `Status = Sent`, `SentAt = now`, `PickedUpAt = null`. If `CampaignGrantId` is set, `ICampaignService.UpdateGrantEmailStatusAsync(grantId, Sent, now)` mirrors the status onto the grant. The job then sleeps 1 second before processing the next message.
@@ -174,4 +174,4 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 - Do **not** call MailKit / `SmtpClient` / `IEmailTransport` directly from business code. Build an `EmailMessage` via `IEmailMessageFactory` and route through `IEmailService.SendAsync`.
 - Do **not** read or write the `IsEmailSendingPaused` `SystemSetting` key from outside this section.
 - New message types add a typed builder method on `IEmailMessageFactory` (impl `EmailMessageFactory`, which calls `IEmailRenderer` and stamps routing policy) — not a new method on `IEmailService`. The single `IEmailService.SendAsync` (impl `OutboxEmailService`, which calls `IEmailBodyComposer` + `IEmailOutboxRepository.AddAsync`) is the one shared transport path.
-- New headers (e.g., `List-Unsubscribe`) go in `ExtraHeaders` as JSON — do not add new columns per-header. The outbox schema is stable.
+- New headers (e.g., `List-Unsubscribe`, `Feedback-ID`) go in `ExtraHeaders` as JSON — do not add new columns per-header. The outbox schema is stable.

@@ -171,7 +171,6 @@ Selected routes:
 | `POST /Shifts/Bail` | Single bail |
 | `POST /Shifts/BailRange` | Range bail (by SignupBlockId) |
 | `POST /Shifts/Mine/Availability` | Save general availability |
-| `POST /Shifts/Mine/RegenerateIcal` | Regenerate iCal subscription |
 | `POST /Shifts/Preferences/Tags` | Save volunteer tag preferences |
 | `GET /Shifts/Settings` | Admin: view event settings |
 | `POST /Shifts/Settings` | Admin: update event settings |
@@ -340,7 +339,7 @@ section and is not on the leaf.
 - **Audit Log:** `IAuditLogService` — every signup state change and rota move emits an audit entry.
 - **Notifications:** `INotificationService` — coordinator notifications for signup changes, voluntell assignments, and coverage gaps. No direct email-outbox dependency from this section.
 - **GDPR:** `ShiftSignupService` implements `IUserDataContributor` (export of signups, volunteer event profile, general availability, tag preferences) and `CancelActiveSignupsForUserAsync` (deletion).
-- **iCal feed:** `ShiftSignupService` implements `Humans.Calendar.Contracts.ICalendarFeedContributor` (`Humans.Shifts` references `Humans.Calendar` for the contributor interface) — contributes the user's Confirmed and Pending shift signups (with rota/team name, shift description, and practical info) to the personal iCal feed assembled by `IICalFeedService`. Only active commitments (Confirmed + Pending) are exported; Cancelled/Bailed/NoShow history is excluded.
+- **iCal feed:** `ShiftSignupService` implements `Humans.Calendar.Contracts.ICalendarFeedContributor` (`Humans.Shifts` references `Humans.Calendar` for the contributor interface) — contributes the user's Confirmed and Pending shift signups (with rota/team name, shift description, and practical info) to the personal iCal feed assembled by `IICalFeedService`. Only active commitments (Confirmed + Pending) are exported; Cancelled/Bailed/NoShow history is excluded. Shifts is a **contributor only**: the subscription card, the feed URL and the token rotation live on `/Calendar` (Calendar owns the feed end to end), and no Shifts page renders them.
 - **Users (account merge):** `ShiftManagementService`, `ShiftSignupService` and `VolunteerTrackingService` each register as `IUserMerge`; `AccountMergeService.AcceptAsync` fans out to them to re-FK Shifts-owned user-scoped rows from source to target (see Triggers).
 - **Early Entry contributor:** `VolunteerTrackingExportService` implements `IEarlyEntryProvider` — derives EE grants (earliest confirmed build-shift day − 1, source = that shift's team) for the cross-source EE roster. `ShiftSignupService` evicts the per-user EE cache via `IEarlyEntryInvalidator` on every build-shift confirm/bail/remove/reassign path.
 

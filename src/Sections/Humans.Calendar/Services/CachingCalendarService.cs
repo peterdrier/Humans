@@ -34,7 +34,8 @@ internal sealed class CachingCalendarService(
         var teamNames = await ResolveTeamNamesAsync(matched, ct);
         var occurrences = CalendarOccurrenceExpander.Expand(matched, from, to, teamNames, logger).ToList();
 
-        // Community items have no team of their own (design §8) — only merge them into the
+        // Community items have no team of their own (Workgroups' 2026-09-10 section design §8,
+        // which specified this fan-out — not design-rules.md §8) — only merge them into the
         // unfiltered, all-teams window. A ?teamId filter has nothing of theirs to show.
         if (teamId is null)
             occurrences.AddRange(await FanOutContributorItemsAsync(from, to, ct));
