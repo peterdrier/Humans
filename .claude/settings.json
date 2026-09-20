@@ -56,6 +56,17 @@
             "statusMessage": "Checking for data migration..."
           }
         ]
+      },
+      {
+        "matcher": "Agent|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/block-inherited-subagent-model.sh\"",
+            "timeout": 5,
+            "statusMessage": "Checking subagent model tier..."
+          }
+        ]
       }
     ]
   }
