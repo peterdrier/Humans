@@ -1,5 +1,5 @@
 using Humans.Base.Controllers;
-using Humans.Email.Contracts;
+using Humans.Email.Services;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,7 +16,7 @@ namespace Humans.Email.Controllers;
 [Route("Email")]
 internal sealed class EmailPreviewController(
     IUserServiceRead userService,
-    IEmailPreviewServiceRead emailPreviews) : ApiControllerBase(userService)
+    IEmailPreviewService emailPreviews) : ApiControllerBase(userService)
 {
     [HttpPost("PreviewMarkdown", Name = "EmailPreviewMarkdown")]
     [ValidateAntiForgeryToken]

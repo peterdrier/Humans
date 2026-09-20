@@ -7,7 +7,7 @@ namespace Humans.Email.Services;
 /// <summary>
 /// Produces a side-effect-free preview through the same canonical body composer used by the outbox.
 /// </summary>
-internal sealed class EmailPreviewService(IEmailBodyComposer bodyComposer) : IEmailPreviewServiceRead
+internal sealed class EmailPreviewService(IEmailBodyComposer bodyComposer) : IEmailPreviewService
 {
     /// <summary>Stands in for a recipient-specific unsubscribe URL when no real recipient exists yet.</summary>
     private const string PlaceholderUnsubscribeUrl = "#";
