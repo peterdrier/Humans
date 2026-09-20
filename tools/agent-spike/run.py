@@ -105,8 +105,7 @@ def load_corpus() -> str:
         if p.exists():
             add("SECTION INVARIANT", p)
 
-    matrix = REPO_ROOT / "src" / "Humans.Base" / "Models" / "AccessMatrixDefinitions.cs"
-    if matrix.exists():
+    for matrix in sorted((REPO_ROOT / "src" / "Sections").glob("*/SectionAccessMatrix.cs")):
         add("ACCESS MATRIX", matrix)
 
     return "".join(parts)
