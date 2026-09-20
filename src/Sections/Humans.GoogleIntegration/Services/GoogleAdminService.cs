@@ -160,10 +160,11 @@ internal sealed class GoogleAdminService(
                 ErrorMessage: $"{fullEmail} is already in use by another human.");
         }
 
-        // Belt-and-suspenders: GetByEmailOrAlternateAsync also falls back to
-        // the legacy User.GoogleEmail shadow column, catching the ~200
-        // pre-issue-687 users whose IsGoogle is unset on every row but the
-        // legacy column still holds the address.
+        // Belt-and-suspenders, and not redundant with the check above: FindByAddressAsync
+        // reads GetAllUserInfosAsync, which omits tombstones, while this one scans the
+        // decorator's whole warmed snapshot — so it is what catches an address owned by a
+        // merge/deletion tombstone. (The alternate form cannot fire here: fullEmail is
+        // always @nobodies.team, and GetAlternateEmail returns null off gmail/googlemail.)
         var existingUser = await userService.GetByEmailOrAlternateAsync(fullEmail, ct);
         if (existingUser is not null)
         {

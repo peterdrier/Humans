@@ -25,6 +25,10 @@ public sealed class GoogleGroupSyncServiceTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly Dictionary<Guid, ProfileInfo> _profilesByUserId = new();
+    // nobodies-collective/Humans#1098: the resolver now reads only User.BurnerName, so
+    // StubProfiles (which post-dates StubUsers in some tests) must be able to reach back
+    // and update the already-built User, mirroring the production CopyNamesToUser dual-write.
+    private readonly Dictionary<Guid, User> _usersByUserId = new();
     private readonly ISyncSettingsService _syncSettingsService = Substitute.For<ISyncSettingsService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IGoogleSyncLogService _googleSyncLog = Substitute.For<IGoogleSyncLogService>();
@@ -824,19 +828,25 @@ public sealed class GoogleGroupSyncServiceTests
 
     private void StubUsers(params (Guid UserId, string DisplayName, string Email)[] users)
     {
-        var userEntities = users.ToDictionary(
-            u => u.UserId,
-            u => new User
+        foreach (var u in users)
+        {
+            // nobodies-collective/Humans#1098: BurnerName is the sole resolver source; default
+            // it to DisplayName here (mirroring the production CopyNamesToUser dual-write) so
+            // existing callers that only pass a DisplayName keep resolving to that name.
+            _usersByUserId[u.UserId] = new User
             {
                 Id = u.UserId,
+                BurnerName = u.DisplayName,
                 DisplayName = u.DisplayName,
                 CreatedAt = _clock.GetCurrentInstant()
-            });
+            };
+        }
+
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
                 var requested = call.ArgAt<IReadOnlyCollection<Guid>>(0).ToHashSet();
-                IReadOnlyDictionary<Guid, UserInfo> dict = userEntities
+                IReadOnlyDictionary<Guid, UserInfo> dict = _usersByUserId
                     .Where(kv => requested.Contains(kv.Key))
                     .ToDictionary(
                         kv => kv.Key,
@@ -884,6 +894,13 @@ public sealed class GoogleGroupSyncServiceTests
             _profilesByUserId[p.UserId] = UserFixtures.Profile(
                 burnerName: p.BurnerName ?? string.Empty,
                 createdAt: _clock.GetCurrentInstant());
+
+            // nobodies-collective/Humans#1098: mirror CopyNamesToUser — a Profile save
+            // keeps User.BurnerName in sync, and the resolver reads only that field now.
+            if (_usersByUserId.TryGetValue(p.UserId, out var user))
+            {
+                user.BurnerName = p.BurnerName ?? string.Empty;
+            }
         }
     }
 

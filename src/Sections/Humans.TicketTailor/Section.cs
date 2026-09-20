@@ -8,9 +8,11 @@ using Microsoft.Extensions.Hosting;
 namespace Humans.TicketTailor;
 
 /// <summary>
-/// The TicketTailor adapter's DI entry point: binds exactly one implementation of
+/// The TicketTailor adapter's DI entry point: binds one keyed implementation of
 /// <see cref="ITicketVendorService"/>, the vendor-agnostic port owned by
-/// <c>Humans.Tickets</c>.
+/// <c>Humans.Tickets</c>, under the shared <see cref="TicketVendorServiceKeys.InnerServiceKey"/>.
+/// Tickets' own caching decorator resolves this keyed inner by that key, so this section
+/// never names Tickets' internals.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -36,18 +38,25 @@ public sealed class Section : ISection
 
         if (string.Equals(environment, Environments.Production, StringComparison.Ordinal))
         {
-            services.AddHttpClient<ITicketVendorService, TicketTailorService>(client =>
+            services.AddHttpClient<TicketTailorService>(client =>
             {
-                client.Timeout = TimeSpan.FromSeconds(30);
+                // nobodies-collective/Humans#946: production calls routinely land at 21.6-27.1s, brushing the old 30s
+                // ceiling — raised comfortably above that observed range.
+                client.Timeout = TimeSpan.FromSeconds(90);
             });
-            return;
+            services.AddKeyedScoped<ITicketVendorService>(
+                TicketVendorServiceKeys.InnerServiceKey,
+                (sp, _) => sp.GetRequiredService<TicketTailorService>());
         }
-
-        services.PostConfigure<TicketVendorSettings>(opts =>
+        else
         {
-            if (string.IsNullOrEmpty(opts.EventId)) opts.EventId = "stub-event";
-            if (string.IsNullOrEmpty(opts.ApiKey)) opts.ApiKey = "stub";
-        });
-        services.AddScoped<ITicketVendorService, StubTicketVendorService>();
+            services.PostConfigure<TicketVendorSettings>(opts =>
+            {
+                if (string.IsNullOrEmpty(opts.EventId)) opts.EventId = "stub-event";
+                if (string.IsNullOrEmpty(opts.ApiKey)) opts.ApiKey = "stub";
+            });
+            services.AddKeyedScoped<ITicketVendorService, StubTicketVendorService>(
+                TicketVendorServiceKeys.InnerServiceKey);
+        }
     }
 }

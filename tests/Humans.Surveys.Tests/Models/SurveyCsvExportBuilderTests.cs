@@ -160,8 +160,8 @@ public sealed class SurveyCsvExportBuilderTests
 
         // user_id (col 5) and user_name (col 6) are empty for a CompletionTracked row.
         var cells = lines[1].Split(',');
-        cells[4].Should().BeEmpty();   // user_id
-        cells[5].Should().BeEmpty();   // user_name
+        cells[4].Should().BeEmpty();
+        cells[5].Should().BeEmpty();
     }
 
     [HumansFact]

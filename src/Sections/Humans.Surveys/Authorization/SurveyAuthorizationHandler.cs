@@ -30,6 +30,7 @@ internal sealed class SurveyAuthorizationHandler : AuthorizationHandler<SurveyOp
             SurveyOperation.Edit => isBoardOrAdmin || (isOwner && resource.Status == SurveyStatus.Draft),
             SurveyOperation.Submit => isOwner && resource.Status == SurveyStatus.Draft,
             SurveyOperation.ViewResults => isBoardOrAdmin || (isOwner && resource.Status == SurveyStatus.Closed),
+            SurveyOperation.Preview => isBoardOrAdmin || isOwner,
             _ => false,
         };
 

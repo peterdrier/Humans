@@ -52,6 +52,14 @@ public static class GdprExportSections
     public const string TeamEarlyEntry = "TeamEarlyEntry";
     public const string SurveyResponses = "SurveyResponses";
     public const string AuthoredSurveys = "AuthoredSurveys";
+
+    /// <summary>
+    /// The invitation ledger: which surveys a person was asked to answer, and whether they
+    /// started or finished. Separate from <see cref="SurveyResponses"/> because most responses
+    /// are not identified — for someone who was only invited, or who answered under completion
+    /// tracking, this is the only survey record of theirs that exists.
+    /// </summary>
+    public const string SurveyInvitations = "SurveyInvitations";
     public const string GateScans = "GateScans";
     public const string GoogleSyncLog = "GoogleSyncLog";
     public const string EmailOutbox = "EmailOutbox";

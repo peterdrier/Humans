@@ -438,6 +438,15 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<SurveyInvitation>> GetInvitationsForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.SurveyInvitations
+            .AsNoTracking()
+            .Where(i => i.UserId == userId)
+            .ToListAsync(ct);
+    }
+
     public async Task<int> AnonymizeResponsesForUserAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -527,7 +536,9 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
                 // Builder questions carry client-generated ids so newly authored questions can
                 // participate in branching before their first save. With a non-default key, adding
                 // through a tracked collection makes EF assume the entity already exists and issue
-                // an UPDATE, which then fails optimistic concurrency because there is no row yet.
+                // an UPDATE, which then affects zero rows because there is no row yet — EF reports
+                // that as DbUpdateConcurrencyException even though nothing here carries a
+                // concurrency token (memory/architecture/no-concurrency-tokens.md).
                 // The id comparison above is the source of truth for persistence, so explicitly
                 // classify an unmatched question (and its option graph) as new.
                 ctx.SurveyQuestions.Add(incomingQuestion);

@@ -5,10 +5,12 @@ namespace Humans.Base.Helpers;
 
 public static class IbanValidator
 {
+    // SWIFT IBAN Registry, release 99 (June 2026).
     private static readonly Dictionary<string, int> Lengths = new(StringComparer.Ordinal)
     {
         ["AD"] = 24,
         ["AE"] = 23,
+        ["AL"] = 28,
         ["AT"] = 20,
         ["BE"] = 16,
         ["BG"] = 22,
@@ -33,6 +35,9 @@ public static class IbanValidator
         ["LU"] = 20,
         ["LV"] = 21,
         ["MC"] = 27,
+        ["MD"] = 24,
+        ["ME"] = 22,
+        ["MK"] = 19,
         ["MT"] = 31,
         ["NL"] = 18,
         ["NO"] = 15,
@@ -43,6 +48,7 @@ public static class IbanValidator
         ["SI"] = 19,
         ["SK"] = 24,
         ["SM"] = 27,
+        ["VA"] = 22,
     };
 
     public static string Normalize(string? iban) =>

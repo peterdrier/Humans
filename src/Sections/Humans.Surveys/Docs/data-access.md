@@ -10,7 +10,8 @@ Owns `surveys`,
 `survey_questions`, `survey_question_options`, `survey_invitations`,
 `survey_responses`, `survey_answers`. GDPR-compliant first-party survey
 platform with authoring, invite/reminder dispatch, wizard flow, results
-aggregation, and full GDPR Article 15 export of identified responses.
+aggregation, and full GDPR Article 15 export of identified responses and
+authored surveys.
 
 `SurveyRepository` is registered as a **Singleton** (uses `IDbContextFactory`
 pattern). `SurveyService` is **Scoped** with no caching decorator (per the spec:
@@ -22,7 +23,7 @@ single-member `ISurveyReminderSender`, which the section's own
 machine API reads. Everything else — authoring, sending, the wizard, submission —
 has no caller outside Surveys.
 
-### SurveyService (Scoped — `ISurveyService`, `IUserDataContributor`)
+### SurveyService (Scoped — `ISurveyService`, `ISurveyReminderSender`, `IUserDataContributor`, `IUserMerge`)
 
 `ISurveyService` also carries `ISurveyAnalysisRead` — Backdoor's read-only
 machine-API surface (survey list, one survey's question graph, the raw
@@ -49,12 +50,17 @@ shift participants for `SurveyAudienceType.ShiftParticipants`),
 enqueue), `IEmailMessageFactory` (invite and reminder templates),
 `ISurveyInviteTokenProvider` (section-local, data-protection invite tokens),
 `IGoogleTranslationService` (Cloud Translation pre-fill for admin translation
-helper), `IAuditLogService`.
+helper), `IAuditLogService`, `IFileStorage` (Information-block images under
+`uploads/surveys/`).
 
-Implements `IUserDataContributor` (GDPR export slice
+Implements `IUserDataContributor` (three GDPR export slices:
 `GdprExportSections.SurveyResponses` — identified responses only; anonymous
-and CompletionTracked rows carry no `UserId` and are excluded). No
-`IMemoryCache`.
+and CompletionTracked rows carry no `UserId` and are excluded —
+`GdprExportSections.AuthoredSurveys`, the surveys the person wrote, and
+`GdprExportSections.SurveyInvitations`, the invitation ledger, which is the
+only record of someone who was only invited or answered CompletionTracked).
+Implements
+`IUserMerge`: authorship follows the surviving account. No `IMemoryCache`.
 
 A `LoggedInSince` audience type (`surveys.AudienceLoggedInSince` cutoff
 column) resolves from the cached `UserInfo.LastLoginAt` via the existing

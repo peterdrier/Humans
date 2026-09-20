@@ -318,4 +318,10 @@ public enum AuditAction
     WorkgroupDormancyCleared,
     // A Store correction path resolved a legacy order's persisted year from its camp season.
     StoreOrderYearBackfilled,
+
+    // An event cycle's app-wide values (name, gate-opening date, build/event/strike
+    // windows) were saved — from /Settings/Admin or the /Settings#event tab's edit form
+    // (peterdrier/Humans#1628). Written on every successful SaveEventSettingsAsync call,
+    // including the reconcile writes made by the Settings carry screen.
+    EventSettingsUpdated,
 }

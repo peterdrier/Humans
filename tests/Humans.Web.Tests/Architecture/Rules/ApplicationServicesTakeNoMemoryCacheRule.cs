@@ -29,13 +29,14 @@ namespace Humans.Web.Tests.Architecture.Rules;
 ///   <item><see cref="ApplicationDecisionService"/> — voting-badge count cache (nav badges)</item>
 ///   <item><c>Humans.Finance.Services.Service</c> — Holded contact-list cache (nobodies-collective/Humans#976)</item>
 ///   <item><c>Humans.Guide.Services.GuideContentService</c> — rendered guide-page cache</item>
-///   <item><c>Humans.TicketTailor.Services.TicketTailorService</c> — vendor event-summary cache</item>
 ///   <item><c>Humans.Auth.Services.MagicLinkRateLimiter</c> — magic-link replay + signup-cooldown state</item>
 /// </list>
 /// Removed (caching moved to decorators):
 /// <list type="bullet">
 ///   <item><c>CalendarService</c> — no longer injects IMemoryCache (Wave B reconciliation)</item>
 ///   <item><c>CampService</c> — caching moved to CachingCampService decorator (T-06)</item>
+///   <item><c>TicketTailorService</c> — vendor event-summary cache moved to Tickets'
+///     CachingTicketVendorService decorator (peterdrier/Humans#1653)</item>
 /// </list>
 /// </para>
 /// </summary>
@@ -90,15 +91,6 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         // moved from Humans.Web to Humans.Tickets with /Tickets/Admin/Gate
         // (nobodies-collective/Humans#1091).
         SectionType("Humans.Tickets.Services.GateTerminalAccountSeeder"),
-        // CacheKeys.TicketEventSummary(eventId) — the vendor's capacity/sold/remaining counters,
-        // held 15 minutes so the ticket dashboard does not call TicketTailor on every render.
-        // It is the connector's own response cache, not an entity read, so §15's repository and
-        // decorator options do not apply; Services/Stores/ does not fit either, because this is
-        // the adapter itself rather than a store the section holds. Third sighting of Guide's
-        // rule after Development's: the code is unchanged and used to sit in
-        // Humans.Infrastructure/Services, which this sweep covers neither before nor after — it
-        // entered scope at the TicketTailor adapter's carve into its own section.
-        SectionType("Humans.TicketTailor.Services.TicketTailorService"),
         // CacheKeys.MagicLinkUsed(token) and CacheKeys.MagicLinkSignupRateLimit(email) — not a
         // read cache at all, but the two pieces of short-TTL sign-in state that have to survive
         // between HTTP requests: single-use consumption of a login token (15 min) and the 60-second

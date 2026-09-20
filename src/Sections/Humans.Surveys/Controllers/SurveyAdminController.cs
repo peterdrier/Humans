@@ -19,7 +19,8 @@ namespace Humans.Surveys.Controllers;
 /// <summary>
 /// Survey authoring: any signed-in Human with an approved profile may create and edit a Draft
 /// survey they own, and submit it for approval; Board/Admin additionally get the index of every
-/// survey, the approval queue, open/close, preview, send, results and CSV/JSON export.
+/// survey, the approval queue, open/close, preview and send. Results and CSV/JSON export are
+/// not Board-only: the author reads their own survey's results once it closes.
 /// Author-scoped visibility and per-survey ownership are enforced via <see cref="SurveyAuthorizationHandler"/>
 /// (design-rules §11) — never by filtering in the view. Controllers parse → call the service →
 /// format; sorting and VM↔DTO mapping live here (hard rule).
@@ -35,6 +36,9 @@ internal sealed class SurveyAdminController(
     ILogger<SurveyAdminController> logger) : HumansControllerBase(userService)
 {
     private static readonly DateTimeZone Zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+
+    /// <summary>The acting user plus the one role bit the service's own ownership checks need.</summary>
+    private SurveyViewer CurrentViewer(Guid actorId) => new(actorId, RoleChecks.IsAdminOrBoard(User));
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
@@ -184,11 +188,13 @@ internal sealed class SurveyAdminController(
     }
 
     [HttpGet("Preview/{id:guid}")]
-    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     public async Task<IActionResult> Preview(Guid id, string? culture, CancellationToken ct)
     {
         var detail = await surveyService.GetForEditAsync(id, ct);
         if (detail is null) return NotFound();
+        var auth = await authorizationService.AuthorizeAsync(
+            User, detail, new SurveyOperationRequirement(SurveyOperation.Preview));
+        if (!auth.Succeeded) return Forbid();
 
         var editable = detail.Editable;
         var resolvedCulture = SurveyPageViewModelFactory.ResolveCulture(culture, editable.DefaultCulture);
@@ -207,11 +213,13 @@ internal sealed class SurveyAdminController(
     }
 
     [HttpGet("Preview/{id:guid}/Page")]
-    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     public async Task<IActionResult> PreviewPage(Guid id, string? culture, int? page, CancellationToken ct)
     {
         var detail = await surveyService.GetForEditAsync(id, ct);
         if (detail is null) return NotFound();
+        var auth = await authorizationService.AuthorizeAsync(
+            User, detail, new SurveyOperationRequirement(SurveyOperation.Preview));
+        if (!auth.Succeeded) return Forbid();
 
         var editable = detail.Editable;
         var pages = SurveyWizardFlow.OrderedPages(editable.Questions);
@@ -237,11 +245,13 @@ internal sealed class SurveyAdminController(
     }
 
     [HttpGet("Preview/{id:guid}/ThankYou")]
-    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     public async Task<IActionResult> PreviewThankYou(Guid id, string? culture, CancellationToken ct)
     {
         var detail = await surveyService.GetForEditAsync(id, ct);
         if (detail is null) return NotFound();
+        var auth = await authorizationService.AuthorizeAsync(
+            User, detail, new SurveyOperationRequirement(SurveyOperation.Preview));
+        if (!auth.Succeeded) return Forbid();
 
         var editable = detail.Editable;
         var resolvedCulture = SurveyPageViewModelFactory.ResolveCulture(culture, editable.DefaultCulture);
@@ -257,7 +267,6 @@ internal sealed class SurveyAdminController(
     }
 
     [HttpPost("Preview/{id:guid}/Email")]
-    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SendPreviewEmail(
         Guid id,
@@ -266,6 +275,12 @@ internal sealed class SurveyAdminController(
     {
         var actorId = GetCurrentUserId();
         if (actorId is null) return Forbid();
+
+        var detail = await surveyService.GetForEditAsync(id, ct);
+        if (detail is null) return NotFound();
+        var auth = await authorizationService.AuthorizeAsync(
+            User, detail, new SurveyOperationRequirement(SurveyOperation.Preview));
+        if (!auth.Succeeded) return Forbid();
 
         try
         {
@@ -280,11 +295,12 @@ internal sealed class SurveyAdminController(
             SetError(ex.Message);
         }
 
-        return RedirectToAction(nameof(Send), new { id });
+        // Send is Board-only, so an author who rehearsed their own invitation goes to the builder.
+        return RedirectToAction(
+            RoleChecks.IsAdminOrBoard(User) ? nameof(Send) : nameof(Edit), new { id });
     }
 
     [HttpGet("Preview/{id:guid}/Email")]
-    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     public async Task<IActionResult> PreviewEmail(
         Guid id,
         [FromServices] ISurveyPreviewEmailService previewEmailService,
@@ -292,6 +308,12 @@ internal sealed class SurveyAdminController(
     {
         var actorId = GetCurrentUserId();
         if (actorId is null) return Forbid();
+
+        var detail = await surveyService.GetForEditAsync(id, ct);
+        if (detail is null) return NotFound();
+        var auth = await authorizationService.AuthorizeAsync(
+            User, detail, new SurveyOperationRequirement(SurveyOperation.Preview));
+        if (!auth.Succeeded) return Forbid();
 
         try
         {
@@ -350,7 +372,7 @@ internal sealed class SurveyAdminController(
             else
             {
                 id = model.Id.Value;
-                await surveyService.UpdateAsync(id, input, actorId.Value, ct);
+                await surveyService.UpdateAsync(id, input, CurrentViewer(actorId.Value), ct);
             }
         }
         catch (InvalidOperationException ex)
@@ -365,7 +387,7 @@ internal sealed class SurveyAdminController(
         // builder as unsaved (a re-submit would double-create), so it reports and redirects.
         if (string.Equals(submitAction, "save-translate", StringComparison.Ordinal))
         {
-            await ReportTranslationPassAsync(id, actorId.Value, ct);
+            await ReportTranslationPassAsync(id, CurrentViewer(actorId.Value), ct);
         }
         else
         {
@@ -400,12 +422,12 @@ internal sealed class SurveyAdminController(
     /// Runs the pre-fill pass and reports it. The save is already committed when this runs, so a
     /// translation failure reports and lets the caller redirect rather than re-rendering the builder.
     /// </summary>
-    private async Task ReportTranslationPassAsync(Guid id, Guid actorId, CancellationToken ct)
+    private async Task ReportTranslationPassAsync(Guid id, SurveyViewer viewer, CancellationToken ct)
     {
         try
         {
             var filled = await surveyService.PreFillTranslationsAsync(
-                id, CultureCatalog.SupportedCultureCodes, actorId, ct);
+                id, CultureCatalog.SupportedCultureCodes, viewer, ct);
             SetSuccess(filled > 0
                 ? string.Format(
                     CultureInfo.CurrentCulture,
@@ -528,7 +550,7 @@ internal sealed class SurveyAdminController(
                 id,
                 questionId,
                 unavailableValues ?? [],
-                actorId.Value,
+                CurrentViewer(actorId.Value),
                 ct);
             SetSuccess("Candidate availability updated; ranked results were recalculated.");
         }

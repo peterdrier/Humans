@@ -495,9 +495,11 @@ internal sealed class CachingUserService(
         var legacyDisplayName = user.DisplayName;
         return current with
         {
-            BurnerName = ResolveBurnerName(user.BurnerName, legacyDisplayName, current.Profile),
-            IsGdprAnonymized = string.Equals(
-                legacyDisplayName, UserInfo.GdprAnonymizedBurnerName, StringComparison.Ordinal),
+            BurnerName = ResolveBurnerName(user.BurnerName, legacyDisplayName),
+            // nobodies-collective/Humans#1742: never infer erasure from a user-editable name.
+            // Shares UserStateEvaluator's predicate so this projection and User.State cannot
+            // disagree; UserInfo.Create carries the same rule for the Contracts-side factory.
+            IsGdprAnonymized = UserStateEvaluator.IsGdprTombstoned(user),
             PreferredLanguage = user.PreferredLanguage,
             FallbackPictureUrl = user.ProfilePictureUrl,
             CreatedAt = user.CreatedAt,
@@ -521,18 +523,18 @@ internal sealed class CachingUserService(
     }
 
     /// <summary>
-    /// #1097 resolution order: <c>User.BurnerName</c> → <c>Profile.BurnerName</c> → the legacy
-    /// <c>User.DisplayName</c>. Cache-refresh twin of the same order in <c>UserInfo.Create</c>.
+    /// nobodies-collective/Humans#1098: <c>User.BurnerName</c> is the sole source, with narrow
+    /// tombstone recognition for legacy anonymized rows. Cache-refresh twin of
+    /// <c>UserInfo.ResolveBurnerName</c> — see that doc comment for the detail.
     /// </summary>
-    private static string ResolveBurnerName(
-        string? userBurnerName, string legacyDisplayName, ProfileInfo? profile)
+    private static string ResolveBurnerName(string? userBurnerName, string legacyDisplayName)
     {
         if (!string.IsNullOrWhiteSpace(userBurnerName))
             return userBurnerName;
 
-        return profile is not null && !string.IsNullOrWhiteSpace(profile.BurnerName)
-            ? profile.BurnerName
-            : legacyDisplayName;
+        return string.Equals(legacyDisplayName, UserInfo.GdprAnonymizedBurnerName, StringComparison.Ordinal)
+            ? UserInfo.GdprAnonymizedBurnerName
+            : string.Empty;
     }
 
     // ==========================================================================
@@ -586,11 +588,11 @@ internal sealed class CachingUserService(
 
     public async Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default)
     {
-        // Verified-email match is served from the warmed snapshot; only the legacy
-        // GoogleEmail shadow-column fallback (not projected onto UserInfo) goes to the
-        // inner service's repo read. The inner method is legacy-column-only by design —
-        // it deliberately does NOT repeat this scan, so a miss costs one targeted query
-        // rather than re-deriving the whole snapshot. See UserService.GetByEmailOrAlternateAsync.
+        // Verified-email match is served from the warmed snapshot first; only addresses the
+        // snapshot misses (unwarmed entries, or a warm/write race) fall through to the inner
+        // service's canonical user_emails query. The inner method deliberately does NOT repeat
+        // this scan, so a miss costs one targeted query rather than re-deriving the whole
+        // snapshot. See UserService.GetByEmailOrAlternateAsync.
         await EnsureWarmedAsync(ct).ConfigureAwait(false);
         foreach (var u in Values)
         {

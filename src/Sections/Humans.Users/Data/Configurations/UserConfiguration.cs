@@ -29,7 +29,10 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.ProfilePictureUrl)
             .HasMaxLength(2048);
 
-        // Shadow property — column drop deferred until prod soak (no-drops-until-prod-verified).
+        // Shadow property — no production code reads or writes it any more
+        // (nobodies-collective/Humans#1102). Mapping stays so EF doesn't diff the column
+        // out; the drop is deferred to the nobodies-collective/Humans#1102 +
+        // nobodies-collective/Humans#1098 drop PR (no-drops-until-prod-verified).
         builder.Property<string?>("GoogleEmail")
             .HasColumnName("GoogleEmail")
             .HasMaxLength(256);

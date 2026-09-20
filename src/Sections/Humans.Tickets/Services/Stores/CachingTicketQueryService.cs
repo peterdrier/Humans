@@ -1,7 +1,6 @@
 using Humans.Base.Caching;
 using Humans.Base.Interfaces.Caching;
 using Humans.Tickets.Contracts;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NodaTime;
@@ -19,18 +18,15 @@ internal sealed class CachingTicketQueryService : ITicketService, ITicketCacheIn
 
     private static readonly Duration UserHoldingsCacheTtl = Duration.FromMinutes(5);
 
-    private readonly IMemoryCache _memoryCache;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly OrdersCache _orders;
     private readonly UserHoldingsCache _userHoldings;
 
     public CachingTicketQueryService(
-        IMemoryCache memoryCache,
         IServiceScopeFactory scopeFactory,
         IClock clock,
         ILogger<CachingTicketQueryService> logger)
     {
-        _memoryCache = memoryCache;
         _scopeFactory = scopeFactory;
         _orders = new OrdersCache(
             async ct => await WithInner(inner => inner.GetTicketOrdersAsync(ct)),
@@ -132,9 +128,6 @@ internal sealed class CachingTicketQueryService : ITicketService, ITicketCacheIn
         _userHoldings.Invalidate(sourceUserId);
         _userHoldings.Invalidate(targetUserId);
     }
-
-    public void InvalidateVendorEventSummary(string vendorEventId) =>
-        _memoryCache.Remove(CacheKeys.TicketEventSummary(vendorEventId));
 
     async Task IHostedService.StartAsync(CancellationToken ct)
     {

@@ -588,7 +588,10 @@ public sealed class FeedbackServiceTests
             UserName = email ?? $"test-{id}@test.com",
             Email = email,
             DisplayName = displayName,
-            BurnerName = burnerName,
+            // Mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) — UserInfo.BurnerName
+            // reads User.BurnerName only (#1098). Callers that need to distinguish burner name from
+            // legal/display name pass burnerName explicitly; the rest get the realistic default.
+            BurnerName = burnerName ?? displayName,
             PreferredLanguage = "en",
             CreatedAt = Clock.GetCurrentInstant()
         };

@@ -544,6 +544,9 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var userId = Guid.NewGuid();
         var user = SeedUser(userId);
         user.DisplayName = "Deleted User";
+        // The minted tombstone email ApplyExpiredDeletionAnonymizationAsync writes — the
+        // real post-erasure shape, not the user-editable DisplayName sentinel alone.
+        user.Email = $"deleted-{userId:N}@deleted.local";
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken);

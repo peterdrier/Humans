@@ -69,20 +69,6 @@ public class AccountProvisioningServiceTests
         public Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default)
             => Task.FromResult(_users.TryGetValue(userId, out var u) ? u : null);
 
-        public Task<User?> GetByEmailOrAlternateAsync(
-            string normalizedEmail, string? alternateEmail, CancellationToken ct = default)
-        {
-            foreach (var user in _users.Values)
-            {
-                if (Matches(user.Email, normalizedEmail, alternateEmail))
-                {
-                    return Task.FromResult<User?>(user);
-                }
-            }
-
-            return Task.FromResult<User?>(null);
-        }
-
         public Task<bool> SetContactSourceIfNullAsync(
             Guid userId, ContactSource source, CancellationToken ct = default)
         {
@@ -94,15 +80,6 @@ public class AccountProvisioningServiceTests
 
             user.ContactSource = source;
             return Task.FromResult(true);
-        }
-
-        private static bool Matches(string? value, string normalized, string? alternate)
-        {
-            if (value is null) return false;
-            var v = EmailNormalization.NormalizeForComparison(value);
-            if (string.Equals(v, normalized, StringComparison.OrdinalIgnoreCase)) return true;
-            if (alternate is not null && string.Equals(v, alternate, StringComparison.OrdinalIgnoreCase)) return true;
-            return false;
         }
 
         // --- Methods not exercised by these tests ---

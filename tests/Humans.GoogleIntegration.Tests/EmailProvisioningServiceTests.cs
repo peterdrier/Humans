@@ -306,4 +306,64 @@ public class EmailProvisioningServiceTests
         await f.UserEmailService.Received(1).SetGoogleAsync(
             userId, existingRowId, userId, Arg.Any<CancellationToken>());
     }
+
+    // --- ProvisionNobodiesEmailAsync: tombstone guard (nobodies-collective/Humans#1707) ---
+    // A merge or GDPR deletion must not let a real Workspace account get provisioned
+    // under an archived id.
+
+    [HumansFact]
+    public async Task ProvisionNobodiesEmailAsync_RejectsMergedAwayId_WhenLookupResolvesToSurvivor()
+    {
+        var f = BuildFixture();
+
+        var mergedAwayId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        f.UserService.GetUserInfoAsync(mergedAwayId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(survivorId, UserFixtures.Profile(firstName: "Survivor", lastName: "Two")));
+
+        var result = await f.Service.ProvisionNobodiesEmailAsync(mergedAwayId, "bob", mergedAwayId);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Be("User not found.");
+
+        await f.WorkspaceUserService.DidNotReceive().ProvisionAccountAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ProvisionNobodiesEmailAsync_RejectsGdprAnonymizedTombstone()
+    {
+        var f = BuildFixture();
+
+        var userId = Guid.NewGuid();
+        var tombstone = UserInfo.Create(
+            user: new User
+            {
+                Id = userId,
+                DisplayName = UserInfo.GdprAnonymizedBurnerName,
+                // The erasure path's minted tombstone address — what marks a row erased
+                // (nobodies-collective/Humans#1742); the name sentinel alone is a name a
+                // member could type.
+                Email = $"deleted-{userId:N}@deleted.local",
+                PreferredLanguage = "en",
+                CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            },
+            userEmails: [],
+            eventParticipations: [],
+            externalLogins: [],
+            profile: UserFixtures.Profile(firstName: "Merged", lastName: "User"),
+            communicationPreferences: []);
+        f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(tombstone);
+
+        var result = await f.Service.ProvisionNobodiesEmailAsync(userId, "bob", userId);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Be("User not found.");
+
+        await f.WorkspaceUserService.DidNotReceive().ProvisionAccountAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
 }

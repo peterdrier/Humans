@@ -3,7 +3,6 @@ using System.Text;
 using System.Text.Json;
 using Humans.TicketTailor.Services;
 using Humans.Tickets.Contracts;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -23,7 +22,6 @@ internal static class TicketTailorTestHost
         return new TicketTailorService(
             new HttpClient(handler),
             settings,
-            new MemoryCache(new MemoryCacheOptions()),
             NullLogger<TicketTailorService>.Instance);
     }
 }

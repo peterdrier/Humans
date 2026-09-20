@@ -60,7 +60,6 @@
   <data name="Survey_Start" xml:space="preserve"><value>Començar</value></data>
   <data name="Survey_Continue" xml:space="preserve"><value>Continuar</value></data>
   <data name="Survey_PageOf" xml:space="preserve"><value>Pàgina {0} de {1}</value></data>
-  <data name="Survey_RequiredAlert" xml:space="preserve"><value>Si us plau, respon les preguntes obligatòries abans de continuar.</value></data>
   <data name="Survey_QuestionRequired" xml:space="preserve"><value>Aquesta pregunta és obligatòria.</value></data>
   <data name="Survey_ValidationAlert" xml:space="preserve"><value>Revisa les respostes ressaltades abans de continuar.</value></data>
   <data name="Survey_AnswerInvalid" xml:space="preserve"><value>Revisa aquesta resposta i torna-ho a provar.</value></data>

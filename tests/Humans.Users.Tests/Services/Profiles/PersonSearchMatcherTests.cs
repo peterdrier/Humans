@@ -64,6 +64,9 @@ public class PersonSearchMatcherTests
         var user = new User
         {
             Id = userId,
+            // Mirrors UserRepository.Profiles.cs's CopyNamesToUser dual-write (#1097): every real
+            // Profile save copies BurnerName onto the owning User row in the same transaction.
+            BurnerName = burnerName,
             DisplayName = displayName,
             PreferredLanguage = "en",
             CreatedAt = At,
@@ -122,16 +125,17 @@ public class PersonSearchMatcherTests
     }
 
     [HumansFact]
-    public void Matches_resolved_display_name_when_burnername_blank()
+    public void Matches_nothing_when_burnername_blank_even_with_a_legacy_DisplayName()
     {
-        // The reported bug: Profile.BurnerName blank, but legacy User.DisplayName populated
-        // (SSO/legacy). The UI renders "Maria Garcia" via the resolver, yet search saw the raw
-        // blank field and found nothing. The matcher must use the resolved name.
+        // nobodies-collective/Humans#1098: the resolver no longer falls back to the legacy
+        // DisplayName for an ordinary (non-sentinel) row — this INTENTIONALLY reverses the old
+        // "SSO/legacy" fix this test used to protect (Profile.BurnerName blank, User.DisplayName
+        // populated resolved via the fallback). A blank BurnerName now renders/searches blank.
         var human = Human(burnerName: "", displayName: "Maria Garcia");
 
         var match = PersonSearchMatcher.Match(human, "maria", PersonSearchFields.Name);
 
-        match.Should().NotBeNull();
+        match.Should().BeNull();
     }
 
     [HumansTheory]
@@ -341,10 +345,11 @@ public class PersonSearchMatcherTests
     }
 
     [HumansFact]
-    public void ExactName_resolves_display_name_when_burnername_blank()
+    public void ExactName_does_not_resolve_display_name_when_burnername_blank()
     {
+        // nobodies-collective/Humans#1098 — see Matches_nothing_when_burnername_blank... above.
         var human = Human(burnerName: "", displayName: "Maria Garcia");
 
-        PersonSearchMatcher.Match(human, "maria garcia", PersonSearchFields.ExactName).Should().NotBeNull();
+        PersonSearchMatcher.Match(human, "maria garcia", PersonSearchFields.ExactName).Should().BeNull();
     }
 }

@@ -163,6 +163,14 @@ internal partial interface ISurveyRepository : IRepository
     Task<IReadOnlyList<SurveyResponse>> GetIdentifiedResponsesForUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
+    /// A user's invitation ledger rows for the Article 15 export. These are personal data keyed to
+    /// the person whatever anonymity their response carried, and for someone who was only invited —
+    /// or who answered CompletionTracked — they are the only record of theirs the section holds.
+    /// No display ordering. Read-only.
+    /// </summary>
+    Task<IReadOnlyList<SurveyInvitation>> GetInvitationsForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
     /// GDPR Art. 17: de-identifies the user's responses — drops the UserId and
     /// InvitationId links and demotes them to <see cref="ResponseAnonymity.Anonymous"/>
     /// — and deletes their invitations. The answers stay as anonymous research data.

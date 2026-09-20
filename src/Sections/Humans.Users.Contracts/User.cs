@@ -15,7 +15,8 @@ public class User : IdentityUser<Guid>
 
     /// <summary>
     /// The name we render for this human. Dual-written from Profile (#1097); null until backfilled.
-    /// Resolution order is BurnerName → Profile.BurnerName → DisplayName.
+    /// The sole source for <c>UserInfo.BurnerName</c> (nobodies-collective/Humans#1098) — no more
+    /// Profile/DisplayName fallback, bar narrow legacy-tombstone recognition.
     /// </summary>
     [PersonalData]
     public string? BurnerName { get; set; }

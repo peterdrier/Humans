@@ -41,7 +41,7 @@ internal static class SurveyCsvExportBuilder
                     row.InputMethod,
                     row.SubmittedAt is { } at ? SubmittedPattern.Format(at) : string.Empty,
                     row.UserId,            // blank for non-Identified rows (null → empty cell)
-                    row.UserName,          // blank for non-Identified rows
+                    row.UserName,
                 };
 
                 foreach (var q in export.Questions)

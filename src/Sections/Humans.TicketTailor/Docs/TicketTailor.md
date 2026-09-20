@@ -38,10 +38,12 @@ None — the section owns no tables. Tickets owns every local row mirrored from 
 - Both implementations are `internal sealed`; only `Section.Register` binds them, and only Tickets injects the port.
 - The Basic auth header is set only when `ApiKey` is non-empty.
 - List reads page until `links.next` is null. Orders and issued tickets filter on `updated_at.gte`; check-ins filter on `created_at.gte` (upload time, not scan time), so a late-uploaded offline scan is never skipped.
+- `HttpClient.Timeout` is 90s (`Section.cs`) — production calls routinely land at 21.6-27.1s, and the old 30s ceiling was close enough to trip on vendor slowdowns (nobodies-collective/Humans#946).
+- `GetOrdersAsync` times each page of its pagination individually, not the whole loop — `HttpClient.Timeout` is per-request, and `LoggerTimingExtensions`' Error threshold is calibrated for one request, not a multi-page sync's cumulative time (nobodies-collective/Humans#946).
 - A check-in is reported only when a ticket's net quantity across records is positive; its time is the earliest positive record's `check_in_at`, falling back to `created_at`.
 - Attendee email is the answer to the custom question whose text is exactly `Email`, else the ticket's top-level email.
 - Money crosses the boundary in euros: vendor cents divided by 100 on the way in, monetary discount values multiplied by 100 on the way out.
-- Event capacity is `ticket_groups.max_quantity` summed, falling back to `ticket_types.quantity_total`; the summary is held 15 minutes under `CacheKeys.TicketEventSummary`, and a failed read is never cached.
+- Event capacity is `ticket_groups.max_quantity` summed, falling back to `ticket_types.quantity_total`. `TicketTailorService` itself is cache-free; Tickets' `CachingTicketVendorService` holds the summary for 15 minutes, and a failed read is never cached.
 - List and event reads throw `HttpRequestException`. Void and issue throw `TicketVendorWriteException` with a `TicketVendorFailureKind`: 400/422 Validation, 401/403 AuthFailed, 404 NotFound, 429 RateLimited, 5xx and transport failure Transient.
 - Issue requires either `HoldId` or both `EventId` and `TicketTypeId`; anything else is an `ArgumentException` before any call.
 - Check-in posts form-encoded `issued_ticket_id`, `quantity=1` and `check_in_at`; the vendor call is not idempotent, so callers never retry it. The key needs Event-manager scope.
@@ -61,7 +63,7 @@ None — the section is a pure request/response surface. Side effects around syn
 ## Cross-Section Dependencies
 
 - **Tickets**: implements `Humans.Tickets.Contracts.ITicketVendorService`; reads `TicketVendorSettings` through `IOptions<>`, which Shell binds (`src/Humans.Web/Extensions/Infrastructure/TicketVendorInfrastructureExtensions.cs`) so that deleting this project cannot take the port's configuration with it. The `.csproj` references `Humans.Tickets` (the owner, not a leaf) directly — sanctioned and acyclic, nobodies-collective/Humans#866 — and `Humans.Tickets.Contracts`.
-- **Base**: `CacheKeys.TicketEventSummary` (Tickets' invalidator clears it) and `TimeOperation`.
+- **Base**: `TimeOperation`. `CacheKeys.TicketEventSummary` is read by Tickets' `CachingTicketVendorService`, not by this section.
 
 ## Architecture
 
@@ -75,7 +77,7 @@ None — the section is a pure request/response surface. Side effects around syn
 |---|---:|---|
 | — | — | Not cross-section-consumed; the port is Tickets' |
 
-- **Decorator decision** — no caching decorator. `GetEventSummaryAsync` holds its result in `IMemoryCache` for 15 minutes under `CacheKeys.TicketEventSummary`; nothing else is cached.
+- **Decorator decision** — no caching decorator here: `CachingTicketVendorService` lives beside the port in Tickets so it survives a vendor swap, and Tickets' own `Section.cs` registers it. This section's `Section.cs` registers only its keyed live/stub inner, under the shared `TicketVendorServiceKeys.InnerServiceKey` from the Tickets Contracts leaf — it names none of Tickets' internals. Nothing in this section caches.
 - **Cross-section calls** — none beyond the port.
-- **Architecture tests** — `tests/Humans.Web.Tests/Architecture/TicketVendorPortArchitectureTests.cs` pins the injection sites and the adapter count; `tests/Humans.TicketTailor.Tests/Architecture/TicketVendorArchitectureTests.cs` pins that the port's signatures expose no vendor or HTTP types.
+- **Architecture tests** — `tests/Humans.Web.Tests/Architecture/TicketVendorPortArchitectureTests.cs` pins the injection sites and the port's implementations (this section's live/stub pair plus Tickets' caching decorator); `tests/Humans.TicketTailor.Tests/Architecture/TicketVendorArchitectureTests.cs` pins that the port's signatures expose no vendor or HTTP types.
 - The 2027 vendor swap deletes this project and adds `Humans.<NewVendor>`; nothing in Tickets or any consumer changes.

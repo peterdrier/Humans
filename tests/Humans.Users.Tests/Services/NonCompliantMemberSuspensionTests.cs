@@ -306,6 +306,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
             NormalizedUserName = "TESTUSER",
             Email = "test@example.com",
             NormalizedEmail = "TEST@EXAMPLE.COM",
+            BurnerName = "Test User",
             DisplayName = "Test User",
             PreferredLanguage = "en",
         };

@@ -16,6 +16,8 @@ namespace Humans.Settings.Tests;
 /// </summary>
 public sealed class EventSettingsCarryServiceTests
 {
+    private static readonly Guid Actor = Guid.NewGuid();
+
     private readonly IBurnSettingsService _burn = Substitute.For<IBurnSettingsService>();
     private readonly ISettingsWriteService _settings = Substitute.For<ISettingsWriteService>();
 
@@ -78,15 +80,15 @@ public sealed class EventSettingsCarryServiceTests
         var newId = Guid.NewGuid();
         ShiftsHas(newId, Burn(oldId, "Nowhere 2025", 2025), Burn(newId));
 
-        var written = await BuildSut().CarryAsync(TestContext.Current.CancellationToken);
+        var written = await BuildSut().CarryAsync(Actor, TestContext.Current.CancellationToken);
 
         written.Should().Be(2);
         await _settings.Received(1).SaveEventSettingsAsync(
             Arg.Is<EventSettingsInfo>(s => s.Id == oldId && s.Status == EventSettingsStatus.Inactive),
-            Arg.Any<CancellationToken>());
+            Actor, Arg.Any<CancellationToken>());
         await _settings.Received(1).SaveEventSettingsAsync(
             Arg.Is<EventSettingsInfo>(s => s.Id == newId && s.Status == EventSettingsStatus.Active),
-            Arg.Any<CancellationToken>());
+            Actor, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -99,11 +101,11 @@ public sealed class EventSettingsCarryServiceTests
             Carried(oldId, EventSettingsStatus.Inactive),
             Carried(newId, EventSettingsStatus.Active));
 
-        var written = await BuildSut().CarryAsync(TestContext.Current.CancellationToken);
+        var written = await BuildSut().CarryAsync(Actor, TestContext.Current.CancellationToken);
 
         written.Should().Be(0);
         await _settings.DidNotReceive().SaveEventSettingsAsync(
-            Arg.Any<EventSettingsInfo>(), Arg.Any<CancellationToken>());
+            Arg.Any<EventSettingsInfo>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -118,7 +120,7 @@ public sealed class EventSettingsCarryServiceTests
             Carried(oldId, EventSettingsStatus.Active),
             Carried(newId, EventSettingsStatus.Inactive));
 
-        var written = await BuildSut().CarryAsync(TestContext.Current.CancellationToken);
+        var written = await BuildSut().CarryAsync(Actor, TestContext.Current.CancellationToken);
 
         written.Should().Be(2);
         Received.InOrder(() =>
@@ -126,10 +128,10 @@ public sealed class EventSettingsCarryServiceTests
             // Deactivate first: the single-active guard refuses a second Active row.
             _ = _settings.SaveEventSettingsAsync(
                 Arg.Is<EventSettingsInfo>(s => s.Id == oldId && s.Status == EventSettingsStatus.Inactive),
-                Arg.Any<CancellationToken>());
+                Actor, Arg.Any<CancellationToken>());
             _ = _settings.SaveEventSettingsAsync(
                 Arg.Is<EventSettingsInfo>(s => s.Id == newId && s.Status == EventSettingsStatus.Active),
-                Arg.Any<CancellationToken>());
+                Actor, Arg.Any<CancellationToken>());
         });
     }
 
@@ -142,14 +144,14 @@ public sealed class EventSettingsCarryServiceTests
         ShiftsHas(id, Burn(id, "Stale Shifts name"));
         SettingsHas(Carried(id, EventSettingsStatus.Inactive, "Edited in Settings"));
 
-        await BuildSut().CarryAsync(TestContext.Current.CancellationToken);
+        await BuildSut().CarryAsync(Actor, TestContext.Current.CancellationToken);
 
         await _settings.Received(1).SaveEventSettingsAsync(
             Arg.Is<EventSettingsInfo>(s =>
                 s.Id == id
                 && s.Status == EventSettingsStatus.Active
                 && s.EventName == "Edited in Settings"),
-            Arg.Any<CancellationToken>());
+            Actor, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -203,13 +205,13 @@ public sealed class EventSettingsCarryServiceTests
         var id = Guid.NewGuid();
         ShiftsHas(activeId: null, Burn(id));
 
-        await BuildSut().CarryAsync(TestContext.Current.CancellationToken);
+        await BuildSut().CarryAsync(Actor, TestContext.Current.CancellationToken);
 
         await _settings.Received(1).SaveEventSettingsAsync(
             Arg.Is<EventSettingsInfo>(s => s.Status == EventSettingsStatus.Inactive),
-            Arg.Any<CancellationToken>());
+            Actor, Arg.Any<CancellationToken>());
         await _settings.DidNotReceive().SaveEventSettingsAsync(
             Arg.Is<EventSettingsInfo>(s => s.Status == EventSettingsStatus.Active),
-            Arg.Any<CancellationToken>());
+            Actor, Arg.Any<CancellationToken>());
     }
 }

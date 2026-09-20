@@ -1,8 +1,6 @@
 using AwesomeAssertions;
-using Humans.Base.Caching;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services.Stores;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -19,7 +17,6 @@ public sealed class CachingTicketQueryServiceTests
     private static readonly Guid UserC = Guid.NewGuid();
 
     private readonly ITicketService _inner;
-    private readonly MemoryCache _memoryCache;
     private readonly FakeClock _clock;
     private readonly CachingTicketQueryService _decorator;
 
@@ -33,10 +30,8 @@ public sealed class CachingTicketQueryServiceTests
             (_, _) => _inner);
         var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
         _clock = new FakeClock(Instant.FromUtc(2026, 5, 1, 0, 0));
-        _memoryCache = new MemoryCache(new MemoryCacheOptions());
 
         _decorator = new CachingTicketQueryService(
-            _memoryCache,
             scopeFactory,
             _clock,
             NullLogger<CachingTicketQueryService>.Instance);
@@ -186,18 +181,6 @@ public sealed class CachingTicketQueryServiceTests
         await _inner.Received(1).GetTicketOrdersAsync(Arg.Any<CancellationToken>());
         await _inner.Received(1).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
         await _inner.Received(1).GetUserTicketHoldingsAsync(UserB, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public void InvalidateVendorEventSummary_RemovesMemoryCacheEntry()
-    {
-        const string eventId = "ev_test";
-        var key = CacheKeys.TicketEventSummary(eventId);
-        _memoryCache.Set(key, "cached-summary");
-
-        _decorator.InvalidateVendorEventSummary(eventId);
-
-        _memoryCache.TryGetValue(key, out _).Should().BeFalse();
     }
 
     private async Task SeedTwoUserHoldings()

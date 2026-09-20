@@ -11,7 +11,7 @@ public enum PersonSearchFields
     /// <summary>No fields. Returns no results.</summary>
     None = 0,
 
-    /// <summary>Resolved display name (User.BurnerName → Profile.BurnerName → legacy User.DisplayName). Public.</summary>
+    /// <summary>Resolved display name (User.BurnerName; nobodies-collective/Humans#1098). Public.</summary>
     Name = 1 << 0,
 
     /// <summary>Bio, city, contribution-interests, CV, pronouns, AllActiveProfiles-visible ContactFields, and publicly-exposed emails. Public.</summary>

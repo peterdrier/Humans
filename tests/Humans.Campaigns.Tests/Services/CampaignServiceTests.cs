@@ -810,6 +810,9 @@ public sealed class CampaignServiceTests
             UserName = $"test-{userId}@test.com",
             Email = $"test-{userId}@test.com",
             DisplayName = displayName,
+            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
+            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            BurnerName = displayName,
             PreferredLanguage = "en",
             CreatedAt = Clock.GetCurrentInstant()
         };

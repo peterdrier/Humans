@@ -1,8 +1,10 @@
+using Humans.AuditLog.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Settings.Data;
 using Humans.Settings.Domain;
 using Humans.Shifts.Contracts;
 using NodaTime;
+using NodaTime.Text;
 
 namespace Humans.Settings.Services;
 
@@ -15,6 +17,7 @@ namespace Humans.Settings.Services;
 internal sealed class Service(
     ISettingsRepository repository,
     IBurnSettingsService burnSettings,
+    IAuditLogService auditLog,
     IClock clock) : ISettingsWriteService
 {
     public Task<string?> GetValueAsync(string key, CancellationToken cancellationToken = default) =>
@@ -35,7 +38,7 @@ internal sealed class Service(
         ToDto(await repository.GetEventSettingsByIdAsync(id, cancellationToken));
 
     public async Task SaveEventSettingsAsync(
-        EventSettingsInfo settings, CancellationToken cancellationToken = default)
+        EventSettingsInfo settings, Guid actorUserId, CancellationToken cancellationToken = default)
     {
         if (settings.Status == EventSettingsStatus.Active
             && await repository.AnyOtherActiveEventSettingsAsync(settings.Id, cancellationToken))
@@ -57,6 +60,14 @@ internal sealed class Service(
 
         await repository.UpsertEventSettingsAsync(
             ToEntity(settings), clock.GetCurrentInstant(), cancellationToken);
+
+        var description =
+            $"Event settings saved for '{settings.EventName}' ({settings.Year}): "
+            + $"gate opening {LocalDatePattern.Iso.Format(settings.GateOpeningDate)}, "
+            + $"build starts day {settings.BuildStartOffset}, event ends day {settings.EventEndOffset}, "
+            + $"strike ends day {settings.StrikeEndOffset}, status {settings.Status}.";
+        await auditLog.LogAsync(
+            AuditAction.EventSettingsUpdated, AuditEntityTypes.EventSettings, settings.Id, description, actorUserId);
     }
 
     private static EventSettingsInfo? ToDto(EventSettings? src) => src is null ? null : new EventSettingsInfo(

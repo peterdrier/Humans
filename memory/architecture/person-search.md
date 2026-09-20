@@ -11,10 +11,11 @@ Person search shows up across the app — Camp role assignment, team-admin membe
 [Flags] public enum PersonSearchFields
 {
     None = 0,
-    Name = 1,        // Profile.BurnerName + User.DisplayName (public)
+    Name = 1,        // User.BurnerName, the resolved display name (public)
     Bio  = 2,        // bio, city, interests, CV, pronouns + AllActiveProfiles ContactFields (public)
     Admin = 4,       // verified emails + non-public ContactFields (BoardOnly / CoordinatorsAndBoard / MyTeams)
     LegalName = 8,   // legal FirstName/LastName — admin/coordinator only; deanonymizes burners
+    ExactName = 16,  // User.BurnerName, folded full-string equality only (public) — burner-name collision counts
     PublicAll = Name | Bio,
     ManageAll = Name | Bio | LegalName,            // admin/coordinator pickers (real-name find, no private contact data)
     AdminAll  = Name | Bio | LegalName | Admin,    // admin/board only

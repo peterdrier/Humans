@@ -103,10 +103,61 @@ public class UserStateClassifierTests
         UserStateEvaluator.Classify(merged, profile: null).Should().Be(UserState.Merged);
 
         // GDPR deletion reuses the merge tombstone columns, so MergedAt is also set — but the
-        // "Deleted User" DisplayName sentinel must win and classify it as Deleted.
-        var gdprDeleted = NewUser(displayName: UserStateClassifier.GdprAnonymizedDisplayName);
+        // minted tombstone email must win and classify it as Deleted.
+        var gdprDeleted = NewUser(displayName: "Real Name");
         gdprDeleted.MergedAt = instant;
+        gdprDeleted.Email = $"deleted-{gdprDeleted.Id:N}@deleted.local";
         UserStateEvaluator.Classify(gdprDeleted, profile: null).Should().Be(UserState.Deleted);
+    }
+
+    // Regression test for nobodies-collective/Humans#1742: a member typing "Deleted User" as their
+    // own burner name must not be classified as GDPR-deleted and lose application access. Fails
+    // against the pre-fix BurnerName arm in UserStateEvaluator.IsGdprTombstoned.
+    [HumansFact]
+    public void Classify_entity_does_not_treat_a_user_typed_BurnerName_as_deletion()
+    {
+        var user = NewUser(displayName: "Real Name");
+        user.BurnerName = UserStateClassifier.GdprAnonymizedDisplayName;
+        user.Email = "burner@example.com";
+        var profile = NewNamedProfile(user.Id);
+
+        UserStateEvaluator.Classify(user, profile).Should().Be(UserState.Active);
+    }
+
+    [HumansFact]
+    public void Classify_entity_recognises_the_minted_tombstone_email()
+    {
+        var user = NewUser(displayName: "Real Name");
+        user.Email = $"deleted-{user.Id:N}@deleted.local";
+
+        UserStateEvaluator.Classify(user, profile: null).Should().Be(UserState.Deleted);
+    }
+
+    [HumansFact]
+    public void Classify_entity_recognises_the_legacy_tombstone_shape_without_the_scrubbed_email()
+    {
+        // Rows anonymized before the email scrub was added to the erasure path keep a normal-looking
+        // email but carry the complete legacy tombstone shape across all three name columns.
+        var user = NewUser(displayName: UserStateClassifier.GdprAnonymizedDisplayName);
+        user.FirstName = "Deleted";
+        user.LastName = "User";
+        user.Email = "legacy@example.com";
+
+        UserStateEvaluator.Classify(user, profile: null).Should().Be(UserState.Deleted);
+    }
+
+    [HumansFact]
+    public void Classify_entity_does_not_treat_the_DisplayName_sentinel_alone_as_deletion()
+    {
+        // Narrower than pre-#1742: the legacy fallback requires the complete tombstone shape, not
+        // the DisplayName sentinel on its own — a normal FirstName/LastName/email must stay Active.
+        var user = NewUser(displayName: UserStateClassifier.GdprAnonymizedDisplayName);
+        user.FirstName = "First";
+        user.LastName = "Last";
+        user.Email = "normal@example.com";
+        var profile = NewNamedProfile(user.Id);
+
+        UserStateEvaluator.Classify(user, profile).Should().Be(UserState.Active);
     }
 
     private static User NewUser(string displayName) => new()

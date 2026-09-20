@@ -50,7 +50,7 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
         _campaignService = Substitute.For<ICampaignService>();
         _shiftManagementService = Substitute.For<IBurnSettingsService>();
 
-        _ticketRepository = new TicketRepository(TicketsDbFactory);
+        _ticketRepository = new TicketRepository(TicketsDbFactory, Clock);
 
         _service = new TicketSyncService(
             _ticketRepository,
@@ -61,6 +61,7 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
             settings,
             NullLogger<TicketSyncService>.Instance,
             Substitute.For<ITicketCacheInvalidator>(),
+            Substitute.For<ITicketVendorCacheInvalidator>(),
             _userService,
             _userService,
             _campaignService,

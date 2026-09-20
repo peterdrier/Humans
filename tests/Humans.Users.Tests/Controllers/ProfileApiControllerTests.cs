@@ -139,6 +139,7 @@ public class ProfileApiControllerTests
         var user = new User
         {
             Id = userId,
+            BurnerName = burnerName,
             DisplayName = "Target Display",
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),

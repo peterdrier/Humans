@@ -29,7 +29,8 @@ public sealed class SurveyBuilderViewModelTests
                 null,
                 null,
                 null,
-                []));
+                []),
+            Guid.NewGuid());
 
         var vm = SurveyBuilderViewModel.FromDetail(
             detail, [], NodaTime.DateTimeZone.Utc);

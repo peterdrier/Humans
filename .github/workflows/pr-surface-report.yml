@@ -183,8 +183,15 @@ jobs:
           path: pr-surface-report.md
           if-no-files-found: error
 
+      # Promotion PRs (peterdrier:main → nobodies-collective:main) batch fork PRs
+      # whose migrations each passed this gate individually, so one chain may advance
+      # twice. Matched by repo identity so another fork's `main` stays gated.
       - name: Enforce migration count
-        if: always()
+        if: >
+          always() &&
+          !(github.head_ref == 'main' &&
+            github.event.pull_request.head.repo.full_name == 'peterdrier/Humans' &&
+            github.event.pull_request.base.repo.full_name == 'nobodies-collective/Humans')
         run: |
           count="$(jq -r '.migration_count' pr-surface-report.json)"
           if [ "$count" -gt 1 ]; then

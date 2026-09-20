@@ -10,8 +10,8 @@ Invariants: `Docs/TicketTailor.md`.
 ### TicketTailorService (typed HttpClient, Production only)
 
 No repository. Implements `ITicketVendorService` against the Ticket Tailor v1 HTTP
-API over an injected `HttpClient`. Event summaries are held in `IMemoryCache` for
-15 minutes; nothing else is cached and there is no DB access.
+API over an injected `HttpClient`. Cache-free — Tickets' `CachingTicketVendorService`
+holds event summaries in front of it; there is no DB access here.
 
 ### StubTicketVendorService (Scoped, every other environment)
 

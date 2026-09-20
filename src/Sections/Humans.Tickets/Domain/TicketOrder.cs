@@ -20,6 +20,13 @@ internal sealed class TicketOrder
     /// <summary>Buyer's email from the vendor.</summary>
     public string BuyerEmail { get; set; } = string.Empty;
 
+    /// <summary>
+    /// When GDPR erasure tombstoned this order's <see cref="BuyerName"/> and
+    /// <see cref="BuyerEmail"/>. Null until erased. While non-null, sync must
+    /// never write those two fields again. Issue nobodies-collective/Humans#1178.
+    /// </summary>
+    public Instant? PiiErasedAt { get; set; }
+
     /// <summary>Auto-matched user by email. Null if no match found.</summary>
     public Guid? MatchedUserId { get; set; }
 

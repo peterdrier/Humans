@@ -99,6 +99,9 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
             {
                 Id = id,
                 DisplayName = "Member " + id,
+                // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
+                // UserInfo.BurnerName reads User.BurnerName only (#1098).
+                BurnerName = "Member " + id,
                 UserName = id + "@example.org",
                 Email = id + "@example.org",
                 PreferredLanguage = "en",

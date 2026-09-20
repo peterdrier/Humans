@@ -9,9 +9,8 @@ namespace Humans.Users.Contracts;
 /// <param name="ProfileId">Owning profile id. Surfaced so callers that need
 /// to fan out into <c>IContactFieldService</c> (which keys by profile id)
 /// don't have to round-trip through a profile lookup.</param>
-/// <param name="BurnerName">The human's primary public display label.
-/// Resolution order is <c>User.BurnerName</c> → <c>Profile.BurnerName</c> →
-/// legacy <c>User.DisplayName</c>.</param>
+/// <param name="BurnerName">The human's primary public display label — resolved from
+/// <c>User.BurnerName</c> (nobodies-collective/Humans#1098).</param>
 /// <param name="ProfilePictureUrl">Effective picture URL (custom or
 /// upstream). <c>null</c> when no picture is set.</param>
 /// <param name="MatchField">Short label naming which bucket matched

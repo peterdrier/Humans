@@ -142,6 +142,9 @@ public class EventsApiControllerTests
         {
             Id = userId,
             DisplayName = "Test Submitter",
+            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
+            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            BurnerName = burnerName,
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };

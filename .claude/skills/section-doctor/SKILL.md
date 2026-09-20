@@ -72,8 +72,9 @@ resx, code findings queue, the run file's header and the PR body say so.
 
 Every subcommand derives the run from its branch, so nothing depends on shell state surviving
 between tool calls. **Every commit is `doctor.py commit` and every push is `doctor.py push`** —
-a run never calls `git commit` or `git push` directly. Non-zero exit from any script means stop
-and look, never work around.
+a run never calls `git commit` or `git push` directly. `commit` stages nothing: `git add` first,
+and it refuses an empty index. Non-zero exit from any script means stop and look, never work
+around.
 
 ## Standing constraints
 
@@ -135,19 +136,20 @@ exit "${PIPESTATUS[0]}"
 ```
 
 (Without `gh`, write the same `[{number, headRefName, title}]` shape from the GitHub MCP tools;
-the script reads each PR's files from git itself.) The script computes the blocked set (sections
-with an open `section-doctor/` PR or a recent pushed branch), the feature-active down-rank, the
-tiers, the scores, and the pick: never-doctored tier by median score, then previously-doctored
-sections changed since their last run, ranked by age plus churn. It prints `SECTION:` / `TIER:` /
+the script reads each PR's files from git itself.) The script needs only git — no build, no
+reforge — and computes the blocked set (sections with an open `section-doctor/` PR or a recent
+pushed branch), the feature-active down-rank, and the pick: the section changed since its last
+run with the highest age-plus-churn priority. A section with no run yet ranks from the commit
+that created it, the whole section as churn, after a one-week cool-down. It prints `SECTION:` /
 `BASE:` / `RATIONALE:` / `UPCOMING:`. Obey its verdicts — never pick by judgment: `ALL BLOCKED`
 (exit 3) and `NOTHING CHANGED` (exit 2) end the run with nothing written (locally, remove the
 worktree). `--section` skips the pick but still runs `--blocked-only`; a blocked section stops
-the run. A low score is not evidence of health — it measures structure, never correctness.
+the run.
 
 Then, before any reading: `doctor.py runfile <Section> --invocation "<how this run was invoked>"`
 writes `docs/health/runs/<yyyy-mm-dd>-<Section>.md` (header, empty blocks, the coverage and
-thread tables); commit it alone and `doctor.py push` — that file's path is how the next selector
-sees this run.
+thread tables); `git add` it, `doctor.py commit` it alone and `doctor.py push` — that file's path
+is how the next selector sees this run.
 Rename the session `section-doctor: <Section> — <yyyy-mm-dd>` via `set_session_title` where the
 tool exists; skip silently otherwise.
 
@@ -332,7 +334,8 @@ writes, in this PR:
   regenerates both from git and the dispatch log — `generated` and `changed` per path, how each
   thread ran and on what — and keeps what the run wrote by hand: `reviewed` on a path (every name
   the file carries resolves, not merely opened) and the findings count per thread, plus why a
-  thread did not run. No cost column, no diff-size block, no line counts, no reforge score: the
+  thread did not run. A disposition contains `reviewed`, `changed` or `generated` (a qualifier
+  like `changed (new)` is fine); `check-run-file` rejects a row with none of them. No cost column, no diff-size block, no line counts, no reforge score: the
   PR carries those. `doctor.py check-run-file <path> --section <X>` says what is missing.
 
 The prose gate runs inside every `doctor.py commit` (`memory/process/no-derived-aggregates-in-docs.md`):
@@ -351,7 +354,9 @@ this skill are not Needs-Peter items and not atoms; the bar for them is below.
 
 Self-review the run's own new prose against the gates: `doctor.py prose-gate --base origin/main`,
 `doctor.py trace <run file> <health.md> --section <X>` (every symbol, route and path resolves; every "only",
-"never" and "always" is checked by hand), and the render rule (a claim about what a page shows traces to the `.cshtml`). Then
+"never" and "always" is checked by hand; each `file:line` cite prints its source line — a cite written
+in 3c and moved by the strike lands on a brace or the statement next door, so trace runs last, after
+the tree stops moving), and the render rule (a claim about what a page shows traces to the `.cshtml`). Then
 `doctor.py check-run-file <run file> --section <X>`, `dotnet format whitespace Humans.slnx --verify-no-changes`, the full
 test run, `doctor.py push`, and the PR against `peterdrier/Humans` `main`:
 

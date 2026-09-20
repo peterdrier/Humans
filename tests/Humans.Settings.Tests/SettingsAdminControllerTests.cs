@@ -8,7 +8,6 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using NodaTime;
 using NSubstitute;
 using TestContext = Xunit.TestContext;
 
@@ -36,24 +35,6 @@ public sealed class SettingsAdminControllerTests
         return controller;
     }
 
-    private static EventSettingsInfo MakeInfo(Guid id, EventSettingsStatus status) => new(
-        Id: id,
-        EventName: "Nowhere 2026",
-        Year: 2026,
-        TimeZoneId: "Europe/Madrid",
-        GateOpeningDate: new LocalDate(2026, 7, 9),
-        BuildStartOffset: -25,
-        EventEndOffset: 6,
-        StrikeEndOffset: 9,
-        FirstCrewStartOffset: -25,
-        SetupWeekStartOffset: -16,
-        PreEventWeekStartOffset: -9,
-        FinishingWeekendStartOffset: -4,
-        EarlyEntryCapacity: new Dictionary<int, int>(),
-        BarriosEarlyEntryAllocation: null,
-        EarlyEntryClose: null,
-        Status: status);
-
     private static EventSettingsViewModel MakeForm(Guid? id, bool isActive) => new()
     {
         Id = id,
@@ -64,42 +45,25 @@ public sealed class SettingsAdminControllerTests
     };
 
     [HumansFact]
-    public async Task Index_WithNoActiveRow_ShowsTheCarryPromptInsteadOfABlankForm()
+    public void Index_Get_WithoutAnId_RedirectsToTheSettingsPageEventTab()
     {
-        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns((EventSettingsInfo?)null);
+        // peterdrier/Humans#1628: the screen is superseded by the /Settings#event tab —
+        // one canonical URL per page (memory/product/no-url-aliases.md).
+        var result = BuildSut().Index(id: null);
 
-        var result = await BuildSut().Index(id: null, TestContext.Current.CancellationToken);
-
-        result.Should().BeOfType<ViewResult>()
-            .Which.ViewName.Should().Be("NoEvent");
+        result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#event");
     }
 
     [HumansFact]
-    public async Task Index_WithAnId_LoadsThatRowEvenWhenItIsInactive()
+    public void Index_Get_WithAnId_ForwardsItToTheSettingsPageEventTab()
     {
+        // A carried, possibly-inactive row named by id must still resolve to that
+        // row, not to whichever one the tab shows by default.
         var id = Guid.NewGuid();
-        _settings.GetEventSettingsByIdAsync(id, Arg.Any<CancellationToken>())
-            .Returns(MakeInfo(id, EventSettingsStatus.Inactive));
 
-        var result = await BuildSut().Index(id, TestContext.Current.CancellationToken);
+        var result = BuildSut().Index(id);
 
-        var model = result.Should().BeOfType<ViewResult>().Which.Model
-            .Should().BeOfType<EventSettingsViewModel>().Which;
-        model.Id.Should().Be(id);
-        model.IsActive.Should().BeFalse();
-        await _settings.DidNotReceive().GetActiveEventSettingsAsync(Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task Index_WithAnUnknownId_ShowsTheCarryPrompt()
-    {
-        _settings.GetEventSettingsByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns((EventSettingsInfo?)null);
-
-        var result = await BuildSut().Index(Guid.NewGuid(), TestContext.Current.CancellationToken);
-
-        result.Should().BeOfType<ViewResult>().Which.ViewName.Should().Be("NoEvent");
+        result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be($"/Settings?event={id}#event");
     }
 
     [HumansFact]
@@ -114,9 +78,13 @@ public sealed class SettingsAdminControllerTests
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Which;
         redirect.ActionName.Should().Be(nameof(SettingsAdminController.Index));
         redirect.RouteValues!["id"].Should().Be(id);
+        // The GET action now accepts that same id and forwards it, so this redirect
+        // resolves to the row that was just saved, not the active one.
+        BuildSut().Index((Guid?)redirect.RouteValues["id"]).Should().BeOfType<RedirectResult>()
+            .Which.Url.Should().Be($"/Settings?event={id}#event");
         await _settings.Received(1).SaveEventSettingsAsync(
             Arg.Is<EventSettingsInfo>(s => s.Id == id && s.Status == EventSettingsStatus.Inactive),
-            Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -130,7 +98,7 @@ public sealed class SettingsAdminControllerTests
         sut.ModelState[nameof(EventSettingsViewModel.Id)]!.Errors
             .Should().ContainSingle().Which.ErrorMessage.Should().Contain("/Settings/Admin/Carry");
         await _settings.DidNotReceive().SaveEventSettingsAsync(
-            Arg.Any<EventSettingsInfo>(), Arg.Any<CancellationToken>());
+            Arg.Any<EventSettingsInfo>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -140,7 +108,7 @@ public sealed class SettingsAdminControllerTests
         // operator conflict. The service says so by throwing; the screen has to render it.
         const string Conflict =
             "Only one event settings row can be Active at a time — deactivate the current one first.";
-        _settings.SaveEventSettingsAsync(Arg.Any<EventSettingsInfo>(), Arg.Any<CancellationToken>())
+        _settings.SaveEventSettingsAsync(Arg.Any<EventSettingsInfo>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new InvalidOperationException(Conflict)));
         var sut = BuildSut();
         var form = MakeForm(Guid.NewGuid(), isActive: true);
@@ -150,5 +118,20 @@ public sealed class SettingsAdminControllerTests
         result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(form);
         sut.ModelState[string.Empty]!.Errors
             .Should().ContainSingle().Which.ErrorMessage.Should().Be(Conflict);
+    }
+
+    [HumansFact]
+    public async Task Index_Post_SavesWithTheAuthenticatedActor()
+    {
+        // The controller resolves the actor from the claims principal — no separate
+        // Users lookup needed just to attribute the audit entry (peterdrier/Humans#1628).
+        var sut = BuildSut();
+        var actorId = Guid.Parse(((ClaimsIdentity)sut.HttpContext.User.Identity!)
+            .FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+        await sut.Index(MakeForm(Guid.NewGuid(), isActive: false), TestContext.Current.CancellationToken);
+
+        await _settings.Received(1).SaveEventSettingsAsync(
+            Arg.Any<EventSettingsInfo>(), actorId, Arg.Any<CancellationToken>());
     }
 }

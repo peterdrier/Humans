@@ -4,10 +4,8 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Humans.Base.Caching;
 using Humans.Base.Extensions;
 using Humans.Tickets.Contracts;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -22,10 +20,8 @@ namespace Humans.TicketTailor.Services;
 internal sealed class TicketTailorService : ITicketVendorService
 {
     private const string BaseUrl = "https://api.tickettailor.com/v1";
-    private static readonly TimeSpan EventSummaryCacheTtl = TimeSpan.FromMinutes(15);
 
     private readonly HttpClient _httpClient;
-    private readonly IMemoryCache _cache;
     private readonly ILogger<TicketTailorService> _logger;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -37,11 +33,9 @@ internal sealed class TicketTailorService : ITicketVendorService
     public TicketTailorService(
         HttpClient httpClient,
         IOptions<TicketVendorSettings> settings,
-        IMemoryCache cache,
         ILogger<TicketTailorService> logger)
     {
         _httpClient = httpClient;
-        _cache = cache;
         _logger = logger;
 
         var apiKey = settings.Value.ApiKey;
@@ -56,7 +50,6 @@ internal sealed class TicketTailorService : ITicketVendorService
     public async Task<IReadOnlyList<VendorOrderDto>> GetOrdersAsync(
         Instant? since, string eventId, CancellationToken ct = default)
     {
-        using var _ = _logger.TimeOperation();
         var orders = new List<VendorOrderDto>();
         string? cursor = null;
 
@@ -68,10 +61,16 @@ internal sealed class TicketTailorService : ITicketVendorService
             if (cursor is not null)
                 url += $"&starting_after={cursor}";
 
-            var response = await _httpClient.GetAsync(url, ct);
-            response.EnsureSuccessStatusCode();
+            // nobodies-collective/Humans#946: time each page request, not the whole paginated loop — HttpClient.Timeout
+            // applies per request, and SelectLogLevel's Error threshold is calibrated for one.
+            TtPaginatedResponse<TtOrder>? body;
+            using (_logger.TimeOperation())
+            {
+                var response = await _httpClient.GetAsync(url, ct);
+                response.EnsureSuccessStatusCode();
+                body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<TtOrder>>(JsonOptions, ct);
+            }
 
-            var body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<TtOrder>>(JsonOptions, ct);
             if (body?.Data is null || body.Data.Count == 0)
                 break;
 
@@ -224,12 +223,6 @@ internal sealed class TicketTailorService : ITicketVendorService
         string eventId, CancellationToken ct = default)
     {
         using var _ = _logger.TimeOperation();
-        var cacheKey = CacheKeys.TicketEventSummary(eventId);
-        if (_cache.TryGetValue<VendorEventSummaryDto>(cacheKey, out var cachedSummary) &&
-            cachedSummary is not null)
-        {
-            return cachedSummary;
-        }
 
         var response = await _httpClient.GetAsync($"{BaseUrl}/events/{eventId}", ct);
 
@@ -258,7 +251,6 @@ internal sealed class TicketTailorService : ITicketVendorService
             TicketsSold: ticketsSold,
             TicketsRemaining: totalCapacity - ticketsSold);
 
-        _cache.Set(cacheKey, summary, EventSummaryCacheTtl);
         return summary;
     }
 

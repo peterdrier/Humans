@@ -32,7 +32,7 @@ public sealed class SurveyPreviewEmailServiceTests
             "en",
             false, null, null, null, null, null, null, []);
         surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
-            .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, editable));
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, editable, Guid.NewGuid()));
         userEmails.GetNotificationTargetEmailsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string> { [userId] = "tester@example.com" });
@@ -84,7 +84,7 @@ public sealed class SurveyPreviewEmailServiceTests
             "en",
             false, null, null, null, null, null, null, []);
         surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
-            .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, editable));
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, editable, Guid.NewGuid()));
         userEmails.GetNotificationTargetEmailsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Single() == userId),
                 Arg.Any<CancellationToken>())
@@ -160,7 +160,7 @@ public sealed class SurveyPreviewEmailServiceTests
             spanishOnlySubject, spanishOnlyMessage, "en",
             false, null, null, null, null, null, null, []);
         surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
-            .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, editable));
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, editable, Guid.NewGuid()));
         userEmails.GetNotificationTargetEmailsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string> { [userId] = "tester@example.com" });

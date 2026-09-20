@@ -4,7 +4,7 @@
     doctor.py rundir [--ts TS]          print the run's scratch dir (created); TS from the branch by default
     doctor.py mark <phase-id> <label…>  append a timestamped phase-log line for cost-report.py
     doctor.py push                      origin gate, then push the current branch
-    doctor.py commit -F FILE | -m MSG   prose gate over the staged diff, logged to gates.log, then git commit
+    doctor.py commit -F FILE | -m MSG   prose gate over the staged diff (git add first), logged to gates.log, then git commit
     doctor.py prose-gate [--base REF]   count-in-prose gate over the staged diff (or REF..HEAD)
     doctor.py dispatch-log <thread> <model> [agent-type]   record a subagent dispatch
     doctor.py resolve-check <sha>       the commit exists and is on origin/<current branch>
@@ -31,10 +31,10 @@ from datetime import datetime, timezone
 
 ORIGIN_RE = re.compile(r"github\.com[:/]peterdrier/Humans(\.git)?$")
 BRANCH_RE = re.compile(r"^section-doctor/(.+)$")
-WORDS = {w: i + 1 for i, w in enumerate(
-    "one two three four five six seven eight nine ten eleven twelve".split())}
-# "one" is a pronoun as often as a numeral: it is a must-fix only when it counts the one row under it,
-# and never an advisory.
+# "one" is a pronoun ("so that one is logged") far more often than a count, and a count of one
+# never takes a plural — so it is not a numeral here.
+WORDS = {w: i + 2 for i, w in enumerate(
+    "two three four five six seven eight nine ten eleven twelve".split())}
 NUM = r"(?:[0-9]+|" + "|".join(WORDS) + ")"
 # Must-fix: a count with a structural tell — it names the rows under it, or it is a total.
 STRUCTURAL_RE = re.compile(
@@ -184,7 +184,7 @@ def prose_gate_hits(diff, read_file):
             counted = (rows and _num(m.group(1)) == rows) or HEADING_RE.match(l)
             if counted:
                 must.append(tag)
-            elif m.group(1).lower() != "one":
+            else:
                 advisory.append(tag)
 
     lineno = 0
@@ -235,6 +235,8 @@ def cmd_prose_gate(a):
 def cmd_commit(a):
     """The gate runs inside the commit so a run cannot skip it; gates.log records each run
     (its own file — a line in the phase log would become a cost-report row)."""
+    if not git("diff", "--cached", "--name-only"):
+        sys.exit("nothing staged: `git add` first — doctor.py commit stages nothing")
     must, advisory = prose_gate_hits(git("diff", "-U0", "--cached"), staged_file)
     with open(os.path.join(rundir(), "gates.log"), "a", encoding="utf-8") as f:
         f.write(f"{now()} prose-gate must-fix={len(must)} advisory={len(advisory)}\n")
@@ -281,8 +283,11 @@ def cmd_check_run_file(a):
     if not re.search(r"Independence check: (pass|fail)", text):
         missing.append("Independence check: pass|fail line")
     for path, _ in inventory(a.section):
-        if not re.search(r"`?" + re.escape(path) + r"`?[^\n]*\b(reviewed|changed|generated)\b", text):
+        rows = re.findall(r"^[^\n]*`?" + re.escape(path) + r"`?(?![\w/.])[^\n]*$", text, re.M)
+        if not rows:
             missing.append(f"coverage row: {path}")
+        elif not any(re.search(r"\b(reviewed|changed|generated)\b", r) for r in rows):
+            missing.append(f"coverage row: {path} — disposition must contain reviewed, changed or generated")
     for t in THREADS:   # the row exists (runfile writes it) and the run filled how it ran and what it found
         if not re.search(r"^\|\s*" + re.escape(t) + r"\s*\|\s*[^|\s][^|]*\|[^|]*\|\s*[^|\s][^|]*\|", text, re.M):
             missing.append(f"thread row incomplete: {t} (how it ran, findings)")
@@ -449,7 +454,7 @@ BLAST_GLOBS = ("*.cs", "*.cshtml", "*.resx", "*.json", "*.yml", "*.yaml", "*.js"
                "*.sql", "*.sh", "*.py", "*.md", ":(exclude)docs/reforge/")
 BLAST_CAP = 60
 BACKTICK_RE = re.compile(r"`([^`\n]+)`")
-LINE_REF_RE = re.compile(r"^([^\s:]+/[^\s:]+):(\d+)(?:-\d+)?$")
+LINE_REF_RE = re.compile(r"^((?:[^\s:]+/[^\s:]+|[^\s:]+\.[A-Za-z0-9]{1,6})):(\d+)(?:-\d+)?$")   # a path or a bare file name
 IDENT_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{2,}")
 PROSE_TOKEN_RE = re.compile(r"^[a-z][a-z -]*$")   # `keep`, `not a defect`: words, not names
 PATH_TOKEN_RE = re.compile(r"^(?:src|tests|docs|memory|\.claude|\.github)/|\.[a-z0-9]{1,6}$")
@@ -480,6 +485,20 @@ def _path_candidates(tok, doc, section):
             + ([os.path.join(root, tok)] if root else []))
 
 
+def _resolve_path(tok, doc, section):
+    """The tree path a doc's path token names, or None: the candidates first, then a bare file
+    name anywhere in the tree, the doc's section first."""
+    for c in _path_candidates(tok, doc, section):
+        if os.path.exists(c):
+            return c
+    if "/" not in tok:
+        found = sorted(git("ls-files", "--", "**/" + tok).split(),
+                       key=lambda f: not f.startswith(_section_root(doc, section) or "\0"))
+        if found:
+            return found[0]
+    return None
+
+
 def trace_token(tok, doc, section, exclude):
     """(status, detail): ok / MISS / CHECK (a route whose literal is not in the code: read the
     attribute by hand) / skip (a word or an extension, not a name)."""
@@ -490,11 +509,16 @@ def trace_token(tok, doc, section, exclude):
         return "skip", "a branch or issue reference"
     m = LINE_REF_RE.match(tok)
     if m:
-        for path in _path_candidates(m.group(1), doc, section):
-            if os.path.isfile(path):
-                n = len(worktree_file(path).splitlines())
-                return ("ok", f"{path}, {n} lines") if int(m.group(2)) <= n else ("MISS", f"{path} has {n} lines")
-        return "MISS", "no such file"
+        path = _resolve_path(m.group(1), doc, section)
+        if path is None or not os.path.isfile(path):
+            return "MISS", "no such file"
+        lines, n = worktree_file(path).splitlines(), int(m.group(2))
+        if n > len(lines):
+            return "MISS", f"{path} has {len(lines)} lines"
+        cited = lines[n - 1].strip()
+        if not re.search(r"[A-Za-z0-9]", cited):   # a blank line or a bare brace: the cite has drifted
+            return "CHECK", f"{path}:{n} is blank or punctuation only — the cited statement moved"
+        return "ok", f"{path}:{n}  {cited}"
     if " " in tok or PROSE_TOKEN_RE.match(tok) or (tok.startswith(".") and "/" not in tok) or not IDENT_RE.search(tok) \
             or re.match(r"^[a-z]+:", tok) or "<" in tok or tok.startswith("$"):
         return "skip", "a word, a placeholder, an extension or a URL, not a name"
@@ -511,15 +535,8 @@ def trace_token(tok, doc, section, exclude):
                 return "ok", f"route, {len(hits)} hit(s) for {needle}, first {hits[0]}"
         return "CHECK", "route literal not in code; read the attribute"
     if PATH_TOKEN_RE.search(tok):
-        for c in _path_candidates(tok, doc, section):
-            if os.path.exists(c):
-                return "ok", c
-        if "/" not in tok:   # a bare file name: anywhere in the tree, the doc's section first
-            found = sorted(git("ls-files", "--", "**/" + tok).split(),
-                           key=lambda f: not f.startswith(_section_root(doc, section) or "\0"))
-            if found:
-                return "ok", found[0]
-        return "MISS", "no such path"
+        path = _resolve_path(tok, doc, section)
+        return ("ok", path) if path else ("MISS", "no such path")
     hits = grep_hits(tok, CODE_GLOBS, word=False, exclude=exclude)
     if hits:
         return "ok", f"{len(hits)} hit(s), first {hits[0]}"
@@ -538,6 +555,7 @@ def cmd_trace(a):
     """The trace gate (3c, Phase 7): every backticked name, route, path and file:line in the
     given docs, resolved against the tree (paths also relative to the doc, to `src/Sections/` and
     to the section named by `--section` or the doc's own location; a hex token is a commit).
+    A `file:line` cite prints the cited line's text so its resolution can be eyeballed.
     Prints one line per token; non-zero on any MISS."""
     exclude, seen, misses = set(a.file), set(), 0
     for doc in a.file:
@@ -745,6 +763,8 @@ def cmd_runfile(a):
     the header and the prose blocks are written once and never touched again; `## File
     coverage` and `## Threads` are regenerated from git and the dispatch log each call, keeping
     the dispositions and findings counts the run wrote by hand."""
+    if not re.fullmatch(r"[A-Za-z0-9]+", a.section) or not os.path.isdir(f"src/Sections/Humans.{a.section}"):
+        sys.exit(f"runfile takes a section name (src/Sections/Humans.<Name>), not a path or a Contracts leaf: {a.section}")
     ts = BRANCH_RE.match(branch())
     if not ts:
         sys.exit(f"not on a section-doctor/<TS> branch ({branch()})")

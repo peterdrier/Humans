@@ -1382,4 +1382,9 @@
   <data name="Todo_AssemblyVote_Pending" xml:space="preserve"><value>« {0} » est ouvert au vote.</value><comment>{0} = vote title</comment></data>
   <data name="Todo_AssemblyVote_Done" xml:space="preserve"><value>Votre vote sur « {0} » est enregistré. Vous pouvez le modifier jusqu’à la clôture.</value><comment>{0} = vote title</comment></data>
   <data name="Todo_AssemblyVote_Action" xml:space="preserve"><value>Voter</value></data>
+
+  <!-- Settings tab label: a SharedResource key because SettingsTabsViewComponent cannot see a contributing section's own resource set -->
+  <data name="Settings_TabEvent" xml:space="preserve">
+    <value>Événement</value>
+  </data>
 </root>

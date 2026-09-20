@@ -53,6 +53,14 @@ public sealed class Section : ISection
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTicketQueryService>().OrdersCacheStats);
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTicketQueryService>().UserHoldingsCacheStats);
 
+        // The keyed inner is bound by whichever vendor adapter section is registered
+        // (Humans.TicketTailor today) under TicketVendorServiceKeys.InnerServiceKey —
+        // Tickets never names that section.
+        services.AddSingleton<CachingTicketVendorService>();
+        services.AddSingleton<ITicketVendorService>(sp => sp.GetRequiredService<CachingTicketVendorService>());
+        services.AddSingleton<ITicketVendorCacheInvalidator>(sp => sp.GetRequiredService<CachingTicketVendorService>());
+        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTicketVendorService>().EventSummaryCacheStats);
+
         services.AddSingleton<ITicketTransferRepository, TicketTransferRepository>();
         services.AddScoped<TicketTransferService>();
         services.AddScoped<ITicketTransferService>(sp => sp.GetRequiredService<TicketTransferService>());

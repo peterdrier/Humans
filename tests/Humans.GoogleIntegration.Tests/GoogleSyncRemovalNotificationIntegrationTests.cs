@@ -95,6 +95,7 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
         var user = new User
         {
             Id = userId,
+            BurnerName = "Alice",
             DisplayName = "Alice",
             UserName = $"user-{userId:N}",
             Email = primaryEmail,

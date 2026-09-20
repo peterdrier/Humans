@@ -310,7 +310,9 @@ public sealed class EventServiceTests
     private Guid StubSubmitterWithEmail(string email, string burnerName)
     {
         var userId = Guid.NewGuid();
-        var user = new User { Id = userId, DisplayName = burnerName, PreferredLanguage = "en" };
+        // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
+        // UserInfo.BurnerName reads User.BurnerName only (#1098).
+        var user = new User { Id = userId, DisplayName = burnerName, BurnerName = burnerName, PreferredLanguage = "en" };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             // UserInfoStubHelpers.ToUserInfo lives in Humans.Application.Tests and is not
             // visible across the section boundary; UserInfo.Create is the public builder.

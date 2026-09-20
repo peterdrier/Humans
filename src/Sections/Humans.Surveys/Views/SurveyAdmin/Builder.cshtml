@@ -32,10 +32,9 @@
     @if (!Model.IsNew)
     {
         <div class="d-flex align-items-center gap-2">
-            @if (Model.IsBoardOrAdmin)
-            {
-                <partial name="_SurveyPreviewMenu" model="@Model.Id!.Value" />
-            }
+            @* No role gate: the builder only renders for a survey you may edit, so rehearsing
+               it is yours too (SurveyOperation.Preview). *@
+            <partial name="_SurveyPreviewMenu" model="@Model.Id!.Value" />
             <span class="badge @(Model.Status == SurveyStatus.Open ? "bg-success" : Model.Status == SurveyStatus.Closed ? "bg-secondary" : Model.Status == SurveyStatus.PendingApproval ? "bg-info text-dark" : "bg-warning text-dark")">@Model.Status</span>
             @if (Model.CanSubmit)
             {

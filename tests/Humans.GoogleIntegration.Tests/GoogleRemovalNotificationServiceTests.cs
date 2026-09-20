@@ -273,6 +273,7 @@ public sealed class GoogleRemovalNotificationServiceTests
         var user = new User
         {
             Id = userId,
+            BurnerName = displayName,
             DisplayName = displayName,
             UserName = $"user-{userId:N}",
             Email = emails.Length > 0 ? emails[0].Email : "fallback@example.com",

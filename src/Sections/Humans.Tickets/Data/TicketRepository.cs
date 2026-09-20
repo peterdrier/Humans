@@ -19,7 +19,7 @@ namespace Humans.Tickets.Data;
 /// registered as Singleton while <c>TicketsDbContext</c> remains short-lived
 /// per method - same pattern as <c>UserRepository</c>.
 /// </remarks>
-internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> factory) : ITicketRepository
+internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> factory, IClock clock) : ITicketRepository
 {
     public async Task<TicketSyncState?> GetSyncStateAsync(CancellationToken ct = default)
     {
@@ -184,8 +184,21 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
             if (existing.TryGetValue(order.VendorOrderId, out var tracked))
             {
                 // Copy mutable fields (Id, VendorOrderId are init-only).
-                tracked.BuyerName = order.BuyerName;
-                tracked.BuyerEmail = order.BuyerEmail;
+                // nobodies-collective/Humans#1178: once GDPR-erased, never let a sync write
+                // the buyer name/email back in — every other field still syncs. The tombstone
+                // check covers rows erased before PiiErasedAt existed (NULL on migration).
+                if (tracked.PiiErasedAt is null
+                    && !TicketPiiTombstone.IsTombstoned(tracked.BuyerName, tracked.BuyerEmail))
+                {
+                    tracked.BuyerName = order.BuyerName;
+                    tracked.BuyerEmail = order.BuyerEmail;
+                }
+                else
+                {
+                    // Self-heal rows erased before PiiErasedAt existed: the tombstone is the
+                    // older, equally authoritative record of the same erasure.
+                    tracked.PiiErasedAt ??= clock.GetCurrentInstant();
+                }
                 tracked.TotalAmount = order.TotalAmount;
                 tracked.Currency = order.Currency;
                 tracked.DiscountCode = order.DiscountCode;
@@ -224,8 +237,22 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         {
             if (existing.TryGetValue(attendee.VendorTicketId, out var tracked))
             {
-                tracked.AttendeeName = attendee.AttendeeName;
-                tracked.AttendeeEmail = attendee.AttendeeEmail;
+                // nobodies-collective/Humans#1178: once GDPR-erased, never let a sync write
+                // the attendee name/email back in — every other field still syncs. The
+                // tombstone check covers rows erased before PiiErasedAt existed (NULL on
+                // migration).
+                if (tracked.PiiErasedAt is null
+                    && !TicketPiiTombstone.IsTombstoned(tracked.AttendeeName, tracked.AttendeeEmail))
+                {
+                    tracked.AttendeeName = attendee.AttendeeName;
+                    tracked.AttendeeEmail = attendee.AttendeeEmail;
+                }
+                else
+                {
+                    // Self-heal rows erased before PiiErasedAt existed: the tombstone is the
+                    // older, equally authoritative record of the same erasure.
+                    tracked.PiiErasedAt ??= clock.GetCurrentInstant();
+                }
                 tracked.TicketTypeName = attendee.TicketTypeName;
                 tracked.Price = attendee.Price;
                 tracked.Status = attendee.Status;
@@ -912,6 +939,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
 
         var tombstoneName = TicketPiiTombstone.Name;
         var tombstoneEmail = TicketPiiTombstone.EmailFor(userId);
+        var now = clock.GetCurrentInstant();
 
         var orders = await ctx.TicketOrders
             .Where(o => o.MatchedUserId == userId)
@@ -921,6 +949,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
             order.BuyerName = tombstoneName;
             order.BuyerEmail = tombstoneEmail;
             order.MatchedUserId = null;
+            order.PiiErasedAt ??= now;
         }
 
         var attendees = await ctx.TicketAttendees
@@ -931,6 +960,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
             attendee.AttendeeName = tombstoneName;
             attendee.AttendeeEmail = tombstoneEmail;
             attendee.MatchedUserId = null;
+            attendee.PiiErasedAt ??= now;
         }
 
         return await ctx.SaveChangesAsync(ct);

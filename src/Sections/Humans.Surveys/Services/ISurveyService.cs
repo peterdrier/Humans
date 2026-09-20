@@ -29,8 +29,11 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
     /// <summary>Creates a Draft survey from the builder input; returns the new survey id.</summary>
     Task<Guid> CreateAsync(SurveyEditInput input, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Replaces a survey's editable graph (questions/options reconciled by id). Validates branching.</summary>
-    Task UpdateAsync(Guid surveyId, SurveyEditInput input, Guid actorUserId, CancellationToken ct = default);
+    /// <summary>
+    /// Replaces a survey's editable graph (questions/options reconciled by id). Validates branching.
+    /// Board/Admin may edit any survey; anyone else may edit only one they authored.
+    /// </summary>
+    Task UpdateAsync(Guid surveyId, SurveyEditInput input, SurveyViewer viewer, CancellationToken ct = default);
 
     /// <summary>
     /// Machine-translates the survey's authored content (title, intro, thank-you, invitation copy,
@@ -39,7 +42,7 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
     /// filled; 0 means nothing was missing.
     /// </summary>
     Task<int> PreFillTranslationsAsync(
-        Guid surveyId, IReadOnlyList<string> targetCultures, Guid actorUserId, CancellationToken ct = default);
+        Guid surveyId, IReadOnlyList<string> targetCultures, SurveyViewer viewer, CancellationToken ct = default);
 
     /// <summary>Transitions Draft → Open.</summary>
     Task OpenAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default);
@@ -194,7 +197,7 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
         Guid surveyId,
         Guid questionId,
         IReadOnlyList<string> unavailableValues,
-        Guid actorUserId,
+        SurveyViewer viewer,
         CancellationToken ct = default);
 
 }
@@ -243,12 +246,17 @@ internal enum SurveyResultsScope
 
 // ── Authoring DTOs (co-located) ─────────────────────────────────────────────
 
-/// <summary>A survey loaded for editing: identity + status + owner + the editable graph.</summary>
+/// <summary>
+/// A survey loaded for editing: identity + status + owner + the editable graph.
+/// <c>CreatedByUserId</c> has no default: <c>Guid.Empty</c> is this section's "nobody", and a
+/// forgotten argument would hand the authorization handler an authorless survey, which it
+/// denies to its author on every operation.
+/// </summary>
 internal sealed record SurveyDetail(
     Guid Id,
     SurveyStatus Status,
     SurveyEditInput Editable,
-    Guid CreatedByUserId = default,
+    Guid CreatedByUserId,
     string? RejectionNote = null);
 
 /// <summary>The current viewer for author-scoped survey visibility: Board/Admin see every survey.</summary>

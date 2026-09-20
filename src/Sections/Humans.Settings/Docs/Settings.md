@@ -26,6 +26,25 @@ of the app-wide event values (nobodies-collective/Humans#1104).
 - The **carry** (`/Settings/Admin/Carry`) copies the Shifts-owned event rows
   into `settings_event`, keeping ids. Transitional; retires with the nobodies-collective/Humans#1104
   cutover.
+- **`/Settings`** (peterdrier/Humans#1628) is the member-facing settings page: it renders
+  whatever tabs sections contribute through `ISectionSettings` (`Humans.Settings.Contracts`
+  — not every section has settings, so the seam lives on the `.Contracts` leaf a
+  contributor already references to opt in, not on Base). This section contributes
+  the **Event** tab (`/Settings#event`), which wraps the `/Settings/Admin` form: editable
+  for `PolicyNames.AdminOnly`, read-only (event name, gate date, build/event/strike
+  windows as text) for every other authenticated member. `/Settings/Admin` itself now
+  redirects there — a GET is a redirect, not a second live page
+  (`memory/product/no-url-aliases.md`); the POST is unchanged. Reached from the signed-in
+  user menu via the `user-menu` chrome slot (`SectionChrome` → `SettingsUserMenuViewComponent`),
+  since nothing else links to it. Its member-facing strings live in `SettingsResource`,
+  including the empty state (`Settings_NoTabs`); the `/Settings/Admin` and carry screens
+  stay admin-exempt (`memory/code/localization-admin-exempt.md`). Settings owns tab
+  composition end to end (`SettingsTabComposition`, `SettingsTabsViewComponent`) — a
+  domain-owning section composes contributions into its own domain, unlike navigational
+  composition, which stays in the Shell — but a **tab label** is different: it may come
+  from any contributing section, so it stays in `SharedResource` (`Settings_TabEvent`),
+  carved by renderer: the composer cannot see any contributor's private resource set,
+  including a `.Contracts` leaf's, which carries no localized strings today anyway.
 
 ## Data Model
 
@@ -69,11 +88,12 @@ Own `SettingsDbContext`, migrations under `Data/Migrations/`, history table
 | Actor | Capabilities |
 |-------|--------------|
 | Any section (code) | Read/write `system_settings` keys via `ISettingsService`; read `settings_event` via `GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` |
-| Admin | Edit event rows on `/Settings/Admin`, run the carry on `/Settings/Admin/Carry` |
+| Any authenticated member | Views the active event's values, read-only, on the `/Settings#event` tab |
+| Admin | Edits event rows via the `/Settings#event` tab's form (posts to `SettingsAdminController`), runs the carry on `/Settings/Admin/Carry` |
 
-Both screens are `PolicyNames.AdminOnly` (pinned in
+Both admin controllers are `PolicyNames.AdminOnly` (pinned in
 `tests/Humans.Settings.Tests/SettingsArchitectureTests.cs`; per-route detail in
-[`authorization.md`](authorization.md)).
+[`authorization.md`](authorization.md)); `/Settings` itself is `[Authorize]` only.
 
 ## Invariants
 
@@ -83,8 +103,12 @@ Both screens are `PolicyNames.AdminOnly` (pinned in
 - **A new row's id must name a Shifts event.** `Rota.EventSettingsId` and
   `EventGuideSettings.EventSettingsId` resolve against Shifts' `event_settings`,
   so inserts check `IBurnSettingsService.GetByIdAsync` first, and
-  `/Settings/Admin` edits existing rows only — it never mints an id
+  the form edits existing rows only — it never mints an id
   (`SettingsAdminControllerTests`). Retires with the carry.
+- **Every successful `SaveEventSettingsAsync` call is audited.** Writes
+  `AuditAction.EventSettingsUpdated` naming the actor and the saved values
+  (peterdrier/Humans#1628) — both the form save and the carry's reconcile writes go
+  through this one method, so both are covered.
 - **Nothing reads `settings_event` yet.** Every section still reads the event
   values off the Shifts-owned row via `IBurnSettingsService`; `/Shifts/Settings`
   is the live editor until the nobodies-collective/Humans#1104 cutover. Both screens say so.
@@ -101,17 +125,22 @@ Both screens are `PolicyNames.AdminOnly` (pinned in
 
 ## Negative Access Rules
 
-- A non-admin **cannot** reach `/Settings/Admin` or `/Settings/Admin/Carry`
-  (`AdminOnly` on both controllers).
+- A non-admin **cannot** reach `/Settings/Admin/Carry` (`AdminOnly`), and a GET
+  to `/Settings/Admin` redirects everyone, admin or not, to `/Settings#event`.
+- A non-admin **cannot** edit the Event tab: they get the read-only rendering
+  (no `<form>`, no submit button, no inputs to POST), and a POST to
+  `SettingsAdminController` still requires `PolicyNames.AdminOnly` regardless of
+  which page linked to it.
 - Code outside the section **cannot** write `settings_event` —
   `ISettingsService` carries no event-settings write.
-- The admin screen **cannot** create an event row; only the carry inserts.
+- The form **cannot** create an event row; only the carry inserts.
 
 ## Triggers
 
-None — no background jobs, no notification or audit fan-out. The carry runs
-only when an admin submits `/Settings/Admin/Carry`, and its outcome renders on
-the same screen.
+None — no background jobs, no notification fan-out. The carry runs only when
+an admin submits `/Settings/Admin/Carry`, and its outcome renders on the same
+screen. Every `SaveEventSettingsAsync` call (form save or carry reconcile)
+writes one `AuditAction.EventSettingsUpdated` audit entry — see Invariants.
 
 ## Cross-Section Dependencies
 
@@ -125,11 +154,18 @@ the same screen.
 ## Architecture
 
 **Owning services:** `Service` (registered as `ISettingsService` and
-`ISettingsWriteService` against one instance), `EventSettingsCarryService`
+`ISettingsWriteService` against one instance; also writes `IAuditLogService`
+entries on event-settings saves), `EventSettingsCarryService`
 (no repository — reads Shifts contracts, writes via `ISettingsWriteService`)
 **Owned tables:** `system_settings`, `settings_event`
 **Status:** (A) — own project, own context, repository-only data access; no
 caching decorator (low-traffic key reads, admin-only screens).
+**Contributes:** `SectionSettings : ISectionSettings` — the `/Settings#event`
+tab, rendered by `EventSettingsTabViewComponent`; `SectionChrome : ISectionChrome` —
+the `/Settings` link in the signed-in user menu (`user-menu` slot). Also owns
+composing every section's `ISectionSettings` contributions into the `/Settings`
+tab strip (`SettingsTabComposition`, `SettingsTabsViewComponent`) — Settings
+owns all of settings management, contributed tabs included, not just its own.
 
 Detail on the repository surface and both invariants:
 [`data-access.md`](data-access.md).

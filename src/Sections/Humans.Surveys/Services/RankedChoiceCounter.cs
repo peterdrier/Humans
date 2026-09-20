@@ -1,3 +1,8 @@
+// The precommitment, stated once so no caller infers it from the method list: Ranked Pairs is the
+// official method and the authored option order is the disclosed final tie-break. Condorcet and
+// Borda are sensitivity analysis, never the headline. TieBreakUsed says when authored order
+// decided it. Algorithm: Docs/features/ranked-choice-voting.md.
+
 using System.Numerics;
 
 namespace Humans.Surveys.Services;

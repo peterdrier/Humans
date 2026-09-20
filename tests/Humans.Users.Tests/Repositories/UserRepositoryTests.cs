@@ -426,12 +426,6 @@ public sealed class UserRepositoryTests : IDisposable
         attendedRecord.Source.Should().Be(ParticipationSource.TicketSync);
     }
 
-    // Note: GetByEmailOrAlternateAsync is not unit-tested — its matching uses
-    // EF.Functions.ILike which is a Npgsql-specific translation and does not
-    // evaluate against the InMemory provider. Behavior is verified end-to-end
-    // in preview/QA against Postgres. The alternate-email computation (gmail
-    // ↔ googlemail) is in UserService and is tested there.
-
     // ==========================================================================
     // ApplyExpiredDeletionAnonymizationAsync — deletes AspNetUserLogins
     // ==========================================================================

@@ -268,10 +268,13 @@ public class UserInfoTests
         info.HasTicket.Should().BeFalse();
     }
 
-    // Resolution order: User.BurnerName → Profile.BurnerName → legacy DisplayName.
+    // nobodies-collective/Humans#1098: User.BurnerName is the sole source. The Profile.BurnerName
+    // and legacy-DisplayName fallback chain is gone — the one exception is narrow recognition of
+    // the GDPR-erasure sentinel on rows anonymized before this change (see the tombstone tests
+    // below).
 
     [HumansFact]
-    public void BurnerName_prefers_the_User_column_over_the_Profile()
+    public void BurnerName_reads_only_the_User_column()
     {
         var userId = Guid.NewGuid();
         var user = MinimalUser(userId);
@@ -287,7 +290,7 @@ public class UserInfoTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void BurnerName_falls_back_to_the_Profile_when_the_User_column_is_blank(string? userBurnerName)
+    public void BurnerName_does_not_fall_back_to_the_Profile_when_the_User_column_is_blank(string? userBurnerName)
     {
         var userId = Guid.NewGuid();
         var user = MinimalUser(userId);
@@ -296,20 +299,222 @@ public class UserInfoTests
         var info = UserInfoFactory.Create(
             user, [], [], [], NamedProfile(userId, "From Profile"), [], [], [], []);
 
-        info.BurnerName.Should().Be("From Profile");
+        info.BurnerName.Should().BeEmpty();
     }
 
     [HumansFact]
-    public void BurnerName_falls_back_to_DisplayName_when_both_names_are_blank()
+    public void BurnerName_does_not_fall_back_to_a_non_sentinel_DisplayName()
     {
+        // The fallback is gone: a blank BurnerName with an ordinary (non-sentinel) legacy
+        // DisplayName must render blank, not the stale legacy name.
         var userId = Guid.NewGuid();
-        var user = MinimalUser(userId);
+        var user = MinimalUser(userId); // DisplayName = "Test", not the GDPR sentinel.
         user.BurnerName = null;
 
         var info = UserInfoFactory.Create(
-            user, [], [], [], NamedProfile(userId, ""), [], [], [], []);
+            user, [], [], [], profile: null, [], [], [], []);
 
-        info.BurnerName.Should().Be("Test");
+        info.BurnerName.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public void BurnerName_resolves_the_sentinel_for_a_freshly_erased_user()
+    {
+        // Mirrors UserRepository.ApplyExpiredDeletionAnonymizationAsync, which now dual-writes
+        // the sentinel into BurnerName directly (nobodies-collective/Humans#1098).
+        var userId = Guid.NewGuid();
+        var user = MinimalUser(userId);
+        user.BurnerName = UserInfo.GdprAnonymizedBurnerName;
+        user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
+
+        var info = UserInfoFactory.Create(
+            user, [], [], [], profile: null, [], [], [], []);
+
+        info.BurnerName.Should().Be(UserInfo.GdprAnonymizedBurnerName);
+    }
+
+    [HumansFact]
+    public void BurnerName_resolves_the_sentinel_for_a_legacy_erased_row()
+    {
+        // Legacy shape from before #1098: erasure only nulled BurnerName and left the sentinel
+        // in DisplayName. Narrow tombstone recognition must still surface it, not blank.
+        var userId = Guid.NewGuid();
+        var user = MinimalUser(userId);
+        user.BurnerName = null;
+        user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
+
+        var info = UserInfoFactory.Create(
+            user, [], [], [], profile: null, [], [], [], []);
+
+        info.BurnerName.Should().Be(UserInfo.GdprAnonymizedBurnerName);
+    }
+
+    // IsActive excludes tombstones (nobodies-collective/Humans#1707) — merged, GDPR-anonymized,
+    // and legacy @merged.local/@deleted.local rows all keep a Profile row but must not read active.
+
+    [HumansFact]
+    public void IsActive_false_for_merged_tombstone()
+    {
+        var userId = Guid.NewGuid();
+        var user = MinimalUser(userId);
+        user.MergedAt = Instant.FromUtc(2026, 1, 1, 0, 0);
+
+        var info = UserInfoFactory.Create(
+            user, [], [], [], NamedProfile(userId, "Merged"), [], [], [], []);
+
+        info.IsActive.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void IsActive_false_for_gdpr_anonymized_tombstone()
+    {
+        var userId = Guid.NewGuid();
+        var user = MinimalUser(userId);
+        user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
+        // The minted tombstone email ApplyExpiredDeletionAnonymizationAsync writes — the
+        // real post-erasure shape, not the user-editable DisplayName sentinel alone.
+        user.Email = $"deleted-{userId:N}@deleted.local";
+
+        var info = UserInfoFactory.Create(
+            user, [], [], [], NamedProfile(userId, "Deleted User"), [], [], [], []);
+
+        info.IsActive.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void IsActive_false_for_legacy_shaped_gdpr_anonymized_tombstone()
+    {
+        // Legacy shape from before #1098: BurnerName null, sentinel only in DisplayName.
+        // Must still classify as a tombstone (and resolve BurnerName to the sentinel).
+        var userId = Guid.NewGuid();
+        var user = MinimalUser(userId);
+        user.BurnerName = null;
+        user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
+
+        var info = UserInfoFactory.Create(
+            user, [], [], [], profile: null, [], [], [], []);
+
+        info.IsActive.Should().BeFalse();
+        info.BurnerName.Should().Be(UserInfo.GdprAnonymizedBurnerName);
+    }
+
+    [HumansFact]
+    public void IsActive_false_for_legacy_local_email_tombstone()
+    {
+        var userId = Guid.NewGuid();
+        var user = MinimalUser(userId);
+        user.Email = "someone@merged.local";
+
+        var info = UserInfoFactory.Create(
+            user, [], [], [], NamedProfile(userId, "Merged"), [], [], [], []);
+
+        info.IsActive.Should().BeFalse();
+    }
+
+    // IsGdprAnonymized recognition (nobodies-collective/Humans#1742) — keyed on the minted
+    // deleted-<id>@deleted.local email or, legacy-only, the complete DisplayName+FirstName+LastName
+    // tombstone, never a user-editable name field alone.
+
+    [HumansFact]
+    public void IsGdprAnonymized_false_for_a_live_member_named_Deleted_User()
+    {
+        // A burner name a member typed themselves must never read as erased.
+        var userId = Guid.NewGuid();
+        var user = MinimalUser(userId);
+        user.BurnerName = "Deleted User";
+        user.DisplayName = "Deleted User";
+        user.FirstName = "Alice";
+        user.LastName = "Smith";
+        user.Email = "alice@example.com";
+
+        var info = UserInfoFactory.Create(
+            user, [], [], [], NamedProfile(userId, "Deleted User"), [], [], [], []);
+
+        info.IsGdprAnonymized.Should().BeFalse();
+        info.IsTombstone.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void IsGdprAnonymized_true_for_a_genuinely_erased_user()
+    {
+        // The minted tombstone email ApplyExpiredDeletionAnonymizationAsync writes.
+        var userId = Guid.NewGuid();
+        var user = MinimalUser(userId);
+        user.Email = $"deleted-{userId:N}@deleted.local";
+
+        var info = UserInfoFactory.Create(
+            user, [], [], [], profile: null, [], [], [], []);
+
+        info.IsGdprAnonymized.Should().BeTrue();
+        info.IsTombstone.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public void IsGdprAnonymized_true_for_the_legacy_name_only_tombstone()
+    {
+        // Rows anonymized before the email scrub joined the erasure path lack the tombstoned
+        // email, so the complete legacy name tombstone (all three columns) must still count.
+        var userId = Guid.NewGuid();
+        var user = MinimalUser(userId);
+        user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
+        user.FirstName = "Deleted";
+        user.LastName = "User";
+        // Erasure clears BurnerName (AnonymizeProfileInternalAsync) and only wrote the sentinel
+        // there from #1098 on, so blank is the pre-scrub shape — and the part a member cannot
+        // reproduce. Set explicitly: it is load-bearing, not incidental.
+        user.BurnerName = string.Empty;
+        user.Email = "legacy-erased@example.com"; // ordinary email — pre-scrub shape
+
+        var info = UserInfoFactory.Create(
+            user, [], [], [], profile: null, [], [], [], []);
+
+        info.IsGdprAnonymized.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public void IsGdprAnonymized_false_for_a_live_member_who_types_the_whole_tombstone_shape()
+    {
+        // nobodies-collective/Humans#1742: DisplayName, FirstName and LastName are all copied
+        // from what a member types, so the legacy arm must not fire on names alone. Their
+        // burner name is populated; a genuinely erased row's is blank.
+        var userId = Guid.NewGuid();
+        var user = MinimalUser(userId);
+        user.BurnerName = "Deleted User";
+        user.DisplayName = "Deleted User";
+        user.FirstName = "Deleted";
+        user.LastName = "User";
+        user.Email = "real.member@example.com";
+
+        var info = UserInfoFactory.Create(
+            user, [], [], [], NamedProfile(userId, "Deleted User"), [], [], [], []);
+
+        info.IsGdprAnonymized.Should().BeFalse();
+        info.IsTombstone.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void IsActive_true_for_ordinary_profiled_non_rejected_row()
+    {
+        var userId = Guid.NewGuid();
+        var user = MinimalUser(userId);
+
+        var info = UserInfoFactory.Create(
+            user, [], [], [], NamedProfile(userId, "Test"), [], [], [], []);
+
+        info.IsActive.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public void IsActive_false_for_rejected_row()
+    {
+        var userId = Guid.NewGuid();
+        var user = MinimalUser(userId);
+        user.State = UserState.Rejected;
+
+        var info = UserInfoFactory.Create(
+            user, [], [], [], NamedProfile(userId, "Test"), [], [], [], []);
+
+        info.IsActive.Should().BeFalse();
     }
 
     private static Profile NamedProfile(Guid userId, string burnerName) => new()

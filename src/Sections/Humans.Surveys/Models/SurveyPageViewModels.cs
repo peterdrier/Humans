@@ -7,8 +7,9 @@ namespace Humans.Surveys.Models;
 // ── Answering wizard (question pages) ───────────────────────────────────────
 
 /// <summary>
-/// One page of the answering wizard, fully resolved to the chosen culture (the view is dumb — the
-/// controller does all <c>LocalizedText</c> resolution). Pages are numbered for the visible subset
+/// One page of the answering wizard, fully resolved to the chosen culture (the view is dumb —
+/// <see cref="SurveyPageViewModelFactory"/> does all <c>LocalizedText</c> resolution, for both the
+/// live path and admin preview, so the two cannot drift). Pages are numbered for the visible subset
 /// (e.g. "Page 2 of 3"), not by the survey's raw page numbers.
 /// </summary>
 internal sealed class SurveyPageViewModel

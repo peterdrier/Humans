@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Xml.Linq;
 using AwesomeAssertions;
+using Humans.Finance.Models;
 using Humans.Finance.Services;
 using NodaTime;
 
@@ -61,6 +62,21 @@ public class SepaPaymentFileBuilderTests
         tx.Element(Ns + "Amt")!.Element(Ns + "InstdAmt")!.Value.Should().Be("12.34");
         tx.Element(Ns + "CdtrAcct")!.Descendants(Ns + "IBAN").Single().Value.Should().Be(AnaIban);
         tx.Element(Ns + "RmtInf")!.Elements(Ns + "Ustrd").Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public void Build_CreationTimestamp_UsesTheRequestsLocalZone()
+    {
+        var request = Request(Ana()) with
+        {
+            CreatedAt = Instant.FromUtc(2026, 8, 24, 22, 30),
+            CreationTimeZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"]
+        };
+
+        var creationTime = Parse(SepaPaymentFileBuilder.Build(request))
+            .Descendants(Ns + "CreDtTm").Single().Value;
+
+        creationTime.Should().Be("2026-08-25T00:30:00");
     }
 
     [HumansFact]

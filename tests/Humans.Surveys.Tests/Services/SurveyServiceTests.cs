@@ -47,12 +47,17 @@ public class SurveyServiceTests
     {
         _repo.GetInvitationsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<SurveyInvitation>());
+        _repo.GetInvitationsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<SurveyInvitation>());
     }
 
     private SurveyService CreateService(ILogger<SurveyService>? logger = null) => new(
         _repo, _audit, _clock, logger ?? NullLogger<SurveyService>.Instance,
         _teamService, _userService, _ticketService, _shiftView,
         _userEmailService, _emailService, _emailMessages, _tokenProvider, _translation, _fileStorage);
+
+    /// <summary>A Board/Admin viewer: may edit any survey, so ownership never shadows what a test is pinning.</summary>
+    private static SurveyViewer Board(Guid userId) => new(userId, IsBoardOrAdmin: true);
 
     private static LocalizedText L(string en) => new(new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = en });
 
@@ -265,7 +270,7 @@ public class SurveyServiceTests
             InformationImages: []);
 
         await CreateService().UpdateAsync(
-            survey.Id, Input(updated), Guid.NewGuid(), TestContext.Current.CancellationToken);
+            survey.Id, Input(updated), Board(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
         await _repo.Received(1).UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
         await _fileStorage.DidNotReceive().DeleteAsync(
@@ -472,9 +477,10 @@ public class SurveyServiceTests
             audience, teamId, loggedInSince, null, []);
 
     /// <summary>Entity matching <see cref="Input"/> field-for-field, so an unchanged update diffs empty.</summary>
-    private static Survey ExistingSurveyMatchingInput(Guid id) => new()
+    private static Survey ExistingSurveyMatchingInput(Guid id, Guid? createdBy = null) => new()
     {
         Id = id,
+        CreatedByUserId = createdBy ?? Guid.Empty,
         Title = L("Title"),
         Intro = L("Intro"),
         ThankYou = L("Thanks"),
@@ -485,6 +491,38 @@ public class SurveyServiceTests
         Status = SurveyStatus.Draft,
         Questions = [],
     };
+
+    [HumansFact]
+    public async Task UpdateAsync_refuses_an_edit_by_someone_who_is_neither_the_author_nor_board()
+    {
+        // The controller's resource handler already says this before rendering a button; the
+        // service is the enforcing copy, so a caller that never went through the page is refused too.
+        var id = Guid.NewGuid();
+        var existing = ExistingSurveyMatchingInput(id, Guid.NewGuid());
+        _repo.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns(Task.FromResult<Survey?>(existing));
+
+        var act = async () => await CreateService().UpdateAsync(
+            id, Input(), new SurveyViewer(Guid.NewGuid(), IsBoardOrAdmin: false),
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UpdateAsync_lets_the_author_edit_their_own_survey()
+    {
+        var id = Guid.NewGuid();
+        var author = Guid.NewGuid();
+        var existing = ExistingSurveyMatchingInput(id, author);
+        _repo.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns(Task.FromResult<Survey?>(existing));
+
+        await CreateService().UpdateAsync(
+            id, Input(), new SurveyViewer(author, IsBoardOrAdmin: false),
+            TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+    }
 
     [HumansFact]
     public async Task UpdateAsync_audit_names_the_changed_fields()
@@ -499,7 +537,7 @@ public class SurveyServiceTests
             "en", true, null, null, null, null, null, "town-hall",
             [Q("How was it?", SurveyQuestionType.ShortText, page: 1, order: 1)]);
 
-        await CreateService().UpdateAsync(id, input, actor);
+        await CreateService().UpdateAsync(id, input, Board(actor));
 
         await _audit.Received(1).LogAsync(
             AuditAction.SurveyUpdated, "Survey", id,
@@ -539,7 +577,7 @@ public class SurveyServiceTests
             L("Rate it"), LocalizedText.Empty, false, 1, 5,
             L("Poor"), L("Great"), null, []));
 
-        await CreateService().UpdateAsync(id, input, Guid.NewGuid());
+        await CreateService().UpdateAsync(id, input, Board(Guid.NewGuid()));
 
         await _audit.Received(1).LogAsync(
             AuditAction.SurveyUpdated, "Survey", id,
@@ -575,7 +613,7 @@ public class SurveyServiceTests
             columns: [Opt("morning", "Morning", 1)],
             rows: [new GridRowInput("monday", L("Monday"))]));
 
-        await CreateService().UpdateAsync(id, input, Guid.NewGuid());
+        await CreateService().UpdateAsync(id, input, Board(Guid.NewGuid()));
 
         await _audit.Received(1).LogAsync(
             AuditAction.SurveyUpdated, "Survey", id,
@@ -589,7 +627,7 @@ public class SurveyServiceTests
         _repo.GetByIdAsync(id, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<Survey?>(ExistingSurveyMatchingInput(id)));
 
-        await CreateService().UpdateAsync(id, Input(), Guid.NewGuid());
+        await CreateService().UpdateAsync(id, Input(), Board(Guid.NewGuid()));
 
         await _audit.Received(1).LogAsync(
             AuditAction.SurveyUpdated, "Survey", id, "Updated survey", Arg.Any<Guid>());
@@ -614,7 +652,7 @@ public class SurveyServiceTests
     [InlineData("ANSWER")]
     public async Task UpdateAsync_rejects_reserved_slug_and_does_not_persist(string slug)
     {
-        var act = async () => await CreateService().UpdateAsync(Guid.NewGuid(), InputWithSlug(slug), Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var act = async () => await CreateService().UpdateAsync(Guid.NewGuid(), InputWithSlug(slug), Board(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
@@ -649,7 +687,7 @@ public class SurveyServiceTests
     {
         var act = async () => await CreateService().UpdateAsync(
             Guid.NewGuid(), InputWithAudience(SurveyAudienceType.LoggedInSince),
-            Guid.NewGuid(), TestContext.Current.CancellationToken);
+            Board(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*cutoff date is required*");
@@ -685,7 +723,7 @@ public class SurveyServiceTests
             "en", false, null, null, null, null, null, null,
             new List<QuestionInput> { q1, q2 });
 
-        var act = async () => await CreateService().UpdateAsync(Guid.NewGuid(), input, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var act = async () => await CreateService().UpdateAsync(Guid.NewGuid(), input, Board(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
@@ -749,7 +787,7 @@ public class SurveyServiceTests
         StubTranslationAsMarker();
 
         // es is missing prompt+label (2); de is missing title+prompt+label (3).
-        var filled = await CreateService().PreFillTranslationsAsync(survey.Id, ["en", "es", "de"], Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var filled = await CreateService().PreFillTranslationsAsync(survey.Id, ["en", "es", "de"], Board(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
         filled.Should().Be(5);
         captured.Should().NotBeNull();
@@ -800,7 +838,7 @@ public class SurveyServiceTests
         StubTranslationAsMarker();
 
         var filled = await CreateService().PreFillTranslationsAsync(
-            survey.Id, ["en", "es"], Guid.NewGuid(), TestContext.Current.CancellationToken);
+            survey.Id, ["en", "es"], Board(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
         filled.Should().Be(4); // survey title + question prompt + column label + row label
         captured!.Questions.Single().GridRows!.Single().Label.Values["es"].Should().Be("es:Monday");
@@ -813,7 +851,7 @@ public class SurveyServiceTests
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
         // Only target is the source culture itself → nothing to fill.
-        var filled = await CreateService().PreFillTranslationsAsync(survey.Id, ["en"], Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var filled = await CreateService().PreFillTranslationsAsync(survey.Id, ["en"], Board(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
         filled.Should().Be(0);
         await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
@@ -834,7 +872,7 @@ public class SurveyServiceTests
         StubTranslationAsMarker();
 
         var filled = await CreateService().PreFillTranslationsAsync(
-            survey.Id, ["en", "fr"], Guid.NewGuid(), TestContext.Current.CancellationToken);
+            survey.Id, ["en", "fr"], Board(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
         filled.Should().Be(3); // title + invitation subject + invitation message
         captured!.InvitationEmailSubject.Values["fr"].Should().Be("fr:Choose a date");
@@ -934,7 +972,7 @@ public class SurveyServiceTests
     [HumansFact]
     public async Task PreviewAudienceCountAsync_does_not_count_a_survivor_whose_archived_id_was_already_invited()
     {
-        // #1704: invitations are never re-pointed on merge. The team lists the survivor's live
+        // peterdrier/Humans#1704: invitations are never re-pointed on merge. The team lists the survivor's live
         // id; the invitation sits under the archived one. Same human, not a net-new invitee.
         var teamId = Guid.NewGuid();
         Guid archived = Guid.NewGuid(), survivor = Guid.NewGuid(), newA = Guid.NewGuid();
@@ -952,7 +990,7 @@ public class SurveyServiceTests
         count.Should().Be(1);
     }
 
-    // ── issue #1065: an unhandled audience type resolves to nobody, warned not silent ──
+    // ── nobodies-collective/Humans#1065: an unhandled audience type resolves to nobody, warned not silent ──
 
     [HumansFact]
     public async Task PreviewAudienceCountAsync_unknown_audience_type_warns_and_resolves_to_nobody()
@@ -2765,7 +2803,7 @@ public class SurveyServiceTests
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
-    // ── Results aggregation (Task 6.1) ─────────────────────────────────────────
+    // ── Results aggregation ────────────────────────────────────────────────────
 
     private static SurveyQuestion ChoiceQuestion(Guid id, Guid surveyId, SurveyQuestionType type, int order, params (string Value, string Label, int Order)[] opts) => new()
     {
@@ -3287,7 +3325,7 @@ public class SurveyServiceTests
         result.Funnel.SlugFinished.Should().Be(2);   // two anonymous slug responses
     }
 
-    // ── Raw per-response export (Task 6.2) ─────────────────────────────────────
+    // ── Raw per-response export ────────────────────────────────────────────────
 
     [HumansFact]
     public async Task GetResponseExportAsync_returns_null_when_survey_missing()
@@ -3509,7 +3547,7 @@ public class SurveyServiceTests
         export!.Rows.Select(r => r.ResponseId).Should().ContainInOrder(early.Id, late.Id);
     }
 
-    // ── GDPR export contributor (Task 7.1) ─────────────────────────────────────
+    // ── GDPR export contributor ────────────────────────────────────────────────
 
     [HumansFact]
     public async Task ContributeForUserAsync_returns_survey_responses_slice_with_title_and_answers()
@@ -3626,6 +3664,61 @@ public class SurveyServiceTests
         // The count comes off the Questions graph, so the repository query has to load it —
         // GetSurveysAuthoredByAsync includes Questions for exactly this projection.
         json.Should().Contain("\"QuestionCount\":2");
+    }
+
+    [HumansFact]
+    public async Task ContributeForUserAsync_exports_the_invitation_ledger_even_with_no_response_of_their_own()
+    {
+        // The case the responses slice cannot cover: invited, answered under completion tracking
+        // (so the response carries no UserId), and the ledger row is the only record of theirs.
+        var userId = Guid.NewGuid();
+        _repo.GetIdentifiedResponsesForUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<SurveyResponse>());
+        NoAuthoredSurveys(userId);
+
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        survey.Title = L("Camp Debrief");
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _repo.GetInvitationsForUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<SurveyInvitation>
+            {
+                new()
+                {
+                    Id = Guid.NewGuid(),
+                    SurveyId = survey.Id,
+                    UserId = userId,
+                    CreatedAt = Instant.FromUtc(2026, 6, 1, 9, 0),
+                    SentAt = Instant.FromUtc(2026, 6, 1, 9, 5),
+                    ReminderSentAt = Instant.FromUtc(2026, 6, 8, 9, 0),
+                    Started = true,
+                    Completed = true,
+                }
+            });
+
+        var slices = await CreateService().ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
+
+        var slice = slices.Single(s => string.Equals(
+            s.SectionName, GdprExportSections.SurveyInvitations, StringComparison.Ordinal));
+        var json = System.Text.Json.JsonSerializer.Serialize(slice.Data);
+        json.Should().Contain("Camp Debrief");
+        json.Should().Contain("2026-06-01T09:05");
+        json.Should().Contain("2026-06-08T09:00");
+        json.Should().Contain("\"Completed\":true");
+    }
+
+    [HumansFact]
+    public async Task ContributeForUserAsync_declares_erasure_for_every_key_it_exports()
+    {
+        var userId = Guid.NewGuid();
+        _repo.GetIdentifiedResponsesForUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<SurveyResponse>());
+        NoAuthoredSurveys(userId);
+
+        var service = CreateService();
+        var slices = await service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
+
+        slices.Select(s => s.SectionName)
+            .Should().BeSubsetOf(service.ErasureDeclaration.Keys);
     }
 
     [HumansFact]
@@ -3749,7 +3842,7 @@ public class SurveyServiceTests
         var act = async () => await CreateService().UpdateAsync(
             survey.Id,
             Input() with { IsAsociadoVote = false },
-            Guid.NewGuid(),
+            Board(Guid.NewGuid()),
             TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
@@ -3855,7 +3948,7 @@ public class SurveyServiceTests
             options: [Opt("b", "B", 1), Opt("a", "A", 2), Opt("c", "C", 3)]);
 
         var act = async () => await CreateService().UpdateAsync(
-            survey.Id, Input(changed), Guid.NewGuid(), TestContext.Current.CancellationToken);
+            survey.Id, Input(changed), Board(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*cannot change after the first saved answer*");
@@ -3878,7 +3971,7 @@ public class SurveyServiceTests
         var actor = Guid.NewGuid();
 
         await CreateService().SetRankedAvailabilityAsync(
-            survey.Id, questionId, ["c", "unknown"], actor, TestContext.Current.CancellationToken);
+            survey.Id, questionId, ["c", "unknown"], Board(actor), TestContext.Current.CancellationToken);
 
         captured!.Questions.Single().RankedUnavailableOptionValues.Should().Equal("c");
         await _audit.Received(1).LogAsync(
@@ -3900,7 +3993,7 @@ public class SurveyServiceTests
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
         var act = async () => await CreateService().SetRankedAvailabilityAsync(
-            survey.Id, questionId, ["b"], Guid.NewGuid(), TestContext.Current.CancellationToken);
+            survey.Id, questionId, ["b"], Board(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*only change after the vote closes*");
@@ -4102,6 +4195,25 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task ApproveAndSendAsync_leaves_the_survey_pending_when_the_audience_resolves_to_nobody()
+    {
+        // Well-formed configuration — a Team audience carrying a team id — but the team is gone,
+        // so there is nobody to ask. Approving would open a survey that invites no one and put it
+        // out of the Board's reach, so this fails in the queue like a missing audience does.
+        var teamId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.PendingApproval, SurveyAudienceType.Team, teamId);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns((TeamInfo?)null);
+
+        var act = async () => await CreateService().ApproveAndSendAsync(
+            survey.Id, new SurveyViewer(Guid.NewGuid(), IsBoardOrAdmin: true), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.DidNotReceive().ApproveAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        survey.Status.Should().Be(SurveyStatus.PendingApproval);
+    }
+
+    [HumansFact]
     public async Task RejectAsync_returns_a_pending_survey_to_draft_with_the_note()
     {
         var authorId = Guid.NewGuid();
@@ -4208,6 +4320,20 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task CloseAsync_throws_for_a_survey_pending_approval()
+    {
+        // Closed reopens through OpenAsync, so closing a pending submission would walk it out of
+        // the approval gate: PendingApproval → Closed → Open, no approval recorded, nobody invited.
+        var id = Guid.NewGuid();
+        _repo.GetStatusAsync(id, Arg.Any<CancellationToken>()).Returns(SurveyStatus.PendingApproval);
+
+        var act = async () => await CreateService().CloseAsync(id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.DidNotReceive().SetStatusAsync(Arg.Any<Guid>(), Arg.Any<SurveyStatus>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task GetAdminSummariesAsync_scopes_to_the_authors_own_surveys()
     {
         var authorId = Guid.NewGuid();
@@ -4266,7 +4392,7 @@ public class SurveyServiceTests
     [HumansFact]
     public async Task IsEligibleAsociadoAsync_rejects_a_stored_id_that_resolves_to_another_user()
     {
-        // #1704: every caller passes an id a draft, invitation or response is stored under. An
+        // peterdrier/Humans#1704: every caller passes an id a draft, invitation or response is stored under. An
         // archived id resolves to an eligible survivor, but answering under it would give one
         // Asociado two ballots.
         var archived = Guid.NewGuid();

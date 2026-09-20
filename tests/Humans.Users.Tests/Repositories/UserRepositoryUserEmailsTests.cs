@@ -109,10 +109,9 @@ public sealed class UserRepositoryUserEmailTests : IDisposable
         reloadedB.GoogleEmailStatus.Should().Be(GoogleEmailStatus.Valid);
     }
 
-    // Note: GetUserEmailsByEmailsAsync's Gmail-alias fallback (#1101) is not
-    // unit-tested here — it uses EF.Functions.ILike, which is Npgsql-specific
-    // and does not evaluate against the InMemory provider (same exclusion as
-    // GetByEmailOrAlternateAsync above). Its identity key (GmailAliasEmailComparer)
+    // Note: GetUserEmailsByEmailsAsync's Gmail-alias fallback (nobodies-collective/Humans#1101)
+    // is not unit-tested here — it uses EF.Functions.ILike, which is Npgsql-specific
+    // and does not evaluate against the InMemory provider. Its identity key (GmailAliasEmailComparer)
     // is covered in EmailNormalizationTests, and the consumer lookups that must
     // agree with it in GoogleGroupSyncServiceTests / GoogleWorkspaceSyncServiceTests.
 

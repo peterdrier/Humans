@@ -27,8 +27,12 @@ internal sealed class EmailProvisioningService(
         string emailPrefix,
         Guid provisionedByUserId)
     {
+        // userId comes from an admin/coordinator form, so an archived id must never reach Workspace
+        // provisioning. Two hazards: GetUserInfoAsync resolves merge chains forward (a merged-away id
+        // returns the survivor, whose Id differs from userId), and a GDPR-deleted/legacy tombstone
+        // returns itself but keeps an anonymized (non-blank) name that would pass the checks below.
         var user = await userService.GetUserInfoAsync(userId);
-        if (user is null)
+        if (user is not { IsActive: true } || user.Id != userId)
             return new EmailProvisioningResult(false, ErrorMessage: "User not found.");
 
         var sanitizedPrefix = SanitizeEmailPrefix(emailPrefix);

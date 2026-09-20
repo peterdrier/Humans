@@ -123,6 +123,7 @@ public class ProfileViewControllerPopoverTests
         var user = new User
         {
             Id = id,
+            BurnerName = "Imported Human",
             DisplayName = "Imported Human",
             Email = "stale-legacy@example.com",
             PreferredLanguage = "es",
@@ -158,6 +159,7 @@ public class ProfileViewControllerPopoverTests
         var user = new User
         {
             Id = id,
+            BurnerName = "Active Human",
             DisplayName = "Active Human",
             Email = "active@example.com",
             PreferredLanguage = "en",
@@ -230,7 +232,7 @@ public class ProfileViewControllerPopoverTests
     public async Task Popover_ActiveViewer_CanSeeSuspendedTargetsBasicIdentity(UserState targetState)
     {
         var id = Guid.NewGuid();
-        var user = new User { Id = id, DisplayName = "Suspended Human", State = targetState };
+        var user = new User { Id = id, BurnerName = "Suspended Human", DisplayName = "Suspended Human", State = targetState };
         var profile = new Profile
         {
             Id = Guid.NewGuid(),
