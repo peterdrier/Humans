@@ -1,0 +1,14 @@
+[Unit]
+Description=Humans daily Codex tech-debt runner
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# systemd user units start with a minimal PATH, same problem as cron.
+# Adjust this to wherever dotnet, codex, gh and git actually live on your
+# machine (`which dotnet codex gh git` as the user the timer runs as).
+Environment=PATH=/usr/bin:/bin:/usr/local/bin:%h/.dotnet:%h/.local/bin
+ExecStart=%h/.humans-debt-runner/clone/.codex/cron/run-daily-debt.sh
+# Belt-and-suspenders on top of the script's own `timeout` cap.
+TimeoutStartSec=3h

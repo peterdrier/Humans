@@ -1,0 +1,17 @@
+[Unit]
+Description=Run humans-debt.service nightly
+
+[Timer]
+# 02:00 local time — a quiet overnight hour on an idle machine. Change this
+# to whatever's quiet on your Nook, then `systemctl --user daemon-reload`.
+OnCalendar=*-*-* 02:00:00
+# Spread out over 20 minutes so this doesn't fire at the exact same instant
+# as anything else scheduled on the box.
+RandomizedDelaySec=20min
+# If the machine was off/asleep at 02:00, run on next boot instead of
+# waiting for tomorrow's 02:00.
+Persistent=true
+Unit=humans-debt.service
+
+[Install]
+WantedBy=timers.target
