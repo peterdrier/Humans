@@ -41,11 +41,16 @@ public static class SanitizedMarkdownRenderer
         else
         {
             // Images may only reference https:// URLs. This blocks data:/http:/javascript:
-            // (and any other scheme) on <img src> specifically, without touching the broader
-            // http/https/mailto allowance FilterUrl leaves for <a href>.
+            // (and any other scheme) on <img src> and <input type="image" src> (the allowed
+            // "input" tag's own image-fetching form, kept for task-list checkboxes) specifically,
+            // without touching the broader http/https/mailto allowance FilterUrl leaves for <a href>.
             sanitizer.FilterUrl += (_, e) =>
             {
-                if (!string.Equals(e.Tag.TagName, "IMG", StringComparison.OrdinalIgnoreCase))
+                var isImageSource = string.Equals(e.Tag.TagName, "IMG", StringComparison.OrdinalIgnoreCase)
+                    || (string.Equals(e.Tag.TagName, "INPUT", StringComparison.OrdinalIgnoreCase)
+                        && string.Equals(e.Tag.GetAttribute("type"), "image", StringComparison.OrdinalIgnoreCase));
+
+                if (!isImageSource)
                 {
                     return;
                 }

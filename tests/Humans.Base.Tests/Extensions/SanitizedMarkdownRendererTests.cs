@@ -95,4 +95,13 @@ public sealed class SanitizedMarkdownRendererTests
         html.Should().NotContain("style=");
         html.Should().NotContain("tracker.example.com");
     }
+
+    [HumansFact]
+    public void Render_strips_http_image_source_on_input_type_image()
+    {
+        var html = SanitizedMarkdownRenderer.Render(
+            "<input type=\"image\" src=\"http://tracker.example.com/pixel.png\">");
+
+        html.Should().NotContain("tracker.example.com");
+    }
 }
