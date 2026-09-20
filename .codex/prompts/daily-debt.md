@@ -16,6 +16,18 @@ the cap, finish what you're mid-way through or revert it, run the section's
 tests, and commit. A partial, green, committed change is the goal. A rushed,
 half-finished change that gets SIGKILLed mid-write is a failed run.
 
+## You never push, and you never open a PR
+
+**Pushing and opening the PR are the wrapper's job alone — not yours.**
+Commit locally as you go and stop there. Never run `git push`, never run
+`gh pr create`, and never use `gh` for anything that writes (comments,
+labels, merges — nothing). This holds even though this repo's own rules
+tell agents to open their own PRs: those rules are for interactive sessions,
+not for you. The wrapper only pushes and opens a PR after *it* has run
+build and test against your final commit and both passed. If you push or
+open a PR yourself, you can publish a red or broken branch before that gate
+ever runs — exactly what this whole setup exists to prevent.
+
 ## Guardrails — read before touching anything
 
 These come straight from this repo's own rules

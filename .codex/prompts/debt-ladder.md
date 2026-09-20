@@ -15,9 +15,10 @@ surface needs Peter's approval (skip, don't add it), one section/theme per
 commit, six cultures, migrations only via `dotnet ef migrations add`, never
 touch `NoDestructiveMigrationOps.baseline.txt` or a `[DontFix]` class.
 
-Ledger rows carry no numeric id — identify an item in the PR body by its
-`Docs/debt.yml` / `debt-ledger.yml` file + the first ~8 words of its `what:`
-text, or by `file:line` for a baseline/props entry.
+Every ledger row carries a permanent `id:` (`memory/process/debt-ledger-additions.md`). Identify
+an item by its id everywhere — in the PR body, in commit messages, in this file's seed lists — and
+by `file:line` only for a baseline/props entry, which has no ledger row. The PR body **must** list
+the ids it closed.
 
 **Seed lists below are dated 2026-09-20** (from a full-corpus audit). Verify
 each is still true before touching it — code moves fast and a seed item that's
@@ -139,9 +140,12 @@ bash docs/scripts/freshness-checks/dependency-graph.sh   # reproduces the false 
 ```
 Then, in the *same* PR if time allows (same theme: "doc freshness"), close a
 batch of the stale-doc rows themselves — they're independent one-line text
-fixes, safe to batch because none touch `src/`:
+fixes, safe to batch because none touch `src/`. The cluster is linked by
+`root: CENTRAL-57` — grep that directly rather than the word "freshness",
+which also matches unrelated Gdpr/Tickets ledger rows and misses the linked
+Development ledger row:
 ```
-grep -rln "root:.*doc-freshness\|freshness" docs/architecture/debt-ledger.yml src/Sections/*/Docs/debt.yml
+grep -rln "root: CENTRAL-57" docs/architecture/debt-ledger.yml src/Sections/*/Docs/debt.yml
 ```
 Seed instances (2026-09-20, verify first): `docs/guide/Glossary.md` (no
 "assembly vote" entry), `dependency-graph.md` (duplicate `classDef monitor`;
@@ -168,10 +172,14 @@ done
 ```
 Seed: `tests/Humans.Governance.Tests` (zero controller tests — closes both
 Governance controller-authz rows in one file), `tests/Humans.Containers.Tests`
-(zero controller tests).
+(zero controller tests). This cluster is linked by `root: CENTRAL-56` — once a
+section's test skeleton lands, close the rows this grep finds for it:
+```
+grep -rln "root: CENTRAL-56" docs/architecture/debt-ledger.yml src/Sections/*/Docs/debt.yml
+```
 
 **Drained when:** the freshness script fix has landed, root-A's grep returns
-no live rows, and root-B's `for` loop above prints nothing.
+no live rows, and root-B's `for` loop and grep above both print nothing.
 
 **Done-check:** root A — docs-only, no build; rerun the freshness script and
 confirm it no longer dies under `mawk`. Root B — `dotnet test tests/Humans.<Section>.Tests -v quiet`.

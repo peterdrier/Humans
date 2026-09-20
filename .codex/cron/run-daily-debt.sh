@@ -51,8 +51,10 @@ main() {
   script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
   local env_file="$script_dir/debt-runner.env"
   if [[ -f "$env_file" ]]; then
+    set -a
     # shellcheck source=/dev/null
     source "$env_file"
+    set +a
   fi
 
   REPO_URL="${REPO_URL:-}"                                    # git remote to clone/push, e.g. git@github.com:peterdrier/Humans.git
@@ -150,8 +152,29 @@ main() {
   # ---- branch: one per calendar day ---------------------------------------
   local branch="$BRANCH_PREFIX/$run_date"
   if git -C "$WORK_DIR" ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
-    exit_reason="skip-already-ran-today"
-    log "branch $branch already exists on origin — a run already completed today; skipping"
+    # Branch already pushed today. If it already has an open PR, today's work
+    # is done — skip. If not (a prior run pushed but `gh pr create` failed),
+    # the work is invisible until a PR exists for it — open one now instead
+    # of silently skipping every remaining run today.
+    local existing_pr
+    existing_pr="$(cd "$WORK_DIR" && gh pr list --head "$branch" --state open --json url --jq '.[0].url // empty' 2>>"$log_file")"
+    if [[ -n "$existing_pr" ]]; then
+      exit_reason="skip-already-ran-today"
+      log "branch $branch already exists on origin with open PR $existing_pr — a run already completed today; skipping"
+      write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
+      exit 0
+    fi
+    log "branch $branch exists on origin but has no open PR — opening one now instead of skipping"
+    if pr_url="$(open_pr_for_branch "$WORK_DIR" "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file")"; then
+      exit_reason="pushed"
+      log "opened PR for pre-existing branch: $pr_url"
+    else
+      exit_reason="pr-create-failed"
+      pr_url="none"
+      log "ERROR: gh pr create failed for pre-existing branch $branch. See $log_file"
+      write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
+      exit 1
+    fi
     write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
     exit 0
   fi
@@ -184,7 +207,27 @@ main() {
   local head_after
   head_after="$(git -C "$WORK_DIR" rev-parse HEAD)"
 
+  # ---- refuse to test or push a tree that isn't what would be pushed --------
+  # `git push` only ever sends committed history. If codex was SIGINT'd mid-edit
+  # (timeout cap) it can leave uncommitted changes in the working tree; testing
+  # that tree and then pushing head_after would advertise a green gate for code
+  # that was never actually tested. Check this before the no-op comparison below,
+  # since a dirty tree can coexist with head_before == head_after too.
+  if [[ -n "$(git -C "$WORK_DIR" status --porcelain)" ]]; then
+    exit_reason="dirty-tree-after-codex"
+    log "ERROR: working tree has uncommitted changes after codex exited (status $codex_exit)."
+    log "       Refusing to build/test/push a tree that is not what would be pushed."
+    write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
+    exit 1
+  fi
+
   if [[ "$head_before" == "$head_after" ]]; then
+    if [[ "$codex_exit" -ne 0 && "$codex_exit" -ne 124 ]]; then
+      exit_reason="codex-failed"
+      log "ERROR: codex exited $codex_exit with no commits — not the accepted timeout path. Treating as a failure, not a no-op."
+      write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
+      exit 1
+    fi
     exit_reason="no-op"
     log "no-op: codex made no commits"
     write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
@@ -228,29 +271,10 @@ main() {
   log "pushed $branch to origin"
 
   # ---- open the PR, ready for review --------------------------------------
-  local pr_title="Daily tech-debt sweep — $run_date"
-  local pr_body_file
-  pr_body_file="$(mktemp)"
-  if [[ -f "$WORK_DIR/.github/pull_request_template.md" ]]; then
-    cat "$WORK_DIR/.github/pull_request_template.md" >"$pr_body_file"
-    printf '\n' >>"$pr_body_file"
-  fi
-  {
-    echo "## Automated daily tech-debt run"
-    echo
-    echo "Unattended overnight run. Build and tests passed before this PR was opened."
-    echo
-    echo "Commits:"
-    git -C "$WORK_DIR" log --pretty='- %s' "origin/$GH_BASE_BRANCH..$branch"
-  } >>"$pr_body_file"
-
-  if pr_url="$(cd "$WORK_DIR" && gh pr create --base "$GH_BASE_BRANCH" --head "$branch" \
-      --title "$pr_title" --body-file "$pr_body_file" 2>>"$log_file")"; then
-    rm -f "$pr_body_file"
+  if pr_url="$(open_pr_for_branch "$WORK_DIR" "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file")"; then
     exit_reason="pushed"
     log "opened PR: $pr_url"
   else
-    rm -f "$pr_body_file"
     exit_reason="pr-create-failed"
     pr_url="none"
     log "ERROR: gh pr create failed — branch is pushed but no PR was opened. See $log_file"
@@ -259,6 +283,39 @@ main() {
   fi
 
   write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
+}
+
+# Opens the daily-debt PR for an already-pushed branch. Prints the PR URL on
+# success. Shared by the normal push-then-PR flow and by the "branch already
+# exists on origin but has no open PR" recovery path, so a transient
+# `gh pr create` failure never leaves a pushed branch permanently invisible.
+open_pr_for_branch() {
+  local work_dir="$1" branch="$2" base_branch="$3" run_date="$4" log_file="$5"
+  local pr_title="Daily tech-debt sweep — $run_date"
+  local pr_body_file
+  pr_body_file="$(mktemp)"
+  if [[ -f "$work_dir/.github/pull_request_template.md" ]]; then
+    cat "$work_dir/.github/pull_request_template.md" >"$pr_body_file"
+    printf '\n' >>"$pr_body_file"
+  fi
+  {
+    echo "## Automated daily tech-debt run"
+    echo
+    echo "Unattended overnight run. Build and tests passed before this PR was opened."
+    echo
+    echo "Commits:"
+    git -C "$work_dir" log --pretty='- %s' "origin/$base_branch..$branch"
+  } >>"$pr_body_file"
+
+  local result
+  if result="$(cd "$work_dir" && gh pr create --base "$base_branch" --head "$branch" \
+      --title "$pr_title" --body-file "$pr_body_file" 2>>"$log_file")"; then
+    rm -f "$pr_body_file"
+    echo "$result"
+    return 0
+  fi
+  rm -f "$pr_body_file"
+  return 1
 }
 
 log() {

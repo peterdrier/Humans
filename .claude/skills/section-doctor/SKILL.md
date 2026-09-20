@@ -259,8 +259,10 @@ verdict. Anything short of that is *cannot tell*, which is a normal outcome and 
 unattended run that closes rows on plausibility is worse than one that never closes any.
 
 Log every verdict in the run file under `## Debt verified`, one line per row:
-`<id> — closed|narrowed|unverified — <reason in a phrase> — <file:line or test name>`. Prose and
-cites only: no counts, no totals (the prose gate refuses them).
+`<id> — still-true|closed|narrowed|unverified — <reason in a phrase> — <file:line or test name>`.
+`still-true` is a positive confirmation ("I checked and it is still a real defect") and is
+distinct from `unverified` ("I could not tell") — never conflate the two. Prose and cites only:
+no counts, no totals (the prose gate refuses them).
 
 **Ids are permanent.** Rows carry stable ids under a `next_id:` header
 (`memory/process/debt-ledger-additions.md`). Never renumber, never recycle, never lower `next_id:` —
