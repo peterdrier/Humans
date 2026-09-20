@@ -31,8 +31,9 @@ internal static class EmailInlineStyler
 
     /// <summary>
     /// Parses <paramref name="html"/> as a fragment and stamps a <c>style</c> attribute onto
-    /// every element in <see cref="TagStyles"/>, appending to any style the element already
-    /// carries. Returns the original string unchanged if it is empty or fails to parse.
+    /// every element in <see cref="TagStyles"/>, prepending the palette to any style the element
+    /// already carries so the element's own declarations still win. Returns the original string
+    /// unchanged if it is empty or fails to parse.
     /// </summary>
     public static string Apply(string html)
     {
@@ -53,7 +54,9 @@ internal static class EmailInlineStyler
             foreach (var element in document.Body.QuerySelectorAll(tag))
             {
                 var existing = element.GetAttribute("style");
-                element.SetAttribute("style", string.IsNullOrEmpty(existing) ? style : $"{existing.TrimEnd(';')};{style}");
+                // Palette first, the element's own style last: later declarations win in CSS, so a
+                // template that already sets (say) a button's colour keeps it.
+                element.SetAttribute("style", string.IsNullOrEmpty(existing) ? style : $"{style}{existing}");
             }
         }
 

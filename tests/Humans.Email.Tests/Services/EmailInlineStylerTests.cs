@@ -21,14 +21,16 @@ public sealed class EmailInlineStylerTests
     }
 
     [HumansFact]
-    public void Apply_preserves_and_appends_to_an_existing_style_attribute()
+    public void Apply_keeps_an_existing_style_attribute_winning_over_the_palette()
     {
         var html = "<p style=\"color:red;\">Hi</p>";
 
         var result = EmailInlineStyler.Apply(html);
 
-        result.Should().Contain("color:red;");
         result.Should().Contain("margin:0 0 12px 0;");
+        // The element's own declarations must come last so they win: a template that already
+        // colours (say) a CTA button keeps its colour.
+        result.Should().MatchRegex("style=\"[^\"]*color:#3d2b1f;[^\"]*color:red;");
     }
 
     [HumansFact]
