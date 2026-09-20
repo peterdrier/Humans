@@ -313,6 +313,47 @@ public class EmailOutboxProcessorTests : IDisposable
             Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansFact(Timeout = 10000)]
+    public async Task ProcessQueuedAsync_TalliesEachOutcomeUnderItsOwnClockRead_NotBatchStartTime()
+    {
+        // Batch starts just before midnight UTC; the throttle delay between sends
+        // pushes later messages in the same batch past midnight. Each outcome must
+        // be tallied under the day it actually landed on, not the batch's start
+        // day (Codex #1758 finding).
+        var clock = new FakeClock(Instant.FromUtc(2026, 3, 14, 23, 59, 0))
+        {
+            AutoAdvance = Duration.FromSeconds(40)
+        };
+        var outboxService = new EmailOutboxService(_repo, _settingsStore, _settings, clock);
+        var processor = new EmailOutboxProcessor(
+            _repo, outboxService, _campaignService, _transport, _metrics, _meters, clock, _settings,
+            NullLogger<EmailOutboxProcessor>.Instance);
+
+        var message1 = new EmailOutboxMessage
+        {
+            Id = Guid.NewGuid(), RecipientEmail = "a@example.com", Subject = "Subject",
+            HtmlBody = "<p>Hi</p>", TemplateName = "test_template", Status = EmailOutboxStatus.Queued,
+            CreatedAt = Instant.FromUtc(2026, 3, 14, 23, 0, 0)
+        };
+        var message2 = new EmailOutboxMessage
+        {
+            Id = Guid.NewGuid(), RecipientEmail = "b@example.com", Subject = "Subject",
+            HtmlBody = "<p>Hi</p>", TemplateName = "test_template", Status = EmailOutboxStatus.Queued,
+            CreatedAt = Instant.FromUtc(2026, 3, 14, 23, 0, 0)
+        };
+        await _dbContext.EmailOutboxMessages.AddRangeAsync(
+            [message1, message2], Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await processor.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var rows = await FreshCountsQuery().OrderBy(r => r.Date).ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        rows.Should().HaveCount(2);
+        rows[0].Date.Should().Be(new LocalDate(2026, 3, 14));
+        rows[1].Date.Should().Be(new LocalDate(2026, 3, 15));
+        rows.Sum(r => r.SentCount).Should().Be(2);
+    }
+
     [HumansTheory]
     [InlineData("skipped@localhost")]
     [InlineData("skipped@ticketstub.local")]

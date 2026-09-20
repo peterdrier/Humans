@@ -99,9 +99,10 @@ internal sealed class EmailOutboxProcessor(
                     cancellationToken);
 
                 // Success — mark as sent BEFORE throttle delay to avoid re-send on cancellation
-                await outboxRepo.MarkSentAsync(message.Id, now, cancellationToken);
+                var sentAt = clock.GetCurrentInstant();
+                await outboxRepo.MarkSentAsync(message.Id, sentAt, cancellationToken);
                 metrics.RecordEmailSent(message.TemplateName);
-                await TryIncrementDailySendCountAsync(message, now, succeeded: true, cancellationToken);
+                await TryIncrementDailySendCountAsync(message, sentAt, succeeded: true, cancellationToken);
 
                 // Update campaign grant status if applicable — routed via
                 // ICampaignService so the Campaigns section owns campaign_grants.
@@ -110,7 +111,7 @@ internal sealed class EmailOutboxProcessor(
                 if (message.CampaignGrantId.HasValue)
                 {
                     await TryUpdateGrantEmailStatusAsync(
-                        message.CampaignGrantId.Value, EmailOutboxStatus.Sent, now, message.Id, cancellationToken);
+                        message.CampaignGrantId.Value, EmailOutboxStatus.Sent, sentAt, message.Id, cancellationToken);
                 }
 
                 // Throttle: 1 second delay between sends to avoid SMTP rate limits
@@ -118,10 +119,11 @@ internal sealed class EmailOutboxProcessor(
             }
             catch (Exception ex)
             {
-                var nextRetryAt = now + Duration.FromMinutes((long)Math.Pow(2, message.RetryCount + 1));
-                await outboxRepo.MarkFailedAsync(message.Id, now, ex.Message, nextRetryAt, cancellationToken);
+                var failedAt = clock.GetCurrentInstant();
+                var nextRetryAt = failedAt + Duration.FromMinutes((long)Math.Pow(2, message.RetryCount + 1));
+                await outboxRepo.MarkFailedAsync(message.Id, failedAt, ex.Message, nextRetryAt, cancellationToken);
                 metrics.RecordEmailFailed(message.TemplateName);
-                await TryIncrementDailySendCountAsync(message, now, succeeded: false, cancellationToken);
+                await TryIncrementDailySendCountAsync(message, failedAt, succeeded: false, cancellationToken);
 
                 // Update campaign grant status if applicable — routed via ICampaignService.
                 if (message.CampaignGrantId.HasValue)
@@ -129,7 +131,7 @@ internal sealed class EmailOutboxProcessor(
                     await campaignService.UpdateGrantEmailStatusAsync(
                         message.CampaignGrantId.Value,
                         EmailOutboxStatus.Failed,
-                        now,
+                        failedAt,
                         cancellationToken);
                 }
 
