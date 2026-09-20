@@ -24,6 +24,7 @@ public class GoogleResourceReconciliationJob(
     IGoogleSyncService googleSyncService,
     IGoogleGroupSync googleGroupSync,
     IGoogleDriveSync googleDriveSync,
+    IGoogleDriveActivityClient googleClient,
     INotificationService notificationService,
     IHumansMetrics metrics,
     ILogger<GoogleResourceReconciliationJob> logger,
@@ -31,6 +32,16 @@ public class GoogleResourceReconciliationJob(
 {
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
+        // Without credentials every client is an in-memory stub that reports success, so a
+        // reconcile pass would log synced rows while Workspace is untouched. Same signal and
+        // outcome as ProcessGoogleSyncOutboxJob.
+        if (!googleClient.IsConfigured)
+        {
+            logger.LogInformation("Skipping Google resource reconciliation because Google Workspace is not configured");
+            metrics.RecordJobRun("google_resource_reconciliation", "skipped");
+            return;
+        }
+
         logger.LogInformation("Starting Google resource reconciliation at {Time}", clock.GetCurrentInstant());
 
         var phaseFailures = new List<string>();

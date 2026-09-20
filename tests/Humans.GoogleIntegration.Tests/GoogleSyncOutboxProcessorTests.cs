@@ -115,6 +115,24 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
     }
 
     [HumansFact]
+    public async Task ProcessQueuedAsync_AccountLinkResyncEvent_RecordsManualSource()
+    {
+        // The key shape ITeamService.EnqueueGoogleResyncForUserTeamsAsync writes when an
+        // admin links a Workspace account.
+        var outboxEvent = await SeedOutboxEventAsync(
+            GoogleSyncOutboxEventTypes.AddUserToTeamResources,
+            deduplicationKey: $"{Guid.NewGuid()}:{GoogleSyncOutboxEventTypes.AddUserToTeamResources}:resync:{_clock.GetCurrentInstant()}");
+
+        await _processor.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _googleSyncService.Received(1).AddUserToTeamResourcesAsync(
+            outboxEvent.TeamId,
+            outboxEvent.UserId,
+            Arg.Any<CancellationToken>(),
+            GoogleSyncSource.ManualSync);
+    }
+
+    [HumansFact]
     public async Task ProcessQueuedAsync_WithoutCredentials_LeavesEventsPending()
     {
         _googleClient.IsConfigured.Returns(false);

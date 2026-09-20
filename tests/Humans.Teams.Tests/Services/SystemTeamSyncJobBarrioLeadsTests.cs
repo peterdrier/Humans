@@ -39,6 +39,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
     private readonly ICampLeadDirectory _campRepository = Substitute.For<ICampLeadDirectory>();
     private readonly IGoogleSyncService _googleSyncService = Substitute.For<IGoogleSyncService>();
     private readonly IGoogleGroupSync _googleGroupSync = Substitute.For<IGoogleGroupSync>();
+    private readonly IGoogleDriveActivityClient _googleClient = Substitute.For<IGoogleDriveActivityClient>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
@@ -47,6 +48,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
 
     private SystemTeamSyncJob CreateJob()
     {
+        _googleClient.IsConfigured.Returns(true);
         var services = new ServiceCollection();
         services.AddSingleton(Substitute.For<IMembershipCalculatorRead>());
         var provider = services.BuildServiceProvider();
@@ -58,6 +60,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
             provider,
             _googleSyncService,
             _googleGroupSync,
+            _googleClient,
             _auditLogService,
             _emailService,
             _emailMessages,
@@ -181,5 +184,31 @@ public class SystemTeamSyncJobBarrioLeadsTests
             _teamService.InvalidateActiveTeamsCache();
             _ = _teamService.GetTeamsAsync(Arg.Any<CancellationToken>());
         });
+    }
+
+    [HumansFact]
+    public async Task ExecuteAsync_WithoutCredentials_SkipsGoogleGroupReconcile()
+    {
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo>());
+        var job = CreateJob();
+        _googleClient.IsConfigured.Returns(false);
+
+        await job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _googleGroupSync.DidNotReceiveWithAnyArgs().ReconcileAllAsync(default, default);
+        _metrics.Received(1).RecordJobRun("system_team_sync", "success");
+    }
+
+    [HumansFact]
+    public async Task ExecuteAsync_WithCredentials_ReconcilesGoogleGroups()
+    {
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo>());
+        var job = CreateJob();
+
+        await job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _googleGroupSync.Received(1).ReconcileAllAsync(SyncAction.Execute, Arg.Any<CancellationToken>());
     }
 }

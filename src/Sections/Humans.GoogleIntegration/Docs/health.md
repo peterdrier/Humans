@@ -102,7 +102,8 @@ The shapes imply:
 - **Without credentials the section boots, stubbed**: registration swaps real clients for
   stubs by configuration alone, in every environment; the missing credentials surface
   through the health check, never as a refusal to start (`no-startup-guards`). The outbox
-  processor leaves events pending instead of acknowledging stub calls.
+  processor leaves events pending instead of acknowledging stub calls, and the
+  reconciliation job and scoped sync schedulers skip rather than reconcile against stubs.
 - **The reconciliation job never stops mid-list**: one resource's failure is recorded
   against that resource and the walk continues.
 - **Every `/Google/*` screen and action denies Volunteers and Coordinators**: the sync

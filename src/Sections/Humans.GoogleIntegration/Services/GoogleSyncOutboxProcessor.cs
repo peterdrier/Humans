@@ -39,6 +39,17 @@ internal sealed class GoogleSyncOutboxProcessor(
     /// </summary>
     private static readonly HashSet<int> PermanentErrorCodes = [400, 403, 404];
 
+    /// <summary>
+    /// Admin-initiated reruns carry one of two dedup-key shapes: the per-human rerun
+    /// (<c>admin-resync:{userId}:{teamId}:{ticks}</c>, <c>EnqueueUserSyncAsync</c>) and the
+    /// account-link resync (<c>{teamMemberId}:AddUserToTeamResources:resync:{instant}</c>,
+    /// <c>ITeamService.EnqueueGoogleResyncForUserTeamsAsync</c>). Ordinary joins are
+    /// <c>{teamMemberId}:{eventType}</c>.
+    /// </summary>
+    internal static bool IsManualResync(string deduplicationKey)
+        => deduplicationKey.StartsWith("admin-resync:", StringComparison.Ordinal)
+           || deduplicationKey.Contains(":resync:", StringComparison.Ordinal);
+
     public async Task ProcessQueuedAsync(CancellationToken cancellationToken = default)
     {
         var pendingEvents = await outboxRepository
@@ -77,8 +88,7 @@ internal sealed class GoogleSyncOutboxProcessor(
                 switch (outboxEvent.EventType)
                 {
                     case GoogleSyncOutboxEventTypes.AddUserToTeamResources:
-                        var syncSource = outboxEvent.DeduplicationKey.StartsWith(
-                            "admin-resync:", StringComparison.Ordinal)
+                        var syncSource = IsManualResync(outboxEvent.DeduplicationKey)
                             ? GoogleSyncSource.ManualSync
                             : GoogleSyncSource.TeamMemberJoined;
                         await googleSyncService.AddUserToTeamResourcesAsync(

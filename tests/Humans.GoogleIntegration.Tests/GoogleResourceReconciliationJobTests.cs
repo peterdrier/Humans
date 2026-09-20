@@ -19,6 +19,7 @@ public class GoogleResourceReconciliationJobTests : IDisposable
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IGoogleGroupSync _googleGroupSync;
     private readonly IGoogleDriveSync _googleDriveSync;
+    private readonly IGoogleDriveActivityClient _googleClient;
     private readonly FakeClock _clock;
     private readonly IHumansMetrics _metrics;
     private readonly INotificationService _notifications;
@@ -29,6 +30,8 @@ public class GoogleResourceReconciliationJobTests : IDisposable
         _googleSyncService = Substitute.For<IGoogleSyncService>();
         _googleGroupSync = Substitute.For<IGoogleGroupSync>();
         _googleDriveSync = Substitute.For<IGoogleDriveSync>();
+        _googleClient = Substitute.For<IGoogleDriveActivityClient>();
+        _googleClient.IsConfigured.Returns(true);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 9, 2, 0));
         _metrics = TestMetrics.Create();
         _notifications = Substitute.For<INotificationService>();
@@ -37,6 +40,7 @@ public class GoogleResourceReconciliationJobTests : IDisposable
             _googleSyncService,
             _googleGroupSync,
             _googleDriveSync,
+            _googleClient,
             _notifications,
             _metrics,
             NullLogger<GoogleResourceReconciliationJob>.Instance,
@@ -78,6 +82,25 @@ public class GoogleResourceReconciliationJobTests : IDisposable
             .ReconcileAllAsync(SyncAction.Execute, Arg.Any<CancellationToken>());
         await _googleDriveSync.Received(1)
             .ReconcileAllAsync(SyncAction.Execute, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ExecuteAsync_WithoutCredentials_SkipsEveryPhaseAndRecordsSkipped()
+    {
+        _googleClient.IsConfigured.Returns(false);
+
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
+
+        _metrics.Received(1).RecordJobRun("google_resource_reconciliation", "skipped");
+        _metrics.DidNotReceive().RecordJobRun("google_resource_reconciliation", "success");
+        await _googleSyncService.DidNotReceiveWithAnyArgs()
+            .SyncResourcesByTypeAsync(default, default, default, default);
+        await _googleGroupSync.DidNotReceiveWithAnyArgs()
+            .ReconcileAllAsync(default, default);
+        await _googleDriveSync.DidNotReceiveWithAnyArgs()
+            .ReconcileAllAsync(default, default);
+        await _googleSyncService.DidNotReceiveWithAnyArgs()
+            .CheckGroupSettingsAsync(default);
     }
 
     [HumansFact]
