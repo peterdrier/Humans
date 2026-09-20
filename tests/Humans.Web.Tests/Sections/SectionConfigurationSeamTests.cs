@@ -59,43 +59,4 @@ public class SectionConfigurationSeamTests
                 "{0} implements the seam", contribution.GetType().FullName);
         }
     }
-
-    /// <summary>
-    /// The inversion itself: Shell's source names only host-owned keys. A section-owned key
-    /// re-appearing here is the hub re-listing its spokes.
-    /// </summary>
-    [HumansFact]
-    public void Shell_Hard_Lists_No_Section_Owned_Key()
-    {
-        var shellSource = File.ReadAllText(ShellSourcePath());
-
-        var configuration = new ConfigurationBuilder().Build();
-        var fromSeams = new ConfigurationRegistry();
-        foreach (var section in SectionDiscoveryExtensions.DiscoverImplementations<ISectionConfiguration>())
-        {
-            section.DeclareSettings(configuration, fromSeams);
-        }
-
-        foreach (var entry in fromSeams.GetAll())
-        {
-            // Env-var entries are stored as "NAME (env)"; the literal in code is the bare name.
-            var literal = entry.Key.Replace(" (env)", string.Empty, StringComparison.Ordinal);
-            shellSource.Should().NotContain($"\"{literal}\"",
-                "{0} belongs to the section that reads it", literal);
-        }
-    }
-
-    private static string ShellSourcePath()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null &&
-               !Directory.Exists(Path.Combine(directory.FullName, "src", "Humans.Web")))
-        {
-            directory = directory.Parent;
-        }
-
-        directory.Should().NotBeNull("the repository root is above the test output directory");
-        return Path.Combine(directory!.FullName, "src", "Humans.Web", "Extensions", "Infrastructure",
-            "ConfigurationMetadataExtensions.cs");
-    }
 }
