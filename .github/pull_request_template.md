@@ -5,7 +5,7 @@ Tick items as you go, or strike through (`~~item~~`) with a reason if a row genu
 
 ## What
 
-<!-- One or two sentences. Link to the issue: "Closes peterdrier/Humans#NNN" or "nobodies-collective/Humans#NNN" — see memory/process/issue-refs-qualified.md -->
+<!-- One or two sentences. Issue links go in the "Closes" section at the bottom, not here. -->
 
 ## Why
 
@@ -37,3 +37,9 @@ Tick items as you go, or strike through (`~~item~~`) with a reason if a row genu
 ## Reviewer notes
 
 <!-- Anything that would help review: areas that look bigger than they are, risky touch points, things you want a second opinion on. Delete if none. -->
+
+## Closes
+
+<!-- One issue per line, each with its own "Closes" keyword — GitHub only auto-closes the first issue of a comma-separated list. Qualify refs across repos: memory/process/issue-refs-qualified.md -->
+
+Closes peterdrier/Humans#NNN
