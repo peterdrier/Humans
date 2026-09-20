@@ -6,6 +6,7 @@ using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Campaigns.Data;
 using Humans.Campaigns.Domain;
+using Humans.Campaigns.Services;
 using Humans.Base.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -680,7 +681,7 @@ public sealed class CampaignServiceTests
         var slices = await _service.ContributeForUserAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
 
         slices.Should().ContainSingle();
-        slices[0].SectionName.Should().Be(Humans.Gdpr.Contracts.GdprExportSections.CampaignGrants);
+        slices[0].SectionName.Should().Be(CampaignService.CampaignGrants);
         var rows = (System.Collections.IEnumerable)slices[0].Data!;
         rows.Cast<object>().Should().ContainSingle();
     }

@@ -5,10 +5,10 @@ using NodaTime;
 using Humans.Base.Attributes;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces.Caching;
-using Humans.Gdpr.Contracts;
 using Humans.Base.Constants;
 using Humans.Auth.Domain;
 using Humans.AuditLog.Contracts;
+using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
 
@@ -32,6 +32,9 @@ internal sealed class RoleAssignmentService(
     IClock clock,
     ILogger<RoleAssignmentService> logger) : IRoleAssignmentService, IUserDataContributor, IUserMerge
 {
+    /// <summary>GDPR export JSON key for this contributor's data.</summary>
+    internal const string RoleAssignments = "RoleAssignments";
+
     public Task<bool> HasOverlappingAssignmentAsync(
         Guid userId,
         string roleName,
@@ -304,13 +307,13 @@ internal sealed class RoleAssignmentService(
             ValidTo = ra.ValidTo.ToIso8601()
         }).ToList();
 
-        return [new UserDataSlice(GdprExportSections.RoleAssignments, shaped)];
+        return [new UserDataSlice(RoleAssignments, shaped)];
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.RoleAssignments] =
+            [RoleAssignments] =
                 "Partially retained: expired role rows (role name + validity dates, keyed to the " +
                 "user id the Users section tombstones) stay as the association's record of who " +
                 "held which governance office — Ley Orgánica 1/2002 Arts. 11 and 14, GDPR " +

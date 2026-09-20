@@ -29,7 +29,7 @@ category, what it deletes when the person asks to be forgotten and what it keeps
 | "Here is my portion for this person" | the orchestrator, of every data-owning section | `IUserDataContributor.ContributeForUserAsync` |
 | "Forget my portion of this person" | the orchestrator, of every data-owning section | `IUserDataContributor.EraseForUserAsync` |
 | "What do you keep when this person is forgotten, and why?" | the erasure-coverage gate, and the orchestrator's own ordering | `IUserDataContributor.ErasureDeclaration` |
-| "What is this portion called in the document?" | every contributor, and the docs | `GdprExportSections` constants |
+| "What is this portion called in the document?" | every contributor, and the docs | constants each contributor declares on itself |
 | "Let me download my own copy" (profileless account) | a person on the Guest dashboard | `GET /Guest/DownloadData` |
 
 The vocabulary carrying answers between them is `UserDataSlice` (one portion, name plus
@@ -43,7 +43,7 @@ served by more than one member.
 The shapes imply these and no more:
 
 - **A contracts leaf, as its own project.** It holds the two fan-out seams
-  (`IUserDataContributor`), the vocabulary (`UserDataSlice`, `GdprExportSections`), and
+  (`IUserDataContributor`), the vocabulary (`UserDataSlice`), and
   the orchestrator's own contract (`IGdprService`, `GdprExport`). A project rather than a
   folder because the contract is implemented from *outside*: every section owning
   user-scoped tables implements it, so a folder inside `Humans.Gdpr` would make all of
@@ -77,7 +77,7 @@ its prose.
   `src/Sections/Humans.Gdpr/Services/GdprService.cs:48`, pinned at
   `tests/Humans.Gdpr.Tests/Services/GdprServiceTests.cs:148`.
 - **Erasure runs the identity holder last, and the order comes from the declarations.**
-  The contributor whose `ErasureDeclaration` carries `GdprExportSections.Account` sorts
+  The contributor whose `ErasesLast` is `true` sorts
   last, never a pinned type list: `src/Sections/Humans.Gdpr/Services/GdprService.cs:82`,
   pinned at `tests/Humans.Gdpr.Tests/Services/GdprServiceTests.cs:208`.
 - **The fan-out is sequential.** A simplicity choice, not a correctness one: the original

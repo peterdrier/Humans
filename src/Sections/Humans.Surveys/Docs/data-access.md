@@ -54,10 +54,10 @@ helper), `IAuditLogService`, `IFileStorage` (Information-block images under
 `uploads/surveys/`).
 
 Implements `IUserDataContributor` (three GDPR export slices:
-`GdprExportSections.SurveyResponses` — identified responses only; anonymous
+`SurveyService.SurveyResponses` — identified responses only; anonymous
 and CompletionTracked rows carry no `UserId` and are excluded —
-`GdprExportSections.AuthoredSurveys`, the surveys the person wrote, and
-`GdprExportSections.SurveyInvitations`, the invitation ledger, which is the
+`SurveyService.AuthoredSurveys`, the surveys the person wrote, and
+`SurveyService.SurveyInvitations`, the invitation ledger, which is the
 only record of someone who was only invited or answered CompletionTracked).
 Implements
 `IUserMerge`: authorship follows the surviving account. No `IMemoryCache`.

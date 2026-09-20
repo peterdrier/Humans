@@ -2,12 +2,12 @@ using Humans.Auth.Contracts;
 using System.Transactions;
 using NodaTime;
 using Humans.Base.Extensions;
-using Humans.Gdpr.Contracts;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces.Caching;
 using Humans.Consent.Contracts;
+using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Teams.Contracts;
 
@@ -28,6 +28,9 @@ internal sealed class AccountMergeService(
     INotificationService notificationService,
     IConsentCacheInvalidator consentCacheInvalidator) : IAccountMergeService, IUserDataContributor
 {
+    /// <summary>GDPR export JSON key for this contributor's data.</summary>
+    internal const string AccountMergeRequests = "AccountMergeRequests";
+
     // Fan-out — IUserMerge implementations register in each section's Add…Section extension.
 
     public async Task<IReadOnlyList<AccountMergeRequestSnapshot>> GetPendingRequestsAsync(CancellationToken ct = default)
@@ -309,13 +312,13 @@ internal sealed class AccountMergeService(
             ResolvedAt = r.ResolvedAt.ToIso8601()
         }).ToList();
 
-        return [new UserDataSlice(GdprExportSections.AccountMergeRequests, shaped)];
+        return [new UserDataSlice(AccountMergeRequests, shaped)];
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.AccountMergeRequests] =
+            [AccountMergeRequests] =
                 "Partially retained: the merge row (source id, target id, status, dates) is what " +
                 "keeps a tombstoned account's history reachable — deleting it would strand every " +
                 "chain-followed record and break the erasure's own provability (GDPR Art. 5(2)). " +

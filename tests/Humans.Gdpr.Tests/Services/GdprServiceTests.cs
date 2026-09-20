@@ -180,6 +180,30 @@ public class GdprServiceTests
     }
 
     [HumansFact]
+    public async Task ExportForUserAsync_FailsLoudlyWhenExportedSectionHasNoErasureDeclaration()
+    {
+        var service = CreateService(new UndeclaredErasureContributor());
+
+        var act = async () => await service.ExportForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Profile*")
+            .WithMessage("*UndeclaredErasureContributor*");
+    }
+
+    private sealed class UndeclaredErasureContributor : IUserDataContributor
+    {
+        public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<UserDataSlice>>([new UserDataSlice("Profile", new { Name = "Jane" })]);
+
+        // Deliberately empty: "Profile" is exported but never declared for erasure.
+        public IReadOnlyDictionary<string, string?> ErasureDeclaration =>
+            new Dictionary<string, string?>(StringComparer.Ordinal);
+
+        public Task EraseForUserAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
+    }
+
+    [HumansFact]
     public async Task ExportForUserAsync_PropagatesContributorFailure()
     {
         var boom = new InvalidOperationException("boom");
@@ -223,8 +247,7 @@ public class GdprServiceTests
     public async Task ExportForUserAsync_EmptyCollectionSliceSurvivesAsEmptyList()
     {
         // Empty collections MUST round-trip to "[]" in the JSON: a collection key
-        // is always present even when the user has no records, and downstream
-        // consumers depend on that.
+        // is always present, never omitted, even when the user has no records.
         var emptyConsents = Array.Empty<object>();
         var service = CreateService(
             new FakeContributor("Profile", new { Name = "Jane" }),
@@ -298,29 +321,30 @@ public class GdprServiceTests
     }
 
     [HumansFact]
-    public async Task EraseForUserAsync_ErasesAccountIdentityLast()
+    public async Task EraseForUserAsync_ErasesTheErasesLastContributorLast()
     {
         // Sections that must reach an external processor (the Workspace suspend) need the
-        // human's addresses, which the Account contributor is about to drop. Registration
-        // order is Account-first here on purpose: ordering is derived from the declaration.
+        // human's addresses, which the identity contributor is about to drop. Registration
+        // order is identity-first here on purpose: ordering is derived from ErasesLast, not
+        // registration order.
         var order = new List<string>();
-        var account = new RecordingContributor(GdprExportSections.Account, order);
-        var section = new RecordingContributor(GdprExportSections.Issues, order);
+        var account = new RecordingContributor("Account", order) { ErasesLast = true };
+        var section = new RecordingContributor("Issues", order);
         var service = CreateService(account, section);
 
         await service.EraseForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
-        order.Should().Equal(GdprExportSections.Issues, GdprExportSections.Account);
+        order.Should().Equal("Issues", "Account");
     }
 
     [HumansFact]
     public async Task EraseForUserAsync_PropagatesContributorFailureAndStopsBeforeAccount()
     {
-        // A throwing contributor aborts the run before the Account identity collapse.
+        // A throwing contributor aborts the run before the identity collapse.
         // What the caller then does with its deletion markers is Users' concern, not this
         // orchestrator's, and nothing here observes it.
         var boom = new RecordingContributor("Issues") { Throw = new InvalidOperationException("boom") };
-        var account = new RecordingContributor(GdprExportSections.Account);
+        var account = new RecordingContributor("Account") { ErasesLast = true };
         var service = CreateService(boom, account);
 
         var act = async () => await service.EraseForUserAsync(
@@ -333,6 +357,7 @@ public class GdprServiceTests
     private sealed class RecordingContributor(string section, List<string>? order = null) : IUserDataContributor
     {
         public Exception? Throw { get; init; }
+        public bool ErasesLast { get; init; }
         public List<Guid> ErasedIds { get; } = [];
 
         public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>

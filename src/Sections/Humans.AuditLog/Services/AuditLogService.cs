@@ -1,10 +1,10 @@
 using Humans.Base.Attributes;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
-using Humans.Gdpr.Contracts;
 using Humans.AuditLog.Data;
 using Humans.AuditLog.Domain;
 using Humans.Base.Enums;
+using Humans.Gdpr.Contracts;
 using NodaTime;
 using Humans.Users.Contracts;
 
@@ -24,6 +24,8 @@ internal sealed class AuditLogService(
     ILogger<AuditLogService> logger)
     : IAuditLogService, IAuditLogReader, IUserDataContributor, ILegacyGoogleSyncAuditReader
 {
+    internal const string AuditLog = "AuditLog";
+
     // ─── Writes (append-only) ───
 
     /// <inheritdoc />
@@ -182,7 +184,7 @@ internal sealed class AuditLogService(
             Role = a.ActorUserId == userId ? "Actor" : "Subject"
         }).ToList();
 
-        return [new UserDataSlice(GdprExportSections.AuditLog, shaped)];
+        return [new UserDataSlice(AuditLog, shaped)];
     }
 
     // ─── IUserDataContributor (GDPR erasure) ───
@@ -190,7 +192,7 @@ internal sealed class AuditLogService(
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.AuditLog] =
+            [AuditLog] =
                 "Retained: append-only record of processing activity (GDPR Art. 30) and the " +
                 "evidence trail for the erasure itself (Art. 17(3)(b), Art. 5(1)(f)). Rows key " +
                 "off a user id; the free-text description of an action may still quote an " +

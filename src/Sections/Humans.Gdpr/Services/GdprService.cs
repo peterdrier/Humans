@@ -51,6 +51,18 @@ internal sealed class GdprService(
 
             foreach (var slice in slices)
             {
+                if (!contributor.ErasureDeclaration.ContainsKey(slice.SectionName))
+                {
+                    logger.LogError(
+                        "GDPR export section {SectionName} from contributor {Contributor} has no erasure declaration",
+                        slice.SectionName,
+                        contributor.GetType().Name);
+                    throw new InvalidOperationException(
+                        $"Contributor {contributor.GetType().Name} exports '{slice.SectionName}' but its " +
+                        "ErasureDeclaration has no entry for that key — every exported section must be " +
+                        "accounted for under Article 17.");
+                }
+
                 if (slice.Data is null)
                 {
                     continue;
@@ -86,10 +98,10 @@ internal sealed class GdprService(
     {
         // The contributor that owns the Account identity runs last, so the sections that
         // need the human's addresses to reach an external processor (the Workspace suspend)
-        // can still resolve them. Ordering is derived from the declarations, not from a
-        // pinned type list.
+        // can still resolve them. Ordering is derived from each contributor's own
+        // ErasesLast declaration, not from a pinned type list.
         var ordered = contributors
-            .OrderBy(c => c.ErasureDeclaration.ContainsKey(GdprExportSections.Account) ? 1 : 0);
+            .OrderBy(c => c.ErasesLast ? 1 : 0);
 
         foreach (var contributor in ordered)
         {

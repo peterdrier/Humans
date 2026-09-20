@@ -258,6 +258,40 @@ themes:
       seed — the build is warning-clean outside the HUM themes. Reuse the
       run's shared build log instead of re-building when possible. New
       custom HUM_* warning ids spotted here should become their own theme.
+  - id: section-seam-inversions
+    title: Hub/Shell/Base registries that enumerate spokes by name instead of an ISectionContribution seam
+    detect: "grep -l 'AddConfigurationMetadata\\|Dictionary<string, AccessMatrixData>\\|Guides\\s*=\\|RolesFor' src/Humans.Web/Extensions/Infrastructure/ConfigurationMetadataExtensions.cs src/Humans.Base/Models/AccessMatrixDefinitions.cs src/Humans.Base/Models/SectionHelpContent.cs src/Sections/Humans.Issues/Domain/IssueSectionRouting.cs 2>/dev/null | wc -l # manual — see notes for what each site needs"
+    review: panel
+    last_swept: never
+    remaining: 4
+    notes: >-
+      Each site is a hub, Shell or Base file that hand-lists its spokes (a
+      per-section dictionary, constant table, or switch over section names)
+      instead of each section declaring its own contribution through an
+      ISectionContribution-style seam (memory/architecture/section-contribution-seams.md,
+      memory/architecture/base-ui-registries-are-section-populated.md). Found by
+      the orch-gdpr-fanout registry scout, 2026-09-20.
+      (1) src/Humans.Web/Extensions/Infrastructure/ConfigurationMetadataExtensions.cs:6-129
+      AddConfigurationMetadata hand-lists ~14 sections' configuration settings.
+      Invert to an ISectionConfiguration : ISectionContribution seam Shell
+      discovers via DiscoverImplementations, same as ISectionHealthChecks —
+      needs Peter's approval as new Base public surface.
+      (2) src/Humans.Base/Models/AccessMatrixDefinitions.cs:23 Sections is a
+      Dictionary<string, AccessMatrixData> in Base hand-listing 12 sections'
+      role/access-level vocab. Invert to a Register(AccessMatrixData) call from
+      each Section.Register (or an ISectionAccessMatrix contribution) — needs
+      Peter's approval as new Base public surface.
+      (3) src/Humans.Base/Models/SectionHelpContent.cs:7 Guides/Glossaries are
+      two Dictionary<string,string> in Base holding 12 sections' guide/glossary
+      prose inline (683 lines). Same Register-from-Section.Register inversion,
+      content moved beside each section's own Docs/ — needs Peter's approval as
+      new Base public surface.
+      (4) src/Sections/Humans.Issues/Domain/IssueSectionRouting.cs routing
+      table + RolesFor switch hand-lists 11 section names (two, Profiles and
+      Legal, no longer exist) mapped to owning roles. Invert to an
+      IIssueQueueOwner : ISectionContribution seam on Humans.Issues.Contracts
+      each section declares from its own Section.cs — needs Peter's approval as
+      new Contracts-leaf public surface.
   - id: inbox
     title: One-off inbox items
     detect: "cat docs/architecture/debt-ledger.yml src/Sections/*/Docs/debt.yml 2>/dev/null | grep -c '^  - added:'"

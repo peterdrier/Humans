@@ -133,9 +133,9 @@ internal sealed class CachingRideshareService(
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.RideshareTrips] = null,
-            [GdprExportSections.RideshareRequests] = null,
-            [GdprExportSections.RideshareInterests] = null,
+            [RideshareService.RideshareTrips] = null,
+            [RideshareService.RideshareRequests] = null,
+            [RideshareService.RideshareInterests] = null,
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;

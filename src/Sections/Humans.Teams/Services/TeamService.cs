@@ -33,6 +33,10 @@ internal sealed class TeamService(
     IClock clock,
     ILogger<TeamService> logger) : ITeamManagementService, ITeamSeeding, IGoogleGroupMembershipSource, IUserDataContributor, IUserMerge, IEarlyEntryProvider
 {
+    internal const string TeamMemberships = "TeamMemberships";
+    internal const string TeamJoinRequests = "TeamJoinRequests";
+    internal const string TeamEarlyEntry = "TeamEarlyEntry";
+
     // Lazy resolution — UserService injects ITeamService, closing the cycle.
     private ITeamResourceService TeamResourceService
         => serviceProvider.GetRequiredService<ITeamResourceService>();
@@ -2010,7 +2014,7 @@ internal sealed class TeamService(
         string GetTeamName(Guid teamId) =>
             teamsById.TryGetValue(teamId, out var team) ? team.Name : string.Empty;
 
-        var membershipSlice = new UserDataSlice(GdprExportSections.TeamMemberships, memberships.Select(tm => new
+        var membershipSlice = new UserDataSlice(TeamMemberships, memberships.Select(tm => new
         {
             TeamName = GetTeamName(tm.TeamId),
             tm.Role,
@@ -2023,7 +2027,7 @@ internal sealed class TeamService(
             })
         }).ToList());
 
-        var joinRequestSlice = new UserDataSlice(GdprExportSections.TeamJoinRequests, joinRequests.Select(tjr => new
+        var joinRequestSlice = new UserDataSlice(TeamJoinRequests, joinRequests.Select(tjr => new
         {
             TeamName = GetTeamName(tjr.TeamId),
             tjr.Status,
@@ -2032,7 +2036,7 @@ internal sealed class TeamService(
             ResolvedAt = tjr.ResolvedAt.ToIso8601()
         }).ToList());
 
-        var earlyEntrySlice = new UserDataSlice(GdprExportSections.TeamEarlyEntry, eeGrants.Select(g => new
+        var earlyEntrySlice = new UserDataSlice(TeamEarlyEntry, eeGrants.Select(g => new
         {
             TeamName = GetTeamName(g.TeamId),
             g.ProjectName,
@@ -2046,13 +2050,13 @@ internal sealed class TeamService(
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.TeamMemberships] =
+            [TeamMemberships] =
                 "Partially retained: the membership row (team, role, joined/left dates, keyed to " +
                 "the user id the Users section tombstones) is the association's record of who " +
                 "worked on what — Ley Orgánica 1/2002 Art. 14, GDPR Art. 17(3)(b). Every still-" +
                 "active membership is ended immediately.",
-            [GdprExportSections.TeamJoinRequests] = null,
-            [GdprExportSections.TeamEarlyEntry] = null
+            [TeamJoinRequests] = null,
+            [TeamEarlyEntry] = null
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;

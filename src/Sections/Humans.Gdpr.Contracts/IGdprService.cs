@@ -20,10 +20,11 @@ public interface IGdprService : IOrchestrator
     /// <summary>
     /// Article 17 counterpart of <see cref="ExportForUserAsync"/>: runs every
     /// contributor's <see cref="IUserDataContributor.EraseForUserAsync"/> for a single
-    /// account id, in turn, with the contributor that owns the <c>Account</c> identity
-    /// last — so sections that still need the human's addresses to reach an external
-    /// processor can resolve them before the identity collapses. Ordering is derived
-    /// from the declarations, not a pinned type list. Takes only an id, so this
+    /// account id, in turn, with the contributor whose
+    /// <see cref="IUserDataContributor.ErasesLast"/> is <c>true</c> last — so sections
+    /// that still need the human's addresses to reach an external processor can
+    /// resolve them before the identity collapses. Ordering is derived from each
+    /// contributor's own declaration, not a pinned type list. Takes only an id, so this
     /// orchestrator keeps no dependency on the Users merge primitive or its caches.
     /// Sequential and fail-loud: a contributor that throws aborts the run.
     /// <para>

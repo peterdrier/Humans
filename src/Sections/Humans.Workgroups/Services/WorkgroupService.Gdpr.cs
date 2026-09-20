@@ -14,6 +14,13 @@ namespace Humans.Workgroups.Services;
 /// </summary>
 internal sealed partial class WorkgroupService
 {
+    internal const string WorkgroupApplications = "WorkgroupApplications";
+    internal const string WorkgroupMemberships = "WorkgroupMemberships";
+    internal const string WorkgroupLogEntries = "WorkgroupLogEntries";
+    internal const string WorkgroupMeetings = "WorkgroupMeetings";
+    internal const string WorkgroupDocuments = "WorkgroupDocuments";
+    internal const string WorkgroupComments = "WorkgroupComments";
+
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         var rows = await repository.GetRowsForUserAsync(userId, ct);
@@ -32,7 +39,7 @@ internal sealed partial class WorkgroupService
         [
             // Applying for a group is an attribution the register keeps on the group row and
             // the erasure nulls, so it is disclosed here alongside the rows that carry an id.
-            new UserDataSlice(GdprExportSections.WorkgroupApplications, rows.AppliedFor
+            new UserDataSlice(WorkgroupApplications, rows.AppliedFor
                 .Select(w => new
                 {
                     Workgroup = w.Name,
@@ -42,7 +49,7 @@ internal sealed partial class WorkgroupService
                     w.RegisteredAt
                 })
                 .ToList()),
-            new UserDataSlice(GdprExportSections.WorkgroupMemberships, rows.Memberships
+            new UserDataSlice(WorkgroupMemberships, rows.Memberships
                 .Select(m => new
                 {
                     Workgroup = NameOf(m.WorkgroupId),
@@ -51,7 +58,7 @@ internal sealed partial class WorkgroupService
                     m.LeftAt
                 })
                 .ToList()),
-            new UserDataSlice(GdprExportSections.WorkgroupLogEntries, rows.LogEntries
+            new UserDataSlice(WorkgroupLogEntries, rows.LogEntries
                 .Select(e => new
                 {
                     Workgroup = NameOf(e.WorkgroupId),
@@ -62,7 +69,7 @@ internal sealed partial class WorkgroupService
                     e.CreatedAt
                 })
                 .ToList()),
-            new UserDataSlice(GdprExportSections.WorkgroupMeetings, rows.Meetings
+            new UserDataSlice(WorkgroupMeetings, rows.Meetings
                 .Select(m => new
                 {
                     Workgroup = NameOf(m.WorkgroupId),
@@ -75,7 +82,7 @@ internal sealed partial class WorkgroupService
                     m.CreatedAt
                 })
                 .ToList()),
-            new UserDataSlice(GdprExportSections.WorkgroupDocuments, rows.Documents
+            new UserDataSlice(WorkgroupDocuments, rows.Documents
                 .Select(d => new
                 {
                     Workgroup = NameOf(d.WorkgroupId),
@@ -89,7 +96,7 @@ internal sealed partial class WorkgroupService
                     d.UpdatedAt
                 })
                 .ToList()),
-            new UserDataSlice(GdprExportSections.WorkgroupComments, rows.Comments
+            new UserDataSlice(WorkgroupComments, rows.Comments
                 .Select(c => new
                 {
                     Workgroup = documentGroups.TryGetValue(c.DocumentId, out var doc)

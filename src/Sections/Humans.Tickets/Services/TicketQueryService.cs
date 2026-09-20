@@ -1,7 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using NodaTime;
 using Humans.Base.Extensions;
-using Humans.Gdpr.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Budget.Contracts;
@@ -13,6 +12,7 @@ using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Services.Dtos;
+using Humans.Gdpr.Contracts;
 
 namespace Humans.Tickets.Services;
 
@@ -932,7 +932,7 @@ internal sealed class TicketQueryService(
     {
         var export = await GetUserTicketExportDataAsync(userId, ct);
 
-        var ordersSlice = new UserDataSlice(GdprExportSections.TicketOrders, export.Orders.Select(o => new
+        var ordersSlice = new UserDataSlice(TicketOrders, export.Orders.Select(o => new
         {
             o.BuyerName,
             o.BuyerEmail,
@@ -943,7 +943,7 @@ internal sealed class TicketQueryService(
             PurchasedAt = o.PurchasedAt.ToIso8601(),
         }).ToList());
 
-        var attendeesSlice = new UserDataSlice(GdprExportSections.TicketAttendeeMatches, export.Attendees.Select(a => new
+        var attendeesSlice = new UserDataSlice(TicketAttendeeMatches, export.Attendees.Select(a => new
         {
             a.AttendeeName,
             a.AttendeeEmail,
@@ -954,6 +954,9 @@ internal sealed class TicketQueryService(
 
         return [ordersSlice, attendeesSlice];
     }
+
+    internal const string TicketOrders = "TicketOrders";
+    internal const string TicketAttendeeMatches = "TicketAttendeeMatches";
 
     private const string SalesRecordRetention =
         "Partially retained: the order/attendee row itself (amount, currency, ticket type, " +
@@ -966,8 +969,8 @@ internal sealed class TicketQueryService(
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.TicketOrders] = SalesRecordRetention,
-            [GdprExportSections.TicketAttendeeMatches] = SalesRecordRetention
+            [TicketOrders] = SalesRecordRetention,
+            [TicketAttendeeMatches] = SalesRecordRetention
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
