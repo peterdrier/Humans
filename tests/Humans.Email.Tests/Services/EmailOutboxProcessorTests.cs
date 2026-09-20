@@ -331,14 +331,22 @@ public class EmailOutboxProcessorTests : IDisposable
 
         var message1 = new EmailOutboxMessage
         {
-            Id = Guid.NewGuid(), RecipientEmail = "a@example.com", Subject = "Subject",
-            HtmlBody = "<p>Hi</p>", TemplateName = "test_template", Status = EmailOutboxStatus.Queued,
+            Id = Guid.NewGuid(),
+            RecipientEmail = "a@example.com",
+            Subject = "Subject",
+            HtmlBody = "<p>Hi</p>",
+            TemplateName = "test_template",
+            Status = EmailOutboxStatus.Queued,
             CreatedAt = Instant.FromUtc(2026, 3, 14, 23, 0, 0)
         };
         var message2 = new EmailOutboxMessage
         {
-            Id = Guid.NewGuid(), RecipientEmail = "b@example.com", Subject = "Subject",
-            HtmlBody = "<p>Hi</p>", TemplateName = "test_template", Status = EmailOutboxStatus.Queued,
+            Id = Guid.NewGuid(),
+            RecipientEmail = "b@example.com",
+            Subject = "Subject",
+            HtmlBody = "<p>Hi</p>",
+            TemplateName = "test_template",
+            Status = EmailOutboxStatus.Queued,
             CreatedAt = Instant.FromUtc(2026, 3, 14, 23, 0, 0)
         };
         await _dbContext.EmailOutboxMessages.AddRangeAsync(
