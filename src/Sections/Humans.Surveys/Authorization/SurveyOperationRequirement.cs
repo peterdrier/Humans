@@ -13,6 +13,13 @@ internal enum SurveyOperation
 
     /// <summary>Board/Admin see every survey's results; the author sees their own only after it closes.</summary>
     ViewResults,
+
+    /// <summary>
+    /// Rehearsal — the intro/page/thank-you renderings and the invitation email, including sending
+    /// one to yourself. Board/Admin may rehearse any survey; anyone else only one they authored, so
+    /// an author can read their own survey back before submitting it but never someone else's.
+    /// </summary>
+    Preview,
 }
 
 /// <summary>

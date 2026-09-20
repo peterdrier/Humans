@@ -13,8 +13,11 @@ internal sealed class SectionAdminNav : ISectionAdminNav
     [
         new("Messaging", [
             // First-party survey tool (own section); Board happens to be its main
-            // user today, but it is not Governance.
-            new("Surveys", "SurveyAdmin", "Index", null, null, "fa-solid fa-square-poll-vertical", PolicyNames.BoardOrAdmin, Weight: 30),
+            // user today, but it is not Governance. App access, not Board: authoring is
+            // self-service (Workgroups §11), and the index the link lands on is scoped by the
+            // service to what the viewer authored — a Board gate here would leave authors with
+            // a page they may use and no way to reach it.
+            new("Surveys", "SurveyAdmin", "Index", null, null, "fa-solid fa-square-poll-vertical", PolicyNames.AppAccess, Weight: 30),
             // Self-service approval gate (Workgroups design §11): any active human may author a
             // Draft survey; this is where Board/Admin approve-and-send or reject a submission.
             new("Survey approvals", "SurveyAdmin", "Queue", null, null, "fa-solid fa-square-poll-vertical", PolicyNames.BoardOrAdmin, Weight: 31,

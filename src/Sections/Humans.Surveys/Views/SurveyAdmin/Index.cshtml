@@ -92,10 +92,9 @@
                         <td class="text-end">@s.ResponseCount</td>
                         <td class="text-end">@(s.InvitedCount > 0 ? $"{rate}%" : "—")</td>
                         <td class="text-end">
-                            @if (Model.IsBoardOrAdmin)
-                            {
-                                <partial name="_SurveyPreviewMenu" model="@s.Id" />
-                            }
+                            @* No role gate: the service scopes this list to the viewer's own
+                               surveys, so every row here is one they may rehearse. *@
+                            <partial name="_SurveyPreviewMenu" model="@s.Id" />
                             @if (Model.IsBoardOrAdmin || s.Status == SurveyStatus.Draft)
                             {
                                 @* An author may edit only their own Draft, so past Submitted this

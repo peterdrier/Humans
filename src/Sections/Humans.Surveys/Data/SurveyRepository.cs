@@ -438,6 +438,15 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<SurveyInvitation>> GetInvitationsForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.SurveyInvitations
+            .AsNoTracking()
+            .Where(i => i.UserId == userId)
+            .ToListAsync(ct);
+    }
+
     public async Task<int> AnonymizeResponsesForUserAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

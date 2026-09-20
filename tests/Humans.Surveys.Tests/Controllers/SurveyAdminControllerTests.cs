@@ -55,14 +55,16 @@ public sealed class SurveyAdminControllerTests
     public async Task Preview_renders_a_draft_survey_through_the_respondent_intro()
     {
         var surveyId = Guid.NewGuid();
+        var authorId = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
         surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
             .Returns(new SurveyDetail(
                 surveyId,
                 SurveyStatus.Draft,
                 Editable(title: "Preview me", intro: "Welcome", allowAnonymous: true),
-                Guid.NewGuid()));
-        var sut = CreateController(surveys);
+                authorId));
+        // Rehearsal is the author's own, so the real handler decides it here, not a stand-in.
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId);
 
         var result = await sut.Preview(
             surveyId, "en", Xunit.TestContext.Current.CancellationToken);
@@ -81,6 +83,7 @@ public sealed class SurveyAdminControllerTests
     public async Task PreviewPage_shows_all_authored_questions_on_the_selected_page()
     {
         var surveyId = Guid.NewGuid();
+        var authorId = Guid.NewGuid();
         var firstQuestionId = Guid.NewGuid();
         var conditionalQuestionId = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
@@ -109,8 +112,8 @@ public sealed class SurveyAdminControllerTests
                 surveyId,
                 SurveyStatus.Closed,
                 Editable(title: "Pages", questions: questions),
-                Guid.NewGuid()));
-        var sut = CreateController(surveys);
+                authorId));
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId);
 
         var result = await sut.PreviewPage(
             surveyId, "en", page: 2, ct: Xunit.TestContext.Current.CancellationToken);
@@ -194,7 +197,7 @@ public sealed class SurveyAdminControllerTests
                 surveyId,
                 questionId,
                 Arg.Any<IReadOnlyList<string>>(),
-                actorId,
+                Arg.Is<SurveyViewer>(v => v.UserId == actorId),
                 Arg.Any<CancellationToken>())
             .Returns<Task>(_ => throw new InvalidOperationException("The vote is still open."));
         var logger = new CapturingLogger<SurveyAdminController>();
@@ -441,6 +444,24 @@ public sealed class SurveyAdminControllerTests
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be(nameof(SurveyAdminController.Index));
         await surveys.Received(1).SubmitForApprovalAsync(surveyId, authorId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Preview_denies_a_non_owner_non_boardOrAdmin_human_by_id()
+    {
+        // Rehearsal reads the whole survey back, Drafts included — opening it to authors must not
+        // open it to everyone with an account.
+        var authorId = Guid.NewGuid();
+        var strangerId = Guid.NewGuid();
+        var surveyId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Someone else's survey"), authorId));
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: strangerId, isBoardOrAdmin: false);
+
+        var result = await sut.Preview(surveyId, "en", Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ForbidResult>();
     }
 
     [HumansFact]

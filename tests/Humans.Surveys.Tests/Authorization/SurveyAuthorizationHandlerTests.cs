@@ -116,6 +116,30 @@ public sealed class SurveyAuthorizationHandlerTests
         result.Should().BeTrue();
     }
 
+    // ── Preview ───────────────────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task Author_can_preview_their_own_survey_at_any_status()
+    {
+        var result = await EvaluateAsync(CreateUser(AuthorId), Detail(SurveyStatus.PendingApproval, AuthorId), SurveyOperation.Preview);
+        result.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task NonOwner_cannot_preview_someone_elses_survey()
+    {
+        var result = await EvaluateAsync(CreateUser(OtherUserId), Detail(SurveyStatus.Draft, AuthorId), SurveyOperation.Preview);
+        result.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task BoardOrAdmin_can_preview_any_survey()
+    {
+        var result = await EvaluateAsync(
+            CreateUserWithRole(RoleNames.Board), Detail(SurveyStatus.Draft, AuthorId), SurveyOperation.Preview);
+        result.Should().BeTrue();
+    }
+
     [HumansFact]
     public async Task Unauthenticated_user_is_denied_every_operation()
     {

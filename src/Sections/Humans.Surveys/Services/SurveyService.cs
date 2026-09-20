@@ -229,16 +229,17 @@ internal sealed class SurveyService(
         return surveyId;
     }
 
-    public Task UpdateAsync(Guid surveyId, SurveyEditInput input, Guid actorUserId, CancellationToken ct = default)
-        => UpdateCoreAsync(surveyId, input, actorUserId, allowRankedAvailabilityChanges: false, ct);
+    public Task UpdateAsync(Guid surveyId, SurveyEditInput input, SurveyViewer viewer, CancellationToken ct = default)
+        => UpdateCoreAsync(surveyId, input, viewer, allowRankedAvailabilityChanges: false, ct);
 
     private async Task UpdateCoreAsync(
         Guid surveyId,
         SurveyEditInput input,
-        Guid actorUserId,
+        SurveyViewer viewer,
         bool allowRankedAvailabilityChanges,
         CancellationToken ct)
     {
+        var actorUserId = viewer.UserId;
         ValidateAudienceConfiguration(
             input.AudienceType, input.AudienceTeamId, input.AudienceLoggedInSince, requireAudience: false);
         var invitationEmailSubject = NormalizeLocalizedText(input.InvitationEmailSubject);
@@ -247,6 +248,10 @@ internal sealed class SurveyService(
         var now = clock.GetCurrentInstant();
         var existing = await repo.GetByIdAsync(surveyId, ct)
             ?? throw new InvalidOperationException("Survey not found.");
+        // The controller's resource handler says the same thing before rendering a button; this is
+        // the enforcing copy, so an edit refused there is refused here too whoever the caller is.
+        if (!viewer.IsBoardOrAdmin && existing.CreatedByUserId != actorUserId)
+            throw new InvalidOperationException("Only the survey's author may edit it.");
         if (existing.IsAsociadoVote == true
             && existing.Status != SurveyStatus.Draft
             && !allowRankedAvailabilityChanges)
@@ -414,7 +419,7 @@ internal sealed class SurveyService(
                 && pair.First.Label.Equals(pair.Second.Label));
 
     public async Task<int> PreFillTranslationsAsync(
-        Guid surveyId, IReadOnlyList<string> targetCultures, Guid actorUserId, CancellationToken ct = default)
+        Guid surveyId, IReadOnlyList<string> targetCultures, SurveyViewer viewer, CancellationToken ct = default)
     {
         var detail = await GetForEditAsync(surveyId, ct)
             ?? throw new InvalidOperationException("Survey not found.");
@@ -506,7 +511,7 @@ internal sealed class SurveyService(
             }).ToList(),
             e.IsAsociadoVote);
 
-        await UpdateAsync(surveyId, input, actorUserId, ct);
+        await UpdateAsync(surveyId, input, viewer, ct);
         logger.LogInformation(
             "Survey {SurveyId}: pre-filled {Count} missing translations from {Source}", surveyId, filled, source);
         return filled;
@@ -544,6 +549,11 @@ internal sealed class SurveyService(
         var status = await repo.GetStatusAsync(surveyId, ct)
             ?? throw new InvalidOperationException("Survey not found.");
         if (status == SurveyStatus.Closed) return;
+        // Closing a pending submission would walk it out of the approval gate: Closed reopens
+        // through OpenAsync, so PendingApproval → Closed → Open would reach Open with no approval
+        // recorded and no invitations sent. Approve or reject it instead.
+        if (status == SurveyStatus.PendingApproval)
+            throw new InvalidOperationException("A survey pending approval must be approved or rejected, not closed.");
 
         await repo.SetStatusAsync(surveyId, SurveyStatus.Closed, clock.GetCurrentInstant(), ct);
         await auditLog.LogAsync(AuditAction.SurveyClosed, AuditEntityTypes.Survey, surveyId, "Closed survey", actorUserId);
@@ -621,6 +631,14 @@ internal sealed class SurveyService(
         // survey in the queue where the Board can reject it back to the author.
         ValidateAudienceConfiguration(
             survey.AudienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, requireAudience: true);
+
+        // Well-formed is not the same as non-empty: a Team audience whose team has since been
+        // deleted passes configuration and resolves to nobody. Resolve here too, so that case
+        // also fails in the queue rather than opening a survey that invites no one.
+        var recipients = await ResolveRecipientIdsAsync(
+            survey.AudienceType!.Value, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
+        if (recipients.Count == 0)
+            throw new InvalidOperationException("This survey's audience resolves to nobody to invite.");
 
         var now = clock.GetCurrentInstant();
         await repo.ApproveAsync(surveyId, now, ct);
@@ -1591,7 +1609,7 @@ internal sealed class SurveyService(
         Guid surveyId,
         Guid questionId,
         IReadOnlyList<string> unavailableValues,
-        Guid actorUserId,
+        SurveyViewer viewer,
         CancellationToken ct = default)
     {
         var detail = await GetForEditAsync(surveyId, ct)
@@ -1614,7 +1632,7 @@ internal sealed class SurveyService(
         await UpdateCoreAsync(
             surveyId,
             detail.Editable with { Questions = updatedQuestions },
-            actorUserId,
+            viewer,
             allowRankedAvailabilityChanges: true,
             ct);
     }
@@ -1712,10 +1730,12 @@ internal sealed class SurveyService(
 
     /// <summary>
     /// GDPR Article 15 contributor: the user's own submitted <see cref="ResponseAnonymity.Identified"/>
-    /// survey responses. CompletionTracked/Anonymous responses carry no <c>UserId</c> and are excluded by
-    /// the repository query (not personal data linkable to the user). Prompts/labels are resolved in the
-    /// response's own <see cref="SurveyResponse.Culture"/>, falling back to the survey's default culture.
-    /// The collection slice is always emitted (an empty list, never null) so the export key stays stable.
+    /// survey responses, the surveys they authored, and their invitation ledger.
+    /// CompletionTracked/Anonymous responses carry no <c>UserId</c> and are excluded by the repository
+    /// query (not personal data linkable to the user) — the invitation slice is what such a person,
+    /// and anyone who was only invited, gets instead. Prompts/labels are resolved in the response's own
+    /// <see cref="SurveyResponse.Culture"/>, falling back to the survey's default culture.
+    /// Every slice is always emitted (an empty list, never null) so the export keys stay stable.
     /// </summary>
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
@@ -1785,10 +1805,42 @@ internal sealed class SurveyService(
             })
             .ToList();
 
+        // The invitation ledger. Most responses are not Identified, so for someone who was only
+        // invited — or who answered under completion tracking — this is the only record of theirs
+        // the section holds. The timestamps here are invitation-side and say nothing about when a
+        // response arrived, so they do not correlate with an anonymous answer.
+        var invitations = await repo.GetInvitationsForUserAsync(userId, ct);
+        foreach (var surveyId in invitations.Select(i => i.SurveyId).Distinct())
+        {
+            if (definitions.ContainsKey(surveyId)) continue;
+            var survey = await repo.GetByIdAsync(surveyId, ct);
+            if (survey is not null) definitions[surveyId] = survey;
+        }
+
+        var invited = invitations
+            .OrderBy(i => i.CreatedAt)
+            .Select(i =>
+            {
+                definitions.TryGetValue(i.SurveyId, out var survey);
+                var culture = survey?.DefaultCulture ?? "en";
+                return new
+                {
+                    Survey = survey?.Title.Resolve(culture, culture) ?? i.SurveyId.ToString(),
+                    InvitedAt = i.CreatedAt.ToIso8601(),
+                    SentAt = i.SentAt.ToIso8601(),
+                    EmailStatus = i.LatestEmailStatus?.ToString(),
+                    ReminderSentAt = i.ReminderSentAt.ToIso8601(),
+                    i.Started,
+                    i.Completed
+                };
+            })
+            .ToList();
+
         return
         [
             new UserDataSlice(GdprExportSections.SurveyResponses, shaped),
-            new UserDataSlice(GdprExportSections.AuthoredSurveys, authored)
+            new UserDataSlice(GdprExportSections.AuthoredSurveys, authored),
+            new UserDataSlice(GdprExportSections.SurveyInvitations, invited)
         ];
     }
 
@@ -1803,7 +1855,10 @@ internal sealed class SurveyService(
             [GdprExportSections.AuthoredSurveys] =
                 "Partially retained: the authorship link is dropped and any Board rejection note " +
                 "deleted, but the survey and its questions survive as the association's own " +
-                "record of what it asked — GDPR Art. 17(3)(b)."
+                "record of what it asked — GDPR Art. 17(3)(b).",
+            [GdprExportSections.SurveyInvitations] =
+                "Erased: AnonymizeResponsesForUserAsync deletes the person's invitation rows " +
+                "outright, so nothing of this section's record that they were asked survives."
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
