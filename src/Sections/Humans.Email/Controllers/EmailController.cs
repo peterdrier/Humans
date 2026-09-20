@@ -27,6 +27,7 @@ internal sealed class EmailController(
     public async Task<IActionResult> EmailOutbox()
     {
         var stats = await outboxService.GetOutboxStatsAsync();
+        var dailyCounts = await outboxService.GetDailySendCountsAsync();
 
         var viewModel = new EmailOutboxViewModel
         {
@@ -36,9 +37,34 @@ internal sealed class EmailController(
             FailedCount = stats.FailedCount,
             IsPaused = stats.IsPaused,
             Messages = stats.RecentMessages.ToList(),
+            DailyCounts = dailyCounts.ByDay.ToList(),
+            TopTemplates = dailyCounts.TopTemplates.ToList(),
         };
 
         return View(viewModel);
+    }
+
+    [HttpGet("EmailOutbox/BackfillDailyCounts")]
+    public async Task<IActionResult> BackfillDailyCountsPreview()
+    {
+        var preview = await outboxService.PreviewDailySendCountBackfillAsync();
+        return View(new BackfillDailyCountsViewModel
+        {
+            RowsToAdd = preview.RowsToAdd,
+            EarliestDate = preview.EarliestDate,
+            LatestDate = preview.LatestDate,
+            Sample = preview.Sample.ToList(),
+        });
+    }
+
+    [HttpPost("EmailOutbox/BackfillDailyCounts")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BackfillDailyCounts()
+    {
+        var added = await outboxService.BackfillDailySendCountsAsync();
+        logger.LogInformation("Admin {AdminId} backfilled {Count} daily send count row(s)", User.Identity?.Name, added);
+        SetSuccess($"Backfilled {added} daily send count row(s) from outbox history.");
+        return RedirectToAction(nameof(EmailOutbox));
     }
 
     [HttpPost("EmailOutbox/Pause")]

@@ -50,6 +50,21 @@ Transactional email outbox: queue, render, deliver, retry, pause/resume. Backs c
 - `UserId` — per-human outbox views.
 - `CampaignGrantId` — campaign grant tracking.
 
+### EmailDailySendCount
+
+**Table:** `email_daily_send_counts` — never purged; the durable denominator for spam-rate
+spikes seen in Google Postmaster, since `email_outbox_messages` is pruned after
+`OutboxRetentionDays` (nobodies-collective/Humans#1195).
+
+| Property | Type | Purpose |
+|----------|------|---------|
+| Date | LocalDate | UTC calendar day (part of the composite PK) |
+| TemplateName | string | Template identifier (part of the composite PK) |
+| SentCount | int | Sends that succeeded on this UTC day for this template |
+| FailedCount | int | Send attempts that failed on this UTC day for this template |
+
+**Composite PK:** `(Date, TemplateName)`. **Index:** `Date` — the dashboard's rolling-window scan.
+
 ### EmailOutboxStatus
 
 | Value | Description |
@@ -78,6 +93,8 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 | `POST /Email/EmailOutbox/Retry/{id}` | `AdminOnly` | `EmailController.RetryEmailOutboxMessage` |
 | `POST /Email/EmailOutbox/Discard/{id}` | `AdminOnly` | `EmailController.DiscardEmailOutboxMessage` |
 | `GET /Email/EmailPreview` | `AdminOnly` | `EmailController.EmailPreview` — rendered template gallery |
+| `GET /Email/EmailOutbox/BackfillDailyCounts` | `AdminOnly` | `EmailController.BackfillDailyCountsPreview` — backfill review step (never-overwrite preview) |
+| `POST /Email/EmailOutbox/BackfillDailyCounts` | `AdminOnly` | `EmailController.BackfillDailyCounts` — backfill confirm step |
 | `GET /Profile/Me/Outbox` | authenticated | `ProfileController` — own outbox history |
 | `GET /Users/Admin/{id}/Outbox` | `HumanAdminBoardOrAdmin` | `UsersAdminController` — another user's outbox history |
 
@@ -86,7 +103,7 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 | Actor | Capabilities |
 |-------|--------------|
 | Any service / job | Build a fully-rendered `EmailMessage` via a typed `IEmailMessageFactory` method (e.g. `AccessSuspended`, `ApplicationApproved`, `CampaignCode`) and hand it to the single `IEmailService.SendAsync(message, ct)`. The default `IEmailService` is `OutboxEmailService`, which writes the row to `email_outbox_messages`. |
-| Admin (`AdminOnly` policy) | Pause / resume outbox. Retry a failed message (re-queue). Discard a failed message (delete). View the outbox dashboard at `/Email/EmailOutbox`. Preview rendered templates at `/Email/EmailPreview`. |
+| Admin (`AdminOnly` policy) | Pause / resume outbox. Retry a failed message (re-queue). Discard a failed message (delete). View the outbox dashboard at `/Email/EmailOutbox`, including the 90-day daily send/failure volume and top templates. Preview rendered templates at `/Email/EmailPreview`. Review then confirm a one-shot backfill of daily counts from retained outbox history. |
 | Any authenticated human | View own outbox (`GET /Profile/Me/Outbox`) — emails where `UserId` matches the signed-in user. |
 | HumanAdmin, Board, Admin (`HumanAdminBoardOrAdmin` policy) | View another human's outbox (`GET /Users/Admin/{id}/Outbox`). |
 
@@ -102,6 +119,7 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 - Recipient addresses ending in `@localhost` or `@ticketstub.local` are short-circuit-marked `Sent` without contacting the transport (test addresses; sending real mail to them would damage sender reputation).
 - `IEmailBodyComposer` is a section-internal abstraction so `OutboxEmailService` stays free of `IHostEnvironment`/configuration dependencies; the implementation (`BrandedEmailBodyComposer`) is section-internal too. `IImmediateOutboxProcessor` (`HangfireImmediateOutboxProcessor`) lives in `Humans.Email/Contracts/`.
 - `IEmailPreviewServiceRead` is the only cross-section seam for side-effect-free final-body rendering. It delegates to the same internal `IEmailBodyComposer` as the outbox and accepts only always-send system messages; opt-outable messages require recipient-specific unsubscribe policy and are rejected.
+- **Daily send counts (#1195):** `EmailOutboxProcessor` increments `email_daily_send_counts` at `(now.InUtc().Date, TemplateName)` once per send attempt — `SentCount` on success, `FailedCount` on failure — right after the matching `MarkSentAsync`/`MarkFailedAsync` call, so it inherits the same test-address exclusion (the `continue` for `@localhost`/`@ticketstub.local` fires before either). The table is never purged; `CleanupEmailOutboxJob` only ever deletes from `email_outbox_messages`. The admin-triggered backfill (`EmailOutboxService.BackfillDailySendCountsAsync`, behind a review step per `memory/process/no-data-backfills.md`) aggregates retained `Sent`/`Failed` outbox rows into the same shape and inserts only (Date, TemplateName) combinations that have no row yet — it never overwrites processor-written or previously-backfilled data, so re-running it is a no-op past the first pass. For a `Sent` row it aggregates by `SentAt`'s UTC date; for a terminally-`Failed` row (no per-attempt history survives in the outbox) it uses `CreatedAt`'s UTC date as the closest available approximation.
 - `EmailOutboxService` is the section's `IUserDataContributor`. Article 15 exports the human's own outbox history under the `EmailOutbox` key — the same rows `/Profile/Me/Outbox` already shows them. Article 17 deletes **every** row with a matching `UserId`, whatever its status: the retention sweep only reaches `Sent` rows past the cutoff, so failed and queued rows would otherwise outlive the erasure. The deletion-confirmation mail that follows the cascade leaves no row to delete (`DoNotPersist`) — it is sent after the collapse, so its `UserId` would resolve to null and put it out of this contributor's reach.
 
 ## Negative Access Rules
@@ -136,7 +154,7 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 ## Architecture
 
 **Owning services:** `OutboxEmailService` (`IEmailService`), `EmailOutboxService` (`IEmailOutboxService`)
-**Owned tables:** `email_outbox_messages`
+**Owned tables:** `email_outbox_messages`, `email_daily_send_counts`
 **Owned SystemSetting keys:** `IsEmailSendingPaused`
 **Status:** (A) Migrated.
 

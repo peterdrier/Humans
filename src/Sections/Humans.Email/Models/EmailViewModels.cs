@@ -1,4 +1,6 @@
 using Humans.Email.Contracts;
+using Humans.Email.Services;
+using NodaTime;
 
 namespace Humans.Email.Models;
 
@@ -13,6 +15,20 @@ internal sealed class EmailOutboxViewModel
     public int FailedCount { get; set; }
     public bool IsPaused { get; set; }
     public List<EmailOutboxMessageDto> Messages { get; set; } = [];
+    public List<DailySendCountRow> DailyCounts { get; set; } = [];
+    public List<TemplateSendCountRow> TopTemplates { get; set; } = [];
+}
+
+/// <summary>
+/// The review step before <c>POST /Email/EmailOutbox/BackfillDailyCounts</c>
+/// (memory/process/no-data-backfills.md).
+/// </summary>
+internal sealed class BackfillDailyCountsViewModel
+{
+    public int RowsToAdd { get; set; }
+    public LocalDate? EarliestDate { get; set; }
+    public LocalDate? LatestDate { get; set; }
+    public List<DailyTemplateSendCountRow> Sample { get; set; } = [];
 }
 
 /// <summary>

@@ -92,6 +92,89 @@ internal sealed class EmailOutboxService(
             paused ? "true" : "false",
             cancellationToken);
 
+    // --- Daily send counts (#1195) ---
+
+    public async Task<DailySendCountsDto> GetDailySendCountsAsync(
+        int days = 90, CancellationToken cancellationToken = default)
+    {
+        var since = clock.GetCurrentInstant().InUtc().Date.PlusDays(-(days - 1));
+        var rows = await repo.GetDailySendCountsSinceAsync(since, cancellationToken);
+
+        var byDay = rows
+            .GroupBy(r => r.Date)
+            .Select(g => new DailySendCountRow(g.Key, g.Sum(r => r.SentCount), g.Sum(r => r.FailedCount)))
+            .OrderByDescending(r => r.Date)
+            .ToList();
+
+        var topTemplates = rows
+            .GroupBy(r => r.TemplateName, StringComparer.Ordinal)
+            .Select(g => new TemplateSendCountRow(g.Key, g.Sum(r => r.SentCount), g.Sum(r => r.FailedCount)))
+            .OrderByDescending(r => r.SentCount + r.FailedCount)
+            .Take(10)
+            .ToList();
+
+        return new DailySendCountsDto(byDay, topTemplates);
+    }
+
+    public async Task<BackfillPreviewDto> PreviewDailySendCountBackfillAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var rows = await ComputeMissingBackfillRowsAsync(cancellationToken);
+        return new BackfillPreviewDto(
+            rows.Count,
+            rows.Count == 0 ? null : rows.Min(r => r.Date),
+            rows.Count == 0 ? null : rows.Max(r => r.Date),
+            rows.Take(50)
+                .Select(r => new DailyTemplateSendCountRow(r.Date, r.TemplateName, r.SentCount, r.FailedCount))
+                .ToList());
+    }
+
+    public async Task<int> BackfillDailySendCountsAsync(CancellationToken cancellationToken = default)
+    {
+        var rows = await ComputeMissingBackfillRowsAsync(cancellationToken);
+        if (rows.Count == 0) return 0;
+
+        await repo.AddDailySendCountsAsync(rows, cancellationToken);
+        return rows.Count;
+    }
+
+    /// <summary>
+    /// Aggregates retained outbox rows into (Date, TemplateName) daily counts and
+    /// drops any combination that already has a row — never overwrites processor
+    /// (or earlier backfill) data. The date used is <c>SentAt</c> for a delivered
+    /// message and <c>CreatedAt</c> for a terminally-failed one — the outbox keeps
+    /// only the final state per message, not a per-attempt history, so a failed
+    /// row's exact failure day cannot be reconstructed; creation day is the closest
+    /// available approximation.
+    /// </summary>
+    private async Task<IReadOnlyList<EmailDailySendCount>> ComputeMissingBackfillRowsAsync(
+        CancellationToken cancellationToken)
+    {
+        var since = clock.GetCurrentInstant() - Duration.FromDays(_settings.OutboxRetentionDays);
+        var messages = await repo.GetSentOrFailedSinceAsync(since, cancellationToken);
+        var existingKeys = await repo.GetDailySendCountKeysAsync(cancellationToken);
+
+        return messages
+            .Where(m => !IsTestAddress(m.RecipientEmail))
+            .GroupBy(m => (
+                Date: (m.Status == EmailOutboxStatus.Sent ? m.SentAt!.Value : m.CreatedAt).InUtc().Date,
+                m.TemplateName))
+            .Where(g => !existingKeys.Contains((g.Key.Date, g.Key.TemplateName)))
+            .Select(g => new EmailDailySendCount
+            {
+                Date = g.Key.Date,
+                TemplateName = g.Key.TemplateName,
+                SentCount = g.Count(m => m.Status == EmailOutboxStatus.Sent),
+                FailedCount = g.Count(m => m.Status == EmailOutboxStatus.Failed)
+            })
+            .OrderBy(r => r.Date).ThenBy(r => r.TemplateName, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private static bool IsTestAddress(string email) =>
+        email.EndsWith("@localhost", StringComparison.OrdinalIgnoreCase) ||
+        email.EndsWith("@ticketstub.local", StringComparison.OrdinalIgnoreCase);
+
     // --- IUserDataContributor ---
 
     /// <summary>

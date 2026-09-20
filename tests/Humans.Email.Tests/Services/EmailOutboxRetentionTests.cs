@@ -96,6 +96,28 @@ public class EmailOutboxRetentionTests : IDisposable
         remaining.Should().Be(1);
     }
 
+    [HumansFact]
+    public async Task PurgeExpiredAsync_LeavesDailySendCountsUntouched()
+    {
+        // CleanupEmailOutboxJob (via IEmailOutboxRetention) must never purge
+        // email_daily_send_counts — it's the durable denominator (#1195).
+        var oldRow = new EmailDailySendCount
+        {
+            Date = new LocalDate(2025, 1, 1),
+            TemplateName = "welcome",
+            SentCount = 3,
+            FailedCount = 1
+        };
+        _dbContext.EmailDailySendCounts.Add(oldRow);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SeedMessageAsync(EmailOutboxStatus.Sent, Now - Duration.FromDays(200));
+
+        await _retention.PurgeExpiredAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var remainingCounts = await _dbContext.EmailDailySendCounts.CountAsync(Xunit.TestContext.Current.CancellationToken);
+        remainingCounts.Should().Be(1);
+    }
+
     private async Task<EmailOutboxMessage> SeedMessageAsync(EmailOutboxStatus status, Instant? sentAt)
     {
         var message = new EmailOutboxMessage

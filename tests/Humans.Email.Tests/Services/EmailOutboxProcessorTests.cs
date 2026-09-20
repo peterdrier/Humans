@@ -17,6 +17,7 @@ using Humans.Base.Interfaces;
 using Humans.Base.Services.Metering;
 using Humans.Settings.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
+using Xunit;
 
 namespace Humans.Email.Tests.Services;
 
@@ -220,6 +221,53 @@ public class EmailOutboxProcessorTests : IDisposable
         updated.SentAt.Should().Be(_clock.GetCurrentInstant());
     }
 
+    [HumansFact(Timeout = 10000)]
+    public async Task ProcessQueuedAsync_IncrementsDailySentCountOnSuccess()
+    {
+        var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
+
+        await _job.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var row = await FreshCountsQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        row.Date.Should().Be(_clock.GetCurrentInstant().InUtc().Date);
+        row.TemplateName.Should().Be(message.TemplateName);
+        row.SentCount.Should().Be(1);
+        row.FailedCount.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task ProcessQueuedAsync_IncrementsDailyFailedCountOnFailure()
+    {
+        await SeedMessageAsync(EmailOutboxStatus.Queued);
+        _transport.SendAsync(
+            Arg.Any<string>(), Arg.Any<string?>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(),
+            Arg.Any<string?>(), Arg.Any<IDictionary<string, string>?>(),
+            Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("SMTP timeout"));
+
+        await _job.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var row = await FreshCountsQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        row.SentCount.Should().Be(0);
+        row.FailedCount.Should().Be(1);
+    }
+
+    [HumansTheory]
+    [InlineData("skipped@localhost")]
+    [InlineData("skipped@ticketstub.local")]
+    public async Task ProcessQueuedAsync_DoesNotCountTestAddresses(string testAddress)
+    {
+        var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
+        message.RecipientEmail = testAddress;
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _job.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var counts = await FreshCountsQuery().ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        counts.Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task ProcessQueuedAsync_SkipsFutureRetry()
     {
@@ -247,6 +295,12 @@ public class EmailOutboxProcessorTests : IDisposable
     {
         var ctx = new EmailDbContext(_options);
         return ctx.EmailOutboxMessages.AsNoTracking();
+    }
+
+    private IQueryable<EmailDailySendCount> FreshCountsQuery()
+    {
+        var ctx = new EmailDbContext(_options);
+        return ctx.EmailDailySendCounts.AsNoTracking();
     }
 
     private EmailOutboxProcessor NewProcessor(IOptions<EmailSettings> settings) => new(

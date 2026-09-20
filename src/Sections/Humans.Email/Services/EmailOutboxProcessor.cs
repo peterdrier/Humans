@@ -100,6 +100,8 @@ internal sealed class EmailOutboxProcessor(
                 // Success — mark as sent BEFORE throttle delay to avoid re-send on cancellation
                 await outboxRepo.MarkSentAsync(message.Id, now, cancellationToken);
                 metrics.RecordEmailSent(message.TemplateName);
+                await outboxRepo.IncrementDailySendCountAsync(
+                    now.InUtc().Date, message.TemplateName, succeeded: true, cancellationToken);
 
                 // Update campaign grant status if applicable — routed via
                 // ICampaignService so the Campaigns section owns campaign_grants.
@@ -120,6 +122,8 @@ internal sealed class EmailOutboxProcessor(
                 var nextRetryAt = now + Duration.FromMinutes((long)Math.Pow(2, message.RetryCount + 1));
                 await outboxRepo.MarkFailedAsync(message.Id, now, ex.Message, nextRetryAt, cancellationToken);
                 metrics.RecordEmailFailed(message.TemplateName);
+                await outboxRepo.IncrementDailySendCountAsync(
+                    now.InUtc().Date, message.TemplateName, succeeded: false, cancellationToken);
 
                 // Update campaign grant status if applicable — routed via ICampaignService.
                 if (message.CampaignGrantId.HasValue)
