@@ -3,7 +3,7 @@
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
   src/Humans.Web/Program.cs
-  src/Sections/Humans.Issues/Domain/IssueSectionRouting.cs
+  src/Sections/Humans.Issues.Contracts/IIssueQueueOwner.cs
   tests/Humans.Web.Tests/Authorization/EndpointAuthorizationTests.cs
 -->
 <!-- freshness:flag-on-change
@@ -70,7 +70,7 @@ Project references (`Humans.Scanner.csproj`): `Humans.Base`, `Humans.Events.Cont
 - **Users**: `IUserServiceRead.GetUserInfoAsync` — event participations (check-in timestamp for the active event year).
 - **Events**: `IEventServiceRead.GetApprovedEventsAsync` — events the matched Human is offering (`SubmitterUserId` match, non-camp, expanded per occurrence for recurring events).
 - **Shifts / Calendar**: `IBurnSettingsService.GetActiveAsync` for the active event year and time zone; `IICalFeedService.GetFeedItemsAsync` for the Human's shift commitments (`Shifts`-sourced items only).
-- **Issues**: feedback filed from `/Scanner/*` routes to `IssueSectionRouting.Scanner`, whose queue TicketAdmin and Board handlers see. Scanner does not call `IIssuesService`.
+- **Issues**: feedback filed from `/Scanner/*` routes to the `Scanner` queue this section declares on its own `Section` through `IIssueQueueOwner` (see "Issue queue" below), which TicketAdmin and Board handlers see. Scanner does not call `IIssuesService`.
 
 ## Architecture
 

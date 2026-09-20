@@ -29,14 +29,12 @@ public class IssueStatusTransitionTests
     }
 
     /// <summary>
-    /// Profiles and Legal name sections that no longer exist, so nobody declares those queues —
-    /// the rows still carrying those strings keep falling through to the Admin-only queue rather
-    /// than becoming unroutable (PR peterdrier/Humans#1762).
+    /// A key no section declares keeps falling through to the Admin-only queue rather than
+    /// becoming unroutable (PR peterdrier/Humans#1762).
     /// </summary>
     [HumansTheory]
-    [InlineData("Profiles")]
-    [InlineData("Legal")]
     [InlineData("ZSomethingElse")]
+    [InlineData("Camping")]
     public void Unclaimed_section_keys_fall_through_to_admin_only(string section)
     {
         _routing.RolesFor(section).Should().BeEmpty();
@@ -59,6 +57,22 @@ public class IssueStatusTransitionTests
         routing.RolesFor("Tickets").Should().BeEmpty();
 
         TestIssueQueues.Routing().AllKnownSections.Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// Profiles (merged into Users) and Legal (renamed Consent) are queue keys that outlived
+    /// their section names. Users and Consent declare them under the stored spelling, so rows
+    /// filed before those renames keep reaching their handlers (PR peterdrier/Humans#1766).
+    /// </summary>
+    [HumansTheory]
+    [InlineData("Profiles", RoleNames.HumanAdmin)]
+    [InlineData("Legal", RoleNames.ConsentCoordinator)]
+    public void Renamed_sections_keep_routing_their_stored_queue_key(string section, string role)
+    {
+        _routing.RolesFor(section).Should().Equal(role);
+        _routing.Resolve(section).Should().Be(section);
+        _routing.CanHandle(section, [role]).Should().BeTrue();
+        _routing.CanHandle(section, [RoleNames.TicketAdmin]).Should().BeFalse();
     }
 
     [HumansFact]

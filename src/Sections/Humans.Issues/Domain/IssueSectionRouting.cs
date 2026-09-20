@@ -10,11 +10,12 @@ namespace Humans.Issues.Domain;
 ///
 /// <para>
 /// The table is not held here: each owning section declares its own queue through
-/// <see cref="IIssueQueueOwner"/> and this is the lookup over what DI discovered. A key that
-/// no section claims — <c>Profiles</c> and <c>Legal</c> name sections that no longer exist,
-/// and stored rows still carry those strings — routes to nobody and so falls through to the
-/// Admin queue. That fall-through is the same one an unknown or tampered value takes, and it
-/// needs no migration because Section is stored as a free string.
+/// <see cref="IIssueQueueOwner"/> and this is the lookup over what DI discovered. A queue key
+/// need not equal its section's name — Users declares <c>Profiles</c> and Consent declares
+/// <c>Legal</c>, the names their rows were stored under before those renames. A key no section
+/// claims routes to nobody and so falls through to the Admin queue, the same fall-through an
+/// unknown or tampered value takes; it needs no migration because Section is stored as a free
+/// string.
 /// </para>
 /// </summary>
 internal sealed class IssueSectionRouting

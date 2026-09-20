@@ -29,10 +29,10 @@ public sealed class IssuesAuthorizationHandlerTests
         { [], "Tickets", false },
         { [RoleNames.TicketAdmin, RoleNames.CampAdmin], null, false },
         { [RoleNames.TicketAdmin], "ZSomeUnknownSection", false },
-        // Dead keys on stored rows: nobody owns them, so only Admin handles them.
-        { [RoleNames.HumanAdmin], "Profiles", false },
-        { [RoleNames.ConsentCoordinator], "Legal", false },
-        { [RoleNames.Admin], "Profiles", true },
+        // Keys that outlived their section names: Users declares Profiles, Consent declares Legal.
+        { [RoleNames.HumanAdmin], "Profiles", true },
+        { [RoleNames.ConsentCoordinator], "Legal", true },
+        { [RoleNames.TicketAdmin], "Profiles", false },
     };
 
     [HumansTheory]

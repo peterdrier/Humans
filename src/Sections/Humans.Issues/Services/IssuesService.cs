@@ -70,10 +70,10 @@ internal sealed class IssuesService(
     /// <remarks>
     /// Checked against the queues sections declared through <c>IIssueQueueOwner</c>, not against
     /// <see cref="ISectionCatalog"/> directly, because the routing table is the set of queues
-    /// that exist — the catalog is the set of sections that exist, and two routing entries
-    /// keys (<c>Profiles</c>, <c>Legal</c>) are stored on old rows whose sections are gone, so
-    /// nobody claims them and they fall through to the Admin queue. Each owning section
-    /// publishes its own queue annotation, so /Debug/Sections still shows where issues land.
+    /// that exist — the catalog is the set of sections that exist, and two queue keys
+    /// (<c>Profiles</c>, <c>Legal</c>) outlived the section names they were stored under, so
+    /// Users and Consent declare them under the old spelling. Each owning section publishes its
+    /// own queue annotation, so /Debug/Sections still shows where issues land.
     ///
     /// An unknown value degrades to null (the Admin queue) rather than failing, which is the
     /// behaviour the routing table was built for — it may change without a migration. Over-length
