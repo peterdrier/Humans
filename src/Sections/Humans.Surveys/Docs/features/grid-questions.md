@@ -14,7 +14,7 @@ Requested by Daniel Tenner after discussion with Peter Drier and tracked in
 
 ### Author a Grid
 
-As a Board/Admin survey author, I can add a **Grid** question with:
+As a survey author, I can add a **Grid** question with:
 
 - the existing localized prompt and help text;
 - ordered localized rows, each with a stable machine value;

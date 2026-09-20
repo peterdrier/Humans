@@ -11,7 +11,7 @@ survey title, secure answer-link button, sign-off, routing policy, and branded e
 
 ## User stories and acceptance criteria
 
-- A Board or Admin can optionally author a localized invitation email subject and Markdown-formatted message
+- An author can optionally write a localized invitation email subject and Markdown-formatted message
   in the existing survey builder language tabs.
 - The subject is a single line of at most 200 characters per culture.
 - The message is at most 4,000 characters per culture. Line breaks and basic Markdown formatting are preserved.

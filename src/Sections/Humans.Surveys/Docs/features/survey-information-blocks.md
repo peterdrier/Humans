@@ -10,7 +10,7 @@ Tracked in `nobodies-collective/Humans#1119`.
 
 ## Authoring
 
-A Board/Admin author can add an **Information** item to the same ordered, paged collection as
+An author can add an **Information** item to the same ordered, paged collection as
 questions. It supports:
 
 - an optional localized heading, stored in the existing `SurveyQuestion.Prompt`;

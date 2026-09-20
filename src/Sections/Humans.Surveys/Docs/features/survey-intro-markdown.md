@@ -3,12 +3,11 @@
 ## Business context
 
 Survey authors need introductory copy that remains readable when it contains multiple paragraphs,
-emphasis, links, or lists. Previously the respondent intro rendered as a single HTML-encoded text
-run, so even authored line breaks were collapsed by the browser.
+emphasis, links, or lists.
 
 ## User stories and acceptance criteria
 
-- A Board or Admin authors each localized survey intro through Humans' existing Markdown editor.
+- An author writes each localized survey intro through Humans' existing Markdown editor.
 - The editor stores raw Markdown in the existing localized `Survey.Intro` value; no schema or data
   migration is required.
 - The respondent intro and protected survey preview render through
