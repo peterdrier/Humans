@@ -1,6 +1,6 @@
 ---
 name: Email templates live in the sending section
-description: Adding or editing an email template — build it in the sending section with that section's resx and register an IEmailPreviewContributor; never add a template, key, or factory/renderer method to the Email crosscut.
+description: Adding or editing an email template: build it in the sending section (own resx, own tests, an IEmailPreviewContributor), never in the Email crosscut.
 ---
 
 # Email templates live in the sending section

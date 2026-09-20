@@ -195,6 +195,7 @@ internal sealed class EmailController(
                 .Select(build => build(renderer, ctx))
                 .Where(item => !contributedIds.Contains(item.Id))
                 .Concat(contributed)
+                .OrderBy(item => item.Id, StringComparer.Ordinal)
                 .Select(item =>
                 {
                     item.Body = bodyComposer.Compose(item.Body).HtmlBody;
