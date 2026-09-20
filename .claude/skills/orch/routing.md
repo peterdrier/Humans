@@ -25,9 +25,12 @@ Default is `sonnet-medium`. Start at the lowest tier that plausibly works; on fa
 step — effort first, then model — handing over what the failed attempt learned. Wrong-low costs
 one cheap retry; wrong-high is paid on every task.
 
-Every spawn pays a fixed overhead — system prompt, tool schemas, the CLAUDE.md chain — at the
-worker's rate before it reads the brief. So batch small related tasks into one worker rather than
-one spawn each, and don't spawn for anything smaller than that overhead.
+Every spawn pays a fixed overhead — system prompt, tool schemas, the CLAUDE.md chain — before it
+reads the brief: measured at 40–60k tokens (2026-09, Humans repo), roughly $0.05 on haiku,
+$0.10–0.15 on sonnet, $0.50+ on fable. Every worker completion also wakes the orchestrator, which
+re-reads its whole context at its own rate (about $0.12 a wake at 120k context on fable). So
+prefer a few fat workers to many thin ones, batch small related tasks into one worker, and don't
+spawn for anything smaller than the overhead. `/spend` shows a run's real numbers.
 
 ## Spawning
 
@@ -38,8 +41,16 @@ one spawn each, and don't spawn for anything smaller than that overhead.
   its whole context.
 - Tag the choice so it can be checked at a glance: `name: <task>-<tier>` (e.g.
   `fix-profiles-sonnet-low`), `description: "… (<tier>)"`.
-- A worker that writes files gets `isolation: "worktree"` on the Agent call itself; the user's
-  CLAUDE.md worktree rules apply to it.
+- **Where a writer works.** The rule is that no worker edits or commits in the main checkout —
+  not that every worker needs a worktree of its own. Pick by deliverable:
+  - *Independent deliverable* (its own branch and PR): `isolation: "worktree"` on the Agent call
+    itself. It branches from `origin/main`, so it can't see unpushed work.
+  - *One deliverable, several workers, different files:* no isolation flag. Give every worker the
+    absolute path of the deliverable's worktree (yours, or one you create under
+    `.claude/worktrees/`) and have it use absolute paths throughout. Parallel only when their
+    file sets don't overlap, otherwise in sequence. One owner for git — you, or the last worker.
+  - *One deliverable, several workers, same files:* isolate each, then merge their branches into
+    the deliverable branch yourself (merge output is small); hand any conflict to a worker.
 
 ## Return contract
 
