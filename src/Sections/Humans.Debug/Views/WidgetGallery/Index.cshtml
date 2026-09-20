@@ -1146,6 +1146,38 @@
                         @await Html.PartialAsync("_MarkdownHelp")
                     </div>
                 </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">_EmailComposer.cshtml</span>
+                            <span class="wg-card-kind kind-pa">Partial</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Base/Views/Shared/_EmailComposer.cshtml</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Shared human-composed-email component: optional subject field, an EasyMDE Markdown body
+                        (<code>&lt;markdown-editor&gt;</code>), and a "Preview" button showing the exact branded,
+                        sanitized send via <code>/Email/PreviewMarkdown</code> (no outbox row is created). Every
+                        compose form — profile message, camp contact, rota messages, survey invitation, feedback
+                        reply, issue comment, campaign — renders through this one component.
+                    </div>
+                    @ParamsBlock(
+                        ("@@model", "<code>EmailComposerViewModel</code> — BodyName/BodyValue/BodyLabel/BodyRows/BodyRequired/BodyMaxLength/BodyHelpText/BodyPlaceholder/BodyLabelVisuallyHidden, optional SubjectName/SubjectValue/SubjectLabel/SubjectRequired/SubjectMaxLength, and Category (a <code>MessageCategory</code> name — drives the placeholder unsubscribe footer in the preview)")
+                    )
+                    <div class="wg-card-example">
+                        @await Html.PartialAsync("_EmailComposer", new Humans.Base.Models.EmailComposerViewModel
+                        {
+                            SubjectName = "widget-gallery-email-subject",
+                            SubjectValue = "A message from the gallery",
+                            SubjectLabel = "Subject",
+                            BodyName = "widget-gallery-email-body",
+                            BodyValue = "**Hello** — this is a _preview_ of a human-composed email.",
+                            BodyLabel = "Message",
+                            Category = nameof(Humans.Users.Contracts.MessageCategory.FacilitatedMessages),
+                        })
+                    </div>
+                </div>
             </section>
 
             <section id="layout" class="wg-section">
