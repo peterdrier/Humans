@@ -7,6 +7,7 @@ using Humans.Campaigns.Contracts;
 using Humans.Base.Enums;
 using Humans.Email.Contracts;
 using Humans.Email.Data;
+using Humans.Email.Domain;
 using Humans.Base.Configuration;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -100,8 +101,7 @@ internal sealed class EmailOutboxProcessor(
                 // Success — mark as sent BEFORE throttle delay to avoid re-send on cancellation
                 await outboxRepo.MarkSentAsync(message.Id, now, cancellationToken);
                 metrics.RecordEmailSent(message.TemplateName);
-                await outboxRepo.IncrementDailySendCountAsync(
-                    now.InUtc().Date, message.TemplateName, succeeded: true, cancellationToken);
+                await TryIncrementDailySendCountAsync(message, now, succeeded: true, cancellationToken);
 
                 // Update campaign grant status if applicable — routed via
                 // ICampaignService so the Campaigns section owns campaign_grants.
@@ -122,8 +122,7 @@ internal sealed class EmailOutboxProcessor(
                 var nextRetryAt = now + Duration.FromMinutes((long)Math.Pow(2, message.RetryCount + 1));
                 await outboxRepo.MarkFailedAsync(message.Id, now, ex.Message, nextRetryAt, cancellationToken);
                 metrics.RecordEmailFailed(message.TemplateName);
-                await outboxRepo.IncrementDailySendCountAsync(
-                    now.InUtc().Date, message.TemplateName, succeeded: false, cancellationToken);
+                await TryIncrementDailySendCountAsync(message, now, succeeded: false, cancellationToken);
 
                 // Update campaign grant status if applicable — routed via ICampaignService.
                 if (message.CampaignGrantId.HasValue)
@@ -146,5 +145,29 @@ internal sealed class EmailOutboxProcessor(
 
         var pendingCount = await outboxRepo.GetPendingCountAsync(_settings.OutboxMaxRetries, cancellationToken);
         _outboxPendingMeter.Set(pendingCount);
+    }
+
+    /// <summary>
+    /// The daily tally is analytics, not delivery state: a write failure here must
+    /// never surface as a delivery failure. Left uncaught, it would fall into the
+    /// per-message catch above, flip an already-<c>Sent</c> message to <c>Failed</c>
+    /// and queue it for retry — resending mail solely because the count row failed
+    /// to save.
+    /// </summary>
+    private async Task TryIncrementDailySendCountAsync(
+        EmailOutboxMessage message, Instant now, bool succeeded, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await outboxRepo.IncrementDailySendCountAsync(
+                now.InUtc().Date, message.TemplateName, succeeded, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                ex,
+                "Failed incrementing daily send count for {TemplateName} (message {MessageId}, succeeded={Succeeded})",
+                message.TemplateName, message.Id, succeeded);
+        }
     }
 }

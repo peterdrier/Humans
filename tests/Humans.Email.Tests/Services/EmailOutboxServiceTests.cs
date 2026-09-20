@@ -189,24 +189,56 @@ public sealed class EmailOutboxServiceTests
     }
 
     [HumansFact]
-    public async Task PreviewDailySendCountBackfillAsync_UsesSentAtDateForSentAndCreatedAtDateForFailed()
+    public async Task PreviewDailySendCountBackfillAsync_UsesSentAtDateForSentRows()
     {
         // Sent on 8/16 despite being created on 8/15 — the sent-day is authoritative for Sent rows.
         var createdAt = new LocalDate(2026, 8, 15).AtMidnight().InUtc().ToInstant();
         var sentAt = new LocalDate(2026, 8, 16).AtMidnight().InUtc().ToInstant();
         var sent = BuildOutboxMessage(createdAt, EmailOutboxStatus.Sent, "welcome");
         sent.SentAt = sentAt;
-        var failed = BuildOutboxMessage(createdAt, EmailOutboxStatus.Failed, "reminder");
 
         _repo.GetSentOrFailedSinceAsync(Arg.Any<Instant>(), Arg.Any<CancellationToken>())
-            .Returns([sent, failed]);
+            .Returns([sent]);
         _repo.GetDailySendCountKeysAsync(Arg.Any<CancellationToken>())
             .Returns(new HashSet<(LocalDate, string)>());
 
         var preview = await _service.PreviewDailySendCountBackfillAsync(Xunit.TestContext.Current.CancellationToken);
 
-        preview.Sample.Should().Contain(r => r.Date == new LocalDate(2026, 8, 16) && r.TemplateName == "welcome");
-        preview.Sample.Should().Contain(r => r.Date == new LocalDate(2026, 8, 15) && r.TemplateName == "reminder");
+        preview.Sample.Should().ContainSingle(r => r.Date == new LocalDate(2026, 8, 16) && r.TemplateName == "welcome");
+    }
+
+    [HumansFact]
+    public async Task PreviewDailySendCountBackfillAsync_NeverBackfillsFailedCount()
+    {
+        // Per issue #1195: a failed message's actual failure day isn't recoverable
+        // from the outbox's final-state-only rows, so failures are never
+        // backfilled — FailedCount stays 0 and no row is produced for a
+        // template that only ever failed.
+        var day = new LocalDate(2026, 8, 15);
+        _repo.GetSentOrFailedSinceAsync(Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns([BuildOutboxMessage(day.AtMidnight().InUtc().ToInstant(), EmailOutboxStatus.Failed, "reminder")]);
+        _repo.GetDailySendCountKeysAsync(Arg.Any<CancellationToken>())
+            .Returns(new HashSet<(LocalDate, string)>());
+
+        var preview = await _service.PreviewDailySendCountBackfillAsync(Xunit.TestContext.Current.CancellationToken);
+
+        preview.RowsToAdd.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task PreviewDailySendCountBackfillAsync_ExcludesToday()
+    {
+        // The live processor may already be counting today — never merge a
+        // historical group into a day it's still writing to.
+        var today = _now.InUtc().Date;
+        _repo.GetSentOrFailedSinceAsync(Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns([BuildOutboxMessage(today.AtMidnight().InUtc().ToInstant(), EmailOutboxStatus.Sent, "welcome")]);
+        _repo.GetDailySendCountKeysAsync(Arg.Any<CancellationToken>())
+            .Returns(new HashSet<(LocalDate, string)>());
+
+        var preview = await _service.PreviewDailySendCountBackfillAsync(Xunit.TestContext.Current.CancellationToken);
+
+        preview.RowsToAdd.Should().Be(0);
     }
 
     [HumansFact]

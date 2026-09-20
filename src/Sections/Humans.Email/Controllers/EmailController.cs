@@ -1,7 +1,9 @@
 using Humans.Email.Services;
+using Humans.AuditLog.Contracts;
 using Humans.Base.Configuration;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
+using Humans.Email.Domain;
 using Humans.Email.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -15,6 +17,7 @@ namespace Humans.Email.Controllers;
 internal sealed class EmailController(
     IUserServiceRead userService,
     IEmailOutboxService outboxService,
+    IAuditLogService audit,
     ILogger<EmailController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]
@@ -63,6 +66,15 @@ internal sealed class EmailController(
     {
         var added = await outboxService.BackfillDailySendCountsAsync();
         logger.LogInformation("Admin {AdminId} backfilled {Count} daily send count row(s)", User.Identity?.Name, added);
+
+        var actorId = GetCurrentUserId();
+        if (actorId.HasValue)
+        {
+            await audit.LogAsync(
+                AuditAction.EmailDailySendCountsBackfilled, nameof(EmailDailySendCount), Guid.Empty,
+                $"Backfilled {added} daily send count row(s) from outbox history", actorId.Value);
+        }
+
         SetSuccess($"Backfilled {added} daily send count row(s) from outbox history.");
         return RedirectToAction(nameof(EmailOutbox));
     }

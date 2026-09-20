@@ -139,33 +139,34 @@ internal sealed class EmailOutboxService(
     }
 
     /// <summary>
-    /// Aggregates retained outbox rows into (Date, TemplateName) daily counts and
-    /// drops any combination that already has a row — never overwrites processor
-    /// (or earlier backfill) data. The date used is <c>SentAt</c> for a delivered
-    /// message and <c>CreatedAt</c> for a terminally-failed one — the outbox keeps
-    /// only the final state per message, not a per-attempt history, so a failed
-    /// row's exact failure day cannot be reconstructed; creation day is the closest
-    /// available approximation.
+    /// Aggregates retained <c>Sent</c> outbox rows into (Date, TemplateName) daily
+    /// <c>SentCount</c>s. Per the issue #1195 spec, failed sends are never
+    /// reconstructed here — the outbox keeps only a message's final state, not a
+    /// per-attempt history, so a failed message's actual failure day (and how many
+    /// attempts it took) cannot be recovered; <c>FailedCount</c> stays 0 for every
+    /// backfilled row. Drops today's UTC date entirely (not just existing keys for
+    /// it) and any (Date, TemplateName) combination that already has a row, so a
+    /// day the live processor has started — or finished — counting is never
+    /// double-touched or left permanently short by a partial-day merge.
     /// </summary>
     private async Task<IReadOnlyList<EmailDailySendCount>> ComputeMissingBackfillRowsAsync(
         CancellationToken cancellationToken)
     {
         var since = clock.GetCurrentInstant() - Duration.FromDays(_settings.OutboxRetentionDays);
+        var today = clock.GetCurrentInstant().InUtc().Date;
         var messages = await repo.GetSentOrFailedSinceAsync(since, cancellationToken);
         var existingKeys = await repo.GetDailySendCountKeysAsync(cancellationToken);
 
         return messages
-            .Where(m => !IsTestAddress(m.RecipientEmail))
-            .GroupBy(m => (
-                Date: (m.Status == EmailOutboxStatus.Sent ? m.SentAt!.Value : m.CreatedAt).InUtc().Date,
-                m.TemplateName))
-            .Where(g => !existingKeys.Contains((g.Key.Date, g.Key.TemplateName)))
+            .Where(m => m.Status == EmailOutboxStatus.Sent && !IsTestAddress(m.RecipientEmail))
+            .GroupBy(m => (Date: m.SentAt!.Value.InUtc().Date, m.TemplateName))
+            .Where(g => g.Key.Date != today && !existingKeys.Contains((g.Key.Date, g.Key.TemplateName)))
             .Select(g => new EmailDailySendCount
             {
                 Date = g.Key.Date,
                 TemplateName = g.Key.TemplateName,
-                SentCount = g.Count(m => m.Status == EmailOutboxStatus.Sent),
-                FailedCount = g.Count(m => m.Status == EmailOutboxStatus.Failed)
+                SentCount = g.Count(),
+                FailedCount = 0
             })
             .OrderBy(r => r.Date).ThenBy(r => r.TemplateName, StringComparer.Ordinal)
             .ToList();

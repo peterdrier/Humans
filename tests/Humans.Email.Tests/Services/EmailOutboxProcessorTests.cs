@@ -253,6 +253,43 @@ public class EmailOutboxProcessorTests : IDisposable
         row.FailedCount.Should().Be(1);
     }
 
+    [HumansFact]
+    public async Task ProcessQueuedAsync_TallyFailureDoesNotFlipDeliveredMessageToFailed()
+    {
+        // A daily-count write failure is analytics-layer noise, not a delivery
+        // failure — it must never flip an already-sent message back to Failed
+        // and queue it for a duplicate resend (Codex #1758 finding).
+        var message = new EmailOutboxMessage
+        {
+            Id = Guid.NewGuid(),
+            RecipientEmail = "test@example.com",
+            Subject = "Test Subject",
+            HtmlBody = "<p>Hello</p>",
+            TemplateName = "test_template",
+            Status = EmailOutboxStatus.Queued,
+            CreatedAt = _clock.GetCurrentInstant() - Duration.FromMinutes(10)
+        };
+
+        var repo = Substitute.For<IEmailOutboxRepository>();
+        repo.GetProcessingBatchAsync(
+                Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([message]);
+        repo.MarkSentAsync(message.Id, Arg.Any<Instant>(), Arg.Any<CancellationToken>()).Returns(true);
+        repo.IncrementDailySendCountAsync(
+                Arg.Any<LocalDate>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("daily count write failed"));
+
+        var processor = new EmailOutboxProcessor(
+            repo, _outboxService, _campaignService, _transport, _metrics, _meters, _clock, _settings,
+            NullLogger<EmailOutboxProcessor>.Instance);
+
+        await processor.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await repo.Received(1).MarkSentAsync(message.Id, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        await repo.DidNotReceive().MarkFailedAsync(
+            Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
     [HumansTheory]
     [InlineData("skipped@localhost")]
     [InlineData("skipped@ticketstub.local")]
