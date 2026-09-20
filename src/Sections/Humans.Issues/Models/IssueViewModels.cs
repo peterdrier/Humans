@@ -211,17 +211,17 @@ internal static class AreaLabelMap
     public static readonly IReadOnlyDictionary<string, string> Map =
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            [IssueSectionRouting.Camps] = "Barrios",
-            [IssueSectionRouting.Budget] = "Budget",
-            [IssueSectionRouting.CityPlanning] = "City planning",
-            [IssueSectionRouting.Legal] = "Legal & consent",
-            [IssueSectionRouting.Onboarding] = "Onboarding",
-            [IssueSectionRouting.Profiles] = "Profile & onboarding",
-            [IssueSectionRouting.Scanner] = "Scanner",
-            [IssueSectionRouting.Shifts] = "Shifts & volunteering",
-            [IssueSectionRouting.Teams] = "Teams",
-            [IssueSectionRouting.Tickets] = "Tickets",
-            [IssueSectionRouting.Governance] = "Voting & governance",
+            ["Camps"] = "Barrios",
+            ["Budget"] = "Budget",
+            ["CityPlanning"] = "City planning",
+            ["Legal"] = "Legal & consent",
+            ["Onboarding"] = "Onboarding",
+            ["Profiles"] = "Profile & onboarding",
+            ["Scanner"] = "Scanner",
+            ["Shifts"] = "Shifts & volunteering",
+            ["Teams"] = "Teams",
+            ["Tickets"] = "Tickets",
+            ["Governance"] = "Voting & governance",
         };
 
     /// <summary>Returns the friendly label for a section, or "General" when unmapped/null.</summary>

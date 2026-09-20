@@ -1,3 +1,5 @@
+using Humans.Base.Constants;
+using Humans.Issues.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
@@ -25,7 +27,7 @@ namespace Humans.Tickets;
 /// (<c>Health/</c>) is the section's own probe over the vendor port, contributed via
 /// <c>SectionHealthChecks.cs</c>.
 /// </remarks>
-public sealed class Section : ISection
+public sealed class Section : ISection, IIssueQueueOwner
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -92,4 +94,10 @@ public sealed class Section : ISection
 
         services.AddScoped<TicketSyncJob>();
     }
+
+    // This section owns the issue queue its members' reports land in; Issues discovers
+    // the seam rather than holding a list of sections (memory/architecture/section-contribution-seams.md).
+    string IIssueQueueOwner.QueueKey => "Tickets";
+
+    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.TicketAdmin];
 }

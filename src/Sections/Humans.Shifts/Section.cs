@@ -1,3 +1,5 @@
+using Humans.Base.Constants;
+using Humans.Issues.Contracts;
 using Humans.Base.Interfaces.Caching;
 using Humans.Calendar.Contracts;
 using Humans.EarlyEntry.Contracts;
@@ -27,7 +29,7 @@ namespace Humans.Shifts;
 /// <c>AddSectionDbContext&lt;ShiftsDbContext&gt;</c> line moved out of
 /// <c>InfrastructureServiceCollectionExtensions</c> (design §15 step 11).
 /// </remarks>
-public sealed class Section : ISection
+public sealed class Section : ISection, IIssueQueueOwner
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -116,4 +118,10 @@ public sealed class Section : ISection
             [SignupStatus.NoShow] = "bg-danger",
         });
     }
+
+    // This section owns the issue queue its members' reports land in; Issues discovers
+    // the seam rather than holding a list of sections (memory/architecture/section-contribution-seams.md).
+    string IIssueQueueOwner.QueueKey => "Shifts";
+
+    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.NoInfoAdmin];
 }

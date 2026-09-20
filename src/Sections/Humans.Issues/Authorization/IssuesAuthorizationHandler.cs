@@ -19,7 +19,8 @@ namespace Humans.Issues.Authorization;
 /// Reads from claims only (RoleAssignmentClaimsTransformation populates them per-request,
 /// cached 60s) — no DB hit.
 /// </summary>
-internal sealed class IssuesAuthorizationHandler : AuthorizationHandler<IssuesOperationRequirement, IssueDetail>
+internal sealed class IssuesAuthorizationHandler(IssueSectionRouting routing)
+    : AuthorizationHandler<IssuesOperationRequirement, IssueDetail>
 {
     protected override Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
@@ -27,7 +28,7 @@ internal sealed class IssuesAuthorizationHandler : AuthorizationHandler<IssuesOp
         IssueDetail resource)
     {
         var roles = context.User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
-        if (IssueSectionRouting.CanHandle(resource.Section, roles))
+        if (routing.CanHandle(resource.Section, roles))
         {
             context.Succeed(requirement);
         }

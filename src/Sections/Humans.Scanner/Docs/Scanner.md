@@ -82,3 +82,11 @@ Project references (`Humans.Scanner.csproj`): `Humans.Base`, `Humans.Events.Cont
 - **Decorator decision:** no caching decorator. Each read interface is cached by its owning section.
 - **Admin nav:** `SectionAdminNav` contributes the "Scanner" entry to the shared "Tickets" admin group.
 - The `HUM0008` controller analyzer and `HUM0009` analyzer cover direct DbContext injection.
+
+## Issue queue
+
+Scanner owns the `Scanner` issue queue: it implements `IIssueQueueOwner` (Issues' contracts
+leaf) on its `Section` entry point, declaring the queue key and the roles that handle
+issues filed against it — `TicketAdmin, Board`, plus `Admin`, which handles every queue. Issues
+discovers the declaration through DI and holds no list of sections; dropping the seam
+sends this section's stored issues to the Admin-only queue.
