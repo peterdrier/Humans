@@ -20,6 +20,8 @@ internal sealed class GoogleSyncLogService(
     ILogger<GoogleSyncLogService> logger)
     : IGoogleSyncLogService, IGoogleSyncLogViewer, IUserDataContributor
 {
+    internal const string GoogleSyncLog = "GoogleSyncLog";
+
     public async Task LogAsync(
         GoogleSyncLogAction action,
         Guid resourceId,
@@ -84,13 +86,13 @@ internal sealed class GoogleSyncLogService(
     {
         var entries = await repo.GetAllByUserIdsContributorAsync(
             await UserIdsWithMergedSourcesAsync(userId, ct), ct);
-        return [new UserDataSlice(GdprExportSections.GoogleSyncLog, await ToViewsAsync(entries, ct))];
+        return [new UserDataSlice(GoogleSyncLog, await ToViewsAsync(entries, ct))];
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.GoogleSyncLog] = null
+            [GoogleSyncLog] = null
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;

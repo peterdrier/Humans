@@ -198,7 +198,7 @@ internal partial interface IUserRepository : IRepository
     /// <summary>
     /// Returns all participation records for a given user (across all years),
     /// ordered by year ascending. Read-only (AsNoTracking). Used by the GDPR
-    /// export contributor under <c>GdprExportSections.EventParticipations</c>.
+    /// export contributor under the <c>EventParticipations</c> key.
     /// </summary>
     Task<IReadOnlyList<EventParticipation>> GetEventParticipationsByUserIdAsync(
         Guid userId, CancellationToken ct = default);

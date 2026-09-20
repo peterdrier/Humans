@@ -29,6 +29,8 @@ internal sealed class EmailOutboxService(
     IOptions<EmailSettings> settings,
     IClock clock) : IEmailOutboxService, IUserDataContributor
 {
+    internal const string EmailOutbox = "EmailOutbox";
+
     private static readonly Duration Last24Hours = Duration.FromHours(24);
 
     private readonly EmailSettings _settings = settings.Value;
@@ -114,13 +116,13 @@ internal sealed class EmailOutboxService(
             SentAt = m.SentAt.ToIso8601()
         }).ToList();
 
-        return [new UserDataSlice(GdprExportSections.EmailOutbox, shaped)];
+        return [new UserDataSlice(EmailOutbox, shaped)];
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.EmailOutbox] = null
+            [EmailOutbox] = null
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;

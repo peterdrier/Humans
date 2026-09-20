@@ -22,7 +22,8 @@ namespace Humans.Gdpr.Contracts;
 /// </param>
 /// <param name="Sections">
 /// Section name → section data, in the order the contributors were called. Keys
-/// are the stable JSON property names from <see cref="GdprExportSections"/>.
+/// are the names each contributor chooses for its own slice (see
+/// <see cref="UserDataSlice.SectionName"/>).
 /// </param>
 public sealed record GdprExport(
     string ExportedAt,

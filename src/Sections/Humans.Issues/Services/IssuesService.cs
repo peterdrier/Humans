@@ -40,6 +40,8 @@ internal sealed class IssuesService(
     ISectionCatalog sectionCatalog,
     ILogger<IssuesService> logger) : IIssuesService, IUserDataContributor
 {
+    internal const string Issues = "Issues";
+
     private static readonly TimeSpan BadgeCacheDuration = TimeSpan.FromMinutes(2);
 
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -807,7 +809,7 @@ internal sealed class IssuesService(
             })
         }).ToList();
 
-        return [new UserDataSlice(GdprExportSections.Issues, shaped)];
+        return [new UserDataSlice(Issues, shaped)];
     }
 
     // ─── IUserDataContributor (GDPR erasure) ───
@@ -815,7 +817,7 @@ internal sealed class IssuesService(
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.Issues] =
+            [Issues] =
                 "Partially retained: issues the person reported are deleted outright, comments " +
                 "and screenshots with them. A comment they left on someone else's issue is that " +
                 "issue's content and stays, with the authorship detached (SenderUserId nulled) — " +

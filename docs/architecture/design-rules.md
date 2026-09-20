@@ -308,10 +308,10 @@ See [`docs/architecture/dependency-graph.md`](dependency-graph.md) for the full 
 
 Every section whose owned tables hold per-user rows MUST implement `IUserDataContributor` (`Humans.Gdpr.Contracts`) so the GDPR Article 15 data export (`IGdprService`) can assemble a complete document without any cross-section database reads. The orchestrator injects `IEnumerable<IUserDataContributor>`, fans out one call per contributor, and merges the returned slices into the JSON document the user downloads from `/Profile/Me/DownloadData`.
 
-Adding a new user-scoped section to §8 above requires four coupled steps — all four, in any order, before the PR can land:
+Adding a new user-scoped section to §8 above requires three coupled steps — all three, in any order, before the PR can land:
 
-1. Add the new section-name constants to `GdprExportSections` (`Humans.Gdpr.Contracts`).
-2. Make the owning service implement `IUserDataContributor` and return its own slice. A contributor reads only its own section's tables — cross-section data flows through other contributors, not through `Include` chains. Collection slices must always return the shaped list (empty when the user has no records); `null` data is reserved for single-object sections whose entity doesn't exist for this user.
+1. Declare the section-name constant(s) on the owning contributor class itself — there is no central registry (`Humans.Gdpr.Contracts` keeps only the generic interfaces and DTOs).
+2. Make the owning service implement `IUserDataContributor` and return its own slice. A contributor reads only its own section's tables — cross-section data flows through other contributors, not through `Include` chains. Collection slices must always return the shaped list (empty when the user has no records); `null` data is reserved for single-object sections whose entity doesn't exist for this user. Every returned section name must also be a key of that contributor's `ErasureDeclaration` — `GdprService.ExportForUserAsync` logs an error and continues otherwise.
 3. Register the service in the section's own `Section.cs`, using the forwarding pattern so the same scoped instance serves both the primary interface and `IUserDataContributor`:
 
    ```csharp
@@ -320,17 +320,14 @@ Adding a new user-scoped section to §8 above requires four coupled steps — al
    services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<MyNewService>());
    ```
 
-4. Add the concrete service type to `GdprExportDependencyInjectionTests.ExpectedContributorTypes` — the enforced view of the §8 rows that hold user-scoped data.
+The architecture test suite in `tests/Humans.Web.Tests/Services/Gdpr/GdprExportDependencyInjectionTests.cs` enforces steps 2 and 3 automatically, deriving the expected contributor roster by reflection — no type list to update when adding a section:
 
-The architecture test suite in `tests/Humans.Web.Tests/Services/Gdpr/GdprExportDependencyInjectionTests.cs` enforces every step automatically:
-
-- `EverySectionServiceMustImplementIUserDataContributor` — each listed type really implements the interface. A section service is `internal`, so the list names it by reflection (`SectionType("Humans.Gate.Services.GateService")`) rather than `typeof`.
-- `EveryIUserDataContributorInInfrastructureIsExpected` — every `IUserDataContributor` found via reflection is in the expected list (catches new contributors that forget the list). It sweeps the Shell assembly, `Humans.Users`, **and every section assembly**, discovered through `SectionDiscoveryExtensions.SectionAssemblies()` — the same discovery the runtime uses, so a section that moves or renames cannot silently drop out of the scan.
-- `EveryExpectedContributorIsRegisteredInInfrastructure` — every listed type has a DI registration.
-- `EveryIUserDataContributorFactoryForwardsToAnExpectedConcreteType` — each forwarding factory resolves to a distinct expected concrete type, so a duplicated or mis-wired factory can't silently drop a section.
+- `ContributorsAreDiscoverable` — guards against the sweep passing vacuously.
+- `EveryDiscoveredContributorIsRegisteredInInfrastructure` — every `IUserDataContributor` found by reflection over the Shell assembly and every section assembly (`SectionDiscoveryExtensions.SectionAssemblies()`) has a DI registration, so a section that moves or renames cannot silently drop out.
+- `EveryIUserDataContributorFactoryForwardsToADistinctDiscoveredConcreteType` — each forwarding factory resolves to a distinct discovered concrete type, so a duplicated or mis-wired factory can't silently drop a section.
 - `GdprServiceIsRegistered` — the orchestrator itself is registered.
 
-**Uncaught case (convention, not test):** if a new user-scoped section is added to §8 but its owning service never implements `IUserDataContributor` at all, reflection finds nothing to enumerate and the suite passes vacuously. The four-step list above is the prose-level guardrail — reviewers should reject any §8 edit that adds a user-scoped row without touching `ExpectedContributorTypes` in the same PR.
+**Uncaught case (convention, not test):** if a new user-scoped section is added to §8 but its owning service never implements `IUserDataContributor` at all, reflection finds nothing to enumerate and the suite passes vacuously. Step 2 above is the prose-level guardrail — reviewers should reject any §8 edit that adds a user-scoped row without its owning service implementing the interface in the same PR.
 
 **Provenance FKs are not user-scoped data.** A section's tables can carry user FK columns that record *who performed an action* (`AddedByUserId`, `RecordedByUserId`, `IssuedByUserId`, etc.) without the section's data being user-scoped. The rule of thumb: if you delete the user, do their rows go with them, or do they belong to a different aggregate (a camp, a team, an event) and merely lose their actor reference? If the latter, the section is not user-scoped — the FKs are provenance and belong to audit-style "what happened" data, not to the user's "what's mine" export. The **Store** section is the canonical example: store orders, lines, payments, and invoices belong to a camp season; the user FKs only record which lead clicked which button. Store data flows out of GDPR export through the audit log, not through a Store-section contributor.
 

@@ -5,153 +5,67 @@ using Humans.Web.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
-using ProfilesAccountMergeService = Humans.Users.Services.AccountMergeService;
-using UsersUserService = Humans.Users.Services.UserService;
-using TeamService = Humans.Teams.Services.TeamService;
 
 namespace Humans.Web.Tests.Services.Gdpr;
 
 /// <summary>
 /// Architecture tests for GDPR-export contributor wiring. These prevent the
 /// silent-omission bug the whole refactor exists to eliminate: when a new
-/// user-scoped section is added and its owning service forgets to implement
-/// <see cref="IUserDataContributor"/> (or forgets to register it in DI), the
-/// export would drop that category without warning. These tests fail loudly
+/// user-scoped section is added and its owning service forgets to register
+/// its <see cref="IUserDataContributor"/> implementation in DI, the export
+/// would drop that category without warning. These tests fail loudly
 /// instead.
+///
+/// <para>
+/// The contributor roster is derived entirely from reflection over the
+/// section assemblies the runtime composes itself from — never a pinned
+/// type list — so a spoke that implements the interface is automatically
+/// in scope and a spoke that moves or renames cannot silently drop out.
+/// </para>
 /// </summary>
 public class GdprExportDependencyInjectionTests
 {
     /// <summary>
-    /// Every section service that owns user-scoped tables MUST appear here.
-    /// This list is the enforced view of the §8 Table Ownership Map in
-    /// <c>docs/architecture/design-rules.md</c> — when adding a new section to
-    /// §8 whose tables hold per-user rows, ALSO add its owning service type
-    /// here. The tests below use this list to prove two invariants:
-    ///
-    /// <list type="number">
-    /// <item><description>
-    /// Every type in this list actually implements
-    /// <see cref="IUserDataContributor"/>
-    /// (<see cref="EverySectionServiceMustImplementIUserDataContributor"/>).
-    /// </description></item>
-    /// <item><description>
-    /// Every <see cref="IUserDataContributor"/> implementation found by
-    /// reflection in the <c>Humans.Infrastructure</c> assembly is accounted
-    /// for in this list
-    /// (<see cref="EveryIUserDataContributorInInfrastructureIsExpected"/>) —
-    /// so you can't add a new contributor without registering it here.
-    /// </description></item>
-    /// <item><description>
-    /// Every listed type is registered in DI as both its concrete type and a
-    /// forwarding <see cref="IUserDataContributor"/> factory
-    /// (<see cref="EveryExpectedContributorIsRegisteredInInfrastructure"/>
-    /// and <see cref="EveryIUserDataContributorFactoryForwardsToAnExpectedConcreteType"/>).
-    /// </description></item>
-    /// </list>
-    ///
-    /// <b>Uncaught case:</b> If a new user-scoped section is added to §8 but
-    /// its owning service never implements <see cref="IUserDataContributor"/>
-    /// in the first place, reflection finds nothing to enumerate and the tests
-    /// pass vacuously. The §8a cross-cutting note in <c>design-rules.md</c>
-    /// is the prose-level guardrail against that.
+    /// Every <see cref="IUserDataContributor"/> implementation found by reflection
+    /// over the section assemblies the runtime composes itself from, plus the host
+    /// assembly (residue that hasn't moved into a section project). This is the
+    /// ground truth the tests below check DI registration against — no section is
+    /// named here, so a new contributor joins the roster the moment it implements
+    /// the interface.
     /// </summary>
-    public static readonly Type[] ExpectedContributorTypes =
-    [
-        typeof(UsersUserService),
-        typeof(ProfilesAccountMergeService),
-        SectionType("Humans.Governance.Services.ApplicationDecisionService"),
-        SectionType("Humans.Governance.Services.AssemblyVoteService"),
-        SectionType("Humans.Consent.Services.ConsentService"),
-        typeof(TeamService),
-        SectionType("Humans.Auth.Services.RoleAssignmentService"),
-        SectionType("Humans.Shifts.Services.ShiftSignupService"),
-        SectionType("Humans.Feedback.Services.FeedbackService"),
-        SectionType("Humans.Issues.Services.IssuesService"),
-        SectionType("Humans.Notifications.Services.NotificationInboxService"),
-        SectionType("Humans.Tickets.Services.TicketQueryService"),
-        SectionType("Humans.Campaigns.Services.CampaignService"),
-        SectionType("Humans.Camps.Services.CampService"),
-        // The caching decorator, not EventService: erasure edits cached rows.
-        SectionType("Humans.Events.Services.CachingEventService"),
-        SectionType("Humans.AuditLog.Services.AuditLogService"),
-        SectionType("Humans.Budget.Services.BudgetService"),
-        SectionType("Humans.Agent.Services.AgentService"),
-        SectionType("Humans.Expenses.Services.ExpenseReportService"),
-        SectionType("Humans.Finance.Services.Service"),
-        SectionType("Humans.Surveys.Services.SurveyService"),
-        SectionType("Humans.Gate.Services.GateService"),
-        SectionType("Humans.GoogleIntegration.Services.GoogleSyncLogService"),
-        SectionType("Humans.MailerLite.Services.MailerLiteGdprContributor"),
-        SectionType("Humans.Email.Services.EmailOutboxService"),
-        SectionType("Humans.Backdoor.Services.BackdoorApiKeyService"),
-        // The caching decorator, not RideshareService: erasure empties cached rows.
-        SectionType("Humans.Rideshare.Services.CachingRideshareService"),
-        // Likewise the decorator, not WorkgroupService: erasure and the merge fold change cached rows.
-        SectionType("Humans.Workgroups.Services.CachingWorkgroupService"),
-        // Owns calendar_feed_tokens, so it owes an export slice and an erasure path.
-        SectionType("Humans.Calendar.Services.CalendarFeedTokenService")
-    ];
-
-    /// <summary>
-    /// A G5 section's service is <c>internal</c> to its own assembly
-    /// (nobodies-collective/Humans#866), so it cannot be named with <c>typeof</c> here.
-    /// Resolved by reflection instead, which keeps the section in the expected-contributor
-    /// list rather than dropping it — the silent-omission bug this class exists to prevent.
-    /// </summary>
-    private static Type SectionType(string fullName) =>
-        Extensions.SectionDiscoveryExtensions.SectionAssemblies()
-            .Select(a => a.GetType(fullName, throwOnError: false))
-            .FirstOrDefault(t => t is not null)
-        ?? throw new InvalidOperationException(
-            $"{fullName} not found in any section assembly — did the section move or rename it?");
-
-    [HumansFact]
-    public void EverySectionServiceMustImplementIUserDataContributor()
+    private static Type[] DiscoverContributorTypes()
     {
-        foreach (var type in ExpectedContributorTypes)
-        {
-            typeof(IUserDataContributor).IsAssignableFrom(type)
-                .Should().BeTrue(
-                    $"{type.Name} owns user-scoped tables and must implement IUserDataContributor for the GDPR export orchestrator");
-        }
-    }
-
-    [HumansFact]
-    public void EveryIUserDataContributorInInfrastructureIsExpected()
-    {
-        // Scan every assembly where section services live: Humans.Infrastructure
-        // still holds most of them, Humans.Application is the intermediate target
-        // per the repository/store/decorator migration (first move:
-        // ApplicationDecisionService, Governance PR #503, since moved to G5), and each G5 section
-        // project (nobodies-collective/Humans#866) holds its own. The section
-        // assemblies come from SectionDiscoveryExtensions — the same discovery the
-        // runtime uses, so a section that moves cannot silently drop out of this
-        // sweep the way it would with a hard-coded assembly list (design §10).
-        // Humans.Infrastructure was the first entry until G5 lane 5b-6 deleted it; its residue
-        // (and, at 5c, Dashboard's) lands in Humans.Web, so the host assembly takes its place.
         var hostAssembly = typeof(Extensions.InfrastructureServiceCollectionExtensions).Assembly;
         var applicationAssembly = typeof(Humans.Users.Services.UserService).Assembly;
 
-        var foundContributors = new[] { hostAssembly, applicationAssembly }
+        return new[] { hostAssembly, applicationAssembly }
             .Concat(Extensions.SectionDiscoveryExtensions.SectionAssemblies())
+            .Distinct()
             .SelectMany(asm => asm.GetTypes())
             .Where(t => t is { IsClass: true, IsAbstract: false })
             .Where(t => typeof(IUserDataContributor).IsAssignableFrom(t))
             .Distinct()
             .ToArray();
-
-        foundContributors.Should().BeEquivalentTo(
-            ExpectedContributorTypes,
-            "every IUserDataContributor implementation must be accounted for in ExpectedContributorTypes — add new contributors to that list");
     }
 
     [HumansFact]
-    public void EveryExpectedContributorIsRegisteredInInfrastructure()
+    public void ContributorsAreDiscoverable()
+    {
+        // Guards the rest of the class against passing vacuously if section
+        // discovery ever returns nothing.
+        DiscoverContributorTypes().Should().NotBeEmpty(
+            "GDPR export DI coverage is enforced by reflecting over the composed section assemblies");
+    }
+
+    [HumansFact]
+    public void EveryDiscoveredContributorIsRegisteredInInfrastructure()
     {
         // Walk the real InfrastructureServiceCollectionExtensions registrations
-        // and verify each expected contributor appears as an IUserDataContributor
+        // and verify each discovered contributor appears as an IUserDataContributor
         // forwarding factory. We read the collection's ServiceDescriptors directly
         // so the test doesn't need a live DbContext, Postgres, or config.
+        var expectedContributorTypes = DiscoverContributorTypes();
+
         var services = new ServiceCollection();
         var config = BuildMinimalConfiguration();
         Extensions.InfrastructureServiceCollectionExtensions
@@ -164,15 +78,15 @@ public class GdprExportDependencyInjectionTests
             .Where(d => d.ServiceType == typeof(IUserDataContributor))
             .ToArray();
 
-        contributorDescriptors.Should().HaveCount(ExpectedContributorTypes.Length,
-            "every expected contributor must have exactly one IUserDataContributor registration");
+        contributorDescriptors.Should().HaveCount(expectedContributorTypes.Length,
+            "every discovered contributor must have exactly one IUserDataContributor registration");
 
         // Each IUserDataContributor registration is a factory that forwards to
         // the concrete section service. We can't introspect the factory body,
-        // but we CAN verify that for every expected contributor type, its
+        // but we CAN verify that for every discovered contributor type, its
         // concrete-type registration exists AND exactly one IUserDataContributor
         // factory is wired alongside it.
-        foreach (var expected in ExpectedContributorTypes)
+        foreach (var expected in expectedContributorTypes)
         {
             services.Should().ContainSingle(d => d.ServiceType == expected,
                 $"{expected.Name} must be registered as its own concrete type so the IUserDataContributor factory can forward to it");
@@ -194,7 +108,7 @@ public class GdprExportDependencyInjectionTests
     }
 
     [HumansFact]
-    public void EveryIUserDataContributorFactoryForwardsToAnExpectedConcreteType()
+    public void EveryIUserDataContributorFactoryForwardsToADistinctDiscoveredConcreteType()
     {
         // This is the "prevent silent drop" assertion. Counting descriptors
         // alone doesn't catch the bug where one contributor's factory is
@@ -202,8 +116,10 @@ public class GdprExportDependencyInjectionTests
         // actually invoke the real forwarding factories via a test
         // ServiceProvider whose concrete-type registrations are replaced with
         // `GetUninitializedObject` fakes. Each factory resolves its target
-        // concrete type, and the set of resolved types must exactly match
-        // `ExpectedContributorTypes`.
+        // concrete type, and the set of resolved types must exactly match the
+        // discovered roster.
+        var expectedContributorTypes = DiscoverContributorTypes();
+
         var services = new ServiceCollection();
         var config = BuildMinimalConfiguration();
         Extensions.InfrastructureServiceCollectionExtensions
@@ -216,7 +132,7 @@ public class GdprExportDependencyInjectionTests
         // instance of that same type. GetUninitializedObject skips the
         // constructor, so we never touch DbContext, IClock, or any of the
         // other runtime dependencies.
-        foreach (var type in ExpectedContributorTypes)
+        foreach (var type in expectedContributorTypes)
         {
             var existing = services.FirstOrDefault(d =>
                 d.ServiceType == type && d.ImplementationFactory is null);
@@ -237,8 +153,8 @@ public class GdprExportDependencyInjectionTests
             .ToArray();
 
         resolvedTypes.Should().BeEquivalentTo(
-            ExpectedContributorTypes,
-            "every IUserDataContributor forwarding factory must resolve to a distinct expected concrete type — duplicated or mis-forwarded factories would silently drop a section");
+            expectedContributorTypes,
+            "every IUserDataContributor forwarding factory must resolve to a distinct discovered concrete type — duplicated or mis-forwarded factories would silently drop a section");
     }
 
     private static IConfiguration BuildMinimalConfiguration()

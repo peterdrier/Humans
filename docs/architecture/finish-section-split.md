@@ -60,7 +60,7 @@ Done when shared event dates/year continue working with Shifts disabled, existin
 
 ### 4. Open crosscut contracts to section-owned contributions
 
-- [ ] Remove the need to edit central domain catalogs for every feature: audit actions, notification sources/mappings, feature-specific email factory methods, and GDPR export section keys. Starting points: `AuditAction`, `NotificationSource`, `NotificationSourceMapping`, `IEmailMessageFactory`, and `GdprExportSections`. The export-key inventory is also what nobodies-collective/Humans#1116 needs derived rather than pinned.
+- [ ] Remove the need to edit central domain catalogs for every feature: audit actions, notification sources/mappings, and feature-specific email factory methods. Starting points: `AuditAction`, `NotificationSource`, `NotificationSourceMapping`, `IEmailMessageFactory`. GDPR export section keys are done: `GdprExportSections` is gone, each contributor declares its own constants, and `GdprExportDependencyInjectionTests`/`GdprErasureCoverageTests` derive their rosters by reflection (nobodies-collective/Humans#1116).
 - [ ] Preserve stored identifiers, historical rendering, export compatibility, and delivery behavior while moving domain meaning to its owner. Separate contracts from service implementations; do not turn `Section` into an email or audit business service.
 
 Done when a section adds its own audited action, notification/email content, and export contribution without editing the crosscut's feature catalog. Existing records remain readable.

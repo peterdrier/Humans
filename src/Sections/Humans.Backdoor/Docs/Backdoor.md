@@ -110,7 +110,7 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 - **Notifications**: reads the key owner's unread inbox and meters via `INotificationInboxRead` (`Humans.Notifications/Contracts`, not the contracts leaf: Backdoor is its only consumer). Rows are the owner's own; meters follow the owner's roles.
 - **Auth**: `IRoleAssignmentService.IsUserAdminAsync` / `IsUserBoardMemberAsync` for key eligibility, and `GetActiveUserIdsInRoleAsync` for the admin page's recipient list — narrowed there to active accounts, so the dropdown never offers someone the service would refuse and each listed key shows whether it still authenticates.
 - **AuditLog**: `IAuditLogService.LogAsync` for the key lifecycle.
-- **Gdpr**: `IUserDataContributor` — `backdoor_api_keys` is user-keyed, so the section owes an Article 15 slice (`GdprExportSections.BackdoorApiKeys`, hash excluded) and an Article 17 erasure.
+- **Gdpr**: `IUserDataContributor` — `backdoor_api_keys` is user-keyed, so the section owes an Article 15 slice (`BackdoorApiKeyService.BackdoorApiKeys`, hash excluded) and an Article 17 erasure.
 - **Users**: `IUserServiceRead.GetUserInfoAsync` for the account-state half of key eligibility and `GetUserInfosAsync` for display names on the admin page and on the API's issue/feedback projections; `IUserMerge` to fold an eliminated account's keys onto the survivor.
 - **Base**: `InMemoryLogSink` behind `/api/backdoor/logs`.
 

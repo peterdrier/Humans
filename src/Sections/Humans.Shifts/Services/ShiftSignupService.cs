@@ -2,7 +2,6 @@ using Humans.Auth.Contracts;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.EarlyEntry.Contracts;
-using Humans.Gdpr.Contracts;
 using Humans.Calendar.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Shifts.Contracts;
@@ -11,6 +10,7 @@ using Humans.Shifts.Domain;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Shifts.Data;
+using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Localization;
 
@@ -35,6 +35,12 @@ internal sealed class ShiftSignupService(
     IUserServiceRead users,
     IStringLocalizer<ShiftsResource> localizer) : IShiftSignupService, IUserDataContributor, IUserMerge, ICalendarFeedContributor
 {
+    /// <summary>GDPR export JSON keys for this contributor's data.</summary>
+    internal const string ShiftSignups = "ShiftSignups";
+    internal const string VolunteerEventProfiles = "VolunteerEventProfiles";
+    internal const string GeneralAvailability = "GeneralAvailability";
+    internal const string ShiftTagPreferences = "ShiftTagPreferences";
+
     // Lazy-resolved for notification coordinator / team-name lookups.
     private ITeamServiceRead TeamService => serviceProvider.GetRequiredService<ITeamServiceRead>();
 
@@ -1215,7 +1221,7 @@ internal sealed class ShiftSignupService(
                 eventNamesById[id] = info.EventName;
         }
 
-        var signupSlice = new UserDataSlice(GdprExportSections.ShiftSignups, signups.Select(ss => new
+        var signupSlice = new UserDataSlice(ShiftSignups, signups.Select(ss => new
         {
             ss.Shift.Rota.EventSettings.EventName,
             Department = teamNamesById.TryGetValue(ss.Shift.Rota.TeamId, out var teamName) ? teamName : null,
@@ -1231,7 +1237,7 @@ internal sealed class ShiftSignupService(
 
         // Dietary + medical moved to Profile — they are exported by the Profiles
         // data contributor now. The Shifts VEP slice carries only shift-matching data.
-        var vepSlice = new UserDataSlice(GdprExportSections.VolunteerEventProfiles, volunteerEventProfiles.Select(vep => new
+        var vepSlice = new UserDataSlice(VolunteerEventProfiles, volunteerEventProfiles.Select(vep => new
         {
             vep.Skills,
             vep.Quirks,
@@ -1240,14 +1246,14 @@ internal sealed class ShiftSignupService(
             UpdatedAt = vep.UpdatedAt.ToIso8601()
         }).ToList());
 
-        var availabilitySlice = new UserDataSlice(GdprExportSections.GeneralAvailability, generalAvailability.Select(ga => new
+        var availabilitySlice = new UserDataSlice(GeneralAvailability, generalAvailability.Select(ga => new
         {
             EventName = eventNamesById.TryGetValue(ga.EventSettingsId, out var eventName) ? eventName : string.Empty,
             ga.AvailableDayOffsets,
             UpdatedAt = ga.UpdatedAt.ToIso8601()
         }).ToList());
 
-        var tagPreferenceSlice = new UserDataSlice(GdprExportSections.ShiftTagPreferences, tagPreferences.Select(vtp => new
+        var tagPreferenceSlice = new UserDataSlice(ShiftTagPreferences, tagPreferences.Select(vtp => new
         {
             TagName = vtp.ShiftTag.Name
         }).ToList());
@@ -1258,15 +1264,15 @@ internal sealed class ShiftSignupService(
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.ShiftSignups] =
+            [ShiftSignups] =
                 "Partially retained: the signup row (shift, status, timestamps, keyed to the user " +
                 "id the Users section tombstones) is the association's record of who covered " +
                 "which volunteer shift — Ley Orgánica 1/2002 Art. 14, GDPR Art. 17(3)(b). Every " +
                 "still-active signup is cancelled immediately, and the free-text status reason " +
                 "a coordinator wrote on any signup is cleared.",
-            [GdprExportSections.VolunteerEventProfiles] = null,
-            [GdprExportSections.GeneralAvailability] = null,
-            [GdprExportSections.ShiftTagPreferences] = null
+            [VolunteerEventProfiles] = null,
+            [GeneralAvailability] = null,
+            [ShiftTagPreferences] = null
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;

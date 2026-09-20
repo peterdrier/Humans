@@ -1,7 +1,6 @@
 using System.Collections;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
-using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Rideshare.Domain;
 using Humans.Rideshare.Services;
@@ -738,7 +737,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var slices = await NewService().ContributeForUserAsync(SeedUser(), Ct);
 
         slices.Select(s => s.SectionName).Should().Equal(
-            GdprExportSections.RideshareTrips, GdprExportSections.RideshareRequests, GdprExportSections.RideshareInterests);
+            RideshareService.RideshareTrips, RideshareService.RideshareRequests, RideshareService.RideshareInterests);
         foreach (var slice in slices)
         {
             slice.Data.Should().NotBeNull();

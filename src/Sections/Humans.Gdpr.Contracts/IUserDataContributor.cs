@@ -18,8 +18,8 @@ namespace Humans.Gdpr.Contracts;
 /// Some contributors own several user-scoped tables and therefore emit several
 /// top-level sections (for example <c>ShiftSignupService</c> returns
 /// <c>ShiftSignups</c>, <c>VolunteerEventProfiles</c>, <c>GeneralAvailability</c>,
-/// and <c>ShiftTagPreferences</c>). Returning a list keeps those stable JSON
-/// top-level keys the user sees in the export file.
+/// and <c>ShiftTagPreferences</c>). Returning a list keeps each one its own
+/// top-level key in the export file.
 /// </para>
 /// </summary>
 public interface IUserDataContributor : IFanout
@@ -28,14 +28,21 @@ public interface IUserDataContributor : IFanout
     /// Returns every personal-data slice this contributor owns for
     /// <paramref name="userId"/>. Implementations must be read-only.
     /// A slice whose <see cref="UserDataSlice.Data"/> is <c>null</c> is dropped
-    /// from the final export by the orchestrator.
+    /// from the final export by the orchestrator. Every
+    /// <see cref="UserDataSlice.SectionName"/> returned here must be a key of
+    /// <see cref="ErasureDeclaration"/> — the orchestrator enforces this at
+    /// export time — so a category a person can download is always accounted
+    /// for under Article 17 too. The reverse isn't required: a contributor may
+    /// declare erasure-only keys it never exports (see
+    /// <see cref="ErasureDeclaration"/>).
     /// </summary>
     Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct);
 
     /// <summary>
     /// Article 17 counterpart of <see cref="ContributeForUserAsync"/>: one entry
-    /// for every export section name this contributor owns. A <c>null</c> value
-    /// means <see cref="EraseForUserAsync"/> erases or anonymizes that category
+    /// for every export section name this contributor owns, plus any category it
+    /// erases without ever exporting it. A <c>null</c> value means
+    /// <see cref="EraseForUserAsync"/> erases or anonymizes that category
     /// in full; a non-empty value means something in it is deliberately kept, and
     /// the string says what survives and under which lawful basis.
     ///
@@ -56,4 +63,14 @@ public interface IUserDataContributor : IFanout
     /// after a mid-cascade failure.
     /// </summary>
     Task EraseForUserAsync(Guid userId, CancellationToken ct);
+
+    /// <summary>
+    /// True for the one contributor that owns the person's identity/account
+    /// record: it erases last, after every other contributor, so a section that
+    /// still needs the person's address to reach an external processor (for
+    /// example a Workspace suspend) can resolve it before identity collapses.
+    /// The orchestrator orders erasure by this flag, not by naming a specific
+    /// contributor type. Exactly one contributor should return <c>true</c>.
+    /// </summary>
+    bool ErasesLast => false;
 }

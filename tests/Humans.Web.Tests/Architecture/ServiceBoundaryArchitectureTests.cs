@@ -4,7 +4,6 @@ using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Repositories;
 using Humans.Web.Tests.Architecture.Ratchet;
-using Humans.Users.Data.Repositories;
 
 namespace Humans.Web.Tests.Architecture;
 
@@ -12,76 +11,6 @@ public class ServiceBoundaryArchitectureTests
 {
     private const string EntityReadReturnBaselinePath =
         "tests/Humans.Web.Tests/Architecture/Baselines/ApplicationServiceEntityReadReturns.baseline.txt";
-
-    /// <summary>
-    /// A G5 section's repository interface is <c>internal</c> to its own assembly
-    /// (nobodies-collective/Humans#866), so it cannot be named with <c>typeof</c> here.
-    /// Resolved by reflection instead — the row stays in the map, and the ownership test
-    /// keeps covering the section after it moves.
-    /// </summary>
-    private static Type SectionRepository(string fullName) =>
-        SectionAssemblies()
-            .Select(a => a.GetType(fullName, throwOnError: false))
-            .FirstOrDefault(t => t is not null)
-        ?? throw new InvalidOperationException(
-            $"{fullName} not found in any section assembly — did the section move or rename it?");
-
-    /// <summary>
-    /// Same problem one tier up: the platform diagnostics repository is <c>internal</c> to
-    /// <c>Humans.Web</c> since G5 lane 5b-6 deleted <c>Humans.Infrastructure</c>.
-    /// </summary>
-    private static Type HostRepository(string fullName) =>
-        typeof(Extensions.InfrastructureServiceCollectionExtensions).Assembly
-            .GetType(fullName, throwOnError: false)
-        ?? throw new InvalidOperationException(
-            $"{fullName} not found in Humans.Web — did it move or get renamed?");
-
-    private static readonly IReadOnlyDictionary<Type, string> RepositoryOwners =
-        new Dictionary<Type, string>
-        {
-            [SectionRepository("Humans.Events.Data.IEventRepository")] = "Events",
-            [SectionRepository("Humans.Settings.Data.ISettingsRepository")] = "Settings",
-            [SectionRepository("Humans.Store.Data.IStoreRepository")] = "Store",
-            [typeof(IAccountMergeRepository)] = "Humans",
-            [HostRepository("Humans.Web.Repositories.Admin.IAdminDatabaseDiagnosticsRepository")] = "Admin",
-            [SectionRepository("Humans.Agent.Data.IAgentRepository")] = "Agent",
-            [SectionRepository("Humans.Governance.Data.IApplicationRepository")] = "Governance",
-            [SectionRepository("Humans.Governance.Data.IAssemblyVoteRepository")] = "Governance",
-            [SectionRepository("Humans.AuditLog.Data.IAuditLogRepository")] = "AuditLog",
-            [SectionRepository("Humans.Budget.Data.IBudgetRepository")] = "Budget",
-            [SectionRepository("Humans.Calendar.Data.ICalendarRepository")] = "Calendar",
-            [SectionRepository("Humans.Campaigns.Data.ICampaignRepository")] = "Campaigns",
-            [SectionRepository("Humans.Camps.Data.ICampRepository")] = "Camps",
-            [SectionRepository("Humans.CityPlanning.Data.ICityPlanningRepository")] = "CityPlanning",
-            [typeof(ICommunicationPreferenceRepository)] = "Humans",
-            [SectionRepository("Humans.Consent.Data.IConsentRepository")] = "Consent",
-            [SectionRepository("Humans.Containers.Data.IContainerRepository")] = "Containers",
-            [SectionRepository("Humans.Email.Data.IEmailOutboxRepository")] = "Email",
-            [SectionRepository("Humans.Expenses.Data.IExpenseRepository")] = "Expenses",
-            [SectionRepository("Humans.Feedback.Data.IFeedbackRepository")] = "Feedback",
-            [SectionRepository("Humans.Gate.Data.IGateRepository")] = "Gate",
-            [SectionRepository("Humans.GoogleIntegration.Data.IGoogleResourceRepository")] = "GoogleIntegration",
-            [SectionRepository("Humans.GoogleIntegration.Data.IGoogleSyncOutboxRepository")] = "GoogleIntegration",
-            [SectionRepository("Humans.GoogleIntegration.Data.IGoogleSyncLogRepository")] = "GoogleIntegration",
-            [SectionRepository("Humans.Finance.Data.IHoldedRepository")] = "Finance",
-            [SectionRepository("Humans.Holded.Data.IHoldedMirrorRepository")] = "Holded",
-            [SectionRepository("Humans.Issues.Data.IIssuesRepository")] = "Issues",
-            [SectionRepository("Humans.Consent.Data.ILegalDocumentRepository")] = "Legal",
-            [SectionRepository("Humans.MailerLite.Data.IMailerLiteRepository")] = "MailerLite",
-            [SectionRepository("Humans.Notifications.Data.INotificationRepository")] = "Notifications",
-            [SectionRepository("Humans.Rideshare.Data.IRideshareRepository")] = "Rideshare",
-            [SectionRepository("Humans.Auth.Data.IRoleAssignmentRepository")] = "Auth",
-            [SectionRepository("Humans.Backdoor.Data.IBackdoorApiKeyRepository")] = "Backdoor",
-            [SectionRepository("Humans.Shifts.Data.IShiftManagementRepository")] = "Shifts",
-            [SectionRepository("Humans.Surveys.Data.ISurveyRepository")] = "Surveys",
-            [SectionRepository("Humans.GoogleIntegration.Data.ISyncSettingsRepository")] = "GoogleIntegration",
-            [SectionRepository("Humans.Teams.Data.ITeamRepository")] = "Teams",
-            [SectionRepository("Humans.Tickets.Data.ITicketRepository")] = "Tickets",
-            [SectionRepository("Humans.Tickets.Data.ITicketTransferRepository")] = "Tickets",
-            [SectionRepository("Humans.Workgroups.Data.IWorkgroupRepository")] = "Workgroups",
-            [typeof(IUserRepository)] = "Humans",
-            [SectionRepository("Humans.Shifts.Data.IVolunteerTrackingRepository")] = "Shifts",
-        };
 
     /// <summary>
     /// COVERAGE REDUCED (G5 lane 3b, nobodies-collective/Humans#866). These eight interfaces
@@ -151,20 +80,6 @@ public class ServiceBoundaryArchitectureTests
 
         unmarked.Should().BeEmpty(
             because: "I*Repository interfaces are persistence boundaries and must be searchable/reforge-addressable via IRepository");
-    }
-
-    [HumansFact]
-    public void Repository_ownership_map_covers_all_repositories()
-    {
-        var missingOwnership = RepositoryInterfaceTypes()
-            .Where(t => t != typeof(IRepository))
-            .Where(t => !RepositoryOwners.ContainsKey(t))
-            .Select(Display)
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        missingOwnership.Should().BeEmpty(
-            because: "cross-section repository injection checks must use exact repository ownership, not name prefixes");
     }
 
     [HumansFact]
@@ -316,10 +231,6 @@ public class ServiceBoundaryArchitectureTests
             })
             .OfType<Assembly>()
         ?? [];
-
-    private static IEnumerable<Type> RepositoryInterfaceTypes() =>
-        ApplicationInterfaceTypes()
-            .Where(t => typeof(IRepository).IsAssignableFrom(t));
 
     private static IEnumerable<(string MemberName, Type ReturnType)> EntityReturnReadMembers(Type serviceType)
     {

@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using AwesomeAssertions;
 using Humans.Gdpr.Contracts;
@@ -7,20 +6,11 @@ namespace Humans.Web.Tests.Services.Gdpr;
 
 /// <summary>
 /// Architecture tests for GDPR Article 17 coverage (nobodies-collective/Humans#853).
-/// Article 15 export coverage is already enforced by
-/// <see cref="GdprExportDependencyInjectionTests"/>; these tests enforce the
-/// erasure counterpart, so a section cannot hand a human their data on request
-/// and then silently keep it when they ask for deletion.
-///
-/// <para>
-/// The enforcement is the set equality in
-/// <see cref="EveryExportSectionHasAnErasureAccount"/>: a section that owns
-/// user-scoped tables exports them under a <see cref="GdprExportSections"/>
-/// key, and that key must appear in exactly one contributor's
-/// <see cref="IUserDataContributor.ErasureDeclaration"/> — either erased
-/// (<c>null</c>) or retained with a stated lawful basis. Adding a section
-/// without accounting for its erasure fails this test.
-/// </para>
+/// Every exported section having an erasure declaration is enforced at runtime by
+/// <see cref="Humans.Gdpr.Services.GdprService.ExportForUserAsync"/> (it throws if a
+/// contributor exports a key its own <see cref="IUserDataContributor.ErasureDeclaration"/>
+/// doesn't cover); these tests cover what that per-contributor check can't: duplicate
+/// claims and undocumented retention across the whole roster.
 ///
 /// <para>
 /// Contributors are found by reflection over the same section assemblies the
@@ -35,13 +25,6 @@ namespace Humans.Web.Tests.Services.Gdpr;
 public class GdprErasureCoverageTests
 {
     private static readonly IReadOnlyList<IUserDataContributor> Contributors = DiscoverContributors();
-
-    private static readonly IReadOnlySet<string> ExportSectionNames =
-        typeof(GdprExportSections)
-            .GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)
-            .Where(f => f is { IsLiteral: true, IsInitOnly: false } && f.FieldType == typeof(string))
-            .Select(f => (string)f.GetRawConstantValue()!)
-            .ToHashSet(StringComparer.Ordinal);
 
     /// <summary>
     /// Reflects over the section assemblies the host composes itself from
@@ -78,19 +61,6 @@ public class GdprErasureCoverageTests
     }
 
     [HumansFact]
-    public void EveryExportSectionHasAnErasureAccount()
-    {
-        var declared = Contributors
-            .SelectMany(c => c.ErasureDeclaration.Keys)
-            .ToHashSet(StringComparer.Ordinal);
-
-        declared.Should().BeEquivalentTo(ExportSectionNames,
-            "every category a section exports under Article 15 must be accounted for under Article 17 — " +
-            "add the GdprExportSections key to the owning contributor's ErasureDeclaration, mapped to null " +
-            "if EraseForUserAsync clears it or to the lawful basis for keeping it");
-    }
-
-    [HumansFact]
     public void NoTwoContributorsClaimTheSameSection()
     {
         var duplicates = Contributors
@@ -113,6 +83,20 @@ public class GdprErasureCoverageTests
                 $"{contributor.GetType().Name} implements IUserDataContributor, so it holds user data and must " +
                 "say what erasure does to it");
         }
+    }
+
+    [HumansFact]
+    public void ExactlyOneContributorErasesLast()
+    {
+        // GdprService.EraseForUserAsync orders erasure by ErasesLast so the Account owner
+        // (the identity every other contributor may need to resolve) runs after everyone
+        // else. Two contributors claiming it would make erasure order nondeterministic
+        // between them; zero would erase the account first, before sections that still
+        // need it.
+        var erasesLast = Contributors.Where(c => c.ErasesLast).ToArray();
+
+        erasesLast.Should().ContainSingle(
+            "GdprService orders erasure by ErasesLast, so exactly one contributor may run last");
     }
 
     [HumansFact]

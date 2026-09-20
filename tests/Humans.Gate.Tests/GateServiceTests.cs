@@ -427,7 +427,7 @@ public class GateServiceTests
         var guestExport = await _svc.ContributeForUserAsync(GuestId, default);
         var scannerExport = await _svc.ContributeForUserAsync(AgentId, default);
 
-        guestExport.Single().SectionName.Should().Be(GdprExportSections.GateScans);
+        guestExport.Single().SectionName.Should().Be(GateService.GateScans);
         SliceCount(guestExport).Should().Be(1);
         SliceCount(scannerExport).Should().Be(1);
         SliceCount(await _svc.ContributeForUserAsync(Guid.NewGuid(), default)).Should().Be(0);

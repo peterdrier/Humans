@@ -37,6 +37,9 @@ internal sealed class Service(
     IOptions<SepaOptions> sepa,
     ILogger<Service> logger) : IHoldedFinanceService, IHoldedFinanceAdminService, IUserDataContributor
 {
+    internal const string HoldedCreditorAccount = "HoldedCreditorAccount";
+    internal const string SepaPayouts = "SepaPayouts";
+
     private static readonly TimeSpan ContactsCacheDuration = TimeSpan.FromMinutes(2);
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
@@ -1220,7 +1223,7 @@ internal sealed class Service(
         var payouts = await repo.GetSepaPayoutsForUserAsync(userId, ct);
         return
         [
-            new UserDataSlice(GdprExportSections.HoldedCreditorAccount,
+            new UserDataSlice(HoldedCreditorAccount,
                 binding is null
                     ? null
                     : new
@@ -1232,7 +1235,7 @@ internal sealed class Service(
 
             // Every credit transfer paid to them. The IBAN is the masked one, as everywhere
             // outside the file and the payout row itself.
-            new UserDataSlice(GdprExportSections.SepaPayouts, payouts.Select(p => new
+            new UserDataSlice(SepaPayouts, payouts.Select(p => new
             {
                 p.GeneratedAt,
                 p.FileName,
@@ -1258,8 +1261,8 @@ internal sealed class Service(
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.HoldedCreditorAccount] = null,
-            [GdprExportSections.SepaPayouts] = PayoutRetention
+            [HoldedCreditorAccount] = null,
+            [SepaPayouts] = PayoutRetention
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
