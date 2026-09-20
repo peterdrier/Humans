@@ -97,8 +97,18 @@ internal interface ICalendarRepository : IRepository
     Task<Guid?> GetFeedTokenAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
+    /// Gives the member <paramref name="candidate"/> if they have no token yet, and
+    /// returns whichever token they end up with. Two first-time views racing each
+    /// other both try to insert the same primary key; the loser reloads and gets the
+    /// winner's token rather than a 500. Mint only — it never replaces a token that
+    /// is already there, so it cannot revoke a live subscription by accident.
+    /// </summary>
+    Task<Guid> GetOrAddFeedTokenAsync(Guid userId, Guid candidate, CancellationToken ct = default);
+
+    /// <summary>
     /// Upserts the member's feed token. Replacing an existing one revokes every
-    /// URL handed out under it.
+    /// URL handed out under it, so this is the deliberate rotation only: last write
+    /// wins, which is what the member pressing the button expects.
     /// </summary>
     Task SetFeedTokenAsync(Guid userId, Guid token, CancellationToken ct = default);
 

@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Calendar.Data;
+using Humans.Calendar.Domain;
 using Humans.Calendar.Services;
 using Humans.Gdpr.Contracts;
 using Microsoft.EntityFrameworkCore;
@@ -45,6 +46,25 @@ public sealed class CalendarFeedTokenServiceTests : IDisposable
         first.Should().NotBeEmpty();
         second.Should().Be(first);
         (await _sut.GetAsync(_user, Ct)).Should().Be(first);
+    }
+
+    [HumansFact]
+    public async Task Ensure_adopts_a_token_written_behind_its_back_instead_of_replacing_it()
+    {
+        // The row appears without the service putting it there — a concurrent first view
+        // of /Calendar, or any other writer. Ensure must adopt it: minting over a live
+        // token would silently revoke a subscription the member is already using.
+        // (The DbUpdateException fallback for the narrower read-then-insert window is not
+        // unit-tested, matching the repo's other racing inserts — CommunicationPreference
+        // AddDefaultsOrReloadAsync and GateRepository's unique-violation catch.)
+        var winner = Guid.NewGuid();
+        _db.CalendarFeedTokens.Add(new CalendarFeedToken { UserId = _user, Token = winner });
+        await _db.SaveChangesAsync(Ct);
+
+        var got = await _sut.EnsureAsync(_user, Ct);
+
+        got.Should().Be(winner, "adopting the existing token beats revoking a live feed");
+        _db.CalendarFeedTokens.Count(t => t.UserId == _user).Should().Be(1);
     }
 
     [HumansFact]

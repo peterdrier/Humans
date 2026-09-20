@@ -21,15 +21,11 @@ internal sealed class CalendarFeedTokenService(ICalendarRepository repo)
     public Task<Guid?> GetAsync(Guid userId, CancellationToken ct = default) =>
         repo.GetFeedTokenAsync(userId, ct);
 
-    public async Task<Guid> EnsureAsync(Guid userId, CancellationToken ct = default)
-    {
-        if (await repo.GetFeedTokenAsync(userId, ct) is { } existing)
-        {
-            return existing;
-        }
-
-        return await RotateAsync(userId, ct);
-    }
+    // One call, not a read then a write: the null check has to happen where the insert
+    // does, or two first-time views of /Calendar race and one of them 500s on the
+    // primary key. The loser gets the winner's token, which is the same working feed.
+    public Task<Guid> EnsureAsync(Guid userId, CancellationToken ct = default) =>
+        repo.GetOrAddFeedTokenAsync(userId, Guid.NewGuid(), ct);
 
     public async Task<Guid> RotateAsync(Guid userId, CancellationToken ct = default)
     {

@@ -68,8 +68,11 @@ the token is ever compared) and `IEnumerable<ICalendarFeedContributor>`.
 
 ### CalendarFeedTokenService (Singleton, `Humans.Calendar.Services`)
 
-Repository: `ICalendarRepository`. Internal: the token's whole lifecycle stays
-inside the section, and the only part that leaves it is
+Repository: `ICalendarRepository`. `EnsureAsync` is a single
+`GetOrAddFeedTokenAsync` round trip rather than a read then a write, so a racing
+first view loses on the primary key and adopts the winner's token instead of
+500ing; `RotateAsync` keeps the plain upsert, where last write wins. Internal:
+the token's whole lifecycle stays inside the section, and the only part that leaves it is
 `IICalFeedService.HasFeedAsync` (a bool for the admin widget, never the token).
 
 | Table | R/W |

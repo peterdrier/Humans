@@ -141,6 +141,40 @@ internal sealed class CalendarRepository(IDbContextFactory<CalendarDbContext> fa
         return row?.Token;
     }
 
+    public async Task<Guid> GetOrAddFeedTokenAsync(
+        Guid userId, Guid candidate, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        if (await ctx.CalendarFeedTokens.AsNoTracking()
+                .FirstOrDefaultAsync(t => t.UserId == userId, ct) is { } existing)
+        {
+            return existing.Token;
+        }
+
+        ctx.CalendarFeedTokens.Add(new CalendarFeedToken { UserId = userId, Token = candidate });
+        try
+        {
+            await ctx.SaveChangesAsync(ct);
+            return candidate;
+        }
+        catch (DbUpdateException)
+        {
+            // Another first-time view inserted between the read above and this write.
+            // Reload and hand back the winner's token: the member gets one working URL
+            // either way. No concurrency token is involved, and none is wanted
+            // (memory/architecture/no-concurrency-tokens.md) — the primary key is
+            // already the only guard this needs.
+            ctx.ChangeTracker.Clear();
+            var winner = await ctx.CalendarFeedTokens.AsNoTracking()
+                .FirstOrDefaultAsync(t => t.UserId == userId, ct);
+
+            // Nothing there means the write failed for some other reason, which is
+            // not ours to swallow.
+            if (winner is null) throw;
+            return winner.Token;
+        }
+    }
+
     public async Task SetFeedTokenAsync(Guid userId, Guid token, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
