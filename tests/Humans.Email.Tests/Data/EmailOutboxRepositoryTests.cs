@@ -397,6 +397,104 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     }
 
     // ==========================================================================
+    // Daily send counts (#1195)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task IncrementDailySendCountAsync_CreatesRowOnFirstCall()
+    {
+        var date = new LocalDate(2026, 8, 15);
+
+        await _repo.IncrementDailySendCountAsync(date, "welcome", succeeded: true, Xunit.TestContext.Current.CancellationToken);
+
+        var row = await _dbContext.EmailDailySendCounts.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        row.Date.Should().Be(date);
+        row.TemplateName.Should().Be("welcome");
+        row.SentCount.Should().Be(1);
+        row.FailedCount.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task IncrementDailySendCountAsync_AccumulatesSentAndFailedSeparately()
+    {
+        var date = new LocalDate(2026, 8, 15);
+
+        await _repo.IncrementDailySendCountAsync(date, "welcome", succeeded: true, Xunit.TestContext.Current.CancellationToken);
+        await _repo.IncrementDailySendCountAsync(date, "welcome", succeeded: true, Xunit.TestContext.Current.CancellationToken);
+        await _repo.IncrementDailySendCountAsync(date, "welcome", succeeded: false, Xunit.TestContext.Current.CancellationToken);
+
+        var row = await _dbContext.EmailDailySendCounts.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        row.SentCount.Should().Be(2);
+        row.FailedCount.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task IncrementDailySendCountAsync_KeepsDatesAndTemplatesSeparate()
+    {
+        var day1 = new LocalDate(2026, 8, 15);
+        var day2 = new LocalDate(2026, 8, 16);
+
+        await _repo.IncrementDailySendCountAsync(day1, "welcome", succeeded: true, Xunit.TestContext.Current.CancellationToken);
+        await _repo.IncrementDailySendCountAsync(day1, "reminder", succeeded: true, Xunit.TestContext.Current.CancellationToken);
+        await _repo.IncrementDailySendCountAsync(day2, "welcome", succeeded: true, Xunit.TestContext.Current.CancellationToken);
+
+        var rows = await _dbContext.EmailDailySendCounts.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        rows.Should().HaveCount(3);
+    }
+
+    [HumansFact]
+    public async Task GetDailySendCountsSinceAsync_ExcludesRowsBeforeCutoff()
+    {
+        await _repo.IncrementDailySendCountAsync(new LocalDate(2026, 5, 1), "welcome", true, Xunit.TestContext.Current.CancellationToken);
+        await _repo.IncrementDailySendCountAsync(new LocalDate(2026, 8, 1), "welcome", true, Xunit.TestContext.Current.CancellationToken);
+
+        var rows = await _repo.GetDailySendCountsSinceAsync(new LocalDate(2026, 6, 1), Xunit.TestContext.Current.CancellationToken);
+
+        rows.Should().ContainSingle(r => r.Date == new LocalDate(2026, 8, 1));
+    }
+
+    [HumansFact]
+    public async Task GetDailySendCountKeysAsync_ReturnsExistingCombinations()
+    {
+        await _repo.IncrementDailySendCountAsync(new LocalDate(2026, 8, 1), "welcome", true, Xunit.TestContext.Current.CancellationToken);
+
+        var keys = await _repo.GetDailySendCountKeysAsync(Xunit.TestContext.Current.CancellationToken);
+
+        keys.Should().Contain((new LocalDate(2026, 8, 1), "welcome"));
+    }
+
+    [HumansFact]
+    public async Task AddDailySendCountsAsync_PersistsGivenRows()
+    {
+        await _repo.AddDailySendCountsAsync(
+            [new EmailDailySendCount { Date = new LocalDate(2026, 8, 1), TemplateName = "welcome", SentCount = 5, FailedCount = 1 }],
+            Xunit.TestContext.Current.CancellationToken);
+
+        var row = await _dbContext.EmailDailySendCounts.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        row.SentCount.Should().Be(5);
+        row.FailedCount.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task GetSentOrFailedSinceAsync_ExcludesQueuedAndBeforeCutoff()
+    {
+        var now = _clock.GetCurrentInstant();
+        var sent = BuildMessage(status: EmailOutboxStatus.Sent, sentAt: now, createdAt: now);
+        var failed = BuildMessage(status: EmailOutboxStatus.Failed, createdAt: now);
+        var queued = BuildMessage(status: EmailOutboxStatus.Queued, createdAt: now);
+        var tooOld = BuildMessage(status: EmailOutboxStatus.Sent, sentAt: now - Duration.FromDays(200), createdAt: now - Duration.FromDays(200));
+
+        await _repo.AddAsync(sent, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(failed, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(queued, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(tooOld, Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _repo.GetSentOrFailedSinceAsync(now - Duration.FromDays(1), Xunit.TestContext.Current.CancellationToken);
+
+        result.Select(m => m.Id).Should().BeEquivalentTo([sent.Id, failed.Id]);
+    }
+
+    // ==========================================================================
     // Helpers
     // ==========================================================================
 

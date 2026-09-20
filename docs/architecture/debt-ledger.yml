@@ -17,7 +17,13 @@
 # Deliberately excluded from staleness/inventory (not fixable debt):
 # NoDestructiveMigrationOps.baseline.txt — entries are immutable migration
 # history; the baseline guards against NEW destructive ops, it is not a backlog.
+# Inbox ids: every item carries a stable `id` (prefix + counter). `next_id` is the
+# ONLY source of the next number for this file and only ever increases — numbers are
+# never recycled, including past deletions. Closing an item = deleting its row and
+# citing its id in the PR. Shape, `status:` values and `root:` linking:
+# memory/process/debt-ledger-additions.md.
 version: 1
+next_id: 63
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0024-nav-strip
@@ -26,28 +32,26 @@ themes:
     review: panel
     last_swept: 2026-06-12
     remaining: 0
+    retired: "2026-09-20 — complete. The C#-side debt this theme tracked is gone; the row stays only so a future staleness check reads why, instead of re-seeding the theme."
     notes: >-
-      INERT since nobodies-collective/Humans#1278 retired the HUM0024 analyzer —
-      `detect: build:HUM0024` can never report a site again, so `remaining` is 0
-      by construction, not by burndown. The theme row is kept, not deleted, so a
-      future sweep reads why the detector is silent instead of re-seeding it.
-      Do not revive the analyzer to re-open this: #1278 accepted the residual
-      (an EF config inside the unpeeled `Humans.Infrastructure` mapping another
-      section's entity) as a review-time check. Historical detail below.
-      Count re-measured 2026-08-05 (nobodies-collective/Humans#978): 47 -> 55,
-      all carrying markers. These are not new joins; they are joins HUM0024
-      could not see. +1 net from #1178's relocations (GoogleResource gained a
-      section, EventParticipation moved under Users and folded to an
-      intra-section nav that correctly stopped firing), then +7 from #978,
-      which stopped the analyzer silently skipping configurations that sit in
-      the `Configurations` root namespace. Six configs remain in that root.
-      SCHEMA-BLOCKED (verified empirically, sweep 2026-06-12): dropping any
-      HasOne config fires `dotnet ef migrations has-pending-model-changes` —
-      the config blocks own the DB-level FK + cascade behavior, so every fix
-      is an FK-constraint-drop migration, out of sweep scope entirely.
-      Rotation skips this theme until Peter decides the path (dedicated
-      migration PRs outside the sweep). Reader migration off the navs is the
-      cs0618-pragma-nav-reads theme, not this one.
+      RETIRED 2026-09-20 — COMPLETE, not merely undetectable. Measured that
+      day: `src/Humans.Infrastructure` no longer exists (the G5 split moved
+      every configuration into its owning section), all `HasOne` calls in
+      `src/**/*Configuration.cs` are intra-section, and zero
+      `[Grandfathered("HUM0024")]` attributes remain anywhere in `src/`.
+      Shifts' VolunteerBuildStatusConfiguration.cs:28 now reads
+      `// Cross-section: bare Guid, NO HasOne<User>()` — the target shape, in
+      place.
+      Why the detector is silent: nobodies-collective/Humans#1278 retired the
+      HUM0024 analyzer (its scope kept being invalidated as the section split
+      moved configuration files), so `detect: build:HUM0024` can never report a
+      site again — `remaining: 0` is true both by construction and by burndown.
+      Do not revive the analyzer to re-open this.
+      WHAT REMAINS IS NOT THIS THEME: removing a C# navigation does not drop the
+      database foreign-key constraint it created. Those cross-section FK cuts
+      were queued as separate migration work and never done, and are unquantified.
+      Filed as its own inbox item on 2026-09-20 so they are not lost with this
+      row. Reader migration off the navs is the cs0618-pragma-nav-reads theme.
   - id: grandfathered-hum0031-controller-logic
     title: Controller business logic over ratchet thresholds (HUM0031)
     detect: "build:HUM0031"
@@ -98,7 +102,17 @@ themes:
     review: panel
     last_swept: 2026-06-13
     remaining: 17
+    parked: "Peter 2026-09-20 — 'I don't think fixing all 17 in one go is possible.. it's reworking a lot of things to not need the invalidators anymore, that won't be a short fix.' Rotation skips it; re-check on the interval below, not every rotation."
+    recheck_every: 6 months
+    recheck_due: 2027-03-20
     notes: >-
+      PARKED 2026-09-20 (see `parked:`) — this supersedes the 2026-06-13
+      'LEAVE in rotation, re-check periodically' instruction: the re-check now
+      runs on `recheck_due`, so rotation stops spending a slot on it.
+      IUserInfoInvalidator omits the IInvalidator marker entirely, unlike the
+      rest of the invalidator family, so the analyzer cannot see it — filed
+      as its own inbox item 2026-09-20, because closing that hole is small
+      and separable from this rework.
       DESIGN-BLOCKED (audited empirically, sweep 2026-06-13): folding an
       invalidator into its owning decorator breaks correctness, it is not a
       mechanical sweep fix. Proof on the best fold candidate
@@ -126,7 +140,7 @@ themes:
     detect: "build:HUM_USER_DISPLAYNAME"
     review: light
     last_swept: 2026-08-20
-    remaining: 19
+    remaining: 18
     notes: >-
       ACTIONABLE = 0 (re-audited every site against a full clean rebuild,
       #1053, 2026-08-20 — the section's G5 move into its own project gave the
@@ -157,8 +171,12 @@ themes:
     detect: "grep -rl --include='*.cs' 'pragma warning disable CS0618' src | wc -l"
     review: panel
     last_swept: 2026-06-14
-    remaining: 27
+    remaining: 9
+    parked: "Peter — PARKED, as the note has said since 2026-06-14; the machine-readable key was missing until 2026-09-20, so rotation was still serving it. Re-check only when a NEW un-stitched cross-section nav read appears."
     notes: >-
+      The drop in `remaining` is real, not a burndown — the
+      src/Humans.Infrastructure/Data/Configurations/*.cs mappings in item (1)
+      below went away with that project.
       ACTIONABLE = 0 cross-section nav reads (audited all 27 files, sweep
       2026-06-14). The detect counts FILES-with-pragma and conflates five
       unrelated things, none sweep-mechanical:
@@ -194,10 +212,17 @@ themes:
     review: panel
     last_swept: never
     remaining: 18
+    parked: "Peter 2026-09-20 — one refactor, outside the nightly process. Every entry changes a public return type, so a sweep worker asks on all of them and ships nothing; rotation skips it until that refactor is scheduled."
     notes: >-
+      PARKED 2026-09-20 (see `parked:`). `remaining` counts real violations
+      the scan can no longer see (IAccountProvisioningService.FindOrCreateUserByEmailAsync
+      returning User / UserEmail / EventParticipation, coverage lost when G5
+      lane 3b dropped the IApplicationService marker from that interface, as
+      the baseline header records) beyond what the baseline file's locator
+      lines hold — `detect` counts the file, not the debt.
       Convert to DTO/Info returns (read-model pattern, design-rules §15).
       Remove each fixed locator line from the baseline file — never add lines.
-      PASSED OVER as #2 rotation candidate (sweep 2026-06-14): all 21 entries are
+      PASSED OVER as #2 rotation candidate (sweep 2026-06-14): all entries are
       public-interface read methods whose fix CHANGES the return type
       entity→DTO — a surface-changing refactor that ripples to every caller
       (e.g. IUserService.GetByIdsAsync:User and ITeamService.GetTeamByIdAsync:Team
@@ -211,8 +236,19 @@ themes:
     detect: "grep -cv '^#\\|^$' tests/Humans.Web.Tests/Architecture/Baselines/DisplaySortInControllers.baseline.txt"
     review: light
     last_swept: 2026-06-13
-    remaining: 29
+    remaining: 10
+    baseline_entries: 28
+    not_actionable: 18
     notes: >-
+      Counts re-measured 2026-09-20 — see `baseline_entries`/`not_actionable`/
+      `remaining`. The baseline file mixes two different things: TicketRepository
+      OrderBy/OrderByDescending lines Peter ruled STAY until the paged grid's
+      server-side sort is redesigned (`not_actionable`), and real multi-consumer
+      view-moves (`remaining`) — CampRepository.Roles.cs, GoogleResourceRepository,
+      TeamRepository (TeamRosterSlotSummary needs a SortOrder field first),
+      CampaignRepository.GetCodeTrackingSummaries (tracking view not yet located).
+      `remaining` is what rotation sizes the work by; `baseline_entries` is
+      what the detect command prints.
       Rule: repos don't sort for display. Per Peter (2026-06-13) the fix for a
       flagged repo sort is, in order: (1) if no consumer renders an
       order-sensitive user-facing list -> DELETE it (the sort is wasted work);
@@ -234,18 +270,7 @@ themes:
       do NOT re-sort (CampRoleService.BuildPanelAsync renders defs in repo order
       for the roles panel/members/lead-pills; TeamResourceService maps straight
       to UI/API snapshots). Repo sorts restored + re-baselined; they join the
-      deferred multi-consumer view-moves below.
-      REMAINING 29 = 18 Ticket sortBy/sortDesc real-debt (Peter ruled: stays,
-      needs the paged-grid sort redesigned — server-side pagination forces it
-      to the DB; NOT a db-sort-ok mark) + 11 harder multi-consumer view-moves
-      deferred: GoogleResource GetActiveByTeamId(s) (2), CampRoles.ListDefinitions
-      (2), CampaignRepository.GetCodeTrackingSummaries (tracking view not yet
-      located), CampRepository.GetCampsWithLeadsForYear season-name sort
-      (multi-consumer camps list), CampRepository.Roles.GetAssignmentsForSeason
-      (2), and TeamRepository.GetAllRoleDefinitions roster sort (3 — the roster
-      slot DTO TeamRosterSlotSummary lacks SortOrder, so the view can't re-sort
-      without a DTO field added). These need their views located / a DTO field
-      and are a focused follow-up.
+      deferred multi-consumer view-moves above.
   - id: build-warnings-misc
     title: Build warnings not owned by another theme (CS/NU/non-HUM codes)
     detect: "dotnet build Humans.slnx -v quiet --no-incremental 2>&1 | grep -E ': warning ' | grep -v 'warning HUM' | sed 's/ \\[.*//' | sort -u | wc -l"
@@ -297,209 +322,290 @@ themes:
     detect: "cat docs/architecture/debt-ledger.yml src/Sections/*/Docs/debt.yml 2>/dev/null | grep -c '^  - added:'"
     review: per-item
     last_swept: 2026-06-14
-    remaining: 10
-    notes: Each inbox entry carries its own review tier; drained entries are deleted from the list.
+    remaining: 153
+    notes: >-
+      Each inbox entry carries its own review tier and a stable `id`; an item is
+      closed by deleting its row and citing the id in the PR — ids are never
+      recycled. Shape, id format and `status:` values:
+      memory/process/debt-ledger-additions.md. Count re-measured 2026-09-20
+      across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
   - added: 2026-09-18
+    id: CENTRAL-55
     what: "docs/guide/Glossary.md has no entry for assembly vote, the Governance lane that landed 2026-09-14 (peterdrier/Humans#1649), so the guide's own vocabulary page omits a term the Governance guide page now uses throughout. The file is shared guide input rather than section-owned (/section-doctor on Governance 2026-09-18)."
     review: light
+  # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
   - added: 2026-09-10
+    id: CENTRAL-35
     what: "GoogleIntegration's Drive sync knows about Teams directly: google_resources rows are keyed by TeamId and expected Drive access is derived from team membership inside the connector. The Workgroups design (src/Sections/Humans.Workgroups/Docs/2026-09-10-workgroups-section-design.md §9) introduces IGoogleDriveAccessSource, the Drive analogue of IGoogleGroupMembershipSource, with Workgroups as its first source. Migrate Teams' Drive path onto the same fan-out so the connector stops referencing team membership at all (Teams becomes a source that claims its google_resources folder ids); then the connector owns only clients, diffing, mutation and the sync log. Peter's call 2026-09-10: 'should google-drive have a fanout then, instead of knowing about teams directly?' — yes, as follow-up after Workgroups lands."
     review: panel
-  # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
   - added: 2026-09-12
-    what: "memory/architecture/burnername-is-the-display-name.md states the pre-#1097 resolution order. Since nobodies-collective/Humans#1097 the burner name lives on the user row and UserInfo.BurnerName is the resolved value (User.BurnerName -> Profile.BurnerName -> legacy DisplayName). An agent following this atom today writes the exact defect that shipped \"(unknown)\" to Cantina coordinators. It is a rule file, so it propagates (/section-doctor on Cantina 2026-09-12)."
-    review: panel
-  - added: 2026-09-12
-    what: "src/Sections/Humans.Users/Docs/features/dietary-medical-nudge.md:73 points at docs/sections/Profiles.md, which does not exist. Same dangling pointer that was fixed on Cantina's side in the same run (/section-doctor on Cantina 2026-09-12)."
-    review: light
-  - added: 2026-09-12
+    id: CENTRAL-47
     what: "docs/sections/G5-SECTION-TEMPLATE.md:1037 step 6 still tells a new section that authorization policies stay in Shell's AuthorizationPolicyExtensions; ISectionPolicies superseded that (nobodies-collective/Humans#1076) and the sections with their own policies now register them themselves. Shell's own AuthorizationPolicyExtensions class doc says the new rule while :22 still cites \"design §15 step 6's asymmetry\" for the old one. The template is what new sections are built from, so it manufactures the drift. These Section.cs files also cite \"design §8\" for this, which is design-rules.md's Table Ownership Map — the intended source is the G5 split-design spec §8: Humans.Development:34, Humans.Debug:20, Humans.Issues:42, Humans.Expenses:46, Humans.Containers:27, Humans.Budget:54. Checked and NOT stale: Humans.Camps:78 and Humans.Users:136 (/section-doctor on Cantina 2026-09-12)."
     review: panel
+    root: CENTRAL-57
   - added: 2026-09-14
+    id: CENTRAL-48
     what: "docs/architecture/dependency-graph.md declares classDef monitor twice in the same Mermaid graph with different fills (#0369a1 white text, and #c084fc black text further down), so one silently wins and the legend disagrees with itself. Two runs each applied the same queued 'style the Monitor carve-out' sweep item without seeing the other's. Pick one fill and delete the other. Found while merging main into peterdrier/Humans#1602."
     review: light
+    root: CENTRAL-57
   - added: 2026-09-03
+    id: CENTRAL-34
     what: "The Holded ledger mirror holds member-identifiable data that no GDPR export reaches. Finance binds a member to a 400000xx creditor account (HoldedCreditorContact.UserId -> SupplierAccountNum); Humans.Holded then mirrors that account's HoldedAccount.Name (Holded's contact name, i.e. the member's) and every HoldedLedgerLine on it, free-text Description included, and /Holded/Accounts/{n} renders both. Finance's ContributeForUserAsync exports only the binding itself and SEPA payouts, so an Article 15 export omits the member's mirrored reimbursement history. Deciding the fix means deciding what belongs in the slice, whether Holded gains a contributor (it holds no UserId, so Gdpr or Finance must pass the account number) and the retention basis for refusing erasure — the mirror is re-derivable from Holded, so the Codigo de Comercio Art. 30 argument Finance uses for payout files may not transfer. Spans Holded, Finance and Gdpr and adds public surface whichever way it goes, so it is Peter's call. Found by /section-doctor on Holded 2026-09-03, from a Codex review finding on peterdrier/Humans#1583; the docs there previously asserted 'no user-scoped data -> no GDPR contributor' and have been corrected to state the gap."
     review: panel
   - added: 2026-08-28
-    what: "docs/architecture/freshness-catalog.yml has no Settings entry — add one covering src/Sections/Humans.Settings/** and src/Sections/Humans.Settings.Contracts/** (finding 14, /section-doctor on Settings 2026-08-28)."
+    id: CENTRAL-32
+    what: "docs/architecture/freshness-catalog.yml has no Settings entry — add one covering src/Sections/Humans.Settings/** and src/Sections/Humans.Settings.Contracts/** (finding 14, /section-doctor on Settings 2026-08-28). Merged 2026-09-20: a verbatim duplicate of this item (added 2026-09-06) was removed from this inbox."
     review: light
+    root: CENTRAL-57
   - added: 2026-08-28
-    what: "docs/architecture/dependency-graph.md predates the Monitor carve-out — DriveMon is still styled :::google and there is no Monitor section (finding 20, /section-doctor on Settings 2026-08-28)."
+    id: CENTRAL-33
+    what: "docs/architecture/dependency-graph.md predates the Monitor carve-out — DriveMon is still styled :::google and there is no Monitor section (finding 20, /section-doctor on Settings 2026-08-28). Merged 2026-09-20: a verbatim duplicate of this item (added 2026-09-05) was removed from this inbox."
     review: light
+    root: CENTRAL-57
   - added: 2026-08-27
+    id: CENTRAL-27
     what: "The GDPR export document's JSON serialization lives twice, byte-identically: GuestDataController (Humans.Gdpr) and ProfileController (Humans.Users) each carry a private ExportJsonOptions and a private BuildExportPayload. Key stability across re-downloads is an invariant Gdpr owns, enforced by copies nothing keeps in step. The fix spans both sections and adds public surface either way — a shared serializer on Humans.Gdpr.Contracts, or a method on IGdprService — so it is Peter's call. Found by /section-doctor on Gdpr 2026-08-27 (finding 2 of docs/health/runs/2026-08-27-Gdpr.md); routed here rather than to Gdpr's section ledger on a review finding on peterdrier/Humans#1540, because no single section owns the fix."
     review: panel
+    status: needs-detail
+    blocked_on: "Re-read both files and say whether the two serializers still differ; 'byte-identical' was never re-verified, so there is no check that proves the fix."
   - added: 2026-08-26
+    id: CENTRAL-26
     what: "AuditLogEntry.EntityType is a plain string filtered by exact equality (IAuditLogRepository.GetEntityIdsForEntityTypeActionsAsync, AuditViewerService's entityType filter), and nearly every caller supplies it as nameof(<EntityType>) — User, ShiftSignup, GoogleResource, Team, CampSeason, Camp and more, with User by far the most widely audited. Renaming any audited entity therefore changes the discriminator for new rows while historical rows keep the old string, and the entity's audit history silently splits with nothing failing. Decide whether persisted entity-type names should be pinned to constants (and an analyzer added) or the rename risk accepted; the fix is repo-wide across the Audit crosscut's callers, not one section's. Found by /section-doctor on CityPlanning 2026-08-26, from a review finding on peterdrier/Humans#1525 that proposed pinning CityPlanning alone — declined there because a single-section constant would make it the only caller not following the house convention without reducing the exposure."
     review: panel
   - added: 2026-08-25
+    id: CENTRAL-25
     what: "docs/architecture/service-entity-boundary-ratchet.md is retired: its baseline targeted the pre-split Humans.Domain/Humans.Application layout and was never re-run against the current src/Sections layout. Re-run the service/entity boundary audit (I<Section>Service read APIs returning owned EF/domain entities) against src/Sections/*/Contracts and src/Sections/*.Contracts, and decide whether a ratchet is still wanted."
     review: panel
   - added: 2026-08-21
+    id: CENTRAL-21
     what: "Nothing builds the real service provider and resolves the sections' registered services, so a DI misregistration ships green. Found in nobodies-collective/Humans#1104: a commit registered Service only as ISettingsWriteService while two consumers still asked for the concrete Service — the build passed and all ~4,900 unit tests passed, but /Settings/Admin and /Settings/Admin/Carry would both have thrown on activation and IEventSettingsCarryService could not have been constructed. Nothing in the suite would have caught it at any point. A composition-root smoke check that builds the container from the same ISection registration path the app uses and resolves every registered service would close it. Needs Peter's approval before anything is added (memory/process rule: no new CI checks without permission)."
     review: panel
   - added: 2026-08-18
-    what: "DevelopmentDashboardSeeder fails on a fresh Development database while seeding dashboard scenarios: it calls Signup.Refuse() after the signup has already reached Confirmed state, raising 'Cannot refuse signup in Confirmed state' and aborting the remaining seed data. Reproduced while locally testing the Surveys audience workflow; needs a focused correction to the scenario's state-transition ordering. Same seeder, second item: it creates its burn with BuildStartOffset -14 while the sub-period columns default to FirstCrew -25, so the seeded row violates the event form's own rule (BuildStart <= FirstCrew) and cannot be saved from /Settings/Admin without first moving an offset. -25 is the coherent value. Left alone in nobodies-collective/Humans#1104 because changing it correlated with intermittent failures in StoreControllerTests.Volunteer_cannot_create_order_against_someone_elses_camp_season (2 of 3 runs red with the change, green without) — fix it together with the Refuse() ordering bug above, since both point at this seeder's fixture being fragile."
+    id: CENTRAL-19
+    what: "DevelopmentDashboardSeeder seeds BuildStartOffset: -14 (line 102) while EventSettingsConfiguration.cs:44 defaults FirstCrewStartOffset to -25, violating the BuildStart <= FirstCrew invariant on a fresh Development database. The other half of this row (Signup.Refuse() called after Confirmed) was fixed since filing: the seeder now routes Voluntell->Confirmed through BailAsync and SignUp->Pending through RefuseAsync (lines 407-424), verified 2026-09-20."
     review: panel
+    status: partial
   - added: 2026-08-16
+    id: CENTRAL-17
     what: "21 classes carry [CrossSectionWrite(\"reason\")] (grep src/ --include=*.cs) — each is a cross-section write through another section's full I*Service, which HUM0032 accepts only because the marker is there. The preferred shape is the other way round: the section that owns the data ships a view component and writes its own rows, so the consumer never holds the write interface. Introduced with the marker in nobodies-collective/Humans#1064; every one is a pre-existing call newly made visible, not new coupling. Work them down per owning section, not as one sweep — several (GoogleIntegration's four sync services, Development's two dev seeders) are provisioning paths where a view component is the wrong answer and the marker is the final state."
     review: panel
   - added: 2026-08-16
+    id: CENTRAL-18
     what: "Humans.Users.Contracts (src/Sections/Humans.Users.Contracts/Humans.Users.Contracts.csproj) is the one `.Contracts` leaf where memory/architecture/service-read-no-ef.md's structural guarantee does not hold: it declares the public EF Identity entity `User : IdentityUser<Guid>` and references Microsoft.AspNetCore.Identity.EntityFrameworkCore (see the csproj's own reasoning block — ASP.NET Identity's generic surface, UserManager<User>/SignInManager<User>, can't be hidden). `IUserServiceRead` lives in the same project, so a future member returning `User` or another EF type would compile there, and HUM0029's retirement (peterdrier/Humans#1320) removed the only thing that ever would have caught it. Flagged by claude[bot] (Codex) on peterdrier/Humans#1320. Half the intended fix landed in nobodies-collective/Humans#1064 — the layer predicates are gone and the analyzers now run inside `.Contracts` assemblies with everything else under `src/`. What remains is writing the rule: measured at 21 diagnostics against this leaf, 5 of them Errors on `IdentityUser`'s own inherited members, so it needs an Identity carve-out."
     review: panel
   - added: 2026-08-13
+    id: CENTRAL-15
     what: "StorePayActionTests.Pay_with_amount_over_balance_redirects_back_to_order_without_calling_Stripe fails under full parallel-suite runs but passes in isolation — races something shared; surfaced twice during PR peterdrier/Humans#1272's full-suite runs. Second instance in the same family: StoreControllerTests.Volunteer_cannot_create_order_against_someone_elses_camp_season, same signature (parallel-suite only, green in isolation and on rerun), seen on nobodies-collective/Humans#1104. It depends on the barrio-1-lead persona having seeded its camp + season, so the shared thing being raced is likely the dev-persona/camp seeding, not Store itself."
     review: light
-  - added: 2026-08-11
-    what: "TeamConfiguration's six system-team HasData rows declare RequiresApproval = false, but false is the CLR default so EF omits the column from the INSERT and the DB default (true) applies — model believes false, database holds true, on both chain-built and baseline-built schema. Long-standing (Initial did the same); surfaced by the EF migration review of the Teams peel (peel 14, nobodies-collective/Humans#858)"
-    review: light
-  - added: 2026-08-11
-    what: "EventSettingsConfiguration.cs:44-47 declares HasDefaultValue(-25/-16/-9/-4) on four int offsets without HasSentinel — EF's int sentinel stays 0, so explicitly assigning 0 to any of these offsets is skipped and the DB default written instead (int-flavoured bool-sentinel trap). Pre-existing; surfaced by the EF migration review of the Shifts peel (peel 13, nobodies-collective/Humans#858)"
-    review: light
+    status: needs-detail
+    blocked_on: "A measured failure rate over N full parallel-suite runs plus one captured stack trace; without a reproduction there is nothing to fix or verify."
   # Excluded from seed: User.GoogleEmail unique index (schema work — out of
   # sweep scope entirely); PasswordGenerator CSPRNG (explicitly deferred by
   # Peter, 2026-04-24); BudgetRepository ResponsibleTeam .Include (covered by
   # grandfathered-hum0024-nav-strip).
+  - added: 2026-08-11
+    id: CENTRAL-14
+    what: "EventSettingsConfiguration.cs:44-47 declares HasDefaultValue(-25/-16/-9/-4) on four int offsets without HasSentinel — EF's int sentinel stays 0, so explicitly assigning 0 to any of these offsets is skipped and the DB default written instead (int-flavoured bool-sentinel trap). Pre-existing; surfaced by the EF migration review of the Shifts peel (peel 13, nobodies-collective/Humans#858)"
+    review: light
   - added: 2026-08-07
-    what: "DashboardService.GetMemberDashboardAsync (src/Humans.Application/Services/Dashboard/DashboardService.cs) reads the EF EventSettings entity via IShiftManagementService.GetActiveAsync() instead of IBurnSettingsService/BurnSettingsInfo (nobodies-collective/Humans#809). Blocked on two Shifts-internal gaps: (1) activeEvent.IsShiftBrowsingOpen has no BurnSettingsInfo equivalent — it's explicitly Shifts-internal per IBurnSettingsService's xmldoc; (2) Shift.GetAbsoluteStart/GetAbsoluteEnd take the EF EventSettings entity, not a lighter DTO. Needs either a new IShiftManagementService method exposing IsShiftBrowsingOpen as a scalar, or a Shift.GetAbsoluteStart/End overload accepting (LocalDate gateOpeningDate, string timeZoneId) — both are new interface/domain surface requiring Peter's approval (found while working nobodies-collective/Humans#809)"
-    review: panel
-  - added: 2026-08-07
+    id: CENTRAL-12
     what: "Shifts section's own Web layer (ShiftAdminController, ShiftsController, VolunteerTrackingController, ShiftViewModels.cs, ShiftAdminPageBuilder, ShiftBrowsePageBuilder, ShiftDashboardPageBuilder, ShiftBrowseMapper, ShiftFilterResolver, ShiftSignupBucketer, ShiftVolunteerSearchBuilder, DevelopmentDashboardSeeder, ShiftSignupsViewComponent) carries the EF EventSettings entity as a view-model/builder field on read-only display paths — should be BurnSettingsInfo per nobodies-collective/Humans#809's acceptance criteria. Distinct from the write/edit path (EventSettingsFormMapper), which legitimately keeps the entity. ~10 interconnected files forming one section's own display pipeline — warrants its own dedicated section-scoped PR rather than folding into #809's cross-section batch (found while working nobodies-collective/Humans#809)"
     review: panel
   - added: 2026-09-20
+    id: CENTRAL-62
     what: "nobodies-collective/Humans#1631 decoupled Shifts from the app-wide event calendar (Settings mints ids, Shifts creates its own knobs row on demand) but left event_settings' app-wide columns (EventName, Year, TimeZoneId, GateOpeningDate, all offsets, EarlyEntryCapacity, BarriosEarlyEntryAllocation, EarlyEntryClose) and IsActive in place, per memory/architecture/no-column-drops-for-decoupling.md and no-drops-until-prod-verified.md — the columns are fully dead (no Shifts code reads or writes them beyond satisfying NOT NULL on insert) but not dropped. A follow-up migration to drop them needs Peter's per-case approval and prod verification that no reader regressed first."
     review: panel
   - added: 2026-08-05
+    id: CENTRAL-9
     what: "Extend [ExternalWrite] marking to the Holded surface (ExpenseReportService transitions reaching holdedClient.CreatePurchaseDocumentAsync / ApprovePurchaseDocumentAsync / UploadAttachmentAsync via RunMutationAsync; HoldedFinanceService.EnsureCreditorContactAsync, CreateExpenseAccountAsync) so HUM0033 guards it. No defect exists today — ExpensesController and FinanceController declare no CancellationToken parameter — so this is future-proofing per memory/architecture/cancellation-token-propagation.md (found while auditing nobodies-collective/Humans#950)"
     review: panel
   - added: 2026-08-05
+    id: CENTRAL-10
     what: "GoogleController.SyncExecute / SyncExecuteAll run a full Workspace reconcile inline on the request thread. Moving them to Hangfire (the TicketController.Sync pattern) is blocked on UI: Views/Google/Sync.cshtml:142,163 calls loadTab() in the fetch continuation, so the tab refresh depends on the POST having completed the reconcile — fire-and-forget would re-render stale diffs. Needs a progress/polling affordance (deferred from nobodies-collective/Humans#950)"
     review: panel
-  - added: 2026-08-17
-    what: "Dead freshness:triggers lines across the docs/guide/*.md pages, pointing at the pre-G5 layout (src/Humans.Web/, src/Humans.Application/, src/Humans.Domain/, src/Humans.Infrastructure/, src/Humans.UI/ — every one deleted or emptied). Onboarding.md is not one of them: all of its freshness:triggers globs resolve (re-verified 2026-09-13). The scripted pass below measures the scope; nothing is recorded here, so a dead glob is found by running the check, never by reading this row. Each dead glob is a page the sweep can never flag as stale, which is how docs/guide/Expenses.md missed #1336 entirely. The section->project half of the rewrite is mechanical (src/Humans.Web/Controllers/CampController.cs -> src/Sections/Humans.Camps/Controllers/CampController.cs) but the internal subfolder (Domain/ vs Data/Configurations/ vs Services/) needs a per-file check, so this wants a scripted pass, not hand-editing. Overlaps nobodies-collective/Humans#1021, which has the intent but not this scope (found by /section-doctor on Guide, which repaired its own dead globs)"
-    review: panel
   - added: 2026-08-05
+    id: CENTRAL-11
     what: "GitHubGuideContentSource.GetMarkdownAsync / ListMarkdownStemsAsync accept a CancellationToken they never forward — Octokit's GetRawContentByRef / GetAllContentsByRef expose no CT overload. Read-only so harmless, but the signature promises something it cannot deliver (found while auditing nobodies-collective/Humans#950)"
     review: light
   - added: 2026-08-07
+    id: CENTRAL-13
     what: "ShiftManagementService.DeleteRotaAsync / DeleteShiftAsync call signup.Cancel(clock, ...) on pending signups that can never be persisted: the rota/shift is read AsNoTracking through IShiftManagementRepository, and DeleteRotaCascadeAsync / DeleteShiftCascadeAsync then RemoveRange those same rows from their own context. The loop is dead — decide whether pending signups should be Cancelled-then-kept for audit history or simply deleted, then make the code say so (found while closing the mutation-coverage gaps in nobodies-collective/Humans#705; Stryker reports the two statements as equivalent mutants)"
     review: panel
   - added: 2026-08-02
+    id: CENTRAL-8
     what: "Humans.Integration.Tests is timeout-flaky under parallel load — each of the 14 test classes owns an IClassFixture<HumansWebApplicationFactory> that starts its own Testcontainers Postgres, and with no maxParallelThreads cap several tests land at 26-29s against HumansFact's 30s default (DetailedHealthEndpoint_ReturnsJsonWithStatus, Volunteer_cannot_create_order_against_someone_elses_camp_season, UnprivilegedUser_AdminPostToOtherUserEmails_ReturnsForbid observed timing out). Measured ~1-in-3 failure rate on unmodified origin/main. Fix is a shared collection fixture or a maxParallelThreads cap, not longer timeouts (found while verifying nobodies-collective#925)"
     review: panel
+    status: needs-detail
+    blocked_on: "A measured failure rate under parallel load plus one captured timeout; Integration.Tests is local-only, so the claim needs Peter's machine to reproduce."
   - added: 2026-06-12
-    what: "UsersAdminController.Audience direct DbContext reads — route through IAdminDatabaseDiagnosticsService"
-    review: panel
-  - added: 2026-06-12
+    id: CENTRAL-1
     what: "HumansMetricsService migration out of Infrastructure (touches 6+ sections)"
     review: panel
   - added: 2026-06-12
-    what: "FeedbackService IFormFile/FileStream refactor to IFeedbackScreenshotStorage (one-IFileStorage rule)"
-    review: panel
-  - added: 2026-06-12
+    id: CENTRAL-2
     what: "GoogleWorkspaceHealthCheck direct Google.Apis imports — extract IHealthCheckGoogleClient"
     review: panel
   - added: 2026-06-12
+    id: CENTRAL-3
     what: "UserService.PurgeAsync transactional atomicity (TransactionScope)"
     review: panel
   - added: 2026-06-12
+    id: CENTRAL-4
     what: "TeamService.FindRequestForMutationAsync re-fetch simplification — subtle concurrency semantics"
     review: panel
+    status: needs-detail
+    blocked_on: "Name the concrete defect the re-fetch causes, or the exact simplification wanted; as written it is a design preference with no checkable outcome."
   - added: 2026-06-12
-    what: "AuditLogRepository / UserRepository.PurgeAsync / AccountMergeRepository cross-domain data access — needs one coordinated pass"
-    review: panel
-  - added: 2026-06-12
+    id: CENTRAL-5
     what: "Flaky integration test: UnprivilegedUser_AdminPostToOtherUserEmails_ReturnsForbid fails under full-suite parallel load (TaskCanceledException in test cleanup), passes in isolation — observed in sweep 2026-06-12"
     review: light
+    status: needs-detail
+    blocked_on: "A measured failure rate and one captured stack trace from a full parallel run."
   - added: 2026-06-14
+    id: CENTRAL-6
     what: "VotingBadge(userId) eviction is incomplete (pre-existing; surfaced by Codex on PR 1010). Only the acting voter's badge is cleared on Approve/Reject/CastBoardVote; SubmitAsync/WithdrawAsync clear nobody, and Approve/Reject don't clear non-voting board members — yet a submit/withdraw/resolve shifts every board member's unvoted count. Bounded by the 2-min TTL. Not introduced by the badge-caching consolidation (same key/TTL/invalidator existed in the VC + NotificationMeterProvider before). Fix = broadcast-invalidate all board members' VotingBadge on submit/withdraw/resolve (enumerate Board role via roleAssignmentService); touches mutation paths + has a per-mutation enumeration cost, so its own targeted pass."
     review: panel
   - added: 2026-06-29
+    id: CENTRAL-7
     what: "Gate dedupe race has no integration test. The atomic per-barcode admit dedupe relies on a Postgres unique index on GateScanEvent.AdmitDedupeKey (first concurrent admit wins, RecordScanAsync returns DuplicateAdmitRejected on the loser). The EF in-memory test provider can't enforce unique indexes, so GateServiceTests only exercises the sequential pre-check, not the concurrent index collision. Add a Postgres-backed integration test (Testcontainers/Docker) that fires two concurrent admits for one barcode and asserts exactly one Admitted + one RejectedDuplicate. Deferred from the gate-scanner PR (PR 895) — needs a containerized DB not available in that environment."
     review: light
   - added: 2026-08-14
+    id: CENTRAL-16
     what: "SystemTeamSyncJob (src/Sections/Humans.Teams/Services/SystemTeamSyncJob.cs) makes two read-only cross-section calls through full service interfaces instead of a Read interface, contrary to memory/architecture/section-read-write-split.md: RoleAssignmentService.GetActiveUserIdsInRoleAsync (line 273, IRoleAssignmentService — Auth) and TeamResourceService.GetTeamResourcesAsync (line 620, ITeamResourceService — GoogleIntegration). Neither IRoleAssignmentServiceRead nor ITeamResourceServiceRead exists yet, so there is nothing to switch to today; the fix lands when Auth and GoogleIntegration get their Read splits. HUM0032 cannot catch this shape either way — both are resolved lazily via serviceProvider.GetRequiredService<T>() in computed properties (lines 62-66), and the analyzer only inspects constructor parameters. Pre-existing calls, newly reclassified: before peterdrier/Humans#1305 the job lived in Humans.Infrastructure (Base), where calling a full section interface is normal; the move into Humans.Teams makes them cross-section-from-a-section. Found by Claude review on peterdrier/Humans#1305."
     review: panel
   - added: 2026-08-20
+    id: CENTRAL-20
     what: "Rota search rows pay a heavy read on a cold cache key. IShiftManagementServiceRead.GetRotaAsync (src/Sections/Humans.Shifts/Services/ShiftManagementService.cs) serves the global-search row through CachingShiftViewService's per-rota cache; on a miss that cache's inner ShiftViewService.GetRotaAsync (src/Sections/Humans.Shifts/Services/ShiftViewService.cs:119) loads RotaReadShape.View — event settings, shifts, signups and tags — to hand back two fields, Name and TeamId. Warm cost is zero (measured: GlobalSearchSectionRenderTests.Tripling_the_rows_costs_no_extra_query, 2 commands per /Search page regardless of row count), so this is a first-search-after-startup and post-invalidation cost only, bounded by the number of matched rotas. The two obvious fixes are both wrong: GetRotasAsync loops one id at a time so it batches nothing, and carrying Name/TeamId on RotaSearchHit re-introduces the display-field projection nobodies-collective/Humans#1062 deleted. The right fix is a header-shaped rota projection Shifts caches separately from the view — new state in that section, so its own pass. Found by Codex on peterdrier/Humans#1432."
     review: panel
+    status: needs-detail
+    blocked_on: "A measured cold-cache timing against a stated budget; no threshold is named, so nothing can be shown fixed."
   - added: 2026-08-21
+    id: CENTRAL-23
     what: "TicketTailor re-sync can resurrect erased ticket PII. GDPR erasure (nobodies-collective/Humans#853) tombstones BuyerName/BuyerEmail/AttendeeName/AttendeeEmail and nulls MatchedUserId in our copy of the vendor's data (Humans.Tickets/Data/TicketRepository.EraseUserPiiAsync), but the vendor still holds the real record. The next TicketTailor sync re-reads it and can write the real name and email straight back over the tombstone, silently undoing the erasure with no signal that it happened. Fixing it properly means either a per-order erased flag the sync respects (needs a column) or deleting the vendor-side record; both are larger than #853 and the first is a schema change."
     review: panel
-  - added: 2026-08-18
-    what: "Nothing sweeps route strings out of docs when a route is deleted: POST /Finance/Creditors/Resync was removed from the controller in nobodies-collective/Humans#1267 and survived in both docs/features/global/background-jobs.md and Finance.md. A repo-wide check that every /Route referenced under docs/ resolves to a live action would have caught it. Found by /section-doctor on Finance 2026-08-18."
-    review: panel
   - added: 2026-08-23
+    id: CENTRAL-24
     what: "HumansControllerBase.SetError service-locates ILoggerFactory off HttpContext.RequestServices while SetSuccess and SetInfo resolve nothing. The original symptom is gone — the lookup is null-conditional (HttpContext?.RequestServices?.GetService), so it no longer throws in a controller unit test — but the asymmetry and the service-location remain, and injecting the logger would remove both. No test scaffolding rides on it: Onboarding's controller tests set ControllerContext and ctrl.Url because RedirectToAction resolves IUrlHelperFactory, which injection here would not change. Base's, so it has no section ledger. Found by /section-doctor on Onboarding 2026-08-23; symptom re-verified and corrected, test-scaffolding claim struck, 2026-09-13."
     review: panel
   - added: 2026-08-27
+    id: CENTRAL-28
     what: ".claude/skills/section-align/SKILL.md:51 claims Humans.Gdpr has no Controllers/; it has had one since nobodies-collective/Humans#1091, and the line drives a shell path filter (finding 14, /section-doctor on Gdpr 2026-08-27)."
     review: panel
+    root: CENTRAL-57
   - added: 2026-08-27
+    id: CENTRAL-29
     what: "docs/architecture/design-rules.md:308 names only /Profile/Me/DownloadData as the GDPR export download; /Guest/DownloadData is the other, and §8a's rule gates both (finding 15, /section-doctor on Gdpr 2026-08-27)."
     review: panel
+    root: CENTRAL-57
   - added: 2026-08-27
+    id: CENTRAL-30
     what: "docs/architecture/service-data-access-map.md:312 states EF DbContext/IDbContextFactory usage is \"not thread-safe within a single async flow\" as the reason the Calendar/Gdpr/EarlyEntry contributor fan-outs are sequential. Independent factory-created contexts are safe concurrently; §8a of design-rules.md says so (finding 22, /section-doctor on Gdpr 2026-08-27)."
     review: panel
+    root: CENTRAL-57
   - added: 2026-08-27
+    id: CENTRAL-31
     what: "docs/architecture/design-rules.md:340 says contributors \"read through their own IDbContextFactory<TContext>\" and names AgentService as an example; AgentRepository takes a scoped AgentDbContext by injection. The conclusion (sequential is no longer a correctness requirement) is right; the stated mechanism is not — the accurate invariant is that no two contributors share a context instance (finding 25, /section-doctor on Gdpr 2026-08-27)."
     review: panel
-  - added: 2026-09-05
-    what: "docs/architecture/dependency-graph.md predates the Monitor carve-out: the DriveMon node (DriveActivityMonitorService) is still styled :::google and the graph has no Monitor section, though src/Sections/Humans.Monitor owns the service now. The freshness-catalog entry for this graph fires on src/Sections/*/Services/**, so the next /freshness-sweep regeneration should carry it; recorded so it is not lost if that pass is skipped (finding 20, /section-doctor on Settings 2026-08-28)."
-    review: light
-  - added: 2026-09-06
-    what: "docs/architecture/freshness-catalog.yml has no Settings entry — add one covering src/Sections/Humans.Settings/** and src/Sections/Humans.Settings.Contracts/** (finding 14, /section-doctor on Settings 2026-08-28; swept 2026-09-06)."
-    review: light
+    root: CENTRAL-57
   - added: 2026-09-10
+    id: CENTRAL-36
     what: ".claude/skills/test-site/SKILL.md names /Profile/Emails and /Profile/Privacy; the live routes are /Profile/Me/Emails and /Profile/Me/Privacy (finding 19, /section-doctor on Consent 2026-08-31; swept in by /section-doctor on Rideshare 2026-09-10)."
     review: light
+    root: CENTRAL-57
   - added: 2026-09-10
+    id: CENTRAL-37
     what: "The HUM0028 theme's caller-map note above says the LegalDocument cache invalidation runs via an EF interceptor; it has been direct service-side InvalidateAll() calls since nobodies-collective/Humans#751 (finding 19, /section-doctor on Consent 2026-08-31; swept in by /section-doctor on Rideshare 2026-09-10)."
     review: light
+    root: CENTRAL-57
   - added: 2026-09-10
+    id: CENTRAL-38
     what: "docs/sections/G5-SECTION-TEMPLATE.md:341 claims the renderer lives at Humans.Infrastructure/Services/EmailRenderer.cs; it lives in the Email section (src/Sections/Humans.Email/Services/EmailRenderer.cs). Found fixing Feedback's copy of the same claim (/section-doctor on Feedback 2026-08-31; swept in by /section-doctor on Rideshare 2026-09-10)."
     review: light
+    root: CENTRAL-57
   - added: 2026-09-10
+    id: CENTRAL-39
     what: "docs/architecture/dependency-graph.md classes Backdoor as a crosscut and omits its edges to the sections it serves (Agent, Feedback, Issues.Contracts, Surveys). It is a leaf, not a crosscut: nothing references it back (finding 16, /section-doctor on Backdoor 2026-09-03; swept in by /section-doctor on Rideshare 2026-09-10)."
     review: light
+    root: CENTRAL-57
   - added: 2026-09-10
+    id: CENTRAL-40
     what: "docs/architecture/freshness-catalog.yml has no Backdoor entry; add one covering src/Sections/Humans.Backdoor/** and tests/Humans.Backdoor.Tests/** (finding 17, /section-doctor on Backdoor 2026-09-03; swept in by /section-doctor on Rideshare 2026-09-10)."
     review: light
+    root: CENTRAL-57
   - added: 2026-09-11
+    id: CENTRAL-41
     what: "Rideshare and Issues still send member notifications in English. Workgroups now groups recipients by PreferredLanguage and uses existing localized labels with INotificationService.SendAsync; no new notification API is required. Apply the same approach to the remaining callers. Found during review of peterdrier/Humans#1650."
     review: light
   - added: 2026-09-11
+    id: CENTRAL-42
     what: "GenerateDocumentationFile is set in no project in this repo, so CS1574 never fires and a broken <see cref> target never fails a build; Calendar alone was carrying a batch of them. Repo-wide (finding 5, /section-doctor on Calendar 2026-09-01; swept in by /section-doctor on Guide 2026-09-11)."
     review: light
   - added: 2026-09-11
+    id: CENTRAL-43
     what: "Calendar's authorization posture ([Authorize] on the controller, one anonymous feed action) is enforced by nothing. It cannot be a per-section test (memory/architecture/no-tests-for-absences.md) and the behavioural alternative needs a WebApplicationFactory, which lives only in the never-CI integration project (finding 17, /section-doctor on Calendar 2026-09-01; swept in by /section-doctor on Guide 2026-09-11)."
     review: panel
+    root: CENTRAL-56
   - added: 2026-09-11
+    id: CENTRAL-44
     what: "No CI-gated view-render harness for section .cshtml files: every *PageRenderTests lives in tests/Humans.Integration.Tests, so a Razor fix has no test that fails on revert. The debt is the missing CI-reachable harness, not the integration suite's exclusion — that exclusion is the design (memory/process/integration-tests-are-not-ci-tests.md) and stays (/section-doctor on Calendar 2026-09-01; swept in by /section-doctor on Guide 2026-09-11)."
     review: panel
   - added: 2026-09-11
+    id: CENTRAL-45
     what: "INotificationAutoResolve has ResolveBySourceAsync (user + source, every key) and ResolveBySourceKeyAsync (source + key, every user) but nothing per user AND key, so Governance cannot retract one voter's AssemblyVoteOpened entry when they cast their ballot — the actionable row stands until the vote closes, and clearing it with ResolveBySourceAsync would wipe the member's prompts for every other open vote of the same assembly. Needs a new method on the Notifications contracts leaf, so Peter's call on the surface addition (Codex on peterdrier/Humans#1649)."
     review: panel
   - added: 2026-09-11
+    id: CENTRAL-46
     what: "docs/scripts/freshness-checks/dependency-graph.sh uses awk's asorti, which mawk (the container's awk) does not define: the script dies at line 91 and then reports PASS with \"all 0 section/Web service classes appear as Mermaid nodes\" — a vacuous pass that hides every missing node. Found when a Codex finding cited the check's output on peterdrier/Humans#1649 and it could not be reproduced."
     review: light
   - added: 2026-09-14
+    id: CENTRAL-49
     what: "Login_Hello in src/Humans.Base/Resources/SharedResource.resx and its five culture variants is named in no view, controller or tag helper — only in the six resx files. The five keys a scan flagged alongside it (CompleteSignup_AllFieldsRequired, GateLogin_Invalid, GateLogin_Throttled, Login_Login, Login_Logout) are live; do not remove those. Base's set, so Base's run (finding 33, /section-doctor on Auth 2026-09-01; swept in by /section-doctor on Issues 2026-09-14)."
     review: light
   - added: 2026-09-14
+    id: CENTRAL-50
     what: "src/Sections/Humans.EarlyEntry has no .Contracts leaf, so every consumer — Gate among them — takes a ProjectReference on the whole section and sees all of it rather than a contracts surface. Cross-cutting: it wants one carve-out decision, not a fix per consumer (finding 14, /section-doctor on Gate 2026-08-31; swept in by /section-doctor on Issues 2026-09-14)."
     review: panel
   - added: 2026-09-14
+    id: CENTRAL-51
     what: "docs/architecture/freshness-catalog.yml's service-data-access-map entry triggers on src/Sections/*/Services/** and Data/*Repository.cs but not src/Sections/*/Section.cs, so a registration-only change never marks the map dirty (finding 13, /section-doctor on TicketTailor 2026-09-05; swept in by /section-doctor on Issues 2026-09-14)."
     review: light
+    root: CENTRAL-57
   - added: 2026-09-14
+    id: CENTRAL-52
     what: "docs/architecture/section-conformance.yml's seeding notes record \"no Docs/ in Settings or TicketTailor\" as a pre-existing detector hit; both sections carry Docs/<Section>.md now. The file is read-only to a section-doctor run, so it is recorded here rather than edited (finding 25, /section-doctor on TicketTailor 2026-09-05; swept in by /section-doctor on Issues 2026-09-14)."
     review: light
+    root: CENTRAL-57
   - added: 2026-09-14
+    id: CENTRAL-53
     what: "docs/architecture/dependency-graph.md's \"Services with no cross-section edges\" list names TicketVendorService, a type that does not exist; the adapter's services are TicketTailorService and StubTicketVendorService (finding 26, /section-doctor on TicketTailor 2026-09-05; swept in by /section-doctor on Issues 2026-09-14)."
     review: light
+    root: CENTRAL-57
   - added: 2026-09-14
+    id: CENTRAL-54
     what: "The *Invalidator family (IEarlyEntryInvalidator, IEventViewInvalidator, …, all [Grandfathered(\"HUM0028\")]) makes every cross-section cache flush a caller's job, so a contributor that forgets to call one leaves stale data (findings 1 and 12, /section-doctor on EarlyEntry 2026-09-05, each of which is such a gap). Peter 2026-09-14, ruling finding 1: 'coming up with a better way than invalidators is a todo for the winter' — design the replacement (owning decorator absorbs invalidation), don't keep ratcheting call sites."
+    review: panel
+  - added: 2026-09-20
+    id: CENTRAL-56
+    what: "ROOT CAUSE ROW (see the `root:` pointers at it). Several sections have no controller-test layer at all, so every controller-level authorization attribute, policy override and deny path in them is unpinned and each gap gets ledgered separately. The fix is one decision plus one pattern: stand up tests/Humans.<Section>.Tests/Controllers/ for the sections that lack it, and pin the policy/role placement rather than only that some [Authorize] exists (tests/Humans.Web.Tests/Authorization/EndpointAuthorizationTests.cs's CriticalEndpointPolicies theory is the existing shape to copy or extend). Recorded 2026-09-20 from the corpus-wide debt audit."
+    review: panel
+  - added: 2026-09-20
+    id: CENTRAL-57
+    what: "ROOT CAUSE ROW (see the `root:` pointers at it). Nothing re-verifies doc bodies, code comments and <!-- freshness:triggers --> blocks when a file moves between sections or an I<Section>ServiceRead leaf lands, so each stale citation is found and ledgered one /section-doctor run at a time — several live rows in this corpus share this single cause (grep `root: CENTRAL-57`). The fix is a detector (dead-path/dead-symbol sweep over docs + freshness trigger globs, the kind docs/scripts/freshness-checks/ already hosts) that fails at write time instead. Recorded 2026-09-20 from the corpus-wide debt audit."
+    review: panel
+  - added: 2026-09-20
+    id: CENTRAL-58
+    what: "The C#-side HUM0024 debt is closed (see the retired theme), but the database-level foreign-key constraints those cross-section navigations created were never dropped — the G0 audit files (docs/plans/2026-08-03-g0-first-audit/{Teams,Shifts,Notifications,GoogleIntegration}.md) are explicit that removing a nav property does not drop the constraint, and the cuts were queued as separate migration work that never happened. Quantify the remaining cross-section FK constraints, then Peter's call on whether dedicated FK-cut migration PRs happen at all. Filed 2026-09-20 when the HUM0024 theme was retired, so the remainder is not lost with it."
+    review: panel
+  - added: 2026-09-20
+    id: CENTRAL-59
+    what: "src/Sections/Humans.Users.Contracts/IUserInfoInvalidator.cs:24 deliberately omits the IInvalidator marker (its own comment says so, debt nobodies-collective/Humans#805), so HUM0028 cannot see it and it needs no [Grandfathered] marker — one invalidator dodging the ratchet by being invisible to it. Marking it (or recording the exemption where the analyzer reads it) is small and separable from the big invalidator rework the HUM0028 theme is parked on. Found by the 2026-09-20 accepted-smell audit."
+    review: light
+  - added: 2026-09-20
+    id: CENTRAL-60
+    what: "The pre-existing Codex prompt/skill files run dotnet with `-v quiet`/`-v q` but without the `-clp:ErrorsOnly` that memory/process/dotnet-verbosity-quiet.md requires (.codex/tech-debt-prompt.md, .codex/bug-hunt-prompt.md, .codex/TECH_DEBT_QUEUE.md, .codex/skills/humans-{tech-debt,refactor,bug-hunt}/SKILL.md). Without it the obsolete-warning wall floods the context of every Codex run that follows them, which costs most on a time-budgeted unattended run. Mechanical fix, no judgement needed. Found 2026-09-20 while adding the flag to the nightly debt runner in peterdrier/Humans#1759, which deliberately did not widen to these files."
+    review: light
+  - added: 2026-09-20
+    id: CENTRAL-61
+    what: "Two pre-existing Codex runner scripts use `git -C <path>`, which memory/process/never-use-git-dash-c.md marks a HARD RULE with no exceptions: .codex/run-weekly-bug-hunt.sh and .codex/cleanup-merged-bug-hunt-worktrees.sh. Fix is mechanical — run each group in a `(cd \"$dir\" && git ...)` subshell, as .codex/cron/run-daily-debt.sh now does. Worth noting the atom's stated rationale (a wrong shell folder; defeating Bash allowlist prefixes) is about agent-issued commands, so Peter may want to say whether the rule binds committed scripts at all rather than have it re-found every audit. Found 2026-09-20 while fixing the same violation in the nightly debt runner in peterdrier/Humans#1759."
     review: panel

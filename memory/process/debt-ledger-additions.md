@@ -27,13 +27,26 @@ Section files keep the central ledger readable and put the debt where the next r
 
 ```yaml
 version: 1        # section files only; the central ledger declares it once at the top
+next_id: 12       # the next id number for THIS file — the only source of it
 inbox:
   - added: <YYYY-MM-DD>
+    id: TEAMS-11
     what: "One line naming the file/symbol, what is wrong, the governing rule if known, and how it was found."
     review: light | panel
+    status: needs-detail          # optional; omitted means open
+    blocked_on: "What would make it checkable."   # required with status: needs-detail
+    root: CENTRAL-57              # optional; this row is one symptom of that row's cause
 ```
 
 `review: light` only when the fix is rule-prescribed and the verifier is mechanical; otherwise `panel`. Central `themes:` entries additionally carry `id`, `title`, `detect`, `last_swept: never` and `remaining` — rotation serves `never` entries next automatically.
+
+**Ids.** `<PREFIX>-<n>`: the file's short uppercase prefix (`GOV`, `USERS`, `CENTRAL`, …) plus the number `next_id` is sitting on; bump `next_id` in the same edit. **Numbers are never recycled** — `next_id` only increases, including past deletions, so a closed id stays closed forever and a PR that cites one always means the same item.
+
+**Closing an item** = delete its row and cite its id in the PR. Nothing is marked done in place.
+
+**One item = one defect one PR can close and one check can verify.** If closing a row takes two independent fixes, it is two rows — split it, giving each its own id. Conversely, when many rows are symptoms of one cause, keep the rows and point each at a parent row with `root:`; the parent states the cause so the ladder works it once instead of N times.
+
+**`status:`** — `open` (the default, omit it), `needs-detail` (the claim cannot be proved or disproved as written; `blocked_on:` says in one line what would make it checkable — a human sharpens it, nobody silently drops it), `partial` (part of the row is already fixed; narrow `what:` to the part that is still broken and say what was verified fixed).
 
 - Ledger-only changes follow [`no-direct-to-main`](no-direct-to-main.md): bundle with the discovery PR, or commit standalone direct to `origin/main`.
 - **Write another section's ledger when the debt is theirs — that is the point.** Debt belongs where the next reader of that section will meet it, not in a central pile keyed by who happened to find it. Section ledgers have no single writer and need none: appending to a YAML list rarely collides, and a collision is one hand-resolved hunk. Don't add locking, ownership checks, or a routing detour to avoid it.

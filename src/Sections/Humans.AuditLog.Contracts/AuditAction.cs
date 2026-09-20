@@ -323,4 +323,6 @@ public enum AuditAction
     // (peterdrier/Humans#1628). Written on every successful SaveEventSettingsAsync call,
     // including the reconcile writes made by the Settings carry screen.
     EventSettingsUpdated,
+
+    EmailDailySendCountsBackfilled,
 }

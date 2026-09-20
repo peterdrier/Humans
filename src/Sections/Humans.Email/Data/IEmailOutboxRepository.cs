@@ -157,4 +157,51 @@ internal interface IEmailOutboxRepository : IRepository
     /// message body. Returns the number of rows deleted.
     /// </summary>
     Task<int> DeleteForUserAsync(Guid userId, CancellationToken ct = default);
+
+    // ==========================================================================
+    // Daily send counts — durable denominator for spam-rate spikes (#1195).
+    // Never purged by CleanupEmailOutboxJob.
+    // ==========================================================================
+
+    /// <summary>
+    /// Increments the sent or failed counter for (<paramref name="date"/>,
+    /// <paramref name="templateName"/>), creating the row if it doesn't exist
+    /// yet. Called once per outbox send attempt from <c>EmailOutboxProcessor</c>,
+    /// after test addresses are excluded.
+    /// </summary>
+    Task IncrementDailySendCountAsync(
+        LocalDate date, string templateName, bool succeeded, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns every daily-count row with <c>Date >= since</c>, for the admin
+    /// dashboard's rolling window. Read-only.
+    /// </summary>
+    Task<IReadOnlyList<EmailDailySendCount>> GetDailySendCountsSinceAsync(
+        LocalDate since, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns every existing (Date, TemplateName) key already recorded, so the
+    /// backfill can skip any combination the processor (or an earlier backfill)
+    /// has already written — it must never overwrite existing data.
+    /// </summary>
+    Task<IReadOnlySet<(LocalDate Date, string TemplateName)>> GetDailySendCountKeysAsync(
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Inserts new daily-count rows. The caller has already filtered out any
+    /// (Date, TemplateName) that already exists.
+    /// </summary>
+    Task AddDailySendCountsAsync(
+        IReadOnlyList<EmailDailySendCount> rows, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns every <c>Sent</c> row sent at or after <paramref name="since"/>, plus
+    /// every <c>Failed</c> row created at or after it, read-only — the backfill's
+    /// source data. <c>Sent</c> rows are filtered by <see cref="EmailOutboxMessage.SentAt"/>
+    /// so this matches the retention cutoff (which deletes by <c>SentAt</c>), not
+    /// <see cref="EmailOutboxMessage.CreatedAt"/>. Queued rows are excluded: they
+    /// were never attempted.
+    /// </summary>
+    Task<IReadOnlyList<EmailOutboxMessage>> GetSentOrFailedSinceAsync(
+        Instant since, CancellationToken ct = default);
 }

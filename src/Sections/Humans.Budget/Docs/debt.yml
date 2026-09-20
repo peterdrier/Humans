@@ -1,16 +1,37 @@
 # Section debt ledger for Humans.Budget. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
+next_id: 9
 inbox:
   - added: 2026-08-30
+    id: BUDGET-1
     what: "Member-facing Budget views hardcode English UI strings throughout (Views/Budget/Index.cshtml, Views/Budget/CategoryDetail.cshtml, Views/Budget/Summary.cshtml) instead of resx keys in all six cultures — violates the localization surface rule; found by section-doctor prose thread. Backfill decision is Peter's (see 2026-08-30 run file Needs-Peter)."
     review: panel
   - added: 2026-08-30
+    id: BUDGET-2
     what: "Chart styling/loader duplicated across Views/BudgetAdmin/YearDetail.cshtml (hardcoded hex palette + '#fff') and Views/Budget/Summary.cshtml (CSS variables), each loading Chart.js separately — one source for palette and loader would end the drift; found by section-doctor comments thread."
     review: panel
   - added: 2026-09-14
+    id: BUDGET-8
     what: "DevelopmentBudgetSeeder.EnsureBudgetTeamAsync now passes the team's current IsSensitive to ITeamSeeding.UpdateTeamAsync, so a FinanceAdmin reseeding a team someone marked sensitive no longer trips the Admin-only gate in TeamService.UpdateTeamAsync. The fix is unpinned: the seeder is internal and its team path is private, reachable only by driving SeedAsync with IBudgetService, ICampServiceRead and a full fixture, so a regression test needs a harness this section has none of. Wanted: a test that reseeding a sensitive demo team preserves the flag and does not throw. Found by Codex reviewing peterdrier/Humans#1594."
     review: light
   - added: 2026-08-30
-    what: "Test gaps left open after the 2026-08-30 doctor run's invariant matrix: (a) GDPR export contributor never executed under test — GetMergedSourceIdsAsync is stubbed empty in the ctor and no test calls the contributor, so the chain-following merge path is unpinned; (b) restricted-group drill-in Forbid only covers the not-a-coordinator case, never coordinator-in-restricted-group; (c) ticketing group hidden from /Budget for non-finance unpinned; (d) group/category/line-item audit-row writes unpinned (year-level ones are); (e) GetActualTicketsSold Notes round-trip unpinned. Found by /section-doctor on Budget 2026-08-30 (finding 14)."
+    id: BUDGET-3
+    what: "Budget's GDPR export contributor is never executed under test: GetMergedSourceIdsAsync is stubbed empty in the test ctor and no test calls ContributeForUserAsync, so the chain-following merge path is unpinned. Found by /section-doctor on Budget 2026-08-30 (finding 14). (split 2026-09-20 from the bundled row of the same date; one row per independently-fixable defect.)"
+    review: light
+  - added: 2026-08-30
+    id: BUDGET-4
+    what: "Restricted-group drill-in Forbid only covers the not-a-coordinator case: no test in BudgetServiceTests sets IsRestricted=true, so BudgetService.GetCoordinatorCategoryDetailViewDataAsync's coordinator-in-restricted-group branch is unpinned. Found by /section-doctor on Budget 2026-08-30 (finding 14). (split 2026-09-20 from the bundled row of the same date; one row per independently-fixable defect.)"
+    review: light
+  - added: 2026-08-30
+    id: BUDGET-5
+    what: "The ticketing group being hidden from /Budget for non-finance viewers is unpinned by any test. Found by /section-doctor on Budget 2026-08-30 (finding 14). (split 2026-09-20 from the bundled row of the same date; one row per independently-fixable defect.)"
+    review: light
+  - added: 2026-08-30
+    id: BUDGET-6
+    what: "Group/category/line-item audit-row writes are unpinned by any test (the year-level ones are covered). Found by /section-doctor on Budget 2026-08-30 (finding 14). (split 2026-09-20 from the bundled row of the same date; one row per independently-fixable defect.)"
+    review: light
+  - added: 2026-08-30
+    id: BUDGET-7
+    what: "BudgetService.GetActualTicketsSold's Notes round-trip is unpinned: the method (BudgetService.cs:860) is referenced by no test under tests/Humans.Budget.Tests. Found by /section-doctor on Budget 2026-08-30 (finding 14). (split 2026-09-20 from the bundled row of the same date; one row per independently-fixable defect.)"
     review: light
