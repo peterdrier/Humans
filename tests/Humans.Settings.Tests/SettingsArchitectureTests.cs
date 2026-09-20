@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 namespace Humans.Settings.Tests;
 
 /// <summary>
-/// Both screens write the app-wide event values, so both are pinned to
+/// The screen writes the app-wide event values, so it is pinned to
 /// <see cref="PolicyNames.AdminOnly"/> — there is no narrower Settings role.
 /// </summary>
 public sealed class SettingsArchitectureTests
@@ -15,7 +15,7 @@ public sealed class SettingsArchitectureTests
     [HumansFact]
     public void AdminSurfaces_RequireTheAdminOnlyPolicy()
     {
-        Type[] surfaces = [typeof(SettingsAdminController), typeof(EventSettingsCarryAdminController)];
+        Type[] surfaces = [typeof(SettingsAdminController)];
 
         foreach (var controller in surfaces)
         {

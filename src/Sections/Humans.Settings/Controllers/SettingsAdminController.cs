@@ -59,9 +59,9 @@ internal sealed class SettingsAdminController(
         }
         catch (InvalidOperationException ex)
         {
-            // The service's own invariants — activating while another cycle is Active, or an id
-            // no Shifts event row carries. Both are conflicts an operator can act on, so they
-            // belong on the form they came from, not in a 500.
+            // The service's own invariant — activating while another cycle is Active. A
+            // conflict an operator can act on, so it belongs on the form it came from,
+            // not in a 500.
             ModelState.AddModelError(string.Empty, ex.Message);
             return View(model);
         }

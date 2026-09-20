@@ -1,6 +1,7 @@
 using System.Net;
 using AwesomeAssertions;
 using Humans.Integration.Tests.Infrastructure;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
@@ -97,19 +98,26 @@ public class ShiftsPageRenderTests(HumansTestDatabase database) : IntegrationTes
     private async Task SeedActiveBurnAsync()
     {
         using var scope = Factory.Services.CreateScope();
-        var seeding = scope.ServiceProvider.GetRequiredService<IShiftSeeding>();
-
-        await seeding.DeactivateActiveBurnAsync();
-        await seeding.CreateBurnAsync(new CreateBurnInput(
-            Id: Guid.NewGuid(),
-            EventName: "Render Test Burn",
-            Year: 2026,
-            TimeZoneId: "Europe/Madrid",
-            GateOpeningDate: new LocalDate(2026, 7, 1),
-            BuildStartOffset: -14,
-            EventEndOffset: 6,
-            StrikeEndOffset: 9,
-            IsShiftBrowsingOpen: true));
+        var eventId = Guid.NewGuid();
+        await scope.ServiceProvider.GetRequiredService<IEventSettingsSeeding>().CreateActiveEventAsync(
+            new EventSettingsInfo(
+                Id: eventId,
+                EventName: "Render Test Burn",
+                Year: 2026,
+                TimeZoneId: "Europe/Madrid",
+                GateOpeningDate: new LocalDate(2026, 7, 1),
+                BuildStartOffset: -14,
+                EventEndOffset: 6,
+                StrikeEndOffset: 9,
+                FirstCrewStartOffset: -25,
+                SetupWeekStartOffset: -16,
+                PreEventWeekStartOffset: -9,
+                FinishingWeekendStartOffset: -4,
+                EarlyEntryCapacity: new Dictionary<int, int>(),
+                BarriosEarlyEntryAllocation: null,
+                EarlyEntryClose: null));
+        await scope.ServiceProvider.GetRequiredService<IShiftSeeding>()
+            .SetShiftBrowsingOpenAsync(eventId, isOpen: true);
     }
 
     [HumansFact(Timeout = 180000)]

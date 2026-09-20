@@ -3,17 +3,20 @@ using Humans.Base.Interfaces;
 namespace Humans.Shifts.Contracts;
 
 /// <summary>
-/// Read-only cross-section supplier for the event-cycle ("burn") settings
-/// (Nowhere 2026, etc.). Lets sections outside Shifts (Events, Camps,
-/// Tickets, Notifications, ...) read calendar + early-entry metadata as a
-/// <see cref="BurnSettingsInfo"/> DTO without touching
+/// Read-only supplier for the event-cycle ("burn") settings (Nowhere 2026,
+/// etc.) as a <see cref="BurnSettingsInfo"/> DTO, without touching
 /// <c>DbContext.EventSettings</c> directly (design-rules §2c,
-/// <c>memory/architecture/no-cross-section-ef-joins.md</c>).
+/// <c>memory/architecture/no-cross-section-ef-joins.md</c>). The app-wide
+/// calendar itself now lives in Settings' <c>settings_event</c>
+/// (nobodies-collective/Humans#1631); every current consumer is inside this
+/// section, so this interface is a candidate for retirement once nothing
+/// outside Shifts needs it — kept for now since it is the section's existing
+/// external-read seam.
 ///
 /// <para>
 /// Mutations + Shifts-internal reads (flags, caps, rotas) stay on
 /// <c>IShiftManagementService</c> — the Shifts section is the single
-/// writer of <c>event_settings</c>.
+/// writer of its own local <c>event_settings</c> knobs row.
 /// </para>
 /// </summary>
 public interface IBurnSettingsService : IApplicationService
@@ -32,12 +35,4 @@ public interface IBurnSettingsService : IApplicationService
     /// previous cycle.
     /// </summary>
     Task<BurnSettingsInfo?> GetByIdAsync(Guid id, CancellationToken ct = default);
-
-    /// <summary>
-    /// Every burn, oldest cycle first. Added for the Settings section's carry
-    /// screen, which copies these rows into <c>settings_event</c> one cycle at a
-    /// time and needs to see all of them, not just the active one
-    /// (nobodies-collective/Humans#1104). Retires with the carry screen.
-    /// </summary>
-    Task<IReadOnlyList<BurnSettingsInfo>> GetAllAsync(CancellationToken ct = default);
 }

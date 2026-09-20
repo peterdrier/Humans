@@ -13,7 +13,7 @@ namespace Humans.Settings.ViewComponents;
 /// editable vs read-only per viewer against <see cref="PolicyNames.AdminOnly"/>.
 /// An admin viewer may also name a specific row via <c>?event={id}</c> — the
 /// redirect target for links that used to carry an id to <c>/Settings/Admin</c>
-/// (e.g. the carry screen's per-row links, or a save that deactivates a row).
+/// (e.g. a save that deactivates a row).
 /// A non-admin always gets the active row regardless of the query string.
 /// </summary>
 internal sealed class EventSettingsTabViewComponent(
@@ -31,9 +31,14 @@ internal sealed class EventSettingsTabViewComponent(
 
         settings ??= await settingsService.GetActiveEventSettingsAsync(HttpContext.RequestAborted);
 
-        return View(new EventSettingsTabViewModel(
-            settings is null ? null : EventSettingsFormMapper.ToViewModel(settings),
-            canEdit));
+        // An admin with no active (or named) row yet may start a new cycle — Settings
+        // mints event ids now (nobodies-collective/Humans#1631) — so hand them a blank
+        // form instead of the "nothing configured" message.
+        EventSettingsViewModel? viewModel = settings is not null
+            ? EventSettingsFormMapper.ToViewModel(settings)
+            : canEdit ? new EventSettingsViewModel() : null;
+
+        return View(new EventSettingsTabViewModel(viewModel, canEdit));
     }
 }
 

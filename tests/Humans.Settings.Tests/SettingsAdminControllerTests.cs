@@ -14,8 +14,8 @@ using TestContext = Xunit.TestContext;
 namespace Humans.Settings.Tests;
 
 /// <summary>
-/// The screen never offers a blank form that would mint an event id Shifts does
-/// not have, and a save that deactivates a row leaves it reachable by id.
+/// A blank id on save mints a brand-new cycle (nobodies-collective/Humans#1631),
+/// and a save that deactivates a row leaves it reachable by id.
 /// </summary>
 public sealed class SettingsAdminControllerTests
 {
@@ -88,17 +88,15 @@ public sealed class SettingsAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Index_Post_WithoutAnId_IsRefusedInsteadOfMintingOne()
+    public async Task Index_Post_WithoutAnId_MintsANewCycle()
     {
         var sut = BuildSut();
 
-        var result = await sut.Index(MakeForm(id: null, isActive: true), TestContext.Current.CancellationToken);
+        var result = await sut.Index(MakeForm(id: null, isActive: false), TestContext.Current.CancellationToken);
 
-        result.Should().BeOfType<ViewResult>();
-        sut.ModelState[nameof(EventSettingsViewModel.Id)]!.Errors
-            .Should().ContainSingle().Which.ErrorMessage.Should().Contain("/Settings/Admin/Carry");
-        await _settings.DidNotReceive().SaveEventSettingsAsync(
-            Arg.Any<EventSettingsInfo>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        result.Should().BeOfType<RedirectToActionResult>();
+        await _settings.Received(1).SaveEventSettingsAsync(
+            Arg.Is<EventSettingsInfo>(s => s.Id != Guid.Empty), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

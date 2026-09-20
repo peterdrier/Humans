@@ -23,20 +23,15 @@ namespace Humans.Shifts.Contracts;
 public interface IShiftSeeding
 {
     /// <summary>
-    /// Deactivates the currently active burn so a newly created one can take
-    /// over (only one may be active). Returns <c>true</c> when one was
-    /// deactivated, <c>false</c> when none was active.
+    /// Sets the shift-browsing switch for an event's Shifts knobs row, creating
+    /// the row on demand if it doesn't exist yet (nobodies-collective/Humans#1631 —
+    /// "active event" is Settings' concept now; seed it there first via
+    /// <c>Humans.Settings.Contracts.IEventSettingsSeeding</c>).
     /// </summary>
-    Task<bool> DeactivateActiveBurnAsync();
+    Task SetShiftBrowsingOpenAsync(Guid eventSettingsId, bool isOpen);
 
     /// <summary>
-    /// Creates a burn and makes it the active one. Fails if another burn is
-    /// already active — call <see cref="DeactivateActiveBurnAsync"/> first.
-    /// </summary>
-    Task CreateBurnAsync(CreateBurnInput input);
-
-    /// <summary>
-    /// Creates a rota on a department team of an active burn, optionally
+    /// Creates a rota on a department team of the given event, optionally
     /// tagging it. Returns the new rota's id.
     /// </summary>
     Task<Guid> CreateRotaAsync(CreateRotaInput input, IReadOnlyList<Guid>? tagIds = null);
@@ -54,18 +49,6 @@ public interface IShiftSeeding
     /// </summary>
     Task<int> DeleteEventAsync(Guid eventSettingsId, CancellationToken cancellationToken = default);
 }
-
-/// <summary>The burn fields a seeded fixture sets; everything else takes its schema default.</summary>
-public sealed record CreateBurnInput(
-    Guid Id,
-    string EventName,
-    int Year,
-    string TimeZoneId,
-    LocalDate GateOpeningDate,
-    int BuildStartOffset,
-    int EventEndOffset,
-    int StrikeEndOffset,
-    bool IsShiftBrowsingOpen);
 
 /// <summary>The rota fields a seeded fixture sets; everything else takes its schema default.</summary>
 public sealed record CreateRotaInput(

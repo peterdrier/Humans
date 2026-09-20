@@ -34,39 +34,12 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         _clock = clock;
     }
 
-    public async Task<EventSettings?> GetActiveEventSettingsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.EventSettings
-            .AsNoTracking()
-            .OrderBy(e => e.Id) // arch:db-sort-ok deterministic active-settings selector by identity (FirstOrDefault)
-            .FirstOrDefaultAsync(e => e.IsActive, ct);
-    }
-
     public async Task<EventSettings?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.EventSettings
             .AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == id, ct);
-    }
-
-    public async Task<IReadOnlyList<EventSettings>> GetAllEventSettingsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.EventSettings
-            .AsNoTracking()
-            .OrderBy(e => e.Year) // arch:db-sort-ok the carry screen lists cycles oldest first
-            .ToListAsync(ct);
-    }
-
-    public async Task<bool> AnyOtherActiveEventSettingsAsync(Guid? excludingId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var query = ctx.EventSettings.AsNoTracking().Where(e => e.IsActive);
-        if (excludingId.HasValue)
-            query = query.Where(e => e.Id != excludingId.Value);
-        return await query.AnyAsync(ct);
     }
 
     public async Task SaveEventSettingsAsync(EventSettings entity, EntityMutationMode mode, CancellationToken ct = default)

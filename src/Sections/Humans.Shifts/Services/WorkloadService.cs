@@ -24,18 +24,18 @@ internal sealed class WorkloadService(
 
     public async Task<WorkloadReport?> GetForActiveEventAsync(CancellationToken ct = default)
     {
-        var es = await repo.GetActiveEventSettingsAsync(ct);
-        if (es is null) return null;
-        var calendar = await calendarResolver.GetAsync(es.Id, ct);
+        // "Active" is Settings' notion (nobodies-collective/Humans#1631) — no Shifts-local
+        // lookup needed for the id.
+        var calendar = await calendarResolver.GetActiveAsync(ct);
         if (calendar is null) return null;
 
         // Distinct rotaIds off the shared event-shift query avoids adding an interface method.
-        var shiftStubs = await repo.GetEventShiftsAsync(new ShiftEventQuery(es.Id), ct);
+        var shiftStubs = await repo.GetEventShiftsAsync(new ShiftEventQuery(calendar.Id), ct);
         var rotaIds = shiftStubs.Select(s => s.RotaId).Distinct().ToList();
         if (rotaIds.Count == 0)
         {
             return new WorkloadReport(
-                EventSettingsId: es.Id,
+                EventSettingsId: calendar.Id,
                 EventYear: calendar.Year,
                 ByPerson: [],
                 ByRota: [],
@@ -66,7 +66,7 @@ internal sealed class WorkloadService(
         var byPerson = await BuildByPersonAsync(entries, calendar, rolePersonHours, ct);
 
         return new WorkloadReport(
-            EventSettingsId: es.Id,
+            EventSettingsId: calendar.Id,
             EventYear: calendar.Year,
             ByPerson: byPerson,
             ByRota: byRota,

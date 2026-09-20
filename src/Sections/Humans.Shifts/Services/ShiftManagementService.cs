@@ -127,71 +127,56 @@ internal sealed class ShiftManagementService(
         cache.Remove(CacheKeys.ShiftAuthorization(userId));
     }
 
-    public Task<EventSettings?> GetActiveAsync() =>
-        repo.GetActiveEventSettingsAsync();
-
-    public Task<EventSettings?> GetByIdAsync(Guid id) =>
-        repo.GetEventSettingsByIdAsync(id);
-
-    public async Task CreateAsync(EventSettings entity)
+    public async Task<ShiftEventKnobs?> GetKnobsAsync(Guid eventSettingsId)
     {
-        if (entity.IsActive)
-        {
-            var conflict = await repo.AnyOtherActiveEventSettingsAsync(excludingId: null);
-            if (conflict)
-                throw new InvalidOperationException("Only one EventSettings can be active at a time.");
-        }
-
-        entity.UpdatedAt = clock.GetCurrentInstant();
-        await repo.SaveEventSettingsAsync(entity, EntityMutationMode.Add);
-        // Activation can flip the active event; every ShiftUserView is event-scoped.
-        if (entity.IsActive)
-            viewInvalidator.InvalidateAll();
+        var entity = await repo.GetEventSettingsByIdAsync(eventSettingsId);
+        return entity is null
+            ? null
+            : new ShiftEventKnobs(entity.IsShiftBrowsingOpen, entity.GlobalVolunteerCap, entity.ReminderLeadTimeHours);
     }
 
-    public async Task UpdateAsync(EventSettings entity)
+    public async Task SaveKnobsAsync(
+        Guid eventSettingsId, bool isShiftBrowsingOpen, int? globalVolunteerCap, int reminderLeadTimeHours)
     {
-        if (entity.IsActive)
-        {
-            var conflict = await repo.AnyOtherActiveEventSettingsAsync(excludingId: entity.Id);
-            if (conflict)
-                throw new InvalidOperationException("Only one EventSettings can be active at a time.");
-        }
-
+        var entity = await EnsureKnobsRowAsync(eventSettingsId);
+        entity.IsShiftBrowsingOpen = isShiftBrowsingOpen;
+        entity.GlobalVolunteerCap = globalVolunteerCap;
+        entity.ReminderLeadTimeHours = reminderLeadTimeHours;
         entity.UpdatedAt = clock.GetCurrentInstant();
         await repo.SaveEventSettingsAsync(entity, EntityMutationMode.Update);
 
-        EvictDashboardCaches(entity.Id);
+        EvictDashboardCaches(eventSettingsId);
         viewInvalidator.InvalidateAll();
+    }
+
+    /// <summary>
+    /// Loads the knobs row for <paramref name="eventSettingsId"/>, creating a
+    /// default one if it doesn't exist yet (nobodies-collective/Humans#1631 —
+    /// "active event" is Settings' concept; a Shifts row only exists once a rota
+    /// or knob edit needs it). Callers that go on to mutate the row must save it
+    /// themselves; this only guarantees the row is there.
+    /// </summary>
+    private async Task<EventSettings> EnsureKnobsRowAsync(Guid eventSettingsId)
+    {
+        var existing = await repo.GetEventSettingsByIdAsync(eventSettingsId);
+        if (existing is not null) return existing;
+
+        var now = clock.GetCurrentInstant();
+        var created = new EventSettings { Id = eventSettingsId, CreatedAt = now, UpdatedAt = now };
+        await repo.SaveEventSettingsAsync(created, EntityMutationMode.Add);
+        return created;
     }
 
     // ── IShiftSeeding — the dev-fixture verbs, over input records so the
     //    boundary never names EventSettings or Rota (nobodies-collective/Humans#866).
 
-    public async Task<bool> DeactivateActiveBurnAsync()
+    public async Task SetShiftBrowsingOpenAsync(Guid eventSettingsId, bool isOpen)
     {
-        var active = await GetActiveAsync();
-        if (active is null) return false;
-
-        active.IsActive = false;
-        await UpdateAsync(active);
-        return true;
+        var entity = await EnsureKnobsRowAsync(eventSettingsId);
+        entity.IsShiftBrowsingOpen = isOpen;
+        entity.UpdatedAt = clock.GetCurrentInstant();
+        await repo.SaveEventSettingsAsync(entity, EntityMutationMode.Update);
     }
-
-    public Task CreateBurnAsync(CreateBurnInput input) => CreateAsync(new EventSettings
-    {
-        Id = input.Id,
-        EventName = input.EventName,
-        Year = input.Year,
-        TimeZoneId = input.TimeZoneId,
-        GateOpeningDate = input.GateOpeningDate,
-        BuildStartOffset = input.BuildStartOffset,
-        EventEndOffset = input.EventEndOffset,
-        StrikeEndOffset = input.StrikeEndOffset,
-        IsShiftBrowsingOpen = input.IsShiftBrowsingOpen,
-        IsActive = true,
-        CreatedAt = clock.GetCurrentInstant(),
-    });
 
     public async Task<Guid> CreateRotaAsync(CreateRotaInput input, IReadOnlyList<Guid>? tagIds = null)
     {
@@ -231,9 +216,13 @@ internal sealed class ShiftManagementService(
         if (team.SystemTeamType != SystemTeamType.None)
             throw new InvalidOperationException("Rotas cannot be created on system teams.");
 
-        var eventSettings = await repo.GetEventSettingsByIdAsync(rota.EventSettingsId);
-        if (eventSettings is null || !eventSettings.IsActive)
-            throw new InvalidOperationException("Active EventSettings not found.");
+        // The rota's event must be a real Settings cycle; "active" no longer matters
+        // here — a rota can be created against any cycle (nobodies-collective/Humans#1631).
+        if (await calendarResolver.GetAsync(rota.EventSettingsId) is null)
+            throw new InvalidOperationException("Event not found.");
+
+        // On-demand: the first rota against this event id creates its Shifts knobs row.
+        await EnsureKnobsRowAsync(rota.EventSettingsId);
 
         rota.UpdatedAt = clock.GetCurrentInstant();
         await repo.SaveRotaAsync(rota, EntityMutationMode.Add);
@@ -519,7 +508,7 @@ internal sealed class ShiftManagementService(
                 : [new RotaSearchHit(rota.Id, rota.Name, StringSearchExtensions.ExactNameScore)];
         }
 
-        var settings = await repo.GetActiveEventSettingsAsync(cancellationToken);
+        var settings = await calendarResolver.GetActiveAsync(cancellationToken);
         if (settings is null) return [];
 
         var rotas = await repo.SearchVolunteerVisibleRotasAsync(
@@ -1950,7 +1939,7 @@ internal sealed class ShiftManagementService(
 
     private async Task<(int Filled, int Total, double Ratio)> ComputeOverallCoverageAsync(CancellationToken ct)
     {
-        var es = await repo.GetActiveEventSettingsAsync(ct);
+        var es = await calendarResolver.GetActiveAsync(ct);
         if (es is null) return (0, 0, 0d);
 
         var allShifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
@@ -2039,7 +2028,7 @@ internal sealed class ShiftManagementService(
     public async Task<IReadOnlyDictionary<Guid, int>> GetActivePendingShiftSignupCountsByTeamAsync(
         CancellationToken cancellationToken = default)
     {
-        var eventSettings = await repo.GetActiveEventSettingsAsync(cancellationToken);
+        var eventSettings = await calendarResolver.GetActiveAsync(cancellationToken);
         if (eventSettings is null)
             return new Dictionary<Guid, int>();
 

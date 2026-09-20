@@ -449,15 +449,13 @@ internal sealed class ShiftsController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Settings()
     {
-        var es = await shiftMgmt.GetActiveAsync();
-        if (es is null) return View(new EventSettingsViewModel());
+        // "Active event" is Settings' concept now (nobodies-collective/Humans#1631);
+        // Shifts only keeps its own knobs, created on demand for that id.
+        var active = await burnSettings.GetActiveAsync();
+        if (active is null) return View(new EventSettingsViewModel());
 
-        // The calendar (app-wide fields) is read-only here — its source of truth is
-        // Settings (nobodies-collective/Humans#1630). Falling back to this row's own
-        // columns only covers a brand-new row Settings hasn't carried yet; once carried,
-        // the calendar always wins. No fallback once carried is intentional (#1630).
-        var calendar = await burnSettings.GetByIdAsync(es.Id);
-        return View(EventSettingsFormMapper.ToViewModel(es, calendar));
+        var knobs = await shiftMgmt.GetKnobsAsync(active.Id);
+        return View(EventSettingsFormMapper.ToViewModel(knobs));
     }
 
     [HttpPost("Settings")]
@@ -468,38 +466,15 @@ internal sealed class ShiftsController(
         if (!ModelState.IsValid)
             return View(model);
 
-        var parsed = EventSettingsFormMapper.Parse(model);
-        if (!parsed.Success)
+        var active = await burnSettings.GetActiveAsync();
+        if (active is null)
         {
-            foreach (var error in parsed.Errors)
-                ModelState.AddModelError(error.FieldName, error.Message);
-
-            return View(model);
+            SetError("No active event configured — set one at /Settings#event first.");
+            return RedirectToAction(nameof(Settings));
         }
 
-        var draft = parsed.Draft!;
-
-        if (model.Id.HasValue)
-        {
-            var existing = await shiftMgmt.GetByIdAsync(model.Id.Value);
-            if (existing is null) return NotFound();
-
-            // The calendar fields on `draft` are this form's read-only echo of Settings'
-            // values — only the Shifts-owned knobs actually change here (#1630); the
-            // calendar itself is edited at /Settings#event.
-            existing.IsShiftBrowsingOpen = draft.IsShiftBrowsingOpen;
-            existing.GlobalVolunteerCap = draft.GlobalVolunteerCap;
-            existing.ReminderLeadTimeHours = draft.ReminderLeadTimeHours;
-            existing.IsActive = draft.IsActive;
-            await shiftMgmt.UpdateAsync(existing);
-        }
-        else
-        {
-            // Shifts still mints a brand-new event id and its calendar until the carry
-            // (nobodies-collective/Humans#1631) moves minting to Settings — the full
-            // form applies here.
-            await shiftMgmt.CreateAsync(EventSettingsFormMapper.Create(draft, clock.GetCurrentInstant()));
-        }
+        await shiftMgmt.SaveKnobsAsync(
+            active.Id, model.IsShiftBrowsingOpen, model.GlobalVolunteerCap, model.ReminderLeadTimeHours);
 
         SetSuccess("Event settings saved.");
         return RedirectToAction(nameof(Settings));
