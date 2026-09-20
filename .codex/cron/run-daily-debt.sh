@@ -70,6 +70,7 @@ main() {
   readonly CLONE_MARKER_NAME=".codex-runner-clone"
   readonly PROMPT_REL_PATH=".codex/prompts/daily-debt.md"
   readonly ENV_FILE_REL_PATH=".codex/cron/debt-runner.env"     # excluded from `git clean` inside WORK_DIR
+  readonly RUN_REPORT_REL_PATH=".codex-run-report.md"          # codex's run report; folded into the PR body, never committed
 
   local run_date
   run_date="$(date -u +%F)"
@@ -93,6 +94,7 @@ main() {
   local build_result="skipped"
   local test_result="skipped"
   local pr_url="none"
+  local run_report=""
 
   # ---- preflight: fail fast, before spending any money -------------------
   if ! command -v codex >/dev/null 2>&1; then
@@ -165,7 +167,7 @@ main() {
       exit 0
     fi
     log "branch $branch exists on origin but has no open PR — opening one now instead of skipping"
-    if pr_url="$(open_pr_for_branch "$WORK_DIR" "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file")"; then
+    if pr_url="$(open_pr_for_branch "$WORK_DIR" "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$run_report")"; then
       exit_reason="pushed"
       log "opened PR for pre-existing branch: $pr_url"
     else
@@ -221,6 +223,15 @@ main() {
     exit 1
   fi
 
+  # ---- capture codex's run report, then remove it so it is never committed --
+  # Gitignored (.gitignore), so it wouldn't trip the dirty-tree check above
+  # either way, but deleting it here is the explicit, unambiguous version.
+  local report_file="$WORK_DIR/$RUN_REPORT_REL_PATH"
+  if [[ -f "$report_file" ]]; then
+    run_report="$(cat "$report_file")"
+    rm -f "$report_file"
+  fi
+
   if [[ "$head_before" == "$head_after" ]]; then
     if [[ "$codex_exit" -ne 0 && "$codex_exit" -ne 124 ]]; then
       exit_reason="codex-failed"
@@ -238,8 +249,8 @@ main() {
   log "codex made $commits_made commit(s)"
 
   # ---- gate before pushing: build + test ----------------------------------
-  log "running dotnet build Humans.slnx -v quiet"
-  if (cd "$WORK_DIR" && dotnet build Humans.slnx -v quiet) >>"$log_file" 2>&1; then
+  log "running dotnet build Humans.slnx -v quiet -clp:ErrorsOnly"
+  if (cd "$WORK_DIR" && dotnet build Humans.slnx -v quiet -clp:ErrorsOnly) >>"$log_file" 2>&1; then
     build_result="pass"
   else
     build_result="fail"
@@ -249,8 +260,8 @@ main() {
     exit 1
   fi
 
-  log "running dotnet test Humans.slnx -v quiet"
-  if (cd "$WORK_DIR" && dotnet test Humans.slnx -v quiet) >>"$log_file" 2>&1; then
+  log "running dotnet test Humans.slnx -v quiet -clp:ErrorsOnly"
+  if (cd "$WORK_DIR" && dotnet test Humans.slnx -v quiet -clp:ErrorsOnly) >>"$log_file" 2>&1; then
     test_result="pass"
   else
     test_result="fail"
@@ -271,7 +282,7 @@ main() {
   log "pushed $branch to origin"
 
   # ---- open the PR, ready for review --------------------------------------
-  if pr_url="$(open_pr_for_branch "$WORK_DIR" "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file")"; then
+  if pr_url="$(open_pr_for_branch "$WORK_DIR" "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$run_report")"; then
     exit_reason="pushed"
     log "opened PR: $pr_url"
   else
@@ -290,7 +301,7 @@ main() {
 # exists on origin but has no open PR" recovery path, so a transient
 # `gh pr create` failure never leaves a pushed branch permanently invisible.
 open_pr_for_branch() {
-  local work_dir="$1" branch="$2" base_branch="$3" run_date="$4" log_file="$5"
+  local work_dir="$1" branch="$2" base_branch="$3" run_date="$4" log_file="$5" run_report="${6:-}"
   local pr_title="Daily tech-debt sweep — $run_date"
   local pr_body_file
   pr_body_file="$(mktemp)"
@@ -302,6 +313,12 @@ open_pr_for_branch() {
     echo "## Automated daily tech-debt run"
     echo
     echo "Unattended overnight run. Build and tests passed before this PR was opened."
+    echo
+    if [[ -n "$run_report" ]]; then
+      echo "$run_report"
+    else
+      echo "_No \`.codex-run-report.md\` was found — codex did not write a run report for this session._"
+    fi
     echo
     echo "Commits:"
     git -C "$work_dir" log --pretty='- %s' "origin/$base_branch..$branch"

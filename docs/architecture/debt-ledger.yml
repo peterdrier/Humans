@@ -36,14 +36,12 @@ themes:
     notes: >-
       RETIRED 2026-09-20 — COMPLETE, not merely undetectable. Measured that
       day: `src/Humans.Infrastructure` no longer exists (the G5 split moved
-      every configuration into its owning section), all 63 `HasOne` calls in
+      every configuration into its owning section), all `HasOne` calls in
       `src/**/*Configuration.cs` are intra-section, and zero
       `[Grandfathered("HUM0024")]` attributes remain anywhere in `src/`.
       Shifts' VolunteerBuildStatusConfiguration.cs:28 now reads
       `// Cross-section: bare Guid, NO HasOne<User>()` — the target shape, in
-      place. CORRECTION: the note this replaces claimed 55 live cross-section
-      navs. Those 55 lived in `src/Humans.Infrastructure/Data/Configurations/**`
-      and went away with that project; they were never accepted as permanent.
+      place.
       Why the detector is silent: nobodies-collective/Humans#1278 retired the
       HUM0024 analyzer (its scope kept being invalidated as the section split
       moved configuration files), so `detect: build:HUM0024` can never report a
@@ -111,11 +109,10 @@ themes:
       PARKED 2026-09-20 (see `parked:`) — this supersedes the 2026-06-13
       'LEAVE in rotation, re-check periodically' instruction: the re-check now
       runs on `recheck_due`, so rotation stops spending a slot on it.
-      Count note (measured 2026-09-20): 17 is the population of the concept,
-      16 of which carry [Grandfathered("HUM0028")] and so reach the build. The
-      17th, IUserInfoInvalidator, omits the IInvalidator marker entirely so the
-      analyzer cannot see it — filed as its own inbox item 2026-09-20, because
-      closing that hole is small and separable from this rework.
+      IUserInfoInvalidator omits the IInvalidator marker entirely, unlike the
+      rest of the invalidator family, so the analyzer cannot see it — filed
+      as its own inbox item 2026-09-20, because closing that hole is small
+      and separable from this rework.
       DESIGN-BLOCKED (audited empirically, sweep 2026-06-13): folding an
       invalidator into its owning decorator breaks correctness, it is not a
       mechanical sweep fix. Proof on the best fold candidate
@@ -145,8 +142,6 @@ themes:
     last_swept: 2026-08-20
     remaining: 18
     notes: >-
-      Count re-measured 2026-09-20: 18 firing sites, not 19. Still the
-      irreducible legit floor, not a backlog.
       ACTIONABLE = 0 (re-audited every site against a full clean rebuild,
       #1053, 2026-08-20 — the section's G5 move into its own project gave the
       analyzer a compilation unit to fire against on every clean build, which
@@ -179,9 +174,9 @@ themes:
     remaining: 9
     parked: "Peter — PARKED, as the note has said since 2026-06-14; the machine-readable key was missing until 2026-09-20, so rotation was still serving it. Re-check only when a NEW un-stitched cross-section nav read appears."
     notes: >-
-      Count re-measured 2026-09-20: 9 files, not 27. The drop is real, not a
-      burndown — the ~15 src/Humans.Infrastructure/Data/Configurations/*.cs
-      mappings in item (1) below went away with that project. ACTIONABLE stays 0.
+      The drop in `remaining` is real, not a burndown — the
+      src/Humans.Infrastructure/Data/Configurations/*.cs mappings in item (1)
+      below went away with that project.
       ACTIONABLE = 0 cross-section nav reads (audited all 27 files, sweep
       2026-06-14). The detect counts FILES-with-pragma and conflates five
       unrelated things, none sweep-mechanical:
@@ -217,18 +212,17 @@ themes:
     review: panel
     last_swept: never
     remaining: 18
-    parked: "Peter 2026-09-20 — one refactor, outside the nightly process. Every entry changes a public return type, so a sweep worker asks on all 18 and ships nothing; rotation skips it until that refactor is scheduled."
+    parked: "Peter 2026-09-20 — one refactor, outside the nightly process. Every entry changes a public return type, so a sweep worker asks on all of them and ships nothing; rotation skips it until that refactor is scheduled."
     notes: >-
-      PARKED 2026-09-20 (see `parked:`). Count re-measured 2026-09-20: 18 =
-      15 live locator lines in the baseline file + 3 real violations the scan
-      can no longer see (IAccountProvisioningService.FindOrCreateUserByEmailAsync
+      PARKED 2026-09-20 (see `parked:`). `remaining` counts real violations
+      the scan can no longer see (IAccountProvisioningService.FindOrCreateUserByEmailAsync
       returning User / UserEmail / EventParticipation, coverage lost when G5
       lane 3b dropped the IApplicationService marker from that interface, as
-      the baseline header records). The detect command therefore reads 15, not
-      18 — it counts the file, not the debt.
+      the baseline header records) beyond what the baseline file's locator
+      lines hold — `detect` counts the file, not the debt.
       Convert to DTO/Info returns (read-model pattern, design-rules §15).
       Remove each fixed locator line from the baseline file — never add lines.
-      PASSED OVER as #2 rotation candidate (sweep 2026-06-14): all 18 entries are
+      PASSED OVER as #2 rotation candidate (sweep 2026-06-14): all entries are
       public-interface read methods whose fix CHANGES the return type
       entity→DTO — a surface-changing refactor that ripples to every caller
       (e.g. IUserService.GetByIdsAsync:User and ITeamService.GetTeamByIdAsync:Team
@@ -246,14 +240,14 @@ themes:
     baseline_entries: 28
     not_actionable: 18
     notes: >-
-      Counts re-measured 2026-09-20. The baseline file holds 28 lines, and they
-      are two different things, so one number lied: 18 are TicketRepository
+      Counts re-measured 2026-09-20 — see `baseline_entries`/`not_actionable`/
+      `remaining`. The baseline file mixes two different things: TicketRepository
       OrderBy/OrderByDescending lines Peter ruled STAY until the paged grid's
-      server-side sort is redesigned (`not_actionable`), and 10 are real
-      multi-consumer view-moves (`remaining`) — CampRepository.Roles.cs x4,
-      GoogleResourceRepository x2, TeamRepository x3 (TeamRosterSlotSummary
-      needs a SortOrder field first), CampaignRepository x1. `remaining` is the
-      actionable 10 so rotation sizes the work honestly; `baseline_entries` is
+      server-side sort is redesigned (`not_actionable`), and real multi-consumer
+      view-moves (`remaining`) — CampRepository.Roles.cs, GoogleResourceRepository,
+      TeamRepository (TeamRosterSlotSummary needs a SortOrder field first),
+      CampaignRepository.GetCodeTrackingSummaries (tracking view not yet located).
+      `remaining` is what rotation sizes the work by; `baseline_entries` is
       what the detect command prints.
       Rule: repos don't sort for display. Per Peter (2026-06-13) the fix for a
       flagged repo sort is, in order: (1) if no consumer renders an
@@ -276,18 +270,7 @@ themes:
       do NOT re-sort (CampRoleService.BuildPanelAsync renders defs in repo order
       for the roles panel/members/lead-pills; TeamResourceService maps straight
       to UI/API snapshots). Repo sorts restored + re-baselined; they join the
-      deferred multi-consumer view-moves below.
-      REMAINING (as written 2026-06-13, counts superseded above) = 18 Ticket sortBy/sortDesc real-debt (Peter ruled: stays,
-      needs the paged-grid sort redesigned — server-side pagination forces it
-      to the DB; NOT a db-sort-ok mark) + 11 harder multi-consumer view-moves
-      deferred: GoogleResource GetActiveByTeamId(s) (2), CampRoles.ListDefinitions
-      (2), CampaignRepository.GetCodeTrackingSummaries (tracking view not yet
-      located), CampRepository.GetCampsWithLeadsForYear season-name sort
-      (multi-consumer camps list), CampRepository.Roles.GetAssignmentsForSeason
-      (2), and TeamRepository.GetAllRoleDefinitions roster sort (3 — the roster
-      slot DTO TeamRosterSlotSummary lacks SortOrder, so the view can't re-sort
-      without a DTO field added). These need their views located / a DTO field
-      and are a focused follow-up.
+      deferred multi-consumer view-moves above.
   - id: build-warnings-misc
     title: Build warnings not owned by another theme (CS/NU/non-HUM codes)
     detect: "dotnet build Humans.slnx -v quiet --no-incremental 2>&1 | grep -E ': warning ' | grep -v 'warning HUM' | sed 's/ \\[.*//' | sort -u | wc -l"
@@ -574,7 +557,7 @@ inbox:
     review: panel
   - added: 2026-09-20
     id: CENTRAL-57
-    what: "ROOT CAUSE ROW (see the `root:` pointers at it). Nothing re-verifies doc bodies, code comments and <!-- freshness:triggers --> blocks when a file moves between sections or an I<Section>ServiceRead leaf lands, so each stale citation is found and ledgered one /section-doctor run at a time — 19 live rows in this corpus share this single cause. The fix is a detector (dead-path/dead-symbol sweep over docs + freshness trigger globs, the kind docs/scripts/freshness-checks/ already hosts) that fails at write time instead. Recorded 2026-09-20 from the corpus-wide debt audit."
+    what: "ROOT CAUSE ROW (see the `root:` pointers at it). Nothing re-verifies doc bodies, code comments and <!-- freshness:triggers --> blocks when a file moves between sections or an I<Section>ServiceRead leaf lands, so each stale citation is found and ledgered one /section-doctor run at a time — several live rows in this corpus share this single cause (grep `root: CENTRAL-57`). The fix is a detector (dead-path/dead-symbol sweep over docs + freshness trigger globs, the kind docs/scripts/freshness-checks/ already hosts) that fails at write time instead. Recorded 2026-09-20 from the corpus-wide debt audit."
     review: panel
   - added: 2026-09-20
     id: CENTRAL-58
@@ -582,5 +565,5 @@ inbox:
     review: panel
   - added: 2026-09-20
     id: CENTRAL-59
-    what: "src/Sections/Humans.Users.Contracts/IUserInfoInvalidator.cs:24 is the 17th invalidator but deliberately omits the IInvalidator marker (its own comment says so, debt nobodies-collective/Humans#805), so HUM0028 cannot see it and it needs no [Grandfathered] marker — one invalidator dodging the ratchet by being invisible to it. Marking it (or recording the exemption where the analyzer reads it) is small and separable from the big invalidator rework the HUM0028 theme is parked on. Found by the 2026-09-20 accepted-smell audit."
+    what: "src/Sections/Humans.Users.Contracts/IUserInfoInvalidator.cs:24 deliberately omits the IInvalidator marker (its own comment says so, debt nobodies-collective/Humans#805), so HUM0028 cannot see it and it needs no [Grandfathered] marker — one invalidator dodging the ratchet by being invisible to it. Marking it (or recording the exemption where the analyzer reads it) is small and separable from the big invalidator rework the HUM0028 theme is parked on. Found by the 2026-09-20 accepted-smell audit."
     review: light

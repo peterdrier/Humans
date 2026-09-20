@@ -18,7 +18,7 @@ inbox:
     root: CENTRAL-56
   - added: 2026-09-09
     id: EVENTS-4
-    what: "The submission window is pinned only as the EventGuideSettings.IsSubmissionOpenAt predicate; none of EventsController's closed-window guards is tested (private IsSubmissionOpen, EventsController.cs:494, called at 5 sites). Found by /section-doctor on Events 2026-09-09. (split 2026-09-20 from the bundled row of the same date; one row per independently-fixable defect.)"
+    what: "The submission window is pinned only as the EventGuideSettings.IsSubmissionOpenAt predicate; none of EventsController's closed-window guards is tested (private IsSubmissionOpen, EventsController.cs:494, called at several sites). Found by /section-doctor on Events 2026-09-09. (split 2026-09-20 from the bundled row of the same date; one row per independently-fixable defect.)"
     review: light
   - added: 2026-09-09
     id: EVENTS-5

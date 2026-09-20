@@ -93,7 +93,7 @@ files still parse as valid YAML (`python3 -c "import yaml,glob; [yaml.safe_load(
 
 ## Rung 2 — Analyzer-config truth
 
-**What:** `Directory.Build.props`'s `WarningsNotAsErrors` carries six ids
+**What:** `Directory.Build.props`'s `WarningsNotAsErrors` carries ids
 that have met their own documented exit condition (last `[Grandfathered]`
 gone): `HUM0009`, `HUM0014`, `HUM0017`, `HUM0018`, `HUM0019`, `HUM0025`.
 Delete them. Separately, `NoWarn` hides `HUM_USER_NORMALIZEDEMAIL` entirely —
@@ -106,13 +106,13 @@ don't reopen unless a future sweep re-adds one of these ids.
 grep -n "WarningsNotAsErrors\|NoWarn" Directory.Build.props
 grep -rc -A3 --include='*.cs' '^[[:space:]]*\[Grandfathered(' src | grep -oE 'HUM(0009|0014|0017|0018|0019|0025)' | sort -u
 ```
-If the second command prints nothing for one of the six ids, it's removable.
+If the second command prints nothing for one of these ids, it's removable.
 Confirm `HUM_USER_NORMALIZEDEMAIL` is still in `NoWarn` before moving it.
 
-**Drained when:** none of the six ids remain in `WarningsNotAsErrors` and
+**Drained when:** none of these ids remain in `WarningsNotAsErrors` and
 `HUM_USER_NORMALIZEDEMAIL` is no longer in `NoWarn`.
 
-**Done-check:** `dotnet build Humans.slnx -v quiet --no-incremental` — green.
+**Done-check:** `dotnet build Humans.slnx -v quiet -clp:ErrorsOnly --no-incremental` — green.
 If removing an id turns the build red, that id was load-bearing (a grandfather
 exists you didn't find) — revert just that one id and record it as a ledger
 staleness finding for rung 1, not a rung-2 failure.
@@ -128,7 +128,7 @@ burning nights on instances one at a time. A sibling process is adding a
 any `root:` cluster with ≥2 live members over an isolated row.
 
 **Root A — doc/comment/freshness drift after a section move or read-split.**
-21+ ledger rows, same cause: nothing re-verifies a doc or freshness-trigger
+Several ledger rows, same cause: nothing re-verifies a doc or freshness-trigger
 block when the code it describes moves. The actual root-cause *bug*, not
 just the symptom pattern: `docs/scripts/freshness-checks/dependency-graph.sh`
 uses `asorti` (gawk-only) but the runner's `awk` is `mawk` — the script dies
@@ -153,14 +153,14 @@ misclassifies Backdoor as a crosscut; names non-existent `TicketVendorService`),
 `freshness-catalog.yml` (missing Settings entry; missing Backdoor entry; no
 `Section.cs` trigger), `debt-ledger.yml`'s own HUM0028 note ("EF interceptor"
 → direct `InvalidateAll()` calls since #751), `G5-SECTION-TEMPLATE.md` (wrong
-`EmailRenderer` path; wrong "design §8" citation in 4 `Section.cs` files),
+`EmailRenderer` path; wrong "design §8" citation in several `Section.cs` files),
 `design-rules.md` (only one GDPR download route named; wrong thread-safety
 reason; wrong contributor mechanism/`AgentService` example), `.claude/skills/test-site/SKILL.md`
 (stale `/Profile/Emails` routes), `.claude/skills/section-align/SKILL.md`
 (wrong "Gdpr has no Controllers/" claim), `section-conformance.yml` (stale
 "no Docs/" note for Settings/TicketTailor).
 
-**Root B — sections with no controller-test layer.** ~6 rows share this
+**Root B — sections with no controller-test layer.** Several rows share this
 cause (Governance's two controller-authz-unpinned rows collapse into one fix
 here). Stand up the missing `tests/Humans.<Section>.Tests/Controllers/`
 skeleton for one section, pinning `[Authorize(Policy = ...)]` placement —
@@ -182,11 +182,11 @@ grep -rln "root: CENTRAL-56" docs/architecture/debt-ledger.yml src/Sections/*/Do
 no live rows, and root-B's `for` loop and grep above both print nothing.
 
 **Done-check:** root A — docs-only, no build; rerun the freshness script and
-confirm it no longer dies under `mawk`. Root B — `dotnet test tests/Humans.<Section>.Tests -v quiet`.
+confirm it no longer dies under `mawk`. Root B — `dotnet test tests/Humans.<Section>.Tests -v quiet -clp:ErrorsOnly`.
 
 ---
 
-## Rung 4 — Missing tests, self-contained (~22 items)
+## Rung 4 — Missing tests, self-contained
 
 **What:** Pin an already-correct invariant with a test. No behavior change,
 no new public surface — pure test addition. Excludes rung 3's controller-test
@@ -237,7 +237,7 @@ cross-section blocker.
 **Drained when:** the grep above returns nothing new and every seed item is
 closed or reclassified (moved to a Peter's-call rung/off-ladder).
 
-**Done-check:** `dotnet test tests/Humans.<Section>.Tests -v quiet`.
+**Done-check:** `dotnet test tests/Humans.<Section>.Tests -v quiet -clp:ErrorsOnly`.
 
 ---
 
@@ -265,7 +265,7 @@ work before duplicating here.
 one policy-pin test), or every remaining name is a Shell/admin controller
 already covered by an existing test the grep's regex missed (verify by hand).
 
-**Done-check:** `dotnet test tests/Humans.Web.Tests -v quiet --filter EndpointAuthorizationTests` plus the touched section's own test project.
+**Done-check:** `dotnet test tests/Humans.Web.Tests -v quiet -clp:ErrorsOnly --filter EndpointAuthorizationTests` plus the touched section's own test project.
 
 ---
 
@@ -300,17 +300,19 @@ picking it.
 
 **Drained when:** both grep commands return nothing outside the exempt list.
 
-**Done-check:** `dotnet test tests/Humans.Web.Tests -v quiet --filter "SharedResourceParityTests|SectionResourceParityTests"` plus the section's own tests.
+**Done-check:** `dotnet test tests/Humans.Web.Tests -v quiet -clp:ErrorsOnly --filter "SharedResourceParityTests|SectionResourceParityTests"` plus the section's own tests.
 
 ---
 
-## Rung 7 — DisplaySort baseline (10 actionable view-moves only)
+## Rung 7 — DisplaySort baseline (actionable view-moves only)
 
 **What:** `tests/Humans.Web.Tests/Architecture/Baselines/DisplaySortInControllers.baseline.txt`
-has 28 lines. **18 are `TicketRepository` — Peter ruled these stay** (needs
-the paged grid's server-side sort redesigned first). Never touch those. The
-other 10 are real, scoped refactors: move an `OrderBy`/`OrderByDescending`
-out of the repository into its rendering consumer.
+mixes two things. The `TicketRepository` lines are ones **Peter ruled stay**
+(needs the paged grid's server-side sort redesigned first) — never touch
+those. The rest are real, scoped refactors: move an `OrderBy`/`OrderByDescending`
+out of the repository into its rendering consumer. See the
+`baseline-display-sort` ledger theme's `baseline_entries`/`not_actionable`/
+`remaining` fields for the current split.
 
 **Finds:**
 ```
@@ -320,22 +322,22 @@ For each line: find the method's caller(s) — **read the consumer first**,
 don't just delete the sort. A prior PR (#1002) had to revert two premature
 deletions where the view rendered in repo order with no re-sort.
 
-**Seed — 7 doable tonight without new public surface:** `GoogleResourceRepository`
-(×2), `CampRepository.Roles.cs` (×4), `CampaignRepository` (×1).
+**Seed — doable tonight without new public surface:** `GoogleResourceRepository`,
+`CampRepository.Roles.cs`, `CampaignRepository`.
 
 **Blocked, skip-and-note (needs Peter's approval, not tonight's job):** the
-3 `TeamRepository` rows need a `SortOrder` field added to
+`TeamRepository` rows need a `SortOrder` field added to
 `TeamRosterSlotSummary` — that's new public DTO surface. Skip per
 `daily-debt.md`'s public-surface rule; note it so nobody re-derives this.
 
-**Drained when:** the grep above (minus TicketRepository, minus the 3
+**Drained when:** the grep above (minus TicketRepository, minus the
 TeamRepository rows) returns nothing.
 
-**Done-check:** `dotnet test tests/Humans.Web.Tests -v quiet --filter DisplaySortInControllers` — baseline shrinks by exactly the lines you removed, nothing else changes.
+**Done-check:** `dotnet test tests/Humans.Web.Tests -v quiet -clp:ErrorsOnly --filter DisplaySortInControllers` — baseline shrinks by exactly the lines you removed, nothing else changes.
 
 ---
 
-## Rung 8 — Dead-or-duplicate code (~10 items)
+## Rung 8 — Dead-or-duplicate code
 
 **What:** Confirmed-dead code (zero call sites, a duplicate private helper,
 an unused enum flag) with no public-surface change. Larger "god class" /
@@ -364,7 +366,7 @@ grep -B1 -A1 "review: light" docs/architecture/debt-ledger.yml src/Sections/*/Do
 
 **Drained when:** the grep above returns nothing with `review: light`.
 
-**Done-check:** `dotnet test tests/Humans.<Section>.Tests -v quiet`.
+**Done-check:** `dotnet test tests/Humans.<Section>.Tests -v quiet -clp:ErrorsOnly`.
 
 ---
 
@@ -391,14 +393,14 @@ done
 **Drained when:** no section's ratio is low enough to fix in one session, or
 every remaining gap is already report-only per a prior night's note.
 
-**Done-check:** `dotnet test tests/Humans.Web.Tests -v quiet --filter "SharedResourceParityTests|SectionResourceParityTests"` plus a full-text search confirming no orphaned old key remains anywhere in `src/`.
+**Done-check:** `dotnet test tests/Humans.Web.Tests -v quiet -clp:ErrorsOnly --filter "SharedResourceParityTests|SectionResourceParityTests"` plus a full-text search confirming no orphaned old key remains anywhere in `src/`.
 
 ---
 
-## Rung 10 — Real TODO/HACK compromises (3 items)
+## Rung 10 — Real TODO/HACK compromises
 
 **What:** `MA0026` is globally `NoWarn`'d, so TODO/HACK comments don't fail
-the build — the three below are the genuine accepted compromises left, per
+the build — the seed below are the genuine accepted compromises left, per
 a full audit; everything else that greps as TODO/HACK is a note-to-self, not
 debt. New ones can appear over time — **this rung never fully drains either**,
 same as rung 1, but starts nearly empty.
@@ -418,11 +420,11 @@ hit; most are legitimate notes-to-self, not fixable debt.)
 - `Humans.Tickets/Views/Shared/Components/TicketStub/Default.cshtml:9` —
   event label from a constant instead of the active event.
 
-**Drained when:** the three seed items are closed and the current sweep
+**Drained when:** the seed items are closed and the current sweep
 finds no new genuine compromise (a debug-screen "pending caching" comment
 etc. is not one — leave it).
 
-**Done-check:** `dotnet test tests/Humans.<Section>.Tests -v quiet` for whichever section changed.
+**Done-check:** `dotnet test tests/Humans.<Section>.Tests -v quiet -clp:ErrorsOnly` for whichever section changed.
 
 ---
 
@@ -431,24 +433,25 @@ etc. is not one — leave it).
 Never pick these up unattended — state the reason if you notice them so a
 future run doesn't re-derive it:
 
-- **Entity-to-DTO return types** (`ApplicationServiceEntityReadReturns.baseline.txt`,
-  18 sites). Peter: "one refactor, outside the tech debt nightly process." Every
+- **Entity-to-DTO return types** (`ApplicationServiceEntityReadReturns.baseline.txt`).
+  Peter: "one refactor, outside the tech debt nightly process." Every
   entry is a public interface return type — changes public surface.
-- **HUM0028 cache invalidators** (17 sites, 16 `[Grandfathered]` + 1 unmarked
-  `IUserInfoInvalidator`). Peter: "I don't think fixing all 17 in one go is
-  possible... that won't be a short fix." A 2026-06-13 audit found folding
-  them into decorators breaks read-after-write ordering. Parked.
+- **HUM0028 cache invalidators** (the invalidator family; `IUserInfoInvalidator`
+  is unmarked and invisible to the analyzer). Peter: "I don't think fixing all
+  of them in one go is possible... that won't be a short fix." A 2026-06-13
+  audit found folding them into decorators breaks read-after-write ordering.
+  Parked.
 - **`NoDestructiveMigrationOps.baseline.txt`.** An approval ledger of
   immutable, already-shipped migrations with Peter's written sign-off above
   each — not a backlog. The rule guards new drops, never sweep existing ones.
-- **The 2 `[DontFix]` classes** (`AuditLogService`, `RoleAssignmentService`).
+- **The `[DontFix]` classes** (`AuditLogService`, `RoleAssignmentService`).
   Peter-only, permanent. Never "fix" them, never add the attribute elsewhere.
-- **The 18 `TicketRepository` rows in `DisplaySortInControllers.baseline.txt`.**
+- **The `TicketRepository` rows in `DisplaySortInControllers.baseline.txt`.**
   Peter ruled these stay until the paged grid's sort is redesigned
   server-side. Not markable, not a rung-7 target.
 - **`HUM0010`/`HUM0011`** in `WarningsNotAsErrors`. The `[ExpiresOn]` staged
   escalation depends on these staying warnings pre-deadline — do not remove
-  alongside rung 2's six.
+  alongside rung 2's ids.
 - **`HUM0031`** and anything under a `parked:` key in `debt-ledger.yml`.
   Peter froze `grandfathered-hum0031-controller-logic` 2026-08-07 pending
   the per-section assembly split; don't lower thresholds or de-grandfather.

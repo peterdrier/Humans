@@ -172,3 +172,7 @@ __pycache__/
 # Marker the daily debt runner touches in its own dedicated clone (never in a
 # real checkout) to prove that clone is safe to hard-reset/clean.
 /.codex-runner-clone
+
+# Run report codex writes for run-daily-debt.sh to fold into the PR body.
+# Never committed — the wrapper reads it, then deletes it before build/test.
+/.codex-run-report.md
