@@ -48,6 +48,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
             Substitute.For<IShiftViewInvalidator>(),
+            NewCalendarResolver(),
             Clock);
 
         _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
@@ -58,7 +59,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
             _repo,
             Substitute.For<IVolunteerTrackingRepository>(),
             _shiftMgmt,
-            Substitute.For<IBurnSettingsService>(),
+            NewCalendarResolver(),
             AuditLog,
             Substitute.For<INotificationEmitter>(),
             AdminAuthorization,

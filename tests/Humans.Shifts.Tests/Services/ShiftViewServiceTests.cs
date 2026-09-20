@@ -1,6 +1,7 @@
 using Humans.Shifts.Data;
 using Humans.Shifts.Domain;
 using AwesomeAssertions;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Services;
 using NSubstitute;
 
@@ -15,9 +16,10 @@ public class ShiftViewServiceTests
 {
     private readonly IShiftManagementRepository _management = Substitute.For<IShiftManagementRepository>();
     private readonly IVolunteerTrackingRepository _tracking = Substitute.For<IVolunteerTrackingRepository>();
+    private readonly EventCalendarResolver _calendarResolver = new(Substitute.For<ISettingsService>());
 
     private ShiftViewService CreateSut() =>
-        new(_management, _tracking);
+        new(_management, _tracking, _calendarResolver);
 
     [HumansFact]
     public async Task GetUserAsync_NoActiveEvent_ReturnsEmptyAvailabilityAndBuildStatus()

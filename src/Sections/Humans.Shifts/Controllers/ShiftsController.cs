@@ -450,34 +450,15 @@ internal sealed class ShiftsController(
     public async Task<IActionResult> Settings()
     {
         var es = await shiftMgmt.GetActiveAsync();
-        return View(es is null ? new EventSettingsViewModel() : MapEventSettingsToViewModel(es));
-    }
+        if (es is null) return View(new EventSettingsViewModel());
 
-    private static EventSettingsViewModel MapEventSettingsToViewModel(EventSettings es) => new()
-    {
-        Id = es.Id,
-        EventName = es.EventName,
-        TimeZoneId = es.TimeZoneId,
-        GateOpeningDate = LocalDatePattern.Iso.Format(es.GateOpeningDate),
-        BuildStartOffset = es.BuildStartOffset,
-        EventEndOffset = es.EventEndOffset,
-        StrikeEndOffset = es.StrikeEndOffset,
-        FirstCrewStartOffset = es.FirstCrewStartOffset,
-        SetupWeekStartOffset = es.SetupWeekStartOffset,
-        PreEventWeekStartOffset = es.PreEventWeekStartOffset,
-        FinishingWeekendStartOffset = es.FinishingWeekendStartOffset,
-        EarlyEntryCapacityJson = JsonSerializer.Serialize(es.EarlyEntryCapacity),
-        BarriosEarlyEntryAllocationJson = es.BarriosEarlyEntryAllocation is not null
-            ? JsonSerializer.Serialize(es.BarriosEarlyEntryAllocation)
-            : null,
-        EarlyEntryClose = es.EarlyEntryClose.HasValue
-            ? InstantPattern.General.Format(es.EarlyEntryClose.Value)
-            : null,
-        IsShiftBrowsingOpen = es.IsShiftBrowsingOpen,
-        GlobalVolunteerCap = es.GlobalVolunteerCap,
-        ReminderLeadTimeHours = es.ReminderLeadTimeHours,
-        IsActive = es.IsActive,
-    };
+        // The calendar (app-wide fields) is read-only here — its source of truth is
+        // Settings (nobodies-collective/Humans#1630). Falling back to this row's own
+        // columns only covers a brand-new row Settings hasn't carried yet; once carried,
+        // the calendar always wins. No fallback once carried is intentional (#1630).
+        var calendar = await burnSettings.GetByIdAsync(es.Id);
+        return View(EventSettingsFormMapper.ToViewModel(es, calendar));
+    }
 
     [HttpPost("Settings")]
     [ValidateAntiForgeryToken]
@@ -503,11 +484,20 @@ internal sealed class ShiftsController(
             var existing = await shiftMgmt.GetByIdAsync(model.Id.Value);
             if (existing is null) return NotFound();
 
-            EventSettingsFormMapper.Apply(existing, draft);
+            // The calendar fields on `draft` are this form's read-only echo of Settings'
+            // values — only the Shifts-owned knobs actually change here (#1630); the
+            // calendar itself is edited at /Settings#event.
+            existing.IsShiftBrowsingOpen = draft.IsShiftBrowsingOpen;
+            existing.GlobalVolunteerCap = draft.GlobalVolunteerCap;
+            existing.ReminderLeadTimeHours = draft.ReminderLeadTimeHours;
+            existing.IsActive = draft.IsActive;
             await shiftMgmt.UpdateAsync(existing);
         }
         else
         {
+            // Shifts still mints a brand-new event id and its calendar until the carry
+            // (nobodies-collective/Humans#1631) moves minting to Settings — the full
+            // form applies here.
             await shiftMgmt.CreateAsync(EventSettingsFormMapper.Create(draft, clock.GetCurrentInstant()));
         }
 

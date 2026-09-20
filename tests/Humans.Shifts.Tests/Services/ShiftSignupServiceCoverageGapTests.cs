@@ -58,6 +58,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
             Substitute.For<IShiftViewInvalidator>(),
+            NewCalendarResolver(),
             Clock);
 
         var signupRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
@@ -65,7 +66,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
             signupRepo,
             Substitute.For<IVolunteerTrackingRepository>(),
             shiftMgmt,
-            Substitute.For<IBurnSettingsService>(),
+            NewCalendarResolver(),
             AuditLog,
             _notificationService,
             AdminAuthorization,

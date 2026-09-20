@@ -22,7 +22,10 @@
     section), and the review surface stays internal.
 
     References Humans.Base (IApplicationService, IInvalidator, SurfaceBudget,
-    Grandfathered) and nothing else. The section's persisted-string enums (SignupStatus,
+    Grandfathered) and Humans.Settings.Contracts (BurnSettingsInfo also implements
+    IEventSettingsInfo, nobodies-collective/Humans#1630 — the calendar-only twin every
+    Shifts-internal day-offset helper now takes, so this leaf's DTO satisfies both
+    without a second copy). The section's persisted-string enums (SignupStatus,
     ShiftPeriod, ShiftPriority, RotaPeriod, BuildSubPeriod, SignupPolicy) live here because
     this leaf's own signatures name them; their EnumStringStabilityTests rows live in
     tests/Humans.Shifts.Tests/Enums.
@@ -36,6 +39,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
+    <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

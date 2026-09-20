@@ -18,6 +18,7 @@ using Humans.Email.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Data;
 using Humans.GoogleIntegration.Services;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
 using Humans.Shifts.Domain;
@@ -88,6 +89,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             serviceProvider,
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
+            new EventCalendarResolver(Substitute.For<ISettingsService>()),
             Clock);
 
         // Shift-auth invalidation: production path uses IShiftAuthorizationInvalidator

@@ -1,6 +1,7 @@
 using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 
 namespace Humans.Shifts.Services;
 
@@ -15,8 +16,9 @@ namespace Humans.Shifts.Services;
 /// reads can never drift.
 ///
 /// <para>
-/// A signup whose <c>Shift</c>, <c>Rota</c> or <c>Rota.EventSettings</c>
-/// navigation is missing is dropped rather than projected with placeholder
+/// A signup whose <c>Shift</c> or <c>Rota</c> navigation is missing, or whose
+/// view has no <see cref="ShiftUserView.Calendar"/> (no active event, or Settings
+/// has no calendar for it yet), is dropped rather than projected with placeholder
 /// dates.
 /// </para>
 /// </remarks>
@@ -27,20 +29,21 @@ internal static class ShiftUserSummaryProjection
         rows.UserId,
         [.. rows.TagPreferences.Select(p =>
             new ShiftTagPreferenceInfo(p.ShiftTagId, p.ShiftTag?.Name ?? string.Empty))],
-        [.. rows.Signups
-            .Where(s => s.Shift?.Rota?.EventSettings is not null)
-            .Select(ToSummary)]);
+        rows.Calendar is null
+            ? []
+            : [.. rows.Signups
+                .Where(s => s.Shift?.Rota is not null)
+                .Select(s => ToSummary(s, rows.Calendar))]);
 
     /// <summary>Projects a keyed batch of row bundles.</summary>
     internal static IReadOnlyDictionary<Guid, ShiftUserSummary> ToSummaries(
         this IReadOnlyDictionary<Guid, ShiftUserView> rows) =>
         rows.ToDictionary(kv => kv.Key, kv => kv.Value.ToSummary());
 
-    private static ShiftSignupSummary ToSummary(ShiftSignup signup)
+    private static ShiftSignupSummary ToSummary(ShiftSignup signup, EventSettingsInfo settings)
     {
         var shift = signup.Shift;
         var rota = shift.Rota;
-        var settings = rota.EventSettings;
 
         return new ShiftSignupSummary(
             Id: signup.Id,

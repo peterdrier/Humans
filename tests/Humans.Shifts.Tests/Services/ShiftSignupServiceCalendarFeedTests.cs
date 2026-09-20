@@ -41,13 +41,14 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ShiftsTestHarness
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
             Substitute.For<IShiftViewInvalidator>(),
+            NewCalendarResolver(),
             Clock);
 
         _service = new ShiftSignupService(
             repo,
             Substitute.For<IVolunteerTrackingRepository>(),
             shiftMgmt,
-            Substitute.For<IBurnSettingsService>(),
+            NewCalendarResolver(),
             AuditLog,
             Substitute.For<INotificationEmitter>(),
             AdminAuthorization,

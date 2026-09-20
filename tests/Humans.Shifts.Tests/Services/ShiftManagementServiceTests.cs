@@ -70,6 +70,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             serviceProvider,
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
+            NewCalendarResolver(),
             Clock);
     }
 
@@ -110,6 +111,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             new ServiceLocatorBuilder().Build(),
             cache,
             Substitute.For<IShiftViewInvalidator>(),
+            NewCalendarResolver(),
             Clock);
 
         var deleted = await service.DeleteEventAsync(eventId, Xunit.TestContext.Current.CancellationToken);
@@ -1326,5 +1328,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             new ServiceLocatorBuilder().Build(),
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
+            NewCalendarResolver(),
             Clock);
 }

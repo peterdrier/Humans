@@ -29,9 +29,14 @@ internal sealed class VolunteerTrackingExportService(
 
     public async Task<VolunteerExportModel> BuildAsync(VolunteerExportRequest request, CancellationToken ct)
     {
+        // Look up the event time zone through the DTO-only settings read surface.
+        var eventSettings = await _burnSettingsService.GetByIdAsync(request.EventSettingsId, ct)
+            ?? throw new InvalidOperationException($"EventSettings {request.EventSettingsId} not found.");
+        var zone = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
+
         var days = EnumerateDays(request.StartDate, request.EndDate);
         var shifts = await _shiftManagementRepository.GetConfirmedShiftsInRangeAsync(
-            request.EventSettingsId, request.StartDate, request.EndDate, request.DepartmentId, ct);
+            request.EventSettingsId, eventSettings, request.StartDate, request.EndDate, request.DepartmentId, ct);
 
         // Resolve team names via the Teams-aware service surface (the Shifts repo
         // deliberately returns TeamId only — no cross-section db.Teams query).
@@ -46,11 +51,6 @@ internal sealed class VolunteerTrackingExportService(
 
         if (shifts.Count == 0)
             return BuildModel(request, days, Array.Empty<DepartmentGroup>(), new int[days.Count], filteredTeamName);
-
-        // Look up the event time zone through the DTO-only settings read surface.
-        var eventSettings = await _burnSettingsService.GetByIdAsync(request.EventSettingsId, ct)
-            ?? throw new InvalidOperationException($"EventSettings {request.EventSettingsId} not found.");
-        var zone = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
 
         // (1) Build (userId, day) → list of (teamId, teamName, hours) for the range.
         var perUserPerDay = BucketByUserDayTeam(shifts, days, zone, teamNames);
@@ -254,7 +254,7 @@ internal sealed class VolunteerTrackingExportService(
 
         var start = es.GateOpeningDate.PlusDays(es.BuildStartOffset);
         var end = es.GateOpeningDate.PlusDays(-1);
-        var rows = await _shiftManagementRepository.GetConfirmedShiftsInRangeAsync(es.Id, start, end, departmentId: null, ct);
+        var rows = await _shiftManagementRepository.GetConfirmedShiftsInRangeAsync(es.Id, es, start, end, departmentId: null, ct);
         if (rows.Count == 0) return [];
 
         var depts = await _shiftManagementService.GetDepartmentsWithRotasAsync(es.Id);

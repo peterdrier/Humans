@@ -1,5 +1,6 @@
 using Humans.Shifts.Domain;
 using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 namespace Humans.Shifts.Services.Dtos;
 
 /// <summary>
@@ -12,7 +13,10 @@ namespace Humans.Shifts.Services.Dtos;
 /// Returned by <see cref="Humans.Shifts.Services.IShiftRowView.GetUserAsync"/> /
 /// <see cref="Humans.Shifts.Services.IShiftRowView.GetUsersAsync"/>. Missing users (or
 /// "no active event") yield an empty view — never <c>null</c>, never an
-/// exception.
+/// exception. <see cref="Calendar"/> is the active event's Settings-sourced calendar
+/// (nobodies-collective/Humans#1630), resolved once alongside <see cref="Signups"/> —
+/// every signup in this view belongs to the same active event, so one calendar covers
+/// them all.
 /// </remarks>
 internal sealed record ShiftUserView(
     Guid UserId,
@@ -20,7 +24,8 @@ internal sealed record ShiftUserView(
     GeneralAvailability? Availability,
     VolunteerBuildStatus? BuildStatus,
     IReadOnlyList<VolunteerTagPreference> TagPreferences,
-    IReadOnlyList<ShiftSignup> Signups)
+    IReadOnlyList<ShiftSignup> Signups,
+    EventSettingsInfo? Calendar = null)
 {
     /// <summary>
     /// True when the user has at least one signup in an active state
@@ -44,13 +49,14 @@ internal sealed record ShiftUserView(
     /// <summary>
     /// True when the user has at least one active signup (Pending/Confirmed) on
     /// a shift classified into the given <paramref name="period"/>. Each shift's
-    /// period is derived from its <see cref="Shift.DayOffset"/> against the
-    /// loaded <c>Rota.EventSettings</c> (Build = before gates open, Event =
-    /// during, Strike = after) via <see cref="Shift.GetShiftPeriod"/>.
+    /// period is derived from its <see cref="Shift.DayOffset"/> against
+    /// <see cref="Calendar"/> (Build = before gates open, Event = during, Strike =
+    /// after) via <see cref="Shift.GetShiftPeriod"/>. No calendar (no active event,
+    /// or Settings has no calendar for it yet) means no signup can be classified.
     /// </summary>
-    public bool HasShiftInPeriod(ShiftPeriod period) => Signups.Any(s =>
+    public bool HasShiftInPeriod(ShiftPeriod period) => Calendar is not null && Signups.Any(s =>
         s.Status is SignupStatus.Pending or SignupStatus.Confirmed
-        && s.Shift.GetShiftPeriod(s.Shift.Rota.EventSettings) == period);
+        && s.Shift.GetShiftPeriod(Calendar) == period);
 
     /// <summary>
     /// Empty view returned for unknown ids / no active event.
