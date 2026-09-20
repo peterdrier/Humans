@@ -530,8 +530,18 @@ internal sealed class CachingEventService(
         await EnsureLoadedAsync(ct);
         if (_settingsStale)
         {
+            // Clear before the read so a change that lands mid-refresh is not lost;
+            // restore on failure so the old projection is not served until restart.
             _settingsStale = false;
-            await RefreshSettingsAsync(ct);
+            try
+            {
+                await RefreshSettingsAsync(ct);
+            }
+            catch
+            {
+                _settingsStale = true;
+                throw;
+            }
         }
         return _settings;
     }

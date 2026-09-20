@@ -186,6 +186,32 @@ public sealed class CachingEventServiceTests
         fresh!.TimeZoneId.Should().Be("Atlantic/Canary");
     }
 
+    [HumansFact]
+    public async Task EventSettingsChanged_FailedRefreshKeepsTheProjectionStale()
+    {
+        // If the first read after a change fails (cancelled request, database error) the
+        // stale marker must survive it, or the old timezone is served until restart.
+        var before = GuideSettings("Europe/Madrid");
+        var after = GuideSettings("Atlantic/Canary");
+        _inner.GetGuideSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<EventGuideSettingsView?>(before));
+        (await _service.GetGuideSettingsAsync(TestContext.Current.CancellationToken))!
+            .TimeZoneId.Should().Be("Europe/Madrid");
+
+        ((IEventSettingsChangeListener)_service).EventSettingsChanged(Guid.NewGuid());
+        _inner.GetGuideSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns<EventGuideSettingsView?>(_ => throw new OperationCanceledException());
+
+        var failed = () => _service.GetGuideSettingsAsync(TestContext.Current.CancellationToken);
+        await failed.Should().ThrowAsync<OperationCanceledException>();
+
+        _inner.GetGuideSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<EventGuideSettingsView?>(after));
+
+        var fresh = await _service.GetGuideSettingsAsync(TestContext.Current.CancellationToken);
+        fresh!.TimeZoneId.Should().Be("Atlantic/Canary");
+    }
+
     private static EventGuideSettingsView GuideSettings(string timeZoneId) => new(
         Id: Guid.NewGuid(),
         EventSettingsId: Guid.NewGuid(),
