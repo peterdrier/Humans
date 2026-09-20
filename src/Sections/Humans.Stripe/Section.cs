@@ -8,8 +8,8 @@ namespace Humans.Stripe;
 
 /// <summary>The payments connector's DI entry point.</summary>
 /// <remarks>
-/// Shell's <c>ConfigurationRegistry</c> lists the same <c>STRIPE_*</c> variables for its
-/// settings-inventory page — it does not bind them. Renaming a variable here means renaming
+/// This section's <c>SectionConfiguration</c> declares the same <c>STRIPE_*</c> variables to
+/// the settings-inventory page without binding them. Renaming a variable here means renaming
 /// it there too.
 /// </remarks>
 public sealed class Section : ISection
