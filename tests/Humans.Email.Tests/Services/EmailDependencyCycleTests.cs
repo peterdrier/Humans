@@ -99,4 +99,32 @@ public sealed class EmailDependencyCycleTests
         resolveEmailService.Should().NotThrow();
         resolveEmailService().Should().BeOfType<OutboxEmailService>();
     }
+
+    /// <summary>
+    /// A crosscut may not grow new edges into sections. Both sets are the ones the
+    /// teardown of peterdrier/Humans#1651 shrinks — Email.Contracts down to Base and
+    /// Users.Contracts once <c>IEmailMessageFactory</c> is gone — so these assertions
+    /// exist to stop a new reference arriving meanwhile, not to bless what is here.
+    /// </summary>
+    [HumansFact]
+    public void EmailContracts_ReferencesOnlyBaseEventsAndUsersContracts() =>
+        HumansReferencesOf(typeof(EmailMessage).Assembly).Should().BeSubsetOf(
+            ["Humans.Base", "Humans.Events.Contracts", "Humans.Users.Contracts"],
+            because: "Email is a crosscut: its contracts leaf may lose section references, never gain one");
+
+    [HumansFact]
+    public void Email_ReferencesOnlyItsCurrentSectionContracts() =>
+        HumansReferencesOf(typeof(OutboxEmailService).Assembly).Should().BeSubsetOf(
+            [
+                "Humans.Base", "Humans.Campaigns.Contracts", "Humans.Email.Contracts",
+                "Humans.Events.Contracts", "Humans.Gdpr.Contracts", "Humans.Settings.Contracts",
+                "Humans.Tickets.Contracts", "Humans.Users.Contracts"
+            ],
+            because: "Email is a crosscut: it may lose section references, never gain one");
+
+    private static IEnumerable<string> HumansReferencesOf(System.Reflection.Assembly assembly) =>
+        assembly.GetReferencedAssemblies()
+            .Select(a => a.Name!)
+            .Where(n => n.StartsWith("Humans.", StringComparison.Ordinal))
+            .Distinct(StringComparer.Ordinal);
 }

@@ -306,51 +306,11 @@ internal sealed class EmailRenderer(
     private string Lf(string key, params object[] args) =>
         string.Format(CultureInfo.CurrentCulture, localizer[key].Value, args);
 
-    private CultureScope WithCulture(string? culture)
-    {
-        return new CultureScope(culture, logger);
-    }
-
     private EmailContent RenderLocalized(string? culture, Func<EmailContent> render)
     {
-        using (WithCulture(culture))
+        using (new CultureScope(culture, logger))
         {
             return render();
-        }
-    }
-
-    private sealed class CultureScope : IDisposable
-    {
-        private readonly CultureInfo? _originalCulture;
-        private readonly CultureInfo? _originalUICulture;
-
-        public CultureScope(string? culture, ILogger<EmailRenderer> logger)
-        {
-            if (string.IsNullOrWhiteSpace(culture)) return;
-
-            try
-            {
-                _originalCulture = CultureInfo.CurrentCulture;
-                _originalUICulture = CultureInfo.CurrentUICulture;
-                var targetCulture = new CultureInfo(culture);
-                CultureInfo.CurrentUICulture = targetCulture;
-                CultureInfo.CurrentCulture = targetCulture;
-            }
-            catch (CultureNotFoundException ex)
-            {
-                logger.LogWarning(ex, "Invalid email culture '{Culture}', using current culture fallback", culture);
-                _originalCulture = null;
-                _originalUICulture = null;
-            }
-        }
-
-        public void Dispose()
-        {
-            if (_originalUICulture is not null)
-            {
-                CultureInfo.CurrentUICulture = _originalUICulture;
-                CultureInfo.CurrentCulture = _originalCulture!;
-            }
         }
     }
 
@@ -409,7 +369,7 @@ internal sealed class EmailRenderer(
 
     public EmailContent RenderEventLifecycle(EventLifecycleNotification request, string? culture = null)
     {
-        using (WithCulture(culture ?? request.Culture))
+        using (new CultureScope(culture ?? request.Culture, logger))
         {
             var userName = HtmlEncode(request.UserName);
             var eventTitle = HtmlEncode(request.EventTitle);
@@ -457,7 +417,7 @@ internal sealed class EmailRenderer(
     public EmailContent RenderTicketTransferRequested(
         string senderName, string receiverName, string ticketLabel, string? culture = null)
     {
-        using (WithCulture(culture))
+        using (new CultureScope(culture, logger))
         {
             var name = HtmlEncode(senderName);
             var receiver = HtmlEncode(receiverName);
@@ -503,7 +463,7 @@ internal sealed class EmailRenderer(
         string toName, bool successful, string ticketLabel, string receiverName,
         string? reason, string? culture = null)
     {
-        using (WithCulture(culture))
+        using (new CultureScope(culture, logger))
         {
             var name = HtmlEncode(toName);
             var receiver = HtmlEncode(receiverName);
