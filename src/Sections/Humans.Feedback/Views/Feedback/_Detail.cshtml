@@ -145,6 +145,9 @@
         BodyRows = 2,
         BodyMaxLength = 5000,
         Category = nameof(Humans.Users.Contracts.MessageCategory.System),
+        // This partial is fetched over AJAX and injected via innerHTML, so its scripts never
+        // run; Index.cshtml hosts the one working copy of the preview modal + assets instead.
+        IncludePreviewModal = false,
     })
     <button type="submit" class="btn btn-primary btn-sm">@Localizer["Feedback_Send"]</button>
 </form>
