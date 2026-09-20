@@ -64,7 +64,11 @@ No repository — side-effect-free preview only, via the same
 
 Implements `IEmailPreviewServiceRead`. `RenderSystemMessage` composes an
 `EmailMessage` (system-category only) into a `RenderedEmailPreview` without
-touching `EmailOutboxMessages` or any repository. No `IMemoryCache`.
+touching `EmailOutboxMessages` or any repository. `RenderMarkdown` renders an
+arbitrary human-typed subject/Markdown body (via `SanitizedMarkdownRenderer`)
+the same way, for the shared `_EmailComposer` (Base) "Preview" button —
+served by `EmailPreviewController` (`[Authorize]`, any authenticated human).
+No `IMemoryCache`.
 
 ---
 

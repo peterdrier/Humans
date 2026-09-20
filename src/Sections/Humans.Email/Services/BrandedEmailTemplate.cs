@@ -6,6 +6,8 @@ internal static class BrandedEmailTemplate
 {
     public static string Wrap(string content, string baseUrl, string environmentName, string? unsubscribeUrl = null)
     {
+        content = EmailInlineStyler.Apply(content);
+
         var isProduction = string.Equals(environmentName, "Production", StringComparison.OrdinalIgnoreCase);
         var envLabel = string.Equals(environmentName, "Staging", StringComparison.OrdinalIgnoreCase)
             ? "QA"
