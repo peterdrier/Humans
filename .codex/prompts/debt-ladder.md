@@ -73,13 +73,18 @@ dates, or ones whose `what:` describes a "stale comment"/"doc says X" pattern
   cross-domain row (superseded by the `IUserDataContributor` fan-out); the
   `Finance/Creditors/Resync` dead-route-in-docs row (already removed from
   both docs).
-- `docs/architecture/debt-ledger.yml` `themes:` — correct, don't delete:
-  `obsolete-user-displayname` `remaining: 19` → `18`; `baseline-display-sort`
-  `remaining: 29` → `28`; `cs0618-pragma-nav-reads` `remaining: 27` → `9`
-  (`Humans.Infrastructure` no longer exists); the `grandfathered-hum0024-nav-strip`
-  note — rewrite to say the C#-side navs are gone (G5 split moved every
-  config into its owning section) and the only residue is unknown
-  cross-section FK constraints in the schema, which is separate migration
+- `docs/architecture/debt-ledger.yml` `themes:` — correct, don't delete.
+  Re-run each theme's own detector and write what it returns into that
+  theme's `remaining:`; do not carry a number in here, and do not trust one
+  written here before (`memory/process/no-derived-aggregates-in-docs.md` —
+  a count restated in prose is a shadow copy that goes stale silently, and
+  this file is prose). Three are known to be overstated:
+  `obsolete-user-displayname`, `baseline-display-sort`, and
+  `cs0618-pragma-nav-reads` — the last badly, since `Humans.Infrastructure`
+  no longer exists and its share of that count went with it. Also rewrite
+  the `grandfathered-hum0024-nav-strip` note: the C#-side navs are gone (the
+  G5 split moved every config into its owning section) and the only residue
+  is cross-section FK constraints in the schema, which is separate migration
   work, not sweep work.
 
 **Cap:** this rung never fully drains, so it could otherwise eat the whole
@@ -157,7 +162,7 @@ Seed instances (2026-09-20, verify first): `docs/guide/Glossary.md` (no
 misclassifies Backdoor as a crosscut; names non-existent `TicketVendorService`),
 `freshness-catalog.yml` (missing Settings entry; missing Backdoor entry; no
 `Section.cs` trigger), `debt-ledger.yml`'s own HUM0028 note ("EF interceptor"
-→ direct `InvalidateAll()` calls since #751), `G5-SECTION-TEMPLATE.md` (wrong
+→ direct `InvalidateAll()` calls since nobodies-collective/Humans#751), `G5-SECTION-TEMPLATE.md` (wrong
 `EmailRenderer` path; wrong "design §8" citation in several `Section.cs` files),
 `design-rules.md` (only one GDPR download route named; wrong thread-safety
 reason; wrong contributor mechanism/`AgentService` example), `.claude/skills/test-site/SKILL.md`
@@ -327,7 +332,7 @@ out of the repository into its rendering consumer. See the
 grep -v TicketRepository tests/Humans.Web.Tests/Architecture/Baselines/DisplaySortInControllers.baseline.txt
 ```
 For each line: find the method's caller(s) — **read the consumer first**,
-don't just delete the sort. A prior PR (#1002) had to revert two premature
+don't just delete the sort. A prior PR (peterdrier/Humans#1002) had to revert two premature
 deletions where the view rendered in repo order with no re-sort.
 
 **Seed — doable tonight without new public surface:** `GoogleResourceRepository`,

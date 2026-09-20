@@ -201,17 +201,24 @@ main() {
   # ---- refresh the dedicated clone ----------------------------------------
   # Reset/clean the current branch first, before switching branches, so a
   # dirty tree can never make the checkout below fail.
+  # Both cleans must spare the clone marker as well as the env file. The
+  # marker is gitignored, and `-x` deletes ignored files, so without this the
+  # first clean removes the very thing that authorizes cleaning. It is only
+  # re-touched after the fetch/checkout below, so any transient network
+  # failure in between exits under `set -e` with the marker gone — and every
+  # later run then dies at the marker preflight, permanently, until a human
+  # recreates the file by hand. A blip must not brick the nightly.
   log "refreshing $WORK_DIR from origin/$GH_BASE_BRANCH"
   (
     cd "$WORK_DIR"
     git remote set-url origin "$REPO_URL"
     git reset --quiet --hard
-    git clean -fdx --quiet -e "$ENV_FILE_REL_PATH"
+    git clean -fdx --quiet -e "$ENV_FILE_REL_PATH" -e "$CLONE_MARKER_NAME"
     git fetch --quiet origin "$GH_BASE_BRANCH" >>"$log_file" 2>&1
     git checkout --quiet "$GH_BASE_BRANCH" 2>/dev/null \
       || git checkout --quiet -b "$GH_BASE_BRANCH" "origin/$GH_BASE_BRANCH"
     git reset --quiet --hard "origin/$GH_BASE_BRANCH"
-    git clean -fdx --quiet -e "$ENV_FILE_REL_PATH"
+    git clean -fdx --quiet -e "$ENV_FILE_REL_PATH" -e "$CLONE_MARKER_NAME"
   )
   touch "$WORK_DIR/$CLONE_MARKER_NAME"
 
