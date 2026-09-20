@@ -1,17 +1,8 @@
 @using Humans.Governance.Contracts
-@using Humans.Base.Interfaces
 @inject IAuthorizationService AuthService
-@inject IEnumerable<IUserPart> UserPartContributors
-@inject IServiceProvider Services
 @model Humans.Users.Models.ProfileViewModel
 @{
     ViewData["Title"] = Model.IsOwnProfile ? Localizer["Profile_Title"].Value : Model.DisplayName;
-
-    var userParts = new List<UserPart>();
-    foreach (var contributor in UserPartContributors)
-    {
-        userParts.AddRange(await contributor.PartsAsync(Services, User, Model.UserId));
-    }
 }
 
 <div class="row align-items-start">
@@ -101,10 +92,8 @@
             <vc:my-camps />
         }
 
-        @foreach (var part in userParts.OrderBy(p => p.Weight))
-        {
-            @await Component.InvokeAsync(part.ComponentName, new { userId = Model.UserId })
-        }
+        @* Section-contributed parts (IUserPart), e.g. the Events card; each auto-hides when empty *@
+        <vc:user-parts user-id="@Model.UserId" />
 
         @if (!Model.IsOwnProfile && Model.CanViewShiftSignups)
         {

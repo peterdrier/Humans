@@ -59,16 +59,17 @@ nobodies-collective/Humans#1090 found two shapes of this and closed most of it:
   tile in `Views/Home/Dashboard.cshtml` still names `Tour` by controller name, so
   deactivating Tour leaves a dead tile the scan cannot see.
 - **Section to section.** `Humans.Users/Views/Profile/Index.cshtml` and
-  `Humans.Camps/Views/Camp/Details.cshtml` both invoke Events' `EventsCard` by name.
-  `Humans.Users` now references `Humans.Events` and renders it as `<vc:events-card>`, a
-  real, discovery-checked graph edge. `Humans.Camps` could not follow: `Humans.Events`
-  already references `Humans.Camps` (`EventsController` derives from
-  `HumansCampControllerBase`), so a `Camps → Events` reference would cycle. That call site
-  is still invoke-by-name and still invisible to the scan — deactivating Events while
-  Camps is active passes validation and throws on `Camp/Details` at request time. Fixing it
-  needs either breaking the existing `Events → Camps` reference (relocating
-  `HumansCampControllerBase`) or a generic runtime-availability mechanism; both are
-  design decisions, tracked in #1090.
+  `Humans.Camps/Views/Camp/Details.cshtml` both used to invoke Events' `EventsCard` by name.
+  `Humans.Users` now renders `<vc:user-parts>`, which invokes whatever the active sections
+  contribute through `IUserPart` (Events contributes `EventsCard` from its `Section.cs`), so
+  Users holds no reference to Events and deactivating Events simply drops the card.
+  `Humans.Camps` still invokes by name: `Humans.Events` already references `Humans.Camps`
+  (`EventsController` derives from `HumansCampControllerBase`), so a `Camps → Events`
+  reference would cycle. That call site is still invisible to the scan: deactivating Events
+  while Camps is active passes validation and throws on `Camp/Details` at request time. Fixing
+  it needs either breaking the existing `Events → Camps` reference (relocating
+  `HumansCampControllerBase`) or a contribution seam of the `IUserPart` kind for camp pages;
+  both are design decisions, tracked in #1090.
 
 Shell still pins a large minority of the shipped sections, and those plus the transitive
 closure of what they consume cannot be deactivated — which leaves activation useful mainly

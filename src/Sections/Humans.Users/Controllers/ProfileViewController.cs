@@ -35,8 +35,6 @@ using Humans.Users.Contracts;
 using Humans.Base;
 using Humans.Base.Authorization;
 
-using Humans.GoogleIntegration.Contracts;
-
 namespace Humans.Users.Controllers;
 
 // Other members' profiles: the profile page, picture, popovers, in-platform messaging and
@@ -57,7 +55,7 @@ internal sealed class ProfileViewController(
     IStringLocalizer<UsersResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer,
     ITeamServiceRead teamService,
-    ITeamResourceService teamResourceService,
+    ITeamMessageOptionsProvider teamMessageOptionsProvider,
     ICampServiceRead campService,
     IAuthorizationService authorizationService) : HumansControllerBase(userService)
 {
@@ -115,7 +113,9 @@ internal sealed class ProfileViewController(
         var canViewSentMessages = await CanViewSentMessagesAsync(viewer.Id, isOwnProfile);
         var teamMessageOptions = !isOwnProfile
             && await commPrefService.AcceptsFacilitatedMessagesAsync(id, ct)
-                ? await GetTeamMessageOptionsAsync(viewer.Id, ct)
+                ? (await teamMessageOptionsProvider.GetOptionsAsync(viewer.Id, ct))
+                    .OrderBy(t => t.TeamName, StringComparer.OrdinalIgnoreCase)
+                    .ToList()
                 : [];
 
         var viewModel = new ProfileViewModel
@@ -304,7 +304,7 @@ internal sealed class ProfileViewController(
 
         var teamSender = teamId is null
             ? null
-            : (await GetTeamMessageOptionsAsync(currentUser.Id, ct))
+            : (await teamMessageOptionsProvider.GetOptionsAsync(currentUser.Id, ct))
                 .FirstOrDefault(t => t.TeamId == teamId.Value);
         if (teamId is not null && teamSender is null)
             return Forbid();
@@ -353,7 +353,7 @@ internal sealed class ProfileViewController(
 
         var teamSender = model.SendAsTeamId is null
             ? null
-            : (await GetTeamMessageOptionsAsync(currentUser.Id, ct))
+            : (await teamMessageOptionsProvider.GetOptionsAsync(currentUser.Id, ct))
                 .FirstOrDefault(t => t.TeamId == model.SendAsTeamId.Value);
         if (model.SendAsTeamId is not null && teamSender is null)
             return Forbid();
@@ -412,52 +412,6 @@ internal sealed class ProfileViewController(
         return teamSender is null
             ? $"Message sent to {recipientName} (contact info shared: {contactInfo})"
             : $"Message sent to {recipientName} from team {teamSender.TeamName} (contact info shared: {contactInfo})";
-    }
-
-    private async Task<IReadOnlyList<TeamMessageOption>> GetTeamMessageOptionsAsync(
-        Guid viewerId,
-        CancellationToken ct)
-    {
-        var coordinatedTeams = (await teamService.GetTeamsAsync(ct)).Values
-            .Where(t => t.IsActive
-                && t.GoogleGroupEmail is not null
-                && t.Members.Any(m => m.UserId == viewerId && m.Role == TeamMemberRole.Coordinator))
-            .ToList();
-        if (coordinatedTeams.Count == 0)
-            return [];
-
-        var resourcesByTeam = await teamResourceService.GetResourcesByTeamIdsAsync(
-            coordinatedTeams.Select(t => t.Id).ToList(), ct);
-
-        return coordinatedTeams
-            .Where(t => resourcesByTeam.GetValueOrDefault(t.Id, [])
-                .Any(r => IsSyncedGroup(r, t.GoogleGroupEmail!)))
-            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(t => new TeamMessageOption(t.Id, t.Name, t.GoogleGroupEmail!))
-            .ToList();
-    }
-
-    private static bool IsSyncedGroup(GoogleResourceSnapshot resource, string groupEmail)
-    {
-        if (resource.ResourceType != GoogleResourceType.Group
-            || !resource.IsActive
-            || resource.LastSyncedAt is null
-            || resource.ErrorMessage is not null)
-            return false;
-
-        if (string.Equals(resource.Name, groupEmail, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(resource.GoogleId, groupEmail, StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        var separator = groupEmail.IndexOf('@');
-        if (separator <= 0 || separator == groupEmail.Length - 1)
-            return false;
-
-        var expectedUrl = $"https://groups.google.com/a/{groupEmail[(separator + 1)..]}/g/{groupEmail[..separator]}";
-        return string.Equals(
-            resource.Url?.TrimEnd('/'),
-            expectedUrl,
-            StringComparison.OrdinalIgnoreCase);
     }
 
     // ─── Search ──────────────────────────────────────────────────────

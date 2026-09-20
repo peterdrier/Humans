@@ -855,6 +855,28 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
+                            <span class="wg-card-name">&lt;vc:user-parts&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/UserPartsViewComponent.cs + each contributing section&#39;s Section.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        The section-contributed parts of a profile page, merged from every active section's
+                        <code>IUserPart</code> descriptors for the target user and rendered in weight order (Events' card is
+                        the reference contributor). Users names no contributor; a contributor that throws is logged and skipped.
+                        Renders nothing when no section contributes.
+                    </div>
+                    @ParamsBlock(
+                        ("user-id", "<code>Guid</code>, required: the profile being viewed, never the viewer")
+                    )
+                    <div class="wg-card-example">
+                        <vc:user-parts user-id="@Model.CurrentUserId" />
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
                             <span class="wg-card-name">&lt;vc:access-matrix&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>

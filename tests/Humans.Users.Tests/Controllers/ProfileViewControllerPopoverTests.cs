@@ -34,8 +34,6 @@ using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
 
-using Humans.GoogleIntegration.Contracts;
-
 namespace Humans.Users.Tests.Controllers;
 
 public class ProfileViewControllerPopoverTests
@@ -44,7 +42,7 @@ public class ProfileViewControllerPopoverTests
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IProfilePictureService _profilePictureService = Substitute.For<IProfilePictureService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
-    private readonly ITeamResourceService _teamResourceService = Substitute.For<ITeamResourceService>();
+    private readonly ITeamMessageOptionsProvider _teamMessageOptions = Substitute.For<ITeamMessageOptionsProvider>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
     private readonly ICommunicationPreferenceService _commPrefService = Substitute.For<ICommunicationPreferenceService>();
@@ -90,7 +88,7 @@ public class ProfileViewControllerPopoverTests
             localizer,
             sharedLocalizer,
             _teamService,
-            _teamResourceService,
+            _teamMessageOptions,
             _campService,
             _authorizationService);
 
@@ -273,113 +271,77 @@ public class ProfileViewControllerPopoverTests
     }
 
     [HumansFact]
-    public async Task ViewProfile_CoordinatorWithSyncedGroup_GetsTeamSendOption()
+    public async Task ViewProfile_TeamOfferedToViewer_GetsTeamSendOption()
     {
         var targetId = Guid.NewGuid();
-        var teamId = Guid.NewGuid();
+        var option = new TeamMessageOption(Guid.NewGuid(), "Infrastructure", "infra@nobodies.team");
         var viewer = BuildActiveUserInfo(_viewerId, "Coordinator", "coordinator@example.com");
         var target = BuildActiveUserInfo(targetId, "Target", "target@example.com");
         _userService.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(viewer);
         _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>()).Returns(target);
         _commPrefService.AcceptsFacilitatedMessagesAsync(targetId, Arg.Any<CancellationToken>()).Returns(true);
         _shiftManagement.GetCoordinatorTeamIdsAsync(_viewerId).Returns([]);
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
-        {
-            [teamId] = BuildTeam(teamId, _viewerId, TeamMemberRole.Coordinator, "infra")
-        });
-        _teamResourceService.GetResourcesByTeamIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<GoogleResourceSnapshot>>
-            {
-                [teamId] = [new(Guid.NewGuid(), teamId, "google-id", "Infra", GoogleResourceType.Group,
-                    "https://groups.google.com/a/nobodies.team/g/infra",
-                    LastSyncedAt: NodaTime.SystemClock.Instance.GetCurrentInstant())]
-            });
+        _teamMessageOptions.GetOptionsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns([option]);
 
         var result = await _controller.ViewProfile(targetId, Xunit.TestContext.Current.CancellationToken);
 
         var model = result.Should().BeOfType<ViewResult>().Subject.Model
             .Should().BeOfType<ProfileViewModel>().Subject;
-        model.TeamMessageOptions.Should().ContainSingle()
-            .Which.Should().Be(new TeamMessageOption(teamId, "Infrastructure", "infra@nobodies.team"));
+        model.TeamMessageOptions.Should().ContainSingle().Which.Should().Be(option);
     }
 
     [HumansFact]
-    public async Task ViewProfile_NonCoordinator_DoesNotGetTeamSendOption()
+    public async Task ViewProfile_RecipientOptedOut_DoesNotAskForTeamOptions()
     {
         var targetId = Guid.NewGuid();
-        var teamId = Guid.NewGuid();
+        var viewer = BuildActiveUserInfo(_viewerId, "Coordinator", "coordinator@example.com");
+        var target = BuildActiveUserInfo(targetId, "Target", "target@example.com");
+        _userService.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(viewer);
+        _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>()).Returns(target);
+        _commPrefService.AcceptsFacilitatedMessagesAsync(targetId, Arg.Any<CancellationToken>()).Returns(false);
+        _shiftManagement.GetCoordinatorTeamIdsAsync(_viewerId).Returns([]);
+
+        var result = await _controller.ViewProfile(targetId, Xunit.TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>().Subject.Model
+            .Should().BeOfType<ProfileViewModel>().Subject;
+        model.TeamMessageOptions.Should().BeEmpty();
+        await _teamMessageOptions.DidNotReceiveWithAnyArgs().GetOptionsAsync(default, default);
+    }
+
+    [HumansFact]
+    public async Task SendMessageGet_TeamNotOfferedToViewer_IsForbidden()
+    {
+        var targetId = Guid.NewGuid();
         var viewer = BuildActiveUserInfo(_viewerId, "Viewer", "viewer@example.com");
         var target = BuildActiveUserInfo(targetId, "Target", "target@example.com");
         _userService.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(viewer);
         _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>()).Returns(target);
         _commPrefService.AcceptsFacilitatedMessagesAsync(targetId, Arg.Any<CancellationToken>()).Returns(true);
-        _shiftManagement.GetCoordinatorTeamIdsAsync(_viewerId).Returns([]);
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
-        {
-            [teamId] = BuildTeam(teamId, _viewerId, TeamMemberRole.Member, "infra")
-        });
+        _teamMessageOptions.GetOptionsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns([]);
 
-        var result = await _controller.ViewProfile(targetId, Xunit.TestContext.Current.CancellationToken);
+        var result = await _controller.SendMessage(targetId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
-        var model = result.Should().BeOfType<ViewResult>().Subject.Model
-            .Should().BeOfType<ProfileViewModel>().Subject;
-        model.TeamMessageOptions.Should().BeEmpty();
-        await _teamResourceService.DidNotReceiveWithAnyArgs()
-            .GetResourcesByTeamIdsAsync(default!, default);
+        result.Should().BeOfType<ForbidResult>();
     }
 
     [HumansFact]
-    public async Task ViewProfile_CoordinatorWithDifferentSyncedGroup_DoesNotGetTeamSendOption()
+    public async Task SendMessagePost_TeamNotOfferedToViewer_IsForbiddenAndDoesNotSend()
     {
         var targetId = Guid.NewGuid();
-        var teamId = Guid.NewGuid();
-        var viewer = BuildActiveUserInfo(_viewerId, "Coordinator", "coordinator@example.com");
-        var target = BuildActiveUserInfo(targetId, "Target", "target@example.com");
-        _userService.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(viewer);
-        _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>()).Returns(target);
-        _commPrefService.AcceptsFacilitatedMessagesAsync(targetId, Arg.Any<CancellationToken>()).Returns(true);
-        _shiftManagement.GetCoordinatorTeamIdsAsync(_viewerId).Returns([]);
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
-        {
-            [teamId] = BuildTeam(teamId, _viewerId, TeamMemberRole.Coordinator, "infra")
-        });
-        _teamResourceService.GetResourcesByTeamIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<GoogleResourceSnapshot>>
-            {
-                [teamId] = [new(Guid.NewGuid(), teamId, "google-id", "Other", GoogleResourceType.Group,
-                    "https://groups.google.com/a/nobodies.team/g/other",
-                    LastSyncedAt: NodaTime.SystemClock.Instance.GetCurrentInstant())]
-            });
-
-        var result = await _controller.ViewProfile(targetId, Xunit.TestContext.Current.CancellationToken);
-
-        var model = result.Should().BeOfType<ViewResult>().Subject.Model
-            .Should().BeOfType<ProfileViewModel>().Subject;
-        model.TeamMessageOptions.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task SendMessagePost_NonCoordinatorTeamId_IsForbiddenAndDoesNotSend()
-    {
-        var targetId = Guid.NewGuid();
-        var teamId = Guid.NewGuid();
+        var otherTeam = new TeamMessageOption(Guid.NewGuid(), "Other", "other@nobodies.team");
         var viewer = BuildActiveUserInfo(_viewerId, "Viewer", "viewer@example.com");
         var target = BuildActiveUserInfo(targetId, "Target", "target@example.com");
         _userService.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(viewer);
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [_viewerId] = viewer, [targetId] = target });
         _commPrefService.AcceptsFacilitatedMessagesAsync(targetId, Arg.Any<CancellationToken>()).Returns(true);
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
-        {
-            [teamId] = BuildTeam(teamId, _viewerId, TeamMemberRole.Member, "infra")
-        });
+        _teamMessageOptions.GetOptionsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns([otherTeam]);
 
         var result = await _controller.SendMessage(targetId, new SendMessageViewModel
         {
             Message = "Hello",
-            SendAsTeamId = teamId
+            SendAsTeamId = Guid.NewGuid()
         }, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<ForbidResult>();
@@ -387,7 +349,7 @@ public class ProfileViewControllerPopoverTests
     }
 
     [HumansFact]
-    public async Task SendMessagePost_CoordinatorWithSyncedGroup_UsesGroupReplyToAndAudits()
+    public async Task SendMessagePost_TeamOfferedToViewer_UsesGroupReplyToAndAudits()
     {
         var targetId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
@@ -397,18 +359,8 @@ public class ProfileViewControllerPopoverTests
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [_viewerId] = viewer, [targetId] = target });
         _commPrefService.AcceptsFacilitatedMessagesAsync(targetId, Arg.Any<CancellationToken>()).Returns(true);
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
-        {
-            [teamId] = BuildTeam(teamId, _viewerId, TeamMemberRole.Coordinator, "infra")
-        });
-        _teamResourceService.GetResourcesByTeamIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<GoogleResourceSnapshot>>
-            {
-                [teamId] = [new(Guid.NewGuid(), teamId, "google-id", "Infra", GoogleResourceType.Group,
-                    "https://groups.google.com/a/nobodies.team/g/infra",
-                    LastSyncedAt: NodaTime.SystemClock.Instance.GetCurrentInstant())]
-            });
+        _teamMessageOptions.GetOptionsAsync(_viewerId, Arg.Any<CancellationToken>())
+            .Returns([new TeamMessageOption(teamId, "Infrastructure", "infra@nobodies.team")]);
         _emailMessages.FacilitatedMessage(
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<string?>())
@@ -435,19 +387,16 @@ public class ProfileViewControllerPopoverTests
             "Team");
     }
 
-    private static TeamInfo BuildTeam(Guid teamId, Guid viewerId, TeamMemberRole role, string groupPrefix) =>
-        new(teamId, "Infrastructure", null, "infrastructure", true, false, SystemTeamType.None, false,
-            true, false, false, NodaTime.SystemClock.Instance.GetCurrentInstant(),
-            [new(Guid.NewGuid(), viewerId, "Viewer", "viewer@example.com", null, role, NodaTime.SystemClock.Instance.GetCurrentInstant())],
-            GoogleGroupPrefix: groupPrefix);
-
     private static UserInfo BuildActiveUserInfo(Guid id, string displayName, string email)
     {
         var user = new User { Id = id, DisplayName = displayName, State = UserState.Active, PreferredLanguage = "en" };
         var profile = new Profile
         {
-            Id = Guid.NewGuid(), UserId = id, BurnerName = displayName,
-            MembershipTier = MembershipTier.Volunteer, IsApproved = true
+            Id = Guid.NewGuid(),
+            UserId = id,
+            BurnerName = displayName,
+            MembershipTier = MembershipTier.Volunteer,
+            IsApproved = true
         };
         var emails = new List<UserEmail>
         {
