@@ -57,7 +57,7 @@ main() {
   # file, not by editing this script.
   # ============================================================
   local script_dir
-  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+  script_dir="$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")"
   local env_file="$script_dir/debt-runner.env"
   if [[ -f "$env_file" ]]; then
     set -a
@@ -173,14 +173,24 @@ main() {
     die "WORK_DIR ($WORK_DIR) has no $CLONE_MARKER_NAME marker — refusing to run destructive git operations on it. This must be a dedicated clone made for this runner, never a human's working checkout. See .codex/cron/README.md's one-time setup."
   fi
 
+  # ---- from here on, the shell IS in the clone ---------------------------
+  # This is the only directory change in the script, and it happens the
+  # moment the checks above prove this clone is ours to work in. Everything
+  # after it — git, dotnet, gh — runs plain, from here. No `git -C`, no
+  # `(cd ... && ...)` subshell: one working directory, established once, so
+  # git, the build and any file the script touches can never disagree about
+  # where they are. Paths that must point outside the clone (LOG_DIR, the
+  # evidence directory, the run report) are absolute for that reason.
+  cd "$WORK_DIR"
+
   # ---- preserve evidence of an unfinished/failed previous run ------------
   # A dirty tree here means the previous run was interrupted (SIGKILLed
   # mid-write, crashed) before it could clean up after itself. Save what it
   # left before the hard reset below destroys it, so a failure can still be
   # diagnosed after the fact.
-  if [[ -n "$(cd "$WORK_DIR" && git status --porcelain 2>/dev/null)" ]]; then
+  if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
     local prev_branch
-    prev_branch="$(cd "$WORK_DIR" && git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
+    prev_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
     local evidence_dir="$LOG_DIR/evidence-$run_date-$(date -u +%H%M%S)"
     mkdir -p "$evidence_dir"
     log "previous run left a dirty tree on branch '$prev_branch' — saving evidence to $evidence_dir before reset"
@@ -188,10 +198,10 @@ main() {
       echo "branch: $prev_branch"
       echo "saved: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
     } >"$evidence_dir/info.txt"
-    (cd "$WORK_DIR" && git status --porcelain) >"$evidence_dir/status.txt" 2>/dev/null || true
-    (cd "$WORK_DIR" && git diff) >"$evidence_dir/uncommitted.diff" 2>/dev/null || true
+    git status --porcelain >"$evidence_dir/status.txt" 2>/dev/null || true
+    git diff >"$evidence_dir/uncommitted.diff" 2>/dev/null || true
     local stash_sha
-    stash_sha="$(cd "$WORK_DIR" && git stash create 2>/dev/null || true)"
+    stash_sha="$(git stash create 2>/dev/null || true)"
     if [[ -n "$stash_sha" ]]; then
       echo "$stash_sha" >"$evidence_dir/stash-sha.txt"
       log "uncommitted work also saved as loose commit $stash_sha (not attached to any ref/stash-list entry)"
@@ -209,18 +219,15 @@ main() {
   # later run then dies at the marker preflight, permanently, until a human
   # recreates the file by hand. A blip must not brick the nightly.
   log "refreshing $WORK_DIR from origin/$GH_BASE_BRANCH"
-  (
-    cd "$WORK_DIR"
-    git remote set-url origin "$REPO_URL"
-    git reset --quiet --hard
-    git clean -fdx --quiet -e "$ENV_FILE_REL_PATH" -e "$CLONE_MARKER_NAME"
-    git fetch --quiet origin "$GH_BASE_BRANCH" >>"$log_file" 2>&1
-    git checkout --quiet "$GH_BASE_BRANCH" 2>/dev/null \
-      || git checkout --quiet -b "$GH_BASE_BRANCH" "origin/$GH_BASE_BRANCH"
-    git reset --quiet --hard "origin/$GH_BASE_BRANCH"
-    git clean -fdx --quiet -e "$ENV_FILE_REL_PATH" -e "$CLONE_MARKER_NAME"
-  )
-  touch "$WORK_DIR/$CLONE_MARKER_NAME"
+  git remote set-url origin "$REPO_URL"
+  git reset --quiet --hard
+  git clean -fdx --quiet -e "$ENV_FILE_REL_PATH" -e "$CLONE_MARKER_NAME"
+  git fetch --quiet origin "$GH_BASE_BRANCH" >>"$log_file" 2>&1
+  git checkout --quiet "$GH_BASE_BRANCH" 2>/dev/null \
+    || git checkout --quiet -b "$GH_BASE_BRANCH" "origin/$GH_BASE_BRANCH"
+  git reset --quiet --hard "origin/$GH_BASE_BRANCH"
+  git clean -fdx --quiet -e "$ENV_FILE_REL_PATH" -e "$CLONE_MARKER_NAME"
+  touch "$CLONE_MARKER_NAME"
 
   local prompt_file="$WORK_DIR/$PROMPT_REL_PATH"
   if [[ ! -f "$prompt_file" ]]; then
@@ -250,13 +257,13 @@ main() {
   # survives for the rest of the day — which is what lets the recovery path
   # below re-use the report from the run that pushed this branch.
   local last_message_file="$LOG_DIR/last-message-$run_date.md"
-  if (cd "$WORK_DIR" && git ls-remote --exit-code --heads origin "$branch") >/dev/null 2>&1; then
+  if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
     # Branch already pushed today. If it already has an open PR, today's work
     # is done — skip. If not (a prior run pushed but `gh pr create` failed),
     # the work is invisible until a PR exists for it — open one now instead
     # of silently skipping every remaining run today.
     local existing_pr
-    existing_pr="$(cd "$WORK_DIR" && gh pr list --repo "$gh_repo" --head "$branch" --state open --json url --jq '.[0].url // empty' 2>>"$log_file")"
+    existing_pr="$(gh pr list --repo "$gh_repo" --head "$branch" --state open --json url --jq '.[0].url // empty' 2>>"$log_file")"
     if [[ -n "$existing_pr" ]]; then
       exit_reason="skip-already-ran-today"
       log "branch $branch already exists on origin with open PR $existing_pr — a run already completed today; skipping"
@@ -271,7 +278,7 @@ main() {
       run_report="$(cat "$last_message_file")"
       log "recovered run report from $last_message_file for the retried PR"
     fi
-    if pr_url="$(open_pr_for_branch "$WORK_DIR" "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$run_report" "$gh_repo")"; then
+    if pr_url="$(open_pr_for_branch "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$run_report" "$gh_repo")"; then
       exit_reason="pushed"
       log "opened PR for pre-existing branch: $pr_url"
     else
@@ -284,12 +291,12 @@ main() {
     write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
     exit 0
   fi
-  (cd "$WORK_DIR" && git checkout --quiet -B "$branch" "origin/$GH_BASE_BRANCH")
+  git checkout --quiet -B "$branch" "origin/$GH_BASE_BRANCH"
   log "working on branch $branch"
 
   # ---- run codex, hard wall-clock cap -------------------------------------
   local head_before
-  head_before="$(cd "$WORK_DIR" && git rev-parse HEAD)"
+  head_before="$(git rev-parse HEAD)"
 
   # Run report: codex's own final message, captured by codex itself via
   # --output-last-message (the documented codex-exec mechanism for this) —
@@ -321,7 +328,7 @@ main() {
   log "codex exited with status $codex_exit"
 
   local head_after
-  head_after="$(cd "$WORK_DIR" && git rev-parse HEAD)"
+  head_after="$(git rev-parse HEAD)"
 
   # ---- refuse to test or push a tree that isn't what would be pushed --------
   # `git push` only ever sends committed history. If codex was SIGINT'd mid-edit
@@ -329,7 +336,7 @@ main() {
   # that tree and then pushing head_after would advertise a green gate for code
   # that was never actually tested. Check this before the no-op comparison below,
   # since a dirty tree can coexist with head_before == head_after too.
-  if [[ -n "$(cd "$WORK_DIR" && git status --porcelain)" ]]; then
+  if [[ -n "$(git status --porcelain)" ]]; then
     exit_reason="dirty-tree-after-codex"
     log "ERROR: working tree has uncommitted changes after codex exited (status $codex_exit)."
     log "       Refusing to build/test/push a tree that is not what would be pushed."
@@ -357,12 +364,12 @@ main() {
     exit 0
   fi
 
-  commits_made="$(cd "$WORK_DIR" && git rev-list --count "$head_before..$head_after")"
+  commits_made="$(git rev-list --count "$head_before..$head_after")"
   log "codex made $commits_made commit(s)"
 
   # ---- gate before pushing: build + test ----------------------------------
   log "running dotnet build Humans.slnx -v quiet -clp:ErrorsOnly"
-  if (cd "$WORK_DIR" && dotnet build Humans.slnx -v quiet -clp:ErrorsOnly) >>"$log_file" 2>&1; then
+  if dotnet build Humans.slnx -v quiet -clp:ErrorsOnly >>"$log_file" 2>&1; then
     build_result="pass"
   else
     build_result="fail"
@@ -373,7 +380,7 @@ main() {
   fi
 
   log "running dotnet test Humans.slnx -v quiet -clp:ErrorsOnly"
-  if (cd "$WORK_DIR" && dotnet test Humans.slnx -v quiet -clp:ErrorsOnly) >>"$log_file" 2>&1; then
+  if dotnet test Humans.slnx -v quiet -clp:ErrorsOnly >>"$log_file" 2>&1; then
     test_result="pass"
   else
     test_result="fail"
@@ -389,7 +396,7 @@ main() {
   # gate above; re-check it immediately before the one command that
   # publishes anything, so nothing can slip in between validation and push.
   local head_at_push
-  head_at_push="$(cd "$WORK_DIR" && git rev-parse HEAD)"
+  head_at_push="$(git rev-parse HEAD)"
   if [[ "$head_at_push" != "$head_after" ]]; then
     exit_reason="head-changed-before-push"
     log "ERROR: HEAD moved between gate ($head_after) and push ($head_at_push) — refusing to push."
@@ -398,7 +405,7 @@ main() {
   fi
 
   # ---- push (retry on network failure only) -------------------------------
-  if ! push_with_retry "$WORK_DIR" "$branch" "$log_file" "$PUSH_RETRIES"; then
+  if ! push_with_retry "$branch" "$log_file" "$PUSH_RETRIES"; then
     exit_reason="push-failed"
     log "ERROR: push failed after retries. See $log_file"
     write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
@@ -407,7 +414,7 @@ main() {
   log "pushed $branch to origin"
 
   # ---- open the PR, ready for review --------------------------------------
-  if pr_url="$(open_pr_for_branch "$WORK_DIR" "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$run_report" "$gh_repo")"; then
+  if pr_url="$(open_pr_for_branch "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$run_report" "$gh_repo")"; then
     exit_reason="pushed"
     log "opened PR: $pr_url"
   else
@@ -426,12 +433,12 @@ main() {
 # exists on origin but has no open PR" recovery path, so a transient
 # `gh pr create` failure never leaves a pushed branch permanently invisible.
 open_pr_for_branch() {
-  local work_dir="$1" branch="$2" base_branch="$3" run_date="$4" log_file="$5" run_report="${6:-}" gh_repo="${7:-}"
+  local branch="$1" base_branch="$2" run_date="$3" log_file="$4" run_report="${5:-}" gh_repo="${6:-}"
   local pr_title="Daily tech-debt sweep — $run_date"
   local pr_body_file
   pr_body_file="$(mktemp)"
-  if [[ -f "$work_dir/.github/pull_request_template.md" ]]; then
-    cat "$work_dir/.github/pull_request_template.md" >"$pr_body_file"
+  if [[ -f ".github/pull_request_template.md" ]]; then
+    cat ".github/pull_request_template.md" >"$pr_body_file"
     printf '\n' >>"$pr_body_file"
   fi
   {
@@ -446,11 +453,11 @@ open_pr_for_branch() {
     fi
     echo
     echo "Commits:"
-    (cd "$work_dir" && git log --pretty='- %s' "origin/$base_branch..$branch")
+    git log --pretty='- %s' "origin/$base_branch..$branch"
   } >>"$pr_body_file"
 
   local result
-  if result="$(cd "$work_dir" && gh pr create --repo "$gh_repo" --base "$base_branch" --head "$branch" \
+  if result="$(gh pr create --repo "$gh_repo" --base "$base_branch" --head "$branch" \
       --title "$pr_title" --body-file "$pr_body_file" 2>>"$log_file")"; then
     rm -f "$pr_body_file"
     echo "$result"
@@ -509,14 +516,14 @@ parse_minutes() {
 # when the failure looks like a transient network error. Any other failure
 # (auth, non-fast-forward, etc.) fails immediately without retrying.
 push_with_retry() {
-  local work_dir="$1" branch="$2" log_file="$3" max_retries="$4"
+  local branch="$1" log_file="$2" max_retries="$3"
   local attempt=1
   local delay=2
   local err_file
   err_file="$(mktemp)"
 
   while true; do
-    if (cd "$work_dir" && git push -u origin "$branch") >"$err_file" 2>&1; then
+    if git push -u origin "$branch" >"$err_file" 2>&1; then
       cat "$err_file" >>"$log_file"
       rm -f "$err_file"
       return 0
