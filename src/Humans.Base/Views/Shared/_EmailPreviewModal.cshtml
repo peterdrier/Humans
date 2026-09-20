@@ -11,6 +11,7 @@
     var labelId = $"{modalId}Label";
     var errorId = $"{modalId}Error";
     var frameId = $"{modalId}Frame";
+    var subjectId = $"{modalId}Subject";
 }
 <div class="modal fade" id="@modalId" tabindex="-1" aria-labelledby="@labelId" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
@@ -19,10 +20,13 @@
                 <h5 class="modal-title" id="@labelId">
                     <i class="fa-solid fa-envelope-open-text me-1"></i> @Localizer["EmailComposer_PreviewModalTitle"]
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Localizer["Common_Close"]"></button>
             </div>
             <div class="modal-body p-0">
                 <div id="@errorId" class="alert alert-danger m-3 d-none"></div>
+                <div id="@subjectId" class="p-3 border-bottom d-none">
+                    <strong>@Localizer["EmailComposer_PreviewSubjectLabel"]:</strong> <span></span>
+                </div>
                 <iframe id="@frameId" class="w-100 border-0" style="min-height: 420px;"
                         sandbox="" title="@Localizer["EmailComposer_PreviewModalTitle"]"></iframe>
             </div>
@@ -45,10 +49,12 @@
         modalId = modalId || 'emailPreviewModal';
         var frame = document.getElementById(modalId + 'Frame');
         var errorBox = document.getElementById(modalId + 'Error');
+        var subjectBox = document.getElementById(modalId + 'Subject');
         var modalEl = document.getElementById(modalId);
         if (!frame || !errorBox || !modalEl) { return; }
 
         errorBox.classList.add('d-none');
+        if (subjectBox) { subjectBox.classList.add('d-none'); }
         frame.srcdoc = loadingHtml;
 
         if (typeof bootstrap !== 'undefined') {
@@ -68,9 +74,15 @@
         })
             .then(function (resp) {
                 if (!resp.ok) { throw new Error('preview failed'); }
-                return resp.text();
+                return resp.json();
             })
-            .then(function (html) { frame.srcdoc = html; })
+            .then(function (data) {
+                frame.srcdoc = data.html;
+                if (subjectBox && data.subject) {
+                    subjectBox.querySelector('span').textContent = data.subject;
+                    subjectBox.classList.remove('d-none');
+                }
+            })
             .catch(function () {
                 errorBox.textContent = errorText;
                 errorBox.classList.remove('d-none');

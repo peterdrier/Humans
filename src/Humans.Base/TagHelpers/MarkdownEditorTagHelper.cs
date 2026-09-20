@@ -138,16 +138,26 @@ public class MarkdownEditorTagHelper(
             }
         }
 
-        // Disambiguate when multiple editors on the page share the same id (e.g. role-description
-        // textareas in a loop). We append a per-request instance counter so EasyMDE attaches to
-        // the right element.
-        var counter = (httpContext?.Items[InstanceCounterKey] as int?) ?? 0;
-        counter++;
-        if (httpContext is not null)
+        // An explicit id is the caller's own promise of uniqueness (and, for a <label for="">
+        // to resolve, must survive verbatim). Only a derived id — one we picked via fallback —
+        // needs disambiguating when multiple editors on the page land on the same fallback (e.g.
+        // role-description textareas in a loop that didn't pass id): we append a per-request
+        // instance counter so EasyMDE attaches to the right element.
+        string uniqueId;
+        if (!string.IsNullOrEmpty(Id))
         {
-            httpContext.Items[InstanceCounterKey] = counter;
+            uniqueId = elementId!;
         }
-        var uniqueId = $"{elementId}-mde-{counter.ToString(CultureInfo.InvariantCulture)}";
+        else
+        {
+            var counter = (httpContext?.Items[InstanceCounterKey] as int?) ?? 0;
+            counter++;
+            if (httpContext is not null)
+            {
+                httpContext.Items[InstanceCounterKey] = counter;
+            }
+            uniqueId = $"{elementId}-mde-{counter.ToString(CultureInfo.InvariantCulture)}";
+        }
         textarea.Attributes["id"] = uniqueId;
 
         // Force class/rows/optional attributes onto the textarea regardless of asp-for shape.

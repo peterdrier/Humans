@@ -28,6 +28,6 @@ internal sealed class EmailPreviewController(
                 : null;
 
         var preview = emailPreviews.RenderMarkdown(subject ?? string.Empty, body, parsedCategory);
-        return Content(preview.HtmlBody, "text/html");
+        return new JsonResult(new { subject = preview.Subject, html = preview.HtmlBody });
     }
 }

@@ -70,6 +70,9 @@
   <data name="EmailComposer_MarkdownSupported" xml:space="preserve">
     <value>Admite Markdown: negrita, enlaces, listas, imágenes.</value>
   </data>
+  <data name="EmailComposer_PreviewSubjectLabel" xml:space="preserve">
+    <value>Asunto</value>
+  </data>
   <data name="Common_General" xml:space="preserve">
     <value>General</value>
   </data>

@@ -45,6 +45,7 @@
   <data name="EmailComposer_PreviewLoading" xml:space="preserve"><value>Loading preview…</value></data>
   <data name="EmailComposer_PreviewError" xml:space="preserve"><value>Couldn't load the preview. Please try again.</value></data>
   <data name="EmailComposer_MarkdownSupported" xml:space="preserve"><value>Supports Markdown — bold, links, lists, images.</value></data>
+  <data name="EmailComposer_PreviewSubjectLabel" xml:space="preserve"><value>Subject</value></data>
   <data name="Common_General" xml:space="preserve"><value>General</value></data>
   <data name="Common_Save" xml:space="preserve"><value>Save Changes</value></data>
   <data name="Common_Edit" xml:space="preserve"><value>Edit</value></data>

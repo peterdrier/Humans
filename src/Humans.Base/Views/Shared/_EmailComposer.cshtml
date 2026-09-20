@@ -14,6 +14,7 @@
    since scripts inserted via innerHTML never run. *@
 @{
     var modalId = Model.PreviewModalId ?? "emailPreviewModal";
+    var bodyEditorId = $"{Model.BodyName}-editor";
 }
 
 @if (Model.SubjectName is not null)
@@ -28,8 +29,8 @@
 }
 
 <div class="mb-3">
-    <label class="form-label @(Model.BodyLabelVisuallyHidden ? "visually-hidden" : null)">@Model.BodyLabel</label>
-    <markdown-editor name="@Model.BodyName" value="@Model.BodyValue" rows="@Model.BodyRows"
+    <label for="@bodyEditorId" class="form-label @(Model.BodyLabelVisuallyHidden ? "visually-hidden" : null)">@Model.BodyLabel</label>
+    <markdown-editor id="@bodyEditorId" name="@Model.BodyName" value="@Model.BodyValue" rows="@Model.BodyRows"
                       required="@Model.BodyRequired" placeholder="@Model.BodyPlaceholder"
                       maxlength="@(Model.BodyMaxLength > 0 ? Model.BodyMaxLength : 0)" />
     @Html.ValidationMessage(Model.BodyName, new { @class = "text-danger" })

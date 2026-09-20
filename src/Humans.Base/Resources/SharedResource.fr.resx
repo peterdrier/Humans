@@ -70,6 +70,9 @@
   <data name="EmailComposer_MarkdownSupported" xml:space="preserve">
     <value>Prend en charge Markdown : gras, liens, listes, images.</value>
   </data>
+  <data name="EmailComposer_PreviewSubjectLabel" xml:space="preserve">
+    <value>Objet</value>
+  </data>
   <data name="Common_General" xml:space="preserve">
     <value>Général</value>
   </data>
