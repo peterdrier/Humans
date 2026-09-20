@@ -433,7 +433,8 @@ public sealed class SurveyControllerTests
                 Questions: [])
             {
                 IsAsociadoVote = isAsociadoVote,
-            });
+            },
+            Guid.NewGuid());
 
     private static LocalizedText Text(string en) =>
         new(new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = en });

@@ -60,7 +60,8 @@ public sealed class SurveyAdminControllerTests
             .Returns(new SurveyDetail(
                 surveyId,
                 SurveyStatus.Draft,
-                Editable(title: "Preview me", intro: "Welcome", allowAnonymous: true)));
+                Editable(title: "Preview me", intro: "Welcome", allowAnonymous: true),
+                Guid.NewGuid()));
         var sut = CreateController(surveys);
 
         var result = await sut.Preview(
@@ -107,7 +108,8 @@ public sealed class SurveyAdminControllerTests
             .Returns(new SurveyDetail(
                 surveyId,
                 SurveyStatus.Closed,
-                Editable(title: "Pages", questions: questions)));
+                Editable(title: "Pages", questions: questions),
+                Guid.NewGuid()));
         var sut = CreateController(surveys);
 
         var result = await sut.PreviewPage(
@@ -145,7 +147,7 @@ public sealed class SurveyAdminControllerTests
             null,
             []);
         surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
-            .Returns(new SurveyDetail(surveyId, SurveyStatus.Open, editable));
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Open, editable, Guid.NewGuid()));
         surveys.PreviewAudienceCountAsync(surveyId, Arg.Any<CancellationToken>()).Returns(3);
         surveys.GetInviteStatusesAsync(surveyId, Arg.Any<CancellationToken>())
             .Returns(Array.Empty<SurveyInviteStatus>());

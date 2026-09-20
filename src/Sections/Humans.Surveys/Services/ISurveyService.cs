@@ -243,12 +243,17 @@ internal enum SurveyResultsScope
 
 // ── Authoring DTOs (co-located) ─────────────────────────────────────────────
 
-/// <summary>A survey loaded for editing: identity + status + owner + the editable graph.</summary>
+/// <summary>
+/// A survey loaded for editing: identity + status + owner + the editable graph.
+/// <c>CreatedByUserId</c> has no default: <c>Guid.Empty</c> is this section's "nobody", and a
+/// forgotten argument would hand the authorization handler an authorless survey, which it
+/// denies to its author on every operation.
+/// </summary>
 internal sealed record SurveyDetail(
     Guid Id,
     SurveyStatus Status,
     SurveyEditInput Editable,
-    Guid CreatedByUserId = default,
+    Guid CreatedByUserId,
     string? RejectionNote = null);
 
 /// <summary>The current viewer for author-scoped survey visibility: Board/Admin see every survey.</summary>

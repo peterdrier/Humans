@@ -50,30 +50,36 @@ else
                                 </button>
                             </td>
                         </tr>
-                        <div class="modal fade" id="rejectModal-@item.Id" tabindex="-1" aria-hidden="true">
-                            <div class="modal-dialog">
-                                <div class="modal-content">
-                                    <form asp-controller="SurveyAdmin" asp-action="Reject" asp-route-id="@item.Id" method="post">
-                                        @Html.AntiForgeryToken()
-                                        <div class="modal-header">
-                                            <h5 class="modal-title">@Localizer["Survey_Admin_Queue_Reject"]</h5>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                        </div>
-                                        <div class="modal-body">
-                                            <label class="form-label" for="note-@item.Id">@Localizer["Survey_Admin_Queue_RejectNoteLabel"]</label>
-                                            <textarea class="form-control" id="note-@item.Id" name="note" rows="3" required maxlength="4000">@(ViewData[$"RejectionNote:{item.Id}"])</textarea>
-                                            <div class="form-text text-danger">@Localizer["Survey_Admin_Queue_RejectNoteRequired"]</div>
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="submit" class="btn btn-danger">@Localizer["Survey_Admin_Queue_Reject"]</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
                     }
                 </tbody>
             </table>
         </div>
     </div>
+
+    @* Outside the table: a <div> between two <tr>s is not valid table content, and the parser
+       relocates it before the <table> anyway. *@
+    @foreach (var item in Model.Items)
+    {
+        <div class="modal fade" id="rejectModal-@item.Id" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form asp-controller="SurveyAdmin" asp-action="Reject" asp-route-id="@item.Id" method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="modal-header">
+                            <h5 class="modal-title">@Localizer["Survey_Admin_Queue_Reject"]</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <label class="form-label" for="note-@item.Id">@Localizer["Survey_Admin_Queue_RejectNoteLabel"]</label>
+                            <textarea class="form-control" id="note-@item.Id" name="note" rows="3" required maxlength="4000">@(ViewData[$"RejectionNote:{item.Id}"])</textarea>
+                            <div class="form-text text-danger">@Localizer["Survey_Admin_Queue_RejectNoteRequired"]</div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="submit" class="btn btn-danger">@Localizer["Survey_Admin_Queue_Reject"]</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
 }
