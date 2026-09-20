@@ -2,6 +2,7 @@ using Humans.Base.Interfaces.Caching;
 using Humans.Calendar.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Base.Hosting;
 using Humans.Shifts.Authorization;
 using Humans.Shifts.Contracts;
@@ -79,6 +80,8 @@ public sealed class Section : ISection
         services.AddSingleton<IShiftRowView>(sp => sp.GetRequiredService<CachingShiftViewService>());
         services.AddSingleton<IShiftView>(sp => sp.GetRequiredService<CachingShiftViewService>());
         services.AddSingleton<IShiftViewInvalidator>(sp => sp.GetRequiredService<CachingShiftViewService>());
+        // Settings fans out over this after an event-settings save; the same instance answers.
+        services.AddSingleton<IEventSettingsChangeListener>(sp => sp.GetRequiredService<CachingShiftViewService>());
 
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingShiftViewService>().UserCacheStats);
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingShiftViewService>().RotaCacheStats);

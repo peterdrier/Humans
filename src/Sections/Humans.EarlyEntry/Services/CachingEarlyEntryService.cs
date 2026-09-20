@@ -1,5 +1,6 @@
 using Humans.Base.Caching;
 using Humans.EarlyEntry.Contracts;
+using Humans.Settings.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.EarlyEntry.Services;
@@ -13,7 +14,7 @@ internal sealed class CachingEarlyEntryService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingEarlyEntryService> logger)
     : TrackedCache<Guid, UserEarlyEntry?>("EarlyEntry.UserEarlyEntry", warmOnStartup: false, logger),
-        IEarlyEntryService, IEarlyEntryInvalidator
+        IEarlyEntryService, IEarlyEntryInvalidator, IEventSettingsChangeListener
 {
     /// <summary>Key for the undecorated inner service. Unkeyed, this Singleton would resolve itself.</summary>
     public const string InnerServiceKey = "early-entry-inner";
@@ -39,4 +40,10 @@ internal sealed class CachingEarlyEntryService(
     public void InvalidateUser(Guid userId) => Invalidate(userId);
 
     public void InvalidateAll() => Clear();
+
+    /// <summary>
+    /// The gate date and <c>EarlyEntryStartOffset</c> move every holder's entry date at
+    /// once, so an event-settings save drops the whole cache.
+    /// </summary>
+    public void EventSettingsChanged() => InvalidateAll();
 }

@@ -1,6 +1,7 @@
 using Humans.Shifts.Services.Dtos;
 using Humans.Base.Caching;
 using Humans.Base.Interfaces.Caching;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -30,7 +31,7 @@ namespace Humans.Shifts.Services;
 /// </para>
 /// </remarks>
 internal sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory, ILogger<CachingShiftViewService> logger)
-    : IShiftRowView, IShiftView, IShiftViewInvalidator, IHostedService
+    : IShiftRowView, IShiftView, IShiftViewInvalidator, IEventSettingsChangeListener, IHostedService
 {
     /// <summary>
     /// DI service key under which the undecorated (inner) <see cref="IShiftRowView"/>
@@ -187,6 +188,15 @@ internal sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory,
         _userCache.Clear();
         _rotaCache.Clear();
     }
+
+    /// <summary>
+    /// Every <see cref="ShiftUserView"/> is event-scoped — it carries the active event's
+    /// Settings-sourced calendar and that event's signups — so a gate-date, timezone, offset
+    /// or active-event change invalidates the lot. This used to ride on the Shifts-owned
+    /// EventSettings write; that write moved to Settings, which now fans out to here
+    /// (peterdrier/Humans#1627).
+    /// </summary>
+    public void EventSettingsChanged() => InvalidateAll();
 
     // ==========================================================================
     // IHostedService — composition forces the decorator to own this directly

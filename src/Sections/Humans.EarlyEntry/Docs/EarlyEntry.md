@@ -93,7 +93,9 @@ verbatim; the nav entry sits in the "Tickets" admin group. Neither is an ownersh
   erasure and merge.
 - When a global setting moves every holder's date at once, the contributor calls
   `InvalidateAll` — `EventSettings.EarlyEntryStartOffset` and the gate / build-offset edits
-  (all in Settings now, which calls `InvalidateAll` on every event-settings save). Teams also
+  (all in Settings now: `CachingEarlyEntryService` implements Settings'
+  `IEventSettingsChangeListener` and calls `InvalidateAll` on every event-settings save —
+  Settings itself names no consumer). Teams also
   calls it when a team's `EarlyEntryEnabled` flag flips, because that changes *who*
   contributes.
 - Eviction is pure: the next read lazy-reloads.

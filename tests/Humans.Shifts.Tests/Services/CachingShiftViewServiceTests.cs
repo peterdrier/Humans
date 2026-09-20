@@ -1,6 +1,7 @@
 using Humans.Shifts.Domain;
 using Humans.Shifts.Services;
 using AwesomeAssertions;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Services.Dtos;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -176,6 +177,34 @@ public class CachingShiftViewServiceTests
         await sut.GetRotaAsync(rotaId, Xunit.TestContext.Current.CancellationToken);
 
         sut.InvalidateAll();
+
+        await sut.GetUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await sut.GetRotaAsync(rotaId, Xunit.TestContext.Current.CancellationToken);
+
+        await _inner.Received(2).GetUserAsync(userId, Arg.Any<CancellationToken>());
+        await _inner.Received(2).GetRotaAsync(rotaId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task EventSettingsChanged_ClearsBothDicts()
+    {
+        // Every ShiftUserView carries the active event's calendar and that event's signups,
+        // so a Settings-side gate-date/offset/active-event save must drop the lot.
+        var userId = Guid.NewGuid();
+        var rotaId = Guid.NewGuid();
+        _inner.GetUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftUserView>(new ShiftUserView(
+                userId, null, null, null,
+                [], [])));
+        _inner.GetRotaAsync(rotaId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftRotaView>(new ShiftRotaView(
+                rotaId, null, [], [], [])));
+
+        var sut = CreateSut();
+        await sut.GetUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await sut.GetRotaAsync(rotaId, Xunit.TestContext.Current.CancellationToken);
+
+        ((IEventSettingsChangeListener)sut).EventSettingsChanged();
 
         await sut.GetUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
         await sut.GetRotaAsync(rotaId, Xunit.TestContext.Current.CancellationToken);

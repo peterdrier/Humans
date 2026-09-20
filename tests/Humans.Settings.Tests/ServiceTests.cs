@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
-using Humans.EarlyEntry.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Settings.Data;
 using Humans.Settings.Domain;
@@ -23,12 +22,13 @@ public sealed class ServiceTests
 
     private readonly ISettingsRepository _repository = Substitute.For<ISettingsRepository>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
-    private readonly IEarlyEntryInvalidator _earlyEntryInvalidator = Substitute.For<IEarlyEntryInvalidator>();
+    private readonly IEventSettingsChangeListener _listenerOne = Substitute.For<IEventSettingsChangeListener>();
+    private readonly IEventSettingsChangeListener _listenerTwo = Substitute.For<IEventSettingsChangeListener>();
     private readonly IClock _clock = Substitute.For<IClock>();
 
     public ServiceTests() => _clock.GetCurrentInstant().Returns(Now);
 
-    private Service BuildSut() => new(_repository, _auditLog, _earlyEntryInvalidator, _clock);
+    private Service BuildSut() => new(_repository, _auditLog, [_listenerOne, _listenerTwo], _clock);
 
     private static EventSettings MakeEntity(Guid id, bool isActive = true) => new()
     {
@@ -297,20 +297,21 @@ public sealed class ServiceTests
     }
 
     [HumansFact]
-    public async Task SaveEventSettingsAsync_FlushesTheEarlyEntryCache()
+    public async Task SaveEventSettingsAsync_TellsEveryChangeListener()
     {
-        // GateOpeningDate and EarlyEntryStartOffset move every holder's entry date at once.
-        // Camps' SetEeStartDateAsync used to own this write and this flush; the write moved
-        // here, so the flush did too.
+        // The gate date, the offsets and the active-event flip move derived dates for every
+        // member at once. The consuming sections used to own this write and flush their own
+        // caches inline; the write moved here, so every one of them gets told.
         await BuildSut().SaveEventSettingsAsync(
             MakeDto(Guid.NewGuid(), EventSettingsStatus.Inactive, earlyEntryStartOffset: -7),
             Actor, TestContext.Current.CancellationToken);
 
-        _earlyEntryInvalidator.Received(1).InvalidateAll();
+        _listenerOne.Received(1).EventSettingsChanged();
+        _listenerTwo.Received(1).EventSettingsChanged();
     }
 
     [HumansFact]
-    public async Task SaveEventSettingsAsync_DoesNotFlushTheEarlyEntryCacheWhenTheSaveIsRefused()
+    public async Task SaveEventSettingsAsync_TellsNoListenerWhenTheSaveIsRefused()
     {
         var id = Guid.NewGuid();
         _repository.AnyOtherActiveEventSettingsAsync(id, Arg.Any<CancellationToken>()).Returns(true);
@@ -319,7 +320,8 @@ public sealed class ServiceTests
             MakeDto(id, EventSettingsStatus.Active), Actor, TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
-        _earlyEntryInvalidator.DidNotReceive().InvalidateAll();
+        _listenerOne.DidNotReceive().EventSettingsChanged();
+        _listenerTwo.DidNotReceive().EventSettingsChanged();
     }
 
     [HumansFact]

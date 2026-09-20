@@ -156,7 +156,7 @@ that row again (no audit entry either way — seeding has no real actor).
 |---|---|---|
 | in | Shifts | `Humans.Development`'s seeder only, via `IEventSettingsSeeding` |
 | out | Users | `IUserServiceRead` (platform base-controller dependency only) |
-| out | EarlyEntry | `IEarlyEntryInvalidator.InvalidateAll` after every event-settings save — gate date, build offset and `EarlyEntryStartOffset` move every holder's date at once |
+| out | every `IEventSettingsChangeListener` | fanned out after every successful event-settings save — the gate date, the offsets and the active-event flip move derived dates for every member at once. Subscribers today: EarlyEntry's cache (`InvalidateAll`) and Shifts' `CachingShiftViewService` (every `ShiftUserView` is event-scoped). Settings names no consumer and references no consuming section |
 | in | Email | `ISettingsService` (`IsEmailSendingPaused`) |
 | in | Monitor | `ISettingsService` (`DriveActivityMonitor:LastRunAt`) |
 
