@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Base.Constants;
 using Humans.Settings.Contracts;
 using Humans.Settings.Controllers;
 using Humans.Settings.Models;
@@ -15,7 +16,8 @@ namespace Humans.Settings.Tests;
 
 /// <summary>
 /// A blank id on save mints a brand-new cycle (nobodies-collective/Humans#1631),
-/// and a save that deactivates a row leaves it reachable by id.
+/// and a save that deactivates a row leaves it reachable by id. There is no GET to
+/// re-render, so every failure branch is post-redirect-get with the rule in the flash.
 /// </summary>
 public sealed class SettingsAdminControllerTests
 {
@@ -72,22 +74,37 @@ public sealed class SettingsAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Index_Post_ActivationConflict_ComesBackAsAFormErrorNotA500()
+    public async Task Index_Post_ActivationConflict_FlashesTheConflictAndRedirectsToTheTab()
     {
         // Checking Active on an inactive row while another cycle is Active is an ordinary
-        // operator conflict. The service says so by throwing; the screen has to render it.
+        // operator conflict. The service says so by throwing; there is no GET to re-render,
+        // so the message travels as a flash on the way back to the tab.
         const string Conflict =
             "Only one event settings row can be Active at a time — deactivate the current one first.";
         _settings.SaveEventSettingsAsync(Arg.Any<EventSettingsInfo>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new InvalidOperationException(Conflict)));
         var sut = BuildSut();
-        var form = MakeForm(Guid.NewGuid(), isActive: true);
+        var id = Guid.NewGuid();
 
-        var result = await sut.Index(form, TestContext.Current.CancellationToken);
+        var result = await sut.Index(MakeForm(id, isActive: true), TestContext.Current.CancellationToken);
 
-        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(form);
-        sut.ModelState[string.Empty]!.Errors
-            .Should().ContainSingle().Which.ErrorMessage.Should().Be(Conflict);
+        result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be($"/Settings?event={id}#event");
+        sut.TempData[TempDataKeys.ErrorMessage].Should().Be(Conflict);
+    }
+
+    [HumansFact]
+    public async Task Index_Post_InvalidModel_FlashesTheFailingRuleAndRedirectsToTheTab()
+    {
+        // The form is only ever rendered by the /Settings#event tab, so a validation
+        // failure has to name the broken rule in the flash or the operator sees nothing.
+        var sut = BuildSut();
+        sut.ModelState.AddModelError(nameof(EventSettingsViewModel.TimeZoneId), "Timezone is required.");
+
+        var result = await sut.Index(MakeForm(id: null, isActive: false), TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#event");
+        sut.TempData[TempDataKeys.ErrorMessage].Should().Be("Timezone is required.");
+        await _settings.DidNotReceiveWithAnyArgs().SaveEventSettingsAsync(default!, default, default);
     }
 
     [HumansFact]

@@ -53,7 +53,10 @@ public class EnumStringStabilityTests
                 "CampLeadAdded", "CampLeadRemoved", "CampPrimaryLeadTransferred",
                 "CampImageUploaded", "CampImageDeleted",
                 "ShiftSignupCreated", "ShiftSignupConfirmed", "ShiftSignupRefused", "ShiftSignupVoluntold",
-                "ShiftSignupBailed", "ShiftSignupNoShow", "ShiftSignupCancelled", "ShiftSignupReassigned"
+                "ShiftSignupBailed", "ShiftSignupNoShow", "ShiftSignupCancelled", "ShiftSignupReassigned",
+                // Retired (peterdrier/Humans#1633): no writer left, but persisted rows still
+                // carry the string, so the member has to survive.
+                "CampSettingsEeStartDateChanged"
             ]
         }
     };

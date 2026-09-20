@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Onboarding;
@@ -23,10 +22,10 @@ namespace Humans.Shifts.Tests.Controllers;
 
 /// <summary>
 /// The knobs form moved to /Settings#shifts (peterdrier/Humans#1634). The old
-/// <c>GET /Shifts/Settings</c> page is retired outright — no redirect kept, since
-/// redirecting a legacy URL is tech debt here — so its absence is asserted directly
-/// rather than by hitting a route. <c>POST /Shifts/Settings</c> stays (the tab posts to
-/// it) and now redirects back to the tab (post-redirect-get, not a legacy-URL redirect).
+/// <c>GET /Shifts/Settings</c> page is retired outright, with no redirect kept, since
+/// redirecting a legacy URL is tech debt here. <c>POST /Shifts/Settings</c> stays (the
+/// tab posts to it) and now redirects back to the tab (post-redirect-get, not a
+/// legacy-URL redirect).
 /// </summary>
 public sealed class ShiftsControllerSettingsTests
 {
@@ -85,16 +84,6 @@ public sealed class ShiftsControllerSettingsTests
         ctrl.ControllerContext = new ControllerContext { HttpContext = http };
         ctrl.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
         return ctrl;
-    }
-
-    [HumansFact]
-    public void OldSettingsPage_NoLongerExists()
-    {
-        // GET /Shifts/Settings retired outright (peterdrier/Humans#1634) — a legacy-URL
-        // redirect is forbidden here, so there is no parameterless Settings() to hit.
-        typeof(ShiftsController)
-            .GetMethod(nameof(ShiftsController.Settings), BindingFlags.Public | BindingFlags.Instance, [])
-            .Should().BeNull();
     }
 
     [HumansFact]

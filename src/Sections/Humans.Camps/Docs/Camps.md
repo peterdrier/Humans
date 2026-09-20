@@ -162,7 +162,7 @@ Four controllers serve this section. The MVC URL surface is dual-routed under `/
 | `/Camps/Admin/Roles/{slug}` | `CampAdminController.RolesDrillDown` | Cross-camp roster for one role definition (issue nobodies-collective/Humans#740): per-camp-season assignees with name + Google email and a `mailto:` to the derived group email; year-picker drop-down. CampAdmin only. |
 | `/Camps/Admin/Compliance` | `CampComplianceController` | Read-only role-staffing matrix: rows = active barrios (Active/Full) for the year, columns = active role definitions, cells = assignee avatars + a dashed placeholder per unfilled required slot. Gated by `CampComplianceAccess` (CampAdmin/Admin **or** any team/sub-team coordinator), broader than the CampAdmin-only management surface. |
 | `/Camps/Admin/Export` | `CampAdminController` | CSV export |
-| `/Camps/Admin/{Approve,Reject,OpenSeason,CloseSeason,SetNameLockDate,Reactivate,UpdateRegistrationInfo,Delete}/...` | `CampAdminController` | Season lifecycle actions (`OpenSeason`/`CloseSeason` posted to from `/Settings#barrios`; the rest stay `/Camps/Admin`-only) |
+| `/Camps/Admin/{Approve,Reject,OpenSeason,CloseSeason,SetNameLockDate,Reactivate,UpdateRegistrationInfo,Delete}/...` | `CampAdminController` | Season lifecycle actions (`OpenSeason`/`CloseSeason` are posted to from `/Settings#barrios` and redirect back to that tab; the rest stay `/Camps/Admin`-only and redirect to `/Camps/Admin`) |
 | `/api/camps/{year}` | `CampApiController` | Year directory JSON |
 | `/api/camps/{year}/placement` | `CampApiController` | Placement-data JSON |
 | `/Camps/{slug}/Members/{campMemberId}/EarlyEntry` | `CampController` | Grant / revoke EE on a camp member |
@@ -245,7 +245,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - Definition CRUD (`CampRoleDefinitionCreated` / `Updated` / `Deactivated` / `Reactivated`) writes audit entries; ordering is `repo.Add` then `SaveChangesAsync` then `auditLog.LogAsync`.
 - When an account merge accepts, `ICampService.ReassignAsync` folds the source's whole camp footprint onto the target: each source `CampMember` is re-pointed to the target (its `CampRoleAssignment` rows ride along on the unchanged `CampMemberId`); when the target already holds a live (`Pending`/`Active`) membership for the same season, the source member's roles are folded onto the target's member (target wins on `IX_camp_role_assignments_unique` collision, `HasEarlyEntry` is OR-ed in) and the now-empty source member is dropped. `Removed` source members always re-point. Because Camp Lead is now a `CampRoleAssignment`, leads move too. The per-user early-entry cache is evicted for both source and target after the fold. Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
 - Granting / revoking EE writes `CampEarlyEntryGranted` / `CampEarlyEntryRevoked` audit entries. Idempotent set writes no audit row.
-- Changing `EeSlotCount` writes `CampSeasonEeSlotCountChanged`. The EE start date is edited on `/Settings` now (Settings' own audit trail); `CampSettingsEeStartDateChanged` was retired with `SetEeStartDateAsync` (nobodies-collective#1633).
+- Changing `EeSlotCount` writes `CampSeasonEeSlotCountChanged`. The EE start date is edited on `/Settings` now (Settings' own audit trail), so `CampSettingsEeStartDateChanged` is no longer written; the enum member stays so existing history still reads (nobodies-collective/Humans#1633).
 
 ## Cross-Section Dependencies
 

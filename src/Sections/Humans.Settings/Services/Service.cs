@@ -71,8 +71,7 @@ internal sealed class Service(
         // the write moved lanes, so the notification moves with it — fanned out over the
         // listener seam rather than one project reference per consumer
         // (nobodies-collective/Humans#805, peterdrier/Humans#1627).
-        foreach (var listener in changeListeners)
-            listener.EventSettingsChanged();
+        NotifyChangeListeners();
     }
 
     /// <inheritdoc />
@@ -91,11 +90,28 @@ internal sealed class Service(
             ToEntity(settings with { Status = EventSettingsStatus.Active }),
             clock.GetCurrentInstant(),
             cancellationToken);
+
+        NotifyChangeListeners();
     }
 
     /// <inheritdoc />
-    public Task<int> DeleteEventAsync(Guid id, CancellationToken cancellationToken = default) =>
-        repository.DeleteEventSettingsAsync(id, cancellationToken);
+    public async Task<int> DeleteEventAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var deleted = await repository.DeleteEventSettingsAsync(id, cancellationToken);
+        if (deleted > 0) NotifyChangeListeners();
+        return deleted;
+    }
+
+    /// <summary>
+    /// Every write here replaces or removes the active event, which moves the derived dates
+    /// EarlyEntry and Shifts cache. The seeding seams go through it too: a seeded event that
+    /// nobody is told about leaves those caches holding the previous cycle's dates.
+    /// </summary>
+    private void NotifyChangeListeners()
+    {
+        foreach (var listener in changeListeners)
+            listener.EventSettingsChanged();
+    }
 
     private static EventSettingsInfo? ToDto(EventSettings? src) => src is null ? null : new EventSettingsInfo(
         Id: src.Id,
