@@ -445,39 +445,34 @@ internal sealed class ShiftsController(
         return RedirectToAction(nameof(Index));
     }
 
-    [HttpGet("Settings")]
-    [Authorize(Policy = PolicyNames.AdminOnly)]
-    public async Task<IActionResult> Settings()
-    {
-        // "Active event" is Settings' concept now (nobodies-collective/Humans#1631);
-        // Shifts only keeps its own knobs, created on demand for that id.
-        var active = await burnSettings.GetActiveAsync();
-        if (active is null) return View(new EventSettingsViewModel());
-
-        var knobs = await shiftMgmt.GetKnobsAsync(active.Id);
-        return View(EventSettingsFormMapper.ToViewModel(knobs));
-    }
-
+    // GET removed (peterdrier/Humans#1634) — superseded by the /Settings#shifts tab,
+    // whose data assembly lives in ShiftsSettingsTabViewComponent now. No redirect kept:
+    // redirecting a retired URL is tech debt here, not a feature.
     [HttpPost("Settings")]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Settings(EventSettingsViewModel model)
     {
         if (!ModelState.IsValid)
-            return View(model);
+        {
+            SetError("Invalid event settings.");
+            return Redirect("/Settings#shifts");
+        }
 
+        // "Active event" is Settings' concept now (nobodies-collective/Humans#1631);
+        // Shifts only keeps its own knobs, created on demand for that id.
         var active = await burnSettings.GetActiveAsync();
         if (active is null)
         {
             SetError("No active event configured — set one at /Settings#event first.");
-            return RedirectToAction(nameof(Settings));
+            return Redirect("/Settings#shifts");
         }
 
         await shiftMgmt.SaveKnobsAsync(
             active.Id, model.IsShiftBrowsingOpen, model.GlobalVolunteerCap, model.ReminderLeadTimeHours);
 
         SetSuccess("Event settings saved.");
-        return RedirectToAction(nameof(Settings));
+        return Redirect("/Settings#shifts");
     }
 
     // A user's signups are not scoped to the active burn — they can span cycles — so

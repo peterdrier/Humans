@@ -818,4 +818,5 @@
   <data name="Settings_TabGate" xml:space="preserve"><value>Gate</value></data>
   <data name="Settings_TabBarrios" xml:space="preserve"><value>Barrios</value></data>
   <data name="Settings_TabEventGuide" xml:space="preserve"><value>Event Guide</value></data>
+  <data name="Settings_TabShifts" xml:space="preserve"><value>Shifts</value></data>
 </root>
