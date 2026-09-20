@@ -123,9 +123,11 @@ internal sealed class OutboxEmailService(
 
     /// <summary>
     /// Google Postmaster Feedback-ID: <c>templateName:campaignId-or-none:category:humans-nobodies</c>.
-    /// Template name is the primary identifier; campaign id and category refine it.
-    /// SenderId (<c>humans-nobodies</c>) is last and constant.
+    /// Template name is the primary identifier; campaign id (shared by every grant in
+    /// the campaign — <see cref="EmailMessage.CampaignGrantId"/> is per-recipient and
+    /// would not aggregate) and category refine it. SenderId (<c>humans-nobodies</c>,
+    /// 15 chars — within Google's 5-15 char SenderId requirement) is last and constant.
     /// </summary>
     private static string BuildFeedbackId(EmailMessage message, MessageCategory? category) =>
-        $"{message.TemplateName}:{message.CampaignGrantId?.ToString() ?? "none"}:{category?.ToString() ?? "none"}:humans-nobodies";
+        $"{message.TemplateName}:{message.CampaignId?.ToString() ?? "none"}:{category?.ToString() ?? "none"}:humans-nobodies";
 }

@@ -166,6 +166,7 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
             .Select(g => new GrantWithSendContext(
                 g.Id,
                 g.UserId,
+                g.CampaignId,
                 g.Code.Code,
                 g.Campaign.EmailSubject,
                 g.Campaign.EmailBodyTemplate,
@@ -184,6 +185,7 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
             .Select(g => new GrantWithSendContext(
                 g.Id,
                 g.UserId,
+                g.CampaignId,
                 g.Code.Code,
                 g.Campaign.EmailSubject,
                 g.Campaign.EmailBodyTemplate,

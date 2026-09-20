@@ -106,6 +106,7 @@ public sealed record WorkgroupNoticeRequest(
 public record CampaignCodeEmailRequest(
     Guid UserId,
     Guid CampaignGrantId,
+    Guid CampaignId,
     string RecipientEmail,
     string RecipientName,
     string Subject,

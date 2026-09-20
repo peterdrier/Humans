@@ -87,9 +87,10 @@ public sealed class OutboxEmailServiceTests : IDisposable
         bool triggerImmediate = false,
         Guid? userId = null,
         Guid? campaignGrantId = null,
+        Guid? campaignId = null,
         bool doNotPersist = false) =>
         new(recipient, name, subject, html, template, category, replyTo, triggerImmediate, userId,
-            campaignGrantId, doNotPersist);
+            campaignGrantId, campaignId, doNotPersist);
 
     [HumansFact]
     public async Task SendAsync_CreatesOutboxRowWithCorrectFields()
@@ -204,13 +205,28 @@ public sealed class OutboxEmailServiceTests : IDisposable
     public async Task SendAsync_StampsFeedbackIdWithTemplateCategoryAndCampaign()
     {
         var grantId = Guid.NewGuid();
+        var campaignId = Guid.NewGuid();
+        await _service.SendAsync(Message(
+            template: "campaign_code", category: MessageCategory.CampaignCodes,
+            campaignGrantId: grantId, campaignId: campaignId),
+            Xunit.TestContext.Current.CancellationToken);
+
+        var msg = await _emailDb.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var headers = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(msg.ExtraHeaders!);
+        headers!["Feedback-ID"].Should().Be($"campaign_code:{campaignId}:CampaignCodes:humans-nobodies");
+    }
+
+    [HumansFact]
+    public async Task SendAsync_StampsFeedbackIdWithNoneWhenCampaignIdMissing()
+    {
+        var grantId = Guid.NewGuid();
         await _service.SendAsync(Message(
             template: "campaign_code", category: MessageCategory.CampaignCodes, campaignGrantId: grantId),
             Xunit.TestContext.Current.CancellationToken);
 
         var msg = await _emailDb.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         var headers = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(msg.ExtraHeaders!);
-        headers!["Feedback-ID"].Should().Be($"campaign_code:{grantId}:CampaignCodes:humans-nobodies");
+        headers!["Feedback-ID"].Should().Be($"campaign_code:none:CampaignCodes:humans-nobodies");
     }
 
     [HumansFact]
