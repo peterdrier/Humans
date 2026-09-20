@@ -10,6 +10,13 @@
     </a>
 </div>
 
+@if (ViewData["GoogleNotConfigured"] is true)
+{
+    <div class="alert alert-warning" role="alert">
+        <i class="fa-solid fa-plug-circle-xmark me-1"></i>
+        Google Workspace is not configured. Outbox processing is paused and this page cannot show or requeue events until credentials are restored.
+    </div>
+}
 
 @{
     var failedPermanently = Model.Where(e => e.FailedPermanently).ToList();

@@ -637,8 +637,10 @@ internal sealed class GoogleController(
     [HttpGet("SyncOutbox")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SyncOutbox(
-        [FromServices] ITeamServiceRead teamService)
+        [FromServices] ITeamServiceRead teamService,
+        [FromServices] IGoogleDriveActivityClient googleClient)
     {
+        ViewData["GoogleNotConfigured"] = !googleClient.IsConfigured;
         var events = (await googleSyncService.GetRecentOutboxEventsAsync(200)).ToList();
 
         // Display info via UserInfo cache (one lookup/user). GoogleEmail from IsGoogle row, else primary. BurnerName per burnername-is-the-display-name.
