@@ -1,37 +1,51 @@
 # Section debt ledger for Humans.Governance. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
+next_id: 12
 inbox:
   - added: 2026-09-02
+    id: GOV-1
     what: "GDPR erasure is untested. ScrubFreeTextForUserAsync is the section's Art. 17 obligation (which free text is cleared, which tier/status/date skeleton is kept, and that notes the person wrote as a Board member on others' applications are cleared too) and no test asserts any part of it (finding 17, /section-doctor on Governance 2026-09-02)."
     review: panel
   - added: 2026-09-02
+    id: GOV-2
     what: "The audit entries ApproveAsync/RejectAsync write are unpinned, and the one-vote-per-Board-member overwrite rule is pinned only at ApplicationRepository, not through CastBoardVoteAsync (finding 18, /section-doctor on Governance 2026-09-02)."
     review: light
   - added: 2026-09-02
+    id: GOV-3
     what: "Assert-the-mock tests in Humans.Governance.Tests: the GetRequiredTeamIdsForUserAsync Colaborador cases and the HasActiveRolesAsync pair assert the substitute's own configured return; the filtering tests and the user-scoping test duplicate repository coverage at the service layer (finding 19, /section-doctor on Governance 2026-09-02)."
     review: panel
   - added: 2026-09-02
+    id: GOV-4
     what: "No test pins that GovernanceApplicationsController.Admin/AdminDetail and GovernanceBoardVotingController carry their authorization attributes. The policies are tested; their placement is not (finding 20, /section-doctor on Governance 2026-09-02)."
     review: light
+    root: CENTRAL-56
   - added: 2026-09-02
+    id: GOV-5
     what: "DataAnnotations validation on the Create form is unlocalized in every supported culture. AddDataAnnotationsLocalization binds DataAnnotationLocalizerProvider to SharedResource, which carries neither the message templates ('The {0} field is required.') nor any display name for these fields, so both fall back to the attribute's English. ApplicationDecisionService already returns localized ErrorKeys for the same rules (MotivationRequired et al.) but ModelState.IsValid short-circuits before SubmitAsync runs, so the localized path is unreachable for the empty case. Fixing it means either SharedResource keys for the templates in every supported culture or ErrorMessage keys per attribute — new shared surface, so Peter's call. Removing the [Display] attributes (finding 7) did not cause this but made the interpolated name a CLR identifier (finding 27, /section-doctor on Governance 2026-09-02)."
     review: panel
   - added: 2026-09-02
+    id: GOV-6
     what: "The Nav_Governance label points at two different destinations: the member-dashboard tile uses it for GovernanceApplications/Index, the user dropdown and profile page use it for Governance/Index. Pick one destination for the label, or give them distinct labels (finding 28, /section-doctor on Governance 2026-09-02)."
     review: light
   - added: 2026-09-18
+    id: GOV-7
     what: "GovernanceVotesAdminController's action-level AdminOnly overrides are unpinned by any test, and the project has no controller test at all — the same gap the 2026-09-02 entry records for the applications and board-voting controllers, widened by the assembly-votes lane (finding 4's neighbourhood, /section-doctor on Governance 2026-09-18)."
     review: light
+    root: CENTRAL-56
   - added: 2026-09-18
+    id: GOV-8
     what: "The applications lane has no test for account merge (ApplicationRepository.ReassignApplicationsToUserAsync), GDPR export, the renewal-nudge path (GetExpiringApplicationsNeedingReminderAsync, MarkRenewalReminderSentAsync, GetPendingApplicationUserTiersAsync, TermRenewalReminderJob) or CastBoardVoteAsync, and several IApplicationServiceRead members are unpinned — the vote lane is thoroughly tested and this half is not (/section-doctor on Governance 2026-09-18)."
     review: panel
   - added: 2026-09-18
+    id: GOV-9
     what: "Most GovernanceResource keys carry no Governance_ prefix, and the Votes_* keys the assembly-votes lane added are new debt of the same kind; resource-key-prefix is report-only because renaming them touches every call site and all six cultures (/section-doctor on Governance 2026-09-18)."
     review: panel
   - added: 2026-09-18
+    id: GOV-10
     what: "Humans.Governance.Tests aliases the Application entity as MemberApplication in some files and as Application in others, so a grep for either name misses call sites in the other half — the alias exists to dodge the Humans.Application.* namespace collision (/section-doctor on Governance 2026-09-18)."
     review: light
   - added: 2026-09-18
+    id: GOV-11
     what: "Vote finalization's atomicity cannot be observed by this project's tests: the in-memory fixture ignores TransactionIgnoredWarning, so an assertion that the stored result and the status move together passes whether or not a transaction wraps them (finding 27, /section-doctor on Governance 2026-09-18)."
     review: panel

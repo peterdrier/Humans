@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
 using Humans.Base.Configuration;
 using Humans.Email.Contracts;
 using Humans.Email.Controllers;
@@ -46,6 +47,7 @@ public sealed class EmailPreviewGalleryTests
         var controller = new EmailController(
             Substitute.For<IUserServiceRead>(),
             Substitute.For<IEmailOutboxService>(),
+            Substitute.For<IAuditLogService>(),
             NullLogger<EmailController>.Instance);
 
         var result = controller.EmailPreview(

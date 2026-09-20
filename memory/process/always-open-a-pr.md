@@ -1,6 +1,6 @@
 ---
 name: Always open the PR — never ask permission first
-description: Finished feature-branch work gets a PR opened immediately, no confirmation step; overrides the harness default of not creating PRs. Prod promotion is the exception.
+description: Finished feature-branch work gets a PR opened immediately, no confirmation step; overrides the harness default of not creating PRs. Prod promotion and the nightly Codex debt runner are the exceptions.
 metadata:
   type: process
 ---
@@ -28,6 +28,8 @@ Asking first also costs a full round-trip for a decision that is never actually 
 - Fill the PR body from `.github/pull_request_template.md`.
 - Unrelated work gets its own branch and its own PR rather than riding along in an open one — that is [`no-direct-to-main`](no-direct-to-main.md)'s "don't mix unrelated work into the same SHA", not a reason to skip the PR.
 
-**The one exception — production promotion.** A PR from `peterdrier/Humans:main` to `nobodies-collective/Humans:main` still needs an explicit go-ahead from an [authorized decision-maker](authorized-decision-makers.md), and goes through [`/pr-prod`](../../.claude/skills/pr-prod/SKILL.md). "Always open the PR" is about the fork's own review flow, not about shipping to production.
+**Exception 1 — production promotion.** A PR from `peterdrier/Humans:main` to `nobodies-collective/Humans:main` still needs an explicit go-ahead from an [authorized decision-maker](authorized-decision-makers.md), and goes through [`/pr-prod`](../../.claude/skills/pr-prod/SKILL.md). "Always open the PR" is about the fork's own review flow, not about shipping to production.
+
+**Exception 2 — the nightly Codex debt runner.** The unattended `.codex/prompts/daily-debt.md` agent only commits; its wrapper (`.codex/cron/run-daily-debt.sh`) pushes and opens the PR, and only after its own build/test gate passes — precisely so an unvetted red branch never becomes visible.
 
 **Related:** [`no-direct-to-main`](no-direct-to-main.md) · [`wip-prs-as-draft`](wip-prs-as-draft.md) · [`cross-repo-pr-push-target`](cross-repo-pr-push-target.md) · [`authorized-decision-makers`](authorized-decision-makers.md)

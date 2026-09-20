@@ -52,6 +52,14 @@ When paused, `ProcessEmailOutboxJob` skips processing without dequeuing messages
 
 The `IsEmailSendingPaused` key in `system_settings` controls whether the outbox processor runs. Pause/Resume actions on the dashboard update this setting. Useful during maintenance windows or when diagnosing delivery issues.
 
+## Daily Send Counts (nobodies-collective/Humans#1195)
+
+`email_daily_send_counts` (composite PK `(Date, TemplateName)`, `Date` UTC calendar day) tracks `SentCount`/`FailedCount` per template per day — a durable denominator that survives outbox retention pruning. `EmailOutboxProcessor` increments it right after each `MarkSentAsync`/`MarkFailedAsync`, sharing the same test-address exclusion; the increment is its own try/catch, swallowed on failure so a tally write never flips a delivered message back to `Failed`. Never purged — `CleanupEmailOutboxJob` only deletes from `email_outbox_messages`.
+
+The dashboard (`/Email/EmailOutbox`) shows the last 90 days in a Date/Sent/Failed table.
+
+**Backfill:** `GET /Email/BackfillDailyCounts` previews rows to add (count, date range, first 50 rows); `POST` confirms. Aggregates retained `Sent` outbox rows by `SentAt`'s UTC date; `FailedCount` stays `0` (failure day isn't reconstructable from the outbox). Excludes today's UTC date entirely. Only inserts (Date, TemplateName) combinations with no existing row — idempotent, re-running is a no-op past the first pass. Audited as `AuditAction.EmailDailySendCountsBackfilled`.
+
 ## Metrics (OpenTelemetry)
 
 | Metric | Type | Description |

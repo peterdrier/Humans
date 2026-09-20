@@ -120,7 +120,7 @@ public sealed class EmailDependencyCycleTests
     public void Email_ReferencesOnlyItsCurrentSectionContracts() =>
         ProjectReferencesOf("Humans.Email").Should().BeSubsetOf(
             [
-                "Humans.Base", "Humans.Campaigns.Contracts", "Humans.Email.Contracts",
+                "Humans.AuditLog.Contracts", "Humans.Base", "Humans.Campaigns.Contracts", "Humans.Email.Contracts",
                 "Humans.Events.Contracts", "Humans.Gdpr.Contracts", "Humans.Settings.Contracts",
                 "Humans.Tickets.Contracts", "Humans.Users.Contracts"
             ],
