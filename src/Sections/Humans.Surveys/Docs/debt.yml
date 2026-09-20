@@ -11,6 +11,3 @@ inbox:
   - added: 2026-09-07
     what: "Surveys.md invariants with no test that pins them: individual submissions are never audit-logged; Close is audit-logged; eligibility is re-checked on every wizard page; a SentAt = null ledger row is excluded from invited counts, status and reminders; Article 17 erasure unlinks a response (the service call is pinned, the UserId blanking in SurveyRepository.AnonymizeResponsesForUserAsync is not); ballots in the drill-down are ordered by response id. Found by /section-doctor's Tests thread on 2026-09-07; its sibling gaps were closed in that run. Narrowed 2026-09-20: 'exactly one reminder per invitee' is now pinned at service level (SurveyServiceTests.cs:1343), leaving only the repository-side ReminderSentAt filter and stamp untested."
     review: light
-  - added: 2026-09-07
-    what: "Services/RankedChoiceCounter.cs carries no comment naming the precommitment — Ranked Pairs is the official method and authored option order the disclosed final tie-break — which health.md and Docs/features/ranked-choice-voting.md both state. Flagged by /section-doctor 2026-09-07 without reading the algorithm; wants one read-through and a header comment."
-    review: panel
