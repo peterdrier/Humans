@@ -1,0 +1,67 @@
+@using System.Text.Json
+@* Shared "Preview" modal for the _EmailComposer component. Include once per page (the
+   composer partial already does this). Exposes window.HumansEmailComposer.preview(subject,
+   body, category), which POSTs to /Email/PreviewMarkdown and shows the exact branded,
+   sanitized email in an iframe — no outbox row is created. *@
+<div class="modal fade" id="emailPreviewModal" tabindex="-1" aria-labelledby="emailPreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="emailPreviewModalLabel">
+                    <i class="fa-solid fa-envelope-open-text me-1"></i> @Localizer["EmailComposer_PreviewModalTitle"]
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="emailPreviewModalError" class="alert alert-danger m-3 d-none"></div>
+                <iframe id="emailPreviewModalFrame" class="w-100 border-0" style="min-height: 420px;" title="@Localizer["EmailComposer_PreviewModalTitle"]"></iframe>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Common_Close"]</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@await Html.PartialAsync("_RequestVerificationTokenScript")
+<script>
+(function () {
+    var loadingHtml = @Html.Raw(JsonSerializer.Serialize("<p class=\"text-muted p-3\">" + Localizer["EmailComposer_PreviewLoading"].Value + "</p>"));
+    var errorText = @Html.Raw(JsonSerializer.Serialize(Localizer["EmailComposer_PreviewError"].Value));
+
+    window.HumansEmailComposer = window.HumansEmailComposer || {};
+    window.HumansEmailComposer.preview = function (subject, body, category) {
+        var frame = document.getElementById('emailPreviewModalFrame');
+        var errorBox = document.getElementById('emailPreviewModalError');
+        var modalEl = document.getElementById('emailPreviewModal');
+
+        errorBox.classList.add('d-none');
+        frame.srcdoc = loadingHtml;
+
+        if (modalEl && typeof bootstrap !== 'undefined') {
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        }
+
+        var form = new FormData();
+        form.append('subject', subject || '');
+        form.append('body', body || '');
+        form.append('category', category || '');
+        form.append('__RequestVerificationToken', getRequestVerificationToken());
+
+        fetch('/Email/PreviewMarkdown', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: form
+        })
+            .then(function (resp) {
+                if (!resp.ok) { throw new Error('preview failed'); }
+                return resp.text();
+            })
+            .then(function (html) { frame.srcdoc = html; })
+            .catch(function () {
+                errorBox.textContent = errorText;
+                errorBox.classList.remove('d-none');
+            });
+    };
+})();
+</script>

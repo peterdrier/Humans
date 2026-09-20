@@ -55,6 +55,21 @@
   <data name="Common_Close" xml:space="preserve">
     <value>Tanca</value>
   </data>
+  <data name="EmailComposer_Preview" xml:space="preserve">
+    <value>Vista prèvia</value>
+  </data>
+  <data name="EmailComposer_PreviewModalTitle" xml:space="preserve">
+    <value>Vista prèvia del correu</value>
+  </data>
+  <data name="EmailComposer_PreviewLoading" xml:space="preserve">
+    <value>Carregant la vista prèvia…</value>
+  </data>
+  <data name="EmailComposer_PreviewError" xml:space="preserve">
+    <value>No s'ha pogut carregar la vista prèvia. Torna-ho a provar.</value>
+  </data>
+  <data name="EmailComposer_MarkdownSupported" xml:space="preserve">
+    <value>Admet Markdown: negreta, enllaços, llistes, imatges.</value>
+  </data>
   <data name="Common_General" xml:space="preserve">
     <value>General</value>
   </data>

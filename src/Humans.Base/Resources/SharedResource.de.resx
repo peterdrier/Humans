@@ -55,6 +55,21 @@
   <data name="Common_Close" xml:space="preserve">
     <value>Schließen</value>
   </data>
+  <data name="EmailComposer_Preview" xml:space="preserve">
+    <value>Vorschau</value>
+  </data>
+  <data name="EmailComposer_PreviewModalTitle" xml:space="preserve">
+    <value>E-Mail-Vorschau</value>
+  </data>
+  <data name="EmailComposer_PreviewLoading" xml:space="preserve">
+    <value>Vorschau wird geladen…</value>
+  </data>
+  <data name="EmailComposer_PreviewError" xml:space="preserve">
+    <value>Vorschau konnte nicht geladen werden. Bitte versuche es erneut.</value>
+  </data>
+  <data name="EmailComposer_MarkdownSupported" xml:space="preserve">
+    <value>Unterstützt Markdown: fett, Links, Listen, Bilder.</value>
+  </data>
   <data name="Common_General" xml:space="preserve">
     <value>Allgemein</value>
   </data>

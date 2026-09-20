@@ -1,0 +1,55 @@
+@using Microsoft.AspNetCore.Mvc.Rendering
+@model Humans.Base.Models.EmailComposerViewModel
+@* Shared human-composed-email component: optional subject field, an EasyMDE Markdown
+   body (via the markdown-editor tag helper — which brings its own "?" Markdown help),
+   and a "Preview" button that shows the exact branded, sanitized send. Every compose
+   form (profile message, camp contact, rota messages, survey invitation, feedback
+   reply, issue comment, campaign) renders through this one component instead of its
+   own subject/body/editor markup. *@
+
+@if (Model.SubjectName is not null)
+{
+    <div class="mb-3">
+        <label for="@Model.SubjectName" class="form-label">@Model.SubjectLabel</label>
+        <input type="text" class="form-control" id="@Model.SubjectName" name="@Model.SubjectName"
+               value="@Model.SubjectValue" required="@Model.SubjectRequired"
+               maxlength="@(Model.SubjectMaxLength > 0 ? Model.SubjectMaxLength : null)" />
+        @Html.ValidationMessage(Model.SubjectName, new { @class = "text-danger" })
+    </div>
+}
+
+<div class="mb-3">
+    <label class="form-label @(Model.BodyLabelVisuallyHidden ? "visually-hidden" : null)">@Model.BodyLabel</label>
+    <markdown-editor name="@Model.BodyName" value="@Model.BodyValue" rows="@Model.BodyRows"
+                      required="@Model.BodyRequired" placeholder="@Model.BodyPlaceholder"
+                      maxlength="@(Model.BodyMaxLength > 0 ? Model.BodyMaxLength : 0)" />
+    @Html.ValidationMessage(Model.BodyName, new { @class = "text-danger" })
+    <div class="form-text">@(Model.BodyHelpText ?? Localizer["EmailComposer_MarkdownSupported"])</div>
+</div>
+
+<button type="button" class="btn btn-outline-secondary email-composer-preview-btn mb-3"
+        data-subject-name="@Model.SubjectName" data-body-name="@Model.BodyName" data-category="@Model.Category">
+    <i class="fa-regular fa-eye me-1"></i>@Localizer["EmailComposer_Preview"]
+</button>
+
+@await Html.PartialAsync("_EmailPreviewModal")
+
+<script>
+(function () {
+    document.querySelectorAll('.email-composer-preview-btn').forEach(function (btn) {
+        if (btn.dataset.composerWired === 'true') { return; }
+        btn.dataset.composerWired = 'true';
+        btn.addEventListener('click', function () {
+            var subjectName = btn.getAttribute('data-subject-name');
+            var bodyName = btn.getAttribute('data-body-name');
+            var category = btn.getAttribute('data-category') || '';
+            var subjectEl = subjectName ? document.querySelector('[name="' + subjectName + '"]') : null;
+            var bodyEl = document.querySelector('textarea[name="' + bodyName + '"]');
+            window.HumansEmailComposer.preview(
+                subjectEl ? subjectEl.value : '',
+                bodyEl ? bodyEl.value : '',
+                category);
+        });
+    });
+})();
+</script>

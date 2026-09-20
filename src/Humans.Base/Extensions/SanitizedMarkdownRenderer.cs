@@ -33,6 +33,25 @@ public static class SanitizedMarkdownRenderer
         {
             sanitizer.AllowedTags.Remove("img");
         }
+        else
+        {
+            // Images may only reference https:// URLs. This blocks data:/http:/javascript:
+            // (and any other scheme) on <img src> specifically, without touching the broader
+            // http/https/mailto allowance FilterUrl leaves for <a href>.
+            sanitizer.FilterUrl += (_, e) =>
+            {
+                if (!string.Equals(e.Tag.TagName, "IMG", StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                if (e.SanitizedUrl is null
+                    || !e.SanitizedUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                {
+                    e.SanitizedUrl = null;
+                }
+            };
+        }
 
         return sanitizer.Sanitize(rendered);
     }
