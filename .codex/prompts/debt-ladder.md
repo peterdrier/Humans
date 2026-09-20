@@ -284,7 +284,10 @@ it, fr, ca) in the same commit.
 **Finds:**
 ```
 grep -rn 'SetError("\|SetSuccess("\|SetInfo("' src/Sections/*/Controllers/*.cs | grep -v 'Localizer\['
-grep -rLZ 'Localizer\[' src/Sections/*/Views/**/*.cshtml | xargs -0 -n1 dirname
+# `**` is NOT recursive here: bash leaves `globstar` off by default, so it
+# matches one level and silently skips the nested views. Use find.
+find src/Sections/*/Views -name '*.cshtml' -print0 \
+  | xargs -0 grep -LZ 'Localizer\[' | xargs -0 -n1 dirname | sort -u
 ```
 Cross-check each hit's controller/view against the exempt route list before
 picking it.

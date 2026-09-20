@@ -34,8 +34,17 @@ codex_auth_ok() {
     return 0
   fi
   # `login status` may not exist on this version — distinguish "no such
-  # subcommand" from "genuinely signed out" by looking for the credential.
-  if codex login --help >/dev/null 2>&1 && codex login status 2>&1 | grep -qi "not logged in\|signed out"; then
+  # subcommand" from "genuinely signed out" by looking at what it printed.
+  #
+  # Capture the output first rather than piping straight into grep. Under
+  # `set -o pipefail` the pipeline takes the non-zero exit of a signed-out
+  # `codex login status`, which masks grep's successful match and skips the
+  # `return 1` below — leaving a stale auth.json to report a signed-out CLI
+  # as authenticated. That is exactly the "broken runner looks healthy"
+  # failure this preflight exists to catch.
+  local status_output
+  status_output="$(codex login status 2>&1 || true)"
+  if codex login --help >/dev/null 2>&1 && grep -qi "not logged in\|signed out" <<<"$status_output"; then
     return 1
   fi
   [[ -s "${CODEX_HOME:-$HOME/.codex}/auth.json" ]]
@@ -169,9 +178,9 @@ main() {
   # mid-write, crashed) before it could clean up after itself. Save what it
   # left before the hard reset below destroys it, so a failure can still be
   # diagnosed after the fact.
-  if [[ -n "$(git -C "$WORK_DIR" status --porcelain 2>/dev/null)" ]]; then
+  if [[ -n "$(cd "$WORK_DIR" && git status --porcelain 2>/dev/null)" ]]; then
     local prev_branch
-    prev_branch="$(git -C "$WORK_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
+    prev_branch="$(cd "$WORK_DIR" && git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
     local evidence_dir="$LOG_DIR/evidence-$run_date-$(date -u +%H%M%S)"
     mkdir -p "$evidence_dir"
     log "previous run left a dirty tree on branch '$prev_branch' — saving evidence to $evidence_dir before reset"
@@ -179,10 +188,10 @@ main() {
       echo "branch: $prev_branch"
       echo "saved: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
     } >"$evidence_dir/info.txt"
-    git -C "$WORK_DIR" status --porcelain >"$evidence_dir/status.txt" 2>/dev/null || true
-    git -C "$WORK_DIR" diff >"$evidence_dir/uncommitted.diff" 2>/dev/null || true
+    (cd "$WORK_DIR" && git status --porcelain) >"$evidence_dir/status.txt" 2>/dev/null || true
+    (cd "$WORK_DIR" && git diff) >"$evidence_dir/uncommitted.diff" 2>/dev/null || true
     local stash_sha
-    stash_sha="$(git -C "$WORK_DIR" stash create 2>/dev/null || true)"
+    stash_sha="$(cd "$WORK_DIR" && git stash create 2>/dev/null || true)"
     if [[ -n "$stash_sha" ]]; then
       echo "$stash_sha" >"$evidence_dir/stash-sha.txt"
       log "uncommitted work also saved as loose commit $stash_sha (not attached to any ref/stash-list entry)"
@@ -193,14 +202,17 @@ main() {
   # Reset/clean the current branch first, before switching branches, so a
   # dirty tree can never make the checkout below fail.
   log "refreshing $WORK_DIR from origin/$GH_BASE_BRANCH"
-  git -C "$WORK_DIR" remote set-url origin "$REPO_URL"
-  git -C "$WORK_DIR" reset --quiet --hard
-  git -C "$WORK_DIR" clean -fdx --quiet -e "$ENV_FILE_REL_PATH"
-  git -C "$WORK_DIR" fetch --quiet origin "$GH_BASE_BRANCH" >>"$log_file" 2>&1
-  git -C "$WORK_DIR" checkout --quiet "$GH_BASE_BRANCH" 2>/dev/null \
-    || git -C "$WORK_DIR" checkout --quiet -b "$GH_BASE_BRANCH" "origin/$GH_BASE_BRANCH"
-  git -C "$WORK_DIR" reset --quiet --hard "origin/$GH_BASE_BRANCH"
-  git -C "$WORK_DIR" clean -fdx --quiet -e "$ENV_FILE_REL_PATH"
+  (
+    cd "$WORK_DIR"
+    git remote set-url origin "$REPO_URL"
+    git reset --quiet --hard
+    git clean -fdx --quiet -e "$ENV_FILE_REL_PATH"
+    git fetch --quiet origin "$GH_BASE_BRANCH" >>"$log_file" 2>&1
+    git checkout --quiet "$GH_BASE_BRANCH" 2>/dev/null \
+      || git checkout --quiet -b "$GH_BASE_BRANCH" "origin/$GH_BASE_BRANCH"
+    git reset --quiet --hard "origin/$GH_BASE_BRANCH"
+    git clean -fdx --quiet -e "$ENV_FILE_REL_PATH"
+  )
   touch "$WORK_DIR/$CLONE_MARKER_NAME"
 
   local prompt_file="$WORK_DIR/$PROMPT_REL_PATH"
@@ -226,7 +238,12 @@ main() {
 
   # ---- branch: one per calendar day ---------------------------------------
   local branch="$BRANCH_PREFIX/$run_date"
-  if git -C "$WORK_DIR" ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+  # Codex writes its run report here via --output-last-message. It lives in
+  # LOG_DIR, outside WORK_DIR, so `git clean` never touches it and it
+  # survives for the rest of the day — which is what lets the recovery path
+  # below re-use the report from the run that pushed this branch.
+  local last_message_file="$LOG_DIR/last-message-$run_date.md"
+  if (cd "$WORK_DIR" && git ls-remote --exit-code --heads origin "$branch") >/dev/null 2>&1; then
     # Branch already pushed today. If it already has an open PR, today's work
     # is done — skip. If not (a prior run pushed but `gh pr create` failed),
     # the work is invisible until a PR exists for it — open one now instead
@@ -240,6 +257,13 @@ main() {
       exit 0
     fi
     log "branch $branch exists on origin but has no open PR — opening one now instead of skipping"
+    # Recover the earlier run's report so the PR this path opens carries the
+    # rung, closed ledger ids and skip reasons that daily-debt.md requires —
+    # a PR opened on retry is no less reviewable than one opened first time.
+    if [[ -f "$last_message_file" ]]; then
+      run_report="$(cat "$last_message_file")"
+      log "recovered run report from $last_message_file for the retried PR"
+    fi
     if pr_url="$(open_pr_for_branch "$WORK_DIR" "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$run_report" "$gh_repo")"; then
       exit_reason="pushed"
       log "opened PR for pre-existing branch: $pr_url"
@@ -253,19 +277,18 @@ main() {
     write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
     exit 0
   fi
-  git -C "$WORK_DIR" checkout --quiet -B "$branch" "origin/$GH_BASE_BRANCH"
+  (cd "$WORK_DIR" && git checkout --quiet -B "$branch" "origin/$GH_BASE_BRANCH")
   log "working on branch $branch"
 
   # ---- run codex, hard wall-clock cap -------------------------------------
   local head_before
-  head_before="$(git -C "$WORK_DIR" rev-parse HEAD)"
+  head_before="$(cd "$WORK_DIR" && git rev-parse HEAD)"
 
   # Run report: codex's own final message, captured by codex itself via
   # --output-last-message (the documented codex-exec mechanism for this) —
   # never a file codex is asked to write inside the repo, which could be
   # forgotten or left dirtying the tree. Written under LOG_DIR, outside
   # WORK_DIR, so it can never make the checkout dirty.
-  local last_message_file="$LOG_DIR/last-message-$run_date.md"
   rm -f "$last_message_file"
 
   local -a codex_args=(exec --cd "$WORK_DIR" --color never --output-last-message "$last_message_file")
@@ -291,7 +314,7 @@ main() {
   log "codex exited with status $codex_exit"
 
   local head_after
-  head_after="$(git -C "$WORK_DIR" rev-parse HEAD)"
+  head_after="$(cd "$WORK_DIR" && git rev-parse HEAD)"
 
   # ---- refuse to test or push a tree that isn't what would be pushed --------
   # `git push` only ever sends committed history. If codex was SIGINT'd mid-edit
@@ -299,7 +322,7 @@ main() {
   # that tree and then pushing head_after would advertise a green gate for code
   # that was never actually tested. Check this before the no-op comparison below,
   # since a dirty tree can coexist with head_before == head_after too.
-  if [[ -n "$(git -C "$WORK_DIR" status --porcelain)" ]]; then
+  if [[ -n "$(cd "$WORK_DIR" && git status --porcelain)" ]]; then
     exit_reason="dirty-tree-after-codex"
     log "ERROR: working tree has uncommitted changes after codex exited (status $codex_exit)."
     log "       Refusing to build/test/push a tree that is not what would be pushed."
@@ -327,7 +350,7 @@ main() {
     exit 0
   fi
 
-  commits_made="$(git -C "$WORK_DIR" rev-list --count "$head_before..$head_after")"
+  commits_made="$(cd "$WORK_DIR" && git rev-list --count "$head_before..$head_after")"
   log "codex made $commits_made commit(s)"
 
   # ---- gate before pushing: build + test ----------------------------------
@@ -359,7 +382,7 @@ main() {
   # gate above; re-check it immediately before the one command that
   # publishes anything, so nothing can slip in between validation and push.
   local head_at_push
-  head_at_push="$(git -C "$WORK_DIR" rev-parse HEAD)"
+  head_at_push="$(cd "$WORK_DIR" && git rev-parse HEAD)"
   if [[ "$head_at_push" != "$head_after" ]]; then
     exit_reason="head-changed-before-push"
     log "ERROR: HEAD moved between gate ($head_after) and push ($head_at_push) — refusing to push."
@@ -416,7 +439,7 @@ open_pr_for_branch() {
     fi
     echo
     echo "Commits:"
-    git -C "$work_dir" log --pretty='- %s' "origin/$base_branch..$branch"
+    (cd "$work_dir" && git log --pretty='- %s' "origin/$base_branch..$branch")
   } >>"$pr_body_file"
 
   local result
@@ -486,7 +509,7 @@ push_with_retry() {
   err_file="$(mktemp)"
 
   while true; do
-    if git -C "$work_dir" push -u origin "$branch" >"$err_file" 2>&1; then
+    if (cd "$work_dir" && git push -u origin "$branch") >"$err_file" 2>&1; then
       cat "$err_file" >>"$log_file"
       rm -f "$err_file"
       return 0
