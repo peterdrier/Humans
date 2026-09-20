@@ -1,7 +1,9 @@
 using AwesomeAssertions;
 using Humans.Gdpr.Contracts;
 using Humans.Gdpr.Services;
+using Humans.Testing;
 using Humans.Users.Contracts;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -18,11 +20,15 @@ public class GdprServiceTests
 
     private static GdprService CreateService(
         IUserServiceRead? users, params IUserDataContributor[] contributors) =>
+        CreateService(users, NullLogger<GdprService>.Instance, contributors);
+
+    private static GdprService CreateService(
+        IUserServiceRead? users, ILogger<GdprService> logger, params IUserDataContributor[] contributors) =>
         new(
             contributors,
             users ?? Substitute.For<IUserServiceRead>(),
             new FakeClock(FixedNow),
-            NullLogger<GdprService>.Instance);
+            logger);
 
     /// <summary>
     /// Stubs the one read the orchestrator makes: every id in <paramref name="mergedFrom"/>
@@ -179,15 +185,23 @@ public class GdprServiceTests
     }
 
     [HumansFact]
-    public async Task ExportForUserAsync_FailsLoudlyWhenExportedSectionHasNoErasureDeclaration()
+    public async Task ExportForUserAsync_LogsAndContinuesWhenExportedSectionHasNoErasureDeclaration()
     {
-        var service = CreateService(new UndeclaredErasureContributor());
+        var logger = new CapturingLogger<GdprService>();
+        var service = CreateService(
+            users: null,
+            logger,
+            new UndeclaredErasureContributor(),
+            new FakeContributor("Consents", new { Document = "Code of Conduct" }));
 
-        var act = async () => await service.ExportForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var export = await service.ExportForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Profile*")
-            .WithMessage("*UndeclaredErasureContributor*");
+        export.Sections.Should().ContainKey("Profile", "the undeclared slice is still the person's data");
+        export.Sections.Should().ContainKey("Consents", "other contributors still complete");
+        logger.Entries.Should().Contain(e =>
+            e.Level == LogLevel.Error &&
+            e.Message.Contains("Profile") &&
+            e.Message.Contains("UndeclaredErasureContributor"));
     }
 
     private sealed class UndeclaredErasureContributor : IUserDataContributor

@@ -57,10 +57,6 @@ internal sealed class GdprService(
                         "GDPR export section {SectionName} from contributor {Contributor} has no erasure declaration",
                         slice.SectionName,
                         contributor.GetType().Name);
-                    throw new InvalidOperationException(
-                        $"Contributor {contributor.GetType().Name} exports '{slice.SectionName}' but its " +
-                        "ErasureDeclaration has no entry for that key — every exported section must be " +
-                        "accounted for under Article 17.");
                 }
 
                 if (slice.Data is null)

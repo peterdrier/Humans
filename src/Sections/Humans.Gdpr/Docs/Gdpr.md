@@ -128,8 +128,8 @@ calls `EraseForUserAsync` per merge-chain id from the deletion paths.
   and register the forwarding factory beside that service — the DI
   architecture test discovers the new contributor by reflection, no list to
   update. The new constants must also appear in that contributor's
-  `ErasureDeclaration` or `GdprService.ExportForUserAsync` throws at export
-  time.
+  `ErasureDeclaration` or `GdprService.ExportForUserAsync` logs an error and
+  continues at export time.
 
 ## Cross-Section Dependencies
 

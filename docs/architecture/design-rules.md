@@ -311,7 +311,7 @@ Every section whose owned tables hold per-user rows MUST implement `IUserDataCon
 Adding a new user-scoped section to §8 above requires three coupled steps — all three, in any order, before the PR can land:
 
 1. Declare the section-name constant(s) on the owning contributor class itself — there is no central registry (`Humans.Gdpr.Contracts` keeps only the generic interfaces and DTOs).
-2. Make the owning service implement `IUserDataContributor` and return its own slice. A contributor reads only its own section's tables — cross-section data flows through other contributors, not through `Include` chains. Collection slices must always return the shaped list (empty when the user has no records); `null` data is reserved for single-object sections whose entity doesn't exist for this user. Every returned section name must also be a key of that contributor's `ErasureDeclaration` — `GdprService.ExportForUserAsync` throws otherwise.
+2. Make the owning service implement `IUserDataContributor` and return its own slice. A contributor reads only its own section's tables — cross-section data flows through other contributors, not through `Include` chains. Collection slices must always return the shaped list (empty when the user has no records); `null` data is reserved for single-object sections whose entity doesn't exist for this user. Every returned section name must also be a key of that contributor's `ErasureDeclaration` — `GdprService.ExportForUserAsync` logs an error and continues otherwise.
 3. Register the service in the section's own `Section.cs`, using the forwarding pattern so the same scoped instance serves both the primary interface and `IUserDataContributor`:
 
    ```csharp

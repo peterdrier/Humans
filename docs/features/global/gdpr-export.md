@@ -219,9 +219,9 @@ Adding a new section:
    is always present as `[]`, never omitted. Return `null` data
    only for single-object sections whose underlying entity doesn't exist for
    this user (for example, a profileless account has no `Profile`). The
-   orchestrator drops only `null` slices from the export, and throws at export
-   time if a returned section name isn't also a key of that same contributor's
-   `ErasureDeclaration`.
+   orchestrator drops only `null` slices from the export, and logs an error
+   and continues if a returned section name isn't also a key of that same
+   contributor's `ErasureDeclaration`.
 3. Register the forwarding factory in the owning section's own
    `Section.Register` — it belongs beside the rest of that section's DI setup,
    not in a shared registration file:
@@ -250,8 +250,9 @@ category without accounting for its deletion:
   MailerLite's). `null` means erased or anonymized in full; a string names
   what survives and the lawful basis for keeping it. It must not touch
   instance state, the DbContext or the clock: the architecture test reads it
-  from an uninitialized instance. `GdprService.ExportForUserAsync` throws if a
-  contributor exports a key this table doesn't cover.
+  from an uninitialized instance. `GdprService.ExportForUserAsync` logs an
+  error and continues if a contributor exports a key this table doesn't
+  cover.
 - `EraseForUserAsync(userId, ct)` — idempotent, because the job retries the
   whole cascade the next day after a mid-cascade failure.
 - `ErasesLast` — `true` for the one contributor that owns the person's
