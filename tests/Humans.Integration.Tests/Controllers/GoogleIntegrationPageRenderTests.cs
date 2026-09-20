@@ -37,9 +37,8 @@ public class GoogleIntegrationPageRenderTests(HumansTestDatabase database) : Int
     private static readonly string[] AdminPages =
     [
         "/Google",
-        // /Google/SyncSettings is deliberately absent: it now redirects to
-        // /Settings#google-sync for every viewer (peterdrier/Humans#1634), admin included,
-        // so it belongs with the redirect-only routes below, not the render check.
+        // /Google/SyncSettings is deliberately absent: its GET is removed
+        // (peterdrier/Humans#1634) — the form now lives only at /Settings#google-sync.
         "/Google/Sync",
         "/Google/AllGroups",
         "/Google/Accounts",
@@ -161,7 +160,7 @@ public class GoogleIntegrationPageRenderTests(HumansTestDatabase database) : Int
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 
-        var response = await Client.GetAsync("/Google/SyncSettings", ct);
+        var response = await Client.GetAsync("/Google/AllGroups", ct);
 
         response.StatusCode.Should().Be(HttpStatusCode.Redirect,
             "AdminOnly in Shell must still gate the section's controller");

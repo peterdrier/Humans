@@ -35,9 +35,9 @@ app-wide event calendar and "which cycle is active" (nobodies-collective/Humans#
   contributor already references to opt in, not on Base). This section contributes
   the **Event** tab (`/Settings#event`), which wraps the `/Settings/Admin` form: editable
   for `PolicyNames.AdminOnly`, read-only (event name, gate date, build/event/strike
-  windows as text) for every other authenticated member. `/Settings/Admin` itself now
-  redirects there — a GET is a redirect, not a second live page
-  (`memory/product/no-url-aliases.md`); the POST is unchanged. Reached from the signed-in
+  windows as text) for every other authenticated member. `/Settings/Admin` has no GET —
+  it removed the redirect-only page (`memory/product/no-url-aliases.md`); only the POST
+  remains, saving back to `/Settings#event`. Reached from the signed-in
   user menu via the `user-menu` chrome slot (`SectionChrome` → `SettingsUserMenuViewComponent`),
   since nothing else links to it. Its member-facing strings live in `SettingsResource`,
   including the empty state (`Settings_NoTabs`); `/Settings/Admin` stays admin-exempt
@@ -134,7 +134,7 @@ Both admin controllers are `PolicyNames.AdminOnly` (pinned in
 
 ## Negative Access Rules
 
-- A GET to `/Settings/Admin` redirects everyone, admin or not, to `/Settings#event`.
+- `/Settings/Admin` has no GET; it 404s for everyone, admin or not.
 - A non-admin **cannot** edit the Event tab: they get the read-only rendering
   (no `<form>`, no submit button, no inputs to POST), and a POST to
   `SettingsAdminController` still requires `PolicyNames.AdminOnly` regardless of

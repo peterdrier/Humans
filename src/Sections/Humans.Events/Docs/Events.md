@@ -156,7 +156,7 @@ Unique constraint on (UserId, GuideEventId, DayOffset) with `NULLS NOT DISTINCT`
 | `EventsModerationController` | `/Events/Moderate/` | EventsAdmin, Admin |
 | `EventsDashboardController` | `/Events/Dashboard/` | EventsAdmin, Admin |
 | `EventsExportController` | `/Events/Export/` | EventsAdmin, Admin |
-| `EventsAdminController` | `/Events/Admin/` | EventsAdmin, Admin — `Settings` GET redirects to `/Settings#event-guide` (peterdrier/Humans#1634) |
+| `EventsAdminController` | `/Events/Admin/` | EventsAdmin, Admin — `Settings` GET removed; form lives at `/Settings#event-guide` (peterdrier/Humans#1634) |
 | `EventsApiController` | `/api/events/` | Public (CORS) + authenticated same-origin |
 
 ## Actors & Roles

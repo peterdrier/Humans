@@ -172,10 +172,12 @@ public class AgentPageRenderTests(HumansTestDatabase database) : IntegrationTest
         var urls = new[]
         {
             "/Agent/Admin/Status",
-            "/Agent/Admin/Settings",
             "/Agent/Conversations",
             $"/Agent/Conversations/{conversationId}",
         };
+
+        // /Agent/Admin/Settings is deliberately absent: its GET is removed
+        // (peterdrier/Humans#1634) — the form now lives only at /Settings#agent.
 
         // /Agent/Admin/Conversations/{id}/Prompt is deliberately absent: it rebuilds the preload
         // corpus, which fetches every section guide from GitHub over the network. Including it

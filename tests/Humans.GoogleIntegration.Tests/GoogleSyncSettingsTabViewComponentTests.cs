@@ -12,7 +12,7 @@ namespace Humans.GoogleIntegration.Tests;
 
 /// <summary>
 /// The /Settings#google-sync tab body (peterdrier/Humans#1634) — the same mapping
-/// GoogleController.SyncSettings used to build before that GET became a redirect.
+/// GoogleController.SyncSettings used to build before that GET was removed.
 /// </summary>
 public sealed class GoogleSyncSettingsTabViewComponentTests
 {

@@ -21,14 +21,6 @@ internal sealed class EventsAdminController(IEventService guide, ILogger<EventsA
 {
     // ─── Settings ────────────────────────────────────────────
 
-    /// <summary>
-    /// Superseded by the /Settings#event-guide tab (peterdrier/Humans#1634) — one
-    /// canonical URL per page, so a GET here always redirects there. The form's data
-    /// assembly lives in <c>EventGuideSettingsTabViewComponent</c> now.
-    /// </summary>
-    [HttpGet("Settings")]
-    public IActionResult Settings() => Redirect("/Settings#event-guide");
-
     [HttpPost("Settings")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveSettings(GuideSettingsViewModel model)
@@ -36,7 +28,7 @@ internal sealed class EventsAdminController(IEventService guide, ILogger<EventsA
         if (!ModelState.IsValid)
         {
             model.AvailableEventSettings = await BuildEventSettingsOptionsAsync();
-            return View(nameof(Settings), model);
+            return View("Settings", model);
         }
 
         var eventSettings = await guide.GetEventSettingsByIdAsync(model.EventSettingsId);
@@ -44,7 +36,7 @@ internal sealed class EventsAdminController(IEventService guide, ILogger<EventsA
         {
             ModelState.AddModelError(nameof(model.EventSettingsId), "Selected event edition not found.");
             model.AvailableEventSettings = await BuildEventSettingsOptionsAsync();
-            return View(nameof(Settings), model);
+            return View("Settings", model);
         }
 
         try
@@ -59,14 +51,14 @@ internal sealed class EventsAdminController(IEventService guide, ILogger<EventsA
 
             logger.LogInformation("Guide settings saved for event {EventSettingsId}", model.EventSettingsId);
             SetSuccess("Guide settings saved.");
-            return RedirectToAction(nameof(Settings));
+            return Redirect("/Settings#event-guide");
         }
         catch (InvalidOperationException ex)
         {
             logger.LogError(ex, "Failed to save guide settings for EventSettingsId {EventSettingsId}", model.EventSettingsId);
             ModelState.AddModelError("", ex.Message);
             model.AvailableEventSettings = await BuildEventSettingsOptionsAsync();
-            return View(nameof(Settings), model);
+            return View("Settings", model);
         }
     }
 

@@ -82,7 +82,6 @@ public class EndpointAuthorizationTests
         { SectionType("Humans.Monitor.Controllers.MonitorController"), "CheckDriveActivity", "BoardOrAdmin" },
         { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "Resource", "BoardOrAdmin" },
         { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "Human", "HumanAdminBoardOrAdmin" },
-        { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "SyncSettings", "AdminOnly" },
         { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "UpdateSyncSetting", "AdminOnly" },
         { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "SyncSystemTeams", "AdminOnly" },
         { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "SyncResults", "AdminOnly" },
@@ -127,7 +126,6 @@ public class EndpointAuthorizationTests
     // --- Google admin endpoints must require Admin ---
 
     [HumansTheory]
-    [InlineData("SyncSettings")]
     [InlineData("UpdateSyncSetting")]
     [InlineData("SyncSystemTeams")]
     [InlineData("SyncResults")]

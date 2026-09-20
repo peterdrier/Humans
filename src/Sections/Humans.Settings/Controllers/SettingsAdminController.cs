@@ -24,17 +24,6 @@ internal sealed class SettingsAdminController(
     ISettingsWriteService settingsService,
     IUserServiceRead userService) : HumansControllerBase(userService)
 {
-    /// <summary>
-    /// Superseded by the <c>/Settings#event</c> tab (peterdrier/Humans#1628) — one
-    /// canonical URL per page (memory/product/no-url-aliases.md), so a GET here always
-    /// redirects there rather than staying a second live page. <paramref name="id"/> is
-    /// forwarded as <c>?event={id}</c> so a link or save naming a specific (possibly
-    /// inactive) row still lands on that row, not on whichever one is active.
-    /// </summary>
-    [HttpGet("")]
-    public IActionResult Index(Guid? id) =>
-        Redirect(id is { } rowId ? $"/Settings?event={rowId}#event" : "/Settings#event");
-
     [HttpPost("")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Index(EventSettingsViewModel model, CancellationToken ct = default)
@@ -68,6 +57,6 @@ internal sealed class SettingsAdminController(
 
         SetSuccess("Event settings saved.");
         // By id, not bare: deactivating the row takes it off the default GET.
-        return RedirectToAction(nameof(Index), new { id = parsed.Settings!.Id });
+        return Redirect($"/Settings?event={parsed.Settings!.Id}#event");
     }
 }

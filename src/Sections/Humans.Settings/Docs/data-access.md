@@ -64,10 +64,10 @@ through `EventCalendarResolver` wrapping this section's `ISettingsService`.
 row), `Inactive`, `Deleted`. Deleting is a status change, never a row removal —
 other sections store the row's `Id`.
 
-`/Settings/Admin` is the section's own admin screen for the app-wide event
-values. `GET` takes an optional `id` (defaulting to the active row); `POST`
-redirects back with that id so a row the operator just deactivated stays
-reachable. Leaving the id blank on save mints a brand-new cycle
+`/Settings/Admin` POST is the section's own write for the app-wide event
+values (no GET — the form lives on the `/Settings#event` tab); it redirects
+back to that tab with the saved id so a row the operator just deactivated
+stays reachable. Leaving the id blank on save mints a brand-new cycle
 (nobodies-collective/Humans#1631) — the only birth path for a `settings_event`
 row.
 
