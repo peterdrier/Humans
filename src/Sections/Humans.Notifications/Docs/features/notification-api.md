@@ -1,28 +1,21 @@
-# Notifications API
+# Notifications machine API
 
-`GET /api/notifications` exposes one configured human's unread notification inbox and live
-meters to an operator-managed external consumer. It is read-only: polling never marks a row
-read, dismisses it, or resolves it.
+`GET /api/backdoor/notifications` returns the key owner's unread notification inbox and live
+meters to an agent polling on their behalf. It is read-only: polling never marks a row read,
+dismisses it, or resolves it.
 
-## Configuration
-
-Set both values under `NotificationApi` (environment variables use
-`NotificationApi__ApiKey` and `NotificationApi__UserId`):
-
-- `ApiKey` — the secret presented in the `X-Api-Key` request header.
-- `UserId` — the Humans user whose inbox and role-scoped meters the API returns.
-
-The endpoint returns `401 Unauthorized` when the header is missing or wrong, either setting is
-empty or invalid, the configured user does not exist, or the configured user is a tombstone.
+The endpoint lives in Backdoor, like every key-authed API: a personal Backdoor key
+(`X-Api-Key`, issued at `/Backdoor` to an Admin or Board member) authenticates as its owner,
+and a missing, unknown or revoked key is a 401. Notifications contributes only the read
+surface, `INotificationInboxRead` (`Contracts/`). Key lifecycle and eligibility are
+documented in [Backdoor](../../../Humans.Backdoor/Docs/Backdoor.md).
 
 ## Request
 
 ```http
-GET /api/notifications
-X-Api-Key: configured-secret
+GET /api/backdoor/notifications
+X-Api-Key: <personal key>
 ```
-
-No cookie or anti-forgery token is required. There are no write endpoints.
 
 ## Response
 
@@ -49,5 +42,5 @@ No cookie or anti-forgery token is required. There are no write endpoints.
 }
 ```
 
-Notifications are newest first. Meters use the configured user's active roles and are ordered
-by priority. Empty collections are returned as `[]`.
+Notifications are the owner's unread, unresolved rows, newest first. Meters follow the
+owner's active roles and are ordered by priority. Empty collections are returned as `[]`.

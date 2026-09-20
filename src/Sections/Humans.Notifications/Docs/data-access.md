@@ -72,6 +72,13 @@ Cross-section calls via `IUserServiceRead`, `IGoogleSyncServiceRead`,
 `ICampServiceRead`. **No direct DB access** — every counter fans out
 through an owning-service interface call.
 
+### NotificationInboxRead (Scoped)
+
+No repository. Implements `INotificationInboxRead` (`Contracts/`), the
+snapshot Backdoor serves at `/api/backdoor/notifications`: the unread tab
+of `NotificationInboxService.GetInboxAsync` plus
+`NotificationMeterProvider.GetMetersForUserAsync`, both same-section.
+
 ---
 
 
