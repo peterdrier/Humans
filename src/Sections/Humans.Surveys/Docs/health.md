@@ -59,10 +59,14 @@ Written fresh, not as today's layout with fixes.
 - **Authoring is open, sending is not.** The admin controller's class policy is app access, and
   the Board-only verbs carry their own policy; the index is scoped to what the viewer authored.
   The service, not the view, decides who sees which surveys.
-- **A resource handler holds the per-survey rules, the service holds the same rules again.** The
-  handler is the browser's copy — it decides whether to render a button; the service is the
-  enforcing copy and refuses regardless. Neither is redundant: one is a view concern, one is the
-  invariant.
+- **A resource handler holds the per-survey rules, and the service holds them again for the
+  operations that change status.** The handler is the browser's copy — it decides whether to
+  render a button; the service is the enforcing copy and refuses regardless. Neither is redundant:
+  one is a view concern, one is the invariant. Today that second copy is partial — Submit checks
+  the author, Approve and Reject check Board/Admin, and the admin list scopes itself, but
+  `UpdateCoreAsync` takes `actorUserId` only to audit with and never compares it to
+  `CreatedByUserId`. Editing someone else's Draft is refused by the controller's handler call
+  alone, so this line is where the section is going, not where it is.
 - **One page flow.** Both entry paths differ only in how the session is keyed and where the
   redirects land; that difference is one small route record, and everything else is shared.
 - **Pure helpers hold the rules that can be decided without the database**: branch visibility,
@@ -103,10 +107,13 @@ the line that enforces it.
   recounts always are**: the lifecycle writes sit at
   `src/Sections/Humans.Surveys/Services/SurveyService.cs:537`, `:547`, `:767` and `:861`, and the
   submit path at `:1161`–`:1218` has no `auditLog` call at all.
-- **Preview creates nothing** — no invitation, response, draft, reminder or funnel event. The
-  preview actions build view models and never call a writing service method:
+- **Preview writes nothing to this section's tables** — no invitation, response, draft, reminder
+  or funnel event. The rendering previews build view models and call no writing service method:
   `src/Sections/Humans.Surveys/Controllers/SurveyAdminController.cs:235` through
-  `src/Sections/Humans.Surveys/Models/SurveyPageViewModelFactory.cs:27`.
+  `src/Sections/Humans.Surveys/Models/SurveyPageViewModelFactory.cs:27`. The one preview action
+  that writes anywhere is send-preview-to-self, which queues a single email to the requester
+  through the Email crosscut and still creates no Surveys row
+  (`src/Sections/Humans.Surveys/Services/SurveyPreviewEmailService.cs:44`).
 - **A submitted survey leaves PendingApproval only through approval or rejection.** A Draft is
   submitted by its author and by nobody else
   (`src/Sections/Humans.Surveys/Services/SurveyService.cs:597`); once pending it cannot be opened
