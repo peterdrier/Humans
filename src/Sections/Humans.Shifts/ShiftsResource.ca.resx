@@ -1070,7 +1070,7 @@
     <value>El teu missatge</value>
   </data>
   <data name="EmailRota_MessageHelp" xml:space="preserve">
-    <value>Nom&#xE9;s text sense format. Cada destinatari veur&#xE0; aquest missatge juntament amb la seva pr&#xF2;pia llista de franges d'aquest torn.</value>
+    <value>Cada destinatari veur&#xE0; aquest missatge juntament amb la seva pr&#xF2;pia llista de franges d'aquest torn.</value>
   </data>
   <data name="EmailRota_Button" xml:space="preserve">
     <value>Enviar correu a un torn</value>
@@ -1103,7 +1103,7 @@
     <value>El teu missatge</value>
   </data>
   <data name="EmailTeamRotas_MessageHelp" xml:space="preserve">
-    <value>Nom&#xE9;s text sense format. Cada destinatari veur&#xE0; aquest missatge juntament amb la seva pr&#xF2;pia llista de franges en els propers torns de l'equip.</value>
+    <value>Cada destinatari veur&#xE0; aquest missatge juntament amb la seva pr&#xF2;pia llista de franges en els propers torns de l'equip.</value>
   </data>
   <data name="EmailTeamRotas_Send" xml:space="preserve">
     <value>Enviar a {0} destinatari(s)</value>

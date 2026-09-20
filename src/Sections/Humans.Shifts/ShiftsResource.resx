@@ -346,7 +346,7 @@
   <data name="EmailRota_RecipientsHeading" xml:space="preserve"><value>Recipients ({0})</value><comment>{0} = recipient count</comment></data>
   <data name="EmailRota_NoRecipients" xml:space="preserve"><value>No one is signed up to this rota yet.</value></data>
   <data name="EmailRota_MessageLabel" xml:space="preserve"><value>Your message</value></data>
-  <data name="EmailRota_MessageHelp" xml:space="preserve"><value>Plain text only. Each recipient will see this body plus their own shift list on this rota.</value></data>
+  <data name="EmailRota_MessageHelp" xml:space="preserve"><value>Each recipient will see this body plus their own shift list on this rota.</value></data>
   <data name="EmailRota_Button" xml:space="preserve"><value>Email a rota</value></data>
   <data name="EmailRota_Send" xml:space="preserve"><value>Send to {0} recipient(s)</value><comment>{0} = recipient count</comment></data>
   <data name="EmailRota_NoActiveSignups" xml:space="preserve"><value>This rota has no active signups to email.</value></data>
@@ -357,7 +357,7 @@
   <data name="EmailTeamRotas_RotaCount" xml:space="preserve"><value>across {0} rota(s)</value><comment>{0} = rota count</comment></data>
   <data name="EmailTeamRotas_NoRecipients" xml:space="preserve"><value>No one is signed up to this team's upcoming rotas yet.</value></data>
   <data name="EmailTeamRotas_MessageLabel" xml:space="preserve"><value>Your message</value></data>
-  <data name="EmailTeamRotas_MessageHelp" xml:space="preserve"><value>Plain text only. Each recipient will see this body plus their own shift list across the team's upcoming rotas.</value></data>
+  <data name="EmailTeamRotas_MessageHelp" xml:space="preserve"><value>Each recipient will see this body plus their own shift list across the team's upcoming rotas.</value></data>
   <data name="EmailTeamRotas_Send" xml:space="preserve"><value>Send to {0} recipient(s)</value><comment>{0} = recipient count</comment></data>
   <data name="Shifts_SignupDisabledTooltip_MissingDietary" xml:space="preserve"><value>Tell us your food needs first.</value></data>
   <data name="Shifts_SetupClosedBadge" xml:space="preserve"><value>Set-up closed</value></data>

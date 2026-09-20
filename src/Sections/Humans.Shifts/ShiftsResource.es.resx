@@ -1068,7 +1068,7 @@
     <value>Tu mensaje</value>
   </data>
   <data name="EmailRota_MessageHelp" xml:space="preserve">
-    <value>Solo texto sin formato. Cada destinatario ver&#xE1; este mensaje junto con su propia lista de franjas de este turno.</value>
+    <value>Cada destinatario ver&#xE1; este mensaje junto con su propia lista de franjas de este turno.</value>
   </data>
   <data name="EmailRota_Button" xml:space="preserve">
     <value>Enviar correo a un turno</value>
@@ -1101,7 +1101,7 @@
     <value>Tu mensaje</value>
   </data>
   <data name="EmailTeamRotas_MessageHelp" xml:space="preserve">
-    <value>Solo texto sin formato. Cada destinatario ver&#xE1; este mensaje junto con su propia lista de franjas en los pr&#xF3;ximos turnos del equipo.</value>
+    <value>Cada destinatario ver&#xE1; este mensaje junto con su propia lista de franjas en los pr&#xF3;ximos turnos del equipo.</value>
   </data>
   <data name="EmailTeamRotas_Send" xml:space="preserve">
     <value>Enviar a {0} destinatario(s)</value>

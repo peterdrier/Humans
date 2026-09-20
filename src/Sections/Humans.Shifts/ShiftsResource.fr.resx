@@ -1070,7 +1070,7 @@
     <value>Votre message</value>
   </data>
   <data name="EmailRota_MessageHelp" xml:space="preserve">
-    <value>Texte brut uniquement. Chaque destinataire verra ce message ainsi que sa propre liste de cr&#xE9;neaux pour ce roulement.</value>
+    <value>Chaque destinataire verra ce message ainsi que sa propre liste de cr&#xE9;neaux pour ce roulement.</value>
   </data>
   <data name="EmailRota_Button" xml:space="preserve">
     <value>Envoyer un e-mail &#xE0; un roulement</value>
@@ -1103,7 +1103,7 @@
     <value>Votre message</value>
   </data>
   <data name="EmailTeamRotas_MessageHelp" xml:space="preserve">
-    <value>Texte brut uniquement. Chaque destinataire verra ce message ainsi que sa propre liste de cr&#xE9;neaux dans les prochains roulements de l'&#xE9;quipe.</value>
+    <value>Chaque destinataire verra ce message ainsi que sa propre liste de cr&#xE9;neaux dans les prochains roulements de l'&#xE9;quipe.</value>
   </data>
   <data name="EmailTeamRotas_Send" xml:space="preserve">
     <value>Envoyer &#xE0; {0} destinataire(s)</value>
