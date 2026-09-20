@@ -28,6 +28,10 @@ internal sealed class RideshareService(
     IClock clock,
     ILogger<RideshareService> logger) : IRideshareService
 {
+    internal const string RideshareTrips = "RideshareTrips";
+    internal const string RideshareRequests = "RideshareRequests";
+    internal const string RideshareInterests = "RideshareInterests";
+
     private const string MineUrl = "/Rideshare/Mine";
     private const string MineLabel = "Open Rideshare";
     private const string FallbackName = "A human";
@@ -374,7 +378,7 @@ internal sealed class RideshareService(
         // derived from the exported place + waypoints and is provider output, not their data.
         return
         [
-            new UserDataSlice(GdprExportSections.RideshareTrips, trips
+            new UserDataSlice(RideshareTrips, trips
                 .OrderBy(t => t.CreatedAt)
                 .Select(t => new
                 {
@@ -401,7 +405,7 @@ internal sealed class RideshareService(
                     CreatedAt = t.CreatedAt.ToIso8601(),
                     UpdatedAt = t.UpdatedAt.ToIso8601(),
                 }).ToList()),
-            new UserDataSlice(GdprExportSections.RideshareRequests, requests
+            new UserDataSlice(RideshareRequests, requests
                 .OrderBy(r => r.CreatedAt)
                 .Select(r => new
                 {
@@ -420,7 +424,7 @@ internal sealed class RideshareService(
                     CreatedAt = r.CreatedAt.ToIso8601(),
                     UpdatedAt = r.UpdatedAt.ToIso8601(),
                 }).ToList()),
-            new UserDataSlice(GdprExportSections.RideshareInterests, interests
+            new UserDataSlice(RideshareInterests, interests
                 .OrderBy(i => i.CreatedAt)
                 .Select(i => new
                 {

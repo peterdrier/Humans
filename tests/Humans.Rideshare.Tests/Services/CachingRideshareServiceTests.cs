@@ -131,7 +131,7 @@ public sealed class CachingRideshareServiceTests
     public async Task ContributeForUser_ForwardsToTheInner()
     {
         var userId = Guid.NewGuid();
-        IReadOnlyList<UserDataSlice> slices = [new UserDataSlice(GdprExportSections.RideshareTrips, new List<object>())];
+        IReadOnlyList<UserDataSlice> slices = [new UserDataSlice(RideshareService.RideshareTrips, new List<object>())];
         _inner.ContributeForUserAsync(userId, Arg.Any<CancellationToken>()).Returns(slices);
 
         (await _service.ContributeForUserAsync(userId, Ct)).Should().BeSameAs(slices);

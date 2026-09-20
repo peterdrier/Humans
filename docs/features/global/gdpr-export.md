@@ -98,9 +98,8 @@ is the type that carries `ErasureDeclaration`.
 **The Article 17 roster is one wider than this table.** `MailerLiteGdprContributor`
 (`src/Sections/Humans.MailerLite/Services/MailerLiteGdprContributor.cs`) is registered as a
 contributor and returns no slices, so it has no row and never appears in an export; its
-erasure deletes the person's MailerLite subscriber outright, declared under
-`GdprExportSections.MailerLiteSubscriber`. Auditing the deletion fan-out means this table
-plus that one.
+erasure deletes the person's MailerLite subscriber outright, declared under its own
+`MailerLiteSubscriber` key. Auditing the deletion fan-out means this table plus that one.
 
 ### Why sequential fan-out (not `Task.WhenAll`)
 
@@ -118,13 +117,14 @@ completes well under a second, so parallelism would buy nothing measurable. The
 loop in `GdprService.ExportForUserAsync` could be made parallel in place
 without changing the contract — there is just no reason to.
 
-## Section registry
+## Section names
 
-Section names are defined as constants in
-`Humans.Gdpr.Contracts.GdprExportSections`. Renaming a value is a
-breaking change for any human who has previously downloaded their export and
-expects the same JSON keys on a re-download. Add new sections; don't rename
-existing ones.
+Each contributor declares its own section-name constants, kept beside the
+class that uses them — there is no central registry. A section name is
+whatever a contributor chooses for its slice; it must be unique across
+contributors. The export format is not a spec — it changes as contributors
+change, and nothing outside this codebase reads it — so renaming a key is an
+ordinary change, not a breaking one.
 
 ## JSON output shape
 
@@ -209,16 +209,19 @@ All instants are serialized as invariant ISO-8601 strings (e.g.
 
 Adding a new section:
 
-1. Add the section name constant to `GdprExportSections`.
+1. Declare the section-name constant on the owning contributor class itself
+   (a `const string`, or `internal const string` where the type stays
+   internal).
 2. Make the owning service implement `IUserDataContributor`. Return a
    `UserDataSlice(sectionName, data)` with shape documented in a new table row
    above. **Null semantics:** for collection sections, always return the shaped
-   collection (an empty list when the user has no records) — the legacy
-   `ExportDataAsync` JSON shape always emitted collection top-level keys as
-   `[]`, and downstream consumers depend on that stability. Return `null` data
+   collection (an empty list when the user has no records) — a collection key
+   is always present as `[]`, never omitted. Return `null` data
    only for single-object sections whose underlying entity doesn't exist for
    this user (for example, a profileless account has no `Profile`). The
-   orchestrator drops only `null` slices from the export.
+   orchestrator drops only `null` slices from the export, and logs an error
+   and continues if a returned section name isn't also a key of that same
+   contributor's `ErasureDeclaration`.
 3. Register the forwarding factory in the owning section's own
    `Section.Register` — it belongs beside the rest of that section's DI setup,
    not in a shared registration file:
@@ -229,16 +232,11 @@ Adding a new section:
    services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<MyNewService>());
    ```
 
-4. Add the concrete type to
-   `GdprExportDependencyInjectionTests.ExpectedContributorTypes` so the
-   architecture test asserts the new contributor is accounted for.
-
-The architecture test scans `Humans.Web` (the host assembly, successor to the
-deleted `Humans.Infrastructure`) plus every section assembly via
-`SectionDiscoveryExtensions`, and fails the build if a new class implements
-`IUserDataContributor` there without being added to the expected list, and
-fails if an expected contributor isn't wired in DI — so the export can't
-silently drop a category.
+`GdprExportDependencyInjectionTests` discovers contributors by reflection over
+`Humans.Web` (the host assembly, successor to the deleted `Humans.Infrastructure`)
+plus every section assembly via `SectionDiscoveryExtensions` — no type list to
+update — and fails the build if a discovered contributor isn't wired in DI, so
+the export can't silently drop a category.
 
 ## Right to deletion (Article 17)
 
@@ -247,13 +245,19 @@ Erasure runs through the same fan-out, over the same interface
 members alongside `ContributeForUserAsync`, so a section cannot export a
 category without accounting for its deletion:
 
-- `ErasureDeclaration` — a **static** table, one entry per `GdprExportSections`
-  key the contributor owns. `null` means erased or anonymized in full; a string
-  names what survives and the lawful basis for keeping it. It must not touch
+- `ErasureDeclaration` — a **static** table, one entry per section-name key
+  the contributor owns (export keys plus any erasure-only key, e.g.
+  MailerLite's). `null` means erased or anonymized in full; a string names
+  what survives and the lawful basis for keeping it. It must not touch
   instance state, the DbContext or the clock: the architecture test reads it
-  from an uninitialized instance.
+  from an uninitialized instance. `GdprService.ExportForUserAsync` logs an
+  error and continues if a contributor exports a key this table doesn't
+  cover.
 - `EraseForUserAsync(userId, ct)` — idempotent, because the job retries the
   whole cascade the next day after a mid-cascade failure.
+- `ErasesLast` — `true` for the one contributor that owns the person's
+  identity/account record; defaults to `false`. `GdprService.EraseForUserAsync`
+  orders erasure by this flag, not by naming a specific contributor.
 
 `IAccountDeletionService`
 (`src/Sections/Humans.Users/Services/AccountDeletionService.cs`) still owns the
@@ -261,10 +265,10 @@ category without accounting for its deletion:
 roles immediately — but once the grace period expires the daily
 `ProcessAccountDeletionsJob` runs the fan-out rather than a hand-wired cascade.
 Contributors run sequentially — the same simplicity choice as the export, and
-for the same reason (see "Why sequential fan-out" above); the contributor
-declaring `Account` runs last so sections
-that still need the human's addresses can resolve them, and a contributor that
-throws aborts the run with the deletion markers still set. Erasure also reaches
+for the same reason (see "Why sequential fan-out" above); the contributor with
+`ErasesLast` runs last so sections that still need the human's addresses can
+resolve them, and a contributor that throws aborts the run with the deletion
+markers still set. Erasure also reaches
 the external processors that hold the human: it suspends their `@nobodies.team`
 Workspace account before dropping the Google sync-log rows, and deletes their
 MailerLite subscriber. Both paths keep the address out of anything that
@@ -281,13 +285,12 @@ fan-out and nothing else at the User aggregate: identity collapse belongs to the
 `Account` contributor, so the orchestrator only drops the caches that key off
 identity afterwards.
 
-`tests/Humans.Web.Tests/Services/Gdpr/GdprErasureCoverageTests.cs` is the
-enforcement: it discovers contributors by reflection over the same section
-assemblies the runtime composes itself from, and requires the union of every
-`ErasureDeclaration` to equal the full set of `GdprExportSections` constants,
-with no category claimed twice and no retention left unexplained. Adding a
-user-scoped section adds an export key, and the build stays red until some
-contributor accounts for its erasure.
+Every exported section having an erasure declaration is enforced at runtime by
+`GdprService.ExportForUserAsync` itself (per contributor, not a central list).
+`tests/Humans.Web.Tests/Services/Gdpr/GdprErasureCoverageTests.cs` covers what
+that check can't: it discovers contributors by reflection over the same section
+assemblies the runtime composes itself from, and requires no category be
+claimed twice across the whole roster and no retention be left unexplained.
 
 Append-only entities per `design-rules.md` §12 (`consent_records`, `audit_log`,
 `budget_audit_logs`, `camp_polygon_histories`, `application_state_history`,

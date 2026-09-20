@@ -1,6 +1,7 @@
 using Humans.Base.Attributes;
 using Humans.Auth.Contracts;
 using Humans.Base.Caching;
+using Humans.Gdpr.Contracts;
 using Humans.Governance.Domain;
 using Humans.Governance.Data;
 using Microsoft.Extensions.Caching.Memory;
@@ -9,7 +10,6 @@ using Humans.Governance.Services.Dtos;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
-using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
@@ -42,6 +42,8 @@ internal sealed class ApplicationDecisionService(
     IClock clock,
     ILogger<ApplicationDecisionService> logger) : IApplicationDecisionService, IUserDataContributor, IUserMerge
 {
+    internal const string Applications = "Applications";
+
     private static readonly TimeSpan BadgeCacheDuration = TimeSpan.FromMinutes(2);
 
     public async Task<ApplicationDecisionResult> ApproveAsync(
@@ -666,13 +668,13 @@ internal sealed class ApplicationDecisionService(
             })
         }).ToList();
 
-        return [new UserDataSlice(GdprExportSections.Applications, shaped)];
+        return [new UserDataSlice(Applications, shaped)];
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.Applications] =
+            [Applications] =
                 "Partially retained: the tier, status, term and Board-meeting dates of each " +
                 "application stay as the association's record of its membership decisions " +
                 "(Ley Orgánica 1/2002 Art. 14 — register of members and book of Board acts; " +

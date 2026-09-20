@@ -37,6 +37,10 @@ internal sealed class SurveyService(
     IGoogleTranslationService translation,
     IFileStorage fileStorage) : ISurveyService, ISurveyReminderSender, IUserDataContributor, IUserMerge
 {
+    internal const string SurveyResponses = "SurveyResponses";
+    internal const string AuthoredSurveys = "AuthoredSurveys";
+    internal const string SurveyInvitations = "SurveyInvitations";
+
     private const int InvitationEmailSubjectMaxLength = 200;
     private const int InvitationEmailMessageMaxLength = 4000;
     private const int MaxInformationImages = 5;
@@ -1838,25 +1842,25 @@ internal sealed class SurveyService(
 
         return
         [
-            new UserDataSlice(GdprExportSections.SurveyResponses, shaped),
-            new UserDataSlice(GdprExportSections.AuthoredSurveys, authored),
-            new UserDataSlice(GdprExportSections.SurveyInvitations, invited)
+            new UserDataSlice(SurveyResponses, shaped),
+            new UserDataSlice(AuthoredSurveys, authored),
+            new UserDataSlice(SurveyInvitations, invited)
         ];
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.SurveyResponses] =
+            [SurveyResponses] =
                 "Partially retained: the invitation is deleted and the response is severed from " +
                 "the person (UserId and InvitationId dropped, Anonymity forced to Anonymous), but " +
                 "the answers themselves survive as an anonymous data point in the survey's " +
                 "results — GDPR Art. 17(3)(b). They are no longer attributable to anyone.",
-            [GdprExportSections.AuthoredSurveys] =
+            [AuthoredSurveys] =
                 "Partially retained: the authorship link is dropped and any Board rejection note " +
                 "deleted, but the survey and its questions survive as the association's own " +
                 "record of what it asked — GDPR Art. 17(3)(b).",
-            [GdprExportSections.SurveyInvitations] =
+            [SurveyInvitations] =
                 "Erased: AnonymizeResponsesForUserAsync deletes the person's invitation rows " +
                 "outright, so nothing of this section's record that they were asked survives."
         };

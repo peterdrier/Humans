@@ -42,6 +42,9 @@ internal sealed class AssemblyVoteService(
     ILogger<AssemblyVoteService> logger)
     : IAssemblyVoteService, IUserDataContributor, IUserMerge
 {
+    internal const string AssemblyVotes = "AssemblyVotes";
+    internal const string AssemblyVoteActions = "AssemblyVoteActions";
+
     /// <summary>The recurring job that closes lapsed votes and sends the T-24h reminder.</summary>
     internal const string LapseJobName = "governance-assembly-vote-lapse";
 
@@ -1940,8 +1943,8 @@ internal sealed class AssemblyVoteService(
 
         return
         [
-            new UserDataSlice(GdprExportSections.AssemblyVotes, rows),
-            new UserDataSlice(GdprExportSections.AssemblyVoteActions,
+            new UserDataSlice(AssemblyVotes, rows),
+            new UserDataSlice(AssemblyVoteActions,
                 new { RanVotes = actions, Peeks = peekRows })
         ];
     }
@@ -1954,7 +1957,7 @@ internal sealed class AssemblyVoteService(
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.AssemblyVotes] =
+            [AssemblyVotes] =
                 "Partially retained: the member's roster row is anonymized (the link to the "
                 + "account is removed) but the row and its ballot are kept, because the vote "
                 + "is the association's legal record of an agreement it adopted and the "
@@ -1962,7 +1965,7 @@ internal sealed class AssemblyVoteService(
                 + "(Ley Organica 1/2002 Art. 14; GDPR Art. 17(3)(b) and (e)). After erasure "
                 + "the ballot can no longer be attributed to the person.",
 
-            [GdprExportSections.AssemblyVoteActions] =
+            [AssemblyVoteActions] =
                 "Retained: who drafted, opened or closed a vote, and who looked at a live "
                 + "tally before it closed, are part of the association's record of how the "
                 + "decision was taken — the acta names the closer and the results page "

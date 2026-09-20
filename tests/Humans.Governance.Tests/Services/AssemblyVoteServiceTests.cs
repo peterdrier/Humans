@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
-using Humans.Gdpr.Contracts;
 using Humans.Governance.Domain;
 using Humans.Governance.Services;
 using Humans.Governance.Services.Dtos;
@@ -333,7 +332,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         // The officer is on no roster, so the voting-record slice is empty — without the
         // actor slice their activity would be missing from the export entirely.
         var actions = slices.Should()
-            .ContainSingle(s => s.SectionName == GdprExportSections.AssemblyVoteActions)
+            .ContainSingle(s => s.SectionName == AssemblyVoteService.AssemblyVoteActions)
             .Which.Data;
         var json = System.Text.Json.JsonSerializer.Serialize(actions);
         json.Should().Contain("Opened").And.Contain("Closed");
@@ -360,7 +359,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         var json = System.Text.Json.JsonSerializer.Serialize(
             slices.Single(x => string.Equals(
-                x.SectionName, GdprExportSections.AssemblyVotes, StringComparison.Ordinal)).Data);
+                x.SectionName, AssemblyVoteService.AssemblyVotes, StringComparison.Ordinal)).Data);
         json.Should().MatchRegex("\"CastAt\":\"[0-9]{4}-");
         json.Should().MatchRegex("\"ClosesAt\":\"[0-9]{4}-");
         json.Should().MatchRegex("\"RecordedAt\":\"[0-9]{4}-");
@@ -645,7 +644,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     public void ErasureDeclaration_DeclaresPartialRetentionForAssemblyVotes()
     {
         _fx.Service.ErasureDeclaration.Should().ContainKey(
-            GdprExportSections.AssemblyVotes);
+            AssemblyVoteService.AssemblyVotes);
     }
 
     // ==========================================================================
@@ -1703,7 +1702,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         // data reachable for deletion but invisible to the subject who asked for it.
         var json = System.Text.Json.JsonSerializer.Serialize(
             slices.Single(x => string.Equals(
-                x.SectionName, GdprExportSections.AssemblyVotes, StringComparison.Ordinal)).Data);
+                x.SectionName, AssemblyVoteService.AssemblyVotes, StringComparison.Ordinal)).Data);
         json.Should().Contain("\"Choice\":");
     }
 
@@ -1730,7 +1729,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         // to reach the same officer's record.
         var json = System.Text.Json.JsonSerializer.Serialize(
             slices.Single(x => string.Equals(
-                x.SectionName, GdprExportSections.AssemblyVoteActions, StringComparison.Ordinal)).Data);
+                x.SectionName, AssemblyVoteService.AssemblyVoteActions, StringComparison.Ordinal)).Data);
         json.Should().Contain("Opened").And.Contain("Closed");
     }
 

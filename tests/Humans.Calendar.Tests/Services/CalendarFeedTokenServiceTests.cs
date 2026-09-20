@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Calendar.Data;
 using Humans.Calendar.Domain;
 using Humans.Calendar.Services;
-using Humans.Gdpr.Contracts;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
@@ -123,7 +122,7 @@ public sealed class CalendarFeedTokenServiceTests : IDisposable
         var slices = await _sut.ContributeForUserAsync(_user, Ct);
 
         var slice = slices.Should().ContainSingle().Subject;
-        slice.SectionName.Should().Be(GdprExportSections.CalendarFeedToken);
+        slice.SectionName.Should().Be(CalendarFeedTokenService.CalendarFeedToken);
         System.Text.Json.JsonSerializer.Serialize(slice.Data)
             .Should().Contain("true").And.NotContain(token.ToString());
     }

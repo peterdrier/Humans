@@ -48,9 +48,9 @@ cantina-style). `ITeamRepository` has an EE-grant surface
 `FindEarlyEntryGrantForMutationAsync`, `Add/Update/RemoveEarlyEntryGrantAsync`,
 `ReassignEarlyEntryGrantsAsync`, `RemoveEarlyEntryGrantsForUserAsync`),
 backed by the `team_early_entry_grants` table that `TeamRepository` owns.
-`TeamService` injects `IEarlyEntryInvalidator` and contributes a
-`GdprExportSections.TeamEarlyEntry` GDPR slice; the `IUserMerge` path
-reassigns grants across the merge.
+`TeamService` injects `IEarlyEntryInvalidator` and contributes a GDPR slice
+under the export key declared as `TeamService.TeamEarlyEntry`; the
+`IUserMerge` path reassigns grants across the merge.
 
 Team search is cache-only: `CachingTeamService.SearchAsync` filters the
 cached `TeamInfo` snapshot (hidden teams excluded unless requested); the

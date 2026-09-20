@@ -3,7 +3,6 @@ using Humans.Email.Data;
 using Humans.Email.Domain;
 using Humans.Email.Services;
 using Humans.Base.Configuration;
-using Humans.Gdpr.Contracts;
 using Humans.Settings.Contracts;
 using Microsoft.Extensions.Options;
 using Humans.Base.Enums;
@@ -89,7 +88,7 @@ public sealed class EmailOutboxServiceTests
         var slices = await _service.ContributeForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         var slice = slices.Should().ContainSingle().Subject;
-        slice.SectionName.Should().Be(GdprExportSections.EmailOutbox);
+        slice.SectionName.Should().Be(EmailOutboxService.EmailOutbox);
         System.Text.Json.JsonSerializer.Serialize(slice.Data)
             .Should().Contain("human@example.org");
     }

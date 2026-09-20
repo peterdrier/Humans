@@ -2,7 +2,6 @@ using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
-using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
 using Humans.Surveys.Data;
 using Humans.Shifts.Contracts;
@@ -3580,7 +3579,7 @@ public class SurveyServiceTests
         var slices = await CreateService().ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
 
         var slice = slices.Single(s => string.Equals(
-            s.SectionName, GdprExportSections.SurveyResponses, StringComparison.Ordinal));
+            s.SectionName, SurveyService.SurveyResponses, StringComparison.Ordinal));
         slice.Data.Should().NotBeNull();
 
         // The payload serialises the user's response (title + answers). Round-trip through JSON to assert shape.
@@ -3604,7 +3603,7 @@ public class SurveyServiceTests
         var slices = await CreateService().ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
 
         var slice = slices.Single(s => string.Equals(
-            s.SectionName, GdprExportSections.SurveyResponses, StringComparison.Ordinal));
+            s.SectionName, SurveyService.SurveyResponses, StringComparison.Ordinal));
         // Collection sections emit [] (not null) when the user has no records.
         var json = System.Text.Json.JsonSerializer.Serialize(slice.Data);
         json.Should().Be("[]");
@@ -3632,7 +3631,7 @@ public class SurveyServiceTests
 
         // The responses slice carries exactly the single response the repo surfaced.
         slices.Single(s => string.Equals(
-            s.SectionName, GdprExportSections.SurveyResponses, StringComparison.Ordinal))
+            s.SectionName, SurveyService.SurveyResponses, StringComparison.Ordinal))
             .Should().NotBeNull();
         await _repo.Received(1).GetIdentifiedResponsesForUserAsync(userId, Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().GetResponsesForResultsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -3656,7 +3655,7 @@ public class SurveyServiceTests
         var slices = await CreateService().ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
 
         var slice = slices.Single(s => string.Equals(
-            s.SectionName, GdprExportSections.AuthoredSurveys, StringComparison.Ordinal));
+            s.SectionName, SurveyService.AuthoredSurveys, StringComparison.Ordinal));
         var json = System.Text.Json.JsonSerializer.Serialize(slice.Data);
         json.Should().Contain("My Draft");
         json.Should().Contain("Needs a clearer audience");
@@ -3697,7 +3696,7 @@ public class SurveyServiceTests
         var slices = await CreateService().ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
 
         var slice = slices.Single(s => string.Equals(
-            s.SectionName, GdprExportSections.SurveyInvitations, StringComparison.Ordinal));
+            s.SectionName, SurveyService.SurveyInvitations, StringComparison.Ordinal));
         var json = System.Text.Json.JsonSerializer.Serialize(slice.Data);
         json.Should().Contain("Camp Debrief");
         json.Should().Contain("2026-06-01T09:05");

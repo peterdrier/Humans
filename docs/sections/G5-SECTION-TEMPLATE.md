@@ -820,18 +820,19 @@ Git Bash.)
      that decides a fan-out section's leaf.** Gdpr's `IUserDataContributor` has exactly one
      consumer, the section's own orchestrator, and **21 implementers**: eight services still
      in `Humans.Application` and thirteen already-moved sections. Read consumer-first it looks
-     internal; read implementer-first it is obviously public, and the whole contract —
-     the interface, its `UserDataSlice` return DTO and the `GdprExportSections` constants
-     the implementers key their slices by — goes on the leaf together, because splitting
-     them would leave the section's own vocabulary in Base. Cost: `Humans.Application` and
-     thirteen section projects gain a `ProjectReference` and ~40 files gain a one-line
-     `using` swap. Notifications' lesson holds at the limit — **a wide fan-in over a narrow
-     interface is cheap; it is the *surface* that costs**, and here the surface is five
-     types with no method bodies (proven: Gdpr).
+     internal; read implementer-first it is obviously public, and the contract —
+     the interface and its `UserDataSlice` return DTO — goes on the leaf, purely because
+     21 implementers need to reference it; each implementer keys its own slices by
+     constants it declares on itself, not a shared vocabulary the leaf would otherwise
+     have to hold. Cost: `Humans.Application` and thirteen section projects gain a
+     `ProjectReference` and ~40 files gain a one-line `using` swap. Notifications' lesson
+     holds at the limit — **a wide fan-in over a narrow interface is cheap; it is the
+     *surface* that costs**, and here the surface is four types with no method bodies
+     (proven: Gdpr).
      - **A section whose whole substance *is* the contract has no "leave it in Base"
        option.** The tempting alternative — move only the orchestrator and leave the
        contributor contract behind — is what makes the move zero-risk and is wrong: the
-       section would ship a 70-line class whose own DTO and constants live in another
+       section would ship a 70-line class whose own return DTO lives in another
        assembly, which no moved section has done. Ask what is left in the section project
        if the contract stays; if the answer is "not the section", the contract moves.
    - **A leaf may be two one-method interfaces, and splitting them beats one misnamed one.**

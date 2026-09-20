@@ -38,6 +38,8 @@ internal sealed class FeedbackService(
     IClock clock,
     ILogger<FeedbackService> logger) : IFeedbackServiceRead, IFeedbackTriage, IUserDataContributor, IUserMerge
 {
+    internal const string FeedbackReports = "FeedbackReports";
+
     private static readonly TimeSpan BadgeCacheDuration = TimeSpan.FromMinutes(2);
 
     public async Task<FeedbackReportInfo?> GetFeedbackByIdAsync(
@@ -363,13 +365,13 @@ internal sealed class FeedbackService(
                 })
             }).ToList();
 
-        return [new UserDataSlice(GdprExportSections.FeedbackReports, shaped)];
+        return [new UserDataSlice(FeedbackReports, shaped)];
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.FeedbackReports] =
+            [FeedbackReports] =
                 "Partially retained: reports the person filed are deleted outright, messages and " +
                 "screenshots with them. A reply they left on someone else's report is that report's content and " +
                 "stays, with the authorship detached (SenderUserId nulled) — GDPR Art. 17(3)(b), " +

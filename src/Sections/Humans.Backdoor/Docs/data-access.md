@@ -22,7 +22,7 @@ indexed hash probe per API request at a handful of requests per minute.
 Cross-section calls via `IRoleAssignmentService` (Admin/Board eligibility),
 `IUserServiceRead` (account-state check, display-name stitching),
 `IAuditLogService` (key lifecycle). Implements `IUserDataContributor`
-(GDPR export slice `GdprExportSections.BackdoorApiKeys`, hash excluded),
+(GDPR export slice `BackdoorApiKeyService.BackdoorApiKeys`, hash excluded),
 `IUserMerge` (folds an eliminated account's keys onto the survivor).
 
 The `/api/backdoor/*` machine APIs that serve another section (`agent`,
