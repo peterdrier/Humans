@@ -81,9 +81,10 @@ public sealed class CampServiceTests : CampsTestHarness
 
         var services = new ServiceCollection();
         services.AddKeyedScoped<ICampService>(CachingCampService.InnerServiceKey, (_, _) => _service);
+        services.AddScoped(_ => _settingsService);
         await using var provider = services.BuildServiceProvider();
         var cached = new CachingCampService(provider.GetRequiredService<IServiceScopeFactory>(),
-            _settingsService, Clock, NullLogger<CachingCampService>.Instance);
+            Clock, NullLogger<CachingCampService>.Instance);
 
         // Warmup discovers the camp through 2026. Its lead belongs only to the 2025 season.
         var directory = await cached.GetCampsForYearAsync(2026, ct);

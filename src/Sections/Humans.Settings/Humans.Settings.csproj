@@ -29,6 +29,8 @@
     <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
     <!-- SaveEventSettingsAsync writes an audit entry (peterdrier/Humans#1628). -->
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <!-- SaveEventSettingsAsync flushes the early-entry cache it invalidates (#805). -->
+    <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
   </ItemGroup>
 
   <ItemGroup>

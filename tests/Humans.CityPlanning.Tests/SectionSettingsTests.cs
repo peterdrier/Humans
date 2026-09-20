@@ -6,13 +6,13 @@ namespace Humans.CityPlanning.Tests;
 /// <summary>
 /// The /Settings#city-planning tab contribution (peterdrier/Humans#1634). The Policy
 /// assertion is the negative case: <c>SettingsTabComposition</c> (Humans.Settings.Tests)
-/// drops any tab whose policy the viewer fails, so a non-CampAdmin/Admin viewer never
-/// sees this tab once the policy here is anything but null.
+/// drops any tab whose policy the viewer fails, so a viewer who is neither CampAdmin/Admin
+/// nor a city-planning team member never sees this tab.
 /// </summary>
 public sealed class SectionSettingsTests
 {
     [HumansFact]
-    public void Tabs_ReturnsTheCityPlanningTabGatedOnCampAdminOrAdmin()
+    public void Tabs_ReturnsTheCityPlanningTabGatedOnMapAdmin()
     {
         var tabs = new SectionSettings().Tabs().ToList();
 
@@ -20,6 +20,8 @@ public sealed class SectionSettingsTests
         tab.Key.Should().Be("city-planning");
         tab.Label.Should().Be("Settings_TabCityPlanning");
         tab.ComponentName.Should().Be("CityPlanningSettingsTab");
-        tab.Policy.Should().Be(PolicyNames.CampAdminOrAdmin);
+        tab.Policy.Should().Be(PolicyNames.CityPlanningMapAdmin,
+            because: "these controls moved off a page that admitted city-planning team "
+                     + "members too, so the tab must admit the same audience");
     }
 }

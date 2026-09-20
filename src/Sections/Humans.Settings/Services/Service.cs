@@ -1,4 +1,5 @@
 using Humans.AuditLog.Contracts;
+using Humans.EarlyEntry.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Settings.Data;
 using Humans.Settings.Domain;
@@ -17,6 +18,7 @@ namespace Humans.Settings.Services;
 internal sealed class Service(
     ISettingsRepository repository,
     IAuditLogService auditLog,
+    IEarlyEntryInvalidator earlyEntryInvalidator,
     IClock clock) : ISettingsWriteService, IEventSettingsSeeding
 {
     public Task<string?> GetValueAsync(string key, CancellationToken cancellationToken = default) =>
@@ -63,6 +65,12 @@ internal sealed class Service(
             + $"strike ends day {settings.StrikeEndOffset}, status {settings.Status}.";
         await auditLog.LogAsync(
             AuditAction.EventSettingsUpdated, AuditEntityTypes.EventSettings, settings.Id, description, actorUserId);
+
+        // GateOpeningDate and EarlyEntryStartOffset move every holder's entry date at once,
+        // and the gate/build offsets move every shift-derived one. This write used to live in
+        // Camps (SetEeStartDateAsync), which flushed the cache here; the write moved lanes, so
+        // the flush moves with it (nobodies-collective/Humans#805).
+        earlyEntryInvalidator.InvalidateAll();
     }
 
     /// <inheritdoc />

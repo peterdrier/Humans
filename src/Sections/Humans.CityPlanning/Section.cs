@@ -1,9 +1,11 @@
+using Humans.CityPlanning.Authorization;
 using Humans.CityPlanning.Contracts;
 using Humans.CityPlanning.Data;
 using Humans.CityPlanning.Services;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.CityPlanning;
@@ -34,5 +36,8 @@ public sealed class Section : ISection
         services.AddScoped<CityPlanningService>();
         services.AddScoped<ICityPlanningService>(sp => sp.GetRequiredService<CityPlanningService>());
         services.AddScoped<ICityPlanningServiceRead>(sp => sp.GetRequiredService<CityPlanningService>());
+
+        // Backs CityPlanningMapAdmin, registered by this section's SectionPolicies.
+        services.AddScoped<IAuthorizationHandler, CityPlanningMapAdminHandler>();
     }
 }

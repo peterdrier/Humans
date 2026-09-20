@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
+using Humans.EarlyEntry.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Settings.Data;
 using Humans.Settings.Domain;
@@ -22,11 +23,12 @@ public sealed class ServiceTests
 
     private readonly ISettingsRepository _repository = Substitute.For<ISettingsRepository>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
+    private readonly IEarlyEntryInvalidator _earlyEntryInvalidator = Substitute.For<IEarlyEntryInvalidator>();
     private readonly IClock _clock = Substitute.For<IClock>();
 
     public ServiceTests() => _clock.GetCurrentInstant().Returns(Now);
 
-    private Service BuildSut() => new(_repository, _auditLog, _clock);
+    private Service BuildSut() => new(_repository, _auditLog, _earlyEntryInvalidator, _clock);
 
     private static EventSettings MakeEntity(Guid id, bool isActive = true) => new()
     {
@@ -292,6 +294,32 @@ public sealed class ServiceTests
 
         await _repository.Received(1).UpsertEventSettingsAsync(
             Arg.Is<EventSettings>(e => e.EarlyEntryStartOffset == null), Now, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SaveEventSettingsAsync_FlushesTheEarlyEntryCache()
+    {
+        // GateOpeningDate and EarlyEntryStartOffset move every holder's entry date at once.
+        // Camps' SetEeStartDateAsync used to own this write and this flush; the write moved
+        // here, so the flush did too.
+        await BuildSut().SaveEventSettingsAsync(
+            MakeDto(Guid.NewGuid(), EventSettingsStatus.Inactive, earlyEntryStartOffset: -7),
+            Actor, TestContext.Current.CancellationToken);
+
+        _earlyEntryInvalidator.Received(1).InvalidateAll();
+    }
+
+    [HumansFact]
+    public async Task SaveEventSettingsAsync_DoesNotFlushTheEarlyEntryCacheWhenTheSaveIsRefused()
+    {
+        var id = Guid.NewGuid();
+        _repository.AnyOtherActiveEventSettingsAsync(id, Arg.Any<CancellationToken>()).Returns(true);
+
+        var act = () => BuildSut().SaveEventSettingsAsync(
+            MakeDto(id, EventSettingsStatus.Active), Actor, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _earlyEntryInvalidator.DidNotReceive().InvalidateAll();
     }
 
     [HumansFact]

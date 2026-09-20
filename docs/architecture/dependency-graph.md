@@ -181,7 +181,6 @@ graph LR
     Survey[SurveyService]:::surveys
     SurveyPrevEmail[SurveyPreviewEmailService]:::surveys
     SettingsSvc[SettingsWriteService]:::settings
-    SettingsCarry[EventSettingsCarryService]:::settings
     Guide[GuideRoleResolver]:::guide
     Rideshare[RideshareService]:::rideshare
 
@@ -539,7 +538,6 @@ graph LR
 
     %% Settings' carry screen reads the Shifts rows it copies from (#1104).
     %% Temporary: retires with the carry screen.
-    SettingsCarry --> BurnSettings
 
     %% Web platform (diagnostics — moved to Humans.Web/Services at #1369)
     AdminDbDiag --> User
@@ -553,8 +551,9 @@ graph LR
     GSyncLog --> User
     GSyncLog --> UEmail
 
-    %% Settings → Shifts
-    SettingsSvc --> BurnSettings
+
+    %% Settings → EarlyEntry (flushes the cache its event-settings writes invalidate)
+    SettingsSvc --> EarlyEntry
 
     %% Surveys → Users / Email
     SurveyPrevEmail --> User

@@ -16,7 +16,6 @@ namespace Humans.Camps.Services;
 /// </summary>
 internal sealed class CachingCampService(
     IServiceScopeFactory scopeFactory,
-    ISettingsService settingsService,
     IClock clock,
     ILogger<CachingCampService> logger) : TrackedCache<Guid, CampInfo>("Camp.CampInfo", warmOnStartup: true, logger),
     ICampService, ICampLeadDirectory, ICampSeeding, ICampRoleCampAccess, IUserMerge, ICampInfoInvalidator, IEarlyEntryProvider
@@ -80,14 +79,16 @@ internal sealed class CachingCampService(
 
     public async Task<CampSettingsInfo> GetSettingsAsync(CancellationToken cancellationToken = default)
     {
-        var snapshot = _settings;
-        if (snapshot is not null) return snapshot;
-        return await LoadSettingsAsync(cancellationToken);
+        var snapshot = _settings ?? await LoadSettingsAsync(cancellationToken);
+        // PublicYear is Settings-owned: activating a new event changes it, and nothing in
+        // Settings signals this section's invalidator. Only the camps-owned parts of the
+        // snapshot are cached; the year is resolved live on every read.
+        return snapshot with { PublicYear = await ActiveYearAsync(cancellationToken) };
     }
 
     public async Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct)
     {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
+        var activeEvent = await WithSettings(settings => settings.GetActiveEventSettingsAsync(ct));
         if (activeEvent?.EarlyEntryStartOffset is not { } offset)
         {
             return [];
@@ -594,6 +595,28 @@ internal sealed class CachingCampService(
         };
 
     // Scope / inner resolution
+
+    /// <summary>
+    /// <see cref="ISettingsService"/> is Scoped; this decorator is a Singleton and a hosted
+    /// service, so it may only reach Settings through a scope (ValidateScopes would reject a
+    /// constructor injection). Mirrors <see cref="WithInner{T}"/>.
+    /// </summary>
+    private async Task<T> WithSettings<T>(Func<ISettingsService, Task<T>> work)
+    {
+        await using var scope = scopeFactory.CreateAsyncScope();
+        return await work(scope.ServiceProvider.GetRequiredService<ISettingsService>());
+    }
+
+    /// <summary>
+    /// The active event's year, falling back to the clock's current year before an event
+    /// exists — same rule as <c>CampService.GetActiveYearAsync</c>, which serves the inner
+    /// (uncached) read.
+    /// </summary>
+    private async Task<int> ActiveYearAsync(CancellationToken ct)
+    {
+        var activeEvent = await WithSettings(settings => settings.GetActiveEventSettingsAsync(ct));
+        return activeEvent?.Year > 0 ? activeEvent.Year : SystemClockYear();
+    }
 
     private async Task<T> WithInner<T>(Func<ICampService, Task<T>> work)
     {

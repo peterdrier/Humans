@@ -156,6 +156,7 @@ that row again (no audit entry either way — seeding has no real actor).
 |---|---|---|
 | in | Shifts | `Humans.Development`'s seeder only, via `IEventSettingsSeeding` |
 | out | Users | `IUserServiceRead` (platform base-controller dependency only) |
+| out | EarlyEntry | `IEarlyEntryInvalidator.InvalidateAll` after every event-settings save — gate date, build offset and `EarlyEntryStartOffset` move every holder's date at once |
 | in | Email | `ISettingsService` (`IsEmailSendingPaused`) |
 | in | Monitor | `ISettingsService` (`DriveActivityMonitor:LastRunAt`) |
 

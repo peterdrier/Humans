@@ -10,16 +10,17 @@ namespace Humans.CityPlanning;
 /// <c>CityPlanningController</c>.
 /// </summary>
 /// <remarks>
-/// <see cref="PolicyNames.CampAdminOrAdmin"/> — the same narrower gate
-/// <see cref="SectionAdminNav"/> already uses for the "Barrio map" nav item, not the
-/// page's own wider self-gate (city-planning team members too). A city-planning team
-/// member without CampAdmin reaches the page itself via the member-side City page, same
-/// as before; this tab is narrower by the same precedent.
+/// <see cref="PolicyNames.CityPlanningMapAdmin"/> — CampAdmin/Admin *or* a city-planning
+/// team member, the same audience <c>CityPlanningController.RequireMapAdminAsync</c>
+/// admits and that these controls had on the page they moved off. The narrower
+/// <see cref="PolicyNames.CampAdminOrAdmin"/> the "Barrio map" nav item uses would not do
+/// here: that item is narrower only because the page stays reachable another way, while
+/// this tab is now the only route to the controls.
 /// </remarks>
 internal sealed class SectionSettings : ISectionSettings
 {
     public IEnumerable<SettingsTab> Tabs() =>
     [
-        new SettingsTab("city-planning", "Settings_TabCityPlanning", "CityPlanningSettingsTab", PolicyNames.CampAdminOrAdmin)
+        new SettingsTab("city-planning", "Settings_TabCityPlanning", "CityPlanningSettingsTab", PolicyNames.CityPlanningMapAdmin)
     ];
 }

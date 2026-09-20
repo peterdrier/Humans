@@ -58,11 +58,11 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         services.AddKeyedScoped<IUserMerge>(
             CachingCampService.InnerServiceKey,
             (_, _) => (IUserMerge)_innerSubstitute);
+        services.AddScoped(_ => _settingsService);
         _serviceProvider = services.BuildServiceProvider();
 
         _service = new CachingCampService(
             _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
-            _settingsService,
             Clock,
             NullLogger<CachingCampService>.Instance);
 
@@ -390,6 +390,27 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         await _innerRoleAccess
             .DidNotReceive()
             .GetCampSeasonsForComplianceAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetSettingsAsync_PicksUpANewlyActivatedEventYearWithoutInvalidation()
+    {
+        // PublicYear comes from Settings, whose writes never reach this section's
+        // invalidator — so it must not be served from the cached snapshot.
+        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(BurnFixtures.Burn(year: 2026));
+        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+
+        (await _service.GetSettingsAsync(TestContext.Current.CancellationToken))
+            .PublicYear.Should().Be(2026);
+
+        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(BurnFixtures.Burn(year: 2027));
+
+        (await _service.GetSettingsAsync(TestContext.Current.CancellationToken))
+            .PublicYear.Should().Be(2027,
+                because: "activating a new event must not leave Camps on the previous year "
+                         + "until the process restarts");
     }
 
     [HumansFact]

@@ -20,8 +20,8 @@ public interface IEarlyEntryInvalidator : IInvalidator
     /// <summary>
     /// Evict the whole cache. For global config changes that shift every holder's
     /// EE at once — <c>EventSettings.EarlyEntryStartOffset</c> and the gate / build-offset
-    /// edits (which move every shift-derived date). Not wired today: none of these
-    /// EventSettings edits call this yet — see <c>Docs/health.md</c> §5.
+    /// edits (which move every shift-derived date). Settings calls this on every
+    /// event-settings save, which is where all of those now live.
     /// </summary>
     void InvalidateAll();
 }

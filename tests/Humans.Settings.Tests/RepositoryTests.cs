@@ -196,6 +196,27 @@ public sealed class RepositoryTests : IDisposable
     }
 
     [HumansFact]
+    public async Task UpsertEventSettingsAsync_UpdatesEarlyEntryStartOffsetOnAnExistingRow()
+    {
+        var id = Guid.NewGuid();
+        _seedContext.EventSettings.Add(MakeEvent(id, EventSettingsStatus.Active));
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var edited = MakeEvent(id, EventSettingsStatus.Active);
+        edited.BuildStartOffset = -25;
+        edited.EarlyEntryStartOffset = -5;
+
+        await _repository.UpsertEventSettingsAsync(
+            edited, NodaTime.Instant.FromUtc(2026, 2, 3, 4, 5), Xunit.TestContext.Current.CancellationToken);
+
+        var row = await _seedContext.EventSettings.AsNoTracking()
+            .SingleAsync(e => e.Id == id, Xunit.TestContext.Current.CancellationToken);
+        row.EarlyEntryStartOffset.Should().Be(-5,
+            because: "the update branch copies every editable field — an omitted one saves "
+                     + "silently and leaves the column at its old value");
+    }
+
+    [HumansFact]
     public async Task DeleteEventSettingsAsync_ReturnsZeroWhenRowDoesNotExist()
     {
         var deleted = await _repository.DeleteEventSettingsAsync(
