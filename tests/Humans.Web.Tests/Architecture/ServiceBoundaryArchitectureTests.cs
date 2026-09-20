@@ -13,47 +13,6 @@ public class ServiceBoundaryArchitectureTests
         "tests/Humans.Web.Tests/Architecture/Baselines/ApplicationServiceEntityReadReturns.baseline.txt";
 
     /// <summary>
-    /// A G5 section's repository interface is <c>internal</c> to its own assembly
-    /// (nobodies-collective/Humans#866), so it cannot be named with <c>typeof</c> here.
-    /// Resolved by reflection instead — the row stays in the map, and the ownership test
-    /// keeps covering the section after it moves.
-    /// </summary>
-    private static Type SectionRepository(string fullName) =>
-        SectionAssemblies()
-            .Select(a => a.GetType(fullName, throwOnError: false))
-            .FirstOrDefault(t => t is not null)
-        ?? throw new InvalidOperationException(
-            $"{fullName} not found in any section assembly — did the section move or rename it?");
-
-    /// <summary>
-    /// The owner of a repository is its declaring assembly's section name (<c>Humans.Governance</c>
-    /// → <c>"Governance"</c>) — derived, never hand-listed, so a new section's repository needs no
-    /// edit here. Only genuinely convention-defying rows get an explicit entry: a repository whose
-    /// code locality doesn't match its conceptual owner (<c>ILegalDocumentRepository</c> lives in
-    /// the Consent assembly but is routed and documented as "Legal").
-    /// </summary>
-    private static readonly IReadOnlyDictionary<Type, string> RepositoryOwnerExceptions =
-        new Dictionary<Type, string>
-        {
-            [SectionRepository("Humans.Consent.Data.ILegalDocumentRepository")] = "Legal",
-        };
-
-    private static string RepositoryOwner(Type repositoryType) =>
-        RepositoryOwnerExceptions.TryGetValue(repositoryType, out var exceptionOwner)
-            ? exceptionOwner
-            : SectionNameFromAssembly(repositoryType.Assembly);
-
-    private static string SectionNameFromAssembly(Assembly assembly)
-    {
-        var assemblyName = assembly.GetName().Name
-            ?? throw new InvalidOperationException($"{assembly} has no name.");
-
-        return assemblyName.StartsWith("Humans.", StringComparison.Ordinal)
-            ? assemblyName["Humans.".Length..]
-            : assemblyName;
-    }
-
-    /// <summary>
     /// COVERAGE REDUCED (G5 lane 3b, nobodies-collective/Humans#866). These eight interfaces
     /// are application service boundaries by name and would be marked, but cannot be.
     /// </summary>
@@ -121,21 +80,6 @@ public class ServiceBoundaryArchitectureTests
 
         unmarked.Should().BeEmpty(
             because: "I*Repository interfaces are persistence boundaries and must be searchable/reforge-addressable via IRepository");
-    }
-
-    [HumansFact]
-    public void Repository_ownership_exceptions_are_still_needed()
-    {
-        var discovered = RepositoryInterfaceTypes().Where(t => t != typeof(IRepository)).ToHashSet();
-
-        var staleExceptions = RepositoryOwnerExceptions.Keys
-            .Where(t => !discovered.Contains(t))
-            .Select(Display)
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        staleExceptions.Should().BeEmpty(
-            because: "an owner exception should shrink when its repository moves or is removed, never linger unused");
     }
 
     [HumansFact]
@@ -287,10 +231,6 @@ public class ServiceBoundaryArchitectureTests
             })
             .OfType<Assembly>()
         ?? [];
-
-    private static IEnumerable<Type> RepositoryInterfaceTypes() =>
-        ApplicationInterfaceTypes()
-            .Where(t => typeof(IRepository).IsAssignableFrom(t));
 
     private static IEnumerable<(string MemberName, Type ReturnType)> EntityReturnReadMembers(Type serviceType)
     {

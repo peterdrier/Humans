@@ -86,6 +86,20 @@ public class GdprErasureCoverageTests
     }
 
     [HumansFact]
+    public void ExactlyOneContributorErasesLast()
+    {
+        // GdprService.EraseForUserAsync orders erasure by ErasesLast so the Account owner
+        // (the identity every other contributor may need to resolve) runs after everyone
+        // else. Two contributors claiming it would make erasure order nondeterministic
+        // between them; zero would erase the account first, before sections that still
+        // need it.
+        var erasesLast = Contributors.Where(c => c.ErasesLast).ToArray();
+
+        erasesLast.Should().ContainSingle(
+            "GdprService orders erasure by ErasesLast, so exactly one contributor may run last");
+    }
+
+    [HumansFact]
     public void EveryRetainedCategoryStatesItsLawfulBasis()
     {
         // A non-null value means "this survives erasure". Article 17(3) only
