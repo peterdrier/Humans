@@ -37,7 +37,10 @@ app-wide event calendar and "which cycle is active" (nobodies-collective/Humans#
   for `PolicyNames.AdminOnly`, read-only (event name, gate date, build/event/strike
   windows as text) for every other authenticated member. `/Settings/Admin` has no GET —
   it removed the redirect-only page (`memory/product/no-url-aliases.md`); only the POST
-  remains, saving back to `/Settings#event`. Reached from the signed-in
+  remains, saving back to `/Settings#event`. With no GET to re-render, the POST is
+  post-redirect-get on both outcomes: validation, parse and activation-conflict failures
+  flash the failing rule and redirect back to the tab (by id when the form carried one),
+  exactly as every other settings tab's POST does. Reached from the signed-in
   user menu via the `user-menu` chrome slot (`SectionChrome` → `SettingsUserMenuViewComponent`),
   since nothing else links to it. Its member-facing strings live in `SettingsResource`,
   including the empty state (`Settings_NoTabs`); `/Settings/Admin` stays admin-exempt
@@ -156,7 +159,7 @@ that row again (no audit entry either way — seeding has no real actor).
 |---|---|---|
 | in | Shifts | `Humans.Development`'s seeder only, via `IEventSettingsSeeding` |
 | out | Users | `IUserServiceRead` (platform base-controller dependency only) |
-| out | every `IEventSettingsChangeListener` | fanned out after every successful event-settings save — the gate date, the offsets and the active-event flip move derived dates for every member at once. Subscribers today: EarlyEntry's cache (`InvalidateAll`) and Shifts' `CachingShiftViewService` (every `ShiftUserView` is event-scoped). Settings names no consumer and references no consuming section |
+| out | every `IEventSettingsChangeListener` | fanned out after every successful event-settings mutation, the admin save and both `IEventSettingsSeeding` paths (seeded upsert, delete of a row that existed) alike — the gate date, the offsets and the active-event flip move derived dates for every member at once. Subscribers today: EarlyEntry's cache (`InvalidateAll`) and Shifts' `CachingShiftViewService` (every `ShiftUserView` is event-scoped). Settings names no consumer and references no consuming section |
 | in | Email | `ISettingsService` (`IsEmailSendingPaused`) |
 | in | Monitor | `ISettingsService` (`DriveActivityMonitor:LastRunAt`) |
 

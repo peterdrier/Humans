@@ -99,7 +99,9 @@ internal sealed class CampAdminController(
             logger.LogError(ex, "Failed to open season {Year}", year);
             SetError($"Failed to open season: {ex.Message}");
         }
-        return RedirectToAction(nameof(Index));
+        // Posted from the /Settings#barrios tab (peterdrier/Humans#1634), not from
+        // /Camps/Admin, so post-redirect-get lands back on the tab.
+        return Redirect("/Settings#barrios");
     }
 
     [HttpPost("CloseSeason/{year:int}")]
@@ -116,7 +118,9 @@ internal sealed class CampAdminController(
             logger.LogError(ex, "Failed to close season {Year}", year);
             SetError($"Failed to close season: {ex.Message}");
         }
-        return RedirectToAction(nameof(Index));
+        // Posted from the /Settings#barrios tab (peterdrier/Humans#1634), not from
+        // /Camps/Admin, so post-redirect-get lands back on the tab.
+        return Redirect("/Settings#barrios");
     }
 
     [HttpPost("SetNameLockDate")]

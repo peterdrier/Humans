@@ -311,6 +311,40 @@ public sealed class ServiceTests
     }
 
     [HumansFact]
+    public async Task CreateActiveEventAsync_TellsEveryChangeListener()
+    {
+        // The seeder swaps the active cycle out from under EarlyEntry and Shifts. Their
+        // caches key off the active event's dates, so the seam has to speak up too.
+        _repository.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(MakeEntity(Guid.NewGuid()));
+
+        await BuildSut().CreateActiveEventAsync(
+            MakeDto(Guid.NewGuid(), EventSettingsStatus.Active), TestContext.Current.CancellationToken);
+
+        _listenerOne.Received(1).EventSettingsChanged();
+        _listenerTwo.Received(1).EventSettingsChanged();
+    }
+
+    [HumansFact]
+    public async Task DeleteEventAsync_TellsEveryChangeListener_OnlyWhenARowWentAway()
+    {
+        var id = Guid.NewGuid();
+        _repository.DeleteEventSettingsAsync(id, Arg.Any<CancellationToken>()).Returns(0);
+        var sut = BuildSut();
+
+        await sut.DeleteEventAsync(id, TestContext.Current.CancellationToken);
+
+        _listenerOne.DidNotReceive().EventSettingsChanged();
+
+        _repository.DeleteEventSettingsAsync(id, Arg.Any<CancellationToken>()).Returns(1);
+
+        await sut.DeleteEventAsync(id, TestContext.Current.CancellationToken);
+
+        _listenerOne.Received(1).EventSettingsChanged();
+        _listenerTwo.Received(1).EventSettingsChanged();
+    }
+
+    [HumansFact]
     public async Task SaveEventSettingsAsync_TellsNoListenerWhenTheSaveIsRefused()
     {
         var id = Guid.NewGuid();

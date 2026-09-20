@@ -29,16 +29,14 @@ internal sealed class SettingsAdminController(
     public async Task<IActionResult> Index(EventSettingsViewModel model, CancellationToken ct = default)
     {
         if (!ModelState.IsValid)
-            return View(model);
+        {
+            return BackToTab(model.Id, Describe(
+                ModelState.Values.SelectMany(state => state.Errors).Select(error => error.ErrorMessage)));
+        }
 
         var parsed = EventSettingsFormMapper.Parse(model);
         if (!parsed.Success)
-        {
-            foreach (var error in parsed.Errors)
-                ModelState.AddModelError(error.FieldName, error.Message);
-
-            return View(model);
-        }
+            return BackToTab(model.Id, Describe(parsed.Errors.Select(error => error.Message)));
 
         if (GetCurrentUserId() is not { } actorId) return Challenge();
 
@@ -51,12 +49,27 @@ internal sealed class SettingsAdminController(
             // The service's own invariant — activating while another cycle is Active. A
             // conflict an operator can act on, so it belongs on the form it came from,
             // not in a 500.
-            ModelState.AddModelError(string.Empty, ex.Message);
-            return View(model);
+            return BackToTab(model.Id, ex.Message);
         }
 
         SetSuccess("Event settings saved.");
         // By id, not bare: deactivating the row takes it off the default GET.
         return Redirect($"/Settings?event={parsed.Settings!.Id}#event");
+    }
+
+    /// <summary>
+    /// Post-redirect-get back to the Event tab, the way every other settings tab's POST
+    /// ends. There is no GET here to re-render, so the failing rule travels as a flash.
+    /// </summary>
+    private IActionResult BackToTab(Guid? id, string message)
+    {
+        SetError(message);
+        return Redirect(id is { } eventId ? $"/Settings?event={eventId}#event" : "/Settings#event");
+    }
+
+    private static string Describe(IEnumerable<string> messages)
+    {
+        var joined = string.Join(" ", messages.Where(message => !string.IsNullOrWhiteSpace(message)));
+        return joined.Length > 0 ? joined : "Invalid event settings.";
     }
 }
