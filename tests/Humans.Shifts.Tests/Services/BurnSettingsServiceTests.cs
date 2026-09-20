@@ -8,6 +8,11 @@ using NSubstitute;
 
 namespace Humans.Shifts.Tests.Services;
 
+/// <summary>
+/// The calendar always comes from Settings via <see cref="EventCalendarResolver"/>;
+/// this section's own repo only supplies the knobs row, which may not exist yet
+/// (nobodies-collective/Humans#1631).
+/// </summary>
 public sealed class BurnSettingsServiceTests
 {
     private readonly IShiftManagementRepository _repo = Substitute.For<IShiftManagementRepository>();
@@ -19,80 +24,81 @@ public sealed class BurnSettingsServiceTests
         _service = new BurnSettingsService(_repo, new EventCalendarResolver(_settingsService));
     }
 
-    /// <summary>
-    /// Wires the calendar mock to answer for <paramref name="entity"/>'s id (and as the
-    /// active row, if it's the active one) — a separate mock from <c>_repo</c>, same as
-    /// production where the calendar comes from Settings, not from this section's repo.
-    /// </summary>
-    private void StubSettings(EventSettings entity)
-    {
-        var info = ToEventSettingsInfo(entity);
-        _settingsService.GetEventSettingsByIdAsync(entity.Id, Arg.Any<CancellationToken>()).Returns(info);
-        if (entity.IsActive)
-            _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(info);
-    }
+    private void StubActiveCalendar(EventSettingsInfo info) =>
+        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(info);
+
+    private void StubCalendarById(EventSettingsInfo info) =>
+        _settingsService.GetEventSettingsByIdAsync(info.Id, Arg.Any<CancellationToken>()).Returns(info);
 
     [HumansFact]
-    public async Task GetByIdAsync_MapsEntityToDto()
+    public async Task GetByIdAsync_MapsCalendarToDto()
     {
         var id = Guid.NewGuid();
-        var entity = NewEventSettings(id);
-        _repo.GetEventSettingsByIdAsync(id, Arg.Any<CancellationToken>()).Returns(entity);
-        StubSettings(entity);
+        var calendar = NewCalendar(id);
+        StubCalendarById(calendar);
+        _repo.GetEventSettingsByIdAsync(id, Arg.Any<CancellationToken>()).Returns((EventSettings?)null);
 
         var result = await _service.GetByIdAsync(id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Id.Should().Be(id);
-        result.EventName.Should().Be(entity.EventName);
-        result.TimeZoneId.Should().Be(entity.TimeZoneId);
-        result.GateOpeningDate.Should().Be(entity.GateOpeningDate);
-        await _repo.Received(1).GetEventSettingsByIdAsync(id, Arg.Any<CancellationToken>());
+        result.EventName.Should().Be(calendar.EventName);
+        result.TimeZoneId.Should().Be(calendar.TimeZoneId);
+        result.GateOpeningDate.Should().Be(calendar.GateOpeningDate);
     }
 
     [HumansFact]
-    public async Task GetByIdAsync_ReturnsNull_WhenRepositoryReturnsNull()
+    public async Task GetByIdAsync_ReturnsNull_WhenSettingsHasNoSuchCalendar()
     {
-        _repo.GetEventSettingsByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns((EventSettings?)null);
-
         var result = await _service.GetByIdAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
 
     [HumansFact]
-    public async Task GetActiveAsync_MapsEntityToDto()
+    public async Task GetActiveAsync_ReturnsNull_WhenSettingsHasNoActiveEvent()
     {
-        var entity = NewEventSettings(Guid.NewGuid());
-        _repo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(entity);
-        StubSettings(entity);
-
-        var result = await _service.GetActiveAsync(Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().NotBeNull();
-        result.Id.Should().Be(entity.Id);
-        await _repo.Received(1).GetActiveEventSettingsAsync(Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task GetActiveAsync_ReturnsNull_WhenRepositoryReturnsNull()
-    {
-        _repo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettings?)null);
-
         var result = await _service.GetActiveAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
 
     [HumansFact]
+    public async Task GetActiveAsync_NoLocalKnobsRowYet_DefaultsIsShiftBrowsingOpenToFalse()
+    {
+        var calendar = NewCalendar(Guid.NewGuid());
+        StubActiveCalendar(calendar);
+        _repo.GetEventSettingsByIdAsync(calendar.Id, Arg.Any<CancellationToken>()).Returns((EventSettings?)null);
+
+        var result = await _service.GetActiveAsync(Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().NotBeNull();
+        result.Id.Should().Be(calendar.Id);
+        result.IsShiftBrowsingOpen.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task GetActiveAsync_LocalKnobsRowExists_UsesItsIsShiftBrowsingOpen()
+    {
+        var calendar = NewCalendar(Guid.NewGuid());
+        StubActiveCalendar(calendar);
+        _repo.GetEventSettingsByIdAsync(calendar.Id, Arg.Any<CancellationToken>())
+            .Returns(new EventSettings { Id = calendar.Id, IsShiftBrowsingOpen = true });
+
+        var result = await _service.GetActiveAsync(Xunit.TestContext.Current.CancellationToken);
+
+        result!.IsShiftBrowsingOpen.Should().BeTrue();
+    }
+
+    [HumansFact]
     public async Task GetEarlyEntryCapacityForDay_OnReturnedDto_PerformsStepFunctionLookup()
     {
-        var entity = NewEventSettings(Guid.NewGuid());
-        entity.EarlyEntryCapacity[-10] = 5;
-        entity.EarlyEntryCapacity[-5] = 12;
-        _repo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(entity);
-        StubSettings(entity);
+        var calendar = NewCalendar(Guid.NewGuid()) with
+        {
+            EarlyEntryCapacity = new Dictionary<int, int> { [-10] = 5, [-5] = 12 },
+        };
+        StubActiveCalendar(calendar);
+        _repo.GetEventSettingsByIdAsync(calendar.Id, Arg.Any<CancellationToken>()).Returns((EventSettings?)null);
 
         var result = await _service.GetActiveAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -104,33 +110,20 @@ public sealed class BurnSettingsServiceTests
         result.GetEarlyEntryCapacityForDay(0).Should().Be(12);
     }
 
-    private static EventSettings NewEventSettings(Guid id) => new()
-    {
-        Id = id,
-        EventName = "Nowhere 2026",
-        Year = 2026,
-        TimeZoneId = "Europe/Madrid",
-        GateOpeningDate = new LocalDate(2026, 7, 1),
-        IsActive = true,
-        CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-        UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-    };
-
-    private static EventSettingsInfo ToEventSettingsInfo(EventSettings src) => new(
-        Id: src.Id,
-        EventName: src.EventName,
-        Year: src.Year,
-        TimeZoneId: src.TimeZoneId,
-        GateOpeningDate: src.GateOpeningDate,
-        BuildStartOffset: src.BuildStartOffset,
-        EventEndOffset: src.EventEndOffset,
-        StrikeEndOffset: src.StrikeEndOffset,
-        FirstCrewStartOffset: src.FirstCrewStartOffset,
-        SetupWeekStartOffset: src.SetupWeekStartOffset,
-        PreEventWeekStartOffset: src.PreEventWeekStartOffset,
-        FinishingWeekendStartOffset: src.FinishingWeekendStartOffset,
-        EarlyEntryCapacity: new Dictionary<int, int>(src.EarlyEntryCapacity),
-        BarriosEarlyEntryAllocation: src.BarriosEarlyEntryAllocation is null
-            ? null : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),
-        EarlyEntryClose: src.EarlyEntryClose);
+    private static EventSettingsInfo NewCalendar(Guid id) => new(
+        Id: id,
+        EventName: "Nowhere 2026",
+        Year: 2026,
+        TimeZoneId: "Europe/Madrid",
+        GateOpeningDate: new LocalDate(2026, 7, 1),
+        BuildStartOffset: -14,
+        EventEndOffset: 6,
+        StrikeEndOffset: 9,
+        FirstCrewStartOffset: -25,
+        SetupWeekStartOffset: -16,
+        PreEventWeekStartOffset: -9,
+        FinishingWeekendStartOffset: -4,
+        EarlyEntryCapacity: new Dictionary<int, int>(),
+        BarriosEarlyEntryAllocation: null,
+        EarlyEntryClose: null);
 }

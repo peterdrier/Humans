@@ -29,12 +29,6 @@
     <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
     <!-- SaveEventSettingsAsync writes an audit entry (peterdrier/Humans#1628). -->
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
-    <!--
-      The carry screen reads the Shifts-owned event_settings rows it is copying from.
-      Contracts leaf only, and Humans.Shifts does not reference Humans.Settings.Contracts,
-      so there is no cycle. Goes away with the carry screen once the values are across.
-    -->
-    <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

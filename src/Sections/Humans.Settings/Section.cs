@@ -28,12 +28,12 @@ public sealed class Section : ISection
         // every method opens its own short-lived DbContext.
         services.AddSingleton<ISettingsRepository, Repository>();
 
-        // One instance, two ways in: outside sections take ISettingsService, the
-        // section's own screens take ISettingsWriteService, which adds the
-        // event-settings write that is deliberately off the contract.
+        // One instance, three ways in: outside sections take ISettingsService, the
+        // section's own screens take ISettingsWriteService (adds the event-settings
+        // write, deliberately off the contract), and the dev seeder takes
+        // IEventSettingsSeeding.
         services.AddScoped<ISettingsWriteService, Service>();
         services.AddScoped<ISettingsService>(sp => sp.GetRequiredService<ISettingsWriteService>());
-
-        services.AddScoped<IEventSettingsCarryService, EventSettingsCarryService>();
+        services.AddScoped<IEventSettingsSeeding>(sp => (Service)sp.GetRequiredService<ISettingsWriteService>());
     }
 }

@@ -23,7 +23,9 @@ internal sealed class ShiftViewService : IShiftRowView
 
     public async ValueTask<ShiftUserView> GetUserAsync(Guid userId, CancellationToken ct = default)
     {
-        var activeEvent = await _management.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
+        // "Active" is Settings' notion (nobodies-collective/Humans#1631) — resolve
+        // directly, no Shifts-local lookup.
+        var activeEvent = await _calendarResolver.GetActiveAsync(ct).ConfigureAwait(false);
 
         var profile = await _management.GetVolunteerEventProfileAsync(userId, ct).ConfigureAwait(false);
         var tagPrefs = await _management.GetVolunteerTagPreferencesForUsersAsync([userId], ct).ConfigureAwait(false);
@@ -45,7 +47,7 @@ internal sealed class ShiftViewService : IShiftRowView
             signups = await _management
                 .GetForUsersAsync([userId], activeEvent.Id, ct).ConfigureAwait(false);
 
-            calendar = await _calendarResolver.GetAsync(activeEvent.Id, ct).ConfigureAwait(false);
+            calendar = activeEvent;
         }
 
         return new ShiftUserView(
@@ -73,7 +75,7 @@ internal sealed class ShiftViewService : IShiftRowView
         if (ids.Count == 0)
             return new Dictionary<Guid, ShiftUserView>();
 
-        var activeEvent = await _management.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
+        var activeEvent = await _calendarResolver.GetActiveAsync(ct).ConfigureAwait(false);
 
         var profiles = await _management.GetVolunteerEventProfilesByUserIdsAsync(ids, ct).ConfigureAwait(false);
         var profileByUser = profiles.ToDictionary(p => p.UserId);
@@ -106,7 +108,7 @@ internal sealed class ShiftViewService : IShiftRowView
                     g => g.Key,
                     g => (IReadOnlyList<ShiftSignup>)g.ToList());
 
-            calendar = await _calendarResolver.GetAsync(activeEvent.Id, ct).ConfigureAwait(false);
+            calendar = activeEvent;
         }
 
         var result = new Dictionary<Guid, ShiftUserView>(ids.Count);

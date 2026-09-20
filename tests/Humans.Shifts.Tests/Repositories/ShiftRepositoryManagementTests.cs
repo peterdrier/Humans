@@ -34,28 +34,24 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
     public void Dispose() => _shiftsDbContext.Dispose();
 
     [HumansFact]
-    public async Task GetActiveEventSettingsAsync_ReturnsActive_IgnoresInactive()
+    public async Task GetEventSettingsByIdAsync_ReturnsRowForItsId()
     {
-        var active = NewEvent(isActive: true);
-        var inactive = NewEvent(isActive: false);
-        await _shiftsDbContext.EventSettings.AddRangeAsync(active, inactive);
+        var es = NewEvent(isActive: true);
+        await _shiftsDbContext.EventSettings.AddAsync(es);
         await _shiftsDbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _repo.GetActiveEventSettingsAsync(Xunit.TestContext.Current.CancellationToken);
+        var result = await _repo.GetEventSettingsByIdAsync(es.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
-        result.Id.Should().Be(active.Id);
+        result!.Id.Should().Be(es.Id);
     }
 
     [HumansFact]
-    public async Task AnyOtherActiveEventSettingsAsync_ExcludesGivenId()
+    public async Task GetEventSettingsByIdAsync_ReturnsNullForAnUnknownId()
     {
-        var es = NewEvent(isActive: true);
-        _shiftsDbContext.EventSettings.Add(es);
-        await _shiftsDbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        var result = await _repo.GetEventSettingsByIdAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
-        (await _repo.AnyOtherActiveEventSettingsAsync(excludingId: es.Id, ct: Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
-        (await _repo.AnyOtherActiveEventSettingsAsync(excludingId: null, ct: Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
+        result.Should().BeNull();
     }
 
     [HumansFact(Timeout = 10000)]

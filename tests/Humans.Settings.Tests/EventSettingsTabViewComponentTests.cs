@@ -120,12 +120,11 @@ public sealed class EventSettingsTabViewComponentTests
         model.Settings!.Id.Should().Be(active.Id);
     }
 
-    [HumansFact]
-    public async Task InvokeAsync_NoActiveEvent_ReturnsANullSettingsModelRegardlessOfPolicy()
+    private async Task<EventSettingsTabViewModel> InvokeWithNoActiveEventAsync(bool authorized)
     {
         _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<string>())
-            .Returns(AuthorizationResult.Success());
+            .Returns(authorized ? AuthorizationResult.Success() : AuthorizationResult.Failed());
         var sut = new EventSettingsTabViewComponent(_settings, _authorization)
         {
             ViewComponentContext = new ViewComponentContext
@@ -135,8 +134,25 @@ public sealed class EventSettingsTabViewComponentTests
         };
 
         var result = await sut.InvokeAsync();
-        var model = (EventSettingsTabViewModel)((ViewViewComponentResult)result).ViewData!.Model!;
+        return (EventSettingsTabViewModel)((ViewViewComponentResult)result).ViewData!.Model!;
+    }
+
+    [HumansFact]
+    public async Task InvokeAsync_NoActiveEvent_NonAdmin_ReturnsANullSettingsModel()
+    {
+        var model = await InvokeWithNoActiveEventAsync(authorized: false);
 
         model.Settings.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task InvokeAsync_NoActiveEvent_Admin_ReturnsABlankFormToStartACycle()
+    {
+        // Settings mints event ids now (nobodies-collective/Humans#1631) — an admin
+        // with nothing configured gets a blank form, not a dead end.
+        var model = await InvokeWithNoActiveEventAsync(authorized: true);
+
+        model.Settings.Should().NotBeNull();
+        model.Settings!.Id.Should().BeNull();
     }
 }

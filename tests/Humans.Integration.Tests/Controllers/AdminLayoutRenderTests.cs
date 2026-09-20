@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Integration.Tests.Infrastructure;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Base.Authorization;
 using Humans.Web.ViewComponents;
@@ -372,19 +373,26 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
     private async Task SeedActiveBurnAsync()
     {
         using var scope = Factory.Services.CreateScope();
-        var seeding = scope.ServiceProvider.GetRequiredService<IShiftSeeding>();
-
-        await seeding.DeactivateActiveBurnAsync();
-        await seeding.CreateBurnAsync(new CreateBurnInput(
-            Id: Guid.NewGuid(),
-            EventName: "Admin Chrome Test Burn",
-            Year: 2026,
-            TimeZoneId: "Europe/Madrid",
-            GateOpeningDate: new LocalDate(2026, 7, 1),
-            BuildStartOffset: -14,
-            EventEndOffset: 6,
-            StrikeEndOffset: 9,
-            IsShiftBrowsingOpen: true));
+        var eventId = Guid.NewGuid();
+        await scope.ServiceProvider.GetRequiredService<IEventSettingsSeeding>().CreateActiveEventAsync(
+            new EventSettingsInfo(
+                Id: eventId,
+                EventName: "Admin Chrome Test Burn",
+                Year: 2026,
+                TimeZoneId: "Europe/Madrid",
+                GateOpeningDate: new LocalDate(2026, 7, 1),
+                BuildStartOffset: -14,
+                EventEndOffset: 6,
+                StrikeEndOffset: 9,
+                FirstCrewStartOffset: -25,
+                SetupWeekStartOffset: -16,
+                PreEventWeekStartOffset: -9,
+                FinishingWeekendStartOffset: -4,
+                EarlyEntryCapacity: new Dictionary<int, int>(),
+                BarriosEarlyEntryAllocation: null,
+                EarlyEntryClose: null));
+        await scope.ServiceProvider.GetRequiredService<IShiftSeeding>()
+            .SetShiftBrowsingOpenAsync(eventId, isOpen: true);
     }
 
     private static IEnumerable<string> RazorViews(string srcRoot) =>

@@ -1176,8 +1176,10 @@ internal sealed class ShiftSignupService(
             var teamId = rota.TeamId;
             var rotaName = rota.Name;
 
-            var es = rota.EventSettings;
-            var shiftDate = es.GateOpeningDate.PlusDays(shift.DayOffset);
+            // Calendar comes from Settings, not this row's own (dead) columns (nobodies-collective/Humans#1631).
+            var calendar = await calendarResolver.GetAsync(rota.EventSettingsId);
+            if (calendar is null) return;
+            var shiftDate = calendar.GateOpeningDate.PlusDays(shift.DayOffset);
             var enrichedDescription = $"{changeDescription} ({rotaName}, {shiftDate.ToWeekdayDayMonth()})";
 
             var team = await TeamService.GetTeamAsync(teamId);

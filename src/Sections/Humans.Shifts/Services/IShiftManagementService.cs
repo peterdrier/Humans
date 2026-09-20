@@ -43,24 +43,18 @@ internal interface IShiftManagementService
     Task UpdateShiftProfileAsync(VolunteerEventProfile profile);
 
     /// <summary>
-    /// Gets the single active EventSettings, or null if none.
+    /// The Shifts-owned knobs for an event, or null if a rota or knob edit
+    /// hasn't created the row yet. "Active event" is Settings' concept
+    /// (nobodies-collective/Humans#1631) — this section no longer tracks one.
     /// </summary>
-    Task<EventSettings?> GetActiveAsync();
+    Task<ShiftEventKnobs?> GetKnobsAsync(Guid eventSettingsId);
 
     /// <summary>
-    /// Gets an EventSettings by primary key.
+    /// Creates or updates the knobs row for <paramref name="eventSettingsId"/>
+    /// (on-demand insert — the row may not exist yet).
     /// </summary>
-    Task<EventSettings?> GetByIdAsync(Guid id);
-
-    /// <summary>
-    /// Creates a new EventSettings. Validates only one IsActive=true.
-    /// </summary>
-    Task CreateAsync(EventSettings entity);
-
-    /// <summary>
-    /// Updates an existing EventSettings.
-    /// </summary>
-    Task UpdateAsync(EventSettings entity);
+    Task SaveKnobsAsync(
+        Guid eventSettingsId, bool isShiftBrowsingOpen, int? globalVolunteerCap, int reminderLeadTimeHours);
 
     /// <summary>
     /// Creates a new rota. Validates team is a department and event is active.

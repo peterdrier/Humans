@@ -79,7 +79,7 @@ public class DevelopmentDashboardSeederTests
             .Returns(_ => SignupResult.Ok(Guid.NewGuid()));
 
         var sut = new DevelopmentDashboardSeeder(
-            shifts, Substitute.For<ISettingsService>(), signups,
+            shifts, Substitute.For<ISettingsService>(), Substitute.For<IEventSettingsSeeding>(), signups,
             Substitute.For<ITeamService>(), teams, Substitute.For<IUserEmailService>(),
             Substitute.For<IUserService>(), profileEditor, userManager, new FakeClock(now),
             NullLogger<DevelopmentDashboardSeeder>.Instance);

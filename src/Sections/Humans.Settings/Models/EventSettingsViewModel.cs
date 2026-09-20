@@ -138,15 +138,6 @@ internal static class EventSettingsFormMapper
     {
         var errors = new List<EventSettingsFormError>();
 
-        // The form edits an existing row and never invents an id: Shifts' event_settings
-        // still owns them, and a Settings-only id is an event that can hold no rota.
-        if (model.Id is null)
-        {
-            errors.Add(new EventSettingsFormError(
-                nameof(model.Id),
-                "This form edits an existing event row. New rows arrive through /Settings/Admin/Carry."));
-        }
-
         if (DateTimeZoneProviders.Tzdb.GetZoneOrNull(model.TimeZoneId) is null)
             errors.Add(new EventSettingsFormError(nameof(model.TimeZoneId), "Invalid IANA timezone ID."));
 
@@ -177,9 +168,10 @@ internal static class EventSettingsFormMapper
 
         var gateOpening = parsedDate.Value;
 
+        // A new cycle mints its own id — Settings owns event ids (nobodies-collective/Humans#1631).
         return new EventSettingsParseResult(
             new EventSettingsInfo(
-                Id: model.Id!.Value,
+                Id: model.Id ?? Guid.NewGuid(),
                 EventName: model.EventName,
                 // Year is the gate-opening year, never edited on its own.
                 Year: gateOpening.Year,

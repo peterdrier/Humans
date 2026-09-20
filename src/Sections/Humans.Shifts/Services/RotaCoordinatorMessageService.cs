@@ -188,16 +188,13 @@ internal sealed class RotaCoordinatorMessageService(
         Guid teamId,
         CancellationToken ct)
     {
-        var eventSettings = await repo.GetActiveEventSettingsAsync(ct);
-        if (eventSettings is null) return [];
-
-        // Every rota below belongs to the same active event, so its calendar is
-        // resolved once rather than per-rota.
-        var calendar = await calendarResolver.GetAsync(eventSettings.Id, ct);
+        // "Active" is Settings' notion (nobodies-collective/Humans#1631) — resolve the
+        // calendar once, from the active id, rather than via a Shifts-local lookup.
+        var calendar = await calendarResolver.GetActiveAsync(ct);
         if (calendar is null) return [];
 
         var rotas = (await repo.GetRotasAsync(
-                eventSettings.Id,
+                calendar.Id,
                 [teamId],
                 RotaReadShape.View,
                 ct))
