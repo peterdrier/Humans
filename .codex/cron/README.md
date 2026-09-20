@@ -43,7 +43,8 @@ cp ~/.humans-debt-runner/clone/.codex/cron/humans-debt.timer   ~/.config/systemd
 
 # Adjust humans-debt.service's Environment=PATH= line if dotnet/codex/gh
 # live somewhere these defaults don't cover. Adjust humans-debt.timer's
-# OnCalendar= if 02:00 local time isn't quiet on your machine.
+# OnCalendar= if 06:00 UTC isn't quiet on your machine. Keep the trailing
+# UTC, or systemd reads the time in the machine's local zone instead.
 
 systemctl --user daemon-reload
 systemctl --user enable --now humans-debt.timer

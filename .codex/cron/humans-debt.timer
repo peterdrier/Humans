@@ -2,14 +2,15 @@
 Description=Run humans-debt.service nightly
 
 [Timer]
-# 02:00 local time — a quiet overnight hour on an idle machine. Change this
-# to whatever's quiet on your Nook, then `systemctl --user daemon-reload`.
-OnCalendar=*-*-* 02:00:00
-# Spread out over 20 minutes so this doesn't fire at the exact same instant
-# as anything else scheduled on the box.
-RandomizedDelaySec=20min
-# If the machine was off/asleep at 02:00, run on next boot instead of
-# waiting for tomorrow's 02:00.
+# 06:00 UTC. The trailing UTC matters: without it systemd reads the time in
+# the machine's local zone, so a Nook set to anything but UTC would drift off
+# the intended hour (and shift twice a year with DST).
+OnCalendar=*-*-* 06:00:00 UTC
+# No randomised delay: this is one job on one machine, so there is no herd to
+# spread out, and a predictable start time makes the logs easier to read.
+RandomizedDelaySec=0
+# If the machine was off or asleep at 06:00, run on next boot rather than
+# skipping the day entirely.
 Persistent=true
 Unit=humans-debt.service
 
