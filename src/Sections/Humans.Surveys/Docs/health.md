@@ -107,10 +107,12 @@ the line that enforces it.
   preview actions build view models and never call a writing service method:
   `src/Sections/Humans.Surveys/Controllers/SurveyAdminController.cs:235` through
   `src/Sections/Humans.Surveys/Models/SurveyPageViewModelFactory.cs:27`.
-- **A survey reaches Open only through approval.** A Draft is submitted by its author and by
-  nobody else (`src/Sections/Humans.Surveys/Services/SurveyService.cs:597`); a pending survey
-  cannot be opened directly (`:526`); approval validates the audience, records who approved, and
-  sends in the same step (`:608`).
+- **A submitted survey leaves PendingApproval only through approval or rejection.** A Draft is
+  submitted by its author and by nobody else
+  (`src/Sections/Humans.Surveys/Services/SurveyService.cs:597`); once pending it cannot be opened
+  by the generic Open action (`:526`); approval validates the audience, records who approved, and
+  sends in the same step (`:608`). Board/Admin keep the pre-existing direct Draft → Open path,
+  which the gate does not touch.
 - **A rejection carries a reason.** An empty note is refused, the note is trimmed and bounded, and
   the rejection is audited against the author:
   `src/Sections/Humans.Surveys/Services/SurveyService.cs:640`, `:649` and `:652`.
