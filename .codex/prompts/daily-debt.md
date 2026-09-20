@@ -30,6 +30,14 @@ build and test against your final commit and both passed. If you push or
 open a PR yourself, you can publish a red or broken branch before that gate
 ever runs — exactly what this whole setup exists to prevent.
 
+You also stay on the branch and checkout you were handed. Never switch
+branches, never `git checkout -b`, never create a worktree, never commit
+anywhere but the current branch. The wrapper builds and tests the tree it
+finds and pushes that branch by name; if those two stop being the same
+thing, it publishes code it never gated. It now refuses to push when it
+finds itself somewhere else, so a stray checkout costs you the whole
+night's work.
+
 Since you never call `gh`, you cannot write the PR body yourself either.
 Instead, the wrapper runs you with `--output-last-message`, so **your final
 message becomes the PR body**: make sure it's the report described in

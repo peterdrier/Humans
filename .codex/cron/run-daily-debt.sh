@@ -84,16 +84,30 @@ main() {
   readonly PROMPT_REL_PATH=".codex/prompts/daily-debt.md"
   readonly ENV_FILE_REL_PATH=".codex/cron/debt-runner.env"     # excluded from `git clean` inside WORK_DIR
 
-  local run_date
+  # ---- run state, deliberately global, not local ------------------------
+  # Every exit has to leave a SUMMARY line, including the ones nobody wrote
+  # a branch for: a `set -e` abort on a failed fetch/reset/sed, or a signal.
+  # A nightly that dies silently reads in the log exactly like a night with
+  # nothing to do. The EXIT trap below is what covers those, and it cannot
+  # see main()'s locals: `set -e` pops this function's frame *before* the
+  # trap runs, so as locals these would all be unset by the time the trap
+  # needs them — the silent-failure case would stay silent. Globals outlive
+  # the frame, so the trap reports the real reason. Verified against a
+  # failing `git fetch`.
   run_date="$(date -u +%F)"
+  exit_reason="unknown"
+  summary_written=0
+  commits_made=0
+  build_result="skipped"
+  test_result="skipped"
+  pr_url="none"
+  trap 'exit_rc=$?; if (( summary_written == 0 )); then
+          write_summary "$run_date" "${exit_reason:-unknown}:unexpected-exit-$exit_rc" \
+            "$commits_made" "$build_result" "$test_result" "$pr_url"
+        fi' EXIT
+
   local log_file="$LOG_DIR/debt-$run_date.log"
   LOG_FILE="$log_file" # used by log()/die() below
-
-  local exit_reason="unknown"
-  local commits_made=0
-  local build_result="skipped"
-  local test_result="skipped"
-  local pr_url="none"
   local run_report=""
 
   mkdir -p "$LOG_DIR"
@@ -200,6 +214,16 @@ main() {
     } >"$evidence_dir/info.txt"
     git status --porcelain >"$evidence_dir/status.txt" 2>/dev/null || true
     git diff >"$evidence_dir/uncommitted.diff" 2>/dev/null || true
+    # Copy untracked files out bodily. Both captures around this line are
+    # tracked-files-only — `git diff` by definition, and `git stash create`
+    # has no untracked mode — while the `git clean -fdx` below deletes every
+    # untracked file there is. A brand-new file the interrupted run had just
+    # written is exactly the evidence worth having, and a filename in
+    # status.txt is not recovery. --exclude-standard skips ignored paths, so
+    # this saves real work and not bin/obj or the env file.
+    mkdir -p "$evidence_dir/untracked"
+    git ls-files --others --exclude-standard -z \
+      | xargs -0 -r cp --parents -t "$evidence_dir/untracked" 2>>"$log_file" || true
     local stash_sha
     stash_sha="$(git stash create 2>/dev/null || true)"
     if [[ -n "$stash_sha" ]]; then
@@ -258,15 +282,18 @@ main() {
   # below re-use the report from the run that pushed this branch.
   local last_message_file="$LOG_DIR/last-message-$run_date.md"
   if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
-    # Branch already pushed today. If it already has an open PR, today's work
-    # is done — skip. If not (a prior run pushed but `gh pr create` failed),
-    # the work is invisible until a PR exists for it — open one now instead
-    # of silently skipping every remaining run today.
+    # Branch already pushed today. If a PR exists for it in ANY state, today's
+    # work is done — a PR Peter closed or merged during the day is finished
+    # work, not missing work, and `--state open` alone would have a same-day
+    # rerun open a second PR for the same branch. If there is no PR at all
+    # (a prior run pushed but `gh pr create` failed), the work is invisible
+    # until one exists — open it now instead of silently skipping every
+    # remaining run today.
     local existing_pr
-    existing_pr="$(gh pr list --repo "$gh_repo" --head "$branch" --state open --json url --jq '.[0].url // empty' 2>>"$log_file")"
+    existing_pr="$(gh pr list --repo "$gh_repo" --head "$branch" --state all --json url,state --jq '.[0] | select(.url) | "\(.state) \(.url)"' 2>>"$log_file")"
     if [[ -n "$existing_pr" ]]; then
       exit_reason="skip-already-ran-today"
-      log "branch $branch already exists on origin with open PR $existing_pr — a run already completed today; skipping"
+      log "branch $branch already exists on origin with a PR ($existing_pr) — a run already completed today; skipping"
       write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
       exit 0
     fi
@@ -327,6 +354,22 @@ main() {
   set -e
   log "codex exited with status $codex_exit"
 
+  # ---- refuse to gate or push from anywhere but the branch we hand over ----
+  # The gate below tests whatever is checked out, but the push names
+  # "$branch". Codex switching branches or checking out a worktree makes
+  # those two different commits, and the runner would advertise a green
+  # build for code it never compiled. The prompt forbids it; this catches it
+  # regardless, before the 30-minute build/test rather than after.
+  local current_branch
+  current_branch="$(git rev-parse --abbrev-ref HEAD)"
+  if [[ "$current_branch" != "$branch" ]]; then
+    exit_reason="branch-changed-during-run"
+    log "ERROR: expected to be on '$branch' after codex, but HEAD is on '$current_branch'."
+    log "       The tested tree would not be the pushed commit — refusing to continue."
+    write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
+    exit 1
+  fi
+
   local head_after
   head_after="$(git rev-parse HEAD)"
 
@@ -358,8 +401,13 @@ main() {
       write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
       exit 1
     fi
-    exit_reason="no-op"
-    log "no-op: codex made no commits"
+    if [[ "$codex_exit" -eq 124 ]]; then
+      exit_reason="timed-out-no-commits"
+      log "timed out after $TIME_BUDGET with no commits — not the same as finding nothing to do"
+    else
+      exit_reason="no-op"
+      log "no-op: codex made no commits"
+    fi
     write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
     exit 0
   fi
@@ -487,6 +535,9 @@ die() {
 
 write_summary() {
   local run_date="$1" reason="$2" commits="$3" build="$4" test="$5" pr="$6"
+  # Assigns main()'s local through dynamic scoping, so the EXIT trap there
+  # knows a summary already went out and does not print a second one.
+  summary_written=1
   log "SUMMARY date=$run_date exit_reason=$reason commits=$commits build=$build test=$test pr=$pr"
 }
 
