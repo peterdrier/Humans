@@ -412,6 +412,16 @@ Not on the `/Admin` dashboard itself (that renders only the tile strip and secti
 
 Both live at `/Settings/Admin/*`, not `/Admin/Settings` — top-level `/Admin/*` is frozen and new admin pages belong to their section (`memory/architecture/no-admin-url-section.md`).
 
+### Settings tabs (`/Settings#<key>`, peterdrier/Humans#1634)
+
+Sections contribute a tab to `/Settings` via `ISectionSettings`; the old standalone screen redirects and its admin-nav item is removed unless the page still has other content.
+
+| Tab key | Section | Policy | Old route (now redirects, or removed) |
+|---|---|---|---|
+| `city-planning` | CityPlanning | `CampAdminOrAdmin` | Settings portion of `/CityPlanning/BarrioMap/Admin` (page stays for GeoJSON/containers/export) |
+| `gate` | Gate | `TicketAdminOrAdmin` | Settings portion of `/Gate/Admin` (page stays for staff PIN admin) |
+| `event-guide` | Events | `EventsAdminOrAdmin` | `/Events/Admin/Settings` (nav item removed) |
+
 ## System Health
 
 ### Dashboard Indicators

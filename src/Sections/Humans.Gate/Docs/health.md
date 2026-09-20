@@ -22,7 +22,7 @@ gate history is exportable and erasable under GDPR; account merges re-point thei
 |---|---|---|
 | May this barcode enter? | `GET /Gate`, `GET /Gate/Evaluate`, `POST /Gate/Decision` | One flow: scan → verdict card → agent decision → durable row (+ attendance projection, + best-effort vendor mirror) |
 | Who scanned what? | `GET /Gate/Leaderboard` | 7-day tallies by scanner id |
-| Configure the gate | `GET/POST /Gate/Admin`, `POST /Gate/Admin/SetPin`, `POST /Gate/Admin/ResetPin` | Cutoff + minor age; staff-PIN enrol/reset |
+| Configure the gate | `/Settings#gate`; `GET/POST /Gate/Admin`, `POST /Gate/Admin/SetPin`, `POST /Gate/Admin/ResetPin` | Cutoff + minor age (moved to Settings, peterdrier/Humans#1634); staff-PIN enrol/reset stays on `/Gate/Admin` |
 | Recover missed vendor mirrors | `GET/POST /Gate/Admin/VendorCheckInBackfill` (`RunOne`, `Run`) | Temp page — remove after use |
 | Who is scanning? *(retired)* | `Claim` GET/POST, `ClaimPin`, `EndShift`, `/Gate/Search` | Unreachable since peterdrier#1075; deletion tracked upstream (nobodies-collective/Humans#933) |
 | Housekeeping | `GateRetentionJob`, `GateVendorCheckInJob`, `IUserDataContributor`, `IUserMerge` | Retention purge; fire-and-forget mirror; GDPR export/erase; merge re-point |

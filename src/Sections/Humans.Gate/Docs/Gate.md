@@ -120,7 +120,7 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
 | `/Gate/Claim` | GET (`ScannerAccess`) / POST (`GateAdmit`) | — | Pick who is scanning → hands off to the PIN keypad |
 | `/Gate/ClaimPin` | POST | `GateAdmit` | Set/verify the staffer's PIN, then stamp the scanning session. Both POSTs require the posted id to be an active member and the id the user read resolves to: a merged-away id fails closed rather than claiming the session as its survivor |
 | `/Gate/Leaderboard` | GET | `ScannerAccess` | Per-staffer scan tallies |
-| `/Gate/Admin` | GET/POST | `TicketAdminOrAdmin` | Gate settings (cutoff, minor age threshold) |
+| `/Gate/Admin` | GET/POST | `TicketAdminOrAdmin` | Staff PIN admin — settings (cutoff, minor age threshold) moved to `/Settings#gate` (peterdrier/Humans#1634) |
 | `/Gate/Admin/SetPin` | POST | `TicketAdminOrAdmin` | Admin enrol/change any staffer's PIN (incl. supervisors) |
 | `/Gate/Admin/ResetPin` | POST | `TicketAdminOrAdmin` | Admin clear a staffer's PIN (they re-enrol on next claim) |
 | `/Gate/Admin/VendorCheckInBackfill` | GET | `AdminOnly` | One-off vendor check-in backfill page (temp — remove after use) |

@@ -1387,4 +1387,13 @@
   <data name="Settings_TabEvent" xml:space="preserve">
     <value>Evento</value>
   </data>
+  <data name="Settings_TabCityPlanning" xml:space="preserve">
+    <value>Mappa Barrios</value>
+  </data>
+  <data name="Settings_TabGate" xml:space="preserve">
+    <value>Cancello</value>
+  </data>
+  <data name="Settings_TabEventGuide" xml:space="preserve">
+    <value>Guida eventi</value>
+  </data>
 </root>

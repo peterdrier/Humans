@@ -811,4 +811,7 @@
 
   <!-- Settings tab label: a SharedResource key because SettingsTabsViewComponent cannot see a contributing section's own resource set -->
   <data name="Settings_TabEvent" xml:space="preserve"><value>Event</value></data>
+  <data name="Settings_TabCityPlanning" xml:space="preserve"><value>Barrio Map</value></data>
+  <data name="Settings_TabGate" xml:space="preserve"><value>Gate</value></data>
+  <data name="Settings_TabEventGuide" xml:space="preserve"><value>Event Guide</value></data>
 </root>

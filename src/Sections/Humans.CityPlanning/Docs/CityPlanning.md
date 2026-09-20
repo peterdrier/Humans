@@ -90,13 +90,14 @@ Admin sub-pages hosted on `CityPlanningController` under `/CityPlanning/BarrioMa
 
 | Route | Purpose |
 |-------|---------|
-| `/CityPlanning/BarrioMap/Admin` | Settings panel: toggle barrio placement, upload limit zone and official zones, set placement dates |
+| `/CityPlanning/BarrioMap/Admin` | Upload limit zone and official zones, containers, export/import — placement toggle, placement dates, and registration info moved to `/Settings#city-planning` (peterdrier/Humans#1634) |
 | `/CityPlanning/BarrioMap/Admin/Containers/{year}` | Org-level + all-barrio container admin: CRUD, image management, container placement phase toggle |
-| `POST /CityPlanning/BarrioMap/Admin/OpenPlacement` | Open barrio placement phase |
-| `POST /CityPlanning/BarrioMap/Admin/ClosePlacement` | Close barrio placement phase |
+| `POST /CityPlanning/BarrioMap/Admin/OpenPlacement` | Open barrio placement phase (redirects to `/Settings#city-planning`) |
+| `POST /CityPlanning/BarrioMap/Admin/ClosePlacement` | Close barrio placement phase (redirects to `/Settings#city-planning`) |
 | `POST /CityPlanning/BarrioMap/Admin/OpenContainerPlacement` | Open container placement phase |
 | `POST /CityPlanning/BarrioMap/Admin/CloseContainerPlacement` | Close container placement phase |
-| `POST /CityPlanning/BarrioMap/Admin/UpdatePlacementDates` | Set informational open/close datetimes |
+| `POST /CityPlanning/BarrioMap/Admin/UpdatePlacementDates` | Set informational open/close datetimes (redirects to `/Settings#city-planning`) |
+| `POST /CityPlanning/BarrioMap/Admin/UpdateRegistrationInfo` | Set the barrio registration page's markdown (redirects to `/Settings#city-planning`) |
 | `POST /CityPlanning/BarrioMap/Admin/UploadLimitZone` | Upload limit zone GeoJSON |
 | `GET /CityPlanning/BarrioMap/Admin/DownloadLimitZone` | Download limit zone GeoJSON |
 | `POST /CityPlanning/BarrioMap/Admin/DeleteLimitZone` | Delete limit zone |

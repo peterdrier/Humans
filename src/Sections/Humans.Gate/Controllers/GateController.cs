@@ -246,14 +246,12 @@ internal sealed class GateController(
         return View(rows);
     }
 
+    // Settings (general-entry instant, minor age threshold) moved to /Settings#gate
+    // (peterdrier/Humans#1634) — see GateSettingsTabViewComponent. The page stays for
+    // Staff PIN admin below, so GET keeps rendering it rather than redirecting outright.
     [HttpGet("Admin")]
     [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
-    public async Task<IActionResult> Admin(CancellationToken ct)
-    {
-        var s = await gate.GetSettingsAsync(ct);
-        return View(new GateSettingsViewModel(
-            InstantPattern.ExtendedIso.Format(s.GeneralEntryOpensAt), s.MinorAgeThresholdYears));
-    }
+    public IActionResult Admin() => View();
 
     [HttpPost("Admin")]
     [ValidateAntiForgeryToken]
@@ -261,18 +259,21 @@ internal sealed class GateController(
     public async Task<IActionResult> Admin(GateSettingsViewModel model, CancellationToken ct)
     {
         if (!ModelState.IsValid)
-            return View(model);
+        {
+            SetError("Invalid gate settings.");
+            return Redirect("/Settings#gate");
+        }
 
         var parsed = InstantPattern.ExtendedIso.Parse(model.GeneralEntryOpensAtUtc ?? string.Empty);
         if (!parsed.Success)
         {
             SetError("Invalid date/time — use an ISO instant, e.g. 2026-07-06T10:00:00Z.");
-            return View(model);
+            return Redirect("/Settings#gate");
         }
 
         await gate.SaveSettingsAsync(new GateSettingsDto(parsed.Value, model.MinorAgeThresholdYears), ct);
         SetSuccess("Gate settings saved.");
-        return RedirectToAction(nameof(Admin));
+        return Redirect("/Settings#gate");
     }
 
     // Admin PIN enrolment: set any user's claim PIN out of band (stored AdminEnrolled — see

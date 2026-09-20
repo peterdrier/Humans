@@ -1,0 +1,103 @@
+@using Humans.CityPlanning.ViewComponents
+@model CityPlanningSettingsTabViewModel
+@{
+    var settings = Model.Settings;
+}
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header fw-semibold">
+                <i class="fa-solid fa-door-open me-1"></i> @Localizer["CityPlanning_Admin_PlacementPhaseCard"] (@settings.Year)
+            </div>
+            <div class="card-body">
+                <p class="mb-3">
+                    @Localizer["CityPlanning_Admin_Status"]
+                    @if (settings.IsPlacementOpen)
+                    {
+                        <span class="badge bg-success fs-6">@Localizer["CityPlanning_StatusOpen"]</span>
+                        if (settings.OpenedAt.HasValue)
+                        {
+                            <span class="text-muted ms-2 small">@string.Format(Localizer["CityPlanning_Admin_OpenedAt"].Value, settings.OpenedAt.Value.ToString("g", null))</span>
+                        }
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary fs-6">@Localizer["CityPlanning_StatusClosed"]</span>
+                        if (settings.ClosedAt.HasValue)
+                        {
+                            <span class="text-muted ms-2 small">@string.Format(Localizer["CityPlanning_Admin_ClosedAt"].Value, settings.ClosedAt.Value.ToString("g", null))</span>
+                        }
+                    }
+                </p>
+                @if (settings.IsPlacementOpen)
+                {
+                    <form method="post" action="/CityPlanning/BarrioMap/Admin/ClosePlacement">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fa-solid fa-lock me-1"></i> @Localizer["CityPlanning_Admin_ClosePlacement"]
+                        </button>
+                    </form>
+                }
+                else
+                {
+                    <form method="post" action="/CityPlanning/BarrioMap/Admin/OpenPlacement">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-success">
+                            <i class="fa-solid fa-lock-open me-1"></i> @Localizer["CityPlanning_Admin_OpenPlacement"]
+                        </button>
+                    </form>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header fw-semibold">
+                <i class="fa-solid fa-calendar me-1"></i> @Localizer["CityPlanning_Admin_PlacementDatesCard"] (@settings.Year)
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">@Localizer["CityPlanning_Admin_PlacementDatesHint"]</p>
+                <form method="post" action="/CityPlanning/BarrioMap/Admin/UpdatePlacementDates">
+                    @Html.AntiForgeryToken()
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">@Localizer["CityPlanning_Admin_OpensAt"]</label>
+                        <input type="datetime-local" name="opensAt" class="form-control form-control-sm"
+                               value="@(settings.PlacementOpensAt is { } opensAt ? DateFormattingExtensions.PlacementDateTimePattern.Format(opensAt) : string.Empty)" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">@Localizer["CityPlanning_Admin_ClosesAt"]</label>
+                        <input type="datetime-local" name="closesAt" class="form-control form-control-sm"
+                               value="@(settings.PlacementClosesAt is { } closesAt ? DateFormattingExtensions.PlacementDateTimePattern.Format(closesAt) : string.Empty)" />
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="fa-solid fa-save me-1"></i> @Localizer["CityPlanning_Admin_SaveDates"]
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    @* New — never had an admin UI before (peterdrier/Humans#1634); the underlying write
+       already existed (CityPlanningService.UpdateRegistrationInfoAsync), only reachable
+       from Camps' own admin page. This tab is CampAdminOrAdmin-gated (admin/operator-only
+       per memory/code/localization-admin-exempt.md), so plain strings, no resx keys. *@
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header fw-semibold">
+                <i class="fa-solid fa-file-lines me-1"></i> Registration info
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">Markdown shown at the top of the barrio registration page. Leave empty to hide.</p>
+                <form method="post" action="/CityPlanning/BarrioMap/Admin/UpdateRegistrationInfo">
+                    @Html.AntiForgeryToken()
+                    <textarea name="registrationInfo" class="form-control form-control-sm mb-3" rows="4">@Model.RegistrationInfo</textarea>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="fa-solid fa-save me-1"></i> Save
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

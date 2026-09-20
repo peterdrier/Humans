@@ -51,6 +51,7 @@
   <data name="CityPlanning_PlacementPhaseInfo" xml:space="preserve"><value>Placement phase info</value></data>
   <data name="CityPlanning_Admin_Title" xml:space="preserve"><value>Barrio Map Admin</value></data>
   <data name="CityPlanning_Admin_ViewMap" xml:space="preserve"><value>View Map</value></data>
+  <data name="CityPlanning_Admin_SettingsMoved" xml:space="preserve"><value>Placement windows, scheduled times, and registration info moved to</value></data>
   <data name="CityPlanning_Admin_PlacementPhaseCard" xml:space="preserve"><value>Placement Phase</value></data>
   <data name="CityPlanning_Admin_Status" xml:space="preserve"><value>Status:</value></data>
   <data name="CityPlanning_Admin_OpenedAt" xml:space="preserve"><value>Opened {0}</value><comment>{0} = timestamp</comment></data>

@@ -21,35 +21,13 @@ internal sealed class EventsAdminController(IEventService guide, ILogger<EventsA
 {
     // ─── Settings ────────────────────────────────────────────
 
+    /// <summary>
+    /// Superseded by the /Settings#event-guide tab (peterdrier/Humans#1634) — one
+    /// canonical URL per page, so a GET here always redirects there. The form's data
+    /// assembly lives in <c>EventGuideSettingsTabViewComponent</c> now.
+    /// </summary>
     [HttpGet("Settings")]
-    public async Task<IActionResult> Settings()
-    {
-        var existing = await guide.GetGuideSettingsAsync();
-        var eventSettingsOptions = await BuildEventSettingsOptionsAsync();
-
-        if (existing == null)
-        {
-            return View(new GuideSettingsViewModel
-            {
-                AvailableEventSettings = eventSettingsOptions,
-                MaxPrintSlots = 100
-            });
-        }
-
-        var eventSettings = await guide.GetEventSettingsByIdAsync(existing.EventSettingsId);
-        var tz = GetTimeZone(eventSettings);
-        return View(new GuideSettingsViewModel
-        {
-            Id = existing.Id,
-            EventSettingsId = existing.EventSettingsId,
-            SubmissionOpenAt = ToLocalDateTime(existing.SubmissionOpenAt, tz),
-            SubmissionCloseAt = ToLocalDateTime(existing.SubmissionCloseAt, tz),
-            GuidePublishAt = ToLocalDateTime(existing.GuidePublishAt, tz),
-            MaxPrintSlots = existing.MaxPrintSlots,
-            AvailableEventSettings = eventSettingsOptions,
-            TimeZoneId = eventSettings?.TimeZoneId
-        });
-    }
+    public IActionResult Settings() => Redirect("/Settings#event-guide");
 
     [HttpPost("Settings")]
     [ValidateAntiForgeryToken]
