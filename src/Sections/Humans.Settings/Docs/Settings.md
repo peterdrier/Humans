@@ -147,8 +147,8 @@ Both admin controllers are `PolicyNames.AdminOnly` (pinned in
 None — no background jobs, no notification fan-out. Every `SaveEventSettingsAsync`
 call writes one `AuditAction.EventSettingsUpdated` audit entry — see Invariants.
 `Humans.Development`'s dashboard seeder calls `IEventSettingsSeeding.CreateActiveEventAsync`
-before seeding Shifts fixtures against the same id (no audit entry — seeding has
-no real actor).
+before seeding Shifts fixtures against the same id, and `DeleteEventAsync` on reset to drop
+that row again (no audit entry either way — seeding has no real actor).
 
 ## Cross-Section Dependencies
 

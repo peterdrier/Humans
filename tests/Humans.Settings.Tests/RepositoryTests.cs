@@ -171,4 +171,36 @@ public sealed class RepositoryTests : IDisposable
 
         result.Should().BeFalse();
     }
+
+    [HumansFact]
+    public async Task DeleteEventSettingsAsync_RemovesOnlyTheGivenRow()
+    {
+        var id = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        _seedContext.EventSettings.Add(MakeEvent(id, EventSettingsStatus.Active));
+        _seedContext.EventSettings.Add(MakeEvent(other, EventSettingsStatus.Inactive));
+        _seedContext.Settings.Add(new Setting { Key = "Untouched", Value = "true" });
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var deleted = await _repository.DeleteEventSettingsAsync(
+            id, Xunit.TestContext.Current.CancellationToken);
+
+        deleted.Should().Be(1);
+        var remainingEvents = await _seedContext.EventSettings.AsNoTracking()
+            .Select(e => e.Id)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        remainingEvents.Should().ContainSingle().Which.Should().Be(other);
+        var remainingSetting = await _seedContext.Settings.AsNoTracking()
+            .SingleAsync(s => s.Key == "Untouched", Xunit.TestContext.Current.CancellationToken);
+        remainingSetting.Value.Should().Be("true");
+    }
+
+    [HumansFact]
+    public async Task DeleteEventSettingsAsync_ReturnsZeroWhenRowDoesNotExist()
+    {
+        var deleted = await _repository.DeleteEventSettingsAsync(
+            Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        deleted.Should().Be(0);
+    }
 }

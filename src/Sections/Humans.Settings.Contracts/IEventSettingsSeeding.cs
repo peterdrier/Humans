@@ -16,4 +16,13 @@ public interface IEventSettingsSeeding
     /// real actor, matching the other seeding seams.
     /// </summary>
     Task CreateActiveEventAsync(EventSettingsInfo settings, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes the event settings row by id, if it exists. Returns the number of rows
+    /// deleted (0 or 1). No audit entry, matching <see cref="CreateActiveEventAsync"/> —
+    /// call before or after <c>IShiftSeeding.DeleteEventAsync</c> deletes the rotas that
+    /// reference this id, order doesn't matter since the two sections' tables carry no
+    /// DB-level FK between them.
+    /// </summary>
+    Task<int> DeleteEventAsync(Guid id, CancellationToken cancellationToken = default);
 }

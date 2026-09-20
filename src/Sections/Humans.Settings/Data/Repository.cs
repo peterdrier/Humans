@@ -98,4 +98,16 @@ internal sealed class Repository(IDbContextFactory<SettingsDbContext> factory)
 
         await ctx.SaveChangesAsync(ct);
     }
+
+    public async Task<int> DeleteEventSettingsAsync(Guid id, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var existing = await ctx.EventSettings.FirstOrDefaultAsync(e => e.Id == id, ct);
+        if (existing is null)
+            return 0;
+
+        ctx.EventSettings.Remove(existing);
+        await ctx.SaveChangesAsync(ct);
+        return 1;
+    }
 }

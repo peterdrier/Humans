@@ -463,6 +463,10 @@ internal sealed class DevelopmentDashboardSeeder(
     {
         var eventsDeleted = await shiftManagementService.DeleteEventAsync(SeededEventId, cancellationToken);
 
+        // Settings owns "which event is active" (nobodies-collective/Humans#1631) and must
+        // drop its own row too, or SeedAsync's AlreadySeeded check keeps firing forever.
+        await eventSettingsSeeding.DeleteEventAsync(SeededEventId, cancellationToken);
+
         // Dev users - match the seed marker on UserEmails.
         var devUserIds = await userEmailService.GetUserIdsByEmailPrefixAndSuffixAsync(
             DevUserEmailPrefix, DevUserEmailSuffix, cancellationToken);

@@ -83,6 +83,10 @@ internal sealed class Service(
             cancellationToken);
     }
 
+    /// <inheritdoc />
+    public Task<int> DeleteEventAsync(Guid id, CancellationToken cancellationToken = default) =>
+        repository.DeleteEventSettingsAsync(id, cancellationToken);
+
     private static EventSettingsInfo? ToDto(EventSettings? src) => src is null ? null : new EventSettingsInfo(
         Id: src.Id,
         EventName: src.EventName,

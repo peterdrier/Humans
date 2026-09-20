@@ -33,4 +33,7 @@ internal interface ISettingsRepository : IRepository
     /// <paramref name="now"/> stamps <c>UpdatedAt</c>, and <c>CreatedAt</c> on insert.
     /// </summary>
     Task UpsertEventSettingsAsync(EventSettings settings, Instant now, CancellationToken ct = default);
+
+    /// <summary>Deletes the row by id, if it exists. Returns 0 or 1.</summary>
+    Task<int> DeleteEventSettingsAsync(Guid id, CancellationToken ct = default);
 }
