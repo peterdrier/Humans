@@ -155,7 +155,6 @@
   <data name="Survey_Admin_Builder_InvitationEmailIntro" xml:space="preserve"><value>Personalizza l'invito iniziale. Humans aggiunge il saluto, il titolo del sondaggio, il pulsante con il link e i saluti finali. Il messaggio supporta la formattazione Markdown, incluse le immagini https://. Lascia un campo vuoto per usare il testo standard.</value></data>
   <data name="Survey_Admin_Builder_Field_EmailSubject" xml:space="preserve"><value>Oggetto dell'email</value></data>
   <data name="Survey_Admin_Builder_Field_EmailMessage" xml:space="preserve"><value>Messaggio dell'email</value></data>
-  <data name="Survey_Admin_Builder_EmailPreview" xml:space="preserve"><value>Anteprima</value></data>
   <data name="Survey_Admin_Builder_QuestionsHeader" xml:space="preserve"><value>Domande</value></data>
   <data name="Survey_Admin_Builder_AddQuestion" xml:space="preserve"><value>+ Aggiungi domanda</value></data>
   <data name="Survey_Admin_Builder_SaveTranslateTitle" xml:space="preserve"><value>Salva e poi traduce automaticamente, dalla lingua predefinita, i campi ancora mancanti nelle altre lingue. Il testo esistente non viene mai sovrascritto: rivedilo prima di aprire.</value></data>

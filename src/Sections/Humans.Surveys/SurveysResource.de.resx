@@ -155,7 +155,6 @@
   <data name="Survey_Admin_Builder_InvitationEmailIntro" xml:space="preserve"><value>Passen Sie die anfängliche Einladung an. Humans fügt die Begrüßung, den Umfragetitel, die Schaltfläche mit dem Umfragelink und die Grußformel hinzu. Die Nachricht unterstützt Markdown-Formatierung, einschließlich https://-Bildern. Lassen Sie ein Feld leer, um den Standardtext zu verwenden.</value></data>
   <data name="Survey_Admin_Builder_Field_EmailSubject" xml:space="preserve"><value>E-Mail-Betreff</value></data>
   <data name="Survey_Admin_Builder_Field_EmailMessage" xml:space="preserve"><value>E-Mail-Nachricht</value></data>
-  <data name="Survey_Admin_Builder_EmailPreview" xml:space="preserve"><value>Vorschau</value></data>
   <data name="Survey_Admin_Builder_QuestionsHeader" xml:space="preserve"><value>Fragen</value></data>
   <data name="Survey_Admin_Builder_AddQuestion" xml:space="preserve"><value>+ Frage hinzufügen</value></data>
   <data name="Survey_Admin_Builder_SaveTranslateTitle" xml:space="preserve"><value>Speichert und übersetzt anschließend maschinell die Felder, die in anderen Sprachen noch fehlen, ausgehend von der Standardsprache. Vorhandener Text wird nie überschrieben — vor dem Öffnen prüfen.</value></data>

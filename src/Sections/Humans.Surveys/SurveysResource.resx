@@ -150,7 +150,6 @@
   <data name="Survey_Admin_Builder_InvitationEmailIntro" xml:space="preserve"><value>Customize the initial invitation. Humans adds the greeting, survey title, survey-link button, and sign-off. The message supports Markdown formatting, including https:// images. Leave either field blank to use the standard wording.</value></data>
   <data name="Survey_Admin_Builder_Field_EmailSubject" xml:space="preserve"><value>Email subject</value></data>
   <data name="Survey_Admin_Builder_Field_EmailMessage" xml:space="preserve"><value>Email message</value></data>
-  <data name="Survey_Admin_Builder_EmailPreview" xml:space="preserve"><value>Preview</value></data>
   <data name="Survey_Admin_Builder_QuestionsHeader" xml:space="preserve"><value>Questions</value></data>
   <data name="Survey_Admin_Builder_AddQuestion" xml:space="preserve"><value>+ Add question</value></data>
   <data name="Survey_Admin_Builder_SaveTranslateTitle" xml:space="preserve"><value>Saves, then machine-translates fields still missing in other languages from the default language. Existing text is never overwritten — review before opening.</value></data>
