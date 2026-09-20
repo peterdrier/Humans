@@ -421,6 +421,7 @@ Sections contribute a tab to `/Settings` via `ISectionSettings`; the old standal
 | `gate` | Gate | `TicketAdminOrAdmin` | Settings portion of `/Gate/Admin` (page stays for staff PIN admin) |
 | `event-guide` | Events | `EventsAdminOrAdmin` | `/Events/Admin/Settings` (nav item removed) |
 | `barrios` | Camps | `CampAdminOrAdmin` | Settings portion of `/Camps/Admin` (page stays for the rest of camp/season admin) |
+| `shifts` | Shifts | `AdminOnly` | `GET /Shifts/Settings` removed outright, no redirect (no sidebar nav item existed; its inline page links now point at the tab) |
 
 ## System Health
 

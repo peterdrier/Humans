@@ -1411,4 +1411,7 @@
   <data name="Settings_TabEventGuide" xml:space="preserve">
     <value>Guida eventi</value>
   </data>
+  <data name="Settings_TabShifts" xml:space="preserve">
+    <value>Turni</value>
+  </data>
 </root>

@@ -33,7 +33,7 @@ Event shifts, rotas, signups, range blocks, event settings, general availability
 
 ### EventSettings
 
-Shifts' own per-event knobs, keyed by the `settings_event` id Settings mints: `GlobalVolunteerCap`, `ReminderLeadTimeHours`, `IsShiftBrowsingOpen`. Edited at `/Shifts/Settings`.
+Shifts' own per-event knobs, keyed by the `settings_event` id Settings mints: `GlobalVolunteerCap`, `ReminderLeadTimeHours`, `IsShiftBrowsingOpen`. Edited at `/Settings#shifts` (peterdrier/Humans#1634).
 
 **The app-wide calendar columns (EventName, Year, TimeZoneId, GateOpeningDate, every offset including the four build sub-period boundaries, EarlyEntryCapacity, BarriosEarlyEntryAllocation, EarlyEntryClose) and `IsActive` are fully dead as of nobodies-collective/Humans#1631.** No Shifts code reads or writes them — Settings (`ISettingsService`, `Humans.Settings.Contracts`) is the calendar's sole source of truth and owns "which cycle is active"; Shifts internals resolve the calendar per-rota via `Rota.EventSettingsId`, or the active id for active-event paths, through an internal `EventCalendarResolver`. The columns are not dropped — that's a separate, Peter-approved follow-up (`memory/architecture/no-column-drops-for-decoupling.md`) — so they still exist in the table and take their C# defaults on insert. A row here is created on demand: the first rota or knob edit against an event id Settings knows about creates its knobs row; `CreateRotaAsync`/`UpdateAsync` no longer enforce single-active (that invariant moved to Settings' `SaveEventSettingsAsync`).
 
@@ -175,8 +175,7 @@ Selected routes:
 | `POST /Shifts/Mine/Availability` | Save general availability |
 | `POST /Shifts/Mine/RegenerateIcal` | Regenerate iCal subscription |
 | `POST /Shifts/Preferences/Tags` | Save volunteer tag preferences |
-| `GET /Shifts/Settings` | Admin: knobs-only form (`IsShiftBrowsingOpen`, `GlobalVolunteerCap`, `ReminderLeadTimeHours`) for the active event; calendar and cycle creation live at `/Settings#event` (nobodies-collective/Humans#1631) |
-| `POST /Shifts/Settings` | Admin: saves the knobs for the active event, creating its Shifts row on demand if none exists yet |
+| `POST /Shifts/Settings` | Admin: saves the knobs (`IsShiftBrowsingOpen`, `GlobalVolunteerCap`, `ReminderLeadTimeHours`) for the active event, creating its Shifts row on demand if none exists yet; posted from `/Settings#shifts` (peterdrier/Humans#1634; the old `GET /Shifts/Settings` page is retired outright, no redirect) |
 | `GET /Shifts/OrphanSignups` | Admin: signups without audit log entries (AdminOnly) |
 | `GET /Shifts/Summary` | Read-only Shift Summary by Camp — global scope (all teams) (`ShiftDepartmentManager` policy) |
 | `GET /Shifts/Summary/{teamSlug}` | Shift Summary scoped to a team-set (the team + its non-promoted sub-teams) |
