@@ -212,9 +212,11 @@
             <partial name="_SurveyLocalizedField"
                      model="@(new SurveyLocalizedFieldModel(nameof(Model.InvitationEmailSubject), Localizer["Survey_Admin_Builder_Field_EmailSubject"], Model.InvitationEmailSubject, MaxLength: 200))" />
             <partial name="_SurveyLocalizedField"
-                     model="@(new SurveyLocalizedFieldModel(nameof(Model.InvitationEmailMessage), Localizer["Survey_Admin_Builder_Field_EmailMessage"], Model.InvitationEmailMessage, Multiline: true, Markdown: true, MaxLength: 4000))" />
+                     model="@(new SurveyLocalizedFieldModel(nameof(Model.InvitationEmailMessage), Localizer["Survey_Admin_Builder_Field_EmailMessage"], Model.InvitationEmailMessage, Multiline: true, Markdown: true, MaxLength: 4000, EmailPreview: true))" />
         </div>
     </div>
+
+    @await Html.PartialAsync("_EmailPreviewModal")
 
     <h2 class="h5">@Localizer["Survey_Admin_Builder_QuestionsHeader"]</h2>
     <div id="questions-container"
@@ -280,6 +282,19 @@
                     el.style.display = el.dataset.culture === activeCulture ? '' : 'none';
                 });
             }
+
+            // ── invitation email preview ─────────────────────────────────────
+            document.querySelectorAll('.survey-field-preview-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const culture = btn.dataset.culture;
+                    const subjectEl = document.querySelector('input[name="InvitationEmailSubject[' + culture + ']"]');
+                    const bodyEl = document.querySelector('textarea[name="InvitationEmailMessage[' + culture + ']"]');
+                    window.HumansEmailComposer.preview(
+                        subjectEl ? subjectEl.value : '',
+                        bodyEl ? bodyEl.value : '',
+                        '@nameof(Humans.Users.Contracts.MessageCategory.System)');
+                });
+            });
 
             function refreshVisibleMarkdownEditors() {
                 requestAnimationFrame(() => {

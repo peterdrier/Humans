@@ -155,6 +155,7 @@
   <data name="Survey_Admin_Builder_InvitationEmailIntro" xml:space="preserve"><value>Personalitza la invitació inicial. Humans afegeix la salutació, el títol de l'enquesta, el botó amb l'enllaç i l'acomiadament. El missatge admet format Markdown, però no imatges. Deixa qualsevol dels camps en blanc per utilitzar el text estàndard.</value></data>
   <data name="Survey_Admin_Builder_Field_EmailSubject" xml:space="preserve"><value>Assumpte del correu</value></data>
   <data name="Survey_Admin_Builder_Field_EmailMessage" xml:space="preserve"><value>Missatge del correu</value></data>
+  <data name="Survey_Admin_Builder_EmailPreview" xml:space="preserve"><value>Vista prèvia</value></data>
   <data name="Survey_Admin_Builder_QuestionsHeader" xml:space="preserve"><value>Preguntes</value></data>
   <data name="Survey_Admin_Builder_AddQuestion" xml:space="preserve"><value>+ Afegeix pregunta</value></data>
   <data name="Survey_Admin_Builder_SaveTranslateTitle" xml:space="preserve"><value>Desa i després tradueix automàticament, des de l'idioma predeterminat, els camps que encara falten en altres idiomes. El text existent mai se sobreescriu: revisa'l abans d'obrir.</value></data>

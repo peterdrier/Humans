@@ -19,6 +19,13 @@
                 <div class="small text-muted mb-1">@culture.ToDisplayLanguageName()</div>
                 <markdown-editor name="@name" value="@value" rows="4"
                                  maxlength="@(Model.MaxLength ?? 0)" />
+                @if (Model.EmailPreview)
+                {
+                    <button type="button" class="btn btn-sm btn-outline-secondary mt-1 survey-field-preview-btn"
+                            data-culture="@culture">
+                        <i class="fa-regular fa-eye me-1"></i>@Localizer["Survey_Admin_Builder_EmailPreview"]
+                    </button>
+                }
             </div>
         }
         else

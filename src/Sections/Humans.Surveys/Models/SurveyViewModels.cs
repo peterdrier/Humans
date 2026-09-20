@@ -121,7 +121,8 @@ internal sealed record SurveyLocalizedFieldModel(
     IReadOnlyDictionary<string, string> Values,
     bool Multiline = false,
     int? MaxLength = null,
-    bool Markdown = false);
+    bool Markdown = false,
+    bool EmailPreview = false);
 
 /// <summary>One question card in the builder. <paramref name="Key"/> is the non-sequential indexer key (or the <c>__QKEY__</c> placeholder in the JS template).</summary>
 internal sealed record SurveyQuestionCardModel(
