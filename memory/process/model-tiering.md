@@ -1,44 +1,17 @@
 ---
-name: Model tiering — Opus orchestrates, Sonnet executes, Haiku snips
-description: Opus orchestrates judgment calls (design dialogue, architecture); dispatch mechanical refactors to Sonnet, surgical one-shots/log summaries to Haiku via `Agent(model:...)`.
+name: Model tiering — dispatch subagents on cheaper models
+description: Which model/effort a subagent gets is in `.claude/skills/orch/routing.md`; this atom adds the Haiku context-vacuum-reader technique and dispatch timing/constraints.
 ---
 
 The `Agent` tool accepts a `model` param: `"sonnet"`, `"opus"`, or `"haiku"`. The orchestrator (the Claude reading this) is usually Opus. It can dispatch subagents on cheaper models for the mechanical bulk of a session.
 
 **Why:** A long refactor session (e.g. #685 ProfileService decomposition, 2026-05-09) splits into ~30% judgment work and ~70% mechanical execution. Running the whole thing on Opus costs 5x what the same outcome costs with judicious Sonnet dispatch. Peter flagged the under-use during that session's debrief.
 
-**How to apply:**
+**Which model/effort for a given subagent:** see [`.claude/skills/orch/routing.md`](../../.claude/skills/orch/routing.md) — the one home for that decision now.
 
-### What stays on Opus
+**How to apply (Humans-specific technique, beyond routing.md's tier table):**
 
-- Design dialogue with Peter (95%-confidence loop, multi-question batches, judgment calls)
-- The "is this a domain concept or a UI artifact?" kind of architectural reasoning
-- Move-map authoring — the part where you decide what moves where
-- Memory-atom writing (deciding what's a durable rule vs ephemeral context is judgment)
-- Resolution comments on issues
-- Final verification: did the subagent's diff actually match the spec?
-
-### What goes to Sonnet (`Agent` with `model: "sonnet"`)
-
-Self-contained mechanical refactors with a crisp brief:
-
-- "Apply this move map: drop methods X/Y/Z from IProfileService, drop these 4 ctor deps, delete these wrappers from CachingProfileService. Build cleanly. Report back."
-- "ProfileController gains these 4 injections. Refactor the Me/Edit-GET/Edit-POST/AdminDetail actions to compose Profile + Application data inline. Build cleanly."
-- "Fix all test compilation errors after the IUserService.X signature change. Update fakes, drop tests for moved methods, build + run cleanly."
-- Build-fail → fix → re-build loops where each error is a known-pattern fix.
-- Boilerplate propagation across many files (signature changes, ctor updates, decorator wrappers).
-
-### What goes to Haiku (`Agent` with `model: "haiku"`)
-
-**Two distinct uses — both high-leverage on Opus orchestrator context.**
-
-**(a) Surgical one-shot edits** in a single file with explicit before/after:
-
-- "In `tests/.../Foo.baseline.txt`, append these 2 lines in alphabetical order."
-- "In file X line range Y-Z, change signature from A to B."
-- Format-only fixes.
-
-**(b) Context-vacuum readers — the high-value use.** Haiku reads the bulky thing and returns a tiny summary. The bulk never touches Opus's context.
+**Context-vacuum readers — the high-value Haiku use.** Haiku reads the bulky thing and returns a tiny summary. The bulk never touches Opus's context.
 
 Highest-leverage targets:
 

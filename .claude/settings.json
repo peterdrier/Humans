@@ -1,5 +1,8 @@
 {
   "outputStyle": "Concise",
+  "env": {
+    "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet"
+  },
   "hooks": {
     "SessionStart": [
       {
