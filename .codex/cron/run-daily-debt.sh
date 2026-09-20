@@ -60,7 +60,11 @@ main() {
   REPO_URL="${REPO_URL:-}"                                    # git remote to clone/push, e.g. git@github.com:peterdrier/Humans.git
   WORK_DIR="${WORK_DIR:-$HOME/.humans-debt-runner/clone}"      # DEDICATED clone. Never Peter's working checkout.
   TIME_BUDGET="${TIME_BUDGET:-90m}"                            # wall-clock cap passed to `timeout`
-  CODEX_MODEL="${CODEX_MODEL:-}"                               # empty = codex's own default model
+  # Pinned rather than left to inherit the interactive `codex` config, so
+  # changing Peter's own day-to-day model/effort preference doesn't silently
+  # change what the nightly job runs.
+  CODEX_MODEL="${CODEX_MODEL:-gpt-6-astra}"
+  CODEX_EFFORT="${CODEX_EFFORT:-medium}"
   LOG_DIR="${LOG_DIR:-$HOME/.humans-debt-runner/logs}"         # must be outside WORK_DIR (git clean would wipe it)
   BRANCH_PREFIX="${BRANCH_PREFIX:-codex/daily-debt}"           # branch = $BRANCH_PREFIX/YYYY-MM-DD
   GH_BASE_BRANCH="${GH_BASE_BRANCH:-main}"                     # base branch on origin
@@ -70,24 +74,11 @@ main() {
   readonly CLONE_MARKER_NAME=".codex-runner-clone"
   readonly PROMPT_REL_PATH=".codex/prompts/daily-debt.md"
   readonly ENV_FILE_REL_PATH=".codex/cron/debt-runner.env"     # excluded from `git clean` inside WORK_DIR
-  readonly RUN_REPORT_REL_PATH=".codex-run-report.md"          # codex's run report; folded into the PR body, never committed
 
   local run_date
   run_date="$(date -u +%F)"
   local log_file="$LOG_DIR/debt-$run_date.log"
   LOG_FILE="$log_file" # used by log()/die() below
-
-  mkdir -p "$LOG_DIR"
-
-  # ---- single-instance lock ----------------------------------------------
-  local lock_file="$LOG_DIR/.run.lock"
-  exec {lock_fd}>"$lock_file"
-  if ! flock -n "$lock_fd"; then
-    log "another run is already in progress ($lock_file) — exiting"
-    exit 0
-  fi
-
-  prune_old_logs
 
   local exit_reason="unknown"
   local commits_made=0
@@ -95,6 +86,33 @@ main() {
   local test_result="skipped"
   local pr_url="none"
   local run_report=""
+
+  mkdir -p "$LOG_DIR"
+
+  # ---- single-instance lock ----------------------------------------------
+  local lock_file="$LOG_DIR/.run.lock"
+  exec {lock_fd}>"$lock_file"
+  if ! flock -n "$lock_fd"; then
+    exit_reason="lock-held"
+    log "another run is already in progress ($lock_file) — exiting"
+    write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
+    exit 0
+  fi
+
+  prune_old_logs
+
+  # ---- preflight: log exactly which binaries will run tonight ------------
+  # The PATH regression that motivated this (a stale system codex shadowing
+  # the current user-local one) was invisible because nothing logged which
+  # binary actually ran. Log resolved path + version for every tool this
+  # script depends on, so a future PATH regression shows up in the log
+  # instead of silently running the wrong binary.
+  for tool in codex dotnet git gh; do
+    local tool_path tool_version
+    tool_path="$(command -v "$tool" 2>/dev/null || echo "NOT FOUND")"
+    tool_version="$("$tool" --version 2>&1 | head -n1 || true)"
+    log "tool: $tool -> $tool_path ($tool_version)"
+  done
 
   # ---- preflight: fail fast, before spending any money -------------------
   if ! command -v codex >/dev/null 2>&1; then
@@ -128,17 +146,56 @@ main() {
   fi
   log "preflight ok: codex on PATH and signed in, gh authenticated"
 
+  # owner/repo for every `gh` call that takes --repo — this repo has two
+  # remotes (origin=peterdrier/Humans, upstream=nobodies-collective/Humans)
+  # with overlapping issue/PR numbers, so a bare `gh` call can resolve
+  # against the wrong one (memory/process/cross-repo-pr-push-target.md,
+  # memory/process/issue-refs-qualified.md).
+  local gh_repo
+  gh_repo="$(printf '%s' "$REPO_URL" | sed -E 's#^(https://github\.com/|git@github\.com:)##; s#\.git$##')"
+
   # ---- assert this is a dedicated, disposable clone ----------------------
   if [[ ! -d "$WORK_DIR/.git" ]]; then
+    exit_reason="work-dir-not-a-git-checkout"
     die "WORK_DIR ($WORK_DIR) is not a git checkout. Run the one-time setup in .codex/cron/README.md first."
   fi
   if [[ ! -f "$WORK_DIR/$CLONE_MARKER_NAME" ]]; then
+    exit_reason="work-dir-missing-clone-marker"
     die "WORK_DIR ($WORK_DIR) has no $CLONE_MARKER_NAME marker — refusing to run destructive git operations on it. This must be a dedicated clone made for this runner, never a human's working checkout. See .codex/cron/README.md's one-time setup."
   fi
 
+  # ---- preserve evidence of an unfinished/failed previous run ------------
+  # A dirty tree here means the previous run was interrupted (SIGKILLed
+  # mid-write, crashed) before it could clean up after itself. Save what it
+  # left before the hard reset below destroys it, so a failure can still be
+  # diagnosed after the fact.
+  if [[ -n "$(git -C "$WORK_DIR" status --porcelain 2>/dev/null)" ]]; then
+    local prev_branch
+    prev_branch="$(git -C "$WORK_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
+    local evidence_dir="$LOG_DIR/evidence-$run_date-$(date -u +%H%M%S)"
+    mkdir -p "$evidence_dir"
+    log "previous run left a dirty tree on branch '$prev_branch' — saving evidence to $evidence_dir before reset"
+    {
+      echo "branch: $prev_branch"
+      echo "saved: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    } >"$evidence_dir/info.txt"
+    git -C "$WORK_DIR" status --porcelain >"$evidence_dir/status.txt" 2>/dev/null || true
+    git -C "$WORK_DIR" diff >"$evidence_dir/uncommitted.diff" 2>/dev/null || true
+    local stash_sha
+    stash_sha="$(git -C "$WORK_DIR" stash create 2>/dev/null || true)"
+    if [[ -n "$stash_sha" ]]; then
+      echo "$stash_sha" >"$evidence_dir/stash-sha.txt"
+      log "uncommitted work also saved as loose commit $stash_sha (not attached to any ref/stash-list entry)"
+    fi
+  fi
+
   # ---- refresh the dedicated clone ----------------------------------------
+  # Reset/clean the current branch first, before switching branches, so a
+  # dirty tree can never make the checkout below fail.
   log "refreshing $WORK_DIR from origin/$GH_BASE_BRANCH"
   git -C "$WORK_DIR" remote set-url origin "$REPO_URL"
+  git -C "$WORK_DIR" reset --quiet --hard
+  git -C "$WORK_DIR" clean -fdx --quiet -e "$ENV_FILE_REL_PATH"
   git -C "$WORK_DIR" fetch --quiet origin "$GH_BASE_BRANCH" >>"$log_file" 2>&1
   git -C "$WORK_DIR" checkout --quiet "$GH_BASE_BRANCH" 2>/dev/null \
     || git -C "$WORK_DIR" checkout --quiet -b "$GH_BASE_BRANCH" "origin/$GH_BASE_BRANCH"
@@ -148,8 +205,24 @@ main() {
 
   local prompt_file="$WORK_DIR/$PROMPT_REL_PATH"
   if [[ ! -f "$prompt_file" ]]; then
+    exit_reason="prompt-file-missing"
     die "prompt file missing after refresh: $prompt_file"
   fi
+
+  # ---- build tonight's prompt: substitute the real time budget -----------
+  # daily-debt.md hardcoding "90 minutes" would tell the agent the wrong
+  # deadline whenever TIME_BUDGET is overridden. Substitute into a temp copy
+  # under LOG_DIR — never mutate the committed prompt file.
+  local budget_minutes
+  budget_minutes="$(parse_minutes "$TIME_BUDGET")"
+  local wind_down_minutes=$(( (budget_minutes + 8) / 9 )) # ~90m budget -> ~10m wind-down, same ratio at any size
+  if (( wind_down_minutes < 5 )); then
+    wind_down_minutes=5
+  fi
+  local rendered_prompt_file="$LOG_DIR/prompt-$run_date.md"
+  sed -e "s/__TIME_BUDGET__/$TIME_BUDGET/g" -e "s/__WIND_DOWN_MINUTES__/$wind_down_minutes/g" \
+    "$prompt_file" >"$rendered_prompt_file"
+  prompt_file="$rendered_prompt_file"
 
   # ---- branch: one per calendar day ---------------------------------------
   local branch="$BRANCH_PREFIX/$run_date"
@@ -159,7 +232,7 @@ main() {
     # the work is invisible until a PR exists for it — open one now instead
     # of silently skipping every remaining run today.
     local existing_pr
-    existing_pr="$(cd "$WORK_DIR" && gh pr list --head "$branch" --state open --json url --jq '.[0].url // empty' 2>>"$log_file")"
+    existing_pr="$(cd "$WORK_DIR" && gh pr list --repo "$gh_repo" --head "$branch" --state open --json url --jq '.[0].url // empty' 2>>"$log_file")"
     if [[ -n "$existing_pr" ]]; then
       exit_reason="skip-already-ran-today"
       log "branch $branch already exists on origin with open PR $existing_pr — a run already completed today; skipping"
@@ -167,7 +240,7 @@ main() {
       exit 0
     fi
     log "branch $branch exists on origin but has no open PR — opening one now instead of skipping"
-    if pr_url="$(open_pr_for_branch "$WORK_DIR" "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$run_report")"; then
+    if pr_url="$(open_pr_for_branch "$WORK_DIR" "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$run_report" "$gh_repo")"; then
       exit_reason="pushed"
       log "opened PR for pre-existing branch: $pr_url"
     else
@@ -187,9 +260,20 @@ main() {
   local head_before
   head_before="$(git -C "$WORK_DIR" rev-parse HEAD)"
 
-  local -a codex_args=(exec --cd "$WORK_DIR" --color never)
+  # Run report: codex's own final message, captured by codex itself via
+  # --output-last-message (the documented codex-exec mechanism for this) —
+  # never a file codex is asked to write inside the repo, which could be
+  # forgotten or left dirtying the tree. Written under LOG_DIR, outside
+  # WORK_DIR, so it can never make the checkout dirty.
+  local last_message_file="$LOG_DIR/last-message-$run_date.md"
+  rm -f "$last_message_file"
+
+  local -a codex_args=(exec --cd "$WORK_DIR" --color never --output-last-message "$last_message_file")
   if [[ -n "$CODEX_MODEL" ]]; then
     codex_args+=(--model "$CODEX_MODEL")
+  fi
+  if [[ -n "$CODEX_EFFORT" ]]; then
+    codex_args+=(-c "model_reasoning_effort=$CODEX_EFFORT")
   fi
   if [[ "$CODEX_DANGEROUS" == "1" ]]; then
     codex_args+=(--dangerously-bypass-approvals-and-sandbox)
@@ -223,13 +307,11 @@ main() {
     exit 1
   fi
 
-  # ---- capture codex's run report, then remove it so it is never committed --
-  # Gitignored (.gitignore), so it wouldn't trip the dirty-tree check above
-  # either way, but deleting it here is the explicit, unambiguous version.
-  local report_file="$WORK_DIR/$RUN_REPORT_REL_PATH"
-  if [[ -f "$report_file" ]]; then
-    run_report="$(cat "$report_file")"
-    rm -f "$report_file"
+  # ---- capture codex's run report -----------------------------------------
+  # Written by codex itself via --output-last-message, outside WORK_DIR, so
+  # it was never part of the tree the dirty-tree check above validated.
+  if [[ -f "$last_message_file" ]]; then
+    run_report="$(cat "$last_message_file")"
   fi
 
   if [[ "$head_before" == "$head_after" ]]; then
@@ -272,6 +354,19 @@ main() {
   fi
   log "build and test both passed"
 
+  # ---- assert HEAD hasn't moved between gate and push ---------------------
+  # head_after was captured right after codex exited and validated by the
+  # gate above; re-check it immediately before the one command that
+  # publishes anything, so nothing can slip in between validation and push.
+  local head_at_push
+  head_at_push="$(git -C "$WORK_DIR" rev-parse HEAD)"
+  if [[ "$head_at_push" != "$head_after" ]]; then
+    exit_reason="head-changed-before-push"
+    log "ERROR: HEAD moved between gate ($head_after) and push ($head_at_push) — refusing to push."
+    write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
+    exit 1
+  fi
+
   # ---- push (retry on network failure only) -------------------------------
   if ! push_with_retry "$WORK_DIR" "$branch" "$log_file" "$PUSH_RETRIES"; then
     exit_reason="push-failed"
@@ -282,7 +377,7 @@ main() {
   log "pushed $branch to origin"
 
   # ---- open the PR, ready for review --------------------------------------
-  if pr_url="$(open_pr_for_branch "$WORK_DIR" "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$run_report")"; then
+  if pr_url="$(open_pr_for_branch "$WORK_DIR" "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$run_report" "$gh_repo")"; then
     exit_reason="pushed"
     log "opened PR: $pr_url"
   else
@@ -301,7 +396,7 @@ main() {
 # exists on origin but has no open PR" recovery path, so a transient
 # `gh pr create` failure never leaves a pushed branch permanently invisible.
 open_pr_for_branch() {
-  local work_dir="$1" branch="$2" base_branch="$3" run_date="$4" log_file="$5" run_report="${6:-}"
+  local work_dir="$1" branch="$2" base_branch="$3" run_date="$4" log_file="$5" run_report="${6:-}" gh_repo="${7:-}"
   local pr_title="Daily tech-debt sweep — $run_date"
   local pr_body_file
   pr_body_file="$(mktemp)"
@@ -317,7 +412,7 @@ open_pr_for_branch() {
     if [[ -n "$run_report" ]]; then
       echo "$run_report"
     else
-      echo "_No \`.codex-run-report.md\` was found — codex did not write a run report for this session._"
+      echo "_codex's final message was empty — no run report for this session._"
     fi
     echo
     echo "Commits:"
@@ -325,7 +420,7 @@ open_pr_for_branch() {
   } >>"$pr_body_file"
 
   local result
-  if result="$(cd "$work_dir" && gh pr create --base "$base_branch" --head "$branch" \
+  if result="$(cd "$work_dir" && gh pr create --repo "$gh_repo" --base "$base_branch" --head "$branch" \
       --title "$pr_title" --body-file "$pr_body_file" 2>>"$log_file")"; then
     rm -f "$pr_body_file"
     echo "$result"
@@ -346,6 +441,10 @@ log() {
 
 die() {
   log "ERROR: $*"
+  # Called only from within main(), where these locals are already declared
+  # (bash's dynamic scoping makes them visible here) — every exit path,
+  # including this one, must leave a SUMMARY line.
+  write_summary "$run_date" "${exit_reason:-unknown}" "${commits_made:-0}" "${build_result:-skipped}" "${test_result:-skipped}" "${pr_url:-none}"
   exit 1
 }
 
@@ -356,6 +455,24 @@ write_summary() {
 
 prune_old_logs() {
   find "$LOG_DIR" -maxdepth 1 -type f -name 'debt-*.log' -mtime "+$LOG_RETENTION_DAYS" -delete 2>/dev/null || true
+}
+
+# Parses a `timeout`-style duration (plain seconds, or NsNmNhNd) into whole
+# minutes, rounded up. Used only to size the wind-down reserve relative to
+# TIME_BUDGET.
+parse_minutes() {
+  local spec="$1"
+  if [[ "$spec" =~ ^([0-9]+)([smhd]?)$ ]]; then
+    local num="${BASH_REMATCH[1]}" unit="${BASH_REMATCH[2]:-s}"
+    case "$unit" in
+      s) echo $(( (num + 59) / 60 )) ;;
+      m) echo "$num" ;;
+      h) echo $(( num * 60 )) ;;
+      d) echo $(( num * 60 * 24 )) ;;
+    esac
+  else
+    echo 90 # unrecognized format — fall back to the documented default
+  fi
 }
 
 # Retries a push up to $4 additional times (2s/4s/8s/16s backoff), but only

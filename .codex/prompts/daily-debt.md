@@ -7,15 +7,16 @@ human watching. Nobody will answer a question tonight. When you are unsure
 whether something is safe, the answer is: don't do it, and say why in your
 final message instead.
 
-You have a **90-minute wall-clock budget** for this run. The wrapper enforces
-this with SIGINT at the cap (giving you a chance to wind down cleanly),
-followed by SIGKILL 120 seconds later if you have not exited. Treat SIGINT as
-the backstop, not the plan: **reserve the last ~10 minutes of your budget to
-land a clean, green, committed state** — stop picking up new work well before
-the cap, finish what you're mid-way through or revert it, run the section's
-tests, commit, and write `.codex-run-report.md`. A partial, green, committed
-change is the goal. A rushed, half-finished change that gets SIGKILLed
-mid-write is a failed run.
+You have a **__TIME_BUDGET__ wall-clock budget** for this run. The wrapper
+enforces this with SIGINT at the cap (giving you a chance to wind down
+cleanly), followed by SIGKILL 120 seconds later if you have not exited.
+Treat SIGINT as the backstop, not the plan: **reserve the last
+~__WIND_DOWN_MINUTES__ minutes of your budget to land a clean, green,
+committed state** — stop picking up new work well before the cap, finish
+what you're mid-way through or revert it, run the section's tests, commit,
+and write your final message (see "Target selection" below for what it must
+contain). A partial, green, committed change is the goal. A rushed,
+half-finished change that gets SIGKILLed mid-write is a failed run.
 
 ## You never push, and you never open a PR
 
@@ -30,10 +31,9 @@ open a PR yourself, you can publish a red or broken branch before that gate
 ever runs — exactly what this whole setup exists to prevent.
 
 Since you never call `gh`, you cannot write the PR body yourself either.
-Instead, write your run report to `.codex-run-report.md` at the repo root
-(gitignored — never commit it) before you finish; the wrapper reads it and
-folds it into the PR body it opens. See "Target selection" below for what
-the report must contain.
+Instead, the wrapper runs you with `--output-last-message`, so **your final
+message becomes the PR body**: make sure it's the report described in
+"Target selection" below before you finish, not a status update to nobody.
 
 ## Guardrails — read before touching anything
 
@@ -126,11 +126,11 @@ down it.
 5. If every rung is drained or every candidate needs a skip, exit without
    committing — that's success, not failure.
 
-**`.codex-run-report.md` must state:** which rung you worked and why (rung
-N+1 only after confirming rung N had nothing safe), which items you closed
+**Your final message must state:** which rung you worked and why (rung N+1
+only after confirming rung N had nothing safe), which items you closed
 (ledger file + `what:` first line, or `file:line`), everything you skipped
 with the reason (public surface, Peter's-call, blocked, out of budget), and
 any rung you descended past and why. Only needed when you commit — a no-op
-night has no PR to fill. The wrapper embeds this file's contents in the PR
+night has no PR to fill. The wrapper folds your final message into the PR
 body verbatim; write it as the PR body's own content, not a message to the
 wrapper.

@@ -82,7 +82,12 @@ dates, or ones whose `what:` describes a "stale comment"/"doc says X" pattern
   cross-section FK constraints in the schema, which is separate migration
   work, not sweep work.
 
-**Drained:** never fully — always safe to spend five minutes here before
+**Cap:** this rung never fully drains, so it could otherwise eat the whole
+night and starve every rung below it. Spend at most ~15% of tonight's budget
+here (stated at the top of `daily-debt.md`) — once you've spent that long,
+stop and descend to rung 2 regardless of remaining candidates.
+
+**Drained:** never fully — always safe to spend a few minutes here before
 descending. Skip the pass only if you already checked every seed item above
 in a prior run and no new rows have been added since.
 

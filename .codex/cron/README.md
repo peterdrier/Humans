@@ -34,6 +34,13 @@ The clone at `~/.humans-debt-runner/clone` is disposable — the script hard
 resets it to `origin/main` and cleans untracked files on every run. If you
 ever need to nuke it, just delete the directory and redo step 1.
 
+`CODEX_MODEL`/`CODEX_EFFORT` are pinned explicitly (default `gpt-6-astra`
+/ `medium`) rather than left to inherit whatever the interactive `codex`
+config on this machine happens to be set to — otherwise changing Peter's
+own day-to-day model preference would silently change what the nightly job
+runs too. Override in `debt-runner.env` if you want the nightly job on a
+different model/effort than the default.
+
 ## Installing the systemd timer (Linux)
 
 **User unit, not system unit.** `gh auth` and any codex login state live in
@@ -47,9 +54,13 @@ cp ~/.humans-debt-runner/clone/.codex/cron/humans-debt.service ~/.config/systemd
 cp ~/.humans-debt-runner/clone/.codex/cron/humans-debt.timer   ~/.config/systemd/user/
 
 # Adjust humans-debt.service's Environment=PATH= line if dotnet/codex/gh
-# live somewhere these defaults don't cover. Adjust humans-debt.timer's
-# OnCalendar= if 06:00 UTC isn't quiet on your machine. Keep the trailing
-# UTC, or systemd reads the time in the machine's local zone instead.
+# live somewhere these defaults don't cover — order matters, since a stale
+# system-wide binary earlier on PATH will silently win over a newer
+# user-local one. Each run logs the resolved path + version of codex,
+# dotnet, git and gh at preflight, so a PATH regression shows up in the log.
+# Adjust humans-debt.timer's OnCalendar= if 06:00 UTC isn't quiet on your
+# machine. Keep the trailing UTC, or systemd reads the time in the machine's
+# local zone instead.
 
 systemctl --user daemon-reload
 systemctl --user enable --now humans-debt.timer
@@ -81,10 +92,16 @@ systemctl --user start humans-debt.service
 journalctl --user -u humans-debt.service -f
 ```
 
-A short `TIME_BUDGET` almost always ends in `no-op` (codex won't get far
-enough to commit) — that's expected and confirms the plumbing works. Watch
-for the preflight checks (codex on PATH, codex signed in, `gh auth
-status`) passing before codex even starts.
+A short `TIME_BUDGET` (2-5 minutes) proves only the plumbing up to and
+including codex starting: preflight (codex on PATH with the version you
+expect, codex signed in, `gh auth status`), the clone refresh, and prompt
+substitution. It does **not** exercise the build/test gate, push, or PR
+creation — codex won't get far enough in that little time to commit
+anything, so those paths never run. To verify the whole pipeline, either
+give it a real budget (enough for codex to land at least one commit) or
+check the log for the preflight tool-version lines and the phases actually
+reached (`refreshing`, `working on branch`, `codex exited with status`,
+final `SUMMARY`).
 
 ## Logs
 
