@@ -79,6 +79,7 @@ main() {
   GH_BASE_BRANCH="${GH_BASE_BRANCH:-main}"                     # base branch on origin
   CODEX_DANGEROUS="${CODEX_DANGEROUS:-1}"                      # 1 = --dangerously-bypass-approvals-and-sandbox, 0 = --full-auto
   PUSH_RETRIES="${PUSH_RETRIES:-4}"                            # retries after the first push attempt, network failures only
+  MAX_OPEN_AUTO_PRS="${MAX_OPEN_AUTO_PRS:-1}"                  # skip the night when this many of this runner's PRs are already open
   LOG_RETENTION_DAYS="${LOG_RETENTION_DAYS:-30}"
   readonly CLONE_MARKER_NAME=".codex-runner-clone"
   readonly PROMPT_REL_PATH=".codex/prompts/daily-debt.md"
@@ -318,6 +319,38 @@ main() {
     write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
     exit 0
   fi
+  # ---- don't outrun the reviewer -----------------------------------------
+  # Every run edits the same ledger files — bumping `next_id` in
+  # docs/architecture/debt-ledger.yml and the per-section debt.yml, flipping
+  # rows to closed. Two runs doing that from the same base conflict on the
+  # counter alone, before any code is involved, and the second one re-reads a
+  # ledger that still shows day one's work as open, so the ladder hands it
+  # the same rung again. Capping the open PRs makes both impossible by
+  # construction rather than merely unlikely, which is the property this
+  # needs while running unattended: queue depth never exceeds the cap, and
+  # the pipeline produces work at exactly the rate Peter merges it. Idling
+  # while a PR waits is the intended behaviour — one unreviewed PR is a
+  # better state to be in than a week of conflicting ones.
+  local open_auto_prs
+  if ! open_auto_prs="$(BRANCH_PREFIX="$BRANCH_PREFIX" gh pr list --repo "$gh_repo" \
+      --state open --limit 100 --json headRefName,number,url \
+      --jq '.[] | select(.headRefName | startswith(env.BRANCH_PREFIX + "/")) | "#\(.number) \(.url)"' \
+      2>>"$log_file")"; then
+    # Fail closed. An empty answer from a failed `gh` is indistinguishable
+    # from "nothing is open", and guessing wrong here opens the second PR
+    # this whole check exists to prevent.
+    exit_reason="open-pr-check-failed"
+    die "could not list this runner's open PRs on $gh_repo — refusing to run rather than risk a second concurrent debt PR. See $log_file"
+  fi
+  local open_auto_count
+  open_auto_count="$(grep -c . <<<"$open_auto_prs" || true)"
+  if (( open_auto_count >= MAX_OPEN_AUTO_PRS )); then
+    exit_reason="skip-open-auto-pr"
+    log "$open_auto_count of this runner's PRs still open (cap $MAX_OPEN_AUTO_PRS), nothing merged since the last run — skipping: $(tr '\n' ' ' <<<"$open_auto_prs")"
+    write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
+    exit 0
+  fi
+
   git checkout --quiet -B "$branch" "origin/$GH_BASE_BRANCH"
   log "working on branch $branch"
 

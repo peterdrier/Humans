@@ -133,5 +133,15 @@ resume. To remove entirely, also delete
   on `PATH` fail preflight — fails in seconds, before spending anything.
 - One branch/PR per calendar day (`$BRANCH_PREFIX/YYYY-MM-DD`); a second run
   the same day is a no-op if that day's branch already exists on origin.
+- Never runs while one of its own PRs is still open. Every run edits the same
+  ledger files (`next_id` in `docs/architecture/debt-ledger.yml` and the
+  per-section `debt.yml`), so two unmerged runs from the same base conflict on
+  the counter alone, and the second re-reads a ledger that still shows the
+  first one's work as open. `MAX_OPEN_AUTO_PRS` (default 1) caps how many of
+  this runner's PRs may be open before a night is skipped
+  (`exit_reason=skip-open-auto-pr`). **Idling while a PR waits for review is
+  the intended behaviour** — the job produces work at the rate you merge it.
+  Merge or close the PR and the next night runs. If `gh` can't answer, the run
+  fails closed rather than risk opening a second one.
 - A second run while one is still in flight is a no-op (`flock`), not a
   pile-up.
