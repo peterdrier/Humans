@@ -421,6 +421,7 @@ Sections contribute a tab to `/Settings` via `ISectionSettings`; the old standal
 | `city-planning` | CityPlanning | `CampAdminOrAdmin` | Settings portion of `/CityPlanning/BarrioMap/Admin` (page stays for GeoJSON/containers/export) |
 | `gate` | Gate | `TicketAdminOrAdmin` | Settings portion of `/Gate/Admin` (page stays for staff PIN admin) |
 | `event-guide` | Events | `EventsAdminOrAdmin` | `/Events/Admin/Settings` (nav item removed) |
+| `barrios` | Camps | `CampAdminOrAdmin` | Settings portion of `/Camps/Admin` (page stays for the rest of camp/season admin) |
 
 ## System Health
 

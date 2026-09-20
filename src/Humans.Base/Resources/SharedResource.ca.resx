@@ -1405,6 +1405,9 @@
   <data name="Settings_TabGate" xml:space="preserve">
     <value>Porta</value>
   </data>
+  <data name="Settings_TabBarrios" xml:space="preserve">
+    <value>Barris</value>
+  </data>
   <data name="Settings_TabEventGuide" xml:space="preserve">
     <value>Guia d'esdeveniments</value>
   </data>

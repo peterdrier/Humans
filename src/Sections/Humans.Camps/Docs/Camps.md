@@ -157,12 +157,12 @@ Four controllers serve this section. The MVC URL surface is dual-routed under `/
 | `/Camps/{slug}/Roles/*` | `CampController` | Per-camp role assignment/unassignment |
 | `/Camps/{slug}/Images/*` | `CampController` | Image upload/delete/reorder |
 | `/Camps/{slug}/HistoricalNames/*` | `CampController` | Historical-name add/remove |
-| `/Camps/Admin` | `CampAdminController` | CampAdmin-only directory + season management |
+| `/Camps/Admin` | `CampAdminController` | CampAdmin-only directory + name-lock dates; open-season management moved to `/Settings#barrios` (peterdrier/Humans#1634) |
 | `/Camps/Admin/Roles/*` | `CampAdminController` | `CampRoleDefinition` CRUD |
 | `/Camps/Admin/Roles/{slug}` | `CampAdminController.RolesDrillDown` | Cross-camp roster for one role definition (issue nobodies-collective/Humans#740): per-camp-season assignees with name + Google email and a `mailto:` to the derived group email; year-picker drop-down. CampAdmin only. |
 | `/Camps/Admin/Compliance` | `CampComplianceController` | Read-only role-staffing matrix: rows = active barrios (Active/Full) for the year, columns = active role definitions, cells = assignee avatars + a dashed placeholder per unfilled required slot. Gated by `CampComplianceAccess` (CampAdmin/Admin **or** any team/sub-team coordinator), broader than the CampAdmin-only management surface. |
 | `/Camps/Admin/Export` | `CampAdminController` | CSV export |
-| `/Camps/Admin/{Approve,Reject,OpenSeason,CloseSeason,SetNameLockDate,Reactivate,UpdateRegistrationInfo,Delete}/...` | `CampAdminController` | Season lifecycle actions |
+| `/Camps/Admin/{Approve,Reject,OpenSeason,CloseSeason,SetNameLockDate,Reactivate,UpdateRegistrationInfo,Delete}/...` | `CampAdminController` | Season lifecycle actions (`OpenSeason`/`CloseSeason` posted to from `/Settings#barrios`; the rest stay `/Camps/Admin`-only) |
 | `/api/camps/{year}` | `CampApiController` | Year directory JSON |
 | `/api/camps/{year}/placement` | `CampApiController` | Placement-data JSON |
 | `/Camps/{slug}/Members/{campMemberId}/EarlyEntry` | `CampController` | Grant / revoke EE on a camp member |

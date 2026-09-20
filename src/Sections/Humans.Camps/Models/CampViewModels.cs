@@ -258,6 +258,9 @@ internal sealed class CampAdminViewModel
     public bool HasMissingSpecialRoles { get; set; }
 }
 
+/// <summary>The /Settings#barrios tab (peterdrier/Humans#1634): open seasons.</summary>
+internal sealed record CampBarriosSettingsViewModel(IReadOnlyList<int> OpenSeasons);
+
 internal sealed class CampSummaryRowViewModel
 {
     public string Name { get; set; } = string.Empty;

@@ -197,7 +197,7 @@
     </div>
 }
 
-@* Season Management *@
+@* Season Management moved to /Settings#barrios (peterdrier/Humans#1634) — see CampBarriosSettingsTabViewComponent. *@
 <div class="row">
     <div class="col-md-6">
         <div class="card mb-4">
@@ -205,28 +205,9 @@
                 <i class="fa-solid fa-calendar me-2"></i>Season Management
             </div>
             <div class="card-body">
-                <h6>Open a Season for Registration</h6>
-                <form asp-controller="CampAdmin" asp-action="OpenSeason" method="post" class="d-flex gap-2 mb-3">
-                    @Html.AntiForgeryToken()
-                    <input type="number" name="year" class="form-control form-control-sm" style="max-width: 120px;" placeholder="Year" min="2024" max="2099" required />
-                    <button type="submit" class="btn btn-outline-primary btn-sm text-nowrap">
-                        <i class="fa-solid fa-door-open me-1"></i>Open
-                    </button>
-                </form>
-
-                @if (Model.OpenSeasons.Count > 0)
-                {
-                    <h6>Close a Season</h6>
-                    @foreach (var year in Model.OpenSeasons)
-                    {
-                        <form asp-controller="CampAdmin" asp-action="CloseSeason" asp-route-year="@year" method="post" class="d-inline me-2 mb-2">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-outline-warning btn-sm">
-                                <i class="fa-solid fa-door-closed me-1"></i>Close @year
-                            </button>
-                        </form>
-                    }
-                }
+                <p class="text-muted mb-0">
+                    Opening and closing seasons moved to <a href="/Settings#barrios">/Settings</a>.
+                </p>
             </div>
         </div>
     </div>
