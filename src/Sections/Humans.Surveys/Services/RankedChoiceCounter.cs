@@ -1,12 +1,7 @@
-// The precommitment this file implements, stated once so no caller has to infer it from the
-// method list: Ranked Pairs is the official method, and the authored order of the options is the
-// disclosed final tie-break. CountRankedPairs sorts each pairwise victory by margin, then by
-// winning votes, then by the winner's and loser's authored positions, locks every victory that
-// does not close a cycle, and returns the one candidate no locked victory points at. Condorcet
-// and Borda are computed beside it as sensitivity analysis and are never the headline result;
-// TieBreakUsed is true whenever two victories shared a rank or more than one source survived, so
-// a result that leaned on authored order says so. Docs/features/ranked-choice-voting.md and
-// Docs/health.md both carry this contract.
+// The precommitment, stated once so no caller infers it from the method list: Ranked Pairs is the
+// official method and the authored option order is the disclosed final tie-break. Condorcet and
+// Borda are sensitivity analysis, never the headline. TieBreakUsed says when authored order
+// decided it. Algorithm: Docs/features/ranked-choice-voting.md.
 
 using System.Numerics;
 
