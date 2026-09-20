@@ -100,8 +100,9 @@ These come straight from this repo's own rules
    shared surface. Fix or revert before moving on; never leave a red build
    mid-run.
 5. Commit. One coherent improvement per commit.
-6. Watch the clock. With ~10 minutes left, stop starting anything new, make
-   sure the working tree is clean and green, and end your turn.
+6. Watch the clock. With ~__WIND_DOWN_MINUTES__ minutes left, stop starting
+   anything new, make sure the working tree is clean and green, write your
+   final message, and end your turn.
 
 ## Target selection
 
@@ -128,7 +129,9 @@ down it.
 
 **Your final message must state:** which rung you worked and why (rung N+1
 only after confirming rung N had nothing safe), which items you closed
-(ledger file + `what:` first line, or `file:line`), everything you skipped
+(their ledger `id:` — every row has a permanent one, and quoting `what:`
+instead breaks on any row you narrowed, since narrowing rewrites that text —
+or `file:line` for debt that has no ledger row), everything you skipped
 with the reason (public surface, Peter's-call, blocked, out of budget), and
 any rung you descended past and why. Only needed when you commit — a no-op
 night has no PR to fill. The wrapper folds your final message into the PR
