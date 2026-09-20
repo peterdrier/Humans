@@ -39,4 +39,28 @@ public class EmailComposerViewModel
     /// message. Tells the preview endpoint whether to show a placeholder unsubscribe footer.
     /// </summary>
     public string? Category { get; init; }
+
+    /// <summary>
+    /// Overrides which posted field name the Preview button reads the subject value from, for a
+    /// caller that renders its own subject input outside this partial (survey invitation's
+    /// per-culture tabs, where <see cref="SubjectName"/> stays null so this partial doesn't also
+    /// render one). Defaults to <see cref="SubjectName"/>.
+    /// </summary>
+    public string? PreviewSubjectName { get; init; }
+
+    /// <summary>
+    /// Distinguishes this instance's preview modal from any others on the same page. Needed only
+    /// when a page hosts more than one composer at once (survey invitation's per-culture tabs) or
+    /// supplies its own page-level modal that an AJAX-injected composer must target instead of
+    /// rendering a redundant, inert copy (Feedback/Issues detail panels, whose own markup never
+    /// executes). Null uses the classic shared "emailPreviewModal" id.
+    /// </summary>
+    public string? PreviewModalId { get; init; }
+
+    /// <summary>
+    /// False skips rendering this instance's own preview modal, for a host page that already
+    /// includes one copy of it at <see cref="PreviewModalId"/> — because this composer renders
+    /// inside an AJAX-injected partial whose own &lt;script&gt; never runs.
+    /// </summary>
+    public bool IncludePreviewModal { get; init; } = true;
 }

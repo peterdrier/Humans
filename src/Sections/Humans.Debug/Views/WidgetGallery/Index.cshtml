@@ -1163,7 +1163,7 @@
                         reply, issue comment, campaign — renders through this one component.
                     </div>
                     @ParamsBlock(
-                        ("@@model", "<code>EmailComposerViewModel</code> — BodyName/BodyValue/BodyLabel/BodyRows/BodyRequired/BodyMaxLength/BodyHelpText/BodyPlaceholder/BodyLabelVisuallyHidden, optional SubjectName/SubjectValue/SubjectLabel/SubjectRequired/SubjectMaxLength, and Category (a <code>MessageCategory</code> name — drives the placeholder unsubscribe footer in the preview)")
+                        ("@@model", "<code>EmailComposerViewModel</code> — BodyName/BodyValue/BodyLabel/BodyRows/BodyRequired/BodyMaxLength/BodyHelpText/BodyPlaceholder/BodyLabelVisuallyHidden, optional SubjectName/SubjectValue/SubjectLabel/SubjectRequired/SubjectMaxLength, Category (a <code>MessageCategory</code> name — drives the placeholder unsubscribe footer in the preview), and PreviewSubjectName/PreviewModalId/IncludePreviewModal for hosts with more than one instance on a page or that inject this partial via AJAX (Feedback/Issues)")
                     )
                     <div class="wg-card-example">
                         @await Html.PartialAsync("_EmailComposer", new Humans.Base.Models.EmailComposerViewModel
