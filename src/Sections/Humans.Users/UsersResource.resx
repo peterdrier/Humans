@@ -344,7 +344,6 @@
   <data name="SendMessage_Breadcrumb" xml:space="preserve"><value>Send Message</value></data>
   <data name="SendMessage_Heading" xml:space="preserve"><value>Send {0} a message</value><comment>{0} = recipient name</comment></data>
   <data name="SendMessage_MessageLabel" xml:space="preserve"><value>Message</value></data>
-  <data name="SendMessage_PlainTextOnly" xml:space="preserve"><value>Plain text only. Maximum 2000 characters.</value></data>
   <data name="SendMessage_IncludeContactInfo" xml:space="preserve"><value>Include my contact info</value></data>
   <data name="SendMessage_IncludeContactInfoHelp" xml:space="preserve"><value>Your name and email will be included so they can reply to you directly.</value></data>
   <data name="SendMessage_Send" xml:space="preserve"><value>Send Message</value></data>

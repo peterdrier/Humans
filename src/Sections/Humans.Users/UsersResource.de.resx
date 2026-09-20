@@ -778,9 +778,6 @@
   <data name="SendMessage_MessageLabel" xml:space="preserve">
     <value>Nachricht</value>
   </data>
-  <data name="SendMessage_PlainTextOnly" xml:space="preserve">
-    <value>Nur Klartext. Maximal 2000 Zeichen.</value>
-  </data>
   <data name="SendMessage_IncludeContactInfo" xml:space="preserve">
     <value>Meine Kontaktdaten einschließen</value>
   </data>
