@@ -69,7 +69,7 @@ public class CachingEarlyEntryServiceTests
              .Returns(Task.FromResult<UserEarlyEntry?>(null));
 
         _ = await sut.GetForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
-        ((IEventSettingsChangeListener)sut).EventSettingsChanged();
+        ((IEventSettingsChangeListener)sut).EventSettingsChanged(Guid.NewGuid());
         _ = await sut.GetForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         await inner.Received(2).GetForUserAsync(userId, Arg.Any<CancellationToken>());

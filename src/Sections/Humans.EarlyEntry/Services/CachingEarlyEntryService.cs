@@ -43,7 +43,8 @@ internal sealed class CachingEarlyEntryService(
 
     /// <summary>
     /// The gate date and <c>EarlyEntryStartOffset</c> move every holder's entry date at
-    /// once, so an event-settings save drops the whole cache.
+    /// once, so an event-settings save drops the whole cache. Nothing here is keyed by
+    /// event, so the id is not needed.
     /// </summary>
-    public void EventSettingsChanged() => InvalidateAll();
+    public void EventSettingsChanged(Guid eventSettingsId) => InvalidateAll();
 }

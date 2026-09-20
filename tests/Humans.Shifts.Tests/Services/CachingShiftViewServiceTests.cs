@@ -17,12 +17,16 @@ namespace Humans.Shifts.Tests.Services;
 public class CachingShiftViewServiceTests
 {
     private readonly IShiftRowView _inner = Substitute.For<IShiftRowView>();
+    private readonly IShiftManagementService _management = Substitute.For<IShiftManagementService>();
 
     private CachingShiftViewService CreateSut()
     {
         var services = new ServiceCollection();
         services.AddKeyedScoped<IShiftRowView>(
             CachingShiftViewService.InnerServiceKey, (_, _) => _inner);
+        // The event-settings listener resolves this in a scope to evict the
+        // coordinator-dashboard aggregates, which are keyed by event.
+        services.AddScoped(_ => _management);
         var provider = services.BuildServiceProvider();
         var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
         return new CachingShiftViewService(
@@ -204,7 +208,7 @@ public class CachingShiftViewServiceTests
         await sut.GetUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
         await sut.GetRotaAsync(rotaId, Xunit.TestContext.Current.CancellationToken);
 
-        ((IEventSettingsChangeListener)sut).EventSettingsChanged();
+        ((IEventSettingsChangeListener)sut).EventSettingsChanged(Guid.NewGuid());
 
         await sut.GetUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
         await sut.GetRotaAsync(rotaId, Xunit.TestContext.Current.CancellationToken);
@@ -316,5 +320,19 @@ public class CachingShiftViewServiceTests
         await _inner.Received(2).GetRotaAsync(rotaId, Arg.Any<CancellationToken>());
         await _inner.Received(2).GetUserAsync(userId, Arg.Any<CancellationToken>());
         await _inner.Received(1).GetUserAsync(unrelatedUserId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public void EventSettingsChanged_EvictsThatEventsDashboardCaches()
+    {
+        // The coordinator-dashboard aggregates sit on a sliding TTL and classify each
+        // shift into a period off the event's Settings calendar, so a gate-date or offset
+        // edit has to evict them for that event; a regularly viewed dashboard never expires
+        // on its own. The Shifts-owned write did this inline before the write moved lanes.
+        var eventSettingsId = Guid.NewGuid();
+
+        ((IEventSettingsChangeListener)CreateSut()).EventSettingsChanged(eventSettingsId);
+
+        _management.Received(1).InvalidateDashboardCaches(eventSettingsId);
     }
 }

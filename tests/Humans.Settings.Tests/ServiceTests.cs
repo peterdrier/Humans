@@ -302,12 +302,15 @@ public sealed class ServiceTests
         // The gate date, the offsets and the active-event flip move derived dates for every
         // member at once. The consuming sections used to own this write and flush their own
         // caches inline; the write moved here, so every one of them gets told.
+        var id = Guid.NewGuid();
+
         await BuildSut().SaveEventSettingsAsync(
-            MakeDto(Guid.NewGuid(), EventSettingsStatus.Inactive, earlyEntryStartOffset: -7),
+            MakeDto(id, EventSettingsStatus.Inactive, earlyEntryStartOffset: -7),
             Actor, TestContext.Current.CancellationToken);
 
-        _listenerOne.Received(1).EventSettingsChanged();
-        _listenerTwo.Received(1).EventSettingsChanged();
+        // The id rides along: Shifts evicts that event's dashboard aggregates with it.
+        _listenerOne.Received(1).EventSettingsChanged(id);
+        _listenerTwo.Received(1).EventSettingsChanged(id);
     }
 
     [HumansFact]
@@ -318,11 +321,13 @@ public sealed class ServiceTests
         _repository.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(MakeEntity(Guid.NewGuid()));
 
-        await BuildSut().CreateActiveEventAsync(
-            MakeDto(Guid.NewGuid(), EventSettingsStatus.Active), TestContext.Current.CancellationToken);
+        var id = Guid.NewGuid();
 
-        _listenerOne.Received(1).EventSettingsChanged();
-        _listenerTwo.Received(1).EventSettingsChanged();
+        await BuildSut().CreateActiveEventAsync(
+            MakeDto(id, EventSettingsStatus.Active), TestContext.Current.CancellationToken);
+
+        _listenerOne.Received(1).EventSettingsChanged(id);
+        _listenerTwo.Received(1).EventSettingsChanged(id);
     }
 
     [HumansFact]
@@ -334,14 +339,14 @@ public sealed class ServiceTests
 
         await sut.DeleteEventAsync(id, TestContext.Current.CancellationToken);
 
-        _listenerOne.DidNotReceive().EventSettingsChanged();
+        _listenerOne.DidNotReceive().EventSettingsChanged(Arg.Any<Guid>());
 
         _repository.DeleteEventSettingsAsync(id, Arg.Any<CancellationToken>()).Returns(1);
 
         await sut.DeleteEventAsync(id, TestContext.Current.CancellationToken);
 
-        _listenerOne.Received(1).EventSettingsChanged();
-        _listenerTwo.Received(1).EventSettingsChanged();
+        _listenerOne.Received(1).EventSettingsChanged(id);
+        _listenerTwo.Received(1).EventSettingsChanged(id);
     }
 
     [HumansFact]
@@ -354,8 +359,8 @@ public sealed class ServiceTests
             MakeDto(id, EventSettingsStatus.Active), Actor, TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
-        _listenerOne.DidNotReceive().EventSettingsChanged();
-        _listenerTwo.DidNotReceive().EventSettingsChanged();
+        _listenerOne.DidNotReceive().EventSettingsChanged(Arg.Any<Guid>());
+        _listenerTwo.DidNotReceive().EventSettingsChanged(Arg.Any<Guid>());
     }
 
     [HumansFact]

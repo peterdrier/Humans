@@ -159,7 +159,7 @@ that row again (no audit entry either way — seeding has no real actor).
 |---|---|---|
 | in | Shifts | `Humans.Development`'s seeder only, via `IEventSettingsSeeding` |
 | out | Users | `IUserServiceRead` (platform base-controller dependency only) |
-| out | every `IEventSettingsChangeListener` | fanned out after every successful event-settings mutation, the admin save and both `IEventSettingsSeeding` paths (seeded upsert, delete of a row that existed) alike — the gate date, the offsets and the active-event flip move derived dates for every member at once. Subscribers today: EarlyEntry's cache (`InvalidateAll`) and Shifts' `CachingShiftViewService` (every `ShiftUserView` is event-scoped). Settings names no consumer and references no consuming section |
+| out | every `IEventSettingsChangeListener` | fanned out after every successful event-settings mutation, the admin save and both `IEventSettingsSeeding` paths (seeded upsert, delete of a row that existed) alike — the gate date, the offsets and the active-event flip move derived dates for every member at once. The notification carries the event settings id. Subscribers today: EarlyEntry's cache (`InvalidateAll`, id ignored), Shifts' `CachingShiftViewService` (flushes every `ShiftUserView`, and evicts that event's coordinator-dashboard aggregates through `IShiftManagementService.InvalidateDashboardCaches`), and Events' `CachingEventService` (its `EventGuideSettingsView` carries the Settings-owned `TimeZoneId`). Settings names no consumer and references no consuming section |
 | in | Email | `ISettingsService` (`IsEmailSendingPaused`) |
 | in | Monitor | `ISettingsService` (`DriveActivityMonitor:LastRunAt`) |
 

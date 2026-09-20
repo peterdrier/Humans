@@ -21,6 +21,12 @@ namespace Humans.Settings.Contracts;
 /// </remarks>
 public interface IEventSettingsChangeListener
 {
-    /// <summary>The event settings row was written. Flush anything derived from it.</summary>
-    void EventSettingsChanged();
+    /// <summary>
+    /// The event settings row identified by <paramref name="eventSettingsId"/> was written
+    /// (or deleted). Flush anything derived from it. Listeners whose cache is not keyed by
+    /// event may ignore the id and flush the lot; listeners with per-event entries, such as
+    /// the Shifts coordinator-dashboard aggregates, need it to evict the right ones.
+    /// </summary>
+    /// <param name="eventSettingsId">The event settings row that changed.</param>
+    void EventSettingsChanged(Guid eventSettingsId);
 }

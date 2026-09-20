@@ -192,11 +192,24 @@ internal sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory,
     /// <summary>
     /// Every <see cref="ShiftUserView"/> is event-scoped — it carries the active event's
     /// Settings-sourced calendar and that event's signups — so a gate-date, timezone, offset
-    /// or active-event change invalidates the lot. This used to ride on the Shifts-owned
-    /// EventSettings write; that write moved to Settings, which now fans out to here
+    /// or active-event change invalidates the lot. The coordinator-dashboard aggregates are
+    /// keyed by event and classify each shift into a period off that same calendar, so they
+    /// go too, for the event that changed. Both used to ride on the Shifts-owned EventSettings
+    /// write; that write moved to Settings, which now fans out to here
     /// (peterdrier/Humans#1627).
     /// </summary>
-    public void EventSettingsChanged() => InvalidateAll();
+    public void EventSettingsChanged(Guid eventSettingsId)
+    {
+        InvalidateAll();
+
+        // The dashboard entries sit on IMemoryCache under keys only ShiftManagementService
+        // builds, and it is Scoped; resolve it in a scope rather than restating its key
+        // formats here. Sync on purpose: the listener seam is a void called inline on the
+        // Settings write path.
+        using var scope = scopeFactory.CreateScope();
+        scope.ServiceProvider.GetRequiredService<IShiftManagementService>()
+            .InvalidateDashboardCaches(eventSettingsId);
+    }
 
     // ==========================================================================
     // IHostedService — composition forces the decorator to own this directly
