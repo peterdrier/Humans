@@ -80,23 +80,23 @@ The shapes imply exactly today's layout:
   FinishingWeekend < 0`, at `Models/EventSettingsViewModel.cs:65` and `:74`.
 - **Every event-settings save is audited with its actor.**
   `Services/Service.cs:65`; the actor comes from the signed-in principal, and a request
-  without one is challenged rather than saved (`Controllers/SettingsAdminController.cs:41`).
+  without one is challenged rather than saved (`Controllers/SettingsAdminController.cs:42`).
 - **Every mutation of a cycle notifies the listeners** — admin save, seeded create, and a
-  seeded delete that removed a row: `Services/Service.cs:74`, `:94`, `:101`.
+  seeded delete that removed a row: `Services/Service.cs:73`, `:93`, `:100`.
 - **Only the section writes `settings_event`.** The write sits on the internal
   `ISettingsWriteService` (`Services/ISettingsWriteService.cs:29`), off the cross-section
   contract; the key/value store is written cross-section by design.
-- **`/Settings/Admin` is `AdminOnly`, class-level** (`Controllers/SettingsAdminController.cs:21`)
+- **`/Settings/Admin` is `AdminOnly`, class-level** (`Controllers/SettingsAdminController.cs:22`)
   and has no GET; **`/Settings` is `[Authorize]` only**
   (`Controllers/SettingsController.cs:12`) and renders for a viewer with no tabs at all.
 - **A non-admin never sees the form.** `EventSettingsTabViewComponent` resolves
-  `AdminOnly` itself (`ViewComponents/EventSettingsTabViewComponent.cs:25`), and the
+  `AdminOnly` itself (`ViewComponents/EventSettingsTabViewComponent.cs:24`), and the
   `?event=` row selector is ignored for anyone who fails it (`:29`).
 - **One tab per key, first contributor wins** — `ViewComponents/SettingsTabComposition.cs:25`
   drops a duplicate rather than merging it, and a tab whose `Policy` the viewer fails is
   dropped before its component is ever invoked (`:28`).
 - **Deactivated rows stay reachable** by id: a save redirects to its own id
-  (`Controllers/SettingsAdminController.cs:57`) and the tab honours that id for an admin.
+  (`Controllers/SettingsAdminController.cs:59`) and the tab honours that id for an admin.
 
 ## 5. Seams
 
