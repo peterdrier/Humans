@@ -116,18 +116,6 @@ internal sealed class EmailRenderer(
     private string BuildSurveyAnswerUrl(string token)
         => $"{_settings.BaseUrl.TrimEnd('/')}/Survey/Answer?t={Uri.EscapeDataString(token)}";
 
-    public EmailContent RenderIssueComment(string displayName, string issueTitle, string commentContent, string issueLink, string? culture = null)
-        => RenderLocalized(culture, () =>
-        {
-            var commentHtml = SanitizedMarkdownRenderer.Render(commentContent);
-            var fullLink = issueLink.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-                ? issueLink
-                : $"{_settings.BaseUrl.TrimEnd('/')}{(issueLink.StartsWith('/') ? "" : "/")}{issueLink}";
-            return new EmailContent(
-                Lf("Email_IssueComment_Subject", HtmlEncode(issueTitle)),
-                Lf("Email_IssueComment_Body", HtmlEncode(displayName), HtmlEncode(issueTitle), commentHtml, HtmlEncode(fullLink)));
-        });
-
     public EmailContent RenderFacilitatedMessage(
         string recipientName,
         string senderName,

@@ -68,9 +68,6 @@ public interface IEmailMessageFactory
     /// <summary>Workspace credentials email (always-send, immediate drain).</summary>
     EmailMessage WorkspaceCredentials(string recoveryEmail, string userName, string workspaceEmail, string tempPassword, string? culture = null);
 
-    /// <summary>Issue-comment notification to the reporter (System).</summary>
-    EmailMessage IssueComment(string to, string displayName, string issueTitle, string commentContent, string issueLink, string preferredLanguage);
-
     /// <summary>Campaign-code email (CampaignCodes); carries the explicit user and grant ids and the reply-to from the request.</summary>
     EmailMessage CampaignCode(CampaignCodeEmailRequest request);
 

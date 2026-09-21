@@ -23,7 +23,7 @@ Repository: `IIssuesRepository`.
 
 Cross-section calls via `IUserServiceRead`, `IUserEmailService`,
 `IRoleAssignmentService`, `IEmailService`,
-`IEmailMessageFactory`, `INotificationEmitter`, `INotificationAutoResolve`,
+the section's own `IssuesEmails` builder, `INotificationEmitter`, `INotificationAutoResolve`,
 `IAuditLogService`, `INavBadgeCacheInvalidator`, `IIssuesBadgeCacheInvalidator`,
 `ISectionCatalog`, `IHostEnvironment`. Routes through `IssueSectionRouting`
 (Singleton, owns no table): the queue lookup built from every
@@ -31,6 +31,19 @@ Cross-section calls via `IUserServiceRead`, `IUserEmailService`,
 key and roles, so Issues names no section. Implements `IUserDataContributor`,
 `IIssueTriage` (Backdoor's machine-API triage surface,
 nobodies-collective/Humans#1128).
+
+### IssuesEmails (Scoped, internal)
+
+No repository. Pure builder — reads `IssuesResource` (via
+`IStringLocalizer<IssuesResource>`) and `EmailSettings`, writes nothing.
+Returns `EmailMessage` values for `IssuesService` to pass to
+`IEmailService.SendAsync`. No DB access, no cache.
+
+### IssuesEmailPreviews (Scoped)
+
+No repository. Read-only gallery contributor (`IEmailPreviewContributor`,
+registered in `Section.Register`) — builds one sample per template via
+`IssuesEmails` for `/Email/EmailPreview`. No DB access, no cache.
 
 ---
 

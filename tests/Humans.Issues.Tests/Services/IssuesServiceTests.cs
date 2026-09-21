@@ -10,6 +10,8 @@ using Humans.Base.Constants;
 using Humans.Issues.Contracts;
 using Humans.Issues.Data;
 using Humans.Issues.Domain;
+using Humans.Issues.Services;
+using Humans.Issues.Tests.Infrastructure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -61,7 +63,7 @@ public sealed class IssuesServiceTests
     private readonly PeopleRegistry Db = new();
 
     private readonly IEmailService _emailService;
-    private readonly IEmailMessageFactory _emailMessages;
+    private readonly IssuesEmails _emailMessages;
     private readonly IUserServiceRead _userService;
     private readonly IUserEmailService _userEmailService;
     private readonly IRoleAssignmentService _roleService;
@@ -77,7 +79,7 @@ public sealed class IssuesServiceTests
     public IssuesServiceTests()
     {
         _emailService = Substitute.For<IEmailService>();
-        _emailMessages = Substitute.For<IEmailMessageFactory>();
+        _emailMessages = TestIssuesEmails.Create();
         AuditLog
             .GetFilteredEntriesAsync(
                 Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
@@ -421,13 +423,14 @@ public sealed class IssuesServiceTests
 
         await _service.PostCommentAsync(issueId, Admin, adminId, "Looking at it", ct: Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.Received(1).IssueComment(
-            "reporter@test.com",
-            "Reporter",
-            "Report Title",
-            "Looking at it",
-            $"/Issues/{issueId}",
-            "en");
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "issue_comment"
+                && m.RecipientEmail == "reporter@test.com"
+                && m.RecipientName == "Reporter"
+                && m.HtmlBody.Contains("Report Title")
+                && m.HtmlBody.Contains("Looking at it")
+                && m.HtmlBody.Contains($"/Issues/{issueId}")),
+            Arg.Any<CancellationToken>());
 
         await _notificationService.Received().SendAsync(
             NotificationSource.IssueComment,
@@ -450,9 +453,9 @@ public sealed class IssuesServiceTests
 
         await _service.PostCommentAsync(issueId, Admin, reporterId, "More info", ct: Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.DidNotReceive().IssueComment(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+        await _emailService.DidNotReceive().SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "issue_comment"),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

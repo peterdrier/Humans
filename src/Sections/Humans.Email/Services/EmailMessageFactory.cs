@@ -130,13 +130,6 @@ internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessa
             TimeSensitiveTemplates.WorkspaceCredentials);
     }
 
-    public EmailMessage IssueComment(string to, string displayName, string issueTitle, string commentContent, string issueLink, string preferredLanguage)
-    {
-        var content = renderer.RenderIssueComment(displayName, issueTitle, commentContent, issueLink, preferredLanguage);
-        return new EmailMessage(to, displayName, content.Subject, content.HtmlBody,
-            "issue_comment", MessageCategory.System);
-    }
-
     public EmailMessage CampaignCode(CampaignCodeEmailRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
