@@ -168,7 +168,7 @@ Nobodies Collective uses Google Workspace for organizational email (@nobodies.te
 - Note that 2FA is required (organization policy)
 - Signed by "The Humans team"
 
-**Template keys:** `Email_WorkspaceCredentials_Subject`, `Email_WorkspaceCredentials_Body`
+**Template keys:** `GoogleIntegration_Email_WorkspaceCredentials_Subject`, `GoogleIntegration_Email_WorkspaceCredentials_Body` (in `GoogleIntegrationResource*.resx`, built by `GoogleIntegrationEmails`)
 
 **Format placeholders:** `{0}` = user name, `{1}` = workspace email, `{2}` = temporary password
 

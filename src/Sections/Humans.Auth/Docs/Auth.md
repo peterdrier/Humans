@@ -13,10 +13,10 @@
   src/Humans.Base/Models/AccessMatrixData.cs
   src/Sections/**/SectionAccessMatrix.cs
   src/Humans.Base/ViewComponents/AccessMatrixViewComponent.cs
-  src/Sections/Humans.Email/EmailResource*.resx
+  src/Sections/Humans.Auth/AuthResource*.resx
 -->
 <!-- freshness:flag-on-change
-  Role-assignment temporal invariants, magic-link rate-limit/replay rules, role-name constants, and the access-matrix mechanism (§"Access Matrix UI" — AccessMatrixViewComponent over the static rows sections contribute through ISectionAccessMatrix, no DB table) — review when Auth services, role constants, claims transformation, or the access-matrix component/source change. The Email resx is here for one reason: Email_MagicLinkSignup_Body promises the recipient the link works only once, and this doc asserts the code keeps that promise — reword the copy and this doc goes stale.
+  Role-assignment temporal invariants, magic-link rate-limit/replay rules, role-name constants, and the access-matrix mechanism (§"Access Matrix UI" — AccessMatrixViewComponent over the static rows sections contribute through ISectionAccessMatrix, no DB table) — review when Auth services, role constants, claims transformation, or the access-matrix component/source change. The Auth resx is here for one reason: Auth_Email_MagicLinkSignup_Body promises the recipient the link works only once, and this doc asserts the code keeps that promise — reword the copy and this doc goes stale.
 -->
 
 # Auth — Section Invariants

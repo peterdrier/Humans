@@ -2,9 +2,9 @@
   src/Sections/Humans.GoogleIntegration/Services/GoogleRemovalNotificationService.cs
   src/Sections/Humans.GoogleIntegration/Services/IGoogleRemovalNotificationService.cs
   src/Sections/Humans.GoogleIntegration/Services/GoogleWorkspaceSyncService.cs
-  src/Sections/Humans.Email/**
+  src/Sections/Humans.GoogleIntegration/Services/GoogleIntegrationEmails.cs
+  src/Sections/Humans.GoogleIntegration/GoogleIntegrationResource*.resx
   src/Sections/Humans.Email.Contracts/**
-  src/Sections/Humans.Email/EmailResource*.resx
 -->
 <!-- freshness:flag-on-change
   Variant selection logic, suppression cases, MessageCategory routing, and resource-name fallback — review when sync removal pathways or email-template wiring changes.
@@ -97,7 +97,7 @@ The send target in both variants is the address that was removed — the mailbox
 
 - All three templates render through `BrandedEmailBodyComposer` for the standard header / footer
 - All three are enqueued with `MessageCategory.System` — the existing outbox path suppresses the unsubscribe footer for system-category messages, which matches the spec's intent (action-confirmation notifications are not unsubscribable)
-- Templates live in `EmailResource{,.es,.de,.it,.fr,.ca}.resx` (`src/Sections/Humans.Email/` — carved out of `SharedResource*.resx` when Email moved to its own G5 project) keyed `Email_GoogleGroupRemoval_LossOfAccess_*`, `Email_GoogleDriveRemoval_LossOfAccess_*`, `Email_GoogleAccessRemoval_SecondaryCleanup_*`
+- GoogleIntegration owns the copy: `GoogleIntegrationEmails` builds each `EmailMessage` from `GoogleIntegrationResource{,.es,.de,.it,.fr,.ca}.resx` (`src/Sections/Humans.GoogleIntegration/`) keyed `GoogleIntegration_Email_GoogleGroupRemoval_LossOfAccess_*`, `GoogleIntegration_Email_GoogleDriveRemoval_LossOfAccess_*`, `GoogleIntegration_Email_GoogleAccessRemoval_SecondaryCleanup_*`; Email supplies transport only (`memory/architecture/email-templates-live-in-sender.md`)
 - Resource-name fallback: if `resourceName` is missing, use `resourceIdentifier` (group email or URL); if both are missing, fall back to `(unknown)` rather than crashing
 
 ## Group-Email Derivation
