@@ -1004,9 +1004,6 @@ internal sealed class Service(
         string? NotBookableReason(SepaPayoutTransferRow row)
         {
             if (row.IsBooked) return null;   // the row renders as booked; no reason to show
-            // Same terminal state the booking refuses: refs without a BookedAt.
-            if (PaymentRefs(row.HoldedPaymentRefs) is { Count: > 0 } partial)
-                return $"partially booked — {partial.Count} payment(s) already in Holded; finish it there by hand";
             if (!bindingByUser.TryGetValue(row.UserId, out var binding)
                 || string.IsNullOrEmpty(binding.HoldedContactId))
                 return "the member has no Holded contact binding";
@@ -1041,15 +1038,6 @@ internal sealed class Service(
         if (transfer.BookedAt is not null)
             return new SepaBookingResult(false,
                 $"Transfer to {transfer.IbanMasked} is already booked — nothing was posted to Holded.");
-
-        // Payment refs without a BookedAt is the partial-booking state, and it is terminal: nothing
-        // below can tell a retry from a first attempt, so a retry would post the FULL amount a
-        // second time.
-        if (PaymentRefs(transfer.HoldedPaymentRefs) is { Count: > 0 } priorRefs)
-            return new SepaBookingResult(false,
-                $"Transfer to {transfer.IbanMasked} was partially booked earlier — {priorRefs.Count} "
-                + "payment(s) already posted to Holded. Finish it in Holded by hand; it cannot be "
-                + "re-booked from here.");
 
         var binding = await repo.GetCreditorContactByUserAsync(transfer.UserId, ct);
         if (binding is null || string.IsNullOrEmpty(binding.HoldedContactId))
@@ -1141,8 +1129,9 @@ internal sealed class Service(
             }
         }
 
+        // TODO(T3, nobodies-collective/Humans#1185): rewritten per the bank-line-driven booking flow.
         await repo.SaveSepaTransferBookingAsync(
-            transfer.Id, now, actorUserId, string.Join(',', refs), ct);
+            transfer.Id, now, actorUserId, "", null, ct);
 
         var entryPart = remaining > 0m ? $" and a journal entry for {Euros(remaining)}" : "";
 
@@ -1162,11 +1151,10 @@ internal sealed class Service(
         // terminal state, finished in Holded by hand.
         async Task<SepaBookingResult> RefusedMidBookingAsync(Exception ex, string what, string where)
         {
+            // TODO(T3, nobodies-collective/Humans#1185): the terminal partial state is gone; a
+            // failed run now writes nothing and the next attempt resumes off the tag sum.
             if (refs.Count > 0)
             {
-                await repo.SaveSepaTransferBookingAsync(
-                    transfer.Id, null, null, string.Join(',', refs), ct);
-
                 // Postings an admin caused, so they get an audit row on this path too — same
                 // action as a completed booking, labelled PARTIAL.
                 await audit.LogAsync(

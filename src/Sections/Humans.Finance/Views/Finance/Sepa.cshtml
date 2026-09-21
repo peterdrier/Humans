@@ -82,7 +82,7 @@
                     <td>
                         @if (t.Row.IsBooked)
                         {
-                            <div class="text-muted small font-monospace">@(t.Row.HoldedPaymentRefs ?? "—")</div>
+                            <div class="text-muted small font-monospace">@(t.Row.HoldedBankMovementId ?? "—")</div>
                         }
                         else if (Model.UnavailableReason is not null)
                         {
@@ -91,12 +91,6 @@
                         else if (t.Row.NotBookableReason is { } reason)
                         {
                             <span class="text-muted small">@reason</span>
-                            @if (t.Row.HoldedPaymentRefs is { Length: > 0 } partial)
-                            {
-                                <div class="text-danger small">
-                                    Part-paid in Holded: <span class="font-monospace">@partial</span>
-                                </div>
-                            }
                         }
                         else
                         {

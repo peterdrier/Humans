@@ -225,7 +225,7 @@ public class RepositoryTests
     // ─── SEPA payout booking (nobodies-collective/Humans#1141) ───────────────────
 
     [HumansFact]
-    public async Task SaveSepaTransferBooking_StampsTheRowAndTheListReadsItBack()
+    public async Task SaveSepaTransferBooking_StampsBookedAtBookedByAndMovementId()
     {
         var (repo, _) = Make();
         var fileId = Guid.NewGuid();
@@ -250,16 +250,92 @@ public class RepositoryTests
                 IbanMasked = "ES79****789", Amount = 30m,
             }], Ct);
 
-        await repo.SaveSepaTransferBookingAsync(transferId, Now, actor, "pay-a,pay-b", Ct);
+        await repo.SaveSepaTransferBookingAsync(transferId, Now, actor, "mv-1", null, Ct);
 
         var row = (await repo.GetSepaPayoutTransferRowsAsync(Ct)).Should().ContainSingle().Subject;
         row.TransferId.Should().Be(transferId);
         row.FileName.Should().Be("payout.xml");
         row.BookedAt.Should().Be(Now);
         row.BookedByUserId.Should().Be(actor);
-        row.HoldedPaymentRefs.Should().Be("pay-a,pay-b");
+        row.HoldedBankMovementId.Should().Be("mv-1");
+        row.ReconciledAt.Should().BeNull();
         row.HoldedContactId.Should().Be("c1");
         row.IsBooked.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task MarkSepaTransferReconciled_StampsOnlyReconciledAt()
+    {
+        var (repo, _) = Make();
+        var fileId = Guid.NewGuid();
+        var transferId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        await repo.AddSepaPayoutAsync(
+            new SepaPayoutFile
+            {
+                Id = fileId,
+                GeneratedAt = Created,
+                GeneratedByUserId = actor,
+                FileName = "payout.xml",
+                Checksum = "abc",
+                Xml = "<x/>",
+            },
+            [new SepaPayoutTransfer
+            {
+                Id = transferId, FileId = fileId, UserId = userId, SupplierAccountNum = 40000004,
+                HoldedContactId = "c1",
+                CreditorName = "Ana Ruiz", Iban = "ES7921000813610123456789",
+                IbanMasked = "ES79****789", Amount = 30m,
+            }], Ct);
+        await repo.SaveSepaTransferBookingAsync(transferId, Now, actor, "mv-1", null, Ct);
+
+        var reconciledAt = Now.Plus(NodaTime.Duration.FromHours(3));
+        await repo.MarkSepaTransferReconciledAsync(transferId, reconciledAt, Ct);
+
+        var row = (await repo.GetSepaPayoutTransferRowsAsync(Ct)).Should().ContainSingle().Subject;
+        row.BookedAt.Should().Be(Now);
+        row.BookedByUserId.Should().Be(actor);
+        row.HoldedBankMovementId.Should().Be("mv-1");
+        row.ReconciledAt.Should().Be(reconciledAt);
+    }
+
+    [HumansFact]
+    public async Task GetSepaPayoutTransferRows_ProjectsMovementIdAndReconciledAt()
+    {
+        var (repo, _) = Make();
+        var fileId = Guid.NewGuid();
+        var transferId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        await repo.AddSepaPayoutAsync(
+            new SepaPayoutFile
+            {
+                Id = fileId,
+                GeneratedAt = Created,
+                GeneratedByUserId = actor,
+                FileName = "payout.xml",
+                Checksum = "abc",
+                Xml = "<x/>",
+            },
+            [new SepaPayoutTransfer
+            {
+                Id = transferId, FileId = fileId, UserId = userId, SupplierAccountNum = 40000004,
+                HoldedContactId = "c1",
+                CreditorName = "Ana Ruiz", Iban = "ES7921000813610123456789",
+                IbanMasked = "ES79****789", Amount = 30m,
+            }], Ct);
+
+        var unbooked = (await repo.GetSepaPayoutTransferRowsAsync(Ct)).Should().ContainSingle().Subject;
+        unbooked.HoldedBankMovementId.Should().BeNull();
+        unbooked.ReconciledAt.Should().BeNull();
+
+        var reconciledAt = Now.Plus(NodaTime.Duration.FromHours(1));
+        await repo.SaveSepaTransferBookingAsync(transferId, Now, actor, "mv-2", reconciledAt, Ct);
+
+        var booked = (await repo.GetSepaPayoutTransferRowsAsync(Ct)).Should().ContainSingle().Subject;
+        booked.HoldedBankMovementId.Should().Be("mv-2");
+        booked.ReconciledAt.Should().Be(reconciledAt);
     }
 
     // ─── Builders ────────────────────────────────────────────────────────────────

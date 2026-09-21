@@ -2265,7 +2265,7 @@ public class HoldedFinanceServiceTests
 
     /// <summary>An unbooked €30 transfer to a member bound to Holded contact "c1".</summary>
     private Guid SeedBookableTransfer(
-        Instant? bookedAt = null, string? paymentRefs = null, string? holdedContactId = "c1")
+        Instant? bookedAt = null, string? holdedContactId = "c1")
     {
         var userId = Guid.NewGuid();
         _repo.GetSepaTransferAsync(BookableTransferId, Arg.Any<CancellationToken>()).Returns(
@@ -2281,7 +2281,6 @@ public class HoldedFinanceServiceTests
                 IbanMasked = "ES79****789",
                 Amount = 30m,
                 BookedAt = bookedAt,
-                HoldedPaymentRefs = paymentRefs,
             });
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
             new HoldedCreditorContact
@@ -2333,7 +2332,7 @@ public class HoldedFinanceServiceTests
     public async Task BookSepaTransfer_AlreadyBooked_PaysNothing()
     {
         ConfigureSepa();
-        SeedBookableTransfer(bookedAt: FixedNow, paymentRefs: "pay-1");
+        SeedBookableTransfer(bookedAt: FixedNow);
         SeedOpenDocs(Doc("d1", 30m, 1));
 
         var result = await MakeService().BookSepaTransferAsync(BookableTransferId, Guid.NewGuid());
@@ -2358,25 +2357,6 @@ public class HoldedFinanceServiceTests
         result.Message.Should().Contain("no Holded contact binding");
         await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
             default!, default, default, default, default, default);
-    }
-
-    [HumansFact]
-    public async Task BookSepaTransfer_PartiallyBookedEarlier_RefusesEvenWhenCoverageIsStillEnough()
-    {
-        // The exact double-payment case coverage cannot catch: the member is owed far more than the
-        // €30 transfer, so a retry would pass the coverage check and post the full €30 a second time.
-        ConfigureSepa();
-        SeedBookableTransfer(paymentRefs: "pay-a");
-        SeedOpenDocs(Doc("d1", 500m, 1));
-
-        var result = await MakeService().BookSepaTransferAsync(BookableTransferId, Guid.NewGuid());
-
-        result.Succeeded.Should().BeFalse();
-        result.Message.Should().Contain("partially booked earlier");
-        await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
-            default!, default, default, default, default, default);
-        await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
-            default, default, default, default, default);
     }
 
     [HumansFact]
@@ -2432,7 +2412,7 @@ public class HoldedFinanceServiceTests
         await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
             default!, default, default, default, default, default);
         await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
-            default, default, default, default, default);
+            default, default, default, default!, default, default);
     }
 
     [HumansFact]
@@ -2449,7 +2429,8 @@ public class HoldedFinanceServiceTests
 
         result.Succeeded.Should().BeTrue();
         await _repo.Received(1).SaveSepaTransferBookingAsync(
-            BookableTransferId, FixedNow, Arg.Any<Guid?>(), "entry:e-1", Arg.Any<CancellationToken>());
+            BookableTransferId, FixedNow, Arg.Any<Guid?>(), Arg.Any<string>(), Arg.Any<Instant?>(),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -2509,7 +2490,8 @@ public class HoldedFinanceServiceTests
             new LocalDate(2026, 5, 1), 40000004, 57200001, 20m,
             "SEPA payout E11111111111111111111111111111111", Arg.Any<CancellationToken>());
         await _repo.Received(1).SaveSepaTransferBookingAsync(
-            BookableTransferId, FixedNow, actor, "pay-a,entry:e-1", Arg.Any<CancellationToken>());
+            BookableTransferId, FixedNow, actor, Arg.Any<string>(), Arg.Any<Instant?>(),
+            Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
             AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), BookableTransferId,
             Arg.Is<string>(d => d.Contains("journal entry for 20.00 EUR", StringComparison.Ordinal)
@@ -2534,7 +2516,8 @@ public class HoldedFinanceServiceTests
         await _client.Received(1).PostLedgerEntryAsync(
             Arg.Any<LocalDate>(), 40000004, 57200001, 30m, Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).SaveSepaTransferBookingAsync(
-            BookableTransferId, FixedNow, Arg.Any<Guid?>(), "entry:e-1", Arg.Any<CancellationToken>());
+            BookableTransferId, FixedNow, Arg.Any<Guid?>(), Arg.Any<string>(), Arg.Any<Instant?>(),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -2553,8 +2536,10 @@ public class HoldedFinanceServiceTests
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("refused the journal entry").And.Contain("NOT marked booked");
-        await _repo.Received(1).SaveSepaTransferBookingAsync(
-            BookableTransferId, null, null, "pay-a", Arg.Any<CancellationToken>());
+        // The terminal partial-save is gone (nobodies-collective/Humans#1185 T2): a failed run
+        // writes nothing to the transfer row now.
+        await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
+            default, default, default, default!, default, default);
         await _audit.Received(1).LogAsync(
             AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), BookableTransferId,
             Arg.Is<string>(d => d.Contains("PARTIAL", StringComparison.Ordinal)
@@ -2603,7 +2588,8 @@ public class HoldedFinanceServiceTests
 
         result.Succeeded.Should().BeTrue();
         await _repo.Received(1).SaveSepaTransferBookingAsync(
-            BookableTransferId, FixedNow, actor, "pay-a", Arg.Any<CancellationToken>());
+            BookableTransferId, FixedNow, actor, Arg.Any<string>(), Arg.Any<Instant?>(),
+            Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
             AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), BookableTransferId,
             Arg.Is<string>(d => d.Contains("ES79****789", StringComparison.Ordinal)
@@ -2628,9 +2614,10 @@ public class HoldedFinanceServiceTests
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("NOT marked booked");
-        // Money Holded already took is recorded; BookedAt stays null so nothing claims it settled.
-        await _repo.Received(1).SaveSepaTransferBookingAsync(
-            BookableTransferId, null, null, "pay-a", Arg.Any<CancellationToken>());
+        // The terminal partial-save is gone (nobodies-collective/Humans#1185 T2): a failed run
+        // writes nothing to the transfer row now.
+        await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
+            default, default, default, default!, default, default);
     }
 
     [HumansFact]
@@ -2702,24 +2689,6 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GetSepaPayouts_PartiallyBooked_SaysWhyInsteadOfOfferingTheButton()
-    {
-        ConfigureSepa();
-        var userId = SeedTransferRows(paymentRefs: "pay-a");
-        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
-        {
-            new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = 40000004 },
-        });
-
-        var (rows, _) = await MakeService().GetSepaPayoutsAsync(
-            Xunit.TestContext.Current.CancellationToken);
-
-        var row = rows.Should().ContainSingle().Subject;
-        row.CanBook.Should().BeFalse();
-        row.NotBookableReason.Should().Contain("partially booked");
-    }
-
-    [HumansFact]
     public async Task GetSepaPayouts_ReboundMember_SaysWhyInsteadOfOfferingTheButton()
     {
         ConfigureSepa();
@@ -2773,7 +2742,9 @@ public class HoldedFinanceServiceTests
         var (rows, _) = await MakeService().GetSepaPayoutsAsync(
             Xunit.TestContext.Current.CancellationToken);
 
-        rows.Should().ContainSingle().Which.CanBook.Should().BeTrue();
+        // CanBook also needs a matched bank line now (nobodies-collective/Humans#1185 T3/T4 wire
+        // it); this test only covers the account/contact guard, so it checks the guard directly.
+        rows.Should().ContainSingle().Which.NotBookableReason.Should().BeNull();
     }
 
     [HumansFact]
@@ -2791,7 +2762,9 @@ public class HoldedFinanceServiceTests
         var (rows, _) = await MakeService().GetSepaPayoutsAsync(
             Xunit.TestContext.Current.CancellationToken);
 
-        rows.Should().ContainSingle().Which.CanBook.Should().BeTrue();
+        // CanBook also needs a matched bank line now (nobodies-collective/Humans#1185 T3/T4 wire
+        // it); this test only covers the account/contact guard, so it checks the guard directly.
+        rows.Should().ContainSingle().Which.NotBookableReason.Should().BeNull();
         await _client.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync(default);
     }
 
@@ -2800,7 +2773,7 @@ public class HoldedFinanceServiceTests
     /// <paramref name="holdedContactId"/>. Pass null for a row from before
     /// nobodies-collective/Humans#1146 shipped. Returns the member it paid.
     /// </summary>
-    private Guid SeedTransferRows(string? paymentRefs = null, string? holdedContactId = "c1")
+    private Guid SeedTransferRows(string? holdedContactId = "c1")
     {
         var userId = Guid.NewGuid();
         _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>()).Returns(
@@ -2808,7 +2781,7 @@ public class HoldedFinanceServiceTests
             {
                 new(BookableTransferId, Guid.NewGuid(), "payout.xml", FixedNow, Guid.NewGuid(),
                     userId, 40000004, holdedContactId, "Ana Ruiz", "ES79****789", 30m,
-                    null, null, paymentRefs, null),
+                    null, null, null, null, null, null),
             });
         return userId;
     }

@@ -172,7 +172,8 @@ internal sealed class FinanceController(
             .OrderByDescending(f => f.GeneratedAt)
             .ToList();
 
-        return View(new SepaPayoutsPageVm(files, unavailable));
+        // TODO(T4, nobodies-collective/Humans#1185): live bank-feed matching fills these.
+        return View(new SepaPayoutsPageVm(files, unavailable, [], null));
     }
 
     /// <summary>Books one transfer's payment into Holded. No <c>CancellationToken</c> reaches the
