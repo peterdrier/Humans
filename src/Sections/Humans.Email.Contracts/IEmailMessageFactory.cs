@@ -69,7 +69,6 @@ public interface IEmailMessageFactory
     EmailMessage WorkspaceCredentials(string recoveryEmail, string userName, string workspaceEmail, string tempPassword, string? culture = null);
 
     /// <summary>Campaign-code email (CampaignCodes); carries the explicit user and grant ids and the reply-to from the request.</summary>
-    EmailMessage CampaignCode(CampaignCodeEmailRequest request);
 
     /// <summary>Event lifecycle notification (always-send, immediate drain); template is chosen from the request status.</summary>
     EmailMessage EventLifecycle(EventLifecycleNotification request, string userEmail);

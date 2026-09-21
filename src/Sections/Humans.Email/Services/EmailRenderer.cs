@@ -278,25 +278,6 @@ internal sealed class EmailRenderer(
             Lf("Email_GoogleAccessRemoval_SecondaryCleanup_Body",
                 HtmlEncode(userName), HtmlEncode(removedEmail), HtmlEncode(currentGoogleEmail))));
 
-    public EmailContent RenderCampaignCode(string subject, string markdownBody, string code, string recipientName)
-    {
-        // HTML-encode the substitutions so malicious codes/names cannot inject markup.
-        var encodedCode = HtmlEncode(code);
-        var encodedName = HtmlEncode(recipientName);
-
-        var markdown = markdownBody
-            .Replace("{{Code}}", encodedCode, StringComparison.Ordinal)
-            .Replace("{{Name}}", encodedName, StringComparison.Ordinal);
-        var renderedBody = SanitizedMarkdownRenderer.Render(markdown);
-
-        // Subject is a plain-text field; no HTML encoding required.
-        var renderedSubject = subject
-            .Replace("{{Code}}", code, StringComparison.Ordinal)
-            .Replace("{{Name}}", recipientName, StringComparison.Ordinal);
-
-        return new EmailContent(renderedSubject, renderedBody);
-    }
-
     public EmailContent RenderEventLifecycle(EventLifecycleNotification request, string? culture = null)
     {
         using (new CultureScope(culture ?? request.Culture, logger))

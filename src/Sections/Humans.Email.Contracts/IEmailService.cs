@@ -102,20 +102,6 @@ public sealed record WorkgroupNoticeRequest(
     string? Culture = null);
 
 /// <summary>
-/// Payload for enqueuing a campaign-code email.
-/// </summary>
-public record CampaignCodeEmailRequest(
-    Guid UserId,
-    Guid CampaignGrantId,
-    Guid CampaignId,
-    string RecipientEmail,
-    string RecipientName,
-    string Subject,
-    string MarkdownBody,
-    string Code,
-    string? ReplyTo);
-
-/// <summary>
 /// Payload for an event lifecycle notification. <see cref="NewStatus"/> picks
 /// the template: <see cref="EventStatus.Pending"/> = submission received,
 /// <see cref="EventStatus.Approved"/> = approved, <see cref="EventStatus.Rejected"/>

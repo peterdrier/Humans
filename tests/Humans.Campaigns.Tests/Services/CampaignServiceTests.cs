@@ -43,7 +43,7 @@ public sealed class CampaignServiceTests
 
     private readonly CampaignServiceImpl _service;
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
-    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
+    private readonly CampaignsEmails _emailMessages = new();
     private readonly ITicketDiscountCodes _ticketDiscountCodes;
 
     public CampaignServiceTests()
@@ -401,23 +401,24 @@ public sealed class CampaignServiceTests
         grants[0].UserId.Should().Be(user.Id);
         grants[0].LatestEmailStatus.Should().Be(EmailOutboxStatus.Queued);
 
-        // CampaignService delegates to IEmailService — verify the request was passed
-        // through. Allocation orders by ImportOrder, so the first code goes out first.
-        _emailMessages.Received(1).CampaignCode(
-            Arg.Is<CampaignCodeEmailRequest>(r =>
-                r.CampaignGrantId == grants[0].Id
-                && r.CampaignId == campaign.Id
-                && r.UserId == user.Id
-                && r.RecipientEmail == user.Email
-                && r.Code == "CODE-A"));
+        // CampaignService hands the built message to IEmailService — verify the grant,
+        // campaign, recipient and code reached it. Allocation orders by ImportOrder, so the
+        // first code goes out first.
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m =>
+                m.CampaignGrantId == grants[0].Id
+                && m.CampaignId == campaign.Id
+                && m.UserId == user.Id
+                && m.RecipientEmail == user.Email
+                && m.HtmlBody.Contains("CODE-A")),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task SendWaveAsync_SendsFactoryMessageBuiltFromRawTemplateValues()
+    public async Task SendWaveAsync_SendsMessageBuiltFromRawTemplateValues()
     {
-        // HTML-encoding and rendering happen inside the Email section (owner of the
-        // outbox) — CampaignService must forward the raw subject/body/code/name to the
-        // factory and hand the factory's message to SendAsync unmodified.
+        // CampaignService forwards the raw subject/body/code/name to CampaignsEmails,
+        // which does the substitution and HTML-encoding before SendAsync sees it.
         var campaign = await SeedActiveCampaignWithCodesAsync(["A<B>C"],
             emailSubject: "Hi {{Name}}, your code",
             emailBodyTemplate: "<p>Hi {{Name}}, your code is {{Code}}</p>");
@@ -427,19 +428,16 @@ public sealed class CampaignServiceTests
         SeedTeamMember(team.Id, user.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var factoryMessage = new EmailMessage(
-            user.Email!, "O'Brien & Co", "subject", "body", "CampaignCode");
-        _emailMessages.CampaignCode(Arg.Any<CampaignCodeEmailRequest>()).Returns(factoryMessage);
-
         await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.Received(1).CampaignCode(
-            Arg.Is<CampaignCodeEmailRequest>(r =>
-                r.Subject == "Hi {{Name}}, your code"
-                && r.MarkdownBody == "<p>Hi {{Name}}, your code is {{Code}}</p>"
-                && r.Code == "A<B>C"
-                && r.RecipientName == "O'Brien & Co"));
-        await _emailService.Received(1).SendAsync(factoryMessage, Arg.Any<CancellationToken>());
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m =>
+                m.TemplateName == "campaign_code"
+                && m.Subject == "Hi O'Brien & Co, your code"
+                && m.RecipientName == "O'Brien & Co"
+                && m.HtmlBody.Contains("A&lt;B&gt;C")
+                && m.HtmlBody.Contains("O'Brien &amp; Co")),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -543,7 +541,7 @@ public sealed class CampaignServiceTests
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
-        _emailMessages.ClearReceivedCalls();
+        _emailService.ClearReceivedCalls();
 
         var grant = await CampaignsDb.CampaignGrants.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         grant.LatestEmailStatus = EmailOutboxStatus.Failed;
@@ -551,8 +549,9 @@ public sealed class CampaignServiceTests
 
         await _service.ResendToGrantAsync(grant.Id, Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.Received(1).CampaignCode(
-            Arg.Is<CampaignCodeEmailRequest>(r => r.CampaignGrantId == grant.Id && r.CampaignId == campaign.Id));
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.CampaignGrantId == grant.Id && m.CampaignId == campaign.Id),
+            Arg.Any<CancellationToken>());
 
         ClearAllTrackers();
         var updatedGrant = await CampaignsDb.CampaignGrants.FindAsync(grant.Id, Xunit.TestContext.Current.CancellationToken);
@@ -572,7 +571,7 @@ public sealed class CampaignServiceTests
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
-        _emailMessages.ClearReceivedCalls();
+        _emailService.ClearReceivedCalls();
 
         // Mark one as failed
         var grants = await CampaignsDb.CampaignGrants.ToListAsync(Xunit.TestContext.Current.CancellationToken);
@@ -582,8 +581,9 @@ public sealed class CampaignServiceTests
         await _service.RetryAllFailedAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
 
         // Only the failed grant should be re-enqueued.
-        _emailMessages.Received(1).CampaignCode(
-            Arg.Is<CampaignCodeEmailRequest>(r => r.CampaignGrantId == grants[0].Id && r.CampaignId == campaign.Id));
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.CampaignGrantId == grants[0].Id && m.CampaignId == campaign.Id),
+            Arg.Any<CancellationToken>());
 
         ClearAllTrackers();
         var retriedGrant = await CampaignsDb.CampaignGrants.FindAsync(grants[0].Id, Xunit.TestContext.Current.CancellationToken);

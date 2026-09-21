@@ -130,17 +130,6 @@ internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessa
             TimeSensitiveTemplates.WorkspaceCredentials);
     }
 
-    public EmailMessage CampaignCode(CampaignCodeEmailRequest request)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        // Renderer HTML-encodes {{Code}}/{{Name}} substitutions to prevent injection.
-        var content = renderer.RenderCampaignCode(request.Subject, request.MarkdownBody, request.Code, request.RecipientName);
-        return new EmailMessage(request.RecipientEmail, request.RecipientName, content.Subject, content.HtmlBody,
-            "campaign_code", MessageCategory.CampaignCodes,
-            ReplyTo: request.ReplyTo, UserId: request.UserId, CampaignGrantId: request.CampaignGrantId,
-            CampaignId: request.CampaignId);
-    }
-
     public EmailMessage EventLifecycle(EventLifecycleNotification request, string userEmail)
     {
         ArgumentNullException.ThrowIfNull(request);

@@ -52,25 +52,6 @@ public sealed class EmailRendererTests
     }
 
     [HumansFact]
-    public void CampaignCode_renders_sanitized_markdown_with_https_images()
-    {
-        var renderer = CreateRenderer();
-
-        var content = renderer.RenderCampaignCode(
-            "Your code {{Code}}",
-            "Hi {{Name}}, here is **{{Code}}**.\r\n\r\n[Details](https://example.com)\r\n\r\n![Poster](https://example.com/poster.png)\r\n<script>alert('x')</script>",
-            "ABC123",
-            "Daniel <Admin>");
-
-        content.Subject.Should().Be("Your code ABC123");
-        content.HtmlBody.Should().Contain("Daniel &lt;Admin&gt;");
-        content.HtmlBody.Should().Contain("<strong>ABC123</strong>");
-        content.HtmlBody.Should().Contain("<a href=\"https://example.com\">Details</a>");
-        content.HtmlBody.Should().NotContain("<script>");
-        content.HtmlBody.Should().Contain("<img src=\"https://example.com/poster.png\"");
-    }
-
-    [HumansFact]
     public void FacilitatedMessage_renders_markdown_instead_of_html_encoded_plain_text()
     {
         var renderer = CreateRenderer();

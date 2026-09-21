@@ -122,35 +122,6 @@ public sealed class EmailMessageFactoryTests
     }
 
     [HumansFact]
-    public void CampaignCode_CarriesUserGrantReplyToAndCampaignCategory()
-    {
-        var userId = Guid.NewGuid();
-        var grantId = Guid.NewGuid();
-        var campaignId = Guid.NewGuid();
-        var request = new CampaignCodeEmailRequest(
-            UserId: userId,
-            CampaignGrantId: grantId,
-            CampaignId: campaignId,
-            RecipientEmail: "zoe@x.com",
-            RecipientName: "Zoe",
-            Subject: "S {{Name}}",
-            MarkdownBody: "Hi {{Name}} {{Code}}",
-            Code: "ABC",
-            ReplyTo: "reply@x.com");
-
-        var msg = _factory.CampaignCode(request);
-
-        msg.RecipientEmail.Should().Be("zoe@x.com");
-        msg.TemplateName.Should().Be("campaign_code");
-        msg.Category.Should().Be(MessageCategory.CampaignCodes);
-        msg.ReplyTo.Should().Be("reply@x.com");
-        msg.UserId.Should().Be(userId);
-        msg.CampaignGrantId.Should().Be(grantId);
-        msg.CampaignId.Should().Be(campaignId);
-        _renderer.Received(1).RenderCampaignCode("S {{Name}}", "Hi {{Name}} {{Code}}", "ABC", "Zoe");
-    }
-
-    [HumansFact]
     public void EventLifecycle_PicksTemplateFromStatus()
     {
         var request = new EventLifecycleNotification(EventStatus.Approved, "Bob", "My Event");
