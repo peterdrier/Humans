@@ -550,10 +550,6 @@ inbox:
     what: "docs/scripts/freshness-checks/dependency-graph.sh uses awk's asorti, which mawk (the container's awk) does not define: the script dies at line 91 and then reports PASS with \"all 0 section/Web service classes appear as Mermaid nodes\" — a vacuous pass that hides every missing node. Found when a Codex finding cited the check's output on peterdrier/Humans#1649 and it could not be reproduced."
     review: light
   - added: 2026-09-14
-    id: CENTRAL-49
-    what: "Login_Hello in src/Humans.Base/Resources/SharedResource.resx and its five culture variants is named in no view, controller or tag helper — only in the six resx files. The five keys a scan flagged alongside it (CompleteSignup_AllFieldsRequired, GateLogin_Invalid, GateLogin_Throttled, Login_Login, Login_Logout) are live; do not remove those. Base's set, so Base's run (finding 33, /section-doctor on Auth 2026-09-01; swept in by /section-doctor on Issues 2026-09-14)."
-    review: light
-  - added: 2026-09-14
     id: CENTRAL-50
     what: "src/Sections/Humans.EarlyEntry has no .Contracts leaf, so every consumer — Gate among them — takes a ProjectReference on the whole section and sees all of it rather than a contracts surface. Cross-cutting: it wants one carve-out decision, not a fix per consumer (finding 14, /section-doctor on Gate 2026-08-31; swept in by /section-doctor on Issues 2026-09-14)."
     review: panel

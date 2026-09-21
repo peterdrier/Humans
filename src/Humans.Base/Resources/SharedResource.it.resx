@@ -148,10 +148,6 @@
   <data name="CookieBanner_Accept" xml:space="preserve">
     <value>Accetta</value>
   </data>
-  <data name="Login_Hello" xml:space="preserve">
-    <value>Ciao, {0}</value>
-    <comment>{0} = user name</comment>
-  </data>
   <data name="Login_Logout" xml:space="preserve">
     <value>Esci</value>
   </data>
