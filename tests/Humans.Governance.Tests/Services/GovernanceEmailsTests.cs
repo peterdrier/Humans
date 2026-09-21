@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Governance.Services;
