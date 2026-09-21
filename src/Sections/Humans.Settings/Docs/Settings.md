@@ -162,8 +162,8 @@ section reaching *in* through this section's leaf, or a seam it implements.
 
 The **out** rows are complete — they are this section's own dependencies. Of the **in**
 rows, the key/value ones are complete too, because `SettingKeys` bounds them. The
-event-cycle readers are deliberately not listed: the set is most of the app and every
-rebuild has left a shorter list behind it. Derive it from the call sites, not from here.
+event-cycle readers are deliberately not listed: the set is most of the app, too wide to
+keep in step by hand. Derive it from the call sites, not from here.
 
 | Direction | Section | Through |
 |---|---|---|

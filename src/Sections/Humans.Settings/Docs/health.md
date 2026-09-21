@@ -29,7 +29,7 @@ page, the tab strip and the ordering; it supplies exactly one tab of its own.
 | Question shape | Asked by | Answered by |
 |---|---|---|
 | "What is stored under this key?" / "Store this under this key" | Email's send pause, Monitor's last-run stamp, Workgroups' Drive root | `ISettingsService.GetValueAsync` / `SetValueAsync` |
-| "What is the current event cycle?" / "This cycle, by id?" | most of the app — every section that renders a date, a phase or an early-entry window, plus the section's own tab. Not enumerated on purpose: the list is long and each rebuild has left a shorter one behind | `ISettingsService.GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` |
+| "What is the current event cycle?" / "This cycle, by id?" | most of the app — every section that renders a date, a phase or an early-entry window, plus the section's own tab. Not enumerated on purpose — a set this wide is not maintainable by hand; derive it from the call sites | `ISettingsService.GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` |
 | "Save this cycle's values, on this person's say-so" | only the section's own POST endpoint | `ISettingsWriteService.SaveEventSettingsAsync` |
 | "Mint / drop a cycle for a fixture" | the dev dashboard seeder | `IEventSettingsSeeding.CreateActiveEventAsync` / `DeleteEventAsync` |
 | "The cycle moved — drop what you derived from it" | announced to every listener, named by none | `IEventSettingsChangeListener.EventSettingsChanged` |
@@ -103,8 +103,8 @@ The shapes imply exactly today's layout:
 - **`SetValueAsync` on the cross-section contract.** Email's and Monitor's flags are
   planned to move into their own sections' settings, after which the key/value write (and
   possibly the store) shrinks or goes.
-- **Dropping the dead app-wide columns from Shifts' `event_settings`.** The cutover moved
-  every reader here; the duplicated columns on the Shifts row survive under the
+- **Dropping the dead app-wide columns from Shifts' `event_settings`.** Every reader resolves
+  the cycle here now; the duplicated columns on the Shifts row survive under the
   no-drops-until-prod-verified rule and are Peter's call, not this section's.
 - **Weight and the duplicate-key rule on `ISectionSettings`.** Nine sections contribute a
   tab, so the policy filter earns its place, but every contribution today takes the default
