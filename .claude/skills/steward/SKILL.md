@@ -79,17 +79,23 @@ On every wake:
    finding, CI failure, merge conflict or change Peter asked for gets the round worker; a
    **question** from Peter gets that brief marked `Answer only: no triage, no edit, no
    commit` — it answers in a reply and touches nothing. Never two workers on one PR at
-   once; if an actionable wake arrives while a worker runs, carry it in your reply as a
-   pending trigger — the queue is drained once, so an unrecorded event is a lost finding.
+   once, and one wake often drains several actionable events while only one of them can be
+   dispatched. Carry **every** actionable event you do not dispatch — the rest of this
+   wake's drain as much as anything arriving while a worker runs — in your reply as a
+   pending trigger, and work that list down one worker at a time. The queue is drained once
+   and nothing polls, so an unrecorded event is a lost finding.
 4. On the worker's report: keep one line of state in your reply (head sha, rounds spent,
-   open items, pending triggers). If the report says the ceiling is reached, post its
+   open items, pending triggers). If it carries an `ANSWER (relay verbatim):` block — a
+   question Peter asked here rather than in a PR comment, so the worker had no thread to
+   reply in — put that block in your reply as-is, above the state line: nothing else
+   carries the answer back to him. If the report says the ceiling is reached, post its
    ceiling comment on the PR, `unsubscribe_pr_activity`, and stop. If it is
    `STATUS: blocked`, post its `OPEN` items on the PR as a comment addressed to Peter and
    stay subscribed — the builder is gone and nothing polls, so an unposted decision never
-   reaches him and his reply is what wakes you. Otherwise, if a pending
-   trigger is still uncovered by the report, dispatch one fresh worker for it now (it
-   recounts rounds itself, so the ceiling still holds) and end the turn; with none, just
-   end the turn.
+   reaches him and his reply is what wakes you. Otherwise, if any pending
+   trigger is still uncovered by the report, dispatch one fresh worker for the oldest of
+   them now (it recounts rounds itself, so the ceiling still holds), carry the remainder
+   forward in your reply, and end the turn; with none, just end the turn.
 
 The steward **never**: runs Bash; reads threads, diffs, logs or files; edits code; drafts a
 fix; replies in a thread (the worker does); schedules a check-in; raises the ceiling;
@@ -111,8 +117,12 @@ The worker counts spent rounds from the PR, never from memory:
       --jq '[.commits[] | select((.messageBody // "") | test("(?m)^Review-round: [0-9]+"))] | length'
 
 (or `pull_request_read get_commits` where `gh` is absent). Always pass the owner: fork and
-upstream reuse PR numbers. A zero on a PR with bot reviews or an earlier red check is a
-missing record, not a fresh budget: count the round commits by hand and use that.
+upstream reuse PR numbers. The number is evidence, not the answer: check it against the
+PR's review history — the bot reviews and red checks that came before it — on every count,
+not only when it reads zero. A rebase or a squash drops some trailers and keeps others, so
+a plausible nonzero count can still be short, and a zero on a PR with bot reviews or an
+earlier red check is a missing record, not a fresh budget. Where the two disagree, count
+the round commits by hand and use that.
 
 The unattended ceiling is **five review-round commits per PR**:
 

@@ -15,10 +15,13 @@ Report file: <scratchpad>/steward/<N>-round-<k+1>.md.
 
 **A question from Peter is not a round.** The steward sends the same brief with
 `Trigger: Peter asks: <his words>` and the line `Answer only: no triage, no edit, no
-commit.` That worker reads whatever it needs, posts the answer as a reply on Peter's
-comment, and reports in one line — a question gets an answer, not a commit
-([peters-working-rules](../../../docs/architecture/peters-working-rules.md)). None of the
-steps below apply to it.
+commit.` That worker reads whatever it needs and answers — a question gets an answer, not
+a commit ([peters-working-rules](../../../docs/architecture/peters-working-rules.md)).
+Where the question came in as a PR comment, the answer is a reply on that comment and the
+report is one line. Where Peter asked the steward directly there is no thread to reply in,
+so the answer goes back **verbatim in the report**, under an `ANSWER (relay verbatim):`
+line, and the steward relays it into its reply; the steward cannot read files, so that
+block is the only copy that reaches him. None of the steps below apply to either.
 
 ## What the worker does
 
