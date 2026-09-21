@@ -302,7 +302,9 @@ public class FinanceControllerTests
                 Transfer(older, "old.xml", Stamp(1), admin, Ana, 40000002),
                 Transfer(newer, "new.xml", Stamp(2), admin, Ana, 40000002),
             },
-            null));
+            // TODO(T4, nobodies-collective/Humans#1185): the unmatched-lines panel and the bank-feed
+            // banner get their own tests with the view.
+            null, [], null));
         NameThem((Ana, "Ada"), (Bo, "Zoe"), (admin, "Treasurer"));
 
         var page = SepaPageOf(await MakeController().Sepa(Xunit.TestContext.Current.CancellationToken));
@@ -317,7 +319,8 @@ public class FinanceControllerTests
     public async Task Sepa_UnavailableReason_ReachesThePageUnchanged()
     {
         _connector.GetSepaPayoutsAsync(Arg.Any<CancellationToken>())
-            .Returns((new List<SepaPayoutTransferRow>(), "Sepa:TreasuryAccountId is not configured."));
+            .Returns((new List<SepaPayoutTransferRow>(), "Sepa:TreasuryAccountId is not configured.",
+                (IReadOnlyList<SepaBankMovementVm>)[], (string?)null));
 
         var page = SepaPageOf(await MakeController().Sepa(Xunit.TestContext.Current.CancellationToken));
 

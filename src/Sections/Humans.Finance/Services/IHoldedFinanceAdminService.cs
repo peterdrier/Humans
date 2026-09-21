@@ -31,19 +31,30 @@ internal interface IHoldedFinanceAdminService : IApplicationService
         IReadOnlyList<SepaPayoutSelection> selections, decimal maxPerTransfer, Guid actorUserId,
         CancellationToken ct = default);
 
-    /// <summary>Every generated transfer with its booking state and, per row, the reason it cannot be
-    /// booked — plus the one reason booking is off for the whole screen (missing configuration), when
-    /// there is one. Reads Holded's open purchase documents once for the whole screen; a vendor
-    /// failure costs the coverage pre-check, not the page.</summary>
-    Task<(IReadOnlyList<SepaPayoutTransferRow> Rows, string? UnavailableReason)> GetSepaPayoutsAsync(
-        CancellationToken ct = default);
+    /// <summary>Every generated transfer with its booking state, the reason it cannot be booked and
+    /// the Sabadell line that would settle it — plus the one reason booking is off for the whole
+    /// screen (missing configuration), the outgoing bank lines that matched nothing or matched
+    /// ambiguously, and the reason the live bank feed could not be read. Makes one live bank-feed
+    /// call; a vendor failure costs the candidates and the panel, not the page
+    /// (nobodies-collective/Humans#1185).</summary>
+    Task<(IReadOnlyList<SepaPayoutTransferRow> Rows,
+          string? UnavailableReason,
+          IReadOnlyList<SepaBankMovementVm> UnmatchedMovements,
+          string? BankFeedError)>
+        GetSepaPayoutsAsync(CancellationToken ct = default);
 
-    /// <summary>Pays the member's open Holded purchase documents, oldest first, up to the transfer
-    /// amount, and stamps the booking onto the transfer row. Refuses a transfer that is already
-    /// booked, whose member is unbound, or whose open documents do not cover the amount.
+    /// <summary>Books one transfer against the outgoing Sabadell line that paid it
+    /// (nobodies-collective/Humans#1185): re-validates the pairing server-side, reads the live
+    /// creditor balance and what is already posted under this transfer's tag, pays the member's
+    /// open Holded purchase documents oldest first (dated the bank line), settles any remainder as
+    /// one journal entry, stamps the row and reconciles the bank line. A run that Holded refuses
+    /// mid-way writes nothing and is retryable — the next attempt posts only the difference.
+    /// <paramref name="actorUserId"/> null means the sweep booked it, and the audit entry carries
+    /// the job name instead.
     /// Takes no <c>CancellationToken</c> on purpose: a booking that has posted one payment to Holded
     /// must run to the end regardless of whether the admin is still watching
     /// (<c>memory/architecture/cancellation-token-propagation.md</c>).</summary>
     [ExternalWrite]
-    Task<SepaBookingResult> BookSepaTransferAsync(Guid transferId, Guid actorUserId);
+    Task<SepaBookingResult> BookSepaTransferAsync(
+        Guid transferId, string bankMovementId, Guid? actorUserId);
 }

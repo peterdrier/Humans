@@ -146,7 +146,7 @@ internal sealed class FinanceController(
     [HttpGet("Sepa")]
     public async Task<IActionResult> Sepa(CancellationToken ct)
     {
-        var (rows, unavailable) = await holdedConnector.GetSepaPayoutsAsync(ct);
+        var (rows, unavailable, unmatched, bankFeedError) = await holdedConnector.GetSepaPayoutsAsync(ct);
 
         var names = new Dictionary<Guid, string>();
         var ids = rows.SelectMany(r => new[] { r.UserId, r.GeneratedByUserId })
@@ -173,7 +173,7 @@ internal sealed class FinanceController(
             .ToList();
 
         // TODO(T4, nobodies-collective/Humans#1185): live bank-feed matching fills these.
-        return View(new SepaPayoutsPageVm(files, unavailable, [], null));
+        return View(new SepaPayoutsPageVm(files, unavailable, unmatched, bankFeedError));
     }
 
     /// <summary>Books one transfer's payment into Holded. No <c>CancellationToken</c> reaches the
@@ -184,7 +184,9 @@ internal sealed class FinanceController(
     {
         if (GetCurrentUserId() is not { } actorUserId) return Challenge();
 
-        var result = await holdedConnector.BookSepaTransferAsync(transferId, actorUserId);
+        // TODO(T4, nobodies-collective/Humans#1185): take bankMovementId from the form and pass
+        // it here; an empty id refuses in the service, which is the safe interim state.
+        var result = await holdedConnector.BookSepaTransferAsync(transferId, "", actorUserId);
         if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
 
         return RedirectToAction(nameof(Sepa));
