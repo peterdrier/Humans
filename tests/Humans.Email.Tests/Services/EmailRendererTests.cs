@@ -52,26 +52,6 @@ public sealed class EmailRendererTests
     }
 
     [HumansFact]
-    public void FeedbackResponse_renders_sanitized_markdown_with_https_images()
-    {
-        var renderer = CreateRenderer();
-
-        var content = renderer.RenderFeedbackResponse(
-            "Daniel <Admin>",
-            "The <b>lights</b> were off",
-            "**Fixed.**\r\n\r\n[Details](https://example.com)\r\n\r\n![Shot](https://example.com/shot.png)\r\n<script>alert('x')</script>",
-            "/Feedback/12",
-            "en");
-
-        content.HtmlBody.Should().Contain("Daniel &lt;Admin&gt;");
-        content.HtmlBody.Should().Contain("The &lt;b&gt;lights&lt;/b&gt; were off");
-        content.HtmlBody.Should().Contain("<p><strong>Fixed.</strong></p>");
-        content.HtmlBody.Should().Contain("<a href=\"https://example.com\">Details</a>");
-        content.HtmlBody.Should().NotContain("<script>");
-        content.HtmlBody.Should().Contain("<img src=\"https://example.com/shot.png\"");
-    }
-
-    [HumansFact]
     public void IssueComment_renders_sanitized_markdown_with_https_images()
     {
         var renderer = CreateRenderer();
@@ -271,8 +251,6 @@ public sealed class EmailRendererTests
             ["Email_SurveyInvitation_DefaultMessage"] = "You're invited to complete <strong>{0}</strong>.",
             ["Email_SurveyInvitation_Body"] =
                 "<h2>{1}</h2><p>Hi {0},</p>{3}<p><a href=\"{2}\">Open the survey</a></p>",
-            ["Email_FeedbackResponse_Body"] =
-                "<p>Hi {0},</p><blockquote>{1}</blockquote>{2}<p><a href=\"{3}\">Open the report</a></p>",
             ["Email_IssueComment_Subject"] = "New comment on {0}",
             ["Email_IssueComment_Body"] =
                 "<p>Hi {0},</p><h2>{1}</h2>{2}<p><a href=\"{3}\">Open the issue</a></p>",

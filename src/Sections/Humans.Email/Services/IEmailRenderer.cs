@@ -72,11 +72,6 @@ internal interface IEmailRenderer
     EmailContent RenderSurveyReminder(string userName, string surveyTitle, string answerToken, string? culture = null);
 
     /// <summary>
-    /// Feedback response notification.
-    /// </summary>
-    EmailContent RenderFeedbackResponse(string userName, string originalDescription, string responseMessage, string reportLink, string? culture = null);
-
-    /// <summary>
     /// Issue comment notification — sent to the issue reporter when a non-reporter
     /// (admin/coordinator/board) posts a comment on their issue.
     /// </summary>

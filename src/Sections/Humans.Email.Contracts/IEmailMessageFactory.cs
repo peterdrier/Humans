@@ -50,9 +50,6 @@ public interface IEmailMessageFactory
     /// <summary>Survey reminder — single nudge for an unfinished invitation (System category).</summary>
     EmailMessage SurveyReminder(string userEmail, string userName, string surveyTitle, string answerToken, string? culture = null);
 
-    /// <summary>Feedback response notification (System).</summary>
-    EmailMessage FeedbackResponse(string userEmail, string userName, string originalDescription, string responseMessage, string reportLink, string? culture = null);
-
     /// <summary>Facilitated volunteer-to-volunteer message (FacilitatedMessages); reply-to is the sender when contact info is shared.</summary>
     EmailMessage FacilitatedMessage(string recipientEmail, string recipientName, string senderName, string messageText, bool includeContactInfo, string? senderEmail, string? culture = null);
 

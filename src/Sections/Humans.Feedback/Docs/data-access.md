@@ -27,12 +27,26 @@ Repository: `IFeedbackRepository`.
 | `FeedbackBadgeCount` | 2 min | yes | yes | yes (via `INavBadgeCacheInvalidator`) |
 
 Cross-section calls via `IUserServiceRead`, `IUserEmailService`,
-`ITeamServiceRead`, `IEmailService`, `IEmailMessageFactory`,
+`ITeamServiceRead`, `IEmailService`, the section's own `FeedbackEmails`
+builder,
 `INotificationEmitter`, `IAuditLogService`, and `IFileStorage`
 (screenshot blob deletion during GDPR erasure). Implements `IFeedbackServiceRead`, `IFeedbackTriage`
 (Backdoor's machine-API triage surface, nobodies-collective/Humans#1128),
 `IUserDataContributor`, `IUserMerge`. Owns and caches `FeedbackBadgeCount`
 inside `GetActionableCountAsync`.
+
+### FeedbackEmails (Scoped, internal)
+
+No repository. Pure builder — reads `FeedbackResource` (via
+`IStringLocalizer<FeedbackResource>`), writes nothing. Returns
+`EmailMessage` values for `FeedbackService` to pass to
+`IEmailService.SendAsync`. No DB access, no cache.
+
+### FeedbackEmailPreviews (Scoped)
+
+No repository. Read-only gallery contributor (`IEmailPreviewContributor`,
+registered in `Section.Register`) — builds one sample per template via
+`FeedbackEmails` for `/Email/EmailPreview`. No DB access, no cache.
 
 ---
 

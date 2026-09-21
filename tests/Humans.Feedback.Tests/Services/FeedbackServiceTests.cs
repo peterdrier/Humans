@@ -3,6 +3,8 @@ using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
+using Humans.Feedback.Services;
+using Humans.Feedback.Tests.Infrastructure;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
@@ -48,7 +50,7 @@ public sealed class FeedbackServiceTests
     private readonly Dictionary<Guid, TeamInfo> _teams = [];
 
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
-    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
+    private readonly FeedbackEmails _emailMessages = TestFeedbackEmails.Create();
     private readonly INotificationEmitter _notificationService = Substitute.For<INotificationEmitter>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly IFileStorage _fileStorage = Substitute.For<IFileStorage>();
@@ -240,10 +242,13 @@ public sealed class FeedbackServiceTests
         updated.LastAdminMessageAt.Should().NotBeNull();
         updated.LastReporterMessageAt.Should().BeNull();
 
-        _emailMessages.Received(1).FeedbackResponse(
-            "reporter@test.com", "Reporter", "Test", "Looking into it",
-            $"/Feedback/{report.Id}", "en");
-        await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "feedback_response"
+                && m.RecipientEmail == "reporter@test.com"
+                && m.RecipientName == "Reporter"
+                && m.HtmlBody.Contains("Looking into it")
+                && m.HtmlBody.Contains($"/Feedback/{report.Id}")),
+            Arg.Any<CancellationToken>());
         await _notificationService.Received(1).SendAsync(
             NotificationSource.FeedbackResponse,
             NotificationClass.Informational,

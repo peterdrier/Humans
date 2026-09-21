@@ -73,8 +73,8 @@ None. The section is retired and closed; no specified-but-unbuilt work reserves 
 - **`AuditEntityTypes.FeedbackReport` is a persisted string literal** — a data contract with
   existing audit rows; never regenerate from `nameof`.
 - **`FeedbackResource` must stay `namespace Humans.Feedback`** — the SDK derives the resource
-  manifest name from it; moving it silently breaks every string. `Email_FeedbackResponse_*` keys
-  deliberately live in the Email section's `EmailResource` (its `EmailRenderer` renders that email).
+  manifest name from it; moving it silently breaks every string. The set also carries the
+  `Feedback_Email_*` keys: `FeedbackEmails` renders that email (peterdrier/Humans#1651).
 - **Singleton repository + `IDbContextFactory`** — repo owns context lifetime per call.
 - **`RoleNames.FeedbackAdmin` still exists but grants no Feedback access** — kept because Staff
   page, Guide and `AnyAdminRole` still name it; its policy/role-group/check were deleted (#977).

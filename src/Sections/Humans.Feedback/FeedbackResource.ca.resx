@@ -133,4 +133,18 @@
   <data name="Feedback_AssignedToName" xml:space="preserve"><value>Assignat a {0}</value></data>
   <data name="Feedback_CategoryOnPage" xml:space="preserve"><value>{0} a {1}</value></data>
   <data name="Feedback_TeamName" xml:space="preserve"><value>Equip: {0}</value></data>
+  <data name="Feedback_Email_FeedbackResponse_Subject" xml:space="preserve">
+    <value>Actualització sobre el teu feedback</value>
+  </data>
+  <data name="Feedback_Email_FeedbackResponse_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Actualització sobre el teu feedback&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Hem revisat el teu feedback:&lt;/p&gt;
+&lt;blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #666;"&gt;{1}&lt;/blockquote&gt;
+&lt;p&gt;&lt;strong&gt;La nostra resposta:&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;{2}&lt;/p&gt;
+&lt;p&gt;Gràcies per ajudar-nos a millorar!&lt;/p&gt;
+&lt;p&gt;L’equip de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = original description, {2} = response message</comment>
+  </data>
 </root>

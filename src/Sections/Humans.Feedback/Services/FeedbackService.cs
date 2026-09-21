@@ -29,7 +29,7 @@ internal sealed class FeedbackService(
     IUserEmailService userEmailService,
     ITeamServiceRead teamService,
     IEmailService emailService,
-    IEmailMessageFactory emailMessages,
+    FeedbackEmails emailMessages,
     INotificationEmitter notificationService,
     IAuditLogService auditLogService,
     INavBadgeCacheInvalidator navBadge,
