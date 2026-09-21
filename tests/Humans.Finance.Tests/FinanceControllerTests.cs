@@ -302,8 +302,6 @@ public class FinanceControllerTests
                 Transfer(older, "old.xml", Stamp(1), admin, Ana, 40000002),
                 Transfer(newer, "new.xml", Stamp(2), admin, Ana, 40000002),
             },
-            // TODO(T4, nobodies-collective/Humans#1185): the unmatched-lines panel and the bank-feed
-            // banner get their own tests with the view.
             null, [], null));
         NameThem((Ana, "Ada"), (Bo, "Zoe"), (admin, "Treasurer"));
 
@@ -326,6 +324,50 @@ public class FinanceControllerTests
 
         page.UnavailableReason.Should().Be("Sepa:TreasuryAccountId is not configured.");
         page.Files.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Sepa_RendersUnmatchedMovementsPanel()
+    {
+        var unmatched = new List<SepaBankMovementVm>
+        {
+            new("mov-1", new LocalDate(2026, 9, 18), 50.00m, "unrecognised text", null,
+                "pending", "its text names no creditor account"),
+        };
+        _connector.GetSepaPayoutsAsync(Arg.Any<CancellationToken>())
+            .Returns((new List<SepaPayoutTransferRow>(), (string?)null,
+                (IReadOnlyList<SepaBankMovementVm>)unmatched, (string?)null));
+
+        var page = SepaPageOf(await MakeController().Sepa(Xunit.TestContext.Current.CancellationToken));
+
+        page.UnmatchedMovements.Should().BeSameAs(unmatched);
+    }
+
+    [HumansFact]
+    public async Task Sepa_BankFeedUnreadable_RendersTheBannerAndStillListsFiles()
+    {
+        _connector.GetSepaPayoutsAsync(Arg.Any<CancellationToken>()).Returns((
+            new List<SepaPayoutTransferRow> { Transfer(Guid.NewGuid(), "f.xml", Stamp(1), Ana, Ana, 40000002) },
+            (string?)null, (IReadOnlyList<SepaBankMovementVm>)[], "Holded's bank feed did not answer."));
+        NameThem((Ana, "Ada"));
+
+        var page = SepaPageOf(await MakeController().Sepa(Xunit.TestContext.Current.CancellationToken));
+
+        page.BankFeedError.Should().Be("Holded's bank feed did not answer.");
+        page.Files.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task BookSepaTransfer_PassesTheMovementIdThrough()
+    {
+        var transferId = Guid.NewGuid();
+        _connector.BookSepaTransferAsync(transferId, "mov-1", Ana)
+            .Returns(new SepaBookingResult(true, "Booked."));
+        var controller = MakeControllerWithHttpContext(Ana);
+
+        await controller.BookSepaTransfer(transferId, "mov-1");
+
+        await _connector.Received(1).BookSepaTransferAsync(transferId, "mov-1", Ana);
     }
 
     private static Instant Stamp(int day) => Instant.FromUtc(2026, 8, day, 9, 0);
