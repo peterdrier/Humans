@@ -184,3 +184,14 @@ Three controllers serve this section.
 ### Touch-and-clean guidance
 
 - `DocumentVersion.ConsentRecords` — declared but not navigated by any service, view, or test. Stripping it is **not** doc-only: `DocumentVersionConfiguration` is the sole declaration of the `consent_records` → `document_versions` FK and its `OnDelete(Restrict)`, so the relationship must be re-expressed from the `ConsentRecord.DocumentVersion` side and a `dotnet ef migrations add` must produce an empty `Up()` to prove the schema is unchanged (see Users' #635 nav-strip precedent).
+
+## Issue queue
+
+Consent owns the `Legal` issue queue: it implements `IIssueQueueOwner` (Issues' contracts
+leaf) on its `Section` entry point, declaring the queue key and the roles that handle
+issues filed against it — `ConsentCoordinator`, plus `Admin`, which handles every queue.
+Issues discovers the declaration through DI and holds no list of sections; dropping the
+seam sends this section's stored issues to the Admin-only queue. The key is `Legal`, not
+`Consent`: the section was renamed at the 2026-08-03 freeze and stored rows still carry
+the old string, so the queue keeps its name (and `/Debug/Sections` lists it as an
+unmatched annotation, which is the rename showing rather than hiding).

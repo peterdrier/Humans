@@ -152,7 +152,7 @@
   <data name="Survey_Admin_Builder_SlugPlaceholder" xml:space="preserve"><value>p. ex. feedback-2026</value></data>
   <data name="Survey_Admin_Builder_SlugHelp" xml:space="preserve"><value>Les sondages anonymes autorisent toute personne disposant du lien. Les sondages identifiés nécessitent une connexion et, si configuré, l'éligibilité actuelle de l'audience.</value></data>
   <data name="Survey_Admin_Builder_InvitationEmailHeader" xml:space="preserve"><value>E-mail d'invitation</value></data>
-  <data name="Survey_Admin_Builder_InvitationEmailIntro" xml:space="preserve"><value>Personnalisez l'invitation initiale. Humans ajoute la formule d'accueil, le titre du sondage, le bouton de lien vers le sondage et la formule de politesse. Le message prend en charge le formatage Markdown, mais pas les images. Laissez un champ vide pour utiliser le texte standard.</value></data>
+  <data name="Survey_Admin_Builder_InvitationEmailIntro" xml:space="preserve"><value>Personnalisez l'invitation initiale. Humans ajoute la formule d'accueil, le titre du sondage, le bouton de lien vers le sondage et la formule de politesse. Le message prend en charge le formatage Markdown, y compris les images https://. Laissez un champ vide pour utiliser le texte standard.</value></data>
   <data name="Survey_Admin_Builder_Field_EmailSubject" xml:space="preserve"><value>Objet de l'e-mail</value></data>
   <data name="Survey_Admin_Builder_Field_EmailMessage" xml:space="preserve"><value>Message de l'e-mail</value></data>
   <data name="Survey_Admin_Builder_QuestionsHeader" xml:space="preserve"><value>Questions</value></data>

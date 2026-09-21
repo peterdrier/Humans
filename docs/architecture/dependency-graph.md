@@ -10,7 +10,7 @@ coupling between sections.
 - Dashed orange arrow labelled `(lazy)` = resolved on-demand via `IServiceProvider.GetRequiredService<T>()` / `Lazy<T>`. This pattern breaks DI cycles where two services legitimately call each other. A healthy graph minimizes them.
 - Read-split interfaces: edges into a section that read through its `I<Section>ServiceRead` boundary are collapsed onto the owning service node. The node names the full service; the read interface is the cross-section consumption surface.
 - Services with zero cross-section service edges don't appear in the diagram; they are listed under "Services with no cross-section edges" below so the verifier can account for every service.
-- Fan-out contributor interfaces (`IEnumerable<ICalendarFeedContributor>`, `IEarlyEntryProvider`, `IMailerLiteAudience`, `IUserMerge`, `IUserDataContributor`) are not drawn as edges — each implementation's own deps are.
+- Fan-out contributor interfaces (`IEnumerable<ICalendarFeedContributor>`, `IEarlyEntryProvider`, `IEventSettingsChangeListener`, `IMailerLiteAudience`, `IUserMerge`, `IUserDataContributor`) are not drawn as edges — each implementation's own deps are.
 
 ## Mermaid diagram
 
@@ -181,7 +181,6 @@ graph LR
     Survey[SurveyService]:::surveys
     SurveyPrevEmail[SurveyPreviewEmailService]:::surveys
     SettingsSvc[SettingsWriteService]:::settings
-    SettingsCarry[EventSettingsCarryService]:::settings
     Guide[GuideRoleResolver]:::guide
     Rideshare[RideshareService]:::rideshare
 
@@ -218,6 +217,7 @@ graph LR
     Team --> Audit
     Team --> AdminAuth
     TPage --> ShiftMgmt
+    TPage --> SettingsSvc
     TPage --> User
     TRes --> Audit
 
@@ -236,7 +236,7 @@ graph LR
     %% Cantina
     Cantina --> ShiftMgmt
     Cantina --> User
-    Cantina --> BurnSettings
+    Cantina --> SettingsSvc
 
     %% CityPlanning
     CityPlan --> Camp
@@ -303,9 +303,11 @@ graph LR
     TicketQ --> UEmail
     TicketQ --> Team
     TicketQ --> ShiftMgmt
+    TicketQ --> SettingsSvc
     TicketSync --> User
     TicketSync --> Campaign
     TicketSync --> ShiftMgmt
+    TicketSync --> SettingsSvc
     TicketBudget --> Budget
     TicketTransfer --> User
     TicketTransfer --> UEmail
@@ -315,6 +317,7 @@ graph LR
     AttendeeImport --> User
     AttendeeImport --> UEmail
     AttendeeImport --> ShiftMgmt
+    AttendeeImport --> SettingsSvc
     AttendeeImport --> Audit
     OnsiteRoster --> User
     OnsiteRoster --> Camp
@@ -375,6 +378,7 @@ graph LR
     OnboardWidget --> ShiftView
     OnboardWidget --> MembershipCalc
     OnboardWidget --> ShiftMgmt
+    OnboardWidget --> SettingsSvc
     OnboardWidget --> Consent
     HumanLifecycle --> User
     HumanLifecycle --> NotifEmitter
@@ -402,6 +406,7 @@ graph LR
     AcctProv --> Audit
     Unsub --> CommPref
     UserParticipationBackfill --> ShiftMgmt
+    UserParticipationBackfill --> SettingsSvc
     UEmailProvBackfill --> Audit
     AcctDel --> UEmail
     AcctDel --> Team
@@ -478,6 +483,7 @@ graph LR
     Store --> Camp
     Store --> Team
     Store --> ShiftMgmt
+    Store --> SettingsSvc
     Store --> Holded
     Store --> Audit
 
@@ -494,7 +500,7 @@ graph LR
     %% Gate
     Gate --> TicketQ
     Gate --> EarlyEntry
-    Gate --> BurnSettings
+    Gate --> SettingsSvc
     Gate --> ShiftMgmt
     Gate --> Role
     Gate --> User
@@ -515,13 +521,13 @@ graph LR
     MailerLiteImport --> AcctProv
     MailerLiteImport --> CommPref
     MailerLiteImport --> Audit
-    EventSvc --> BurnSettings
+    EventSvc --> SettingsSvc
     EventSvc --> User
     EventSvc --> Email
 
     %% Rideshare
     Rideshare --> User
-    Rideshare --> BurnSettings
+    Rideshare --> SettingsSvc
     Rideshare --> NotifEmitter
     Rideshare --> Audit
 
@@ -532,7 +538,6 @@ graph LR
 
     %% Settings' carry screen reads the Shifts rows it copies from (#1104).
     %% Temporary: retires with the carry screen.
-    SettingsCarry --> BurnSettings
 
     %% Web platform (diagnostics — moved to Humans.Web/Services at #1369)
     AdminDbDiag --> User
@@ -546,8 +551,7 @@ graph LR
     GSyncLog --> User
     GSyncLog --> UEmail
 
-    %% Settings → Shifts
-    SettingsSvc --> BurnSettings
+
 
     %% Surveys → Users / Email
     SurveyPrevEmail --> User

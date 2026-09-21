@@ -7,7 +7,7 @@ internal sealed record FacilitatedMessageRequest(
     string RecipientDisplayName,
     string SenderEmail,
     string SenderDisplayName,
-    string CleanMessage,
+    string Message,
     bool IncludeContactInfo,
     string? RecipientPreferredLanguage);
 
@@ -25,19 +25,12 @@ internal static class FacilitatedMessageRequestBuilder
         if (string.IsNullOrWhiteSpace(recipient.Email) || string.IsNullOrWhiteSpace(sender.Email))
             return null;
 
-        var cleanMessage = System.Text.RegularExpressions.Regex.Replace(
-            model.Message,
-            "<[^>]+>",
-            string.Empty,
-            System.Text.RegularExpressions.RegexOptions.None,
-            TimeSpan.FromSeconds(1));
-
         return new FacilitatedMessageRequest(
             recipient.Email,
             recipient.BurnerName,
             sender.Email,
             sender.BurnerName,
-            cleanMessage,
+            model.Message,
             model.IncludeContactInfo,
             recipient.PreferredLanguage);
     }

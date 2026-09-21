@@ -18,6 +18,7 @@ using Humans.Email.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Data;
 using Humans.GoogleIntegration.Services;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
 using Humans.Shifts.Domain;
@@ -88,6 +89,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             serviceProvider,
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
+            new EventCalendarResolver(NewSettingsServiceBackedByShiftsDb()),
             Clock);
 
         // Shift-auth invalidation: production path uses IShiftAuthorizationInvalidator
@@ -2491,6 +2493,45 @@ public sealed class TeamServiceTests : TeamsTestHarness
         };
         TeamsDb.TeamRoleAssignments.Add(assignment);
     }
+
+    /// <summary>
+    /// A fake <see cref="ISettingsService"/> resolving "the active event" off this
+    /// test's own <see cref="ShiftsTestHarness.ShiftsDb"/>-seeded rows (Shifts still
+    /// keys its per-event knobs by <c>settings_event</c>'s id, so its own
+    /// <c>EventSettings.IsActive</c> stands in for the real Settings-owned table
+    /// here). Mirrors <c>ShiftsTestHarness.NewCalendarResolver</c>, which this test
+    /// class cannot reach directly (it extends <see cref="TeamsTestHarness"/>).
+    /// </summary>
+    private ISettingsService NewSettingsServiceBackedByShiftsDb()
+    {
+        var settingsService = Substitute.For<ISettingsService>();
+        settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                var active = ShiftsDb.EventSettings.Local.FirstOrDefault(e => e.IsActive)
+                    ?? ShiftsDb.EventSettings.FirstOrDefault(e => e.IsActive);
+                return Task.FromResult(active is null ? null : ToEventSettingsInfo(active));
+            });
+        return settingsService;
+    }
+
+    private static EventSettingsInfo ToEventSettingsInfo(EventSettings src) => new(
+        Id: src.Id,
+        EventName: src.EventName,
+        Year: src.Year,
+        TimeZoneId: src.TimeZoneId,
+        GateOpeningDate: src.GateOpeningDate,
+        BuildStartOffset: src.BuildStartOffset,
+        EventEndOffset: src.EventEndOffset,
+        StrikeEndOffset: src.StrikeEndOffset,
+        FirstCrewStartOffset: src.FirstCrewStartOffset,
+        SetupWeekStartOffset: src.SetupWeekStartOffset,
+        PreEventWeekStartOffset: src.PreEventWeekStartOffset,
+        FinishingWeekendStartOffset: src.FinishingWeekendStartOffset,
+        EarlyEntryCapacity: new Dictionary<int, int>(src.EarlyEntryCapacity),
+        BarriosEarlyEntryAllocation: src.BarriosEarlyEntryAllocation is null
+            ? null : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),
+        EarlyEntryClose: src.EarlyEntryClose);
 
     private EventSettings SeedEventSettings(string name, bool isActive)
     {

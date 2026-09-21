@@ -6,7 +6,7 @@ using Humans.Base.Enums;
 using Humans.Budget.Contracts;
 using Humans.Users.Contracts;
 using Humans.Campaigns.Contracts;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
@@ -27,7 +27,7 @@ internal sealed class TicketQueryService(
     IUserServiceRead userService,
     IUserEmailService userEmailService,
     ITeamServiceRead teamService,
-    IBurnSettingsService burnSettings,
+    ISettingsService settingsService,
     ITicketCacheInvalidator cacheInvalidator,
     IClock clock) : ITicketService, IUserDataContributor
 {
@@ -618,7 +618,7 @@ internal sealed class TicketQueryService(
             .Select(u => u.Id)
             .ToList();
 
-        var activeEvent = await burnSettings.GetActiveAsync();
+        var activeEvent = await settingsService.GetActiveEventSettingsAsync();
         HashSet<Guid> notAttendingSet = [];
         if (activeEvent is not null && activeEvent.Year > 0)
         {
@@ -846,7 +846,7 @@ internal sealed class TicketQueryService(
 
     private async Task<Instant?> GetPostEventHoldDateAsync()
     {
-        var activeEvent = await burnSettings.GetActiveAsync();
+        var activeEvent = await settingsService.GetActiveEventSettingsAsync();
         if (activeEvent is null)
             return null;
 

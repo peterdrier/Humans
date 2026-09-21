@@ -143,6 +143,8 @@ public enum AuditAction
     CampEarlyEntryGranted,
     CampEarlyEntryRevoked,
     CampSeasonEeSlotCountChanged,
+    // Retired: no writer since the EE start date moved to Settings
+    // (peterdrier/Humans#1633). Kept so persisted rows still read.
     CampSettingsEeStartDateChanged,
     ExpenseSubmit,
     ExpenseEndorse,

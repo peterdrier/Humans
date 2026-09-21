@@ -23,11 +23,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
+    <!-- IIssueQueueOwner: this section declares the issue queue it owns. -->
+    <ProjectReference Include="..\Humans.Issues.Contracts\Humans.Issues.Contracts.csproj" />
     <ProjectReference Include="..\Humans.CityPlanning.Contracts\Humans.CityPlanning.Contracts.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
     <!--
       The barrio container pages are City Planning's URLs over Containers' data: the admin
       list and the container map inject IContainerService and render Containers' own card
@@ -54,6 +57,17 @@
   <ItemGroup>
     <!-- The section owns its documentation; keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Section-help markdown (ISectionHelp). Embedded, not fetched: the help modal renders
+      synchronously on the section's landing page. The logical name is fixed here so
+      SectionHelpEntry.FromEmbeddedMarkdown can address it without probing.
+    -->
+    <None Remove="Docs\help\*.md" />
+    <EmbeddedResource Include="Docs\help\*.md"
+                      LogicalName="$(AssemblyName).Docs.help.%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

@@ -3,6 +3,7 @@ using Humans.Shifts.Domain;
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Services;
@@ -20,11 +21,7 @@ public class ShiftUrgencyTests
     // Clock is March 1, 2026 12:00 UTC. Distant event settings (~122 days out)
     // keep proximity boost small so base score tests remain meaningful.
     private static readonly Instant TestNow = Instant.FromUtc(2026, 3, 1, 12, 0);
-    private static readonly EventSettings DistantEvent = new()
-    {
-        GateOpeningDate = new LocalDate(2026, 7, 1),
-        TimeZoneId = "UTC"
-    };
+    private static readonly EventSettingsInfo DistantEvent = MakeCalendar(new LocalDate(2026, 7, 1), "UTC");
 
     public ShiftUrgencyTests()
     {
@@ -40,8 +37,27 @@ public class ShiftUrgencyTests
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
             Substitute.For<IShiftViewInvalidator>(),
+            new EventCalendarResolver(Substitute.For<ISettingsService>()),
             new FakeClock(TestNow));
     }
+
+    private static EventSettingsInfo MakeCalendar(
+        LocalDate gateOpeningDate, string timeZoneId, int eventEndOffset = 6, int strikeEndOffset = 9) => new(
+        Id: Guid.NewGuid(),
+        EventName: "Test Event",
+        Year: gateOpeningDate.Year,
+        TimeZoneId: timeZoneId,
+        GateOpeningDate: gateOpeningDate,
+        BuildStartOffset: -25,
+        EventEndOffset: eventEndOffset,
+        StrikeEndOffset: strikeEndOffset,
+        FirstCrewStartOffset: -25,
+        SetupWeekStartOffset: -16,
+        PreEventWeekStartOffset: -9,
+        FinishingWeekendStartOffset: -4,
+        EarlyEntryCapacity: new Dictionary<int, int>(),
+        BarriosEarlyEntryAllocation: null,
+        EarlyEntryClose: null);
 
     [HumansFact]
     public void CalculateScore_NormalPriority_5Remaining_4h_ReturnsExpected()
@@ -84,16 +100,8 @@ public class ShiftUrgencyTests
     public void CalculateScore_ImminentShift_RanksHigherThanDistantWithMoreSlots()
     {
         // A shift tomorrow with 5 empty slots should outrank a shift 30 days out with 20 slots
-        var tomorrowEvent = new EventSettings
-        {
-            GateOpeningDate = new LocalDate(2026, 3, 2),
-            TimeZoneId = "UTC"
-        };
-        var distantEvent = new EventSettings
-        {
-            GateOpeningDate = new LocalDate(2026, 3, 31),
-            TimeZoneId = "UTC"
-        };
+        var tomorrowEvent = MakeCalendar(new LocalDate(2026, 3, 2), "UTC");
+        var distantEvent = MakeCalendar(new LocalDate(2026, 3, 31), "UTC");
 
         var tomorrowShift = MakeShift(ShiftPriority.Normal, minVol: 2, maxVol: 7, durationHours: 8);
         var distantShift = MakeShift(ShiftPriority.Normal, minVol: 2, maxVol: 12, durationHours: 8);

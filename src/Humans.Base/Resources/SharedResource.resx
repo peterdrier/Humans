@@ -40,6 +40,12 @@
   <data name="Common_EditProfile" xml:space="preserve"><value>Edit Profile</value></data>
   <data name="Common_Cancel" xml:space="preserve"><value>Cancel</value></data>
   <data name="Common_Close" xml:space="preserve"><value>Close</value></data>
+  <data name="EmailComposer_Preview" xml:space="preserve"><value>Preview</value></data>
+  <data name="EmailComposer_PreviewModalTitle" xml:space="preserve"><value>Email preview</value></data>
+  <data name="EmailComposer_PreviewLoading" xml:space="preserve"><value>Loading preview…</value></data>
+  <data name="EmailComposer_PreviewError" xml:space="preserve"><value>Couldn't load the preview. Please try again.</value></data>
+  <data name="EmailComposer_MarkdownSupported" xml:space="preserve"><value>Supports Markdown — bold, links, lists, images.</value></data>
+  <data name="EmailComposer_PreviewSubjectLabel" xml:space="preserve"><value>Subject</value></data>
   <data name="Common_General" xml:space="preserve"><value>General</value></data>
   <data name="Common_Save" xml:space="preserve"><value>Save Changes</value></data>
   <data name="Common_Edit" xml:space="preserve"><value>Edit</value></data>
@@ -811,4 +817,12 @@
 
   <!-- Settings tab label: a SharedResource key because SettingsTabsViewComponent cannot see a contributing section's own resource set -->
   <data name="Settings_TabEvent" xml:space="preserve"><value>Event</value></data>
+  <data name="Settings_TabAgent" xml:space="preserve"><value>Agent</value></data>
+  <data name="Settings_TabGoogleSync" xml:space="preserve"><value>Google Sync</value></data>
+  <data name="Settings_TabEmail" xml:space="preserve"><value>Email</value></data>
+  <data name="Settings_TabCityPlanning" xml:space="preserve"><value>Barrio Map</value></data>
+  <data name="Settings_TabGate" xml:space="preserve"><value>Gate</value></data>
+  <data name="Settings_TabBarrios" xml:space="preserve"><value>Barrios</value></data>
+  <data name="Settings_TabEventGuide" xml:space="preserve"><value>Event Guide</value></data>
+  <data name="Settings_TabShifts" xml:space="preserve"><value>Shifts</value></data>
 </root>

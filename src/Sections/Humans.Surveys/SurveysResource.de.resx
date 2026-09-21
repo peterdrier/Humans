@@ -152,7 +152,7 @@
   <data name="Survey_Admin_Builder_SlugPlaceholder" xml:space="preserve"><value>z. B. feedback-2026</value></data>
   <data name="Survey_Admin_Builder_SlugHelp" xml:space="preserve"><value>Anonyme Umfragen erlauben jedem mit dem Link die Teilnahme. Identifizierte Umfragen erfordern eine Anmeldung und, sofern konfiguriert, die aktuelle Zielgruppenberechtigung.</value></data>
   <data name="Survey_Admin_Builder_InvitationEmailHeader" xml:space="preserve"><value>Einladungs-E-Mail</value></data>
-  <data name="Survey_Admin_Builder_InvitationEmailIntro" xml:space="preserve"><value>Passen Sie die anfängliche Einladung an. Humans fügt die Begrüßung, den Umfragetitel, die Schaltfläche mit dem Umfragelink und die Grußformel hinzu. Die Nachricht unterstützt Markdown-Formatierung, jedoch keine Bilder. Lassen Sie ein Feld leer, um den Standardtext zu verwenden.</value></data>
+  <data name="Survey_Admin_Builder_InvitationEmailIntro" xml:space="preserve"><value>Passen Sie die anfängliche Einladung an. Humans fügt die Begrüßung, den Umfragetitel, die Schaltfläche mit dem Umfragelink und die Grußformel hinzu. Die Nachricht unterstützt Markdown-Formatierung, einschließlich https://-Bildern. Lassen Sie ein Feld leer, um den Standardtext zu verwenden.</value></data>
   <data name="Survey_Admin_Builder_Field_EmailSubject" xml:space="preserve"><value>E-Mail-Betreff</value></data>
   <data name="Survey_Admin_Builder_Field_EmailMessage" xml:space="preserve"><value>E-Mail-Nachricht</value></data>
   <data name="Survey_Admin_Builder_QuestionsHeader" xml:space="preserve"><value>Fragen</value></data>

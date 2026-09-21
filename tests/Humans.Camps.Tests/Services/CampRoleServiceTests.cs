@@ -635,8 +635,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         _campAccess.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(
                 PublicYear: 2026,
-                OpenSeasons: [2026],
-                EeStartDate: null));
+                OpenSeasons: [2026]));
 
         var result = await _service.GetExpectedAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -666,8 +665,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         _campAccess.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(
                 PublicYear: 2026,
-                OpenSeasons: [2026],
-                EeStartDate: null));
+                OpenSeasons: [2026]));
 
         var result = await _service.GetExpectedAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -699,8 +697,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         _campAccess.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(
                 PublicYear: 2026,
-                OpenSeasons: [2026],
-                EeStartDate: null));
+                OpenSeasons: [2026]));
 
         var result = await _service.GetExpectedAsync(ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -753,8 +750,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         _campAccess.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(
                 PublicYear: 2026,
-                OpenSeasons: [2026],
-                EeStartDate: null));
+                OpenSeasons: [2026]));
 
         var result = await _service.GetExpectedAsync(ct: Xunit.TestContext.Current.CancellationToken);
 

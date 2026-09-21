@@ -4,6 +4,7 @@ using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Tests.Infrastructure;
@@ -35,9 +36,41 @@ public sealed class RotaCoordinatorMessageServiceTests
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 6, 15, 12, 0));
 
-    private RotaCoordinatorMessageService CreateSut() =>
-        new(_repo, _teamService, _userService, _emailService, _emailMessages, _auditLog, _clock,
+    // Calendars for the EventSettings rows the test helpers below create, keyed by id —
+    // stands in for the Settings section (nobodies-collective/Humans#1630).
+    private readonly Dictionary<Guid, EventSettings> _calendars = [];
+    private readonly ISettingsService _settingsService = Substitute.For<ISettingsService>();
+
+    private RotaCoordinatorMessageService CreateSut()
+    {
+        _settingsService.GetEventSettingsByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var found = _calendars.TryGetValue(ci.Arg<Guid>(), out var es);
+                return Task.FromResult(found ? ToEventSettingsInfo(es!) : null);
+            });
+        return new(_repo, _teamService, _userService, _emailService, _emailMessages, _auditLog,
+            new EventCalendarResolver(_settingsService), _clock,
             NullLogger<RotaCoordinatorMessageService>.Instance);
+    }
+
+    private static EventSettingsInfo ToEventSettingsInfo(EventSettings src) => new(
+        Id: src.Id,
+        EventName: src.EventName,
+        Year: src.Year,
+        TimeZoneId: src.TimeZoneId,
+        GateOpeningDate: src.GateOpeningDate,
+        BuildStartOffset: src.BuildStartOffset,
+        EventEndOffset: src.EventEndOffset,
+        StrikeEndOffset: src.StrikeEndOffset,
+        FirstCrewStartOffset: src.FirstCrewStartOffset,
+        SetupWeekStartOffset: src.SetupWeekStartOffset,
+        PreEventWeekStartOffset: src.PreEventWeekStartOffset,
+        FinishingWeekendStartOffset: src.FinishingWeekendStartOffset,
+        EarlyEntryCapacity: new Dictionary<int, int>(src.EarlyEntryCapacity),
+        BarriosEarlyEntryAllocation: src.BarriosEarlyEntryAllocation is null
+            ? null : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),
+        EarlyEntryClose: src.EarlyEntryClose);
 
     [HumansFact]
     public async Task SendRotaMessageAsync_RejectsBlankMessage()
@@ -356,8 +389,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     public async Task SendTeamRotasMessageAsync_ReturnsFailure_WhenNoActiveEvent()
     {
         var teamId = StubTeam();
-        _repo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns((EventSettings?)null);
+        // No StubEvent() call — _settingsService.GetActiveEventSettingsAsync defaults to null.
 
         var result = await CreateSut().SendTeamRotasMessageAsync(teamId, Guid.NewGuid(), "hello", Xunit.TestContext.Current.CancellationToken);
 
@@ -634,8 +666,9 @@ public sealed class RotaCoordinatorMessageServiceTests
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };
-        _repo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(es);
+        _calendars[es.Id] = es;
+        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(ToEventSettingsInfo(es));
         return es;
     }
 
@@ -658,12 +691,13 @@ public sealed class RotaCoordinatorMessageServiceTests
         }
     }
 
-    private static Rota MakeTeamRota(
+    private Rota MakeTeamRota(
         Guid teamId,
         EventSettings es,
         string name,
         IReadOnlyList<(Shift Shift, Guid[] UserIds)> shiftsWithSignups)
     {
+        _calendars[es.Id] = es;
         var rota = new Rota
         {
             Id = Guid.NewGuid(),
@@ -689,7 +723,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         return rota;
     }
 
-    private static Rota MakeRota(out EventSettings es)
+    private Rota MakeRota(out EventSettings es)
     {
         es = new EventSettings
         {
@@ -718,6 +752,7 @@ public sealed class RotaCoordinatorMessageServiceTests
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             EventSettings = es,
         };
+        _calendars[es.Id] = es;
         return rota;
     }
 

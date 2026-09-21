@@ -70,6 +70,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             serviceProvider,
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
+            NewCalendarResolver(),
             Clock);
     }
 
@@ -110,6 +111,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             new ServiceLocatorBuilder().Build(),
             cache,
             Substitute.For<IShiftViewInvalidator>(),
+            NewCalendarResolver(),
             Clock);
 
         var deleted = await service.DeleteEventAsync(eventId, Xunit.TestContext.Current.CancellationToken);
@@ -1068,92 +1070,47 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     }
 
     // ============================================================
-    // EventSettings singleton — Shifts.md invariant line 229
+    // Shifts knobs row — created on demand (nobodies-collective/Humans#1631):
+    // "active event" is Settings' concept now, so Shifts no longer enforces a
+    // single-active row of its own.
     // ============================================================
 
     [HumansFact]
-    public async Task CreateEventSettingsAsync_WithIsActiveTrue_WhenActiveAlreadyExists_Throws()
+    public async Task GetKnobsAsync_NoRowYet_ReturnsNull()
     {
-        // Arrange: one active EventSettings already in the DB
-        var existing = new EventSettings
-        {
-            Id = Guid.NewGuid(),
-            EventName = "Existing 2026",
-            TimeZoneId = "Europe/Madrid",
-            GateOpeningDate = new LocalDate(2026, 7, 1),
-            BuildStartOffset = -14,
-            EventEndOffset = 6,
-            StrikeEndOffset = 9,
-            IsActive = true,
-            CreatedAt = TestNow,
-            UpdatedAt = TestNow
-        };
-        ShiftsDb.EventSettings.Add(existing);
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var second = new EventSettings
-        {
-            Id = Guid.NewGuid(),
-            EventName = "Second 2027",
-            TimeZoneId = "Europe/Madrid",
-            GateOpeningDate = new LocalDate(2027, 7, 1),
-            BuildStartOffset = -14,
-            EventEndOffset = 6,
-            StrikeEndOffset = 9,
-            IsActive = true,
-            CreatedAt = TestNow,
-            UpdatedAt = TestNow
-        };
-
-        // Act + Assert: CreateAsync rejects the second IsActive=true row
-        var act = () => _service.CreateAsync(second);
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*one*active*");
+        (await _service.GetKnobsAsync(Guid.NewGuid())).Should().BeNull();
     }
 
     [HumansFact]
-    public async Task UpdateEventSettingsAsync_SettingIsActiveTrue_WhenOtherActiveExists_Throws()
+    public async Task SaveKnobsAsync_NoRowYet_CreatesOneOnDemand()
     {
-        // Arrange: one active EventSettings already exists, plus an inactive
-        // one we want to flip to active.
+        var eventId = Guid.NewGuid();
+
+        await _service.SaveKnobsAsync(eventId, isShiftBrowsingOpen: true, globalVolunteerCap: 50, reminderLeadTimeHours: 12);
+
+        ShiftsDb.ChangeTracker.Clear();
+        var saved = await ShiftsDb.EventSettings.AsNoTracking().SingleAsync(e => e.Id == eventId, Xunit.TestContext.Current.CancellationToken);
+        saved.IsShiftBrowsingOpen.Should().BeTrue();
+        saved.GlobalVolunteerCap.Should().Be(50);
+        saved.ReminderLeadTimeHours.Should().Be(12);
+    }
+
+    [HumansFact]
+    public async Task SaveKnobsAsync_RowAlreadyExists_UpdatesItInPlace()
+    {
         var existing = new EventSettings
         {
             Id = Guid.NewGuid(),
-            EventName = "Active 2026",
-            TimeZoneId = "Europe/Madrid",
-            GateOpeningDate = new LocalDate(2026, 7, 1),
-            BuildStartOffset = -14,
-            EventEndOffset = 6,
-            StrikeEndOffset = 9,
-            IsActive = true,
+            IsShiftBrowsingOpen = false,
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
         ShiftsDb.EventSettings.Add(existing);
-
-        var inactive = new EventSettings
-        {
-            Id = Guid.NewGuid(),
-            EventName = "Inactive 2027",
-            TimeZoneId = "Europe/Madrid",
-            GateOpeningDate = new LocalDate(2027, 7, 1),
-            BuildStartOffset = -14,
-            EventEndOffset = 6,
-            StrikeEndOffset = 9,
-            IsActive = false,
-            CreatedAt = TestNow,
-            UpdatedAt = TestNow
-        };
-        ShiftsDb.EventSettings.Add(inactive);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        // Act: flip the inactive row to IsActive=true
-        inactive.IsActive = true;
-        var act = () => _service.UpdateAsync(inactive);
+        await _service.SaveKnobsAsync(existing.Id, isShiftBrowsingOpen: true, globalVolunteerCap: null, reminderLeadTimeHours: 24);
 
-        // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*one*active*");
+        (await ShiftsDb.EventSettings.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
     // Medical-data gating: MedicalConditions is a Profile field on the cached UserInfo,
@@ -1276,9 +1233,8 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     [HumansFact]
     public async Task GetActivePendingShiftSignupCountsByTeam_returns_empty_dict_when_no_active_event()
     {
+        // No EventSettings seeded in ShiftsDb → NewCalendarResolver() resolves no active event.
         var repo = Substitute.For<IShiftManagementRepository>();
-        repo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns((EventSettings?)null);
         var service = BuildServiceWithRepo(repo);
 
         var result = await service.GetActivePendingShiftSignupCountsByTeamAsync(Xunit.TestContext.Current.CancellationToken);
@@ -1304,11 +1260,11 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
+        ShiftsDb.EventSettings.Add(es);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         var expected = new Dictionary<Guid, int> { [Guid.NewGuid()] = 3 };
 
         var repo = Substitute.For<IShiftManagementRepository>();
-        repo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(es);
         repo.GetPendingSignupCountsByTeamAsync(es.Id, null, null, Arg.Any<CancellationToken>())
             .Returns(expected);
         var service = BuildServiceWithRepo(repo);
@@ -1326,5 +1282,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             new ServiceLocatorBuilder().Build(),
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
+            NewCalendarResolver(),
             Clock);
 }

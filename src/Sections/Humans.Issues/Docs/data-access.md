@@ -25,7 +25,10 @@ Cross-section calls via `IUserServiceRead`, `IUserEmailService`,
 `IRoleAssignmentService`, `IEmailService`,
 `IEmailMessageFactory`, `INotificationEmitter`, `INotificationAutoResolve`,
 `IAuditLogService`, `INavBadgeCacheInvalidator`, `IIssuesBadgeCacheInvalidator`,
-`ISectionCatalog`, `IHostEnvironment`. Implements `IUserDataContributor`,
+`ISectionCatalog`, `IHostEnvironment`. Routes through `IssueSectionRouting`
+(Singleton, owns no table): the queue lookup built from every
+`IIssueQueueOwner` DI discovered — each owning section declares its own queue
+key and roles, so Issues names no section. Implements `IUserDataContributor`,
 `IIssueTriage` (Backdoor's machine-API triage surface,
 nobodies-collective/Humans#1128).
 

@@ -99,7 +99,9 @@ internal sealed class CampAdminController(
             logger.LogError(ex, "Failed to open season {Year}", year);
             SetError($"Failed to open season: {ex.Message}");
         }
-        return RedirectToAction(nameof(Index));
+        // Posted from the /Settings#barrios tab (peterdrier/Humans#1634), not from
+        // /Camps/Admin, so post-redirect-get lands back on the tab.
+        return Redirect("/Settings#barrios");
     }
 
     [HttpPost("CloseSeason/{year:int}")]
@@ -116,24 +118,9 @@ internal sealed class CampAdminController(
             logger.LogError(ex, "Failed to close season {Year}", year);
             SetError($"Failed to close season: {ex.Message}");
         }
-        return RedirectToAction(nameof(Index));
-    }
-
-    [HttpPost("SetPublicYear")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetPublicYear(int year)
-    {
-        try
-        {
-            await campService.SetPublicYearAsync(year);
-            SetSuccess($"Public year set to {year}.");
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to set public year to {Year}", year);
-            SetError($"Failed to set public year: {ex.Message}");
-        }
-        return RedirectToAction(nameof(Index));
+        // Posted from the /Settings#barrios tab (peterdrier/Humans#1634), not from
+        // /Camps/Admin, so post-redirect-get lands back on the tab.
+        return Redirect("/Settings#barrios");
     }
 
     [HttpPost("SetNameLockDate")]
@@ -187,42 +174,6 @@ internal sealed class CampAdminController(
                 "Failed to set EE slot count on season {SeasonId}: {Reason}",
                 seasonId, ex.Message);
             SetError(ex.Message);
-        }
-
-        return RedirectToAction(nameof(Index));
-    }
-
-    [HttpPost("SetEeStartDate")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetEeStartDate(string? eeStartDate, CancellationToken cancellationToken)
-    {
-        var user = await GetCurrentUserInfoAsync();
-        if (user is null) return Unauthorized();
-
-        LocalDate? parsed = null;
-        if (!string.IsNullOrWhiteSpace(eeStartDate))
-        {
-            var parseResult = NodaTime.Text.LocalDatePattern.Iso.Parse(eeStartDate);
-            if (!parseResult.Success)
-            {
-                SetError("Invalid date format. Use yyyy-MM-dd.");
-                return RedirectToAction(nameof(Index));
-            }
-
-            parsed = parseResult.Value;
-        }
-
-        try
-        {
-            await campService.SetEeStartDateAsync(parsed, user.Id, cancellationToken);
-            SetSuccess(parsed.HasValue
-                ? $"EE start date set to {parsed.Value.ToDate()}."
-                : "EE start date cleared.");
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to set EE start date");
-            SetError($"Failed to set EE start date: {ex.Message}");
         }
 
         return RedirectToAction(nameof(Index));

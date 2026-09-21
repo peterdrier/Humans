@@ -152,7 +152,7 @@
   <data name="Survey_Admin_Builder_SlugPlaceholder" xml:space="preserve"><value>p. ex. feedback-2026</value></data>
   <data name="Survey_Admin_Builder_SlugHelp" xml:space="preserve"><value>Les enquestes anònimes permeten l'accés a qualsevol persona amb l'enllaç. Les enquestes identificades requereixen iniciar sessió i, si està configurat, complir els requisits d'audiència actuals.</value></data>
   <data name="Survey_Admin_Builder_InvitationEmailHeader" xml:space="preserve"><value>Correu d'invitació</value></data>
-  <data name="Survey_Admin_Builder_InvitationEmailIntro" xml:space="preserve"><value>Personalitza la invitació inicial. Humans afegeix la salutació, el títol de l'enquesta, el botó amb l'enllaç i l'acomiadament. El missatge admet format Markdown, però no imatges. Deixa qualsevol dels camps en blanc per utilitzar el text estàndard.</value></data>
+  <data name="Survey_Admin_Builder_InvitationEmailIntro" xml:space="preserve"><value>Personalitza la invitació inicial. Humans afegeix la salutació, el títol de l'enquesta, el botó amb l'enllaç i l'acomiadament. El missatge admet format Markdown, incloses imatges https://. Deixa qualsevol dels camps en blanc per utilitzar el text estàndard.</value></data>
   <data name="Survey_Admin_Builder_Field_EmailSubject" xml:space="preserve"><value>Assumpte del correu</value></data>
   <data name="Survey_Admin_Builder_Field_EmailMessage" xml:space="preserve"><value>Missatge del correu</value></data>
   <data name="Survey_Admin_Builder_QuestionsHeader" xml:space="preserve"><value>Preguntes</value></data>

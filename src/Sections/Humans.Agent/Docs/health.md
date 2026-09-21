@@ -35,7 +35,7 @@ The layout those shapes imply — and the section already has, near enough:
 - Singleton in-memory stores (settings mirror, rate-limit counters, retention last-run)
   with warmup hosted services; one repository over the section's own tables.
 - Preload corpus = index-only routing layer; bodies always fetched by tool. One builder, one
-  augmentor for Base-owned help content.
+  augmentor collecting each section's `ISectionHelp` glossary contribution (Faq stays in Base).
 
 ## Invariants
 

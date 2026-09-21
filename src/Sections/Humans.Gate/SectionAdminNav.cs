@@ -13,7 +13,7 @@ internal sealed class SectionAdminNav : ISectionAdminNav
     [
         new("Tickets", [
             new("Gate terminal", "TicketsGateAdmin", "Index", null, null, "fa-solid fa-key",     PolicyNames.TicketAdminOrAdmin, Weight: 60),
-            new("Gate settings", "Gate",             "Admin", null, null, "fa-solid fa-sliders", PolicyNames.TicketAdminOrAdmin, Weight: 70)
+            new("Gate staff PINs", "Gate",           "Admin", null, null, "fa-solid fa-sliders", PolicyNames.TicketAdminOrAdmin, Weight: 70)
         ], Weight: 0),
         new("Temp", System: true, Items: [
             new("Vendor check-in backfill", "GateVendorBackfillAdmin", "Index", null, null, "fa-solid fa-cloud-arrow-up", PolicyNames.AdminOnly, Weight: 20)

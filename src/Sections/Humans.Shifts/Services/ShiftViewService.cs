@@ -9,18 +9,23 @@ internal sealed class ShiftViewService : IShiftRowView
 {
     private readonly IShiftManagementRepository _management;
     private readonly IVolunteerTrackingRepository _tracking;
+    private readonly EventCalendarResolver _calendarResolver;
 
     public ShiftViewService(
         IShiftManagementRepository management,
-        IVolunteerTrackingRepository tracking)
+        IVolunteerTrackingRepository tracking,
+        EventCalendarResolver calendarResolver)
     {
         _management = management;
         _tracking = tracking;
+        _calendarResolver = calendarResolver;
     }
 
     public async ValueTask<ShiftUserView> GetUserAsync(Guid userId, CancellationToken ct = default)
     {
-        var activeEvent = await _management.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
+        // "Active" is Settings' notion (nobodies-collective/Humans#1631) — resolve
+        // directly, no Shifts-local lookup.
+        var activeEvent = await _calendarResolver.GetActiveAsync(ct).ConfigureAwait(false);
 
         var profile = await _management.GetVolunteerEventProfileAsync(userId, ct).ConfigureAwait(false);
         var tagPrefs = await _management.GetVolunteerTagPreferencesForUsersAsync([userId], ct).ConfigureAwait(false);
@@ -28,6 +33,7 @@ internal sealed class ShiftViewService : IShiftRowView
         GeneralAvailability? availability = null;
         VolunteerBuildStatus? buildStatus = null;
         IReadOnlyList<ShiftSignup> signups = [];
+        Humans.Settings.Contracts.EventSettingsInfo? calendar = null;
         if (activeEvent is not null)
         {
             var availabilityRows = await _tracking
@@ -40,6 +46,8 @@ internal sealed class ShiftViewService : IShiftRowView
 
             signups = await _management
                 .GetForUsersAsync([userId], activeEvent.Id, ct).ConfigureAwait(false);
+
+            calendar = activeEvent;
         }
 
         return new ShiftUserView(
@@ -48,7 +56,8 @@ internal sealed class ShiftViewService : IShiftRowView
             availability,
             buildStatus,
             tagPrefs,
-            signups);
+            signups,
+            calendar);
     }
 
     /// <summary>
@@ -66,7 +75,7 @@ internal sealed class ShiftViewService : IShiftRowView
         if (ids.Count == 0)
             return new Dictionary<Guid, ShiftUserView>();
 
-        var activeEvent = await _management.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
+        var activeEvent = await _calendarResolver.GetActiveAsync(ct).ConfigureAwait(false);
 
         var profiles = await _management.GetVolunteerEventProfilesByUserIdsAsync(ids, ct).ConfigureAwait(false);
         var profileByUser = profiles.ToDictionary(p => p.UserId);
@@ -79,6 +88,7 @@ internal sealed class ShiftViewService : IShiftRowView
         Dictionary<Guid, GeneralAvailability> availabilityByUser = [];
         Dictionary<Guid, VolunteerBuildStatus> buildStatusByUser = [];
         Dictionary<Guid, IReadOnlyList<ShiftSignup>> signupsByUser = [];
+        Humans.Settings.Contracts.EventSettingsInfo? calendar = null;
 
         if (activeEvent is not null)
         {
@@ -97,6 +107,8 @@ internal sealed class ShiftViewService : IShiftRowView
                 .ToDictionary(
                     g => g.Key,
                     g => (IReadOnlyList<ShiftSignup>)g.ToList());
+
+            calendar = activeEvent;
         }
 
         var result = new Dictionary<Guid, ShiftUserView>(ids.Count);
@@ -109,7 +121,8 @@ internal sealed class ShiftViewService : IShiftRowView
                 Availability: availabilityByUser.GetValueOrDefault(id),
                 BuildStatus: buildStatusByUser.GetValueOrDefault(id),
                 TagPreferences: tagPrefsByUser.GetValueOrDefault(id) ?? [],
-                Signups: signupsByUser.GetValueOrDefault(id) ?? []);
+                Signups: signupsByUser.GetValueOrDefault(id) ?? [],
+                Calendar: calendar);
         }
         return result;
     }

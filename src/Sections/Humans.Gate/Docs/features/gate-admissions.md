@@ -129,7 +129,7 @@ never turn a STOP into an admit.
 
 `ITicketServiceRead.GetTicketOrdersAsync` (find attendee by normalized barcode),
 `IEarlyEntryService.GetForUserAsync` (EE date + sources),
-`IBurnSettingsService.GetActiveAsync` (event time zone → "today"), `IClock` (cutoff).
+`ISettingsService.GetActiveEventSettingsAsync` (event time zone → "today"), `IClock` (cutoff).
 
 ## Tablet / operations (not code)
 

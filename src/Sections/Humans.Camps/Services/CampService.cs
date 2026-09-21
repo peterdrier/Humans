@@ -5,6 +5,7 @@ using Humans.CityPlanning.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Base.Enums;
 using NodaTime;
 using Humans.Users.Contracts;
@@ -31,6 +32,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
     private readonly IEarlyEntryInvalidator _earlyEntryInvalidator;
     private readonly ICampInfoInvalidator _campInfoInvalidator;
     private readonly IUserServiceRead _userServiceRead;
+    private readonly ISettingsService _settingsService;
     private readonly IClock _clock;
     private readonly ILogger<CampService> _logger;
 
@@ -51,6 +53,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         IEarlyEntryInvalidator earlyEntryInvalidator,
         ICampInfoInvalidator campInfoInvalidator,
         IUserServiceRead userServiceRead,
+        ISettingsService settingsService,
         IClock clock,
         ILogger<CampService> logger)
     {
@@ -65,6 +68,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         _earlyEntryInvalidator = earlyEntryInvalidator;
         _campInfoInvalidator = campInfoInvalidator;
         _userServiceRead = userServiceRead;
+        _settingsService = settingsService;
         _clock = clock;
         _logger = logger;
     }
@@ -260,9 +264,8 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             throw new InvalidOperationException("Camp settings not found.");
 
         var info = new CampSettingsInfo(
-            settings.PublicYear,
-            settings.OpenSeasons.ToList(),
-            settings.EeStartDate);
+            await GetActiveYearAsync(cancellationToken),
+            settings.OpenSeasons.ToList());
         if (info.OpenSeasons.Count == 0)
         {
             return info;
@@ -270,6 +273,13 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
 
         var nameLockDates = await _repo.GetNameLockDatesAsync(info.OpenSeasons, cancellationToken);
         return info with { NameLockDates = nameLockDates.ToDictionary(kv => kv.Key, kv => kv.Value) };
+    }
+
+    /// <summary>The active event's year, falling back to the clock's current year before an event exists.</summary>
+    private async Task<int> GetActiveYearAsync(CancellationToken cancellationToken)
+    {
+        var activeEvent = await _settingsService.GetActiveEventSettingsAsync(cancellationToken);
+        return activeEvent?.Year > 0 ? activeEvent.Year : _clock.GetCurrentInstant().InUtc().Year;
     }
 
     // Camp search is served from the cached CampInfo snapshot in CachingCampService — it must
@@ -1006,11 +1016,6 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         await _repo.ReorderImagesAsync(campId, imageIdsInOrder, cancellationToken);
     }
 
-    public async Task SetPublicYearAsync(int year, CancellationToken cancellationToken = default)
-    {
-        await _repo.SetPublicYearAsync(year, cancellationToken);
-    }
-
     public async Task OpenSeasonAsync(int year, CancellationToken cancellationToken = default)
     {
         await _repo.OpenSeasonAsync(year, cancellationToken);
@@ -1494,25 +1499,6 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         // rather than per-camp: the user's camps span an unbounded set and the repo
         // delete does not hand back their ids.
         await _campInfoInvalidator.InvalidateAllAsync(ct);
-    }
-
-    public async Task SetEeStartDateAsync(
-        LocalDate? eeStartDate, Guid actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        await _repo.SetEeStartDateAsync(eeStartDate, cancellationToken);
-        var settings = await _repo.GetSettingsReadOnlyAsync(cancellationToken)
-            ?? throw new InvalidOperationException("Camp settings not found.");
-        await _auditLog.LogAsync(
-            AuditAction.CampSettingsEeStartDateChanged,
-            nameof(CampSettings), settings.Id,
-            eeStartDate is null
-                ? "EE start date cleared."
-                : $"EE start date set to {eeStartDate.Value.ToInvariantDate()}.",
-            actorUserId);
-
-        // Global date change shifts EE for every camp holder at once.
-        _earlyEntryInvalidator.InvalidateAll();
     }
 
     public async Task SetCampSeasonEeSlotCountAsync(

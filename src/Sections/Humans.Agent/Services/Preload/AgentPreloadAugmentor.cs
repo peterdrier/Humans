@@ -1,10 +1,13 @@
 using System.Text;
 using Humans.Agent.Contracts;
+using Humans.Base.Interfaces;
 using Humans.Base.Models;
 
 namespace Humans.Agent.Services.Preload;
 
-internal sealed class AgentPreloadAugmentor : IAgentPreloadAugmentor
+internal sealed class AgentPreloadAugmentor(
+    IEnumerable<ISectionAccessMatrix> accessMatrices,
+    IEnumerable<ISectionHelp> helpContributions) : IAgentPreloadAugmentor
 {
     public string BuildAccessMatrixMarkdown()
     {
@@ -12,7 +15,9 @@ internal sealed class AgentPreloadAugmentor : IAgentPreloadAugmentor
         sb.AppendLine("# Access Matrix");
         sb.AppendLine();
         sb.AppendLine("Per section: the roles that can use each feature; \"(limited)\" marks partial/restricted access. Roles not listed for a feature do not have access.");
-        foreach (var section in AccessMatrixDefinitions.Sections.Values)
+        // Each section contributes its own pages' rows; the flat order is theirs to declare,
+        // not DI's — see AccessMatrixData.Order.
+        foreach (var section in accessMatrices.SelectMany(c => c.AccessMatrices).OrderBy(m => m.Order))
         {
             sb.AppendLine();
             sb.AppendLine(FormattableString.Invariant($"## {section.SectionName}"));
@@ -41,8 +46,11 @@ internal sealed class AgentPreloadAugmentor : IAgentPreloadAugmentor
         // heading but keep their own table and page label: several define the same term with
         // different emphasis ("Barrio Lead" three ways across the city-planning pages), so folding
         // them into one table would either duplicate the term or drop a definition.
-        var glossaries = SectionHelpContent.AllGlossaries()
-            .Select(g => (Section: ResolveSectionKey(g.Section), Page: PageTitle(g.Body, g.Section), Rows: TermRows(g.Body)))
+        var glossaries = helpContributions
+            .SelectMany(c => c.HelpEntries)
+            .OrderBy(e => e.Order)
+            .Where(e => e.Glossary is not null)
+            .Select(g => (Section: ResolveSectionKey(g.Key), Page: PageTitle(g.Glossary!, g.Key), Rows: TermRows(g.Glossary!)))
             .GroupBy(g => g.Section, StringComparer.Ordinal)
             .ToList();
 

@@ -2,6 +2,7 @@ using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.Consent.Contracts;
 using Humans.Feedback.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
@@ -141,7 +142,7 @@ public class AgentUserSnapshotProviderTests
 
     private static AgentUserSnapshotProvider MakeProvider(
         Guid userId,
-        BurnSettingsInfo? activeEvent,
+        EventSettingsInfo? activeEvent,
         IReadOnlyList<ShiftSignupSummary> signups,
         IReadOnlyList<Guid>? openTicketIds = null,
         IReadOnlyList<TeamMembership>? teamMemberships = null)
@@ -204,8 +205,8 @@ public class AgentUserSnapshotProviderTests
         shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<ShiftUserSummary>(view));
 
-        var burnSettings = Substitute.For<IBurnSettingsService>();
-        burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(activeEvent);
+        var burnSettings = Substitute.For<ISettingsService>();
+        burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(activeEvent);
 
         var clock = new FakeClock(Instant.FromUtc(2026, 6, 1, 0, 0));
 
@@ -214,7 +215,7 @@ public class AgentUserSnapshotProviderTests
             shiftView, burnSettings, clock);
     }
 
-    private static BurnSettingsInfo MakeEventSettings() => new(
+    private static EventSettingsInfo MakeEventSettings() => new(
         Id: Guid.NewGuid(),
         EventName: "Nowhere 2026",
         Year: 2026,
@@ -229,8 +230,7 @@ public class AgentUserSnapshotProviderTests
         FinishingWeekendStartOffset: -4,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
-        EarlyEntryClose: null,
-        IsShiftBrowsingOpen: true);
+        EarlyEntryClose: null);
 
     /// <summary>
     /// One signup on the section's boundary shape, with the fields the

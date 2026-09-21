@@ -1,3 +1,5 @@
+using Humans.Base.Constants;
+using Humans.Issues.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Base.Interfaces.Caching;
 using Humans.EarlyEntry.Contracts;
@@ -18,7 +20,7 @@ namespace Humans.Camps;
 /// the canonical per-camp <c>CampInfo</c> projection; the keyed-Scoped inner service owns the
 /// repository's unit of work.
 /// </summary>
-public sealed class Section : ISection
+public sealed class Section : ISection, IIssueQueueOwner
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -82,4 +84,10 @@ public sealed class Section : ISection
         // (nobodies-collective/Humans#1091).
         services.AddScoped<IAuthorizationHandler, CampComplianceAccessHandler>();
     }
+
+    // This section owns the issue queue its members' reports land in; Issues discovers
+    // the seam rather than holding a list of sections (memory/architecture/section-contribution-seams.md).
+    string IIssueQueueOwner.QueueKey => "Camps";
+
+    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.CampAdmin];
 }

@@ -778,9 +778,6 @@
   <data name="SendMessage_MessageLabel" xml:space="preserve">
     <value>Messaggio</value>
   </data>
-  <data name="SendMessage_PlainTextOnly" xml:space="preserve">
-    <value>Solo testo normale. Massimo 2000 caratteri.</value>
-  </data>
   <data name="SendMessage_IncludeContactInfo" xml:space="preserve">
     <value>Includi le mie informazioni di contatto</value>
   </data>

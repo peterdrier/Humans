@@ -3,10 +3,13 @@ using NodaTime;
 
 namespace Humans.Camps.Contracts;
 
+/// <summary>
+/// <see cref="PublicYear"/> is populated from Settings' active event year (falling back to
+/// the clock year when no event is active) — Camps no longer stores its own year.
+/// </summary>
 public sealed record CampSettingsInfo(
     int PublicYear,
-    IReadOnlyList<int> OpenSeasons,
-    LocalDate? EeStartDate)
+    IReadOnlyList<int> OpenSeasons)
 {
     public IReadOnlyDictionary<int, LocalDate?> NameLockDates { get; init; } =
         new Dictionary<int, LocalDate?>();
@@ -23,7 +26,7 @@ public sealed record CampSettingsInfo(
 /// <b>Cache size budget.</b> At Nobodies' steady-state (~100 active camps,
 /// ≤5 leads/camp, ≤5 historical names/camp) the per-entry footprint is
 /// dominated by season blurbs (~2 KB/season) plus scalar fields. Warmup
-/// loads only the seasons referenced by <c>CampSettings.PublicYear</c> +
+/// loads only the seasons referenced by <c>CampSettingsInfo.PublicYear</c> +
 /// <c>OpenSeasons</c> + the current real-world year — typically 1–3 seasons
 /// per camp, not full history. Worst-case ~50 KB/camp × 100 camps ≈ 5 MB —
 /// comfortably under the ~50 MB §15 budget at our small scale.

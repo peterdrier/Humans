@@ -1,5 +1,6 @@
 using Humans.Shifts.Data;
 using Humans.Shifts.Domain;
+using Humans.Settings.Contracts;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using AwesomeAssertions;
@@ -33,12 +34,12 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
         var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
         var repo = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
 
-        var (eventId, _, _, _) = await SeedFixtureAsync(db, teamsDb, shiftsDb);
+        var (eventId, calendar, _, _, _) = await SeedFixtureAsync(db, teamsDb, shiftsDb);
 
         var start = new LocalDate(2026, 7, 7);
         var end = new LocalDate(2026, 7, 12);
 
-        var rows = await repo.GetConfirmedShiftsInRangeAsync(eventId, start, end, departmentId: null, ct: TestContext.Current.CancellationToken);
+        var rows = await repo.GetConfirmedShiftsInRangeAsync(eventId, calendar, start, end, departmentId: null, ct: TestContext.Current.CancellationToken);
 
         rows.Should().OnlyContain(r => r.UserId != Guid.Empty);
         // The seed creates 2 Confirmed signups total (one TeamA, one TeamB), plus a Pending
@@ -55,11 +56,12 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
         var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
         var repo = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
 
-        var (eventId, _, _, _) = await SeedFixtureAsync(db, teamsDb, shiftsDb);
+        var (eventId, calendar, _, _, _) = await SeedFixtureAsync(db, teamsDb, shiftsDb);
 
         // Range entirely before the seeded shifts.
         var rows = await repo.GetConfirmedShiftsInRangeAsync(
             eventId,
+            calendar,
             new LocalDate(2026, 1, 1),
             new LocalDate(2026, 1, 2),
             departmentId: null,
@@ -77,13 +79,13 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
         var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
         var repo = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
 
-        var (eventId, teamAId, teamBId, _) = await SeedFixtureAsync(db, teamsDb, shiftsDb);
+        var (eventId, calendar, teamAId, teamBId, _) = await SeedFixtureAsync(db, teamsDb, shiftsDb);
 
         var start = new LocalDate(2026, 7, 7);
         var end = new LocalDate(2026, 7, 12);
 
-        var teamARows = await repo.GetConfirmedShiftsInRangeAsync(eventId, start, end, departmentId: teamAId, ct: TestContext.Current.CancellationToken);
-        var teamBRows = await repo.GetConfirmedShiftsInRangeAsync(eventId, start, end, departmentId: teamBId, ct: TestContext.Current.CancellationToken);
+        var teamARows = await repo.GetConfirmedShiftsInRangeAsync(eventId, calendar, start, end, departmentId: teamAId, ct: TestContext.Current.CancellationToken);
+        var teamBRows = await repo.GetConfirmedShiftsInRangeAsync(eventId, calendar, start, end, departmentId: teamBId, ct: TestContext.Current.CancellationToken);
 
         teamARows.Should().OnlyContain(r => r.TeamId == teamAId);
         teamBRows.Should().OnlyContain(r => r.TeamId == teamBId);
@@ -98,12 +100,13 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
         var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
         var repo = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
 
-        var (eventId, _, _, _) = await SeedFixtureAsync(db, teamsDb, shiftsDb);
+        var (eventId, calendar, _, _, _) = await SeedFixtureAsync(db, teamsDb, shiftsDb);
 
         // The seed includes a confirmed shift that starts on 2026-07-07 morning.
         // A range starting that same day must include it.
         var rows = await repo.GetConfirmedShiftsInRangeAsync(
             eventId,
+            calendar,
             new LocalDate(2026, 7, 7),
             new LocalDate(2026, 7, 7),
             departmentId: null,
@@ -122,7 +125,7 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
     ///   (a second user on 7/7), one Cancelled (the 7/9 shift).
     /// - One Confirmed signup on the TeamB shift (7/8).
     /// </summary>
-    private static async Task<(Guid eventId, Guid teamAId, Guid teamBId, Guid userId)> SeedFixtureAsync(UsersDbContext db, TeamsDbContext teamsDb, ShiftsDbContext shiftsDb)
+    private static async Task<(Guid eventId, EventSettingsInfo calendar, Guid teamAId, Guid teamBId, Guid userId)> SeedFixtureAsync(UsersDbContext db, TeamsDbContext teamsDb, ShiftsDbContext shiftsDb)
     {
         var now = SystemClock.Instance.GetCurrentInstant();
         var suffix = Guid.NewGuid().ToString("N");
@@ -194,7 +197,24 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         await teamsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
         await shiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
-        return (es.Id, teamA.Id, teamB.Id, user1.Id);
+        var calendar = new EventSettingsInfo(
+            Id: es.Id,
+            EventName: es.EventName,
+            Year: es.Year,
+            TimeZoneId: es.TimeZoneId,
+            GateOpeningDate: es.GateOpeningDate,
+            BuildStartOffset: es.BuildStartOffset,
+            EventEndOffset: es.EventEndOffset,
+            StrikeEndOffset: es.StrikeEndOffset,
+            FirstCrewStartOffset: es.FirstCrewStartOffset,
+            SetupWeekStartOffset: es.SetupWeekStartOffset,
+            PreEventWeekStartOffset: es.PreEventWeekStartOffset,
+            FinishingWeekendStartOffset: es.FinishingWeekendStartOffset,
+            EarlyEntryCapacity: new Dictionary<int, int>(es.EarlyEntryCapacity),
+            BarriosEarlyEntryAllocation: es.BarriosEarlyEntryAllocation is null
+                ? null : new Dictionary<int, int>(es.BarriosEarlyEntryAllocation),
+            EarlyEntryClose: es.EarlyEntryClose);
+        return (es.Id, calendar, teamA.Id, teamB.Id, user1.Id);
     }
 
     private static Rota NewRota(Guid eventSettingsId, Guid teamId, Instant now, string name) => new()

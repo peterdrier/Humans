@@ -26,12 +26,16 @@
 
                         <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
 
-                        <div class="mb-3">
-                            <label asp-for="Message" class="form-label">@Localizer["EmailTeamRotas_MessageLabel"]</label>
-                            <textarea asp-for="Message" class="form-control" rows="10" maxlength="4000" required></textarea>
-                            <span asp-validation-for="Message" class="text-danger"></span>
-                            <div class="form-text">@Localizer["EmailTeamRotas_MessageHelp"]</div>
-                        </div>
+                        @await Html.PartialAsync("_EmailComposer", new Humans.Base.Models.EmailComposerViewModel
+                        {
+                            BodyName = "Message",
+                            BodyValue = Model.Message,
+                            BodyLabel = Localizer["EmailTeamRotas_MessageLabel"].Value,
+                            BodyRows = 10,
+                            BodyMaxLength = 4000,
+                            BodyHelpText = Localizer["EmailTeamRotas_MessageHelp"].Value,
+                            Category = nameof(Humans.Users.Contracts.MessageCategory.VolunteerUpdates),
+                        })
 
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary" @(Model.RecipientCount == 0 ? "disabled" : null)>

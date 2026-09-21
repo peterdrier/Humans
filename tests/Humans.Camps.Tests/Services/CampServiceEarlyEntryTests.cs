@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Base.Interfaces.Caching;
 using Humans.CityPlanning.Contracts;
 using Humans.EarlyEntry.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Base.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -34,6 +35,10 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
 
         _userServiceRead = Substitute.For<IUserServiceRead>();
 
+        var settingsService = Substitute.For<ISettingsService>();
+        settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(BurnFixtures.Burn(year: 2026));
+
         _service = new CampService(
             repo,
             AuditLog,
@@ -46,31 +51,9 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
             Substitute.For<IEarlyEntryInvalidator>(),
             Substitute.For<ICampInfoInvalidator>(),
             _userServiceRead,
+            settingsService,
             Clock,
             NullLogger<CampService>.Instance);
-    }
-
-    // ==========================================================================
-    // SetEeStartDateAsync
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task SetEeStartDateAsync_SetsValue_AndInvalidatesSettingsCache()
-    {
-        await SeedSettingsAsync();
-        var date = new LocalDate(2026, 8, 7);
-        var actorUserId = Guid.NewGuid();
-
-        await _service.SetEeStartDateAsync(date, actorUserId, Xunit.TestContext.Current.CancellationToken);
-
-        var settings = await _service.GetSettingsAsync(Xunit.TestContext.Current.CancellationToken);
-        settings.EeStartDate.Should().Be(date);
-
-        await AuditLog.Received(1).LogAsync(
-            AuditAction.CampSettingsEeStartDateChanged,
-            nameof(CampSettings), Arg.Any<Guid>(),
-            Arg.Any<string>(), actorUserId,
-            Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     // ==========================================================================

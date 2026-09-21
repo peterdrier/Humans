@@ -256,16 +256,6 @@ internal partial interface ICampRepository : IRepository
     Task<CampSettings?> GetSettingsReadOnlyAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Sets <c>PublicYear</c> on the singleton settings row.
-    /// </summary>
-    Task SetPublicYearAsync(int year, CancellationToken ct = default);
-
-    /// <summary>
-    /// Sets <c>EeStartDate</c> on the singleton settings row. Pass <c>null</c> to clear.
-    /// </summary>
-    Task SetEeStartDateAsync(LocalDate? eeStartDate, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Adds <paramref name="year"/> to <c>OpenSeasons</c> if not present.
     /// Returns true if the list changed.
     /// </summary>

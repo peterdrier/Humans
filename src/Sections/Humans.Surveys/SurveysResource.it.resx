@@ -152,7 +152,7 @@
   <data name="Survey_Admin_Builder_SlugPlaceholder" xml:space="preserve"><value>es. feedback-2026</value></data>
   <data name="Survey_Admin_Builder_SlugHelp" xml:space="preserve"><value>I sondaggi anonimi consentono l'accesso a chiunque abbia il link. I sondaggi identificati richiedono l'accesso e, se configurato, l'idoneità al pubblico attuale.</value></data>
   <data name="Survey_Admin_Builder_InvitationEmailHeader" xml:space="preserve"><value>Email di invito</value></data>
-  <data name="Survey_Admin_Builder_InvitationEmailIntro" xml:space="preserve"><value>Personalizza l'invito iniziale. Humans aggiunge il saluto, il titolo del sondaggio, il pulsante con il link e i saluti finali. Il messaggio supporta la formattazione Markdown, ma non le immagini. Lascia un campo vuoto per usare il testo standard.</value></data>
+  <data name="Survey_Admin_Builder_InvitationEmailIntro" xml:space="preserve"><value>Personalizza l'invito iniziale. Humans aggiunge il saluto, il titolo del sondaggio, il pulsante con il link e i saluti finali. Il messaggio supporta la formattazione Markdown, incluse le immagini https://. Lascia un campo vuoto per usare il testo standard.</value></data>
   <data name="Survey_Admin_Builder_Field_EmailSubject" xml:space="preserve"><value>Oggetto dell'email</value></data>
   <data name="Survey_Admin_Builder_Field_EmailMessage" xml:space="preserve"><value>Messaggio dell'email</value></data>
   <data name="Survey_Admin_Builder_QuestionsHeader" xml:space="preserve"><value>Domande</value></data>

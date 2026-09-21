@@ -13,6 +13,7 @@ using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 
@@ -87,7 +88,7 @@ public class ProfileControllerDietaryMedicalReplayTests
             Substitute.For<ICommunicationPreferenceService>(),
             Substitute.For<IOnboardingIntake>(),
             _signupService,
-            Substitute.For<IBurnSettingsService>(),
+            Substitute.For<ISettingsService>(),
             _shiftMgmt,
             Substitute.For<IShiftView>(),
             Substitute.For<IGdprService>(),

@@ -54,44 +54,6 @@ internal sealed class GoogleController(
             UserId: id));
     }
 
-    [HttpGet("SyncSettings")]
-    [Authorize(Policy = PolicyNames.AdminOnly)]
-    public async Task<IActionResult> SyncSettings(
-        [FromServices] ISyncSettingsService syncSettingsService)
-    {
-        var settings = (await syncSettingsService.GetAllAsync())
-            // Sort by the enum's string name to match the prior EF ordering
-            // (ServiceType is stored via .HasConversion<string>()).
-            .OrderBy(s => s.ServiceType.ToString(), StringComparer.Ordinal)
-            .ToList();
-
-        // In-memory join: resolve UpdatedByUser display names via IUserServiceRead
-        // rather than an EF .Include across the section boundary (design-rules §6).
-        var updatedByUserIds = settings
-            .Select(s => s.UpdatedByUserId)
-            .OfType<Guid>()
-            .Distinct()
-            .ToList();
-        var updatedByUsers = updatedByUserIds.Count > 0
-            ? await UserService.GetUserInfosAsync(updatedByUserIds)
-            : new Dictionary<Guid, UserInfo>();
-
-        var viewModel = new SyncSettingsViewModel
-        {
-            Settings = settings.Select(s => new SyncServiceSettingViewModel
-            {
-                ServiceType = s.ServiceType,
-                ServiceName = FormatServiceName(s.ServiceType),
-                CurrentMode = s.SyncMode,
-                UpdatedAt = s.UpdatedAt.ToDateTimeUtc(),
-                UpdatedByName = s.UpdatedByUserId is { } uid && updatedByUsers.TryGetValue(uid, out var u)
-                    ? u.BurnerName
-                    : null
-            }).ToList()
-        };
-        return View(viewModel);
-    }
-
     [HttpPost("SyncSettings")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
@@ -107,8 +69,8 @@ internal sealed class GoogleController(
         logger.LogInformation("Admin {AdminId} changed {ServiceType} sync mode to {Mode}",
             currentUser.Id, serviceType, mode);
 
-        SetSuccess($"Sync mode for {FormatServiceName(serviceType)} updated to {mode}.");
-        return RedirectToAction(nameof(SyncSettings));
+        SetSuccess($"Sync mode for {SyncServiceNameFormatter.Format(serviceType)} updated to {mode}.");
+        return Redirect("/Settings#google-sync");
     }
 
     [HttpPost("SyncSystemTeams")]
@@ -802,12 +764,4 @@ internal sealed class GoogleController(
     {
         return View();
     }
-
-    private static string FormatServiceName(SyncServiceType type) => type switch
-    {
-        SyncServiceType.GoogleDrive => "Google Drive",
-        SyncServiceType.GoogleGroups => "Google Groups",
-        SyncServiceType.Discord => "Discord",
-        _ => type.ToString()
-    };
 }

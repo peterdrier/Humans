@@ -138,16 +138,26 @@ public class MarkdownEditorTagHelper(
             }
         }
 
-        // Disambiguate when multiple editors on the page share the same id (e.g. role-description
-        // textareas in a loop). We append a per-request instance counter so EasyMDE attaches to
-        // the right element.
-        var counter = (httpContext?.Items[InstanceCounterKey] as int?) ?? 0;
-        counter++;
-        if (httpContext is not null)
+        // An explicit id is the caller's own promise of uniqueness (and, for a <label for="">
+        // to resolve, must survive verbatim). Only a derived id — one we picked via fallback —
+        // needs disambiguating when multiple editors on the page land on the same fallback (e.g.
+        // role-description textareas in a loop that didn't pass id): we append a per-request
+        // instance counter so EasyMDE attaches to the right element.
+        string uniqueId;
+        if (!string.IsNullOrEmpty(Id))
         {
-            httpContext.Items[InstanceCounterKey] = counter;
+            uniqueId = elementId!;
         }
-        var uniqueId = $"{elementId}-mde-{counter.ToString(CultureInfo.InvariantCulture)}";
+        else
+        {
+            var counter = (httpContext?.Items[InstanceCounterKey] as int?) ?? 0;
+            counter++;
+            if (httpContext is not null)
+            {
+                httpContext.Items[InstanceCounterKey] = counter;
+            }
+            uniqueId = $"{elementId}-mde-{counter.ToString(CultureInfo.InvariantCulture)}";
+        }
         textarea.Attributes["id"] = uniqueId;
 
         // Force class/rows/optional attributes onto the textarea regardless of asp-for shape.
@@ -228,7 +238,8 @@ public class MarkdownEditorTagHelper(
     function createEditor(el) {{
         if (!el || el.dataset.mdeInitialized === 'true') {{ return; }}
         try {{
-            new EasyMDE({{
+            var maxLength = parseInt(el.getAttribute('maxlength'), 10);
+            var mde = new EasyMDE({{
                 element: el,
                 autoDownloadFontAwesome: false,
                 spellChecker: false,
@@ -257,6 +268,18 @@ public class MarkdownEditorTagHelper(
                     }}, className: 'fa-solid fa-circle-question', title: 'Markdown help' }}
                 ]
             }});
+            if (!isNaN(maxLength) && maxLength > 0) {{
+                mde.codemirror.on('beforeChange', function(cm, change) {{
+                    if (change.update === undefined) {{ return; }}
+                    var removed = cm.getRange(change.from, change.to).length;
+                    var added = (change.text || []).join('\n').length;
+                    var over = cm.getValue().length - removed + added - maxLength;
+                    if (over > 0) {{
+                        var text = (change.text || []).join('\n');
+                        change.update(change.from, change.to, [text.slice(0, Math.max(0, text.length - over))]);
+                    }}
+                }});
+            }}
             el.dataset.mdeInitialized = 'true';
         }} catch (e) {{
             // Leave the bare textarea in place on failure.

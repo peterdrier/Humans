@@ -50,7 +50,6 @@
   <data name="Camp_Contact_Heading" xml:space="preserve"><value>Contact {0}</value><comment>{0} = camp name</comment></data>
   <data name="Camp_Contact_Breadcrumb" xml:space="preserve"><value>Contact</value></data>
   <data name="Camp_Contact_MessageLabel" xml:space="preserve"><value>Your message</value></data>
-  <data name="Camp_Contact_PlainTextOnly" xml:space="preserve"><value>Plain text only. Maximum 2000 characters.</value></data>
   <data name="Camp_Contact_IncludeContactInfo" xml:space="preserve"><value>Include my contact info</value></data>
   <data name="Camp_Contact_IncludeContactInfoHelp" xml:space="preserve"><value>Your email will be added as reply-to so they can respond directly</value></data>
   <data name="Camp_Contact_Send" xml:space="preserve"><value>Send</value></data>

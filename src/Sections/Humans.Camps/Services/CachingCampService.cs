@@ -4,6 +4,7 @@ using NodaTime;
 using Humans.Base.Caching;
 using Humans.Base.Extensions;
 using Humans.EarlyEntry.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Camps.Services;
@@ -78,20 +79,23 @@ internal sealed class CachingCampService(
 
     public async Task<CampSettingsInfo> GetSettingsAsync(CancellationToken cancellationToken = default)
     {
-        var snapshot = _settings;
-        if (snapshot is not null) return snapshot;
-        return await LoadSettingsAsync(cancellationToken);
+        var snapshot = _settings ?? await LoadSettingsAsync(cancellationToken);
+        // PublicYear is Settings-owned: activating a new event changes it, and nothing in
+        // Settings signals this section's invalidator. Only the camps-owned parts of the
+        // snapshot are cached; the year is resolved live on every read.
+        return snapshot with { PublicYear = await ActiveYearAsync(cancellationToken) };
     }
 
     public async Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct)
     {
-        var settings = await GetSettingsAsync(ct);
-        if (settings.EeStartDate is not { } eeStartDate)
+        var activeEvent = await WithSettings(settings => settings.GetActiveEventSettingsAsync(ct));
+        if (activeEvent?.EarlyEntryStartOffset is not { } offset)
         {
             return [];
         }
 
-        var year = settings.PublicYear;
+        var eeStartDate = activeEvent.GateOpeningDate.PlusDays(offset);
+        var year = activeEvent.Year;
         var camps = await GetCampsForYearAsync(year, ct);
         return camps
             .SelectMany(camp => camp.Seasons.Where(season => season.Year == year))
@@ -322,12 +326,6 @@ internal sealed class CachingCampService(
         await InvalidateCampAsync(campId, cancellationToken);
     }
 
-    public async Task SetPublicYearAsync(int year, CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.SetPublicYearAsync(year, cancellationToken));
-        await InvalidateSettingsAsync(cancellationToken);
-    }
-
     public async Task OpenSeasonAsync(int year, CancellationToken cancellationToken = default)
     {
         await WithInner(inner => inner.OpenSeasonAsync(year, cancellationToken));
@@ -426,14 +424,6 @@ internal sealed class CachingCampService(
         if (result.Succeeded)
             RefreshAll();
         return result;
-    }
-
-    public async Task SetEeStartDateAsync(
-        LocalDate? eeStartDate, Guid actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.SetEeStartDateAsync(eeStartDate, actorUserId, cancellationToken));
-        await InvalidateSettingsAsync(cancellationToken);
     }
 
     public async Task SetCampSeasonEeSlotCountAsync(
@@ -605,6 +595,28 @@ internal sealed class CachingCampService(
         };
 
     // Scope / inner resolution
+
+    /// <summary>
+    /// <see cref="ISettingsService"/> is Scoped; this decorator is a Singleton and a hosted
+    /// service, so it may only reach Settings through a scope (ValidateScopes would reject a
+    /// constructor injection). Mirrors <see cref="WithInner{T}"/>.
+    /// </summary>
+    private async Task<T> WithSettings<T>(Func<ISettingsService, Task<T>> work)
+    {
+        await using var scope = scopeFactory.CreateAsyncScope();
+        return await work(scope.ServiceProvider.GetRequiredService<ISettingsService>());
+    }
+
+    /// <summary>
+    /// The active event's year, falling back to the clock's current year before an event
+    /// exists — same rule as <c>CampService.GetActiveYearAsync</c>, which serves the inner
+    /// (uncached) read.
+    /// </summary>
+    private async Task<int> ActiveYearAsync(CancellationToken ct)
+    {
+        var activeEvent = await WithSettings(settings => settings.GetActiveEventSettingsAsync(ct));
+        return activeEvent?.Year > 0 ? activeEvent.Year : SystemClockYear();
+    }
 
     private async Task<T> WithInner<T>(Func<ICampService, Task<T>> work)
     {

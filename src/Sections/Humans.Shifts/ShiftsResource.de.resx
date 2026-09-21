@@ -1070,7 +1070,7 @@
     <value>Deine Nachricht</value>
   </data>
   <data name="EmailRota_MessageHelp" xml:space="preserve">
-    <value>Nur Klartext. Jeder Empf&#xE4;nger sieht diesen Text zusammen mit seiner eigenen Schichtliste f&#xFC;r diesen Dienstplan.</value>
+    <value>Jeder Empf&#xE4;nger sieht diesen Text zusammen mit seiner eigenen Schichtliste f&#xFC;r diesen Dienstplan.</value>
   </data>
   <data name="EmailRota_Button" xml:space="preserve">
     <value>E-Mail an einen Dienstplan senden</value>
@@ -1103,7 +1103,7 @@
     <value>Deine Nachricht</value>
   </data>
   <data name="EmailTeamRotas_MessageHelp" xml:space="preserve">
-    <value>Nur Klartext. Jeder Empf&#xE4;nger sieht diesen Text zusammen mit seiner eigenen Schichtliste &#xFC;ber die kommenden Dienstpl&#xE4;ne des Teams hinweg.</value>
+    <value>Jeder Empf&#xE4;nger sieht diesen Text zusammen mit seiner eigenen Schichtliste &#xFC;ber die kommenden Dienstpl&#xE4;ne des Teams hinweg.</value>
   </data>
   <data name="EmailTeamRotas_Send" xml:space="preserve">
     <value>An {0} Empf&#xE4;nger senden</value>

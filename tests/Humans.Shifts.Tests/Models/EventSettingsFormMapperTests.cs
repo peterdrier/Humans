@@ -1,71 +1,34 @@
 using AwesomeAssertions;
 using Humans.Shifts.Models;
+using Humans.Shifts.Services.Dtos;
 
 namespace Humans.Shifts.Tests.Models;
 
 /// <summary>
-/// The event-settings form's two JSON fields are typed by an operator. Malformed
-/// JSON is a field error on the form, never an unhandled exception.
+/// The form is knobs-only now — the calendar lives in Settings
+/// (nobodies-collective/Humans#1631).
 /// </summary>
 public sealed class EventSettingsFormMapperTests
 {
-    private static EventSettingsViewModel ValidModel() => new()
-    {
-        EventName = "Nowhere",
-        TimeZoneId = "Europe/Madrid",
-        GateOpeningDate = "2026-07-06",
-    };
-
     [HumansFact]
-    public void Parse_ValidJsonMaps_ProducesDraft()
+    public void ToViewModel_NoKnobsRow_ReturnsDefaults()
     {
-        var model = ValidModel();
-        model.EarlyEntryCapacityJson = "{\"-5\": 10, \"-4\": 20}";
-        model.BarriosEarlyEntryAllocationJson = "{\"-5\": 3}";
+        var vm = EventSettingsFormMapper.ToViewModel(null);
 
-        var result = EventSettingsFormMapper.Parse(model);
-
-        result.Success.Should().BeTrue();
-        result.Draft!.EarlyEntryCapacity.Should().Equal(new Dictionary<int, int> { [-5] = 10, [-4] = 20 });
-        result.Draft.BarriosEarlyEntryAllocation.Should().Equal(new Dictionary<int, int> { [-5] = 3 });
+        vm.IsShiftBrowsingOpen.Should().BeFalse();
+        vm.GlobalVolunteerCap.Should().BeNull();
+        vm.ReminderLeadTimeHours.Should().Be(24);
     }
 
     [HumansFact]
-    public void Parse_EmptyJsonFields_DefaultToEmptyAndNull()
+    public void ToViewModel_KnobsRowPresent_MapsItsFields()
     {
-        var model = ValidModel();
-        model.EarlyEntryCapacityJson = "";
-        model.BarriosEarlyEntryAllocationJson = null;
+        var knobs = new ShiftEventKnobs(IsShiftBrowsingOpen: true, GlobalVolunteerCap: 300, ReminderLeadTimeHours: 12);
 
-        var result = EventSettingsFormMapper.Parse(model);
+        var vm = EventSettingsFormMapper.ToViewModel(knobs);
 
-        result.Success.Should().BeTrue();
-        result.Draft!.EarlyEntryCapacity.Should().BeEmpty();
-        result.Draft.BarriosEarlyEntryAllocation.Should().BeNull();
-    }
-
-    [HumansFact]
-    public void Parse_MalformedCapacityJson_IsFieldError()
-    {
-        var model = ValidModel();
-        model.EarlyEntryCapacityJson = "{not json";
-
-        var result = EventSettingsFormMapper.Parse(model);
-
-        result.Success.Should().BeFalse();
-        result.Draft.Should().BeNull();
-        result.Errors.Should().ContainSingle(e => e.FieldName == nameof(EventSettingsViewModel.EarlyEntryCapacityJson));
-    }
-
-    [HumansFact]
-    public void Parse_MalformedBarriosJson_IsFieldError()
-    {
-        var model = ValidModel();
-        model.BarriosEarlyEntryAllocationJson = "[1, 2]";
-
-        var result = EventSettingsFormMapper.Parse(model);
-
-        result.Success.Should().BeFalse();
-        result.Errors.Should().ContainSingle(e => e.FieldName == nameof(EventSettingsViewModel.BarriosEarlyEntryAllocationJson));
+        vm.IsShiftBrowsingOpen.Should().BeTrue();
+        vm.GlobalVolunteerCap.Should().Be(300);
+        vm.ReminderLeadTimeHours.Should().Be(12);
     }
 }

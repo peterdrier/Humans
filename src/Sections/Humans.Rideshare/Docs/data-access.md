@@ -24,7 +24,7 @@ Repository: `IRideshareRepository`.
 | RideshareInterests | R/W |
 | RideshareSettings | R/W |
 
-Cross-section calls: `IUserServiceRead`, `IBurnSettingsService`, `INotificationEmitter`,
+Cross-section calls: `IUserServiceRead`, `ISettingsService`, `INotificationEmitter`,
 `IAuditLogService`, `IClock` (NodaTime), plus the section-internal `IRouteProvider`
 (OpenRouteService client). The inner service has no `IMemoryCache`.
 

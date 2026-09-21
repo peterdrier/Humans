@@ -78,7 +78,8 @@ Repositories: `IShiftManagementRepository`, `IVolunteerTrackingRepository`.
 | GeneralAvailability | R/W (via `IVolunteerTrackingRepository`; R for GDPR export, W for GDPR erasure) |
 | VolunteerBuildStatuses | W (via `IVolunteerTrackingRepository`, GDPR erasure) |
 
-Cross-section calls via `IShiftManagementService`, `IBurnSettingsService`,
+Cross-section calls via `IShiftManagementService`, `ISettingsService` (via
+`EventCalendarResolver`, nobodies-collective/Humans#1630),
 `IAuditLogService`, `INotificationEmitter`, `IAdminAuthorizationService`,
 `IShiftViewInvalidator`, `IEarlyEntryInvalidator`, plus `IServiceProvider`
 (lazy-resolves `ITeamServiceRead` for coordinator/team-name lookups).
@@ -99,7 +100,7 @@ Repositories: `IVolunteerTrackingRepository`, `IShiftManagementRepository`.
 | VolunteerBuildStatuses | R/W | IVolunteerTrackingRepository |
 | GeneralAvailability | R/W | IVolunteerTrackingRepository (availability upsert, set/clear day-off, camp-setup) |
 | ShiftSignups | R | IShiftManagementRepository (`GetEligibleBuildSignupsAsync`) |
-| EventSettings | R | IShiftManagementRepository (`GetEligibleBuildSignupsAsync` / `GetActiveEventSettingsAsync`) |
+| EventSettings | R | IShiftManagementRepository (`GetEligibleBuildSignupsAsync`); active event resolved via `EventCalendarResolver` (Settings), not this repo |
 | Shifts | R | IShiftManagementRepository |
 | Rotas | R | IShiftManagementRepository |
 
@@ -181,7 +182,7 @@ Repository: `IShiftManagementRepository`.
 | ShiftSignups | R (loaded via `GetRotaAsync(RotaReadShape.View)`) |
 | Rotas | R |
 | Shifts | R |
-| EventSettings | R (team-level dispatch path — `GetActiveEventSettingsAsync`) |
+| EventSettings | R (team-level dispatch path — active event resolved via `EventCalendarResolver`, not this repo) |
 
 Cross-section calls via `ITeamServiceRead`, `IUserServiceRead`,
 `IEmailService`, `IEmailMessageFactory`, `IAuditLogService`. Implements

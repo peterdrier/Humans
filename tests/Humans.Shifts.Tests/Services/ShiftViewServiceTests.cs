@@ -1,6 +1,7 @@
 using Humans.Shifts.Data;
 using Humans.Shifts.Domain;
 using AwesomeAssertions;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Services;
 using NSubstitute;
 
@@ -15,16 +16,30 @@ public class ShiftViewServiceTests
 {
     private readonly IShiftManagementRepository _management = Substitute.For<IShiftManagementRepository>();
     private readonly IVolunteerTrackingRepository _tracking = Substitute.For<IVolunteerTrackingRepository>();
+    private readonly ISettingsService _settingsService = Substitute.For<ISettingsService>();
+    private readonly EventCalendarResolver _calendarResolver;
+
+    public ShiftViewServiceTests() => _calendarResolver = new(_settingsService);
 
     private ShiftViewService CreateSut() =>
-        new(_management, _tracking);
+        new(_management, _tracking, _calendarResolver);
+
+    private void StubActiveCalendar(EventSettingsInfo? calendar) =>
+        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(calendar);
+
+    private static EventSettingsInfo Calendar(Guid id) => new(
+        Id: id, EventName: "Nowhere 2026", Year: 2026, TimeZoneId: "Europe/Madrid",
+        GateOpeningDate: new NodaTime.LocalDate(2026, 7, 1), BuildStartOffset: -14, EventEndOffset: 6,
+        StrikeEndOffset: 9, FirstCrewStartOffset: -25, SetupWeekStartOffset: -16,
+        PreEventWeekStartOffset: -9, FinishingWeekendStartOffset: -4,
+        EarlyEntryCapacity: new Dictionary<int, int>(), BarriosEarlyEntryAllocation: null,
+        EarlyEntryClose: null);
 
     [HumansFact]
     public async Task GetUserAsync_NoActiveEvent_ReturnsEmptyAvailabilityAndBuildStatus()
     {
         var userId = Guid.NewGuid();
-        _management.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns((EventSettings?)null);
+        StubActiveCalendar(null);
         _management.GetVolunteerEventProfileAsync(userId, Arg.Any<CancellationToken>())
             .Returns((VolunteerEventProfile?)null);
         _management.GetVolunteerTagPreferencesForUsersAsync(
@@ -54,11 +69,10 @@ public class ShiftViewServiceTests
     {
         var userId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
-        var es = new EventSettings { Id = eventId, IsActive = true };
         var availability = new GeneralAvailability { UserId = userId, EventSettingsId = eventId };
         var buildStatus = new VolunteerBuildStatus { UserId = userId, EventSettingsId = eventId };
 
-        _management.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        StubActiveCalendar(Calendar(eventId));
         _management.GetVolunteerEventProfileAsync(userId, Arg.Any<CancellationToken>())
             .Returns((VolunteerEventProfile?)null);
         _management.GetVolunteerTagPreferencesForUsersAsync(
@@ -89,8 +103,7 @@ public class ShiftViewServiceTests
     public async Task GetUserAsync_NoActiveEvent_DoesNotQuerySignups()
     {
         var userId = Guid.NewGuid();
-        _management.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns((EventSettings?)null);
+        StubActiveCalendar(null);
         _management.GetVolunteerEventProfileAsync(userId, Arg.Any<CancellationToken>())
             .Returns((VolunteerEventProfile?)null);
         _management.GetVolunteerTagPreferencesForUsersAsync(
@@ -111,10 +124,9 @@ public class ShiftViewServiceTests
     {
         var userId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
-        var es = new EventSettings { Id = eventId, IsActive = true };
         var scoped = new[] { new ShiftSignup { Id = Guid.NewGuid(), UserId = userId } };
 
-        _management.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        StubActiveCalendar(Calendar(eventId));
         _management.GetVolunteerEventProfileAsync(userId, Arg.Any<CancellationToken>())
             .Returns((VolunteerEventProfile?)null);
         _management.GetVolunteerTagPreferencesForUsersAsync(
@@ -190,8 +202,7 @@ public class ShiftViewServiceTests
     {
         var userA = Guid.NewGuid();
         var userB = Guid.NewGuid();
-        _management.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns((EventSettings?)null);
+        StubActiveCalendar(null);
         _management.GetVolunteerEventProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((VolunteerEventProfile?)null);
         _management.GetVolunteerTagPreferencesForUsersAsync(

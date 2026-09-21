@@ -13,7 +13,7 @@ namespace Humans.Email.Tests.Services;
 public sealed class EmailRendererTests
 {
     [HumansFact]
-    public void SurveyInvitation_custom_copy_renders_sanitized_markdown_without_images()
+    public void SurveyInvitation_custom_copy_renders_sanitized_markdown_with_https_images()
     {
         var renderer = CreateRenderer();
 
@@ -33,8 +33,7 @@ public sealed class EmailRendererTests
         content.HtmlBody.Should().Contain("<li>Friday</li>");
         content.HtmlBody.Should().Contain("<a href=\"https://example.com\">Details</a>");
         content.HtmlBody.Should().NotContain("<script>");
-        content.HtmlBody.Should().NotContain("<img");
-        content.HtmlBody.Should().NotContain("poster.png");
+        content.HtmlBody.Should().Contain("<img src=\"https://example.com/poster.png\"");
         content.HtmlBody.Should().Contain(
             "https://humans.example/Survey/Answer?t=token%20%2B%20value");
     }
@@ -53,7 +52,7 @@ public sealed class EmailRendererTests
     }
 
     [HumansFact]
-    public void FeedbackResponse_renders_sanitized_markdown_without_images()
+    public void FeedbackResponse_renders_sanitized_markdown_with_https_images()
     {
         var renderer = CreateRenderer();
 
@@ -69,12 +68,11 @@ public sealed class EmailRendererTests
         content.HtmlBody.Should().Contain("<p><strong>Fixed.</strong></p>");
         content.HtmlBody.Should().Contain("<a href=\"https://example.com\">Details</a>");
         content.HtmlBody.Should().NotContain("<script>");
-        content.HtmlBody.Should().NotContain("<img");
-        content.HtmlBody.Should().NotContain("shot.png");
+        content.HtmlBody.Should().Contain("<img src=\"https://example.com/shot.png\"");
     }
 
     [HumansFact]
-    public void IssueComment_renders_sanitized_markdown_without_images()
+    public void IssueComment_renders_sanitized_markdown_with_https_images()
     {
         var renderer = CreateRenderer();
 
@@ -90,12 +88,11 @@ public sealed class EmailRendererTests
         content.HtmlBody.Should().Contain("<p><strong>Looking at it.</strong></p>");
         content.HtmlBody.Should().Contain("<a href=\"https://example.com\">Details</a>");
         content.HtmlBody.Should().NotContain("<script>");
-        content.HtmlBody.Should().NotContain("<img");
-        content.HtmlBody.Should().NotContain("shot.png");
+        content.HtmlBody.Should().Contain("<img src=\"https://example.com/shot.png\"");
     }
 
     [HumansFact]
-    public void CampaignCode_renders_sanitized_markdown_without_images()
+    public void CampaignCode_renders_sanitized_markdown_with_https_images()
     {
         var renderer = CreateRenderer();
 
@@ -110,8 +107,64 @@ public sealed class EmailRendererTests
         content.HtmlBody.Should().Contain("<strong>ABC123</strong>");
         content.HtmlBody.Should().Contain("<a href=\"https://example.com\">Details</a>");
         content.HtmlBody.Should().NotContain("<script>");
-        content.HtmlBody.Should().NotContain("<img");
-        content.HtmlBody.Should().NotContain("poster.png");
+        content.HtmlBody.Should().Contain("<img src=\"https://example.com/poster.png\"");
+    }
+
+    [HumansFact]
+    public void FacilitatedMessage_renders_markdown_instead_of_html_encoded_plain_text()
+    {
+        var renderer = CreateRenderer();
+
+        var content = renderer.RenderFacilitatedMessage(
+            "Recipient",
+            "Sender",
+            "**Hi there** — see [this](https://example.com)\r\n\r\nSecond line",
+            false,
+            null);
+
+        content.HtmlBody.Should().Contain("<p><strong>Hi there</strong>");
+        content.HtmlBody.Should().Contain("<a href=\"https://example.com\">this</a>");
+        content.HtmlBody.Should().Contain("<p>Second line</p>");
+        content.HtmlBody.Should().NotContain("&lt;strong&gt;");
+        content.HtmlBody.Should().NotContain("<br");
+    }
+
+    [HumansFact]
+    public void CoordinatorRotaMessage_renders_markdown_instead_of_html_encoded_plain_text()
+    {
+        var renderer = CreateRenderer();
+
+        var content = renderer.RenderCoordinatorRotaMessage(
+            "Recipient",
+            "Sender",
+            null,
+            "Saturday Bar",
+            "**Heads up** — early start\r\n\r\nSee you there",
+            ["Saturday 10:00-14:00"]);
+
+        content.HtmlBody.Should().Contain("<p><strong>Heads up</strong>");
+        content.HtmlBody.Should().Contain("<p>See you there</p>");
+        content.HtmlBody.Should().NotContain("&lt;strong&gt;");
+        content.HtmlBody.Should().NotContain("<br");
+    }
+
+    [HumansFact]
+    public void CoordinatorTeamRotasMessage_renders_markdown_instead_of_html_encoded_plain_text()
+    {
+        var renderer = CreateRenderer();
+
+        var content = renderer.RenderCoordinatorTeamRotasMessage(
+            "Recipient",
+            "Sender",
+            null,
+            "Bar Team",
+            "**Heads up** — early start\r\n\r\nSee you there",
+            [new RotaShiftGroup("Saturday Bar", ["Saturday 10:00-14:00"])]);
+
+        content.HtmlBody.Should().Contain("<p><strong>Heads up</strong>");
+        content.HtmlBody.Should().Contain("<p>See you there</p>");
+        content.HtmlBody.Should().NotContain("&lt;strong&gt;");
+        content.HtmlBody.Should().NotContain("<br");
     }
 
     [HumansFact]
@@ -223,6 +276,12 @@ public sealed class EmailRendererTests
             ["Email_IssueComment_Subject"] = "New comment on {0}",
             ["Email_IssueComment_Body"] =
                 "<p>Hi {0},</p><h2>{1}</h2>{2}<p><a href=\"{3}\">Open the issue</a></p>",
+            ["Email_FacilitatedMessage_Body"] =
+                "<p>Hi {0},</p><p>{1} sent you a message:</p>{2}{3}",
+            ["Email_CoordinatorRotaMessage_Body"] =
+                "<p>Dear {0},</p><p>From {1} on {2}:</p>{3}{4}{5}",
+            ["Email_CoordinatorTeamRotasMessage_Body"] =
+                "<p>Dear {0},</p><p>From {1} on {2}:</p>{3}{4}{5}",
         };
         var localizer = Substitute.For<IStringLocalizer<EmailResource>>();
         localizer[Arg.Any<string>()].Returns(call =>

@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.EarlyEntry.Contracts;
 using Humans.Base.Enums;
 using Humans.Base.Extensions;
+using Humans.Settings.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -28,12 +29,14 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     private readonly ServiceProvider _serviceProvider;
     private readonly ICampService _innerSubstitute;
     private readonly ICampRoleCampAccess _innerRoleAccess;
+    private readonly ISettingsService _settingsService;
     private readonly CachingCampService _service;
 
     public CachingCampServiceTests()
     {
         _innerSubstitute = Substitute.For<ICampService, ICampRoleCampAccess, IUserMerge>();
         _innerRoleAccess = (ICampRoleCampAccess)_innerSubstitute;
+        _settingsService = Substitute.For<ISettingsService>();
         var repo = new CampRepository(CampsDbFactory);
         _innerSubstitute.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(ci => LoadSettingsAsync(ci.Arg<CancellationToken>()));
@@ -55,6 +58,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         services.AddKeyedScoped<IUserMerge>(
             CachingCampService.InnerServiceKey,
             (_, _) => (IUserMerge)_innerSubstitute);
+        services.AddScoped(_ => _settingsService);
         _serviceProvider = services.BuildServiceProvider();
 
         _service = new CachingCampService(
@@ -67,8 +71,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
             var settings = await repo.GetSettingsReadOnlyAsync(ct);
             return new CampSettingsInfo(
                 settings?.PublicYear ?? Clock.GetCurrentInstant().InUtc().Year,
-                settings?.OpenSeasons ?? [],
-                settings?.EeStartDate);
+                settings?.OpenSeasons ?? []);
         }
 
         async Task<IReadOnlyList<CampInfo>> LoadCampsForYearAsync(int year, CancellationToken ct)
@@ -390,10 +393,33 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
+    public async Task GetSettingsAsync_PicksUpANewlyActivatedEventYearWithoutInvalidation()
+    {
+        // PublicYear comes from Settings, whose writes never reach this section's
+        // invalidator — so it must not be served from the cached snapshot.
+        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(BurnFixtures.Burn(year: 2026));
+        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+
+        (await _service.GetSettingsAsync(TestContext.Current.CancellationToken))
+            .PublicYear.Should().Be(2026);
+
+        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(BurnFixtures.Burn(year: 2027));
+
+        (await _service.GetSettingsAsync(TestContext.Current.CancellationToken))
+            .PublicYear.Should().Be(2027,
+                because: "activating a new event must not leave Camps on the previous year "
+                         + "until the process restarts");
+    }
+
+    [HumansFact]
     public async Task GetEarlyEntriesAsync_WarmYear_ProjectsFromCachedCampInfoMembers()
     {
         var eeStartDate = new LocalDate(2026, 7, 7);
-        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026], eeStartDate);
+        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(BurnFixtures.Burn(year: 2026, gateOpeningDate: new LocalDate(2026, 7, 14), earlyEntryStartOffset: -7));
+        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
         var (_, season) = await SeedCampWithSeasonAsync(year: 2026);
         var granted = await SeedActiveMemberAsync(season.Id, hasEarlyEntry: true);
         await SeedActiveMemberAsync(season.Id, hasEarlyEntry: false);
@@ -405,14 +431,27 @@ public sealed class CachingCampServiceTests : CampsTestHarness
             .Which.Should().Be(new EarlyEntryGrant(granted.UserId, eeStartDate, "Camp: Test Camp"));
     }
 
+    [HumansFact]
+    public async Task GetEarlyEntriesAsync_NoOffsetConfigured_ReturnsEmpty()
+    {
+        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(BurnFixtures.Burn(year: 2026));
+        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        var (_, season) = await SeedCampWithSeasonAsync(year: 2026);
+        await SeedActiveMemberAsync(season.Id, hasEarlyEntry: true);
+
+        var grants = await _service.GetEarlyEntriesAsync(TestContext.Current.CancellationToken);
+
+        grants.Should().BeEmpty();
+    }
+
     // ==========================================================================
     // Helpers
     // ==========================================================================
 
     private async Task SeedSettingsAsync(
         int publicYear,
-        List<int> openSeasons,
-        LocalDate? eeStartDate = null)
+        List<int> openSeasons)
     {
         if (!await CampsDb.CampSettings.AnyAsync(TestContext.Current.CancellationToken))
         {
@@ -420,8 +459,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
             {
                 Id = Guid.Parse("00000000-0000-0000-0010-000000000001"),
                 PublicYear = publicYear,
-                OpenSeasons = openSeasons,
-                EeStartDate = eeStartDate
+                OpenSeasons = openSeasons
             });
             await SaveAllAsync(TestContext.Current.CancellationToken);
         }
@@ -550,11 +588,9 @@ public sealed class CachingCampServiceTests : CampsTestHarness
 
     public static TheoryData<string, Func<CachingCampServiceTests, CancellationToken, Task>> SettingsWriteVerbs => new()
     {
-        { nameof(ICampService.SetPublicYearAsync), (t, ct) => t._service.SetPublicYearAsync(2027, ct) },
         { nameof(ICampService.OpenSeasonAsync), (t, ct) => t._service.OpenSeasonAsync(2027, ct) },
         { nameof(ICampService.CloseSeasonAsync), (t, ct) => t._service.CloseSeasonAsync(2026, ct) },
         { nameof(ICampService.SetNameLockDateAsync), (t, ct) => t._service.SetNameLockDateAsync(2026, new LocalDate(2026, 5, 1), ct) },
-        { nameof(ICampService.SetEeStartDateAsync), (t, ct) => t._service.SetEeStartDateAsync(new LocalDate(2026, 7, 7), Guid.NewGuid(), ct) },
     };
 
     [HumansTheory(Timeout = 10000)]

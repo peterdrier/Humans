@@ -56,6 +56,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
             serviceProvider,
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
+            NewCalendarResolver(),
             Clock);
     }
 

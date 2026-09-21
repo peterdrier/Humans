@@ -1,0 +1,53 @@
+@using Microsoft.AspNetCore.Mvc.Rendering
+@model Humans.Base.Models.EmailComposerViewModel
+@* Shared human-composed-email component: optional subject field, an EasyMDE Markdown
+   body (via the markdown-editor tag helper — which brings its own "?" Markdown help),
+   and a "Preview" button that shows the exact branded, sanitized send. Every compose
+   form (profile message, camp contact, rota messages, survey invitation, feedback
+   reply, issue comment, campaign) renders through this one component instead of its
+   own subject/body/editor markup.
+
+   A page that injects this partial via innerHTML (Feedback/Issues detail panels) sets
+   IncludePreviewModal = false and instead includes _EmailPreviewModal itself, once, at
+   page level with the same PreviewModalId — and must call window.HumansEmailComposer
+   .wire(root) / window.HumansMarkdownEditor.init(root) on the injected root afterwards,
+   since scripts inserted via innerHTML never run. *@
+@{
+    var modalId = Model.PreviewModalId ?? "emailPreviewModal";
+    var bodyEditorId = $"{Model.BodyName}-editor";
+}
+
+@if (Model.SubjectName is not null)
+{
+    <div class="mb-3">
+        <label for="@Model.SubjectName" class="form-label">@Model.SubjectLabel</label>
+        <input type="text" class="form-control" id="@Model.SubjectName" name="@Model.SubjectName"
+               value="@Model.SubjectValue" required="@Model.SubjectRequired"
+               maxlength="@(Model.SubjectMaxLength > 0 ? Model.SubjectMaxLength : null)" />
+        @Html.ValidationMessage(Model.SubjectName, new { @class = "text-danger" })
+    </div>
+}
+
+<div class="mb-3">
+    <label for="@bodyEditorId" class="form-label @(Model.BodyLabelVisuallyHidden ? "visually-hidden" : null)">@Model.BodyLabel</label>
+    <markdown-editor id="@bodyEditorId" name="@Model.BodyName" value="@Model.BodyValue" rows="@Model.BodyRows"
+                      required="@Model.BodyRequired" placeholder="@Model.BodyPlaceholder"
+                      maxlength="@(Model.BodyMaxLength > 0 ? Model.BodyMaxLength : 0)" />
+    @Html.ValidationMessage(Model.BodyName, new { @class = "text-danger" })
+    <div class="form-text">@(Model.BodyHelpText ?? Localizer["EmailComposer_MarkdownSupported"])</div>
+</div>
+
+<button type="button" class="btn btn-outline-secondary email-composer-preview-btn mb-3"
+        data-subject-name="@(Model.PreviewSubjectName ?? Model.SubjectName)" data-body-name="@Model.BodyName"
+        data-category="@Model.Category" data-preview-modal="@modalId">
+    <i class="fa-regular fa-eye me-1"></i>@Localizer["EmailComposer_Preview"]
+</button>
+
+@if (Model.IncludePreviewModal)
+{
+    @await Html.PartialAsync("_EmailPreviewModal", modalId)
+}
+
+<script>
+window.HumansEmailComposer && window.HumansEmailComposer.wire(document);
+</script>

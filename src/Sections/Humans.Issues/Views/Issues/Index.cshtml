@@ -166,6 +166,16 @@
     </div>
 </div>
 
+@* The detail panel's _EmailComposer is fetched over AJAX and injected via innerHTML, so its own
+   markdown-editor/composer <script> tags never run (loadIssueDetail wires it manually below).
+   This hidden editor loads the EasyMDE assets + window.HumansMarkdownEditor once via the normal
+   page load, and the modal below is the one window.HumansEmailComposer.preview targets — see
+   EmailComposerViewModel.IncludePreviewModal on _Detail.cshtml's composer. *@
+<div style="display:none" aria-hidden="true">
+    <markdown-editor name="__issuesDetailAssetPreload" rows="1" />
+</div>
+@await Html.PartialAsync("_EmailPreviewModal", "emailPreviewModal")
+
 @section Scripts {
     <script>
         function loadIssueDetail(issueId) {
@@ -180,10 +190,14 @@
                 ? r.text()
                 : '<div class="d-flex align-items-center justify-content-center h-100 text-muted"><p>@Localizer["Issue_Unavailable"]</p></div>')
             .then(html => {
-                document.getElementById('detail-panel').innerHTML = html;
+                const panel = document.getElementById('detail-panel');
+                panel.innerHTML = html;
                 document.querySelectorAll('#detail-panel .detail-auto-submit').forEach(el => {
                     el.addEventListener('change', () => el.form.submit());
                 });
+                // Same reason: the injected _EmailComposer's own <script> never ran.
+                window.HumansMarkdownEditor && window.HumansMarkdownEditor.init(panel);
+                window.HumansEmailComposer && window.HumansEmailComposer.wire(panel);
             })
             .catch(err => console.error('Failed to load detail:', err));
 

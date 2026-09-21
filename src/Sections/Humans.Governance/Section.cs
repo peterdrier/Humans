@@ -1,3 +1,5 @@
+using Humans.Base.Constants;
+using Humans.Issues.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
@@ -20,7 +22,7 @@ namespace Humans.Governance;
 /// week the service reads through the repository per request and invalidates the nav /
 /// notification-meter / voting-badge caches inline after a write.
 /// </summary>
-public sealed class Section : ISection
+public sealed class Section : ISection, IIssueQueueOwner
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -94,4 +96,10 @@ public sealed class Section : ISection
         services.AddSingleton<GovernanceMetricsService>();
         services.AddHostedService(sp => sp.GetRequiredService<GovernanceMetricsService>());
     }
+
+    // This section owns the issue queue its members' reports land in; Issues discovers
+    // the seam rather than holding a list of sections (memory/architecture/section-contribution-seams.md).
+    string IIssueQueueOwner.QueueKey => "Governance";
+
+    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.Board];
 }

@@ -25,9 +25,12 @@
       shape - decide the reference from what the section names, not from the SDK).
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
+    <!-- IIssueQueueOwner: this section declares the issue queue it owns. -->
+    <ProjectReference Include="..\Humans.Issues.Contracts\Humans.Issues.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--
       Governance, Email and Notifications are consumed through their leaves only. Consent is
@@ -54,6 +57,17 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Section-help markdown (ISectionHelp). Embedded, not fetched: the help modal renders
+      synchronously on the section's landing page. The logical name is fixed here so
+      SectionHelpEntry.FromEmbeddedMarkdown can address it without probing.
+    -->
+    <None Remove="Docs\help\*.md" />
+    <EmbeddedResource Include="Docs\help\*.md"
+                      LogicalName="$(AssemblyName).Docs.help.%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

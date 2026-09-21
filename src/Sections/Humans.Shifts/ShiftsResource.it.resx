@@ -1070,7 +1070,7 @@
     <value>Il tuo messaggio</value>
   </data>
   <data name="EmailRota_MessageHelp" xml:space="preserve">
-    <value>Solo testo semplice. Ogni destinatario vedr&#xE0; questo messaggio insieme al proprio elenco di fasce di questo turno.</value>
+    <value>Ogni destinatario vedr&#xE0; questo messaggio insieme al proprio elenco di fasce di questo turno.</value>
   </data>
   <data name="EmailRota_Button" xml:space="preserve">
     <value>Invia email a un turno</value>
@@ -1103,7 +1103,7 @@
     <value>Il tuo messaggio</value>
   </data>
   <data name="EmailTeamRotas_MessageHelp" xml:space="preserve">
-    <value>Solo testo semplice. Ogni destinatario vedr&#xE0; questo messaggio insieme al proprio elenco di fasce nei prossimi turni del team.</value>
+    <value>Ogni destinatario vedr&#xE0; questo messaggio insieme al proprio elenco di fasce nei prossimi turni del team.</value>
   </data>
   <data name="EmailTeamRotas_Send" xml:space="preserve">
     <value>Invia a {0} destinatario/i</value>

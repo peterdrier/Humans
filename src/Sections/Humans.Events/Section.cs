@@ -6,6 +6,7 @@ using Humans.Events.Contracts;
 using Humans.Events.Data;
 using Humans.Events.Filters;
 using Humans.Events.Services;
+using Humans.Settings.Contracts;
 using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -62,6 +63,11 @@ public sealed class Section : ISection, IUserPart
         // IEventViewInvalidator must resolve to the SAME Singleton instance
         // that backs IEventService (§15e CRITICAL).
         services.AddSingleton<IEventViewInvalidator>(sp =>
+            sp.GetRequiredService<CachingEventService>());
+
+        // The guide settings projection carries the Settings-owned TimeZoneId, so a
+        // Settings-side event-settings save has to refresh it (peterdrier/Humans#1627).
+        services.AddSingleton<IEventSettingsChangeListener>(sp =>
             sp.GetRequiredService<CachingEventService>());
 
         // GDPR fan-out binds to the decorator, not the inner: erasure clears the

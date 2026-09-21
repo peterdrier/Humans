@@ -40,7 +40,7 @@ public sealed class NotificationInboxReadTests : IDisposable
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo>()));
         _tickets.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
-        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [], null));
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, []));
         _camps.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<CampInfo>>([]));
 

@@ -4,7 +4,7 @@ Throwaway prototype for issue [#526](https://github.com/nobodies-collective/Huma
 
 ## What it does
 
-1. Builds a preload corpus from the repo: all `docs/sections/*.md`, every feature spec (`src/Sections/*/Docs/features/*.md` + `docs/features/global/*.md`), and the raw `AccessMatrixDefinitions.cs` / `SectionHelpContent.cs` files.
+1. Builds a preload corpus from the repo: the curated `PRELOAD_SECTIONS` list under `docs/sections/*.md` and each section's `SectionAccessMatrix.cs` file — feature specs and section help are dropped (dynamic fetches in the production hybrid design).
 2. Runs each of the 20 curated questions in [`questions.yaml`](questions.yaml) against **Claude Sonnet 4.6** and **Claude Haiku 4.5**, with Anthropic prompt caching enabled for the corpus.
 3. Writes per-question markdown transcripts and a cost/latency summary to `transcripts/`.
 

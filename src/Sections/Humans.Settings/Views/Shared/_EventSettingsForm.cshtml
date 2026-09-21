@@ -1,7 +1,7 @@
 @model Humans.Settings.Models.EventSettingsViewModel
 
-@* Shared by /Settings/Admin and the /Settings#event tab (peterdrier/Humans#1628) — the
-   explicit asp-controller/asp-action route it posts to so the tab (served from /Settings)
+@* Rendered by the /Settings#event tab (peterdrier/Humans#1628) — the explicit
+   asp-controller/asp-action route it posts to so the tab (served from /Settings)
    still submits to SettingsAdminController. *@
 <div class="row">
     <div class="col-lg-8">
@@ -93,6 +93,12 @@
                         <input asp-for="EarlyEntryClose" class="form-control" placeholder="2026-07-04T12:00:00Z" />
                         <span asp-validation-for="EarlyEntryClose" class="text-danger"></span>
                     </div>
+                    <div class="mb-3">
+                        <label asp-for="EarlyEntryStartOffset" class="form-label">EE Start Offset (days before gate opening, optional)</label>
+                        <input asp-for="EarlyEntryStartOffset" type="number" max="-1" class="form-control" placeholder="e.g., -7" />
+                        <span asp-validation-for="EarlyEntryStartOffset" class="text-danger"></span>
+                        <small class="form-text text-muted">Negative offset from Gate Opening Date; must be no earlier than Build Start Offset. Blank until configured.</small>
+                    </div>
                 </div>
             </div>
 
@@ -101,7 +107,7 @@
                     <div class="form-check">
                         <input asp-for="IsActive" type="checkbox" class="form-check-input" />
                         <label asp-for="IsActive" class="form-check-label">Active</label>
-                        <div class="form-text">At most one event row is active — the one readers get once the cutover repoints them.</div>
+                        <div class="form-text">At most one event row is active — the one every section reads as the current cycle. Leave the form blank (no existing row loaded) to start a new cycle.</div>
                     </div>
                 </div>
             </div>

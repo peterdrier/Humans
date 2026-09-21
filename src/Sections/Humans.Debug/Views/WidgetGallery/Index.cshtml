@@ -884,7 +884,7 @@
                     </div>
                     <div class="wg-card-note">Section-help bundle: guide markdown + glossary + access matrix. Renders nothing for sections with no help content registered.</div>
                     @ParamsBlock(
-                        ("section", "<code>string</code> — section key from <code>AccessMatrixDefinitions.Sections</code> (e.g. teams, shifts, profile)")
+                        ("section", "<code>string</code> — access-matrix key a section contributes through <code>ISectionAccessMatrix</code> (e.g. Teams, Shifts, Profile)")
                     )
                     <div class="wg-card-example">
                         <vc:access-matrix section="Teams" />
@@ -1144,6 +1144,38 @@
                             <i class="fa-solid fa-circle-info me-1"></i> Open Markdown help
                         </button>
                         @await Html.PartialAsync("_MarkdownHelp")
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">_EmailComposer.cshtml</span>
+                            <span class="wg-card-kind kind-pa">Partial</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Base/Views/Shared/_EmailComposer.cshtml</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Shared human-composed-email component: optional subject field, an EasyMDE Markdown body
+                        (<code>&lt;markdown-editor&gt;</code>), and a "Preview" button showing the exact branded,
+                        sanitized send via <code>/Email/PreviewMarkdown</code> (no outbox row is created). Every
+                        compose form — profile message, camp contact, rota messages, survey invitation, feedback
+                        reply, issue comment, campaign — renders through this one component.
+                    </div>
+                    @ParamsBlock(
+                        ("@@model", "<code>EmailComposerViewModel</code> — BodyName/BodyValue/BodyLabel/BodyRows/BodyRequired/BodyMaxLength/BodyHelpText/BodyPlaceholder/BodyLabelVisuallyHidden, optional SubjectName/SubjectValue/SubjectLabel/SubjectRequired/SubjectMaxLength, Category (a <code>MessageCategory</code> name — drives the placeholder unsubscribe footer in the preview), and PreviewSubjectName/PreviewModalId/IncludePreviewModal for hosts with more than one instance on a page or that inject this partial via AJAX (Feedback/Issues)")
+                    )
+                    <div class="wg-card-example">
+                        @await Html.PartialAsync("_EmailComposer", new Humans.Base.Models.EmailComposerViewModel
+                        {
+                            SubjectName = "widget-gallery-email-subject",
+                            SubjectValue = "A message from the gallery",
+                            SubjectLabel = "Subject",
+                            BodyName = "widget-gallery-email-body",
+                            BodyValue = "**Hello** — this is a _preview_ of a human-composed email.",
+                            BodyLabel = "Message",
+                            Category = nameof(Humans.Users.Contracts.MessageCategory.FacilitatedMessages),
+                        })
                     </div>
                 </div>
             </section>

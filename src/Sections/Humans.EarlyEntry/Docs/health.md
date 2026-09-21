@@ -49,7 +49,7 @@ redundant slot can be given to someone else.
 | **Everyone's early entry** | Who holds early entry, from when, and why — all of them, live? | `GET /Shifts/Admin/EarlyEntry`; `IEarlyEntryService.GetRosterAsync` |
 | **One person's early entry** | Does this person hold early entry, from when, and why? | `IEarlyEntryService.GetForUserAsync` (Gate card, Scanner card, the ticket-stub surfaces) |
 | **Here is what I grant** | A contributing section's grants for the active event. | `IEarlyEntryProvider.GetEarlyEntriesAsync` (Camps, Shifts, Teams) |
-| **Someone's grant changed** | Forget what you remembered about this person / about everyone. | `IEarlyEntryInvalidator.InvalidateUser` / `InvalidateAll` (called by Camps, Shifts, Teams) |
+| **Someone's grant changed** | Forget what you remembered about this person / about everyone. | `IEarlyEntryInvalidator.InvalidateUser` / `InvalidateAll` (called by Camps, Shifts, Teams, Settings) |
 
 The first two are the same collapse — earliest date, distinct reasons — applied to all
 people or to one. The last two are inbound: the section owns the contract, other sections
@@ -96,14 +96,12 @@ a field when it is `Sources.Count > 1`.
 
 ## 5. Seams
 
-- **Eviction on a global Shifts setting change.** The section's contract says a change to the
-  gate-opening date or build-start offset moves every shift-derived date and should evict
-  everyone; no Shifts write path calls `InvalidateAll` and none ever has. Until that is
-  decided (this run's Needs-Peter), a shift-derived early-entry date can stay stale until the
-  person's own next signup change or a restart.
-- **`settings_event` cutover** (nobodies-collective/Humans#1104): the gate date, build offset
-  and early-entry window Shifts' provider reads today will move to Settings. When they do, the
-  "global change evicts everyone" trigger moves with them.
+- **Eviction on a global settings change.** A change to the gate-opening date, the build-start
+  offset or `EarlyEntryStartOffset` moves every derived date and evicts everyone:
+  `Humans.Settings`' `SaveEventSettingsAsync` calls `InvalidateAll` after the write
+  (peterdrier/Humans#1634). Those values all live on `settings_event` now
+  (nobodies-collective/Humans#1104), so that one call site covers the trigger Shifts' provider
+  never had.
 - **No `Humans.EarlyEntry.Contracts` leaf project** — open debt, not a settled shape
   (`debt-ledger.yml`, added 2026-09-14 from the Gate run, `review: panel`). Camps, Shifts,
   Teams, Gate, Scanner and Tickets each take a `ProjectReference` on the whole section, so
@@ -147,8 +145,9 @@ a field when it is `Sources.Count > 1`.
   resolve itself.
 - **Shifts derives one grant per person from their earliest confirmed build shift**, entry date
   = that shift's local day minus one, so a shift-derived date is never later than the day
-  before the person's first shift. Camps grants a single global `EeStartDate` per member;
-  Teams grants a per-grant date.
+  before the person's first shift. Camps grants a single global date, resolved from
+  `EventSettings.EarlyEntryStartOffset` (nobodies-collective/Humans#1633), per member; Teams
+  grants a per-grant date.
 - **`Views/_ViewImports.cshtml` is not inherited from the Shell.** A missing `@using` there
   ships broken markup with a green build.
 

@@ -211,8 +211,33 @@
             </p>
             <partial name="_SurveyLocalizedField"
                      model="@(new SurveyLocalizedFieldModel(nameof(Model.InvitationEmailSubject), Localizer["Survey_Admin_Builder_Field_EmailSubject"], Model.InvitationEmailSubject, MaxLength: 200))" />
-            <partial name="_SurveyLocalizedField"
-                     model="@(new SurveyLocalizedFieldModel(nameof(Model.InvitationEmailMessage), Localizer["Survey_Admin_Builder_Field_EmailMessage"], Model.InvitationEmailMessage, Multiline: true, Markdown: true, MaxLength: 4000))" />
+            @{
+                var invitationActiveCulture = ViewData["SurveyActiveCulture"] as string ?? CultureCatalog.DefaultCultureCode;
+            }
+            <div class="mb-2 survey-localized-field">
+                <label class="form-label small fw-semibold mb-1">@Localizer["Survey_Admin_Builder_Field_EmailMessage"]</label>
+                @foreach (var culture in CultureCatalog.SupportedCultureCodes)
+                {
+                    Model.InvitationEmailMessage.TryGetValue(culture, out var invitationMessageValue);
+                    <div class="survey-culture-field mb-2" data-culture="@culture"
+                         style="@(culture == invitationActiveCulture ? "" : "display:none")">
+                        <div class="small text-muted mb-1">@culture.ToDisplayLanguageName()</div>
+                        @await Html.PartialAsync("_EmailComposer", new Humans.Base.Models.EmailComposerViewModel
+                        {
+                            BodyName = $"{nameof(Model.InvitationEmailMessage)}[{culture}]",
+                            BodyLabel = Localizer["Survey_Admin_Builder_Field_EmailMessage"].Value,
+                            BodyLabelVisuallyHidden = true,
+                            BodyValue = invitationMessageValue,
+                            BodyRows = 4,
+                            BodyRequired = false,
+                            BodyMaxLength = 4000,
+                            PreviewSubjectName = $"{nameof(Model.InvitationEmailSubject)}[{culture}]",
+                            PreviewModalId = $"emailPreviewModal-{culture}",
+                            Category = nameof(Humans.Users.Contracts.MessageCategory.System),
+                        })
+                    </div>
+                }
+            </div>
         </div>
     </div>
 

@@ -54,6 +54,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
             serviceProvider,
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
+            NewCalendarResolver(),
             Clock);
     }
 

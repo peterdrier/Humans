@@ -55,7 +55,7 @@ public class CampsSearchResultViewComponentTests
 
     private void StubSettings(int publicYear) =>
         _camps.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(new CampSettingsInfo(publicYear, [publicYear], null));
+            .Returns(new CampSettingsInfo(publicYear, [publicYear]));
 
     private Guid StubCamp(string slug, params (int Year, string Name)[] seasons)
     {

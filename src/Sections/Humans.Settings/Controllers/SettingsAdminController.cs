@@ -24,32 +24,19 @@ internal sealed class SettingsAdminController(
     ISettingsWriteService settingsService,
     IUserServiceRead userService) : HumansControllerBase(userService)
 {
-    /// <summary>
-    /// Superseded by the <c>/Settings#event</c> tab (peterdrier/Humans#1628) — one
-    /// canonical URL per page (memory/product/no-url-aliases.md), so a GET here always
-    /// redirects there rather than staying a second live page. <paramref name="id"/> is
-    /// forwarded as <c>?event={id}</c> so a link or save naming a specific (possibly
-    /// inactive) row still lands on that row, not on whichever one is active.
-    /// </summary>
-    [HttpGet("")]
-    public IActionResult Index(Guid? id) =>
-        Redirect(id is { } rowId ? $"/Settings?event={rowId}#event" : "/Settings#event");
-
     [HttpPost("")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Index(EventSettingsViewModel model, CancellationToken ct = default)
     {
         if (!ModelState.IsValid)
-            return View(model);
+        {
+            return BackToTab(model.Id, Describe(
+                ModelState.Values.SelectMany(state => state.Errors).Select(error => error.ErrorMessage)));
+        }
 
         var parsed = EventSettingsFormMapper.Parse(model);
         if (!parsed.Success)
-        {
-            foreach (var error in parsed.Errors)
-                ModelState.AddModelError(error.FieldName, error.Message);
-
-            return View(model);
-        }
+            return BackToTab(model.Id, Describe(parsed.Errors.Select(error => error.Message)));
 
         if (GetCurrentUserId() is not { } actorId) return Challenge();
 
@@ -59,15 +46,30 @@ internal sealed class SettingsAdminController(
         }
         catch (InvalidOperationException ex)
         {
-            // The service's own invariants — activating while another cycle is Active, or an id
-            // no Shifts event row carries. Both are conflicts an operator can act on, so they
-            // belong on the form they came from, not in a 500.
-            ModelState.AddModelError(string.Empty, ex.Message);
-            return View(model);
+            // The service's own invariant — activating while another cycle is Active. A
+            // conflict an operator can act on, so it belongs on the form it came from,
+            // not in a 500.
+            return BackToTab(model.Id, ex.Message);
         }
 
         SetSuccess("Event settings saved.");
         // By id, not bare: deactivating the row takes it off the default GET.
-        return RedirectToAction(nameof(Index), new { id = parsed.Settings!.Id });
+        return Redirect($"/Settings?event={parsed.Settings!.Id}#event");
+    }
+
+    /// <summary>
+    /// Post-redirect-get back to the Event tab, the way every other settings tab's POST
+    /// ends. There is no GET here to re-render, so the failing rule travels as a flash.
+    /// </summary>
+    private IActionResult BackToTab(Guid? id, string message)
+    {
+        SetError(message);
+        return Redirect(id is { } eventId ? $"/Settings?event={eventId}#event" : "/Settings#event");
+    }
+
+    private static string Describe(IEnumerable<string> messages)
+    {
+        var joined = string.Join(" ", messages.Where(message => !string.IsNullOrWhiteSpace(message)));
+        return joined.Length > 0 ? joined : "Invalid event settings.";
     }
 }

@@ -147,7 +147,7 @@
   <data name="Survey_Admin_Builder_SlugPlaceholder" xml:space="preserve"><value>e.g. feedback-2026</value></data>
   <data name="Survey_Admin_Builder_SlugHelp" xml:space="preserve"><value>Anonymous surveys allow anyone with the link. Identified surveys require sign-in and, when configured, current audience eligibility.</value></data>
   <data name="Survey_Admin_Builder_InvitationEmailHeader" xml:space="preserve"><value>Invitation email</value></data>
-  <data name="Survey_Admin_Builder_InvitationEmailIntro" xml:space="preserve"><value>Customize the initial invitation. Humans adds the greeting, survey title, survey-link button, and sign-off. The message supports Markdown formatting, but not images. Leave either field blank to use the standard wording.</value></data>
+  <data name="Survey_Admin_Builder_InvitationEmailIntro" xml:space="preserve"><value>Customize the initial invitation. Humans adds the greeting, survey title, survey-link button, and sign-off. The message supports Markdown formatting, including https:// images. Leave either field blank to use the standard wording.</value></data>
   <data name="Survey_Admin_Builder_Field_EmailSubject" xml:space="preserve"><value>Email subject</value></data>
   <data name="Survey_Admin_Builder_Field_EmailMessage" xml:space="preserve"><value>Email message</value></data>
   <data name="Survey_Admin_Builder_QuestionsHeader" xml:space="preserve"><value>Questions</value></data>

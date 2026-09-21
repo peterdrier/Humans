@@ -45,6 +45,9 @@ namespace Humans.Settings.Data.Migrations
                     b.Property<Instant?>("EarlyEntryClose")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int?>("EarlyEntryStartOffset")
+                        .HasColumnType("integer");
+
                     b.Property<int>("EventEndOffset")
                         .HasColumnType("integer");
 

@@ -4,7 +4,7 @@ using Humans.Events.Services.Dtos;
 using Humans.Base.Caching;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces.Caching;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Base.Threading;
 using Humans.Events.Domain;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,7 +41,7 @@ namespace Humans.Events.Services;
 internal sealed class CachingEventService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingEventService> logger)
-    : IEventService, IEventViewInvalidator, IUserDataContributor, IHostedService
+    : IEventService, IEventViewInvalidator, IUserDataContributor, IEventSettingsChangeListener, IHostedService
 {
     /// <summary>
     /// DI service key under which the undecorated inner <see cref="IEventService"/>
@@ -64,6 +64,11 @@ internal sealed class CachingEventService(
     private volatile IReadOnlyList<EventVenueView> _venues = [];
     private volatile EventGuideSettingsView? _settings;
 
+    // Set by the Settings fan-out; cleared by the next GetSettingsViewAsync, which
+    // reloads the projection. A flag rather than nulling _settings, because null is
+    // also the legitimate "no guide settings row yet" answer.
+    private volatile bool _settingsStale;
+
     private readonly TrackedLock _loadLock = new("CachingEventService.Load");
     private volatile bool _isLoaded;
 
@@ -75,10 +80,10 @@ internal sealed class CachingEventService(
     public Task<EventGuideSettingsView?> GetGuideSettingsAsync(CancellationToken ct = default) =>
         GetSettingsViewAsync(ct);
 
-    public Task<IReadOnlyList<BurnSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default) =>
+    public Task<IReadOnlyList<EventSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default) =>
         WithInner(inner => inner.GetEventSettingsOptionsAsync(ct));
 
-    public Task<BurnSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default) =>
+    public Task<EventSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default) =>
         WithInner(inner => inner.GetEventSettingsByIdAsync(id, ct));
 
     public async Task SaveGuideSettingsAsync(
@@ -426,6 +431,18 @@ internal sealed class CachingEventService(
     public Task InvalidateGuideSettingsAsync(CancellationToken ct = default) =>
         RefreshSettingsAsync(ct);
 
+    // ── IEventSettingsChangeListener: Settings-side fan-out ──
+
+    /// <summary>
+    /// <see cref="EventGuideSettingsView"/> carries <c>TimeZoneId</c>, stitched from the
+    /// Settings-owned event settings row, and the guide renders every event time in it.
+    /// Events' own writes refresh the projection; a timezone edit on the Settings side
+    /// did not, so the guide showed the previous zone until restart. Marks the projection
+    /// stale instead of refreshing inline, because the seam is a synchronous void and the next
+    /// read reloads.
+    /// </summary>
+    public void EventSettingsChanged(Guid eventSettingsId) => _settingsStale = true;
+
     // ── IUserDataContributor — GDPR export + erasure ──
     // Carried by the decorator, not the inner service: erasure clears the person's
     // Host name on events that stay in the guide, and those rows are in _eventCache.
@@ -511,13 +528,28 @@ internal sealed class CachingEventService(
     private async Task<EventGuideSettingsView?> GetSettingsViewAsync(CancellationToken ct)
     {
         await EnsureLoadedAsync(ct);
+        if (_settingsStale)
+        {
+            // Clear before the read so a change that lands mid-refresh is not lost;
+            // restore on failure so the old projection is not served until restart.
+            _settingsStale = false;
+            try
+            {
+                await RefreshSettingsAsync(ct);
+            }
+            catch
+            {
+                _settingsStale = true;
+                throw;
+            }
+        }
         return _settings;
     }
 
     private async Task RefreshSettingsAsync(CancellationToken ct)
     {
-        // The inner service stitches TimeZoneId from the Shifts-owned
-        // event_settings row via IBurnSettingsService (nobodies-collective/Humans#719) and returns the
+        // The inner service stitches TimeZoneId from the Settings-owned
+        // settings_event row via ISettingsService (nobodies-collective/Humans#719) and returns the
         // ready EventGuideSettingsView; cache it directly.
         _settings = await WithInner(inner => inner.GetGuideSettingsAsync(ct));
     }

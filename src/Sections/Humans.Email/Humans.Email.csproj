@@ -49,6 +49,9 @@
     <PackageReference Include="Hangfire.Core" />
     <!-- MailKit/MimeKit: the SMTP transport. Every other section's send path stops at the outbox row. -->
     <PackageReference Include="MailKit" />
+    <!-- Already a pinned transitive dependency of HtmlSanitizer; used directly here to inline-style
+         rendered Markdown for email clients that strip <style> blocks (EmailInlineStyler). -->
+    <PackageReference Include="AngleSharp" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="NodaTime" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />

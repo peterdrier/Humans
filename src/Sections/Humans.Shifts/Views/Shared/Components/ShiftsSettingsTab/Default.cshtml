@@ -1,0 +1,21 @@
+@model Humans.Shifts.Models.EventSettingsViewModel
+
+@* Explicit asp-controller/asp-action: this view renders inside /Settings, so ambient
+   route data would otherwise resolve "Settings" against the wrong controller (Settings'
+   own _EventSettingsForm.cshtml documents the same gotcha). *@
+<form method="post" asp-controller="Shifts" asp-action="Settings" style="max-width: 540px;">
+    <div class="mb-3 form-check">
+        <input asp-for="IsShiftBrowsingOpen" type="checkbox" class="form-check-input" />
+        <label asp-for="IsShiftBrowsingOpen" class="form-check-label">Shift Browsing Open</label>
+    </div>
+    <div class="mb-3">
+        <label asp-for="GlobalVolunteerCap" class="form-label">Global Volunteer Cap (optional)</label>
+        <input asp-for="GlobalVolunteerCap" type="number" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label asp-for="ReminderLeadTimeHours" class="form-label">Reminder Lead Time (hours)</label>
+        <input asp-for="ReminderLeadTimeHours" type="number" class="form-control" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+</form>

@@ -171,4 +171,57 @@ public sealed class RepositoryTests : IDisposable
 
         result.Should().BeFalse();
     }
+
+    [HumansFact]
+    public async Task DeleteEventSettingsAsync_RemovesOnlyTheGivenRow()
+    {
+        var id = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        _seedContext.EventSettings.Add(MakeEvent(id, EventSettingsStatus.Active));
+        _seedContext.EventSettings.Add(MakeEvent(other, EventSettingsStatus.Inactive));
+        _seedContext.Settings.Add(new Setting { Key = "Untouched", Value = "true" });
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var deleted = await _repository.DeleteEventSettingsAsync(
+            id, Xunit.TestContext.Current.CancellationToken);
+
+        deleted.Should().Be(1);
+        var remainingEvents = await _seedContext.EventSettings.AsNoTracking()
+            .Select(e => e.Id)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        remainingEvents.Should().ContainSingle().Which.Should().Be(other);
+        var remainingSetting = await _seedContext.Settings.AsNoTracking()
+            .SingleAsync(s => s.Key == "Untouched", Xunit.TestContext.Current.CancellationToken);
+        remainingSetting.Value.Should().Be("true");
+    }
+
+    [HumansFact]
+    public async Task UpsertEventSettingsAsync_UpdatesEarlyEntryStartOffsetOnAnExistingRow()
+    {
+        var id = Guid.NewGuid();
+        _seedContext.EventSettings.Add(MakeEvent(id, EventSettingsStatus.Active));
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var edited = MakeEvent(id, EventSettingsStatus.Active);
+        edited.BuildStartOffset = -25;
+        edited.EarlyEntryStartOffset = -5;
+
+        await _repository.UpsertEventSettingsAsync(
+            edited, NodaTime.Instant.FromUtc(2026, 2, 3, 4, 5), Xunit.TestContext.Current.CancellationToken);
+
+        var row = await _seedContext.EventSettings.AsNoTracking()
+            .SingleAsync(e => e.Id == id, Xunit.TestContext.Current.CancellationToken);
+        row.EarlyEntryStartOffset.Should().Be(-5,
+            because: "the update branch copies every editable field — an omitted one saves "
+                     + "silently and leaves the column at its old value");
+    }
+
+    [HumansFact]
+    public async Task DeleteEventSettingsAsync_ReturnsZeroWhenRowDoesNotExist()
+    {
+        var deleted = await _repository.DeleteEventSettingsAsync(
+            Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        deleted.Should().Be(0);
+    }
 }

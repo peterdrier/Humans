@@ -55,6 +55,24 @@
   <data name="Common_Close" xml:space="preserve">
     <value>Cerrar</value>
   </data>
+  <data name="EmailComposer_Preview" xml:space="preserve">
+    <value>Vista previa</value>
+  </data>
+  <data name="EmailComposer_PreviewModalTitle" xml:space="preserve">
+    <value>Vista previa del correo</value>
+  </data>
+  <data name="EmailComposer_PreviewLoading" xml:space="preserve">
+    <value>Cargando la vista previa…</value>
+  </data>
+  <data name="EmailComposer_PreviewError" xml:space="preserve">
+    <value>No se pudo cargar la vista previa. Inténtalo de nuevo.</value>
+  </data>
+  <data name="EmailComposer_MarkdownSupported" xml:space="preserve">
+    <value>Admite Markdown: negrita, enlaces, listas, imágenes.</value>
+  </data>
+  <data name="EmailComposer_PreviewSubjectLabel" xml:space="preserve">
+    <value>Asunto</value>
+  </data>
   <data name="Common_General" xml:space="preserve">
     <value>General</value>
   </data>
@@ -1386,5 +1404,32 @@
   <!-- Settings tab label: a SharedResource key because SettingsTabsViewComponent cannot see a contributing section's own resource set -->
   <data name="Settings_TabEvent" xml:space="preserve">
     <value>Evento</value>
+  </data>
+
+  <data name="Settings_TabAgent" xml:space="preserve">
+    <value>Agente</value>
+  </data>
+
+  <data name="Settings_TabGoogleSync" xml:space="preserve">
+    <value>Sincronización de Google</value>
+  </data>
+
+  <data name="Settings_TabEmail" xml:space="preserve">
+    <value>Correo</value>
+  </data>
+  <data name="Settings_TabCityPlanning" xml:space="preserve">
+    <value>Mapa de Barrios</value>
+  </data>
+  <data name="Settings_TabGate" xml:space="preserve">
+    <value>Puerta</value>
+  </data>
+  <data name="Settings_TabBarrios" xml:space="preserve">
+    <value>Barrios</value>
+  </data>
+  <data name="Settings_TabEventGuide" xml:space="preserve">
+    <value>Guía de eventos</value>
+  </data>
+  <data name="Settings_TabShifts" xml:space="preserve">
+    <value>Turnos</value>
   </data>
 </root>

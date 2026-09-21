@@ -3,7 +3,7 @@ using Humans.Budget.Contracts;
 using Humans.Campaigns.Contracts;
 using Humans.Users.Contracts;
 using Humans.Tickets.Data;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Services;
 using NodaTime;
@@ -42,7 +42,7 @@ public sealed class TicketQueryService_HoldingsTests
             _users,
             Substitute.For<IUserEmailService>(),
             Substitute.For<ITeamService>(),
-            Substitute.For<IBurnSettingsService>(),
+            Substitute.For<ISettingsService>(),
             Substitute.For<ITicketCacheInvalidator>(),
             SystemClock.Instance);
 

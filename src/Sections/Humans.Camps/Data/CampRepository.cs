@@ -443,23 +443,6 @@ internal sealed partial class CampRepository : ICampRepository
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task SetPublicYearAsync(int year, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var settings = await ctx.CampSettings.OrderBy(s => s.Id).FirstAsync(ct); // arch:db-sort-ok deterministic camp-settings selector by identity
-        settings.PublicYear = year;
-        await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task SetEeStartDateAsync(
-        LocalDate? eeStartDate, CancellationToken cancellationToken = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(cancellationToken);
-        var settings = await ctx.CampSettings.FirstAsync(cancellationToken);
-        settings.EeStartDate = eeStartDate;
-        await ctx.SaveChangesAsync(cancellationToken);
-    }
-
     public async Task<bool> OpenSeasonAsync(int year, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

@@ -82,6 +82,14 @@ public static class PolicyNames
     public const string CampComplianceAccess = nameof(CampComplianceAccess);
 
     /// <summary>
+    /// City-planning map admin: CampAdmin OR Admin OR a member of the city-planning team.
+    /// The same audience <c>CityPlanningController</c> self-gates on, so the
+    /// <c>/Settings#city-planning</c> tab is visible to exactly the people its POST
+    /// endpoints accept. Composite policy requiring a custom authorization handler.
+    /// </summary>
+    public const string CityPlanningMapAdmin = nameof(CityPlanningMapAdmin);
+
+    /// <summary>
     /// Any admin-shaped role: Admin, Board, HumanAdmin, TeamsAdmin, CampAdmin,
     /// TicketAdmin, EventsAdmin, FeedbackAdmin, FinanceAdmin, NoInfoAdmin,
     /// VolunteerCoordinator, or ConsentCoordinator. Gates the admin-shell entry

@@ -114,7 +114,7 @@ Google sync, settings, account provisioning, and audit routes have been extracte
 
 | Route | Auth | Description |
 |-------|------|-------------|
-| `/Google/SyncSettings` | Admin | GET/POST: Per-service sync mode configuration |
+| `/Google/SyncSettings` | Admin | POST: per-service sync mode configuration (no GET — form lives at `/Settings#google-sync`, peterdrier/Humans#1634) |
 | `/Google/SyncSystemTeams` | Admin | POST: Manually trigger `SystemTeamSyncJob`, recalculating Volunteers/Coordinators/Board membership (button on `/Google` Overview) |
 | `/Google/SyncResults` | Admin | GET: Results of last sync check |
 | `/Google/CheckGroupSettings` | Admin | POST: Check Google Group settings for drift |
@@ -398,7 +398,6 @@ Not on the `/Admin` dashboard itself (that renders only the tile strip and secti
 
 | Action | Link | Group |
 |--------|------|-------|
-| Sync Settings | `/Google/SyncSettings` | Google |
 | Configuration Status | `/Debug/Configuration` | Diagnostics |
 | Background Jobs | `/hangfire` | Diagnostics |
 | Check Group Settings | `/Google/CheckGroupSettings` | POST action on the Google "Overview" (`/Google`) page, not a sidebar link |
@@ -407,10 +406,25 @@ Not on the `/Admin` dashboard itself (that renders only the tile strip and secti
 
 | Action | Link | Notes |
 |--------|------|-------|
-| Event settings | `/Settings/Admin` | The app-wide event values in `settings_event`. **Nothing reads that table yet** — the live editor is still `/Shifts/Settings` until the readers are repointed (nobodies-collective/Humans#1104) |
-| Carry event settings | `/Settings/Admin/Carry` | Operator screen that copies the Shifts event rows into `settings_event`. Idempotent, no deadline, retires once the old columns are dropped |
+| Event settings | `/Settings#event` | The app-wide event values in `settings_event`, POSTed to `/Settings/Admin` (no GET) — every section reads the calendar from here now; a blank id mints a new cycle (nobodies-collective/Humans#1631). `/Shifts/Settings` is knobs-only (`IsShiftBrowsingOpen`, caps, reminder lead time) |
 
 Both live at `/Settings/Admin/*`, not `/Admin/Settings` — top-level `/Admin/*` is frozen and new admin pages belong to their section (`memory/architecture/no-admin-url-section.md`).
+
+### Settings tabs (`/Settings#<key>`, peterdrier/Humans#1634)
+
+Sections contribute a tab to `/Settings` via `ISectionSettings`; the old standalone screen's GET is removed and its admin-nav item is removed unless the page still has other content.
+
+| Tab key | Section | Policy | Old route (now removed) |
+|---|---|---|---|
+| `city-planning` | CityPlanning | `CampAdminOrAdmin` | Settings portion of `/CityPlanning/BarrioMap/Admin` (page stays for GeoJSON/containers/export) |
+| `gate` | Gate | `TicketAdminOrAdmin` | Settings portion of `/Gate/Admin` (page stays for staff PIN admin) |
+| `event-guide` | Events | `EventsAdminOrAdmin` | `/Events/Admin/Settings` (nav item removed) |
+| `barrios` | Camps | `CampAdminOrAdmin` | Settings portion of `/Camps/Admin` (page stays for the rest of camp/season admin) |
+| `shifts` | Shifts | `AdminOnly` | `/Shifts/Settings` (no nav item existed; inline links now point at the tab) |
+| `agent` | Agent | `AdminOnly` | `/Agent/Admin/Settings` (nav item removed) |
+| `google-sync` | GoogleIntegration | `AdminOnly` | `/Google/SyncSettings` (nav item removed) |
+| `email` | Email | `AdminOnly` | Pause/resume moved from `EmailOutbox`'s own controls |
+| `event` | Settings | `AdminOnly` | `/Settings/Admin` GET (nav item removed) |
 
 ## System Health
 

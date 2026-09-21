@@ -15,10 +15,11 @@ tool-corpus preload from `AgentSectionDocReader`, `AgentFeatureSpecReader`,
 `CommunityFaqReader`, and calls into `IAgentPreloadAugmentor`
 (`Humans.Agent.Services.Preload.AgentPreloadAugmentor`,
 `src/Sections/Humans.Agent/Services/Preload/`) — it renders the access matrix / glossaries /
-route map / FAQ preload pages from `Humans.Base`'s `AccessMatrixDefinitions` /
-`SectionHelpContent` (every section's help content, visible from any section
-since both live in the shared base layer). Pure static-content formatting — no DI
-dependencies beyond the two static readers, no DB access, no cache.
+route map / FAQ preload pages from the `ISectionAccessMatrix` contributions DI discovered
+(each section's own rows), the `ISectionHelp` contributions DI discovered (each section's
+own Guide and Glossary markdown) and `Humans.Base`'s `SectionHelpContent.Faq`. Pure
+static-content formatting — its only injected dependencies are `IEnumerable<ISectionAccessMatrix>`
+and `IEnumerable<ISectionHelp>`, no DB access, no cache.
 `AgentPreloadWarmupHostedService` and `AgentSettingsStoreWarmupHostedService`
 run startup warmup, no DB access — fan out over the readers /
 `IAgentSettingsService` via `IServiceScopeFactory`. `AgentRateLimitStore`,
@@ -35,7 +36,7 @@ only on process restart): `AgentSectionDocReader` (`agent:section:{key}`),
 (`agent:preload:{config}`). `AgentPreloadAugmentor` itself is pure
 static-content formatting — no cache, no DB.
 `AgentToolDispatcher` also reads `IAuditViewerService`, `IShiftView`,
-`IBurnSettingsService` for its tool surface.
+`ISettingsService` for its tool surface.
 
 ### AgentService (Scoped, `Humans.Agent.Services`)
 
@@ -83,7 +84,7 @@ backed in-memory by `AgentSettingsStore`. The others are stateless
 adapters or fan-out over public service interfaces (`ITeamServiceRead`,
 `IUserServiceRead`, `IRoleAssignmentService`, `IConsentServiceRead`,
 `IFeedbackServiceRead`, `ITicketServiceRead`, `IShiftView`,
-`IBurnSettingsService`, `IAuditViewerService`, etc.) for the agent's
+`ISettingsService`, `IAuditViewerService`, etc.) for the agent's
 tool-dispatch and user-snapshot surfaces. No `IMemoryCache`.
 
 ### AnthropicClient (`Services/Anthropic/`)

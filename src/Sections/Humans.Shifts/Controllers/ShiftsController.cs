@@ -417,74 +417,34 @@ internal sealed class ShiftsController(
         return RedirectToAction(nameof(Index));
     }
 
-    [HttpGet("Settings")]
-    [Authorize(Policy = PolicyNames.AdminOnly)]
-    public async Task<IActionResult> Settings()
-    {
-        var es = await shiftMgmt.GetActiveAsync();
-        return View(es is null ? new EventSettingsViewModel() : MapEventSettingsToViewModel(es));
-    }
-
-    private static EventSettingsViewModel MapEventSettingsToViewModel(EventSettings es) => new()
-    {
-        Id = es.Id,
-        EventName = es.EventName,
-        TimeZoneId = es.TimeZoneId,
-        GateOpeningDate = LocalDatePattern.Iso.Format(es.GateOpeningDate),
-        BuildStartOffset = es.BuildStartOffset,
-        EventEndOffset = es.EventEndOffset,
-        StrikeEndOffset = es.StrikeEndOffset,
-        FirstCrewStartOffset = es.FirstCrewStartOffset,
-        SetupWeekStartOffset = es.SetupWeekStartOffset,
-        PreEventWeekStartOffset = es.PreEventWeekStartOffset,
-        FinishingWeekendStartOffset = es.FinishingWeekendStartOffset,
-        EarlyEntryCapacityJson = JsonSerializer.Serialize(es.EarlyEntryCapacity),
-        BarriosEarlyEntryAllocationJson = es.BarriosEarlyEntryAllocation is not null
-            ? JsonSerializer.Serialize(es.BarriosEarlyEntryAllocation)
-            : null,
-        EarlyEntryClose = es.EarlyEntryClose.HasValue
-            ? InstantPattern.General.Format(es.EarlyEntryClose.Value)
-            : null,
-        IsShiftBrowsingOpen = es.IsShiftBrowsingOpen,
-        GlobalVolunteerCap = es.GlobalVolunteerCap,
-        ReminderLeadTimeHours = es.ReminderLeadTimeHours,
-        IsActive = es.IsActive,
-    };
-
+    // GET removed (peterdrier/Humans#1634) — superseded by the /Settings#shifts tab,
+    // whose data assembly lives in ShiftsSettingsTabViewComponent now. No redirect kept:
+    // redirecting a retired URL is tech debt here, not a feature.
     [HttpPost("Settings")]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Settings(EventSettingsViewModel model)
     {
         if (!ModelState.IsValid)
-            return View(model);
-
-        var parsed = EventSettingsFormMapper.Parse(model);
-        if (!parsed.Success)
         {
-            foreach (var error in parsed.Errors)
-                ModelState.AddModelError(error.FieldName, error.Message);
-
-            return View(model);
+            SetError("Invalid event settings.");
+            return Redirect("/Settings#shifts");
         }
 
-        var draft = parsed.Draft!;
-
-        if (model.Id.HasValue)
+        // "Active event" is Settings' concept now (nobodies-collective/Humans#1631);
+        // Shifts only keeps its own knobs, created on demand for that id.
+        var active = await burnSettings.GetActiveAsync();
+        if (active is null)
         {
-            var existing = await shiftMgmt.GetByIdAsync(model.Id.Value);
-            if (existing is null) return NotFound();
+            SetError("No active event configured — set one at /Settings#event first.");
+            return Redirect("/Settings#shifts");
+        }
 
-            EventSettingsFormMapper.Apply(existing, draft);
-            await shiftMgmt.UpdateAsync(existing);
-        }
-        else
-        {
-            await shiftMgmt.CreateAsync(EventSettingsFormMapper.Create(draft, clock.GetCurrentInstant()));
-        }
+        await shiftMgmt.SaveKnobsAsync(
+            active.Id, model.IsShiftBrowsingOpen, model.GlobalVolunteerCap, model.ReminderLeadTimeHours);
 
         SetSuccess("Event settings saved.");
-        return RedirectToAction(nameof(Settings));
+        return Redirect("/Settings#shifts");
     }
 
     // A user's signups are not scoped to the active burn — they can span cycles — so

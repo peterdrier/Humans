@@ -21,36 +21,6 @@ internal sealed class EventsAdminController(IEventService guide, ILogger<EventsA
 {
     // ─── Settings ────────────────────────────────────────────
 
-    [HttpGet("Settings")]
-    public async Task<IActionResult> Settings()
-    {
-        var existing = await guide.GetGuideSettingsAsync();
-        var eventSettingsOptions = await BuildEventSettingsOptionsAsync();
-
-        if (existing == null)
-        {
-            return View(new GuideSettingsViewModel
-            {
-                AvailableEventSettings = eventSettingsOptions,
-                MaxPrintSlots = 100
-            });
-        }
-
-        var eventSettings = await guide.GetEventSettingsByIdAsync(existing.EventSettingsId);
-        var tz = GetTimeZone(eventSettings);
-        return View(new GuideSettingsViewModel
-        {
-            Id = existing.Id,
-            EventSettingsId = existing.EventSettingsId,
-            SubmissionOpenAt = ToLocalDateTime(existing.SubmissionOpenAt, tz),
-            SubmissionCloseAt = ToLocalDateTime(existing.SubmissionCloseAt, tz),
-            GuidePublishAt = ToLocalDateTime(existing.GuidePublishAt, tz),
-            MaxPrintSlots = existing.MaxPrintSlots,
-            AvailableEventSettings = eventSettingsOptions,
-            TimeZoneId = eventSettings?.TimeZoneId
-        });
-    }
-
     [HttpPost("Settings")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveSettings(GuideSettingsViewModel model)
@@ -58,7 +28,7 @@ internal sealed class EventsAdminController(IEventService guide, ILogger<EventsA
         if (!ModelState.IsValid)
         {
             model.AvailableEventSettings = await BuildEventSettingsOptionsAsync();
-            return View(nameof(Settings), model);
+            return View("Settings", model);
         }
 
         var eventSettings = await guide.GetEventSettingsByIdAsync(model.EventSettingsId);
@@ -66,7 +36,7 @@ internal sealed class EventsAdminController(IEventService guide, ILogger<EventsA
         {
             ModelState.AddModelError(nameof(model.EventSettingsId), "Selected event edition not found.");
             model.AvailableEventSettings = await BuildEventSettingsOptionsAsync();
-            return View(nameof(Settings), model);
+            return View("Settings", model);
         }
 
         try
@@ -81,14 +51,14 @@ internal sealed class EventsAdminController(IEventService guide, ILogger<EventsA
 
             logger.LogInformation("Guide settings saved for event {EventSettingsId}", model.EventSettingsId);
             SetSuccess("Guide settings saved.");
-            return RedirectToAction(nameof(Settings));
+            return Redirect("/Settings#event-guide");
         }
         catch (InvalidOperationException ex)
         {
             logger.LogError(ex, "Failed to save guide settings for EventSettingsId {EventSettingsId}", model.EventSettingsId);
             ModelState.AddModelError("", ex.Message);
             model.AvailableEventSettings = await BuildEventSettingsOptionsAsync();
-            return View(nameof(Settings), model);
+            return View("Settings", model);
         }
     }
 

@@ -89,6 +89,9 @@
   <data name="CityPlanning_Admin_ViewMap" xml:space="preserve">
     <value>Karte anzeigen</value>
   </data>
+  <data name="CityPlanning_Admin_SettingsMoved" xml:space="preserve">
+    <value>Platzierungsfenster, geplante Zeiten und Anmeldeinformationen wurden verschoben nach</value>
+  </data>
   <data name="CityPlanning_Admin_PlacementPhaseCard" xml:space="preserve">
     <value>Platzierungsphase</value>
   </data>

@@ -115,7 +115,7 @@ snapshot, never the DB. Surfaced on `/Debug/CacheStats`.
 
 Read-only assemblers — no repository, no cache. `TeamPageService` fans out
 over `ITeamManagementService`, `ITeamResourceService`,
-`IShiftManagementServiceRead`, `IBurnSettingsService` and `IUserServiceRead`;
+`IShiftManagementServiceRead`, `ISettingsService` and `IUserServiceRead`;
 the mapper and the directory builder are pure.
 
 ---

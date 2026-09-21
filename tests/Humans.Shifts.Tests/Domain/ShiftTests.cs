@@ -1,4 +1,5 @@
 using Humans.Shifts.Domain;
+using Humans.Settings.Contracts;
 using AwesomeAssertions;
 using NodaTime;
 
@@ -7,21 +8,25 @@ namespace Humans.Shifts.Tests.Domain;
 
 public class ShiftTests
 {
-    private static EventSettings CreateEventSettings(
+    private static EventSettingsInfo CreateEventSettings(
         int eventEndOffset = 6,
         string timeZoneId = "Europe/Madrid",
-        int year = 2026, int month = 7, int day = 6) => new()
-        {
-            Id = Guid.NewGuid(),
-            EventName = "Test Event",
-            TimeZoneId = timeZoneId,
-            GateOpeningDate = new LocalDate(year, month, day),
-            BuildStartOffset = -14,
-            EventEndOffset = eventEndOffset,
-            StrikeEndOffset = eventEndOffset + 3,
-            CreatedAt = Instant.MinValue,
-            UpdatedAt = Instant.MinValue
-        };
+        int year = 2026, int month = 7, int day = 6) => new(
+            Id: Guid.NewGuid(),
+            EventName: "Test Event",
+            Year: year,
+            TimeZoneId: timeZoneId,
+            GateOpeningDate: new LocalDate(year, month, day),
+            BuildStartOffset: -14,
+            EventEndOffset: eventEndOffset,
+            StrikeEndOffset: eventEndOffset + 3,
+            FirstCrewStartOffset: -25,
+            SetupWeekStartOffset: -16,
+            PreEventWeekStartOffset: -9,
+            FinishingWeekendStartOffset: -4,
+            EarlyEntryCapacity: new Dictionary<int, int>(),
+            BarriosEarlyEntryAllocation: null,
+            EarlyEntryClose: null);
 
     private static Shift CreateShift(int dayOffset = 0, int hour = 10, int minute = 0, long durationSeconds = 4 * 3600) => new()
     {

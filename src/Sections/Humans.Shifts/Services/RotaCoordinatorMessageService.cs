@@ -21,6 +21,7 @@ internal sealed class RotaCoordinatorMessageService(
     IEmailService emailService,
     IEmailMessageFactory emailMessages,
     IAuditLogService auditLogService,
+    EventCalendarResolver calendarResolver,
     IClock clock,
     ILogger<RotaCoordinatorMessageService> logger) : IRotaCoordinatorMessageService
 {
@@ -37,9 +38,9 @@ internal sealed class RotaCoordinatorMessageService(
         if (rota is null)
             return RotaMessageDispatchResult.Failure("Rota not found.");
 
-        var eventSettings = rota.EventSettings
+        var eventSettings = await calendarResolver.GetAsync(rota.EventSettingsId, ct)
             ?? throw new InvalidOperationException(
-                $"Rota {rotaId} loaded without EventSettings — repository contract broken.");
+                $"Rota {rotaId}'s event calendar is not configured in Settings.");
 
         var signups = GetActiveSignups(rota);
         if (signups.Count == 0)
@@ -187,11 +188,13 @@ internal sealed class RotaCoordinatorMessageService(
         Guid teamId,
         CancellationToken ct)
     {
-        var eventSettings = await repo.GetActiveEventSettingsAsync(ct);
-        if (eventSettings is null) return [];
+        // "Active" is Settings' notion (nobodies-collective/Humans#1631) — resolve the
+        // calendar once, from the active id, rather than via a Shifts-local lookup.
+        var calendar = await calendarResolver.GetActiveAsync(ct);
+        if (calendar is null) return [];
 
         var rotas = (await repo.GetRotasAsync(
-                eventSettings.Id,
+                calendar.Id,
                 [teamId],
                 RotaReadShape.View,
                 ct))
@@ -204,21 +207,14 @@ internal sealed class RotaCoordinatorMessageService(
         var groups = new List<RotaSignupGroup>(rotas.Count);
         foreach (var rota in rotas)
         {
-            // Per-rota EventSettings carries the timezone — the eager-load on
-            // GetRotasAsync attached it; keep the reference for
-            // downstream shift-line formatting.
-            var rotaEs = rota.EventSettings
-                ?? throw new InvalidOperationException(
-                    $"Rota {rota.Id} loaded without EventSettings — repository contract broken.");
-
-            var hasFutureShift = rota.Shifts.Any(s => s.GetAbsoluteEnd(rotaEs) > now);
+            var hasFutureShift = rota.Shifts.Any(s => s.GetAbsoluteEnd(calendar) > now);
             if (!hasFutureShift) continue;
 
             var activeSignups = GetActiveSignups(rota);
 
             if (activeSignups.Count == 0) continue;
 
-            groups.Add(new RotaSignupGroup(rota.Id, rota.Name, rotaEs, activeSignups));
+            groups.Add(new RotaSignupGroup(rota.Id, rota.Name, calendar, activeSignups));
         }
 
         return groups;
@@ -334,7 +330,7 @@ internal sealed class RotaCoordinatorMessageService(
     // Chronologically ordered "ddd MMMM d [@ HH:mm]" lines in the rota's timezone.
     private static IReadOnlyList<string> BuildShiftLines(
         IReadOnlyList<ShiftSignup> userSignups,
-        EventSettings eventSettings)
+        Humans.Settings.Contracts.EventSettingsInfo eventSettings)
     {
         var tz = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
         return userSignups
@@ -363,7 +359,7 @@ internal sealed class RotaCoordinatorMessageService(
     private sealed record RotaSignupGroup(
         Guid RotaId,
         string RotaName,
-        EventSettings EventSettings,
+        Humans.Settings.Contracts.EventSettingsInfo EventSettings,
         IReadOnlyList<ShiftSignup> Signups);
 
     private sealed record DispatchSummary(

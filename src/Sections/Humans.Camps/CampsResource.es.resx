@@ -81,9 +81,6 @@
   <data name="Camp_Contact_MessageLabel" xml:space="preserve">
     <value>Tu mensaje</value>
   </data>
-  <data name="Camp_Contact_PlainTextOnly" xml:space="preserve">
-    <value>Solo texto plano. Máximo 2000 caracteres.</value>
-  </data>
   <data name="Camp_Contact_IncludeContactInfo" xml:space="preserve">
     <value>Incluir mi información de contacto</value>
   </data>

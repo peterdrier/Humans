@@ -92,10 +92,12 @@ verbatim; the nav entry sits in the "Tickets" admin group. Neither is an ownersh
   confirm/bail/remove/reassign, erasure and merge; Teams on every EE grant add/edit/remove,
   erasure and merge.
 - When a global setting moves every holder's date at once, the contributor calls
-  `InvalidateAll` — the camps' global `EeStartDate`, and Shifts' EventSettings gate /
-  build-offset edits. Teams also calls it when a team's `EarlyEntryEnabled` flag flips, because
-  that changes *who* contributes. **Not wired today:** Shifts' gate/build-offset edits do not
-  actually call `InvalidateAll` yet — see `Docs/health.md` §5.
+  `InvalidateAll` — `EventSettings.EarlyEntryStartOffset` and the gate / build-offset edits
+  (all in Settings now: `CachingEarlyEntryService` implements Settings'
+  `IEventSettingsChangeListener` and calls `InvalidateAll` on every event-settings save —
+  Settings itself names no consumer). Teams also
+  calls it when a team's `EarlyEntryEnabled` flag flips, because that changes *who*
+  contributes.
 - Eviction is pure: the next read lazy-reloads.
 
 ## Cross-Section Dependencies

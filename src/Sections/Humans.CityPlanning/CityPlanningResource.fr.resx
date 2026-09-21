@@ -89,6 +89,9 @@
   <data name="CityPlanning_Admin_ViewMap" xml:space="preserve">
     <value>Voir la carte</value>
   </data>
+  <data name="CityPlanning_Admin_SettingsMoved" xml:space="preserve">
+    <value>Les fenêtres de placement, les horaires programmés et les informations d'inscription ont été déplacés vers</value>
+  </data>
   <data name="CityPlanning_Admin_PlacementPhaseCard" xml:space="preserve">
     <value>Phase de Placement</value>
   </data>

@@ -135,10 +135,10 @@ public class MovedSharedPartialsRenderTests(HumansTestDatabase database) : Integ
     /// </para>
     /// <para>
     /// <c>&lt;vc:access-matrix section="Teams"&gt;</c> is asserted here too: the gallery used
-    /// to pass <c>section="teams"</c> while <c>AccessMatrixDefinitions.Sections</c> is keyed
-    /// <c>"Teams"</c> under <c>StringComparer.Ordinal</c>, so that card rendered empty. Fixed
-    /// by correcting the gallery's literal to match the registry's own casing, same as every
-    /// other call site.
+    /// to pass <c>section="teams"</c> while Teams contributes its matrix under the key
+    /// <c>"Teams"</c>, matched ordinally, so that card rendered empty. Fixed by correcting the
+    /// gallery's literal to match the contributed key's own casing, same as every other call
+    /// site.
     /// </para>
     /// </remarks>
     [HumansFact(Timeout = 120000)]
@@ -165,8 +165,8 @@ public class MovedSharedPartialsRenderTests(HumansTestDatabase database) : Integ
             because: "an unknown policy must fail closed — unbound, the helper suppresses nothing "
                    + "and the span renders like any element with an unrecognised attribute");
         html.Should().Contain("Google resource sync",
-            because: "<vc:access-matrix section=\"Teams\"> resolved against "
-                   + "AccessMatrixDefinitions.Sections and rendered the Teams-only feature row");
+            because: "<vc:access-matrix section=\"Teams\"> resolved against the contributed "
+                   + "access matrices and rendered the Teams-only feature row");
 
         foreach (var literal in new[]
                  {

@@ -1,25 +1,24 @@
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 
 using NodaTime;
 
 namespace Humans.Testing;
 
 /// <summary>
-/// Builds a <see cref="BurnSettingsInfo"/> for tests that stub
-/// <c>IBurnSettingsService</c>. Every parameter has a default, so a test that
+/// Builds an <see cref="EventSettingsInfo"/> for tests that stub
+/// <c>ISettingsService</c>. Every parameter has a default, so a test that
 /// only cares about the year writes <c>BurnFixtures.Burn(year: 2026)</c>.
 /// </summary>
 /// <remarks>
 /// Shared here rather than copied per test class because the record is
-/// positional with eighteen members: fifteen call sites across six section
-/// test projects stub it after the Shifts read boundary moved every
-/// cross-section burn read off <c>IShiftManagementService.GetActiveAsync</c>
-/// (which returned the <c>EventSettings</c> entity) onto this DTO
-/// (nobodies-collective/Humans#866).
+/// positional with many members: call sites across several section
+/// test projects stub it after cross-section event-calendar reads moved
+/// off Shifts' <c>IBurnSettingsService</c> onto Settings' <c>ISettingsService</c>
+/// (nobodies-collective/Humans#1104).
 /// </remarks>
 public static class BurnFixtures
 {
-    public static BurnSettingsInfo Burn(
+    public static EventSettingsInfo Burn(
         Guid? id = null,
         string eventName = "Test Burn",
         int year = 2026,
@@ -35,7 +34,7 @@ public static class BurnFixtures
         IReadOnlyDictionary<int, int>? earlyEntryCapacity = null,
         IReadOnlyDictionary<int, int>? barriosEarlyEntryAllocation = null,
         Instant? earlyEntryClose = null,
-        bool isShiftBrowsingOpen = false) =>
+        int? earlyEntryStartOffset = null) =>
         new(
             Id: id ?? Guid.NewGuid(),
             EventName: eventName,
@@ -52,5 +51,5 @@ public static class BurnFixtures
             EarlyEntryCapacity: earlyEntryCapacity ?? new Dictionary<int, int>(),
             BarriosEarlyEntryAllocation: barriosEarlyEntryAllocation,
             EarlyEntryClose: earlyEntryClose,
-            IsShiftBrowsingOpen: isShiftBrowsingOpen);
+            EarlyEntryStartOffset: earlyEntryStartOffset);
 }

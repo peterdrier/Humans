@@ -1,7 +1,9 @@
+using Humans.Base.Constants;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
 using Humans.Consent.Contracts;
+using Humans.Issues.Contracts;
 using Humans.Consent.Data;
 using Humans.Consent.Jobs;
 using Humans.Consent.Services;
@@ -19,7 +21,7 @@ namespace Humans.Consent;
 /// <c>SyncLegalDocumentsJob</c> and <c>SendReConsentReminderJob</c> live in <c>Jobs/</c>;
 /// their schedules are contributed via <c>SectionJobs.cs</c>.
 /// </remarks>
-public sealed class Section : ISection
+public sealed class Section : ISection, IIssueQueueOwner
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -92,4 +94,13 @@ public sealed class Section : ISection
         services.AddSingleton<ConsentMetricsService>();
         services.AddHostedService(sp => sp.GetRequiredService<ConsentMetricsService>());
     }
+
+    // This section owns the issue queue its members' reports land in; Issues discovers
+    // the seam rather than holding a list of sections (memory/architecture/section-contribution-seams.md).
+    // The key is "Legal", not "Consent": the section was renamed at the 2026-08-03 freeze and
+    // stored rows still carry the old string, so the queue keeps its name and the Consent
+    // Coordinator keeps seeing it.
+    string IIssueQueueOwner.QueueKey => "Legal";
+
+    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.ConsentCoordinator];
 }

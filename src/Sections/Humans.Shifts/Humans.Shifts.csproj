@@ -35,6 +35,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
+    <!-- IIssueQueueOwner: this section declares the issue queue it owns. -->
+    <ProjectReference Include="..\Humans.Issues.Contracts\Humans.Issues.Contracts.csproj" />
     <!--
       Humans.Base above carries the shared enums whose persisted strings this section reads;
       the section's own persisted-string enums (SignupStatus, ShiftPriority, SignupPolicy,
@@ -63,6 +65,7 @@
                         resource marker is a section type (CityPlanning's rule, design
                         §15 step 3b). Acyclic: Humans.Onboarding names only
                         Humans.Shifts.Contracts.
+        Settings      — ISettingsService: the app-wide event calendar (nobodies-collective/Humans#1630).
         Teams         — a rota's department is a team row. The *section* project, not
                         only the leaf: ShiftAdminController derives from
                         HumansTeamControllerBase, which Teams ships public under its own
@@ -71,6 +74,7 @@
         Tickets       — early entry gates on the volunteer holding a ticket.
     -->
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <!--
       Calendar owns the personal iCal feed; ShiftSignupService implements its
@@ -106,6 +110,17 @@
   <ItemGroup>
     <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Section-help markdown (ISectionHelp). Embedded, not fetched: the help modal renders
+      synchronously on the section's landing page. The logical name is fixed here so
+      SectionHelpEntry.FromEmbeddedMarkdown can address it without probing.
+    -->
+    <None Remove="Docs\help\*.md" />
+    <EmbeddedResource Include="Docs\help\*.md"
+                      LogicalName="$(AssemblyName).Docs.help.%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

@@ -16,24 +16,27 @@ internal sealed class WorkloadService(
     IShiftManagementRepository repo,
     IShiftRowView view,
     ITeamServiceRead teamService,
-    IUserServiceRead userService) : IWorkloadService
+    IUserServiceRead userService,
+    EventCalendarResolver calendarResolver) : IWorkloadService
 {
     private static readonly decimal AllDayShiftHours = (decimal)Duration.FromTicks(
         Shift.AllDayWindowEnd.TickOfDay - Shift.AllDayWindowStart.TickOfDay).TotalHours;
 
     public async Task<WorkloadReport?> GetForActiveEventAsync(CancellationToken ct = default)
     {
-        var es = await repo.GetActiveEventSettingsAsync(ct);
-        if (es is null) return null;
+        // "Active" is Settings' notion (nobodies-collective/Humans#1631) — no Shifts-local
+        // lookup needed for the id.
+        var calendar = await calendarResolver.GetActiveAsync(ct);
+        if (calendar is null) return null;
 
         // Distinct rotaIds off the shared event-shift query avoids adding an interface method.
-        var shiftStubs = await repo.GetEventShiftsAsync(new ShiftEventQuery(es.Id), ct);
+        var shiftStubs = await repo.GetEventShiftsAsync(new ShiftEventQuery(calendar.Id), ct);
         var rotaIds = shiftStubs.Select(s => s.RotaId).Distinct().ToList();
         if (rotaIds.Count == 0)
         {
             return new WorkloadReport(
-                EventSettingsId: es.Id,
-                EventYear: es.Year,
+                EventSettingsId: calendar.Id,
+                EventYear: calendar.Year,
                 ByPerson: [],
                 ByRota: [],
                 ByDepartment: []);
@@ -60,11 +63,11 @@ internal sealed class WorkloadService(
 
         var byRota = BuildByRota(entries, teamLookup);
         var byDepartment = BuildByDepartment(entries, teamLookup, roleDeptHours);
-        var byPerson = await BuildByPersonAsync(entries, es, rolePersonHours, ct);
+        var byPerson = await BuildByPersonAsync(entries, calendar, rolePersonHours, ct);
 
         return new WorkloadReport(
-            EventSettingsId: es.Id,
-            EventYear: es.Year,
+            EventSettingsId: calendar.Id,
+            EventYear: calendar.Year,
             ByPerson: byPerson,
             ByRota: byRota,
             ByDepartment: byDepartment);
@@ -166,7 +169,7 @@ internal sealed class WorkloadService(
 
     private async Task<List<WorkloadByPersonRow>> BuildByPersonAsync(
         IReadOnlyList<(Rota Rota, Shift Shift)> entries,
-        EventSettings es,
+        Humans.Settings.Contracts.EventSettingsInfo es,
         IReadOnlyDictionary<Guid, RolePersonHours> rolePersonHours,
         CancellationToken ct)
     {

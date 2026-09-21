@@ -13,6 +13,7 @@ using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 
@@ -83,7 +84,7 @@ public class ProfileControllerEditTests
             Substitute.For<ICommunicationPreferenceService>(),
             _onboardingService,
             Substitute.For<IShiftSignups>(),
-            Substitute.For<IBurnSettingsService>(),
+            Substitute.For<ISettingsService>(),
             _shiftMgmt,
             _shiftView,
             Substitute.For<IGdprService>(),

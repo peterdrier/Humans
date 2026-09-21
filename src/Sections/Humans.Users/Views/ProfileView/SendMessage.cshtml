@@ -31,12 +31,15 @@
 
             <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
 
-            <div class="mb-3">
-                <label asp-for="Message" class="form-label">@Localizer["SendMessage_MessageLabel"]</label>
-                <textarea asp-for="Message" class="form-control" rows="8" maxlength="2000"></textarea>
-                <span asp-validation-for="Message" class="text-danger"></span>
-                <div class="form-text">@Localizer["SendMessage_PlainTextOnly"]</div>
-            </div>
+            @await Html.PartialAsync("_EmailComposer", new Humans.Base.Models.EmailComposerViewModel
+            {
+                BodyName = "Message",
+                BodyValue = Model.Message,
+                BodyLabel = Localizer["SendMessage_MessageLabel"].Value,
+                BodyRows = 8,
+                BodyMaxLength = 2000,
+                Category = nameof(Humans.Users.Contracts.MessageCategory.FacilitatedMessages),
+            })
 
             <div class="mb-3 form-check">
                 <input asp-for="IncludeContactInfo" class="form-check-input" type="checkbox" />

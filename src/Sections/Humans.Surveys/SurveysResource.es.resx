@@ -152,7 +152,7 @@
   <data name="Survey_Admin_Builder_SlugPlaceholder" xml:space="preserve"><value>p. ej. feedback-2026</value></data>
   <data name="Survey_Admin_Builder_SlugHelp" xml:space="preserve"><value>Las encuestas anónimas permiten el acceso a cualquiera que tenga el enlace. Las encuestas identificadas requieren iniciar sesión y, si está configurado, cumplir los requisitos de audiencia actuales.</value></data>
   <data name="Survey_Admin_Builder_InvitationEmailHeader" xml:space="preserve"><value>Correo de invitación</value></data>
-  <data name="Survey_Admin_Builder_InvitationEmailIntro" xml:space="preserve"><value>Personaliza la invitación inicial. Humans añade el saludo, el título de la encuesta, el botón con el enlace y la despedida. El mensaje admite formato Markdown, pero no imágenes. Deja cualquiera de los campos en blanco para usar el texto estándar.</value></data>
+  <data name="Survey_Admin_Builder_InvitationEmailIntro" xml:space="preserve"><value>Personaliza la invitación inicial. Humans añade el saludo, el título de la encuesta, el botón con el enlace y la despedida. El mensaje admite formato Markdown, incluidas imágenes https://. Deja cualquiera de los campos en blanco para usar el texto estándar.</value></data>
   <data name="Survey_Admin_Builder_Field_EmailSubject" xml:space="preserve"><value>Asunto del correo</value></data>
   <data name="Survey_Admin_Builder_Field_EmailMessage" xml:space="preserve"><value>Mensaje del correo</value></data>
   <data name="Survey_Admin_Builder_QuestionsHeader" xml:space="preserve"><value>Preguntas</value></data>

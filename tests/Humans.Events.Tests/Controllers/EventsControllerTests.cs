@@ -7,7 +7,7 @@ using Humans.Events.Controllers;
 using Humans.Events.Domain;
 using Humans.Events.Models;
 using Humans.Events.Services;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -153,7 +153,7 @@ public class EventsControllerTests
         };
     }
 
-    private static BurnSettingsInfo MakeBurnSettings() => new(
+    private static EventSettingsInfo MakeBurnSettings() => new(
         Id: Guid.NewGuid(),
         EventName: "Test Burn",
         Year: 2026,
@@ -168,8 +168,7 @@ public class EventsControllerTests
         FinishingWeekendStartOffset: 0,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
-        EarlyEntryClose: null,
-        IsShiftBrowsingOpen: false);
+        EarlyEntryClose: null);
 
     private static Event MakeEvent(Guid? campId, Guid submitterId, EventStatus status) => new()
     {

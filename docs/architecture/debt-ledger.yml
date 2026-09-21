@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 62
+next_id: 63
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0024-nav-strip
@@ -288,35 +288,23 @@ themes:
     detect: "grep -l 'AddConfigurationMetadata\\|Dictionary<string, AccessMatrixData>\\|Guides\\s*=\\|RolesFor' src/Humans.Web/Extensions/Infrastructure/ConfigurationMetadataExtensions.cs src/Humans.Base/Models/AccessMatrixDefinitions.cs src/Humans.Base/Models/SectionHelpContent.cs src/Sections/Humans.Issues/Domain/IssueSectionRouting.cs 2>/dev/null | wc -l # manual — see notes for what each site needs"
     review: panel
     last_swept: never
-    remaining: 4
+    remaining: 0
+    retired: "2026-09-21 — complete. All four sites inverted to an ISectionContribution-style seam; kept only so a future staleness check reads why."
     notes: >-
-      Each site is a hub, Shell or Base file that hand-lists its spokes (a
+      Each site was a hub, Shell or Base file that hand-listed its spokes (a
       per-section dictionary, constant table, or switch over section names)
       instead of each section declaring its own contribution through an
       ISectionContribution-style seam (memory/architecture/section-contribution-seams.md,
       memory/architecture/base-ui-registries-are-section-populated.md). Found by
       the orch-gdpr-fanout registry scout, 2026-09-20.
-      (1) src/Humans.Web/Extensions/Infrastructure/ConfigurationMetadataExtensions.cs:6-129
-      AddConfigurationMetadata hand-lists ~14 sections' configuration settings.
-      Invert to an ISectionConfiguration : ISectionContribution seam Shell
-      discovers via DiscoverImplementations, same as ISectionHealthChecks —
-      needs Peter's approval as new Base public surface.
-      (2) src/Humans.Base/Models/AccessMatrixDefinitions.cs:23 Sections is a
-      Dictionary<string, AccessMatrixData> in Base hand-listing 12 sections'
-      role/access-level vocab. Invert to a Register(AccessMatrixData) call from
-      each Section.Register (or an ISectionAccessMatrix contribution) — needs
-      Peter's approval as new Base public surface.
-      (3) src/Humans.Base/Models/SectionHelpContent.cs:7 Guides/Glossaries are
-      two Dictionary<string,string> in Base holding 12 sections' guide/glossary
-      prose inline (683 lines). Same Register-from-Section.Register inversion,
-      content moved beside each section's own Docs/ — needs Peter's approval as
-      new Base public surface.
-      (4) src/Sections/Humans.Issues/Domain/IssueSectionRouting.cs routing
-      table + RolesFor switch hand-lists 11 section names (two, Profiles and
-      Legal, no longer exist) mapped to owning roles. Invert to an
-      IIssueQueueOwner : ISectionContribution seam on Humans.Issues.Contracts
-      each section declares from its own Section.cs — needs Peter's approval as
-      new Contracts-leaf public surface.
+      (1) src/Humans.Web/Extensions/Infrastructure/ConfigurationMetadataExtensions.cs
+      CLOSED by peterdrier/Humans#1764 — inverted to ISectionConfiguration.
+      (2) src/Humans.Base/Models/AccessMatrixDefinitions.cs
+      CLOSED by peterdrier/Humans#1765 — inverted to ISectionAccessMatrix.
+      (3) src/Humans.Base/Models/SectionHelpContent.cs (Guides/Glossaries)
+      CLOSED by peterdrier/Humans#1768 — inverted to ISectionHelp.
+      (4) src/Sections/Humans.Issues/Domain/IssueSectionRouting.cs
+      CLOSED by peterdrier/Humans#1766 — inverted to IIssueQueueOwner.
   - id: inbox
     title: One-off inbox items
     detect: "cat docs/architecture/debt-ledger.yml src/Sections/*/Docs/debt.yml 2>/dev/null | grep -c '^  - added:'"
@@ -415,9 +403,9 @@ inbox:
     id: CENTRAL-12
     what: "Shifts section's own Web layer (ShiftAdminController, ShiftsController, VolunteerTrackingController, ShiftViewModels.cs, ShiftAdminPageBuilder, ShiftBrowsePageBuilder, ShiftDashboardPageBuilder, ShiftBrowseMapper, ShiftFilterResolver, ShiftSignupBucketer, ShiftVolunteerSearchBuilder, DevelopmentDashboardSeeder, ShiftSignupsViewComponent) carries the EF EventSettings entity as a view-model/builder field on read-only display paths — should be BurnSettingsInfo per nobodies-collective/Humans#809's acceptance criteria. Distinct from the write/edit path (EventSettingsFormMapper), which legitimately keeps the entity. ~10 interconnected files forming one section's own display pipeline — warrants its own dedicated section-scoped PR rather than folding into #809's cross-section batch (found while working nobodies-collective/Humans#809)"
     review: panel
-  - added: 2026-08-21
-    id: CENTRAL-22
-    what: "The app-wide event values now exist in two places: Settings owns settings_event (populated by /Settings/Admin/Carry) and Humans.Shifts.Domain.EventSettings still carries the same columns, which is what every section actually reads via IBurnSettingsService. Two follow-ups are owed and must ship separately: (1) point the readers at ISettingsService.GetActiveEventSettingsAsync, including ShiftManagementService's ~26 internal day-offset/date reads — needs a plan for the window where settings_event is unpopulated; (2) drop the app-wide columns from event_settings, delete the carry screen + EventSettingsCarryService + IBurnSettingsService.GetAllAsync, and remove Humans.Settings' reference to Humans.Shifts.Contracts. Until (1) lands, /Shifts/Admin's event form is still the live editor and /Settings/Admin edits a table nothing reads. Deliberately split out of nobodies-collective/Humans#1104, whose scope is new schema + carry screen only"
+  - added: 2026-09-20
+    id: CENTRAL-62
+    what: "nobodies-collective/Humans#1631 decoupled Shifts from the app-wide event calendar (Settings mints ids, Shifts creates its own knobs row on demand) but left event_settings' app-wide columns (EventName, Year, TimeZoneId, GateOpeningDate, all offsets, EarlyEntryCapacity, BarriosEarlyEntryAllocation, EarlyEntryClose) and IsActive in place, per memory/architecture/no-column-drops-for-decoupling.md and no-drops-until-prod-verified.md — the columns are fully dead (no Shifts code reads or writes them beyond satisfying NOT NULL on insert) but not dropped. A follow-up migration to drop them needs Peter's per-case approval and prod verification that no reader regressed first."
     review: panel
   - added: 2026-08-05
     id: CENTRAL-9

@@ -37,17 +37,17 @@ internal static class IssueSectionInference
 
     private static string? Map(string segment) => segment.ToLowerInvariant() switch
     {
-        "camps" or "barrios" => IssueSectionRouting.Camps,
-        "tickets" => IssueSectionRouting.Tickets,
-        "teams" => IssueSectionRouting.Teams,
-        "shifts" or "vol" => IssueSectionRouting.Shifts,
-        "onboardingreview" => IssueSectionRouting.Onboarding,
-        "profile" or "humans" => IssueSectionRouting.Profiles,
-        "finance" or "budget" => IssueSectionRouting.Budget,
-        "board" or "voting" => IssueSectionRouting.Governance,
-        "legal" or "consent" => IssueSectionRouting.Legal,
-        "cityplanning" => IssueSectionRouting.CityPlanning,
-        "scanner" => IssueSectionRouting.Scanner,
+        "camps" or "barrios" => "Camps",
+        "tickets" => "Tickets",
+        "teams" => "Teams",
+        "shifts" or "vol" => "Shifts",
+        "onboardingreview" => "Onboarding",
+        "profile" or "humans" => "Profiles",
+        "finance" or "budget" => "Budget",
+        "board" or "voting" => "Governance",
+        "legal" or "consent" => "Legal",
+        "cityplanning" => "CityPlanning",
+        "scanner" => "Scanner",
         _ => null
     };
 }

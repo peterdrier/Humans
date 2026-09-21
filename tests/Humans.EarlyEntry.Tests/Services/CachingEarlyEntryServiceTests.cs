@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.EarlyEntry.Contracts;
 using Humans.EarlyEntry.Services;
+using Humans.Settings.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -55,6 +56,23 @@ public class CachingEarlyEntryServiceTests
         first.Should().BeNull();
         second.Should().BeNull();
         await inner.Received(1).GetForUserAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task EventSettingsChanged_DropsEveryCachedAnswer()
+    {
+        // The gate date and EarlyEntryStartOffset move every holder's entry date at once,
+        // so a Settings-side save flushes the whole cache through the listener seam.
+        var (sut, inner) = CreateSut();
+        var userId = Guid.NewGuid();
+        inner.GetForUserAsync(userId, Arg.Any<CancellationToken>())
+             .Returns(Task.FromResult<UserEarlyEntry?>(null));
+
+        _ = await sut.GetForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        ((IEventSettingsChangeListener)sut).EventSettingsChanged(Guid.NewGuid());
+        _ = await sut.GetForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        await inner.Received(2).GetForUserAsync(userId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

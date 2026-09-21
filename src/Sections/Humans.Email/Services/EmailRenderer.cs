@@ -123,7 +123,7 @@ internal sealed class EmailRenderer(
                 : customSubject.Trim();
             var messageHtml = string.IsNullOrWhiteSpace(customMessage)
                 ? $"<p>{Lf("Email_SurveyInvitation_DefaultMessage", HtmlEncode(surveyTitle))}</p>"
-                : SanitizedMarkdownRenderer.Render(customMessage.Trim(), allowImages: false);
+                : SanitizedMarkdownRenderer.Render(customMessage.Trim());
 
             return new EmailContent(
                 subject,
@@ -146,7 +146,7 @@ internal sealed class EmailRenderer(
     public EmailContent RenderFeedbackResponse(string userName, string originalDescription, string responseMessage, string reportLink, string? culture = null)
         => RenderLocalized(culture, () =>
         {
-            var responseHtml = SanitizedMarkdownRenderer.Render(responseMessage, allowImages: false);
+            var responseHtml = SanitizedMarkdownRenderer.Render(responseMessage);
             return new EmailContent(
                 L("Email_FeedbackResponse_Subject"),
                 Lf("Email_FeedbackResponse_Body", HtmlEncode(userName), HtmlEncode(originalDescription), responseHtml, HtmlEncode(reportLink)));
@@ -155,7 +155,7 @@ internal sealed class EmailRenderer(
     public EmailContent RenderIssueComment(string displayName, string issueTitle, string commentContent, string issueLink, string? culture = null)
         => RenderLocalized(culture, () =>
         {
-            var commentHtml = SanitizedMarkdownRenderer.Render(commentContent, allowImages: false);
+            var commentHtml = SanitizedMarkdownRenderer.Render(commentContent);
             var fullLink = issueLink.StartsWith("http", StringComparison.OrdinalIgnoreCase)
                 ? issueLink
                 : $"{_settings.BaseUrl.TrimEnd('/')}{(issueLink.StartsWith('/') ? "" : "/")}{issueLink}";
@@ -173,7 +173,7 @@ internal sealed class EmailRenderer(
         string? culture = null)
         => RenderLocalized(culture, () =>
         {
-            var sanitizedMessage = HtmlEncode(messageText).Replace("\n", "<br />", StringComparison.Ordinal);
+            var sanitizedMessage = SanitizedMarkdownRenderer.Render(messageText);
 
             var contactInfoHtml = includeContactInfo && !string.IsNullOrEmpty(senderEmail)
                 ? $"<p><strong>{HtmlEncode(senderName)}</strong> &mdash; <a href=\"mailto:{HtmlEncode(senderEmail)}\">{HtmlEncode(senderEmail)}</a></p>"
@@ -196,7 +196,7 @@ internal sealed class EmailRenderer(
         {
             ArgumentNullException.ThrowIfNull(shiftLines);
 
-            var sanitizedMessage = HtmlEncode(messageText).Replace("\n", "<br />", StringComparison.Ordinal);
+            var sanitizedMessage = SanitizedMarkdownRenderer.Render(messageText);
 
             var shiftListHtml = shiftLines.Count == 0
                 ? $"<p><em>{HtmlEncode(L("Email_CoordinatorRotaMessage_NoShifts"))}</em></p>"
@@ -229,7 +229,7 @@ internal sealed class EmailRenderer(
         {
             ArgumentNullException.ThrowIfNull(shiftGroups);
 
-            var sanitizedMessage = HtmlEncode(messageText).Replace("\n", "<br />", StringComparison.Ordinal);
+            var sanitizedMessage = SanitizedMarkdownRenderer.Render(messageText);
 
             // Per-rota groups: bold rota name then <ul><li> shift lines.
             // Empty-groups fallback mirrors the per-rota renderer.
@@ -335,7 +335,7 @@ internal sealed class EmailRenderer(
         var markdown = markdownBody
             .Replace("{{Code}}", encodedCode, StringComparison.Ordinal)
             .Replace("{{Name}}", encodedName, StringComparison.Ordinal);
-        var renderedBody = SanitizedMarkdownRenderer.Render(markdown, allowImages: false);
+        var renderedBody = SanitizedMarkdownRenderer.Render(markdown);
 
         // Subject is a plain-text field; no HTML encoding required.
         var renderedSubject = subject

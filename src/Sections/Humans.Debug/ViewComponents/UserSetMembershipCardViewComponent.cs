@@ -1,4 +1,5 @@
 using Humans.Debug.Services;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
@@ -15,14 +16,14 @@ namespace Humans.Debug.ViewComponents;
 /// </remarks>
 internal sealed class UserSetMembershipCardViewComponent(
     IUserServiceRead userService,
-    IBurnSettingsService burnSettings,
+    ISettingsService settingsService,
     IShiftView shiftView) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
         var ct = HttpContext.RequestAborted;
         var snapshot = await userService.GetAllUserInfosAsync(ct);
-        var membership = await UserSetMembershipCalculator.BuildAsync(snapshot, burnSettings, shiftView, ct);
+        var membership = await UserSetMembershipCalculator.BuildAsync(snapshot, settingsService, shiftView, ct);
         return membership.TotalUsers == 0 ? Content(string.Empty) : View(membership);
     }
 }

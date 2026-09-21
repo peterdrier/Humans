@@ -38,4 +38,32 @@ else
             </div>
         }
     </div>
+
+    @* Settings POSTs redirect back to /Settings#<key>; Bootstrap does not read the
+       fragment, so without this the save lands on the first tab. Nonce is injected by
+       NonceTagHelper, which claims every <script>. *@
+    <script>
+        (function () {
+            var strip = document.getElementById('settingsTabs');
+            if (!strip) return;
+
+            function activateFromHash() {
+                var key = window.location.hash.slice(1);
+                if (!key) return;
+                var button = document.getElementById('settingsTabs-tab-' + key);
+                if (button) bootstrap.Tab.getOrCreateInstance(button).show();
+            }
+
+            // Bootstrap's bundle loads at the end of _Layout, after this element.
+            document.addEventListener('DOMContentLoaded', function () {
+                if (!window.bootstrap) return;
+                activateFromHash();
+                window.addEventListener('hashchange', activateFromHash);
+                strip.addEventListener('shown.bs.tab', function (e) {
+                    var key = e.target.id.replace('settingsTabs-tab-', '');
+                    history.replaceState(null, '', '#' + key);
+                });
+            });
+        })();
+    </script>
 }

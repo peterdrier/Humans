@@ -9,12 +9,14 @@
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Humans.Base/Authorization/RoleChecks.cs
   src/Sections/**/Authorization/**/*.cs
-  src/Humans.Base/Models/AccessMatrixDefinitions.cs
+  src/Humans.Base/Interfaces/ISectionAccessMatrix.cs
+  src/Humans.Base/Models/AccessMatrixData.cs
+  src/Sections/**/SectionAccessMatrix.cs
   src/Humans.Base/ViewComponents/AccessMatrixViewComponent.cs
   src/Sections/Humans.Email/EmailResource*.resx
 -->
 <!-- freshness:flag-on-change
-  Role-assignment temporal invariants, magic-link rate-limit/replay rules, role-name constants, and the access-matrix mechanism (§"Access Matrix UI" — AccessMatrixViewComponent over static AccessMatrixDefinitions data, no DB table) — review when Auth services, role constants, claims transformation, or the access-matrix component/source change. The Email resx is here for one reason: Email_MagicLinkSignup_Body promises the recipient the link works only once, and this doc asserts the code keeps that promise — reword the copy and this doc goes stale.
+  Role-assignment temporal invariants, magic-link rate-limit/replay rules, role-name constants, and the access-matrix mechanism (§"Access Matrix UI" — AccessMatrixViewComponent over the static rows sections contribute through ISectionAccessMatrix, no DB table) — review when Auth services, role constants, claims transformation, or the access-matrix component/source change. The Email resx is here for one reason: Email_MagicLinkSignup_Body promises the recipient the link works only once, and this doc asserts the code keeps that promise — reword the copy and this doc goes stale.
 -->
 
 # Auth — Section Invariants
@@ -149,12 +151,12 @@ The auth surface is mid-transition. Phase by phase:
 ## Access Matrix UI (per-section)
 
 
-Each section's landing page exposes an info-icon button (`AccessMatrixViewComponent`, invoked as `<vc:access-matrix section="…" />`) that opens a modal showing which roles can do what in that section. Definitions live in `src/Humans.Base/Models/AccessMatrixDefinitions.cs` as **static data, not DB-driven** — there is intentionally no `access_matrix` table.
+Each section's landing page exposes an info-icon button (`AccessMatrixViewComponent`, invoked as `<vc:access-matrix section="…" />`) that opens a modal showing which roles can do what in that section. Each matrix is contributed by the section that owns the page, through the `ISectionAccessMatrix` seam (`src/Humans.Base/Interfaces/`) implemented by that section's `SectionAccessMatrix` class and discovered from DI; Base keeps the seam and the row shape (`AccessMatrixData`) and none of the rows. Still **static data, not DB-driven** — there is intentionally no `access_matrix` table.
 
 - **Admin is excluded from every matrix.** Admin can do everything everywhere; including the column would be visual noise.
 - **"Volunteer" is the baseline, not a formal role.** It means "any active member" — the absence of an elevated role, not an entry in `role_assignments`.
 - **Admin-only sections have no matrix.** Sections gated entirely to Admin would have no non-Admin columns to show, so they don't render the component.
-- **Maintenance hazard — the matrix can drift from the code.** The dictionary is hand-maintained and is not derived from `[Authorize]` attributes or `PolicyNames`. When you change a policy, update the matrix in the same commit.
+- **Maintenance hazard — the matrix can drift from the code.** The rows are hand-maintained and are not derived from `[Authorize]` attributes or `PolicyNames`. When you change a policy, update that section's `SectionAccessMatrix` in the same commit.
 
 ## Architecture
 

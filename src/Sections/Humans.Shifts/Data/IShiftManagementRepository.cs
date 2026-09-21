@@ -33,16 +33,8 @@ namespace Humans.Shifts.Data;
 /// </summary>
 internal partial interface IShiftManagementRepository : IRepository
 {
-    Task<EventSettings?> GetActiveEventSettingsAsync(CancellationToken ct = default);
-
-    /// <summary>Loads an <see cref="EventSettings"/> by id (read-only).</summary>
+    /// <summary>Loads an <see cref="EventSettings"/> by id (read-only). Null until a rota or knob edit creates the row.</summary>
     Task<EventSettings?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
-
-    /// <summary>Every <see cref="EventSettings"/> row, oldest cycle first (read-only).</summary>
-    Task<IReadOnlyList<EventSettings>> GetAllEventSettingsAsync(CancellationToken ct = default);
-
-    /// <summary>Returns true if any other <see cref="EventSettings"/> (excluding <paramref name="excludingId"/>) is active.</summary>
-    Task<bool> AnyOtherActiveEventSettingsAsync(Guid? excludingId, CancellationToken ct = default);
 
     Task SaveEventSettingsAsync(EventSettings entity, EntityMutationMode mode, CancellationToken ct = default);
 

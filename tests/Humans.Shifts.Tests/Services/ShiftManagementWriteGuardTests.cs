@@ -15,6 +15,7 @@ using NSubstitute;
 using Xunit;
 using Humans.Users.Contracts;
 using Humans.AuditLog.Contracts;
+using Humans.Settings.Contracts;
 
 namespace Humans.Shifts.Tests.Services;
 
@@ -65,6 +66,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             serviceProvider,
             Cache,
             _viewInvalidator,
+            NewCalendarResolver(),
             Clock);
     }
 
@@ -146,23 +148,55 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
 
         var act = () => _service.CreateRotaAsync(NewRota(Guid.NewGuid(), team.Id));
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Active EventSettings not found.");
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Event not found.");
         ShiftsDb.Rotas.Should().BeEmpty();
     }
 
     [HumansFact]
-    public async Task CreateRotaAsync_Throws_WhenEventSettingsInactive()
+    public async Task CreateRotaAsync_Succeeds_ForAnInactiveCycle()
     {
+        // "Active" is Settings' concept now (nobodies-collective/Humans#1631) — a rota
+        // can be created against any real cycle, active or not.
         var es = SeedEventSettings(isActive: false);
         var team = SeedDepartment("Gate");
         await SaveAllAsync(Ct);
 
-        var act = () => _service.CreateRotaAsync(NewRota(es.Id, team.Id));
+        await _service.CreateRotaAsync(NewRota(es.Id, team.Id));
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Active EventSettings not found.");
-        ShiftsDb.Rotas.Should().BeEmpty();
+        ShiftsDb.Rotas.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task CreateRotaAsync_NoShiftsKnobsRowYet_CreatesOneOnDemand()
+    {
+        // The calendar (Settings) knows about the event, but Shifts has never
+        // created its own knobs row for it — the first rota creates one.
+        var eventId = Guid.NewGuid();
+        var settingsService = Substitute.For<ISettingsService>();
+        settingsService.GetEventSettingsByIdAsync(eventId, Arg.Any<CancellationToken>())
+            .Returns(new EventSettingsInfo(
+                Id: eventId, EventName: "Nowhere 2026", Year: 2026, TimeZoneId: "Europe/Madrid",
+                GateOpeningDate: new LocalDate(2026, 7, 1), BuildStartOffset: -14, EventEndOffset: 6,
+                StrikeEndOffset: 9, FirstCrewStartOffset: -25, SetupWeekStartOffset: -16,
+                PreEventWeekStartOffset: -9, FinishingWeekendStartOffset: -4,
+                EarlyEntryCapacity: new Dictionary<int, int>(), BarriosEarlyEntryAllocation: null,
+                EarlyEntryClose: null));
+        var team = SeedDepartment("Gate");
+        await SaveAllAsync(Ct);
+        ShiftsDb.EventSettings.Should().BeEmpty("Shifts has no local knobs row for this event yet");
+
+        var service = new ShiftManagementService(
+            new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock),
+            AuditLog, AdminAuthorization,
+            new ServiceLocatorBuilder().With(_teamService).Build(),
+            Cache, _viewInvalidator,
+            new EventCalendarResolver(settingsService), Clock);
+
+        await service.CreateRotaAsync(NewRota(eventId, team.Id));
+
+        ShiftsDb.ChangeTracker.Clear();
+        (await ShiftsDb.EventSettings.AsNoTracking().SingleAsync(e => e.Id == eventId, Ct))
+            .Should().NotBeNull();
     }
 
     [HumansFact]

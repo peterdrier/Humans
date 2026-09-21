@@ -109,7 +109,7 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
 
         // Camp reads.
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new CampSettingsInfo(PublicYear, [], null)));
+            .Returns(Task.FromResult(new CampSettingsInfo(PublicYear, [])));
         _campService.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<CampInfo>>(
             [
@@ -136,6 +136,7 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
             serviceProvider,
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
+            NewCalendarResolver(),
             Clock);
     }
 

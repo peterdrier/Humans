@@ -48,6 +48,9 @@ internal sealed class EventSettingsViewModel : IValidatableObject
 
     public string? EarlyEntryClose { get; set; }
 
+    /// <summary>Negative day offset from <see cref="GateOpeningDate"/>; null until configured.</summary>
+    public int? EarlyEntryStartOffset { get; set; }
+
     /// <summary>
     /// The form's view of <see cref="EventSettingsStatus"/>: the checkbox maps to
     /// Active/Inactive and never reaches <see cref="EventSettingsStatus.Deleted"/> —
@@ -80,6 +83,14 @@ internal sealed class EventSettingsViewModel : IValidatableObject
                     nameof(PreEventWeekStartOffset),
                     nameof(FinishingWeekendStartOffset)
                 ]);
+        }
+
+        if (EarlyEntryStartOffset is { } eeStartOffset
+            && (eeStartOffset < BuildStartOffset || eeStartOffset >= 0))
+        {
+            yield return new ValidationResult(
+                "Early entry start offset must be between build start and 0 (exclusive).",
+                [nameof(EarlyEntryStartOffset)]);
         }
     }
 }
@@ -120,20 +131,12 @@ internal static class EventSettingsFormMapper
             ? InstantPattern.General.Format(src.EarlyEntryClose.Value)
             : null,
         IsActive = src.Status == EventSettingsStatus.Active,
+        EarlyEntryStartOffset = src.EarlyEntryStartOffset,
     };
 
     internal static EventSettingsParseResult Parse(EventSettingsViewModel model)
     {
         var errors = new List<EventSettingsFormError>();
-
-        // The form edits an existing row and never invents an id: Shifts' event_settings
-        // still owns them, and a Settings-only id is an event that can hold no rota.
-        if (model.Id is null)
-        {
-            errors.Add(new EventSettingsFormError(
-                nameof(model.Id),
-                "This form edits an existing event row. New rows arrive through /Settings/Admin/Carry."));
-        }
 
         if (DateTimeZoneProviders.Tzdb.GetZoneOrNull(model.TimeZoneId) is null)
             errors.Add(new EventSettingsFormError(nameof(model.TimeZoneId), "Invalid IANA timezone ID."));
@@ -165,9 +168,10 @@ internal static class EventSettingsFormMapper
 
         var gateOpening = parsedDate.Value;
 
+        // A new cycle mints its own id — Settings owns event ids (nobodies-collective/Humans#1631).
         return new EventSettingsParseResult(
             new EventSettingsInfo(
-                Id: model.Id!.Value,
+                Id: model.Id ?? Guid.NewGuid(),
                 EventName: model.EventName,
                 // Year is the gate-opening year, never edited on its own.
                 Year: gateOpening.Year,
@@ -185,7 +189,8 @@ internal static class EventSettingsFormMapper
                 EarlyEntryClose: earlyEntryClose,
                 Status: model.IsActive
                     ? EventSettingsStatus.Active
-                    : EventSettingsStatus.Inactive),
+                    : EventSettingsStatus.Inactive,
+                EarlyEntryStartOffset: model.EarlyEntryStartOffset),
             []);
     }
 

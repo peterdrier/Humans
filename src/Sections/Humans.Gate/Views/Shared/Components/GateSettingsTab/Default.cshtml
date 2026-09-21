@@ -1,0 +1,22 @@
+@model GateSettingsViewModel
+
+@* Explicit asp-controller/asp-action: this view renders inside /Settings, so ambient
+   route data would otherwise resolve "Admin" against the wrong controller (Settings'
+   own _EventSettingsForm.cshtml documents the same gotcha). *@
+<form method="post" asp-controller="Gate" asp-action="Admin" style="max-width: 540px;">
+    <div class="mb-3">
+        <label class="form-label" asp-for="GeneralEntryOpensAtUtc">General entry opens at (UTC, ISO instant)</label>
+        <input class="form-control" asp-for="GeneralEntryOpensAtUtc" placeholder="2026-07-06T10:00:00Z" />
+        <div class="form-text">
+            Before this instant only Early Entry holders are admitted; at or after it, every valid
+            ticket is admissible. Example: <code>2026-07-06T10:00:00Z</code> is noon in Madrid (CEST).
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label" asp-for="MinorAgeThresholdYears">Minor age threshold (no photo ID required under)</label>
+        <input class="form-control" type="number" min="0" max="21" asp-for="MinorAgeThresholdYears" style="max-width: 8rem;" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save settings</button>
+</form>

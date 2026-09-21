@@ -3,6 +3,7 @@ using Humans.Base.Extensions;
 using Humans.Events.Contracts;
 using Humans.Events.Services;
 using Humans.Events.Services.Dtos;
+using Humans.Settings.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -157,4 +158,68 @@ public sealed class CachingEventServiceTests
         VenueName: null, Title: title, Description: description, LocationNote: null, Host: null,
         StartAt: Instant.FromUtc(2026, 8, 1, 10, 0), DurationMinutes: 60, IsRecurring: false, RecurrenceDays: null,
         PriorityRank: 0, SubmittedAt: Instant.FromUtc(2026, 8, 1, 10, 0), LastUpdatedAt: Instant.FromUtc(2026, 8, 1, 10, 0));
+
+    [HumansFact]
+    public async Task EventSettingsChanged_ReloadsTheGuideSettingsProjection()
+    {
+        // The projection carries TimeZoneId stitched from the Settings-owned event settings
+        // row, and the guide renders every event time in it. Only Events' own writes used to
+        // refresh it, so a timezone edit on the Settings tab showed the old zone until restart.
+        var before = GuideSettings("Europe/Madrid");
+        var after = GuideSettings("Atlantic/Canary");
+        _inner.GetGuideSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<EventGuideSettingsView?>(before));
+
+        var first = await _service.GetGuideSettingsAsync(TestContext.Current.CancellationToken);
+        first!.TimeZoneId.Should().Be("Europe/Madrid");
+
+        _inner.GetGuideSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<EventGuideSettingsView?>(after));
+
+        // Without the listener the cached projection is served forever.
+        var stale = await _service.GetGuideSettingsAsync(TestContext.Current.CancellationToken);
+        stale!.TimeZoneId.Should().Be("Europe/Madrid");
+
+        ((IEventSettingsChangeListener)_service).EventSettingsChanged(Guid.NewGuid());
+
+        var fresh = await _service.GetGuideSettingsAsync(TestContext.Current.CancellationToken);
+        fresh!.TimeZoneId.Should().Be("Atlantic/Canary");
+    }
+
+    [HumansFact]
+    public async Task EventSettingsChanged_FailedRefreshKeepsTheProjectionStale()
+    {
+        // If the first read after a change fails (cancelled request, database error) the
+        // stale marker must survive it, or the old timezone is served until restart.
+        var before = GuideSettings("Europe/Madrid");
+        var after = GuideSettings("Atlantic/Canary");
+        _inner.GetGuideSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<EventGuideSettingsView?>(before));
+        (await _service.GetGuideSettingsAsync(TestContext.Current.CancellationToken))!
+            .TimeZoneId.Should().Be("Europe/Madrid");
+
+        ((IEventSettingsChangeListener)_service).EventSettingsChanged(Guid.NewGuid());
+        _inner.GetGuideSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns<EventGuideSettingsView?>(_ => throw new OperationCanceledException());
+
+        var failed = () => _service.GetGuideSettingsAsync(TestContext.Current.CancellationToken);
+        await failed.Should().ThrowAsync<OperationCanceledException>();
+
+        _inner.GetGuideSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<EventGuideSettingsView?>(after));
+
+        var fresh = await _service.GetGuideSettingsAsync(TestContext.Current.CancellationToken);
+        fresh!.TimeZoneId.Should().Be("Atlantic/Canary");
+    }
+
+    private static EventGuideSettingsView GuideSettings(string timeZoneId) => new(
+        Id: Guid.NewGuid(),
+        EventSettingsId: Guid.NewGuid(),
+        SubmissionOpenAt: Instant.FromUtc(2026, 1, 1, 0, 0),
+        SubmissionCloseAt: Instant.FromUtc(2026, 2, 1, 0, 0),
+        GuidePublishAt: Instant.FromUtc(2026, 3, 1, 0, 0),
+        MaxPrintSlots: 3,
+        TimeZoneId: timeZoneId,
+        CreatedAt: Instant.FromUtc(2026, 1, 1, 0, 0),
+        UpdatedAt: Instant.FromUtc(2026, 1, 1, 0, 0));
 }

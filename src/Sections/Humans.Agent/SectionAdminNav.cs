@@ -10,7 +10,6 @@ internal sealed class SectionAdminNav : ISectionAdminNav
     [
         new("Agent", System: true, Items: [
             new("Status",  "AdminAgent", "Status",        null, null, "fa-solid fa-gauge-high", PolicyNames.AdminOnly),
-            new("Config",  "AdminAgent", "Settings",      null, null, "fa-solid fa-robot",      PolicyNames.AdminOnly),
             new("History", "Agent",      "Conversations", null, null, "fa-solid fa-comments",   PolicyNames.AdminOnly)
         ], Weight: 120)
     ];

@@ -3,6 +3,7 @@
   src/Sections/Humans.Tickets.Contracts/**
   src/Sections/Humans.EarlyEntry/**
   src/Sections/Humans.Shifts.Contracts/**
+  src/Sections/Humans.Settings.Contracts/**
   src/Sections/Humans.Users.Contracts/**
   src/Sections/Humans.Auth.Contracts/**
   tests/Humans.Integration.Tests/Controllers/GatePageRenderTests.cs
@@ -119,7 +120,7 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
 | `/Gate/Claim` | GET (`ScannerAccess`) / POST (`GateAdmit`) | — | Pick who is scanning → hands off to the PIN keypad |
 | `/Gate/ClaimPin` | POST | `GateAdmit` | Set/verify the staffer's PIN, then stamp the scanning session. Both POSTs require the posted id to be an active member and the id the user read resolves to: a merged-away id fails closed rather than claiming the session as its survivor |
 | `/Gate/Leaderboard` | GET | `ScannerAccess` | Per-staffer scan tallies |
-| `/Gate/Admin` | GET/POST | `TicketAdminOrAdmin` | Gate settings (cutoff, minor age threshold) |
+| `/Gate/Admin` | GET/POST | `TicketAdminOrAdmin` | Staff PIN admin — settings (cutoff, minor age threshold) moved to `/Settings#gate` (peterdrier/Humans#1634) |
 | `/Gate/Admin/SetPin` | POST | `TicketAdminOrAdmin` | Admin enrol/change any staffer's PIN (incl. supervisors) |
 | `/Gate/Admin/ResetPin` | POST | `TicketAdminOrAdmin` | Admin clear a staffer's PIN (they re-enrol on next claim) |
 | `/Gate/Admin/VendorCheckInBackfill` | GET | `AdminOnly` | One-off vendor check-in backfill page (temp — remove after use) |
@@ -191,7 +192,7 @@ nobodies-collective/Humans#933.)
   transferred, or refunded at the door won't scan correctly until the next Tickets sync. The window
   is the Tickets cache/sync interval, not real-time.
 - **Early Entry** — `IEarlyEntryService.GetForUserAsync`.
-- **Shifts** — `IBurnSettingsService.GetActiveAsync` (event time zone for "today"; also the active
+- **Shifts** — `ISettingsService.GetActiveEventSettingsAsync` (event time zone for "today"; also the active
   event/year for the shift roster pre-fill and the Attended-participation write — `GateService`
   reads the active event via BurnSettings, not Shifts); and `IShiftManagementServiceRead.GetBrowseShiftsAsync`
   from `GateService`: `GetShiftRosterAsync` pre-fills the claim screen with the gate-shift roster

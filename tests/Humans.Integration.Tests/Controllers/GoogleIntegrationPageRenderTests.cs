@@ -25,8 +25,8 @@ namespace Humans.Integration.Tests.Controllers;
 /// throwing — <c>&lt;vc:access-matrix&gt;</c> is back on the tag-helper form since the
 /// component moved to <c>Humans.UI</c> (nobodies-collective/Humans#1056), and it binds
 /// through the section's <c>@@addTagHelper *, Humans.Interfaces</c>. Note it renders <b>empty</b> on
-/// <c>/Google</c>: neither <c>AccessMatrixDefinitions.Sections</c> nor <c>SectionHelpContent</c>
-/// has a "Google" key, a content gap tracked separately — so there is no modal id to assert
+/// <c>/Google</c>: no section contributes an access matrix for it and no section's help
+/// contribution has a "Google" key either, a content gap tracked separately — so there is no modal id to assert
 /// here, only the absence of literal markup. A key the resx carve missed renders as its own
 /// name. And the section's <c>_ViewImports</c> is what binds every tag helper, so a missing
 /// line there ships broken HTML with a green build.
@@ -37,7 +37,8 @@ public class GoogleIntegrationPageRenderTests(HumansTestDatabase database) : Int
     private static readonly string[] AdminPages =
     [
         "/Google",
-        "/Google/SyncSettings",
+        // /Google/SyncSettings is deliberately absent: its GET is removed
+        // (peterdrier/Humans#1634) — the form now lives only at /Settings#google-sync.
         "/Google/Sync",
         "/Google/AllGroups",
         "/Google/Accounts",
@@ -72,7 +73,7 @@ public class GoogleIntegrationPageRenderTests(HumansTestDatabase database) : Int
         {
             // A 200 is also the proof that /Google's `Component.InvokeAsync("AccessMatrix", ...)`
             // resolves: an unresolvable invoke-by-name throws rather than degrading. Its own
-            // output is not assertable — AccessMatrixDefinitions has no "Google" key, so the
+            // output is not assertable — no section contributes a "Google" matrix, so the
             // component has rendered empty since before this move.
             var response = await Client.GetAsync(url, ct);
             response.StatusCode.Should().Be(HttpStatusCode.OK, $"GET {url} must render");
@@ -159,7 +160,7 @@ public class GoogleIntegrationPageRenderTests(HumansTestDatabase database) : Int
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 
-        var response = await Client.GetAsync("/Google/SyncSettings", ct);
+        var response = await Client.GetAsync("/Google/AllGroups", ct);
 
         response.StatusCode.Should().Be(HttpStatusCode.Redirect,
             "AdminOnly in Shell must still gate the section's controller");

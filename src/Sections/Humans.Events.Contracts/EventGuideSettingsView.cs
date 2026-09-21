@@ -13,17 +13,12 @@ namespace Humans.Events.Contracts;
 /// Held as a single nullable field inside <c>CachingEventService</c>.
 /// </para>
 /// <para>
-/// <b>Stop-gap stale window (nobodies-collective/Humans#719):</b> <see cref="TimeZoneId"/> is
-/// read from the Shifts-owned <c>event_settings</c> table at warm /
-/// refresh time via <c>IBurnSettingsService</c>. The Events section has no
-/// invalidation signal for burn-settings edits today, so a moderator
-/// changing the burn's <c>TimeZoneId</c> will <em>not</em> flush this
-/// cache entry until either: (a) another event-section write happens, or
-/// (b) the process restarts. Acceptable in practice — <c>TimeZoneId</c>
-/// is set per-burn and effectively never changes mid-cycle. Tracked in
-/// <see href="https://github.com/nobodies-collective/Humans/issues/719"/>;
-/// once <c>IBurnSettingsService</c> exposes an invalidation signal, this
-/// section will subscribe and the stale window collapses to zero.
+/// <see cref="TimeZoneId"/> is read from the Settings-owned <c>event_settings</c>
+/// row at warm / refresh time via <c>ISettingsService</c>. The stale window
+/// nobodies-collective/Humans#719 described is closed: <c>CachingEventService</c>
+/// implements <c>IEventSettingsChangeListener</c>, so an event-settings save marks
+/// this projection stale and the next read reloads it. Before that, a timezone edit
+/// showed the old zone until another Events write or a process restart.
 /// </para>
 /// </remarks>
 public sealed record EventGuideSettingsView(

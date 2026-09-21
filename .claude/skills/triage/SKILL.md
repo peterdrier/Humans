@@ -12,7 +12,7 @@ Five phases run in priority order:
 2. **Close phase** — find open issues whose fixes shipped to production, close them, notify reporters
 3. **Feedback phase** — triage new feedback reports into GitHub issues (legacy; feedback is being retired in favor of in-app Issues)
 4. **Issues phase** — triage non-terminal in-app Issues (`/api/backdoor/issues`) — the going-forward replacement for feedback
-5. **Agent phase** — pull the full agent conversation history (`/api/backdoor/agent/conversations`), cluster repeated user questions, propose FAQ entries to plug gaps in `src/Humans.Base/Models/SectionHelpContent.cs` (the hardcoded knowledge base the agent reads via the `fetch_section_guide` tool)
+5. **Agent phase** — pull the full agent conversation history (`/api/backdoor/agent/conversations`), cluster repeated user questions, propose FAQ entries to plug gaps in `SectionHelpContent.Faq` (`src/Humans.Base/Models/SectionHelpContent.cs`, the FAQ block preloaded into the agent's prompt)
 
 ## Arguments
 
@@ -699,7 +699,7 @@ Issues phase complete: {total} in-app issues ({environment})
 
 Skip if any of `logs`/`close`/`open`/`issues` is specified without `agent`.
 
-The agent (chat assistant) reads hardcoded markdown from `src/Humans.Base/Models/SectionHelpContent.cs` via the `fetch_section_guide` tool. When the user's question isn't covered, the agent refuses, hands off to the issues queue, or answers from weaker sources (e.g. the unofficial community FAQ, with a "not official" disclaimer). All of these point at gaps in the hardcoded KB. **The goal of this phase is to propose new FAQ entries to plug those gaps, not to "process" individual conversations.** The KB is small and hand-edited for now; an editing UI may come later.
+The agent (chat assistant) is preloaded with `SectionHelpContent.Faq` plus each section's help glossary (`Docs/help/<Key>.glossary.md`), and fetches a section's invariants doc (`docs/sections/<key>.md`, or `src/Sections/Humans.<key>/Docs/<key>.md`) on demand via the `fetch_section_guide` tool. Note the help *guides* (`Docs/help/<Key>.guide.md`) feed the in-app help modal only — the agent never sees them. When the user's question isn't covered, the agent refuses, hands off to the issues queue, or answers from weaker sources (e.g. the unofficial community FAQ, with a "not official" disclaimer). All of these point at gaps in the hardcoded KB. **The goal of this phase is to propose new FAQ entries to plug those gaps, not to "process" individual conversations.** The KB is small and hand-edited for now; an editing UI may come later.
 
 Review the **full conversation list**, not a refusal filter — see the dead-counters note in Step 5.1.
 
@@ -755,7 +755,7 @@ Subagents are useful here if the conversation set is large: dispatch one per clu
 
 ## Step 5.3: Propose FAQ entries
 
-For each cluster ≥2 occurrences (or ≥1 high-value), draft a short Q&A entry suitable for `SectionHelpContent.cs` (`src/Humans.Base/Models/SectionHelpContent.cs`). Format:
+For each cluster ≥2 occurrences (or ≥1 high-value), draft a short Q&A entry suitable for the agent's FAQ block (`SectionHelpContent.Faq`). Format:
 
 ```
 ### Cluster #{N}: {one-line topic}
@@ -765,7 +765,7 @@ For each cluster ≥2 occurrences (or ≥1 high-value), draft a short Q&A entry 
 > {preview 1}
 > {preview 2}
 
-**Proposed FAQ entry** (to append in `SectionHelpContent.Guides["{Section}"]` — let Peter decide on the structure):
+**Proposed FAQ entry** (to append to `SectionHelpContent.Faq` — let Peter decide on the structure):
 
 #### {Question phrasing}
 
@@ -799,7 +799,7 @@ Present these options inline and ask which to take (do not use `AskUserQuestion`
 
 ## Step 5.5: Execute
 
-Default action is to write the approved drafts to `docs/superpowers/specs/{YYYY-MM-DD}-faq-proposals-{env}.md` with one section per cluster, ready for Peter to copy into `SectionHelpContent.cs`. Write the file in a worktree branch, commit, and open a PR (it can ride along with other triage-run doc changes) — **never leave the draft uncommitted in the main checkout; that's how work gets lost.** Do not touch `SectionHelpContent.cs` directly.
+Default action is to write the approved drafts to `docs/superpowers/specs/{YYYY-MM-DD}-faq-proposals-{env}.md` with one section per cluster, ready for Peter to copy into `SectionHelpContent.Faq`. Write the file in a worktree branch, commit, and open a PR (it can ride along with other triage-run doc changes) — **never leave the draft uncommitted in the main checkout; that's how work gets lost.** Do not touch `SectionHelpContent.cs` directly.
 
 If missing-capability GH issues were approved, create them with `gh issue create` (same template as Phase 4, label `blocked:needs-design`, no Sprint Metadata).
 

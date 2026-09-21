@@ -65,8 +65,7 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 | Route | Method | Auth | Purpose |
 |-------|--------|------|---------|
 | `/Google` | GET | Admin | Integration dashboard |
-| `/Google/SyncSettings` | GET | Admin | Per-service sync mode view |
-| `/Google/SyncSettings` | POST | Admin | Update sync mode for a service |
+| `/Google/SyncSettings` | POST | Admin | Update sync mode for a service (posted from the `/Settings#google-sync` tab, no GET — peterdrier/Humans#1634) |
 | `/Google/SyncSystemTeams` | POST | Admin | Manual system-team sync trigger |
 | `/Google/SyncResults` | GET | Admin | PRG landing for sync report |
 | `/Google/Sync` | GET | TeamsAdmin, Board, Admin | Resource sync status dashboard |

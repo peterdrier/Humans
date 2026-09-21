@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
@@ -34,14 +33,11 @@ internal sealed class CampContactService(
 
         try
         {
-            var cleanMessage = Regex.Replace(
-                message, "<[^>]+>", "", RegexOptions.None, TimeSpan.FromSeconds(1));
-
             await emailService.SendAsync(emailMessages.FacilitatedMessage(
                 campContactEmail,
                 campDisplayName,
                 senderDisplayName,
-                cleanMessage,
+                message,
                 includeContactInfo,
                 senderEmail));
 

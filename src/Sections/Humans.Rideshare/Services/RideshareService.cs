@@ -7,7 +7,7 @@ using Humans.Notifications.Contracts;
 using Humans.Rideshare.Data;
 using Humans.Rideshare.Domain;
 using Humans.Rideshare.Services.Routing;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;
 
@@ -21,7 +21,7 @@ namespace Humans.Rideshare.Services;
 internal sealed class RideshareService(
     IRideshareRepository repository,
     IRouteProvider routeProvider,
-    IBurnSettingsService burnSettings,
+    ISettingsService settingsService,
     IUserServiceRead users,
     INotificationEmitter notifications,
     IAuditLogService auditLog,
@@ -43,7 +43,7 @@ internal sealed class RideshareService(
 
     public async Task<int> GetActiveYearAsync(CancellationToken ct = default)
     {
-        var burn = await burnSettings.GetActiveAsync(ct);
+        var burn = await settingsService.GetActiveEventSettingsAsync(ct);
         return burn?.Year ?? clock.GetCurrentInstant().InUtc().Year;
     }
 

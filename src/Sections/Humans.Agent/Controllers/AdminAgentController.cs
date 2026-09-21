@@ -30,22 +30,6 @@ internal sealed class AdminAgentController(
         return View("~/Views/Admin/Agent/Status.cshtml", vm);
     }
 
-    [HttpGet("Settings")]
-    public IActionResult Settings()
-    {
-        var s = settings.Current;
-        return View("~/Views/Admin/Agent/Settings.cshtml", new AdminAgentSettingsViewModel
-        {
-            Enabled = s.Enabled,
-            Model = s.Model,
-            PreloadConfig = s.PreloadConfig,
-            DailyMessageCap = s.DailyMessageCap,
-            HourlyMessageCap = s.HourlyMessageCap,
-            DailyTokenCap = s.DailyTokenCap,
-            RetentionDays = s.RetentionDays
-        });
-    }
-
     [HttpPost("Settings")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Settings(AdminAgentSettingsViewModel vm, CancellationToken ct)
@@ -66,7 +50,7 @@ internal sealed class AdminAgentController(
             s.RetentionDays = vm.RetentionDays;
         }, ct);
         SetSuccess("Settings saved.");
-        return RedirectToAction(nameof(Settings));
+        return Redirect("/Settings#agent");
     }
 
     [HttpPost("ReloadKnowledgeBase")]

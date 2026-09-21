@@ -76,7 +76,7 @@ internal sealed class CampDetailViewModel
     /// <summary>True when the viewer may see all roles + the roster: CampAdmin (any camp) or an Active member of this camp.</summary>
     public bool CanSeeFullCamp { get; set; }
     public CampSeasonDetailViewModel? CurrentSeason { get; set; }
-    /// <summary>The year membership requests are accepted for (CampSettings.PublicYear). Compare against
+    /// <summary>The year membership requests are accepted for (CampSettingsInfo.PublicYear). Compare against
     /// CurrentSeason.Year to tell whether the displayed season is the one that can still be joined.</summary>
     public int PublicYear { get; set; }
     public bool IsCurrentUserLead { get; set; }
@@ -250,8 +250,6 @@ internal sealed class CampAdminViewModel
     public Dictionary<int, NodaTime.LocalDate?> NameLockDates { get; set; } = new();
     public List<CampSummaryRowViewModel> AllCampSummaries { get; set; } = [];
     public string? RegistrationInfo { get; set; }
-    /// <summary>Global EE start date for the public year. Null until set by CampAdmin.</summary>
-    public NodaTime.LocalDate? EeStartDate { get; set; }
     /// <summary>
     /// True when at least one <c>CampSpecialRole</c> value (other than
     /// <c>None</c>) does not yet have a <c>CampRoleDefinition</c> row. The
@@ -259,6 +257,9 @@ internal sealed class CampAdminViewModel
     /// </summary>
     public bool HasMissingSpecialRoles { get; set; }
 }
+
+/// <summary>The /Settings#barrios tab (peterdrier/Humans#1634): open seasons.</summary>
+internal sealed record CampBarriosSettingsViewModel(IReadOnlyList<int> OpenSeasons);
 
 internal sealed class CampSummaryRowViewModel
 {

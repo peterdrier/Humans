@@ -25,6 +25,7 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
         _service = new VolunteerTrackingService(
             _repo,
             Substitute.For<IShiftManagementRepository>(),
+            NewCalendarResolver(),
             Substitute.For<IUserService>(),
             Substitute.For<IShiftViewInvalidator>(),
             Clock);

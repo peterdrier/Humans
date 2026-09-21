@@ -124,7 +124,7 @@ internal sealed class AgentPromptAssembler : IAgentPromptAssembler
             Description: "Fetch a feature specification by its filename stem (e.g. \"shift-management\"). A miss lists every stem you may ask for.",
             JsonSchema: """{"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}"""),
         new(Name: AgentToolNames.FetchSectionGuide,
-            Description: "Fetch the long procedural guide for a given section key from SectionHelpContent.Guides.",
+            Description: "Fetch the long procedural guide for a given section key.",
             JsonSchema: """{"type":"object","properties":{"section":{"type":"string"}},"required":["section"]}"""),
         new(Name: AgentToolNames.FetchCommunityFaq,
             Description: "Fetch a community-sourced FAQ topic by its topic key from the Community FAQ index. CALL THIS for questions about the Elsewhere event, the association, on-site facilities and logistics, travel, tickets/waves, community practices, jargon, or the org's history — anything not purely about Humans-app mechanics. Match the question (and any expanded abbreviations) against each topic's `covers:` keywords in the index, and fetch every plausibly-relevant topic before concluding you cannot help. Content is crowd-sourced from the community Discord and is NOT official — it may be outdated; prefer fetch_section_guide when an authoritative section guide covers the question, and tell the user when an answer comes from community discussion.",

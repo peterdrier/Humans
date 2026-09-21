@@ -1,5 +1,5 @@
 using Humans.Shifts.Services;
-using Humans.Shifts.Domain;
+using Humans.Settings.Contracts;
 using AwesomeAssertions;
 using Xunit;
 
@@ -8,15 +8,23 @@ namespace Humans.Shifts.Tests.Domain;
 
 public class BuildSubPeriodClassifierTests
 {
-    private static EventSettings DefaultSettings() => new()
-    {
+    private static EventSettingsInfo DefaultSettings() => new(
+        Id: Guid.NewGuid(),
+        EventName: "Test Event",
+        Year: 2026,
+        TimeZoneId: "Europe/Madrid",
+        GateOpeningDate: default,
         // Default boundaries match the org convention shipped via EF HasDefaultValue.
-        BuildStartOffset = -25,
-        FirstCrewStartOffset = -25,
-        SetupWeekStartOffset = -16,
-        PreEventWeekStartOffset = -9,
-        FinishingWeekendStartOffset = -4,
-    };
+        BuildStartOffset: -25,
+        EventEndOffset: 6,
+        StrikeEndOffset: 9,
+        FirstCrewStartOffset: -25,
+        SetupWeekStartOffset: -16,
+        PreEventWeekStartOffset: -9,
+        FinishingWeekendStartOffset: -4,
+        EarlyEntryCapacity: new Dictionary<int, int>(),
+        BarriosEarlyEntryAllocation: null,
+        EarlyEntryClose: null);
 
     [HumansTheory]
     [InlineData(-25, BuildSubPeriod.FirstCrew)]
@@ -44,8 +52,7 @@ public class BuildSubPeriodClassifierTests
     [HumansFact]
     public void Classify_returns_null_for_offset_before_first_crew_boundary()
     {
-        var settings = DefaultSettings();
-        settings.FirstCrewStartOffset = -20;
+        var settings = DefaultSettings() with { FirstCrewStartOffset = -20 };
         // -25 predates the FirstCrew boundary at -20 → unclassified ("pre-build").
         BuildSubPeriodClassifier.Classify(-25, settings).Should().BeNull();
     }
@@ -71,13 +78,9 @@ public class BuildSubPeriodClassifierTests
         // with d >= start && d < end will produce zero results. No exception is thrown.
         // The ascending-order guard on EventSettingsViewModel prevents this at the UI
         // layer, but the classifier itself has no guard — this test makes that visible.
-        var inverted = new EventSettings
+        var inverted = DefaultSettings() with
         {
-            BuildStartOffset = -25,
             FirstCrewStartOffset = -10, // inverted: later than SetupWeekStartOffset
-            SetupWeekStartOffset = -16,
-            PreEventWeekStartOffset = -9,
-            FinishingWeekendStartOffset = -4,
         };
         var (start, end) = BuildSubPeriodClassifier.BoundsFor(BuildSubPeriod.FirstCrew, inverted);
         // start (-10) >= end (-16) → the range is empty; callers get zero days.

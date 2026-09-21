@@ -1,34 +1,15 @@
-@model GateSettingsViewModel
 @{
-    ViewData["Title"] = "Gate settings";
+    ViewData["Title"] = "Staff PINs";
     // Admin desktop task (set the cutoff before doors) — keep the normal admin chrome,
     // not the chromeless gate kiosk layout that the tablet-facing views use.
     Layout = "_AdminLayout";
 }
 
-<h1>Gate settings</h1>
-
-<form method="post" asp-action="Admin" style="max-width: 540px;">
-    <div class="mb-3">
-        <label class="form-label" asp-for="GeneralEntryOpensAtUtc">General entry opens at (UTC, ISO instant)</label>
-        <input class="form-control" asp-for="GeneralEntryOpensAtUtc" placeholder="2026-07-06T10:00:00Z" />
-        <div class="form-text">
-            Before this instant only Early Entry holders are admitted; at or after it, every valid
-            ticket is admissible. Example: <code>2026-07-06T10:00:00Z</code> is noon in Madrid (CEST).
-        </div>
-    </div>
-
-    <div class="mb-3">
-        <label class="form-label" asp-for="MinorAgeThresholdYears">Minor age threshold (no photo ID required under)</label>
-        <input class="form-control" type="number" min="0" max="21" asp-for="MinorAgeThresholdYears" style="max-width: 8rem;" />
-    </div>
-
-    <button type="submit" class="btn btn-primary">Save settings</button>
-</form>
-
-<hr class="my-4" />
-
-<h2 class="h4">Staff PINs</h2>
+<h1>Staff PINs</h1>
+<p class="text-muted">
+    Gate settings (general entry time, minor age threshold) moved to
+    <a href="/Settings#gate">/Settings</a>.
+</p>
 <p class="text-muted" style="max-width: 540px;">
     Staff PINs attribute scans when claiming the gate — anyone, supervisors included, can set their
     own at the kiosk, or enrol one here out of band. Overrides are authorized by the shared supervisor

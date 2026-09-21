@@ -55,6 +55,24 @@
   <data name="Common_Close" xml:space="preserve">
     <value>Tanca</value>
   </data>
+  <data name="EmailComposer_Preview" xml:space="preserve">
+    <value>Vista prèvia</value>
+  </data>
+  <data name="EmailComposer_PreviewModalTitle" xml:space="preserve">
+    <value>Vista prèvia del correu</value>
+  </data>
+  <data name="EmailComposer_PreviewLoading" xml:space="preserve">
+    <value>Carregant la vista prèvia…</value>
+  </data>
+  <data name="EmailComposer_PreviewError" xml:space="preserve">
+    <value>No s'ha pogut carregar la vista prèvia. Torna-ho a provar.</value>
+  </data>
+  <data name="EmailComposer_MarkdownSupported" xml:space="preserve">
+    <value>Admet Markdown: negreta, enllaços, llistes, imatges.</value>
+  </data>
+  <data name="EmailComposer_PreviewSubjectLabel" xml:space="preserve">
+    <value>Assumpte</value>
+  </data>
   <data name="Common_General" xml:space="preserve">
     <value>General</value>
   </data>
@@ -1386,5 +1404,32 @@
   <!-- Settings tab label: a SharedResource key because SettingsTabsViewComponent cannot see a contributing section's own resource set -->
   <data name="Settings_TabEvent" xml:space="preserve">
     <value>Esdeveniment</value>
+  </data>
+
+  <data name="Settings_TabAgent" xml:space="preserve">
+    <value>Agent</value>
+  </data>
+
+  <data name="Settings_TabGoogleSync" xml:space="preserve">
+    <value>Sincronització de Google</value>
+  </data>
+
+  <data name="Settings_TabEmail" xml:space="preserve">
+    <value>Correu</value>
+  </data>
+  <data name="Settings_TabCityPlanning" xml:space="preserve">
+    <value>Mapa de Barrios</value>
+  </data>
+  <data name="Settings_TabGate" xml:space="preserve">
+    <value>Porta</value>
+  </data>
+  <data name="Settings_TabBarrios" xml:space="preserve">
+    <value>Barris</value>
+  </data>
+  <data name="Settings_TabEventGuide" xml:space="preserve">
+    <value>Guia d'esdeveniments</value>
+  </data>
+  <data name="Settings_TabShifts" xml:space="preserve">
+    <value>Torns</value>
   </data>
 </root>

@@ -40,4 +40,41 @@ public sealed class EmailPreviewServiceTests
             .WithMessage("*recipient-specific send policy*");
         composer.DidNotReceive().Compose(Arg.Any<string>(), Arg.Any<string?>());
     }
+
+    [HumansFact]
+    public void RenderMarkdown_always_on_category_has_no_unsubscribe_placeholder()
+    {
+        var composer = Substitute.For<IEmailBodyComposer>();
+        composer.Compose(Arg.Any<string>(), Arg.Any<string?>()).Returns(("<html>Branded</html>", "Plain"));
+        var sut = new EmailPreviewService(composer);
+
+        var preview = sut.RenderMarkdown("Subject", "**Hello**", MessageCategory.System);
+
+        preview.Should().Be(new RenderedEmailPreview(string.Empty, "Subject", "<html>Branded</html>"));
+        composer.Received(1).Compose(Arg.Is<string>(h => h.Contains("<strong>Hello</strong>")), null);
+    }
+
+    [HumansFact]
+    public void RenderMarkdown_opt_outable_category_gets_placeholder_unsubscribe_footer()
+    {
+        var composer = Substitute.For<IEmailBodyComposer>();
+        composer.Compose(Arg.Any<string>(), Arg.Any<string?>()).Returns(("<html>Branded</html>", "Plain"));
+        var sut = new EmailPreviewService(composer);
+
+        sut.RenderMarkdown("Subject", "Hi", MessageCategory.FacilitatedMessages);
+
+        composer.Received(1).Compose(Arg.Any<string>(), "#");
+    }
+
+    [HumansFact]
+    public void RenderMarkdown_no_category_has_no_unsubscribe_placeholder()
+    {
+        var composer = Substitute.For<IEmailBodyComposer>();
+        composer.Compose(Arg.Any<string>(), Arg.Any<string?>()).Returns(("<html>Branded</html>", "Plain"));
+        var sut = new EmailPreviewService(composer);
+
+        sut.RenderMarkdown("Subject", "Hi", null);
+
+        composer.Received(1).Compose(Arg.Any<string>(), null);
+    }
 }

@@ -8,69 +8,16 @@ using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Models;
 
-internal sealed class EventSettingsViewModel : IValidatableObject
+/// <summary>
+/// The Shifts-owned knobs for the active event cycle. The app-wide calendar
+/// (name, dates, offsets, early entry) is Settings' — edited at
+/// <c>/Settings#event</c> — and is not on this form (nobodies-collective/Humans#1631).
+/// </summary>
+internal sealed class EventSettingsViewModel
 {
-    public Guid? Id { get; set; }
-
-    [Required, MaxLength(256)]
-    public string EventName { get; set; } = string.Empty;
-
-    [Required, MaxLength(100)]
-    public string TimeZoneId { get; set; } = "Europe/Madrid";
-
-    [Required]
-    public string GateOpeningDate { get; set; } = string.Empty;
-
-    public int BuildStartOffset { get; set; } = -25;
-    public int EventEndOffset { get; set; } = 6;
-    public int StrikeEndOffset { get; set; } = 9;
-
-    // Build sub-period boundaries — defaults match the entity defaults set by EF config.
-    [Range(int.MinValue, -1, ErrorMessage = "First crew start must be a negative offset relative to gate-opening day.")]
-    public int FirstCrewStartOffset { get; set; } = -25;
-
-    [Range(int.MinValue, -1, ErrorMessage = "Set-up week start must be a negative offset relative to gate-opening day.")]
-    public int SetupWeekStartOffset { get; set; } = -16;
-
-    [Range(int.MinValue, -1, ErrorMessage = "Pre-event week start must be a negative offset relative to gate-opening day.")]
-    public int PreEventWeekStartOffset { get; set; } = -9;
-
-    [Range(int.MinValue, -1, ErrorMessage = "Finishing weekend start must be a negative offset relative to gate-opening day.")]
-    public int FinishingWeekendStartOffset { get; set; } = -4;
-
-    public string EarlyEntryCapacityJson { get; set; } = "{}";
-    public string? BarriosEarlyEntryAllocationJson { get; set; }
-
-    public string? EarlyEntryClose { get; set; }
-
     public bool IsShiftBrowsingOpen { get; set; }
     public int? GlobalVolunteerCap { get; set; }
     public int ReminderLeadTimeHours { get; set; } = 24;
-    public bool IsActive { get; set; }
-
-    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
-    {
-        if (FirstCrewStartOffset < BuildStartOffset)
-        {
-            yield return new ValidationResult(
-                $"First crew offset cannot be earlier than build start offset ({nameof(BuildStartOffset)}).",
-                [nameof(FirstCrewStartOffset)]);
-        }
-
-        if (FirstCrewStartOffset >= SetupWeekStartOffset
-            || SetupWeekStartOffset >= PreEventWeekStartOffset
-            || PreEventWeekStartOffset >= FinishingWeekendStartOffset)
-        {
-            yield return new ValidationResult(
-                "Build sub-period offsets must be strictly ascending: First crew < Set-up week < Pre-event week < Finishing weekend.",
-                [
-                    nameof(FirstCrewStartOffset),
-                    nameof(SetupWeekStartOffset),
-                    nameof(PreEventWeekStartOffset),
-                    nameof(FinishingWeekendStartOffset)
-                ]);
-        }
-    }
 }
 
 internal class CreateRotaModel

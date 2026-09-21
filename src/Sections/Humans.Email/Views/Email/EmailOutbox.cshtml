@@ -32,24 +32,8 @@
         }
     </div>
     <div class="d-flex gap-2 align-items-center">
-        @if (Model.IsPaused)
-        {
-            <form method="post" asp-action="ResumeEmailSending">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-success">
-                    <i class="fa-solid fa-play me-1"></i>Resume Sending
-                </button>
-            </form>
-        }
-        else
-        {
-            <form method="post" asp-action="PauseEmailSending">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-danger">
-                    <i class="fa-solid fa-pause me-1"></i>Pause All Sending
-                </button>
-            </form>
-        }
+        @* Pause/resume moved to the /Settings#email tab (peterdrier/Humans#1634). *@
+        <a href="/Settings#email" class="btn btn-outline-secondary">Manage sending</a>
         <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary">Back</a>
     </div>
 </div>

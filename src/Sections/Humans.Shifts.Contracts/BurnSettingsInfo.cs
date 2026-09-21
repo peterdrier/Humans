@@ -1,5 +1,6 @@
 
 using NodaTime;
+using Humans.Settings.Contracts;
 
 namespace Humans.Shifts.Contracts;
 
@@ -40,7 +41,7 @@ public sealed record BurnSettingsInfo(
     IReadOnlyDictionary<int, int> EarlyEntryCapacity,
     IReadOnlyDictionary<int, int>? BarriosEarlyEntryAllocation,
     Instant? EarlyEntryClose,
-    bool IsShiftBrowsingOpen) : IBurnSettingsInfo
+    bool IsShiftBrowsingOpen) : IBurnSettingsInfo, IEventSettingsInfo
 {
     /// <summary>
     /// Step-function lookup: returns the cumulative EE capacity for the

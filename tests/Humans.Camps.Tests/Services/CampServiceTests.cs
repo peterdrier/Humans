@@ -3,6 +3,7 @@ using AwesomeAssertions;
 using Humans.Base.Interfaces.Caching;
 using Humans.CityPlanning.Contracts;
 using Humans.EarlyEntry.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -26,6 +27,7 @@ public sealed class CampServiceTests : CampsTestHarness
     private readonly ICityPlanningService _cityPlanningService;
     private readonly IEarlyEntryInvalidator _earlyEntryInvalidator;
     private readonly ICampInfoInvalidator _campInfoInvalidator = Substitute.For<ICampInfoInvalidator>();
+    private readonly ISettingsService _settingsService;
 
     public CampServiceTests()
         : base(Instant.FromUtc(2026, 3, 13, 12, 0))
@@ -45,6 +47,10 @@ public sealed class CampServiceTests : CampsTestHarness
         // season ids.
         _cityPlanningService = Substitute.For<ICityPlanningService>();
 
+        _settingsService = Substitute.For<ISettingsService>();
+        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(BurnFixtures.Burn(year: 2026));
+
         _service = new CampService(
             repo,
             AuditLog,
@@ -57,6 +63,7 @@ public sealed class CampServiceTests : CampsTestHarness
             _earlyEntryInvalidator,
             _campInfoInvalidator,
             Substitute.For<IUserServiceRead>(),
+            _settingsService,
             Clock,
             NullLogger<CampService>.Instance);
     }
@@ -74,6 +81,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
         var services = new ServiceCollection();
         services.AddKeyedScoped<ICampService>(CachingCampService.InnerServiceKey, (_, _) => _service);
+        services.AddScoped(_ => _settingsService);
         await using var provider = services.BuildServiceProvider();
         var cached = new CachingCampService(provider.GetRequiredService<IServiceScopeFactory>(),
             Clock, NullLogger<CachingCampService>.Instance);
@@ -676,19 +684,27 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetSettingsAsync_AfterSetPublicYearAsync_ReturnsInvalidatedSettings()
+    public async Task GetSettingsAsync_PublicYear_ResolvesFromActiveEventSettings()
     {
         await SeedSettingsAsync();
+        _settingsService.GetActiveEventSettingsAsync(Xunit.TestContext.Current.CancellationToken)
+            .Returns(BurnFixtures.Burn(year: 2031));
 
-        var initial = await _service.GetSettingsAsync(Xunit.TestContext.Current.CancellationToken);
+        var settings = await _service.GetSettingsAsync(Xunit.TestContext.Current.CancellationToken);
 
-        initial.PublicYear.Should().Be(2026);
+        settings.PublicYear.Should().Be(2031);
+    }
 
-        await _service.SetPublicYearAsync(2027, Xunit.TestContext.Current.CancellationToken);
+    [HumansFact]
+    public async Task GetSettingsAsync_PublicYear_FallsBackToClockYear_WhenNoActiveEvent()
+    {
+        await SeedSettingsAsync();
+        _settingsService.GetActiveEventSettingsAsync(Xunit.TestContext.Current.CancellationToken)
+            .Returns((EventSettingsInfo?)null);
 
-        var updated = await _service.GetSettingsAsync(Xunit.TestContext.Current.CancellationToken);
+        var settings = await _service.GetSettingsAsync(Xunit.TestContext.Current.CancellationToken);
 
-        updated.PublicYear.Should().Be(2027);
+        settings.PublicYear.Should().Be(Clock.GetCurrentInstant().InUtc().Year);
     }
 
     [HumansFact]

@@ -21,6 +21,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+    <!-- The cache decorator listens for event-settings saves (IEventSettingsChangeListener). -->
+    <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

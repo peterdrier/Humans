@@ -1,0 +1,119 @@
+@using System.Text.Json
+@model string
+@* Shared "Preview" modal for the _EmailComposer component, keyed by @Model so a page can host
+   more than one instance at once (survey invitation's per-culture tabs) or supply this once at
+   page level for a composer that instead renders inside an AJAX-injected partial whose own copy
+   never executes (Feedback/Issues detail panels). Defines window.HumansEmailComposer.preview(
+   subject, body, category, modalId) and .wire(root), which POSTs to the Email section's
+   "EmailPreviewMarkdown" named route (resolved server-side below, never a hardcoded Email URL —
+   Base is the bottom of the dependency graph and must not know section routes) and shows the
+   exact branded, sanitized email in a sandboxed iframe — no outbox row is created. *@
+@{
+    var modalId = Model;
+    var labelId = $"{modalId}Label";
+    var errorId = $"{modalId}Error";
+    var frameId = $"{modalId}Frame";
+    var subjectId = $"{modalId}Subject";
+}
+<div class="modal fade" id="@modalId" tabindex="-1" aria-labelledby="@labelId" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="@labelId">
+                    <i class="fa-solid fa-envelope-open-text me-1"></i> @Localizer["EmailComposer_PreviewModalTitle"]
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Localizer["Common_Close"]"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="@errorId" class="alert alert-danger m-3 d-none"></div>
+                <div id="@subjectId" class="p-3 border-bottom d-none">
+                    <strong>@Localizer["EmailComposer_PreviewSubjectLabel"]:</strong> <span></span>
+                </div>
+                <iframe id="@frameId" class="w-100 border-0" style="min-height: 420px;"
+                        sandbox="" title="@Localizer["EmailComposer_PreviewModalTitle"]"></iframe>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Common_Close"]</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+@await Html.PartialAsync("_RequestVerificationTokenScript")
+(function () {
+    var loadingHtml = @Html.Raw(JsonSerializer.Serialize("<p class=\"text-muted p-3\">" + Localizer["EmailComposer_PreviewLoading"].Value + "</p>"));
+    var errorText = @Html.Raw(JsonSerializer.Serialize(Localizer["EmailComposer_PreviewError"].Value));
+    var previewUrl = @Html.Raw(JsonSerializer.Serialize(Url.RouteUrl("EmailPreviewMarkdown")));
+
+    window.HumansEmailComposer = window.HumansEmailComposer || {};
+
+    window.HumansEmailComposer.preview = function (subject, body, category, modalId) {
+        modalId = modalId || 'emailPreviewModal';
+        var frame = document.getElementById(modalId + 'Frame');
+        var errorBox = document.getElementById(modalId + 'Error');
+        var subjectBox = document.getElementById(modalId + 'Subject');
+        var modalEl = document.getElementById(modalId);
+        if (!frame || !errorBox || !modalEl) { return; }
+
+        errorBox.classList.add('d-none');
+        if (subjectBox) { subjectBox.classList.add('d-none'); }
+        frame.srcdoc = loadingHtml;
+
+        if (typeof bootstrap !== 'undefined') {
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        }
+
+        var form = new FormData();
+        form.append('subject', subject || '');
+        form.append('body', body || '');
+        form.append('category', category || '');
+        form.append('__RequestVerificationToken', getRequestVerificationToken());
+
+        fetch(previewUrl, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: form
+        })
+            .then(function (resp) {
+                if (!resp.ok) { throw new Error('preview failed'); }
+                return resp.json();
+            })
+            .then(function (data) {
+                frame.srcdoc = data.html;
+                if (subjectBox && data.subject) {
+                    subjectBox.querySelector('span').textContent = data.subject;
+                    subjectBox.classList.remove('d-none');
+                }
+            })
+            .catch(function () {
+                errorBox.textContent = errorText;
+                errorBox.classList.remove('d-none');
+            });
+    };
+
+    // Wires every not-yet-wired .email-composer-preview-btn under `root` (default: whole
+    // document) to open its own targeted preview modal. Runs automatically when this script
+    // executes normally, and is called again by a host page after it injects a composer via
+    // innerHTML — whose own copy of this script never runs — e.g. Feedback/Issues detail panels.
+    window.HumansEmailComposer.wire = function (root) {
+        (root || document).querySelectorAll('.email-composer-preview-btn').forEach(function (btn) {
+            if (btn.dataset.composerWired === 'true') { return; }
+            btn.dataset.composerWired = 'true';
+            btn.addEventListener('click', function () {
+                var subjectName = btn.getAttribute('data-subject-name');
+                var bodyName = btn.getAttribute('data-body-name');
+                var category = btn.getAttribute('data-category') || '';
+                var previewModalId = btn.getAttribute('data-preview-modal');
+                var subjectEl = subjectName ? document.querySelector('[name="' + subjectName + '"]') : null;
+                var bodyEl = document.querySelector('textarea[name="' + bodyName + '"]');
+                window.HumansEmailComposer.preview(
+                    subjectEl ? subjectEl.value : '',
+                    bodyEl ? bodyEl.value : '',
+                    category,
+                    previewModalId);
+            });
+        });
+    };
+})();
+</script>
