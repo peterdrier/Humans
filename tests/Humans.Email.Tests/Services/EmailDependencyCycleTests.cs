@@ -103,8 +103,8 @@ public sealed class EmailDependencyCycleTests
     /// <summary>
     /// A crosscut may not grow new edges into sections. Both sets are the ones the
     /// teardown of peterdrier/Humans#1651 shrinks — Email.Contracts is already down to
-    /// Base and Users.Contracts — so these assertions
-    /// exist to stop a new reference arriving meanwhile, not to bless what is here.
+    /// Base and Users.Contracts — so these assertions exist to stop a new reference
+    /// arriving meanwhile, not to bless what is here.
     /// Asserted from the csproj's own &lt;ProjectReference&gt; items, not
     /// <c>Assembly.GetReferencedAssemblies()</c>: a const-only or unused reference emits
     /// no metadata reference and would pass that check silently (see

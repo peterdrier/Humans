@@ -10,7 +10,7 @@ namespace Humans.Campaigns.Services;
 /// </summary>
 internal sealed class CampaignsEmailPreviews(CampaignsEmails emails) : IEmailPreviewContributor
 {
-    private const string SampleSubject = "Your ticket code for Nowhere 2026, {{Name}}";
+    private const string SampleSubject = "Your ticket code for Elsewhere 2026, {{Name}}";
 
     private const string SampleBody =
         "Hi {{Name}},\n\nHere is your code: **{{Code}}**\n\nSee you there.";

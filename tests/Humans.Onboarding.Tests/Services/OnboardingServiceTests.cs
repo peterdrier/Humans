@@ -102,7 +102,9 @@ public sealed class OnboardingServiceTests
             Arg.Any<string>(),
             reviewerId);
         await _syncJob.DidNotReceiveWithAnyArgs().SyncMembershipForUserAsync(default, default, Arg.Any<CancellationToken>());
-        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!, Arg.Any<CancellationToken>());
+        await _emailService.DidNotReceive().SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "signup_rejected"),
+            Arg.Any<CancellationToken>());
         await _notificationService.DidNotReceiveWithAnyArgs().SendAsync(
             default,
             default,

@@ -68,10 +68,6 @@ public interface IEmailMessageFactory
     /// <summary>Workspace credentials email (always-send, immediate drain).</summary>
     EmailMessage WorkspaceCredentials(string recoveryEmail, string userName, string workspaceEmail, string tempPassword, string? culture = null);
 
-    /// <summary>Campaign-code email (CampaignCodes); carries the explicit user and grant ids and the reply-to from the request.</summary>
-
-    /// <summary>Event lifecycle notification (always-send, immediate drain); template is chosen from the request status.</summary>
-
     /// <summary>Google Group removal — loss of access (System; no unsubscribe footer).</summary>
     EmailMessage GoogleGroupRemovalLossOfAccess(string removedEmail, string userName, string groupName, string groupEmail, string? culture = null);
 

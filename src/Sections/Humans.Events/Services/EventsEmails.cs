@@ -11,7 +11,7 @@ namespace Humans.Events.Services;
 /// <see cref="EmailMessage"/> (content plus the routing policy Events chooses —
 /// template name and opt-out category) for the single
 /// <see cref="IEmailService.SendAsync"/> path. The lifecycle copy is hardcoded English,
-/// as it was in the renderer; localizing it is its own issue
+/// as it was in the renderer; localizing it is tracked in peterdrier/Humans#1657
 /// (memory/architecture/email-templates-live-in-sender.md, peterdrier/Humans#1651).
 /// Pure — no I/O, no persistence.
 /// </summary>
@@ -21,6 +21,7 @@ internal sealed class EventsEmails(ILogger<EventsEmails> logger)
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // Kept for parity with the deleted renderer; takes effect once the copy is localized (peterdrier/Humans#1657).
         using (new CultureScope(request.Culture, logger))
         {
             var userName = Encode(request.UserName);

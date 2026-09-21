@@ -6,7 +6,7 @@ description: Adding or editing an email template: build it in the sending sectio
 # Email templates live in the sending section
 
 A section that sends mail owns its templates: an internal `<Section>Emails` builder
-returning a ready `EmailMessage`, its `Email_*` keys in that section's own resx set in all
+returning a ready `EmailMessage`, its `<Section>_Email_*` keys in that section's own resx set in all
 six cultures, its tests in `tests/Humans.<Section>.Tests`, and an `IEmailPreviewContributor`
 registered from `Section.Register` so the template shows in `/Email/EmailPreview`. Email keeps
 the mechanics only — `EmailMessage`, `IEmailService.SendAsync`, the outbox, transport, branded

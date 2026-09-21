@@ -31,8 +31,8 @@
 
     That leaf-to-leaf edge is acyclic: Humans.Users.Contracts has exactly one
     ProjectReference, to the equally zero-reference Humans.Onboarding.Contracts, so the
-    chain terminates. Note that Base
-    references Humans.Users.Contracts, so nothing in that project may ever reference this one.
+    chain terminates. Note that Base references Humans.Users.Contracts, so nothing in
+    that project may ever reference this one.
   -->
 
   <ItemGroup>

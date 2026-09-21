@@ -337,12 +337,12 @@ Git Bash.)
      was invisible until `grep -o 'name="[^"]*"' … | sed -E 's/^(prefix1|…).*/\1/' | uniq -c`
      was run against the file itself (proven: Shifts).
    - **A key whose *renderer* lives in Base stays in Base — carve by renderer, not by prefix.**
-     The third direction, after "carve by owner" and "the key goes home". Feedback's
-     `Email_FeedbackResponse_{Subject,Body}` look like the section's, and are read by
-     `Humans.Infrastructure/Services/EmailRenderer.cs`, which composes every transactional email
-     and cannot see a section's resource set. Taking them would degrade that email to raw keys in
-     all six languages, and no render test covers an email body. Grep each candidate key's call
-     sites before moving it, exactly as with `Enum_*` (proven: Feedback).
+     The third direction, after "carve by owner" and "the key goes home". Email templates live in
+     the sending section's own resx as `<Section>_Email_*`
+     ([`email-templates-live-in-sender`](../../memory/architecture/email-templates-live-in-sender.md)),
+     but keys still read by one of Email's remaining renderer methods (e.g. `FacilitatedMessage`)
+     stay in Email until that template moves too. Grep each candidate key's call sites before
+     moving it, exactly as with `Enum_*` (proven: Feedback).
    - If step 5 renames an enum, rename its `Enum_{TypeName}_*` keys in all six languages in the
      same commit — the key is the **live CLR type name** (spec §3; proven the hard way: Store).
    - **…and the fourth direction: move the *markup* instead of the key.** "Carve by renderer"
