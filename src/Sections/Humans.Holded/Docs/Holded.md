@@ -97,6 +97,12 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
 - Sweeps are serialized by a non-blocking in-process gate; a second caller is skipped and told
   so, never queued (single-server deployment).
 - Reads (`GetLedgerLinesAsync`, `GetAccountBalancesAsync`) never call Holded.
+- The treasury bank feed (`IHoldedClient.ListBankMovementsAsync` /
+  `ReconcileBankMovementAsync`, `GET`/`POST /treasury/accounts/{id}/bank-movements[/…/reconcile]`)
+  is **not** mirrored here — Finance's SEPA booking flow (nobodies-collective/Humans#1185) reads
+  it live over a bounded window. A follow-up reconciliation panel is where a
+  `holded_bank_movements` mirror table would land; see
+  `2026-08-10-holded-v2-migration-design.md`.
 - Nothing here is keyed by member, so this section holds no consent gate and no erasure path.
   It is not free of personal data: a creditor account's name is the member's and the lines on it
   are their reimbursement history, identifiable through Finance's member→creditor binding.

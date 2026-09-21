@@ -552,6 +552,83 @@ internal sealed class HoldedClient : IHoldedClient
         return contacts;
     }
 
+    public async Task<IReadOnlyList<HoldedBankMovementDto>> ListBankMovementsAsync(
+        string treasuryAccountId, LocalDate from, LocalDate to, CancellationToken ct = default)
+    {
+        const int pageSafetyCap = 50; // far above a small nonprofit's line volume for a 90-day window
+        // end_date is exclusive on the live API — send to+1, same rule as ListLedgerEntriesAsync.
+        var query =
+            $"/api/v2/treasury/accounts/{Uri.EscapeDataString(treasuryAccountId)}/bank-movements" +
+            $"?start_date={LocalDatePattern.Iso.Format(from)}" +
+            $"&end_date={LocalDatePattern.Iso.Format(to.PlusDays(1))}&limit=200";
+
+        var items = await GetPagedAsync(query, pageSafetyCap, ct);
+        try
+        {
+            return items.Select(n => new HoldedBankMovementDto
+            {
+                Id = Prop(n, "id")?.GetValue<string>() ?? throw new HoldedPermanentException(
+                    "Holded bank movement is missing required field 'id' — refusing the page."),
+                AccountId = Prop(n, "account")?.GetValue<string>() ?? throw new HoldedPermanentException(
+                    "Holded bank movement is missing required field 'account' — refusing the page."),
+                Date = ParseBankMovementDate(Prop(n, "date")?.GetValue<string>() ?? ""),
+                Amount = ReadRequiredDecimalV2(Prop(n, "amount"), "amount"),
+                Description = Prop(n, "description")?.GetValue<string>(),
+                Status = (Prop(n, "status")?.GetValue<string>() ?? "pending").ToLowerInvariant(),
+                Origin = Prop(n, "origin")?.GetValue<string>(),
+            })
+            .Where(m => m.Date >= from && m.Date <= to)
+            .ToList();
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or FormatException or OverflowException or UnparsableValueException)
+        {
+            // Same rule as ledger lines: a silently dropped outgoing line reads as "no bank line
+            // yet" and delays a booking, but a *manufactured* one would book against a movement
+            // that does not exist. Either way the whole page fails rather than skipping the line.
+            throw new HoldedPermanentException(
+                $"Holded bank-movements {from}..{to} for account {treasuryAccountId} could not be read.",
+                ex);
+        }
+    }
+
+    public async Task ReconcileBankMovementAsync(
+        string treasuryAccountId, string movementId,
+        IReadOnlyList<HoldedReconcileDocumentRef> documents, CancellationToken ct = default)
+    {
+        var payload = new
+        {
+            documents = documents.Select(d => new
+            {
+                document_id = d.DocumentId,
+                document_type = d.DocumentType,
+            }),
+        };
+
+        using var req = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"/api/v2/treasury/accounts/{Uri.EscapeDataString(treasuryAccountId)}" +
+            $"/bank-movements/{Uri.EscapeDataString(movementId)}/reconcile")
+        { Content = JsonContent.Create(payload, options: OmitNulls) };
+        AttachAuth(req);
+
+        using var resp = await SendAsync(req, ct);
+    }
+
+    /// <summary>Bank-movement dates are unverified against the probe's ledger-entry finding
+    /// (`DD/MM/YYYY`), so both that shape and ISO are accepted; neither parsing throws
+    /// <c>HoldedPermanentException</c> for the caller.</summary>
+    private static LocalDate ParseBankMovementDate(string s)
+    {
+        var iso = LocalDatePattern.Iso.Parse(s);
+        if (iso.Success) return iso.Value;
+
+        var ledger = DateFormattingExtensions.HoldedLedgerDatePattern.Parse(s);
+        if (ledger.Success) return ledger.Value;
+
+        throw new HoldedPermanentException($"Holded bank movement date '{s}' could not be parsed.");
+    }
+
     /// <summary>Projects one Holded contact. Holded sends an absent sub-record as an empty array rather
     /// than null, and <see cref="JsonNode"/>'s string indexer throws on anything but a JsonObject — so
     /// every nested read goes through <see cref="Prop"/>, never the raw indexer.</summary>

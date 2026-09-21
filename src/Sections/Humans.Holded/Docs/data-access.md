@@ -35,9 +35,12 @@ Repository: `IHoldedMirrorRepository`.
 | HoldedApiCalls | R/W (drained from `IHoldedCallLog` after each sync/overview read) |
 
 No cross-section service calls — `IHoldedClient` (this section's own leaf,
-`Humans.Holded.Contracts` — the Holded API connector; its only journal-affecting
-write is `PayPurchaseDocumentAsync`, `POST /purchases/{id}/payments`, called by
-Finance when a SEPA transfer is booked) and `IHoldedCallLog`
+`Humans.Holded.Contracts` — the Holded API connector; its journal-affecting
+writes are `PayPurchaseDocumentAsync` and `PostLedgerEntryAsync`, called by
+Finance when a SEPA transfer is booked, plus `ListBankMovementsAsync` /
+`ReconcileBankMovementAsync` — `GET`/`POST /treasury/accounts/{id}/bank-movements[/…/reconcile]`,
+the Sabadell bank feed nobodies-collective/Humans#1185 books SEPA transfers against; the
+feed is read live, not mirrored into a table) and `IHoldedCallLog`
 (section-internal in-process call-log buffer drained into `HoldedApiCalls`)
 are its only outbound
 dependencies, plus `IOptions<HoldedSectionOptions>` for the monthly
