@@ -14,5 +14,6 @@ The one subset that *can* run in CI is filtered **in** by name from its own work
 **Why:** The project's whole purpose is holding the tests CI can't host. Counting its tests as "excluded coverage" mistakes the container for a backlog. This has been raised and settled more than once; each round costs a real conversation.
 
 **How to apply:**
+- Nightly debt runs and manual runner trials exclude this suite even on Peter's machine. Use `FullyQualifiedName!~Humans.Integration.Tests`; preserve that exclusion in any narrower test filter. Local availability is not authorization to run it as part of this automation.
 - Auditing coverage or CI: report `Humans.Integration.Tests` as out of scope by design. Never as a gap, a risk, or a number of "tests that run nowhere".
 - Writing a test that must run in CI: put it in the section's own `tests/Humans.<Section>.Tests/` project. If it only works against a live external dependency, `Humans.Integration.Tests` is correct and **it will not run in CI — say so**, and don't call CI its gate (see the CI-reachability check in `.claude/skills/section-doctor/SKILL.md` Phase 4).

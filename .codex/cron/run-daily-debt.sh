@@ -81,6 +81,9 @@ main() {
   PUSH_RETRIES="${PUSH_RETRIES:-4}"                            # retries after the first push attempt, network failures only
   MAX_OPEN_AUTO_PRS="${MAX_OPEN_AUTO_PRS:-1}"                  # skip the night when this many of this runner's PRs are already open
   LOG_RETENTION_DAYS="${LOG_RETENTION_DAYS:-30}"
+  # Applies to the wrapper and dotnet test commands launched by Codex.
+  # Integration tests are outside nightly runs and manual runner trials.
+  export VSTestTestCaseFilter='FullyQualifiedName!~Humans.Integration.Tests'
   readonly CLONE_MARKER_NAME=".codex-runner-clone"
   readonly PROMPT_REL_PATH=".codex/prompts/daily-debt.md"
   readonly ENV_FILE_REL_PATH=".codex/cron/debt-runner.env"     # excluded from `git clean` inside WORK_DIR
@@ -460,8 +463,8 @@ main() {
     exit 1
   fi
 
-  log "running dotnet test Humans.slnx -v quiet -clp:ErrorsOnly"
-  if dotnet test Humans.slnx -v quiet -clp:ErrorsOnly >>"$log_file" 2>&1; then
+  log "running dotnet test Humans.slnx -v quiet -clp:ErrorsOnly --filter $VSTestTestCaseFilter"
+  if dotnet test Humans.slnx -v quiet -clp:ErrorsOnly --filter "$VSTestTestCaseFilter" >>"$log_file" 2>&1; then
     test_result="pass"
   else
     test_result="fail"

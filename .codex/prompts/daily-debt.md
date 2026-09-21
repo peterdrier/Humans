@@ -45,6 +45,11 @@ message becomes the PR body**: make sure it's the report described in
 
 ## Guardrails — read before touching anything
 
+**Do not run `Humans.Integration.Tests`.** This applies to nightly runs and
+manual runner trials. The wrapper exports `VSTestTestCaseFilter` to exclude
+them. If you supply your own `--filter`, preserve that exclusion when testing
+the solution. Do not override the environment filter to run integration tests.
+
 These come straight from this repo's own rules
 (`AGENTS.md`, `docs/architecture/peters-hard-rules.md`,
 `docs/architecture/peters-working-rules.md`, `memory/INDEX.md`). Scan

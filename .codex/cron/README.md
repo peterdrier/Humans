@@ -5,6 +5,11 @@ repo — never your working checkout. Gates on build + test before pushing,
 opens one PR per night if there's something real and green, and is a quiet
 no-op otherwise. Scheduler: systemd user timer (the only one shipped here).
 
+Both nightly runs and manual trials exclude `Humans.Integration.Tests`, using
+the same `FullyQualifiedName!~Humans.Integration.Tests` filter as CI. The runner
+exports it as `VSTestTestCaseFilter` for Codex's test commands and passes it
+explicitly to its own test gate.
+
 ## One-time setup
 
 ```bash
