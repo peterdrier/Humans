@@ -34,8 +34,13 @@ When the deliverable is pushed and the PR is ready for review:
      lives in the round worker.
    - `title`: `steward: <owner>/<repo>#<N>` · `tags`: `["steward"]`.
    - `prompt`: the brief below, filled in. Nothing else: no history, no ledger.
-2. `unsubscribe_pr_activity` for the PR, if subscribed. Only the steward is subscribed.
-3. Report to the user in one line (PR URL, steward session id) and end.
+2. Stay subscribed until the steward is. Wait for its first turn to finish (`get_session`
+   on the new session) and confirm from its reply that `subscribe_pr_activity` succeeded.
+   The brief overlap is deliberate: a duplicate wake costs one classification, while an
+   event arriving in a gap where nobody is subscribed is lost for good — nothing polls.
+3. Only then `unsubscribe_pr_activity` for the PR. From here the steward alone is
+   subscribed. If the steward never confirms, do not unsubscribe: fall back below.
+4. Report to the user in one line (PR URL, steward session id) and end.
 
 Fallback, when `create_session` is not available (a local run without the remote tools):
 stay subscribed and follow the wake protocol below yourself. Do not schedule check-ins
@@ -48,7 +53,9 @@ You are the steward for <owner>/<repo>#<N> (branch <branch>, base main).
 Read .claude/skills/steward/SKILL.md now and follow its wake protocol; keep every
 turn short. Deliverable, one paragraph: <what the PR does>.
 Review rounds spent so far: 0 (verify against Review-round trailers via the worker).
-First action: subscribe_pr_activity for this PR, then end the turn.
+First action: subscribe_pr_activity for this PR, then end the turn with one line
+saying whether the subscription succeeded — the builder waits for that before
+dropping its own.
 ```
 
 ## The wake protocol (the steward's whole job)

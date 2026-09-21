@@ -22,7 +22,8 @@ Report file: <scratchpad>/steward/<N>-round-<k+1>.md.
    branch. Fetch fresh, work only there
    ([`always-use-worktree`](../../../memory/process/always-use-worktree.md)).
 2. **Count.** Recount spent rounds from the PR (command in SKILL.md). Where the count and
-   the brief disagree, the PR wins; say so in the report. At 5 or more: skip to step 7.
+   the brief disagree, the PR wins; say so in the report. At 5 or more: skip to step 7,
+   which fetches the open threads itself — the trigger line is not the list of open items.
 3. **Merge conflict first.** Merge main into the branch with a merge commit, resolve,
    regenerate generated files with the repo's tooling, never rewrite history. Not a round.
 4. **CI failure.** Read the failed job's log tail once. Rule out a failure that isn't this
@@ -34,28 +35,36 @@ Report file: <scratchpad>/steward/<N>-round-<k+1>.md.
    inside the ceiling table's bar for this round. `gh` where present; otherwise the github
    MCP tools (`pull_request_read get_review_comments`, `add_reply_to_pull_request_comment`,
    `resolve_review_thread`).
-6. **One commit, then the gate.** All the round's fixes in one commit whose message ends
-   with `Review-round: <k+1>` and the session's attribution trailers. Then
+6. **One commit, then the gate.** All of this wake's fixes in one commit, carrying the
+   session's attribution trailers. The `Review-round: <k+1>` trailer goes on a commit
+   answering an automated review finding or a CI failure, and only there: a commit doing
+   what Peter asked, or a mechanical one (base merge, conflict resolution), carries no
+   trailer and spends no round (SKILL.md, "Rounds and the ceiling"). Then
    `dotnet build Humans.slnx -v quiet` and grep `Error(s)` is 0, then
    `dotnet test Humans.slnx -v quiet --no-build` with no `Failed!`; never trust a test run
    against a stale build. Push by URL ([`push-by-url-in-cloud`](../../../memory/process/push-by-url-in-cloud.md)).
    Then reply in every thread with its disposition and the sha, react, resolve; leave open
    only a thread genuinely waiting on Peter.
-7. **Ceiling.** At 5 spent, or when the table says stop: write the ceiling comment into
-   the report file (what is open, what you'd do about each, what needs deciding, ending
-   with the Claude Code footer) and return `CEILING`.
+7. **Ceiling.** At 5 spent, or when the table says stop: first fetch the unresolved
+   threads on both repos, read-only — no triage, no patch, no commit — so the handoff
+   lists the findings that are actually open. Then write the ceiling comment (what is
+   open, what you'd do about each, what needs deciding, ending with the Claude Code
+   footer) into the report file **and verbatim into your reply**, below the return block.
+   The steward cannot read files, so the reply is the only copy it can post.
 
 ## What the worker never does
 
 - Steward: it does not subscribe, read notifications, or wait for anything.
-- Push more than one round commit, or a commit without its trailer.
+- Push more than one commit for the wake; leave the trailer off a review round, or put one
+  on a commit that is not a round.
 - Skip, disable or quarantine a test; use `--no-verify`; hand-edit state.
 - Merge, or ask Peter whether to fix a finding: the gates decide.
-- Put logs, diffs or file contents in the reply.
+- Put logs, diffs or file contents in the reply — the ceiling comment of step 7 is the one
+  thing that belongs there in full.
 
 ## Return contract
 
-Reply in at most 12 lines:
+Reply in at most 12 lines, plus the ceiling comment verbatim when `STATUS: ceiling`:
 
 ```
 STATUS: done | ceiling | blocked
@@ -67,3 +76,6 @@ CI: <green on <sha> | red: <check>, <why it is not this PR's> | not yet run>
 OPEN: <anything the steward must relay to Peter, one line each, or "none">
 REPORT: <path>
 ```
+
+`STATUS: ceiling` adds the ceiling comment below that block, under a
+`CEILING COMMENT (post verbatim):` line — the steward posts it as-is.
