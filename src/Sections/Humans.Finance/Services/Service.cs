@@ -1144,13 +1144,15 @@ internal sealed class Service(
         var unbooked = rows.Where(r => r.BookedAt is null).ToList();
         if (pending.Count == 0 && unbooked.Count == 0) return;
 
-        // Wide enough to hold every line the sweep could still act on: two days before the oldest
-        // unbooked file was generated, or before the oldest pending booking, floored at the feed
-        // window — a line older than that is a human's problem, not a sweep's.
+        // Wide enough to hold every line the sweep could still act on: the first payable day of the
+        // oldest file it still has work for, floored at the feed window — a line older than that is
+        // a human's problem, not a sweep's. Both lists key off GeneratedAt, never BookedAt: a line
+        // may only pay a file generated on or before it (FirstPayableDate), while a booking can land
+        // days later, so a BookedAt window would start *after* the very line a pending row is
+        // waiting to see reconciled and the row would never be stamped.
         var floor = Today().PlusDays(-FeedWindowDays);
-        var from = unbooked.Select(r => r.GeneratedAt)
-            .Concat(pending.Select(r => r.BookedAt!.Value))
-            .Select(i => i.InZone(MadridZone).Date.PlusDays(-GenerationSlackDays))
+        var from = unbooked.Concat(pending)
+            .Select(FirstPayableDate)
             .DefaultIfEmpty(floor)
             .Min();
         if (from < floor) from = floor;

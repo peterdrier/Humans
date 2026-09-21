@@ -479,6 +479,31 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
+    public async Task Sweep_ReconcilePendingRow_BookedDaysAfterItsLine_StillReadsBackFarEnough()
+    {
+        // The reconcile call failed when this was booked, 11 days after the file was generated. The
+        // feed window has to reach the line's own date — keying it off BookedAt starts the read
+        // after the line, so the sweep never sees the human's later reconcile and ReconciledAt and
+        // its audit entry stay missing forever.
+        var generatedAt = Instant.FromUtc(2026, 4, 19, 10, 0);
+        var lineDate = new LocalDate(2026, 4, 19);
+        SeedRows(Row(TransferId, _userId, bookedAt: FixedNow - Duration.FromDays(1),
+            movementId: MovementId, generatedAt: generatedAt));
+        // The stub honours the requested window, as the live feed does.
+        _client.ListBankMovementsAsync(
+                Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
+                Arg.Any<CancellationToken>())
+            .Returns(ci => ci.ArgAt<LocalDate>(1) <= lineDate
+                ? (IReadOnlyList<HoldedBankMovementDto>)[Movement(status: "reconciled", date: lineDate)]
+                : []);
+
+        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).MarkSepaTransferReconciledAsync(
+            TransferId, FixedNow, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task Sweep_NothingUnbooked_MakesNoHoldedCalls()
     {
         SeedRows(Row(TransferId, _userId, bookedAt: FixedNow, movementId: MovementId,

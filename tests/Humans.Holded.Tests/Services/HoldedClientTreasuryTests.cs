@@ -124,6 +124,54 @@ public class HoldedClientTreasuryTests
     }
 
     [HumansFact]
+    public async Task ListBankMovementsAsync_LineWithNoStatus_IsPermanent_NotAssumedPending()
+    {
+        // "pending" is the one status the SEPA sweep reads as bookable, so a manufactured one could
+        // book a transfer against a line Holded has already settled. Absent means unreadable.
+        var json = """
+        {"items":[{"id":"m1","account":"tr-1","date":"2026-08-18","amount":"-10.00"}],
+         "cursor":null,"has_more":false}
+        """;
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
+
+        var act = async () => await client.ListBankMovementsAsync(
+            "tr-1", new LocalDate(2026, 8, 1), new LocalDate(2026, 8, 31),
+            Xunit.TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<HoldedPermanentException>())
+            .WithMessage("*status*");
+    }
+
+    [HumansFact]
+    public async Task ListBankMovementsAsync_MalformedSuccessBody_IsAHoldedException_NotRawJson()
+    {
+        // The paged walk parses the envelope before any caller's try block. Unnormalized, the
+        // JsonException escapes the client and /Finance/Sepa fails the request instead of showing
+        // its bank-feed warning.
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, """{"items":[{"id":""")));
+
+        var act = async () => await client.ListBankMovementsAsync(
+            "tr-1", new LocalDate(2026, 8, 1), new LocalDate(2026, 8, 31),
+            Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedApiException>();
+    }
+
+    [HumansFact]
+    public async Task ListBankMovementsAsync_EnvelopeFieldOfTheWrongType_IsAHoldedException()
+    {
+        // Same gap, reached through has_more rather than the parser itself.
+        var json = """{"items":[],"cursor":null,"has_more":"yes"}""";
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
+
+        var act = async () => await client.ListBankMovementsAsync(
+            "tr-1", new LocalDate(2026, 8, 1), new LocalDate(2026, 8, 31),
+            Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedApiException>();
+    }
+
+    [HumansFact]
     public async Task ListBankMovementsAsync_FollowsTheCursor()
     {
         var callCount = 0;

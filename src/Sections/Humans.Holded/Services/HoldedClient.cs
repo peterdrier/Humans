@@ -574,7 +574,14 @@ internal sealed class HoldedClient : IHoldedClient
                 Date = ParseBankMovementDate(Prop(n, "date")?.GetValue<string>() ?? ""),
                 Amount = ReadRequiredDecimalV2(Prop(n, "amount"), "amount"),
                 Description = Prop(n, "description")?.GetValue<string>(),
-                Status = (Prop(n, "status")?.GetValue<string>() ?? "pending").ToLowerInvariant(),
+                // Never defaulted: "pending" is the one status the SEPA sweep reads as "nothing is
+                // tied to this line yet, it may be booked", so manufacturing it for an absent field
+                // would let a response shape change turn an already-settled line into a bookable
+                // one. Absent means unreadable, like 'id' and 'account' above. An unknown *present*
+                // value needs no guard — anything but "pending" already fails closed.
+                Status = (Prop(n, "status")?.GetValue<string>() ?? throw new HoldedPermanentException(
+                    "Holded bank movement is missing required field 'status' — refusing the page."))
+                    .ToLowerInvariant(),
                 Origin = Prop(n, "origin")?.GetValue<string>(),
             })
             .Where(m => m.Date >= from && m.Date <= to)
@@ -779,44 +786,58 @@ internal sealed class HoldedClient : IHoldedClient
     {
         var items = new List<JsonNode>();
         string? cursor = null;
-        for (var page = 1; page <= pageSafetyCap; page++)
+        try
         {
-            var url = cursor is null
-                ? pathAndQuery
-                : $"{pathAndQuery}&cursor={Uri.EscapeDataString(cursor)}";
-            using var req = new HttpRequestMessage(HttpMethod.Get, url);
-            AttachAuth(req);
-            // Forward the real caller (ListLedgerEntriesAsync, ListContactsAsync, …) — SendAsync's own
-            // [CallerMemberName] would otherwise record every paginated endpoint as "GetPagedAsync",
-            // collapsing the call log's per-endpoint breakdown the admin overview renders.
-            using var resp = await SendAsync(req, ct, caller);
-            await using var stream = await resp.Content.ReadAsStreamAsync(ct);
-            var root = await JsonNode.ParseAsync(stream, cancellationToken: ct);
-
-            // Strict envelope validation, not the forgiving Prop/Arr fallbacks: a 200 carrying
-            // Holded's {"status":0,...} error object — or any body without an `items` array —
-            // would otherwise read as a successfully-empty page, and list results feed
-            // replace-semantics windows where a false empty deletes every cached row in range.
-            if (Prop(root, "items") is not JsonArray itemsArr)
+            for (var page = 1; page <= pageSafetyCap; page++)
             {
-                var preview = root?.ToJsonString() ?? "null";
-                throw new HoldedTransientException(
-                    $"Holded returned a 200 without a valid items array for {pathAndQuery.Split('?', 2)[0]} " +
-                    $"(body starts: {preview[..Math.Min(preview.Length, 120)]}).");
-            }
-            foreach (var n in itemsArr)
-                if (n is not null) items.Add(n);
+                var url = cursor is null
+                    ? pathAndQuery
+                    : $"{pathAndQuery}&cursor={Uri.EscapeDataString(cursor)}";
+                using var req = new HttpRequestMessage(HttpMethod.Get, url);
+                AttachAuth(req);
+                // Forward the real caller (ListLedgerEntriesAsync, ListContactsAsync, …) — SendAsync's own
+                // [CallerMemberName] would otherwise record every paginated endpoint as "GetPagedAsync",
+                // collapsing the call log's per-endpoint breakdown the admin overview renders.
+                using var resp = await SendAsync(req, ct, caller);
+                await using var stream = await resp.Content.ReadAsStreamAsync(ct);
+                var root = await JsonNode.ParseAsync(stream, cancellationToken: ct);
 
-            // Absent has_more is a legitimate final page — the live accounting-accounts
-            // response carries items only, no pagination metadata. But has_more:true without
-            // a cursor cannot be followed, and returning the prefix would feed replace
-            // semantics a truncated list.
-            var hasMore = Prop(root, "has_more")?.GetValue<bool>() ?? false;
-            cursor = Prop(root, "cursor")?.GetValue<string>();
-            if (!hasMore) return items;
-            if (string.IsNullOrEmpty(cursor))
-                throw new HoldedTransientException(
-                    $"Holded page for {pathAndQuery.Split('?', 2)[0]} claims has_more but carries no cursor.");
+                // Strict envelope validation, not the forgiving Prop/Arr fallbacks: a 200 carrying
+                // Holded's {"status":0,...} error object — or any body without an `items` array —
+                // would otherwise read as a successfully-empty page, and list results feed
+                // replace-semantics windows where a false empty deletes every cached row in range.
+                if (Prop(root, "items") is not JsonArray itemsArr)
+                {
+                    var preview = root?.ToJsonString() ?? "null";
+                    throw new HoldedTransientException(
+                        $"Holded returned a 200 without a valid items array for {pathAndQuery.Split('?', 2)[0]} " +
+                        $"(body starts: {preview[..Math.Min(preview.Length, 120)]}).");
+                }
+                foreach (var n in itemsArr)
+                    if (n is not null) items.Add(n);
+
+                // Absent has_more is a legitimate final page — the live accounting-accounts
+                // response carries items only, no pagination metadata. But has_more:true without
+                // a cursor cannot be followed, and returning the prefix would feed replace
+                // semantics a truncated list.
+                var hasMore = Prop(root, "has_more")?.GetValue<bool>() ?? false;
+                cursor = Prop(root, "cursor")?.GetValue<string>();
+                if (!hasMore) return items;
+                if (string.IsNullOrEmpty(cursor))
+                    throw new HoldedTransientException(
+                        $"Holded page for {pathAndQuery.Split('?', 2)[0]} claims has_more but carries no cursor.");
+            }
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or FormatException or OverflowException)
+        {
+            // A malformed *successful* body would otherwise leave the client as a raw JsonException:
+            // every caller handles only the typed Holded exceptions, so /Finance/Sepa would fail the
+            // request instead of showing its bank-feed warning, and the SEPA sweep would abort. The
+            // deliberate envelope throws above are already typed, so this filter never sees them.
+            // Normalized here, at the one place every paged endpoint shares, rather than per method.
+            throw new HoldedPermanentException(
+                $"Holded page for {pathAndQuery.Split('?', 2)[0]} could not be read.", ex);
         }
 
         var endpoint = pathAndQuery.Split('?', 2)[0];
