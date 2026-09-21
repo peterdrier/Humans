@@ -6,6 +6,7 @@ using Humans.Teams.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Humans.Base.Interfaces.Caching;
 using Humans.EarlyEntry.Contracts;
+using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Base.Hosting;
 using Humans.Teams.Contracts;
@@ -56,6 +57,11 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<ITeamPageService, TeamPageService>();
 
         services.AddScoped<IActiveTeamsCacheInvalidator, ActiveTeamsCacheInvalidator>();
+
+        // Teams owns its email copy and its gallery samples; Email keeps the mechanics
+        // (memory/architecture/email-templates-live-in-sender.md).
+        services.AddScoped<TeamsEmails>();
+        services.AddScoped<IEmailPreviewContributor, TeamsEmailPreviews>();
 
         // The system-team reconciler; Hangfire resolves it from DI at execution time.
         services.AddScoped<ISystemTeamSync, SystemTeamSyncJob>();

@@ -102,18 +102,18 @@ public sealed class EmailDependencyCycleTests
 
     /// <summary>
     /// A crosscut may not grow new edges into sections. Both sets are the ones the
-    /// teardown of peterdrier/Humans#1651 shrinks — Email.Contracts down to Base and
-    /// Users.Contracts once <c>IEmailMessageFactory</c> is gone — so these assertions
-    /// exist to stop a new reference arriving meanwhile, not to bless what is here.
+    /// teardown of peterdrier/Humans#1651 shrinks — Email.Contracts is already down to
+    /// Base and Users.Contracts — so these assertions exist to stop a new reference
+    /// arriving meanwhile, not to bless what is here.
     /// Asserted from the csproj's own &lt;ProjectReference&gt; items, not
     /// <c>Assembly.GetReferencedAssemblies()</c>: a const-only or unused reference emits
     /// no metadata reference and would pass that check silently (see
     /// <c>Humans.Tickets.Contracts</c> below — used only for a <c>const string</c>).
     /// </summary>
     [HumansFact]
-    public void EmailContracts_ReferencesOnlyBaseEventsAndUsersContracts() =>
+    public void EmailContracts_ReferencesOnlyBaseAndUsersContracts() =>
         ProjectReferencesOf("Humans.Email.Contracts").Should().BeSubsetOf(
-            ["Humans.Base", "Humans.Events.Contracts", "Humans.Users.Contracts"],
+            ["Humans.Base", "Humans.Users.Contracts"],
             because: "Email is a crosscut: its contracts leaf may lose section references, never gain one");
 
     [HumansFact]
@@ -121,7 +121,7 @@ public sealed class EmailDependencyCycleTests
         ProjectReferencesOf("Humans.Email").Should().BeSubsetOf(
             [
                 "Humans.AuditLog.Contracts", "Humans.Base", "Humans.Campaigns.Contracts", "Humans.Email.Contracts",
-                "Humans.Events.Contracts", "Humans.Gdpr.Contracts", "Humans.Settings.Contracts",
+                "Humans.Gdpr.Contracts", "Humans.Settings.Contracts",
                 "Humans.Tickets.Contracts", "Humans.Users.Contracts"
             ],
             because: "Email is a crosscut: it may lose section references, never gain one");

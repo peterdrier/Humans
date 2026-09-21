@@ -190,7 +190,7 @@ Unique constraint on (UserId, GuideEventId, DayOffset) with `NULLS NOT DISTINCT`
 
 ## Triggers
 
-- When a moderation action is applied: an email notification is sent to the submitter (`IEmailService.SendAsync` with the `IEmailMessageFactory.EventLifecycle` message), coordinated by `EventService.ApplyModerationAsync` (the controller passes the submitter-edit URL; the service owns the send).
+- When a moderation action is applied: an email notification is sent to the submitter (`IEmailService.SendAsync` with the `EventsEmails.EventLifecycle` message — Events owns the four lifecycle templates, internal `EventsEmails` plus the `EventsEmailPreviews` gallery contributor registered in `Section.Register`; the copy is still hardcoded English, localizing it is tracked in peterdrier/Humans#1657 (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651)), coordinated by `EventService.ApplyModerationAsync` (the controller passes the submitter-edit URL; the service owns the send).
 - When a moderator approves an event: `Event.Status` transitions to `Approved` and an `EventModerationAction` record is appended.
 
 ## Cross-Section Dependencies

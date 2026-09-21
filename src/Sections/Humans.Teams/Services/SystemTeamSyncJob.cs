@@ -36,7 +36,7 @@ internal sealed class SystemTeamSyncJob(
     IGoogleDriveActivityClient googleClient,
     IAuditLogService auditLogService,
     IEmailService emailService,
-    IEmailMessageFactory emailMessages,
+    TeamsEmails emailMessages,
     IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
     IHumansMetrics metrics,
     ILogger<SystemTeamSyncJob> logger,

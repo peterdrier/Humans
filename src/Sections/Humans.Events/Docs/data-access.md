@@ -45,8 +45,10 @@ Repository: `IEventRepository`.
 | EventPreferences | R/W |
 | EventFavourites | R/W |
 
-Cross-section calls limited to `IClock` (plus owning-service lookups for
-active-event scoping). The inner service has no `IMemoryCache`.
+Cross-section calls limited to `IClock` and `IEmailService` (plus
+owning-service lookups for active-event scoping), with the section's own
+`EventsEmails` builder supplying the message. The inner service has no
+`IMemoryCache`.
 
 ### CachingEventService (Singleton, `Humans.Events.Services`)
 
@@ -70,6 +72,16 @@ to the inner service (needs a fresh pending count; the cache only holds
 approved events). Only the event projection is surfaced on
 `/Debug/CacheStats`.
 
+### EventsEmails (Scoped, internal)
+
+No repository. Pure builder — the lifecycle copy is hardcoded English, so it
+reads no resource set and writes nothing. Returns `EmailMessage` values for
+`EventService` to pass to `IEmailService.SendAsync`. No DB access, no cache.
+
+### EventsEmailPreviews (Scoped)
+
+No repository. Read-only gallery contributor (`IEmailPreviewContributor`,
+registered in `Section.Register`) — builds one sample per lifecycle status via
+`EventsEmails` for `/Email/EmailPreview`. No DB access, no cache.
+
 ---
-
-

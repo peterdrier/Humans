@@ -33,12 +33,6 @@ public interface IEmailMessageFactory
     /// <summary>Account deleted confirmation (always-send).</summary>
     EmailMessage AccountDeleted(string userEmail, string userName, string? culture = null);
 
-    /// <summary>Added-to-team notification (TeamUpdates).</summary>
-    EmailMessage AddedToTeam(string userEmail, string userName, string teamName, string teamSlug, IEnumerable<(string Name, string? Url)> resources, string? culture = null);
-
-    /// <summary>Signup rejection notification (System).</summary>
-    EmailMessage SignupRejected(string userEmail, string userName, string? reason, string? culture = null);
-
     /// <summary>
     /// Survey invitation — operational (System category, always-send).
     /// <paramref name="answerToken"/> is the invite token; the URL is built by the renderer.
@@ -55,9 +49,6 @@ public interface IEmailMessageFactory
 
     /// <summary>Survey reminder — single nudge for an unfinished invitation (System category).</summary>
     EmailMessage SurveyReminder(string userEmail, string userName, string surveyTitle, string answerToken, string? culture = null);
-
-    /// <summary>Feedback response notification (System).</summary>
-    EmailMessage FeedbackResponse(string userEmail, string userName, string originalDescription, string responseMessage, string? culture = null);
 
     /// <summary>Facilitated volunteer-to-volunteer message (FacilitatedMessages); reply-to is the sender when contact info is shared.</summary>
     EmailMessage FacilitatedMessage(string recipientEmail, string recipientName, string senderName, string messageText, bool includeContactInfo, string? senderEmail, string? culture = null);
@@ -76,15 +67,6 @@ public interface IEmailMessageFactory
 
     /// <summary>Workspace credentials email (always-send, immediate drain).</summary>
     EmailMessage WorkspaceCredentials(string recoveryEmail, string userName, string workspaceEmail, string tempPassword, string? culture = null);
-
-    /// <summary>Issue-comment notification to the reporter (System).</summary>
-    EmailMessage IssueComment(string to, string displayName, string issueTitle, string commentContent, string issueLink, string preferredLanguage);
-
-    /// <summary>Campaign-code email (CampaignCodes); carries the explicit user and grant ids and the reply-to from the request.</summary>
-    EmailMessage CampaignCode(CampaignCodeEmailRequest request);
-
-    /// <summary>Event lifecycle notification (always-send, immediate drain); template is chosen from the request status.</summary>
-    EmailMessage EventLifecycle(EventLifecycleNotification request, string userEmail);
 
     /// <summary>Google Group removal — loss of access (System; no unsubscribe footer).</summary>
     EmailMessage GoogleGroupRemovalLossOfAccess(string removedEmail, string userName, string groupName, string groupEmail, string? culture = null);

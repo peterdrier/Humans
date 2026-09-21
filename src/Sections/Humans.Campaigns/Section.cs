@@ -1,6 +1,7 @@
 using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
 using Humans.Campaigns.Contracts;
+using Humans.Email.Contracts;
 using Humans.Campaigns.Data;
 using Humans.Campaigns.Domain;
 using Humans.Campaigns.Services;
@@ -26,6 +27,11 @@ public sealed class Section : ISection
         // §15 repository pattern (nobodies-collective/Humans#546): Singleton +
         // IDbContextFactory (§15b) so the repository owns context lifetime.
         services.AddSingleton<ICampaignRepository, CampaignRepository>();
+        // Campaigns owns its email copy and its gallery samples; Email keeps the mechanics
+        // (memory/architecture/email-templates-live-in-sender.md).
+        services.AddScoped<CampaignsEmails>();
+        services.AddScoped<IEmailPreviewContributor, CampaignsEmailPreviews>();
+
         services.AddScoped<CampaignService>();
         services.AddScoped<ICampaignService>(sp => sp.GetRequiredService<CampaignService>());
         services.AddScoped<ICampaignServiceRead>(sp => sp.GetRequiredService<CampaignService>());

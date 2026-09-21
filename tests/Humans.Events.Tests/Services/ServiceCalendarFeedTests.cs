@@ -25,7 +25,7 @@ public class EventServiceCalendarFeedTests
 
     public EventServiceCalendarFeedTests()
     {
-        _service = new EventService(_repo, _burnSettings, Substitute.For<IUserServiceRead>(), Substitute.For<IEmailService>(), Substitute.For<IEmailMessageFactory>(), new FakeClock(FixedNow), NullLogger<EventService>.Instance);
+        _service = new EventService(_repo, _burnSettings, Substitute.For<IUserServiceRead>(), Substitute.For<IEmailService>(), new EventsEmails(NullLogger<EventsEmails>.Instance), new FakeClock(FixedNow), NullLogger<EventService>.Instance);
         // Default: no guide settings → no recurrence expansion context.
         _repo.GetGuideSettingsAsync(Arg.Any<CancellationToken>())
             .Returns((EventGuideSettings?)null);

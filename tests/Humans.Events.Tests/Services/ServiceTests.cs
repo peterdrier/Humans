@@ -23,7 +23,7 @@ public sealed class EventServiceTests
     private readonly ISettingsService _burnSettings = Substitute.For<ISettingsService>();
     private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
-    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
+    private readonly EventsEmails _emailMessages = new(NullLogger<EventsEmails>.Instance);
     private readonly EventService _service;
 
     public EventServiceTests()
@@ -231,14 +231,12 @@ public sealed class EventServiceTests
         await _service.SubmitEventAsync(guideEvent, "https://x/Events/MySubmissions", TestContext.Current.CancellationToken);
 
         _repo.Events.Should().Contain(guideEvent);
-        _emailMessages.Received(1).EventLifecycle(
-            Arg.Is<EventLifecycleNotification>(n =>
-                n.NewStatus == EventStatus.Pending
-                && n.UserName == "Burner"
-                && n.EventTitle == "Fire show"
-                && n.ActionUrl == "https://x/Events/MySubmissions"),
-            "sub@example.com");
-        await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>());
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "event_submitted"
+                && m.RecipientEmail == "sub@example.com"
+                && m.RecipientName == "Burner"
+                && m.HtmlBody.Contains("Fire show")
+                && m.HtmlBody.Contains("https://x/Events/MySubmissions")));
     }
 
     [HumansFact]
@@ -270,13 +268,11 @@ public sealed class EventServiceTests
             guideEvent.Id, Guid.NewGuid(), EventModerationActionType.Rejected,
             "Too loud", "https://x/edit", TestContext.Current.CancellationToken);
 
-        _emailMessages.Received(1).EventLifecycle(
-            Arg.Is<EventLifecycleNotification>(n =>
-                n.NewStatus == EventStatus.Rejected
-                && n.Reason == "Too loud"
-                && n.ActionUrl == "https://x/edit"),
-            "sub@example.com");
-        await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>());
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "event_rejected"
+                && m.RecipientEmail == "sub@example.com"
+                && m.HtmlBody.Contains("Too loud")
+                && m.HtmlBody.Contains("https://x/edit")));
     }
 
     [HumansFact]

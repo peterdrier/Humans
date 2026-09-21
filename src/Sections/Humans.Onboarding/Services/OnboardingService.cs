@@ -22,7 +22,7 @@ internal sealed class OnboardingService(
     IUserService userService,
     IApplicationServiceRead applicationDecisionService,
     IEmailService emailService,
-    IEmailMessageFactory emailMessages,
+    OnboardingEmails emailMessages,
     INotificationEmitter notificationService,
     ISystemTeamSync syncJob,
     IMembershipCalculatorRead membershipCalculator,

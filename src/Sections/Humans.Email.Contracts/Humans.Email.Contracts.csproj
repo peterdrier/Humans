@@ -24,21 +24,19 @@
     the repository and the entity.
 
     References Humans.Base (IApplicationService, and EmailOutboxStatus, which lives there
-    because Campaigns and Surveys persist it too), Humans.Events.Contracts (EventStatus,
-    named by EventLifecycleNotification), and Humans.Users.Contracts, for MembershipTier
+    because Campaigns and Surveys persist it too) and Humans.Users.Contracts, for MembershipTier
     and MessageCategory — both Users' own vocabulary, named here by IEmailMessageFactory's
     audience parameters and EmailMessage's Category. That is the enums sitting with their
     owner, not Email taking a dependency on Users' services.
 
-    Both leaf-to-leaf edges are acyclic. Humans.Events.Contracts has zero
-    ProjectReference; Humans.Users.Contracts has exactly one, to the equally
-    zero-reference Humans.Onboarding.Contracts. Both chains terminate. Note that Base
-    references Humans.Users.Contracts, so nothing in that project may ever reference this one.
+    That leaf-to-leaf edge is acyclic: Humans.Users.Contracts has exactly one
+    ProjectReference, to the equally zero-reference Humans.Onboarding.Contracts, so the
+    chain terminates. Note that Base references Humans.Users.Contracts, so nothing in
+    that project may ever reference this one.
   -->
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Humans.Events.Contracts\Humans.Events.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 

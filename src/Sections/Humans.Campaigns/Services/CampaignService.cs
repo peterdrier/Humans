@@ -27,7 +27,7 @@ internal sealed class CampaignService(
     IUserServiceRead userService,
     INotificationEmitter notificationService,
     IEmailService emailService,
-    IEmailMessageFactory emailMessages,
+    CampaignsEmails emailMessages,
     ITicketDiscountCodes ticketDiscountCodes,
     IClock clock,
     ILogger<CampaignService> logger) : ICampaignService, IUserDataContributor, IUserMerge

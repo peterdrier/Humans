@@ -22,11 +22,6 @@ internal interface IEmailRenderer
     EmailContent RenderApplicationSubmitted(Guid applicationId, string applicantName);
 
     /// <summary>
-    /// Signup rejected notification.
-    /// </summary>
-    EmailContent RenderSignupRejected(string userName, string? reason, string? culture = null);
-
-    /// <summary>
     /// Re-consent required notification (one or more documents).
     /// </summary>
     EmailContent RenderReConsentsRequired(string userName, IReadOnlyList<string> documentNames, string? culture = null);
@@ -62,11 +57,6 @@ internal interface IEmailRenderer
     EmailContent RenderAccountDeleted(string userName, string? culture = null);
 
     /// <summary>
-    /// Added to team notification.
-    /// </summary>
-    EmailContent RenderAddedToTeam(string userName, string teamName, string teamSlug, IReadOnlyList<(string Name, string? Url)> resources, string? culture = null);
-
-    /// <summary>
     /// Survey invitation — links to the tokenised answering wizard and optionally replaces the
     /// standard localized subject/message with safely rendered author copy.
     /// </summary>
@@ -80,17 +70,6 @@ internal interface IEmailRenderer
 
     /// <summary>Survey reminder — single nudge for an unfinished invitation.</summary>
     EmailContent RenderSurveyReminder(string userName, string surveyTitle, string answerToken, string? culture = null);
-
-    /// <summary>
-    /// Feedback response notification.
-    /// </summary>
-    EmailContent RenderFeedbackResponse(string userName, string originalDescription, string responseMessage, string? culture = null);
-
-    /// <summary>
-    /// Issue comment notification — sent to the issue reporter when a non-reporter
-    /// (admin/coordinator/board) posts a comment on their issue.
-    /// </summary>
-    EmailContent RenderIssueComment(string displayName, string issueTitle, string commentContent, string issueLink, string? culture = null);
 
     /// <summary>
     /// Facilitated message between volunteers.
@@ -148,20 +127,6 @@ internal interface IEmailRenderer
     EmailContent RenderWorkspaceCredentials(string userName, string workspaceEmail, string tempPassword, string? culture = null);
 
     /// <summary>
-    /// Renders a campaign-code email by substituting <c>{{Code}}</c> and
-    /// <c>{{Name}}</c> placeholders in the campaign's markdown body and
-    /// subject line, HTML-encoding the substituted values to prevent
-    /// injection, and converting the resulting markdown body to HTML.
-    /// </summary>
-    EmailContent RenderCampaignCode(string subject, string markdownBody, string code, string recipientName);
-
-    /// <summary>
-    /// Event lifecycle notification — dispatches on <see cref="EventLifecycleNotification.NewStatus"/>
-    /// to render the matching template (submitted / approved / rejected / resubmit-requested).
-    /// </summary>
-    EmailContent RenderEventLifecycle(EventLifecycleNotification request, string? culture = null);
-
-    /// <summary>
     /// Variant 1 group sub-template — Google Group removal, loss of access
     /// (issue peterdrier/Humans#639).
     /// </summary>
@@ -208,8 +173,8 @@ internal interface IEmailRenderer
     /// <summary>
     /// Working-group register notice — dispatches on <see cref="WorkgroupNoticeRequest.Kind"/>
     /// to render the matching template. Builds the working-group link from
-    /// <see cref="WorkgroupNoticeRequest.WorkgroupSlug"/> the same way <see cref="RenderAddedToTeam"/>
-    /// builds the team link from a slug.
+    /// <see cref="WorkgroupNoticeRequest.WorkgroupSlug"/> the same way a team link is
+    /// built from a team slug.
     /// </summary>
     EmailContent RenderWorkgroupNotice(WorkgroupNoticeRequest request);
 

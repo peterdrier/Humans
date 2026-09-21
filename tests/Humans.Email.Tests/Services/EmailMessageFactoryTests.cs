@@ -4,7 +4,6 @@ using Humans.Email.Contracts;
 using Humans.Email.Services;
 using NSubstitute;
 using NSubstitute.Extensions;
-using Humans.Events.Contracts;
 using Humans.Tickets.Contracts;
 
 namespace Humans.Email.Tests.Services;
@@ -45,24 +44,6 @@ public sealed class EmailMessageFactoryTests
         msg.TemplateName.Should().Be("email_verification");
         msg.Category.Should().BeNull();
         _renderer.Received(1).RenderEmailVerification("Alice", "a@x.com", "https://verify", true, "en");
-    }
-
-    [HumansFact]
-    public void AddedToTeam_StampsTeamUpdates()
-    {
-        var msg = _factory.AddedToTeam("a@x.com", "Alice", "Alpha", "alpha", [], "en");
-
-        msg.TemplateName.Should().Be("added_to_team");
-        msg.Category.Should().Be(MessageCategory.TeamUpdates);
-    }
-
-    [HumansFact]
-    public void SignupRejected_StampsSystem()
-    {
-        var msg = _factory.SignupRejected("a@x.com", "Alice", "nope", "en");
-
-        msg.TemplateName.Should().Be("signup_rejected");
-        msg.Category.Should().Be(MessageCategory.System);
     }
 
     [HumansFact]
@@ -136,48 +117,6 @@ public sealed class EmailMessageFactoryTests
         msg.RecipientEmail.Should().Be("new@x.com");
         msg.RecipientName.Should().Be("new@x.com");
         msg.TemplateName.Should().Be("magic_link_signup");
-        msg.Category.Should().BeNull();
-    }
-
-    [HumansFact]
-    public void CampaignCode_CarriesUserGrantReplyToAndCampaignCategory()
-    {
-        var userId = Guid.NewGuid();
-        var grantId = Guid.NewGuid();
-        var campaignId = Guid.NewGuid();
-        var request = new CampaignCodeEmailRequest(
-            UserId: userId,
-            CampaignGrantId: grantId,
-            CampaignId: campaignId,
-            RecipientEmail: "zoe@x.com",
-            RecipientName: "Zoe",
-            Subject: "S {{Name}}",
-            MarkdownBody: "Hi {{Name}} {{Code}}",
-            Code: "ABC",
-            ReplyTo: "reply@x.com");
-
-        var msg = _factory.CampaignCode(request);
-
-        msg.RecipientEmail.Should().Be("zoe@x.com");
-        msg.TemplateName.Should().Be("campaign_code");
-        msg.Category.Should().Be(MessageCategory.CampaignCodes);
-        msg.ReplyTo.Should().Be("reply@x.com");
-        msg.UserId.Should().Be(userId);
-        msg.CampaignGrantId.Should().Be(grantId);
-        msg.CampaignId.Should().Be(campaignId);
-        _renderer.Received(1).RenderCampaignCode("S {{Name}}", "Hi {{Name}} {{Code}}", "ABC", "Zoe");
-    }
-
-    [HumansFact]
-    public void EventLifecycle_PicksTemplateFromStatus()
-    {
-        var request = new EventLifecycleNotification(EventStatus.Approved, "Bob", "My Event");
-
-        var msg = _factory.EventLifecycle(request, "bob@x.com");
-
-        msg.RecipientEmail.Should().Be("bob@x.com");
-        msg.RecipientName.Should().Be("Bob");
-        msg.TemplateName.Should().Be("event_approved");
         msg.Category.Should().BeNull();
     }
 

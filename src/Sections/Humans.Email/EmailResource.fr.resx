@@ -44,9 +44,6 @@
     <value>Nouvelle candidature d'adhésion : {0}</value>
     <comment>{0} = applicant name</comment>
   </data>
-  <data name="Email_SignupRejected_Subject" xml:space="preserve">
-    <value>Concernant votre inscription</value>
-  </data>
   <data name="Email_ReConsentRequired_Subject_Single" xml:space="preserve">
     <value>Action requise : {0} mis à jour</value>
     <comment>{0} = document name</comment>
@@ -73,17 +70,9 @@
   <data name="Email_AccountDeleted_Subject" xml:space="preserve">
     <value>Votre compte a été supprimé</value>
   </data>
-  <data name="Email_AddedToTeam_Subject" xml:space="preserve">
-    <value>Vous avez été ajouté(e) à l'équipe {0}</value>
-    <comment>{0} = team name</comment>
-  </data>
   <data name="Email_ReasonLine" xml:space="preserve">
     <value>&lt;p&gt;&lt;strong&gt;Motif :&lt;/strong&gt; {0}&lt;/p&gt;</value>
     <comment>{0} = reason text (HTML-encoded by caller)</comment>
-  </data>
-  <data name="Email_ResourcesSection" xml:space="preserve">
-    <value>&lt;p&gt;Votre équipe dispose des ressources suivantes :&lt;/p&gt;&lt;ul&gt;{0}&lt;/ul&gt;</value>
-    <comment>{0} = resource list items HTML</comment>
   </data>
   <data name="Email_ApplicationSubmitted_Body" xml:space="preserve">
     <value>&lt;h2&gt;Nouvelle demande d'adhésion&lt;/h2&gt;
@@ -94,15 +83,6 @@
 &lt;/ul&gt;
 &lt;p&gt;&lt;a href="{2}/Governance/Applications/Admin/{1}"&gt;Examiner la demande&lt;/a&gt;&lt;/p&gt;</value>
     <comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment>
-  </data>
-  <data name="Email_SignupRejected_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Mise à jour de l'inscription&lt;/h2&gt;
-&lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Merci de votre intérêt. Après un examen attentif, nous avons le regret de vous informer que nous ne pouvons pas approuver votre inscription pour le moment.&lt;/p&gt;
-{1}
-&lt;p&gt;Si vous avez des questions ou souhaitez discuter de cette décision, contactez-nous à &lt;a href="mailto:{2}"&gt;{2}&lt;/a&gt;.&lt;/p&gt;
-&lt;p&gt;Cordialement,&lt;br/&gt;L'équipe Humans&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = reason HTML (or empty), {2} = admin email</comment>
   </data>
   <data name="Email_ReConsentsRequired_Body" xml:space="preserve">
     <value>&lt;h2&gt;Mise à jour des documents légaux&lt;/h2&gt;
@@ -188,15 +168,6 @@
 &lt;p&gt;Cordialement,&lt;br/&gt;L'équipe Humans&lt;/p&gt;</value>
     <comment>{0} = user name</comment>
   </data>
-  <data name="Email_AddedToTeam_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Bienvenue dans {1} !&lt;/h2&gt;
-&lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Vous avez été ajouté(e) à l'équipe &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
-{2}
-&lt;p&gt;&lt;a href="{3}"&gt;Voir la page de l'équipe&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;L'équipe Humans&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = team name, {2} = resources HTML (or empty), {3} = team URL</comment>
-  </data>
   <data name="Email_FacilitatedMessage_Subject" xml:space="preserve">
     <value>Message Humans de : {0}</value>
   </data>
@@ -205,34 +176,6 @@
   </data>
   <data name="Email_FacilitatedMessage_NoContactInfo" xml:space="preserve">
     <value>Cet humain a choisi de ne pas partager ses coordonnées.</value>
-  </data>
-  <data name="Email_FeedbackResponse_Subject" xml:space="preserve">
-    <value>Mise à jour de votre feedback</value>
-  </data>
-  <data name="Email_FeedbackResponse_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Mise à jour de votre Feedback&lt;/h2&gt;
-&lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Nous avons examiné votre feedback :&lt;/p&gt;
-&lt;blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #666;"&gt;{1}&lt;/blockquote&gt;
-&lt;p&gt;&lt;strong&gt;Notre réponse :&lt;/strong&gt;&lt;/p&gt;
-&lt;p&gt;{2}&lt;/p&gt;
-&lt;p&gt;Merci de nous aider à nous améliorer !&lt;/p&gt;
-&lt;p&gt;L'équipe Humans&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = original description, {2} = response message</comment>
-  </data>
-  <data name="Email_IssueComment_Subject" xml:space="preserve">
-    <value>Nouveau commentaire sur votre issue : {0}</value>
-  </data>
-  <data name="Email_IssueComment_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Nouveau commentaire sur votre issue&lt;/h2&gt;
-&lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Il y a un nouveau commentaire sur votre issue :&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;Issue :&lt;/strong&gt; {1}&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;Commentaire :&lt;/strong&gt;&lt;/p&gt;
-&lt;blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #666;"&gt;{2}&lt;/blockquote&gt;
-&lt;p&gt;&lt;a href="{3}"&gt;Ouvrir l'issue&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;— L'équipe Humans&lt;/p&gt;</value>
-    <comment>{0} = display name, {1} = issue title, {2} = comment HTML, {3} = issue URL</comment>
   </data>
   <data name="Email_MagicLinkLogin_Subject" xml:space="preserve">
     <value>Votre lien de connexion pour Nobodies</value>

@@ -3,6 +3,7 @@ using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
 using Humans.Base.Caching;
 using Humans.Base.Hosting;
+using Humans.Email.Contracts;
 using Humans.Issues.Contracts;
 using Humans.Issues.Data;
 using Humans.Issues.Domain;
@@ -34,6 +35,11 @@ public sealed class Section : ISection
         // The queue routing table, assembled from what every section declared through
         // IIssueQueueOwner — Issues names no section (PR peterdrier/Humans#1762).
         services.AddSingleton<IssueSectionRouting>();
+        // Issues owns its email copy and its gallery samples; Email keeps the mechanics
+        // (memory/architecture/email-templates-live-in-sender.md).
+        services.AddScoped<IssuesEmails>();
+        services.AddScoped<IEmailPreviewContributor, IssuesEmailPreviews>();
+
         services.AddScoped<IssuesService>();
         services.AddScoped<IIssuesService>(sp => sp.GetRequiredService<IssuesService>());
         services.AddScoped<IIssuesRetention>(sp => sp.GetRequiredService<IssuesService>());

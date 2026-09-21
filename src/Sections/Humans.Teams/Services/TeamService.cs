@@ -47,8 +47,8 @@ internal sealed class TeamService(
     private IEmailService EmailService
         => serviceProvider.GetRequiredService<IEmailService>();
 
-    private IEmailMessageFactory EmailMessages
-        => serviceProvider.GetRequiredService<IEmailMessageFactory>();
+    private TeamsEmails EmailMessages
+        => serviceProvider.GetRequiredService<TeamsEmails>();
 
     private ISystemTeamSync SystemTeamSync
         => serviceProvider.GetRequiredService<ISystemTeamSync>();

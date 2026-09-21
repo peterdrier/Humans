@@ -44,9 +44,6 @@
     <value>Nova sol·licitud de membres: {0}</value>
     <comment>{0} = applicant name</comment>
   </data>
-  <data name="Email_SignupRejected_Subject" xml:space="preserve">
-    <value>Sobre el teu registre</value>
-  </data>
   <data name="Email_ReConsentRequired_Subject_Single" xml:space="preserve">
     <value>Acció requerida: {0} actualitzat</value>
     <comment>{0} = document name</comment>
@@ -73,17 +70,9 @@
   <data name="Email_AccountDeleted_Subject" xml:space="preserve">
     <value>El teu compte ha estat eliminat</value>
   </data>
-  <data name="Email_AddedToTeam_Subject" xml:space="preserve">
-    <value>T'han afegit a l'equip {0}</value>
-    <comment>{0} = team name</comment>
-  </data>
   <data name="Email_ReasonLine" xml:space="preserve">
     <value>&lt;p&gt;&lt;strong&gt;Motiu:&lt;/strong&gt; {0}&lt;/p&gt;</value>
     <comment>{0} = reason text (HTML-encoded by caller)</comment>
-  </data>
-  <data name="Email_ResourcesSection" xml:space="preserve">
-    <value>&lt;p&gt;El teu equip té els recursos següents:&lt;/p&gt;&lt;ul&gt;{0}&lt;/ul&gt;</value>
-    <comment>{0} = resource list items HTML</comment>
   </data>
   <data name="Email_ApplicationSubmitted_Body" xml:space="preserve">
     <value>&lt;h2&gt;Nova sol·licitud de membres&lt;/h2&gt;
@@ -94,15 +83,6 @@
 &lt;/ul&gt;
 &lt;p&gt;&lt;a href="{2}/Governance/Applications/Admin/{1}"&gt;Revisa la sol·licitud&lt;/a&gt;&lt;/p&gt;</value>
     <comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment>
-  </data>
-  <data name="Email_SignupRejected_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Actualització del registre&lt;/h2&gt;
-&lt;p&gt;Hola {0},&lt;/p&gt;
-&lt;p&gt;Gràcies pel teu interès a unir-te a nosaltres. Després d’una revisió acurada, lamentem informar-te que no podem aprovar el teu registre en aquest moment.&lt;/p&gt;
-{1}
-&lt;p&gt;Si tens alguna pregunta o vols comentar aquesta decisió, contacta’ns a &lt;a href="mailto:{2}"&gt;{2}&lt;/a&gt;.&lt;/p&gt;
-&lt;p&gt;Una salutació,&lt;br/&gt;L’equip de Humans&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = reason HTML (or empty), {2} = admin email</comment>
   </data>
   <data name="Email_ReConsentsRequired_Body" xml:space="preserve">
     <value>&lt;h2&gt;Actualització de documents legals&lt;/h2&gt;
@@ -188,15 +168,6 @@
 &lt;p&gt;Una salutació,&lt;br/&gt;L’equip de Humans&lt;/p&gt;</value>
     <comment>{0} = user name</comment>
   </data>
-  <data name="Email_AddedToTeam_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Benvingut/da a {1}!&lt;/h2&gt;
-&lt;p&gt;Hola {0},&lt;/p&gt;
-&lt;p&gt;T’han afegit a l’equip &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
-{2}
-&lt;p&gt;&lt;a href="{3}"&gt;Veure la pàgina de l’equip&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;L’equip de Humans&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = team name, {2} = resources HTML (or empty), {3} = team URL</comment>
-  </data>
   <data name="Email_FacilitatedMessage_Subject" xml:space="preserve">
     <value>Missatge de Humans de: {0}</value>
   </data>
@@ -205,34 +176,6 @@
   </data>
   <data name="Email_FacilitatedMessage_NoContactInfo" xml:space="preserve">
     <value>Aquest human ha decidit no compartir la seva informació de contacte.</value>
-  </data>
-  <data name="Email_FeedbackResponse_Subject" xml:space="preserve">
-    <value>Actualització sobre el teu feedback</value>
-  </data>
-  <data name="Email_FeedbackResponse_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Actualització sobre el teu feedback&lt;/h2&gt;
-&lt;p&gt;Hola {0},&lt;/p&gt;
-&lt;p&gt;Hem revisat el teu feedback:&lt;/p&gt;
-&lt;blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #666;"&gt;{1}&lt;/blockquote&gt;
-&lt;p&gt;&lt;strong&gt;La nostra resposta:&lt;/strong&gt;&lt;/p&gt;
-&lt;p&gt;{2}&lt;/p&gt;
-&lt;p&gt;Gràcies per ajudar-nos a millorar!&lt;/p&gt;
-&lt;p&gt;L’equip de Humans&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = original description, {2} = response message</comment>
-  </data>
-  <data name="Email_IssueComment_Subject" xml:space="preserve">
-    <value>Nou comentari a la teva issue: {0}</value>
-  </data>
-  <data name="Email_IssueComment_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Nou comentari a la teva issue&lt;/h2&gt;
-&lt;p&gt;Hola {0},&lt;/p&gt;
-&lt;p&gt;Hi ha un nou comentari a la teva issue:&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;Issue:&lt;/strong&gt; {1}&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;Comentari:&lt;/strong&gt;&lt;/p&gt;
-&lt;blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #666;"&gt;{2}&lt;/blockquote&gt;
-&lt;p&gt;&lt;a href="{3}"&gt;Obrir issue&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;— L’equip de Humans&lt;/p&gt;</value>
-    <comment>{0} = display name, {1} = issue title, {2} = comment HTML, {3} = issue URL</comment>
   </data>
   <data name="Email_MagicLinkLogin_Subject" xml:space="preserve">
     <value>El teu enllaç d’inici de sessió per a Nobodies</value>

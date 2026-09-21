@@ -2,6 +2,7 @@ using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
 using Humans.Calendar.Contracts;
+using Humans.Email.Contracts;
 using Humans.Events.Contracts;
 using Humans.Events.Data;
 using Humans.Events.Filters;
@@ -39,6 +40,11 @@ public sealed class Section : ISection, IUserPart
         // own invalidation inline after each delegated write (no
         // SaveChangesInterceptor — all event_* writes flow through
         // IEventService by design).
+
+        // Events owns its email copy and its gallery samples; Email keeps the mechanics
+        // (memory/architecture/email-templates-live-in-sender.md).
+        services.AddScoped<EventsEmails>();
+        services.AddScoped<IEmailPreviewContributor, EventsEmailPreviews>();
 
         // Inner Service — Scoped + keyed. Single keyed registration is the
         // concrete Service instance, exposed as IEventService (keyed) for the

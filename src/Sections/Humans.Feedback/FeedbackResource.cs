@@ -10,8 +10,8 @@ namespace Humans.Feedback;
 /// <remarks>
 /// Public because the boot localization diagnostic discovers section resource markers
 /// via <c>GetExportedTypes()</c>; an internal marker is skipped in silence (§15.3b).
-/// The <c>Email_FeedbackResponse_*</c> keys are deliberately NOT here: the Email
-/// section's <c>EmailRenderer</c> renders that email, so those keys stay in its
-/// <c>EmailResource</c> where their owner can read them.
+/// The set also carries the <c>Feedback_Email_*</c> keys: Feedback renders its own
+/// response email through <c>FeedbackEmails</c>, so the copy lives with its owner
+/// (peterdrier/Humans#1651).
 /// </remarks>
 public class FeedbackResource;

@@ -142,12 +142,6 @@ internal sealed class EmailController(
 
     private static readonly string[] SampleDocs = ["Volunteer Agreement", "Privacy Policy"];
 
-    private static readonly (string Name, string? Url)[] SampleResources =
-    [
-        ("Art Collective Shared Drive", "https://drive.google.com/drive/folders/example"),
-        ("art-collective@nobodies.team", "https://groups.google.com/g/art-collective"),
-    ];
-
     private const string FacilitatedMessageSampleText =
         "Hi! I'm organizing the next community event and would love your help. Let me know if you're interested!";
 
@@ -157,8 +151,6 @@ internal sealed class EmailController(
     [
         (r, c) => BuildPreviewItem("application-submitted", "Application Submitted (to Admin)", c.Settings.AdminAddress,
             r.RenderApplicationSubmitted(Guid.Empty, c.Name)),
-        (r, c) => BuildPreviewItem("signup-rejected", "Signup Rejected", c.Email,
-            r.RenderSignupRejected(c.Name, "Incomplete profile information", c.Culture)),
         (r, c) => BuildPreviewItem("reconsent-required", "Re-Consent Required (single doc)", c.Email,
             r.RenderReConsentsRequired(c.Name, [SampleDocs[0]], c.Culture)),
         (r, c) => BuildPreviewItem("reconsents-required", "Re-Consents Required (multiple docs)", c.Email,
@@ -177,8 +169,6 @@ internal sealed class EmailController(
             r.RenderAccountDeletionRequested(c.Name, "March 15, 2026", c.Culture)),
         (r, c) => BuildPreviewItem("account-deleted", "Account Deleted", c.Email,
             r.RenderAccountDeleted(c.Name, c.Culture)),
-        (r, c) => BuildPreviewItem("added-to-team", "Added to Team", c.Email,
-            r.RenderAddedToTeam(c.Name, "Art Collective", "art-collective", SampleResources, c.Culture)),
         (r, c) => BuildPreviewItem("facilitated-message", "Facilitated Message (with contact info)", c.Email,
             r.RenderFacilitatedMessage(c.Name, "Alex Firestone", FacilitatedMessageSampleText, true, "alex@example.com", c.Culture)),
         (r, c) => BuildPreviewItem("facilitated-message-anon", "Facilitated Message (without contact info)", c.Email,

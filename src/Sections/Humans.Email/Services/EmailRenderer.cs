@@ -6,9 +6,6 @@ using Humans.Base.Extensions;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 
-using Humans.Events.Contracts;
-
-
 namespace Humans.Email.Services;
 
 /// <summary>
@@ -29,17 +26,6 @@ internal sealed class EmailRenderer(
             Lf("Email_ApplicationSubmitted_Subject", applicantName),
             Lf("Email_ApplicationSubmitted_Body", HtmlEncode(applicantName), applicationId, _settings.BaseUrl));
     }
-
-    public EmailContent RenderSignupRejected(string userName, string? reason, string? culture = null)
-        => RenderLocalized(culture, () =>
-        {
-            var reasonHtml = string.IsNullOrEmpty(reason)
-                ? ""
-                : Lf("Email_ReasonLine", HtmlEncode(reason));
-            return new EmailContent(
-                L("Email_SignupRejected_Subject"),
-                Lf("Email_SignupRejected_Body", HtmlEncode(userName), reasonHtml, _settings.AdminAddress));
-        });
 
     public EmailContent RenderReConsentsRequired(string userName, IReadOnlyList<string> documentNames, string? culture = null)
         => RenderLocalized(culture, () =>
@@ -93,22 +79,6 @@ internal sealed class EmailRenderer(
             L("Email_AccountDeleted_Subject"),
             Lf("Email_AccountDeleted_Body", HtmlEncode(userName))));
 
-    public EmailContent RenderAddedToTeam(string userName, string teamName, string teamSlug, IReadOnlyList<(string Name, string? Url)> resources, string? culture = null)
-        => RenderLocalized(culture, () =>
-        {
-            var teamUrl = $"{_settings.BaseUrl}/Teams/{teamSlug}";
-            var resourcesHtml = resources.Count > 0
-                ? Lf("Email_ResourcesSection",
-                    string.Join("\n", resources.Select(r =>
-                        !string.IsNullOrEmpty(r.Url)
-                            ? $"<li><a href=\"{r.Url}\">{HtmlEncode(r.Name)}</a></li>"
-                            : $"<li>{HtmlEncode(r.Name)}</li>")))
-                : "";
-            return new EmailContent(
-                Lf("Email_AddedToTeam_Subject", teamName),
-                Lf("Email_AddedToTeam_Body", HtmlEncode(userName), HtmlEncode(teamName), resourcesHtml, teamUrl));
-        });
-
     public EmailContent RenderSurveyInvitation(
         string userName,
         string surveyTitle,
@@ -142,27 +112,6 @@ internal sealed class EmailRenderer(
 
     private string BuildSurveyAnswerUrl(string token)
         => $"{_settings.BaseUrl.TrimEnd('/')}/Survey/Answer?t={Uri.EscapeDataString(token)}";
-
-    public EmailContent RenderFeedbackResponse(string userName, string originalDescription, string responseMessage, string? culture = null)
-        => RenderLocalized(culture, () =>
-        {
-            var responseHtml = SanitizedMarkdownRenderer.Render(responseMessage);
-            return new EmailContent(
-                L("Email_FeedbackResponse_Subject"),
-                Lf("Email_FeedbackResponse_Body", HtmlEncode(userName), HtmlEncode(originalDescription), responseHtml));
-        });
-
-    public EmailContent RenderIssueComment(string displayName, string issueTitle, string commentContent, string issueLink, string? culture = null)
-        => RenderLocalized(culture, () =>
-        {
-            var commentHtml = SanitizedMarkdownRenderer.Render(commentContent);
-            var fullLink = issueLink.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-                ? issueLink
-                : $"{_settings.BaseUrl.TrimEnd('/')}{(issueLink.StartsWith('/') ? "" : "/")}{issueLink}";
-            return new EmailContent(
-                Lf("Email_IssueComment_Subject", HtmlEncode(issueTitle)),
-                Lf("Email_IssueComment_Body", HtmlEncode(displayName), HtmlEncode(issueTitle), commentHtml, HtmlEncode(fullLink)));
-        });
 
     public EmailContent RenderFacilitatedMessage(
         string recipientName,
@@ -325,72 +274,6 @@ internal sealed class EmailRenderer(
             Lf("Email_GoogleAccessRemoval_SecondaryCleanup_Subject", HtmlEncode(removedEmail)),
             Lf("Email_GoogleAccessRemoval_SecondaryCleanup_Body",
                 HtmlEncode(userName), HtmlEncode(removedEmail), HtmlEncode(currentGoogleEmail))));
-
-    public EmailContent RenderCampaignCode(string subject, string markdownBody, string code, string recipientName)
-    {
-        // HTML-encode the substitutions so malicious codes/names cannot inject markup.
-        var encodedCode = HtmlEncode(code);
-        var encodedName = HtmlEncode(recipientName);
-
-        var markdown = markdownBody
-            .Replace("{{Code}}", encodedCode, StringComparison.Ordinal)
-            .Replace("{{Name}}", encodedName, StringComparison.Ordinal);
-        var renderedBody = SanitizedMarkdownRenderer.Render(markdown);
-
-        // Subject is a plain-text field; no HTML encoding required.
-        var renderedSubject = subject
-            .Replace("{{Code}}", code, StringComparison.Ordinal)
-            .Replace("{{Name}}", recipientName, StringComparison.Ordinal);
-
-        return new EmailContent(renderedSubject, renderedBody);
-    }
-
-    public EmailContent RenderEventLifecycle(EventLifecycleNotification request, string? culture = null)
-    {
-        using (new CultureScope(culture ?? request.Culture, logger))
-        {
-            var userName = HtmlEncode(request.UserName);
-            var eventTitle = HtmlEncode(request.EventTitle);
-            var reason = HtmlEncode(request.Reason ?? string.Empty);
-            var actionUrl = HtmlEncode(request.ActionUrl ?? string.Empty);
-
-            return request.NewStatus switch
-            {
-                EventStatus.Pending => new EmailContent(
-                    "Your event submission has been received",
-                    $"""
-                        <p>Hi {userName},</p>
-                        <p>Your event <strong>{eventTitle}</strong> has been received and is now in the moderation queue.
-                        You will be notified once it has been reviewed.</p>
-                        <p><a href="{actionUrl}">View your submissions</a></p>
-                        """),
-                EventStatus.Approved => new EmailContent(
-                    "Your event has been approved",
-                    $"""
-                        <p>Hi {userName},</p>
-                        <p>Your event <strong>{eventTitle}</strong> has been approved and will appear in the event guide.</p>
-                        """),
-                EventStatus.Rejected => new EmailContent(
-                    "Your event submission was not approved",
-                    $"""
-                        <p>Hi {userName},</p>
-                        <p>Your event <strong>{eventTitle}</strong> was not approved for the event guide.</p>
-                        <p><strong>Reason:</strong> {reason}</p>
-                        <p>You can edit and resubmit your event here: <a href="{actionUrl}">Edit event</a></p>
-                        """),
-                EventStatus.ResubmitRequested => new EmailContent(
-                    "Changes requested for your event submission",
-                    $"""
-                        <p>Hi {userName},</p>
-                        <p>The moderation team has requested changes to your event <strong>{eventTitle}</strong> before it can be approved.</p>
-                        <p><strong>Feedback:</strong> {reason}</p>
-                        <p>Please update and resubmit here: <a href="{actionUrl}">Edit event</a></p>
-                        """),
-                _ => throw new ArgumentOutOfRangeException(nameof(request),
-                    $"EventLifecycleNotification does not support status {request.NewStatus}")
-            };
-        }
-    }
 
     public EmailContent RenderTicketTransferRequested(
         string senderName, string receiverName, string ticketLabel, string? culture = null)

@@ -133,7 +133,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 
 ## Triggers
 
-- When an admin posts a message on a report, the reporter's effective notification email is resolved via `IUserEmailService.GetNotificationTargetEmailsAsync` and a localized response email is queued via `IEmailService.SendAsync(IEmailMessageFactory.FeedbackResponse(...))`. After the message is persisted, an in-app `NotificationSource.FeedbackResponse` notification is also dispatched.
+- When an admin posts a message on a report, the reporter's effective notification email is resolved via `IUserEmailService.GetNotificationTargetEmailsAsync` and a localized response email is queued via `IEmailService.SendAsync(FeedbackEmails.FeedbackResponse(...))`. After the message is persisted, an in-app `NotificationSource.FeedbackResponse` notification is also dispatched.
 - When a message is posted or a status changes, the nav-badge cache is invalidated via `INavBadgeCacheInvalidator`.
 - When an account merge accepts, `FeedbackService.ReassignAsync` (`IUserMerge`) re-FKs `FeedbackReport.UserId` / `AssignedToUserId` / `ResolvedByUserId` and `FeedbackMessage.SenderUserId` from source to target. Called only by `IAccountMergeService.AcceptAsync` (Profiles section) inside an ambient `TransactionScope`.
 
@@ -142,7 +142,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 - **Users/Identity:** `IUserServiceRead.GetUserInfosAsync` — batched lookup of the canonical `UserInfo` read model, which already carries `BurnerName`-first display names, resolving reporter, assignee, resolver, and message senders in one call (`memory/architecture/burnername-is-the-display-name.md`).
 - **Profiles:** `IUserEmailService.GetNotificationTargetEmailsAsync` — resolves the effective notification email for a report's reporter when an admin posts a reply. Also: `FeedbackService` implements `IUserMerge` and is called by `IAccountMergeService.AcceptAsync` to re-FK feedback rows during account merge fold.
 - **Teams:** `ITeamServiceRead.GetTeamsAsync` / `GetTeamAsync` — assigned-team display names.
-- **Email:** `IEmailService.SendAsync` with `IEmailMessageFactory.FeedbackResponse` — admin-reply emails (the production binding is `OutboxEmailService`, so the email is queued through the email outbox).
+- **Email:** transport only. Feedback owns its one template — `FeedbackEmails` (internal) builds the `EmailMessage` from Feedback's own `Feedback_Email_*` keys in `FeedbackResource`, rendered in the recipient's culture via `CultureScope`, and `FeedbackEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists it at `/Email/EmailPreview` (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651). `IEmailService.SendAsync` with `FeedbackEmails.FeedbackResponse` — admin-reply emails (the production binding is `OutboxEmailService`, so the email is queued through the email outbox).
 - **Notifications:** `INotificationEmitter.SendAsync` — `NotificationSource.FeedbackResponse` in-app notification dispatched after an admin reply is persisted.
 - **Audit Log:** `IAuditLogService.LogAsync` — status, assignment and GitHub-link changes (`AuditAction.FeedbackStatusChanged`, `AuditAction.FeedbackAssignmentChanged`, `AuditAction.FeedbackGitHubLinked`).
 - **Caching:** the actionable badge count is cached inline in `FeedbackService.GetActionableCountAsync` (`CacheKeys.FeedbackBadgeCount`, 2-min TTL, Static) and invalidated via `INavBadgeCacheInvalidator` whenever the count could have changed.

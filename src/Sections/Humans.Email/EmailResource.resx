@@ -36,7 +36,6 @@
   <!-- Common / Shared          -->
   <!-- ======================== -->
   <data name="Email_ApplicationSubmitted_Subject" xml:space="preserve"><value>New Membership Application: {0}</value><comment>{0} = applicant name</comment></data>
-  <data name="Email_SignupRejected_Subject" xml:space="preserve"><value>Regarding Your Signup</value></data>
   <data name="Email_SurveyInvitation_Subject" xml:space="preserve"><value>Please complete: {0}</value><comment>{0} = survey title</comment></data>
   <data name="Email_SurveyReminder_Subject" xml:space="preserve"><value>Reminder: {0}</value><comment>{0} = survey title</comment></data>
   <data name="Email_ReConsentRequired_Subject_Single" xml:space="preserve"><value>Action Required: Updated {0}</value><comment>{0} = document name</comment></data>
@@ -47,9 +46,7 @@
   <data name="Email_VerifyEmail_Subject" xml:space="preserve"><value>Verify Your Email Address</value></data>
   <data name="Email_DeletionRequested_Subject" xml:space="preserve"><value>Account Deletion Requested</value></data>
   <data name="Email_AccountDeleted_Subject" xml:space="preserve"><value>Your Account Has Been Deleted</value></data>
-  <data name="Email_AddedToTeam_Subject" xml:space="preserve"><value>You've been added to {0}</value><comment>{0} = team name</comment></data>
   <data name="Email_ReasonLine" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;Reason:&lt;/strong&gt; {0}&lt;/p&gt;</value><comment>{0} = reason text (HTML-encoded by caller)</comment></data>
-  <data name="Email_ResourcesSection" xml:space="preserve"><value>&lt;p&gt;Your team has the following resources:&lt;/p&gt;&lt;ul&gt;{0}&lt;/ul&gt;</value><comment>{0} = resource list items HTML</comment></data>
   <data name="Email_ApplicationSubmitted_Body" xml:space="preserve"><value>&lt;h2&gt;New Membership Application&lt;/h2&gt;
 &lt;p&gt;A new membership application has been submitted.&lt;/p&gt;
 &lt;ul&gt;
@@ -57,12 +54,6 @@
     &lt;li&gt;&lt;strong&gt;Application ID:&lt;/strong&gt; {1}&lt;/li&gt;
 &lt;/ul&gt;
 &lt;p&gt;&lt;a href="{2}/Governance/Applications/Admin/{1}"&gt;Review Application&lt;/a&gt;&lt;/p&gt;</value><comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment></data>
-  <data name="Email_SignupRejected_Body" xml:space="preserve"><value>&lt;h2&gt;Signup Update&lt;/h2&gt;
-&lt;p&gt;Dear {0},&lt;/p&gt;
-&lt;p&gt;Thank you for your interest in joining us. After careful review, we regret to inform you that we are unable to approve your signup at this time.&lt;/p&gt;
-{1}
-&lt;p&gt;If you have any questions or would like to discuss this decision, please contact us at &lt;a href="mailto:{2}"&gt;{2}&lt;/a&gt;.&lt;/p&gt;
-&lt;p&gt;Best regards,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = reason HTML (or empty), {2} = admin email</comment></data>
   <data name="Email_SurveyInvitation_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
 &lt;p&gt;Hi {0},&lt;/p&gt;
 {3}
@@ -143,33 +134,9 @@
 &lt;p&gt;As requested, your Humans account has been permanently deleted. All your personal data has been removed from our systems.&lt;/p&gt;
 &lt;p&gt;Thank you for being part of our community. If you ever wish to rejoin, you're welcome to create a new account.&lt;/p&gt;
 &lt;p&gt;Best wishes,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name</comment></data>
-  <data name="Email_AddedToTeam_Body" xml:space="preserve"><value>&lt;h2&gt;Welcome to {1}!&lt;/h2&gt;
-&lt;p&gt;Dear {0},&lt;/p&gt;
-&lt;p&gt;You have been added to the &lt;strong&gt;{1}&lt;/strong&gt; team.&lt;/p&gt;
-{2}
-&lt;p&gt;&lt;a href="{3}"&gt;View Team Page&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = team name, {2} = resources HTML (or empty), {3} = team URL</comment></data>
   <data name="Email_FacilitatedMessage_Subject" xml:space="preserve"><value>Humans Message from: {0}</value><comment>{0} = sender name</comment></data>
   <data name="Email_FacilitatedMessage_Body" xml:space="preserve"><value>&lt;h2&gt;Message from {1}&lt;/h2&gt;&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;{1} has sent you a message through Humans:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{2}&lt;/p&gt;&lt;hr /&gt;{3}</value><comment>{0}=recipient, {1}=sender, {2}=message, {3}=contact info html</comment></data>
   <data name="Email_FacilitatedMessage_NoContactInfo" xml:space="preserve"><value>This human chose not to share their contact information.</value></data>
-  <data name="Email_FeedbackResponse_Subject" xml:space="preserve"><value>Update on your feedback</value></data>
-  <data name="Email_FeedbackResponse_Body" xml:space="preserve"><value>&lt;h2&gt;Update on Your Feedback&lt;/h2&gt;
-&lt;p&gt;Dear {0},&lt;/p&gt;
-&lt;p&gt;We've reviewed your feedback:&lt;/p&gt;
-&lt;blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #666;"&gt;{1}&lt;/blockquote&gt;
-&lt;p&gt;&lt;strong&gt;Our response:&lt;/strong&gt;&lt;/p&gt;
-&lt;p&gt;{2}&lt;/p&gt;
-&lt;p&gt;Thank you for helping us improve!&lt;/p&gt;
-&lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = original description, {2} = response message</comment></data>
-  <data name="Email_IssueComment_Subject" xml:space="preserve"><value>New comment on your issue: {0}</value></data>
-  <data name="Email_IssueComment_Body" xml:space="preserve"><value>&lt;h2&gt;New comment on your issue&lt;/h2&gt;
-&lt;p&gt;Hi {0},&lt;/p&gt;
-&lt;p&gt;There's a new comment on your issue:&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;Issue:&lt;/strong&gt; {1}&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;Comment:&lt;/strong&gt;&lt;/p&gt;
-&lt;blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #666;"&gt;{2}&lt;/blockquote&gt;
-&lt;p&gt;&lt;a href="{3}"&gt;Open issue&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;— The Humans team&lt;/p&gt;</value><comment>{0} = display name, {1} = issue title, {2} = comment HTML, {3} = issue URL</comment></data>
   <data name="Email_MagicLinkLogin_Subject" xml:space="preserve"><value>Your login link for Nobodies</value></data>
   <data name="Email_MagicLinkLogin_Body" xml:space="preserve"><value>&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;Click the link below to sign in:&lt;/p&gt;&lt;p&gt;&lt;a href="{1}"&gt;Sign in to Nobodies&lt;/a&gt;&lt;/p&gt;&lt;p&gt;This link expires in 15 minutes and can only be used once.&lt;/p&gt;&lt;p&gt;If you didn't request this, you can ignore this email.&lt;/p&gt;</value><comment>{0}=display name, {1}=magic link URL</comment></data>
   <data name="Email_MagicLinkSignup_Subject" xml:space="preserve"><value>Welcome to Nobodies — confirm your email</value></data>

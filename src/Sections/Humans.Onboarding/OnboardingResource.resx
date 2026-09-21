@@ -141,4 +141,12 @@
   <data name="Onboarding_ReviewReviewLink" xml:space="preserve"><value>Review</value></data>
   <data name="Onboarding_ReviewSelectRowLabel" xml:space="preserve"><value>Select {0}</value></data>
   <data name="Onboarding_GuestDeleteAccountConfirm" xml:space="preserve"><value>Are you sure you want to request account deletion? You can cancel before the deletion date.</value></data>
+  <data name="Onboarding_Email_SignupRejected_Subject" xml:space="preserve"><value>Regarding Your Signup</value></data>
+  <data name="Onboarding_Email_SignupRejected_Body" xml:space="preserve"><value>&lt;h2&gt;Signup Update&lt;/h2&gt;
+&lt;p&gt;Dear {0},&lt;/p&gt;
+&lt;p&gt;Thank you for your interest in joining us. After careful review, we regret to inform you that we are unable to approve your signup at this time.&lt;/p&gt;
+{1}
+&lt;p&gt;If you have any questions or would like to discuss this decision, please contact us at &lt;a href="mailto:{2}"&gt;{2}&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Best regards,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = reason HTML (or empty), {2} = admin email</comment></data>
+  <data name="Onboarding_Email_ReasonLine" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;Reason:&lt;/strong&gt; {0}&lt;/p&gt;</value><comment>{0} = reason text (HTML-encoded by caller)</comment></data>
 </root>

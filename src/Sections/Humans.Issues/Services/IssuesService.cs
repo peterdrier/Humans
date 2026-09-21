@@ -28,7 +28,7 @@ internal sealed class IssuesService(
     IUserEmailService userEmails,
     IRoleAssignmentService roles,
     IEmailService email,
-    IEmailMessageFactory emailMessages,
+    IssuesEmails emailMessages,
     INotificationEmitter notifications,
     INotificationAutoResolve notificationInbox,
     IAuditLogService audit,

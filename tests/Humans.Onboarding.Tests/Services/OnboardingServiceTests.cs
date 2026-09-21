@@ -8,6 +8,7 @@ using Humans.Governance.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Onboarding.Services;
+using Humans.Onboarding.Tests.Infrastructure;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -27,7 +28,7 @@ public sealed class OnboardingServiceTests
     private readonly IConsentServiceRead _consentService = Substitute.For<IConsentServiceRead>();
     private readonly IHumanLifecycleService _humanLifecycle = Substitute.For<IHumanLifecycleService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
-    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
+    private readonly OnboardingEmails _emailMessages = TestOnboardingEmails.Create();
 
     private OnboardingService BuildSut() =>
         new(
@@ -101,7 +102,9 @@ public sealed class OnboardingServiceTests
             Arg.Any<string>(),
             reviewerId);
         await _syncJob.DidNotReceiveWithAnyArgs().SyncMembershipForUserAsync(default, default, Arg.Any<CancellationToken>());
-        _emailMessages.DidNotReceiveWithAnyArgs().SignupRejected(default!, default!, default);
+        await _emailService.DidNotReceive().SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "signup_rejected"),
+            Arg.Any<CancellationToken>());
         await _notificationService.DidNotReceiveWithAnyArgs().SendAsync(
             default,
             default,
@@ -155,8 +158,11 @@ public sealed class OnboardingServiceTests
         await _syncJob.Received(3).SyncMembershipForUserAsync(
             Arg.Any<Guid>(), Arg.Any<SystemTeamType>(), Arg.Any<CancellationToken>());
 
-        _emailMessages.Received(1).SignupRejected(
-            Arg.Any<string>(), "Rejected One", reason, Arg.Any<string?>());
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "signup_rejected"
+                && m.RecipientName == "Rejected One"
+                && m.HtmlBody.Contains(reason)),
+            Arg.Any<CancellationToken>());
 
         await _notificationService.Received(1).SendAsync(
             NotificationSource.ProfileRejected,

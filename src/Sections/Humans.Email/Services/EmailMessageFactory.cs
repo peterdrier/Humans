@@ -59,20 +59,6 @@ internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessa
             "account_deleted", DoNotPersist: true);
     }
 
-    public EmailMessage AddedToTeam(string userEmail, string userName, string teamName, string teamSlug, IEnumerable<(string Name, string? Url)> resources, string? culture = null)
-    {
-        var content = renderer.RenderAddedToTeam(userName, teamName, teamSlug, resources.ToList(), culture);
-        return new EmailMessage(userEmail, userName, content.Subject, content.HtmlBody,
-            "added_to_team", MessageCategory.TeamUpdates);
-    }
-
-    public EmailMessage SignupRejected(string userEmail, string userName, string? reason, string? culture = null)
-    {
-        var content = renderer.RenderSignupRejected(userName, reason, culture);
-        return new EmailMessage(userEmail, userName, content.Subject, content.HtmlBody,
-            "signup_rejected", MessageCategory.System);
-    }
-
     public EmailMessage SurveyInvitation(
         string userEmail,
         string userName,
@@ -93,13 +79,6 @@ internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessa
         var content = renderer.RenderSurveyReminder(userName, surveyTitle, answerToken, culture);
         return new EmailMessage(userEmail, userName, content.Subject, content.HtmlBody,
             "survey_reminder", MessageCategory.System);
-    }
-
-    public EmailMessage FeedbackResponse(string userEmail, string userName, string originalDescription, string responseMessage, string? culture = null)
-    {
-        var content = renderer.RenderFeedbackResponse(userName, originalDescription, responseMessage, culture);
-        return new EmailMessage(userEmail, userName, content.Subject, content.HtmlBody,
-            "feedback_response", MessageCategory.System);
     }
 
     public EmailMessage FacilitatedMessage(string recipientEmail, string recipientName, string senderName, string messageText, bool includeContactInfo, string? senderEmail, string? culture = null)
@@ -149,32 +128,6 @@ internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessa
         var content = renderer.RenderWorkspaceCredentials(userName, workspaceEmail, tempPassword, culture);
         return new EmailMessage(recoveryEmail, userName, content.Subject, content.HtmlBody,
             TimeSensitiveTemplates.WorkspaceCredentials);
-    }
-
-    public EmailMessage IssueComment(string to, string displayName, string issueTitle, string commentContent, string issueLink, string preferredLanguage)
-    {
-        var content = renderer.RenderIssueComment(displayName, issueTitle, commentContent, issueLink, preferredLanguage);
-        return new EmailMessage(to, displayName, content.Subject, content.HtmlBody,
-            "issue_comment", MessageCategory.System);
-    }
-
-    public EmailMessage CampaignCode(CampaignCodeEmailRequest request)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        // Renderer HTML-encodes {{Code}}/{{Name}} substitutions to prevent injection.
-        var content = renderer.RenderCampaignCode(request.Subject, request.MarkdownBody, request.Code, request.RecipientName);
-        return new EmailMessage(request.RecipientEmail, request.RecipientName, content.Subject, content.HtmlBody,
-            "campaign_code", MessageCategory.CampaignCodes,
-            ReplyTo: request.ReplyTo, UserId: request.UserId, CampaignGrantId: request.CampaignGrantId,
-            CampaignId: request.CampaignId);
-    }
-
-    public EmailMessage EventLifecycle(EventLifecycleNotification request, string userEmail)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        var content = renderer.RenderEventLifecycle(request);
-        return new EmailMessage(userEmail, request.UserName, content.Subject, content.HtmlBody,
-            request.TemplateName());
     }
 
     public EmailMessage GoogleGroupRemovalLossOfAccess(string removedEmail, string userName, string groupName, string groupEmail, string? culture = null)
