@@ -233,7 +233,7 @@ def main():
         label = agent_label(p)
         rows.append(build_row(label, tier_of(label), by_id))
 
-    ordered = [rows[0]] + sorted(rows[1:], key=lambda r: -r["usd"])
+    ordered = [rows[0]] + sorted(rows[1:], key=lambda r: r["first"] or "")
 
     print(f"# Spend report: {session_id}\n")
     print("| Agent | Tier | Model | Reqs | In | Out | Cache W | Cache R | Est $ | First-Last (dur) |")
@@ -253,7 +253,7 @@ def main():
         t = r["tok"]
         print(
             f"| {r['label']} | {r['tier']} | {models} | {r['requests']} | {t['in']:,} | {t['out']:,} "
-            f"| {t['cw']:,} | {t['cr']:,} | ${r['usd']:.4f} | {span} |"
+            f"| {t['cw']:,} | {t['cr']:,} | ${r['usd']:.2f} | {span} |"
         )
         for k in total_tok:
             total_tok[k] += t[k]
@@ -262,7 +262,7 @@ def main():
         merge_model_rollup(model_rollup, r["models"])
     print(
         f"| **TOTAL** | | | {sum(r['requests'] for r in ordered)} | {total_tok['in']:,} | {total_tok['out']:,} "
-        f"| {total_tok['cw']:,} | {total_tok['cr']:,} | **${total_usd:.4f}** | |"
+        f"| {total_tok['cw']:,} | {total_tok['cr']:,} | **${total_usd:.2f}** | |"
     )
     print()
     print(f"estimated, API list prices as of {AS_OF}")
@@ -270,7 +270,7 @@ def main():
     print("By model:")
     for model, b in sorted(model_rollup.items(), key=lambda kv: -kv[1]["usd"]):
         flag = "" if b["priced"] else " (unpriced)"
-        print(f"- {model}{flag}: {b['requests']} reqs, ${b['usd']:.4f}")
+        print(f"- {model}{flag}: {b['requests']} reqs, ${b['usd']:.2f}")
     if all_unpriced:
         print()
         print(f"unpriced models (billed \\$0 above, not guessed): {', '.join(sorted(all_unpriced))}")
