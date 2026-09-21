@@ -422,11 +422,11 @@ main() {
   # Saved by the goal client outside WORK_DIR, not part of the tested tree.
   run_report="$(cat "$last_message_file")"
 
-  # Bookkeeping is not a debt fix. Do not publish a ledger-only or docs-only
-  # run as successful work; executable tooling under docs/scripts counts.
+  # Bookkeeping and test-only work are not production debt fixes.
+  # Executable tooling under docs/scripts still counts.
   if ! has_substantive_changes "$head_before" "$head_after"; then
     exit_reason="no-substantive-fixes"
-    die "No substantive fixes; ledger/documentation changes alone cannot produce a debt PR"
+    die "No substantive fixes; ledger/documentation/test-only changes cannot produce a debt PR"
   fi
 
   commits_made="$(git rev-list --count "$head_before..$head_after")"
@@ -581,7 +581,7 @@ has_substantive_changes() {
   while IFS= read -r -d '' path; do
     case "$path" in
       docs/scripts/*) return 0 ;;
-      docs/*|memory/*|*/Docs/*|*.md) ;;
+      tests/*|docs/*|memory/*|*/Docs/*|*.md) ;;
       *) return 0 ;;
     esac
   done < <(git diff --name-only -z "$1" "$2")

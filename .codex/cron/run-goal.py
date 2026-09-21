@@ -16,7 +16,9 @@ def run(prompt_file, report_file, deadline):
         "ONLY target, with no fix-count quota. Keep working across turn boundaries. "
         "Complete the goal only after that deadline AND current-task completion with "
         "a clean working tree. One PR will contain all fixes; the wrapper alone "
-        "publishes it. Ledger/documentation cleanup is not a substantive fix."
+        "publishes it. Prioritize production-code fixes; tests may support those "
+        "fixes but standalone coverage work is never an objective. "
+        "Ledger/documentation cleanup and test-only work are not substantive fixes."
     )
     # These are the app-server equivalents of dangerous CLI mode, and remain
     # attached to the thread for every native goal continuation.

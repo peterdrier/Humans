@@ -37,7 +37,7 @@ or test gate. **Recurring — never fully drains**, because new rows go stale
 over time too. Do this first every night, cheaply, before picking a "real"
 rung; it costs little and keeps every other rung's Finds command honest.
 **This is bookkeeping, not a substantive fix. Never stop or publish a PR
-after only this rung; continue to code, tooling, or meaningful test work.**
+after only this rung; continue to production code or executable tooling.**
 
 **Finds:** for each candidate row, pull the code symbol(s)/file the `what:`
 text names and grep for them; if the cited method, file, or text no longer
@@ -173,116 +173,15 @@ reason; wrong contributor mechanism/`AgentService` example), `.claude/skills/tes
 (wrong "Gdpr has no Controllers/" claim), `section-conformance.yml` (stale
 "no Docs/" note for Settings/TicketTailor).
 
-**Root B — sections with no controller-test layer.** Several rows share this
-cause (Governance's two controller-authz-unpinned rows collapse into one fix
-here). Stand up the missing `tests/Humans.<Section>.Tests/Controllers/`
-skeleton for one section, pinning `[Authorize(Policy = ...)]` placement —
-that single file closes every row filed against that section's controllers.
-```
-for d in tests/Humans.*.Tests; do
-  find "$d" -iname '*Controller*' | grep -q . || echo "NO CONTROLLER TESTS: $d"
-done
-```
-Seed: `tests/Humans.Governance.Tests` (zero controller tests — closes both
-Governance controller-authz rows in one file), `tests/Humans.Containers.Tests`
-(zero controller tests). This cluster is linked by `root: CENTRAL-56` — once a
-section's test skeleton lands, close the rows this grep finds for it:
-```
-grep -rln "root: CENTRAL-56" docs/architecture/debt-ledger.yml src/Sections/*/Docs/debt.yml
-```
+**Drained when:** the freshness script fix has landed and root-A's grep
+returns no live rows. Coverage-only clusters are not nightly work.
 
-**Drained when:** the freshness script fix has landed, root-A's grep returns
-no live rows, and root-B's `for` loop and grep above both print nothing.
-
-**Done-check:** root A — docs-only, no build; rerun the freshness script and
-confirm it no longer dies under `mawk`. Root B — `dotnet test tests/Humans.<Section>.Tests -v quiet -clp:ErrorsOnly`.
+**Done-check:** rerun the freshness script and confirm it no longer dies
+under `mawk`. Doc corrections require no build.
 
 ---
 
-## Rung 4 — Missing tests, self-contained
-
-**What:** Pin an already-correct invariant with a test. No behavior change,
-no new public surface — pure test addition. Excludes rung 3's controller-test
-root cluster and rung 5's authorization-attribute items (those are their own
-rungs even though they're also "a missing test").
-
-**Finds:** ledger rows tagged `review: light` whose `what:` text uses
-missing-coverage language, minus anything needing a design call:
-```
-grep -B1 -A1 "review: light" docs/architecture/debt-ledger.yml src/Sections/*/Docs/debt.yml \
-  | grep -i "untested\|unpinned\|no test\|not covered\|zero hits\|no coverage"
-```
-Read the full row before picking — skip anything whose `what:` mentions
-"Peter's call", a needed fixture/harness the section doesn't have, or a
-cross-section blocker.
-
-**Seed (self-contained, smallest first):**
-- `Humans.Backdoor` — `BackdoorApiKeyRepository` has no test file at all;
-  pin `FindActiveByHashAsync` excludes revoked, `RevokeAsync` is idempotent.
-- `Humans.Gdpr` — `GdprService` logs the failing contributor's name before
-  rethrow, but the test fixture injects `NullLogger`; swap in a capturing
-  logger and assert the log content.
-- `Humans.Governance` — `ApplicationDecisionService.ScrubFreeTextForUserAsync`
-  (Art. 17 erasure) has zero test coverage anywhere.
-- `Humans.Governance` — `ApproveAsync`/`RejectAsync` never assert their
-  `AuditLog.LogAsync` call; the one-vote-per-Board-member overwrite rule is
-  unpinned at every layer, not just under-described as "repo-only."
-- `Humans.Users` — `UsersAdminController` actions beyond the two purge
-  negatives (`SuspendHuman`, `UnsuspendHuman`, `RejectSignup`, `Roles`,
-  `Audience`) have zero tests.
-- `Humans.Tickets` — `EraseForUserAsync`, `GetUserTicketExportDataAsync`,
-  `GetMatchedTicketUserIdsAsync`/`GetMatchedUserIdsForEmailsAsync` untested;
-  sync-removes-Ticketed-when-no-valid-ticket-remains path unpinned.
-- `Humans.Rideshare` — five named `RideshareService` rule keys (capacity,
-  non-Active refusal, seats-minimum, non-pending Accept/Decline, non-owner
-  UpdateRequest) never asserted in `RideshareServiceTests`.
-- `Humans.Surveys` — repo-level `ReminderSentAt` filter/stamp: no
-  `SurveyRepository*Tests.cs` exists at all; the service-level sibling test
-  (`SendDueRemindersAsync_sends_one_reminder_...`) shows the pattern to copy.
-- `Humans.Gate` — the barcode-dedupe race needs a Postgres-backed test
-  (EF InMemory can't raise 23505); use `Humans.Integration.Tests`' pattern.
-- `Humans.Finance` — `Views/Finance/CreditorStatement.cshtml` flips the
-  ledger-line sign in the view; no test pins the sign flip.
-- `Humans.Campaigns` — `UpdateGrantEmailStatusAsync`/`GetCodeTrackingAsync`
-  still uncovered (the other two named methods in this row are already
-  fixed — narrow the row to just these two, don't re-add the fixed ones).
-
-**Drained when:** the grep above returns nothing new and every seed item is
-closed or reclassified (moved to a Peter's-call rung/off-ladder).
-
-**Done-check:** `dotnet test tests/Humans.<Section>.Tests -v quiet -clp:ErrorsOnly`.
-
----
-
-## Rung 5 — Authorization-unpinned tests (controller attribute placement)
-
-**What:** A controller carries `[Authorize(Policy = ...)]` but no test pins
-*which* policy — a silent downgrade (e.g. to a weaker policy) would pass
-every existing test. Add the pin; don't change the attribute.
-
-**Finds:** controllers absent from the central policy-pin theory data:
-```
-grep -rhoP '(?<=class )\w+Controller' src/Sections/*/Controllers/*.cs src/Humans.Web/Controllers/*.cs | sort -u > /tmp/all_controllers.txt
-grep -oP '(?<=typeof\()\w+Controller' tests/Humans.Web.Tests/Authorization/EndpointAuthorizationTests.cs | sort -u > /tmp/pinned_controllers.txt
-comm -23 /tmp/all_controllers.txt /tmp/pinned_controllers.txt
-```
-This is a coarse "any pin exists" check, not full-attribute coverage — read
-each candidate's actions before deciding it's actually unpinned.
-
-**Seed:** `GovernanceApplicationsController`, `GovernanceBoardVotingController`,
-`GovernanceVotesAdminController` — likely already closed by rung 3's Root B
-(the new `tests/Humans.Governance.Tests/Controllers/` file); check rung 3's
-work before duplicating here.
-
-**Drained when:** `comm` above prints nothing (every controller has at least
-one policy-pin test), or every remaining name is a Shell/admin controller
-already covered by an existing test the grep's regex missed (verify by hand).
-
-**Done-check:** `dotnet test tests/Humans.Web.Tests -v quiet -clp:ErrorsOnly --filter EndpointAuthorizationTests` plus the touched section's own test project.
-
----
-
-## Rung 6 — Localization gaps
+## Rung 4 — Localization gaps
 
 **What:** A user-facing string hardcoded in English instead of a resx key,
 on a route that is **not** admin/operator-exempt
@@ -320,7 +219,7 @@ picking it.
 
 ---
 
-## Rung 7 — DisplaySort baseline (actionable view-moves only)
+## Rung 5 — DisplaySort baseline (actionable view-moves only)
 
 **What:** `tests/Humans.Web.Tests/Architecture/Baselines/DisplaySortInControllers.baseline.txt`
 mixes two things. The `TicketRepository` lines are ones **Peter ruled stay**
@@ -353,7 +252,7 @@ TeamRepository rows) returns nothing.
 
 ---
 
-## Rung 8 — Dead-or-duplicate code
+## Rung 6 — Dead-or-duplicate code
 
 **What:** Confirmed-dead code (zero call sites, a duplicate private helper,
 an unused enum flag) with no public-surface change. Larger "god class" /
@@ -367,8 +266,6 @@ grep -B1 -A1 "review: light" docs/architecture/debt-ledger.yml src/Sections/*/Do
 ```
 
 **Seed:**
-- `Humans.Camps` — `UserInfoStubHelpers.MakeUserInfo` is dead;
-  `CampControllerTests` defines its own private copy.
 - `Humans.Tickets` — `CachingTicketQueryService` defines `WithInner` twice
   (outer class + nested `UserHoldingsCache`), same name and shape.
 - `Humans.Shifts` — `ShiftBrowseQueryFlags.PriorityOnly` is read once, set
@@ -386,7 +283,7 @@ grep -B1 -A1 "review: light" docs/architecture/debt-ledger.yml src/Sections/*/Do
 
 ---
 
-## Rung 9 — Naming / resource-key prefixes
+## Rung 7 — Naming / resource-key prefixes
 
 **What:** Resx keys missing their section's `<Section>_` prefix. Both known
 instances (`GovernanceResource` — 85% of keys, `TeamsResource` — 90%) are
@@ -413,7 +310,7 @@ every remaining gap is already report-only per a prior night's note.
 
 ---
 
-## Rung 10 — Real TODO/HACK compromises
+## Rung 8 — Real TODO/HACK compromises
 
 **What:** `MA0026` is globally `NoWarn`'d, so TODO/HACK comments don't fail
 the build — the seed below are the genuine accepted compromises left, per
@@ -446,6 +343,12 @@ etc. is not one — leave it).
 
 ## Permanently off the ladder
 
+- **Standalone test work:** missing coverage, controller-policy pins, test
+  scaffolding, test helpers, and test-suite expansion are not sweep objectives.
+  Add or update a focused test when a production fix warrants it, as part of
+  that fix. Coverage gaps alone are not candidates, even when other work takes
+  more investigation. Do not fill the time window with standalone test work.
+
 Never pick these up unattended — state the reason if you notice them so a
 future run doesn't re-derive it:
 
@@ -464,7 +367,7 @@ future run doesn't re-derive it:
   Peter-only, permanent. Never "fix" them, never add the attribute elsewhere.
 - **The `TicketRepository` rows in `DisplaySortInControllers.baseline.txt`.**
   Peter ruled these stay until the paged grid's sort is redesigned
-  server-side. Not markable, not a rung-7 target.
+  server-side. Not markable, not a rung-5 target.
 - **`HUM0010`/`HUM0011`** in `WarningsNotAsErrors`. The `[ExpiresOn]` staged
   escalation depends on these staying warnings pre-deadline — do not remove
   alongside rung 2's ids.
