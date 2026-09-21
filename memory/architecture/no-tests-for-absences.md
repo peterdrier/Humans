@@ -33,7 +33,10 @@ something and the test doesn't exist. The doc is wrong. Delete the false claim �
 write the test to make the sentence true. A doc sentence is not a specification. This
 shipped twice from `/section-doctor` runs: nobodies-collective/Humans#1465 (Onboarding, four
 tests written, deleted again here) and peterdrier/Humans#1480 (Development, caught before
-the write).
+the write). Twice more on peterdrier/Humans#1778 (Settings), both caught on review, the
+second after the first had already been withdrawn in the same PR — the run rewrote the
+forbidden shape under an authorization label rather than dropping the premise. A run that
+withdraws one of these should re-read every test it added in the same pass.
 
 **Nor is an absence a question for Peter.** "Does this section owe an `Architecture/` folder?",
 "should there be a test project here?", "is this enum member missing on purpose?" — asking costs
@@ -70,7 +73,10 @@ analyzer could replace it.
 - A query returning no rows for an input that should match nothing.
 - A localizer *binding* check: a misbind renders the raw key with a green build and no log
   line. Real defect, caught twice in Onboarding.
-- An authorization negative: this role gets `404`/`AccessDenied` on this route.
+- An authorization negative: this role gets `404`/`AccessDenied` on this route. Note the shape —
+  a *request* against the route, asserting the deny. Reading an `[Authorize]` attribute by
+  reflection and asserting its `Policy`/`Roles` are null is not this carve-out; it is the
+  per-section absence test above, wearing an authorization label.
 - **Containment of something the section really has** — the section references the Stripe
   SDK / Google SDK / Octokit, and the test pins which layer may name it. A new method
   returning a vendor type is a realistic accident, and it fails whoever wrote it.

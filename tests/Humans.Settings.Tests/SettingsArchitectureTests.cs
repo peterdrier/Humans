@@ -28,21 +28,6 @@ public sealed class SettingsArchitectureTests
     }
 
     /// <summary>
-    /// The page itself is members-only, not admin-only — it renders whatever tabs the viewer
-    /// is allowed, including none at all. Gating it on <see cref="PolicyNames.AdminOnly"/>
-    /// would hide every other section's tab.
-    /// </summary>
-    [HumansFact]
-    public void TheSettingsPage_IsAuthenticatedOnly()
-    {
-        var authorize = typeof(SettingsController).GetCustomAttribute<AuthorizeAttribute>();
-
-        authorize.Should().NotBeNull();
-        authorize!.Policy.Should().BeNull();
-        authorize.Roles.Should().BeNull();
-    }
-
-    /// <summary>
     /// Every settings POST redirects to <c>/Settings#&lt;key&gt;</c>, so the tab strip has to
     /// open the tab named by the fragment — the tab id, the pane id and the id the script
     /// rebuilds from the fragment all have to agree on one convention.

@@ -160,12 +160,16 @@ Declared in `Humans.Settings.csproj`: `Humans.Base` and `Humans.AuditLog.Contrac
 (`Humans.Settings.Contracts` is this section's own leaf). Everything else below is a
 section reaching *in* through this section's leaf, or a seam it implements.
 
+The **out** rows are complete — they are this section's own dependencies. Of the **in**
+rows, the key/value ones are complete too, because `SettingKeys` bounds them. The
+event-cycle readers are deliberately not listed: the set is most of the app and every
+rebuild has left a shorter list behind it. Derive it from the call sites, not from here.
+
 | Direction | Section | Through |
 |---|---|---|
 | out | AuditLog | `IAuditLogService` — one entry per `SaveEventSettingsAsync` |
 | out | Users | `IUserServiceRead` (platform base-controller dependency, reached through Base) |
-| in | Shifts | `ISettingsService` for the event calendar, via `EventCalendarResolver` |
-| in | Camps | `ISettingsService` for `EarlyEntryStartOffset` and the public year |
+| in | every section that renders a date, a phase or an early-entry window | `ISettingsService.GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync`. Not enumerated — see above |
 | in | Development | `IEventSettingsSeeding`, from the dashboard seeder |
 | in | Workgroups | `ISettingsService` (`Workgroups:RootDriveFolderId`) |
 | out | every `IEventSettingsChangeListener` | fanned out after every successful event-settings mutation, the admin save and both `IEventSettingsSeeding` paths (seeded upsert, delete of a row that existed) alike — the gate date, the offsets and the active-event flip move derived dates for every member at once. The notification carries the event settings id. Subscribers today: EarlyEntry's cache (`InvalidateAll`, id ignored), Shifts' `CachingShiftViewService` (flushes every `ShiftUserView`, and evicts that event's coordinator-dashboard aggregates through `IShiftManagementService.InvalidateDashboardCaches`), and Events' `CachingEventService` (its `EventGuideSettingsView` carries the Settings-owned `TimeZoneId`). Settings names no consumer and references no consuming section |
