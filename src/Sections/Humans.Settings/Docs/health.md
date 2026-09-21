@@ -29,7 +29,7 @@ page, the tab strip and the ordering; it supplies exactly one tab of its own.
 | Question shape | Asked by | Answered by |
 |---|---|---|
 | "What is stored under this key?" / "Store this under this key" | Email's send pause, Monitor's last-run stamp, Workgroups' Drive root | `ISettingsService.GetValueAsync` / `SetValueAsync` |
-| "What is the current event cycle?" / "This cycle, by id?" | Shifts, Camps, Gate, Scanner, Teams, Cantina, Onboarding, Agent, Events; the section's own tab | `ISettingsService.GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` |
+| "What is the current event cycle?" / "This cycle, by id?" | most of the app — every section that renders a date, a phase or an early-entry window, plus the section's own tab. Not enumerated on purpose: the list is long and each rebuild has left a shorter one behind | `ISettingsService.GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` |
 | "Save this cycle's values, on this person's say-so" | only the section's own POST endpoint | `ISettingsWriteService.SaveEventSettingsAsync` |
 | "Mint / drop a cycle for a fixture" | the dev dashboard seeder | `IEventSettingsSeeding.CreateActiveEventAsync` / `DeleteEventAsync` |
 | "The cycle moved — drop what you derived from it" | announced to every listener, named by none | `IEventSettingsChangeListener.EventSettingsChanged` |
