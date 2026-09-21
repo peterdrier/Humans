@@ -29,6 +29,9 @@ def run(prompt_file, report_file, deadline):
     goal_status = None
     final_message = ""
     started = False
+    premature_completion = False
+    resume_request = None
+    next_request_id = 5
 
     def send(method, params, request_id=None):
         message = {"method": method, "params": params}
@@ -70,18 +73,41 @@ def run(prompt_file, report_file, deadline):
                 send("thread/goal/set", {"threadId": thread_id, "objective": objective}, 3)
             elif event.get("id") == 3:
                 goal_status = event["result"]["goal"]["status"]
-                # Exactly one user turn. The native goal scheduler owns every
-                # subsequent turn; this client only listens for notifications.
+                # Let native continuation drive normal turn boundaries.
                 send("turn/start", {"threadId": thread_id,
                      "input": [{"type": "text", "text": prompt}]}, 4)
                 started = True
+            elif resume_request is not None and event.get("id") == resume_request:
+                goal_status = event["result"]["goal"]["status"]
+                if goal_status != "active":
+                    raise RuntimeError(f"Could not reactivate timed goal: {goal_status}")
+                resume_request = None
+                premature_completion = False
+                now = int(time.time())
+                send("turn/start", {"threadId": thread_id, "input": [{
+                    "type": "text",
+                    "text": (
+                        f"The goal was marked complete before its work deadline. "
+                        f"Actual Unix time is {now}; the original deadline remains {deadline} "
+                        f"({max(0, deadline - now)} seconds remaining). The same goal is active again. "
+                        "Read get_goal and continue substantive fixes in this same branch/session "
+                        "until the deadline, then finish and validate the current task. "
+                        "Time is the only target; no fix-count quota. If the deadline has now "
+                        "passed, finish and validate the current task. Complete the goal only "
+                        "then, and return a cumulative PR report covering the entire run."
+                    ),
+                }]}, next_request_id)
+                next_request_id += 1
             params = event.get("params", {})
             if params.get("threadId") != thread_id or thread_id is None:
                 continue
             if method == "thread/goal/updated":
                 goal_status = params["goal"]["status"]
                 if goal_status == "complete" and time.time() < deadline:
-                    raise RuntimeError("Native goal completed before the work deadline")
+                    # Remember when completion happened, even if the deadline
+                    # passes before this turn finishes. Never interrupt its work.
+                    premature_completion = True
+                    print("Native goal completed early; will reactivate after this turn", flush=True)
                 if goal_status not in ("active", "complete"):
                     raise RuntimeError(f"Native goal stopped incomplete: {goal_status}")
             elif method == "thread/goal/cleared":
@@ -95,6 +121,12 @@ def run(prompt_file, report_file, deadline):
             elif method == "turn/completed" and started:
                 if params["turn"]["status"] != "completed":
                     raise RuntimeError(f"Codex turn failed: {params['turn']}")
+                if premature_completion:
+                    resume_request = next_request_id
+                    next_request_id += 1
+                    send("thread/goal/set", {"threadId": thread_id,
+                         "objective": objective, "status": "active"}, resume_request)
+                    continue
                 if goal_status == "complete":
                     if time.time() < deadline or not final_message.strip():
                         raise RuntimeError("Completed goal lacks elapsed work window or final report")

@@ -12,7 +12,9 @@ ledger row. Successful pipeline plumbing was mistaken for useful debt work.
 
 **How to apply:** Use one native Codex goal session across turn boundaries.
 Preserve its objective, deadline, and dangerous permissions if the harness
-must continue it. Do not kill the task
+must continue it. An early completion must reactivate the same goal after the
+current turn finishes, then continue with the actual clock and original deadline;
+it must not fail the run or publish early. Do not kill the task
 at the work deadline or reserve early wind-down time. Ledger cleanup and
 documentation do not count as substantive fixes; a ledger-only run cannot
 publish a debt PR. Report real fixes, validation, elapsed time, and skipped

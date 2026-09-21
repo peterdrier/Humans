@@ -21,16 +21,18 @@ completion. One branch and one PR contain the whole run.
 
 The wrapper starts one `codex app-server --stdio` process, creates one thread
 and its native goal, and submits one initial turn. It stays attached while
-Codex's own goal scheduler continues across turns; there is no `exec resume`
-loop or repeated user prompting. Completion uses native goal and turn status,
+Codex's own goal scheduler continues across normal turn boundaries. If Codex
+completes the goal early, the wrapper waits for that turn to finish, reactivates
+the same goal, and submits a continuation with the actual clock and original
+deadline. Repeated early completions are handled the same way; neither the
+work window nor the session is reset. Completion uses native goal and turn status,
 not an agent-written "done" flag. The process stays in dangerous mode
 (`approvalPolicy=never`, `sandbox=danger-full-access`) for the entire goal.
 
 The last completed turn supplies the cumulative Markdown PR body, followed
 by the wrapper's measured goal time, actual worker time, total elapsed time
 through validation, and gate result. No unfilled template is appended.
-Early goal completion, failed/blocked goals, missing reports, or disconnection
-fail without publishing. A clean tree and final build/test gates still apply.
+Failed/blocked goals, missing reports, or disconnection fail without publishing. A clean tree and final build/test gates still apply.
 
 The deadline is not a kill timer. Finishing the active task and the wrapper's
 final build/test gates may extend past it. The systemd unit uses

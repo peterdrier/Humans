@@ -44,7 +44,7 @@ class DailyDebtTests(unittest.TestCase):
         binary.mkdir()
         script = binary / "stub"
         script.write_text('''#!/usr/bin/env python3
-import json, os, pathlib, subprocess, sys
+import json, os, pathlib, subprocess, sys, time
 name = pathlib.Path(sys.argv[0]).name
 args = sys.argv[1:]
 root = pathlib.Path(os.environ["FIXTURE"])
@@ -77,6 +77,7 @@ assert args[:2] == ["app-server", "--stdio"]
 assert args[args.index("--enable") + 1] == "goals"
 thread = "fixture-thread"
 started = 0
+objective = None
 
 def emit(method, params):
     print(json.dumps({"method": method, "params": dict(threadId=thread, **params)}), flush=True)
@@ -107,10 +108,34 @@ for line in sys.stdin:
     elif method == "thread/goal/set":
         assert "tokenBudget" not in params
         assert "ONLY target" in params["objective"]
+        if objective is None:
+            objective = params["objective"]
+        else:
+            assert params["objective"] == objective
+            assert params["status"] == "active"
+            assert params["threadId"] == thread
         result = {"goal": {"status": "active"}}
     elif method == "turn/start":
         started += 1
-        assert started == 1, "Wrapper must never submit another turn"
+        if started > 1:
+            assert scenario.startswith("early-")
+            assert params["threadId"] == thread
+            assert "deadline" in params["input"][0]["text"]
+            assert not (root / "pr-body").exists()
+            print(json.dumps({"id": request["id"], "result": {}}), flush=True)
+            emit("turn/started", {"turn": {"id": "resumed"}})
+            if scenario == "early-repeated" and started == 2:
+                emit("thread/goal/updated", {"goal": {"status": "complete"}})
+                emit("turn/completed", {"turn": {"status": "completed"}})
+                continue
+            deadline = int((root / "clock").read_text()) + 3
+            time.sleep(max(0, deadline - time.time()) + 0.05)
+            commit(3)
+            (root / "clock").write_text(str(deadline + 1))
+            emit("thread/goal/updated", {"goal": {"status": "complete"}})
+            emit("item/completed", {"item": {"type": "agentMessage", "phase": "final_answer", "text": "Cumulative fixes: 3"}})
+            emit("turn/completed", {"turn": {"status": "completed"}})
+            continue
         prompt = params["input"][0]["text"]
         assert "__WORK_" not in prompt
         assert "get_goal" in prompt
@@ -132,11 +157,13 @@ for line in sys.stdin:
     if scenario == "codex-failure":
         sys.exit(17)
     commit(2)
-    if scenario != "early-complete":
+    if not scenario.startswith("early-"):
         (root / "clock").write_text(str(int((root / "clock").read_text()) + 91))
     emit("thread/goal/updated", {"goal": {"status": "blocked" if scenario == "blocked" else "complete"}})
     if scenario != "missing-report":
         emit("item/completed", {"item": {"type": "agentMessage", "phase": "final_answer", "text": "Cumulative fixes: 2"}})
+    if scenario == "early-deadline-race":
+        time.sleep(max(0, int((root / "clock").read_text()) + 3 - time.time()) + 0.05)
     emit("turn/completed", {"turn": {"status": "completed"}})
 ''')
         script.chmod(0o755)
@@ -177,13 +204,26 @@ for line in sys.stdin:
         self.assertEqual([x[1] for x in calls if x[0] == "dotnet"], ["build", "test"])
         self.assertEqual(len(self.git(self.clone, "log", "--oneline", "origin/main..HEAD").splitlines()), 2)
 
-    def test_early_native_completion_is_not_success(self):
-        self.clock.write_text(str(int(time.time())))
-        result, _, published = self.run_scenario("early-complete")
-        self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(published, [])
-        log = next((self.root / "logs").glob("debt-*.log")).read_text()
-        self.assertIn("before the work deadline", log)
+    def test_early_completion_resumes_same_goal_until_deadline(self):
+        for scenario in ("early-complete", "early-repeated", "early-deadline-race"):
+            with self.subTest(scenario=scenario):
+                if scenario != "early-complete":
+                    self.setUp()
+                self.clock.write_text(str(int(time.time())))
+                self.env["TIME_BUDGET"] = "3s"
+                result, calls, published = self.run_scenario(scenario)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(len(published), 1)
+                requests = [json.loads(x) for x in (self.root / "requests.jsonl").read_text().splitlines()]
+                self.assertEqual(sum(x["method"] == "thread/start" for x in requests), 1)
+                self.assertEqual(sum(x[:2] == ["codex", "app-server"] for x in calls), 1)
+                goals = [x["params"] for x in requests if x["method"] == "thread/goal/set"]
+                self.assertEqual(len(goals), 3 if scenario == "early-repeated" else 2)
+                self.assertTrue(all(g["objective"] == goals[0]["objective"] for g in goals))
+                ids = [x["id"] for x in requests if "id" in x]
+                self.assertEqual(len(ids), len(set(ids)))
+                self.assertIn("Cumulative fixes: 3", (self.root / "pr-body").read_text())
+                self.assertEqual(len(self.git(self.clone, "log", "--oneline", "origin/main..HEAD").splitlines()), 3)
 
     def test_ledger_only_does_not_publish_or_run_dotnet(self):
         result, calls, published = self.run_scenario("ledger")
