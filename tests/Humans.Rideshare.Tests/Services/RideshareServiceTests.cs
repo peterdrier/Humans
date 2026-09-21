@@ -307,6 +307,17 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         (await act.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_CancelledRequestEdit");
     }
 
+    [HumansFact]
+    public async Task UpdateRequest_ByAnotherHuman_Throws()
+    {
+        var request = await SeedRequestAsync(SeedUser("Ada"));
+
+        var act = () => NewService().UpdateRequestAsync(
+            request.Id, SeedUser("Bo"), NewRequestSave(partySize: 2), Ct);
+
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+    }
+
     // ── Seats ─────────────────────────────────────────────────────────────
 
     [HumansFact]
@@ -348,6 +359,26 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
+    public async Task ExpressInterest_RejectsUnavailableTripsInvalidSeatCountsAndOverCapacity()
+    {
+        var driver = SeedUser("Ada");
+        var rider = SeedUser("Bo");
+        var cancelled = await SeedTripAsync(driver, status: TripStatus.Cancelled);
+        var full = await SeedTripAsync(driver, seatsOffered: 1);
+        await SeedInterestAsync(SeedUser("Cy"), full.Id, seats: 1, status: InterestStatus.Accepted);
+        var service = NewService();
+
+        var unavailable = () => service.ExpressInterestAsync(rider, cancelled.Id, null, 1, null, Ct);
+        (await unavailable.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_RideUnavailable");
+
+        var zeroSeats = () => service.ExpressInterestAsync(rider, full.Id, null, 0, null, Ct);
+        (await zeroSeats.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_SeatsMinimum");
+
+        var overCapacity = () => service.ExpressInterestAsync(rider, full.Id, null, 1, null, Ct);
+        (await overCapacity.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_NotEnoughSeats");
+    }
+
+    [HumansFact]
     public async Task WithdrawInterest_OfAnAcceptedOne_FreesTheSeats()
     {
         var driver = SeedUser("Ada");
@@ -379,6 +410,22 @@ public sealed class RideshareServiceTests : RideshareTestHarness
 
         await accept.Should().ThrowAsync<UnauthorizedAccessException>();
         await decline.Should().ThrowAsync<UnauthorizedAccessException>();
+    }
+
+    [HumansFact]
+    public async Task AcceptAndDecline_Reject_interests_that_are_no_longer_pending()
+    {
+        var driver = SeedUser("Ada");
+        var trip = await SeedTripAsync(driver);
+        var accepted = await SeedInterestAsync(SeedUser("Bo"), trip.Id, status: InterestStatus.Accepted);
+        var declined = await SeedInterestAsync(SeedUser("Cy"), trip.Id, status: InterestStatus.Declined);
+        var service = NewService();
+
+        var acceptAgain = () => service.AcceptInterestAsync(accepted.Id, driver, Ct);
+        (await acceptAgain.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_InterestNotPending");
+
+        var declineAgain = () => service.DeclineInterestAsync(declined.Id, driver, Ct);
+        (await declineAgain.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_InterestNotPending");
     }
 
     [HumansFact]
