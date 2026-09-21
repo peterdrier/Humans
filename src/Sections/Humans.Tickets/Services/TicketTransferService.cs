@@ -25,7 +25,7 @@ internal sealed class TicketTransferService(
     IUserServiceRead userService,
     IUserEmailService userEmailService,
     IEmailService emailService,
-    IEmailMessageFactory emailMessages,
+    TicketsEmails emailMessages,
     IAuditLogService auditLog,
     ITicketCacheInvalidator cacheInvalidator,
     IClock clock,

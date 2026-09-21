@@ -5,6 +5,7 @@ using Humans.Users.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
+using Humans.Tickets.Tests.Infrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -30,7 +31,7 @@ public sealed class TicketTransferService_OnwardTransferTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
-    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
+    private readonly TicketsEmails _emailMessages = TestTicketsEmails.Create();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly ITicketCacheInvalidator _cacheInvalidator = Substitute.For<ITicketCacheInvalidator>();
 

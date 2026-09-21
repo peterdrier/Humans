@@ -42,15 +42,6 @@ public interface IEmailMessageFactory
     /// <summary>Google secondary-email cleanup notification (System; no unsubscribe footer).</summary>
     EmailMessage GoogleAccessRemovalSecondaryCleanup(string removedEmail, string userName, string currentGoogleEmail, string? culture = null);
 
-    /// <summary>Ticket-transfer request confirmation to the sender (System).</summary>
-    EmailMessage TicketTransferRequested(string senderEmail, string senderName, string receiverName, string ticketLabel, string? culture = null);
-
-    /// <summary>Ticket-transfer action-needed notice to the ticket team inbox (System, English).</summary>
-    EmailMessage TicketTransferTeamNotification(string senderName, string receiverName, string receiverEmail, string ticketLabel, string? reason, string reviewUrl);
-
-    /// <summary>Ticket-transfer decision (completed or cancelled) to sender or receiver (System).</summary>
-    EmailMessage TicketTransferDecision(string toEmail, string toName, bool successful, string ticketLabel, string receiverName, string? reason, string? culture = null);
-
     /// <summary>Working-group register notice (Governance category) — one method, the kind picks the copy.</summary>
     EmailMessage WorkgroupNotice(WorkgroupNoticeRequest request);
 

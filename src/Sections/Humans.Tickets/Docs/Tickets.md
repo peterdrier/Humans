@@ -177,7 +177,7 @@ Outbound (what Tickets injects; the project references are the authority — `Hu
 - **EarlyEntry:** `IEarlyEntryService.GetForUserAsync` — the viewer's own earliest entry date on the holder-facing stub surfaces (see Invariants).
 - **Stripe:** `IStripeService.GetPaymentDetailsAsync` populates `PaymentMethod` / `PaymentMethodDetail` / `StripeFee` / `ApplicationFee` per order. Configured via `STRIPE_TICKETS_KEY`; if `IsConfigured` is false, enrichment is skipped silently and the dashboard's fee breakdown stays empty.
 - **Audit:** `IAuditLogService.LogAsync` — the transfer actions above plus `TicketContactsImported`. `<vc:audit-log>` on the transfer detail page is the AuditLog section's component.
-- **Email:** `IEmailService.SendAsync` with `IEmailMessageFactory` (`TicketTransferRequested`, `TicketTransferTeamNotification`, `TicketTransferDecision`).
+- **Email:** `IEmailService.SendAsync` with the section's own `TicketsEmails` builder (`TicketTransferRequested`, `TicketTransferTeamNotification`, `TicketTransferDecision`). Tickets owns this copy and its `/Email/EmailPreview` samples (peterdrier/Humans#1651); it is hardcoded English, not localized, and localizing it is tracked in peterdrier/Humans#1657.
 - **GDPR:** `TicketQueryService` implements `IUserDataContributor` — export slices `TicketOrders` and `TicketAttendeeMatches`; erasure tombstones as described under Triggers.
 - **Users (account merge, inbound-by-registration):** `TicketSyncService` implements `IUserMerge`; `AccountMergeService.FoldAsync` calls `ReassignAsync`, which delegates to `ITicketRepository.ReassignToUserAsync`.
 

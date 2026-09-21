@@ -2,7 +2,6 @@ using Humans.Users.Contracts;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using NodaTime;
-using Humans.Tickets.Contracts;
 
 namespace Humans.Email.Services;
 
@@ -79,27 +78,6 @@ internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessa
         var content = renderer.RenderGoogleAccessRemovalSecondaryCleanup(userName, removedEmail, currentGoogleEmail, culture);
         return new EmailMessage(removedEmail, userName, content.Subject, content.HtmlBody,
             "google_access_removal_secondary_cleanup", MessageCategory.System);
-    }
-
-    public EmailMessage TicketTransferRequested(string senderEmail, string senderName, string receiverName, string ticketLabel, string? culture = null)
-    {
-        var content = renderer.RenderTicketTransferRequested(senderName, receiverName, ticketLabel, culture);
-        return new EmailMessage(senderEmail, senderName, content.Subject, content.HtmlBody,
-            "ticket_transfer_requested", MessageCategory.System);
-    }
-
-    public EmailMessage TicketTransferTeamNotification(string senderName, string receiverName, string receiverEmail, string ticketLabel, string? reason, string reviewUrl)
-    {
-        var content = renderer.RenderTicketTransferTeamNotification(senderName, receiverName, receiverEmail, ticketLabel, reason, reviewUrl);
-        return new EmailMessage(TicketConstants.TicketsTeamEmail, "Ticket team", content.Subject, content.HtmlBody,
-            "ticket_transfer_team", MessageCategory.System);
-    }
-
-    public EmailMessage TicketTransferDecision(string toEmail, string toName, bool successful, string ticketLabel, string receiverName, string? reason, string? culture = null)
-    {
-        var content = renderer.RenderTicketTransferDecision(toName, successful, ticketLabel, receiverName, reason, culture);
-        return new EmailMessage(toEmail, toName, content.Subject, content.HtmlBody,
-            successful ? "ticket_transfer_completed" : "ticket_transfer_cancelled", MessageCategory.System);
     }
 
     public EmailMessage WorkgroupNotice(WorkgroupNoticeRequest request)

@@ -4,7 +4,6 @@ using Humans.Email.Contracts;
 using Humans.Email.Services;
 using NSubstitute;
 using NSubstitute.Extensions;
-using Humans.Tickets.Contracts;
 
 namespace Humans.Email.Tests.Services;
 
@@ -54,28 +53,6 @@ public sealed class EmailMessageFactoryTests
             "rcpt@x.com", "Rcpt", "Sender", "Hi", includeContactInfo: false, senderEmail: "sender@x.com", "en");
 
         msg.ReplyTo.Should().BeNull();
-    }
-
-    [HumansFact]
-    public void TicketTransferTeamNotification_RoutesToTicketsInbox_System()
-    {
-        var msg = _factory.TicketTransferTeamNotification(
-            "Sender", "Receiver", "rx@x.com", "Ticket #1", "reason", "https://review");
-
-        msg.RecipientEmail.Should().Be(TicketConstants.TicketsTeamEmail);
-        msg.RecipientName.Should().Be("Ticket team");
-        msg.TemplateName.Should().Be("ticket_transfer_team");
-        msg.Category.Should().Be(MessageCategory.System);
-    }
-
-    [HumansFact]
-    public void TicketTransferDecision_TemplateReflectsOutcome()
-    {
-        _factory.TicketTransferDecision("a@x.com", "A", successful: true, "T", "Rx", null, "en")
-            .TemplateName.Should().Be("ticket_transfer_completed");
-
-        _factory.TicketTransferDecision("a@x.com", "A", successful: false, "T", "Rx", "why", "en")
-            .TemplateName.Should().Be("ticket_transfer_cancelled");
     }
 
     [HumansFact]

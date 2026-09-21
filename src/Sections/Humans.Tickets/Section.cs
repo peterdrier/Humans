@@ -2,6 +2,7 @@ using Humans.Base.Constants;
 using Humans.Issues.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
+using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Base.Hosting;
 using Humans.Tickets.Contracts;
@@ -62,6 +63,11 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddSingleton<ITicketVendorService>(sp => sp.GetRequiredService<CachingTicketVendorService>());
         services.AddSingleton<ITicketVendorCacheInvalidator>(sp => sp.GetRequiredService<CachingTicketVendorService>());
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTicketVendorService>().EventSummaryCacheStats);
+
+        // Tickets owns its email copy and its gallery samples; Email keeps the mechanics
+        // (memory/architecture/email-templates-live-in-sender.md).
+        services.AddScoped<TicketsEmails>();
+        services.AddScoped<IEmailPreviewContributor, TicketsEmailPreviews>();
 
         services.AddSingleton<ITicketTransferRepository, TicketTransferRepository>();
         services.AddScoped<TicketTransferService>();

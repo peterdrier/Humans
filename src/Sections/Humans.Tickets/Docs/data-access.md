@@ -164,7 +164,8 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 | TicketTransferRequests | R/W |
 
 Cross-section calls via `IUserServiceRead`, `IUserEmailService`,
-`IEmailService`, `IEmailMessageFactory`, `IAuditLogService`, plus
+`IEmailService`, the section's own `TicketsEmails` builder,
+`IAuditLogService`, plus
 `ITicketVendorService` (`ProcessTransferAsync` / `RetryReissueAsync` run the
 automated TicketTailor void(-to-hold)+reissue; the next ticket sync
 reconciles local attendee rows). Invalidates ticket caches via
@@ -181,6 +182,19 @@ Tickets is also read from the outside by `TicketingBudgetService`, which
 consumes `ITicketServiceRead.GetTicketOrdersAsync` to build the budget's
 ticketing actuals. It is a Budget service and is documented in
 [Budget's map](../../Humans.Budget/Docs/data-access.md).
+
+### TicketsEmails (Scoped, internal)
+
+No repository. Pure builder — reads `EmailSettings`, writes nothing.
+Returns `EmailMessage` values for `TicketTransferService` to pass to
+`IEmailService.SendAsync`. The transfer copy is hardcoded English
+(peterdrier/Humans#1657). No DB access, no cache.
+
+### TicketsEmailPreviews (Scoped)
+
+No repository. Read-only gallery contributor (`IEmailPreviewContributor`,
+`Section.cs:70`) — builds one sample per template via `TicketsEmails` for
+`/Email/EmailPreview`. No DB access, no cache.
 
 ### AttendeeContactImportService (Scoped)
 

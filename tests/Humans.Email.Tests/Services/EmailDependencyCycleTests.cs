@@ -107,8 +107,7 @@ public sealed class EmailDependencyCycleTests
     /// arriving meanwhile, not to bless what is here.
     /// Asserted from the csproj's own &lt;ProjectReference&gt; items, not
     /// <c>Assembly.GetReferencedAssemblies()</c>: a const-only or unused reference emits
-    /// no metadata reference and would pass that check silently (see
-    /// <c>Humans.Tickets.Contracts</c> below — used only for a <c>const string</c>).
+    /// no metadata reference and would pass that check silently.
     /// </summary>
     [HumansFact]
     public void EmailContracts_ReferencesOnlyBaseAndUsersContracts() =>
@@ -121,8 +120,7 @@ public sealed class EmailDependencyCycleTests
         ProjectReferencesOf("Humans.Email").Should().BeSubsetOf(
             [
                 "Humans.AuditLog.Contracts", "Humans.Base", "Humans.Campaigns.Contracts", "Humans.Email.Contracts",
-                "Humans.Gdpr.Contracts", "Humans.Settings.Contracts",
-                "Humans.Tickets.Contracts", "Humans.Users.Contracts"
+                "Humans.Gdpr.Contracts", "Humans.Settings.Contracts", "Humans.Users.Contracts"
             ],
             because: "Email is a crosscut: it may lose section references, never gain one");
 

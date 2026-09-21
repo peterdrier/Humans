@@ -5,6 +5,7 @@ using Humans.Users.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
+using Humans.Tickets.Tests.Infrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -38,7 +39,7 @@ public sealed class TicketTransferServiceTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
-    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
+    private readonly TicketsEmails _emailMessages = TestTicketsEmails.Create();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly ITicketCacheInvalidator _cacheInvalidator = Substitute.For<ITicketCacheInvalidator>();
 
@@ -148,30 +149,35 @@ public sealed class TicketTransferServiceTests
         await _auditLog.Received(1).LogAsync(
             AuditAction.TicketTransferRequested, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), _senderId, _receiverId, Arg.Any<string>());
-        _emailMessages.Received(1).TicketTransferRequested(
-            "bob@example.com", Arg.Any<string>(), "Alice Smith", Arg.Any<string>(),
-            Arg.Any<string?>());
-        _emailMessages.Received(1).TicketTransferTeamNotification(
-            Arg.Any<string>(), "Alice Smith", "alice@example.com", Arg.Any<string>(),
-            "Going abroad", Arg.Any<string>());
+        // The builder is sealed with no interface, so the sent message is the assertion surface.
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "ticket_transfer_requested"
+                && m.RecipientEmail == "bob@example.com"
+                && m.HtmlBody.Contains("Alice Smith", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "ticket_transfer_team"
+                && m.HtmlBody.Contains("alice@example.com", StringComparison.Ordinal)
+                && m.HtmlBody.Contains("Going abroad", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
     public async Task CreateRequest_StillNotifiesTeam_WhenSenderEmailFails()
     {
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
-        _emailMessages.TicketTransferRequested(
-                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<string?>())
+        _emailService.SendAsync(
+                Arg.Is<EmailMessage>(m => m.TemplateName == "ticket_transfer_requested"),
+                Arg.Any<CancellationToken>())
             .Returns(_ => throw new InvalidOperationException("smtp down"));
 
         // Must not throw (request is already persisted) and the team must still be alerted.
         await _service.CreateRequestAsync(
             new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.Received(1).TicketTransferTeamNotification(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<string>());
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "ticket_transfer_team"),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -279,9 +285,9 @@ public sealed class TicketTransferServiceTests
             AuditAction.TicketTransferApproved, Arg.Any<string>(), req.Id, Arg.Any<string>(),
             _adminId, _senderId, Arg.Any<string>());
         // Sender + Receiver each get a "successful" decision email.
-        _emailMessages.Received(2).TicketTransferDecision(
-            Arg.Any<string>(), Arg.Any<string>(), true, Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<string?>());
+        await _emailService.Received(2).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "ticket_transfer_completed"),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -331,9 +337,9 @@ public sealed class TicketTransferServiceTests
         req.Status.Should().Be(TicketTransferStatus.Approved);
         req.VendorResult.Should().Be(TicketTransferVendorResult.Succeeded);
         req.NewVendorTicketId.Should().Be("tt_new");
-        _emailMessages.Received(2).TicketTransferDecision(
-            Arg.Any<string>(), Arg.Any<string>(), true, Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<string?>());
+        await _emailService.Received(2).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "ticket_transfer_completed"),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -358,9 +364,9 @@ public sealed class TicketTransferServiceTests
             _adminId, _senderId, Arg.Any<string>());
         await _ticketRepo.DidNotReceive().UpsertAttendeesAsync(
             Arg.Any<IReadOnlyList<TicketAttendee>>(), Arg.Any<CancellationToken>());
-        _emailMessages.DidNotReceive().TicketTransferDecision(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<string?>());
+        await _emailService.DidNotReceive().SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "ticket_transfer_completed" || m.TemplateName == "ticket_transfer_cancelled"),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -389,9 +395,9 @@ public sealed class TicketTransferServiceTests
                 list.Count == 1 && list[0].VendorTicketId == "tkt_original"
                 && list[0].Status == TicketAttendeeStatus.Void),
             Arg.Any<CancellationToken>());
-        _emailMessages.DidNotReceive().TicketTransferDecision(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<string?>());
+        await _emailService.DidNotReceive().SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "ticket_transfer_completed" || m.TemplateName == "ticket_transfer_cancelled"),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -458,9 +464,9 @@ public sealed class TicketTransferServiceTests
         req.VendorResult.Should().Be(TicketTransferVendorResult.Succeeded);
         req.NewVendorTicketId.Should().Be("tt_retry");
         req.VendorHoldId.Should().BeNull(); // consumed
-        _emailMessages.Received(2).TicketTransferDecision(
-            Arg.Any<string>(), Arg.Any<string>(), true, Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<string?>());
+        await _emailService.Received(2).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "ticket_transfer_completed"),
+            Arg.Any<CancellationToken>());
     }
 
     /// <summary>
@@ -517,9 +523,9 @@ public sealed class TicketTransferServiceTests
         req.Status.Should().Be(TicketTransferStatus.Pending);
         req.VendorResult.Should().Be(TicketTransferVendorResult.VoidSucceededIssueFailed);
         req.VendorHoldId.Should().Be("hold_123"); // retained so it can be retried again
-        _emailMessages.DidNotReceive().TicketTransferDecision(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<string?>());
+        await _emailService.DidNotReceive().SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "ticket_transfer_completed" || m.TemplateName == "ticket_transfer_cancelled"),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -611,9 +617,10 @@ public sealed class TicketTransferServiceTests
 
         req.Status.Should().Be(TicketTransferStatus.Rejected);
         req.AdminNotes.Should().Be("duplicate request");
-        _emailMessages.Received(2).TicketTransferDecision(
-            Arg.Any<string>(), Arg.Any<string>(), false, Arg.Any<string>(), Arg.Any<string>(),
-            "duplicate request", Arg.Any<string?>());
+        await _emailService.Received(2).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "ticket_transfer_cancelled"
+                && m.HtmlBody.Contains("duplicate request", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
