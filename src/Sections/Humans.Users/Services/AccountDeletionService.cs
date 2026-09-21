@@ -30,7 +30,7 @@ internal sealed class AccountDeletionService(
     IShiftViewInvalidator shiftViewInvalidator,
     IAuditLogService auditLogService,
     IEmailService emailService,
-    IEmailMessageFactory emailMessages,
+    UsersEmails emailMessages,
     IClock clock,
     ILogger<AccountDeletionService> logger) : IAccountDeletionService
 {

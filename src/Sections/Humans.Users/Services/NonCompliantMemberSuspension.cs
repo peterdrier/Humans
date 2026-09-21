@@ -34,7 +34,7 @@ internal sealed class NonCompliantMemberSuspension(
     IActiveTeamsCacheInvalidator activeTeamsCacheInvalidator,
     IMembershipCalculatorRead membershipCalculator,
     IEmailService emailService,
-    IEmailMessageFactory emailMessages,
+    UsersEmails emailMessages,
     INotificationEmitter notificationService,
     IGoogleSyncService googleSyncService,
     IAuditLogService auditLogService,

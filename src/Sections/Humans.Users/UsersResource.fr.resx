@@ -1092,4 +1092,61 @@
   <data name="Enum_LanguageProficiency_Conversational" xml:space="preserve"><value>Conversationnel</value></data>
   <data name="Enum_LanguageProficiency_Fluent" xml:space="preserve"><value>Courant</value></data>
   <data name="Enum_LanguageProficiency_Native" xml:space="preserve"><value>Langue maternelle</value></data>
+  <data name="Users_Email_AccessSuspended_Subject" xml:space="preserve">
+    <value>Votre accès membre a été suspendu</value>
+  </data>
+  <data name="Users_Email_AccessSuspended_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Accès suspendu&lt;/h2&gt;
+&lt;p&gt;Bonjour {0},&lt;/p&gt;
+&lt;p&gt;Votre accès a été temporairement suspendu.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Motif :&lt;/strong&gt; {1}&lt;/p&gt;
+&lt;p&gt;Pour rétablir votre accès, veuillez effectuer l'action requise :&lt;/p&gt;
+&lt;ul&gt;
+    &lt;li&gt;&lt;a href="{2}/Consent"&gt;Consulter les exigences de consentement en attente&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Si vous pensez qu'il s'agit d'une erreur, contactez-nous à &lt;a href="mailto:{3}"&gt;{3}&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;L'équipe Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = reason, {2} = base URL, {3} = admin email</comment>
+  </data>
+  <data name="Users_Email_VerifyEmail_Subject" xml:space="preserve">
+    <value>Vérifiez votre adresse e-mail</value>
+  </data>
+  <data name="Users_Email_EmailVerification_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Vérification de l'adresse e-mail&lt;/h2&gt;
+&lt;p&gt;Bonjour {0},&lt;/p&gt;
+&lt;p&gt;Vous avez demandé à définir &lt;strong&gt;{1}&lt;/strong&gt; comme adresse e-mail préférée.&lt;/p&gt;
+&lt;p&gt;Cliquez sur le lien ci-dessous pour vérifier cette adresse :&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Vérifier l'adresse e-mail&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Ce lien expire dans 24 heures.&lt;/p&gt;
+&lt;p&gt;Si vous n'avez pas demandé ce changement, vous pouvez ignorer cet e-mail.&lt;/p&gt;
+&lt;p&gt;L'équipe Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = email address, {2} = verification URL</comment>
+  </data>
+  <data name="Users_Email_EmailVerification_Merge_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Vérification de fusion de comptes&lt;/h2&gt;&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;Vous avez demandé à ajouter &lt;strong&gt;{1}&lt;/strong&gt; à votre compte. Cette adresse e-mail est actuellement liée à un autre compte.&lt;/p&gt;&lt;p&gt;Si vous vérifiez cet e-mail, une demande de fusion sera soumise pour examen par un administrateur. Une fois approuvée, les données de l'autre compte seront fusionnées dans le vôtre et le compte en double sera archivé.&lt;/p&gt;&lt;p&gt;Veuillez cliquer sur le lien ci-dessous pour vérifier et demander la fusion :&lt;/p&gt;&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Vérifier et demander la fusion&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Ce lien expire dans 24 heures.&lt;/p&gt;&lt;p&gt;Si vous n'avez pas fait cette demande, vous pouvez ignorer cet e-mail. Aucune modification ne sera effectuée.&lt;/p&gt;&lt;p&gt;L'équipe Humans&lt;/p&gt;</value>
+  </data>
+  <data name="Users_Email_DeletionRequested_Subject" xml:space="preserve">
+    <value>Demande de suppression de compte</value>
+  </data>
+  <data name="Users_Email_AccountDeletionRequested_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Demande de suppression de compte reçue&lt;/h2&gt;
+&lt;p&gt;Bonjour {0},&lt;/p&gt;
+&lt;p&gt;Nous avons reçu votre demande de suppression de compte. Votre compte et toutes les données associées seront définitivement supprimés le &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;Si vous changez d'avis, vous pouvez annuler cette demande avant la date de suppression :&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}/Profile/Privacy"&gt;Annuler la demande de suppression&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Après la suppression, cette action ne peut pas être annulée et toutes vos données seront définitivement supprimées.&lt;/p&gt;
+&lt;p&gt;L'équipe Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = formatted deletion date, {2} = base URL</comment>
+  </data>
+  <data name="Users_Email_AccountDeleted_Subject" xml:space="preserve">
+    <value>Votre compte a été supprimé</value>
+  </data>
+  <data name="Users_Email_AccountDeleted_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Compte supprimé&lt;/h2&gt;
+&lt;p&gt;Bonjour {0},&lt;/p&gt;
+&lt;p&gt;Comme demandé, votre compte Humans a été définitivement supprimé. Toutes vos données personnelles ont été retirées de nos systèmes.&lt;/p&gt;
+&lt;p&gt;Merci d'avoir fait partie de notre communauté. Si vous souhaitez nous rejoindre à nouveau, vous êtes bienvenu(e) pour créer un nouveau compte.&lt;/p&gt;
+&lt;p&gt;Cordialement,&lt;br/&gt;L'équipe Humans&lt;/p&gt;</value>
+    <comment>{0} = user name</comment>
+  </data>
 </root>

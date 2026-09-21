@@ -1092,4 +1092,61 @@
   <data name="Enum_LanguageProficiency_Conversational" xml:space="preserve"><value>Konversationssicher</value></data>
   <data name="Enum_LanguageProficiency_Fluent" xml:space="preserve"><value>Fließend</value></data>
   <data name="Enum_LanguageProficiency_Native" xml:space="preserve"><value>Muttersprache</value></data>
+  <data name="Users_Email_AccessSuspended_Subject" xml:space="preserve">
+    <value>Ihr Mitgliedschaftszugang wurde gesperrt</value>
+  </data>
+  <data name="Users_Email_AccessSuspended_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Zugang gesperrt&lt;/h2&gt;
+&lt;p&gt;Hallo {0},&lt;/p&gt;
+&lt;p&gt;Dein Zugang wurde vorübergehend gesperrt.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Grund:&lt;/strong&gt; {1}&lt;/p&gt;
+&lt;p&gt;Um deinen Zugang wiederherzustellen, führe bitte die erforderliche Aktion durch:&lt;/p&gt;
+&lt;ul&gt;
+    &lt;li&gt;&lt;a href="{2}/Consent"&gt;Ausstehende Zustimmungsanforderungen prüfen&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Wenn du glaubst, dass es sich um einen Fehler handelt, kontaktiere uns unter &lt;a href="mailto:{3}"&gt;{3}&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Das Humans-Team&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = reason, {2} = base URL, {3} = admin email</comment>
+  </data>
+  <data name="Users_Email_VerifyEmail_Subject" xml:space="preserve">
+    <value>Bestätigen Sie Ihre E-Mail-Adresse</value>
+  </data>
+  <data name="Users_Email_EmailVerification_Body" xml:space="preserve">
+    <value>&lt;h2&gt;E-Mail-Verifizierung&lt;/h2&gt;
+&lt;p&gt;Hallo {0},&lt;/p&gt;
+&lt;p&gt;Du hast angefordert, &lt;strong&gt;{1}&lt;/strong&gt; als bevorzugte E-Mail-Adresse festzulegen.&lt;/p&gt;
+&lt;p&gt;Klicke auf den folgenden Link, um diese E-Mail-Adresse zu verifizieren:&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;E-Mail-Adresse verifizieren&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Dieser Link läuft in 24 Stunden ab.&lt;/p&gt;
+&lt;p&gt;Wenn du diese Änderung nicht angefordert hast, kannst du diese E-Mail ignorieren.&lt;/p&gt;
+&lt;p&gt;Das Humans-Team&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = email address, {2} = verification URL</comment>
+  </data>
+  <data name="Users_Email_EmailVerification_Merge_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Kontoverknüpfung bestätigen&lt;/h2&gt;&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Du hast angefordert, &lt;strong&gt;{1}&lt;/strong&gt; zu deinem Konto hinzuzufügen. Diese E-Mail-Adresse ist derzeit mit einem anderen Konto verknüpft.&lt;/p&gt;&lt;p&gt;Wenn du diese E-Mail bestätigst, wird eine Zusammenführungsanfrage zur Überprüfung durch einen Administrator eingereicht. Nach Genehmigung werden die Daten des anderen Kontos in dein Konto übernommen und das doppelte Konto wird archiviert.&lt;/p&gt;&lt;p&gt;Bitte klicke auf den folgenden Link, um die Zusammenführung zu bestätigen und anzufordern:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Bestätigen und Zusammenführung anfordern&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Dieser Link läuft in 24 Stunden ab.&lt;/p&gt;&lt;p&gt;Falls du dies nicht angefordert hast, kannst du diese E-Mail ignorieren. Es werden keine Änderungen vorgenommen.&lt;/p&gt;&lt;p&gt;Das Humans Team&lt;/p&gt;</value>
+  </data>
+  <data name="Users_Email_DeletionRequested_Subject" xml:space="preserve">
+    <value>Kontolöschung beantragt</value>
+  </data>
+  <data name="Users_Email_AccountDeletionRequested_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Kontolöschungsanfrage erhalten&lt;/h2&gt;
+&lt;p&gt;Hallo {0},&lt;/p&gt;
+&lt;p&gt;Wir haben deine Anfrage zur Kontolöschung erhalten. Dein Konto und alle zugehorigen Daten werden am &lt;strong&gt;{1}&lt;/strong&gt; dauerhaft gelöscht.&lt;/p&gt;
+&lt;p&gt;Wenn du es dir anders überlegst, kannst du diese Anfrage vor dem Löschdatum stornieren:&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}/Profile/Privacy"&gt;Löschungsanfrage stornieren&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Nach der Löschung kann diese Aktion nicht rückgängig gemacht werden und alle Daten werden dauerhaft entfernt.&lt;/p&gt;
+&lt;p&gt;Das Humans-Team&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = formatted deletion date, {2} = base URL</comment>
+  </data>
+  <data name="Users_Email_AccountDeleted_Subject" xml:space="preserve">
+    <value>Ihr Konto wurde gelöscht</value>
+  </data>
+  <data name="Users_Email_AccountDeleted_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Konto gelöscht&lt;/h2&gt;
+&lt;p&gt;Hallo {0},&lt;/p&gt;
+&lt;p&gt;Wie gewünscht wurde dein Humans-Konto dauerhaft gelöscht. Alle deine persönlichen Daten wurden aus unseren Systemen entfernt.&lt;/p&gt;
+&lt;p&gt;Vielen Dank, dass du Teil unserer Gemeinschaft warst. Wenn du jemals zurückkehren möchtest, kannst du ein neues Konto erstellen.&lt;/p&gt;
+&lt;p&gt;Alles Gute,&lt;br/&gt;Das Humans-Team&lt;/p&gt;</value>
+    <comment>{0} = user name</comment>
+  </data>
 </root>

@@ -32,32 +32,6 @@ internal sealed class EmailRenderer(
             L("Email_Welcome_Subject"),
             Lf("Email_Welcome_Body", HtmlEncode(userName), _settings.BaseUrl)));
 
-    public EmailContent RenderAccessSuspended(string userName, string reason, string? culture = null)
-        => RenderLocalized(culture, () => new EmailContent(
-            L("Email_AccessSuspended_Subject"),
-            Lf("Email_AccessSuspended_Body", HtmlEncode(userName), HtmlEncode(reason), _settings.BaseUrl, _settings.AdminAddress)));
-
-    public EmailContent RenderEmailVerification(string userName, string toEmail, string verificationUrl, bool isConflict = false, string? culture = null)
-        => RenderLocalized(culture, () =>
-        {
-            var templateKey = isConflict
-                ? "Email_EmailVerification_Merge_Body"
-                : "Email_EmailVerification_Body";
-            return new EmailContent(
-                L("Email_VerifyEmail_Subject"),
-                Lf(templateKey, HtmlEncode(userName), HtmlEncode(toEmail), verificationUrl));
-        });
-
-    public EmailContent RenderAccountDeletionRequested(string userName, string formattedDeletionDate, string? culture = null)
-        => RenderLocalized(culture, () => new EmailContent(
-            L("Email_DeletionRequested_Subject"),
-            Lf("Email_AccountDeletionRequested_Body", HtmlEncode(userName), formattedDeletionDate, _settings.BaseUrl)));
-
-    public EmailContent RenderAccountDeleted(string userName, string? culture = null)
-        => RenderLocalized(culture, () => new EmailContent(
-            L("Email_AccountDeleted_Subject"),
-            Lf("Email_AccountDeleted_Body", HtmlEncode(userName))));
-
     public EmailContent RenderFacilitatedMessage(
         string recipientName,
         string senderName,

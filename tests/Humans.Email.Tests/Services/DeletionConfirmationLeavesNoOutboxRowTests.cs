@@ -4,11 +4,16 @@ using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Services;
+using Humans.Base.Configuration;
+using Humans.Users;
 using Humans.Users.Contracts;
 using Humans.Users.Jobs;
+using Humans.Users.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -24,7 +29,7 @@ namespace Humans.Email.Tests.Services;
 /// retention sweep could ever reach it.
 ///
 /// Runs the real <see cref="ProcessAccountDeletionsJob"/> over the real
-/// <see cref="EmailMessageFactory"/>, <see cref="OutboxEmailService"/> and
+/// <c>UsersEmails</c> builder, <see cref="OutboxEmailService"/> and
 /// <see cref="EmailOutboxRepository"/> (EF InMemory) so the whole chain — job →
 /// template → send path → table — is exercised, not just the flag.
 /// </summary>
@@ -48,9 +53,15 @@ public sealed class DeletionConfirmationLeavesNoOutboxRowTests : IDisposable
             .Options;
         _emailDb = new EmailDbContext(options);
 
-        var renderer = Substitute.For<IEmailRenderer>();
-        renderer.RenderAccountDeleted(ErasedName, Arg.Any<string?>())
-            .Returns(new EmailContent($"Goodbye {ErasedName}", $"<p>{ErasedName}, your account is gone.</p>"));
+        // Users owns the template now; the builder is sealed, so it is built for real over a
+        // stub localizer rather than mocked.
+        var localizer = Substitute.For<IStringLocalizer<UsersResource>>();
+        localizer[Arg.Any<string>()].Returns(ci =>
+            new LocalizedString(ci.Arg<string>(), ci.Arg<string>() + " {0}"));
+        var usersEmails = new UsersEmails(
+            Options.Create(new EmailSettings { BaseUrl = "https://humans.example" }),
+            localizer,
+            NullLogger<UsersEmails>.Instance);
 
         var bodyComposer = Substitute.For<IEmailBodyComposer>();
         bodyComposer.Compose(Arg.Any<string>(), Arg.Any<string?>())
@@ -79,7 +90,7 @@ public sealed class DeletionConfirmationLeavesNoOutboxRowTests : IDisposable
             userService,
             deletionService,
             emailService,
-            new EmailMessageFactory(renderer),
+            usersEmails,
             Substitute.For<IAuditLogService>(),
             Substitute.For<IHumansMetrics>(),
             NullLogger<ProcessAccountDeletionsJob>.Instance,

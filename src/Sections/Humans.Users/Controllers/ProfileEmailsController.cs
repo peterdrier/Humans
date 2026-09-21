@@ -48,7 +48,7 @@ internal sealed class ProfileEmailsController(
     IUserServiceInternal userService,
     UserManager<User> userManager,
     IEmailService emailService,
-    IEmailMessageFactory emailMessages,
+    UsersEmails emailMessages,
     IUserEmailService userEmailService,
     IAuditLogService auditLogService,
     ILogger<ProfileEmailsController> logger,

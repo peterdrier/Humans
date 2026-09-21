@@ -138,11 +138,26 @@ No repository. Implements `SuspendNonCompliantMembersJob`'s body
 have not re-consented after the grace period and runs each suspension's
 downstream side effects. Cross-section calls via `IUserService`,
 `ITeamServiceRead`, `IMembershipCalculatorRead`, `IGoogleSyncService`,
-`IEmailService`, `IEmailMessageFactory`, `INotificationEmitter`,
+`IEmailService`, the section's own `UsersEmails` builder, `INotificationEmitter`,
 `IAuditLogService`, `IHumansMetrics`, plus `IActiveTeamsCacheInvalidator`,
 `IRoleAssignmentClaimsCacheInvalidator`, and `IShiftAuthorizationInvalidator`
 for cache eviction. `[CrossSectionWrite]`-marked because suspension removes a
 user from their team's Google resources. No direct DB access or `IMemoryCache`.
+
+### UsersEmails (Scoped, internal)
+
+No repository. Pure builder — reads `UsersResource` (via
+`IStringLocalizer<UsersResource>`) and `EmailSettings`, writes nothing.
+Returns `EmailMessage` values for `ProfileEmailsController`,
+`AccountDeletionService`, `NonCompliantMemberSuspension` and
+`ProcessAccountDeletionsJob` to pass to `IEmailService.SendAsync`. No DB
+access, no cache.
+
+### UsersEmailPreviews (Scoped)
+
+No repository. Read-only gallery contributor (`IEmailPreviewContributor`,
+`Section.cs:113`) — builds one sample per template via `UsersEmails` for
+`/Email/EmailPreview`. No DB access, no cache.
 
 ---
 

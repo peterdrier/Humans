@@ -9,6 +9,7 @@ using Humans.Email.Contracts;
 using Humans.Web.Services;
 using Humans.Users.Contracts;
 using Humans.Users.Jobs;
+using Humans.Users.Services;
 
 namespace Humans.Users.Tests.Jobs;
 
@@ -25,7 +26,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
     private readonly IUserService _userService;
     private readonly IAccountDeletionService _accountDeletionService;
     private readonly IEmailService _emailService;
-    private readonly IEmailMessageFactory _emailMessages;
+    private readonly UsersEmails _emailMessages = TestUsersEmails.Create();
     private readonly IAuditLogService _auditLogService;
     private readonly HumansMetricsService _metrics;
     private readonly FakeClock _clock;
@@ -38,7 +39,6 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         _userService = Substitute.For<IUserService>();
         _accountDeletionService = Substitute.For<IAccountDeletionService>();
         _emailService = Substitute.For<IEmailService>();
-        _emailMessages = Substitute.For<IEmailMessageFactory>();
         _auditLogService = Substitute.For<IAuditLogService>();
         _clock = new FakeClock(Now);
         _metrics = TestMetrics.Create();
@@ -64,8 +64,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
 
         await _accountDeletionService.DidNotReceiveWithAnyArgs()
             .AnonymizeExpiredAccountAsync(Guid.Empty, Arg.Any<CancellationToken>());
-        _emailMessages.DidNotReceiveWithAnyArgs().AccountDeleted(
-            null!, null!);
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
     }
 
     [HumansFact]
@@ -95,8 +94,12 @@ public class ProcessAccountDeletionsJobTests : IDisposable
             nameof(ProcessAccountDeletionsJob),
             Arg.Any<Guid?>(), Arg.Any<string?>());
 
-        _emailMessages.Received(1).AccountDeleted(
-            "test@example.com", "Test User", "en");
+        // The builder is sealed with no interface, so the sent message is the assertion surface.
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "account_deleted"
+                && m.RecipientEmail == "test@example.com" && m.RecipientName == "Test User"
+                && m.Subject.EndsWith("#en", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -116,10 +119,13 @@ public class ProcessAccountDeletionsJobTests : IDisposable
 
         await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.Received(1).AccountDeleted(
-            "other@example.com", "Other User", "es");
-        _emailMessages.DidNotReceive().AccountDeleted(
-            Arg.Any<string>(), "Test User", Arg.Any<string?>());
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.RecipientEmail == "other@example.com"
+                && m.RecipientName == "Other User"
+                && m.Subject.EndsWith("#es", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+        await _emailService.DidNotReceive().SendAsync(
+            Arg.Is<EmailMessage>(m => m.RecipientName == "Test User"), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -136,8 +142,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
 
         await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.DidNotReceiveWithAnyArgs().AccountDeleted(
-            null!, null!);
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
 
         // Audit should still fire.
         await _auditLogService.Received(1).LogAsync(
@@ -164,7 +169,8 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         // User 2 still gets its email/audit despite user 1 failing.
-        _emailMessages.Received(1).AccountDeleted(
-            "u2@example.com", "User Two", "en");
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.RecipientEmail == "u2@example.com" && m.RecipientName == "User Two"),
+            Arg.Any<CancellationToken>());
     }
 }

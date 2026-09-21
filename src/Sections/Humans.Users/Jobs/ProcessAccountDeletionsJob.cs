@@ -4,6 +4,7 @@ using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
+using Humans.Users.Services;
 
 namespace Humans.Users.Jobs;
 
@@ -24,16 +25,14 @@ namespace Humans.Users.Jobs;
 /// column (owning-section rule).
 ///
 /// Moved out of <c>Humans.Infrastructure/Jobs</c> at G5 lane 5b-4
-/// (nobodies-collective/Humans#866). It sits under <c>Jobs/</c> because Shell
-/// names the concrete type at registration and HUM0034 makes every other public
-/// type in a section assembly an error.
+/// (nobodies-collective/Humans#866).
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class ProcessAccountDeletionsJob(
+internal sealed class ProcessAccountDeletionsJob(
     IUserServiceRead userService,
     IAccountDeletionService accountDeletionService,
     IEmailService emailService,
-    IEmailMessageFactory emailMessages,
+    UsersEmails emailMessages,
     IAuditLogService auditLogService,
     IHumansMetrics metrics,
     ILogger<ProcessAccountDeletionsJob> logger,

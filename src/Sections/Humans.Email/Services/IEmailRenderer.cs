@@ -27,26 +27,6 @@ internal interface IEmailRenderer
     EmailContent RenderWelcome(string userName, string? culture = null);
 
     /// <summary>
-    /// Access suspended notification.
-    /// </summary>
-    EmailContent RenderAccessSuspended(string userName, string reason, string? culture = null);
-
-    /// <summary>
-    /// Email verification link.
-    /// </summary>
-    EmailContent RenderEmailVerification(string userName, string toEmail, string verificationUrl, bool isConflict = false, string? culture = null);
-
-    /// <summary>
-    /// Account deletion requested confirmation.
-    /// </summary>
-    EmailContent RenderAccountDeletionRequested(string userName, string formattedDeletionDate, string? culture = null);
-
-    /// <summary>
-    /// Account deleted confirmation.
-    /// </summary>
-    EmailContent RenderAccountDeleted(string userName, string? culture = null);
-
-    /// <summary>
     /// Facilitated message between volunteers.
     /// </summary>
     EmailContent RenderFacilitatedMessage(

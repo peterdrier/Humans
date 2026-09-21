@@ -104,7 +104,7 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 
 | Actor | Capabilities |
 |-------|--------------|
-| Any service / job | Build a fully-rendered `EmailMessage` — through the sending section's own builder where its templates have moved (e.g. `GovernanceEmails`), otherwise a typed `IEmailMessageFactory` method (e.g. `AccessSuspended`, `EmailVerification`) and hand it to the single `IEmailService.SendAsync(message, ct)`. The default `IEmailService` is `OutboxEmailService`, which writes the row to `email_outbox_messages`. |
+| Any service / job | Build a fully-rendered `EmailMessage` — through the sending section's own builder where its templates have moved (e.g. `GovernanceEmails`, `UsersEmails`), otherwise a typed `IEmailMessageFactory` method (e.g. `FacilitatedMessage`, `Welcome`) and hand it to the single `IEmailService.SendAsync(message, ct)`. The default `IEmailService` is `OutboxEmailService`, which writes the row to `email_outbox_messages`. |
 | Admin (`AdminOnly` policy) | Pause / resume outbox at `/Settings#email` (peterdrier/Humans#1634). Retry a failed message (re-queue). Discard a failed message (delete). View the outbox dashboard at `/Email/EmailOutbox`, including the 90-day daily send/failure volume and top templates. Preview rendered templates at `/Email/EmailPreview`. Review then confirm a one-shot backfill of daily counts from retained outbox history. |
 | Any authenticated human | View own outbox (`GET /Profile/Me/Outbox`) — emails where `UserId` matches the signed-in user. |
 | HumanAdmin, Board, Admin (`HumanAdminBoardOrAdmin` policy) | View another human's outbox (`GET /Users/Admin/{id}/Outbox`). |

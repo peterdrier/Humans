@@ -12,6 +12,13 @@
     <!-- Shell-level tests over the moved controllers. -->
     <InternalsVisibleTo Include="Humans.Web.Tests" />
     <!--
+      DeletionConfirmationLeavesNoOutboxRowTests runs this section's deletion job and its
+      UsersEmails builder against Email's real outbox: the Article 17 invariant it guards
+      spans both sections and the table under test is Email's (same rationale as that test
+      project's ProjectReference here).
+    -->
+    <InternalsVisibleTo Include="Humans.Email.Tests" />
+    <!--
       Three unmoved sections' harnesses seed this section's rows through an in-memory
       UsersDbContext (Teams' two-way pattern, design §15 step 8). Each drops out at the lane
       that stops its harness building another section's context directly.

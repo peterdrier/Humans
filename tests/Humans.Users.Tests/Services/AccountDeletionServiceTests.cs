@@ -1,5 +1,6 @@
 using Humans.Auth.Contracts;
 using Humans.Users.Services;
+using Humans.Users.Tests.Infrastructure;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
@@ -39,7 +40,7 @@ public class AccountDeletionServiceTests
         Substitute.For<IShiftViewInvalidator>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
-    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
+    private readonly UsersEmails _emailMessages = TestUsersEmails.Create();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
     private readonly AccountDeletionService _service;
 
@@ -131,9 +132,11 @@ public class AccountDeletionServiceTests
             userId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
 
-        _emailMessages.Received(1).AccountDeletionRequested(
-            user.Email!, user.BurnerName,
-            Arg.Any<Instant>(), user.PreferredLanguage);
+        // The builder is sealed with no interface, so the sent message is the assertion surface.
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "deletion_requested"
+                && m.RecipientEmail == user.Email! && m.RecipientName == user.BurnerName),
+            Arg.Any<CancellationToken>());
 
         // Shift-authorization cache must drop in-orchestrator (parity with
         // PurgeAsync / AnonymizeExpiredAccountAsync) so direct callers don't
@@ -154,9 +157,10 @@ public class AccountDeletionServiceTests
 
         await _service.RequestDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.Received(1).AccountDeletionRequested(
-            "notif@example.com", user.BurnerName,
-            Arg.Any<Instant>(), user.PreferredLanguage);
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "deletion_requested"
+                && m.RecipientEmail == "notif@example.com" && m.RecipientName == user.BurnerName),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

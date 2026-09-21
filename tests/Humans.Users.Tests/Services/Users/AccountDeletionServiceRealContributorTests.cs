@@ -77,7 +77,7 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
             Substitute.For<IShiftViewInvalidator>(),
             Substitute.For<IAuditLogService>(),
             Substitute.For<IEmailService>(),
-            Substitute.For<IEmailMessageFactory>(),
+            TestUsersEmails.Create(),
             Clock,
             NullLogger<AccountDeletionService>.Instance);
     }

@@ -27,16 +27,6 @@ public sealed class EmailMessageFactoryTests
     }
 
     [HumansFact]
-    public void EmailVerification_IsAlwaysSend_NullCategory()
-    {
-        var msg = _factory.EmailVerification("a@x.com", "Alice", "https://verify", isConflict: true, "en");
-
-        msg.TemplateName.Should().Be("email_verification");
-        msg.Category.Should().BeNull();
-        _renderer.Received(1).RenderEmailVerification("Alice", "a@x.com", "https://verify", true, "en");
-    }
-
-    [HumansFact]
     public void FacilitatedMessage_WithContactInfo_SetsReplyToSender()
     {
         var msg = _factory.FacilitatedMessage(

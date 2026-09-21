@@ -1,5 +1,4 @@
 using Humans.Users.Contracts;
-using NodaTime;
 
 namespace Humans.Email.Contracts;
 
@@ -15,18 +14,6 @@ namespace Humans.Email.Contracts;
 /// </summary>
 public interface IEmailMessageFactory
 {
-    /// <summary>Access suspended notification (always-send).</summary>
-    EmailMessage AccessSuspended(string userEmail, string userName, string reason, string? culture = null);
-
-    /// <summary>Email verification link (always-send, immediate drain).</summary>
-    EmailMessage EmailVerification(string toEmail, string userName, string verificationUrl, bool isConflict = false, string? culture = null);
-
-    /// <summary>Account deletion requested confirmation (always-send).</summary>
-    EmailMessage AccountDeletionRequested(string userEmail, string userName, Instant deletionDate, string? culture = null);
-
-    /// <summary>Account deleted confirmation (always-send).</summary>
-    EmailMessage AccountDeleted(string userEmail, string userName, string? culture = null);
-
     /// <summary>Facilitated volunteer-to-volunteer message (FacilitatedMessages); reply-to is the sender when contact info is shared.</summary>
     EmailMessage FacilitatedMessage(string recipientEmail, string recipientName, string senderName, string messageText, bool includeContactInfo, string? senderEmail, string? culture = null);
 

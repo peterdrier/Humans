@@ -37,10 +37,6 @@
   <!-- ======================== -->
   <data name="Email_ApplicationSubmitted_Subject" xml:space="preserve"><value>New Membership Application: {0}</value><comment>{0} = applicant name</comment></data>
   <data name="Email_Welcome_Subject" xml:space="preserve"><value>Welcome to Humans!</value></data>
-  <data name="Email_AccessSuspended_Subject" xml:space="preserve"><value>Your Membership Access Has Been Suspended</value></data>
-  <data name="Email_VerifyEmail_Subject" xml:space="preserve"><value>Verify Your Email Address</value></data>
-  <data name="Email_DeletionRequested_Subject" xml:space="preserve"><value>Account Deletion Requested</value></data>
-  <data name="Email_AccountDeleted_Subject" xml:space="preserve"><value>Your Account Has Been Deleted</value></data>
   <data name="Email_ReasonLine" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;Reason:&lt;/strong&gt; {0}&lt;/p&gt;</value><comment>{0} = reason text (HTML-encoded by caller)</comment></data>
   <data name="Email_ApplicationSubmitted_Body" xml:space="preserve"><value>&lt;h2&gt;New Membership Application&lt;/h2&gt;
 &lt;p&gt;A new membership application has been submitted.&lt;/p&gt;
@@ -60,45 +56,6 @@
 &lt;/ul&gt;
 &lt;p&gt;If you have any questions, feel free to reach out to us.&lt;/p&gt;
 &lt;p&gt;Best regards,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = base URL</comment></data>
-  <data name="Email_AccessSuspended_Body" xml:space="preserve"><value>&lt;h2&gt;Access Suspended&lt;/h2&gt;
-&lt;p&gt;Dear {0},&lt;/p&gt;
-&lt;p&gt;Your access has been temporarily suspended.&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;Reason:&lt;/strong&gt; {1}&lt;/p&gt;
-&lt;p&gt;To restore your access, please take the required action:&lt;/p&gt;
-&lt;ul&gt;
-    &lt;li&gt;&lt;a href="{2}/Consent"&gt;Review pending consent requirements&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;If you believe this is an error or have questions, please contact us at &lt;a href="mailto:{3}"&gt;{3}&lt;/a&gt;.&lt;/p&gt;
-&lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = reason, {2} = base URL, {3} = admin email</comment></data>
-  <data name="Email_EmailVerification_Body" xml:space="preserve"><value>&lt;h2&gt;Email Verification&lt;/h2&gt;
-&lt;p&gt;Dear {0},&lt;/p&gt;
-&lt;p&gt;You requested to add &lt;strong&gt;{1}&lt;/strong&gt; to your account.&lt;/p&gt;
-&lt;p&gt;Please click the link below to verify this email address:&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Verify Email Address&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;This link will expire in 24 hours.&lt;/p&gt;
-&lt;p&gt;If you did not request this change, you can safely ignore this email.&lt;/p&gt;
-&lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = email address, {2} = verification URL</comment></data>
-  <data name="Email_EmailVerification_Merge_Body" xml:space="preserve"><value>&lt;h2&gt;Account Merge Verification&lt;/h2&gt;
-&lt;p&gt;Dear {0},&lt;/p&gt;
-&lt;p&gt;You requested to add &lt;strong&gt;{1}&lt;/strong&gt; to your account. This email address is currently linked to another account.&lt;/p&gt;
-&lt;p&gt;If you verify this email, a merge request will be submitted for admin review. Once approved, data from the other account will be merged into yours and the duplicate account will be archived.&lt;/p&gt;
-&lt;p&gt;Please click the link below to verify and request the merge:&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Verify and Request Merge&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;This link will expire in 24 hours.&lt;/p&gt;
-&lt;p&gt;If you did not request this, you can safely ignore this email. No changes will be made.&lt;/p&gt;
-&lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = email address, {2} = verification URL</comment></data>
-  <data name="Email_AccountDeletionRequested_Body" xml:space="preserve"><value>&lt;h2&gt;Account Deletion Request Received&lt;/h2&gt;
-&lt;p&gt;Dear {0},&lt;/p&gt;
-&lt;p&gt;We have received your request to delete your account. Your account and all associated data will be permanently deleted on &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
-&lt;p&gt;If you change your mind, you can cancel this request before the deletion date by visiting:&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}/Profile/Privacy"&gt;Cancel Deletion Request&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;After deletion, this action cannot be undone and all your data will be permanently removed.&lt;/p&gt;
-&lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = formatted deletion date, {2} = base URL</comment></data>
-  <data name="Email_AccountDeleted_Body" xml:space="preserve"><value>&lt;h2&gt;Account Deleted&lt;/h2&gt;
-&lt;p&gt;Dear {0},&lt;/p&gt;
-&lt;p&gt;As requested, your Humans account has been permanently deleted. All your personal data has been removed from our systems.&lt;/p&gt;
-&lt;p&gt;Thank you for being part of our community. If you ever wish to rejoin, you're welcome to create a new account.&lt;/p&gt;
-&lt;p&gt;Best wishes,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name</comment></data>
   <data name="Email_FacilitatedMessage_Subject" xml:space="preserve"><value>Humans Message from: {0}</value><comment>{0} = sender name</comment></data>
   <data name="Email_FacilitatedMessage_Body" xml:space="preserve"><value>&lt;h2&gt;Message from {1}&lt;/h2&gt;&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;{1} has sent you a message through Humans:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{2}&lt;/p&gt;&lt;hr /&gt;{3}</value><comment>{0}=recipient, {1}=sender, {2}=message, {3}=contact info html</comment></data>
   <data name="Email_FacilitatedMessage_NoContactInfo" xml:space="preserve"><value>This human chose not to share their contact information.</value></data>

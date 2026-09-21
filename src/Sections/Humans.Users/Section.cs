@@ -3,6 +3,7 @@ using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Application.Services.Users;
 using Humans.Application.Services.Users.AccountLifecycle;
+using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Issues.Contracts;
 using Humans.Base.Hosting;
@@ -105,6 +106,11 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<UserEmailService>();
         services.AddScoped<IUserEmailService>(sp => sp.GetRequiredService<UserEmailService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<UserEmailService>());
+
+        // Users owns its email copy and its gallery samples; Email keeps the mechanics
+        // (memory/architecture/email-templates-live-in-sender.md).
+        services.AddScoped<UsersEmails>();
+        services.AddScoped<IEmailPreviewContributor, UsersEmailPreviews>();
 
         services.AddScoped<IEmailProblemsService, EmailProblemsService>();
         services.AddScoped<IUserNameSyncService, UserNameSyncService>();

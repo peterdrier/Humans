@@ -47,18 +47,6 @@
   <data name="Email_Welcome_Subject" xml:space="preserve">
     <value>Benvenuto/a su Humans!</value>
   </data>
-  <data name="Email_AccessSuspended_Subject" xml:space="preserve">
-    <value>Il Suo accesso come membro è stato sospeso</value>
-  </data>
-  <data name="Email_VerifyEmail_Subject" xml:space="preserve">
-    <value>Verifichi il Suo indirizzo email</value>
-  </data>
-  <data name="Email_DeletionRequested_Subject" xml:space="preserve">
-    <value>Eliminazione dell'account richiesta</value>
-  </data>
-  <data name="Email_AccountDeleted_Subject" xml:space="preserve">
-    <value>Il Suo account è stato eliminato</value>
-  </data>
   <data name="Email_ReasonLine" xml:space="preserve">
     <value>&lt;p&gt;&lt;strong&gt;Motivo:&lt;/strong&gt; {0}&lt;/p&gt;</value>
     <comment>{0} = reason text (HTML-encoded by caller)</comment>
@@ -86,51 +74,6 @@
 &lt;p&gt;Se hai domande, non esitare a contattarci.&lt;/p&gt;
 &lt;p&gt;Cordiali saluti,&lt;br/&gt;Il team di Humans&lt;/p&gt;</value>
     <comment>{0} = user name, {1} = base URL</comment>
-  </data>
-  <data name="Email_AccessSuspended_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Accesso sospeso&lt;/h2&gt;
-&lt;p&gt;Ciao {0},&lt;/p&gt;
-&lt;p&gt;Il tuo accesso è stato temporaneamente sospeso.&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;Motivo:&lt;/strong&gt; {1}&lt;/p&gt;
-&lt;p&gt;Per ripristinare il tuo accesso, esegui l'azione richiesta:&lt;/p&gt;
-&lt;ul&gt;
-    &lt;li&gt;&lt;a href="{2}/Consent"&gt;Consulta i requisiti di consenso in sospeso&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;Se ritieni che si tratti di un errore, contattaci a &lt;a href="mailto:{3}"&gt;{3}&lt;/a&gt;.&lt;/p&gt;
-&lt;p&gt;Il team di Humans&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = reason, {2} = base URL, {3} = admin email</comment>
-  </data>
-  <data name="Email_EmailVerification_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Verifica dell'indirizzo e-mail&lt;/h2&gt;
-&lt;p&gt;Ciao {0},&lt;/p&gt;
-&lt;p&gt;Hai richiesto di impostare &lt;strong&gt;{1}&lt;/strong&gt; come indirizzo e-mail preferito.&lt;/p&gt;
-&lt;p&gt;Clicca sul link seguente per verificare questo indirizzo:&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Verifica indirizzo e-mail&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Questo link scade tra 24 ore.&lt;/p&gt;
-&lt;p&gt;Se non hai richiesto questa modifica, puoi ignorare questa e-mail.&lt;/p&gt;
-&lt;p&gt;Il team di Humans&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = email address, {2} = verification URL</comment>
-  </data>
-  <data name="Email_EmailVerification_Merge_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Verifica unione account&lt;/h2&gt;&lt;p&gt;Ciao {0},&lt;/p&gt;&lt;p&gt;Hai richiesto di aggiungere &lt;strong&gt;{1}&lt;/strong&gt; al tuo account. Questo indirizzo e-mail è attualmente collegato a un altro account.&lt;/p&gt;&lt;p&gt;Se verifichi questa e-mail, verrà inviata una richiesta di unione per la revisione dell'amministratore. Una volta approvata, i dati dell'altro account verranno uniti al tuo e l'account duplicato verrà archiviato.&lt;/p&gt;&lt;p&gt;Fai clic sul link qui sotto per verificare e richiedere l'unione:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Verifica e richiedi unione&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Questo link scade tra 24 ore.&lt;/p&gt;&lt;p&gt;Se non hai richiesto questo, puoi ignorare questa e-mail. Non verranno apportate modifiche.&lt;/p&gt;&lt;p&gt;Il team di Humans&lt;/p&gt;</value>
-  </data>
-  <data name="Email_AccountDeletionRequested_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Richiesta di eliminazione account ricevuta&lt;/h2&gt;
-&lt;p&gt;Ciao {0},&lt;/p&gt;
-&lt;p&gt;Abbiamo ricevuto la tua richiesta di eliminazione dell'account. Il tuo account e tutti i dati associati saranno eliminati permanentemente il &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
-&lt;p&gt;Se cambi idea, puoi annullare questa richiesta prima della data di eliminazione:&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}/Profile/Privacy"&gt;Annulla richiesta di eliminazione&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Dopo l'eliminazione, questa azione non può essere annullata e tutti i tuoi dati saranno rimossi permanentemente.&lt;/p&gt;
-&lt;p&gt;Il team di Humans&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = formatted deletion date, {2} = base URL</comment>
-  </data>
-  <data name="Email_AccountDeleted_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Account eliminato&lt;/h2&gt;
-&lt;p&gt;Ciao {0},&lt;/p&gt;
-&lt;p&gt;Come richiesto, il tuo account Humans è stato eliminato permanentemente. Tutti i tuoi dati personali sono stati rimossi dai nostri sistemi.&lt;/p&gt;
-&lt;p&gt;Grazie per aver fatto parte della nostra comunità. Se desideri tornare, sei benvenuto/a a creare un nuovo account.&lt;/p&gt;
-&lt;p&gt;Cordiali saluti,&lt;br/&gt;Il team di Humans&lt;/p&gt;</value>
-    <comment>{0} = user name</comment>
   </data>
   <data name="Email_FacilitatedMessage_Subject" xml:space="preserve">
     <value>Messaggio Humans da: {0}</value>

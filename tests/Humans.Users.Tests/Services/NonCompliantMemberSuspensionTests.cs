@@ -29,7 +29,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
     private readonly ITeamService _teamService;
     private readonly IMembershipCalculatorRead _membershipCalculator;
     private readonly IEmailService _emailService;
-    private readonly IEmailMessageFactory _emailMessages;
+    private readonly UsersEmails _emailMessages = TestUsersEmails.Create();
     private readonly INotificationEmitter _notificationService;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IAuditLogService _auditLogService;
@@ -48,7 +48,6 @@ public class NonCompliantMemberSuspensionTests : IDisposable
         _teamService = Substitute.For<ITeamService>();
         _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
         _emailService = Substitute.For<IEmailService>();
-        _emailMessages = Substitute.For<IEmailMessageFactory>();
         _notificationService = Substitute.For<INotificationEmitter>();
         _googleSyncService = Substitute.For<IGoogleSyncService>();
         _auditLogService = Substitute.For<IAuditLogService>();
@@ -116,9 +115,8 @@ public class NonCompliantMemberSuspensionTests : IDisposable
         await _userService.DidNotReceive().SuspendProfilesForMissingConsentAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
 
-        _emailMessages.DidNotReceive().AccessSuspended(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>());
+        await _emailService.DidNotReceive().SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "access_suspended"), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -136,9 +134,8 @@ public class NonCompliantMemberSuspensionTests : IDisposable
 
         await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.DidNotReceive().AccessSuspended(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>());
+        await _emailService.DidNotReceive().SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "access_suspended"), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -162,9 +159,8 @@ public class NonCompliantMemberSuspensionTests : IDisposable
 
         await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.DidNotReceive().AccessSuspended(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>());
+        await _emailService.DidNotReceive().SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "access_suspended"), Arg.Any<CancellationToken>());
 
         await _auditLogService.DidNotReceive().LogAsync(
             Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
@@ -182,11 +178,13 @@ public class NonCompliantMemberSuspensionTests : IDisposable
 
         await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.Received(1).AccessSuspended(
-            "test@example.com",
-            "Test User",
-            Arg.Is<string>(s => s.Contains("consent")),
-            "en");
+        // The builder is sealed with no interface, so the sent message is the assertion surface.
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "access_suspended"
+                && m.RecipientEmail == "test@example.com" && m.RecipientName == "Test User"
+                && m.HtmlBody.Contains("consent", StringComparison.Ordinal)
+                && m.Subject.EndsWith("#en", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

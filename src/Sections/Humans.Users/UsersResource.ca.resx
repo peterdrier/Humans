@@ -1092,4 +1092,61 @@
   <data name="Enum_LanguageProficiency_Conversational" xml:space="preserve"><value>Conversacional</value></data>
   <data name="Enum_LanguageProficiency_Fluent" xml:space="preserve"><value>Fluid</value></data>
   <data name="Enum_LanguageProficiency_Native" xml:space="preserve"><value>Nadiu</value></data>
+  <data name="Users_Email_AccessSuspended_Subject" xml:space="preserve">
+    <value>El teu accés de membre ha estat suspès</value>
+  </data>
+  <data name="Users_Email_AccessSuspended_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Accés suspès&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;El teu accés ha estat suspès temporalment.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Motiu:&lt;/strong&gt; {1}&lt;/p&gt;
+&lt;p&gt;Per restaurar el teu accés, si us plau fes l’acció requerida:&lt;/p&gt;
+&lt;ul&gt;
+    &lt;li&gt;&lt;a href="{2}/Consent"&gt;Revisa els requisits de consentiment pendents&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Si creus que això és un error o tens preguntes, contacta’ns a &lt;a href="mailto:{3}"&gt;{3}&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;L’equip de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = reason, {2} = base URL, {3} = admin email</comment>
+  </data>
+  <data name="Users_Email_VerifyEmail_Subject" xml:space="preserve">
+    <value>Verifica la teva adreça de correu electrònic</value>
+  </data>
+  <data name="Users_Email_EmailVerification_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Verificació del correu electrònic&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Has sol·licitat establir &lt;strong&gt;{1}&lt;/strong&gt; com la teva adreça de correu preferida.&lt;/p&gt;
+&lt;p&gt;Fes clic a l’enllaç següent per verificar aquesta adreça:&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Verifica l’adreça de correu&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Aquest enllaç expira en 24 hores.&lt;/p&gt;
+&lt;p&gt;Si no has sol·licitat aquest canvi, pots ignorar aquest correu.&lt;/p&gt;
+&lt;p&gt;L’equip de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = email address, {2} = verification URL</comment>
+  </data>
+  <data name="Users_Email_EmailVerification_Merge_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Verificació de fusió de comptes&lt;/h2&gt;&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Has sol·licitat afegir &lt;strong&gt;{1}&lt;/strong&gt; al teu compte. Aquesta adreça de correu està actualment vinculada a un altre compte.&lt;/p&gt;&lt;p&gt;Si verifies aquest correu, s’enviarà una sol·licitud de fusió per a revisió de l’administrador. Un cop aprovada, les dades de l’altre compte es fusionaran amb les teves i el compte duplicat quedarà arxivat.&lt;/p&gt;&lt;p&gt;Fes clic a l’enllaç següent per verificar i sol·licitar la fusió:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Verifica i sol·licita la fusió&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Aquest enllaç expira en 24 hores.&lt;/p&gt;&lt;p&gt;Si no has sol·licitat això, pots ignorar aquest correu. No es farà cap canvi.&lt;/p&gt;&lt;p&gt;L’equip de Humans&lt;/p&gt;</value>
+  </data>
+  <data name="Users_Email_DeletionRequested_Subject" xml:space="preserve">
+    <value>Sol·licitud d'eliminació de compte</value>
+  </data>
+  <data name="Users_Email_AccountDeletionRequested_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Sol·licitud d’eliminació de compte rebuda&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Hem rebut la teva sol·licitud per eliminar el teu compte. El teu compte i totes les dades associades s’eliminaran permanentment el &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;Si canvies d’opinió, pots cancel·lar aquesta sol·licitud abans de la data d’eliminació visitant:&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}/Profile/Privacy"&gt;Cancel·la la sol·licitud d’eliminació&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Després de l’eliminació, aquesta acció no es podrà desfer i totes les teves dades s’eliminaran permanentment.&lt;/p&gt;
+&lt;p&gt;L’equip de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = formatted deletion date, {2} = base URL</comment>
+  </data>
+  <data name="Users_Email_AccountDeleted_Subject" xml:space="preserve">
+    <value>El teu compte ha estat eliminat</value>
+  </data>
+  <data name="Users_Email_AccountDeleted_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Compte eliminat&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Tal com has sol·licitat, el teu compte de Humans ha estat eliminat permanentment. Totes les teves dades personals s’han eliminat dels nostres sistemes.&lt;/p&gt;
+&lt;p&gt;Gràcies per haver format part de la nostra comunitat. Si algun dia vols tornar, pots crear un compte nou.&lt;/p&gt;
+&lt;p&gt;Una salutació,&lt;br/&gt;L’equip de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name</comment>
+  </data>
 </root>

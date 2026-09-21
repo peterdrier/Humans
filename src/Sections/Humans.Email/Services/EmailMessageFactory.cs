@@ -1,7 +1,6 @@
 using Humans.Users.Contracts;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
-using NodaTime;
 
 namespace Humans.Email.Services;
 
@@ -13,37 +12,6 @@ namespace Humans.Email.Services;
 /// </summary>
 internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessageFactory
 {
-    public EmailMessage AccessSuspended(string userEmail, string userName, string reason, string? culture = null)
-    {
-        var content = renderer.RenderAccessSuspended(userName, reason, culture);
-        return new EmailMessage(userEmail, userName, content.Subject, content.HtmlBody,
-            "access_suspended");
-    }
-
-    public EmailMessage EmailVerification(string toEmail, string userName, string verificationUrl, bool isConflict = false, string? culture = null)
-    {
-        var content = renderer.RenderEmailVerification(userName, toEmail, verificationUrl, isConflict, culture);
-        return new EmailMessage(toEmail, userName, content.Subject, content.HtmlBody,
-            TimeSensitiveTemplates.EmailVerification);
-    }
-
-    public EmailMessage AccountDeletionRequested(string userEmail, string userName, Instant deletionDate, string? culture = null)
-    {
-        var formattedDate = deletionDate.InUtc().Date.ToInvariantLongDate();
-        var content = renderer.RenderAccountDeletionRequested(userName, formattedDate, culture);
-        return new EmailMessage(userEmail, userName, content.Subject, content.HtmlBody,
-            "deletion_requested");
-    }
-
-    public EmailMessage AccountDeleted(string userEmail, string userName, string? culture = null)
-    {
-        var content = renderer.RenderAccountDeleted(userName, culture);
-        // DoNotPersist: the recipient has just been erased, so an outbox row would
-        // re-create their address and name after Article 17 removed them.
-        return new EmailMessage(userEmail, userName, content.Subject, content.HtmlBody,
-            "account_deleted", DoNotPersist: true);
-    }
-
     public EmailMessage FacilitatedMessage(string recipientEmail, string recipientName, string senderName, string messageText, bool includeContactInfo, string? senderEmail, string? culture = null)
     {
         var content = renderer.RenderFacilitatedMessage(recipientName, senderName, messageText, includeContactInfo, senderEmail, culture);

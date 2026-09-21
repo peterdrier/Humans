@@ -45,7 +45,7 @@ public class ProfileEmailsControllerGridTests
 {
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
-    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
+    private readonly UsersEmails _emailMessages = TestUsersEmails.Create();
     private readonly IAuthorizationService _authorizationService = Substitute.For<IAuthorizationService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
@@ -352,12 +352,13 @@ public class ProfileEmailsControllerGridTests
         // Verification email goes to the target email being added, with the token
         // returned by AddEmailAsync — NOT discarded. Recipient name and culture
         // come from the target user, not the admin.
-        _emailMessages.Received(1).EmailVerification(
-            newEmail,
-            "Target User",
-            Arg.Is<string>(url => url.Contains(token, StringComparison.Ordinal)),
-            false,
-            "es");
+        // The builder is sealed with no interface, so the sent message is the assertion surface.
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == TimeSensitiveTemplates.EmailVerification
+                && m.RecipientEmail == newEmail && m.RecipientName == "Target User"
+                && m.HtmlBody.Contains(token, StringComparison.Ordinal)
+                && m.Subject.EndsWith("#es", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be("AdminEmails");
     }
@@ -381,12 +382,11 @@ public class ProfileEmailsControllerGridTests
 
         var result = await _controller.AddEmail(new EmailsViewModel { NewEmail = newEmail });
 
-        _emailMessages.Received(1).EmailVerification(
-            newEmail,
-            Arg.Any<string>(),
-            Arg.Is<string>(url => url.Contains(token, StringComparison.Ordinal)),
-            false,
-            Arg.Any<string?>());
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == TimeSensitiveTemplates.EmailVerification
+                && m.RecipientEmail == newEmail
+                && m.HtmlBody.Contains(token, StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be("Emails");
     }
