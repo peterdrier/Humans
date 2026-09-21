@@ -591,8 +591,13 @@ public class SepaBankBookingTests
             TaggedLine(30m),
             new HoldedLedgerLineDto
             {
-                EntryNumber = 1, Line = 2, Date = FixedNow, AccountNum = 57200001,
-                Debit = 0m, Credit = 30m, Description = Tag,
+                EntryNumber = 1,
+                Line = 2,
+                Date = FixedNow,
+                AccountNum = 57200001,
+                Debit = 0m,
+                Credit = 30m,
+                Description = Tag,
             });
         SeedOwed(0m);
         SeedOpenDocs();
