@@ -92,7 +92,10 @@ public sealed class WorkgroupInputValidationTests : WorkgroupsTestHarness
         (await ctx.Workgroups.SingleAsync(w => w.Id == group.Id, Ct)).Reasons.Should().Be(reason);
     }
 
-    [HumansTheory]
+    // Builds a full WorkgroupService over the in-memory context, so on a cold runner it pays
+    // the EF model build inside a theory's default 5 s budget — same allowance as
+    // WorkgroupServiceRegistrationTests' theory in this project.
+    [HumansTheory(Timeout = 10000)]
     [InlineData(false)]
     [InlineData(true)]
     public async Task MeetingUrl_AcceptsTheStorageLimitAndRejectsOverflow(bool editing)
