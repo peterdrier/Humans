@@ -55,6 +55,21 @@ path (the interface collapsed to one method). Cross-section calls via
 `IHumansMetrics`, `ICommunicationPreferenceService`, plus `IClock`. No
 `IMemoryCache`.
 
+### EmailMessageFactory (Scoped, internal)
+
+No repository. Pure builder for the one template this section still owns —
+`FacilitatedMessage`, the volunteer-to-volunteer relay — reading
+`EmailResource` (via `IStringLocalizer<EmailResource>`) and writing nothing.
+Returns an `EmailMessage` for Users' `ProfileViewController` and Camps'
+`CampContactService` to pass to `IEmailService.SendAsync`. No DB access, no
+cache.
+
+### EmailEmailPreviews (Scoped)
+
+No repository. Read-only gallery contributor (`IEmailPreviewContributor`,
+`Section.cs:52`) — builds the two facilitated-message samples via
+`IEmailMessageFactory` for `/Email/EmailPreview`. No DB access, no cache.
+
 ### EmailPreviewService (Scoped)
 
 No repository — side-effect-free preview only, via the same

@@ -24,11 +24,11 @@ namespace Humans.Integration.Tests.Controllers;
 /// row that carries a <c>UserId</c>, which is why the fixture seeds one.
 /// </para>
 /// <para>
-/// The resx half is unusual for a section: the 70 <c>Email_*</c> keys are not this section's
-/// admin-page copy — those two views carry no <c>Localizer[…]</c> call at all — they are every
-/// section's transactional email text, and they came here with <c>EmailRenderer</c>, their one
-/// and only renderer. <c>/Email/EmailPreview</c> is therefore the ideal probe: it renders 20
-/// templates in all six cultures on one page, so a single GET proves both that the neutral set
+/// The resx half is unusual for a section: the <c>Email_FacilitatedMessage_*</c> keys are not
+/// this section's admin-page copy — those two views carry no <c>Localizer[…]</c> call at all —
+/// they are the copy of the one template Email still renders. <c>/Email/EmailPreview</c> is
+/// therefore the ideal probe: every section contributes its own templates to it and it renders
+/// them in all six cultures on one page, so a single GET proves both that the neutral set
 /// resolves and that the RCL's satellite assemblies reach the host's probing path — no
 /// language-switcher round trip needed (contrast CityPlanning, whose Spanish check has to POST
 /// <c>/Language/SetLanguage</c> first).
@@ -118,7 +118,7 @@ public class EmailPageRenderTests(HumansTestDatabase database) : IntegrationTest
 
         // A key that failed to resolve renders as its own name, in every language, silently.
         html.Should().NotContain("Email_",
-            because: "every Email_* key moved into EmailResource with EmailRenderer");
+            because: "an unresolved key renders as its own name, whichever section's resx it lives in");
     }
 
     [HumansFact(Timeout = 120000)]

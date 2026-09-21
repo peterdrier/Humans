@@ -18,7 +18,7 @@ Transactional emails (onboarding, campaign codes, notifications) must be deliver
 
 ## How It Works
 
-1. Application code builds a rendered `EmailMessage` via `IEmailMessageFactory` and calls `IEmailService.SendAsync(message)` instead of sending directly.
+1. The sending section builds a rendered `EmailMessage` in its own `<Section>Emails` builder and calls `IEmailService.SendAsync(message)` instead of sending directly.
 2. The service writes an `EmailOutboxMessage` row with `Status = Queued`.
 3. `ProcessEmailOutboxJob` (Hangfire, runs every minute) picks up batches of queued messages and delivers them via `IEmailTransport`.
 4. On success: `Status = Sent`, `SentAt` stamped.

@@ -124,10 +124,8 @@ internal sealed class EmailController(
         return RedirectToAction(nameof(EmailOutbox));
     }
 
-    // Sample data + the (id, name, recipient, renderer-call) table below are pure
-    // data — moved out of the method body so EmailPreview itself is just "loop
-    // cultures, project the table, return the view" (was 51 statements / cc 2:
-    // twenty near-identical var+Add pairs repeated per culture).
+    // Persona + culture data for the gallery, held here so EmailPreview itself is just
+    // "loop cultures, ask the contributors, return the view".
     private static readonly string[] Cultures = ["en", "es", "de", "fr", "it", "ca"];
 
     private static readonly Dictionary<string, (string Name, string Email)> Personas = new(StringComparer.Ordinal)
@@ -140,61 +138,27 @@ internal sealed class EmailController(
         ["ca"] = ("Jordi Puig", "jordi@example.com"),
     };
 
-    private const string FacilitatedMessageSampleText =
-        "Hi! I'm organizing the next community event and would love your help. Let me know if you're interested!";
-
-    private readonly record struct PreviewContext(string Culture, string Name, string Email, EmailSettings Settings);
-
-    private static readonly IReadOnlyList<Func<IEmailRenderer, PreviewContext, EmailPreviewItem>> PreviewDefinitions =
-    [
-        (r, c) => BuildPreviewItem("application-submitted", "Application Submitted (to Admin)", c.Settings.AdminAddress,
-            r.RenderApplicationSubmitted(Guid.Empty, c.Name)),
-        (r, c) => BuildPreviewItem("welcome", "Welcome", c.Email,
-            r.RenderWelcome(c.Name, c.Culture)),
-        (r, c) => BuildPreviewItem("facilitated-message", "Facilitated Message (with contact info)", c.Email,
-            r.RenderFacilitatedMessage(c.Name, "Alex Firestone", FacilitatedMessageSampleText, true, "alex@example.com", c.Culture)),
-        (r, c) => BuildPreviewItem("facilitated-message-anon", "Facilitated Message (without contact info)", c.Email,
-            r.RenderFacilitatedMessage(c.Name, "Alex Firestone", FacilitatedMessageSampleText, false, null, c.Culture)),
-    ];
-
-    private static EmailPreviewItem BuildPreviewItem(string id, string name, string recipient, EmailContent content) => new()
-    {
-        Id = id,
-        Name = name,
-        Recipient = recipient,
-        Subject = content.Subject,
-        Body = content.HtmlBody
-    };
-
+    /// <summary>
+    /// The template gallery: every sending section contributes its own samples through
+    /// <see cref="IEmailPreviewContributor"/>, so the gallery cannot drift from what the
+    /// sections actually send (peterdrier/Humans#1651). Ordinal by sample id.
+    /// </summary>
     [HttpGet("EmailPreview")]
     public IActionResult EmailPreview(
-        [FromServices] IEmailRenderer renderer,
         [FromServices] IEmailBodyComposer bodyComposer,
         [FromServices] IOptions<EmailSettings> emailSettings,
         [FromServices] IEnumerable<IEmailPreviewContributor> contributors)
     {
-        var settings = emailSettings.Value;
         var contributorList = contributors.ToList();
         var previews = new Dictionary<string, List<EmailPreviewItem>>(StringComparer.Ordinal);
 
         foreach (var culture in Cultures)
         {
             var (name, email) = Personas[culture];
-            var ctx = new PreviewContext(culture, name, email, settings);
 
-            // Both sources render while the templates migrate to their sending
-            // sections (peterdrier/Humans#1651): a contributed sample supersedes the
-            // legacy row for the same id, so a half-migrated template shows once.
-            var contributed = contributorList
+            previews[culture] = contributorList
                 .SelectMany(c => c.Samples(new EmailPreviewPersona(culture, name, email)))
                 .Select(ToPreviewItem)
-                .ToList();
-            var contributedIds = contributed.Select(i => i.Id).ToHashSet(StringComparer.Ordinal);
-
-            previews[culture] = PreviewDefinitions
-                .Select(build => build(renderer, ctx))
-                .Where(item => !contributedIds.Contains(item.Id))
-                .Concat(contributed)
                 .OrderBy(item => item.Id, StringComparer.Ordinal)
                 .Select(item =>
                 {
@@ -204,7 +168,7 @@ internal sealed class EmailController(
                 .ToList();
         }
 
-        return View(new EmailPreviewViewModel { Previews = previews, FromAddress = settings.FromAddress });
+        return View(new EmailPreviewViewModel { Previews = previews, FromAddress = emailSettings.Value.FromAddress });
     }
 
     private static EmailPreviewItem ToPreviewItem(EmailPreviewSample sample) => new()

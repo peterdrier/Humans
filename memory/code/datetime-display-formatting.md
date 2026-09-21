@@ -11,6 +11,6 @@ All date/time formatting goes through the one home `Humans.Base.Extensions.DateF
 **Machine / invariant** (stable, culture-independent — exports, APIs, filenames, audit, JSON):
 `ToInvariantDate` (`2026-06-05`), `ToInvariantTimestamp` (`2026-06-05 14:30:45`), `ToInvariantTime` (`14:30`), `ToIso8601` (`2026-06-05T14:30:45Z`), `ToSepaDateTime` (SEPA ISO-20022, no `Z`), `ToFileTimestamp` (`2026-06-05-1430`, filenames), `ToInvariantLongDate` (`5 June 2026`, invariant email long-date). Parse/format pattern fields (`TimeOfDayPattern`, `PlacementDateTimePattern`, iCal patterns, the deliberately-invariant `OpsNoticeDatePattern`) also live on the home.
 
-**Background-rendered content** (emails, ops notices) renders outside a web request, so the culture-aware display methods would fall back to the server default. Emails/ops therefore use the **invariant** machine methods today; making them recipient-localised needs the formatting moved inside the renderer's culture scope (`EmailRenderer.CultureScope`).
+**Background-rendered content** (emails, ops notices) renders outside a web request, so the culture-aware display methods would fall back to the server default. Emails/ops therefore use the **invariant** machine methods today; making them recipient-localised needs the formatting moved inside the sending section's builder culture scope (`CultureScope`, Humans.Base).
 
 **Related:** [`datetime-format-single-home`](../architecture/datetime-format-single-home.md), [`nodatime-for-dates`](nodatime-for-dates.md).

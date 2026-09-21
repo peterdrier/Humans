@@ -1,7 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Campaigns/**
   src/Sections/Humans.Campaigns.Contracts/**
-  src/Sections/Humans.Email/Services/EmailRenderer.cs
   src/Sections/Humans.Email/Services/OutboxEmailService.cs
   src/Sections/Humans.Tickets/Services/TicketSyncService.cs
   src/Sections/Humans.Users/Services/UnsubscribeService.cs

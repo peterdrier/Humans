@@ -44,7 +44,7 @@ Every external entry point, grouped by the question it answers.
 | Shape | Surface | Notes |
 |---|---|---|
 | **Send one message** | `IEmailService.SendAsync(EmailMessage)` | The single transport path. One method, deliberately. |
-| **Describe a message** | `IEmailMessageFactory` — one typed builder per message type | The whole cross-section width of the section: every other section names a builder here rather than composing an `EmailMessage` itself. |
+| **Describe a message** | `IEmailMessageFactory.FacilitatedMessage` | One method, the person-to-person relay. Every other section builds its own `EmailMessage` in its own `<Section>Emails` (peterdrier/Humans#1651). |
 | **Show me a message without sending it** | `IEmailPreviewServiceRead.RenderSystemMessage` | Always-send system messages only; opt-outable ones are refused because their footer is recipient-specific. |
 | **What have we sent this person?** | `IEmailOutboxServiceRead` — per-user list, per-user count, dashboard stats | Consumed by Shell's profile and user-admin pages and the admin tile. |
 | **Drain the queue / prune the queue** | `IEmailOutboxProcessor`, `IEmailOutboxRetention`, `IImmediateOutboxProcessor` | Job-facing. The first two have no consumer outside the section any more; Shell registers the third. |
@@ -107,8 +107,8 @@ structure, not an exception within it.
   campaign's `AdminOnly`-authored `EmailBodyTemplate` — goes through that renderer with
   `allowImages: false`. No text reaches a body as raw HTML, whoever authored it.
 - Every string that *does* resolve through `EmailResource` is present in all six
-  cultures. Coverage is not yet complete: the templates rendered from string literals
-  in `EmailRenderer` are hardcoded English and sit outside the resx set (§3), tracked
+  cultures. Coverage is not yet complete across the app: the templates that moved to
+  Tickets and Events are hardcoded English and sit outside any resx set, tracked
   in peterdrier/Humans#1657.
 - An outbox row is personal data: it is exported under Article 15 and destroyed under
   Article 17, whatever its status.

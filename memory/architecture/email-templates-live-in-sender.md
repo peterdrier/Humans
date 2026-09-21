@@ -24,17 +24,15 @@ contracts — the direction the rule forbids (peterdrier/Humans#1651, design sig
 - New template: build it in the sending section, render inside
   `using (new CultureScope(culture))` over that section's `IStringLocalizer`, HTML-encode
   substitutions with `WebUtility.HtmlEncode`, and add a sample to that section's
-  `IEmailPreviewContributor`. Never add a method to `IEmailRenderer` / `IEmailMessageFactory`,
-  and never add an `Email_*` key to `EmailResource.*.resx`.
-- Editing a template that has not migrated yet: move it to its section rather than editing it
-  in place, unless the change is a same-day fix — the remaining migration is tracked in
-  `docs/architecture/debt-ledger.yml`.
+  `IEmailPreviewContributor`. Never add a method to `IEmailMessageFactory`, and never add an
+  `Email_*` key to `EmailResource.*.resx`.
 - Time-sensitive mail: name the constant on `TimeSensitiveTemplates`; that one list drives both
   the immediate drain and the outbox batch priority. There is no per-message immediate flag.
 - The gallery is a fan-out: Email never lists which sections contribute
   ([`fanout-spokes-name-themselves`](fanout-spokes-name-themselves.md)).
 - `FacilitatedMessage` is the one template that stays in Email — a generic person-to-person
-  relay with no section vocabulary.
+  relay with no section vocabulary. It is all `IEmailMessageFactory` has left; `IEmailRenderer`,
+  `EmailContent` and the gallery's static table are gone (peterdrier/Humans#1651).
 
 **Related:** [[crosscut-purity]], [[fanout-spokes-name-themselves]],
 [[resource-key-prefix-matches-section]].

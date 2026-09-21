@@ -40,37 +40,6 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Email_ApplicationSubmitted_Subject" xml:space="preserve">
-    <value>Nuova domanda di iscrizione: {0}</value>
-    <comment>{0} = applicant name</comment>
-  </data>
-  <data name="Email_Welcome_Subject" xml:space="preserve">
-    <value>Benvenuto/a su Humans!</value>
-  </data>
-  <data name="Email_ApplicationSubmitted_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Nuova domanda di adesione&lt;/h2&gt;
-&lt;p&gt;È stata inviata una nuova domanda di adesione.&lt;/p&gt;
-&lt;ul&gt;
-    &lt;li&gt;&lt;strong&gt;Candidato:&lt;/strong&gt; {0}&lt;/li&gt;
-    &lt;li&gt;&lt;strong&gt;ID domanda:&lt;/strong&gt; {1}&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;&lt;a href="{2}/Governance/Applications/Admin/{1}"&gt;Esaminare la domanda&lt;/a&gt;&lt;/p&gt;</value>
-    <comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment>
-  </data>
-  <data name="Email_Welcome_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Benvenuto/a!&lt;/h2&gt;
-&lt;p&gt;Ciao {0},&lt;/p&gt;
-&lt;p&gt;Benvenuto/a nel portale di Humans!&lt;/p&gt;
-&lt;p&gt;Ecco cosa puoi fare:&lt;/p&gt;
-&lt;ul&gt;
-    &lt;li&gt;&lt;a href="{1}/Profile"&gt;Completa il tuo profilo&lt;/a&gt;&lt;/li&gt;
-    &lt;li&gt;&lt;a href="{1}/Teams"&gt;Unisciti a team e gruppi di lavoro&lt;/a&gt;&lt;/li&gt;
-    &lt;li&gt;&lt;a href="{1}/Consent"&gt;Consulta i documenti legali&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;Se hai domande, non esitare a contattarci.&lt;/p&gt;
-&lt;p&gt;Cordiali saluti,&lt;br/&gt;Il team di Humans&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = base URL</comment>
-  </data>
   <data name="Email_FacilitatedMessage_Subject" xml:space="preserve">
     <value>Messaggio Humans da: {0}</value>
   </data>

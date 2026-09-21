@@ -10,19 +10,15 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
-using NSubstitute.Extensions;
 
 namespace Humans.Email.Tests.Controllers;
 
 /// <summary>
-/// The gallery renders registered <see cref="IEmailPreviewContributor"/>s alongside the
-/// legacy static table while the templates move to their sending sections
-/// (peterdrier/Humans#1651).
+/// The gallery is built entirely from the registered <see cref="IEmailPreviewContributor"/>s
+/// now that the sending sections own their templates (peterdrier/Humans#1651).
 /// </summary>
 public sealed class EmailPreviewGalleryTests
 {
-    private const string LegacyId = "welcome";
-
     private sealed class StubContributor(params string[] ids) : IEmailPreviewContributor
     {
         public List<EmailPreviewPersona> Asked { get; } = [];
@@ -37,9 +33,6 @@ public sealed class EmailPreviewGalleryTests
 
     private static EmailPreviewViewModel Render(params IEmailPreviewContributor[] contributors)
     {
-        var renderer = Substitute.For<IEmailRenderer>();
-        renderer.ReturnsForAll(new EmailContent("Legacy subject", "<p>Legacy</p>"));
-
         var composer = Substitute.For<IEmailBodyComposer>();
         composer.Compose(Arg.Any<string>(), Arg.Any<string?>())
             .Returns(call => ($"[wrapped]{call.ArgAt<string>(0)}", "plain"));
@@ -50,8 +43,7 @@ public sealed class EmailPreviewGalleryTests
             Substitute.For<IAuditLogService>(),
             NullLogger<EmailController>.Instance);
 
-        var result = controller.EmailPreview(
-            renderer, composer, Options.Create(new EmailSettings()), contributors);
+        var result = controller.EmailPreview(composer, Options.Create(new EmailSettings()), contributors);
 
         return (EmailPreviewViewModel)((ViewResult)result).Model!;
     }
@@ -75,16 +67,10 @@ public sealed class EmailPreviewGalleryTests
     }
 
     [HumansFact]
-    public void LegacyTableStillRenders_AndAContributedSampleSupersedesItsLegacyRow()
+    public void EverySectionsSamples_ShareOneOrdinallySortedList()
     {
-        var withoutContributor = Render();
-        withoutContributor.Previews["en"].Should().Contain(i => i.Id == LegacyId);
+        var model = Render(new StubContributor("zeta-notice"), new StubContributor("alpha-notice"));
 
-        var model = Render(new StubContributor(LegacyId));
-
-        var items = model.Previews["en"];
-        items.Should().ContainSingle(i => i.Id == LegacyId)
-            .Subject.Subject.Should().Be($"Subject {LegacyId}");
-        items.Count.Should().Be(withoutContributor.Previews["en"].Count);
+        model.Previews["en"].Select(i => i.Id).Should().Equal("alpha-notice", "zeta-notice");
     }
 }

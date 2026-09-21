@@ -44,12 +44,12 @@ public sealed class Section : ISection
             services.AddScoped<IEmailTransport, StubEmailTransport>();
         }
 
-        services.AddScoped<IEmailRenderer, EmailRenderer>();
         services.AddSingleton<IEmailBodyComposer, BrandedEmailBodyComposer>();
         services.AddSingleton<EmailPreviewService>();
         services.AddSingleton<IEmailPreviewServiceRead>(sp => sp.GetRequiredService<EmailPreviewService>());
         services.AddSingleton<IEmailPreviewService>(sp => sp.GetRequiredService<EmailPreviewService>());
         services.AddScoped<IEmailMessageFactory, EmailMessageFactory>();
+        services.AddScoped<IEmailPreviewContributor, EmailEmailPreviews>();
         services.AddScoped<IEmailService, OutboxEmailService>();
 
         services.AddScoped<EmailOutboxService>();

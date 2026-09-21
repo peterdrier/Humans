@@ -2,8 +2,8 @@
 
   <!--
     Email's cross-section surface, carved into its own leaf project because most sections
-    that do anything for a human tell them about it by mail: they build a message through
-    IEmailMessageFactory and send it through IEmailService. A section may not reference
+    that do anything for a human tell them about it by mail: they build an EmailMessage in
+    their own section's builder and send it through IEmailService. A section may not reference
     another section's implementation project, so putting these types in a Contracts/
     *folder* inside Humans.Email would leave every one of those callers with no way to name
     them (memory/architecture/section-project-cycle-fix.md — split the upstream section's
@@ -20,13 +20,12 @@
     See Docs/health.md §5.
 
     Everything with no consumer outside the section stays internal: the outbox admin
-    surface (IEmailOutboxService), the renderer, the body composer, the SMTP transport,
+    surface (IEmailOutboxService), the facilitated-message builder, the body composer, the SMTP transport,
     the repository and the entity.
 
     References Humans.Base (IApplicationService, and EmailOutboxStatus, which lives there
-    because Campaigns and Surveys persist it too) and Humans.Users.Contracts, for MembershipTier
-    and MessageCategory — both Users' own vocabulary, named here by IEmailMessageFactory's
-    audience parameters and EmailMessage's Category. That is the enums sitting with their
+    because Campaigns and Surveys persist it too) and Humans.Users.Contracts, for MessageCategory
+    — Users' own vocabulary, named here by EmailMessage's Category. That is the enum sitting with its
     owner, not Email taking a dependency on Users' services.
 
     That leaf-to-leaf edge is acyclic: Humans.Users.Contracts has exactly one

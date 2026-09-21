@@ -4,8 +4,8 @@ namespace Humans.Email.Contracts;
 
 /// <summary>
 /// Transport seam for outbound email — a single entry point. Callers build a
-/// fully-rendered <see cref="EmailMessage"/> via <see cref="IEmailMessageFactory"/>
-/// (typed per message type) and hand it here. This service owns the one shared
+/// fully-rendered <see cref="EmailMessage"/> in their own section's
+/// <c>&lt;Section&gt;Emails</c> builder and hand it here. This service owns the one shared
 /// path: opt-out suppression, unsubscribe headers, branded wrapping, outbox
 /// enqueue, the per-template metric, and immediate-drain — so per-type code never
 /// re-implements (or diverges on) routing policy.

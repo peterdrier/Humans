@@ -10,10 +10,10 @@ namespace Humans.Email;
 /// <remarks>
 /// Public because the boot localization diagnostic discovers section resource markers via
 /// <c>GetExportedTypes()</c>; an internal marker is skipped in silence.
-/// The set is the <c>Email_*</c> subject/body keys. They are *not* the Email admin
-/// pages' copy — those two views carry no localized string at all — they are every
-/// section's transactional email text, and they came here because
-/// <c>EmailRenderer</c>, their one and only renderer, is now a section type (the G5
-/// playbook, step 3b's carve-by-renderer, applied in the direction that moves the renderer).
+/// The set is the three <c>Email_FacilitatedMessage_*</c> keys. They are *not* the Email
+/// admin pages' copy — those two views carry no localized string at all — they are the copy
+/// of the one template this section still renders, the person-to-person relay. Every other
+/// section's transactional text moved into that section's own resx set with its
+/// <c>&lt;Section&gt;Emails</c> builder (peterdrier/Humans#1651).
 /// </remarks>
 public class EmailResource;
