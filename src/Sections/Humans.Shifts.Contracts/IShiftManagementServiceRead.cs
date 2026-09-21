@@ -62,11 +62,6 @@ public interface IShiftManagementServiceRead
 
     /// <summary>
     /// Gets all active shifts for browse page, with optional filtering. Includes full shifts.
-    /// When the query's <see cref="ShiftBrowseQueryFlags.PriorityOnly"/> flag is set, results are
-    /// restricted to shifts whose
-    /// rota is <see cref="ShiftPriority.Important"/> or <see cref="ShiftPriority.Essential"/>,
-    /// or whose rota has any shift where confirmed-signup count is below
-    /// <see cref="ShiftInfo.MinVolunteers"/> (i.e. understaffed).
     /// </summary>
     Task<IReadOnlyList<UrgentShiftInfo>> GetBrowseShiftsAsync(ShiftBrowseQuery query);
 
@@ -148,8 +143,7 @@ public enum ShiftBrowseQueryFlags
     None = 0,
     IncludeAdminOnly = 1,
     IncludeSignups = 2,
-    IncludeHidden = 4,
-    PriorityOnly = 8
+    IncludeHidden = 4
 }
 
 public sealed record ShiftBrowseQuery(
