@@ -22,14 +22,20 @@ Report file: <scratchpad>/steward/<N>-round-<k+1>.md.
    branch. Fetch fresh, work only there
    ([`always-use-worktree`](../../../memory/process/always-use-worktree.md)).
 2. **Count.** Recount spent rounds from the PR (command in SKILL.md). Where the count and
-   the brief disagree, the PR wins; say so in the report. At 5 or more: skip to step 7,
-   which fetches the open threads itself — the trigger line is not the list of open items.
+   the brief disagree, the PR wins; say so in the report. At 5 or more the ceiling binds
+   this wake only if the trigger is itself a round — an automated review finding or a CI
+   failure: skip to step 7, which fetches the open threads itself (the trigger line is not
+   the list of open items). A merge conflict or something Peter asked for is not a round
+   and the ceiling never blocks it: do that work (steps 3 and 6, no trailer, no triage of
+   open findings) and report the ceiling as still standing.
 3. **Merge conflict first.** Merge main into the branch with a merge commit, resolve,
    regenerate generated files with the repo's tooling, never rewrite history. Not a round.
 4. **CI failure.** Read the failed job's log tail once. Rule out a failure that isn't this
    PR's: a test the diff doesn't touch that hit a timeout under runner load, or a check red
    on main too. That gets one re-run (or the next push serves as one) and no commit. A
-   real failure in code the PR touches is a round: fix it.
+   real failure in code the PR touches is a round: fix it — except at 4 spent, where the
+   last commit belongs to the most serious open item: gather the unresolved threads
+   (step 5) first, then choose between them and the failure.
 5. **Findings.** Run the [`/fix`](../fix/SKILL.md) gates on every unresolved thread, both
    repos, and print its triage table into the report file. Fix only what survives and sits
    inside the ceiling table's bar for this round. `gh` where present; otherwise the github
