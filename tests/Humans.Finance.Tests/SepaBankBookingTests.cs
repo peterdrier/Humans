@@ -248,8 +248,9 @@ public class SepaBankBookingTests
                     string.Equals(x.DocumentType, HoldedReconcileDocumentType.LedgerEntry, StringComparison.Ordinal))),
                 Arg.Any<CancellationToken>())
             .ThrowsAsync(new HoldedPermanentException("Holded 400"));
+        var actor = Guid.NewGuid();
 
-        var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
+        var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, actor);
 
         result.Succeeded.Should().BeTrue();
         await _client.Received(1).ReconcileBankMovementAsync(
@@ -257,6 +258,39 @@ public class SepaBankBookingTests
             Arg.Is<IReadOnlyList<HoldedReconcileDocumentRef>>(d =>
                 d.Count == 1 && string.Equals(d[0].DocumentId, "d1", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
+        // The dropped journal-entry remainder is part of this very line, so Holded still reads it
+        // `pending`. Stamping ReconciledAt there would audit the booking as reconciled and drop the
+        // row out of the sweep's pending re-check with the remainder unmatched.
+        await _repo.DidNotReceiveWithAnyArgs().MarkSepaTransferReconciledAsync(
+            default, default, default);
+        await _audit.Received(1).LogAsync(
+            AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
+            Arg.Is<string>(d => d.Contains("RECONCILE PENDING", StringComparison.Ordinal)),
+            actor, _userId, Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task Booking_ReconcileRefusesTheJournalEntry_AndHoldedThenReadsReconciled_Stamps()
+    {
+        // The same fallback, with Holded reporting the line fully reconciled afterwards — the only
+        // thing that may stamp ReconciledAt.
+        SeedOpenDocs(Doc("d1", 10m, 1));
+        _client.ReconcileBankMovementAsync(
+                Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Is<IReadOnlyList<HoldedReconcileDocumentRef>>(d => d.Any(x =>
+                    string.Equals(x.DocumentType, HoldedReconcileDocumentType.LedgerEntry, StringComparison.Ordinal))),
+                Arg.Any<CancellationToken>())
+            .ThrowsAsync(new HoldedPermanentException("Holded 400"));
+        var reads = 0;
+        _client.ListBankMovementsAsync(
+                Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ => (IReadOnlyList<HoldedBankMovementDto>)
+                [Movement(status: reads++ == 0 ? "pending" : "reconciled")]);
+
+        var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
+
+        result.Succeeded.Should().BeTrue();
         await _repo.Received(1).MarkSepaTransferReconciledAsync(
             TransferId, FixedNow, Arg.Any<CancellationToken>());
     }
@@ -488,6 +522,31 @@ public class SepaBankBookingTests
         var generatedAt = Instant.FromUtc(2026, 4, 19, 10, 0);
         var lineDate = new LocalDate(2026, 4, 19);
         SeedRows(Row(TransferId, _userId, bookedAt: FixedNow - Duration.FromDays(1),
+            movementId: MovementId, generatedAt: generatedAt));
+        // The stub honours the requested window, as the live feed does.
+        _client.ListBankMovementsAsync(
+                Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
+                Arg.Any<CancellationToken>())
+            .Returns(ci => ci.ArgAt<LocalDate>(1) <= lineDate
+                ? (IReadOnlyList<HoldedBankMovementDto>)[Movement(status: "reconciled", date: lineDate)]
+                : []);
+
+        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).MarkSepaTransferReconciledAsync(
+            TransferId, FixedNow, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Sweep_ReconcilePendingRow_OlderThanTheFeedWindow_IsStillReadBack()
+    {
+        // The 90-day floor is about matching new transfers. A reconcile-pending row is already
+        // booked against a known line, so the read has to reach that line however old it is —
+        // otherwise a human's later reconcile is never seen and ReconciledAt plus its audit entry
+        // stay missing forever.
+        var generatedAt = FixedNow - Duration.FromDays(200);
+        var lineDate = new LocalDate(2025, 10, 13);
+        SeedRows(Row(TransferId, _userId, bookedAt: FixedNow - Duration.FromDays(199),
             movementId: MovementId, generatedAt: generatedAt));
         // The stub honours the requested window, as the live feed does.
         _client.ListBankMovementsAsync(

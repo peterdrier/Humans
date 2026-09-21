@@ -1144,18 +1144,22 @@ internal sealed class Service(
         var unbooked = rows.Where(r => r.BookedAt is null).ToList();
         if (pending.Count == 0 && unbooked.Count == 0) return;
 
-        // Wide enough to hold every line the sweep could still act on: the first payable day of the
-        // oldest file it still has work for, floored at the feed window — a line older than that is
-        // a human's problem, not a sweep's. Both lists key off GeneratedAt, never BookedAt: a line
-        // may only pay a file generated on or before it (FirstPayableDate), while a booking can land
-        // days later, so a BookedAt window would start *after* the very line a pending row is
-        // waiting to see reconciled and the row would never be stamped.
+        // The invariant: every reconcile-pending row's bank line lies inside the window read for it.
+        // A pending row's line is already known and already booked — it only has to be looked at
+        // again — so its lower bound is its own first payable day with no floor; a row that ages out
+        // of the feed window would otherwise never see a human's later reconcile and would keep
+        // ReconciledAt and its audit entry missing forever. The 90-day floor is about matching *new*
+        // transfers, so it applies to that bound alone. Widening the read cannot widen matching:
+        // UnbookedMatches takes no stale row (GeneratedAt inside the window) and no line dated before
+        // the file, so every line it can act on is inside the floor anyway. Both bounds key off
+        // GeneratedAt, never BookedAt: a line may only pay a file generated on or before it
+        // (FirstPayableDate), while a booking can land days later, so a BookedAt window would start
+        // *after* the very line a pending row is waiting to see reconciled.
         var floor = Today().PlusDays(-FeedWindowDays);
-        var from = unbooked.Concat(pending)
-            .Select(FirstPayableDate)
-            .DefaultIfEmpty(floor)
-            .Min();
-        if (from < floor) from = floor;
+        var matchFrom = unbooked.Select(FirstPayableDate).DefaultIfEmpty(floor).Min();
+        if (matchFrom < floor) matchFrom = floor;
+        var pendingFrom = pending.Select(FirstPayableDate).DefaultIfEmpty(matchFrom).Min();
+        var from = pendingFrom < matchFrom ? pendingFrom : matchFrom;
 
         IReadOnlyList<HoldedBankMovementDto> movements;
         try
@@ -1490,7 +1494,7 @@ internal sealed class Service(
             && !entryRef.StartsWith("unconfirmed:", StringComparison.Ordinal))
             docs.Add(new HoldedReconcileDocumentRef(entryRef, HoldedReconcileDocumentType.LedgerEntry));
 
-        var reconciledAt = await TryReconcileAsync(movement.Id, docs, ct);
+        var reconciledAt = await TryReconcileAsync(movement.Id, movement.Date, docs, ct);
         if (reconciledAt is not null)
             await repo.MarkSepaTransferReconciledAsync(transfer.Id, reconciledAt.Value, ct);
 
@@ -1616,10 +1620,13 @@ internal sealed class Service(
 
     /// <summary>Tells Holded the bank line and the postings are the same money. The journal-entry
     /// document type is the one unconfirmed piece of the API, so a refusal that names it is retried
-    /// with the purchase documents alone; anything still refused leaves the booking standing and the
-    /// row "reconcile pending", which the page shows and the sweep re-checks.</summary>
+    /// with the purchase documents alone — and that retry only stamps when Holded then reports the
+    /// line <c>reconciled</c>, since the dropped remainder can leave it <c>partial</c>. Anything else
+    /// leaves the booking standing and the row "reconcile pending", which the page shows and the
+    /// sweep re-checks.</summary>
     private async Task<Instant?> TryReconcileAsync(
-        string movementId, List<HoldedReconcileDocumentRef> docs, CancellationToken ct)
+        string movementId, LocalDate movementDate, List<HoldedReconcileDocumentRef> docs,
+        CancellationToken ct)
     {
         if (docs.Count == 0) return null;
 
@@ -1642,7 +1649,22 @@ internal sealed class Service(
         {
             await client.ReconcileBankMovementAsync(
                 sepa.Value.TreasuryAccountId, movementId, purchasesOnly, ct);
-            return clock.GetCurrentInstant();
+
+            // The dropped journal entry is a real remainder of this very line, so Holded accepting
+            // the purchase documents alone can leave the line `partial`. Stamping ReconciledAt there
+            // would audit it as reconciled and drop the row out of the sweep's pending re-check,
+            // hiding the unmatched remainder. ReconciledAt means Holded says `reconciled` — so ask
+            // it; anything else (including a feed the re-read cannot get) stays reconcile pending.
+            var after = await client.ListBankMovementsAsync(
+                sepa.Value.TreasuryAccountId, movementDate, movementDate, ct);
+            var line = after.FirstOrDefault(
+                m => string.Equals(m.Id, movementId, StringComparison.Ordinal));
+            if (line is not null && IsReconciled(line)) return clock.GetCurrentInstant();
+
+            logger.LogInformation(
+                "Holded took the purchase documents for bank movement {MovementId} but the line reads "
+                + "{Status}; the transfer stays reconcile pending.", movementId, line?.Status ?? "gone");
+            return null;
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {

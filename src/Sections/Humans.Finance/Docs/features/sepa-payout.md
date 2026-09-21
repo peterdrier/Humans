@@ -115,8 +115,10 @@ same `Service.BookSepaTransferAsync(transferId, bankMovementId, actorUserId)`
    bank movement id land on the row before anything is reconciled — the local save is the cheap
    write, and losing it after Holded already took the money was the original bug
    (nobodies-collective/Humans#1185). The line is then reconciled in Holded against the paid
-   documents and the journal entry; a refused `dailyledger` type retries with the documents alone.
-   Reconcile success stamps `ReconciledAt`; failure leaves it null and the booking still stands.
+   documents and the journal entry; a refused `dailyledger` type retries with the documents alone,
+   and that retry drops a remainder Holded may leave the line `partial` against — so it stamps only
+   if the line then reads `reconciled` on the feed. `ReconciledAt` means Holded says `reconciled`;
+   anything else leaves it null, reconcile-pending, and the booking still stands.
    If the save itself fails after Holded accepted the postings, the money that moved is audited
    (`PARTIAL`) and the row stays unbooked — the next attempt posts only what is still missing.
 9. One `AuditAction.SepaPayoutTransferBooked` entry follows, naming every Holded id, whether the run
@@ -185,7 +187,10 @@ candidate file, matches lines to transfers with the same rules as the button, an
 match. A line matching no transfer, or matching more than one, is skipped and surfaced on
 `/Finance/Sepa`'s "bank lines needing a human" panel. The sweep also retries the reconcile for every
 row still `ReconcilePending`, by checking whether the stored bank line now reads `reconciled` in
-Holded. One bad line or one Holded exception never aborts the rest of the run.
+Holded. Every reconcile-pending row's line lies inside the window read for it: the read's lower
+bound drops to the oldest pending row's first payable day with no 90-day floor, so a pending row
+never ages out of its own re-check. The floor still bounds *matching*, which takes no row generated
+outside the feed window anyway. One bad line or one Holded exception never aborts the rest of the run.
 
 ## The file
 
