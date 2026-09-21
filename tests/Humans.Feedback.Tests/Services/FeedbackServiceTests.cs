@@ -242,7 +242,7 @@ public sealed class FeedbackServiceTests
 
         _emailMessages.Received(1).FeedbackResponse(
             "reporter@test.com", "Reporter", "Test", "Looking into it",
-            $"/Feedback/{report.Id}", "en");
+            "en");
         await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
         await _notificationService.Received(1).SendAsync(
             NotificationSource.FeedbackResponse,

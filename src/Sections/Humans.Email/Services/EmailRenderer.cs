@@ -143,13 +143,13 @@ internal sealed class EmailRenderer(
     private string BuildSurveyAnswerUrl(string token)
         => $"{_settings.BaseUrl.TrimEnd('/')}/Survey/Answer?t={Uri.EscapeDataString(token)}";
 
-    public EmailContent RenderFeedbackResponse(string userName, string originalDescription, string responseMessage, string reportLink, string? culture = null)
+    public EmailContent RenderFeedbackResponse(string userName, string originalDescription, string responseMessage, string? culture = null)
         => RenderLocalized(culture, () =>
         {
             var responseHtml = SanitizedMarkdownRenderer.Render(responseMessage);
             return new EmailContent(
                 L("Email_FeedbackResponse_Subject"),
-                Lf("Email_FeedbackResponse_Body", HtmlEncode(userName), HtmlEncode(originalDescription), responseHtml, HtmlEncode(reportLink)));
+                Lf("Email_FeedbackResponse_Body", HtmlEncode(userName), HtmlEncode(originalDescription), responseHtml));
         });
 
     public EmailContent RenderIssueComment(string displayName, string issueTitle, string commentContent, string issueLink, string? culture = null)

@@ -95,9 +95,9 @@ internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessa
             "survey_reminder", MessageCategory.System);
     }
 
-    public EmailMessage FeedbackResponse(string userEmail, string userName, string originalDescription, string responseMessage, string reportLink, string? culture = null)
+    public EmailMessage FeedbackResponse(string userEmail, string userName, string originalDescription, string responseMessage, string? culture = null)
     {
-        var content = renderer.RenderFeedbackResponse(userName, originalDescription, responseMessage, reportLink, culture);
+        var content = renderer.RenderFeedbackResponse(userName, originalDescription, responseMessage, culture);
         return new EmailMessage(userEmail, userName, content.Subject, content.HtmlBody,
             "feedback_response", MessageCategory.System);
     }

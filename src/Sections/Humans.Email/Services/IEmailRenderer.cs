@@ -84,7 +84,7 @@ internal interface IEmailRenderer
     /// <summary>
     /// Feedback response notification.
     /// </summary>
-    EmailContent RenderFeedbackResponse(string userName, string originalDescription, string responseMessage, string reportLink, string? culture = null);
+    EmailContent RenderFeedbackResponse(string userName, string originalDescription, string responseMessage, string? culture = null);
 
     /// <summary>
     /// Issue comment notification — sent to the issue reporter when a non-reporter

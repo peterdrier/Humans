@@ -60,7 +60,6 @@ public sealed class EmailRendererTests
             "Daniel <Admin>",
             "The <b>lights</b> were off",
             "**Fixed.**\r\n\r\n[Details](https://example.com)\r\n\r\n![Shot](https://example.com/shot.png)\r\n<script>alert('x')</script>",
-            "/Feedback/12",
             "en");
 
         content.HtmlBody.Should().Contain("Daniel &lt;Admin&gt;");
@@ -272,7 +271,7 @@ public sealed class EmailRendererTests
             ["Email_SurveyInvitation_Body"] =
                 "<h2>{1}</h2><p>Hi {0},</p>{3}<p><a href=\"{2}\">Open the survey</a></p>",
             ["Email_FeedbackResponse_Body"] =
-                "<p>Hi {0},</p><blockquote>{1}</blockquote>{2}<p><a href=\"{3}\">Open the report</a></p>",
+                "<p>Hi {0},</p><blockquote>{1}</blockquote>{2}",
             ["Email_IssueComment_Subject"] = "New comment on {0}",
             ["Email_IssueComment_Body"] =
                 "<p>Hi {0},</p><h2>{1}</h2>{2}<p><a href=\"{3}\">Open the issue</a></p>",
