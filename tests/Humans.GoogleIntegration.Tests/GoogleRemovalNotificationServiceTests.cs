@@ -19,7 +19,7 @@ public sealed class GoogleRemovalNotificationServiceTests
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
-    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
+    private readonly GoogleIntegrationEmails _emailMessages = TestGoogleIntegrationEmails.Create();
     private readonly GoogleRemovalNotificationService _service;
 
     public GoogleRemovalNotificationServiceTests()
@@ -46,15 +46,8 @@ public sealed class GoogleRemovalNotificationServiceTests
             "some-group@nobodies.team",
             SyncRemovalReason.Reconciliation, Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.DidNotReceive().GoogleGroupRemovalLossOfAccess(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>());
-        _emailMessages.DidNotReceive().GoogleDriveRemovalLossOfAccess(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>());
-        _emailMessages.DidNotReceive().GoogleAccessRemovalSecondaryCleanup(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>());
+        // The builder is sealed with no interface, so the sent message is the assertion surface.
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
     }
 
     [HumansFact]
@@ -88,14 +81,14 @@ public sealed class GoogleRemovalNotificationServiceTests
             "some-group@nobodies.team",
             SyncRemovalReason.EmailRotation, Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.Received(1).GoogleAccessRemovalSecondaryCleanup(
-            "old@nobodies.team",
-            "Alice",
-            "new@nobodies.team",
-            Arg.Any<string?>());
-        _emailMessages.DidNotReceive().GoogleGroupRemovalLossOfAccess(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>());
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "google_access_removal_secondary_cleanup"
+                && m.RecipientEmail == "old@nobodies.team" && m.RecipientName == "Alice"
+                && m.HtmlBody.Contains("new@nobodies.team", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+        await _emailService.DidNotReceive().SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "google_group_removal_loss_of_access"),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -127,19 +120,18 @@ public sealed class GoogleRemovalNotificationServiceTests
             "my-group@nobodies.team",
             SyncRemovalReason.Reconciliation, Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.Received(1).GoogleAccessRemovalSecondaryCleanup(
-            "old@nobodies.team",
-            "Alice",
-            "new@nobodies.team",
-            "fr");
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "google_access_removal_secondary_cleanup"
+                && m.RecipientEmail == "old@nobodies.team" && m.RecipientName == "Alice"
+                && m.HtmlBody.Contains("new@nobodies.team", StringComparison.Ordinal)
+                && m.Subject.EndsWith("#fr", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
 
-        // Variant 1 sub-templates must NOT be invoked.
-        _emailMessages.DidNotReceive().GoogleGroupRemovalLossOfAccess(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>());
-        _emailMessages.DidNotReceive().GoogleDriveRemovalLossOfAccess(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>());
+        // Variant 1 sub-templates must NOT be sent.
+        await _emailService.DidNotReceive().SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "google_group_removal_loss_of_access"
+                || m.TemplateName == "google_drive_removal_loss_of_access"),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -167,15 +159,16 @@ public sealed class GoogleRemovalNotificationServiceTests
             "comms@nobodies.team",
             SyncRemovalReason.Reconciliation, Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.Received(1).GoogleGroupRemovalLossOfAccess(
-            "primary@nobodies.team",
-            "Bob",
-            "Comms Team",
-            "comms@nobodies.team",
-            "es");
-        _emailMessages.DidNotReceive().GoogleAccessRemovalSecondaryCleanup(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>());
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "google_group_removal_loss_of_access"
+                && m.RecipientEmail == "primary@nobodies.team" && m.RecipientName == "Bob"
+                && m.HtmlBody.Contains("Comms Team", StringComparison.Ordinal)
+                && m.HtmlBody.Contains("comms@nobodies.team", StringComparison.Ordinal)
+                && m.Subject.EndsWith("#es", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+        await _emailService.DidNotReceive().SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "google_access_removal_secondary_cleanup"),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -203,14 +196,15 @@ public sealed class GoogleRemovalNotificationServiceTests
             "https://drive.google.com/drive/folders/abc",
             SyncRemovalReason.Reconciliation, Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.Received(1).GoogleDriveRemovalLossOfAccess(
-            "only@nobodies.team",
-            "Carol",
-            "Public Resources",
-            "ca");
-        _emailMessages.DidNotReceive().GoogleGroupRemovalLossOfAccess(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>());
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "google_drive_removal_loss_of_access"
+                && m.RecipientEmail == "only@nobodies.team" && m.RecipientName == "Carol"
+                && m.HtmlBody.Contains("Public Resources", StringComparison.Ordinal)
+                && m.Subject.EndsWith("#ca", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+        await _emailService.DidNotReceive().SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "google_group_removal_loss_of_access"),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -238,12 +232,13 @@ public sealed class GoogleRemovalNotificationServiceTests
             resourceIdentifier: "fallback@nobodies.team",
             SyncRemovalReason.Reconciliation, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.Received(1).GoogleGroupRemovalLossOfAccess(
-            "dee@nobodies.team",
-            "Dee",
-            "fallback@nobodies.team", // displayName falls back to identifier
-            "fallback@nobodies.team",
-            "en");
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "google_group_removal_loss_of_access"
+                && m.RecipientEmail == "dee@nobodies.team" && m.RecipientName == "Dee"
+                // displayName falls back to the identifier, so it appears twice in the body
+                && m.HtmlBody.Contains("<p>fallback@nobodies.team</p><p>fallback@nobodies.team</p>", StringComparison.Ordinal)
+                && m.Subject.EndsWith("#en", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

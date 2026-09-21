@@ -5,6 +5,7 @@ using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.GoogleIntegration.Services;
+using Humans.GoogleIntegration.Tests.Infrastructure;
 using Humans.Base.Enums;
 using NodaTime;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -102,7 +103,7 @@ public class EmailProvisioningServiceTests
         var userEmail = Substitute.For<IUserEmailService>();
         var teamService = Substitute.For<ITeamService>();
         var email = Substitute.For<IEmailService>();
-        var emailMessages = Substitute.For<IEmailMessageFactory>();
+        var emailMessages = TestGoogleIntegrationEmails.Create();
         var notify = Substitute.For<INotificationEmitter>();
         var audit = Substitute.For<IAuditLogService>();
 

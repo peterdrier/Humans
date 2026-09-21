@@ -20,34 +20,6 @@ internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessa
             "facilitated_message", MessageCategory.FacilitatedMessages, ReplyTo: replyTo);
     }
 
-    public EmailMessage WorkspaceCredentials(string recoveryEmail, string userName, string workspaceEmail, string tempPassword, string? culture = null)
-    {
-        var content = renderer.RenderWorkspaceCredentials(userName, workspaceEmail, tempPassword, culture);
-        return new EmailMessage(recoveryEmail, userName, content.Subject, content.HtmlBody,
-            TimeSensitiveTemplates.WorkspaceCredentials);
-    }
-
-    public EmailMessage GoogleGroupRemovalLossOfAccess(string removedEmail, string userName, string groupName, string groupEmail, string? culture = null)
-    {
-        var content = renderer.RenderGoogleGroupRemovalLossOfAccess(userName, groupName, groupEmail, culture);
-        return new EmailMessage(removedEmail, userName, content.Subject, content.HtmlBody,
-            "google_group_removal_loss_of_access", MessageCategory.System);
-    }
-
-    public EmailMessage GoogleDriveRemovalLossOfAccess(string removedEmail, string userName, string folderName, string? culture = null)
-    {
-        var content = renderer.RenderGoogleDriveRemovalLossOfAccess(userName, folderName, culture);
-        return new EmailMessage(removedEmail, userName, content.Subject, content.HtmlBody,
-            "google_drive_removal_loss_of_access", MessageCategory.System);
-    }
-
-    public EmailMessage GoogleAccessRemovalSecondaryCleanup(string removedEmail, string userName, string currentGoogleEmail, string? culture = null)
-    {
-        var content = renderer.RenderGoogleAccessRemovalSecondaryCleanup(userName, removedEmail, currentGoogleEmail, culture);
-        return new EmailMessage(removedEmail, userName, content.Subject, content.HtmlBody,
-            "google_access_removal_secondary_cleanup", MessageCategory.System);
-    }
-
     public EmailMessage WorkgroupNotice(WorkgroupNoticeRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);

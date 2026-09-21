@@ -37,4 +37,57 @@
   <data name="GoogleAccounts_ResetPassword" xml:space="preserve">
     <value>Restableix contrasenya</value>
   </data>
+  <data name="GoogleIntegration_Email_WorkspaceCredentials_Subject" xml:space="preserve">
+    <value>El teu compte @nobodies.team està llest</value>
+  </data>
+  <data name="GoogleIntegration_Email_WorkspaceCredentials_Body" xml:space="preserve">
+    <value>&lt;h2&gt;El teu compte @nobodies.team està llest&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;S’ha creat el teu compte de Google Workspace:&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Usuari:&lt;/strong&gt; {1}&lt;br/&gt;
+&lt;strong&gt;Contrasenya temporal:&lt;/strong&gt; {2}&lt;/p&gt;
+&lt;p&gt;Inicia la sessió a &lt;a href="https://mail.google.com/"&gt;mail.google.com&lt;/a&gt; i se’t demanarà canviar la contrasenya en el primer inici de sessió.&lt;/p&gt;
+&lt;p&gt;La nostra organització té activada l’autenticació en dos passos (2FA), així que també hauràs de configurar un segon factor (com ara un telèfon o una app d’autenticació) durant l’inici de sessió.&lt;/p&gt;
+&lt;p&gt;L’equip de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = workspace email, {2} = temporary password</comment>
+  </data>
+  <data name="GoogleIntegration_Email_GoogleGroupRemoval_LossOfAccess_Subject" xml:space="preserve">
+    <value>Has estat tret del grup {0}</value>
+    <comment>{0} = group email</comment>
+  </data>
+  <data name="GoogleIntegration_Email_GoogleGroupRemoval_LossOfAccess_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Accés al grup retirat&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;S'ha retirat el teu accés al Grup de Google &lt;strong&gt;{1}&lt;/strong&gt; (&lt;code&gt;{2}&lt;/code&gt;).&lt;/p&gt;
+&lt;p&gt;Aquesta acció ha estat automàtica segons els teus equips i rols actuals a Nobodies. Ja no rebràs els missatges enviats a aquest grup.&lt;/p&gt;
+&lt;p&gt;Si creus que això és un error, posa't en contacte amb la persona coordinadora del teu equip.&lt;/p&gt;
+&lt;p&gt;L'equip de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = group display name, {2} = group email</comment>
+  </data>
+  <data name="GoogleIntegration_Email_GoogleDriveRemoval_LossOfAccess_Subject" xml:space="preserve">
+    <value>S'ha retirat el teu accés a {0}</value>
+    <comment>{0} = folder name</comment>
+  </data>
+  <data name="GoogleIntegration_Email_GoogleDriveRemoval_LossOfAccess_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Accés a Drive retirat&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;S'ha retirat el teu accés a la carpeta compartida &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;Aquesta acció ha estat automàtica segons els teus equips i rols actuals a Nobodies.&lt;/p&gt;
+&lt;p&gt;Si creus que això és un error, posa't en contacte amb la persona coordinadora del teu equip.&lt;/p&gt;
+&lt;p&gt;L'equip de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = folder name</comment>
+  </data>
+  <data name="GoogleIntegration_Email_GoogleAccessRemoval_SecondaryCleanup_Subject" xml:space="preserve">
+    <value>{0} ja no té accés als grups de Nobodies</value>
+    <comment>{0} = removed email</comment>
+  </data>
+  <data name="GoogleIntegration_Email_GoogleAccessRemoval_SecondaryCleanup_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Correu secundari netejat&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;L'adreça &lt;strong&gt;{1}&lt;/strong&gt; s'ha retirat dels grups i carpetes compartides de Nobodies.&lt;/p&gt;
+&lt;p&gt;La teva adreça principal a Nobodies és ara &lt;strong&gt;{2}&lt;/strong&gt;, i el teu accés als grups i carpetes compartides a través d'aquesta adreça no ha canviat. Aquest missatge serveix només perquè tinguis constància de l'adreça que s'ha netejat.&lt;/p&gt;
+&lt;p&gt;Si creus que {1} hauria de continuar tenint accés, posa't en contacte amb la persona coordinadora del teu equip.&lt;/p&gt;
+&lt;p&gt;L'equip de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = removed email, {2} = current Google email</comment>
+  </data>
 </root>

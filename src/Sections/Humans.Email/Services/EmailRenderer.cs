@@ -52,11 +52,6 @@ internal sealed class EmailRenderer(
                 Lf("Email_FacilitatedMessage_Body", HtmlEncode(recipientName), HtmlEncode(senderName), sanitizedMessage, contactInfoHtml));
         });
 
-    public EmailContent RenderWorkspaceCredentials(string userName, string workspaceEmail, string tempPassword, string? culture = null)
-        => RenderLocalized(culture, () => new EmailContent(
-            L("Email_WorkspaceCredentials_Subject"),
-            Lf("Email_WorkspaceCredentials_Body", HtmlEncode(userName), HtmlEncode(workspaceEmail), HtmlEncode(tempPassword))));
-
     private string L(string key) => localizer[key].Value;
 
     private string Lf(string key, params object[] args) =>
@@ -74,35 +69,6 @@ internal sealed class EmailRenderer(
     {
         return System.Net.WebUtility.HtmlEncode(text);
     }
-
-    public EmailContent RenderGoogleGroupRemovalLossOfAccess(
-        string userName,
-        string groupName,
-        string groupEmail,
-        string? culture = null)
-        => RenderLocalized(culture, () => new EmailContent(
-            Lf("Email_GoogleGroupRemoval_LossOfAccess_Subject", HtmlEncode(groupEmail)),
-            Lf("Email_GoogleGroupRemoval_LossOfAccess_Body",
-                HtmlEncode(userName), HtmlEncode(groupName), HtmlEncode(groupEmail))));
-
-    public EmailContent RenderGoogleDriveRemovalLossOfAccess(
-        string userName,
-        string folderName,
-        string? culture = null)
-        => RenderLocalized(culture, () => new EmailContent(
-            Lf("Email_GoogleDriveRemoval_LossOfAccess_Subject", HtmlEncode(folderName)),
-            Lf("Email_GoogleDriveRemoval_LossOfAccess_Body",
-                HtmlEncode(userName), HtmlEncode(folderName))));
-
-    public EmailContent RenderGoogleAccessRemovalSecondaryCleanup(
-        string userName,
-        string removedEmail,
-        string currentGoogleEmail,
-        string? culture = null)
-        => RenderLocalized(culture, () => new EmailContent(
-            Lf("Email_GoogleAccessRemoval_SecondaryCleanup_Subject", HtmlEncode(removedEmail)),
-            Lf("Email_GoogleAccessRemoval_SecondaryCleanup_Body",
-                HtmlEncode(userName), HtmlEncode(removedEmail), HtmlEncode(currentGoogleEmail))));
 
     public EmailContent RenderWorkgroupNotice(WorkgroupNoticeRequest request)
         => RenderLocalized(request.Culture, () =>

@@ -12,7 +12,7 @@ internal sealed class GoogleRemovalNotificationService(
     IUserEmailService userEmailService,
     IUserServiceRead userService,
     IEmailService emailService,
-    IEmailMessageFactory emailMessages,
+    GoogleIntegrationEmails emailMessages,
     ILogger<GoogleRemovalNotificationService> logger) : IGoogleRemovalNotificationService
 {
     /// <inheritdoc />

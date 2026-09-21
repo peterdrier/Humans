@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Data;
@@ -62,6 +63,11 @@ public sealed class Section : ISection
         // Google columns on audit_log (nobodies-collective/Humans#1083).
         services.AddScoped<IGoogleSyncHistoryMigrationService, GoogleSyncHistoryMigrationService>();
         services.AddScoped<ISyncSettingsService, SyncSettingsService>();
+        // GoogleIntegration owns its email copy and its gallery samples; Email keeps the
+        // mechanics (memory/architecture/email-templates-live-in-sender.md).
+        services.AddScoped<GoogleIntegrationEmails>();
+        services.AddScoped<IEmailPreviewContributor, GoogleIntegrationEmailPreviews>();
+
         services.AddScoped<IEmailProvisioningService, EmailProvisioningService>();
         services.AddScoped<IGoogleSyncOutboxService, GoogleSyncOutboxService>();
         services.AddScoped<IGoogleAdminService, GoogleAdminService>();

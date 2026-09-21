@@ -17,7 +17,7 @@ internal sealed class EmailProvisioningService(
     IUserEmailService userEmailService,
     ITeamServiceRead teamService,
     IEmailService emailService,
-    IEmailMessageFactory emailMessages,
+    GoogleIntegrationEmails emailMessages,
     INotificationEmitter notificationService,
     IAuditLogService auditLogService,
     ILogger<EmailProvisioningService> logger) : IEmailProvisioningService

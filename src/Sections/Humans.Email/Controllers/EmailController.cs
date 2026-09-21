@@ -155,12 +155,6 @@ internal sealed class EmailController(
             r.RenderFacilitatedMessage(c.Name, "Alex Firestone", FacilitatedMessageSampleText, true, "alex@example.com", c.Culture)),
         (r, c) => BuildPreviewItem("facilitated-message-anon", "Facilitated Message (without contact info)", c.Email,
             r.RenderFacilitatedMessage(c.Name, "Alex Firestone", FacilitatedMessageSampleText, false, null, c.Culture)),
-        (r, c) => BuildPreviewItem("google-group-removal-loss", "Google Group Removal — Loss of Access", c.Email,
-            r.RenderGoogleGroupRemovalLossOfAccess(c.Name, "Art Collective", "art-collective@nobodies.team", c.Culture)),
-        (r, c) => BuildPreviewItem("google-drive-removal-loss", "Google Drive Removal — Loss of Access", c.Email,
-            r.RenderGoogleDriveRemovalLossOfAccess(c.Name, "Art Collective Shared Drive", c.Culture)),
-        (r, c) => BuildPreviewItem("google-removal-secondary-cleanup", "Google Access Removal — Secondary Email Cleanup", "old-" + c.Email,
-            r.RenderGoogleAccessRemovalSecondaryCleanup(c.Name, "old-" + c.Email, c.Email, c.Culture)),
     ];
 
     private static EmailPreviewItem BuildPreviewItem(string id, string name, string recipient, EmailContent content) => new()

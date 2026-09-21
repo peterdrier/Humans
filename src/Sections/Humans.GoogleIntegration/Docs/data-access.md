@@ -80,6 +80,20 @@ No repository. Wraps `IGoogleAdminService` + `IUserEmailService` +
 `IAuditLogService` to provision Google Workspace mailboxes. No direct DB
 access, no cache.
 
+### GoogleIntegrationEmails (Scoped, internal)
+
+No repository. Pure builder — reads `GoogleIntegrationResource` (via
+`IStringLocalizer<GoogleIntegrationResource>`), writes nothing. Returns
+`EmailMessage` values for `EmailProvisioningService` and
+`GoogleRemovalNotificationService` to pass to `IEmailService.SendAsync`.
+No DB access, no cache.
+
+### GoogleIntegrationEmailPreviews (Scoped)
+
+No repository. Read-only gallery contributor (`IEmailPreviewContributor`,
+`Section.cs:68`) — builds one sample per template via
+`GoogleIntegrationEmails` for `/Email/EmailPreview`. No DB access, no cache.
+
 ### SyncSettingsService (Scoped)
 
 Repository: `ISyncSettingsRepository`.

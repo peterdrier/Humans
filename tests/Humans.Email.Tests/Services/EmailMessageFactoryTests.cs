@@ -46,15 +46,6 @@ public sealed class EmailMessageFactoryTests
     }
 
     [HumansFact]
-    public void GoogleGroupRemoval_StampsSystem()
-    {
-        var msg = _factory.GoogleGroupRemovalLossOfAccess("a@x.com", "Alice", "Group", "g@x.com", "en");
-
-        msg.TemplateName.Should().Be("google_group_removal_loss_of_access");
-        msg.Category.Should().Be(MessageCategory.System);
-    }
-
-    [HumansFact]
     public void WorkgroupNotice_StampsGovernanceAndRecipient()
     {
         var request = new WorkgroupNoticeRequest(

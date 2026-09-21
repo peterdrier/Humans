@@ -37,4 +37,57 @@
   <data name="GoogleAccounts_ResetPassword" xml:space="preserve">
     <value>Reimposta password</value>
   </data>
+  <data name="GoogleIntegration_Email_WorkspaceCredentials_Subject" xml:space="preserve">
+    <value>Il tuo account @nobodies.team è pronto</value>
+  </data>
+  <data name="GoogleIntegration_Email_WorkspaceCredentials_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Il tuo account @nobodies.team è pronto&lt;/h2&gt;
+&lt;p&gt;Ciao {0},&lt;/p&gt;
+&lt;p&gt;Il tuo account Google Workspace è stato creato:&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Nome utente:&lt;/strong&gt; {1}&lt;br/&gt;
+&lt;strong&gt;Password temporanea:&lt;/strong&gt; {2}&lt;/p&gt;
+&lt;p&gt;Accedi su &lt;a href="https://mail.google.com/"&gt;mail.google.com&lt;/a&gt; — ti verrà chiesto di cambiare la password al primo accesso.&lt;/p&gt;
+&lt;p&gt;La nostra organizzazione ha l'autenticazione a due fattori (2FA) attivata. Dovrai anche configurare un secondo fattore (come un telefono o un'app di autenticazione) durante l'accesso.&lt;/p&gt;
+&lt;p&gt;Il team di Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = workspace email, {2} = temporary password</comment>
+  </data>
+  <data name="GoogleIntegration_Email_GoogleGroupRemoval_LossOfAccess_Subject" xml:space="preserve">
+    <value>Sei stato rimosso dal gruppo {0}</value>
+    <comment>{0} = group email</comment>
+  </data>
+  <data name="GoogleIntegration_Email_GoogleGroupRemoval_LossOfAccess_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Accesso al gruppo rimosso&lt;/h2&gt;
+&lt;p&gt;Ciao {0},&lt;/p&gt;
+&lt;p&gt;Il tuo accesso al Gruppo Google &lt;strong&gt;{1}&lt;/strong&gt; (&lt;code&gt;{2}&lt;/code&gt;) è stato rimosso.&lt;/p&gt;
+&lt;p&gt;Questa è stata un'azione automatica basata sui tuoi attuali team e ruoli in Nobodies. Non riceverai più i messaggi inviati a questo gruppo.&lt;/p&gt;
+&lt;p&gt;Se pensi che si tratti di un errore, contatta la persona coordinatrice del tuo team.&lt;/p&gt;
+&lt;p&gt;Il team di Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = group display name, {2} = group email</comment>
+  </data>
+  <data name="GoogleIntegration_Email_GoogleDriveRemoval_LossOfAccess_Subject" xml:space="preserve">
+    <value>Il tuo accesso a {0} è stato rimosso</value>
+    <comment>{0} = folder name</comment>
+  </data>
+  <data name="GoogleIntegration_Email_GoogleDriveRemoval_LossOfAccess_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Accesso a Drive rimosso&lt;/h2&gt;
+&lt;p&gt;Ciao {0},&lt;/p&gt;
+&lt;p&gt;Il tuo accesso alla cartella condivisa &lt;strong&gt;{1}&lt;/strong&gt; è stato rimosso.&lt;/p&gt;
+&lt;p&gt;Questa è stata un'azione automatica basata sui tuoi attuali team e ruoli in Nobodies.&lt;/p&gt;
+&lt;p&gt;Se pensi che si tratti di un errore, contatta la persona coordinatrice del tuo team.&lt;/p&gt;
+&lt;p&gt;Il team di Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = folder name</comment>
+  </data>
+  <data name="GoogleIntegration_Email_GoogleAccessRemoval_SecondaryCleanup_Subject" xml:space="preserve">
+    <value>{0} non ha più accesso ai gruppi di Nobodies</value>
+    <comment>{0} = removed email</comment>
+  </data>
+  <data name="GoogleIntegration_Email_GoogleAccessRemoval_SecondaryCleanup_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Email secondaria ripulita&lt;/h2&gt;
+&lt;p&gt;Ciao {0},&lt;/p&gt;
+&lt;p&gt;L'indirizzo &lt;strong&gt;{1}&lt;/strong&gt; è stato rimosso dai gruppi e dalle cartelle condivise di Nobodies.&lt;/p&gt;
+&lt;p&gt;Il tuo indirizzo principale di Nobodies ora è &lt;strong&gt;{2}&lt;/strong&gt;, e il tuo accesso ai gruppi e alle cartelle condivise tramite quell'indirizzo è invariato. Questo messaggio serve solo a darti traccia dell'indirizzo che è stato ripulito.&lt;/p&gt;
+&lt;p&gt;Se pensi che {1} dovesse ancora avere accesso, contatta la persona coordinatrice del tuo team.&lt;/p&gt;
+&lt;p&gt;Il team di Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = removed email, {2} = current Google email</comment>
+  </data>
 </root>

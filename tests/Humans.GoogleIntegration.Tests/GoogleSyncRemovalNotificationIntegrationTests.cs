@@ -35,7 +35,7 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
     private readonly ISyncSettingsService _syncSettingsService = Substitute.For<ISyncSettingsService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
-    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
+    private readonly GoogleIntegrationEmails _emailMessages = TestGoogleIntegrationEmails.Create();
     private readonly RecordingGoogleGroupSyncScheduler _syncScheduler = new();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 4, 12, 0));
 
@@ -128,17 +128,17 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
 
         await _syncService.ReconcileOneAsync(TestGroupEmail, SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.Received(1).GoogleAccessRemovalSecondaryCleanup(
-            removedEmail,
-            "Alice",
-            primaryEmail,
-            "es");
-        _emailMessages.DidNotReceive().GoogleGroupRemovalLossOfAccess(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>());
-        _emailMessages.DidNotReceive().GoogleDriveRemovalLossOfAccess(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>());
+        // The builder is sealed with no interface, so the sent message is the assertion surface.
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "google_access_removal_secondary_cleanup"
+                && m.RecipientEmail == removedEmail && m.RecipientName == "Alice"
+                && m.HtmlBody.Contains(primaryEmail, StringComparison.Ordinal)
+                && m.Subject.EndsWith("#es", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+        await _emailService.DidNotReceive().SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "google_group_removal_loss_of_access"
+                || m.TemplateName == "google_drive_removal_loss_of_access"),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -157,12 +157,7 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
 
         await _syncService.ReconcileOneAsync(TestGroupEmail, SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.DidNotReceive().GoogleGroupRemovalLossOfAccess(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>());
-        _emailMessages.DidNotReceive().GoogleAccessRemovalSecondaryCleanup(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>());
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
     }
 
     private void StageGroupResource()

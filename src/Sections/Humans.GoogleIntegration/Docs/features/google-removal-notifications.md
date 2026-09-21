@@ -112,7 +112,7 @@ IGoogleGroupSync group membership reconciliation
   → on success: GoogleRemovalNotificationService.NotifyRemovalAsync
      → orphan check
      → variant selection
-     → IEmailService.SendAsync(IEmailMessageFactory.GoogleGroupRemovalLossOfAccess / GoogleDriveRemovalLossOfAccess / GoogleAccessRemovalSecondaryCleanup) → OutboxEmailService writes the row (MessageCategory.System)
+     → IEmailService.SendAsync(GoogleIntegrationEmails.GoogleGroupRemovalLossOfAccess / GoogleDriveRemovalLossOfAccess / GoogleAccessRemovalSecondaryCleanup) → OutboxEmailService writes the row (MessageCategory.System)
 
 GoogleWorkspaceSyncService.RemoveUserFromDriveAsync (Drive gateway)
   → IGoogleDrivePermissionsClient delete
