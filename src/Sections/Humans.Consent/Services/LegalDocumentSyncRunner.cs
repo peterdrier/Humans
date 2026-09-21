@@ -16,7 +16,7 @@ namespace Humans.Consent.Services;
 internal sealed class LegalDocumentSyncRunner(
     ILegalDocumentSyncService syncService,
     IEmailService emailService,
-    IEmailMessageFactory emailMessages,
+    ConsentEmails emailMessages,
     ITeamServiceRead teamService,
     IUserServiceRead userService,
     IConsentRepository consentRepository,

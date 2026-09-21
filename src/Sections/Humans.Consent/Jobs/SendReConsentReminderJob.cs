@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Base.Interfaces;
 using Humans.Base.Configuration;
+using Humans.Consent.Services;
 using Humans.Consent.Contracts;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
@@ -24,9 +25,10 @@ namespace Humans.Consent.Jobs;
 /// Consent owns it: the reminder exists to close a re-consent gap, the required-version set
 /// it mails about is <see cref="ILegalDocumentSyncServiceRead"/>'s, and the job id is
 /// <c>consent-reconsent-reminders</c>. What it reads from Governance and Users is the
-/// audience and the display data, both through their read interfaces. It is <c>public</c>
-/// and sits under <c>Jobs/</c> because Shell names the concrete type at registration and
-/// HUM0034 makes every other public type in a section an error.
+/// audience and the display data, both through their read interfaces. It sits under
+/// <c>Jobs/</c> and is internal: only Consent's own <c>Section.cs</c> and
+/// <c>SectionJobs.cs</c> name the concrete type, and Shell schedules it through
+/// <c>ISectionJobs</c>.
 ///
 /// The cooldown stamp is a Users column, set through Users' own service, so the class is
 /// marked <see cref="CrossSectionWriteAttribute"/> rather than downgraded to
@@ -34,12 +36,12 @@ namespace Humans.Consent.Jobs;
 /// </remarks>
 [CrossSectionWrite("The re-consent reminder stamps its own cooldown on the user it mailed.")]
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class SendReConsentReminderJob(
+internal sealed class SendReConsentReminderJob(
     IMembershipCalculatorRead membershipCalculator,
     ILegalDocumentSyncServiceRead legalDocService,
     IUserService userService,
     IEmailService emailService,
-    IEmailMessageFactory emailMessages,
+    ConsentEmails emailMessages,
     IOptions<EmailSettings> emailSettings,
     IHumansMetrics metrics,
     ILogger<SendReConsentReminderJob> logger,

@@ -1,6 +1,7 @@
 using Humans.Base.Constants;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
+using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Issues.Contracts;
@@ -89,6 +90,11 @@ public sealed class Section : ISection, IIssueQueueOwner
 
         services.AddScoped<SyncLegalDocumentsJob>();
         services.AddScoped<SendReConsentReminderJob>();
+
+        // Consent owns its email copy and its gallery samples; Email keeps the mechanics
+        // (memory/architecture/email-templates-live-in-sender.md).
+        services.AddScoped<ConsentEmails>();
+        services.AddScoped<IEmailPreviewContributor, ConsentEmailPreviews>();
 
         // Consent's active-required-documents gauge.
         services.AddSingleton<ConsentMetricsService>();

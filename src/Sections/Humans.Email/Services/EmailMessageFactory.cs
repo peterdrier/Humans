@@ -14,20 +14,6 @@ namespace Humans.Email.Services;
 /// </summary>
 internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessageFactory
 {
-    public EmailMessage ReConsentsRequired(string userEmail, string userName, IEnumerable<string> documentNames, string? culture = null)
-    {
-        var content = renderer.RenderReConsentsRequired(userName, documentNames.ToList(), culture);
-        return new EmailMessage(userEmail, userName, content.Subject, content.HtmlBody,
-            "reconsents_required");
-    }
-
-    public EmailMessage ReConsentReminder(string userEmail, string userName, IEnumerable<string> documentNames, int daysRemaining, string? culture = null)
-    {
-        var content = renderer.RenderReConsentReminder(userName, documentNames.ToList(), daysRemaining, culture);
-        return new EmailMessage(userEmail, userName, content.Subject, content.HtmlBody,
-            "reconsent_reminder");
-    }
-
     public EmailMessage AccessSuspended(string userEmail, string userName, string reason, string? culture = null)
     {
         var content = renderer.RenderAccessSuspended(userName, reason, culture);

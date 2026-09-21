@@ -44,17 +44,6 @@
     <value>Nuova domanda di iscrizione: {0}</value>
     <comment>{0} = applicant name</comment>
   </data>
-  <data name="Email_ReConsentRequired_Subject_Single" xml:space="preserve">
-    <value>Azione richiesta: {0} aggiornato</value>
-    <comment>{0} = document name</comment>
-  </data>
-  <data name="Email_ReConsentRequired_Subject_Multiple" xml:space="preserve">
-    <value>Azione richiesta: Aggiornamento di più documenti legali</value>
-  </data>
-  <data name="Email_ReConsentReminder_Subject" xml:space="preserve">
-    <value>Promemoria: {0} giorni per esaminare i documenti aggiornati</value>
-    <comment>{0} = days remaining</comment>
-  </data>
   <data name="Email_Welcome_Subject" xml:space="preserve">
     <value>Benvenuto/a su Humans!</value>
   </data>
@@ -83,31 +72,6 @@
 &lt;/ul&gt;
 &lt;p&gt;&lt;a href="{2}/Governance/Applications/Admin/{1}"&gt;Esaminare la domanda&lt;/a&gt;&lt;/p&gt;</value>
     <comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment>
-  </data>
-  <data name="Email_ReConsentsRequired_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Aggiornamento dei documenti legali&lt;/h2&gt;
-&lt;p&gt;Ciao {0},&lt;/p&gt;
-&lt;p&gt;Abbiamo aggiornato i seguenti documenti richiesti:&lt;/p&gt;
-&lt;ul&gt;
-    {1}
-&lt;/ul&gt;
-&lt;p&gt;Come human, devi consultare e accettare questi documenti aggiornati per mantenere il tuo stato attivo.&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}/Consent"&gt;Consulta e accetta&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Se hai domande sulle modifiche, contattaci.&lt;/p&gt;
-&lt;p&gt;Grazie,&lt;br/&gt;Il team di Humans&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = document list items HTML, {2} = base URL</comment>
-  </data>
-  <data name="Email_ReConsentReminder_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Promemoria sul consenso&lt;/h2&gt;
-&lt;p&gt;Ciao {0},&lt;/p&gt;
-&lt;p&gt;Ti ricordiamo che hai ancora &lt;strong&gt;{1} giorni&lt;/strong&gt; per consultare e accettare i seguenti documenti aggiornati:&lt;/p&gt;
-&lt;ul&gt;
-    {2}
-&lt;/ul&gt;
-&lt;p&gt;Se non accetti questi documenti prima della scadenza, il tuo accesso potrebbe essere temporaneamente sospeso.&lt;/p&gt;
-&lt;p&gt;&lt;a href="{3}/Consent"&gt;Consulta i documenti ora&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Grazie,&lt;br/&gt;Il team di Humans&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = days remaining, {2} = document list items HTML, {3} = base URL</comment>
   </data>
   <data name="Email_Welcome_Body" xml:space="preserve">
     <value>&lt;h2&gt;Benvenuto/a!&lt;/h2&gt;

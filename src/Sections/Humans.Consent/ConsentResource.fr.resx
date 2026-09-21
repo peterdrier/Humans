@@ -134,4 +134,40 @@
   <data name="Consent_AgreedToBy" xml:space="preserve">
     <value>Accepté par &lt;strong&gt;{0}&lt;/strong&gt; le {1} à {2} UTC</value>
   </data>
+  <data name="Consent_Email_ReConsentRequired_Subject_Single" xml:space="preserve">
+    <value>Action requise : {0} mis à jour</value>
+    <comment>{0} = document name</comment>
+  </data>
+  <data name="Consent_Email_ReConsentRequired_Subject_Multiple" xml:space="preserve">
+    <value>Action requise : Plusieurs documents légaux mis à jour</value>
+  </data>
+  <data name="Consent_Email_ReConsentsRequired_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Mise à jour des documents légaux&lt;/h2&gt;
+&lt;p&gt;Bonjour {0},&lt;/p&gt;
+&lt;p&gt;Nous avons mis à jour les documents requis suivants :&lt;/p&gt;
+&lt;ul&gt;
+    {1}
+&lt;/ul&gt;
+&lt;p&gt;En tant que human, vous devez consulter et accepter ces documents mis à jour pour maintenir votre statut actif.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}/Consent"&gt;Consulter et accepter&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Si vous avez des questions sur les modifications, contactez-nous.&lt;/p&gt;
+&lt;p&gt;Merci,&lt;br/&gt;L'équipe Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = document list items HTML, {2} = base URL</comment>
+  </data>
+  <data name="Consent_Email_ReConsentReminder_Subject" xml:space="preserve">
+    <value>Rappel : {0} jours pour consulter les documents mis à jour</value>
+    <comment>{0} = days remaining</comment>
+  </data>
+  <data name="Consent_Email_ReConsentReminder_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Rappel de consentement&lt;/h2&gt;
+&lt;p&gt;Bonjour {0},&lt;/p&gt;
+&lt;p&gt;Ceci est un rappel : il vous reste &lt;strong&gt;{1} jours&lt;/strong&gt; pour consulter et accepter les documents mis à jour suivants :&lt;/p&gt;
+&lt;ul&gt;
+    {2}
+&lt;/ul&gt;
+&lt;p&gt;Si vous n'acceptez pas ces documents avant la date limite, votre accès pourra être temporairement suspendu.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{3}/Consent"&gt;Consulter les documents maintenant&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Merci,&lt;br/&gt;L'équipe Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = days remaining, {2} = document list items HTML, {3} = base URL</comment>
+  </data>
 </root>

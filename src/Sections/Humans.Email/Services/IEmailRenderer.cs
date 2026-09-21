@@ -22,16 +22,6 @@ internal interface IEmailRenderer
     EmailContent RenderApplicationSubmitted(Guid applicationId, string applicantName);
 
     /// <summary>
-    /// Re-consent required notification (one or more documents).
-    /// </summary>
-    EmailContent RenderReConsentsRequired(string userName, IReadOnlyList<string> documentNames, string? culture = null);
-
-    /// <summary>
-    /// Re-consent reminder before suspension.
-    /// </summary>
-    EmailContent RenderReConsentReminder(string userName, IReadOnlyList<string> documentNames, int daysRemaining, string? culture = null);
-
-    /// <summary>
     /// Welcome email for new humans.
     /// </summary>
     EmailContent RenderWelcome(string userName, string? culture = null);

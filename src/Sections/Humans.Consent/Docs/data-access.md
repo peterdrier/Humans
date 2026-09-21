@@ -74,8 +74,8 @@ The body of `SyncLegalDocumentsJob`. Runs
 document, narrows the affected teams' active members down to those without a
 consent record for the new version — `GetPairsForUsersAndVersionsAsync` is its
 only repository call, read-only — and mails them the re-consent notice.
-Cross-section calls via `IEmailService` and `IEmailMessageFactory`
-(`ReConsentsRequired`), `ITeamServiceRead` (team membership) and
+Cross-section calls via `IEmailService` plus the section's own `ConsentEmails`
+builder (`ReConsentsRequired`), `ITeamServiceRead` (team membership) and
 `IUserServiceRead`. No cache.
 
 ### CachingLegalDocumentSyncService (Singleton, `Humans.Consent.Services`)
@@ -134,6 +134,19 @@ Implements `IConsentService`, `IConsentServiceRead`,
 record counts) pass through to the inner service. Surfaced on
 `/Debug/CacheStats`.
 
+### ConsentEmails (Scoped, internal)
+
+No repository. Pure builder — reads `ConsentResource` (via
+`IStringLocalizer<ConsentResource>`) and `EmailSettings`, writes nothing.
+Returns `EmailMessage` values for `LegalDocumentSyncRunner` and
+`SendReConsentReminderJob` to pass to `IEmailService.SendAsync`. Both
+templates are always-send. No DB access, no cache.
+
+### ConsentEmailPreviews (Scoped)
+
+No repository. Read-only gallery contributor (`IEmailPreviewContributor`) —
+builds one sample per template via `ConsentEmails` for `/Email/EmailPreview`,
+plus a second re-consent-required sample so both branches of the
+count-dependent subject are visible. No DB access, no cache.
+
 ---
-
-

@@ -38,9 +38,6 @@
   <data name="Email_ApplicationSubmitted_Subject" xml:space="preserve"><value>New Membership Application: {0}</value><comment>{0} = applicant name</comment></data>
   <data name="Email_SurveyInvitation_Subject" xml:space="preserve"><value>Please complete: {0}</value><comment>{0} = survey title</comment></data>
   <data name="Email_SurveyReminder_Subject" xml:space="preserve"><value>Reminder: {0}</value><comment>{0} = survey title</comment></data>
-  <data name="Email_ReConsentRequired_Subject_Single" xml:space="preserve"><value>Action Required: Updated {0}</value><comment>{0} = document name</comment></data>
-  <data name="Email_ReConsentRequired_Subject_Multiple" xml:space="preserve"><value>Action Required: Multiple Legal Documents Updated</value></data>
-  <data name="Email_ReConsentReminder_Subject" xml:space="preserve"><value>Reminder: {0} days to review updated documents</value><comment>{0} = days remaining</comment></data>
   <data name="Email_Welcome_Subject" xml:space="preserve"><value>Welcome to Humans!</value></data>
   <data name="Email_AccessSuspended_Subject" xml:space="preserve"><value>Your Membership Access Has Been Suspended</value></data>
   <data name="Email_VerifyEmail_Subject" xml:space="preserve"><value>Verify Your Email Address</value></data>
@@ -65,25 +62,6 @@
 &lt;p&gt;Just a reminder that the survey &lt;strong&gt;{1}&lt;/strong&gt; is still waiting for your response.&lt;/p&gt;
 &lt;p&gt;&lt;a href="{2}"&gt;Open the survey&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Thank you,&lt;br/&gt;The Nobodies Collective&lt;/p&gt;</value><comment>{0} = user name, {1} = survey title, {2} = answer URL</comment></data>
-  <data name="Email_ReConsentsRequired_Body" xml:space="preserve"><value>&lt;h2&gt;Legal Document Update&lt;/h2&gt;
-&lt;p&gt;Dear {0},&lt;/p&gt;
-&lt;p&gt;We have updated the following required documents:&lt;/p&gt;
-&lt;ul&gt;
-    {1}
-&lt;/ul&gt;
-&lt;p&gt;As a human, you need to review and accept these updated documents to maintain your active status.&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}/Consent"&gt;Review and Accept&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;If you have any questions about the changes, please contact us.&lt;/p&gt;
-&lt;p&gt;Thank you,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = document list items HTML, {2} = base URL</comment></data>
-  <data name="Email_ReConsentReminder_Body" xml:space="preserve"><value>&lt;h2&gt;Consent Reminder&lt;/h2&gt;
-&lt;p&gt;Dear {0},&lt;/p&gt;
-&lt;p&gt;This is a reminder that you have &lt;strong&gt;{1} days&lt;/strong&gt; remaining to review and accept the following updated documents:&lt;/p&gt;
-&lt;ul&gt;
-    {2}
-&lt;/ul&gt;
-&lt;p&gt;If you do not accept these documents before the deadline, your access may be temporarily suspended.&lt;/p&gt;
-&lt;p&gt;&lt;a href="{3}/Consent"&gt;Review Documents Now&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Thank you,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = days remaining, {2} = document list items HTML, {3} = base URL</comment></data>
   <data name="Email_Welcome_Body" xml:space="preserve"><value>&lt;h2&gt;Welcome!&lt;/h2&gt;
 &lt;p&gt;Dear {0},&lt;/p&gt;
 &lt;p&gt;Welcome to the Humans portal!&lt;/p&gt;

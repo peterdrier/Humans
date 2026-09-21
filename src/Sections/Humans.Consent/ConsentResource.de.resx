@@ -134,4 +134,40 @@
   <data name="Consent_AgreedToBy" xml:space="preserve">
     <value>Zugestimmt von &lt;strong&gt;{0}&lt;/strong&gt; am {1} um {2} UTC</value>
   </data>
+  <data name="Consent_Email_ReConsentRequired_Subject_Single" xml:space="preserve">
+    <value>Handlungsbedarf: Aktualisiertes Dokument {0}</value>
+    <comment>{0} = document name</comment>
+  </data>
+  <data name="Consent_Email_ReConsentRequired_Subject_Multiple" xml:space="preserve">
+    <value>Handlungsbedarf: Mehrere rechtliche Dokumente aktualisiert</value>
+  </data>
+  <data name="Consent_Email_ReConsentsRequired_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Aktualisierung rechtlicher Dokumente&lt;/h2&gt;
+&lt;p&gt;Hallo {0},&lt;/p&gt;
+&lt;p&gt;Wir haben die folgenden erforderlichen Dokumente aktualisiert:&lt;/p&gt;
+&lt;ul&gt;
+    {1}
+&lt;/ul&gt;
+&lt;p&gt;Als Human musst du diese aktualisierten Dokumente prüfen und akzeptieren, um deinen aktiven Status zu behalten.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}/Consent"&gt;Prüfen und akzeptieren&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Bei Fragen zu den Änderungen kontaktiere uns bitte.&lt;/p&gt;
+&lt;p&gt;Danke,&lt;br/&gt;Das Humans-Team&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = document list items HTML, {2} = base URL</comment>
+  </data>
+  <data name="Consent_Email_ReConsentReminder_Subject" xml:space="preserve">
+    <value>Erinnerung: Noch {0} Tage zur Prüfung aktualisierter Dokumente</value>
+    <comment>{0} = days remaining</comment>
+  </data>
+  <data name="Consent_Email_ReConsentReminder_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Erinnerung zur Zustimmung&lt;/h2&gt;
+&lt;p&gt;Hallo {0},&lt;/p&gt;
+&lt;p&gt;Dies ist eine Erinnerung, dass du noch &lt;strong&gt;{1} Tage&lt;/strong&gt; Zeit hast, die folgenden aktualisierten Dokumente zu prüfen und zu akzeptieren:&lt;/p&gt;
+&lt;ul&gt;
+    {2}
+&lt;/ul&gt;
+&lt;p&gt;Wenn du diese Dokumente nicht vor Ablauf der Frist akzeptierst, kann dein Zugang vorübergehend gesperrt werden.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{3}/Consent"&gt;Dokumente jetzt prüfen&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Danke,&lt;br/&gt;Das Humans-Team&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = days remaining, {2} = document list items HTML, {3} = base URL</comment>
+  </data>
 </root>

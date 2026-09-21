@@ -140,8 +140,6 @@ internal sealed class EmailController(
         ["ca"] = ("Jordi Puig", "jordi@example.com"),
     };
 
-    private static readonly string[] SampleDocs = ["Volunteer Agreement", "Privacy Policy"];
-
     private const string FacilitatedMessageSampleText =
         "Hi! I'm organizing the next community event and would love your help. Let me know if you're interested!";
 
@@ -151,12 +149,6 @@ internal sealed class EmailController(
     [
         (r, c) => BuildPreviewItem("application-submitted", "Application Submitted (to Admin)", c.Settings.AdminAddress,
             r.RenderApplicationSubmitted(Guid.Empty, c.Name)),
-        (r, c) => BuildPreviewItem("reconsent-required", "Re-Consent Required (single doc)", c.Email,
-            r.RenderReConsentsRequired(c.Name, [SampleDocs[0]], c.Culture)),
-        (r, c) => BuildPreviewItem("reconsents-required", "Re-Consents Required (multiple docs)", c.Email,
-            r.RenderReConsentsRequired(c.Name, SampleDocs, c.Culture)),
-        (r, c) => BuildPreviewItem("reconsent-reminder", "Re-Consent Reminder", c.Email,
-            r.RenderReConsentReminder(c.Name, SampleDocs, 14, c.Culture)),
         (r, c) => BuildPreviewItem("welcome", "Welcome", c.Email,
             r.RenderWelcome(c.Name, c.Culture)),
         (r, c) => BuildPreviewItem("access-suspended", "Access Suspended", c.Email,

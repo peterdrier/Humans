@@ -15,12 +15,6 @@ namespace Humans.Email.Contracts;
 /// </summary>
 public interface IEmailMessageFactory
 {
-    /// <summary>Re-consent required notification (always-send).</summary>
-    EmailMessage ReConsentsRequired(string userEmail, string userName, IEnumerable<string> documentNames, string? culture = null);
-
-    /// <summary>Re-consent reminder before suspension (always-send).</summary>
-    EmailMessage ReConsentReminder(string userEmail, string userName, IEnumerable<string> documentNames, int daysRemaining, string? culture = null);
-
     /// <summary>Access suspended notification (always-send).</summary>
     EmailMessage AccessSuspended(string userEmail, string userName, string reason, string? culture = null);
 

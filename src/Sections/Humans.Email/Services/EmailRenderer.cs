@@ -27,27 +27,6 @@ internal sealed class EmailRenderer(
             Lf("Email_ApplicationSubmitted_Body", HtmlEncode(applicantName), applicationId, _settings.BaseUrl));
     }
 
-    public EmailContent RenderReConsentsRequired(string userName, IReadOnlyList<string> documentNames, string? culture = null)
-        => RenderLocalized(culture, () =>
-        {
-            var subject = documentNames.Count == 1
-                ? Lf("Email_ReConsentRequired_Subject_Single", documentNames[0])
-                : L("Email_ReConsentRequired_Subject_Multiple");
-            var docsHtml = string.Join("\n", documentNames.Select(d => $"<li><strong>{HtmlEncode(d)}</strong></li>"));
-            return new EmailContent(
-                subject,
-                Lf("Email_ReConsentsRequired_Body", HtmlEncode(userName), docsHtml, _settings.BaseUrl));
-        });
-
-    public EmailContent RenderReConsentReminder(string userName, IReadOnlyList<string> documentNames, int daysRemaining, string? culture = null)
-        => RenderLocalized(culture, () =>
-        {
-            var docsHtml = string.Join("\n", documentNames.Select(d => $"<li>{HtmlEncode(d)}</li>"));
-            return new EmailContent(
-                Lf("Email_ReConsentReminder_Subject", daysRemaining),
-                Lf("Email_ReConsentReminder_Body", HtmlEncode(userName), daysRemaining, docsHtml, _settings.BaseUrl));
-        });
-
     public EmailContent RenderWelcome(string userName, string? culture = null)
         => RenderLocalized(culture, () => new EmailContent(
             L("Email_Welcome_Subject"),

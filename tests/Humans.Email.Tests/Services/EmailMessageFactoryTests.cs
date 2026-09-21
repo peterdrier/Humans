@@ -28,15 +28,6 @@ public sealed class EmailMessageFactoryTests
     }
 
     [HumansFact]
-    public void ReConsentsRequired_IsAlwaysSend_NullCategory()
-    {
-        var msg = _factory.ReConsentsRequired("a@x.com", "Alice", ["Doc"], "en");
-
-        msg.TemplateName.Should().Be("reconsents_required");
-        msg.Category.Should().BeNull();
-    }
-
-    [HumansFact]
     public void EmailVerification_IsAlwaysSend_NullCategory()
     {
         var msg = _factory.EmailVerification("a@x.com", "Alice", "https://verify", isConflict: true, "en");
