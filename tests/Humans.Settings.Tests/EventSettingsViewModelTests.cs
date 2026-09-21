@@ -100,7 +100,7 @@ public sealed class EventSettingsViewModelTests
         Validate(model).Should().Contain(r => r.ErrorMessage!.Contains("strictly ascending"));
     }
 
-    private static EventSettingsInfo CarriedRow() => new(
+    private static EventSettingsInfo SavedRow() => new(
         Id: Guid.NewGuid(),
         EventName: "Nowhere 2026",
         Year: 2026,
@@ -121,7 +121,7 @@ public sealed class EventSettingsViewModelTests
     [HumansFact]
     public void Parse_DerivesYearFromTheGateOpeningDate()
     {
-        var form = EventSettingsFormMapper.ToViewModel(CarriedRow());
+        var form = EventSettingsFormMapper.ToViewModel(SavedRow());
         form.GateOpeningDate = "2027-07-08";
 
         var parsed = EventSettingsFormMapper.Parse(form);
@@ -131,10 +131,10 @@ public sealed class EventSettingsViewModelTests
     }
 
     [HumansFact]
-    public void ACarriedRow_SavesAnUnrelatedEditWithoutTouchingTheOffsets()
+    public void ASavedRow_SavesAnUnrelatedEditWithoutTouchingTheOffsets()
     {
-        var carried = CarriedRow();
-        var form = EventSettingsFormMapper.ToViewModel(carried);
+        var saved = SavedRow();
+        var form = EventSettingsFormMapper.ToViewModel(saved);
         form.EventName = "Nowhere 2026 (renamed)";
 
         Validate(form).Should().BeEmpty();
@@ -143,11 +143,11 @@ public sealed class EventSettingsViewModelTests
 
         parsed.Success.Should().BeTrue();
         parsed.Settings!.EventName.Should().Be("Nowhere 2026 (renamed)");
-        parsed.Settings.BuildStartOffset.Should().Be(carried.BuildStartOffset);
-        parsed.Settings.FirstCrewStartOffset.Should().Be(carried.FirstCrewStartOffset);
-        parsed.Settings.SetupWeekStartOffset.Should().Be(carried.SetupWeekStartOffset);
-        parsed.Settings.PreEventWeekStartOffset.Should().Be(carried.PreEventWeekStartOffset);
-        parsed.Settings.FinishingWeekendStartOffset.Should().Be(carried.FinishingWeekendStartOffset);
+        parsed.Settings.BuildStartOffset.Should().Be(saved.BuildStartOffset);
+        parsed.Settings.FirstCrewStartOffset.Should().Be(saved.FirstCrewStartOffset);
+        parsed.Settings.SetupWeekStartOffset.Should().Be(saved.SetupWeekStartOffset);
+        parsed.Settings.PreEventWeekStartOffset.Should().Be(saved.PreEventWeekStartOffset);
+        parsed.Settings.FinishingWeekendStartOffset.Should().Be(saved.FinishingWeekendStartOffset);
     }
 
     // ── EarlyEntryStartOffset: BuildStartOffset ≤ offset < 0, null until configured.
