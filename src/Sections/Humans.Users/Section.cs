@@ -1,8 +1,10 @@
+using Humans.Base.Constants;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Application.Services.Users;
 using Humans.Application.Services.Users.AccountLifecycle;
 using Humans.Gdpr.Contracts;
+using Humans.Issues.Contracts;
 using Humans.Base.Hosting;
 using Humans.Users.Authorization;
 using Humans.Users.Contracts;
@@ -28,7 +30,7 @@ namespace Humans.Users;
 /// keyed-scoped so the decorator can open a scope per call.
 /// </para>
 /// </remarks>
-public sealed class Section : ISection
+public sealed class Section : ISection, IIssueQueueOwner
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -140,4 +142,13 @@ public sealed class Section : ISection
         // Audience-segmentation diagnostic for UsersAdminController.Audience.
         services.AddScoped<IUsersAudienceService, UsersAudienceService>();
     }
+
+    // This section owns the issue queue its members' reports land in; Issues discovers
+    // the seam rather than holding a list of sections (memory/architecture/section-contribution-seams.md).
+    // The key is "Profiles", not "Users": Profiles merged into this section at
+    // nobodies-collective/Humans#866 and stored rows still carry the old string, so the queue
+    // keeps its name and HumanAdmin keeps seeing it.
+    string IIssueQueueOwner.QueueKey => "Profiles";
+
+    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.HumanAdmin];
 }

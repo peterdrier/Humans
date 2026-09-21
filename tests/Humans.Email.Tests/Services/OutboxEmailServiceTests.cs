@@ -11,13 +11,14 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Xunit;
 
 namespace Humans.Email.Tests.Services;
 
 /// <summary>
 /// Transport-level tests for the Application-layer <see cref="OutboxEmailService"/>:
 /// the single <see cref="IEmailService.SendAsync"/> path. Per-type policy stamping
-/// (template / category / reply-to / immediate) is covered by
+/// (template / category / reply-to) is covered by
 /// <see cref="EmailMessageFactoryTests"/>; these tests exercise the shared
 /// transport — opt-out suppression, unsubscribe headers, body composition,
 /// immediate-drain, and user-id resolution — over a real
@@ -84,12 +85,11 @@ public sealed class OutboxEmailServiceTests : IDisposable
         string template = "access_suspended",
         MessageCategory? category = null,
         string? replyTo = null,
-        bool triggerImmediate = false,
         Guid? userId = null,
         Guid? campaignGrantId = null,
         Guid? campaignId = null,
         bool doNotPersist = false) =>
-        new(recipient, name, subject, html, template, category, replyTo, triggerImmediate, userId,
+        new(recipient, name, subject, html, template, category, replyTo, userId,
             campaignGrantId, campaignId, doNotPersist);
 
     [HumansFact]
@@ -142,17 +142,21 @@ public sealed class OutboxEmailServiceTests : IDisposable
         _metrics.Received(1).RecordEmailQueued("access_suspended");
     }
 
-    [HumansFact]
-    public async Task SendAsync_TriggerImmediate_RunsImmediateProcessor()
+    [HumansTheory]
+    [MemberData(nameof(TimeSensitiveTemplateNames))]
+    public async Task SendAsync_TimeSensitiveTemplate_RunsImmediateProcessor(string template)
     {
-        await _service.SendAsync(Message(template: "email_verification", triggerImmediate: true), Xunit.TestContext.Current.CancellationToken);
+        await _service.SendAsync(Message(template: template), Xunit.TestContext.Current.CancellationToken);
         _immediate.Received(1).TriggerImmediate();
     }
 
+    public static TheoryData<string> TimeSensitiveTemplateNames() =>
+        [.. TimeSensitiveTemplates.Names];
+
     [HumansFact]
-    public async Task SendAsync_WithoutTriggerImmediate_DoesNotRunImmediateProcessor()
+    public async Task SendAsync_OrdinaryTemplate_DoesNotRunImmediateProcessor()
     {
-        await _service.SendAsync(Message(triggerImmediate: false), Xunit.TestContext.Current.CancellationToken);
+        await _service.SendAsync(Message(template: "access_suspended"), Xunit.TestContext.Current.CancellationToken);
         _immediate.DidNotReceive().TriggerImmediate();
     }
 

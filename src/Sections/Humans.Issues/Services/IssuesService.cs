@@ -38,6 +38,7 @@ internal sealed class IssuesService(
     IClock clock,
     IHostEnvironment env,
     ISectionCatalog sectionCatalog,
+    IssueSectionRouting routing,
     ILogger<IssuesService> logger) : IIssuesService, IUserDataContributor
 {
     internal const string Issues = "Issues";
@@ -69,12 +70,12 @@ internal sealed class IssuesService(
     /// Both write paths go through this: the reporter's Area dropdown and a handler re-routing.
     /// </summary>
     /// <remarks>
-    /// Checked against <see cref="IssueSectionRouting.AllKnownSections"/>, not against
+    /// Checked against the queues sections declared through <c>IIssueQueueOwner</c>, not against
     /// <see cref="ISectionCatalog"/> directly, because the routing table is the set of queues
-    /// that exist — the catalog is the set of sections that exist, and two routing entries
-    /// (<c>Profiles</c>, <c>Legal</c>) deliberately outlive the sections they were named for
-    /// while stored rows still carry them. The catalog checks the routing table instead, through
-    /// <c>SectionAnnotations</c>: a stale entry surfaces on /Debug/Sections.
+    /// that exist — the catalog is the set of sections that exist, and two queue keys
+    /// (<c>Profiles</c>, <c>Legal</c>) outlived the section names they were stored under, so
+    /// Users and Consent declare them under the old spelling. Each owning section publishes its
+    /// own queue annotation, so /Debug/Sections still shows where issues land.
     ///
     /// An unknown value degrades to null (the Admin queue) rather than failing, which is the
     /// behaviour the routing table was built for — it may change without a migration. Over-length
@@ -94,7 +95,7 @@ internal sealed class IssuesService(
                 $"Section must be {MaxSectionLength} characters or fewer.");
         }
 
-        var known = IssueSectionRouting.Resolve(trimmed);
+        var known = routing.Resolve(trimmed);
         if (known is null)
         {
             logger.LogWarning(
@@ -216,14 +217,14 @@ internal sealed class IssuesService(
     /// Whether <paramref name="viewer"/> may handle the issue: mutate it, or comment on it as
     /// someone other than its reporter.
     /// </summary>
-    private static bool CanHandle(Issue issue, IssueViewer viewer) =>
-        IssueSectionRouting.CanHandle(issue.Section, viewer.Roles);
+    private bool CanHandle(Issue issue, IssueViewer viewer) =>
+        routing.CanHandle(issue.Section, viewer.Roles);
 
     /// <summary>
     /// Whether <paramref name="viewer"/> may see the issue at all — the same test the queue
     /// applies row by row: a handler, or the person who reported it.
     /// </summary>
-    private static bool CanSee(Issue issue, IssueViewer viewer) =>
+    private bool CanSee(Issue issue, IssueViewer viewer) =>
         CanHandle(issue, viewer) || issue.ReporterUserId == viewer.UserId;
 
     /// <summary>
@@ -270,7 +271,7 @@ internal sealed class IssuesService(
 
         if (!viewer.IsAdmin)
         {
-            sectionFilter = IssueSectionRouting.SectionsForRoles(viewer.Roles);
+            sectionFilter = routing.SectionsForRoles(viewer.Roles);
             reporterFallback = viewer.UserId;
         }
 
@@ -717,7 +718,7 @@ internal sealed class IssuesService(
 
             if (viewer.IsAdmin) return await repo.CountActionableAsync(null, null, ct);
 
-            var sections = IssueSectionRouting.SectionsForRoles(viewer.Roles);
+            var sections = routing.SectionsForRoles(viewer.Roles);
             return await repo.CountActionableAsync(sections, viewer.UserId, ct);
         });
     }
@@ -735,7 +736,7 @@ internal sealed class IssuesService(
         foreach (var s in new[] { section, previousSection })
         {
             if (s is null) continue;
-            foreach (var role in IssueSectionRouting.RolesFor(s))
+            foreach (var role in routing.RolesFor(s))
             {
                 var holders = await roles.GetActiveUserIdsInRoleAsync(role, ct);
                 foreach (var id in holders) ids.Add(id);
@@ -880,7 +881,7 @@ internal sealed class IssuesService(
         if (senderIsReporter)
         {
             // Reporter commented → notify section role-holders + assignee.
-            foreach (var role in IssueSectionRouting.RolesFor(issue.Section))
+            foreach (var role in routing.RolesFor(issue.Section))
             {
                 foreach (var id in await roles.GetActiveUserIdsInRoleAsync(role, ct))
                 {
@@ -995,7 +996,7 @@ internal sealed class IssuesService(
             if (id != issue.ReporterUserId) recipients.Add(id);
         }
 
-        foreach (var role in IssueSectionRouting.RolesFor(issue.Section))
+        foreach (var role in routing.RolesFor(issue.Section))
         {
             foreach (var id in await roles.GetActiveUserIdsInRoleAsync(role, ct))
             {

@@ -922,6 +922,7 @@ internal sealed class Service(
                 FileId = fileId,
                 UserId = row.Bindings[0].UserId,
                 SupplierAccountNum = s.SupplierAccountNum,
+                HoldedContactId = row.Bindings[0].HoldedContactId,
                 CreditorName = SepaText.Normalize(contact.Name, SepaPaymentFileBuilder.MaxNameLength),
                 Iban = IbanValidator.Normalize(contact.Iban),
                 IbanMasked = IbanFormatter.Mask(contact.Iban),
@@ -1011,6 +1012,13 @@ internal sealed class Service(
                 return "the member has no Holded contact binding";
             if (binding.SupplierAccountNum != row.SupplierAccountNum)
                 return "the member's Holded binding changed since this file was generated — book it by hand";
+            // Mirrors BookSepaTransferAsync's sibling-contact refusal: same account number is not
+            // enough, because Holded lets two contacts share one 400000xx. Without this the button
+            // renders live and only fails on click. Null means a row generated before
+            // nobodies-collective/Humans#1146 shipped — account-only behaviour, as there.
+            if (row.HoldedContactId is { Length: > 0 }
+                && !string.Equals(row.HoldedContactId, binding.HoldedContactId, StringComparison.Ordinal))
+                return "the member was rebound to a different Holded contact since this file was generated — book it by hand";
             return null;
         }
     }
@@ -1057,6 +1065,18 @@ internal sealed class Service(
                 $"The member's Holded binding changed since this file was generated (now "
                 + $"{binding.SupplierAccountNum?.ToString(CultureInfo.InvariantCulture) ?? "unresolved"}, "
                 + $"the transfer pays {transfer.SupplierAccountNum}) — book it by hand.");
+
+        // Same account number is not enough: Holded lets two contacts share one 400000xx, so a
+        // rebind to a sibling contact on that account slips past the check above. The file paid the
+        // contact named on the transfer; anything else pays the wrong recipient's documents. Null on
+        // the transfer means a row from before this guard existed — it keeps today's account-only
+        // behaviour.
+        if (transfer.HoldedContactId is { Length: > 0 }
+            && !string.Equals(transfer.HoldedContactId, binding.HoldedContactId, StringComparison.Ordinal))
+            return new SepaBookingResult(false,
+                $"The member was rebound to a different Holded contact since this file was generated "
+                + $"(now {binding.HoldedContactId}, the transfer paid {transfer.HoldedContactId}) — "
+                + "book it by hand.");
 
         IReadOnlyList<HoldedPurchaseDocListItemDto> open;
         try
@@ -1240,6 +1260,7 @@ internal sealed class Service(
                 p.GeneratedAt,
                 p.FileName,
                 p.SupplierAccountNum,
+                p.HoldedContactId,
                 p.CreditorName,
                 Iban = p.IbanMasked,
                 p.Amount,

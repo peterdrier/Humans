@@ -99,4 +99,51 @@ public sealed class EmailDependencyCycleTests
         resolveEmailService.Should().NotThrow();
         resolveEmailService().Should().BeOfType<OutboxEmailService>();
     }
+
+    /// <summary>
+    /// A crosscut may not grow new edges into sections. Both sets are the ones the
+    /// teardown of peterdrier/Humans#1651 shrinks — Email.Contracts down to Base and
+    /// Users.Contracts once <c>IEmailMessageFactory</c> is gone — so these assertions
+    /// exist to stop a new reference arriving meanwhile, not to bless what is here.
+    /// Asserted from the csproj's own &lt;ProjectReference&gt; items, not
+    /// <c>Assembly.GetReferencedAssemblies()</c>: a const-only or unused reference emits
+    /// no metadata reference and would pass that check silently (see
+    /// <c>Humans.Tickets.Contracts</c> below — used only for a <c>const string</c>).
+    /// </summary>
+    [HumansFact]
+    public void EmailContracts_ReferencesOnlyBaseEventsAndUsersContracts() =>
+        ProjectReferencesOf("Humans.Email.Contracts").Should().BeSubsetOf(
+            ["Humans.Base", "Humans.Events.Contracts", "Humans.Users.Contracts"],
+            because: "Email is a crosscut: its contracts leaf may lose section references, never gain one");
+
+    [HumansFact]
+    public void Email_ReferencesOnlyItsCurrentSectionContracts() =>
+        ProjectReferencesOf("Humans.Email").Should().BeSubsetOf(
+            [
+                "Humans.AuditLog.Contracts", "Humans.Base", "Humans.Campaigns.Contracts", "Humans.Email.Contracts",
+                "Humans.Events.Contracts", "Humans.Gdpr.Contracts", "Humans.Settings.Contracts",
+                "Humans.Tickets.Contracts", "Humans.Users.Contracts"
+            ],
+            because: "Email is a crosscut: it may lose section references, never gain one");
+
+    private static IEnumerable<string> ProjectReferencesOf(string projectName)
+    {
+        var csprojPath = Path.Combine(LocateRepoRoot(), "src", "Sections", projectName, projectName + ".csproj");
+        var xml = System.Xml.Linq.XDocument.Load(csprojPath);
+        return xml.Descendants("ProjectReference")
+            .Select(e => ((string)e.Attribute("Include")!).Split('\\', '/')[^1])
+            .Select(name => name[..^".csproj".Length])
+            .Distinct(StringComparer.Ordinal);
+    }
+
+    private static string LocateRepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "Humans.slnx")))
+        {
+            dir = dir.Parent;
+        }
+        return dir?.FullName ?? throw new InvalidOperationException(
+            "Could not locate repository root (no Humans.slnx above " + AppContext.BaseDirectory + ").");
+    }
 }

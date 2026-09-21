@@ -1,4 +1,3 @@
-using System.Globalization;
 using Humans.Base.Extensions;
 using Microsoft.Extensions.Localization;
 
@@ -100,16 +99,10 @@ public static class TranslationsGalleryModelBuilder
 
     private static Dictionary<string, string> ReadAll(IStringLocalizer localizer, string culture, bool includeParentCultures)
     {
-        var previous = CultureInfo.CurrentUICulture;
-        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
-        try
+        using (new CultureScope(culture))
         {
             return localizer.GetAllStrings(includeParentCultures)
                 .ToDictionary(s => s.Name, s => s.Value, StringComparer.Ordinal);
-        }
-        finally
-        {
-            CultureInfo.CurrentUICulture = previous;
         }
     }
 }

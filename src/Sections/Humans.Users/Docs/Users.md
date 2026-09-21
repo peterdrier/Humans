@@ -697,3 +697,14 @@ Account deletion cascades (user-requested / admin-initiated / expiry-triggered) 
 
 - Cross-section reads for `Profile.User` / `UserEmail.User` / `CommunicationPreference.User` must go through `IUserServiceRead.GetUserInfosAsync` — do not re-add nav properties to the entities.
 - The token "OAuth" is banned from `IUserEmailService` / `UserEmailRepository` method, parameter, and property names — provider operations are parameterized (`LinkAsync(provider, providerKey, …)`) so new providers add data, not methods. This is documentation, not a pinned test — a test asserting a method-name token is absent is forbidden by [`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md). The single allowed exception is `ReconcileOAuthIdentityAsync`, where "OAuth" is categorical (the OAuth-callback write channel, distinct from user-driven email management).
+
+## Issue queue
+
+Users owns the `Profiles` issue queue: it implements `IIssueQueueOwner` (Issues' contracts
+leaf) on its `Section` entry point, declaring the queue key and the roles that handle
+issues filed against it — `HumanAdmin`, plus `Admin`, which handles every queue. Issues
+discovers the declaration through DI and holds no list of sections; dropping the seam
+sends this section's stored issues to the Admin-only queue. The key is `Profiles`, not
+`Users`: Profiles merged into this section at nobodies-collective/Humans#866 and stored
+rows still carry the old string, so the queue keeps its name (and `/Debug/Sections` lists
+it as an unmatched annotation, which is the rename showing rather than hiding).

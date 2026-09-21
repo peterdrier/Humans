@@ -1,4 +1,6 @@
+using Humans.Base.Constants;
 using Humans.CityPlanning.Authorization;
+using Humans.Issues.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.CityPlanning.Data;
 using Humans.CityPlanning.Services;
@@ -24,7 +26,7 @@ namespace Humans.CityPlanning;
 /// construction cycle, so it belongs with the consumer, not the producer.
 /// </para>
 /// </remarks>
-public sealed class Section : ISection
+public sealed class Section : ISection, IIssueQueueOwner
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -40,4 +42,10 @@ public sealed class Section : ISection
         // Backs CityPlanningMapAdmin, registered by this section's SectionPolicies.
         services.AddScoped<IAuthorizationHandler, CityPlanningMapAdminHandler>();
     }
+
+    // This section owns the issue queue its members' reports land in; Issues discovers
+    // the seam rather than holding a list of sections (memory/architecture/section-contribution-seams.md).
+    string IIssueQueueOwner.QueueKey => "CityPlanning";
+
+    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.CampAdmin];
 }
