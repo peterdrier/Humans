@@ -38,7 +38,7 @@ internal sealed partial class WorkgroupService(
     IGoogleSyncService googleSync,
     INotificationService notifications,
     IEmailService email,
-    IEmailMessageFactory emailFactory,
+    WorkgroupsEmails emailFactory,
     IAuditLogService auditLog,
     IClock clock,
     ILogger<WorkgroupService> logger) : IWorkgroupService

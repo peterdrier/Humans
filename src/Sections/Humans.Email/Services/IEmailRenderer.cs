@@ -1,7 +1,6 @@
 using Humans.Users.Contracts;
 using Humans.Email.Contracts;
 
-
 namespace Humans.Email.Services;
 
 /// <summary>
@@ -36,13 +35,5 @@ internal interface IEmailRenderer
         bool includeContactInfo,
         string? senderEmail,
         string? culture = null);
-
-    /// <summary>
-    /// Working-group register notice — dispatches on <see cref="WorkgroupNoticeRequest.Kind"/>
-    /// to render the matching template. Builds the working-group link from
-    /// <see cref="WorkgroupNoticeRequest.WorkgroupSlug"/> the same way a team link is
-    /// built from a team slug.
-    /// </summary>
-    EmailContent RenderWorkgroupNotice(WorkgroupNoticeRequest request);
 
 }

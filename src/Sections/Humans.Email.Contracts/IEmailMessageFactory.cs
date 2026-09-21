@@ -17,7 +17,4 @@ public interface IEmailMessageFactory
     /// <summary>Facilitated volunteer-to-volunteer message (FacilitatedMessages); reply-to is the sender when contact info is shared.</summary>
     EmailMessage FacilitatedMessage(string recipientEmail, string recipientName, string senderName, string messageText, bool includeContactInfo, string? senderEmail, string? culture = null);
 
-    /// <summary>Working-group register notice (Governance category) — one method, the kind picks the copy.</summary>
-    EmailMessage WorkgroupNotice(WorkgroupNoticeRequest request);
-
 }

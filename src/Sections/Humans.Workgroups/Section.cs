@@ -4,6 +4,7 @@ using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Base.Models.Tables;
 using Humans.Calendar.Contracts;
+using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Users.Contracts;
@@ -60,6 +61,11 @@ public sealed class Section : ISection, ISectionAdminNav
         services.AddScoped<IAuthorizationHandler, WorkgroupAuthorizationHandler>();
 
         services.AddScoped<WorkgroupRhythmJob>();
+
+        // Workgroups owns its email copy and its gallery samples; Email keeps the mechanics
+        // (memory/architecture/email-templates-live-in-sender.md).
+        services.AddScoped<WorkgroupsEmails>();
+        services.AddScoped<IEmailPreviewContributor, WorkgroupsEmailPreviews>();
 
         EnumBadgeMap.Register(new Dictionary<Enum, string>
         {

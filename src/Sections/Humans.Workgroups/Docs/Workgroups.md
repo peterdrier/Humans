@@ -392,6 +392,14 @@ should end is the Board's decision, taken on the register in front of them.
 - **Display stitching** — `IUserServiceRead.GetUserInfosAsync` for burner names and tiers.
 - **Cross-section calls** — `IUserServiceRead`, `IUserEmailService`,
   `IRoleAssignmentService`, `ITeamServiceRead`, `ISettingsService`, `IGoogleSyncService`,
-  `INotificationService`, `IEmailService`, `IEmailMessageFactory`, `IAuditLogService`,
+  `INotificationService`, `IEmailService`, `IAuditLogService`,
   `ISurveyAnalysisRead`, `IClock`.
+- **Email** — Workgroups owns the working-group notice: `WorkgroupsEmails` (internal)
+  builds the `EmailMessage` for each `WorkgroupNoticeKind` from Workgroups' own
+  `Workgroups_Email_*` keys in `WorkgroupsResource`, rendered in the recipient's culture
+  via `CultureScope`, with one `workgroup_notice_<kind>` template name per kind and the
+  Governance opt-out category; `WorkgroupsEmailPreviews` (`IEmailPreviewContributor`,
+  registered in `Section.Register`) lists one sample per kind at `/Email/EmailPreview`.
+  Email supplies transport only — `IEmailService.SendAsync`
+  (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651).
 - **Architecture test** — `tests/Humans.Workgroups.Tests` carries no `Architecture/` folder.

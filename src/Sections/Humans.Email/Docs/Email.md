@@ -171,12 +171,6 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
     `SurveyInvitation` accepts optional plain-text custom subject/message values from Surveys; the
     internal renderer trims and safely encodes them while retaining the existing template, generated
     answer link, System category, and localized standard-copy fallback.
-    `WorkgroupNotice(WorkgroupNoticeRequest)` is one method covering all eleven working-group
-    register events (`WorkgroupNoticeKind`): Governance category, one `workgroup_notice_<kind>`
-    template name per kind (matching Events' per-status template naming, since each
-    kind carries materially different copy worth its own metric), and the working-group link built
-    from `WorkgroupSlug` inside the renderer the same way a team link is built from a team
-    slug.
   - `IEmailPreviewContributor` + `EmailPreviewPersona` + `EmailPreviewSample` — the fan-out a sending
     section implements to put its own templates in the `/Email/EmailPreview` gallery, so the gallery
     stops naming other sections' templates (peterdrier/Humans#1651). The controller renders both the

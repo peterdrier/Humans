@@ -38,7 +38,8 @@ Repository: `IWorkgroupRepository`.
 
 Cross-section calls: `IUserServiceRead`, `IUserEmailService`, `IRoleAssignmentService`,
 `ITeamServiceRead`, `ISettingsService`, `IGoogleSyncService`, `INotificationService`,
-`IEmailService`, `IEmailMessageFactory`, `IAuditLogService`, `ISurveyAnalysisRead`,
+`IEmailService`, the section's own `WorkgroupsEmails` builder, `IAuditLogService`,
+`ISurveyAnalysisRead`,
 `IClock` (NodaTime). The
 inner service has no `IMemoryCache`.
 
@@ -54,6 +55,19 @@ merge fold change cached rows, so both bind to the decorator, not the inner). Ex
 `warmOnStartup: false`; the register populates lazily on the first read after a miss.
 Single-group reads (`GetBySlugAsync`, `GetByIdAsync`) come off the cached register rather
 than a second query, since the graph is already whole.
+
+### WorkgroupsEmails (Scoped, internal)
+
+No repository. Pure builder — reads `WorkgroupsResource` (via
+`IStringLocalizer<WorkgroupsResource>`) and `EmailSettings`, writes nothing. Returns
+`EmailMessage` values for `WorkgroupService` to pass to `IEmailService.SendAsync`. No DB
+access, no cache.
+
+### WorkgroupsEmailPreviews (Scoped)
+
+No repository. Read-only gallery contributor (`IEmailPreviewContributor`) — builds one
+sample per notice kind via `WorkgroupsEmails` for `/Email/EmailPreview`. No DB access, no
+cache.
 
 ### Inbound fan-out implementations (still `WorkgroupService`-backed, no tables of their own)
 
