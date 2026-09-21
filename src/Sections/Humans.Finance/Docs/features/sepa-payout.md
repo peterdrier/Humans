@@ -58,9 +58,12 @@ longer needs a redeploy.
 4. `Service.GenerateSepaPayoutAsync` takes the posted cap as a parameter (the config key is only the
    screen's prefill default), re-derives payability server-side, checks each amount against the
    balance, resolves the payee's name and unmasked IBAN from the cached Holded contact list
-   **keyed on the binding's `HoldedContactId`**, and mints one `SepaPayoutTransfer` per row. Two
-   Holded contacts can share one 400000xx; keying by account number instead would pay whichever of
-   them Holded happened to list first, which is not necessarily the bound member.
+   **keyed on the binding's `HoldedContactId`**, and mints one `SepaPayoutTransfer` per row,
+   stamping that same `HoldedContactId` onto it. Two Holded contacts can share one 400000xx;
+   keying by account number instead would pay whichever of them Holded happened to list first,
+   which is not necessarily the bound member — and the stamped id is what booking later checks the
+   binding against, so a rebind to the sibling contact after generation cannot pay it instead
+   (nobodies-collective/Humans#1146).
 5. `SepaPaymentFileBuilder.Build` enforces the file-level rules, serializes, and validates against
    the embedded official XSD. It is pure — no IO, no clock, no configuration.
 6. The file, its SHA-256 checksum, the timestamp and the generating admin are persisted with the
@@ -108,6 +111,7 @@ ledger, so paying one would post against a document that does not exist for acco
 | Partially booked (refs, no `BookedAt`) | the reason and the accepted ids, in place of the button; never re-bookable |
 | Member has no `HoldedCreditorContact` binding | the reason, in place of the button |
 | The binding's `SupplierAccountNum` no longer matches the transfer's | the reason, in place of the button |
+| The binding's `HoldedContactId` no longer matches the transfer's (rebound to a sibling contact on the same account, nobodies-collective/Humans#1146) | the reason, in place of the button. Skipped for a transfer generated before this guard existed (`HoldedContactId` null) — account-only. |
 | Holded unreadable at booking time | an error; nothing is posted |
 
 ### When Holded accepts one posting and refuses the next

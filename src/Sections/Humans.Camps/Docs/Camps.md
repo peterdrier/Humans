@@ -284,3 +284,11 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - Lead authority is `CampRoleAssignment` only. The `AuditAction.CampLeadAdded` / `CampLeadRemoved` enum members stay because historical `audit_log` rows persist those strings.
 - `CampMemberConfiguration.cs` lives in
   `src/Sections/Humans.Camps/Data/Configurations/` with the rest of the Camps entity configuration.
+
+## Issue queue
+
+Camps owns the `Camps` issue queue: it implements `IIssueQueueOwner` (Issues' contracts
+leaf) on its `Section` entry point, declaring the queue key and the roles that handle
+issues filed against it — `CampAdmin`, plus `Admin`, which handles every queue. Issues
+discovers the declaration through DI and holds no list of sections; dropping the seam
+sends this section's stored issues to the Admin-only queue.

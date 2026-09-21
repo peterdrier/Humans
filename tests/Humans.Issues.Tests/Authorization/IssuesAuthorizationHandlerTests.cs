@@ -12,23 +12,27 @@ namespace Humans.Issues.Tests.Authorization;
 
 public sealed class IssuesAuthorizationHandlerTests
 {
-    private readonly IssuesAuthorizationHandler _handler = new();
+    private readonly IssuesAuthorizationHandler _handler = new(Tests.Domain.TestIssueQueues.Shipped());
 
     public static TheoryData<string[], string?, bool> IssueAuthorizationCases => new()
     {
-        { [RoleNames.Admin], IssueSectionRouting.Tickets, true },
+        { [RoleNames.Admin], "Tickets", true },
         { [RoleNames.Admin], null, true },
-        { [RoleNames.TicketAdmin], IssueSectionRouting.Tickets, true },
-        { [RoleNames.TicketAdmin], IssueSectionRouting.Scanner, true },
-        { [RoleNames.Board], IssueSectionRouting.Scanner, true },
-        { [RoleNames.TicketAdmin], IssueSectionRouting.Camps, false },
-        { [RoleNames.CampAdmin], IssueSectionRouting.Scanner, false },
-        { [RoleNames.CampAdmin], IssueSectionRouting.Camps, true },
-        { [RoleNames.CampAdmin], IssueSectionRouting.CityPlanning, true },
-        { [RoleNames.ConsentCoordinator], IssueSectionRouting.Onboarding, true },
-        { [], IssueSectionRouting.Tickets, false },
+        { [RoleNames.TicketAdmin], "Tickets", true },
+        { [RoleNames.TicketAdmin], "Scanner", true },
+        { [RoleNames.Board], "Scanner", true },
+        { [RoleNames.TicketAdmin], "Camps", false },
+        { [RoleNames.CampAdmin], "Scanner", false },
+        { [RoleNames.CampAdmin], "Camps", true },
+        { [RoleNames.CampAdmin], "CityPlanning", true },
+        { [RoleNames.ConsentCoordinator], "Onboarding", true },
+        { [], "Tickets", false },
         { [RoleNames.TicketAdmin, RoleNames.CampAdmin], null, false },
         { [RoleNames.TicketAdmin], "ZSomeUnknownSection", false },
+        // Keys that outlived their section names: Users declares Profiles, Consent declares Legal.
+        { [RoleNames.HumanAdmin], "Profiles", true },
+        { [RoleNames.ConsentCoordinator], "Legal", true },
+        { [RoleNames.TicketAdmin], "Profiles", false },
     };
 
     [HumansTheory]
@@ -48,7 +52,7 @@ public sealed class IssuesAuthorizationHandlerTests
     public async Task UnauthenticatedUser_Denied()
     {
         var user = new ClaimsPrincipal(new ClaimsIdentity());
-        var issue = CreateIssue(IssueSectionRouting.Tickets);
+        var issue = CreateIssue("Tickets");
 
         (await EvaluateAsync(user, issue)).Should().BeFalse();
     }

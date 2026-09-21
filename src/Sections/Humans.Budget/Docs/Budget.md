@@ -245,3 +245,11 @@ Stored as string via `HasConversion<string>()`.
 - Do **not** re-add cross-domain navs (`Team`, `ResponsibleTeam`, `ActorUser`) or `.Include()` calls that traverse into any non-Budget entity. If you need a team name or actor display name alongside budget data, load the Budget aggregate first, then call `ITeamServiceRead` / `IUserServiceRead` to stitch the labels in memory.
 - New cross-section reads must go through the owning service interface (`ITeamServiceRead`, `IUserServiceRead`) — never `_dbContext`. Treat any new `DbContext` touch of another section's table as a regression.
 - Keep new audit-log writes using `AddAsync`-only semantics — never `Update` or `Remove` a `BudgetAuditLog` row, even in cleanup code (§12).
+
+## Issue queue
+
+Budget owns the `Budget` issue queue: it implements `IIssueQueueOwner` (Issues' contracts
+leaf) on its `Section` entry point, declaring the queue key and the roles that handle
+issues filed against it — `FinanceAdmin`, plus `Admin`, which handles every queue. Issues
+discovers the declaration through DI and holds no list of sections; dropping the seam
+sends this section's stored issues to the Admin-only queue.

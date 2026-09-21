@@ -5,6 +5,7 @@ using Humans.Base.Caching;
 using Humans.Base.Hosting;
 using Humans.Issues.Contracts;
 using Humans.Issues.Data;
+using Humans.Issues.Domain;
 using Humans.Issues.Authorization;
 using Humans.Issues.Jobs;
 using Humans.Issues.Services;
@@ -29,6 +30,10 @@ public sealed class Section : ISection
         // §15 repository pattern: Singleton + IDbContextFactory (§15b) so the
         // repository owns context lifetime.
         services.AddSingleton<IIssuesRepository, IssuesRepository>();
+
+        // The queue routing table, assembled from what every section declared through
+        // IIssueQueueOwner — Issues names no section (PR peterdrier/Humans#1762).
+        services.AddSingleton<IssueSectionRouting>();
         services.AddScoped<IssuesService>();
         services.AddScoped<IIssuesService>(sp => sp.GetRequiredService<IssuesService>());
         services.AddScoped<IIssuesRetention>(sp => sp.GetRequiredService<IssuesService>());

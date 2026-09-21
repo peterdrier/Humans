@@ -330,6 +330,9 @@ themes:
       memory/process/debt-ledger-additions.md. Count re-measured 2026-09-20
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
+  - added: 2026-09-20
+    what: "Email still hosts every sending section's templates. The scaffold of peterdrier/Humans#1651 landed CultureScope, IEmailPreviewContributor and a public TimeSensitiveTemplates, but the 16 per-section migrations and the teardown are not done: IEmailRenderer / IEmailMessageFactory / EmailContent still exist, 71 Email_* keys x 6 cultures still live in EmailResource.*.resx, EmailController still holds the legacy static preview table, and Humans.Email(.Contracts) still reference Events, Tickets and Campaigns contracts. Governance moves first; ownership map, per-section PR shape and gates are in the issue. Governed by memory/architecture/email-templates-live-in-sender.md."
+    review: panel
   - added: 2026-09-18
     id: CENTRAL-55
     what: "docs/guide/Glossary.md has no entry for assembly vote, the Governance lane that landed 2026-09-14 (peterdrier/Humans#1649), so the guide's own vocabulary page omits a term the Governance guide page now uses throughout. The file is shared guide input rather than section-owned (/section-doctor on Governance 2026-09-18)."

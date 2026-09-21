@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using Humans.Email.Domain;
 using Humans.Base.Enums;
 using Microsoft.EntityFrameworkCore;

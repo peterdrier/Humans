@@ -1670,7 +1670,7 @@ public class HoldedFinanceServiceTests
         _repo.GetSepaPayoutsForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<SepaPayoutExportRow>
             {
-                new(FixedNow, "nobodies-collective-2026-08-25-0309-4f1a9c02.xml", 40000004, "Ana Ruiz", "ES79****789", 12.34m, FixedNow),
+                new(FixedNow, "nobodies-collective-2026-08-25-0309-4f1a9c02.xml", 40000004, "c1", "Ana Ruiz", "ES79****789", 12.34m, FixedNow),
             });
 
         var slices = await MakeService().ContributeForUserAsync(
@@ -1680,6 +1680,7 @@ public class HoldedFinanceServiceTests
             .ContainSingle(s => s.SectionName == Service.SepaPayouts).Subject;
         var json = JsonSerializer.Serialize(slice.Data);
         json.Should().Contain("ES79****789").And.Contain("12.34").And.Contain("BookedAt")
+            .And.Contain("c1")
             .And.NotContain(AnaIban, "the export masks the IBAN even though the payout row keeps it raw");
     }
 
@@ -2048,6 +2049,24 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
+    public async Task GenerateSepaPayout_StampsTheContactIdTheRowWasResolvedAgainst()
+    {
+        // nobodies-collective/Humans#1146: booking later trusts this id, not just the account
+        // number, to tell a rebind to a sibling contact on the same account apart from no rebind.
+        ConfigureSepa();
+        SeedPayableCreditor();
+
+        await MakeService().GenerateSepaPayoutAsync(
+            [new SepaPayoutSelection(40000004, 12.34m)], 50m, Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).AddSepaPayoutAsync(
+            Arg.Any<SepaPayoutFile>(),
+            Arg.Is<IReadOnlyList<SepaPayoutTransfer>>(t => t.Count == 1 && t[0].HoldedContactId == "c1"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task GenerateSepaPayout_StoresTheBytesTheTreasurerDownloads()
     {
         // The stored XML is the record of what the bank was given, so it must be the same string
@@ -2245,7 +2264,8 @@ public class HoldedFinanceServiceTests
     private static readonly Guid BookableTransferId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
     /// <summary>An unbooked €30 transfer to a member bound to Holded contact "c1".</summary>
-    private Guid SeedBookableTransfer(Instant? bookedAt = null, string? paymentRefs = null)
+    private Guid SeedBookableTransfer(
+        Instant? bookedAt = null, string? paymentRefs = null, string? holdedContactId = "c1")
     {
         var userId = Guid.NewGuid();
         _repo.GetSepaTransferAsync(BookableTransferId, Arg.Any<CancellationToken>()).Returns(
@@ -2255,6 +2275,7 @@ public class HoldedFinanceServiceTests
                 FileId = Guid.NewGuid(),
                 UserId = userId,
                 SupplierAccountNum = 40000004,
+                HoldedContactId = holdedContactId,
                 CreditorName = "Ana Ruiz",
                 Iban = AnaIban,
                 IbanMasked = "ES79****789",
@@ -2381,6 +2402,54 @@ public class HoldedFinanceServiceTests
         result.Message.Should().Contain("binding changed");
         await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
             default!, default, default, default, default, default);
+    }
+
+    [HumansFact]
+    public async Task BookSepaTransfer_MemberReboundToASiblingContactOnTheSameAccount_PaysNothing()
+    {
+        // nobodies-collective/Humans#1146: Holded lets two contacts share one 400000xx, so the
+        // account-number guard alone passes here — only the contact id catches the rebind. Same
+        // account both sides; only the contact differs, and open docs sit on the sibling contact,
+        // so a booking that ignored the new guard would find coverage and post.
+        ConfigureSepa();
+        var userId = SeedBookableTransfer(holdedContactId: "c1");
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorContact
+            {
+                UserId = userId,
+                HoldedContactId = "c2",
+                SupplierAccountNum = 40000004,
+                Source = CreditorContactSource.Manual,
+            });
+        SeedOpenDocs(Doc("d1", 500m, 1, contactId: "c2"));
+        SeedPaymentIds("pay-a");
+
+        var result = await MakeService().BookSepaTransferAsync(BookableTransferId, Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Contain("different Holded contact");
+        await _client.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync(default);
+        await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
+            default!, default, default, default, default, default);
+        await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
+            default, default, default, default, default);
+    }
+
+    [HumansFact]
+    public async Task BookSepaTransfer_LegacyTransferWithNoContactId_StillBooks()
+    {
+        // A row generated before nobodies-collective/Humans#1146 shipped has no HoldedContactId —
+        // it keeps exactly today's account-only behaviour, no backfill.
+        ConfigureSepa();
+        SeedBookableTransfer(holdedContactId: null);
+        SeedOpenDocs();
+        SeedEntryId("e-1");
+
+        var result = await MakeService().BookSepaTransferAsync(BookableTransferId, Guid.NewGuid());
+
+        result.Succeeded.Should().BeTrue();
+        await _repo.Received(1).SaveSepaTransferBookingAsync(
+            BookableTransferId, FixedNow, Arg.Any<Guid?>(), "entry:e-1", Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -2669,6 +2738,45 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
+    public async Task GetSepaPayouts_ReboundToSiblingContactOnSameAccount_SaysWhyInsteadOfOfferingTheButton()
+    {
+        // The account number still matches, so the check above passes; only the contact moved.
+        // Without mirroring BookSepaTransferAsync's guard here the button renders live and fails
+        // on click (nobodies-collective/Humans#1146).
+        ConfigureSepa();
+        var userId = SeedTransferRows(holdedContactId: "c1");
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = userId, HoldedContactId = "c2", SupplierAccountNum = 40000004 },
+        });
+
+        var (rows, _) = await MakeService().GetSepaPayoutsAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        var row = rows.Should().ContainSingle().Subject;
+        row.CanBook.Should().BeFalse();
+        row.NotBookableReason.Should().Contain("rebound to a different Holded contact");
+    }
+
+    [HumansFact]
+    public async Task GetSepaPayouts_RowWithoutAContactId_KeepsAccountOnlyBehaviour()
+    {
+        // A row generated before the contact id was captured. Account matches, so it stays
+        // bookable — the new guard must not retire rows it has no evidence about.
+        ConfigureSepa();
+        var userId = SeedTransferRows(holdedContactId: null);
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = userId, HoldedContactId = "c2", SupplierAccountNum = 40000004 },
+        });
+
+        var (rows, _) = await MakeService().GetSepaPayoutsAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        rows.Should().ContainSingle().Which.CanBook.Should().BeTrue();
+    }
+
+    [HumansFact]
     public async Task GetSepaPayouts_BoundAndUnbooked_OffersTheButtonWithoutReadingHoldedDocuments()
     {
         // The screen no longer pre-checks document coverage: whatever the documents do not cover
@@ -2687,15 +2795,20 @@ public class HoldedFinanceServiceTests
         await _client.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync(default);
     }
 
-    /// <summary>One unbooked €30 transfer row on the screen. Returns the member it paid.</summary>
-    private Guid SeedTransferRows(string? paymentRefs = null)
+    /// <summary>
+    /// One unbooked €30 transfer row on the screen, generated against contact
+    /// <paramref name="holdedContactId"/>. Pass null for a row from before
+    /// nobodies-collective/Humans#1146 shipped. Returns the member it paid.
+    /// </summary>
+    private Guid SeedTransferRows(string? paymentRefs = null, string? holdedContactId = "c1")
     {
         var userId = Guid.NewGuid();
         _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>()).Returns(
             new List<SepaPayoutTransferRow>
             {
                 new(BookableTransferId, Guid.NewGuid(), "payout.xml", FixedNow, Guid.NewGuid(),
-                    userId, 40000004, "Ana Ruiz", "ES79****789", 30m, null, null, paymentRefs, null),
+                    userId, 40000004, holdedContactId, "Ana Ruiz", "ES79****789", 30m,
+                    null, null, paymentRefs, null),
             });
         return userId;
     }

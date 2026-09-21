@@ -265,3 +265,11 @@ The Tickets→Budget bridge is Budget's: `Humans.Budget.Services.TicketingBudget
 - The `TicketDashboardStats` cache key remains a ghost key (see *TicketDashboardStats cache* under Triggers). The decorator doesn't read-through-cache that DTO; `GetDashboardStatsAsync` still hits the repository on each render — on-demand staleness on the dashboard during sync windows is currently acceptable.
 - When extending the Tickets→Budget bridge, remember it lives in Budget: source new read data from `ITicketServiceRead` (adding methods there only if the existing `GetTicketOrdersAsync` read model is insufficient), and edit `TicketingBudgetService` in `src/Sections/Humans.Budget/Services/`. Projection/line-item writes stay Budget-owned.
 - The vendor split is doctrinal: business code talks to `ITicketVendorService` and never to "Ticket Tailor" directly. Any new vendor capability needs an interface method first, then a `TicketTailorService` impl plus a deterministic `StubTicketVendorService` impl so dev/preview environments still exercise the call.
+
+## Issue queue
+
+Tickets owns the `Tickets` issue queue: it implements `IIssueQueueOwner` (Issues' contracts
+leaf) on its `Section` entry point, declaring the queue key and the roles that handle
+issues filed against it — `TicketAdmin`, plus `Admin`, which handles every queue. Issues
+discovers the declaration through DI and holds no list of sections; dropping the seam
+sends this section's stored issues to the Admin-only queue.

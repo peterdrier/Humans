@@ -1,4 +1,5 @@
 using Humans.Base.Interfaces.Repositories;
+using Humans.Email.Contracts;
 using Humans.Email.Domain;
 using Humans.Base.Enums;
 using NodaTime;

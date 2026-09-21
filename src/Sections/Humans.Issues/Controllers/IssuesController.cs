@@ -19,6 +19,7 @@ internal sealed class IssuesController(
     IIssuesService issues,
     IAuthorizationService authorization,
     IUserServiceRead users,
+    IssueSectionRouting routing,
     IStringLocalizer<IssuesResource> localizer,
     ILogger<IssuesController> logger) : HumansControllerBase(users)
 {
@@ -78,8 +79,8 @@ internal sealed class IssuesController(
         // Section dropdown: Admin sees all known sections; non-admins see the
         // sections their roles own (so they only filter inside their own queue).
         var allowedSections = viewer.IsAdmin
-            ? IssueSectionRouting.AllKnownSections
-            : IssueSectionRouting.SectionsForRoles(viewer.Roles).ToList();
+            ? routing.AllKnownSections
+            : routing.SectionsForRoles(viewer.Roles).ToList();
 
         var sectionOptions = allowedSections
             .Select(s => new SectionOption { Section = s, Label = AreaLabelMap.LabelFor(s) })

@@ -19,6 +19,12 @@ internal sealed class SepaPayoutTransfer
     /// <summary>The 400000xx/410000xx creditor account the balance was read from.</summary>
     public int SupplierAccountNum { get; init; }
 
+    /// <summary>The Holded contact whose recipient details this transfer actually paid — captured
+    /// at generation, alongside <see cref="SupplierAccountNum"/>, because Holded lets two contacts
+    /// share one account and only this id says which of them the file named. Null on a row
+    /// generated before nobodies-collective/Humans#1146 shipped.</summary>
+    public string? HoldedContactId { get; init; }
+
     /// <summary>Legal name as written into <c>Cdtr/Nm</c>, already SEPA-normalized.</summary>
     public string CreditorName { get; init; } = "";
 

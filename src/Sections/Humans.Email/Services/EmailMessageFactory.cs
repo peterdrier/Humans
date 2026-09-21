@@ -1,7 +1,6 @@
 using Humans.Users.Contracts;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
-using Humans.Email.Domain;
 using NodaTime;
 using Humans.Tickets.Contracts;
 
@@ -54,7 +53,7 @@ internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessa
     {
         var content = renderer.RenderEmailVerification(userName, toEmail, verificationUrl, isConflict, culture);
         return new EmailMessage(toEmail, userName, content.Subject, content.HtmlBody,
-            TimeSensitiveTemplates.EmailVerification, TriggerImmediate: true);
+            TimeSensitiveTemplates.EmailVerification);
     }
 
     public EmailMessage AccountDeletionRequested(string userEmail, string userName, Instant deletionDate, string? culture = null)
@@ -156,21 +155,21 @@ internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessa
     {
         var content = renderer.RenderMagicLinkLogin(displayName, magicLinkUrl, culture);
         return new EmailMessage(toEmail, displayName, content.Subject, content.HtmlBody,
-            TimeSensitiveTemplates.MagicLinkLogin, TriggerImmediate: true);
+            TimeSensitiveTemplates.MagicLinkLogin);
     }
 
     public EmailMessage MagicLinkSignup(string toEmail, string magicLinkUrl, string? culture = null)
     {
         var content = renderer.RenderMagicLinkSignup(magicLinkUrl, culture);
         return new EmailMessage(toEmail, toEmail, content.Subject, content.HtmlBody,
-            TimeSensitiveTemplates.MagicLinkSignup, TriggerImmediate: true);
+            TimeSensitiveTemplates.MagicLinkSignup);
     }
 
     public EmailMessage WorkspaceCredentials(string recoveryEmail, string userName, string workspaceEmail, string tempPassword, string? culture = null)
     {
         var content = renderer.RenderWorkspaceCredentials(userName, workspaceEmail, tempPassword, culture);
         return new EmailMessage(recoveryEmail, userName, content.Subject, content.HtmlBody,
-            TimeSensitiveTemplates.WorkspaceCredentials, TriggerImmediate: true);
+            TimeSensitiveTemplates.WorkspaceCredentials);
     }
 
     public EmailMessage IssueComment(string to, string displayName, string issueTitle, string commentContent, string issueLink, string preferredLanguage)
@@ -196,7 +195,7 @@ internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessa
         ArgumentNullException.ThrowIfNull(request);
         var content = renderer.RenderEventLifecycle(request);
         return new EmailMessage(userEmail, request.UserName, content.Subject, content.HtmlBody,
-            request.TemplateName(), TriggerImmediate: true);
+            request.TemplateName());
     }
 
     public EmailMessage GoogleGroupRemovalLossOfAccess(string removedEmail, string userName, string groupName, string groupEmail, string? culture = null)

@@ -67,7 +67,7 @@ public class IssuePageRenderTests(HumansTestDatabase database) : IntegrationTest
         {
             Id = issueId,
             ReporterUserId = Guid.NewGuid(),
-            Section = IssueSectionRouting.Shifts,
+            Section = "Shifts",
             Category = IssueCategory.Bug,
             Title = SeededTitle,
             Description = "The rota table overflows the viewport below 400px.",

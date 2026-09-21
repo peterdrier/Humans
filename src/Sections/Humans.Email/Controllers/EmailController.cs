@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using Humans.Email.Services;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Configuration;
@@ -207,17 +208,32 @@ internal sealed class EmailController(
     public IActionResult EmailPreview(
         [FromServices] IEmailRenderer renderer,
         [FromServices] IEmailBodyComposer bodyComposer,
-        [FromServices] IOptions<EmailSettings> emailSettings)
+        [FromServices] IOptions<EmailSettings> emailSettings,
+        [FromServices] IEnumerable<IEmailPreviewContributor> contributors)
     {
         var settings = emailSettings.Value;
+        var contributorList = contributors.ToList();
         var previews = new Dictionary<string, List<EmailPreviewItem>>(StringComparer.Ordinal);
 
         foreach (var culture in Cultures)
         {
             var (name, email) = Personas[culture];
             var ctx = new PreviewContext(culture, name, email, settings);
+
+            // Both sources render while the templates migrate to their sending
+            // sections (peterdrier/Humans#1651): a contributed sample supersedes the
+            // legacy row for the same id, so a half-migrated template shows once.
+            var contributed = contributorList
+                .SelectMany(c => c.Samples(new EmailPreviewPersona(culture, name, email)))
+                .Select(ToPreviewItem)
+                .ToList();
+            var contributedIds = contributed.Select(i => i.Id).ToHashSet(StringComparer.Ordinal);
+
             previews[culture] = PreviewDefinitions
                 .Select(build => build(renderer, ctx))
+                .Where(item => !contributedIds.Contains(item.Id))
+                .Concat(contributed)
+                .OrderBy(item => item.Id, StringComparer.Ordinal)
                 .Select(item =>
                 {
                     item.Body = bodyComposer.Compose(item.Body).HtmlBody;
@@ -228,4 +244,13 @@ internal sealed class EmailController(
 
         return View(new EmailPreviewViewModel { Previews = previews, FromAddress = settings.FromAddress });
     }
+
+    private static EmailPreviewItem ToPreviewItem(EmailPreviewSample sample) => new()
+    {
+        Id = sample.Id,
+        Name = sample.Name,
+        Recipient = sample.Message.RecipientEmail,
+        Subject = sample.Message.Subject,
+        Body = sample.Message.HtmlBody
+    };
 }

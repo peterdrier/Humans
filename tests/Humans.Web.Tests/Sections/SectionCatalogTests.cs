@@ -46,10 +46,14 @@ public class SectionCatalogTests
         var issues = Build().Sections.Single(s => string.Equals(s.Name, "Issues", StringComparison.Ordinal));
 
         issues.HasContracts.Should().BeTrue();
-        issues.Seams.Should().Contain("ISectionAnnotations");
         issues.ServiceInterfaces.Should().Contain("IIssuesService");
         issues.Repositories.Should().Contain("IIssuesRepository");
         issues.DependsOn.Should().Contain("Users");
+
+        // The issue-queue seam sits on the sections that own a queue, not on Issues
+        // (PR peterdrier/Humans#1762) — and it is read off the assembly like everything else.
+        Build().Sections.Single(s => string.Equals(s.Name, "Tickets", StringComparison.Ordinal))
+            .Seams.Should().Contain(["IIssueQueueOwner", "ISectionAnnotations"]);
     }
 
     [HumansFact]
@@ -106,7 +110,7 @@ public class SectionCatalogTests
         var annotators = SectionDiscoveryExtensions.DiscoverImplementations<ISectionAnnotations>();
 
         annotators.Select(a => a.GetType().Assembly.GetName().Name)
-            .Should().Contain(["Humans.Agent", "Humans.Guide", "Humans.Issues"]);
+            .Should().Contain(["Humans.Agent", "Humans.Guide", "Humans.Tickets"]);
 
         SectionCatalogBuilder.Build(Shipped(), annotators)
             .Sections.SelectMany(s => s.Annotations)
