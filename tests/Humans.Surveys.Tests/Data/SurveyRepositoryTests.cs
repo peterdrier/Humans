@@ -77,13 +77,13 @@ public sealed class SurveyRepositoryTests : IDisposable
 
     private static SurveyInvitation Invitation(
         Guid surveyId, Instant? sentAt, Instant? reminderSentAt = null, bool completed = false) => new()
-    {
-        Id = Guid.NewGuid(),
-        SurveyId = surveyId,
-        UserId = Guid.NewGuid(),
-        SentAt = sentAt,
-        ReminderSentAt = reminderSentAt,
-        Completed = completed,
-        CreatedAt = Now
-    };
+        {
+            Id = Guid.NewGuid(),
+            SurveyId = surveyId,
+            UserId = Guid.NewGuid(),
+            SentAt = sentAt,
+            ReminderSentAt = reminderSentAt,
+            Completed = completed,
+            CreatedAt = Now
+        };
 }
