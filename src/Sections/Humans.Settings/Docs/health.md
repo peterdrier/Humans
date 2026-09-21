@@ -127,7 +127,13 @@ The shapes imply exactly today's layout:
 - **No resx for the edit form.** Only an admin is ever rendered it, so it is exempt
   (`memory/code/localization-admin-exempt.md`); the read-only rendering an ordinary member
   sees is fully localized.
-- **No `Deleted` path on the form.** The status exists for withdrawal; no screen sets it.
+- **No `Deleted` path on the form.** The status is kept for removing a test event once one is
+  made; no screen sets it today, and that is the intended state (Peter, 2026-09-21).
+- **No re-render of a rejected blank new-cycle form.** Minting a cycle means posting the form
+  with no id, so a validation failure redirects to `/Settings#event` with nothing to re-render
+  and the operator retypes. Accepted rather than fixed: a first-time mint happens about once a
+  year and only fails if the operator fights the field rules (Peter, 2026-09-21). Editing an
+  existing row is unaffected — it redirects to its own id.
 
 ## Load-bearing weirdness
 
