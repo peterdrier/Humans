@@ -276,6 +276,24 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task ApproveAsync_records_the_governance_audit_entry()
+    {
+        var application = await SeedSubmittedApplicationAsync(Guid.NewGuid(), MembershipTier.Asociado);
+        var reviewerId = Guid.NewGuid();
+        await SeedBoardVoteAsync(application.Id);
+
+        await _service.ApproveAsync(application.Id, reviewerId, "Approved", null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.TierApplicationApproved,
+            AuditEntityTypes.Application,
+            application.Id,
+            "Asociado application approved",
+            reviewerId);
+    }
+
+    [HumansFact]
     public async Task ApproveAsync_UpdatesProfileTierViaUserService()
     {
         var userId = Guid.NewGuid();
@@ -545,6 +563,24 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var updated = await GovernanceDb.Applications.FirstAsync(a => a.Id == app.Id, Xunit.TestContext.Current.CancellationToken);
         updated.Status.Should().Be(ApplicationStatus.Rejected);
         updated.DecisionNote.Should().Be("Not ready");
+    }
+
+    [HumansFact]
+    public async Task RejectAsync_records_the_governance_audit_entry()
+    {
+        var application = await SeedSubmittedApplicationAsync(Guid.NewGuid(), MembershipTier.Colaborador);
+        var reviewerId = Guid.NewGuid();
+        await SeedBoardVoteAsync(application.Id);
+
+        await _service.RejectAsync(application.Id, reviewerId, "Not ready", null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.TierApplicationRejected,
+            AuditEntityTypes.Application,
+            application.Id,
+            "Colaborador application rejected",
+            reviewerId);
     }
 
     [HumansFact]
