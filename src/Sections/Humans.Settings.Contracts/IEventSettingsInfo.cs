@@ -44,12 +44,11 @@ public interface IEventSettingsInfo
     /// <summary>
     /// True once <see cref="EarlyEntryClose"/> has passed (<paramref name="now"/> ≥ close).
     /// Call sites AND this with the viewer's privilege and the shift's
-    /// <c>Shift.IsEarlyEntry</c>. Readers still call Shifts' <c>IBurnSettingsInfo</c>
-    /// twin until the nobodies-collective/Humans#1104 cutover moves them here.
+    /// <c>Shift.IsEarlyEntry</c>.
     /// </summary>
     /// <remarks>
     /// <c>sealed</c> (non-virtual) on purpose: implementers must not be able to
-    /// override the clock rule, and it lets <c>EventSettings</c> forward its
+    /// override the clock rule, and it lets <c>EventSettingsInfo</c> forward its
     /// same-named public method here without the call dispatching back into
     /// itself.
     /// </remarks>
