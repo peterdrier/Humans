@@ -1092,4 +1092,9 @@
   <data name="Enum_LanguageProficiency_Conversational" xml:space="preserve"><value>Conversacional</value></data>
   <data name="Enum_LanguageProficiency_Fluent" xml:space="preserve"><value>Fluid</value></data>
   <data name="Enum_LanguageProficiency_Native" xml:space="preserve"><value>Nadiu</value></data>
+  <data name="Profile_NotAttending_Declared" xml:space="preserve"><value>Se t'ha marcat com a no assistent aquest any.</value></data>
+  <data name="Profile_NotAttending_Failed" xml:space="preserve"><value>Alguna cosa ha anat malament. Torna-ho a provar.</value></data>
+  <data name="Profile_NotAttending_NoActiveEvent" xml:space="preserve"><value>No hi ha cap esdeveniment actiu configurat.</value></data>
+  <data name="Profile_NotAttending_Undone" xml:space="preserve"><value>S'ha eliminat la teva declaració.</value></data>
+  <data name="Profile_NotAttending_UndoFailed" xml:space="preserve"><value>No s'ha pogut desfer; pot ser que la sincronització d'entrades hagi actualitzat el teu estat.</value></data>
 </root>

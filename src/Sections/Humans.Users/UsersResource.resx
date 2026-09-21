@@ -501,4 +501,9 @@
   <data name="Enum_LanguageProficiency_Conversational" xml:space="preserve"><value>Conversational</value></data>
   <data name="Enum_LanguageProficiency_Fluent" xml:space="preserve"><value>Fluent</value></data>
   <data name="Enum_LanguageProficiency_Native" xml:space="preserve"><value>Native</value></data>
+  <data name="Profile_NotAttending_Declared" xml:space="preserve"><value>You've been marked as not attending this year.</value></data>
+  <data name="Profile_NotAttending_Failed" xml:space="preserve"><value>Something went wrong. Please try again.</value></data>
+  <data name="Profile_NotAttending_NoActiveEvent" xml:space="preserve"><value>No active event configured.</value></data>
+  <data name="Profile_NotAttending_Undone" xml:space="preserve"><value>Your declaration has been removed.</value></data>
+  <data name="Profile_NotAttending_UndoFailed" xml:space="preserve"><value>Could not undo — your status may have been updated by ticket sync.</value></data>
 </root>

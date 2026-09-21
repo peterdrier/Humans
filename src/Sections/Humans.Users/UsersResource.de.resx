@@ -1092,4 +1092,9 @@
   <data name="Enum_LanguageProficiency_Conversational" xml:space="preserve"><value>Konversationssicher</value></data>
   <data name="Enum_LanguageProficiency_Fluent" xml:space="preserve"><value>Fließend</value></data>
   <data name="Enum_LanguageProficiency_Native" xml:space="preserve"><value>Muttersprache</value></data>
+  <data name="Profile_NotAttending_Declared" xml:space="preserve"><value>Du wurdest für dieses Jahr als nicht teilnehmend markiert.</value></data>
+  <data name="Profile_NotAttending_Failed" xml:space="preserve"><value>Etwas ist schiefgelaufen. Bitte versuche es erneut.</value></data>
+  <data name="Profile_NotAttending_NoActiveEvent" xml:space="preserve"><value>Es ist keine aktive Veranstaltung konfiguriert.</value></data>
+  <data name="Profile_NotAttending_Undone" xml:space="preserve"><value>Deine Erklärung wurde entfernt.</value></data>
+  <data name="Profile_NotAttending_UndoFailed" xml:space="preserve"><value>Die Erklärung konnte nicht rückgängig gemacht werden; möglicherweise hat die Ticketsynchronisierung deinen Status aktualisiert.</value></data>
 </root>

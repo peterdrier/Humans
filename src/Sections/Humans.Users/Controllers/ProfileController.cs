@@ -571,12 +571,12 @@ internal sealed class ProfileController(
             }
 
             await _userService.DeclareNotAttendingAsync(user.Id, eventYear.Value);
-            SetSuccess("You've been marked as not attending this year.");
+            SetSuccess(localizer["Profile_NotAttending_Declared"].Value);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to declare not attending for user {UserId}", user.Id);
-            SetError("Something went wrong. Please try again.");
+            SetError(localizer["Profile_NotAttending_Failed"].Value);
         }
 
         return Redirect("/");
@@ -603,7 +603,7 @@ internal sealed class ProfileController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to undo not attending for user {UserId}", user.Id);
-            SetError("Something went wrong. Please try again.");
+            SetError(localizer["Profile_NotAttending_Failed"].Value);
         }
 
         return Redirect("/");
@@ -617,7 +617,7 @@ internal sealed class ProfileController(
             return activeEvent.Year;
         }
 
-        SetError("No active event configured.");
+        SetError(localizer["Profile_NotAttending_NoActiveEvent"].Value);
         return null;
     }
 
@@ -625,11 +625,11 @@ internal sealed class ProfileController(
     {
         if (undone)
         {
-            SetSuccess("Your declaration has been removed.");
+            SetSuccess(localizer["Profile_NotAttending_Undone"].Value);
             return;
         }
 
-        SetError("Could not undo — your status may have been updated by ticket sync.");
+        SetError(localizer["Profile_NotAttending_UndoFailed"].Value);
     }
 
     [HttpGet("Me/Outbox")]

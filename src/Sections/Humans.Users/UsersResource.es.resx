@@ -1092,4 +1092,9 @@
   <data name="Enum_LanguageProficiency_Conversational" xml:space="preserve"><value>Conversacional</value></data>
   <data name="Enum_LanguageProficiency_Fluent" xml:space="preserve"><value>Fluido</value></data>
   <data name="Enum_LanguageProficiency_Native" xml:space="preserve"><value>Nativo</value></data>
+  <data name="Profile_NotAttending_Declared" xml:space="preserve"><value>Se te ha marcado como no asistente este año.</value></data>
+  <data name="Profile_NotAttending_Failed" xml:space="preserve"><value>Algo ha salido mal. Inténtalo de nuevo.</value></data>
+  <data name="Profile_NotAttending_NoActiveEvent" xml:space="preserve"><value>No hay ningún evento activo configurado.</value></data>
+  <data name="Profile_NotAttending_Undone" xml:space="preserve"><value>Se ha eliminado tu declaración.</value></data>
+  <data name="Profile_NotAttending_UndoFailed" xml:space="preserve"><value>No se pudo deshacer; es posible que la sincronización de entradas haya actualizado tu estado.</value></data>
 </root>

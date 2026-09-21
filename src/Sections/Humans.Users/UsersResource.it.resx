@@ -1092,4 +1092,9 @@
   <data name="Enum_LanguageProficiency_Conversational" xml:space="preserve"><value>Conversazionale</value></data>
   <data name="Enum_LanguageProficiency_Fluent" xml:space="preserve"><value>Fluente</value></data>
   <data name="Enum_LanguageProficiency_Native" xml:space="preserve"><value>Madrelingua</value></data>
+  <data name="Profile_NotAttending_Declared" xml:space="preserve"><value>Sei stato/a contrassegnato/a come non partecipante quest'anno.</value></data>
+  <data name="Profile_NotAttending_Failed" xml:space="preserve"><value>Si è verificato un problema. Riprova.</value></data>
+  <data name="Profile_NotAttending_NoActiveEvent" xml:space="preserve"><value>Non è configurato alcun evento attivo.</value></data>
+  <data name="Profile_NotAttending_Undone" xml:space="preserve"><value>La tua dichiarazione è stata rimossa.</value></data>
+  <data name="Profile_NotAttending_UndoFailed" xml:space="preserve"><value>Impossibile annullare: la sincronizzazione dei biglietti potrebbe aver aggiornato il tuo stato.</value></data>
 </root>

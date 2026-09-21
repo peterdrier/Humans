@@ -1092,4 +1092,9 @@
   <data name="Enum_LanguageProficiency_Conversational" xml:space="preserve"><value>Conversationnel</value></data>
   <data name="Enum_LanguageProficiency_Fluent" xml:space="preserve"><value>Courant</value></data>
   <data name="Enum_LanguageProficiency_Native" xml:space="preserve"><value>Langue maternelle</value></data>
+  <data name="Profile_NotAttending_Declared" xml:space="preserve"><value>Vous avez été marqué·e comme ne participant pas cette année.</value></data>
+  <data name="Profile_NotAttending_Failed" xml:space="preserve"><value>Une erreur s'est produite. Veuillez réessayer.</value></data>
+  <data name="Profile_NotAttending_NoActiveEvent" xml:space="preserve"><value>Aucun événement actif n'est configuré.</value></data>
+  <data name="Profile_NotAttending_Undone" xml:space="preserve"><value>Votre déclaration a été supprimée.</value></data>
+  <data name="Profile_NotAttending_UndoFailed" xml:space="preserve"><value>Impossible d'annuler : la synchronisation des billets a peut-être mis à jour votre statut.</value></data>
 </root>
