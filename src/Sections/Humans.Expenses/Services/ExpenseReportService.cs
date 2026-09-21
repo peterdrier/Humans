@@ -39,6 +39,9 @@ internal sealed class ExpenseReportService(
     IOptions<TravelReimbursementConfig> travelConfig) : IExpenseReportService,
         IExpenseReportBackgroundProcessor, IUserDataContributor
 {
+    internal const string ExpenseReports = "ExpenseReports";
+    internal const string ExpenseAuditLog = "ExpenseAuditLog";
+
     private readonly TravelReimbursementConfig _travel = travelConfig.Value;
 
     /// <summary>
@@ -1678,9 +1681,9 @@ internal sealed class ExpenseReportService(
 
         return
         [
-            new UserDataSlice(GdprExportSections.ExpenseReports,
+            new UserDataSlice(ExpenseReports,
                 shapedReports.Count > 0 ? shapedReports : null),
-            new UserDataSlice(GdprExportSections.ExpenseAuditLog,
+            new UserDataSlice(ExpenseAuditLog,
                 shapedAudit.Count > 0
                     ? new { MaskedIban = maskedIban, Entries = shapedAudit }
                     : (object?)null),
@@ -1701,8 +1704,8 @@ internal sealed class ExpenseReportService(
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.ExpenseReports] = FiscalRetention,
-            [GdprExportSections.ExpenseAuditLog] = FiscalRetention
+            [ExpenseReports] = FiscalRetention,
+            [ExpenseAuditLog] = FiscalRetention
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;

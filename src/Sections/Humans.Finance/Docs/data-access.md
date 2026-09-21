@@ -34,7 +34,7 @@ Repository: `IHoldedRepository`.
 | HoldedCreditorContacts | R/W (creditor-contact bindings per user) |
 | HoldedDocSyncStates | R/W |
 | SepaPayoutFiles | R/W (append-only writes; read joined for the Article 15 export and for `/Finance/Sepa`) |
-| SepaPayoutTransfers | R/W (appended at generation; the booking columns are the only update — `SaveSepaTransferBookingAsync`. Read per user for the Article 15 export and flattened with the file for `/Finance/Sepa`) |
+| SepaPayoutTransfers | R/W (appended at generation, `HoldedContactId` captured from the binding at that point; the booking columns are the only update — `SaveSepaTransferBookingAsync`. Read per user for the Article 15 export and flattened with the file for `/Finance/Sepa`) |
 
 Cross-section calls via `IBudgetServiceRead` (`budget` in the ctor), `IHoldedService` (the Holded section's
 ledger-mirror read surface — `holded` in the ctor; ledger-line /

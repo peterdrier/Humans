@@ -25,6 +25,12 @@ The wrapper scripts below still work but are no longer the primary path.
 - `cleanup-merged-bug-hunt-worktrees.sh`
   Finds merged bug-hunt worktrees and removes them safely.
 
+- `cron/run-daily-debt.sh`
+  Unattended nightly `codex exec` pass against a dedicated throwaway clone (never a
+  human's working checkout), driven by a systemd user timer. Gates on build+test
+  before pushing; opens one PR per night, or a quiet no-op. Setup and details:
+  [`cron/README.md`](cron/README.md).
+
 ## Prompts
 
 - `bug-hunt-prompt.md`
@@ -32,6 +38,10 @@ The wrapper scripts below still work but are no longer the primary path.
 
 - `tech-debt-prompt.md`
   Autonomous consolidation / tech-debt workflow.
+
+- `prompts/daily-debt.md`
+  Prompt for the daily unattended runner (`cron/run-daily-debt.sh`). Guardrails are
+  filled in; target selection is a pending design decision.
 
 ## Default Behavior
 

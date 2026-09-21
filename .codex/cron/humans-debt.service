@@ -1,0 +1,19 @@
+[Unit]
+Description=Humans daily Codex tech-debt runner
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# systemd user units start with a minimal PATH, same problem as cron.
+# Adjust this to wherever dotnet, codex, gh and git actually live on your
+# machine (`which dotnet codex gh git` as the user the timer runs as).
+# Order matters: a user-local codex install (~/.npm-global, ~/.local) must
+# win over a stale system one on /usr/bin.
+Environment=PATH=%h/.npm-global/bin:%h/.local/bin:%h/.dotnet/tools:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/.humans-debt-runner/clone/.codex/cron/run-daily-debt.sh
+# Belt-and-suspenders on top of the script's own `timeout` cap.
+TimeoutStartSec=3h
+# Yield to other scheduled work on this box (collections generation, hourly
+# Claude work) — this is a nightly best-effort sweep, not latency-sensitive.
+Nice=10

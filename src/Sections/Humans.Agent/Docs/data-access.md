@@ -15,11 +15,11 @@ tool-corpus preload from `AgentSectionDocReader`, `AgentFeatureSpecReader`,
 `CommunityFaqReader`, and calls into `IAgentPreloadAugmentor`
 (`Humans.Agent.Services.Preload.AgentPreloadAugmentor`,
 `src/Sections/Humans.Agent/Services/Preload/`) — it renders the access matrix / glossaries /
-route map / FAQ preload pages from `Humans.Base`'s `AccessMatrixDefinitions`, the
-`ISectionHelp` contributions DI discovered (each section's own Guide and Glossary
-markdown) and `Humans.Base`'s `SectionHelpContent.Faq`. Pure static-content
-formatting — its only injected dependency is `IEnumerable<ISectionHelp>`, no DB
-access, no cache.
+route map / FAQ preload pages from the `ISectionAccessMatrix` contributions DI discovered
+(each section's own rows), the `ISectionHelp` contributions DI discovered (each section's
+own Guide and Glossary markdown) and `Humans.Base`'s `SectionHelpContent.Faq`. Pure
+static-content formatting — its only injected dependencies are `IEnumerable<ISectionAccessMatrix>`
+and `IEnumerable<ISectionHelp>`, no DB access, no cache.
 `AgentPreloadWarmupHostedService` and `AgentSettingsStoreWarmupHostedService`
 run startup warmup, no DB access — fan out over the readers /
 `IAgentSettingsService` via `IServiceScopeFactory`. `AgentRateLimitStore`,

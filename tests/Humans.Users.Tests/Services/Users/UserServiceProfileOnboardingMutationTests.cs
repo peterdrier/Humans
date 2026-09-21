@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
-using Humans.Gdpr.Contracts;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
 using Humans.Users.Data.Repositories;
@@ -65,24 +64,24 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var slices = await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
 
         slices.Select(s => s.SectionName).Should().Contain([
-            GdprExportSections.Account,
-            GdprExportSections.EventParticipations,
-            GdprExportSections.Profile,
-            GdprExportSections.ContactFields,
-            GdprExportSections.UserEmails,
-            GdprExportSections.VolunteerHistory,
-            GdprExportSections.Languages,
-            GdprExportSections.CommunicationPreferences
+            UserService.Account,
+            UserService.EventParticipations,
+            UserService.Profile,
+            UserService.ContactFields,
+            UserService.UserEmails,
+            UserService.VolunteerHistory,
+            UserService.Languages,
+            UserService.CommunicationPreferences
         ]);
         var userEmailsSlice = slices.Single(s =>
-            string.Equals(s.SectionName, GdprExportSections.UserEmails, StringComparison.Ordinal));
+            string.Equals(s.SectionName, UserService.UserEmails, StringComparison.Ordinal));
         var json = System.Text.Json.JsonSerializer.Serialize(userEmailsSlice.Data);
         json.Should().Contain("\"IsOAuth\":true");
         json.Should().Contain("\"IsNotificationTarget\":true");
         json.Should().NotContain("\"IsPrimary\":");
 
         var accountSlice = slices.Single(s =>
-            string.Equals(s.SectionName, GdprExportSections.Account, StringComparison.Ordinal));
+            string.Equals(s.SectionName, UserService.Account, StringComparison.Ordinal));
         var accountJson = System.Text.Json.JsonSerializer.Serialize(accountSlice.Data);
         accountJson.Should().Contain("\"Email\":\"g@example.com\"");
     }

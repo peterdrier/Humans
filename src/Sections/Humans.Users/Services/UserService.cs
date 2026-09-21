@@ -3,12 +3,12 @@ using System.ComponentModel.DataAnnotations;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
-using Humans.Gdpr.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
 using Humans.Base.Threading;
 using Humans.Base.Helpers;
+using Humans.Gdpr.Contracts;
 using NodaTime;
 
 namespace Humans.Users.Services;
@@ -22,6 +22,16 @@ internal sealed class UserService(
     IClock clock,
     ILogger<UserService> logger) : IUserServiceInternal, IUserDataContributor
 {
+    /// <summary>GDPR export JSON keys for this contributor's data.</summary>
+    internal const string Account = "Account";
+    internal const string Profile = "Profile";
+    internal const string ContactFields = "ContactFields";
+    internal const string UserEmails = "UserEmails";
+    internal const string VolunteerHistory = "VolunteerHistory";
+    internal const string Languages = "Languages";
+    internal const string CommunicationPreferences = "CommunicationPreferences";
+    internal const string EventParticipations = "EventParticipations";
+
     private static readonly TrackedLock[] ProfileStubLocks = Enumerable
         .Range(0, 32)
         .Select(i => new TrackedLock($"UserService.ProfileStub[{i}]"))
@@ -904,8 +914,8 @@ internal sealed class UserService(
         if (user is null)
         {
             return [
-                new UserDataSlice(GdprExportSections.Account, null),
-                new UserDataSlice(GdprExportSections.Profile, null)
+                new UserDataSlice(Account, null),
+                new UserDataSlice(Profile, null)
             ];
         }
 
@@ -967,8 +977,8 @@ internal sealed class UserService(
             .GetByUserIdReadOnlyAsync(userId, ct);
 
         var profileSlice = profile is null
-            ? new UserDataSlice(GdprExportSections.Profile, null)
-            : new UserDataSlice(GdprExportSections.Profile, new
+            ? new UserDataSlice(Profile, null)
+            : new UserDataSlice(Profile, new
             {
                 profile.BurnerName,
                 profile.FirstName,
@@ -1010,7 +1020,7 @@ internal sealed class UserService(
                 UpdatedAt = profile.UpdatedAt.ToIso8601()
             });
 
-        var contactFieldSlice = new UserDataSlice(GdprExportSections.ContactFields, contactFields.Select(cf => new
+        var contactFieldSlice = new UserDataSlice(ContactFields, contactFields.Select(cf => new
         {
             cf.FieldType,
             Label = cf.DisplayLabel,
@@ -1018,7 +1028,7 @@ internal sealed class UserService(
             cf.Visibility
         }).ToList());
 
-        var userEmailsSlice = new UserDataSlice(GdprExportSections.UserEmails, userEmails.Select(e => new
+        var userEmailsSlice = new UserDataSlice(UserEmails, userEmails.Select(e => new
         {
             e.Email,
             e.IsVerified,
@@ -1028,7 +1038,7 @@ internal sealed class UserService(
             e.Visibility
         }).ToList());
 
-        var volunteerHistorySlice = new UserDataSlice(GdprExportSections.VolunteerHistory, volunteerHistory.Select(vh => new
+        var volunteerHistorySlice = new UserDataSlice(VolunteerHistory, volunteerHistory.Select(vh => new
         {
             Date = vh.Date.ToInvariantDate(),
             vh.EventName,
@@ -1036,13 +1046,13 @@ internal sealed class UserService(
             CreatedAt = vh.CreatedAt.ToIso8601()
         }).ToList());
 
-        var languagesSlice = new UserDataSlice(GdprExportSections.Languages, profileLanguages.Select(pl => new
+        var languagesSlice = new UserDataSlice(Languages, profileLanguages.Select(pl => new
         {
             pl.LanguageCode,
             pl.Proficiency
         }).ToList());
 
-        var commPrefsSlice = new UserDataSlice(GdprExportSections.CommunicationPreferences, communicationPreferences.Select(cp => new
+        var commPrefsSlice = new UserDataSlice(CommunicationPreferences, communicationPreferences.Select(cp => new
         {
             cp.Category,
             cp.OptedOut,
@@ -1053,8 +1063,8 @@ internal sealed class UserService(
 
         return
         [
-            new UserDataSlice(GdprExportSections.Account, shaped),
-            new UserDataSlice(GdprExportSections.EventParticipations, participationsShaped),
+            new UserDataSlice(Account, shaped),
+            new UserDataSlice(EventParticipations, participationsShaped),
             profileSlice,
             contactFieldSlice,
             userEmailsSlice,
@@ -1069,25 +1079,28 @@ internal sealed class UserService(
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.Account] =
+            [Account] =
                 "Partially retained: the User row survives as a tombstone (its id, the display " +
                 "name \"Deleted User\" and a deleted-<id>@deleted.local address) so every other " +
                 "section's user-id reference stays resolvable and the erasure itself remains " +
                 "provable — GDPR Art. 5(2) accountability. Every identity field on it is " +
                 "overwritten and the account is locked out permanently.",
-            [GdprExportSections.EventParticipations] =
+            [EventParticipations] =
                 "Retained: the year and status of each participation, keyed to the tombstoned " +
                 "user id, is the association's register of who was a member in which year — " +
                 "Ley Orgánica 1/2002 Art. 14, GDPR Art. 17(3)(b). It carries no identity fields.",
-            [GdprExportSections.Profile] = null,
-            [GdprExportSections.ContactFields] = null,
-            [GdprExportSections.UserEmails] = null,
-            [GdprExportSections.VolunteerHistory] = null,
-            [GdprExportSections.Languages] = null,
-            [GdprExportSections.CommunicationPreferences] = null
+            [Profile] = null,
+            [ContactFields] = null,
+            [UserEmails] = null,
+            [VolunteerHistory] = null,
+            [Languages] = null,
+            [CommunicationPreferences] = null
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    /// <summary>Owns the account record: erased after every other contributor.</summary>
+    public bool ErasesLast => true;
 
     /// <summary>
     /// Anonymizes the profile (contact fields and volunteer history go with it),

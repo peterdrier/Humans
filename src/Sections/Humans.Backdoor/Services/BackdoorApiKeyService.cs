@@ -18,6 +18,9 @@ internal sealed class BackdoorApiKeyService(
     IClock clock,
     ILogger<BackdoorApiKeyService> logger) : IBackdoorApiKeyService, IUserDataContributor, IUserMerge
 {
+    /// <summary>GDPR export JSON key for this contributor's data.</summary>
+    internal const string BackdoorApiKeys = "BackdoorApiKeys";
+
     /// <summary>Human-readable marker so a leaked key is recognisable in a log or a paste.</summary>
     private const string KeyPrefix = "hmn_";
 
@@ -199,13 +202,13 @@ internal sealed class BackdoorApiKeyService(
             })
             .ToList();
 
-        return [new UserDataSlice(GdprExportSections.BackdoorApiKeys, shaped.Count == 0 ? null : shaped)];
+        return [new UserDataSlice(BackdoorApiKeys, shaped.Count == 0 ? null : shaped)];
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.BackdoorApiKeys] = null
+            [BackdoorApiKeys] = null
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;

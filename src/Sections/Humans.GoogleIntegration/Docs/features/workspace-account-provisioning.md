@@ -242,7 +242,7 @@ EmailMessage WorkspaceCredentials(
 await emailService.SendAsync(emailMessages.WorkspaceCredentials(
     recoveryEmail, userName, workspaceEmail, tempPassword, culture));
 ```
-The factory message carries `TriggerImmediate: true` for fast delivery.
+`workspace_credentials` is on `TimeSensitiveTemplates`, so `OutboxEmailService` gives it an immediate drain.
 
 ## Security Considerations
 

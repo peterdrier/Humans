@@ -213,3 +213,11 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - Settings read/upsert (`GetOrCreateSettingsAsync`, `MutateSettingsAsync`). All field-level mutations (placement open/close, limit zone, official zones, placement dates, registration info) flow through `MutateSettingsAsync` at the service layer. It returns `Task` — a caller that needs the written row reads it back through `GetOrCreateSettingsAsync`, so no EF entity leaves the repository. There is no year-keyed settings read; every path goes through `GetOrCreateSettingsAsync`.
 
 Per §12, `camp_polygon_histories` is append-only — the repository intentionally exposes no `UpdateHistoryAsync` / `RemoveHistoryAsync`.
+
+## Issue queue
+
+CityPlanning owns the `CityPlanning` issue queue: it implements `IIssueQueueOwner` (Issues' contracts
+leaf) on its `Section` entry point, declaring the queue key and the roles that handle
+issues filed against it — `CampAdmin`, plus `Admin`, which handles every queue. Issues
+discovers the declaration through DI and holds no list of sections; dropping the seam
+sends this section's stored issues to the Admin-only queue.

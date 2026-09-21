@@ -269,6 +269,10 @@ namespace Humans.Finance.Data.Migrations
                     b.Property<Guid>("FileId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("HoldedContactId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("HoldedPaymentRefs")
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)");

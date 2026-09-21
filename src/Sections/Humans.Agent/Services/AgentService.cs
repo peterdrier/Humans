@@ -15,6 +15,8 @@ namespace Humans.Agent.Services;
 
 internal sealed class AgentService : IAgentService, IAgentConversationRetention
 {
+    internal const string AgentConversations = "AgentConversations";
+
     private readonly IAgentSettingsService _settings;
     private readonly IAgentRateLimitStore _rateLimit;
     private readonly IAgentAbuseDetector _abuse;
@@ -668,13 +670,13 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
                 m.HandedOffToFeedbackId
             }).ToList()
         }).ToList();
-        return [new UserDataSlice(GdprExportSections.AgentConversations, shaped)];
+        return [new UserDataSlice(AgentConversations, shaped)];
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.AgentConversations] = null
+            [AgentConversations] = null
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;

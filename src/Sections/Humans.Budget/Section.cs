@@ -1,3 +1,5 @@
+using Humans.Base.Constants;
+using Humans.Issues.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
 using Humans.Budget.Authorization;
@@ -22,7 +24,7 @@ namespace Humans.Budget;
 /// <c>SectionJobs.cs</c>; the DI registration stays here as a factory (ruling 43): the
 /// job's constructor is <c>internal</c>, so only this assembly can build it.
 /// </remarks>
-public sealed class Section : ISection
+public sealed class Section : ISection, IIssueQueueOwner
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -54,4 +56,10 @@ public sealed class Section : ISection
         // Shell's AuthorizationPolicyExtensions (design §8's asymmetry, §15 step 6).
         services.AddScoped<IAuthorizationHandler, BudgetAuthorizationHandler>();
     }
+
+    // This section owns the issue queue its members' reports land in; Issues discovers
+    // the seam rather than holding a list of sections (memory/architecture/section-contribution-seams.md).
+    string IIssueQueueOwner.QueueKey => "Budget";
+
+    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.FinanceAdmin];
 }

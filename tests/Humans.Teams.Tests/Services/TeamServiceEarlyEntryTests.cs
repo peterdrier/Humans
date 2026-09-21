@@ -400,7 +400,7 @@ public sealed class TeamServiceEarlyEntryTests
 
         var slices = await _service.ContributeForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
-        var eeSlice = slices.Should().ContainSingle(s => s.SectionName == GdprExportSections.TeamEarlyEntry).Subject;
+        var eeSlice = slices.Should().ContainSingle(s => s.SectionName == TeamService.TeamEarlyEntry).Subject;
         var items = eeSlice.Data.Should().BeAssignableTo<System.Collections.IEnumerable>().Subject;
         items.Cast<object>().Should().ContainSingle();
 

@@ -1,7 +1,10 @@
+using Humans.Email.Contracts;
 using Humans.Email.Services;
+using Humans.AuditLog.Contracts;
 using Humans.Base.Configuration;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
+using Humans.Email.Domain;
 using Humans.Email.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -15,6 +18,7 @@ namespace Humans.Email.Controllers;
 internal sealed class EmailController(
     IUserServiceRead userService,
     IEmailOutboxService outboxService,
+    IAuditLogService audit,
     ILogger<EmailController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]
@@ -27,6 +31,7 @@ internal sealed class EmailController(
     public async Task<IActionResult> EmailOutbox()
     {
         var stats = await outboxService.GetOutboxStatsAsync();
+        var dailyCounts = await outboxService.GetDailySendCountsAsync();
 
         var viewModel = new EmailOutboxViewModel
         {
@@ -36,9 +41,43 @@ internal sealed class EmailController(
             FailedCount = stats.FailedCount,
             IsPaused = stats.IsPaused,
             Messages = stats.RecentMessages.ToList(),
+            DailyCounts = dailyCounts.ByDay.ToList(),
+            TopTemplates = dailyCounts.TopTemplates.ToList(),
         };
 
         return View(viewModel);
+    }
+
+    [HttpGet("EmailOutbox/BackfillDailyCounts")]
+    public async Task<IActionResult> BackfillDailyCountsPreview()
+    {
+        var preview = await outboxService.PreviewDailySendCountBackfillAsync();
+        return View(new BackfillDailyCountsViewModel
+        {
+            RowsToAdd = preview.RowsToAdd,
+            EarliestDate = preview.EarliestDate,
+            LatestDate = preview.LatestDate,
+            Sample = preview.Sample.ToList(),
+        });
+    }
+
+    [HttpPost("EmailOutbox/BackfillDailyCounts")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BackfillDailyCounts()
+    {
+        var added = await outboxService.BackfillDailySendCountsAsync();
+        logger.LogInformation("Admin {AdminId} backfilled {Count} daily send count row(s)", User.Identity?.Name, added);
+
+        var actorId = GetCurrentUserId();
+        if (actorId.HasValue)
+        {
+            await audit.LogAsync(
+                AuditAction.EmailDailySendCountsBackfilled, nameof(EmailDailySendCount), Guid.Empty,
+                $"Backfilled {added} daily send count row(s) from outbox history", actorId.Value);
+        }
+
+        SetSuccess($"Backfilled {added} daily send count row(s) from outbox history.");
+        return RedirectToAction(nameof(EmailOutbox));
     }
 
     [HttpPost("EmailOutbox/Pause")]
@@ -169,17 +208,32 @@ internal sealed class EmailController(
     public IActionResult EmailPreview(
         [FromServices] IEmailRenderer renderer,
         [FromServices] IEmailBodyComposer bodyComposer,
-        [FromServices] IOptions<EmailSettings> emailSettings)
+        [FromServices] IOptions<EmailSettings> emailSettings,
+        [FromServices] IEnumerable<IEmailPreviewContributor> contributors)
     {
         var settings = emailSettings.Value;
+        var contributorList = contributors.ToList();
         var previews = new Dictionary<string, List<EmailPreviewItem>>(StringComparer.Ordinal);
 
         foreach (var culture in Cultures)
         {
             var (name, email) = Personas[culture];
             var ctx = new PreviewContext(culture, name, email, settings);
+
+            // Both sources render while the templates migrate to their sending
+            // sections (peterdrier/Humans#1651): a contributed sample supersedes the
+            // legacy row for the same id, so a half-migrated template shows once.
+            var contributed = contributorList
+                .SelectMany(c => c.Samples(new EmailPreviewPersona(culture, name, email)))
+                .Select(ToPreviewItem)
+                .ToList();
+            var contributedIds = contributed.Select(i => i.Id).ToHashSet(StringComparer.Ordinal);
+
             previews[culture] = PreviewDefinitions
                 .Select(build => build(renderer, ctx))
+                .Where(item => !contributedIds.Contains(item.Id))
+                .Concat(contributed)
+                .OrderBy(item => item.Id, StringComparer.Ordinal)
                 .Select(item =>
                 {
                     item.Body = bodyComposer.Compose(item.Body).HtmlBody;
@@ -190,4 +244,13 @@ internal sealed class EmailController(
 
         return View(new EmailPreviewViewModel { Previews = previews, FromAddress = settings.FromAddress });
     }
+
+    private static EmailPreviewItem ToPreviewItem(EmailPreviewSample sample) => new()
+    {
+        Id = sample.Id,
+        Name = sample.Name,
+        Recipient = sample.Message.RecipientEmail,
+        Subject = sample.Message.Subject,
+        Body = sample.Message.HtmlBody
+    };
 }

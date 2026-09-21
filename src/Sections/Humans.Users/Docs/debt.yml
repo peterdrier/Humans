@@ -1,27 +1,37 @@
 # Section debt ledger for Humans.Users. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
+next_id: 9
 inbox:
   - added: 2026-08-24
+    id: USERS-1
     what: "Admin_SortBy in Views/UsersAdmin/AdminList.cshtml:78 has no shared resource and renders raw. The call is correctly through SharedLocalizer, but adding a new Admin_* resource key conflicts with memory/code/localization-admin-exempt.md, which forbids new localization keys for admin pages. Peter must decide whether this existing admin localizer call should gain a resource or become an unlocalized literal."
     review: panel
   - added: 2026-08-27
+    id: USERS-2
     what: "ProfileController.DownloadData has no catch, so a GDPR export contributor failure is an unhandled 500 there, where the same failure on /Guest/DownloadData sets an error toast and redirects (finding 16, /section-doctor on Gdpr 2026-08-27)."
     review: panel
   - added: 2026-09-06
+    id: USERS-3
     what: "The /Profile controllers set member-facing flash/error strings as hardcoded English instead of UsersResource keys — ProfileController (DeclareNotAttending, UndoNotAttending, GetActiveEventYearOrSetErrorAsync, SetUndoNotAttendingResult, ReplayShiftSignupAfterDietaryMedicalSaveAsync, UpdatePreference), ProfileEmailsController (SetAddedEmailFlash, VerifyEmailSuccess, ReportVerifiedEmailAddAsync) and ProfileViewController (SendMessage POST); each needs a key in every culture (/section-doctor on Users 2026-09-06)."
     review: light
   - added: 2026-09-06
+    id: USERS-4
     what: "PersonSearchFields.ManageAll and PersonSearchFields.LegalName have zero call sites — the user-search-overhaul follow-up that would use them was never built. Either build the caller or drop the members (public surface; /section-doctor on Users 2026-09-06)."
     review: light
   - added: 2026-09-06
+    id: USERS-5
     what: "UsersAdminController (suspend, unsuspend, reject, roles, IBAN reveal, audience) has no tests in tests/Humans.Users.Tests beyond the purge negatives; the deny paths in Docs/authorization.md are pinned only by the repo-wide EndpointAuthorizationTests sweep (/section-doctor on Users 2026-09-06)."
     review: light
+    root: CENTRAL-56
   - added: 2026-09-06
+    id: USERS-6
     what: "Data/Configurations/UserEmailConfiguration.cs:68-71 declares a partial unique index on user_emails.Email (IsVerified = true) — a unique index on a user-editable string, forbidden by memory/architecture/unique-constraints-ids-only.md. The cross-account check is already service-enforced (VerifyEmailAsync and AdminMarkVerifiedAsync open a merge request; the OAuth reconcile blocks or displaces), so the index is a backstop only. Dropping it is a Users migration (Codex finding on peterdrier/Humans#1603)."
   - added: 2026-08-31
+    id: USERS-7
     what: "Same false thread-safety rationale for the sequential *erasure* contributor fan-out, in two places: AccountDeletionService.cs:200-201 and Docs/Users.md:212, both citing GdprExportService as the authority. Obsolete per design-rules.md §8a; sequential stays, the reason changes (finding 22, /section-doctor on Gdpr 2026-08-27)."
     review: light
   - added: 2026-09-20
+    id: USERS-8
     what: "Every CachingUserService mutator passes the caller's request CancellationToken to RefreshEntryAsync after the inner write has committed (SetPreferredLanguageAsync, RecordLoginAsync, ...). A client disconnect between commit and refresh cancels the refresh, so the singleton UserInfo snapshot serves the pre-write values until some later refresh happens to rebuild it. The post-commit refresh should not ride the request token (Codex P2 on peterdrier/Humans#1760, pre-existing and unrelated to that PR's change)."
     review: panel

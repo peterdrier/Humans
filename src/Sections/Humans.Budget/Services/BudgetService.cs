@@ -1,10 +1,10 @@
 using System.Globalization;
 using Humans.Base.Extensions;
 using Humans.Budget.Contracts;
-using Humans.Gdpr.Contracts;
 using Humans.Budget.Data;
 using Humans.Teams.Contracts;
 using Humans.Budget.Domain;
+using Humans.Gdpr.Contracts;
 using NodaTime;
 using Humans.Users.Contracts;
 
@@ -20,6 +20,9 @@ internal sealed class BudgetService(
     IClock clock,
     ILogger<BudgetService> logger) : IBudgetService, IUserDataContributor
 {
+    /// <summary>GDPR export JSON key for this contributor's data.</summary>
+    internal const string BudgetAuditLog = "BudgetAuditLog";
+
     public async Task<IReadOnlyList<BudgetYearSummarySnapshot>> GetAllYearsAsync(bool includeArchived = false)
     {
         var years = await repository.GetAllYearsAsync(includeArchived);
@@ -924,13 +927,13 @@ internal sealed class BudgetService(
             OccurredAt = bal.OccurredAt.ToIso8601()
         }).ToList();
 
-        return [new UserDataSlice(GdprExportSections.BudgetAuditLog, shaped)];
+        return [new UserDataSlice(BudgetAuditLog, shaped)];
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.BudgetAuditLog] =
+            [BudgetAuditLog] =
                 "Retained: append-only accounting audit ledger. Spanish law requires the books " +
                 "and their supporting records be kept 6 years (Código de Comercio Art. 30) and " +
                 "4 years for tax purposes (Ley 58/2003 Art. 66) — GDPR Art. 17(3)(b)."

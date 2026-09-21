@@ -139,3 +139,11 @@ After the nobodies-collective#584 narrowing, `OnboardingService` injects only wh
 - **Cross-domain navs stripped:** N/A — Onboarding owns no entities.
 - **DI direction is one-way.** `OnboardingService → IUserService` (and other leaves) only. No leaf depends on `IOnboardingService`. The historical `IOnboardingEligibilityQuery` narrow-interface band-aid is removed. Reviewers should reject any new ctor dependency from `ProfileService` / `ConsentService` onto `IOnboardingService` (or any other director) — that's the inversion this PR removed. The cycle guard `tests/Humans.Users.Tests/Services/DependencyCycleResolutionTests.NoCircularConstructorDependencies_AcrossApplicationServices` enforces this.
 - **Architecture test** — `tests/Humans.Onboarding.Tests/Architecture/OnboardingArchitectureTests.cs` enforces one thing: every `IStringLocalizer<T>` / `IHtmlLocalizer<T>` in the section names `OnboardingResource`, `SharedResource` or `ConsentResource` (`OnboardingLocalizerBindingTests` is the per-key half of that guard — it checks every rendered key actually exists in the set its call site binds). The shape claims above are documentation, not assertions: a test that a section *lacks* something is forbidden by [`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md).
+
+## Issue queue
+
+Onboarding owns the `Onboarding` issue queue: it implements `IIssueQueueOwner` (Issues' contracts
+leaf) on its `Section` entry point, declaring the queue key and the roles that handle
+issues filed against it — `ConsentCoordinator, VolunteerCoordinator, HumanAdmin`, plus `Admin`, which handles every queue. Issues
+discovers the declaration through DI and holds no list of sections; dropping the seam
+sends this section's stored issues to the Admin-only queue.

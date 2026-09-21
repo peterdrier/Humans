@@ -28,7 +28,7 @@ what's overdue.
 | Repo stats + README milestones refresh | 2026-06-12 | 2026-07-12 | Monthly | — | `generate-stats.sh` rows + hand-maintained headers in `docs/development-stats.md`, `docs/reforge-history.csv`, README milestones. |
 | GitHub issue triage | 2026-06-10 | 2026-06-17 | Weekly | — | Last: 36 unscheduled → q2/q3; plan `local/sprint-2026-06-10.md`. |
 | App triage (`/triage`) | 2026-07-13 | 2026-07-20 | Weekly | — | Logs + agent + in-app issues (prod). Last findings → #926–#931; in-app execution deferred by Peter. |
-| Access matrix verification | 2026-06-13 | 2026-06-20 | Weekly | — | Compare `AccessMatrixDefinitions.cs` vs controller auth. Open P2: `TeamAdminController` action-level auth unverified (#832). |
+| Access matrix verification | 2026-06-13 | 2026-06-20 | Weekly | — | Compare each section's `SectionAccessMatrix.cs` vs controller auth. Open P2: `TeamAdminController` action-level auth unverified (#832). |
 | Service ownership migration | 2026-04-15 | As needed | Per-section | — | Governance landed as first full end-to-end spike in PR #503. |
 | Agent section Phase 1 | 2026-04-21 | Phase 1.5 | Per-phase | — | Next: flip `AgentSettings.PreloadConfig = Tier2` once the Anthropic org is promoted. |
 | §15i FullProfile landmark (issue #635) | 2026-05-04 | Drop-column follow-up | One-time | — | Shipped in PR #403. Pending after prod soak: drop `Profile.IsSuspended`, `UserEmail.IsNotificationTarget`; promote `Profile.State` to NOT NULL. |

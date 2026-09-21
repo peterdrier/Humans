@@ -4,7 +4,6 @@ using Humans.Auth.Contracts;
 using Humans.Backdoor.Data;
 using Humans.Backdoor.Domain;
 using Humans.Backdoor.Services;
-using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -327,7 +326,7 @@ public class BackdoorApiKeyServiceTests
         var slices = await _sut.ContributeForUserAsync(_owner, Xunit.TestContext.Current.CancellationToken);
 
         var slice = slices.Should().ContainSingle().Subject;
-        slice.SectionName.Should().Be(GdprExportSections.BackdoorApiKeys);
+        slice.SectionName.Should().Be(BackdoorApiKeyService.BackdoorApiKeys);
         System.Text.Json.JsonSerializer.Serialize(slice.Data)
             .Should().Contain("triage agent").And.NotContain(key.KeyHash);
     }
@@ -345,7 +344,7 @@ public class BackdoorApiKeyServiceTests
     [HumansFact]
     public void Erasure_declares_backdoor_keys_fully_erased()
     {
-        _sut.ErasureDeclaration.Should().ContainKey(GdprExportSections.BackdoorApiKeys)
+        _sut.ErasureDeclaration.Should().ContainKey(BackdoorApiKeyService.BackdoorApiKeys)
             .WhoseValue.Should().BeNull("a credential has no basis to outlive its owner");
     }
 

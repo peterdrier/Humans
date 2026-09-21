@@ -237,6 +237,43 @@ run's own conduct — which threads ran on what model, counts, what was struck, 
 happened — is read back from `$RUNDIR/assessment/`, the phase log or `git log`, never restated
 from a compaction summary. After any compaction, re-read this file's remaining phases.
 
+**3f Verify and close existing debt.** `doctor.py mark phase3f verify-debt`. The run has just read
+the whole section, so it is the cheapest moment there will be to notice that a debt row is no longer
+true — and the producer of these rows is the only honest closer of them. Before Phase 4 files
+anything, read `src/Sections/Humans.<X>/Docs/debt.yml` and give every row that is not already closed
+one verdict, oldest `added:` first:
+
+| Verdict | Action |
+|---|---|
+| still true | leave the row untouched (whether it also enters the ranked list is a separate call) |
+| fixed | delete the row and log the closure |
+| partially fixed | narrow `what:` to the part still broken, set `status: partial`, log the narrowing |
+| cannot tell | leave the row, log it unverified with what would decide it |
+
+**Evidence bar — the whole phase rests on it.** A row is closed or narrowed only on a specific
+`file:line` or a named test that decides it, cited in the log. A row saying "no test pins X" closes
+only by naming the test that now pins X; "unlocalized in every culture" closes only by naming the
+keys and the cultures now carrying them; "duplicated in A and B" closes only by reading both sites.
+An absence the run will act on is re-grepped on main, never taken from a thread's `unverified`
+verdict. Anything short of that is *cannot tell*, which is a normal outcome and costs nothing — an
+unattended run that closes rows on plausibility is worse than one that never closes any.
+
+Log every verdict in the run file under `## Debt verified`, one line per row:
+`<id> — still-true|closed|narrowed|unverified — <reason in a phrase> — <file:line or test name>`.
+`still-true` is a positive confirmation ("I checked and it is still a real defect") and is
+distinct from `unverified` ("I could not tell") — never conflate the two. Prose and cites only:
+no counts, no totals (the prose gate refuses them).
+
+**Ids are permanent.** Rows carry stable ids under a `next_id:` header
+(`memory/process/debt-ledger-additions.md`). Never renumber, never recycle, never lower `next_id:` —
+a closure removes its row and leaves the header alone. A row whose `root:` points at a row this pass
+closes is verified on its own merits in the same pass, never closed by inheritance.
+
+**Budget.** 3f is capped at a tenth of the run's budget — roughly fifteen minutes on the 2.5h default
+— and it is timeboxed, not completed. Verifying the oldest rows to the evidence bar beats
+half-reading all of them: stop at the cap, leave the remaining rows untouched, and say under
+`## Debt verified` which row the cap stopped at.
+
 ### Phase 4: Strike
 
 Drain the list; stopping early with strikeable items left is a failure. Rank is value order,
@@ -308,8 +345,11 @@ A queued item naming a symbol carries its repo-wide `git grep -n`. If in-flight 
 this section surfaces mid-run, stop striking and ship the assessment-only PR. Debt found and not
 fixed goes to a ledger, not the run file (`memory/process/debt-ledger-additions.md`): in-section
 to `src/Sections/Humans.<X>/Docs/debt.yml`; off-section straight to the owning section's
-`Docs/debt.yml`, or `docs/architecture/debt-ledger.yml` when no one section owns it. Skip it when
-the ledger already carries it. A ledger entry is prose: no reforge figures, no counts, no line
+`Docs/debt.yml`, or `docs/architecture/debt-ledger.yml` when no one section owns it. **Dedupe against the ledger
+before filing** — 3f has just read every row, so use it: a row that already covers the finding is
+never re-filed, a finding that elaborates an existing row references it (`root: <id>`) instead of
+restating it, and only a genuinely new lane takes a fresh id from `next_id:` and increments the
+header. A ledger entry is prose: no reforge figures, no counts, no line
 numbers.
 
 **Needs-Peter admission test.** An item is admitted only if *two reasonable implementers would do
@@ -328,7 +368,8 @@ writes, in this PR:
   exists at the branch point): header; assessment summary; `## Findings` (the one prose
   description of each finding, numbered once at 3e and never renumbered; a later finding takes the
   next unused number); `## Worked`; `## Skipped` with why, including sections passed over as
-  blocked; `## Retro`; `## Needs Peter` (`- [ ]` unanswered, `- [x]` applied, one per line, each
+  blocked; `## Debt verified` (3f's verdict lines, the rows left unverified, and where the cap
+  stopped the pass); `## Retro`; `## Needs Peter` (`- [ ]` unanswered, `- [x]` applied, one per line, each
   `<finding #> — <the question, in a phrase>`, citing the number and adding no prose a ruling could
   invalidate); `## File coverage` and `## Threads`: `doctor.py runfile <X>`
   regenerates both from git and the dispatch log — `generated` and `changed` per path, how each

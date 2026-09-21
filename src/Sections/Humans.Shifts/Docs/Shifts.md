@@ -371,3 +371,11 @@ section and is not on the leaf.
 - Do not add new `.Include(r => r.Team)` or `.Include(... => ... .User)` chains on Shifts-owned entities — cross-domain navs are stripped; resolve via `ITeamService` / `IUserService` by id.
 - Do not add new `_cache.` calls in `ShiftManagementService` beyond the existing auth + dashboard caches — auth invalidation routes through `IShiftAuthorizationInvalidator`.
 - If you add a new table to this section, add it to §8 of `design-rules.md` **in the same commit**.
+
+## Issue queue
+
+Shifts owns the `Shifts` issue queue: it implements `IIssueQueueOwner` (Issues' contracts
+leaf) on its `Section` entry point, declaring the queue key and the roles that handle
+issues filed against it — `NoInfoAdmin`, plus `Admin`, which handles every queue. Issues
+discovers the declaration through DI and holds no list of sections; dropping the seam
+sends this section's stored issues to the Admin-only queue.

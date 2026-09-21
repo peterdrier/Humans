@@ -1,19 +1,37 @@
 # Section debt ledger for Humans.Issues. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
+next_id: 9
 inbox:
   - added: 2026-08-25
+    id: ISSUES-1
     what: "IssuesService writes screenshots with a raw FileStream to a path it builds itself from ContentRootPath + wwwroot, and DeleteScreenshotDirectory rebuilds the same path by hand, rather than going through Humans.Base/Interfaces/IFileStorage.cs. Humans.Feedback has since moved to IFileStorage, so Issues is now the only section doing this and the fix is Issues-local. Found by /section-doctor on Issues 2026-08-25, re-scoped 2026-09-14. Peter 2026-09-14: deferred, and paired with the unauthorized-serving row below — both or neither, because half a fix is a waste. Do not take this row alone."
     review: panel
   - added: 2026-09-14
+    id: ISSUES-4
     what: "An issue screenshot is readable by anyone holding its URL, with no authorization check. FileSystemFileStorage roots at wwwroot and every consumer hands the stored path out as a static URL, so moving Issues onto IFileStorage does not fix this half — it wants an authorization-checked serving endpoint. Repo-wide in cause, listed here because Issues is one of the sections exposing it. Found by /section-doctor on Issues 2026-09-14. Peter 2026-09-14: deferred, and paired with the IFileStorage row above — both or neither, because half a fix is a waste. Do not take this row alone."
     review: panel
   - added: 2026-08-25
+    id: ISSUES-2
     what: "IssuesService holds four near-identical field-mutation pipelines plus their four …WithResultAsync twins — eight method signatures for one operation shape — and is the largest file in the section and still growing. Collapsing them changes the machine door's surface, so it is Peter's call. Found by /section-doctor on Issues 2026-08-25, re-measured 2026-09-14."
     review: panel
   - added: 2026-08-25
+    id: ISSUES-3
     what: "IssuesServiceTests's …WithResultAsync success twins re-assert stored state their direct-call counterparts already own, and four tests assert only which arguments the service handed a substitute repository while the file's own real-repository equivalents cover the same behaviour. Trimming deletes tests, so it is Peter's call. Found by /section-doctor on Issues 2026-08-25, narrowed 2026-09-14 — the four unasserted behaviours it also named are now covered."
     review: panel
   - added: 2026-09-14
-    what: "Invariants in Docs/health.md that no test pins: reach through the IIssueTriage machine door (every case calls IssuesService directly), audit-after-save ordering (Received.InOrder is never used), the _issuesBadge invalidator on a status change, on a section change and on a reporter's reopening comment, and the case UpdateSectionAsync's authorize-against-the-source-section rule exists for — a section role-holder routing an issue out of their own queue, which the existing tests only exercise as Admin. Found by /section-doctor on Issues 2026-09-14."
+    id: ISSUES-5
+    what: "No test reaches Issues through the IIssueTriage machine door: every case in tests/Humans.Issues.Tests/Services/IssuesServiceTests.cs types its subject as the concrete IssuesApplicationService (line 73), so the interface other sections call is unpinned. Found by /section-doctor on Issues 2026-09-14. (split 2026-09-20 from the bundled row of the same date; one row per independently-fixable defect.)"
+    review: panel
+  - added: 2026-09-14
+    id: ISSUES-6
+    what: "Audit-after-save ordering in IssuesService is unpinned: Received.InOrder appears nowhere in tests/Humans.Issues.Tests, so nothing asserts the audit row is written after the save. Found by /section-doctor on Issues 2026-09-14. (split 2026-09-20 from the bundled row of the same date; one row per independently-fixable defect.)"
+    review: panel
+  - added: 2026-09-14
+    id: ISSUES-7
+    what: "_issuesBadge.InvalidateMany is asserted at one of its four call sites (the reopen-on-terminal-status path, test line 275); the status-change, section-change and reporter-reopening-comment invalidations in IssuesService are unpinned. Found by /section-doctor on Issues 2026-09-14. (split 2026-09-20 from the bundled row of the same date; one row per independently-fixable defect.)"
+    review: panel
+  - added: 2026-09-14
+    id: ISSUES-8
+    what: "UpdateSectionAsync's authorize-against-the-source-section rule is only ever exercised as Admin (tests lines 753-878); no test drives a section role-holder routing an issue out of their own queue, which is the case the rule exists for. Found by /section-doctor on Issues 2026-09-14. (split 2026-09-20 from the bundled row of the same date; one row per independently-fixable defect.)"
     review: panel

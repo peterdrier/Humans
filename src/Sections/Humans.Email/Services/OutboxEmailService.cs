@@ -16,9 +16,8 @@ namespace Humans.Email.Services;
 /// applies opt-out suppression and List-Unsubscribe headers for opt-outable
 /// categories, wraps the body with <see cref="IEmailBodyComposer"/>, appends a row
 /// to the outbox through <see cref="IEmailOutboxRepository"/>, records the
-/// per-template metric, and — for time-sensitive templates that set
-/// <see cref="EmailMessage.TriggerImmediate"/> — runs the processor immediately
-/// through <see cref="IImmediateOutboxProcessor"/>. SMTP-send lives in
+/// per-template metric, and — for the <see cref="TimeSensitiveTemplates"/> — runs the
+/// processor immediately through <see cref="IImmediateOutboxProcessor"/>. SMTP-send lives in
 /// <c>ProcessEmailOutboxJob</c> — except for <see cref="EmailMessage.DoNotPersist"/>
 /// messages, which go straight to <see cref="IEmailTransport"/> here because they
 /// must leave no stored copy of the recipient.
@@ -114,7 +113,9 @@ internal sealed class OutboxEmailService(
         metrics.RecordEmailQueued(message.TemplateName);
         logger.LogInformation("Email queued: {TemplateName} to {Recipient}", message.TemplateName, message.RecipientEmail);
 
-        if (message.TriggerImmediate)
+        // Derived from the template name, not a message field: the same list the
+        // repository orders the batch by, so drain and queue order cannot drift.
+        if (TimeSensitiveTemplates.Names.Contains(message.TemplateName, StringComparer.Ordinal))
         {
             immediateProcessor.TriggerImmediate();
             logger.LogInformation("Triggered immediate outbox processing for {TemplateName}", message.TemplateName);

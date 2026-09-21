@@ -12,7 +12,7 @@ namespace Humans.Email.Tests.Services;
 /// <summary>
 /// Tests the per-type policy stamped by <see cref="EmailMessageFactory"/> around the
 /// pure <see cref="IEmailRenderer"/> — template name, opt-out category, reply-to,
-/// immediate-drain, recipient routing, and the campaign user/grant ids. The shared
+/// recipient routing, and the campaign user/grant ids. The shared
 /// transport (opt-out, unsubscribe, wrapping, enqueue) is covered by
 /// <see cref="OutboxEmailServiceTests"/>.
 /// </summary>
@@ -39,7 +39,6 @@ public sealed class EmailMessageFactoryTests
         msg.HtmlBody.Should().Be("<p>Body</p>");
         msg.TemplateName.Should().Be("application_approved");
         msg.Category.Should().Be(MessageCategory.Governance);
-        msg.TriggerImmediate.Should().BeFalse();
         msg.ReplyTo.Should().BeNull();
     }
 
@@ -53,13 +52,12 @@ public sealed class EmailMessageFactoryTests
     }
 
     [HumansFact]
-    public void EmailVerification_TriggersImmediate_NullCategory()
+    public void EmailVerification_IsAlwaysSend_NullCategory()
     {
         var msg = _factory.EmailVerification("a@x.com", "Alice", "https://verify", isConflict: true, "en");
 
         msg.TemplateName.Should().Be("email_verification");
         msg.Category.Should().BeNull();
-        msg.TriggerImmediate.Should().BeTrue();
         _renderer.Received(1).RenderEmailVerification("Alice", "a@x.com", "https://verify", true, "en");
     }
 
@@ -145,7 +143,7 @@ public sealed class EmailMessageFactoryTests
     }
 
     [HumansFact]
-    public void MagicLinkSignup_UsesAddressAsNameAndTriggersImmediate()
+    public void MagicLinkSignup_UsesAddressAsName()
     {
         var msg = _factory.MagicLinkSignup("new@x.com", "https://link", "en");
 
@@ -153,7 +151,6 @@ public sealed class EmailMessageFactoryTests
         msg.RecipientName.Should().Be("new@x.com");
         msg.TemplateName.Should().Be("magic_link_signup");
         msg.Category.Should().BeNull();
-        msg.TriggerImmediate.Should().BeTrue();
     }
 
     [HumansFact]
@@ -186,7 +183,7 @@ public sealed class EmailMessageFactoryTests
     }
 
     [HumansFact]
-    public void EventLifecycle_PicksTemplateFromStatus_TriggersImmediate()
+    public void EventLifecycle_PicksTemplateFromStatus()
     {
         var request = new EventLifecycleNotification(EventStatus.Approved, "Bob", "My Event");
 
@@ -196,7 +193,6 @@ public sealed class EmailMessageFactoryTests
         msg.RecipientName.Should().Be("Bob");
         msg.TemplateName.Should().Be("event_approved");
         msg.Category.Should().BeNull();
-        msg.TriggerImmediate.Should().BeTrue();
     }
 
     [HumansFact]

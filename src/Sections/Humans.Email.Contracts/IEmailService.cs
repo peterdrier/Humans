@@ -19,8 +19,9 @@ public interface IEmailService : IApplicationService
     /// <see cref="MessageCategory.System"/>) it suppresses the send when the
     /// recipient has opted out and otherwise stamps List-Unsubscribe headers and a
     /// footer URL; it wraps the body, records the per-template metric, and triggers
-    /// an immediate outbox drain when <see cref="EmailMessage.TriggerImmediate"/> is
-    /// set. The recipient user id is taken from <see cref="EmailMessage.UserId"/>
+    /// an immediate outbox drain when the message's
+    /// <see cref="EmailMessage.TemplateName"/> is one of the
+    /// <see cref="TimeSensitiveTemplates"/>. The recipient user id is taken from <see cref="EmailMessage.UserId"/>
     /// when supplied, otherwise resolved from the recipient address.
     /// </summary>
     Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default);

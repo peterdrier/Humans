@@ -1,19 +1,31 @@
 # Section debt ledger for Humans.Calendar. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
+next_id: 7
 inbox:
+  - added: 2026-09-14
+    id: CAL-1
+    what: "Recurring all-day events drift across a DST transition and render a spurious extra day from then on: CalendarOccurrenceExpander builds each occurrence from an elapsed duration where it needs local dates. Diagnosed, not fixed — the Calendar run hit its review-round ceiling (finding 34, /section-doctor on Calendar 2026-09-01; swept in by /section-doctor on Issues 2026-09-14)."
+    review: panel
+    status: needs-detail
+    blocked_on: "A failing test at a named DST boundary date; code inspection casts doubt on the drift but does not confirm it."
   - added: 2026-09-19
+    id: CAL-2
     what: "CalendarMonthViewModel.TeamOptions is read by no view, and CalendarController.BuildMonthViewAsync fetches every team on each month request to fill it. Drop the record member, drop the fetch and the argument, drop `TeamOptions: []` in Team. Written and reverted unverified — the run lost its compiler (finding 10, /section-doctor on Calendar 2026-09-19)."
     review: panel
   - added: 2026-09-19
+    id: CAL-3
     what: "CreateCalendarEventDto and UpdateCalendarEventDto are identical records, member for member. A dedup needs a compiler to gate it (finding 16, /section-doctor on Calendar 2026-09-19)."
     review: panel
   - added: 2026-09-19
+    id: CAL-4
     what: "Occurrence order is derived again at every layer: CalendarOccurrenceExpander.Expand sorts date-aware, CachingCalendarService re-sorts by a nullable instant so every all-day occurrence lands at the front of the window, and each consumer re-groups and re-sorts. Not user-visible today because every consumer re-derives it; the decorator keeps the sort only to interleave contributor items, and fixing it properly needs the viewer zone it does not have (finding 17, /section-doctor on Calendar 2026-09-19)."
     review: panel
   - added: 2026-09-19
+    id: CAL-5
     what: "CalendarOccurrenceExpander.Expand is the section's most complex method by reforge — rule expansion, exception application and windowing all in one body (finding 18, /section-doctor on Calendar 2026-09-19)."
     review: panel
   - added: 2026-09-19
+    id: CAL-6
     what: "health.md §4.3 — the feed URL and token are never rendered into a page — has no test anywhere, and a regression there leaks a personal feed token. ICalFeedApiController is invisible to EndpointAuthorizationTests because it derives from ControllerBase, not Controller; §4.5 is pinned only as far as the committed write surviving, with nothing asserting the LogCritical that keeps the failure from passing silently; §4.15 and §4.18 are unpinned (finding 19, /section-doctor on Calendar 2026-09-19)."
     review: panel

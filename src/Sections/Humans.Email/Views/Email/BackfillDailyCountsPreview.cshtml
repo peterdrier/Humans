@@ -1,0 +1,67 @@
+@model Humans.Email.Models.BackfillDailyCountsViewModel
+@{
+    ViewData["Title"] = "Backfill Daily Send Counts";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
+        <li class="breadcrumb-item"><a asp-action="EmailOutbox">Email Outbox</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Backfill Daily Send Counts</li>
+    </ol>
+</nav>
+
+<h1>Backfill Daily Send Counts</h1>
+<p class="text-muted">
+    Recomputes (Date, Template) rows from retained outbox history for any combination that
+    has no <code>email_daily_send_counts</code> row yet. Existing rows — written by the
+    processor, or by an earlier run of this backfill — are never touched.
+</p>
+
+@if (Model.RowsToAdd == 0)
+{
+    <div class="alert alert-info">Nothing to backfill — every (Date, Template) combination in retained outbox history already has a row.</div>
+}
+else
+{
+    <div class="alert alert-warning">
+        This would add <strong>@Model.RowsToAdd</strong> row(s), covering
+        <strong>@Model.EarliestDate.ToInvariantDate()</strong> through <strong>@Model.LatestDate.ToInvariantDate()</strong> (UTC).
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header">Sample (first @Model.Sample.Count of @Model.RowsToAdd)</div>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th>Date (UTC)</th>
+                        <th>Template</th>
+                        <th>Would add Sent</th>
+                        <th>Would add Failed</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Sample)
+                    {
+                        <tr>
+                            <td>@row.Date.ToInvariantDate()</td>
+                            <td><code class="small">@row.TemplateName</code></td>
+                            <td class="text-success">@row.SentCount</td>
+                            <td class="text-danger">@row.FailedCount</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <form method="post" asp-action="BackfillDailyCounts">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-warning"
+                data-confirm="Add @Model.RowsToAdd daily send count row(s) from outbox history? This cannot be run in reverse.">
+            Backfill @Model.RowsToAdd Row(s)
+        </button>
+        <a asp-action="EmailOutbox" class="btn btn-outline-secondary">Cancel</a>
+    </form>
+}

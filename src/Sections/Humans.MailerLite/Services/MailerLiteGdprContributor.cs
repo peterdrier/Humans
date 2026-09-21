@@ -24,13 +24,22 @@ internal sealed class MailerLiteGdprContributor(
     IMailerLiteService mailerLiteService,
     IUserEmailService userEmailService) : IApplicationService, IUserDataContributor
 {
+    /// <summary>
+    /// Erasure-only: MailerLite owns no user-scoped tables, so
+    /// <see cref="ContributeForUserAsync"/> never emits this key and it never appears in an
+    /// export. It exists so the section's Article 17 erasure account (deleting the person's
+    /// MailerLite subscriber, nobodies-collective/Humans#853) has a key to declare —
+    /// required by <c>GdprErasureCoverageTests</c>.
+    /// </summary>
+    internal const string MailerLiteSubscriber = "MailerLiteSubscriber";
+
     public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
         Task.FromResult<IReadOnlyList<UserDataSlice>>([]);
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.MailerLiteSubscriber] = null
+            [MailerLiteSubscriber] = null
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;

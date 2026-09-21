@@ -42,13 +42,19 @@ internal sealed class CalendarFeedTokenService(ICalendarRepository repo)
     /// </summary>
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
         [new UserDataSlice(
-            GdprExportSections.CalendarFeedToken,
+            CalendarFeedToken,
             new { HasFeed = await GetAsync(userId, ct) is not null })];
+
+    /// <summary>
+    /// Export key: whether the member has a personal iCal feed. The token itself is never
+    /// exported; it is a live credential and an export file gets forwarded.
+    /// </summary>
+    internal const string CalendarFeedToken = "CalendarFeedToken";
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.CalendarFeedToken] = null
+            [CalendarFeedToken] = null
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;

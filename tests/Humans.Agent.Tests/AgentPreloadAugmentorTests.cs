@@ -16,18 +16,25 @@ public class AgentPreloadAugmentorTests
     private static string Faq() => Augmentor().BuildFaqMarkdown();
 
     /// <summary>
-    /// The augmentor renders whatever <see cref="ISectionHelp"/> contributions DI hands it, so
-    /// the glossary tests below supply their own: the real content now lives in ten sections,
-    /// pinned in each section's own test project, and asserting it here would need Agent to
-    /// reference them all. What is Agent's to get right is the folding, grouping and heading
-    /// resolution these exercise.
+    /// The augmentor renders whatever <see cref="ISectionAccessMatrix"/> or <see cref="ISectionHelp"/>
+    /// contributions DI hands it, so the tests below supply their own: the real content lives in
+    /// each owning section's test project, and asserting it here would need Agent to reference
+    /// them all. What is Agent's to get right is the folding, grouping and heading resolution
+    /// these exercise.
     /// </summary>
-    private static AgentPreloadAugmentor Augmentor(params ISectionHelp[] helpContributions) =>
-        new(helpContributions);
+    private static AgentPreloadAugmentor Augmentor(
+        IReadOnlyList<ISectionAccessMatrix>? accessMatrices = null,
+        IReadOnlyList<ISectionHelp>? helpContributions = null) =>
+        new(accessMatrices ?? [], helpContributions ?? []);
 
     private sealed class StubHelp(params SectionHelpEntry[] entries) : ISectionHelp
     {
         public IReadOnlyList<SectionHelpEntry> HelpEntries => entries;
+    }
+
+    private sealed class StubAccessMatrix(params AccessMatrixData[] matrices) : ISectionAccessMatrix
+    {
+        public IReadOnlyList<AccessMatrixData> AccessMatrices => matrices;
     }
 
     /// <summary>A glossary entry in the shape the real ones have: a page heading, then a term table.</summary>
@@ -70,10 +77,11 @@ public class AgentPreloadAugmentorTests
     [HumansFact]
     public void Glossaries_define_a_term_shared_across_pages_exactly_once()
     {
-        var glossaries = Augmentor(
+        var glossaries = Augmentor(helpContributions:
+        [
             new StubHelp(Glossary("Teams", 10, "Teams", HumanRow, "| **Team** | A group of humans. |")),
-            new StubHelp(Glossary("Shifts", 20, "Shifts", HumanRow, "| **Rota** | A schedule of shifts. |")))
-            .BuildGlossariesMarkdown();
+            new StubHelp(Glossary("Shifts", 20, "Shifts", HumanRow, "| **Rota** | A schedule of shifts. |")),
+        ]).BuildGlossariesMarkdown();
 
         glossaries.Split('\n').Count(l => l.StartsWith("| **Human** |", StringComparison.Ordinal)).Should().Be(1);
         glossaries.Should().Contain("## Shared Terms");
@@ -87,7 +95,7 @@ public class AgentPreloadAugmentorTests
             Glossary("Teams", 10, "Teams", HumanRow, "| **Team** | A group of humans. |"),
             Glossary("Shifts", 20, "Shifts", HumanRow, "| **Rota** | A schedule of shifts. |"),
         ];
-        var glossaries = Augmentor(new StubHelp(contributed)).BuildGlossariesMarkdown();
+        var glossaries = Augmentor(helpContributions: [new StubHelp(contributed)]).BuildGlossariesMarkdown();
 
         foreach (var row in contributed.SelectMany(e => e.Glossary!.Split('\n'))
                      .Select(l => l.TrimEnd())
@@ -105,12 +113,13 @@ public class AgentPreloadAugmentorTests
     [HumansFact]
     public void Glossaries_render_every_contribution_in_declared_entry_order()
     {
-        var glossaries = Augmentor(
+        var glossaries = Augmentor(helpContributions:
+        [
             new StubHelp(Glossary("Teams", 20, "Teams", "| **Team** | A group of humans. |")),
             new StubHelp(
                 Glossary("Camps", 10, "Camps", "| **Camp** | A barrio. |"),
-                Glossary("Shifts", 30, "Shifts", "| **Rota** | A schedule of shifts. |")))
-            .BuildGlossariesMarkdown();
+                Glossary("Shifts", 30, "Shifts", "| **Rota** | A schedule of shifts. |")),
+        ]).BuildGlossariesMarkdown();
 
         glossaries.Split('\n')
             .Select(l => l.TrimEnd())
@@ -127,12 +136,13 @@ public class AgentPreloadAugmentorTests
     [HumansFact]
     public void Every_glossary_heading_is_a_fetchable_section_key()
     {
-        var glossaries = Augmentor(
+        var glossaries = Augmentor(helpContributions:
+        [
             new StubHelp(
                 // "Profile" is a help key, not a section key — it must come out resolved to "Users".
                 Glossary("Profile", 10, "Profile", "| **Burner name** | The name you go by. |"),
-                Glossary("Teams", 20, "Teams", "| **Team** | A group of humans. |")))
-            .BuildGlossariesMarkdown();
+                Glossary("Teams", 20, "Teams", "| **Team** | A group of humans. |")),
+        ]).BuildGlossariesMarkdown();
 
         var headings = glossaries.Split('\n')
             .Select(l => l.TrimEnd())
@@ -164,12 +174,14 @@ public class AgentPreloadAugmentorTests
     {
         // Two pages under one section key that define the same term differently — the case the
         // per-page tables exist for.
-        var markdown = Augmentor(new StubHelp(
+        var markdown = Augmentor(helpContributions:
+        [
+            new StubHelp(
                 Glossary("CityPlanningOverview", 10, "City Planning Overview",
                     "| **Barrio Lead** | The lead who places the barrio on the map. |"),
                 Glossary("CityPlanningBarrioMap", 20, "Barrio Placement",
-                    "| **Barrio Lead** | The lead who owns the barrio's polygon. |")))
-            .BuildGlossariesMarkdown();
+                    "| **Barrio Lead** | The lead who owns the barrio's polygon. |")),
+        ]).BuildGlossariesMarkdown();
 
         var terms = new List<string>();
         foreach (var line in markdown.Split('\n').Select(l => l.TrimEnd()))
@@ -203,39 +215,76 @@ public class AgentPreloadAugmentorTests
             Task.FromResult<(IReadOnlyList<string>, bool)>(([], true));
     }
 
+    /// <summary>A matrix with one Limited row and one all-Denied row, so both branches are exercised.</summary>
+    private static AccessMatrixData SampleMatrix(string key, string name, int order) => new()
+    {
+        Key = key,
+        SectionName = name,
+        Order = order,
+        Roles = ["Volunteer", "Coordinator", "Admin"],
+        Features =
+        [
+            AccessMatrixFeature.Of("Browse things", ("Volunteer", AccessLevel.Allowed), ("Coordinator", AccessLevel.Allowed), ("Admin", AccessLevel.Allowed)),
+            AccessMatrixFeature.Of("Join things", ("Volunteer", AccessLevel.Allowed), ("Coordinator", AccessLevel.Allowed), ("Admin", AccessLevel.Allowed)),
+            AccessMatrixFeature.Of("Edit things", ("Volunteer", AccessLevel.Limited), ("Coordinator", AccessLevel.Allowed), ("Admin", AccessLevel.Allowed)),
+            AccessMatrixFeature.Of("Delete things", ("Volunteer", AccessLevel.Denied), ("Coordinator", AccessLevel.Denied), ("Admin", AccessLevel.Denied)),
+        ]
+    };
+
     [HumansFact]
     public void AccessMatrix_keeps_every_allowed_and_limited_role_fact_grouped_by_section()
     {
-        var matrix = Augmentor().BuildAccessMatrixMarkdown();
-        foreach (var section in AccessMatrixDefinitions.Sections.Values)
+        var contributed = SampleMatrix("Things", "Things", 10);
+        var matrix = Augmentor(accessMatrices: [new StubAccessMatrix(contributed)]).BuildAccessMatrixMarkdown();
+
+        matrix.Should().Contain($"## {contributed.SectionName}");
+        foreach (var feature in contributed.Features)
         {
-            matrix.Should().Contain($"## {section.SectionName}");
-            foreach (var feature in section.Features)
+            var roles = feature.RoleAccess
+                .Where(kv => kv.Value != AccessLevel.Denied)
+                .OrderBy(kv => kv.Key, StringComparer.Ordinal)
+                .Select(kv => kv.Value == AccessLevel.Limited ? kv.Key + " (limited)" : kv.Key)
+                .ToList();
+            if (roles.Count == 0)
             {
-                var roles = feature.RoleAccess
-                    .Where(kv => kv.Value != AccessLevel.Denied)
-                    .OrderBy(kv => kv.Key, StringComparer.Ordinal)
-                    .Select(kv => kv.Value == AccessLevel.Limited ? kv.Key + " (limited)" : kv.Key)
-                    .ToList();
-                if (roles.Count == 0)
-                {
-                    continue;
-                }
-                matrix.Split('\n').Should().Contain(l =>
-                    l.StartsWith("- ", StringComparison.Ordinal) &&
-                    l.Contains($"**{string.Join(", ", roles)}**", StringComparison.Ordinal) &&
-                    l.Contains(feature.Name, StringComparison.Ordinal));
+                matrix.Should().NotContain(feature.Name, "a feature no role may use is not a fact worth preloading");
+                continue;
             }
+            matrix.Split('\n').Should().Contain(l =>
+                l.StartsWith("- ", StringComparison.Ordinal) &&
+                l.Contains($"**{string.Join(", ", roles)}**", StringComparison.Ordinal) &&
+                l.Contains(feature.Name, StringComparison.Ordinal));
         }
     }
 
     [HumansFact]
     public void AccessMatrix_collapses_features_sharing_a_role_set_onto_one_line()
     {
-        var matrix = Augmentor().BuildAccessMatrixMarkdown();
+        var matrix = Augmentor(accessMatrices: [new StubAccessMatrix(SampleMatrix("Things", "Things", 10))]).BuildAccessMatrixMarkdown();
         matrix.Split('\n').Should().Contain(l =>
-            l.Contains("Browse shifts", StringComparison.Ordinal) &&
-            l.Contains("Sign up for shifts", StringComparison.Ordinal) &&
-            l.Contains("My Shifts & availability", StringComparison.Ordinal));
+            l.Contains("Browse things", StringComparison.Ordinal) &&
+            l.Contains("Join things", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// The corpus is whatever DI discovered, not a list Base or the Agent keeps: every
+    /// contribution is rendered, and the flat order is the one the rows declare — several
+    /// sections' entries interleave, so registration order would reshuffle the corpus.
+    /// </summary>
+    [HumansFact]
+    public void AccessMatrix_renders_every_contribution_in_declared_row_order()
+    {
+        var matrix = Augmentor(accessMatrices:
+        [
+            new StubAccessMatrix(SampleMatrix("Second", "Second", 20), SampleMatrix("Fourth", "Fourth", 40)),
+            new StubAccessMatrix(SampleMatrix("Third", "Third", 30), SampleMatrix("First", "First", 10)),
+        ]).BuildAccessMatrixMarkdown();
+
+        var headings = matrix.Split('\n')
+            .Select(l => l.TrimEnd())
+            .Where(l => l.StartsWith("## ", StringComparison.Ordinal))
+            .ToList();
+
+        headings.Should().Equal("## First", "## Second", "## Third", "## Fourth");
     }
 }

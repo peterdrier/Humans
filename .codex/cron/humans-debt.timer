@@ -1,0 +1,18 @@
+[Unit]
+Description=Run humans-debt.service nightly
+
+[Timer]
+# 06:00 UTC. The trailing UTC matters: without it systemd reads the time in
+# the machine's local zone, so a Nook set to anything but UTC would drift off
+# the intended hour (and shift twice a year with DST).
+OnCalendar=*-*-* 06:00:00 UTC
+# No randomised delay: this is one job on one machine, so there is no herd to
+# spread out, and a predictable start time makes the logs easier to read.
+RandomizedDelaySec=0
+# If the machine was off or asleep at 06:00, run on next boot rather than
+# skipping the day entirely.
+Persistent=true
+Unit=humans-debt.service
+
+[Install]
+WantedBy=timers.target

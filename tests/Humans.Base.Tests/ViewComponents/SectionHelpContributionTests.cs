@@ -24,7 +24,7 @@ public class SectionHelpContributionTests
     [HumansFact]
     public void Resolves_help_from_any_contribution_not_a_list_Base_keeps()
     {
-        var component = new AccessMatrixViewComponent([new Stub(Entry("First")), new Stub(Entry("Second"))]);
+        var component = new AccessMatrixViewComponent([], [new Stub(Entry("First")), new Stub(Entry("Second"))]);
 
         foreach (var key in new[] { "First", "Second" })
         {
@@ -39,7 +39,7 @@ public class SectionHelpContributionTests
     [HumansFact]
     public void Renders_nothing_for_a_key_no_section_contributed()
     {
-        new AccessMatrixViewComponent([new Stub(Entry("First"))])
+        new AccessMatrixViewComponent([], [new Stub(Entry("First"))])
             .Invoke("NotASection")
             .Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
     }
@@ -51,7 +51,7 @@ public class SectionHelpContributionTests
     [HumansFact]
     public void Matches_the_key_ordinally()
     {
-        new AccessMatrixViewComponent([new Stub(Entry("First"))])
+        new AccessMatrixViewComponent([], [new Stub(Entry("First"))])
             .Invoke("first")
             .Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
     }
