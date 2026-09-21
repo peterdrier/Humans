@@ -23,6 +23,7 @@ internal sealed class ShiftsEmails(
     public EmailMessage CoordinatorRotaMessage(CoordinatorRotaMessageRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
+        if (request.ShiftLines is null) throw new ArgumentNullException(nameof(request), "ShiftLines must not be null.");
         return Localized(request.Culture, () =>
         {
             var sanitizedMessage = SanitizedMarkdownRenderer.Render(request.MessageText);
@@ -48,6 +49,7 @@ internal sealed class ShiftsEmails(
     public EmailMessage CoordinatorTeamRotasMessage(CoordinatorTeamRotasMessageRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
+        if (request.ShiftGroups is null) throw new ArgumentNullException(nameof(request), "ShiftGroups must not be null.");
         return Localized(request.Culture, () =>
         {
             var sanitizedMessage = SanitizedMarkdownRenderer.Render(request.MessageText);

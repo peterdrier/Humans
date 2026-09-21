@@ -813,8 +813,8 @@ Git Bash.)
      recurring job — has to stay in Base because it names the Base job type. An interface with
      an implementer in Base belongs on the leaf for exactly the same reason as one with a
      caller there. Sort the section's abstractions by *which side the implementation is on*
-     before deciding: Email's four connector abstractions split three internal
-     (`IEmailRenderer`, `IEmailBodyComposer`, `IEmailTransport`) to one on the leaf
+     before deciding: Email's three connector abstractions split two internal
+     (`IEmailBodyComposer`, `IEmailTransport`) to one on the leaf
      (proven: Email).
      **The rule does not soften as the implementer count grows — it is the *only* thing
      that decides a fan-out section's leaf.** Gdpr's `IUserDataContributor` has exactly one

@@ -64,7 +64,7 @@ Returns an `EmailMessage` for Users' `ProfileViewController` and Camps'
 `CampContactService` to pass to `IEmailService.SendAsync`. No DB access, no
 cache.
 
-### EmailEmailPreviews (Scoped)
+### FacilitatedMessagePreviews (Scoped)
 
 No repository. Read-only gallery contributor (`IEmailPreviewContributor`,
 `Section.cs:52`) — builds the two facilitated-message samples via

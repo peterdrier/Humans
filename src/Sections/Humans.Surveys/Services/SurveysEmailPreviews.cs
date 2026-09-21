@@ -22,9 +22,12 @@ internal sealed class SurveysEmailPreviews(SurveysEmails emails) : IEmailPreview
         return
         [
             // No custom copy, so the gallery shows the standard localized wording rather
-            // than one survey's own.
+            // than one survey's own. The next sample covers the custom-subject/message arm.
             new EmailPreviewSample("survey-invitation", "Survey Invitation",
                 emails.SurveyInvitation(email, name, SampleTitle, SampleToken, culture)),
+            new EmailPreviewSample("survey-invitation-custom", "Survey Invitation (custom message)",
+                emails.SurveyInvitation(email, name, SampleTitle, SampleToken, culture,
+                    "Quick favor before Saturday?", "**Thanks** for helping last time — could you fill this in again?")),
             new EmailPreviewSample("survey-reminder", "Survey Reminder",
                 emails.SurveyReminder(email, name, SampleTitle, SampleToken, culture)),
         ];

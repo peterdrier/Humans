@@ -107,9 +107,8 @@ Tasks are ordered by priority. Check git log and handoff notes to see which are 
 **Where:** `src/Humans.Web/Views/Shared/`
 
 #### T8: Standardize email renderer
-**Status:** Partially done (some consolidation in earlier runs)
+**Status:** Done: `EmailRenderer` was deleted in peterdrier/Humans#1651; each section renders its own templates.
 **What:** `EmailRenderer` has repetitive render methods all following the same pattern. Extract a generic `RenderEmailAsync<TModel>` if a clear template pattern exists.
-**Where:** `src/Humans.Infrastructure/Services/EmailRenderer.cs`
 
 ### LOWER PRIORITY
 

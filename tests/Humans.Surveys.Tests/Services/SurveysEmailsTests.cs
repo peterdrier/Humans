@@ -96,7 +96,9 @@ public sealed class SurveysEmailsTests
             .Samples(new EmailPreviewPersona("en", "Sally Smith", "sally@example.com"))
             .Select(s => s.Message.TemplateName);
 
-        sampled.Should().BeEquivalentTo(templates,
+        // survey_invitation samples twice (standard wording, custom copy), so compare
+        // distinct sets.
+        sampled.Distinct(StringComparer.Ordinal).Should().BeEquivalentTo(templates.Distinct(StringComparer.Ordinal),
             "every Surveys template needs a row in /Email/EmailPreview");
     }
 

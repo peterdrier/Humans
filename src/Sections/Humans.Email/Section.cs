@@ -49,7 +49,7 @@ public sealed class Section : ISection
         services.AddSingleton<IEmailPreviewServiceRead>(sp => sp.GetRequiredService<EmailPreviewService>());
         services.AddSingleton<IEmailPreviewService>(sp => sp.GetRequiredService<EmailPreviewService>());
         services.AddScoped<IEmailMessageFactory, EmailMessageFactory>();
-        services.AddScoped<IEmailPreviewContributor, EmailEmailPreviews>();
+        services.AddScoped<IEmailPreviewContributor, FacilitatedMessagePreviews>();
         services.AddScoped<IEmailService, OutboxEmailService>();
 
         services.AddScoped<EmailOutboxService>();

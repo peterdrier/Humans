@@ -19,14 +19,14 @@
     Both could move inward; IImmediateOutboxProcessor could not, because Shell registers it.
     See Docs/health.md §5.
 
-    Everything with no consumer outside the section stays internal: the outbox admin
-    surface (IEmailOutboxService), the facilitated-message builder, the body composer, the SMTP transport,
-    the repository and the entity.
+    Everything with no consumer outside the section stays internal: the outbox admin surface
+    (IEmailOutboxService), the facilitated-message builder, the body composer, the SMTP
+    transport, the repository and the entity.
 
     References Humans.Base (IApplicationService, and EmailOutboxStatus, which lives there
-    because Campaigns and Surveys persist it too) and Humans.Users.Contracts, for MessageCategory
-    — Users' own vocabulary, named here by EmailMessage's Category. That is the enum sitting with its
-    owner, not Email taking a dependency on Users' services.
+    because Campaigns and Surveys persist it too) and Humans.Users.Contracts, for
+    MessageCategory — Users' own vocabulary, named here by EmailMessage's Category. That is
+    the enum sitting with its owner, not Email taking a dependency on Users' services.
 
     That leaf-to-leaf edge is acyclic: Humans.Users.Contracts has exactly one
     ProjectReference, to the equally zero-reference Humans.Onboarding.Contracts, so the

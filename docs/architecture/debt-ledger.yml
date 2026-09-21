@@ -507,11 +507,6 @@ inbox:
     review: light
     root: CENTRAL-57
   - added: 2026-09-10
-    id: CENTRAL-38
-    what: "docs/sections/G5-SECTION-TEMPLATE.md:341 claims the renderer lives at Humans.Infrastructure/Services/EmailRenderer.cs; it lives in the Email section (src/Sections/Humans.Email/Services/EmailRenderer.cs). Found fixing Feedback's copy of the same claim (/section-doctor on Feedback 2026-08-31; swept in by /section-doctor on Rideshare 2026-09-10)."
-    review: light
-    root: CENTRAL-57
-  - added: 2026-09-10
     id: CENTRAL-39
     what: "docs/architecture/dependency-graph.md classes Backdoor as a crosscut and omits its edges to the sections it serves (Agent, Feedback, Issues.Contracts, Surveys). It is a leaf, not a crosscut: nothing references it back (finding 16, /section-doctor on Backdoor 2026-09-03; swept in by /section-doctor on Rideshare 2026-09-10)."
     review: light

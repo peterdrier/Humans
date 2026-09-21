@@ -153,7 +153,9 @@ public sealed class WorkgroupsEmailsTests
         var sampled = new WorkgroupsEmailPreviews(emails).Samples(Persona)
             .Select(s => s.Message.TemplateName);
 
-        sampled.Should().BeEquivalentTo(templates,
+        // Registered samples twice (named greeting, role-inbox generic greeting), so
+        // compare distinct sets.
+        sampled.Distinct(StringComparer.Ordinal).Should().BeEquivalentTo(templates,
             "every Workgroups template needs a row in /Email/EmailPreview");
     }
 

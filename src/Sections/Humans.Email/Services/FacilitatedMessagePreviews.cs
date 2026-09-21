@@ -9,7 +9,7 @@ namespace Humans.Email.Services;
 /// from what members receive (peterdrier/Humans#1651). Sample data only — no recipient is
 /// real and nothing is sent.
 /// </summary>
-internal sealed class EmailEmailPreviews(IEmailMessageFactory messages) : IEmailPreviewContributor
+internal sealed class FacilitatedMessagePreviews(IEmailMessageFactory messages) : IEmailPreviewContributor
 {
     private const string SampleText =
         "Hi! I'm organizing the next community event and would love your help. Let me know if you're interested!";
